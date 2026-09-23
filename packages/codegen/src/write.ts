@@ -8,10 +8,15 @@
  * write outside the project, a dangling link created a new file wherever it
  * pointed, and the pipeline still reported success.
  *
- * Nothing here follows a link at the destination. replaceFile puts a new file in
- * place of whatever entry holds the name. createFile and copyToNewFile make a
- * new file and fail if any entry already holds the name, a dangling link
- * included.
+ * Nothing here follows a link at the destination. replaceFile and replaceFiles
+ * put a new file in place of whatever entry holds the name. createFile and
+ * copyToNewFile make a new file and fail if any entry already holds the name, a
+ * dangling link included.
+ *
+ * replaceFile and replaceFiles leave a regular file alone when it already holds
+ * the bytes they would write. Every write wakes `tsc --watch`, the bundler's
+ * watcher and the editor, even when the bytes are the same, and the pipeline
+ * regenerates every file on every run.
  */
 
 import { randomBytes } from "node:crypto"
@@ -19,33 +24,72 @@ import fs from "node:fs"
 import path from "node:path"
 
 /**
- * Write `content` to `filePath`, replacing the entry already there.
+ * Whether `filePath` is a regular file whose bytes are exactly `content`.
  *
- * The content goes to a new file in the same directory, and a rename then moves
- * it onto `filePath`. `rename(2)` replaces a link at the destination instead of
- * following it, and a reader sees the old file or the new one, never a partial
- * write. `declarations/` is staged and swapped the same way.
+ * A link is never a match, even when its target holds the same bytes, so the
+ * caller replaces it rather than leaving a generated path that points elsewhere.
+ */
+function holdsContent(filePath: string, content: string): boolean {
+  const expected = Buffer.from(content)
+  try {
+    const stat = fs.lstatSync(filePath)
+    if (!stat.isFile() || stat.size !== expected.length) return false
+    return fs.readFileSync(filePath).equals(expected)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Write `content` to `filePath`, replacing the entry already there, unless that
+ * entry is a regular file that already holds exactly `content`.
  */
 export function replaceFile(filePath: string, content: string): void {
-  // Dot-prefixed and not ending in `.ts`, so the project does not compile a
-  // file that a crash leaves behind.
-  const tempPath = path.join(
-    path.dirname(filePath),
-    `.${path.basename(filePath).replace(/^\./, "")}.tmp-${randomBytes(6).toString("hex")}`
-  )
+  replaceFiles([[filePath, content]])
+}
 
-  // `wx` fails on any existing entry, so the temporary name cannot be a link
-  // either, and the cleanup below only removes a file this call created.
-  const fd = fs.openSync(tempPath, "wx")
+/**
+ * Write each `[filePath, content]` pair as replaceFile does.
+ *
+ * Each new file is written to a temporary name in its destination's directory,
+ * and the renames that move them onto their paths start only once every one is
+ * written, so a failed write replaces nothing. `rename(2)` replaces a link at
+ * the destination instead of following it, and a reader sees the old file or
+ * the new one, never a partial write.
+ */
+export function replaceFiles(
+  files: ReadonlyArray<readonly [filePath: string, content: string]>
+): void {
+  const staged: { tempPath: string; filePath: string }[] = []
+
   try {
-    try {
-      fs.writeFileSync(fd, content)
-    } finally {
-      fs.closeSync(fd)
+    for (const [filePath, content] of files) {
+      if (holdsContent(filePath, content)) continue
+
+      // Dot-prefixed and not ending in `.ts`, so the project does not compile a
+      // file that a crash leaves behind.
+      const tempPath = path.join(
+        path.dirname(filePath),
+        `.${path.basename(filePath).replace(/^\./, "")}.tmp-${randomBytes(6).toString("hex")}`
+      )
+
+      // `wx` fails on any existing entry, so the temporary name cannot be a
+      // link either, and the cleanup below only removes files this call made.
+      const fd = fs.openSync(tempPath, "wx")
+      staged.push({ tempPath, filePath })
+      try {
+        fs.writeFileSync(fd, content)
+      } finally {
+        fs.closeSync(fd)
+      }
     }
-    fs.renameSync(tempPath, filePath)
+
+    for (const { tempPath, filePath } of staged) {
+      fs.renameSync(tempPath, filePath)
+    }
   } catch (error) {
-    fs.rmSync(tempPath, { force: true })
+    // A temporary file that was already renamed is gone, and `force` skips it.
+    for (const { tempPath } of staged) fs.rmSync(tempPath, { force: true })
     throw error
   }
 }

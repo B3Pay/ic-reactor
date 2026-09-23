@@ -56,6 +56,29 @@ describe("Codegen pipeline", () => {
     )
   }
 
+  /**
+   * Inode and mtime of `dir` and of every entry under it, by relative path.
+   * Codegen replaces a file by renaming a new one onto it, which gives the path
+   * a new inode even when the bytes are the same.
+   */
+  function statTree(dir: string) {
+    const tree: Record<string, { ino: number; mtimeMs: number }> = {}
+    const visit = (entryPath: string) => {
+      const stat = fs.lstatSync(entryPath)
+      tree[path.relative(dir, entryPath) || "."] = {
+        ino: stat.ino,
+        mtimeMs: stat.mtimeMs,
+      }
+      if (stat.isDirectory()) {
+        for (const entry of fs.readdirSync(entryPath)) {
+          visit(path.join(entryPath, entry))
+        }
+      }
+    }
+    visit(dir)
+    return tree
+  }
+
   it("uses per-canister mode to generate Reactor-based hooks", async () => {
     const projectRoot = createTempProject()
     writeDid(projectRoot, "workflow_engine.did")
@@ -323,6 +346,22 @@ describe("Codegen pipeline", () => {
       expect(fs.readFileSync(path.join(outDir, "index.ts"), "utf-8")).toContain(
         "export * from './index.generated';"
       )
+    })
+
+    // Formatting has to come out the same on every run for the unchanged
+    // output to be recognised as unchanged.
+    it("leaves every output untouched when regenerating with nothing changed", async () => {
+      const projectRoot = createFormattedProject()
+      const outDir = path.join(projectRoot, "src/declarations/backend")
+
+      const first = await runCanisterPipeline(options(projectRoot))
+      expect(first.error).toBeUndefined()
+      const before = statTree(outDir)
+
+      const second = await runCanisterPipeline(options(projectRoot))
+
+      expect(second.error).toBeUndefined()
+      expect(statTree(outDir)).toEqual(before)
     })
   })
 
@@ -775,6 +814,113 @@ export const greetQuery = createQuery(backendReactor, "greet")
     )
   })
 
+  // Every run used to replace every file it generated, identical or not, and
+  // each replacement wakes `tsc --watch`, the bundler's watcher and the editor.
+  describe("regenerating", () => {
+    const backendOptions = (projectRoot: string) => ({
+      canisterConfig: { name: "backend", didFile: "backend.did" },
+      projectRoot,
+      globalConfig: {
+        outDir: "src/declarations",
+        clientManagerPath: "../../clients",
+      },
+    })
+
+    it("leaves every output untouched when nothing changed", async () => {
+      const projectRoot = createTempProject()
+      writeDid(projectRoot, "backend.did")
+      const outDir = path.join(projectRoot, "src/declarations/backend")
+
+      const first = await runCanisterPipeline(backendOptions(projectRoot))
+      expect(first.error).toBeUndefined()
+      const before = statTree(outDir)
+      expect(Object.keys(before).sort()).toEqual([
+        ".",
+        ".ic-reactor-owner",
+        "declarations",
+        path.join("declarations", "backend.d.ts"),
+        path.join("declarations", "backend.did"),
+        path.join("declarations", "backend.js"),
+        "index.generated.ts",
+        "index.ts",
+      ])
+
+      const second = await runCanisterPipeline(backendOptions(projectRoot))
+
+      expect(second.error).toBeUndefined()
+      expect(statTree(outDir)).toEqual(before)
+    })
+
+    it("replaces only the declaration files whose bytes changed", async () => {
+      const projectRoot = createTempProject()
+      writeDid(projectRoot, "backend.did")
+      const outDir = path.join(projectRoot, "src/declarations/backend")
+
+      const first = await runCanisterPipeline(backendOptions(projectRoot))
+      expect(first.error).toBeUndefined()
+      const before = statTree(outDir)
+      const dtsPath = path.join(outDir, "declarations", "backend.d.ts")
+      const dts = fs.readFileSync(dtsPath, "utf-8")
+
+      // An update method has the same TypeScript type as a query method, so
+      // the .js and the .did copy change and the .d.ts does not.
+      const updateDid = `service : {
+  greet: (text) -> (text);
+}`
+      fs.writeFileSync(path.join(projectRoot, "backend.did"), updateDid)
+      const second = await runCanisterPipeline(backendOptions(projectRoot))
+
+      expect(second.error).toBeUndefined()
+      expect(
+        fs.readFileSync(
+          path.join(outDir, "declarations", "backend.did"),
+          "utf-8"
+        )
+      ).toBe(updateDid)
+      expect(
+        fs.readFileSync(
+          path.join(outDir, "declarations", "backend.js"),
+          "utf-8"
+        )
+      ).not.toContain('"query"')
+      expect(fs.readFileSync(dtsPath, "utf-8")).toBe(dts)
+
+      const after = statTree(outDir)
+      expect(Object.keys(after).sort()).toEqual(Object.keys(before).sort())
+      const replaced = Object.keys(before).filter(
+        (entry) => after[entry].ino !== before[entry].ino
+      )
+      expect(replaced.sort()).toEqual([
+        path.join("declarations", "backend.did"),
+        path.join("declarations", "backend.js"),
+      ])
+    })
+
+    // Updating the declarations in place must not keep a file this run does
+    // not generate. Before, every run rebuilt the directory and dropped it.
+    it("still removes a file in declarations/ that the run does not generate", async () => {
+      const projectRoot = createTempProject()
+      writeDid(projectRoot, "backend.did")
+      const declarationsDir = path.join(
+        projectRoot,
+        "src/declarations/backend/declarations"
+      )
+
+      const first = await runCanisterPipeline(backendOptions(projectRoot))
+      expect(first.error).toBeUndefined()
+      fs.writeFileSync(path.join(declarationsDir, "stale.js"), "// stale\n")
+
+      const second = await runCanisterPipeline(backendOptions(projectRoot))
+
+      expect(second.error).toBeUndefined()
+      expect(fs.readdirSync(declarationsDir).sort()).toEqual([
+        "backend.d.ts",
+        "backend.did",
+        "backend.js",
+      ])
+    })
+  })
+
   // The config check resolves the output directory's real location, but the
   // entries inside it come from the repository too. A write that follows a
   // link at its destination lands wherever the link points.
@@ -828,6 +974,36 @@ export const greetQuery = createQuery(backendReactor, "greet")
           .readdirSync(canisterOutDir)
           .filter((entry) => entry.includes(".tmp-"))
       ).toEqual([])
+    })
+
+    // A file that already holds the generated bytes is left alone, but a link
+    // never counts as one, whatever its target holds.
+    it("replaces a link whose target already holds the generated bytes", async () => {
+      const { projectRoot, canisterOutDir, outside } =
+        createProjectWithOutsideDir()
+      const first = await runCanisterPipeline(backendOptions(projectRoot))
+      expect(first.error).toBeUndefined()
+
+      const linked = [
+        "index.generated.ts",
+        path.join("declarations", "backend.d.ts"),
+      ]
+      for (const entry of linked) {
+        const entryPath = path.join(canisterOutDir, entry)
+        const target = path.join(outside, path.basename(entry))
+        fs.copyFileSync(entryPath, target)
+        fs.rmSync(entryPath)
+        fs.symlinkSync(target, entryPath)
+      }
+
+      const second = await runCanisterPipeline(backendOptions(projectRoot))
+
+      expect(second.error).toBeUndefined()
+      for (const entry of linked) {
+        expect(fs.lstatSync(path.join(canisterOutDir, entry)).isFile()).toBe(
+          true
+        )
+      }
     })
 
     it("fails instead of creating index.ts through a dangling link", async () => {

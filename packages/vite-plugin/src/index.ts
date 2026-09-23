@@ -178,10 +178,11 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
   // Scope, precisely: this covers the watcher path only. `buildStart` calls the
   // pipeline directly and does not register here, so a save landing during the
   // initial generation can still run concurrently with it. That is deliberate
-  // rather than an oversight -- since @ic-reactor/codegen generates into a
-  // staging directory and swaps atomically, concurrent runs for one canister no
-  // longer interleave inside a delete-then-write sequence; the loser is simply
-  // overwritten. What this buys is ordering and wasted work, not integrity.
+  // rather than an oversight -- since @ic-reactor/codegen writes a canister's
+  // declarations in one synchronous step, after all of them are generated,
+  // concurrent runs for one canister no longer interleave inside a
+  // delete-then-write sequence; the loser is simply overwritten. What this buys
+  // is ordering and wasted work, not integrity.
   //
   // Note the coalesced promise resolves when the RUNNING pass finishes, not the
   // trailing rerun, so it can settle before the newest `.did` has been written.

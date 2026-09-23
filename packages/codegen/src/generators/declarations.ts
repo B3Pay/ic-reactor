@@ -20,7 +20,7 @@ import fs from "node:fs"
 import { pathToFileURL } from "node:url"
 import type { GeneratorResult } from "../types.js"
 import { CodegenConfigError, resolveDeclarationsBaseName } from "../validate.js"
-import { replaceFile } from "../write.js"
+import { replaceFile, replaceFiles } from "../write.js"
 
 export interface DeclarationsGeneratorOptions {
   /** Absolute path to the .did file */
@@ -79,6 +79,31 @@ function replaceDirectory(from: string, to: string): void {
   }
 
   fs.rmSync(displaced, { recursive: true, force: true })
+}
+
+/**
+ * Whether `declarationsDir` can be brought up to date one file at a time.
+ *
+ * It can when it is a real directory, not a link, holding exactly the files
+ * this run writes, each of them a regular file. Anything else, such as no
+ * directory yet, a file left from a renamed `.did`, or a link, goes through
+ * replaceDirectory, which also removes whatever the new output does not
+ * contain.
+ */
+function canUpdateInPlace(
+  declarationsDir: string,
+  fileNames: string[]
+): boolean {
+  try {
+    if (!fs.lstatSync(declarationsDir).isDirectory()) return false
+    const entries = fs.readdirSync(declarationsDir, { withFileTypes: true })
+    return (
+      entries.length === fileNames.length &&
+      entries.every((entry) => entry.isFile() && fileNames.includes(entry.name))
+    )
+  } catch {
+    return false
+  }
 }
 
 /** The part of Prettier's API used here, in the shape v2 and v3 share. */
@@ -217,13 +242,17 @@ export const OWNER_FILE = ".ic-reactor-owner"
 /**
  * Generate TypeScript declarations from a Candid file.
  *
- * Generation happens in a staging directory that is swapped over the existing
- * `declarations/` only after every file has been written. The parser runs on
+ * Nothing is written until every file has been generated. The parser runs on
  * user-authored Candid and throws on a syntax error — under the vite plugin
  * that is a *normal* watch-mode event, one keystroke in a .did file — so
  * deleting the previous output before parsing turned every typo into a broken
- * build with no declarations at all. A failure now leaves the previous
- * declarations byte-identical.
+ * build with no declarations at all. A .did that fails to parse now leaves the
+ * previous declarations byte-identical.
+ *
+ * When `declarations/` already holds exactly these files, only the ones whose
+ * bytes changed are replaced, so a run with nothing new writes nothing and
+ * wakes no file watcher. Otherwise the files are written to a staging directory
+ * that is swapped over `declarations/`.
  *
  * The parser emits candid's house style. Committed declarations are usually
  * formatted, so writing that style back turned every regeneration into a diff.
@@ -348,15 +377,35 @@ export async function generateDeclarations(
       "typescript"
     )
 
-    staging = fs.mkdtempSync(path.join(outDir, ".declarations.tmp-"))
+    const outputs: [fileName: string, content: string][] = [
+      [`${baseName}.js`, jsOutput],
+      [`${baseName}.d.ts`, tsOutput],
+      // A byte copy of the source, so never formatted.
+      [`${baseName}.did`, didContent],
+    ]
 
-    fs.writeFileSync(path.join(staging, `${baseName}.js`), jsOutput)
-    fs.writeFileSync(path.join(staging, `${baseName}.d.ts`), tsOutput)
-    // A byte copy of the source, so never formatted.
-    fs.writeFileSync(path.join(staging, `${baseName}.did`), didContent)
-
-    replaceDirectory(staging, declarationsDir)
-    staging = undefined
+    if (
+      canUpdateInPlace(
+        declarationsDir,
+        outputs.map(([fileName]) => fileName)
+      )
+    ) {
+      // Replaces only the files whose bytes changed. Turning a query method
+      // into an update changes the .js and the .did copy but not the .d.ts.
+      replaceFiles(
+        outputs.map(([fileName, content]) => [
+          path.join(declarationsDir, fileName),
+          content,
+        ])
+      )
+    } else {
+      staging = fs.mkdtempSync(path.join(outDir, ".declarations.tmp-"))
+      for (const [fileName, content] of outputs) {
+        fs.writeFileSync(path.join(staging, fileName), content)
+      }
+      replaceDirectory(staging, declarationsDir)
+      staging = undefined
+    }
 
     return {
       success: true,

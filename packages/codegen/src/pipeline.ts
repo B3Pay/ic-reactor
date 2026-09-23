@@ -389,7 +389,8 @@ export async function runCanisterPipeline(
 
     // Every write below either replaces the entry at its path or creates a new
     // one, so a symbolic link committed into the output directory cannot
-    // redirect it. See write.ts.
+    // redirect it. A replace leaves a regular file that already holds the new
+    // bytes untouched. See write.ts.
     fs.mkdirSync(canisterOutDir, { recursive: true })
     replaceFile(reactorPath, reactorContent)
     files.push({ success: true, filePath: reactorPath })

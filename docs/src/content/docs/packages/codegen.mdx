@@ -65,10 +65,12 @@ For each canister, the pipeline writes into `<outDir>/<name>/`:
   the old generator never wrote is left alone
 
 The declaration filenames come from the `.did` file's basename, not the
-canister name. The whole `declarations/` directory is recreated on every run,
-but the new files are staged first and swapped in only once all of them are
-written, so a `.did` that fails to parse leaves the previous declarations in
-place instead of deleting them.
+canister name. Nothing is written until every file has been generated, so a
+`.did` that fails to parse leaves the previous declarations in place instead of
+deleting them. After every run, `declarations/` holds only the files that run
+generated. A file whose content has not changed is not rewritten, so
+regenerating from unchanged input leaves every file untouched and wakes no file
+watcher.
 
 If Prettier resolves from the project root, the pipeline formats the `.js`,
 `.d.ts`, `index.generated.ts` and the `index.ts` wrapper it writes with it,
