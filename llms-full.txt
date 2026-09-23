@@ -33,6 +33,9 @@ React apps:
 pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 ```
 
+`@ic-reactor/react` needs `@tanstack/react-query` 5.90.2 or later and React 18
+or later.
+
 Non-React apps:
 
 ```bash
@@ -68,8 +71,10 @@ only on v10, so IC Reactor forwards them to v10 and drops them on v8 with a
 warning. On v10 a custom `identityProvider` also needs `internetIdentityId`,
 because v10 names a provider by its authorize URL and its canister. Off
 mainnet, IC Reactor points v10's own minting agent at the app's replica and has
-it fetch that network's root key. Local v10 sign-in is not verified end to end
-yet.
+it fetch that network's root key. The real-client suite runs the actual
+`AuthClient` under both majors, against a fake Internet Identity and a fake
+replica that certifies v10's mint and revoke calls. A deployed Internet
+Identity canister is not part of it.
 
 Dynamic Candid:
 

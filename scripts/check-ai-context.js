@@ -54,6 +54,9 @@ const ALLOWED_EXTERNAL_VERSIONS = new Set([
   // `@icp-sdk/core@^5` and is not a supported peer.
   "8.0.0",
   "10.0.0",
+  // The `@tanstack/react-query` peer floor of @ic-reactor/react, named in
+  // llms-full.txt's install section. `pnpm verify:peer-floors` tests it.
+  "5.90.2",
 ])
 
 const llmsPath = join(rootDir, "llms.txt")
