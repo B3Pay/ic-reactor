@@ -138,6 +138,9 @@ const EMPTY_VARIANT_MESSAGE = "variant {} has no values, so no value is valid"
 /** Why an `empty` field accepts nothing. */
 const EMPTY_TYPE_MESSAGE = "empty has no values, so no value is valid"
 
+/** A URL with a scheme, as z.url() reads one. */
+const ABSOLUTE_URL = z.url()
+
 /**
  * Whether no value of this field's type exists: `empty`, `variant {}`, a
  * variant none of whose options can hold a value, or a record or tuple
@@ -903,7 +906,17 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       case "email":
         return z.email("Invalid email address")
       case "url":
-        return z.url("Invalid URL")
+        // An absolute URL, or the path and query of a request, which is
+        // what `http_request`'s `url` holds: `/metrics`,
+        // `/index.html?lang=en`. z.url() takes only the first, so no request
+        // to a canister's HTTP interface passed the form built for it.
+        return z
+          .string()
+          .refine(
+            (value) =>
+              value.startsWith("/") || ABSOLUTE_URL.safeParse(value).success,
+            "Invalid URL"
+          )
       case "uuid":
         return z.uuid("Invalid UUID")
       default:
