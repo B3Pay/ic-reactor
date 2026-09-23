@@ -118,7 +118,7 @@ export type UseActorSuspenseInfiniteQueryResult<
  * Hook for executing suspense-enabled infinite/paginated query calls on a canister.
  *
  * @example
- * const { data, fetchNextPage, hasNextPage } = useActorSuspenseInfiniteQuery({
+ * const { data, fetchNextPage, hasNextPage } = useReactorSuspenseInfiniteQuery({
  *   reactor,
  *   functionName: "getItems",
  *   getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }] as const,

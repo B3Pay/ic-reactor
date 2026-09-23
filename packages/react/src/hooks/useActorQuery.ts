@@ -60,14 +60,14 @@ export type UseActorQueryResult<
  * Hook for executing query calls on a canister.
  *
  * @example
- * const { data, isLoading } = useActorQuery({
+ * const { data, isLoading } = useReactorQuery({
  *   reactor,
  *   functionName: "getUser",
  *   args: ["user-123"],
  * })
  *
  * // With select transformation
- * const { data } = useActorQuery({
+ * const { data } = useReactorQuery({
  *   reactor,
  *   functionName: "getUser",
  *   args: ["user-123"],
