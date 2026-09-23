@@ -280,11 +280,12 @@ export class AuthenticationManager {
       if (stillValid) {
         return this.authState.identity || undefined
       }
-      // Expired. Re-deriving state from the client will not help: the v8
-      // client keeps handing out the lapsed delegation from getIdentity()
-      // until signOut() runs (only a fresh page load purges it), so the
-      // expired identity would go straight back on the agent and every
-      // refetch would be signed with it. End the session explicitly.
+      // Expired, or ended in another tab. Re-deriving state from the client
+      // will not help: the v8 client keeps handing out the lapsed delegation
+      // from getIdentity() until signOut() runs (only a fresh page load purges
+      // it), so the expired identity would go straight back on the agent and
+      // every refetch would be signed with it. End the session explicitly, in
+      // this tab only: see expireSession().
       await this.expireSession()
       return undefined
     }
@@ -697,17 +698,33 @@ export class AuthenticationManager {
   }
 
   /**
-   * End a session whose delegation has lapsed: ask the client to forget it,
-   * put the anonymous identity on the agent -- which also sweeps the previous
-   * user's caller-scoped cache entries and refetches the rest anonymously --
-   * and publish the signed-out state. `signOut` failing changes nothing here:
+   * End a session the client no longer vouches for: put the anonymous
+   * identity on the agent -- which also sweeps the previous user's
+   * caller-scoped cache entries and refetches the rest anonymously -- and
+   * publish the signed-out state.
+   *
+   * A v8 client is also asked to forget the session, since it keeps handing
+   * out the lapsed delegation until `signOut()` runs. Its `isAuthenticated()`
+   * reads the expiry kept in the `localStorage` every tab shares, so this runs
+   * only once the session stored for every tab is over, and its `signOut()`
+   * takes no lock and revokes nothing. `signOut` failing changes nothing here:
    * the delegation is already unusable, and the agent must not keep it.
+   *
+   * A v10 client is left alone, as `commitSignedOut()` leaves it. Its
+   * `signOut()` ends the sign-in for every tab of the origin: it takes the
+   * sign-in lock from a sign-in another tab has in progress, which then fails,
+   * revokes whatever session the shared store holds, and removes the record
+   * every tab reads. Another tab may have signed in again since this one last
+   * looked, and finding a session over is not the user asking to sign out.
+   * The client already stopped vouching for the session on its own.
    */
   private async expireSession() {
-    try {
-      await this.authClient?.signOut()
-    } catch {
-      // Nothing to keep; fall through to anonymous either way.
+    if (this.authClientFlavor !== "session") {
+      try {
+        await this.authClient?.signOut()
+      } catch {
+        // Nothing to keep; fall through to anonymous either way.
+      }
     }
     const identity = new AnonymousIdentity()
     this.clientManager.updateAgent(identity)

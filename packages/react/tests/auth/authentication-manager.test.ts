@@ -747,6 +747,34 @@ describe("AuthenticationManager session hygiene", () => {
     ).toBe(true)
   })
 
+  it("leaves a v10 client's sign-in alone when the session lapsed", async () => {
+    // A v10 client's signOut() is the whole origin's: it takes the sign-in lock
+    // from a sign-in another tab has in progress, revokes whatever session the
+    // store every tab shares holds, and removes the record they all read.
+    // Noticing that the session is over must end it in this tab only.
+    const authClient = Object.assign(createAuthClient(), {
+      getStatus: vi.fn(),
+      getPrincipal: vi.fn(),
+    })
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+
+    authClient.isAuthenticated.mockResolvedValue(false)
+    authClient.getIdentity.mockReturnValue(identity("aaaaa-aa"))
+
+    await expect(authentication.authenticate()).resolves.toBeUndefined()
+
+    expect(authClient.signOut).not.toHaveBeenCalled()
+    expect(clientManager.identity?.getPrincipal().isAnonymous()).toBe(true)
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(
+      authentication.authState.identity?.getPrincipal().isAnonymous()
+    ).toBe(true)
+  })
+
   it("still drops the lapsed delegation when signOut fails", async () => {
     // The delegation is already unusable; a storage error while forgetting it
     // is no reason to keep signing with it.

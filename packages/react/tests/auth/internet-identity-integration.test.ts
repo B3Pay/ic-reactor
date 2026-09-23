@@ -30,6 +30,7 @@ import {
   type FakeIdentityProvider,
 } from "./fake-identity-provider.js"
 import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
+import { installFakeWebLocks } from "./fake-web-locks.js"
 
 /** Which major this run resolved `@icp-sdk/auth` to. */
 const isV10 = detectAuthClientFlavor(AuthClient) === "session"
@@ -38,6 +39,8 @@ const LOCAL_HOST = "http://localhost:4943"
 
 let provider: FakeIdentityProvider
 let replica: FakeReplica
+/** Every manager a test built, so the clients they made can be released. */
+const managers: AuthenticationManager[] = []
 
 function createManager(
   params: Partial<ConstructorParameters<typeof AuthenticationManager>[0]> = {},
@@ -57,6 +60,7 @@ function createManager(
     clientManager,
     ...params,
   })
+  managers.push(authentication)
   return { queryClient, clientManager, authentication }
 }
 
@@ -73,6 +77,13 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  // A v10 client listens for `storage` events on the window every test shares,
+  // and keeps the IndexedDB it opened in its own test. One left over reads a
+  // record a later test writes against that database, and can end the later
+  // test's sign-in.
+  for (const { client } of managers.splice(0)) {
+    ;(client as { dispose?: () => void } | undefined)?.dispose?.()
+  }
   provider.restore()
   replica.restore()
 })
@@ -337,6 +348,123 @@ describe("Internet Identity sign-in (real AuthClient)", () => {
     expect(authentication.authState.isAuthenticated).toBe(false)
     expect(authentication.authState.error).toBeInstanceOf(Error)
     expect(errors).toHaveLength(1)
+  })
+})
+
+describe("a session another tab ended and signed in to again (real AuthClient)", () => {
+  // Every tab of an origin shares `localStorage`, IndexedDB and one Web Locks
+  // manager, so a second manager over the same storage stands for a second
+  // tab. Once the session ends in tab B, tab A's manager still reports it until
+  // something makes it look again, such as a later `useAuth()` consumer
+  // mounting. Looking again has to end the session in tab A only: the user may
+  // have signed in again in tab B by then.
+
+  let restoreWebLocks: () => void
+
+  beforeEach(() => {
+    // jsdom has no `navigator.locks`, and without it v10 takes no lock at all.
+    restoreWebLocks = installFakeWebLocks()
+  })
+
+  afterEach(() => {
+    restoreWebLocks()
+  })
+
+  function readLocalStorage() {
+    const entries = new Map<string, string>()
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index)
+      if (key !== null) entries.set(key, localStorage.getItem(key)!)
+    }
+    return entries
+  }
+
+  /**
+   * Raises in tab A the `storage` events a browser raises there for what tab B
+   * changed since `before`. jsdom has one window and raises none.
+   */
+  function deliverStorageEvents(before: Map<string, string>) {
+    const after = readLocalStorage()
+    for (const key of new Set([...before.keys(), ...after.keys()])) {
+      const oldValue = before.get(key) ?? null
+      const newValue = after.get(key) ?? null
+      if (oldValue === newValue) continue
+      window.dispatchEvent(
+        new StorageEvent("storage", { key, oldValue, newValue })
+      )
+    }
+  }
+
+  /**
+   * Tabs A and B on one session, which the user then signs out of in tab B.
+   * Tab A's client hears of it and stops vouching for the session; tab A's
+   * manager is not told, and still reports the user signed in.
+   */
+  async function signOutInTabB() {
+    const tabA = createManager()
+    await tabA.authentication.prepareClient()
+    await withUserGesture(() => tabA.authentication.login())
+    const tabB = createManager()
+    await tabB.authentication.prepareClient()
+    await tabB.authentication.authenticate()
+    expect(tabB.authentication.authState.isAuthenticated).toBe(true)
+
+    const before = readLocalStorage()
+    await tabB.authentication.logout()
+    deliverStorageEvents(before)
+
+    expect(await tabA.authentication.client!.isAuthenticated()).toBe(false)
+    expect(tabA.authentication.authState.isAuthenticated).toBe(true)
+    return { tabA, tabB }
+  }
+
+  /** Whether a tab opened now finds a session to restore. */
+  async function newTabIsSignedIn() {
+    const tab = createManager()
+    await tab.authentication.authenticate()
+    return tab.authentication.authState.isAuthenticated
+  }
+
+  it("does not end a sign-in tab B has in progress", async () => {
+    // Tab A looks at its session while the user is still in the identity
+    // provider signing in again in tab B. With v10, the sign-out tab A then ran
+    // took the sign-in lock from tab B's ceremony, which failed with
+    // SupersededError once the user had finished in the identity provider.
+    const { tabA, tabB } = await signOutInTabB()
+    const release = provider.holdSignIn()
+    const before = readLocalStorage()
+    const signingIn = withUserGesture(() => tabB.authentication.login())
+    await vi.waitFor(() => expect(provider.signInRequestCount).toBe(2))
+
+    await tabA.authentication.authenticate()
+
+    expect(tabA.authentication.authState.isAuthenticated).toBe(false)
+    expect((await tabA.clientManager.getUserPrincipal()).isAnonymous()).toBe(
+      true
+    )
+    release()
+    await expect(signingIn).resolves.toBeUndefined()
+    deliverStorageEvents(before)
+    expect(tabB.authentication.authState.isAuthenticated).toBe(true)
+    expect(await newTabIsSignedIn()).toBe(true)
+  })
+
+  it("does not end a sign-in tab B finished before tab A heard of it", async () => {
+    // A `storage` event reaches the other tabs asynchronously, so a check in
+    // tab A can run after tab B's sign-in and before tab A hears of it. With
+    // v10, the sign-out tab A then ran revoked tab B's new session at the
+    // canister and removed it from the store both tabs share.
+    const { tabA, tabB } = await signOutInTabB()
+    const before = readLocalStorage()
+    await withUserGesture(() => tabB.authentication.login())
+    const revoked = provider.revokedSessions.length
+
+    await tabA.authentication.authenticate()
+    deliverStorageEvents(before)
+
+    expect(provider.revokedSessions).toHaveLength(revoked)
+    expect(tabB.authentication.authState.isAuthenticated).toBe(true)
+    expect(await newTabIsSignedIn()).toBe(true)
   })
 })
 
