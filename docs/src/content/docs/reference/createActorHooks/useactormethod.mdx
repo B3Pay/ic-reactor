@@ -86,6 +86,11 @@ without `args` matches every query of that method, whatever its arguments.
 | `onError`           | `(error) => void`      | Callback when the method call fails.                    |
 | `invalidateQueries` | `QueryKey[]`           | For mutations: keys to invalidate after success.        |
 
+For an update method, the `invalidateQueries` invalidation is awaited before
+`onSuccess` runs, as in `useActorMutation` and `createMutation`. `onSuccess`
+sees the refetched data, and `call()` resolves once the invalidated queries in
+use have refetched.
+
 ### Inherited from React Query
 
 All react-query options are available:
