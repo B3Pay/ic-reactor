@@ -21,6 +21,7 @@
 
 import { Actor, type HttpAgent } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
+import type { AuthClientFlavor } from "./auth-client-compat.js"
 
 /** The `http_request` query every asset-serving canister exposes. */
 const httpInterface: IDL.InterfaceFactory = ({ IDL }) => {
@@ -132,13 +133,38 @@ export async function probeLocalInternetIdentity(
 /**
  * The error a login gets when the installed build serves no sign-in UI, in
  * place of a 503 page inside a popup the app cannot see.
+ *
+ * The fix depends on the installed `@icp-sdk/auth` major. v8 signs in through
+ * the page the canister serves, so an older build that still serves one works.
+ * v10 signs in through `ii_session_delegation` and mints with
+ * `app_prepare_delegation`, which Internet Identity gained only after its
+ * frontend left the canister (#561). No build serves both, so a v10 app needs
+ * the frontend from somewhere else, and older builds cannot help it.
+ *
+ * @param flavor - The installed client's contract. Defaults to `legacy` (v8),
+ *   whose advice this error gave before it knew about v10.
  */
 export function localInternetIdentityUnavailableError(
-  canisterId: string
+  canisterId: string,
+  flavor: AuthClientFlavor = "legacy"
 ): Error {
-  return new Error(
+  const problem =
     `[ic-reactor] The Internet Identity canister ${canisterId} does not serve a sign-in UI: ` +
-      `neither /authorize nor / returned a page. Internet Identity builds from ` +
+    `neither /authorize nor / returned a page. `
+
+  if (flavor === "session") {
+    return new Error(
+      problem +
+        `With @icp-sdk/auth v10, local sign-in needs an Internet Identity frontend served ` +
+        `separately, because no Internet Identity canister build both serves /authorize and ` +
+        `supports v10 sessions. Set \`identityProvider\` to that frontend's authorize URL and ` +
+        `\`internetIdentityId\` to the local Internet Identity canister that mints its delegations.`
+    )
+  }
+
+  return new Error(
+    problem +
+      `Internet Identity builds from ` +
       `release-2026-03-23 onward moved their frontend out of the canister (the id.ai split) ` +
       `and cannot be used locally. Install internet_identity_dev.wasm from release-2026-03-16, ` +
       `the newest build that still self-serves /authorize, or point \`identityProvider\` at a ` +

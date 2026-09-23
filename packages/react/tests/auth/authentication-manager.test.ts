@@ -3,6 +3,7 @@ import { QueryClient } from "@tanstack/react-query"
 import { Principal } from "@icp-sdk/core/principal"
 import { ClientManager } from "@ic-reactor/core"
 import { AuthenticationManager } from "../../src/auth/index.js"
+import { probeLocalInternetIdentity } from "../../src/auth/local-ii-probe.js"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 vi.mock("@icp-sdk/core/agent/canister-env", () => ({
@@ -22,9 +23,9 @@ vi.mock("@icp-sdk/auth/client", () => ({
 // so "prepares the auth client with the default local II provider" waited out an
 // HTTP failure: 3.5s locally, and past vitest's 5000ms default on a loaded CI
 // runner. auth-client-compat.test.ts stubs the probe for the same reason
-// (800344d28). No case here asserts what the probe finds, and the stub answers
-// "/authorize", the path an unreachable probe falls back to. The probe keeps its
-// own coverage in local-ii-probe.test.ts.
+// (800344d28). The stub answers "/authorize", the path an unreachable probe
+// falls back to; the cases for a build with no sign-in UI override it once each.
+// The probe keeps its own coverage in local-ii-probe.test.ts.
 vi.mock("../../src/auth/local-ii-probe.js", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   probeLocalInternetIdentity: vi.fn(async () => ({
@@ -567,6 +568,113 @@ describe("AuthenticationManager", () => {
       windowOpenerFeatures: undefined,
       openIdProvider: undefined,
     })
+  })
+})
+
+// A local II build whose frontend left the canister serves no sign-in page, and
+// the fix differs per @icp-sdk/auth major. The build the v8 advice names serves
+// /authorize but predates the calls a v10 sign-in makes, so repeating that
+// advice to a v10 app sends it to a build that cannot sign it in (#561).
+describe("AuthenticationManager with a local II that serves no sign-in UI", () => {
+  function localClientManager() {
+    const manager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: "http://127.0.0.1:8000" },
+    })
+    vi.spyOn(manager, "initializeAgent").mockResolvedValue()
+    return manager
+  }
+
+  /** What the probe finds on a build from release-2026-03-23 onward. */
+  function probeFindsNoSignInUi() {
+    vi.mocked(probeLocalInternetIdentity).mockResolvedValueOnce({
+      path: null,
+      inconclusive: false,
+    })
+  }
+
+  /** Gives the mocked constructor the two methods v9+ added. */
+  function markAuthClientModuleAsV10() {
+    Object.assign(authClientMocks.factory.prototype as object, {
+      getStatus: () => {},
+      getPrincipal: () => {},
+    })
+  }
+
+  beforeEach(() => {
+    authClientMocks.factory.mockReset()
+    vi.clearAllMocks()
+    ;(safeGetCanisterEnv as any).mockReturnValue(undefined)
+  })
+
+  afterEach(() => {
+    // The prototype outlives mockReset, and every other case here is v8.
+    const prototype = authClientMocks.factory.prototype as Record<
+      string,
+      unknown
+    >
+    delete prototype.getStatus
+    delete prototype.getPrincipal
+  })
+
+  it("keeps the v8 advice to install release-2026-03-16", async () => {
+    probeFindsNoSignInUi()
+    const AuthClient = mockAuthClientModule(createAuthClient())
+    const authentication = new AuthenticationManager({
+      clientManager: localClientManager(),
+    })
+
+    await expect(authentication.prepareClient()).rejects.toThrow(
+      "Install internet_identity_dev.wasm from release-2026-03-16"
+    )
+    await expect(authentication.login()).rejects.toThrow("release-2026-03-16")
+    expect(AuthClient).not.toHaveBeenCalled()
+  })
+
+  it("tells a v10 app to serve the frontend separately", async () => {
+    probeFindsNoSignInUi()
+    markAuthClientModuleAsV10()
+    const AuthClient = mockAuthClientModule(createAuthClient())
+    const authentication = new AuthenticationManager({
+      clientManager: localClientManager(),
+    })
+
+    const error = await authentication.prepareClient().then(
+      () => undefined,
+      (reason: Error) => reason
+    )
+
+    expect(error).toBeInstanceOf(Error)
+    expect(error?.message).toContain("rdmx6-jaaaa-aaaaa-aaadq-cai")
+    expect(error?.message).toContain("@icp-sdk/auth v10")
+    expect(error?.message).toContain(
+      "needs an Internet Identity frontend served separately"
+    )
+    expect(error?.message).toContain("`identityProvider`")
+    expect(error?.message).toContain("`internetIdentityId`")
+    expect(error?.message).not.toContain("release-2026-03-16")
+    await expect(authentication.login()).rejects.toThrow(error?.message)
+    expect(AuthClient).not.toHaveBeenCalled()
+  })
+
+  it("reads v10 off a client the caller built", async () => {
+    probeFindsNoSignInUi()
+    const authClient = Object.assign(createAuthClient(), {
+      getStatus: vi.fn(),
+      getPrincipal: vi.fn(),
+    })
+    const authentication = new AuthenticationManager({
+      clientManager: localClientManager(),
+      authClient,
+    })
+
+    await expect(authentication.prepareClient()).rejects.toThrow(
+      "needs an Internet Identity frontend served separately"
+    )
+    await expect(authentication.login()).rejects.toThrow(
+      "needs an Internet Identity frontend served separately"
+    )
+    expect(authClient.signIn).not.toHaveBeenCalled()
   })
 })
 

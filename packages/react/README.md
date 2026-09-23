@@ -319,6 +319,12 @@ verification-error page. From `release-2026-03-23` the II frontend moved out of
 the canister, so no local build past that point can be used for sign-in — pin an
 older release in `dfx.json`.
 
+Pinning only helps `@icp-sdk/auth` v8: v10 signs in through calls II gained
+after its frontend left the canister, so no build both serves `/authorize` and
+supports v10 sessions. With v10, serve an II frontend separately and pass its
+authorize URL as `identityProvider`, with `internetIdentityId` set to the local
+II canister that mints its delegations.
+
 An inconclusive probe — the canister unreachable, or answering no `http_request`
 — does not throw: it keeps `/authorize`, because a diagnostic that blocks a
 login that might have worked is worse than the failure it explains. To override
