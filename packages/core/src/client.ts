@@ -25,6 +25,28 @@ const hostnameOf = (origin: string | undefined): string | undefined => {
 }
 
 /**
+ * The hostname `HttpAgent` connects to for `host`, found the way the agent
+ * finds it (`determineHost` in `@icp-sdk/core`): on a page, a host that does
+ * not start with a scheme, such as `127.0.0.1:4943` or a bare Codespaces
+ * domain, is read against the page's protocol. `new URL` alone rejects such a
+ * host or finds no hostname in it, which took a local replica for mainnet.
+ * The agent's scheme test is copied as is, so `localhost:4943`, which it reads
+ * as the scheme `localhost:`, has no hostname here either.
+ */
+const agentHostnameOf = (host: string | undefined): string | undefined => {
+  if (!host) return undefined
+  try {
+    return (
+      !/^[a-z]+:/.test(host) && typeof window !== "undefined"
+        ? new URL(`${window.location.protocol}//${host}`)
+        : new URL(host)
+    ).hostname
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Tells `subscribers` about a change the manager has already made.
  *
  * Every subscriber is called even when one throws, and the first error is
@@ -156,15 +178,6 @@ export class ClientManager {
       }
     }
 
-    if (isDev() && typeof window !== "undefined") {
-      if (agentOptions.verifyQuerySignatures == null) {
-        agentOptions.verifyQuerySignatures = false
-      }
-    } else {
-      agentOptions.verifyQuerySignatures =
-        agentOptions.verifyQuerySignatures ?? true
-    }
-
     if (!agentOptions.host) {
       const processNetwork = getProcessEnvNetwork()
       if (processNetwork === "local") {
@@ -176,6 +189,26 @@ export class ClientManager {
       } else {
         agentOptions.host = IC_HOST_NETWORK_URI
       }
+    }
+
+    // The network the agent will talk to, which decides both the query
+    // signature default and whether the agent fetches its root key. It is read
+    // from the host as the agent reads it, so it matches `network`.
+    const hostNetwork = getNetworkByHostname(
+      agentHostnameOf(agentOptions.host) ?? ""
+    )
+
+    // A subnet's nodes sign every query response, and checking those
+    // signatures is what stops anything between the agent and the subnet from
+    // answering a query in its name. A development build in the browser skips
+    // the check by default only for a local replica: the agent fetches that
+    // replica's root key from the replica itself, so signatures checked under
+    // it prove little. It used to skip it for every host, so a dev server page
+    // pointed at mainnet accepted unsigned answers. An explicit setting wins.
+    if (isDev() && typeof window !== "undefined" && hostNetwork !== "ic") {
+      agentOptions.verifyQuerySignatures ??= false
+    } else {
+      agentOptions.verifyQuerySignatures ??= true
     }
 
     // The ic_env cookie is not origin-isolated -- any sibling subdomain of the
@@ -232,7 +265,7 @@ export class ClientManager {
     // shares one fetch between its requests and `initializeAgent`, and a root
     // key given explicitly or taken from the `ic_env` cookie is used as is
     // until `initializeAgent` replaces it with the fetched one.
-    if (getNetworkByHostname(hostnameOf(agentOptions.host) ?? "") !== "ic") {
+    if (hostNetwork !== "ic") {
       agentOptions.shouldFetchRootKey ??= true
     }
 
