@@ -16,6 +16,7 @@ import {
   ensureDir,
 } from "../utils/config.js"
 import { CliError } from "../utils/errors.js"
+import { realpathAllowingMissing } from "../utils/paths.js"
 import type { CodegenConfig, CanisterConfig, InitOptions } from "../types.js"
 import {
   generateClientFile,
@@ -23,6 +24,9 @@ import {
   resolveContainedOutDir,
   CodegenConfigError,
 } from "@ic-reactor/codegen"
+
+/** The client manager import codegen uses when the config sets none. */
+const DEFAULT_CLIENT_MANAGER_PATH = "../../clients"
 
 export async function initCommand(options: InitOptions) {
   console.log()
@@ -105,6 +109,22 @@ export async function initCommand(options: InitOptions) {
       throw new CliError(err.message)
     }
     throw err
+  }
+
+  // `generate` imports the helper through `clientManagerPath`, and a config
+  // that sets none imports "../../clients" from `<outDir>/<canister>/`. With no
+  // canister configured the helper goes to src/clients.ts, which that default
+  // reaches only when outDir sits directly inside src/. For any other outDir,
+  // record the import that does reach it, or the first `generate` emits one tsc
+  // cannot resolve.
+  if (config.clientManagerPath === undefined) {
+    const importPath = clientManagerImportPath(
+      resolvedOutDir,
+      clientManagerFile
+    )
+    if (importPath !== DEFAULT_CLIENT_MANAGER_PATH) {
+      config.clientManagerPath = importPath
+    }
   }
 
   // Everything below this line writes to disk.
@@ -215,7 +235,8 @@ function resolveClientManagerFilePath(
     return path.join(projectRoot, "src", "clients.ts")
   }
 
-  const clientManagerPath = config.clientManagerPath ?? "../../clients"
+  const clientManagerPath =
+    config.clientManagerPath ?? DEFAULT_CLIENT_MANAGER_PATH
   const generatedEntryDir = path.join(outDir, canisterName)
   const resolvedPath = path.resolve(generatedEntryDir, clientManagerPath)
   const filePath = path.extname(resolvedPath)
@@ -233,6 +254,29 @@ function resolveClientManagerFilePath(
   )
 
   return filePath
+}
+
+/**
+ * The `clientManagerPath` that imports `file` from a generated reactor.
+ *
+ * `generate` writes each canister's reactor into `<outDir>/<canister>/`, one
+ * directory below `outDir` whatever the canister is called, so the import is
+ * ".." followed by the path from `outDir` to `file`. That path is taken between
+ * real locations. Between the paths as written, an absolute outDir that reaches
+ * the project through a symlink gives an import that climbs out of the real
+ * directory tree, which is where tsc and bundlers resolve it from.
+ */
+function clientManagerImportPath(outDir: string, file: string): string {
+  const withoutExtension = file.slice(
+    0,
+    file.length - path.extname(file).length
+  )
+  const fromOutDir = path.relative(
+    realpathAllowingMissing(outDir),
+    realpathAllowingMissing(withoutExtension)
+  )
+  // Import specifiers use "/" on every platform, and codegen rejects "\".
+  return path.posix.join("..", ...fromOutDir.split(path.sep))
 }
 
 /**

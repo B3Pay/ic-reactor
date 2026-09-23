@@ -127,7 +127,11 @@ older generated scaffold that can be migrated automatically.
 
 When `init` creates the shared client helper, it resolves `clientManagerPath`
 relative to the generated canister entry directory. If no canister is
-configured yet, the fallback remains `src/clients.ts`.
+configured yet, the helper goes to `src/clients.ts`. The default import,
+`../../clients`, reaches that file only when `outDir` sits directly inside
+`src/`, so for any other `--out-dir`, `init -y` also writes the
+`clientManagerPath` that does: `--out-dir lib/canisters` gets
+`"../../../src/clients"`.
 
 Set `target` to choose the generated runtime:
 
