@@ -6,9 +6,15 @@ interaction, and metadata-driven form generation.
 ## Install
 
 ```bash
-pnpm add @ic-reactor/candid @icp-sdk/core
+pnpm add @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core
 # @ic-reactor/parser comes with it: local WASM parsing, loaded on first parse
 ```
+
+`ClientManager` comes from `@ic-reactor/core` and needs a `QueryClient` from
+`@tanstack/query-core`. Both are only transitive dependencies of
+`@ic-reactor/candid`, which pnpm does not let the app import, so list them. A
+React app can import `ClientManager` from `@ic-reactor/react` and `QueryClient`
+from `@tanstack/react-query` instead.
 
 ## When To Use
 

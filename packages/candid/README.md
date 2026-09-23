@@ -221,8 +221,9 @@ import { CandidFormVisitor } from "@ic-reactor/candid"
 const visitor = new CandidFormVisitor()
 const serviceMeta = visitor.visitService(service)
 
-// Access method metadata
+// Access method metadata (`undefined` for a name the service does not have)
 const methodMeta = serviceMeta["icrc1_transfer"]
+if (!methodMeta) throw new Error("icrc1_transfer is not in this service")
 
 // Argument metadata
 console.log(methodMeta.schema) // Zod tuple for all args

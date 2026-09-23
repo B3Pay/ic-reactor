@@ -64,8 +64,9 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 # Internet Identity auth helpers
 pnpm add @icp-sdk/auth@^10 # v10 recommended; v8 also supported
 
-# Dynamic Candid support (explorers/dev tools)
-pnpm add @ic-reactor/candid @ic-reactor/parser
+# Dynamic Candid support (explorers/dev tools). The example below imports
+# ClientManager and QueryClient from these two, which a React install lacks.
+pnpm add @ic-reactor/candid @ic-reactor/core @tanstack/query-core
 ```
 
 > **Install `@icp-sdk/auth@^10` if you use npm.** v10 is the first release whose
