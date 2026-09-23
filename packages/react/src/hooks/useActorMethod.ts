@@ -114,8 +114,9 @@ export interface UseActorMethodResult<
 > {
   /**
    * The returned data from the method call. A method's `undefined` result is
-   * `null` here, as in `useActorQuery`, so `undefined` only means no call has
-   * settled yet.
+   * `null` here, as in `useActorQuery`, so `undefined` means that no call has
+   * settled yet, that the last call failed, or that an update call is
+   * running. A query keeps its earlier data when a refetch fails.
    */
   data:
     ReactorQueryData<ReactorReturnOk<Service, Method, Transform>> | undefined
