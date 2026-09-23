@@ -755,6 +755,11 @@ export class AuthenticationManager {
     this.updateState({ error, isAuthenticating: false })
   }
 
+  /** @internal Used by IdentityAttributesManager. */
+  public settleAuthenticating() {
+    this.updateState({ isAuthenticating: false })
+  }
+
   private getDefaultIdentityProvider(): string | URL {
     if (this.identityProvider) {
       return this.identityProvider

@@ -476,6 +476,73 @@ describe("identity attributes (real AuthClient)", () => {
     expect(result.decodedAttributes.email).toBe("user@example.com")
   })
 
+  describe("a sign-out while the attribute request is still pending", () => {
+    // Signing out ends neither half of a pending request: the attribute side
+    // goes on and resolves. The identity it captured belongs to the session
+    // the user just left, and committing it put their delegation back on the
+    // agent while the app showed them signed out.
+
+    /** A nonce the test releases, so the request stays pending until then. */
+    function heldNonce() {
+      let release: () => void = () => {}
+      const nonce = new Promise<Uint8Array>((resolve) => {
+        release = () => resolve(new Uint8Array(32).fill(4))
+      })
+      return { nonce: () => nonce, release }
+    }
+
+    async function expectSignedOut(
+      authentication: AuthenticationManager,
+      clientManager: ClientManager
+    ) {
+      expect((await clientManager.getUserPrincipal()).isAnonymous()).toBe(true)
+      expect(authentication.authState.isAuthenticated).toBe(false)
+      expect(
+        authentication.authState.identity?.getPrincipal().isAnonymous() ?? true
+      ).toBe(true)
+      expect(authentication.authState.isAuthenticating).toBe(false)
+    }
+
+    it("keeps the agent anonymous for a request made while signed in", async () => {
+      const { authentication, clientManager } = createManager()
+      const attributes = new IdentityAttributesManager(authentication)
+      await authentication.prepareClient()
+      await withUserGesture(() => authentication.login())
+      const { nonce, release } = heldNonce()
+
+      const pending = withUserGesture(() =>
+        attributes.request({ keys: ["email"], nonce, signIn: false })
+      )
+      await authentication.logout()
+      await expectSignedOut(authentication, clientManager)
+
+      release()
+      await pending
+
+      await expectSignedOut(authentication, clientManager)
+    })
+
+    it("keeps the agent anonymous when the request's own sign-in had finished", async () => {
+      const { authentication, clientManager } = createManager()
+      const attributes = new IdentityAttributesManager(authentication)
+      await authentication.prepareClient()
+      const { nonce, release } = heldNonce()
+
+      const pending = withUserGesture(() =>
+        attributes.request({ keys: ["email"], nonce })
+      )
+      await vi.waitFor(async () => {
+        expect(await authentication.client!.isAuthenticated()).toBe(true)
+      })
+      await authentication.logout()
+
+      release()
+      await pending
+
+      await expectSignedOut(authentication, clientManager)
+    })
+  })
+
   it("surfaces identity-provider errors", async () => {
     const { authentication } = createManager()
     const attributes = new IdentityAttributesManager(authentication)

@@ -299,6 +299,134 @@ describe("IdentityAttributesManager", () => {
     )
   })
 
+  it("does not commit an identity the client has since replaced with another account", async () => {
+    // The success-path counterpart of the test above: account A asks for its
+    // attributes, another login switches the shared client to account B while
+    // the request is pending, and then the request succeeds. Committing A put
+    // the account the user switched away from back on the agent.
+    const { authClient, authentication, identityAttributes } = makeManagers()
+    const accountA = { getPrincipal: () => Principal.fromText("aaaaa-aa") }
+    const accountB = {
+      getPrincipal: () => Principal.fromText("rrkah-fqaaa-aaaaa-aaaaq-cai"),
+    }
+    let held = accountA
+    authClient.getIdentity.mockImplementation(() => held)
+    let releaseNonce: () => void = () => {}
+    authClient.requestAttributes.mockImplementation(
+      async ({ nonce }: { nonce: () => Promise<Uint8Array> }) => {
+        await nonce()
+        return { data: new Uint8Array(), signature: new Uint8Array() }
+      }
+    )
+    await authentication.commitIdentity(accountA as never, true)
+
+    const request = identityAttributes.request({
+      keys: ["openid:https://accounts.google.com:email"],
+      nonce: () =>
+        new Promise<Uint8Array>((resolve) => {
+          releaseNonce = () => resolve(new Uint8Array(32))
+        }),
+      signIn: false,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // Another login moves the shared client, and the manager, to account B.
+    held = accountB
+    await authentication.commitIdentity(accountB as never, true)
+    releaseNonce()
+
+    await expect(request).resolves.toMatchObject({ principal: "aaaaa-aa" })
+    expect(authentication.authState.identity?.getPrincipal().toText()).toBe(
+      "rrkah-fqaaa-aaaaa-aaaaq-cai"
+    )
+    expect(authentication.clientManager.identity?.getPrincipal().toText()).toBe(
+      "rrkah-fqaaa-aaaaa-aaaaq-cai"
+    )
+  })
+
+  it("does not undo a sign-in that finished while a signed-out request was pending", async () => {
+    // A `signIn: false` request made while signed out captures the anonymous
+    // identity. The user signs in meanwhile; committing the captured identity
+    // then took the agent back to anonymous under `isAuthenticated: true`.
+    const { authClient, authentication, identityAttributes } = makeManagers()
+    const anonymous = { getPrincipal: () => Principal.anonymous() }
+    const account = { getPrincipal: () => Principal.fromText("aaaaa-aa") }
+    let held: { getPrincipal: () => Principal } = anonymous
+    authClient.getIdentity.mockImplementation(() => held)
+    authClient.isAuthenticated.mockImplementation(() => held === account)
+    let releaseNonce: () => void = () => {}
+    authClient.requestAttributes.mockImplementation(
+      async ({ nonce }: { nonce: () => Promise<Uint8Array> }) => {
+        await nonce()
+        return { data: new Uint8Array(), signature: new Uint8Array() }
+      }
+    )
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    await authentication.commitIdentity(anonymous as never, false)
+
+    const request = identityAttributes.request({
+      keys: ["openid:https://accounts.google.com:email"],
+      nonce: () =>
+        new Promise<Uint8Array>((resolve) => {
+          releaseNonce = () => resolve(new Uint8Array(32))
+        }),
+      signIn: false,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // A login finishes while the request is pending.
+    held = account
+    await authentication.commitIdentity(account as never, true)
+    releaseNonce()
+    await request
+
+    expect(authentication.authState.isAuthenticated).toBe(true)
+    expect(authentication.authState.identity?.getPrincipal().toText()).toBe(
+      "aaaaa-aa"
+    )
+    expect(authentication.clientManager.identity?.getPrincipal().toText()).toBe(
+      "aaaaa-aa"
+    )
+  })
+
+  it("stops reporting isAuthenticating when the client dropped the session and nothing else did", async () => {
+    // Guard: the session ends under the manager (another tab signed out) while
+    // the request is pending, so no manager action settles the request's
+    // `isAuthenticating: true`. The request has to.
+    const { authClient, authentication, identityAttributes } = makeManagers()
+    let holdsSession = true
+    authClient.isAuthenticated.mockImplementation(() => holdsSession)
+    authClient.getIdentity.mockImplementation(() =>
+      holdsSession
+        ? { getPrincipal: () => Principal.fromText("aaaaa-aa") }
+        : { getPrincipal: () => Principal.anonymous() }
+    )
+    let releaseNonce: () => void = () => {}
+    authClient.requestAttributes.mockImplementation(
+      async ({ nonce }: { nonce: () => Promise<Uint8Array> }) => {
+        await nonce()
+        return { data: new Uint8Array(), signature: new Uint8Array() }
+      }
+    )
+
+    const request = identityAttributes.request({
+      keys: ["openid:https://accounts.google.com:email"],
+      nonce: () =>
+        new Promise<Uint8Array>((resolve) => {
+          releaseNonce = () => resolve(new Uint8Array(32))
+        }),
+      signIn: false,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(authentication.authState.isAuthenticating).toBe(true)
+
+    holdsSession = false
+    releaseNonce()
+    await request
+
+    expect(authentication.authState.isAuthenticating).toBe(false)
+  })
+
   it("stays signed out when neither the sign-in nor the request succeeds", async () => {
     const { authClient, authentication, identityAttributes } = makeManagers()
     const closed = new Error("UserInterrupt")
