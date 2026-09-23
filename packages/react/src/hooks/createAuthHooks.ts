@@ -138,15 +138,31 @@ export const createAuthHooks = (
     isLocalhost: clientManager.isLocal,
   })
 
+  // What every consumer hands `useSyncExternalStore`, built once rather than
+  // on each render. React unsubscribes and subscribes again whenever the
+  // subscribe function changes, and each unsubscribe filters the manager's
+  // whole subscriber list. An auth state change re-renders every consumer, so
+  // a function per render cost k re-subscriptions and about k²/2 subscriber
+  // visits for k consumers: two million for 2,000 `useUserPrincipal()` rows.
+  const subscribeAgentState = (callback: () => void) =>
+    clientManager.subscribeAgentState(callback)
+  const getAgentState = () => clientManager.agentState
+  const getServerAgentState = () => serverAgentState
+
+  const subscribeAuthState = (callback: () => void) =>
+    authentication.subscribeAuthState(callback)
+  const getAuthState = () => authentication.authState
+  const getServerAuthState = () => SERVER_AUTH_STATE
+
   /**
    * Subscribe to agent state changes.
    * Returns the current agent state (agent, isInitialized, etc.)
    */
   const useAgentState = (): AgentState =>
     useSyncExternalStore(
-      (callback) => clientManager.subscribeAgentState(callback),
-      () => clientManager.agentState,
-      () => serverAgentState
+      subscribeAgentState,
+      getAgentState,
+      getServerAgentState
     )
 
   /**
@@ -154,11 +170,7 @@ export const createAuthHooks = (
    * Returns auth state (isAuthenticated, isAuthenticating, identity, error)
    */
   const useAuthState = (): AuthState =>
-    useSyncExternalStore(
-      (callback) => authentication.subscribeAuthState(callback),
-      () => authentication.authState,
-      () => SERVER_AUTH_STATE
-    )
+    useSyncExternalStore(subscribeAuthState, getAuthState, getServerAuthState)
 
   /**
    * Main authentication hook that provides login/logout methods and auth state.
