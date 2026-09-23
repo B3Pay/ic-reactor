@@ -73,6 +73,7 @@
   },
   "devDependencies": {
     "@icp-sdk/core": "^6.1.0",
+    "@noble/curves": "^2.2.0",
     "@size-limit/preset-small-lib": "^13.0.3",
     "@tanstack/query-core": "^5.102.8",
     "@types/node": "^26.5.1",

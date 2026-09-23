@@ -1188,6 +1188,9 @@ importers:
       '@icp-sdk/core':
         specifier: ^6.1.0
         version: 6.1.0
+      '@noble/curves':
+        specifier: ^2.2.0
+        version: 2.3.0
       '@size-limit/preset-small-lib':
         specifier: ^13.0.3
         version: 13.0.3(size-limit@13.0.3)
