@@ -116,5 +116,7 @@ describe("Node entry points", () => {
       )
 
     expect(errors).toEqual([])
-  })
+    // A full TypeScript program is checked here; on a busy CI runner that can
+    // take longer than vitest's 5 s default (it timed out on #740's run).
+  }, 30_000)
 })
