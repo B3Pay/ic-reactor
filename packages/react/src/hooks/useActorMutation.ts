@@ -195,6 +195,12 @@ export const useActorMutation = <
   // rather than the reference.
   return useMutation(
     {
+      // Keyed like `createMutation`'s hook and `useActorMethod`'s mutations,
+      // so `useIsMutating({ mutationKey })`, `useMutationState` and defaults
+      // registered with `setMutationDefaults` can find this one too. An
+      // explicit `mutationKey` in the options still wins.
+      mutationKey: reactor.getQueryOptions({ functionName, callConfig })
+        .queryKey,
       ...options,
       mutationFn,
       onSuccess: handleSuccess,
