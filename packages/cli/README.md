@@ -46,11 +46,23 @@ monorepo package creates that package's own config.
   "canisters": {
     "backend": {
       "name": "backend",
-      "didFile": "./backend/backend.did"
+      "didFile": "./backend/backend.did",
+      "canisterId": "rrkah-fqaaa-aaaaa-aaaaq-cai"
     }
   }
 }
 ```
+
+Each canister takes `name` and `didFile` (required), and optionally `outDir`,
+`clientManagerPath`, `target`, `mode` and `canisterId`.
+
+Set `canisterId` for any build that is not served from a local replica. It is
+written into `index.generated.ts`. Without it the generated reactor looks its id
+up in the `ic_env` cookie, which a `ClientManager` trusts only on a local
+replica unless it sets `allowEnvConfig: true`, so importing the generated module
+throws `canisterId is required for "backend"` in Node, during SSR and on a
+deployed origin. Leave it out only for local development where an `ic_env`
+cookie carries the id, such as the one the Vite plugin sets.
 
 ## Commands
 
