@@ -85,13 +85,20 @@ The `Reactor` class wraps a canister with type-safe methods and caching:
 
 ```typescript
 import { Reactor } from "@ic-reactor/core"
-import { idlFactory, type _SERVICE } from "./declarations/my_canister"
+import {
+  canisterId,
+  idlFactory,
+  type _SERVICE,
+} from "./declarations/my_canister"
 
 const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend", // Required: explicit name
-  // canisterId: "...", // Optional: resolved from the ic_env cookie on a trusted host
+  // Required in Node, where the constructor otherwise throws. A browser page
+  // may omit it only when the ic_env cookie is trusted there (a local replica,
+  // or `allowEnvConfig: true`); see below.
+  canisterId,
 })
 ```
 
@@ -430,7 +437,7 @@ interface CanisterError<E> {
   err: E // The raw error value from canister
   code: string // Error code (from variant key or "code" field)
   message: string // Human-readable message
-  details?: Map<string, string> // Optional details
+  details: Map<string, string> | null | undefined // Optional details
 }
 ```
 
@@ -489,16 +496,28 @@ const scopedKey = reactor.generateQueryKey(
 ```
 
 The key shape is
-`[resolvedCanisterId, functionName, { effectiveTarget }?, argKey?, ...queryKey]`.
-`argKey` is a single string — `JSON.stringify(args)` with `bigint` rendered as a
-decimal string — not the individual arguments. The `{ effectiveTarget }` segment
-is dropped when it names the same canister the key is already rooted at, and any
-custom `queryKey` is appended element-wise.
+`[resolvedCanisterId, functionName, { transform }?, { effectiveTarget }?, argKey?, ...queryKey]`.
+The `{ transform }` segment is present whenever the reactor's transform is not
+`"candid"`, so the keys above are a `Reactor`'s. A `DisplayReactor` key carries
+`{ transform: "display" }`: the first call above returns
+`[canisterId, "get_user", { transform: "display" }, '["user-123"]']`, and a
+`Reactor` and a `DisplayReactor` over one canister never share a cache entry.
+`argKey` is a single string, not the individual arguments: the arguments
+serialized as JSON with `bigint` rendered as a decimal string and the keys of
+every plain object sorted, so `{ b, a }` and `{ a, b }` give the same key. A
+bare `JSON.stringify(args)` does not match it once a record's fields are out of
+alphabetical order. The `{ effectiveTarget }` segment is dropped when it names
+the same canister the key is already rooted at, and any custom `queryKey` is
+appended element-wise. Build keys with `generateQueryKey` (or a query object's
+`getQueryKey()`) rather than by hand.
 
-If you pass `callConfig` to `fetchQuery`, `getQueryOptions`, or the React query
-hooks/factories, use the same `callConfig` when generating or looking up query
-keys. The cache key is partitioned by the resolved target canister and, when
-present, `effectiveCanisterId`.
+If you pass `callConfig` to `fetchQuery`, `getQueryOptions`, the bound query
+hooks (`useActorQuery`, `useActorSuspenseQuery` and the two infinite-query
+hooks) or `createInfiniteQuery` / `createSuspenseInfiniteQuery`, use the same
+`callConfig` when generating or looking up query keys. `createQuery`,
+`createSuspenseQuery` and their `...Factory` variants take no `callConfig`: a
+config that carries one fails with TS2353. The cache key is partitioned by the
+resolved target canister and, when present, `effectiveCanisterId`.
 
 ## TypeScript Types
 
