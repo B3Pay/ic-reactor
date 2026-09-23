@@ -182,22 +182,35 @@ function UserPageWrapper() {
 
 ### Parallel Suspense Queries
 
-Fetch multiple queries in parallel:
+Suspense queries in the same component run one after the other: the first one
+suspends the component before the next is reached, a waterfall. Give each query
+its own component and they start together, under one boundary:
 
 ```typescript
 function UserDashboard({ userId }: { userId: string }) {
-  // These queries run in parallel - not waterfall!
-  const { data: profile } = getUserProfileQuery([userId]).useSuspenseQuery()
-  const { data: posts } = getUserPostsQuery([userId]).useSuspenseQuery()
-  const { data: followers } = getUserFollowersQuery([userId]).useSuspenseQuery()
-
+  // Sibling components suspend separately, so all three calls start at once
   return (
     <div>
-      <ProfileCard profile={profile} />
-      <PostsList posts={posts} />
-      <FollowersList followers={followers} />
+      <Profile userId={userId} />
+      <Posts userId={userId} />
+      <Followers userId={userId} />
     </div>
   )
+}
+
+function Profile({ userId }: { userId: string }) {
+  const { data: profile } = getUserProfileQuery([userId]).useSuspenseQuery()
+  return <ProfileCard profile={profile} />
+}
+
+function Posts({ userId }: { userId: string }) {
+  const { data: posts } = getUserPostsQuery([userId]).useSuspenseQuery()
+  return <PostsList posts={posts} />
+}
+
+function Followers({ userId }: { userId: string }) {
+  const { data: followers } = getUserFollowersQuery([userId]).useSuspenseQuery()
+  return <FollowersList followers={followers} />
 }
 
 // Wrap in single Suspense boundary

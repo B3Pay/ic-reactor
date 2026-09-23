@@ -100,7 +100,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { createInfiniteQuery } from "@ic-reactor/react"
 import { backend } from "../reactor"
-import { useRef, useCallback } from "react"
+import { useEffect, useRef } from "react"
 
 const postsQuery = createInfiniteQuery(backend, {
   functionName: "getPosts",

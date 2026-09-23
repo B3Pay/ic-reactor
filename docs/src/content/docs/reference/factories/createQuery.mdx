@@ -40,8 +40,10 @@ const userProfileQuery = createQuery(backend, {
 The config also takes TanStack Query's query options. `networkMode`, `retry`,
 `retryDelay` and `meta` decide how the canister call runs, so they apply to
 `fetch()` and `prefetch()` as well as to `useQuery()`. The rest, such as
-`enabled`, `select`, `placeholderData`, `initialData` and `gcTime`, apply to the
-hook only.
+`enabled`, `placeholderData`, `initialData` and `gcTime`, apply to the hook
+only. The config's `select` is applied by the query object itself, so
+`fetch()`, `getCacheData()` and `useQuery()` all return the selected value;
+`setData` still takes the raw value.
 
 ## Return Value
 
@@ -101,12 +103,13 @@ export const Route = createFileRoute("/users/$userId")({
 function UserPage() {
   const params = Route.useParams()
 
-  // Data is already cached from loader - instant render!
+  // Data is already cached from loader - instant render! The type still
+  // includes `undefined`, as it does for every `useQuery()`.
   const { data: user, isRefetching } = getUserQuery([params.userId]).useQuery()
 
   return (
     <div>
-      <h1>{user.name}</h1>
+      <h1>{user?.name}</h1>
       {isRefetching && <span>Refreshing...</span>}
     </div>
   )
@@ -270,8 +273,8 @@ await userQuery.invalidate()
 // Write directly into cache (optimistic updates)
 userQuery.setData(updatedUser)
 
-// Or use an updater function
-userQuery.setData((old) => ({ ...old, name: "Alice" }))
+// Or use an updater function. `old` is undefined when nothing is cached yet.
+userQuery.setData((old) => (old ? { ...old, name: "Alice" } : old))
 ```
 
 ### Prefetching on Hover
@@ -354,8 +357,11 @@ distinct argument sets.
 </Aside>
 
 <Aside type="note">
-  The `fetch()` method uses `ensureQueryData` internally, which returns cached
-  data if fresh, or fetches if stale. Perfect for loaders.
+  `fetch()` is cache-first, like TanStack Query's `ensureQueryData`: it returns
+  the cached value whenever there is one, even a stale or invalidated one, and
+  calls the canister only when nothing is cached. That suits loaders. For the
+  canister's current value, use the reactor's `callMethod()`; see
+  [Reactor](/v3/reference/reactor).
 </Aside>
 
 <Aside type="caution">
