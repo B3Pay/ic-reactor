@@ -66,7 +66,7 @@
           },
           "canisterId": {
             "type": "string",
-            "description": "Optional fixed canister ID"
+            "description": "Canister ID written into index.generated.ts. Set it for any build not served from a local replica: without it the generated reactor reads the id from the ic_env cookie, and importing it throws in Node, during SSR and on a deployed origin."
           }
         },
         "required": ["name", "didFile"]

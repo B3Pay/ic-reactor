@@ -37,7 +37,7 @@ export interface ReactorGeneratorOptions {
    * Default: "../../clients"
    */
   clientManagerPath?: string
-  /** Optional fixed canister ID for the generated reactor */
+  /** Canister ID written into the generated reactor; see `CanisterConfig.canisterId`. */
   canisterId?: string
   /** Generated runtime target */
   runtimeTarget?: CodegenTarget
