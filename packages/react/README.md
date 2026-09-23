@@ -238,15 +238,21 @@ export const { useActorQuery, useAuth, useIdentityAttributes, authentication } =
   defineReactor<_SERVICE>({
     name: "backend",
     idlFactory,
+    canisterId,
     auth: {
       // Required when the app is served from more than one origin, so every
       // origin resolves to the same principal.
       derivationOrigin: "https://app.example.com",
-      // The default signs the user out and reloads after 10 minutes idle.
-      idleOptions: { disableIdle: true },
     },
   })
 ```
+
+Idle handling depends on the installed major. On v8 the client signs the user
+out and reloads the page after 10 minutes idle unless `auth` carries
+`idleOptions: { disableIdle: true }`. v10 drops `idleOptions` with a warning and
+leaves the idle limit to the identity provider: pass `maxTimeToIdle` to
+`login()` to set it, and `disableBrowserActivity: true` in `auth` if only
+requests should count as activity.
 
 Auth options are forwarded to the underlying `@icp-sdk/auth` client:
 `identityProvider`, `derivationOrigin`, `windowOpenerFeatures`,
@@ -437,16 +443,21 @@ export const app = defineReactor<_SERVICE>({
 ```
 
 ```tsx
-// ✅ Per request: nothing is shared between users
+// ✅ Per request: nothing is shared between users.
+// A server component imports from @ic-reactor/core, not @ic-reactor/react.
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/react-query"
+
 export default async function Page() {
-  const app = defineReactor<_SERVICE>({
+  const clientManager = new ClientManager({ queryClient: new QueryClient() })
+  const reactor = new Reactor<_SERVICE>({
     name: "backend",
+    clientManager,
     idlFactory,
     canisterId,
-    queryClient: new QueryClient(),
   })
 
-  const data = await app.reactor.fetchQuery({ functionName: "get_my_profile" })
+  const data = await reactor.fetchQuery({ functionName: "get_my_profile" })
   return <Profile data={data} />
 }
 ```
@@ -454,8 +465,13 @@ export default async function Page() {
 Two further constraints on the App Router specifically:
 
 - Hooks are client-only, like every React hook — call them from a `"use client"`
-  module. A server component may import `Reactor` / `ClientManager` and make
-  imperative calls; that path works.
+  module. A server component cannot import from `@ic-reactor/react` at all, not
+  even `Reactor` or `ClientManager`: its entry point also loads the hooks, and
+  `next build` fails with "You're importing a module that depends on
+  `useSyncExternalStore` into a React Server Component module". Import
+  `Reactor`, `DisplayReactor` and `ClientManager` from `@ic-reactor/core` there,
+  and list it in your own `package.json`, since a transitive dependency does not
+  resolve under pnpm.
 - Hooks bind to their reactor's own `QueryClient` rather than to a
   `QueryClientProvider`, so `HydrationBoundary` prefetch does not feed them
   unless the provider's client _is_ that reactor's client. Next.js also
@@ -511,8 +527,9 @@ const transferMutation = createMutation(backend, {
 
 ## Re-exports
 
-`@ic-reactor/react` re-exports the core runtime, so you can import these from a
-single package:
+`@ic-reactor/react` re-exports the core runtime, so client code can import these
+from a single package (a React Server Component imports them from
+`@ic-reactor/core` instead; see [Server-Side Rendering](#server-side-rendering)):
 
 - `ClientManager`
 - `Reactor`
