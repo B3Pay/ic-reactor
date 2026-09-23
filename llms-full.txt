@@ -91,11 +91,16 @@ hooks in one call. `display: true` selects `DisplayReactor` instead of `Reactor`
 
 ```ts
 import { defineReactor } from "@ic-reactor/react"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 export const backendApp = defineReactor<_SERVICE>({
   name: "backend",
   idlFactory,
+  // Required unless the Vite plugin injects an `ic_env` cookie for this
+  // canister on a local replica. Without it the reactor constructor throws
+  // `canisterId is required for "backend"` on a server and on any deployed
+  // origin.
+  canisterId,
   display: true,
 })
 
@@ -123,11 +128,16 @@ To share one agent and one Internet Identity session across canisters, pass the
 first result's `authentication` into the next call:
 
 ```ts
-import { idlFactory as indexIdl, type _SERVICE as _INDEX } from "./declarations/index_canister"
+import {
+  canisterId as indexCanisterId,
+  idlFactory as indexIdl,
+  type _SERVICE as _INDEX,
+} from "./declarations/index_canister"
 
 export const indexApp = defineReactor<_INDEX>({
   name: "index",
   idlFactory: indexIdl,
+  canisterId: indexCanisterId,
   authentication: backendApp.authentication,
 })
 ```
@@ -141,10 +151,16 @@ update one agent while the reactor calls through another.
 Use this when construction order or dependency injection needs to be explicit.
 
 ```ts
-import { ClientManager, DisplayReactor } from "@ic-reactor/core"
-import { createActorHooks } from "@ic-reactor/react"
-import { QueryClient } from "@tanstack/query-core"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
+// A React app imports the runtime through @ic-reactor/react, which re-exports
+// @ic-reactor/core; with the React install above, @ic-reactor/core and
+// @tanstack/query-core are not direct dependencies and do not resolve under pnpm.
+import {
+  ClientManager,
+  DisplayReactor,
+  createActorHooks,
+} from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 export const queryClient = new QueryClient()
 export const clientManager = new ClientManager({ queryClient })
@@ -153,6 +169,7 @@ export const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend",
+  canisterId, // required outside the Vite plugin's local `ic_env` cookie
 })
 
 export const { useActorQuery, useActorMutation } = createActorHooks(backend)
@@ -258,10 +275,24 @@ export const { useIdentityAttributes } =
 returns exactly `useAuth`, `useAgentState`, and `useUserPrincipal`.
 `useIdentityAttributes` comes only from `createIdentityAttributeHooks`.
 
-Pass identity-attribute nonces as a callback
-(`nonce: () => backend.callMethod({ functionName: "register_begin" })`).
-Awaiting the nonce before the call ends the user gesture and the browser blocks
-the Internet Identity window.
+Pass identity-attribute nonces as a callback. Awaiting the nonce before the call
+ends the user gesture and the browser blocks the Internet Identity window. The
+callback must resolve to the nonce's bytes. A `DisplayReactor` (what
+`display: true` builds, and what `backend` is above) returns a `blob` as a hex
+string, so convert it with `hexToUint8Array`. A raw `Reactor` already returns a
+`Uint8Array`, and there `nonce: () => backend.callMethod({ ... })` is enough.
+
+```ts
+import { hexToUint8Array } from "@ic-reactor/react"
+
+await identityAttributes.request({
+  keys: ["email"],
+  nonce: async () =>
+    hexToUint8Array(
+      await backend.callMethod({ functionName: "register_begin" })
+    ),
+})
+```
 
 ### Local Internet Identity
 
@@ -443,6 +474,14 @@ Module scope stays correct for client-only SPAs. Hooks are client-only; they
 also bind to their reactor's own `QueryClient`, so `HydrationBoundary` prefetch
 does not reach them unless the provider's client is that same instance.
 
+A React Server Component (an App Router page or layout without `"use client"`)
+cannot import from `@ic-reactor/react` at all, not even `Reactor` or
+`ClientManager`: the package entry loads the hooks, and `next build` fails with
+"You're importing a module that depends on `useSyncExternalStore` into a React
+Server Component module". Server components import `Reactor`, `DisplayReactor`
+and `ClientManager` from `@ic-reactor/core` (listed in the app's own
+`package.json`) and build them inside the request.
+
 ## Generated File Boundaries
 
 Avoid hand-editing:
@@ -481,8 +520,11 @@ Script notes:
 
 - `pnpm format:check` covers the whole repo; exclusions are declared in one
   place, `.prettierignore`, which the pre-commit hook honours too.
-- `pnpm check:ai-context` is a CI gate asserting `llms.txt` package versions
-  match each `package.json` and that every `packages/*/llms.txt` exists.
+- `pnpm check:ai-context` is a CI gate. It asserts that the `llms.txt` version
+  table matches each `package.json`, that every package but the parser ships a
+  `packages/<name>/llms.txt`, and that no file listed in
+  `scripts/ai-context-files.js` names a version no package is at or a docs path
+  other than `/v3/`.
 - `pnpm lint` is a CI gate. Run `pnpm build` first: the type-aware rules read
   core's emitted `.d.ts` through the workspace symlinks, and without a build
   they degrade to `any` and stop reporting. A new package needs a

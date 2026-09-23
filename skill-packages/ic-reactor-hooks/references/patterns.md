@@ -180,7 +180,7 @@ await userQuery.fetch()
 const cached = userQuery.getCacheData()
 ```
 
-This pattern is used by generated hook files in `examples/tanstack-router/src/canisters/ledger/hooks/`.
+The factory modules in `examples/tanstack-router/src/canisters/ledger/hooks/` use this pattern. They are hand-maintained, not current codegen output: `ic-reactor generate` and the Vite plugin write only `index.generated.ts` (the reactor plus six bound hooks, as in `examples/codegen-in-action/`) and never emit `createQuery` / `createMutation` objects.
 
 ### B. Imperative mutation execution
 
@@ -194,7 +194,7 @@ const transfer = createMutation(ledgerReactor, {
 const result = await transfer.execute([transferArg])
 ```
 
-Generated example file:
+Example file (hand-maintained, not codegen output):
 
 - `examples/tanstack-router/src/canisters/ledger/hooks/icrc1TransferMutation.ts`
 
@@ -213,13 +213,15 @@ const cached = backendReactor.getQueryData({
   args: ["user-1"],
 })
 
-await backendReactor.invalidateQueries({
+// Returns void and does not wait for the refetch. To wait, await a query
+// object's `invalidate()` instead.
+backendReactor.invalidateQueries({
   functionName: "get_user",
 })
 
 await backendReactor.callMethod({
   functionName: "update_user",
-  args: [{ name: "Alice" }],
+  args: [{ id: "user-1", name: "Alice" }],
 })
 ```
 
