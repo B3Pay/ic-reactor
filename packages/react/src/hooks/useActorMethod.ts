@@ -89,6 +89,11 @@ export interface UseActorMethodParameters<
   /**
    * Query keys to invalidate after a successful mutation.
    * Only applies to mutation methods (updates).
+   *
+   * The invalidation is awaited before `onSuccess` runs, as in
+   * `useActorMutation` and `createMutation`, so `onSuccess` sees the
+   * refetched data, and `call()` resolves once the invalidated queries in use
+   * have refetched.
    */
   invalidateQueries?: QueryKey[]
 }
@@ -423,14 +428,22 @@ export function useActorMethod<
             callConfig,
           })) as TData
         ),
-      onSuccess: (data) => {
-        onSuccessRef.current?.(data)
-        // Invalidate specified queries after successful mutation
+      // Invalidation first, then `onSuccess`, as `useActorMutation` and
+      // `createMutation` do. TanStack Query waits for the promise returned
+      // here before it settles the mutation, so `call()` resolves, and
+      // `isPending` turns false, once the invalidated queries that are in use
+      // have refetched, and `onSuccess` reads the refetched data. A refetch
+      // that fails does not reject `invalidateQueries`, so it cannot turn the
+      // update, which has already run on the canister, into a failure.
+      onSuccess: async (data) => {
         if (invalidateQueries && invalidateQueries.length > 0) {
-          invalidateQueries.forEach((key) => {
-            void reactor.queryClient.invalidateQueries({ queryKey: key })
-          })
+          await Promise.all(
+            invalidateQueries.map((queryKey) =>
+              reactor.queryClient.invalidateQueries({ queryKey })
+            )
+          )
         }
+        onSuccessRef.current?.(data)
       },
       onError: (error) => {
         onErrorRef.current?.(error)
