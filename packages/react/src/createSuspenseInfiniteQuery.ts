@@ -50,6 +50,7 @@ import { NoInfer } from "./types.js"
 import {
   buildChainedSelect,
   mergeFactoryQueryKey,
+  mountWhileSuspended,
   normalizeQueryData,
   useMountQueryClient,
 } from "./utils.js"
@@ -395,21 +396,26 @@ const createSuspenseInfiniteQueryImpl = <
       [options?.select]
     )
 
-    return useSuspenseInfiniteQuery(
-      {
-        queryKey: getQueryKey(),
-        queryFn,
-        initialPageParam,
-        getNextPageParam,
-        getPreviousPageParam,
-        maxPages,
-        staleTime,
-        ...rest,
-        ...options,
-        select: chainedSelect,
-      },
-      reactor.queryClient
-    )
+    try {
+      return useSuspenseInfiniteQuery(
+        {
+          queryKey: getQueryKey(),
+          queryFn,
+          initialPageParam,
+          getNextPageParam,
+          getPreviousPageParam,
+          maxPages,
+          staleTime,
+          ...rest,
+          ...options,
+          select: chainedSelect,
+        },
+        reactor.queryClient
+      )
+    } catch (thrown) {
+      mountWhileSuspended(reactor.queryClient, thrown)
+      throw thrown
+    }
   }
 
   // Invalidate function

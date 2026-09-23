@@ -39,6 +39,42 @@ export function useMountQueryClient(
   }, [queryClient])
 }
 
+const isThenable = (value: unknown): value is PromiseLike<unknown> =>
+  typeof (value as { then?: unknown } | null | undefined)?.then === "function"
+
+/**
+ * Keep `queryClient` mounted while a suspense hook waits on the promise it
+ * threw. Call it from a `catch` around the TanStack suspense hook, then
+ * rethrow. The `try` only lets the hook see the promise: it is rethrown
+ * untouched, so React discards the render as before and hook order is kept.
+ *
+ * A suspense hook throws its fetch promise before its component commits, so
+ * the effect in {@link useMountQueryClient} cannot run until that promise
+ * settles. A fetch that started offline, or whose retry is waiting for a hidden
+ * tab to come back, settles only once a mounted client hears the connection or
+ * the focus return. Without a provider nothing had mounted the client, so the
+ * Suspense fallback stayed up after reconnecting.
+ *
+ * The mount taken here is released when the promise settles, whether or not
+ * anything ever commits, so it stays balanced: each suspended render, a
+ * StrictMode double render or a retry included, takes and releases its own
+ * reference. Once the component commits, its effect holds the client like any
+ * other hook's. A tree discarded while suspended lets go once its fetch
+ * finishes, which it does on reconnect, as it would under a mounted provider.
+ * A server render never subscribes.
+ */
+export function mountWhileSuspended(
+  queryClient: QueryClient | undefined,
+  thrown: unknown
+): void {
+  if (!queryClient || typeof window === "undefined" || !isThenable(thrown)) {
+    return
+  }
+  queryClient.mount()
+  const release = () => queryClient.unmount()
+  void thrown.then(release, release)
+}
+
 /**
  * Internal query-key segment used to distinguish per-call factory args
  * from the base query key. Not part of the public API.

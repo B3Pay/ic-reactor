@@ -18,6 +18,7 @@ import {
 import { CallConfig } from "@icp-sdk/core/agent"
 import {
   mergeFactoryQueryKey,
+  mountWhileSuspended,
   normalizeQueryData,
   useMountQueryClient,
 } from "../utils.js"
@@ -194,18 +195,23 @@ export const useActorSuspenseInfiniteQuery = <
     [reactor, functionName, getArgs, callConfig]
   )
 
-  return useSuspenseInfiniteQuery(
-    {
-      queryKey: baseQueryKey,
-      queryFn,
-      ...options,
-    } as any,
-    reactor.queryClient
-  ) as UseActorSuspenseInfiniteQueryResult<
-    Service,
-    Method,
-    Transform,
-    TPageParam,
-    Selected
-  >
+  try {
+    return useSuspenseInfiniteQuery(
+      {
+        queryKey: baseQueryKey,
+        queryFn,
+        ...options,
+      } as any,
+      reactor.queryClient
+    ) as UseActorSuspenseInfiniteQueryResult<
+      Service,
+      Method,
+      Transform,
+      TPageParam,
+      Selected
+    >
+  } catch (thrown) {
+    mountWhileSuspended(reactor.queryClient, thrown)
+    throw thrown
+  }
 }

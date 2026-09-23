@@ -6,7 +6,7 @@ import {
   act,
   cleanup,
 } from "@testing-library/react"
-import React, { Suspense } from "react"
+import React, { StrictMode, Suspense } from "react"
 import {
   QueryClient,
   QueryClientProvider,
@@ -309,6 +309,146 @@ describe("hooks mount their reactor's QueryClient without a provider", () => {
       refocus()
 
       await waitFor(() => expect(onFocus).toHaveBeenCalled())
+    })
+  })
+
+  describe("a suspense hook that suspends while offline", () => {
+    // A suspense hook throws its fetch promise before its component commits,
+    // so an effect cannot mount the client until that promise settles. A fetch
+    // that started offline only settles once a mounted client hears the
+    // connection come back, so the fallback used to stay up for good.
+    const infinite = {
+      functionName: "greet",
+      initialPageParam: "grace",
+      getArgs: (page: string) => [page] as [string],
+      getNextPageParam: () => undefined,
+    } as const
+
+    const cases: [string, () => () => string][] = [
+      [
+        "createSuspenseQuery().useSuspenseQuery",
+        () => {
+          const query = createSuspenseQuery(reactor, {
+            functionName: "greet",
+            args: ["grace"],
+          })
+          return () => query.useSuspenseQuery().data
+        },
+      ],
+      [
+        "createSuspenseInfiniteQuery().useSuspenseInfiniteQuery",
+        () => {
+          const query = createSuspenseInfiniteQuery(reactor, infinite)
+          return () => query.useSuspenseInfiniteQuery().data.pages[0]
+        },
+      ],
+      [
+        "bound useActorSuspenseQuery",
+        () => {
+          const { useActorSuspenseQuery } = createActorHooks(reactor)
+          return () =>
+            useActorSuspenseQuery({ functionName: "greet", args: ["grace"] })
+              .data
+        },
+      ],
+      [
+        "bound useActorSuspenseInfiniteQuery",
+        () => {
+          const { useActorSuspenseInfiniteQuery } = createActorHooks(reactor)
+          return () => useActorSuspenseInfiniteQuery(infinite).data.pages[0]
+        },
+      ],
+    ]
+
+    const fetchStatus = () =>
+      queryClient.getQueryCache().getAll()[0]?.state.fetchStatus
+
+    it.each(cases)(
+      "%s resumes once the connection returns",
+      async (_name, build) => {
+        const useGreeting = build()
+        const Greeting = () => <p>{useGreeting()}</p>
+        onlineManager.setOnline(false)
+
+        const { container } = render(
+          <Suspense fallback={<p>loading</p>}>
+            <Greeting />
+          </Suspense>
+        )
+        await waitFor(() => expect(fetchStatus()).toBe("paused"))
+        expect(container.textContent).toBe("loading")
+        expect(callMethod).not.toHaveBeenCalled()
+
+        act(() => onlineManager.setOnline(true))
+
+        await waitFor(() =>
+          expect(container.textContent).toBe("hello grace #1")
+        )
+      }
+    )
+
+    it.each([
+      ["", React.Fragment],
+      [" under StrictMode", StrictMode],
+    ])(
+      "stops listening once it has resumed and unmounted%s",
+      async (_name, Wrapper) => {
+        // The mount that bridges the suspended render is released when the
+        // fetch settles, and the committed hook's own mount on unmount, so a
+        // double render or double effect cannot leave the client subscribed.
+        const query = createSuspenseQuery(reactor, {
+          functionName: "greet",
+          args: ["heidi"],
+        })
+        const Greeting = () => <p>{query.useSuspenseQuery().data}</p>
+        onlineManager.setOnline(false)
+        const view = render(
+          <Wrapper>
+            <Suspense fallback={<p>loading</p>}>
+              <Greeting />
+            </Suspense>
+          </Wrapper>
+        )
+        await waitFor(() => expect(fetchStatus()).toBe("paused"))
+
+        act(() => onlineManager.setOnline(true))
+        await waitFor(() =>
+          expect(view.container.textContent).toBe("hello heidi #1")
+        )
+
+        view.unmount()
+        const onFocus = vi.spyOn(queryClient.getQueryCache(), "onFocus")
+        refocus()
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        expect(onFocus).not.toHaveBeenCalled()
+      }
+    )
+
+    it("finishes the fetch of a tree discarded while suspended, then stops listening", async () => {
+      // Nothing ever commits here, so only the fetch settling can release the
+      // mount. It resumes on reconnect, as it would under a mounted
+      // QueryClientProvider, and the data is cached for the next render.
+      const query = createSuspenseQuery(reactor, {
+        functionName: "greet",
+        args: ["ivan"],
+      })
+      const Greeting = () => <p>{query.useSuspenseQuery().data}</p>
+      onlineManager.setOnline(false)
+      const view = render(
+        <Suspense fallback={<p>loading</p>}>
+          <Greeting />
+        </Suspense>
+      )
+      await waitFor(() => expect(fetchStatus()).toBe("paused"))
+      view.unmount()
+
+      act(() => onlineManager.setOnline(true))
+      await waitFor(() => expect(query.getCacheData()).toBe("hello ivan #1"))
+
+      const onFocus = vi.spyOn(queryClient.getQueryCache(), "onFocus")
+      refocus()
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(onFocus).not.toHaveBeenCalled()
     })
   })
 })
