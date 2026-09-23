@@ -427,6 +427,51 @@ describe("IdentityAttributesManager", () => {
     expect(authentication.authState.isAuthenticating).toBe(false)
   })
 
+  it("keeps a session the client still vouches for when its identity cannot be read back", async () => {
+    // Guard: a request that loses track of its identity has not found the
+    // session gone. The client still vouches for it, and only reading the
+    // identity failed, so nobody is signed out: the rule `authenticate()`
+    // applies to a check that throws.
+    const { authClient, authentication, identityAttributes } = makeManagers()
+    const account = { getPrincipal: () => Principal.fromText("aaaaa-aa") }
+    let unreadable = false
+    authClient.getIdentity.mockImplementation(async () => {
+      if (unreadable) throw new Error("the session restore failed")
+      return account
+    })
+    let releaseNonce: () => void = () => {}
+    authClient.requestAttributes.mockImplementation(
+      async ({ nonce }: { nonce: () => Promise<Uint8Array> }) => {
+        await nonce()
+        return { data: new Uint8Array(), signature: new Uint8Array() }
+      }
+    )
+    await authentication.commitIdentity(account as never, true)
+
+    const request = identityAttributes.request({
+      keys: ["openid:https://accounts.google.com:email"],
+      nonce: () =>
+        new Promise<Uint8Array>((resolve) => {
+          releaseNonce = () => resolve(new Uint8Array(32))
+        }),
+      signIn: false,
+    })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    unreadable = true
+    releaseNonce()
+    await request
+
+    expect(authentication.authState.isAuthenticated).toBe(true)
+    expect(authentication.authState.identity?.getPrincipal().toText()).toBe(
+      "aaaaa-aa"
+    )
+    expect(authentication.clientManager.identity?.getPrincipal().toText()).toBe(
+      "aaaaa-aa"
+    )
+    expect(authentication.authState.isAuthenticating).toBe(false)
+  })
+
   it("stays signed out when neither the sign-in nor the request succeeds", async () => {
     const { authClient, authentication, identityAttributes } = makeManagers()
     const closed = new Error("UserInterrupt")

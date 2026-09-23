@@ -760,6 +760,29 @@ export class AuthenticationManager {
     this.updateState({ isAuthenticating: false })
   }
 
+  /**
+   * @internal Used by IdentityAttributesManager.
+   *
+   * Signs this manager out after the client lost its session under it, as when
+   * another tab signed out. The client itself is left alone: a v10 sign-out
+   * clears the storage every tab shares and takes the sign-in lock, so it would
+   * also end a sign-in the other tab has made or started since.
+   */
+  public commitSignedOut() {
+    const identity = new AnonymousIdentity()
+    // As in `authenticate()`, an agent that is anonymous already is left as it
+    // is: its cache holds no signed-in user's data, and re-installing it would
+    // only refetch every query.
+    if (!this.agentIsAnonymous()) {
+      this.clientManager.updateAgent(identity)
+    }
+    this.updateState({
+      identity,
+      isAuthenticated: false,
+      isAuthenticating: false,
+    })
+  }
+
   private getDefaultIdentityProvider(): string | URL {
     if (this.identityProvider) {
       return this.identityProvider

@@ -541,6 +541,61 @@ describe("identity attributes (real AuthClient)", () => {
 
       await expectSignedOut(authentication, clientManager)
     })
+
+    /**
+     * Signs out in another tab: a manager of its own restores the session from
+     * the storage both tabs share and logs out. A browser then raises `storage`
+     * in every other tab of the origin; jsdom has one window and raises none,
+     * so this tab is sent what changed.
+     */
+    async function signOutInAnotherTab() {
+      const before = readLocalStorage()
+      const otherTab = createManager()
+      await otherTab.authentication.authenticate()
+      expect(otherTab.authentication.authState.isAuthenticated).toBe(true)
+      await otherTab.authentication.logout()
+      const after = readLocalStorage()
+
+      for (const key of new Set([...before.keys(), ...after.keys()])) {
+        const oldValue = before.get(key) ?? null
+        const newValue = after.get(key) ?? null
+        if (oldValue === newValue) continue
+        window.dispatchEvent(
+          new StorageEvent("storage", { key, oldValue, newValue })
+        )
+      }
+    }
+
+    function readLocalStorage() {
+      const entries = new Map<string, string>()
+      for (let index = 0; index < localStorage.length; index++) {
+        const key = localStorage.key(index)
+        if (key !== null) entries.set(key, localStorage.getItem(key)!)
+      }
+      return entries
+    }
+
+    it("signs this tab out too when the sign-out happens in another tab", async () => {
+      // Nothing tells the manager: the client in this tab stops vouching for
+      // the session while still handing out its identity, and the request is
+      // the first thing to find out.
+      const { authentication, clientManager } = createManager()
+      const attributes = new IdentityAttributesManager(authentication)
+      await authentication.prepareClient()
+      await withUserGesture(() => authentication.login())
+      const { nonce, release } = heldNonce()
+
+      const pending = withUserGesture(() =>
+        attributes.request({ keys: ["email"], nonce, signIn: false })
+      )
+      await signOutInAnotherTab()
+      expect(await authentication.client!.isAuthenticated()).toBe(false)
+
+      release()
+      await pending
+
+      await expectSignedOut(authentication, clientManager)
+    })
   })
 
   it("surfaces identity-provider errors", async () => {
