@@ -473,6 +473,17 @@ describe("a session another tab ended and signed in to again (real AuthClient)",
     return tab.authentication.authState.isAuthenticated
   }
 
+  async function expectSignedOut({
+    authentication,
+    clientManager,
+  }: ReturnType<typeof createManager>) {
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(
+      authentication.authState.identity?.getPrincipal().isAnonymous() ?? true
+    ).toBe(true)
+    expect((await clientManager.getUserPrincipal()).isAnonymous()).toBe(true)
+  }
+
   it("does not end a sign-in tab B has in progress", async () => {
     // Tab A looks at its session while the user is still in the identity
     // provider signing in again in tab B. With v10, the sign-out tab A then ran
@@ -556,17 +567,6 @@ describe("a session another tab ended and signed in to again (real AuthClient)",
       return { tabA, tabB }
     }
 
-    async function expectSignedOut({
-      authentication,
-      clientManager,
-    }: ReturnType<typeof createManager>) {
-      expect(authentication.authState.isAuthenticated).toBe(false)
-      expect(
-        authentication.authState.identity?.getPrincipal().isAnonymous() ?? true
-      ).toBe(true)
-      expect((await clientManager.getUserPrincipal()).isAnonymous()).toBe(true)
-    }
-
     it("signs tab A out and leaves tab B's session alone", async () => {
       const { tabA, tabB } = await lapseThenSignInInTabB()
 
@@ -615,6 +615,109 @@ describe("a session another tab ended and signed in to again (real AuthClient)",
       // A request that does not sign in reads the identity the client holds,
       // and commits it when the client vouches for it.
       const { tabA } = await lapseThenSignInInTabB()
+      const attributes = new IdentityAttributesManager(tabA.authentication)
+
+      await withUserGesture(() =>
+        attributes.request({
+          keys: ["email"],
+          nonce: new Uint8Array(32),
+          signIn: false,
+        })
+      )
+
+      await expectSignedOut(tabA)
+    })
+  })
+
+  describe.runIf(!isV10)("in a tab whose client holds no session (v8)", () => {
+    // v8's `isAuthenticated()` reads the delegation expiry every tab shares.
+    // `getIdentity()` returns the identity this tab's client holds, which v8
+    // sets only when it loads, signs in or signs out. A tab that loaded signed
+    // out, or signed out, holds the anonymous identity. Once the user signs in
+    // in tab B, tab A's client says it is signed in while it goes on handing
+    // out the anonymous identity.
+
+    /**
+     * Tab A holds no session, because it loaded signed out or, with
+     * `signOutFirst`, signed in and out. The user then signs in in tab B.
+     */
+    async function signInInTabBOnly({ signOutFirst = false } = {}) {
+      const tabA = createManager()
+      await tabA.authentication.prepareClient()
+      if (signOutFirst) {
+        await withUserGesture(() => tabA.authentication.login())
+        await tabA.authentication.logout()
+      }
+      await tabA.authentication.authenticate()
+      await expectSignedOut(tabA)
+      const tabB = createManager()
+      await tabB.authentication.prepareClient()
+      const before = readLocalStorage()
+      await withUserGesture(() => tabB.authentication.login())
+      deliverStorageEvents(before)
+
+      const client = tabA.authentication.client!
+      expect(await client.isAuthenticated()).toBe(true)
+      expect((await client.getIdentity()).getPrincipal().isAnonymous()).toBe(
+        true
+      )
+      return { tabA, tabB }
+    }
+
+    it("still reports signed out in a tab that loaded signed out, until it signs in", async () => {
+      const { tabA } = await signInInTabBOnly()
+
+      await tabA.authentication.authenticate()
+
+      await expectSignedOut(tabA)
+      // Signing in there still opens the identity provider and signs in.
+      const opened = provider.openCount
+      await withUserGesture(() => tabA.authentication.login())
+      expect(provider.openCount).toBe(opened + 1)
+      const user = provider.rootIdentity.getPrincipal().toText()
+      expect(tabA.authentication.authState.isAuthenticated).toBe(true)
+      expect(
+        tabA.authentication.authState.identity?.getPrincipal().toText()
+      ).toBe(user)
+      expect((await tabA.clientManager.getUserPrincipal()).toText()).toBe(user)
+    })
+
+    it("still reports signed out in a tab that signed out", async () => {
+      const { tabA } = await signInInTabBOnly({ signOutFirst: true })
+
+      await tabA.authentication.authenticate()
+
+      await expectSignedOut(tabA)
+    })
+
+    it("does not report a manager built over tab A's client signed in", async () => {
+      const { tabA } = await signInInTabBOnly()
+
+      const next = createManager({ authClient: tabA.authentication.client! })
+      await vi.waitFor(() =>
+        expect(next.authentication.authState.identity).not.toBeNull()
+      )
+
+      await expectSignedOut(next)
+    })
+
+    it("fails tab A's sign-in when the user rejects it", async () => {
+      // When a sign-in fails, `login()` keeps the session the client already
+      // holds, if the client vouches for it. Tab A's client holds none.
+      const { tabA } = await signInInTabBOnly()
+      provider.setSignInError({ code: 3000, message: "User rejected" })
+
+      await expect(
+        withUserGesture(() => tabA.authentication.login())
+      ).rejects.toThrow("User rejected")
+
+      await expectSignedOut(tabA)
+    })
+
+    it("does not report tab A signed in after an attribute request", async () => {
+      // A request that does not sign in reads the identity the client holds,
+      // and commits it with what the client says about it.
+      const { tabA } = await signInInTabBOnly()
       const attributes = new IdentityAttributesManager(tabA.authentication)
 
       await withUserGesture(() =>

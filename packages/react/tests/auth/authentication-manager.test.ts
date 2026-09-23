@@ -901,6 +901,48 @@ describe("AuthenticationManager session hygiene", () => {
     ).toBe(true)
   })
 
+  it("does not report a v8 client's anonymous identity signed in", async () => {
+    // v8's isAuthenticated() reads the delegation expiry every tab shares,
+    // while getIdentity() returns what this client restored when it loaded.
+    // A client that loaded signed out answers true once another tab signs in,
+    // and goes on handing out the anonymous identity.
+    const authClient = createAuthClient()
+    authClient.isAuthenticated.mockReturnValue(true)
+
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await vi.waitFor(() =>
+      expect(authentication.authState.identity).not.toBeNull()
+    )
+    expect(authentication.authState.isAuthenticated).toBe(false)
+
+    const restored = await authentication.authenticate()
+
+    expect(restored?.getPrincipal().isAnonymous()).toBe(true)
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(clientManager.identity?.getPrincipal().isAnonymous()).toBe(true)
+  })
+
+  it("fails a sign-in rather than keep a v8 client's anonymous identity", async () => {
+    // When signIn() fails, login() keeps the session the client already holds
+    // if the client vouches for it. A v8 client that holds none answers true
+    // once another tab has signed in.
+    const authClient = createAuthClient()
+    authClient.isAuthenticated.mockReturnValue(true)
+    authClient.signIn.mockRejectedValue(new Error("User rejected"))
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+
+    await expect(authentication.login()).rejects.toThrow("User rejected")
+
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(authentication.authState.error?.message).toBe("User rejected")
+  })
+
   it("keeps the session when the expiry check itself fails", async () => {
     // A transient failure must not sign anyone out.
     const authClient = createAuthClient()

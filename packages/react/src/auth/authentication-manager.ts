@@ -716,7 +716,10 @@ export class AuthenticationManager {
    * lapses and the user signs in again in another tab, that tab writes a new
    * expiry, and the answer is yes again for the delegation this tab still
    * holds, which the replica refuses. So a v8 identity whose own delegation
-   * has expired is not vouched for, whatever the answer.
+   * has expired is not vouched for, whatever the answer. Nor is the anonymous
+   * identity, which a v8 client that loaded signed out, or signed out, goes on
+   * handing out once another tab signs in and the answer turns yes. It signs
+   * no one in.
    *
    * A v10 client's answer is about the session it holds, and its identity
    * replaces its short-lived delegation as it ages, so the delegation it holds
@@ -728,7 +731,11 @@ export class AuthenticationManager {
   ): boolean {
     return (
       isAuthenticated &&
-      !(this.authClientFlavor === "legacy" && hasExpiredDelegation(identity))
+      !(
+        this.authClientFlavor === "legacy" &&
+        (identity?.getPrincipal().isAnonymous() ||
+          hasExpiredDelegation(identity))
+      )
     )
   }
 

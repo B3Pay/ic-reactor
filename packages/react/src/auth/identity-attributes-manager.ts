@@ -88,8 +88,8 @@ export class IdentityAttributesManager {
 
       const finalIdentity = identity ?? (await authClient.getIdentity())
       // A v8 client can say it is authenticated for a delegation that lapsed
-      // in this tab, once another tab has signed in again; see
-      // `AuthenticationManager.vouchesFor`.
+      // in this tab, or while it holds no session, once another tab has
+      // signed in; see `AuthenticationManager.vouchesFor`.
       const isAuthenticated = this.authentication.vouchesFor(
         finalIdentity,
         await authClient.isAuthenticated()
