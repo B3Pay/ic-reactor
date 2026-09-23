@@ -2,16 +2,66 @@ import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants.js"
 import { CanisterError } from "../errors/index.js"
 import { OkResult } from "../types/index.js"
 
-export const generateKey = (args: any[]) => {
-  return JSON.stringify(args, (_, v) =>
-    typeof v === "bigint" ? v.toString() : v
-  )
-}
-
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   if (typeof value !== "object" || value === null) return false
   const proto = Object.getPrototypeOf(value)
   return proto === Object.prototype || proto === null
+}
+
+/**
+ * Leads the key of a float that JSON has no number for. A string that already
+ * starts with it gets one more in front, so the count of leading U+0000s tells
+ * the cases apart: none for any other string (or a BigInt), exactly one for a
+ * tagged float, two or more for a string that began with U+0000. No string
+ * argument can therefore serialise to a tagged float, and no other JSON type
+ * serialises to a string at all.
+ */
+const SPECIAL_NUMBER_TAG = "\u0000"
+
+/**
+ * Serialise call arguments into the query-key segment that identifies them.
+ *
+ * Equal Candid values must give equal keys, and different values different
+ * ones, which plain `JSON.stringify` does not ensure:
+ *
+ * - Record fields are unordered in Candid, and TanStack Query hashes object
+ *   keys order-independently, so plain objects are written with their keys
+ *   sorted. Otherwise `{ owner, subaccount }` and `{ subaccount, owner }` —
+ *   the same record, the same bytes on the wire — got separate cache entries,
+ *   and `getQueryData` / `invalidateQueries` spelled one way missed the other.
+ * - JSON writes NaN, Infinity and -Infinity all as `null`, and -0 as `0`, so a
+ *   query for one float was answered from another's cache entry. They are
+ *   written as `"\u0000NaN"`, `"\u0000Infinity"`, `"\u0000-Infinity"` and
+ *   `"\u0000-0"`, and a string that starts with U+0000 gets one more in front,
+ *   so no string argument can produce that tag. It has to be unforgeable: this
+ *   function is public and an infinite query's `getKeyArgs` may return any
+ *   value, so a bare `"Infinity"` would let `[Infinity]` and `["Infinity"]`
+ *   share a cache entry.
+ *
+ * BigInts are written as decimal strings. Everything else — including every
+ * string that does not start with U+0000, and an object whose keys are already
+ * in sorted order — serialises exactly as before.
+ */
+export const generateKey = (args: any[]) => {
+  return JSON.stringify(args, (_, v: unknown) => {
+    if (typeof v === "string") {
+      return v.startsWith(SPECIAL_NUMBER_TAG) ? SPECIAL_NUMBER_TAG + v : v
+    }
+    if (typeof v === "bigint") return v.toString()
+    if (typeof v === "number") {
+      if (!Number.isFinite(v)) return SPECIAL_NUMBER_TAG + String(v)
+      if (Object.is(v, -0)) return SPECIAL_NUMBER_TAG + "-0"
+      return v
+    }
+    if (isPlainObject(v)) {
+      return Object.fromEntries(
+        Object.keys(v)
+          .sort()
+          .map((key) => [key, v[key]])
+      )
+    }
+    return v
+  })
 }
 
 /**
