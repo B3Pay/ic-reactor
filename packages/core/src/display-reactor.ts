@@ -344,6 +344,11 @@ export class DisplayReactor<
         result &&
         typeof (result as Promise<ValidationResult>).then === "function"
       ) {
+        // The validator has already started and this call is refused whatever
+        // it settles to, so nothing reads its outcome. Observe it anyway: a
+        // validator that rejects (a lookup that failed) would otherwise raise
+        // an unhandled rejection on top of the refusal below.
+        void (result as Promise<ValidationResult>).then(undefined, () => {})
         throw new Error(
           `Async validators are not supported in callMethod(). ` +
             `Use reactor.callMethodWithValidation() for async validation.`
