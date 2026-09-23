@@ -39,12 +39,19 @@ scoped to what it always granted — the root key alone — so it does not make
 
 That one decision is resolved once in the constructor and exposed as
 `clientManager.trustsEnvConfig`. It governs all three values the cookie carries:
-the root key (without it, every certified call fails against the pinned mainnet
-key), the Internet Identity provider, and the `PUBLIC_CANISTER_ID:<name>` entry
+the root key (without it, a local agent fetches the key from the replica before
+its first request, unless `shouldFetchRootKey` is `false`), the Internet
+Identity provider, and the `PUBLIC_CANISTER_ID:<name>` entry
 a `Reactor` resolves when no `canisterId` is configured. On an untrusted host a
 reactor with no configured id throws rather than reading the cookie — a
 substituted canister id still verifies against the real mainnet root key, so
 certificate verification cannot catch it.
+
+On a host whose network isn't `"ic"`, `ClientManager.initialize()` fetches the
+replica's root key and replaces whatever key the agent holds: the cookie's, one
+passed as `agentOptions.rootKey`, or mainnet's under
+`shouldFetchRootKey: false`. A supplied key covers only the calls made before
+`initialize()` finishes.
 
 `isMainnetHost` is a boundary-node check only; it recognises three canonical
 domains and returns `false` for a mainnet dapp on a custom domain. Never use it

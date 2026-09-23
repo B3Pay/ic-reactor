@@ -71,13 +71,19 @@ const clientManager = new ClientManager({
   queryClient,
 })
 
-// Initialize the agent (fetches the root key on non-mainnet hosts)
+// Initialize the agent (fetches the root key on a local host)
 await clientManager.initialize()
 ```
 
 The network is detected automatically: in the browser from the serving origin,
 in Node/SSR from `ICP_NETWORK` / `DFX_NETWORK`. Pass `agentOptions.host` to
 override it.
+
+On a local host (`localhost`, a loopback address, or a `*.github.dev` or
+`*.gitpod.io` tunnel), `initialize()` fetches the replica's root key even if you
+passed `agentOptions.rootKey` or set `shouldFetchRootKey: false`, and the fetched
+key replaces yours. Any other host, including a custom testnet domain, is treated
+as mainnet: nothing is fetched and a supplied key is kept.
 
 ### 2. Create Reactor
 

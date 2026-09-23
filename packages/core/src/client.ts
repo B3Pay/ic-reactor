@@ -230,7 +230,8 @@ export class ClientManager {
     // the replica by the time it was reported as failed. Asking the agent to
     // fetch the key itself makes every request wait for it instead. The agent
     // shares one fetch between its requests and `initializeAgent`, and a root
-    // key given explicitly or taken from the `ic_env` cookie is used as is.
+    // key given explicitly or taken from the `ic_env` cookie is used as is
+    // until `initializeAgent` replaces it with the fetched one.
     if (getNetworkByHostname(hostnameOf(agentOptions.host) ?? "") !== "ic") {
       agentOptions.shouldFetchRootKey ??= true
     }
@@ -257,6 +258,10 @@ export class ClientManager {
   /**
    * Specifically initializes the HttpAgent.
    * On local networks, this includes fetching the root key for certificate verification.
+   * That covers every host whose network isn't `"ic"`, dev-container tunnels
+   * included. The fetched key replaces whatever key the agent holds: one passed
+   * as `agentOptions.rootKey`, one from the `ic_env` cookie, or mainnet's when
+   * `shouldFetchRootKey` is `false`.
    *
    * @returns A promise that resolves when the agent is fully initialized.
    */

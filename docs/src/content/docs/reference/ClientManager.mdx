@@ -128,6 +128,8 @@ This method:
 1. Initializes the HttpAgent (fetches root key for local networks)
 2. Returns the ClientManager instance
 
+When the agent host is local or a dev-container tunnel (`network` is not `"ic"`), `initialize()` fetches the root key from the replica's `/api/v2/status` even if one was supplied (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env` cookie) or `agentOptions.shouldFetchRootKey` is `false`. The fetched key replaces the supplied one, so the agent verifies against a supplied key only until `initialize()` finishes, and `initialize()` rejects if `/api/v2/status` can't be reached. On a mainnet host it fetches nothing and a supplied key stays.
+
 Session restoration is **not** part of this call — it belongs to `AuthenticationManager.authenticate()` (or the `useAuth` hook, which calls it for you).
 
 ---
@@ -401,8 +403,10 @@ npm install @icp-sdk/auth
   was supplied (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env`
   cookie) or `agentOptions.shouldFetchRootKey` is `false`. Any other host counts
   as mainnet and never fetches it. `initialize()` fetches it up front and sets
-  `agentState.isInitialized`, for a loading screen that waits on it. The React
-  auth hooks (`useAuth`) call it automatically.
+  `agentState.isInitialized`, for a loading screen that waits on it. It fetches
+  the key even when one was supplied, and replaces it (see
+  [initialize](#initialize)). The React auth hooks (`useAuth`) call it
+  automatically.
 </Aside>
 
 ## External Authentication
