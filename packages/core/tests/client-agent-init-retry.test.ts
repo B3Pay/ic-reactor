@@ -171,6 +171,54 @@ describe("ClientManager.initializeAgent retry", () => {
         error: undefined,
       })
     })
+
+    describe("on the 'initialized' notification", () => {
+      // The fix above covers a throw when the attempt starts. A throw when it
+      // finishes failed the attempt too, but only after `isInitialized` had
+      // been recorded, and the failure left it standing next to the error.
+      // Every later call then returned at once on `isInitialized`, so nothing
+      // ever cleared the error: a UI that shows `error` stayed on its error
+      // screen for the rest of the session.
+      const throwingOnceInitialized = () => {
+        let thrown = false
+        return (state: AgentState) => {
+          if (thrown || !state.isInitialized) return
+          thrown = true
+          throw new Error("subscriber failed")
+        }
+      }
+
+      it("does not report the agent initialized after the attempt failed", async () => {
+        const { manager, fetchRootKey } = makeLocalManager()
+        fetchRootKey.mockResolvedValue(new Uint8Array(133))
+        manager.subscribeAgentState(throwingOnceInitialized())
+
+        await expect(manager.initializeAgent()).rejects.toThrow(
+          "subscriber failed"
+        )
+
+        expect(manager.agentState).toMatchObject({
+          isInitialized: false,
+          isInitializing: false,
+        })
+        expect(manager.agentState.error?.message).toBe("subscriber failed")
+      })
+
+      it("lets a later attempt initialize the agent and clear the error", async () => {
+        const { manager, fetchRootKey } = makeLocalManager()
+        fetchRootKey.mockResolvedValue(new Uint8Array(133))
+        manager.subscribeAgentState(throwingOnceInitialized())
+
+        await manager.initializeAgent().catch(() => undefined)
+        await manager.initializeAgent()
+
+        expect(manager.agentState).toMatchObject({
+          isInitialized: true,
+          isInitializing: false,
+          error: undefined,
+        })
+      })
+    })
   })
 
   it("makes a subscriber that calls in on 'initializing' wait for that attempt", async () => {
