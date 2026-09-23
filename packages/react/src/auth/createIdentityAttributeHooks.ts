@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import { Principal } from "@icp-sdk/core/principal"
 import type { IdentityAttributesManager } from "./identity-attributes-manager.js"
 import type {
   IdentityAttributeResult,
@@ -18,6 +19,9 @@ export interface UseIdentityAttributesReturn {
   attributeError: Error | null
   clearAttributes: () => void
 }
+
+/** What `request()` reports as the principal of a signed-out session. */
+const ANONYMOUS_PRINCIPAL = Principal.anonymous().toText()
 
 export function createIdentityAttributeHooks(
   identityAttributes: IdentityAttributesManager
@@ -40,23 +44,24 @@ export function createIdentityAttributeHooks(
      * A request started before a sign-out or an account switch resolves after
      * it, and publishing that result would put the previous user's decoded PII
      * back on screen with no further auth event to clear it again. So a result
-     * is committed only when it is the signed-in user's own: it carries the
-     * principal that is current when it resolves, or the session has not
-     * changed since it was asked for.
+     * is committed only when it is the current session's own: it carries the
+     * principal signed in when it resolves or, while nobody is, the anonymous
+     * principal that a `signIn: false` request made while signed out reports.
      *
-     * The first test is the one the default flow needs. With `signIn: true`
-     * the request itself signs the user in, so the principal seen before the
-     * request (none, for a first sign-in; the old account, for a switch made
-     * inside the provider window) is never the one the result belongs to.
-     * Comparing against the pre-request principal alone left the hook's
-     * `attributes` null after every successful first-time sign-in.
+     * With `signIn: true` the request itself signs the user in, so the
+     * principal seen before the request (none, for a first sign-in; the old
+     * account, for a switch made inside the provider window) is never the one
+     * the result belongs to. Comparing against it left `attributes` null after
+     * every successful first-time sign-in. Nor does "the same principal before
+     * and after" mean the session never changed: the request's own sign-in is
+     * published only when the whole request ends, so a user who signed in
+     * through it and signed out before it ended is nobody on both sides. Their
+     * name and email then went up on the signed-out screen.
      */
     const publishIfCurrent = useCallback(
-      (requestedFor: string | undefined, result: IdentityAttributeResult) => {
-        const current = currentPrincipal()
-        if (result.principal !== current && requestedFor !== current) {
-          return false
-        }
+      (result: IdentityAttributeResult) => {
+        const session = currentPrincipal() ?? ANONYMOUS_PRINCIPAL
+        if (result.principal !== session) return false
         setAttributes(result)
         return true
       },
@@ -88,7 +93,7 @@ export function createIdentityAttributeHooks(
         const requestedFor = currentPrincipal()
         try {
           const result = await identityAttributes.request(params)
-          publishIfCurrent(requestedFor, result)
+          publishIfCurrent(result)
           return result
         } catch (error) {
           publishErrorIfCurrent(
@@ -111,7 +116,7 @@ export function createIdentityAttributeHooks(
         const requestedFor = currentPrincipal()
         try {
           const result = await identityAttributes.requestOpenId(params)
-          publishIfCurrent(requestedFor, result)
+          publishIfCurrent(result)
           return result
         } catch (error) {
           publishErrorIfCurrent(

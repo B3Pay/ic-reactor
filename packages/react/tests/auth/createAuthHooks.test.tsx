@@ -11,6 +11,7 @@ import {
 } from "../../src/auth/index.js"
 import { createAuthHooks } from "../../src/hooks/createAuthHooks.js"
 import { createIdentityAttributeHooks } from "../../src/auth/createIdentityAttributeHooks.js"
+import { encodeAttributes } from "./fake-identity-provider.js"
 
 // ============================================================================
 // Helpers
@@ -375,6 +376,12 @@ describe("createIdentityAttributeHooks - useIdentityAttributes", () => {
       makeAuthentication(clientManager)
     )
     vi.spyOn(clientManager, "initialize").mockResolvedValue(clientManager)
+    // The results below belong to aaaaa-aa, so aaaaa-aa is the one signed in:
+    // the hook shows a result only to the session it belongs to.
+    ;(identityAttributes.authentication as any).updateState({
+      identity: { getPrincipal: () => Principal.fromText("aaaaa-aa") },
+      isAuthenticated: true,
+    })
   })
 
   it("tracks loading and success state", async () => {
@@ -897,6 +904,122 @@ describe("useIdentityAttributes — the request signs in, then its attribute sid
     })
 
     expect(result.current.attributeError).toBeNull()
+  })
+})
+
+describe("useIdentityAttributes — a sign-out while the request is pending", () => {
+  // Driven through the real managers: the request's own sign-in is published
+  // only when the whole request ends, so a user who signs in through it and
+  // signs out before it ends is "nobody" both before and after it.
+  const ADA = "aaaaa-aa"
+  const EMAIL_KEY = "openid:https://accounts.google.com:email"
+
+  function setup() {
+    const queryClient = makeQueryClient()
+    const clientManager = new ClientManager({
+      queryClient,
+      agentOptions: { host: "https://icp-api.io" },
+    })
+    vi.spyOn(clientManager, "initializeAgent").mockResolvedValue()
+    const account = { getPrincipal: () => Principal.fromText(ADA) }
+    const anonymous = { getPrincipal: () => Principal.anonymous() }
+    let holdsSession = false
+    let releaseNonce: () => void = () => {}
+    const authClient = {
+      getIdentity: vi.fn(() => (holdsSession ? account : anonymous)),
+      isAuthenticated: vi.fn(() => holdsSession),
+      signIn: vi.fn(async () => {
+        holdsSession = true
+        return account
+      }),
+      signOut: vi.fn(async () => {
+        holdsSession = false
+      }),
+      // Both supported clients await the nonce before sending the request.
+      requestAttributes: vi.fn(
+        async ({ nonce }: { nonce: () => Promise<Uint8Array> }) => {
+          await nonce()
+          return {
+            data: encodeAttributes([[EMAIL_KEY, "ada@example.com"]]),
+            signature: new Uint8Array([1]),
+          }
+        }
+      ),
+    }
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient: authClient as never,
+    })
+    const { useIdentityAttributes } = createIdentityAttributeHooks(
+      new IdentityAttributesManager(authentication)
+    )
+    const { result } = renderHook(() => useIdentityAttributes(), {
+      wrapper: wrapper(queryClient),
+    })
+    const nonce = () =>
+      new Promise<Uint8Array>((resolve) => {
+        releaseNonce = () => resolve(new Uint8Array(32))
+      })
+    return { authentication, result, nonce, release: () => releaseNonce() }
+  }
+
+  it("does not show the attributes of a user who signed out before the request resolved", async () => {
+    // Signed out, one "Continue with Google" click. The provider window signs
+    // Ada in while the app's nonce call is still pending, and she presses Sign
+    // out. The request then resolves with her attributes, and her email went
+    // up on the signed-out screen.
+    const { authentication, result, nonce, release } = setup()
+
+    let pending!: Promise<unknown>
+    act(() => {
+      pending = result.current
+        .requestOpenIdAttributes({
+          openIdProvider: "google",
+          keys: ["email"],
+          nonce,
+        })
+        .catch(() => undefined)
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    await act(async () => {
+      await authentication.logout()
+    })
+    await act(async () => {
+      release()
+      await pending
+    })
+
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(result.current.attributes).toBeNull()
+  })
+
+  it("still shows what a signed-out request that does not sign in returns", async () => {
+    // Guard: `signIn: false` while signed out resolves for the anonymous
+    // session, which is the session current when it resolves.
+    const { result, nonce, release } = setup()
+
+    let pending!: Promise<unknown>
+    act(() => {
+      pending = result.current.requestAttributes({
+        keys: [EMAIL_KEY],
+        nonce,
+        signIn: false,
+      })
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      release()
+      await pending
+    })
+
+    expect(result.current.attributes?.principal).toBe(
+      Principal.anonymous().toText()
+    )
+    expect(result.current.attributes?.decodedAttributes).toEqual({
+      email: "ada@example.com",
+    })
   })
 })
 
