@@ -87,7 +87,13 @@ export class IdentityAttributesManager {
       ])
 
       const finalIdentity = identity ?? (await authClient.getIdentity())
-      const isAuthenticated = await authClient.isAuthenticated()
+      // A v8 client can say it is authenticated for a delegation that lapsed
+      // in this tab, once another tab has signed in again; see
+      // `AuthenticationManager.vouchesFor`.
+      const isAuthenticated = this.authentication.vouchesFor(
+        finalIdentity,
+        await authClient.isAuthenticated()
+      )
       committed = true
       // A sign-out, or another account's sign-in, can finish while the
       // attribute side is still pending: neither ends it. `finalIdentity` then

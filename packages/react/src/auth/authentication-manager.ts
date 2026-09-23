@@ -1,5 +1,6 @@
 import type { Identity } from "@icp-sdk/core/agent"
 import { AnonymousIdentity } from "@icp-sdk/core/agent"
+import { isDelegationValid, type DelegationChain } from "@icp-sdk/core/identity"
 import type {
   AuthClientLike,
   AuthClientSignInOptions,
@@ -270,23 +271,22 @@ export class AuthenticationManager {
       // state while every update call failed, and only a reload recovered.
       // Re-ask the client, which reads the cached expiry rather than hitting
       // storage. A throw here is treated as "still valid" so a transient
-      // failure cannot sign anyone out.
+      // failure cannot sign anyone out. A v8 delegation that has expired is
+      // not valid whatever the client answers: see vouchesFor().
       if (!this.authClient) {
         return this.authState.identity || undefined
       }
-      const stillValid = await Promise.resolve(
+      const isAuthenticated = await Promise.resolve(
         this.authClient.isAuthenticated()
       ).catch(() => true)
-      if (stillValid) {
+      if (this.vouchesFor(this.authState.identity, isAuthenticated)) {
         return this.authState.identity || undefined
       }
-      // Expired, or ended in another tab. Re-deriving state from the client
-      // will not help: the v8 client keeps handing out the lapsed delegation
-      // from getIdentity() until signOut() runs (only a fresh page load purges
-      // it), so the expired identity would go straight back on the agent and
-      // every refetch would be signed with it. End the session explicitly, in
-      // this tab only: see expireSession().
-      await this.expireSession()
+      // Expired, or ended in another tab. The v8 client keeps handing out the
+      // lapsed delegation from getIdentity() until signOut() runs (only a
+      // fresh page load purges it). End the session explicitly, in this tab
+      // only: see expireSession().
+      await this.expireSession(isAuthenticated)
       return undefined
     }
     if (this.authPromise) {
@@ -325,7 +325,10 @@ export class AuthenticationManager {
           }
         }
         const clientIdentity = await this.authClient!.getIdentity()
-        const isAuthenticated = await this.authClient!.isAuthenticated()
+        const isAuthenticated = this.vouchesFor(
+          clientIdentity,
+          await this.authClient!.isAuthenticated()
+        )
 
         if (revision !== this.authStateRevision) {
           // Superseded — leave whatever ran in the meantime in place.
@@ -333,7 +336,9 @@ export class AuthenticationManager {
         }
         // A client that says it is not authenticated but still hands out a
         // non-anonymous identity is holding a delegation it will no longer
-        // vouch for (expired, mid-session). Nothing may be signed with it.
+        // vouch for (expired, mid-session). So is a v8 client that says it is,
+        // once another tab has signed in again, while it hands out the
+        // delegation that lapsed in this one. Nothing may be signed with it.
         const identity =
           isAuthenticated || clientIdentity.getPrincipal().isAnonymous()
             ? clientIdentity
@@ -452,7 +457,8 @@ export class AuthenticationManager {
       // Follow the client instead: once it no longer vouches for the session,
       // nothing may sign with it, which is the rule `authenticate()` applies
       // too. A v8 client that failed before forgetting anything still vouches
-      // for its session and keeps it. A check that throws keeps it as well.
+      // for its session and keeps it, unless its delegation has lapsed (see
+      // vouchesFor()). A check that throws keeps it as well.
       //
       // Anything that changes auth state while that check is in flight, such
       // as a login that finishes meanwhile, bumps this. The check then
@@ -465,7 +471,7 @@ export class AuthenticationManager {
       if (revision !== this.authStateRevision) {
         throw error
       }
-      if (stillSignedIn) {
+      if (this.vouchesFor(this.authState.identity, stillSignedIn)) {
         // Without this the manager was left with `isAuthenticating: true` and
         // no recorded error, so a button disabled on `isAuthenticating` stayed
         // stuck and nothing told the app why.
@@ -533,7 +539,7 @@ export class AuthenticationManager {
         this.authClient.isAuthenticated()
       ).catch(() => false)
 
-      if (identity && isAuthenticated) {
+      if (identity && this.vouchesFor(identity, isAuthenticated)) {
         return identity
       }
 
@@ -698,17 +704,51 @@ export class AuthenticationManager {
   }
 
   /**
+   * @internal Used by IdentityAttributesManager.
+   *
+   * Whether the client vouches for `identity`, given what its
+   * `isAuthenticated()` answered.
+   *
+   * A v8 client's answer is not about the identity it holds. It reads the
+   * delegation expiry v8 keeps in the `localStorage` every tab shares, while
+   * `getIdentity()` returns the identity this client restored or signed in
+   * with, and v8 never reads storage again once it has loaded. When the session
+   * lapses and the user signs in again in another tab, that tab writes a new
+   * expiry, and the answer is yes again for the delegation this tab still
+   * holds, which the replica refuses. So a v8 identity whose own delegation
+   * has expired is not vouched for, whatever the answer.
+   *
+   * A v10 client's answer is about the session it holds, and its identity
+   * replaces its short-lived delegation as it ages, so the delegation it holds
+   * can be past its expiry while the session is live. The answer stands alone.
+   */
+  public vouchesFor(
+    identity: Identity | null | undefined,
+    isAuthenticated: boolean
+  ): boolean {
+    return (
+      isAuthenticated &&
+      !(this.authClientFlavor === "legacy" && hasExpiredDelegation(identity))
+    )
+  }
+
+  /**
    * End a session the client no longer vouches for: put the anonymous
    * identity on the agent -- which also sweeps the previous user's
    * caller-scoped cache entries and refetches the rest anonymously -- and
    * publish the signed-out state.
    *
-   * A v8 client is also asked to forget the session, since it keeps handing
-   * out the lapsed delegation until `signOut()` runs. Its `isAuthenticated()`
-   * reads the expiry kept in the `localStorage` every tab shares, so this runs
-   * only once the session stored for every tab is over, and its `signOut()`
-   * takes no lock and revokes nothing. `signOut` failing changes nothing here:
-   * the delegation is already unusable, and the agent must not keep it.
+   * A v8 client is also asked to forget the session when its
+   * `isAuthenticated()` answered no, since it keeps handing out the lapsed
+   * delegation until `signOut()` runs. That answer reads the expiry kept in
+   * the `localStorage` every tab shares, so it is no only once the session
+   * stored for every tab is over, and v8's `signOut()` takes no lock and
+   * revokes nothing. `signOut` failing changes nothing here: the delegation is
+   * already unusable, and the agent must not keep it. When the answer was yes,
+   * the delegation this tab holds lapsed under a session another tab has
+   * signed in to since, and `signOut()` would delete that session from the
+   * storage every tab shares. The client is left alone, and `vouchesFor()`
+   * keeps the lapsed delegation it goes on handing out off the agent.
    *
    * A v10 client is left alone, as `commitSignedOut()` leaves it. Its
    * `signOut()` ends the sign-in for every tab of the origin: it takes the
@@ -717,9 +757,11 @@ export class AuthenticationManager {
    * every tab reads. Another tab may have signed in again since this one last
    * looked, and finding a session over is not the user asking to sign out.
    * The client already stopped vouching for the session on its own.
+   *
+   * @param isAuthenticated - What the client's `isAuthenticated()` answered.
    */
-  private async expireSession() {
-    if (this.authClientFlavor !== "session") {
+  private async expireSession(isAuthenticated: boolean) {
+    if (this.authClientFlavor !== "session" && !isAuthenticated) {
       try {
         await this.authClient?.signOut()
       } catch {
@@ -742,7 +784,10 @@ export class AuthenticationManager {
     }
 
     const clientIdentity = await this.authClient.getIdentity()
-    const isAuthenticated = await this.authClient.isAuthenticated()
+    const isAuthenticated = this.vouchesFor(
+      clientIdentity,
+      await this.authClient.isAuthenticated()
+    )
     if (revision !== this.authStateRevision) {
       return
     }
@@ -947,6 +992,21 @@ function importAuthClientModule(): Promise<unknown> {
     // stub the specifier) throw synchronously rather than rejecting.
     return Promise.reject(error)
   }
+}
+
+/**
+ * Whether `identity` signs with a delegation chain that has expired, as a
+ * `DelegationIdentity` or `PartialDelegationIdentity` does once its session
+ * lapses. Read by shape rather than `instanceof`, which a second copy of
+ * `@icp-sdk/core` in the app would defeat.
+ */
+function hasExpiredDelegation(identity: Identity | null | undefined): boolean {
+  const delegated = identity as
+    { getDelegation?: () => DelegationChain } | null | undefined
+  if (typeof delegated?.getDelegation !== "function") {
+    return false
+  }
+  return !isDelegationValid(delegated.getDelegation())
 }
 
 function getAuthClientOptions(
