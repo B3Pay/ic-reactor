@@ -4,6 +4,7 @@ import {
   CandidVariantValue,
   CandidKeyValue,
 } from "../types/index.js"
+import { hasLabel } from "./label.js"
 
 const VARIANT_DISCRIMINATOR = "_type"
 
@@ -31,7 +32,12 @@ function extractVariantDetails<T extends Record<string, any>>(
       )
     }
 
-    const value = (key in variant ? variant[key] : null) as CandidKeyValue<T>[1]
+    // Not `key in variant`: a null arm's display shape is `{ _type: key }`
+    // alone, and `in` finds an inherited member for an arm called `toString`
+    // or `constructor`, returning that function as the arm's value.
+    const value = (
+      hasLabel(variant, key) ? variant[key] : null
+    ) as CandidKeyValue<T>[1]
 
     return [key, value] as CandidKeyValue<T>
   }

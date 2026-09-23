@@ -771,5 +771,12 @@ pub fn parse_did(prog: String) -> Result<JsValue, String> {
         }
     });
 
-    serde_wasm_bindgen::to_value(&CandidSchema { types, service }).map_err(|e| e.to_string())
+    // serde_wasm_bindgen turns `None` into `undefined` unless told otherwise,
+    // and the published type is `service: CandidServiceDeclaration | null`.
+    // The optional metadata fields skip `None` entirely, so only `service`
+    // changes.
+    let serializer = serde_wasm_bindgen::Serializer::new().serialize_missing_as_null(true);
+    CandidSchema { types, service }
+        .serialize(&serializer)
+        .map_err(|e| e.to_string())
 }

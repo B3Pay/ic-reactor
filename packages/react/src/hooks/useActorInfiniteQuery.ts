@@ -17,6 +17,7 @@ import {
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
 import {
+  callConfigForKey,
   mergeFactoryQueryKey,
   normalizeQueryData,
   useMountQueryClient,
@@ -51,6 +52,18 @@ export interface UseActorInfiniteQueryParameters<
   functionName: Method
   /** Function to get args from page parameter */
   getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
+  /**
+   * Narrows what the cache key derives from the call arguments.
+   *
+   * By default the key is scoped by `getArgs(initialPageParam)`, so two
+   * infinite queries on the same method with different arguments stay in
+   * separate cache entries. Supply this when those args embed the cursor and
+   * only part of them identifies the query — return the stable, serializable
+   * portion (typically everything except the pagination field). It is required
+   * when `initialPageParam` changes between renders, as `Date.now()` does:
+   * without it every render keys a new query.
+   */
+  getKeyArgs?: (args: ReactorArgs<Service, Method, Transform>) => unknown
   /** Agent call configuration (effectiveCanisterId, etc.) */
   callConfig?: CallConfig
   /** Custom query key (auto-generated if not provided) */
@@ -125,6 +138,7 @@ export const useActorInfiniteQuery = <
   reactor,
   functionName,
   getArgs,
+  getKeyArgs,
   callConfig,
   queryKey,
   ...options
@@ -146,46 +160,54 @@ export const useActorInfiniteQuery = <
   // Always pass queryKey through generateQueryKey so it is merged with the
   // reactor/function identity. Using the custom key verbatim would cause cache
   // collisions if two different actors or methods share the same key string.
-  const baseQueryKey = useMemo(
-    () =>
-      reactor.generateQueryKey(
-        {
-          functionName,
-          // Fold the call arguments into the key. They live in the `getArgs`
-          // closure rather than in the config, so without this two hooks on the
-          // same method with different arguments share one cache entry and
-          // serve each other's pages.
-          queryKey: mergeFactoryQueryKey(
-            queryKey,
-            undefined,
-            getArgs(options.initialPageParam)
-          ),
-        },
-        callConfig
-      ),
-    [
-      queryKey,
-      reactor,
-      // `canisterId` is mutable reactor state that `setCanisterId` can change,
-      // while `reactor` itself stays the same object — so it has to be a
-      // dependency in its own right or the key stays pinned to the old canister
-      // while the queryFn already calls the new one.
-      reactor.canisterId?.toString(),
-      functionName,
-      callConfig,
-      getArgs,
-      options.initialPageParam,
-    ]
-  )
+  const baseQueryKey = useMemo(() => {
+    // Fold the call arguments into the key. They live in the `getArgs`
+    // closure rather than in the config, so without this two hooks on the
+    // same method with different arguments share one cache entry and serve
+    // each other's pages. `getKeyArgs` narrows them exactly as it does for the
+    // factories, which the bound hook's config type always accepted: it used
+    // to be ignored here, so the cursor stayed in the key, and an
+    // `initialPageParam` that changes every render (`Date.now()`) keyed a new
+    // query on every render — an endless loop of first-page fetches.
+    const initialArgs = getArgs(options.initialPageParam)
+    const keyArgs = getKeyArgs?.(initialArgs) ?? initialArgs
+
+    return reactor.generateQueryKey(
+      {
+        functionName,
+        queryKey: mergeFactoryQueryKey(queryKey, undefined, keyArgs),
+      },
+      callConfig
+    )
+  }, [
+    queryKey,
+    reactor,
+    // `canisterId` is mutable reactor state that `setCanisterId` can change,
+    // while `reactor` itself stays the same object — so it has to be a
+    // dependency in its own right or the key stays pinned to the old canister
+    // while the queryFn already calls the new one.
+    reactor.canisterId?.toString(),
+    functionName,
+    callConfig,
+    getArgs,
+    getKeyArgs,
+    options.initialPageParam,
+  ])
 
   // Memoize queryFn to prevent recreation on every render
   const queryFn = useCallback(
-    async ({ pageParam }: { pageParam: TPageParam }) => {
+    async ({
+      pageParam,
+      queryKey: fetchedKey,
+    }: {
+      pageParam: TPageParam
+      queryKey: QueryKey
+    }) => {
       const args = getArgs(pageParam)
       const result = await reactor.callMethod({
         functionName,
         args,
-        callConfig,
+        callConfig: callConfigForKey(fetchedKey, callConfig),
       })
       return normalizeQueryData<ReactorReturnOk<Service, Method, Transform>>(
         result as ReactorReturnOk<Service, Method, Transform>

@@ -78,16 +78,24 @@ function ItemList() {
 
 ### Optional Options
 
-| Option                 | Type       | Default  | Description                                    |
-| ---------------------- | ---------- | -------- | ---------------------------------------------- |
-| `getPreviousPageParam` | `function` | -        | Returns previous page param for bi-directional |
-| `maxPages`             | `number`   | -        | Maximum number of pages to keep in cache       |
-| `enabled`              | `boolean`  | `true`   | Whether the query should run                   |
-| `staleTime`            | `number`   | `0`      | Time in ms before data is stale                |
-| `gcTime`               | `number`   | `300000` | Time before unused data is GC'd                |
-| `refetchOnWindowFocus` | `boolean`  | `true`   | Refetch on window focus                        |
-| `select`               | `function` | -        | Transform the data                             |
-| `queryKey`             | `array`    | -        | Additional query key segments                  |
+| Option                 | Type       | Default  | Description                                     |
+| ---------------------- | ---------- | -------- | ----------------------------------------------- |
+| `getPreviousPageParam` | `function` | -        | Returns previous page param for bi-directional  |
+| `maxPages`             | `number`   | -        | Maximum number of pages to keep in cache        |
+| `enabled`              | `boolean`  | `true`   | Whether the query should run                    |
+| `staleTime`            | `number`   | `0`      | Time in ms before data is stale                 |
+| `gcTime`               | `number`   | `300000` | Time before unused data is GC'd                 |
+| `refetchOnWindowFocus` | `boolean`  | `true`   | Refetch on window focus                         |
+| `select`               | `function` | -        | Transform the data                              |
+| `queryKey`             | `array`    | -        | Additional query key segments                   |
+| `getKeyArgs`           | `function` | -        | Narrows the args that key the cache (see below) |
+
+The cache key includes the first page's arguments, `getArgs(initialPageParam)`,
+so two lists over the same method with different arguments stay apart. When
+those arguments carry the cursor, `getKeyArgs` returns the part that identifies
+the list. It is required when `initialPageParam` changes between renders, as
+`Date.now()` does: without it every render keys a new query and refetches the
+first page.
 
 ### Callback Signatures
 
@@ -177,6 +185,8 @@ const { data, fetchNextPage, fetchPreviousPage, hasNextPage, hasPreviousPage } =
     functionName: "getTimeline",
     getArgs: (timestamp) => [{ around: timestamp, limit: 20 }],
     initialPageParam: Date.now(),
+    // `Date.now()` differs on every render, so keep the cursor out of the key.
+    getKeyArgs: ([{ limit }]) => [{ limit }],
     getNextPageParam: (lastPage) => lastPage.oldestTimestamp,
     getPreviousPageParam: (firstPage) => firstPage.newestTimestamp,
   })

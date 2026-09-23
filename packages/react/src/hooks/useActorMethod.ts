@@ -286,15 +286,26 @@ export function useActorMethod<
   const notifiedSuccessAt = useRef<number | undefined>(undefined)
   const notifiedErrorAt = useRef<number | undefined>(undefined)
 
-  const { status, data, error, dataUpdatedAt, errorUpdatedAt } = queryResult
+  const {
+    status,
+    data,
+    error,
+    dataUpdatedAt,
+    errorUpdatedAt,
+    isPlaceholderData,
+  } = queryResult
 
   useEffect(() => {
     if (!isQuery) return
+    // Placeholder data also has `status: "success"`, but no call has returned
+    // it: it is the `placeholderData` option, or with `keepPreviousData` the
+    // previous args' result standing in while this call is in flight.
+    if (isPlaceholderData) return
     if (status === "success" && dataUpdatedAt !== notifiedSuccessAt.current) {
       notifiedSuccessAt.current = dataUpdatedAt
       onSuccessRef.current?.(data)
     }
-  }, [isQuery, status, data, dataUpdatedAt])
+  }, [isQuery, status, data, dataUpdatedAt, isPlaceholderData])
 
   useEffect(() => {
     if (!isQuery) return

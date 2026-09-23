@@ -49,6 +49,7 @@ import type {
 import {
   buildChainedSelect,
   createBoundedCache,
+  pickFetchOptions,
   useMountQueryClient,
 } from "./utils.js"
 
@@ -89,9 +90,15 @@ const createQueryImpl = <
   const applySelect = (raw: TData): Selected =>
     select ? select(raw) : (raw as unknown as Selected)
 
+  // How the query function runs, shared with the hook; see pickFetchOptions.
+  const fetchOptions = pickFetchOptions(rest)
+
   /** Cache-first fetch for use in loaders / route preloading. */
   const fetch = async (): Promise<Selected> => {
-    const result = await reactor.fetchQuery(params)
+    // Through the reactor rather than straight to the QueryClient: overriding
+    // `fetchQuery` in a Reactor subclass is a documented way to add logic to
+    // every factory fetch.
+    const result = await reactor.fetchQuery(params, fetchOptions)
     return applySelect(result)
   }
 
@@ -99,6 +106,7 @@ const createQueryImpl = <
   const prefetch = (): Promise<void> => {
     const baseOptions = reactor.getQueryOptions(params)
     return reactor.queryClient.prefetchQuery({
+      ...fetchOptions,
       queryKey: baseOptions.queryKey,
       queryFn: baseOptions.queryFn,
       staleTime,

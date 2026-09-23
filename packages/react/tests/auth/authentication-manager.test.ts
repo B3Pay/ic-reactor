@@ -188,6 +188,33 @@ describe("AuthenticationManager", () => {
     expect(authentication.authState.error).toBe(error)
   })
 
+  it("does not strand isAuthenticating when a failed sign-in's onError rejects", async () => {
+    // login() recorded a failed sign-in only after awaiting onError, so an
+    // onError that rejected (an async error reporter whose request failed, or
+    // a callback that rethrows) skipped the update. isAuthenticating stayed
+    // true with no error recorded, and a login button disabled on it never
+    // came back.
+    const authClient = createAuthClient()
+    const popupClosed = new Error("UserInterrupt")
+    authClient.signIn.mockRejectedValue(popupClosed)
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+
+    await expect(
+      authentication.login({
+        onError: async () => {
+          throw new Error("error reporter unreachable")
+        },
+      })
+    ).rejects.toThrow()
+
+    expect(authentication.authState.isAuthenticating).toBe(false)
+    expect(authentication.authState.error).toBe(popupClosed)
+    expect(authentication.authState.isAuthenticated).toBe(false)
+  })
+
   it("logs out and restores an anonymous agent identity", async () => {
     const authClient = createAuthClient()
     const authentication = new AuthenticationManager({
@@ -485,6 +512,34 @@ describe("AuthenticationManager", () => {
     })
   })
 
+  it("ignores an ic_env cookie it cannot decode instead of throwing", async () => {
+    // Nothing isolates this cookie: a sibling subdomain can write it, and on
+    // localhost so can an app on any other port. `safeGetCanisterEnv` returns
+    // undefined for a value that is not valid percent-encoding, but the
+    // fallback parser here then threw `URIError: URI malformed` from the
+    // constructor. `new AuthenticationManager()` failed, and so did every
+    // render of a defineReactor `useAuth()`, which builds the manager lazily.
+    vi.stubGlobal("window", { location: { origin: "http://127.0.0.1:8000" } })
+    vi.stubGlobal("document", { cookie: "ic_env=%E0%A4%A" })
+    const authClient = createAuthClient()
+    const AuthClient = mockAuthClientModule(authClient)
+    const localClientManager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: "http://127.0.0.1:8000" },
+    })
+    vi.spyOn(localClientManager, "initializeAgent").mockResolvedValue()
+
+    const authentication = new AuthenticationManager({
+      clientManager: localClientManager,
+    })
+    await authentication.login()
+
+    // Treated as no cookie at all: the default local provider.
+    expect(AuthClient.mock.calls[0][0].identityProvider).toBe(
+      "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:8000/authorize"
+    )
+  })
+
   it("ignores an ic_env internet_identity id that is not a principal", async () => {
     // Interpolated into `http://<id>.localhost:<port>/authorize`, so only a
     // bare principal can be substituted in safely.
@@ -658,6 +713,97 @@ describe("AuthenticationManager session hygiene", () => {
 
     expect(authentication.authState.isAuthenticating).toBe(false)
     expect(authentication.authState.error).toBeInstanceOf(Error)
+  })
+
+  it("signs out here when signOut fails after the client has let go of the session", async () => {
+    // @icp-sdk/auth v10's signOut revokes the session at the Internet Identity
+    // canister and wipes the device together, installs an anonymous identity,
+    // and only then throws a failed revoke: "The device is signed out whatever
+    // happened at the canister". Run against the real v10 client, a revoke that
+    // could not reach the canister left IC Reactor reporting
+    // isAuthenticated: true, with the agent still signing as the user who had
+    // just pressed sign out.
+    const authClient = Object.assign(createAuthClient(), {
+      // The two methods that mark a v10 client.
+      getStatus: vi.fn(),
+      getPrincipal: vi.fn(),
+    })
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+    const clearSession = authClient.signOut.getMockImplementation()
+    const revokeFailed = new Error("TransportError: Failed to fetch")
+    authClient.signOut.mockImplementation(async () => {
+      await clearSession()
+      throw revokeFailed
+    })
+
+    await expect(authentication.logout()).rejects.toBe(revokeFailed)
+
+    expect(authClient.isAuthenticated()).toBe(false)
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(
+      authentication.authState.identity?.getPrincipal().isAnonymous()
+    ).toBe(true)
+    expect(clientManager.identity?.getPrincipal().isAnonymous()).toBe(true)
+    // The failure is still reported, so an app can say the session may still
+    // be live at the identity provider.
+    expect(authentication.authState.error).toBe(revokeFailed)
+    expect(authentication.authState.isAuthenticating).toBe(false)
+  })
+
+  it("leaves a login that finishes during a failed logout's check in place", async () => {
+    // After a failed signOut the manager asks the client whether it still
+    // holds the session. A login that completes while that answer is pending
+    // is newer, and a stale "signed out" must not replace it.
+    const authClient = Object.assign(createAuthClient(), {
+      getStatus: vi.fn(),
+      getPrincipal: vi.fn(),
+    })
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+    authClient.signOut.mockRejectedValue(new Error("revoke failed"))
+    let answer: (value: boolean) => void = () => {}
+    let asked = false
+    authClient.isAuthenticated.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          asked = true
+          answer = resolve
+        })
+    )
+
+    const loggingOut = authentication.logout()
+    await vi.waitFor(() => expect(asked).toBe(true))
+    await authentication.login()
+    answer(false)
+
+    await expect(loggingOut).rejects.toThrow("revoke failed")
+    expect(authentication.authState.isAuthenticated).toBe(true)
+    expect(clientManager.identity?.getPrincipal().toText()).toBe("aaaaa-aa")
+  })
+
+  it("keeps the session when signOut fails before the client lets go of it", async () => {
+    // The other side of the case above: v8 throws from its storage wipe before
+    // it drops the identity, and a reload would restore the session, so the
+    // manager keeps reporting what the client still holds.
+    const authClient = createAuthClient()
+    authClient.signOut.mockRejectedValue(new Error("storage unavailable"))
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+
+    await expect(authentication.logout()).rejects.toThrow("storage unavailable")
+
+    expect(authentication.authState.isAuthenticated).toBe(true)
+    expect(clientManager.identity?.getPrincipal().toText()).toBe("aaaaa-aa")
   })
 })
 

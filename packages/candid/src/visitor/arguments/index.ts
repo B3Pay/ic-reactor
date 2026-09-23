@@ -1,5 +1,6 @@
 import { isQuery } from "../helpers.js"
 import { withIntegerBounds } from "../integer-bounds.js"
+import { withFloatBounds } from "../float-bounds.js"
 import { checkTextFormat, checkNumberFormat } from "../constants.js"
 import { MetadataError } from "./types.js"
 import type {
@@ -32,6 +33,7 @@ import { Principal } from "@icp-sdk/core/principal"
 import { BaseActor, FunctionName } from "@ic-reactor/core"
 import * as z from "zod"
 import { formatLabel } from "./helpers.js"
+import { blobSchema } from "../blob-schema.js"
 
 export * from "./types.js"
 export * from "./helpers.js"
@@ -133,10 +135,13 @@ function validateBlobInput(
 /** Why a `variant {}` field accepts nothing. */
 const EMPTY_VARIANT_MESSAGE = "variant {} has no values, so no value is valid"
 
+/** Why an `empty` field accepts nothing. */
+const EMPTY_TYPE_MESSAGE = "empty has no values, so no value is valid"
+
 /**
- * Whether no value of this field's type exists: `variant {}`, a variant none of
- * whose options can hold a value, or a record or tuple containing such a field.
- * A recursive field is assumed to have values.
+ * Whether no value of this field's type exists: `empty`, `variant {}`, a
+ * variant none of whose options can hold a value, or a record or tuple
+ * containing such a field. A recursive field is assumed to have values.
  */
 function hasNoValue(field: FieldNode): boolean {
   switch (field.type) {
@@ -145,6 +150,8 @@ function hasNoValue(field: FieldNode): boolean {
     case "record":
     case "tuple":
       return field.fields.some(hasNoValue)
+    case "unknown":
+      return field.candidType === "empty"
     default:
       return false
   }
@@ -574,11 +581,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     ) as FieldNode
 
     if (isBlob) {
-      const schema = z.union([
-        z.string(),
-        z.array(z.number()),
-        z.instanceof(Uint8Array),
-      ])
+      const schema = blobSchema()
 
       const limits = { ...DEFAULT_BLOB_LIMITS }
 
@@ -916,7 +919,7 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     let schema = z.string().min(1, "Required")
 
     if (options.isFloat) {
-      schema = schema.refine((val) => !isNaN(Number(val)), "Must be a number")
+      schema = withFloatBounds(schema, options.bits ?? 64, "Must be a number")
     } else if (options.unsigned) {
       schema = schema.regex(/^\d+$/, "Must be a positive number")
     } else {
@@ -1044,6 +1047,19 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       min: "0",
       max,
     })
+  }
+
+  /**
+   * `empty` has no values, like `variant {}`. It was described by `visitType`
+   * with `z.any()`, so the form accepted anything for it, and a variant could
+   * default to an option holding it. Neither could be sent.
+   */
+  public visitEmpty(t: IDL.EmptyClass, label: string): UnknownField {
+    return {
+      ...this.visitType(t, label),
+      candidType: "empty",
+      schema: z.never(EMPTY_TYPE_MESSAGE),
+    }
   }
 
   public visitType<T>(_t: IDL.Type<T>, label: string): UnknownField {

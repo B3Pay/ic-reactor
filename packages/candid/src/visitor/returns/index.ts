@@ -90,6 +90,82 @@ function vectorElements(data: unknown): unknown[] | undefined {
   return undefined
 }
 
+/** Whether `type` is `vec record { text; V }`, which displays as an object. */
+function isTextKeyedVec(type: IDL.Type): boolean {
+  return (
+    type instanceof IDL.VecClass &&
+    type._type instanceof IDL.TupleClass &&
+    type._type._fields.length === 2 &&
+    type._type._fields[0][1] instanceof IDL.TextClass
+  )
+}
+
+/**
+ * Whether `value` could be a value of `type`, in its Candid form or display
+ * transformed, judged only by where arrays can appear: every type that
+ * displays as an array (vec, tuple, func reference, and an optional holding
+ * one) needs an array there, and every other type needs something that is not
+ * one.
+ */
+function hasDisplayShape(type: IDL.Type, value: unknown, depth = 0): boolean {
+  // A recursive type that never reaches a constructor has no shape to find.
+  if (depth > 64) return true
+
+  if (type instanceof IDL.RecClass) {
+    const inner = type.getType()
+    return inner === undefined || hasDisplayShape(inner, value, depth + 1)
+  }
+  if (type instanceof IDL.OptClass) {
+    if (value === null || value === undefined) return true
+    if (Array.isArray(value) && value.length === 0) return true
+    if (
+      Array.isArray(value) &&
+      value.length === 1 &&
+      hasDisplayShape(type._type, value[0], depth + 1)
+    ) {
+      return true
+    }
+    return hasDisplayShape(type._type, value, depth + 1)
+  }
+  if (type instanceof IDL.VecClass) {
+    const elem = type._type
+    if (elem instanceof IDL.FixedNatClass && elem._bits === 8) {
+      return (
+        typeof value === "string" ||
+        value instanceof Uint8Array ||
+        (Array.isArray(value) && value.every((b) => typeof b === "number"))
+      )
+    }
+    if (ArrayBuffer.isView(value) && !(value instanceof DataView)) {
+      return (
+        elem instanceof IDL.FixedNatClass ||
+        elem instanceof IDL.FixedIntClass ||
+        elem instanceof IDL.FloatClass
+      )
+    }
+    if (Array.isArray(value)) {
+      return value.every((item) => hasDisplayShape(elem, item, depth + 1))
+    }
+    return isTextKeyedVec(type) && typeof value === "object" && value !== null
+  }
+  if (type instanceof IDL.TupleClass) {
+    const components = type._fields.map(([, component]) => component)
+    return (
+      Array.isArray(value) &&
+      value.length >= components.length &&
+      components.every((component, i) =>
+        hasDisplayShape(component, value[i], depth + 1)
+      )
+    )
+  }
+  if (type instanceof IDL.FuncClass) {
+    return Array.isArray(value) && value.length === 2
+  }
+  if (type instanceof IDL.EmptyClass) return false
+  if (type instanceof IDL.ReservedClass) return true
+  return !Array.isArray(value)
+}
+
 /**
  * The Candid value a resolved node stands for, read back from the tree.
  *
@@ -545,6 +621,15 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
   ): ResultNode<"optional"> {
     const inner = ty.accept(this, label) as ResultNode
 
+    /**
+     * Is `[x]` the Candid wrapper around `x`, rather than a display value that
+     * is itself a one-element array? Only an unwrapped array, `opt vec text`
+     * displayed as ["a"], fits the second reading alone. When both fit, the
+     * Candid reading wins, as it always did.
+     */
+    const isWrapper = (data: [unknown]): boolean =>
+      hasDisplayShape(ty, data[0]) || !hasDisplayShape(ty, data)
+
     const node: ResultNode<"optional"> = {
       type: "optional",
       label,
@@ -553,15 +638,22 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "nullable",
       value: null, // null until resolved
       resolve(data: unknown): ResolvedNode<"optional"> {
-        // If data is an array (raw format [T] or []), unwrap it.
-        // Otherwise, use data directly (already transformed or null/undefined).
-        const resolved = Array.isArray(data)
-          ? data.length > 0
-            ? inner.resolve(data[0])
-            : null
-          : data !== null && data !== undefined
-            ? inner.resolve(data)
-            : null
+        // An array is the Candid form, `[]` for none and `[x]` for some,
+        // unless it is a display-transformed value of an element that
+        // displays as an array: `opt vec text` as ["a", "b"] or
+        // `opt record { nat; nat }` as ["1", "2"]. Reading those as the
+        // wrapper resolved their first item and threw. A Candid wrapper never
+        // has two items. Anything else is display-transformed or none.
+        const resolved =
+          data === null || data === undefined
+            ? null
+            : !Array.isArray(data)
+              ? inner.resolve(data)
+              : data.length === 0
+                ? null
+                : data.length === 1 && isWrapper(data as [unknown])
+                  ? inner.resolve(data[0])
+                  : inner.resolve(data)
 
         return { ...node, value: resolved, raw: data }
       },
@@ -628,6 +720,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     }
 
     const itemSchema = ty.accept(this, "item") as ResultNode
+    // `vec record { text; V }` displays as an object keyed by the text, and
+    // its entries are the Candid pairs.
+    const textKeyed = isTextKeyedVec(_t)
 
     const node: ResultNode<"vector"> = {
       type: "vector",
@@ -637,7 +732,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       displayType: "array",
       items: [], // empty schema placeholder, populated on resolve
       resolve(data: unknown): ResolvedNode<"vector"> {
-        const vectorData = vectorElements(data)
+        const vectorData =
+          vectorElements(data) ??
+          (textKeyed && typeof data === "object" && data !== null
+            ? Object.entries(data)
+            : undefined)
         if (!vectorData) {
           throw new MetadataError(
             `Expected vector, but got ${data === null ? "null" : typeof data}, raw: ${data}`,
@@ -715,8 +814,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     return primitiveNode("boolean", label, "bool", "boolean", this.getCodec(t))
   }
 
-  public visitNull(t: IDL.NullClass, label: string): ResultNode<"null"> {
-    return primitiveNode("null", label, "null", "null", this.getCodec(t))
+  public visitNull(_t: IDL.NullClass, label: string): ResultNode<"null"> {
+    // The only value is null. A display-transformed variant arm without a
+    // payload, `{ _type: "none" }`, hands this node undefined, which the
+    // null codec refused, leaving the value undefined.
+    return primitiveNode("null", label, "null", "null", { decode: () => null })
   }
 
   public visitInt(t: IDL.IntClass, label: string): ResultNode<"number"> {
