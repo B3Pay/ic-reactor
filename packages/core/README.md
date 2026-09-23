@@ -522,7 +522,12 @@ every plain object sorted, so `{ b, a }` and `{ a, b }` give the same key. A
 bare `JSON.stringify(args)` does not match it once a record's fields are out of
 alphabetical order. A blob is written as a tag followed by its lowercase hex, so
 a `Uint8Array`, a `number[]` and a `DisplayReactor`'s hex text holding the same
-bytes give the same key. The `{ effectiveTarget }` segment is dropped when it names
+bytes give the same key. A `DisplayReactor` writes each `opt` and variant in one
+form, whichever it was given in, so an `opt` given bare or as `[value]`, none
+given as `null`, `undefined` or `[]`, and a variant given with or without
+`_type` give the same key. A `vec record { text; T }` given to it as an object is written as
+its entries in order, since the order is part of what it sends. The
+`{ effectiveTarget }` segment is dropped when it names
 the same canister the key is already rooted at, and any custom `queryKey` is
 appended element-wise. Build keys with `generateQueryKey` (or a query object's
 `getQueryKey()`) rather than by hand.
