@@ -28,10 +28,15 @@
  *
  * @example Reuse an existing ClientManager (multiple canisters share one agent)
  * ```typescript
- * const ledger = defineReactor<_LEDGER>({ name: "ledger", idlFactory: ledgerIdl })
+ * const ledger = defineReactor<_LEDGER>({
+ *   name: "ledger",
+ *   idlFactory: ledgerIdl,
+ *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+ * })
  * const index = defineReactor<_INDEX>({
  *   name: "index",
  *   idlFactory: indexIdl,
+ *   canisterId: "qhbym-qaaaa-aaaaa-aaafq-cai",
  *   clientManager: ledger.clientManager,
  *   authentication: ledger.authentication, // one Internet Identity session
  * })
@@ -42,6 +47,7 @@
  * const { useAuth, useIdentityAttributes } = defineReactor<_SERVICE>({
  *   name: "backend",
  *   idlFactory,
+ *   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
  *   // Needed when the app is served from more than one origin.
  *   auth: { derivationOrigin: "https://app.example.com" },
  * })
@@ -110,6 +116,12 @@ export interface DefineReactorSharedParameters
   /**
    * Internet Identity options forwarded to the AuthenticationManager
    * (`identityProvider`, `derivationOrigin`, `idleOptions`, `storage`, …).
+   *
+   * Not every option reaches both `@icp-sdk/auth` majors. `idleOptions`,
+   * `storage`, `keyType` and `identity` are honoured only by v8: v10 has no
+   * equivalent, so IC Reactor drops each with a one-time warning. For idle
+   * handling on v10, pass `maxTimeToIdle` to `login()` and set
+   * `disableBrowserActivity` here. `disableBrowserActivity` is v10-only.
    *
    * Mutually exclusive with `authentication`: a manager built elsewhere is
    * already configured, so these could not be applied to it.

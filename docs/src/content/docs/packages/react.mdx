@@ -96,7 +96,7 @@ The package requires Node.js 18+ (declared in `engines`).
 ```tsx
 import { ClientManager, Reactor, createActorHooks } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 const queryClient = new QueryClient()
 const clientManager = new ClientManager({ queryClient })
@@ -105,6 +105,10 @@ const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend",
+  // Required unless the Vite plugin injects an `ic_env` cookie for this
+  // canister on a local replica. Without it the reactor constructor throws
+  // on a server and on any deployed origin.
+  canisterId,
 })
 
 export const { useActorQuery, useActorMutation } = createActorHooks(backend)

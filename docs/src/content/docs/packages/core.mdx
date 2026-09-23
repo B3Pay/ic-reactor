@@ -72,7 +72,7 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 ```typescript
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import { QueryClient } from "@tanstack/query-core"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 const queryClient = new QueryClient()
 const clientManager = new ClientManager({
@@ -85,6 +85,10 @@ const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend",
+  // Required in Node, where the constructor otherwise throws. A browser page
+  // may omit it only when the ic_env cookie is trusted there (a local replica,
+  // or `allowEnvConfig: true`).
+  canisterId,
 })
 
 const greeting = await backend.fetchQuery({

@@ -122,11 +122,20 @@ The `ic-reactor.json` file controls the CLI behavior.
   "canisters": {
     "backend": {
       "name": "backend",
-      "didFile": "src/backend/backend.did"
+      "didFile": "src/backend/backend.did",
+      "canisterId": "rrkah-fqaaa-aaaaa-aaaaq-cai"
     }
   }
 }
 ```
+
+Set `canisterId` for any build that is not served from a local replica. It is
+written into `index.generated.ts`. Without it the generated reactor looks its id
+up in the `ic_env` cookie, which a `ClientManager` trusts only on a local
+replica unless it sets `allowEnvConfig: true`, so importing the generated module
+throws `canisterId is required for "backend"` in Node, during SSR and on a
+deployed origin. Leave it out only for local development where an `ic_env`
+cookie carries the id, such as the one the Vite plugin sets.
 
 ### Options
 
@@ -147,7 +156,7 @@ The `ic-reactor.json` file controls the CLI behavior.
 | `outDir`            | `string` | Override output directory for this canister.                                                                                                                               |
 | `clientManagerPath` | `string` | Override client manager path.                                                                                                                                              |
 | `target`            | `string` | Override generated runtime target.                                                                                                                                         |
-| `canisterId`        | `string` | Optional fixed canister ID.                                                                                                                                                |
+| `canisterId`        | `string` | Canister ID written into `index.generated.ts`. Needed for any build not served from a local replica; see above.                                                            |
 
 ## Examples
 

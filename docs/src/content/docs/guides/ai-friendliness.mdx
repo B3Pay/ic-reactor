@@ -63,8 +63,7 @@ When asking an AI to write code for a specific canister, always provide the gene
 To make AI-generated code cleaner and less error-prone, you can use `DisplayReactor`. This allows the AI to write code using standard JavaScript types (like `string` for BigInt or Principals) instead of specialized classes, which is what most LLMs are naturally trained on.
 
 ```typescript
-import { DisplayReactor } from "@ic-reactor/core"
-import { createActorHooks } from "@ic-reactor/react"
+import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
 
 const reactor = new DisplayReactor({
   clientManager,

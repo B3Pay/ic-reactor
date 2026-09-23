@@ -291,11 +291,14 @@ Like `Reactor`, `DisplayReactor` supports dynamic canister switching via `setCan
 import { DisplayReactor } from "@ic-reactor/core"
 import { idlFactory, type _SERVICE } from "./declarations/icrc1"
 
-// Create a reusable ICRC-1 token reactor
+// Create a reusable ICRC-1 token reactor. It still needs a canister ID to
+// start from: the constructor throws without one outside a local replica,
+// before any setCanisterId call below can run.
 const tokenReactor = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "token",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP ledger until switched
 })
 
 async function getTokenInfo(canisterId: string) {

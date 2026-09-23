@@ -101,7 +101,7 @@ constructor, or per call to `login()` — the per-call value wins.
 | ------------------------ | ------------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `identityProvider`       | `string \| URL`                      | auto-detected              | Identity provider URL                                                                                              |
 | `derivationOrigin`       | `string \| URL`                      | –                          | Origin the principal is derived from — see the callout below                                                       |
-| `idleOptions`            | `AuthClientIdleOptions`              | 10 min → sign out + reload | Idle detection and what happens on timeout                                                                         |
+| `idleOptions`            | `AuthClientIdleOptions`              | 10 min → sign out + reload | `@icp-sdk/auth` v8 only. Idle detection and what happens on timeout                                                |
 | `storage`                | `AuthClientStorageLike`              | IndexedDB                  | Persistent storage backend for the session key and delegation                                                      |
 | `keyType`                | `"ECDSA" \| "Ed25519"`               | `"ECDSA"`                  | Session key algorithm; use `"Ed25519"` when the storage backend cannot hold a `CryptoKey`                          |
 | `windowOpenerFeatures`   | `string`                             | –                          | `window.open` features string for the identity provider popup                                                      |
@@ -154,12 +154,16 @@ serves neither — rather than opening a popup the app cannot see into.
 </Aside>
 
 <Aside type="caution">
-  Idle detection is on by default: after 10 minutes without activity the
-  underlying client signs the user out **and reloads the page**. Pass
+  Idle handling depends on the installed `@icp-sdk/auth` major. On v8, idle
+  detection is on by default: after 10 minutes without activity the underlying
+  client signs the user out **and reloads the page**. Pass
   `idleOptions: { disableIdle: true }` to turn it off,
   `idleOptions: { idleTimeout: 30 * 60_000 }` to lengthen it, or
   `idleOptions: { disableDefaultIdleCallback: true, onIdle: … }` to keep the
-  detection but handle the timeout yourself.
+  detection but handle the timeout yourself. v10 drops `idleOptions` with a
+  warning and leaves the idle limit to the identity provider: pass
+  `maxTimeToIdle` to `login()` to set it, and `disableBrowserActivity: true` if
+  only requests should count as activity.
 </Aside>
 
 ### Auto-Detected Identity Provider

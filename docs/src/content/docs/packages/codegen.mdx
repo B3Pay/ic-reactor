@@ -37,6 +37,9 @@ await runCanisterPipeline({
     name: "backend",
     didFile: "./backend/backend.did",
     mode: "DisplayReactor",
+    // Written into index.generated.ts. Without it the generated reactor throws
+    // on import anywhere but a local replica with an ic_env cookie.
+    canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
   },
   projectRoot: process.cwd(),
   globalConfig: {
