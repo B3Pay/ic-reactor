@@ -1,4 +1,5 @@
 import type {
+  Agent,
   CallConfig,
   PollingOptions,
   ReadStateOptions,
@@ -21,7 +22,7 @@ import type {
   CanisterId,
 } from "./types/reactor.js"
 
-import { DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
+import { AnonymousIdentity, DEFAULT_POLLING_OPTIONS } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import {
@@ -36,6 +37,23 @@ import {
 } from "./utils/agent.js"
 import { CallError, CanisterError, ValidationError } from "./errors/index.js"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
+
+/**
+ * A fresh `AnonymousIdentity` when `agent` currently signs as the anonymous
+ * principal, which it then signs exactly like, and `undefined` otherwise:
+ * another identity cannot be read back from the agent, and one it cannot
+ * report (after `invalidateIdentity()`) must keep failing the call.
+ */
+async function anonymousIfAgentIs(
+  agent: Pick<Agent, "getPrincipal">
+): Promise<AnonymousIdentity | undefined> {
+  try {
+    const principal = await agent.getPrincipal()
+    return principal.isAnonymous() ? new AnonymousIdentity() : undefined
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * Reactor class for interacting with IC canisters.
@@ -579,7 +597,17 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     // transforms keep working — which used to mean a sign-in or sign-out
     // part-way through re-signed the read_state of a call that had already been
     // submitted, and the replica answered 403 for a call that had committed.
-    const identity = callConfig?.agent ? undefined : this.clientManager.identity
+    //
+    // Before the first `updateAgent` nothing is installed, and the agent signs
+    // as whatever it holds: usually the anonymous identity it starts with, as
+    // `AuthenticationManager` leaves an anonymous session off the agent. A
+    // call submitted then went unpinned, so the first sign-in of every visitor
+    // could still re-sign its polls. While the agent is anonymous, a fresh
+    // `AnonymousIdentity` signs exactly as it does, so the call is pinned to
+    // one. Any other identity it holds cannot be read back, and is left as is.
+    const identity = callConfig?.agent
+      ? undefined
+      : (this.clientManager.identity ?? (await anonymousIfAgentIs(agent)))
 
     const callOptions = {
       methodName,

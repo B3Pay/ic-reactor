@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { QueryClient } from "@tanstack/query-core"
-import { LookupPathStatus } from "@icp-sdk/core/agent"
-import type { Agent, PollingOptions } from "@icp-sdk/core/agent"
+import { IdentityInvalidErrorCode, LookupPathStatus } from "@icp-sdk/core/agent"
+import type { Agent, AgentError, PollingOptions } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { IDL } from "@icp-sdk/core/candid"
 import type { Principal } from "@icp-sdk/core/principal"
 import { ClientManager } from "../src/client.js"
+import type { CallError } from "../src/errors/index.js"
 import { Reactor } from "../src/reactor.js"
 import { pinPollingIdentity } from "../src/utils/agent.js"
 
@@ -224,5 +225,114 @@ describe("poll-time identity pinning", () => {
 
       expect(readState.mock.calls[0][3]).toBe(theirs)
     })
+  })
+})
+
+/**
+ * Pinning covered only an identity installed with `updateAgent`. An app starts
+ * anonymous, and `AuthenticationManager` deliberately skips `updateAgent` when
+ * it restores an anonymous session, so nothing is installed until the first
+ * sign-in. A call submitted anonymously before that went unpinned, and a
+ * sign-in while it polled re-signed its request_status reads as the new user.
+ * The replica only answers the original sender, so a call that committed was
+ * reported as failed: the #248 failure, on the first sign-in of every visitor.
+ */
+describe("poll-time identity pinning before any updateAgent", () => {
+  let clientManager: ClientManager
+
+  const transfer = () =>
+    new Reactor({
+      clientManager,
+      name: "ledger",
+      canisterId: CANISTER_ID,
+      idlFactory,
+      pollingOptions,
+    })
+      .callMethod({ functionName: "transfer" as never })
+      .catch(() => undefined)
+
+  /**
+   * Who signs each poll: the sender of the request it was handed or, when it
+   * was handed none, whoever the agent holds as it goes out. The first poll
+   * runs `duringFirstPoll`.
+   */
+  const recordPollSigners = (duringFirstPoll: () => void) => {
+    const signers: string[] = []
+    vi.spyOn(clientManager.agent, "readState").mockImplementation(
+      async (_target, _fields, _identity, request) => {
+        signers.push(
+          request
+            ? senderOf(request)
+            : (await clientManager.agent.getPrincipal()).toText()
+        )
+        if (signers.length > 1) throw new Error("stop after the second poll")
+        duringFirstPoll()
+        return stillPending() as never
+      }
+    )
+    return signers
+  }
+
+  beforeEach(() => {
+    clientManager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: "https://icp-api.io" },
+    })
+  })
+
+  it("keeps an anonymous call's polls anonymous across the first sign-in", async () => {
+    vi.spyOn(clientManager.agent, "call").mockResolvedValue(accepted() as never)
+    const signers = recordPollSigners(() =>
+      clientManager.updateAgent(Ed25519KeyIdentity.generate())
+    )
+
+    await transfer()
+
+    expect(signers).toEqual(["2vxsx-fae", "2vxsx-fae"])
+  })
+
+  it("does not pin over an identity put on the agent directly", async () => {
+    // Guard: the anonymous pin applies only while the agent really is
+    // anonymous. An identity installed by `agent.replaceIdentity`, bypassing
+    // `updateAgent`, still signs the call as before.
+    const direct = Ed25519KeyIdentity.generate()
+    clientManager.agent.replaceIdentity(direct)
+    const call = vi
+      .spyOn(clientManager.agent, "call")
+      .mockResolvedValue(accepted() as never)
+    const signers = recordPollSigners(() => undefined)
+
+    await transfer()
+
+    expect(call.mock.calls[0][2]).toBeUndefined()
+    expect(signers[0]).toBe(direct.getPrincipal().toText())
+  })
+
+  it("still refuses to call with an invalidated identity", async () => {
+    // Guard: `invalidateIdentity()` stops calls; the pin must not revive them
+    // as anonymous.
+    const fetch = vi.fn(async () => new Response(null, { status: 500 }))
+    clientManager = new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: "https://icp-api.io", fetch, retryTimes: 0 },
+    })
+    clientManager.agent.invalidateIdentity()
+
+    const error = await new Reactor({
+      clientManager,
+      name: "ledger",
+      canisterId: CANISTER_ID,
+      idlFactory,
+    })
+      .callMethod({ functionName: "transfer" as never })
+      .catch((caught: unknown) => caught)
+
+    expect((error as CallError).cause).toMatchObject({ name: "ExternalError" })
+    expect(
+      ((error as CallError).cause as AgentError).hasCode(
+        IdentityInvalidErrorCode
+      )
+    ).toBe(true)
+    expect(fetch).not.toHaveBeenCalled()
   })
 })
