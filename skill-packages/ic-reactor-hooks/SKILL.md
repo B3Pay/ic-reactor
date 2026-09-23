@@ -37,10 +37,10 @@ This skill should match requests about:
    client-only apps**. On a server (SSR/RSC/Next.js), build one set per request
    instead — inside a `useState` initializer in a provider component, so it is
    created once per render tree rather than on every render — because a reactor
-   owns its `QueryClient`, query keys carry no caller principal, and
-   `AuthenticationManager` holds mutable identity state, so a module-scope set
-   serves one visitor's caller-scoped data to the next. See
-   `examples/nextjs/src/service/provider.tsx`.
+   owns its `QueryClient` and query keys carry no caller principal, so a
+   module-scope set serves one visitor's caller-scoped data to the next. The
+   `AuthenticationManager` goes with its per-request `ClientManager`, whose agent
+   it signs in on. See `examples/nextjs/src/service/provider.tsx`.
 4. Choose the smallest abstraction that fits:
    - `defineReactor(...)` for one-call setup (reactor + hooks + shared infra)
    - `createActorHooks(...)` for generic hook access
