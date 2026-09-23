@@ -4,6 +4,8 @@ import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { ClientManager } from "../src/client.js"
 import { Reactor } from "../src/reactor.js"
+import { DisplayReactor } from "../src/display-reactor.js"
+import { ValidationError } from "../src/errors/index.js"
 
 /**
  * A method typed by a recursive func alias, as didc emits for
@@ -95,5 +97,40 @@ describe("Reactor with a method typed by a recursive func alias", () => {
 
     expect(call).toHaveBeenCalledTimes(2)
     expect(cached[1]).toBe("notify")
+  })
+})
+
+describe("DisplayReactor with a zero-argument method typed by a recursive func alias", () => {
+  // `type next = func () -> (next)`: called without `args`, the method's
+  // validator must see `[]`, as for any method that takes no arguments. It
+  // was skipped because the alias looked like a method with arguments.
+  const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
+    const next = IDL.Rec()
+    next.fill(IDL.Func([], [next], []))
+    return IDL.Service({ a_next: next as unknown as IDL.FuncClass })
+  }
+
+  it("runs the method's validator when args are omitted", async () => {
+    const reactor = new DisplayReactor<any>({
+      clientManager: new ClientManager({
+        queryClient: new QueryClient(),
+        agentOptions: { host: "https://icp-api.io" },
+      }),
+      name: "recursive",
+      canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+      idlFactory,
+    })
+    const call = vi.spyOn(reactor as any, "executeCall")
+    const validator = vi.fn(() => ({
+      success: false as const,
+      issues: [{ path: [], message: "not now" }],
+    }))
+    reactor.registerValidator("a_next", validator)
+
+    await expect(
+      reactor.callMethod({ functionName: "a_next" })
+    ).rejects.toThrow(ValidationError)
+    expect(validator).toHaveBeenCalledWith([])
+    expect(call).not.toHaveBeenCalled()
   })
 })
