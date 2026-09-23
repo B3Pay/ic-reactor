@@ -713,11 +713,19 @@ export class AuthenticationManager {
       return
     }
 
-    const identity = await this.authClient.getIdentity()
+    const clientIdentity = await this.authClient.getIdentity()
     const isAuthenticated = await this.authClient.isAuthenticated()
     if (revision !== this.authStateRevision) {
       return
     }
+    // The rule `authenticate()` applies. A caller-built client can outlive
+    // the manager it was first given to, and once its session has lapsed it
+    // still hands out the lapsed identity while no longer vouching for it.
+    // Nothing may be signed with that.
+    const identity =
+      isAuthenticated || clientIdentity.getPrincipal().isAnonymous()
+        ? clientIdentity
+        : new AnonymousIdentity()
     this.clientManager.updateAgent(identity)
     this.updateState({
       identity,
