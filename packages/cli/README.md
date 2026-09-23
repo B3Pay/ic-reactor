@@ -84,14 +84,13 @@ Options:
   --bindgen-only         Generate only the declarations/ files
 ```
 
-The `declarations/` directory is removed and rewritten on every run, so
-configured canisters never need cleaning. What no run rewrites is the directory
-of a canister that was renamed or dropped from the config: `--clean` removes
-those, and only those. It leaves the output of configured canisters alone —
-including the `index.ts` you own — and never deletes a directory that carries no
-generated file, since `outDir` usually holds hand-written code as well. It is
-skipped for `--canister <name>` runs, which cannot tell stale output from
-another canister's current output.
+Every run brings `declarations/` up to date, so configured canisters never need
+cleaning. What no run updates is the directory of a canister that was renamed
+or dropped from the config: `--clean` removes those, and only those. It leaves
+the output of configured canisters alone — including the `index.ts` you own —
+and never deletes a directory that carries no generated file, since `outDir`
+usually holds hand-written code as well. It is skipped for `--canister <name>`
+runs, which cannot tell stale output from another canister's current output.
 
 A malformed `ic-reactor.json` fails the command with an error naming the file
 and the offending field, rather than a stack trace or a silent skip.
@@ -108,6 +107,9 @@ For each canister, the CLI writes into `<outDir>/<canister>/`:
 
 `<did-basename>` is the file name of the `.did` source without its extension —
 it matches the canister name only when the two happen to be the same.
+
+A file whose content has not changed is not rewritten, so regenerating from an
+unchanged `.did` and config leaves every file untouched.
 
 If Prettier resolves from the directory holding `ic-reactor.json`, the CLI
 formats the `.js`, `.d.ts`, `index.generated.ts` and the `index.ts` wrapper it

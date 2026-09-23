@@ -39,7 +39,7 @@ export function buildProgram(): Command {
     )
     .option(
       "--bindgen-only",
-      "Generate only .did, .did.d.ts, and .js declarations"
+      "Generate only the declarations/ files: .js, .d.ts and a copy of the .did"
     )
     .action(generateCommand)
 
