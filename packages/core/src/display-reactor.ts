@@ -59,7 +59,8 @@ function methodDisplayCodecs(methodType: IDL.Type): {
  * ### Type Transformations
  * - `bigint` → `string` (for JSON/UI display)
  * - `Principal` → `string` (text representation)
- * - `[T] | []` → `T | null` (optional unwrapping)
+ * - `[T] | []` → `T | undefined` (optional unwrapping; `null` is also
+ *   accepted as none in arguments)
  * - Blobs (`vec nat8`) → hex strings, at every size
  *
  * ### Validation (Optional)

@@ -16,7 +16,7 @@ Candid (the IC's interface description language) has its own type system that do
 
 - `bigint` values can't be displayed directly in templates or serialized to JSON
 - `Principal` objects need `.toText()` every time you display them
-- Optional values are arrays (`[value]` or `[]`) instead of `value | null`
+- Optional values are arrays (`[value]` or `[]`) instead of `value | undefined`
 - Variants use object keys instead of discriminators
 
 **DisplayReactor handles all these transformations automatically**, in both directions. You work with clean, JavaScript-native types in your UI, and DisplayReactor converts them to Candid when calling the canister and back to display format when receiving results.
@@ -54,7 +54,7 @@ Candid types don't always map directly to JavaScript types that are easy to work
   metadata: [["a", 1], ["b", 2]],    // Array of tuples, not a Map
   status: { Active: null },          // Variant with null value
   avatar: Uint8Array([...]),         // Binary data
-  description: [],                   // Empty array means "null" (opt type)
+  description: [],                   // Empty array means none (opt type)
 }
 ```
 
@@ -81,7 +81,7 @@ You'd normally need to write conversion logic everywhere in your app:
   metadata: { "a": 1, "b": 2 },         // Plain Object - simple access
   status: { _type: "Active" },          // Normalized variant
   avatar: "89504e47...",                // Blobs → hex string, at every size
-  description: null,                    // null instead of []
+  description: undefined,               // undefined instead of []
 }
 ```
 
@@ -181,12 +181,12 @@ const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
 #### Container Types
 
-| Candid           | TypeScript      | Display                | Notes                          |
-| ---------------- | --------------- | ---------------------- | ------------------------------ |
-| `opt T`          | `[T] \| []`     | `T \| null`            | Nullish instead of empty array |
-| `vec T`          | `T[]`           | `Display<T>[]`         | Elements are transformed       |
-| `vec (text, T)`  | `[string, T][]` | `{ [key: string]: T }` | Key-value pairs as Object      |
-| `record { ... }` | `{ ... }`       | `{ ... }`              | Nested fields transformed      |
+| Candid           | TypeScript      | Display                | Notes                                        |
+| ---------------- | --------------- | ---------------------- | -------------------------------------------- |
+| `opt T`          | `[T] \| []`     | `T \| undefined`       | None is `undefined`; input also takes `null` |
+| `vec T`          | `T[]`           | `Display<T>[]`         | Elements are transformed                     |
+| `vec (text, T)`  | `[string, T][]` | `{ [key: string]: T }` | Key-value pairs as Object                    |
+| `record { ... }` | `{ ... }`       | `{ ... }`              | Nested fields transformed                    |
 
 #### Variant Types
 

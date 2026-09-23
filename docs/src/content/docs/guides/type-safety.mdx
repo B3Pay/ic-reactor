@@ -189,7 +189,7 @@ With `DisplayReactor`, types are automatically transformed:
 | `nat8/16/32`, `int8/16/32` | `number`       | `number` (unchanged; accepts a numeric `string`) |
 | `principal`                | `Principal`    | `string`                                         |
 | `blob`                     | `Uint8Array`   | `string` (hex, at every size)                    |
-| `opt T`                    | `[T] \| []`    | `T \| null`                                      |
+| `opt T`                    | `[T] \| []`    | `T \| undefined` (input also takes `null`)       |
 
 <Aside type="note">
   The hex string a blob decodes to is a plain `string` with no `0x` prefix,
