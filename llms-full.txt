@@ -416,10 +416,13 @@ A reactor owns its `QueryClient`, and query keys are
 `[canisterId, functionName, args]` with no caller principal. A module-scope
 reactor on a server is therefore shared by every request, so a cached
 caller-scoped result (`get_my_balance`, deposit address, `my_profile`) is served
-to the next request. `AuthenticationManager` holds mutable identity state too,
-so a shared one carries one visitor's sign-in into another's request. (The auth
-hooks themselves render a fixed signed-out state on the server, so they no
-longer show whatever a shared manager holds.)
+to the next request. `AuthenticationManager` is built from a `ClientManager` and
+signs in on that manager's agent, so it belongs in the same request as its
+`ClientManager`. On the server it loads no auth client and stays signed out
+unless app code signs in there, and a module-scope one would then leave that
+identity on the agent every request signs with. (The auth hooks themselves
+render a fixed signed-out state on the server, so they no longer show whatever
+a shared manager holds.)
 
 Under SSR/RSC, construct the reactor, `ClientManager`, and
 `AuthenticationManager` inside the request. A bare call in a module body is still

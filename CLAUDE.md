@@ -78,9 +78,12 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
   scope. A reactor owns its `QueryClient` and query keys carry no caller
   principal, so a module-scope reactor shares one cache across all requests and
   can serve one user's caller-scoped data to another. `AuthenticationManager`
-  holds mutable identity state too, so a shared one carries one visitor's
-  sign-in into another's request. (The auth hooks themselves render a fixed
-  signed-out state on the server.)
+  is built from a `ClientManager` and signs in on that manager's agent, so it
+  belongs in the same request as its `ClientManager`. On the server it loads
+  no auth client and stays signed out unless app code signs in there, and a
+  module-scope one would then leave that identity on the agent every request
+  signs with. (The auth hooks themselves render a fixed signed-out state on
+  the server.)
   A bare `defineReactor(...)` in a module body is still module scope. Construct
   in a `useState` initializer inside a provider, which runs once per mounted
   tree — and a server render is its own tree. Reference implementation:
