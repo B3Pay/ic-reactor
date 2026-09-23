@@ -26,7 +26,11 @@ import {
   FunctionType,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { normalizeQueryData, useMountQueryClient } from "../utils.js"
+import {
+  normalizeQueryData,
+  pickFetchOptions,
+  useMountQueryClient,
+} from "../utils.js"
 
 /**
  * Configuration for useActorMethod hook.
@@ -322,6 +326,7 @@ export function useActorMethod<
     dataUpdatedAt,
     errorUpdatedAt,
     isPlaceholderData,
+    isFetched,
   } = queryResult
 
   useEffect(() => {
@@ -330,11 +335,15 @@ export function useActorMethod<
     // it: it is the `placeholderData` option, or with `keepPreviousData` the
     // previous args' result standing in while this call is in flight.
     if (isPlaceholderData) return
+    // So does `initialData`: an entry starts with it, and `reset()` puts it
+    // back, before any fetch of the entry has settled. The first fetch that
+    // settles makes the entry fetched, and its result is reported below.
+    if (!isFetched) return
     if (status === "success" && dataUpdatedAt !== notifiedSuccessAt.current) {
       notifiedSuccessAt.current = dataUpdatedAt
       onSuccessRef.current?.(data)
     }
-  }, [isQuery, status, data, dataUpdatedAt, isPlaceholderData])
+  }, [isQuery, status, data, dataUpdatedAt, isPlaceholderData, isFetched])
 
   useEffect(() => {
     if (!isQuery) return
@@ -454,7 +463,17 @@ export function useActorMethod<
         // is TanStack's `CancelledError`, or, when the entry had data, the
         // data it reverted to, which `fetchQuery` resolves with instead.
         try {
-          const result = await reactor.queryClient.fetchQuery<TQueryData>({
+          const result = await reactor.queryClient.fetchQuery<
+            TQueryData,
+            ReactorReturnErr<Service, Method, Transform>
+          >({
+            // The options the hook's own fetches run with: `retry`,
+            // `retryDelay`, `networkMode` and `meta`. With only a key and a
+            // function, a call ran on the QueryClient's defaults. It failed on
+            // the first error the hook retried through, stayed paused offline
+            // under `networkMode: "always"`, and reached the QueryCache
+            // callbacks without the hook's `meta`.
+            ...pickFetchOptions(queryOptions),
             queryKey: calledKey,
             // Normalize for the same reason as the observer's queryFn.
             queryFn: async () =>
