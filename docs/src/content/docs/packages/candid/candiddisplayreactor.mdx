@@ -178,11 +178,14 @@ await reactor.registerMethods([
 
 ## Validation (Inherited from DisplayReactor)
 
-Add form validation that works with display types:
+Add form validation that works with display types. A reactor created without a
+service type passes its validators `unknown`, so name the display shape you
+expect:
 
 ```typescript
 // Register a validator
-reactor.registerValidator("transfer", ([input]) => {
+reactor.registerValidator("transfer", (args) => {
+  const [input] = args as [{ to: string; amount: string }]
   const issues = []
 
   // input.to is string (not Principal)
@@ -315,8 +318,9 @@ const reactor = new CandidDisplayReactor({
 
 await reactor.initialize()
 
-// Add form validation
-reactor.registerValidator("transfer", ([input]) => {
+// Add form validation (the untyped reactor passes `unknown` args)
+reactor.registerValidator("transfer", (args) => {
+  const [input] = args as [{ to: string; amount: string }]
   if (!input.to || input.to.length < 5) {
     return {
       success: false,
@@ -354,7 +358,8 @@ async function handleSubmit(formData: { to: string; amount: string }) {
 ### React Integration
 
 ```tsx
-import { useQuery, useMutation } from "@tanstack/react-query"
+import { useMemo } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { CandidDisplayReactor } from "@ic-reactor/candid"
 
 // Create a reusable hook for dynamic canister queries
@@ -366,15 +371,22 @@ function useDynamicBalance(reactor: CandidDisplayReactor, owner: string) {
         functionName: "icrc1_balance_of",
         candid: "(record { owner : principal }) -> (nat) query",
       })
-      return reactor.callMethod({
+      // An untyped reactor returns `unknown`; a nat displays as a string
+      return (await reactor.callMethod({
         functionName: "icrc1_balance_of" as any,
         args: [{ owner }], // String input
-      })
+      })) as string
     },
   })
 }
 
-function BalanceDisplay({ canisterId, owner }: Props) {
+function BalanceDisplay({
+  canisterId,
+  owner,
+}: {
+  canisterId: string
+  owner: string
+}) {
   const reactor = useMemo(
     () =>
       new CandidDisplayReactor({

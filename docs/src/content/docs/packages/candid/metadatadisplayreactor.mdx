@@ -248,11 +248,11 @@ The `resolve()` method transforms raw canister responses into display-ready stru
 // Raw canister response
 const rawResult = { Ok: 1000000000n } // bigint
 
-// Get metadata
+// Get metadata (undefined for a method the service does not have)
 const meta = reactor.getOutputMeta("icrc1_transfer")
 
 // Resolve to display types
-const resolved = meta.resolve(rawResult)
+const resolved = meta?.resolve(rawResult)
 // resolved = {
 //   functionType: "update",
 //   functionName: "icrc1_transfer",
@@ -354,6 +354,7 @@ console.log(methods) // ["icrc1_balance_of", "icrc1_transfer", ...]
 ```typescript
 // Get input metadata for a method
 const inputMeta = reactor.getInputMeta("icrc1_transfer")
+if (!inputMeta) throw new Error("icrc1_transfer is not in the service")
 
 console.log(inputMeta.functionName) // "icrc1_transfer"
 console.log(inputMeta.functionType) // "update"
@@ -383,12 +384,14 @@ import { useForm } from '@tanstack/react-form'
 
 // Get metadata
 const inputMeta = reactor.getInputMeta("icrc1_transfer")
+if (!inputMeta) throw new Error("icrc1_transfer is not in the service")
+const { args, defaults, schema } = inputMeta
 
 // Create form with metadata
 const form = useForm({
-  defaultValues: inputMeta.defaults,
+  defaultValues: defaults,
   validators: {
-    onBlur: inputMeta.schema  // Zod schema
+    onBlur: schema  // Zod schema
   },
   onSubmit: async ({ value }) => {
     const result = await reactor.callMethod({
@@ -403,7 +406,7 @@ const form = useForm({
 function DynamicForm() {
   return (
     <form onSubmit={(e) => { e.preventDefault(); form.handleSubmit() }}>
-      {inputMeta.args.map((field, index) => (
+      {args.map((field, index) => (
         <form.Field key={index} name={`[${index}]`}>
           {(fieldApi) => (
             <DynamicFieldInput field={field} fieldApi={fieldApi} />

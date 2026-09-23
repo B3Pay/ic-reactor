@@ -57,6 +57,7 @@ export interface CandidDisplayReactorParameters<A = BaseActor> extends Omit<
    * @example
    * ```typescript
    * const archiveReactor = new CandidDisplayReactor({
+   *   name: "archive",
    *   canisterId: archived.canisterId,
    *   clientManager,
    *   funcClass: { methodName: "get_blocks", func: archiveFuncClass },

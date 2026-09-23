@@ -199,21 +199,29 @@ function availableOptions(options: Array<{ label: string }>): string {
  * ```typescript
  * import { useForm } from '@tanstack/react-form'
  * import { FieldVisitor } from '@ic-reactor/candid'
+ * import { didToDisplayCodec } from '@ic-reactor/core'
+ * import { IDL } from '@icp-sdk/core/candid'
  *
  * const visitor = new FieldVisitor()
- * const serviceMeta = service.accept(visitor, null)
+ * const serviceMeta = visitor.visitService(service)
  * const methodMeta = serviceMeta["icrc1_transfer"]
+ * const { argTypes } = service.fieldsAsObject()["icrc1_transfer"]
+ * const argsCodec = didToDisplayCodec(IDL.Tuple(...argTypes))
  *
  * const form = useForm({
- *   defaultValues: methodMeta.defaultValue,
+ *   defaultValues: methodMeta.defaults,
  *   validators: { onBlur: methodMeta.schema },
  *   onSubmit: async ({ value }) => {
- *     await actor.icrc1_transfer(...value)
+ *     // The form holds display values; the actor takes Candid values
+ *     const args = argsCodec.asCandid(value) as Parameters<
+ *       typeof actor.icrc1_transfer
+ *     >
+ *     await actor.icrc1_transfer(...args)
  *   }
  * })
  *
  * // Render fields dynamically
- * methodMeta.fields.map((field, index) => (
+ * methodMeta.args.map((field, index) => (
  *   <form.Field key={index} name={field.name}>
  *     {(fieldApi) => <DynamicInput field={field} fieldApi={fieldApi} />}
  *   </form.Field>

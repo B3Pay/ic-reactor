@@ -37,6 +37,7 @@ import { IDL } from "@icp-sdk/core/candid"
  * import { CandidDisplayReactor } from "@ic-reactor/candid"
  *
  * const reactor = new CandidDisplayReactor({
+ *   name: "ledger",
  *   clientManager,
  *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
  * })
@@ -46,6 +47,7 @@ import { IDL } from "@icp-sdk/core/candid"
  *
  * // Or provide Candid source directly
  * const reactor2 = new CandidDisplayReactor({
+ *   name: "greeter",
  *   clientManager,
  *   canisterId: "...",
  *   candid: `service : { greet : (text) -> (text) query }`
@@ -58,8 +60,10 @@ import { IDL } from "@icp-sdk/core/candid"
  *   args: [{ to: "aaaaa-aa", amount: "1000000" }] // strings!
  * })
  *
- * // Add validation
- * reactor.registerValidator("transfer", ([input]) => {
+ * // Add validation. Without a service type the validator gets `unknown`
+ * // args, so name the display shape it checks.
+ * reactor.registerValidator("transfer", (args) => {
+ *   const [input] = args as [{ to: string; amount: string }]
  *   if (!input.to) {
  *     return { success: false, issues: [{ path: ["to"], message: "Required" }] }
  *   }
@@ -114,6 +118,7 @@ export class CandidDisplayReactor<
    * @example
    * ```typescript
    * const reactor = new CandidDisplayReactor({
+   *   name: "ledger",
    *   clientManager,
    *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
    * })
