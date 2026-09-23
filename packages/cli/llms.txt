@@ -21,6 +21,14 @@ rather than replacing it.
 - Primary config file: `ic-reactor.json`
 - JSON Schema: `./node_modules/@ic-reactor/cli/schema.json`
 - Key fields: `outDir`, `clientManagerPath`, `target`, `canisters`
+- Per canister: `name`, `didFile` (required), `outDir`, `clientManagerPath`,
+  `target`, `mode`, `canisterId`
+
+Set `canisterId` for any build not served from a local replica. Without it the
+generated reactor reads its id from the `ic_env` cookie, which a
+`ClientManager` trusts only on a local replica (or with `allowEnvConfig: true`),
+so importing the generated module throws `canisterId is required` in Node,
+during SSR and on a deployed origin.
 
 The config is validated before generation; violations throw `CodegenConfigError`.
 `outDir` must resolve inside the project root. Canister names must match
