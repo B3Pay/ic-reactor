@@ -104,7 +104,8 @@ const greeting = await backend.callMethod({
   args: ["World"],
 })
 
-// Fetch with caching
+// Fetch with caching: cache-first, so a cached value is returned even if
+// it is stale or was invalidated
 const cachedGreeting = await backend.fetchQuery({
   functionName: "greet",
   args: ["World"],
@@ -116,7 +117,8 @@ const fromCache = backend.getQueryData({
   args: ["World"],
 })
 
-// Invalidate cache
+// Invalidate cache: mounted queries refetch; fetchQuery still returns the
+// cached value until one of them has refetched
 backend.invalidateQueries({ functionName: "greet" })
 ```
 

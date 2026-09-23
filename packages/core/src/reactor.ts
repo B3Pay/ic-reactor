@@ -471,8 +471,12 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   }
 
   /**
-   * Fetch data from the canister and cache it using React Query.
-   * This method ensures the data is in the cache and returns it.
+   * Returns the cached value for the call, or fetches and caches it when there
+   * is none. Like TanStack Query's `ensureQueryData`, it is cache-first: a
+   * cached value is returned even when it is stale or was invalidated, and a
+   * `staleTime` in `options` has no effect. For a value the canister returns
+   * now, use {@link callMethod} or `queryClient.fetchQuery` with the options
+   * from {@link getQueryOptions}.
    *
    * @param options - Further TanStack Query options for the fetch, such as
    * `retry`, `networkMode` or `meta`. The query key and function always come

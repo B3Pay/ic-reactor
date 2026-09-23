@@ -463,7 +463,21 @@ const result = await backend.fetchQuery({
 })
 ```
 
-This method ensures the data is in the cache (fetching it if necessary) and returns it. It respects the standard React Query caching behavior.
+This method is cache-first, like TanStack Query's `ensureQueryData`. When the
+cache holds a value for the call, that value is returned without a network
+request, even if it is stale or was invalidated. Only when there is no cached
+value does it call the canister and cache the result. A `staleTime` passed in
+the options has no effect.
+
+To get a value the canister returns now, call `callMethod` (no cache), or use
+the query client's own `fetchQuery`, which refetches when the entry is stale:
+
+```typescript
+const fresh = await backend.queryClient.fetchQuery({
+  ...backend.getQueryOptions({ functionName: "getUser", args: ["user-123"] }),
+  staleTime: 0,
+})
+```
 
 An optional second argument passes further TanStack Query options for the
 fetch, such as `retry`, `networkMode` or `meta`. The query key and function
