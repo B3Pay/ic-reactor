@@ -111,6 +111,11 @@ export interface FakeIdentityProvider {
    * text and keep the session, as the canister does when it fails to write.
    */
   setRevokeError(message: string | null): void
+  /**
+   * Make `http_request` answer 404 for every path, as a build from
+   * release-2026-03-23 onward does once its frontend has left the canister.
+   */
+  setSignInPageServed(served: boolean): void
   restore(): void
 }
 
@@ -182,6 +187,7 @@ export function installFakeIdentityProvider(
   let attributesError = options.attributesError ?? null
   let signInError: JsonRpcError | null = null
   let revokeError: string | null = null
+  let signInPageServed = true
 
   const openedUrls: string[] = []
   const windows: FakeSignerWindow[] = []
@@ -512,7 +518,7 @@ export function installFakeIdentityProvider(
         case "http_request": {
           // The sign-in page a local AuthenticationManager probes for.
           return encodeOne(HttpResponse, {
-            status_code: 200,
+            status_code: signInPageServed ? 200 : 404,
             headers: [],
             body: new Uint8Array(),
           })
@@ -550,6 +556,9 @@ export function installFakeIdentityProvider(
     },
     setRevokeError(message) {
       revokeError = message
+    },
+    setSignInPageServed(served) {
+      signInPageServed = served
     },
     restore() {
       window.open = originalOpen

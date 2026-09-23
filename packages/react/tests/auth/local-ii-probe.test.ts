@@ -122,4 +122,29 @@ describe("localInternetIdentityUnavailableError", () => {
     // The whole point is that the user learns why, not just that it failed.
     expect(error.message).toContain("id.ai split")
   })
+
+  it("defaults to the v8 advice when no major is passed", () => {
+    expect(
+      localInternetIdentityUnavailableError(CANISTER_ID, "legacy").message
+    ).toBe(localInternetIdentityUnavailableError(CANISTER_ID).message)
+  })
+
+  it("does not send a v10 client to a build that cannot mint its sessions", () => {
+    // v10 signs in through `ii_session_delegation` and mints with
+    // `app_prepare_delegation`, which II gained after its frontend left the
+    // canister. release-2026-03-16 serves /authorize but has neither (#561).
+    const { message } = localInternetIdentityUnavailableError(
+      CANISTER_ID,
+      "session"
+    )
+
+    expect(message).toContain(CANISTER_ID)
+    expect(message).not.toContain("release-2026-03-16")
+    expect(message).toContain(
+      "needs an Internet Identity frontend served separately"
+    )
+    // v10 names a provider by its authorize URL and the canister that mints.
+    expect(message).toContain("`identityProvider`")
+    expect(message).toContain("`internetIdentityId`")
+  })
 })

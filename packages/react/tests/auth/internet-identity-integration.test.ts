@@ -337,6 +337,20 @@ describe("identity provider resolution", () => {
     )
   })
 
+  it("explains a local II with no sign-in page for the installed major", async () => {
+    // The build the v8 advice names serves /authorize but predates the calls a
+    // v10 sign-in makes, so a v10 app needs the frontend served separately.
+    provider.setSignInPageServed(false)
+    const { authentication } = createManager()
+
+    await expect(authentication.prepareClient()).rejects.toThrow(
+      isV10
+        ? "needs an Internet Identity frontend served separately"
+        : "Install internet_identity_dev.wasm from release-2026-03-16"
+    )
+    expect(provider.openCount).toBe(0)
+  })
+
   it("honours an explicit identityProvider", async () => {
     const { authentication } = createManager(
       {

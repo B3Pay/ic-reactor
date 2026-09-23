@@ -210,7 +210,19 @@ export class AuthenticationManager {
     // An inconclusive probe must not change behaviour: the canister may be
     // fine and merely unreachable from here, and a diagnostic that blocks a
     // working login is worse than the failure it explains.
-    this.localAuthorizePath = inconclusive ? "/authorize" : path
+    const authorizePath = inconclusive ? "/authorize" : path
+
+    // With no sign-in UI, login fails with advice that depends on the
+    // installed @icp-sdk/auth major. A client IC Reactor builds itself shows
+    // its major only once the module has loaded, and that import is usually
+    // still in flight when the probe answers. Wait for it before recording the
+    // finding, so nothing reads `null` while the flavor still holds its
+    // `legacy` default and hands a v10 app the v8 advice.
+    if (authorizePath === null && !this.authClientWasProvided) {
+      await this.loadAuthClientConstructor().catch(() => undefined)
+    }
+
+    this.localAuthorizePath = authorizePath
 
     if (path === "/#authorize" && !inconclusive) {
       console.warn(
@@ -754,7 +766,10 @@ export class AuthenticationManager {
     // it, instead of opening a popup onto the gateway's verification-error page
     // and leaving the app waiting until the user closes it.
     if (this.localAuthorizePath === null) {
-      throw localInternetIdentityUnavailableError(canisterId)
+      throw localInternetIdentityUnavailableError(
+        canisterId,
+        this.authClientFlavor
+      )
     }
 
     return localInternetIdentityProvider(
