@@ -46,6 +46,42 @@ describe("Reactor generator", () => {
     expect(content).toContain("new MetadataDisplayReactor<LedgerService>")
   })
 
+  // The @ic-reactor/candid classes extend the core ones, so TypeScript could
+  // only infer createActorHooks' type arguments by comparing every member, and
+  // for a large or recursive service that fails with TS2589.
+  // generated-types.test.ts compiles the output.
+  it.each([
+    ["CandidReactor", "candid"],
+    ["CandidDisplayReactor", "display"],
+    ["MetadataDisplayReactor", "metadataDisplay"],
+  ] as const)(
+    "passes createActorHooks its type arguments for %s",
+    (reactorClass, transform) => {
+      const content = generateReactorFile({
+        canisterName: "ledger",
+        didFile: "mock/ledger.did",
+        reactorClass,
+      })
+
+      expect(content).toContain(
+        `} = createActorHooks<LedgerService, "${transform}">(ledgerReactor)`
+      )
+    }
+  )
+
+  it.each(["Reactor", "DisplayReactor"] as const)(
+    "leaves createActorHooks to infer its type arguments for %s",
+    (reactorClass) => {
+      const content = generateReactorFile({
+        canisterName: "ledger",
+        didFile: "mock/ledger.did",
+        reactorClass,
+      })
+
+      expect(content).toContain("} = createActorHooks(ledgerReactor)")
+    }
+  )
+
   it("supports core target generation without React hooks", () => {
     const content = generateReactorFile({
       canisterName: "backend",

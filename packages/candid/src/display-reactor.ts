@@ -170,17 +170,32 @@ export class CandidDisplayReactor<
 
     if (rebuild) codecs.clear()
 
-    for (const [methodName, funcType] of fields) {
+    for (const [methodName, methodType] of fields) {
       // Skip if already exists
       if (codecs.has(methodName)) continue
 
-      const argsIdlType = didTypeFromArray(funcType.argTypes)
-      const retIdlType = didTypeFromArray(funcType.retTypes)
+      // A method typed by a recursive func alias (`type f = func (f) -> (f)`)
+      // is an `IDL.Rec` wrapping the func, with no `argTypes` of its own, as
+      // in core's DisplayReactor. Each method on its own, so one codec that
+      // cannot be built does not fail `initialize()` for the whole service.
+      let funcType: IDL.Type | undefined = methodType
+      while (funcType instanceof IDL.RecClass) funcType = funcType.getType()
+      if (!(funcType instanceof IDL.FuncClass)) {
+        console.error(
+          `Failed to initialize codecs for ${methodName}:`,
+          new Error(`${methodType.display()} is not a function type`)
+        )
+        continue
+      }
 
-      codecs.set(methodName, {
-        args: didToDisplayCodec(argsIdlType),
-        result: didToDisplayCodec(retIdlType),
-      })
+      try {
+        codecs.set(methodName, {
+          args: didToDisplayCodec(didTypeFromArray(funcType.argTypes)),
+          result: didToDisplayCodec(didTypeFromArray(funcType.retTypes)),
+        })
+      } catch (error) {
+        console.error(`Failed to initialize codecs for ${methodName}:`, error)
+      }
     }
   }
 

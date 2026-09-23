@@ -1,6 +1,7 @@
 import * as z from "zod"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
+import { hasLabel } from "../utils/label.js"
 import {
   createVariant,
   nonNullish,
@@ -8,6 +9,140 @@ import {
   hexToUint8Array,
   isNullish,
 } from "../utils/index.js"
+
+/**
+ * A `vec record { text; T }` displays as an object keyed by the text. The key
+ * must really be `text`: any other 2-tuple stays a list of pairs.
+ */
+function isTextKeyedPair(type: IDL.Type): boolean {
+  const fields = type instanceof IDL.TupleClass ? type._fields : undefined
+  return fields?.length === 2 && fields[0][1].name === "text"
+}
+
+/**
+ * Could `value` be the display value of `type`, as the codecs encode it?
+ *
+ * Only a `false` answer is definite. It is given only where the type's codec,
+ * or IDL.encode after it, rejects the value whatever else is true; anything a
+ * codec passes through unchecked answers `true`. That makes it safe for
+ * settling an ambiguity: preferring the other reading when this says `false`
+ * changes nothing that encoded before.
+ */
+function couldBeDisplayOf(type: IDL.Type, value: unknown, depth = 0): boolean {
+  if (depth > 32) return true
+  const isObject = typeof value === "object" && value !== null
+
+  if (type instanceof IDL.RecClass) {
+    const inner = type.getType()
+    return inner ? couldBeDisplayOf(inner, value, depth + 1) : true
+  }
+  if (type instanceof IDL.ReservedClass) return true
+  if (type instanceof IDL.OptClass) {
+    // What the optional codec takes: none, the wrapper around one value, or
+    // the value itself.
+    if (value === undefined || value === null) return true
+    if (Array.isArray(value)) {
+      if (value.length === 0) return true
+      if (
+        value.length === 1 &&
+        couldBeDisplayOf(type._type, value[0], depth + 1)
+      ) {
+        return true
+      }
+    }
+    return couldBeDisplayOf(type._type, value, depth + 1)
+  }
+  if (type instanceof IDL.VecClass) {
+    const elem = type._type
+    if (elem instanceof IDL.FixedNatClass && elem._bits === 8) {
+      // A blob: hex text, bytes, or a plain byte array.
+      return (
+        typeof value === "string" ||
+        value instanceof Uint8Array ||
+        Array.isArray(value)
+      )
+    }
+    if (isTextKeyedPair(elem) && !Array.isArray(value)) return isObject
+    if (Array.isArray(value)) {
+      return value.every((item) => couldBeDisplayOf(elem, item, depth + 1))
+    }
+    // A typed array passes through to IDL.encode, which takes one only for a
+    // vector of numbers of the array's width. A `Uint32Array` can be a
+    // `vec nat32`, but a `Uint8Array` is never a `vec blob`: it is one blob.
+    const isNumber =
+      elem instanceof IDL.FixedNatClass ||
+      elem instanceof IDL.FixedIntClass ||
+      elem instanceof IDL.FloatClass
+    return (
+      isNumber &&
+      ArrayBuffer.isView(value) &&
+      (value as { BYTES_PER_ELEMENT?: number }).BYTES_PER_ELEMENT ===
+        elem._bits / 8
+    )
+  }
+  if (type instanceof IDL.TupleClass) {
+    const components = type._fields.map(([, component]) => component)
+    return (
+      Array.isArray(value) &&
+      value.length === components.length &&
+      components.every((component, i) =>
+        couldBeDisplayOf(component, value[i], depth + 1)
+      )
+    )
+  }
+  if (type instanceof IDL.FuncClass) {
+    return Array.isArray(value) && value.length === 2
+  }
+  // `null` included: IDL.encode takes it for an empty `record {}`.
+  if (type instanceof IDL.RecordClass) return typeof value === "object"
+  if (
+    type instanceof IDL.VariantClass ||
+    type instanceof IDL.PrincipalClass ||
+    type instanceof IDL.ServiceClass
+  ) {
+    const isReference = !(type instanceof IDL.VariantClass)
+    return (
+      (isReference && typeof value === "string") ||
+      (isObject && !Array.isArray(value))
+    )
+  }
+  if (type instanceof IDL.TextClass) return typeof value === "string"
+  if (type instanceof IDL.BoolClass) return typeof value === "boolean"
+  if (type instanceof IDL.NullClass) return value === null
+  if (type instanceof IDL.EmptyClass) return false
+  if (type instanceof IDL.NatClass || type instanceof IDL.IntClass) {
+    return typeof value === "string"
+  }
+  if (type instanceof IDL.FixedNatClass || type instanceof IDL.FixedIntClass) {
+    return type._bits > 32
+      ? typeof value === "string"
+      : typeof value === "number" || typeof value === "string"
+  }
+  if (type instanceof IDL.FloatClass) {
+    return typeof value === "number" || typeof value === "string"
+  }
+  return true
+}
+
+/**
+ * Does a value of `type` display as an array? A vector, a tuple and a func
+ * reference do, and so does an optional of one, since an optional displays as
+ * its value.
+ */
+function displaysAsArray(type: IDL.Type, depth = 0): boolean {
+  if (depth > 32) return false
+  if (type instanceof IDL.RecClass) {
+    const inner = type.getType()
+    return inner ? displaysAsArray(inner, depth + 1) : false
+  }
+  if (type instanceof IDL.OptClass)
+    return displaysAsArray(type._type, depth + 1)
+  return (
+    type instanceof IDL.VecClass ||
+    type instanceof IDL.TupleClass ||
+    type instanceof IDL.FuncClass
+  )
+}
 
 function createFixedNumberCodec(bits: number, signed: boolean): z.ZodTypeAny {
   const min = signed ? -(2 ** (bits - 1)) : 0
@@ -73,6 +208,10 @@ function createBigIntCodec(typeName: string): z.ZodTypeAny {
     }
   )
 }
+
+/** A label's value, or `undefined` for one the display value does not hold. */
+const labelValue = (value: object, label: string): unknown =>
+  hasLabel(value, label) ? (value as Record<string, unknown>)[label] : undefined
 
 export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   private _recCache = new Map<IDL.RecClass, z.ZodTypeAny>()
@@ -270,12 +409,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     // `Record<string, …>` only for `Array<[string, B]>` and leaves any other
     // tuple vector as an array, so the runtime was returning an object where
     // the types promised a list.
-    const tupleFields =
-      elemType instanceof IDL.TupleClass ? elemType._fields : undefined
-    const isTextTuple =
-      tupleFields?.length === 2 && tupleFields[0][1].name === "text"
-
-    if (isTextTuple) {
+    if (isTextKeyedPair(elemType)) {
       return z.codec(z.any(), z.any(), {
         decode: (val) => {
           if (!Array.isArray(val)) return val
@@ -326,28 +460,37 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   ): z.ZodTypeAny {
     const elemCodec = elemType.accept(this, null)
 
-    // Only a vector-valued element can be confused with the Candid optional
-    // wrapper, since both are arrays. Decide from the element TYPE rather than
-    // by probing the codec: element codecs are built on `z.any()` and pass
-    // unknown shapes straight through, so a probe reports success for values
-    // the element cannot actually represent.
-    const elemIsVec = elemType.name.startsWith("vec ")
-    const elemIsBlob = elemType.name === "vec nat8"
+    // Only an element whose own values are arrays — a vector, a tuple, a
+    // func reference, or an optional of one — can be confused with the Candid
+    // optional wrapper, since both are arrays. Decide from the element TYPE
+    // rather than by probing the codec: element codecs are built on `z.any()`
+    // and pass unknown shapes straight through, so a probe reports success for
+    // values the element cannot actually represent.
+    const elemIsArrayValued = displaysAsArray(elemType)
 
-    /** Is `inner` a plausible value for the element type, i.e. is `[inner]` a wrapper? */
-    const isWrappedValue = (inner: unknown): boolean => {
-      if (!elemIsVec) return true // non-vector element: `[v]` is unambiguous
-      if (Array.isArray(inner)) return true
-      // A blob also accepts its scalar display forms.
-      return (
-        elemIsBlob && (inner instanceof Uint8Array || typeof inner === "string")
-      )
-    }
+    /**
+     * Is `[inner]` the wrapper? Checking only that `inner` is an array is not
+     * enough when the element's values are themselves arrays of arrays: a
+     * `vec record { principal; nat }` holding one pair displays as
+     * `[[p, n]]`, whose single element `[p, n]` is an array but not a vector
+     * of pairs. So the wrapper reading is taken whenever `inner` could be an
+     * element value, the long-standing preference when both readings fit
+     * (`[[]]` is some(empty)), and otherwise the array is the value.
+     */
+    const isWrappedValue = (inner: unknown): boolean =>
+      !elemIsArrayValued || couldBeDisplayOf(elemType, inner)
 
     return z.codec(z.any(), z.any(), {
       decode: (val) => {
         if (!Array.isArray(val) || val.length === 0) return undefined
-        return elemCodec.decode(val[0])
+        const value = elemCodec.decode(val[0])
+        // Only a nested optional decodes a some to `undefined` — its own
+        // none. Left as is, `opt opt T`'s some(none) displayed exactly like
+        // none, although canisters use them for different things (Internet
+        // Identity's config: none keeps a setting, `opt null` clears it). It
+        // displays as `null`, as `opt null`'s some(null) already does.
+        // Encoding is unchanged: a nullish value is none.
+        return value === undefined ? null : value
       },
       encode: (val) => {
         if (isNullish(val)) return [] as []
@@ -385,6 +528,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     return z.codec(z.any(), z.any(), {
       decode: (val) => {
         if (!val || typeof val !== "object") return val
+        // A plain read is right here: IDL.decode sets every field of the
+        // record it returns. (It assigns `x[key] = value`, so a `__proto__`
+        // field lands on the prototype, where only this read still finds it.)
         return Object.fromEntries(
           fieldEntries.map(({ fieldName, codec }) => [
             fieldName,
@@ -397,7 +543,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
         return Object.fromEntries(
           fieldEntries.map(({ fieldName, codec }) => [
             fieldName,
-            codec.encode(val[fieldName]),
+            codec.encode(labelValue(val, fieldName)),
           ])
         )
       },
@@ -434,7 +580,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     fields: Array<[string, IDL.Type]>,
     _data: unknown
   ): z.ZodTypeAny {
-    const variantCodecs: Record<string, any> = {}
+    // No prototype: `key in variantCodecs` must not find `toString` or
+    // `constructor` for a variant that has no such arm.
+    const variantCodecs: Record<string, any> = Object.create(null)
     for (const [variantName, variantType] of fields) {
       variantCodecs[variantName] = variantType.accept(this, null)
     }
@@ -477,10 +625,11 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           const fieldType = fields.find(([n]) => n === key)?.[1]
           if (fieldType?.name === "null") return { _type: key }
 
-          if (key in variantCodecs && nonNullish(extracted[key])) {
+          const payload = labelValue(extracted, key)
+          if (key in variantCodecs && nonNullish(payload)) {
             return {
               _type: key,
-              [key]: decode(variantCodecs[key], extracted[key]),
+              [key]: decode(variantCodecs[key], payload),
             }
           }
           return extracted
@@ -511,8 +660,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           const fieldType = fields.find(([n]) => n === key)?.[1]
           if (fieldType?.name === "null") return { [key]: null }
 
-          if (key in variantCodecs && encodesPayload(fieldType, val[key])) {
-            return { [key]: encode(variantCodecs[key], val[key]) }
+          const payload = labelValue(val, key)
+          if (key in variantCodecs && encodesPayload(fieldType, payload)) {
+            return { [key]: encode(variantCodecs[key], payload) }
           }
           return { [key]: null }
         }
@@ -543,13 +693,21 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
   ): z.ZodTypeAny {
     if (this._recCache.has(t)) return this._recCache.get(t)!
 
+    // Built on first use rather than here, since `ty` refers back to `t` —
+    // but built once. Rebuilding it on every call visited the whole type
+    // and constructed fresh codecs for each node of a recursive value, which
+    // made a page of ICRC-3 blocks an order of magnitude slower to display
+    // than to decode.
+    let inner: z.ZodTypeAny | undefined
+    const innerCodec = () => (inner ??= ty.accept(this, data))
+
     const lazyCodec = z.codec(z.any(), z.any(), {
       decode: (val: any) => {
-        const codec = ty.accept(this, data)
+        const codec = innerCodec()
         return codec.decode ? codec.decode(val) : val
       },
       encode: (val: any) => {
-        const codec = ty.accept(this, data)
+        const codec = innerCodec()
         return codec.encode ? codec.encode(val) : val
       },
     })

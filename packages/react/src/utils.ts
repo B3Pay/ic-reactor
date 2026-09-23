@@ -3,6 +3,7 @@
  */
 
 import type { QueryKey } from "@tanstack/react-query"
+import type { CallConfig } from "@icp-sdk/core/agent"
 import type { ReactorQueryData } from "@ic-reactor/core"
 import { generateKey } from "@ic-reactor/core"
 
@@ -12,9 +13,68 @@ import { generateKey } from "@ic-reactor/core"
  */
 export const FACTORY_KEY_ARGS_QUERY_KEY = "__ic_reactor_factory_key_args"
 
+/**
+ * The call config an infinite query's function fetches with: the caller's,
+ * aimed at the canister its query key names unless the caller named one.
+ *
+ * The key is built from the reactor's canister when the query is set up, but
+ * the query function reached `callMethod`, which reads `reactor.canisterId`
+ * again whenever it runs. After a `setCanisterId`, a retry or a refetch by an
+ * observer that had not re-rendered then fetched the new canister's pages and
+ * cached them under the old canister's key. `generateQueryKey` always roots a
+ * key at the canister it resolved, so the key says where its pages come from.
+ * `Reactor.getQueryOptions` pins its query function the same way.
+ */
+export function callConfigForKey(
+  queryKey: QueryKey,
+  callConfig: CallConfig | undefined
+): CallConfig | undefined {
+  const keyedCanister = queryKey[0]
+  if (callConfig?.canisterId || typeof keyedCanister !== "string") {
+    return callConfig
+  }
+  return { ...callConfig, canisterId: keyedCanister }
+}
+
 /** Convert a direct reactor result into a value TanStack Query can cache. */
 export const normalizeQueryData = <T>(value: T): ReactorQueryData<T> =>
   (value === undefined ? null : value) as ReactorQueryData<T>
+
+/** Config options that decide how a query's function runs. */
+const FETCH_OPTION_KEYS = [
+  "networkMode",
+  "retry",
+  "retryDelay",
+  "meta",
+] as const
+
+type FetchOptionKey = (typeof FETCH_OPTION_KEYS)[number]
+
+/**
+ * The part of a factory config that `fetch()` and `prefetch()` pass on.
+ *
+ * A factory's hook hands its whole config to TanStack Query, but the
+ * imperative path used to pass only the key and query function. So a config's
+ * `networkMode: "always"` let the hook fetch while `fetch()` stayed paused
+ * offline, its `retry` retried in the hook and not in a loader, and its `meta`
+ * never reached the QueryCache callbacks for a `fetch()` failure. These four
+ * say how the query function runs, so they now apply to both paths.
+ *
+ * Options that decide what the cache keeps (`gcTime`, `initialData`) or how an
+ * observer renders (`select`, `placeholderData`, `enabled`, …) stay with the
+ * hook. Unset options are left out rather than passed as `undefined`, which
+ * would override the QueryClient's own defaults.
+ */
+export function pickFetchOptions<Config extends object>(
+  config: Config
+): Partial<Pick<Config, Extract<keyof Config, FetchOptionKey>>> {
+  const picked: Partial<Record<FetchOptionKey, unknown>> = {}
+  for (const key of FETCH_OPTION_KEYS) {
+    const value = (config as Partial<Record<FetchOptionKey, unknown>>)[key]
+    if (value !== undefined) picked[key] = value
+  }
+  return picked as Partial<Pick<Config, Extract<keyof Config, FetchOptionKey>>>
+}
 
 /**
  * Merge a base query key, optional per-call query key, and optional key-args

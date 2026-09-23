@@ -65,12 +65,87 @@ export function decodeIdentityAttributeValues(
     {}
   )
 
+  // Internet Identity's own format, read by its type. Once a message is known
+  // to be one, a key it does not hold is absent: the text fallback below
+  // cannot add anything true, only a neighbouring value under the wrong name.
+  const icrc3Entries = decodeIcrc3AttributeMap(data)
+  if (icrc3Entries) {
+    return collectIcrc3TextValues(icrc3Entries, requestedKeyMap)
+  }
+
   const decodedValues = decodeCandidAttributeValues(data, requestedKeyMap)
   if (Object.keys(decodedValues).length > 0) {
     return decodedValues
   }
 
   return extractPrintableAttributeValues(data, requestedKeys)
+}
+
+/** The ICRC-3 `Value` an Internet Identity attribute message is encoded as. */
+type Icrc3Value =
+  | { Nat: bigint }
+  | { Int: bigint }
+  | { Blob: Uint8Array | number[] }
+  | { Text: string }
+  | { Array: Icrc3Value[] }
+  | { Map: Array<[string, Icrc3Value]> }
+
+/**
+ * The entries of an Internet Identity attribute message, or `undefined` when
+ * `data` is not one.
+ *
+ * The canister certifies `Encode!(&Icrc3Value::Map(..))`: the requested
+ * attributes under the keys they were requested by (bare, such as `email`, for
+ * an unscoped request), plus `implicit:nonce`, `implicit:origin` and
+ * `implicit:issued_at_timestamp_ns`. None of the shapes
+ * {@link decodeCandidAttributeValues} tries match it, so without this every
+ * real response was read by scraping printable text, which returned the
+ * neighbouring length byte as part of a value, cut names at the first
+ * non-ASCII character, and matched keys inside other values.
+ *
+ * @see https://github.com/dfinity/ICRC-1/blob/main/standards/ICRC-3/README.md
+ */
+function decodeIcrc3AttributeMap(
+  data: Uint8Array
+): Array<[string, Icrc3Value]> | undefined {
+  const value = IDL.Rec()
+  value.fill(
+    IDL.Variant({
+      Nat: IDL.Nat,
+      Int: IDL.Int,
+      Blob: IDL.Vec(IDL.Nat8),
+      Text: IDL.Text,
+      Array: IDL.Vec(value),
+      Map: IDL.Vec(IDL.Tuple(IDL.Text, value)),
+    })
+  )
+
+  try {
+    const [decoded] = IDL.decode([value], data) as [Icrc3Value]
+    return "Map" in decoded ? decoded.Map : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * The requested attributes in an ICRC-3 map, as certified.
+ *
+ * Only `Text` entries are attribute values; the `implicit:` entries are there
+ * for the verifier and are returned only if asked for by name.
+ */
+function collectIcrc3TextValues(
+  entries: Array<[string, Icrc3Value]>,
+  requestedKeyMap: Record<string, string>
+): IdentityAttributeValues {
+  const values: IdentityAttributeValues = {}
+  for (const [key, value] of entries) {
+    if (!Object.prototype.hasOwnProperty.call(requestedKeyMap, key)) continue
+    if ("Text" in value) {
+      values[requestedKeyMap[key]] = value.Text
+    }
+  }
+  return values
 }
 
 function decodeCandidAttributeValues(

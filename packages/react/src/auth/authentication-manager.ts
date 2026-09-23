@@ -386,11 +386,14 @@ export class AuthenticationManager {
       }
     } catch (error) {
       if (!didCompleteSignIn) {
-        await loginOptions?.onError?.((error as Error).message)
+        // Recorded before the callback runs, as on success: an onError that
+        // rejected used to skip this and strand `isAuthenticating: true` with
+        // no error on record.
         this.updateState({
           error: error as Error,
           isAuthenticating: false,
         })
+        await loginOptions?.onError?.((error as Error).message)
       }
       throw error
     }
@@ -413,10 +416,43 @@ export class AuthenticationManager {
         isAuthenticating: false,
       })
     } catch (error) {
-      // Without this the manager was left with `isAuthenticating: true` and no
-      // recorded error, so a button disabled on `isAuthenticating` stayed stuck
-      // and nothing told the app why.
-      this.updateState({ error: error as Error, isAuthenticating: false })
+      // A failed signOut does not always mean the session survived. v10 wipes
+      // the device and drops to an anonymous identity before it raises a revoke
+      // the canister did not answer, so keeping the session here left the app
+      // signed in and the agent signing as the user who had just signed out.
+      // Follow the client instead: once it no longer vouches for the session,
+      // nothing may sign with it, which is the rule `authenticate()` applies
+      // too. A v8 client that failed before forgetting anything still vouches
+      // for its session and keeps it. A check that throws keeps it as well.
+      //
+      // Anything that changes auth state while that check is in flight, such
+      // as a login that finishes meanwhile, bumps this. The check then
+      // describes a client that has been used since, and its answer must not
+      // replace the newer state, as in `authenticate()`.
+      const revision = this.authStateRevision
+      const stillSignedIn = await Promise.resolve()
+        .then(() => this.authClient?.isAuthenticated() ?? false)
+        .catch(() => true)
+      if (revision !== this.authStateRevision) {
+        throw error
+      }
+      if (stillSignedIn) {
+        // Without this the manager was left with `isAuthenticating: true` and
+        // no recorded error, so a button disabled on `isAuthenticating` stayed
+        // stuck and nothing told the app why.
+        this.updateState({ error: error as Error, isAuthenticating: false })
+      } else {
+        const identity = new AnonymousIdentity()
+        this.clientManager.updateAgent(identity)
+        // The error stays recorded: the device is signed out, but the session
+        // may still be live at the identity provider.
+        this.updateState({
+          identity,
+          isAuthenticated: false,
+          isAuthenticating: false,
+          error: error as Error,
+        })
+      }
       throw error
     }
   }
@@ -428,6 +464,17 @@ export class AuthenticationManager {
 
     if (!AuthClient) {
       return undefined
+    }
+
+    // Every mounted `useAuth()` prepares the client at the same moment, and
+    // each call arrives here after the same await. Building one per caller
+    // left all but the last running with nothing able to reach them: on v8
+    // each registered the app's `onIdle` on the shared IdleManager again, so it
+    // fired once per consumer, and on v10 each kept its browser listeners and
+    // its session's refresh timer. Take the client an earlier caller built for
+    // the same options instead.
+    if (this.authClient && !this.shouldRecreateClient(options)) {
+      return this.authClient
     }
 
     this.authClient = new AuthClient(this.toClientOptions(options))
@@ -973,15 +1020,24 @@ function getAuthenticationCanisterEnv(): Record<string, string> | undefined {
     return undefined
   }
 
+  // Anything able to set a cookie here can write this one, a sibling subdomain
+  // or, on localhost, an app on another port. A value that is not valid
+  // percent-encoding is ignored, as `safeGetCanisterEnv` ignores it: throwing
+  // would fail the constructor, and every `useAuth()` render with it.
+  let decodedValue: string
+  try {
+    decodedValue = decodeURIComponent(encodedValue)
+  } catch {
+    return undefined
+  }
+
   const env = Object.fromEntries(
-    decodeURIComponent(encodedValue)
-      .split("&")
-      .map((entry) => {
-        const separatorIndex = entry.indexOf("=")
-        return separatorIndex === -1
-          ? [entry, ""]
-          : [entry.slice(0, separatorIndex), entry.slice(separatorIndex + 1)]
-      })
+    decodedValue.split("&").map((entry) => {
+      const separatorIndex = entry.indexOf("=")
+      return separatorIndex === -1
+        ? [entry, ""]
+        : [entry.slice(0, separatorIndex), entry.slice(separatorIndex + 1)]
+    })
   )
 
   return Object.keys(env).length ? env : undefined

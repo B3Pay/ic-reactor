@@ -82,43 +82,34 @@ export function normalizeCandidInterface(
 
   assertBalancedCandidInterface(trimmed)
 
-  // Match all type declarations to find the last one
-  const typeMatches = [...trimmed.matchAll(/^type\s+[a-zA-Z0-9_]+\s*=/gm)]
+  // The declarations come first, each ended by its `;`, and the signature is
+  // what follows them. They are read one after another from the start rather
+  // than matched as lines beginning with `type`: that missed every indented
+  // declaration after the first, which is how a template literal holds them,
+  // and every declaration sharing a line with another.
+  let signatureStartIndex = 0
+  let hasDeclarations = false
+  for (;;) {
+    const offset = trimmed.slice(signatureStartIndex).search(/\S/)
+    if (offset === -1) break
+    const start = signatureStartIndex + offset
+    if (!TYPE_DECLARATION.test(trimmed.slice(start))) break
+    hasDeclarations = true
+    const end = declarationEnd(trimmed, start)
+    if (end === -1) {
+      signatureStartIndex = -1
+      break
+    }
+    signatureStartIndex = end + 1
+  }
 
   // If there is no type keyword, wrap the whole string in a mock service
-  if (typeMatches.length === 0) {
+  if (!hasDeclarations) {
     let methodSignature = trimmed
     if (methodSignature.endsWith(";")) {
       methodSignature = methodSignature.slice(0, -1)
     }
     return `service : { "${functionName}": ${methodSignature}; }`
-  }
-
-  const lastTypeMatch = typeMatches[typeMatches.length - 1]
-  const startIndex = lastTypeMatch.index!
-
-  let braceDepth = 0
-  let parenDepth = 0
-  let inString = false
-  let signatureStartIndex = -1
-
-  for (let i = startIndex; i < trimmed.length; i++) {
-    const char = trimmed[i]
-    if (char === '"' && i > 0 && trimmed[i - 1] !== "\\") {
-      inString = !inString
-      continue
-    }
-    if (inString) continue
-
-    if (char === "{") braceDepth++
-    else if (char === "}") braceDepth--
-    else if (char === "(") parenDepth++
-    else if (char === ")") parenDepth--
-    else if (char === ";" && braceDepth === 0 && parenDepth === 0) {
-      // End of the last type declaration
-      signatureStartIndex = i + 1
-      break
-    }
   }
 
   // If we couldn't properly find the end of the type, fallback to assuming it's the last line (old behavior)
@@ -150,6 +141,33 @@ export function normalizeCandidInterface(
   }
 
   return `${typeDefinitions}\nservice : { "${functionName}": ${methodSignature}; }`
+}
+
+/** The start of a type declaration, `type Name =`. */
+const TYPE_DECLARATION = /^type\s+[a-zA-Z0-9_]+\s*=/
+
+/**
+ * The index of the `;` ending the declaration that starts at `start`: the
+ * first one outside quoted names, parentheses and braces, or -1 if there is
+ * none.
+ */
+function declarationEnd(source: string, start: number): number {
+  let depth = 0
+  for (let i = start; i < source.length; i++) {
+    const char = source[i]
+    if (char === '"') {
+      for (i++; i < source.length && source[i] !== '"'; i++) {
+        if (source[i] === "\\") i++
+      }
+    } else if (char === "{" || char === "(") {
+      depth++
+    } else if (char === "}" || char === ")") {
+      depth--
+    } else if (char === ";" && depth === 0) {
+      return i
+    }
+  }
+  return -1
 }
 
 /**

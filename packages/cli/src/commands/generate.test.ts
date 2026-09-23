@@ -417,6 +417,78 @@ describe("generate", () => {
       ).toBe(true)
     })
 
+    // The sweep compared the directories to keep with the ones on disk as
+    // written. An outDir that reaches the global outDir through a link names
+    // the canister's current output by another path, so --clean deleted it,
+    // index.ts included, and generation then wrote a fresh one.
+    it("keeps a canister whose own outDir reaches its output through a symlink", async () => {
+      const projectRoot = createProject({
+        canisters: {
+          backend: {
+            name: "backend",
+            didFile: "./backend.did",
+            outDir: "src/linked/be",
+          },
+        },
+      })
+      fs.mkdirSync(path.join(projectRoot, "src/declarations"), {
+        recursive: true,
+      })
+      fs.symlinkSync(
+        path.join(projectRoot, "src/declarations"),
+        path.join(projectRoot, "src/linked"),
+        "junction"
+      )
+      expect(await runCli(["generate"])).toBe(0)
+
+      const entryPath = path.join(projectRoot, "src/declarations/be/index.ts")
+      fs.writeFileSync(
+        entryPath,
+        "// hand-written entry\nexport const mine = 1\n"
+      )
+
+      expect(await runCli(["generate", "--clean"])).toBe(0)
+
+      expect(fs.readFileSync(entryPath, "utf-8")).toContain(
+        "hand-written entry"
+      )
+    })
+
+    // Both spellings open the same directory on a case-insensitive filesystem.
+    it("keeps a canister whose own outDir differs from its directory on disk only by case", async ({
+      skip,
+    }) => {
+      const projectRoot = createProject({
+        canisters: {
+          backend: {
+            name: "backend",
+            didFile: "./backend.did",
+            outDir: "src/Declarations/be",
+          },
+        },
+      })
+      skip(
+        !fs.existsSync(path.join(projectRoot, CONFIG_FILE_NAME.toUpperCase())),
+        "the temp directory is on a case-sensitive filesystem"
+      )
+      fs.mkdirSync(path.join(projectRoot, "src/declarations"), {
+        recursive: true,
+      })
+      expect(await runCli(["generate"])).toBe(0)
+
+      const entryPath = path.join(projectRoot, "src/declarations/be/index.ts")
+      fs.writeFileSync(
+        entryPath,
+        "// hand-written entry\nexport const mine = 1\n"
+      )
+
+      expect(await runCli(["generate", "--clean"])).toBe(0)
+
+      expect(fs.readFileSync(entryPath, "utf-8")).toContain(
+        "hand-written entry"
+      )
+    })
+
     // The sweep used to skip a canister the pipeline rejects when it collected
     // the directories to keep. The rejection here comes from clientManagerPath,
     // not from outDir, so the canister's own output looked stale and --clean

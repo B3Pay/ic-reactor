@@ -2,16 +2,66 @@ import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants.js"
 import { CanisterError } from "../errors/index.js"
 import { OkResult } from "../types/index.js"
 
-export const generateKey = (args: any[]) => {
-  return JSON.stringify(args, (_, v) =>
-    typeof v === "bigint" ? v.toString() : v
-  )
-}
-
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
   if (typeof value !== "object" || value === null) return false
   const proto = Object.getPrototypeOf(value)
   return proto === Object.prototype || proto === null
+}
+
+/**
+ * Leads the key of a float that JSON has no number for. A string that already
+ * starts with it gets one more in front, so the count of leading U+0000s tells
+ * the cases apart: none for any other string (or a BigInt), exactly one for a
+ * tagged float, two or more for a string that began with U+0000. No string
+ * argument can therefore serialise to a tagged float, and no other JSON type
+ * serialises to a string at all.
+ */
+const SPECIAL_NUMBER_TAG = "\u0000"
+
+/**
+ * Serialise call arguments into the query-key segment that identifies them.
+ *
+ * Equal Candid values must give equal keys, and different values different
+ * ones, which plain `JSON.stringify` does not ensure:
+ *
+ * - Record fields are unordered in Candid, and TanStack Query hashes object
+ *   keys order-independently, so plain objects are written with their keys
+ *   sorted. Otherwise `{ owner, subaccount }` and `{ subaccount, owner }` —
+ *   the same record, the same bytes on the wire — got separate cache entries,
+ *   and `getQueryData` / `invalidateQueries` spelled one way missed the other.
+ * - JSON writes NaN, Infinity and -Infinity all as `null`, and -0 as `0`, so a
+ *   query for one float was answered from another's cache entry. They are
+ *   written as `"\u0000NaN"`, `"\u0000Infinity"`, `"\u0000-Infinity"` and
+ *   `"\u0000-0"`, and a string that starts with U+0000 gets one more in front,
+ *   so no string argument can produce that tag. It has to be unforgeable: this
+ *   function is public and an infinite query's `getKeyArgs` may return any
+ *   value, so a bare `"Infinity"` would let `[Infinity]` and `["Infinity"]`
+ *   share a cache entry.
+ *
+ * BigInts are written as decimal strings. Everything else — including every
+ * string that does not start with U+0000, and an object whose keys are already
+ * in sorted order — serialises exactly as before.
+ */
+export const generateKey = (args: any[]) => {
+  return JSON.stringify(args, (_, v: unknown) => {
+    if (typeof v === "string") {
+      return v.startsWith(SPECIAL_NUMBER_TAG) ? SPECIAL_NUMBER_TAG + v : v
+    }
+    if (typeof v === "bigint") return v.toString()
+    if (typeof v === "number") {
+      if (!Number.isFinite(v)) return SPECIAL_NUMBER_TAG + String(v)
+      if (Object.is(v, -0)) return SPECIAL_NUMBER_TAG + "-0"
+      return v
+    }
+    if (isPlainObject(v)) {
+      return Object.fromEntries(
+        Object.keys(v)
+          .sort()
+          .map((key) => [key, v[key]])
+      )
+    }
+    return v
+  })
 }
 
 /**
@@ -111,6 +161,13 @@ const parseHostname = (host: string): string | undefined => {
 const IPV4_LOOPBACK = /^127\.(?:\d{1,3}\.){2}\d{1,3}$/
 
 /**
+ * A loopback address: all of 127.0.0.0/8, and the IPv6 `::1` with or without
+ * the brackets a URL's `hostname` keeps around it.
+ */
+const isLoopbackAddress = (hostname: string): boolean =>
+  IPV4_LOOPBACK.test(hostname) || hostname === "::1" || hostname === "[::1]"
+
+/**
  * Whether the configuration carried by the `ic_env` cookie may be trusted for a
  * host: its root key, its Internet Identity provider, and the canister IDs a
  * reactor resolves by name.
@@ -148,17 +205,8 @@ export const allowsEnvRootKey = (host?: string): boolean => {
 
   if (hostname === "localhost" || hostname.endsWith(".localhost")) return true
   // The whole of 127.0.0.0/8 is loopback, not just 127.0.0.1 — a replica bound
-  // to 127.0.0.2 is exactly as local, and rejecting it here would leave the
-  // agent on the pinned mainnet key (getNetworkByHostname also classifies it as
-  // "ic", so nothing else would fetch the replica's key either) and every
-  // certified call to it would fail.
-  if (
-    IPV4_LOOPBACK.test(hostname) ||
-    hostname === "::1" ||
-    hostname === "[::1]"
-  ) {
-    return true
-  }
+  // to 127.0.0.2 is exactly as local as one on 127.0.0.1, and so is ::1.
+  if (isLoopbackAddress(hostname)) return true
 
   // Codespaces / Gitpod forward a local replica over a generated domain.
   return getNetworkByHostname(hostname) === "remote"
@@ -196,13 +244,21 @@ export const isMainnetHost = (host?: string): boolean => {
 /**
  * Determines the network type based on the provided hostname.
  *
+ * Every loopback address is local, not only the literal `127.0.0.1`: a replica
+ * on `[::1]` or `127.0.0.2` classified as "ic" was never asked for its root
+ * key, so each certified response from it failed verification against the
+ * pinned mainnet key.
+ *
  * @param hostname - The hostname to evaluate.
  * @returns A string indicating the network type: "local", "remote", or "ic".
  */
 export function getNetworkByHostname(
   hostname: string
 ): "local" | "remote" | "ic" {
-  if (LOCAL_HOSTS.some((host) => hostname.endsWith(host))) {
+  if (
+    LOCAL_HOSTS.some((host) => hostname.endsWith(host)) ||
+    isLoopbackAddress(hostname)
+  ) {
     return "local"
   } else if (REMOTE_HOSTS.some((host) => hostname.endsWith(host))) {
     return "remote"
@@ -215,6 +271,12 @@ export function getNetworkByHostname(
  * Helper function for extracting the value from a compiled result { Ok: T } or throw a CanisterError if { Err: E }
  * Supports both uppercase (Ok/Err - Rust) and lowercase (ok/err - Motoko) conventions.
  *
+ * A Result is a variant, so only a variant arm is unwrapped: an object whose
+ * one key is the tag, besides the `_type` discriminant a display-transformed
+ * variant carries, which names that tag. A record that merely has a field named
+ * `ok` or `err` next to others is a value like any other, and is returned
+ * whole, also when that other field is a `_type` naming something else.
+ *
  * @param result - The compiled result to extract from.
  * @returns The extracted value from the compiled result.
  * @throws CanisterError with the typed error value if result is { Err: E } or { err: E }
@@ -225,26 +287,32 @@ export function extractOkResult<T>(result: T): OkResult<T> {
     return result as OkResult<T>
   }
 
-  // Handle { Ok: T } (Rust convention)
-  if ("Ok" in result) {
-    return result.Ok as OkResult<T>
-  }
-  // Handle { ok: T } (Motoko convention)
-  if ("ok" in result) {
-    return result.ok as OkResult<T>
-  }
-
-  // Handle { Err: E } (Rust convention) - throw CanisterError
-  if ("Err" in result) {
-    throw new CanisterError(result.Err)
-  }
-  // Handle { err: E } (Motoko convention) - throw CanisterError
-  if ("err" in result) {
-    throw new CanisterError(result.err)
+  const arm = result as Record<string, unknown>
+  const keys = Object.keys(arm)
+  const tags = keys.filter((key) => key !== "_type")
+  // `{ [tag]: payload }`, or `{ _type: tag, [tag]: payload }` from the display
+  // codec. A `_type` naming anything else is a record's own field:
+  // `{ _type: "health", ok: true }` is a two-field record, not an `ok` arm.
+  const isArm =
+    tags.length === 1 && (keys.length === 1 || arm._type === tags[0])
+  if (!isArm) {
+    // Not a variant arm (a record, a tuple, ...): not a Result.
+    return result as OkResult<T>
   }
 
-  // Non-Result type, return as-is
-  return result as OkResult<T>
+  switch (tags[0]) {
+    // { Ok: T } (Rust convention) and { ok: T } (Motoko convention)
+    case "Ok":
+    case "ok":
+      return arm[tags[0]] as OkResult<T>
+    // { Err: E } and { err: E } - throw CanisterError
+    case "Err":
+    case "err":
+      throw new CanisterError(arm[tags[0]])
+    default:
+      // Non-Result type, return as-is
+      return result as OkResult<T>
+  }
 }
 
 export const isNullish = (value: unknown): value is null | undefined =>

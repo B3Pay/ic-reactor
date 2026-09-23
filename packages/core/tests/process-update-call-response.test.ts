@@ -154,6 +154,63 @@ describe("processUpdateCallResponse", () => {
       expect(code.rejectErrorCode).toBeUndefined()
     })
 
+    it("polls for the outcome when the certificate has no status for this request", async () => {
+      // A boundary node can answer the sync call with a valid certificate that
+      // simply does not contain this request (queue full, not yet processed).
+      // The call may still execute, so reporting it as failed invites a retry
+      // that runs it twice; @icp-sdk/core's own `update` polls here instead
+      // (icp-js-core#1330).
+      vi.spyOn(Certificate, "create").mockResolvedValueOnce(certificateWith({}))
+      vi.mocked(pollForResponse).mockResolvedValueOnce({
+        reply: REPLY,
+        certificate: certificateWith({}),
+        rawCertificate: new Uint8Array(),
+      })
+
+      await expect(run(v4())).resolves.toEqual(REPLY)
+
+      expect(pollForResponse).toHaveBeenCalledTimes(1)
+      const [polledAgent, polledTarget, requestId, options] =
+        vi.mocked(pollForResponse).mock.calls[0]
+      expect(polledAgent).toBe(agent)
+      expect(polledTarget).toBe(target)
+      expect(requestId).toEqual(REQUEST_ID)
+      expect(options).toEqual({})
+    })
+
+    it("polls that request with the identity that submitted it", async () => {
+      vi.spyOn(Certificate, "create").mockResolvedValueOnce(certificateWith({}))
+      vi.mocked(pollForResponse).mockResolvedValueOnce({
+        reply: REPLY,
+        certificate: certificateWith({}),
+        rawCertificate: new Uint8Array(),
+      })
+
+      await expect(
+        run(v4(), { identity: Ed25519KeyIdentity.generate() })
+      ).resolves.toEqual(REPLY)
+
+      // The same pinned delegate the 202 path polls through.
+      const [polledAgent] = vi.mocked(pollForResponse).mock.calls[0]
+      expect(polledAgent).not.toBe(agent)
+      expect(Object.getPrototypeOf(polledAgent)).toBe(agent)
+    })
+
+    it("does not poll for a status it has no answer for", async () => {
+      // Only an ABSENT status means "look again". A present but non-terminal
+      // one is not something a sync response should carry, and stays an error.
+      vi.spyOn(Certificate, "create").mockResolvedValueOnce(
+        certificateWith({ status: text("processing") })
+      )
+
+      const error = await run(v4()).then(
+        () => undefined,
+        (e: unknown) => e
+      )
+      expect(error).toBeInstanceOf(UnknownError)
+      expect(pollForResponse).not.toHaveBeenCalled()
+    })
+
     it("refuses to verify without a root key", async () => {
       const noKey = { ...agent, rootKey: null } as unknown as Agent
       const error = await run(v4(), { agent: noKey }).then(

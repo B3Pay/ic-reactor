@@ -51,11 +51,6 @@ export function createIdentityAttributeHooks(
      * Comparing against the pre-request principal alone left the hook's
      * `attributes` null after every successful first-time sign-in.
      */
-    const isCurrent = useCallback(
-      (requestedFor: string | undefined) => requestedFor === currentPrincipal(),
-      [currentPrincipal]
-    )
-
     const publishIfCurrent = useCallback(
       (requestedFor: string | undefined, result: IdentityAttributeResult) => {
         const current = currentPrincipal()
@@ -64,6 +59,24 @@ export function createIdentityAttributeHooks(
         }
         setAttributes(result)
         return true
+      },
+      [currentPrincipal]
+    )
+
+    /**
+     * The failure counterpart of `publishIfCurrent`. A request that signs in
+     * can fail on its attribute side after its own sign-in went through, and
+     * the manager keeps that sign-in before it reports the failure, so the
+     * session is now the one this request opened and the failure is that
+     * user's to see. A failure that lands after a sign-out is still dropped.
+     */
+    const publishErrorIfCurrent = useCallback(
+      (requestedFor: string | undefined, signsIn: boolean, error: Error) => {
+        const current = currentPrincipal()
+        if (requestedFor !== current && !(signsIn && current !== undefined)) {
+          return
+        }
+        setAttributeError(error)
       },
       [currentPrincipal]
     )
@@ -78,7 +91,11 @@ export function createIdentityAttributeHooks(
           publishIfCurrent(requestedFor, result)
           return result
         } catch (error) {
-          if (isCurrent(requestedFor)) setAttributeError(error as Error)
+          publishErrorIfCurrent(
+            requestedFor,
+            params.signIn !== false,
+            error as Error
+          )
           throw error
         } finally {
           setIsRequestingAttributes(false)
@@ -97,7 +114,11 @@ export function createIdentityAttributeHooks(
           publishIfCurrent(requestedFor, result)
           return result
         } catch (error) {
-          if (isCurrent(requestedFor)) setAttributeError(error as Error)
+          publishErrorIfCurrent(
+            requestedFor,
+            params.signIn !== false,
+            error as Error
+          )
           throw error
         } finally {
           setIsRequestingAttributes(false)

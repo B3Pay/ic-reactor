@@ -465,6 +465,18 @@ const result = await backend.fetchQuery({
 
 This method ensures the data is in the cache (fetching it if necessary) and returns it. It respects the standard React Query caching behavior.
 
+An optional second argument passes further TanStack Query options for the
+fetch, such as `retry`, `networkMode` or `meta`. The query key and function
+always come from the first argument. A query factory's `fetch()` passes its
+config's `networkMode`, `retry`, `retryDelay` and `meta` this way.
+
+```typescript
+const result = await backend.fetchQuery(
+  { functionName: "getUser", args: ["user-123"] },
+  { retry: 2 }
+)
+```
+
 ---
 
 ### getQueryData
@@ -502,12 +514,12 @@ class LoggingReactor extends Reactor<BackendService> {
   }
 
   // Override fetchQuery to add custom logic (e.g. auth checks)
-  async fetchQuery(params) {
+  async fetchQuery(params, options) {
     const principal = await this.clientManager.getUserPrincipal()
     if (principal.isAnonymous()) {
       console.warn("User not authenticated")
     }
-    return super.fetchQuery(params)
+    return super.fetchQuery(params, options)
   }
 }
 

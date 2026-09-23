@@ -85,15 +85,16 @@ Same as [useActorInfiniteQuery](/v3/reference/createactorhooks/useactorinfiniteq
 
 ### Key Options
 
-| Option                 | Type         | Description                            |
-| ---------------------- | ------------ | -------------------------------------- |
-| `functionName`         | `string`     | The canister method to call            |
-| `getArgs`              | `function`   | Returns args for each page             |
-| `initialPageParam`     | `TPageParam` | Initial page parameter                 |
-| `getNextPageParam`     | `function`   | Returns next page param                |
-| `getPreviousPageParam` | `function`   | Returns previous page param (optional) |
-| `maxPages`             | `number`     | Max pages to cache (optional)          |
-| `staleTime`            | `number`     | Time before data is stale              |
+| Option                 | Type         | Description                                                             |
+| ---------------------- | ------------ | ----------------------------------------------------------------------- |
+| `functionName`         | `string`     | The canister method to call                                             |
+| `getArgs`              | `function`   | Returns args for each page                                              |
+| `initialPageParam`     | `TPageParam` | Initial page parameter                                                  |
+| `getNextPageParam`     | `function`   | Returns next page param                                                 |
+| `getPreviousPageParam` | `function`   | Returns previous page param (optional)                                  |
+| `maxPages`             | `number`     | Max pages to cache (optional)                                           |
+| `staleTime`            | `number`     | Time before data is stale                                               |
+| `getKeyArgs`           | `function`   | Narrows the args that key the cache, e.g. to drop the cursor (optional) |
 
 ## Return Value
 

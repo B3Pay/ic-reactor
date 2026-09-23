@@ -6,6 +6,14 @@ describe("Candid Schema Parser (parseDid)", () => {
     expect(() => parser.parseDid("invalid candid")).toThrow()
   })
 
+  // The published type is `service: CandidServiceDeclaration | null`. It came
+  // back `undefined`, so a check for `=== null` passed a types-only file on to
+  // `service.methods`, which then threw.
+  it("returns a null service for Candid that declares none", () => {
+    expect(parser.parseDid("type A = record { x : nat };").service).toBeNull()
+    expect(parser.parseDid("").service).toBeNull()
+  })
+
   it("should parse simple candid service with basic types", () => {
     const candid = `
       service : {

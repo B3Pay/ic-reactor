@@ -115,8 +115,9 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
    * the browser error overlay is the signal that actually gets noticed.
    */
   /**
-   * The failures that are still unfixed, one per canister, kept so a browser
-   * that was not connected when one happened still gets the overlay.
+   * The failures that are still unfixed, one per configured canister entry,
+   * kept so a browser that was not connected when one happened still gets the
+   * overlay.
    *
    * Vite awaits the plugin container's `buildStart` before the HTTP server
    * starts listening, so a generation failure during `vite dev` startup is
@@ -128,8 +129,14 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
    * used to be one slot that any success emptied, so a canister that was still
    * broken vanished from the overlay as soon as another canister regenerated
    * and its reload reconnected every tab.
+   *
+   * Keyed by the entry rather than by `name`, since two entries can share a
+   * name. See `inFlight`.
    */
-  const pendingFailures = new Map<string, { message: string; stack: string }>()
+  const pendingFailures = new Map<
+    CanisterConfig,
+    { message: string; stack: string }
+  >()
 
   const reportFailure = (
     server: ViteDevServer | null,
@@ -164,18 +171,24 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
   // trailing rerun, so `handleHotUpdate` can return before the newest `.did` has
   // been written. The trailing run sends its own full-reload, so the browser
   // still converges.
-  const inFlight = new Map<string, Promise<void>>()
-  const rerunQueued = new Set<string>()
+  //
+  // Both maps are keyed by the configured entry, not by its `name`. Two entries
+  // can share a name, for one canister generated twice into different outDirs,
+  // say as a DisplayReactor and as a Reactor. Keyed by name, a save that touched
+  // both queued the second behind the first, and the trailing rerun then
+  // regenerated the first entry again. The second kept stale bindings.
+  const inFlight = new Map<CanisterConfig, Promise<void>>()
+  const rerunQueued = new Set<CanisterConfig>()
 
   const regenerate = (
     canisterConfig: CanisterConfig,
     server: ViteDevServer
   ): Promise<void> => {
     const { name } = canisterConfig
-    const running = inFlight.get(name)
+    const running = inFlight.get(canisterConfig)
 
     if (running) {
-      rerunQueued.add(name)
+      rerunQueued.add(canisterConfig)
       return running
     }
 
@@ -188,12 +201,12 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
         if (result.success) {
           // A later connection must not be handed a failure that has since been
           // fixed.
-          pendingFailures.delete(name)
+          pendingFailures.delete(canisterConfig)
           // Reload page to reflect new types/hooks
           server.ws.send({ type: "full-reload" })
         } else {
           pendingFailures.set(
-            name,
+            canisterConfig,
             reportFailure(
               server,
               `Regeneration failed for ${name}: ${result.error ?? "unknown error"}`
@@ -207,7 +220,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       // fatal to the dev server.
       .catch((error: unknown) => {
         pendingFailures.set(
-          name,
+          canisterConfig,
           reportFailure(
             server,
             `Regeneration failed for ${name}: ${describeError(error)}`,
@@ -216,13 +229,13 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
         )
       })
       .finally(() => {
-        inFlight.delete(name)
-        if (rerunQueued.delete(name)) {
+        inFlight.delete(canisterConfig)
+        if (rerunQueued.delete(canisterConfig)) {
           void regenerate(canisterConfig, server)
         }
       })
 
-    inFlight.set(name, run)
+    inFlight.set(canisterConfig, run)
     return run
   }
 
@@ -408,15 +421,18 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       // hide what the others did, and the error should name all of them so a CI
       // log shows the whole picture in one go.
       const failures = outcomes.flatMap((outcome, index) => {
-        const name = canisters[index]?.name ?? `canister #${index}`
+        const canister = canisters[index]
+        const name = canister?.name ?? `canister #${index}`
 
         if (outcome.status === "rejected") {
-          return [{ name, detail: `${name}: ${describeError(outcome.reason)}` }]
+          return [
+            { canister, detail: `${name}: ${describeError(outcome.reason)}` },
+          ]
         }
         if (!outcome.value.success) {
           return [
             {
-              name,
+              canister,
               detail: `${name}: ${outcome.value.error ?? "unknown error"}`,
             },
           ]
@@ -443,8 +459,8 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
 
       // One entry per canister, so fixing one of them removes only its own line
       // from the replay.
-      for (const { name, detail } of failures) {
-        pendingFailures.set(name, {
+      for (const { canister, detail } of failures) {
+        pendingFailures.set(canister, {
           message: `[ic-reactor] Failed to generate ${detail}`,
           stack: "",
         })

@@ -37,6 +37,12 @@ const userProfileQuery = createQuery(backend, {
 | `staleTime`    | `number`             | `300000` | Time before data is stale (ms)  |
 | `queryKey`     | `QueryKey`           | Auto     | Custom query key segments       |
 
+The config also takes TanStack Query's query options. `networkMode`, `retry`,
+`retryDelay` and `meta` decide how the canister call runs, so they apply to
+`fetch()` and `prefetch()` as well as to `useQuery()`. The rest, such as
+`enabled`, `select`, `placeholderData`, `initialData` and `gcTime`, apply to the
+hook only.
+
 ## Return Value
 
 The factory returns an object with these utilities:

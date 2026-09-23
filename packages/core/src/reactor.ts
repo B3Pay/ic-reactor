@@ -14,6 +14,7 @@ import type {
   TransformKey,
   ReactorArgs,
   ReactorReturnOk,
+  ReactorReturnErr,
   ReactorQueryData,
   ReactorQueryParams,
   ReactorCallParams,
@@ -300,10 +301,22 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public getQueryOptions<M extends FunctionName<A>>(
     params: ReactorCallParams<A, M, T>
   ): FetchQueryOptions<ReactorQueryData<ReactorReturnOk<A, M, T>>> {
+    // The key names the canister `this.canisterId` holds right now, so the
+    // query function has to fetch from that same canister rather than read
+    // `this.canisterId` again whenever it runs. After a `setCanisterId`, a
+    // TanStack retry or a refetch of an observer that has not been re-keyed
+    // re-runs this function, and it used to fetch the new canister and cache
+    // its answer under the old canister's key. An explicit override wins, as
+    // it does in `generateQueryKey`.
+    const callConfig: CallConfig = {
+      ...params.callConfig,
+      canisterId: params.callConfig?.canisterId || this.canisterId,
+    }
+
     return {
       queryKey: this.generateQueryKey(params, params.callConfig),
       queryFn: async () => {
-        const result = await this.callMethod(params)
+        const result = await this.callMethod({ ...params, callConfig })
         return toReactorQueryData<ReactorReturnOk<A, M, T>>(
           result as ReactorReturnOk<A, M, T>
         )
@@ -315,7 +328,10 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * Invalidate cached queries for this canister.
    * This will mark matching queries as stale and trigger a refetch for any active queries.
    *
-   * @param params - Optional parameters to filter the invalidation
+   * @param params - Optional parameters to filter the invalidation. Without a
+   * `functionName`, every query of the canister is invalidated.
+   * @param callConfig - Optional call configuration. Its `canisterId` selects
+   * which canister's queries are invalidated, as it does for the calls.
    *
    * @example
    * ```typescript
@@ -327,22 +343,34 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    *
    * // Invalidate 'getUser' query for specific user
    * reactor.invalidateQueries({ functionName: 'getUser', args: ['user-1'] })
+   *
+   * // Invalidate all queries of a canister reached through an override
+   * reactor.invalidateQueries(undefined, { canisterId: otherLedgerId })
    * ```
    */
   public invalidateQueries<M extends FunctionName<A>>(
     params?: Partial<ReactorQueryParams<A, M, T>>,
     callConfig?: CallConfig
   ) {
-    const queryKey = params
-      ? this.generateQueryKey(
-          {
-            functionName: params.functionName as M,
-            args: params.args,
-            queryKey: params.queryKey,
-          },
-          callConfig
-        )
-      : [this.canisterId.toString()]
+    // Without a method there is nothing narrower than the canister to match
+    // on: a key built with an undefined functionName matches no entry at all,
+    // since TanStack compares prefix segments one by one. The canister is the
+    // one `callConfig` names, exactly as in `generateQueryKey`.
+    const queryKey =
+      params?.functionName !== undefined
+        ? this.generateQueryKey(
+            {
+              functionName: params.functionName,
+              args: params.args,
+              queryKey: params.queryKey,
+            },
+            callConfig
+          )
+        : [
+            callConfig?.canisterId
+              ? Principal.from(callConfig.canisterId).toString()
+              : this.canisterId.toString(),
+          ]
 
     void this.queryClient.invalidateQueries({
       queryKey,
@@ -445,14 +473,29 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   /**
    * Fetch data from the canister and cache it using React Query.
    * This method ensures the data is in the cache and returns it.
+   *
+   * @param options - Further TanStack Query options for the fetch, such as
+   * `retry`, `networkMode` or `meta`. The query key and function always come
+   * from `params`. The query factories pass their config's options through
+   * here, so a subclass that overrides this method still sees their fetches.
    */
   public async fetchQuery<M extends FunctionName<A>>(
-    params: ReactorCallParams<A, M, T>
+    params: ReactorCallParams<A, M, T>,
+    options?: Omit<
+      FetchQueryOptions<
+        ReactorQueryData<ReactorReturnOk<A, M, T>>,
+        ReactorReturnErr<A, M, T>
+      >,
+      "queryKey" | "queryFn"
+    >
   ): Promise<ReactorQueryData<ReactorReturnOk<A, M, T>>> {
-    const options = this.getQueryOptions(params)
     return this.queryClient.ensureQueryData<
-      ReactorQueryData<ReactorReturnOk<A, M, T>>
-    >(options)
+      ReactorQueryData<ReactorReturnOk<A, M, T>>,
+      ReactorReturnErr<A, M, T>
+    >({
+      ...options,
+      ...this.getQueryOptions(params),
+    })
   }
 
   /**
