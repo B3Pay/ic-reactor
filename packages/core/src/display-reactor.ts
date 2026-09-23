@@ -18,6 +18,8 @@ import {
   TransformKey,
 } from "./types/reactor.js"
 import { extractOkResult } from "./utils/helper.js"
+import { ArgsKeyVisitor } from "./utils/args-key.js"
+import { isOptionalWrapper, isTextKeyedPair } from "./display/visitor.js"
 import { CanisterError, ValidationError } from "./errors/index.js"
 import {
   DisplayReactorParameters,
@@ -47,6 +49,12 @@ function methodDisplayCodecs(methodType: IDL.Type): {
     result: didToDisplayCodec(didTypeFromArray(funcType.retTypes)),
   }
 }
+
+/** The args of a DisplayReactor's query key, read as its codecs take them. */
+const displayArgsKey = new ArgsKeyVisitor({
+  isOptionalWrapper,
+  isTextKeyedPair,
+})
 
 // ============================================================================
 // DisplayReactor
@@ -397,6 +405,22 @@ export class DisplayReactor<
       return [] as unknown as ActorMethodParameters<A[M]>
     }
     return args as ActorMethodParameters<A[M]>
+  }
+
+  /**
+   * The args as the query key records them, read as `transformArgs` reads
+   * them: a blob given as hex text, bytes or a byte array is keyed by its
+   * bytes, as a Reactor keys it. A method without a codec sends its args to
+   * IDL.encode unchanged, so they are read as a Reactor's are.
+   */
+  protected argsForQueryKey<M extends FunctionName<A>>(
+    functionName: M,
+    args: ReactorArgs<A, M, T>
+  ): unknown[] {
+    const func = this.getFuncClass(functionName)
+    return func && this.codecs.has(functionName)
+      ? displayArgsKey.keyArgs(func.argTypes, args)
+      : super.argsForQueryKey(functionName, args)
   }
 
   /**
