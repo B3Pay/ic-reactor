@@ -94,6 +94,9 @@ importers:
 
   e2e:
     dependencies:
+      '@ic-reactor/candid':
+        specifier: workspace:*
+        version: link:../packages/candid
       '@ic-reactor/core':
         specifier: workspace:*
         version: link:../packages/core
