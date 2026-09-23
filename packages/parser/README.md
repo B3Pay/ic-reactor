@@ -40,7 +40,11 @@ service — instead of generated source.
 
 ### `validateIDL(candid: string): boolean`
 
-Returns whether the Candid source parses. Backs `CandidAdapter.validateCandid`.
+Returns `true` when the Candid source parses and type-checks. It never returns
+`false`: for invalid Candid it throws the parser's message as a string (a syntax
+error, or a type error such as `Unbound type identifier T`), so call it inside
+`try` / `catch`. `CandidAdapter.validateCandid`, which it backs, catches that
+and returns `false`.
 
 ### `verifyCompatibility(oldDid: string, newDid: string): boolean`
 
