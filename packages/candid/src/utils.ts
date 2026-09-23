@@ -80,6 +80,14 @@ export function normalizeCandidInterface(
   // closing brace of the service built from the signature.
   const trimmed = stripCandidComments(rawInput).trim()
 
+  // A whole service definition is already what this builds. The reactors
+  // recognized one only by the text "service :", so `service:`, a line break
+  // before the colon or a named service was wrapped in a second service and
+  // failed to parse. The parser reports a malformed one.
+  if (SERVICE_DEFINITION.test(blankQuotedNames(trimmed))) {
+    return rawInput
+  }
+
   assertBalancedCandidInterface(trimmed)
 
   // The declarations come first, each ended by its `;`, and the signature is
@@ -168,6 +176,44 @@ function declarationEnd(source: string, start: number): number {
     }
   }
   return -1
+}
+
+/**
+ * The start of a service definition: `service`, an optional name, then `:`.
+ * Tested with quoted names blanked out, so a label cannot match.
+ */
+const SERVICE_DEFINITION = /(^|[\s;])service(\s+[a-zA-Z0-9_]+)?\s*:/
+
+/**
+ * Candid source with every quoted name emptied to `""`, so no name reads as
+ * code. One pass, reading quotes and escapes as stripCandidComments does, so a
+ * name left open runs to the end. The pattern this replaces,
+ * /"(?:[^"\\]|\\.)*"/g, went back over the rest of the input from every quote
+ * it could not close, so its time grew with the square of the length: over
+ * two seconds for 100,000 characters of `"\"\"\"…`.
+ */
+function blankQuotedNames(source: string): string {
+  let out = ""
+  let inString = false
+
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i]
+
+    if (inString) {
+      if (char === "\\") {
+        i++
+      } else if (char === '"') {
+        inString = false
+        out += char
+      }
+      continue
+    }
+
+    if (char === '"') inString = true
+    out += char
+  }
+
+  return out
 }
 
 /**
