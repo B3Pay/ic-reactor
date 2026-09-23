@@ -38,7 +38,7 @@ function buildContext() {
   const error = vi.fn((reason: string | Error) => {
     throw reason instanceof Error ? reason : new Error(reason)
   })
-  return { error }
+  return { error, addWatchFile: vi.fn(), meta: { watchMode: false } }
 }
 
 describe("icReactor", () => {
@@ -462,6 +462,27 @@ describe("icReactor", () => {
           target: "react",
         },
       })
+    })
+
+    it("should watch every configured .did file so a watch build rebuilds when one is saved", async () => {
+      const absoluteDid = path.resolve("/elsewhere/ledger.did")
+      const plugin = createVitePlugin({
+        canisters: [
+          { name: "test_canister", didFile: DID_RELATIVE },
+          { name: "ledger", didFile: absoluteDid },
+        ],
+      })
+      resolveConfig(plugin)
+      const context = buildContext()
+
+      await (plugin.buildStart as any).call(context)
+
+      // A .did file is never in the module graph, so `vite build --watch`
+      // ignored a save to one until buildStart registered it.
+      expect(context.addWatchFile.mock.calls).toEqual([
+        [DID_IN_VITE_ROOT],
+        [absoluteDid],
+      ])
     })
 
     it("should resolve the project root from the Vite config, not the cwd", async () => {

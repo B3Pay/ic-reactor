@@ -163,6 +163,10 @@ rapid saves cannot interleave inside the pipeline's delete-then-write sequence.
 A regeneration that fails is reported to the terminal and to the browser error
 overlay rather than leaving the page on stale bindings.
 
+`vite build --watch` watches the configured `.did` files as well. Saving one
+starts a rebuild that regenerates that canister's bindings. A rebuild that any
+other file starts leaves the generated files alone.
+
 ## When To Use It
 
 - Vite apps with active `.did` iteration

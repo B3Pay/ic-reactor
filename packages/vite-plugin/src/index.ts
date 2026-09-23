@@ -8,6 +8,7 @@
  */
 
 import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite"
+import fs from "node:fs"
 import path from "node:path"
 import {
   runCanisterPipeline,
@@ -102,6 +103,21 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
     path.normalize(
       path.isAbsolute(didFile) ? didFile : path.resolve(projectRoot, didFile)
     )
+  /**
+   * The `.did` text each entry last generated from, so a watch rebuild can
+   * tell which entries need regenerating. See `buildStart`.
+   */
+  const generatedFrom = new Map<CanisterConfig, string>()
+
+  /** The entry's `.did` text, or `undefined` when it cannot be read. */
+  const readDidSource = (canister: CanisterConfig): string | undefined => {
+    try {
+      return fs.readFileSync(resolveDidPath(canister.didFile), "utf-8")
+    } catch {
+      return undefined
+    }
+  }
+
   const configuredCanisterIds = Object.fromEntries(
     canisters
       .filter((canister) => !!canister.canisterId)
@@ -403,12 +419,39 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
     async buildStart() {
       // ── Code Generation ──────────────────────────────────────────────────
 
+      // `vite build --watch` rebuilds when a file it watches changes, and a
+      // `.did` file is never part of the module graph. Registered here, a save
+      // starts a rebuild, and the rebuild's buildStart regenerates.
+      for (const canister of canisters) {
+        if (typeof canister.didFile === "string") {
+          this.addWatchFile(resolveDidPath(canister.didFile))
+        }
+      }
+
+      // A watch rebuild calls buildStart again, whatever file started it. A
+      // run rewrites the generated files even when their content is the same,
+      // those files are in the module graph, and the watcher then started
+      // another rebuild, which regenerated again: one edit to any source file
+      // looped forever. So a rebuild regenerates only the entries whose `.did`
+      // changed since they last generated. A failed entry is retried.
+      const sources = canisters.map(readDidSource)
+      const pending = canisters.filter(
+        (canister, index) =>
+          !this.meta.watchMode ||
+          sources[index] === undefined ||
+          generatedFrom.get(canister) !== sources[index]
+      )
+
+      if (pending.length === 0) {
+        return
+      }
+
       console.log(
-        `[ic-reactor] Generating canister bindings for ${canisters.length} canisters...`
+        `[ic-reactor] Generating canister bindings for ${pending.length} canisters...`
       )
 
       const outcomes = await Promise.allSettled(
-        canisters.map((canisterConfig) =>
+        pending.map((canisterConfig) =>
           runCanisterPipeline({
             canisterConfig,
             projectRoot,
@@ -417,11 +460,25 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
         )
       )
 
+      outcomes.forEach((outcome, index) => {
+        const canister = pending[index]
+        const source = sources[canisters.indexOf(canister)]
+        if (
+          outcome.status === "fulfilled" &&
+          outcome.value.success &&
+          source !== undefined
+        ) {
+          generatedFrom.set(canister, source)
+        } else {
+          generatedFrom.delete(canister)
+        }
+      })
+
       // Collect every failure before reporting one: a canister failing must not
       // hide what the others did, and the error should name all of them so a CI
       // log shows the whole picture in one go.
       const failures = outcomes.flatMap((outcome, index) => {
-        const canister = canisters[index]
+        const canister = pending[index]
         const name = canister?.name ?? `canister #${index}`
 
         if (outcome.status === "rejected") {
@@ -445,7 +502,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       }
 
       const message =
-        `Failed to generate ${failures.length} of ${canisters.length} canisters:\n` +
+        `Failed to generate ${failures.length} of ${pending.length} canisters:\n` +
         failures.map(({ detail }) => `  - ${detail}`).join("\n")
 
       // Previously every failure here was a `console.error` and nothing more,
