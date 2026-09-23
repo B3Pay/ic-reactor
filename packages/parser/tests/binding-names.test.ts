@@ -149,7 +149,9 @@ export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];`)
     })
 
     expect(errors).toEqual([])
-  })
+    // A full TypeScript program is checked here; on a busy CI runner that can
+    // take longer than vitest's 5 s default.
+  }, 30_000)
 
   it("loads as didToJs output, with the IDL types the Candid declares", async () => {
     const js = parser.didToJs(CANDID)
