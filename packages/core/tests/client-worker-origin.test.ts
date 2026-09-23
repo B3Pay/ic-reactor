@@ -37,6 +37,9 @@ const construct = (host?: string) =>
     ...(host ? { agentOptions: { host } } : {}),
   })
 
+const verifies = (manager: ClientManager) =>
+  manager.agent.config.verifyQuerySignatures
+
 /**
  * A page served by a local replica or a dev server routes the agent through
  * its own origin, and so does one on an IC boundary domain. The constructor
@@ -55,7 +58,8 @@ describe("ClientManager in a web worker", () => {
     vi.unstubAllGlobals()
   })
 
-  it.each([
+  // [case, page origin, worker script URL]
+  const WORKERS = [
     [
       "a dev server's module worker",
       "http://localhost:5173",
@@ -76,16 +80,46 @@ describe("ClientManager in a web worker", () => {
       "https://bkyz2-fmaaa-aaaaa-qaaaq-cai.icp0.io",
       "https://bkyz2-fmaaa-aaaaa-qaaaq-cai.icp0.io/assets/worker.js",
     ],
-  ])("uses the same host as its page for %s", (_, pageOrigin, workerHref) => {
-    onPage(pageOrigin)
-    const page = construct()
-    vi.unstubAllGlobals()
+  ] as const
 
-    inWorker(workerHref)
-    const worker = construct()
+  it.each(WORKERS)(
+    "uses the same host as its page for %s",
+    (_, pageOrigin, workerHref) => {
+      onPage(pageOrigin)
+      const page = construct()
+      vi.unstubAllGlobals()
 
-    expect(worker.agentHost?.toString()).toBe(page.agentHost?.toString())
-    expect(worker.network).toBe(page.network)
+      inWorker(workerHref)
+      const worker = construct()
+
+      expect(worker.agentHost?.toString()).toBe(page.agentHost?.toString())
+      expect(worker.network).toBe(page.network)
+    }
+  )
+
+  it.each(WORKERS)(
+    "checks query signatures as its page does for %s",
+    (_, pageOrigin, workerHref) => {
+      // The default read `window` too, so in a development build a worker
+      // checked a local replica's query signatures while its page did not.
+      onPage(pageOrigin)
+      const page = construct()
+      vi.unstubAllGlobals()
+
+      inWorker(workerHref)
+      const worker = construct()
+
+      // vitest's is a development build: the page skips the check exactly
+      // for a local replica.
+      expect(verifies(page)).toBe(!page.isLocal)
+      expect(verifies(worker)).toBe(verifies(page))
+    }
+  )
+
+  it("keeps checking query signatures in Node", () => {
+    // Guard: Node has neither `window` nor `location`, so it is no page's
+    // worker, and a development build there checks signatures as before.
+    expect(verifies(construct("http://127.0.0.1:4943"))).toBe(true)
   })
 
   it("reaches the replica behind a local dev server", async () => {
