@@ -260,12 +260,13 @@ try {
   const definition = await adapter.getCandidDefinition(canisterId)
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error)
-  if (message.includes("Failed to retrieve Candid source")) {
-    // Neither the candid:service metadata nor __get_candid_interface_tmp_hack
-    console.log("Canister doesn't expose its Candid")
-  } else if (message.includes("Failed to compile Candid")) {
+  if (message.includes("Failed to compile Candid")) {
     console.log("Invalid Candid syntax")
   } else {
+    // "Failed to retrieve Candid source by any method: …" comes from a canister
+    // that exposes no Candid and from failed requests (network, missing local
+    // root key) alike. The rest of the message says what stopped each attempt,
+    // so pass it on rather than report "no Candid".
     throw error
   }
 }
