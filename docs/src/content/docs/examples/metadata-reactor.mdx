@@ -1,19 +1,25 @@
 ---
 title: "Metadata Reactor Demo"
-description: Dynamic metadata fetching and rendering
+description: Connect to any canister and inspect its input and output metadata
 editUrl: false
 ---
 
 import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
 
-This example demonstrates how to use the `MetadataReactor` to fetch and display canister metadata, such as Candid files, canister status, and standard-specific metadata (e.g., ICRC-1 metadata).
+This example uses a `MetadataDisplayReactor` to connect to any canister by ID,
+fetch its Candid at runtime, and show the form (input) and result (output)
+metadata the reactor generates for each method. It is plain TypeScript, with no
+framework.
 
 ## Features Demonstrated
 
-- **Metadata Fetching**: Access canister metadata defined in the WASM.
-- **Canister Status**: Check if a canister is running and see its memory usage.
-- **Candid Export**: Dynamically retrieve the Candid interface from a live canister.
-- **Standard Detection**: Automatically detect supported standards like ICRC-1 or DIP-20.
+- **Runtime Candid**: `initialize()` fetches the canister's interface, so no
+  declarations are generated ahead of time.
+- **Method Discovery**: `getMethodNames()` lists every method of the canister.
+- **Input and Output Metadata**: `getInputMeta()` and `getOutputMeta()` return
+  the field trees, defaults and schemas for the selected method.
+- **Resolved Results**: `callMethod()` returns the result already resolved
+  through the output metadata.
 
 ## Links
 
@@ -43,13 +49,33 @@ This example demonstrates how to use the `MetadataReactor` to fetch and display 
 ## Implementation
 
 ```typescript
-// Fetching Candid metadata
-const { data: candid } = useActorQuery({
-  functionName: "get_candid",
+// src/main.ts
+import { ClientManager } from "@ic-reactor/core"
+import { MetadataDisplayReactor } from "@ic-reactor/candid"
+import { QueryClient } from "@tanstack/query-core"
+
+const clientManager = new ClientManager({
+  queryClient: new QueryClient(),
+  agentOptions: { host: "https://ic0.app" },
 })
 
-// Fetching ICRC-1 metadata
-const { data: metadata } = useActorQuery({
-  functionName: "icrc1_metadata",
+const reactor = new MetadataDisplayReactor({
+  canisterId, // entered by the user
+  clientManager,
+  name: "DynamicActor",
 })
+
+// Fetch the canister's Candid and build the metadata
+await reactor.initialize()
+const methods = reactor.getMethodNames()
+
+// For the selected method
+const argMeta = reactor.getInputMeta(methodName)
+const resultMeta = reactor.getOutputMeta(methodName)
+
+// The result comes back resolved through the output metadata
+const result = await reactor.callMethod({ functionName: methodName as any })
 ```
+
+See [MetadataDisplayReactor](/v3/packages/candid/metadatadisplayreactor) for the
+metadata shapes.

@@ -12,7 +12,7 @@ Demonstrates the automatic type transformation system comparing `DisplayReactor`
 
 - BigInt → string transformations
 - Principal → text transformations
-- Optional unwrapping (`[T] | []` → `T | null`)
+- Optional unwrapping (`[T] | []` → `T | undefined`; arguments also accept `null`)
 - Variant normalization with `_type` discriminator
 - Side-by-side comparison of raw vs display types
 - Bidirectional transformation (input and output)
@@ -50,7 +50,7 @@ Demonstrates the automatic type transformation system comparing `DisplayReactor`
 | `nat64` / `int64`          | `bigint`       | `string`              |
 | `nat8/16/32`, `int8/16/32` | `number`       | `number` (unchanged)  |
 | `principal`                | `Principal`    | `string`              |
-| `opt T`                    | `[T] \| []`    | `T \| null`           |
+| `opt T`                    | `[T] \| []`    | `T \| undefined`      |
 | `blob`                     | `Uint8Array`   | `string` (hex)        |
 | `variant { A }`            | `{ A: null }`  | `{ _type: "A" }`      |
 
