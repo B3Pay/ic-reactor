@@ -509,6 +509,128 @@ describe("identity attributes (real AuthClient)", () => {
     expect(result.decodedAttributes.email).toBe("user@example.com")
   })
 
+  describe("a sign-out while the attribute request is still pending", () => {
+    // Signing out ends neither half of a pending request: the attribute side
+    // goes on and resolves. The identity it captured belongs to the session
+    // the user just left, and committing it put their delegation back on the
+    // agent while the app showed them signed out.
+
+    /** A nonce the test releases, so the request stays pending until then. */
+    function heldNonce() {
+      let release: () => void = () => {}
+      const nonce = new Promise<Uint8Array>((resolve) => {
+        release = () => resolve(new Uint8Array(32).fill(4))
+      })
+      return { nonce: () => nonce, release }
+    }
+
+    async function expectSignedOut(
+      authentication: AuthenticationManager,
+      clientManager: ClientManager
+    ) {
+      expect((await clientManager.getUserPrincipal()).isAnonymous()).toBe(true)
+      expect(authentication.authState.isAuthenticated).toBe(false)
+      expect(
+        authentication.authState.identity?.getPrincipal().isAnonymous() ?? true
+      ).toBe(true)
+      expect(authentication.authState.isAuthenticating).toBe(false)
+    }
+
+    it("keeps the agent anonymous for a request made while signed in", async () => {
+      const { authentication, clientManager } = createManager()
+      const attributes = new IdentityAttributesManager(authentication)
+      await authentication.prepareClient()
+      await withUserGesture(() => authentication.login())
+      const { nonce, release } = heldNonce()
+
+      const pending = withUserGesture(() =>
+        attributes.request({ keys: ["email"], nonce, signIn: false })
+      )
+      await authentication.logout()
+      await expectSignedOut(authentication, clientManager)
+
+      release()
+      await pending
+
+      await expectSignedOut(authentication, clientManager)
+    })
+
+    it("keeps the agent anonymous when the request's own sign-in had finished", async () => {
+      const { authentication, clientManager } = createManager()
+      const attributes = new IdentityAttributesManager(authentication)
+      await authentication.prepareClient()
+      const { nonce, release } = heldNonce()
+
+      const pending = withUserGesture(() =>
+        attributes.request({ keys: ["email"], nonce })
+      )
+      await vi.waitFor(async () => {
+        expect(await authentication.client!.isAuthenticated()).toBe(true)
+      })
+      await authentication.logout()
+
+      release()
+      await pending
+
+      await expectSignedOut(authentication, clientManager)
+    })
+
+    /**
+     * Signs out in another tab: a manager of its own restores the session from
+     * the storage both tabs share and logs out. A browser then raises `storage`
+     * in every other tab of the origin; jsdom has one window and raises none,
+     * so this tab is sent what changed.
+     */
+    async function signOutInAnotherTab() {
+      const before = readLocalStorage()
+      const otherTab = createManager()
+      await otherTab.authentication.authenticate()
+      expect(otherTab.authentication.authState.isAuthenticated).toBe(true)
+      await otherTab.authentication.logout()
+      const after = readLocalStorage()
+
+      for (const key of new Set([...before.keys(), ...after.keys()])) {
+        const oldValue = before.get(key) ?? null
+        const newValue = after.get(key) ?? null
+        if (oldValue === newValue) continue
+        window.dispatchEvent(
+          new StorageEvent("storage", { key, oldValue, newValue })
+        )
+      }
+    }
+
+    function readLocalStorage() {
+      const entries = new Map<string, string>()
+      for (let index = 0; index < localStorage.length; index++) {
+        const key = localStorage.key(index)
+        if (key !== null) entries.set(key, localStorage.getItem(key)!)
+      }
+      return entries
+    }
+
+    it("signs this tab out too when the sign-out happens in another tab", async () => {
+      // Nothing tells the manager: the client in this tab stops vouching for
+      // the session while still handing out its identity, and the request is
+      // the first thing to find out.
+      const { authentication, clientManager } = createManager()
+      const attributes = new IdentityAttributesManager(authentication)
+      await authentication.prepareClient()
+      await withUserGesture(() => authentication.login())
+      const { nonce, release } = heldNonce()
+
+      const pending = withUserGesture(() =>
+        attributes.request({ keys: ["email"], nonce, signIn: false })
+      )
+      await signOutInAnotherTab()
+      expect(await authentication.client!.isAuthenticated()).toBe(false)
+
+      release()
+      await pending
+
+      await expectSignedOut(authentication, clientManager)
+    })
+  })
+
   it("surfaces identity-provider errors", async () => {
     const { authentication } = createManager()
     const attributes = new IdentityAttributesManager(authentication)

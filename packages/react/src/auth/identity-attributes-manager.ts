@@ -58,6 +58,9 @@ export class IdentityAttributesManager {
     }
 
     this.authentication.setAuthenticating()
+    // Replaced by anything else that changes auth state while this request
+    // runs; see where the result is committed.
+    const pendingState = this.authentication.authState
 
     let signInPromise: Promise<Identity> | undefined
     let committed = false
@@ -86,7 +89,31 @@ export class IdentityAttributesManager {
       const finalIdentity = identity ?? (await authClient.getIdentity())
       const isAuthenticated = await authClient.isAuthenticated()
       committed = true
-      await this.authentication.commitIdentity(finalIdentity, isAuthenticated)
+      // A sign-out, or another account's sign-in, can finish while the
+      // attribute side is still pending: neither ends it. `finalIdentity` then
+      // belongs to a session the client has left, and committing it put the
+      // signed-out user's delegation back on the agent while the app showed
+      // them signed out. So commit only what the client still holds and
+      // vouches for, the rule `authenticate()` applies. Whatever moved the
+      // client through the manager has published its own state.
+      //
+      // When nothing has published since this request began, the session
+      // changed under the manager and this request is the first to find out.
+      // A client that vouches for no session any more has lost it, as when
+      // another tab signed out, while it still hands out the identity it held:
+      // the manager signs out too, or it goes on reporting the user signed in
+      // with their delegation on the agent. A client that still vouches for a
+      // session gives no grounds to sign anyone out, so only the
+      // `isAuthenticating` this request started is ended.
+      if (await clientHolds(authClient, finalIdentity, isAuthenticated)) {
+        await this.authentication.commitIdentity(finalIdentity, isAuthenticated)
+      } else if (this.authentication.authState === pendingState) {
+        if (isAuthenticated) {
+          this.authentication.settleAuthenticating()
+        } else {
+          this.authentication.commitSignedOut()
+        }
+      }
 
       const normalizedSignedAttributes =
         normalizeSignedIdentityAttributes(signedAttributes)
@@ -155,6 +182,23 @@ export class IdentityAttributesManager {
       keys: identityAttributeKeys({ openIdProvider, keys }),
     })
   }
+}
+
+/**
+ * Whether `identity` is the session `authClient` holds now, and one it still
+ * vouches for. The anonymous identity needs no vouching: it signs no one in.
+ */
+async function clientHolds(
+  authClient: AuthClientLike,
+  identity: Identity,
+  isAuthenticated: boolean
+): Promise<boolean> {
+  const held = await Promise.resolve()
+    .then(() => authClient.getIdentity())
+    .catch(() => undefined)
+  const principal = identity.getPrincipal()
+  if (held?.getPrincipal().toText() !== principal.toText()) return false
+  return isAuthenticated || principal.isAnonymous()
 }
 
 /**
