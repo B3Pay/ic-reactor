@@ -16,6 +16,7 @@ import {
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
+import { mountWhileSuspended, useMountQueryClient } from "../utils.js"
 
 export interface UseActorSuspenseQueryParameters<
   Service,
@@ -95,6 +96,8 @@ export const useActorSuspenseQuery = <
   Transform,
   Selected
 >): UseActorSuspenseQueryResult<Service, Method, Transform, Selected> => {
+  useMountQueryClient(reactor.queryClient)
+
   // Memoize query options to prevent unnecessary re-computations
   const { queryKey, queryFn } = useMemo(
     () =>
@@ -117,16 +120,21 @@ export const useActorSuspenseQuery = <
     ]
   )
 
-  return useSuspenseQuery(
-    {
-      // Suspense queries don't support skipToken, so cast the queryFn
-      queryFn: queryFn as QueryFunction<
-        ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
-        QueryKey
-      >,
-      ...options,
-      queryKey,
-    },
-    reactor.queryClient
-  )
+  try {
+    return useSuspenseQuery(
+      {
+        // Suspense queries don't support skipToken, so cast the queryFn
+        queryFn: queryFn as QueryFunction<
+          ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
+          QueryKey
+        >,
+        ...options,
+        queryKey,
+      },
+      reactor.queryClient
+    )
+  } catch (thrown) {
+    mountWhileSuspended(reactor.queryClient, thrown)
+    throw thrown
+  }
 }

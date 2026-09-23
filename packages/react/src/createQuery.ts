@@ -50,6 +50,7 @@ import {
   buildChainedSelect,
   createBoundedCache,
   pickFetchOptions,
+  useMountQueryClient,
 } from "./utils.js"
 
 // ============================================================================
@@ -121,6 +122,7 @@ const createQueryImpl = <
   > & { select?: (data: Selected) => unknown }
 
   const useQueryHook = ((options?: UseQueryHookOptions) => {
+    useMountQueryClient(reactor.queryClient)
     const baseOptions = reactor.getQueryOptions(params)
     // Memoized so the observer's select-result cache can hit; see
     // buildChainedSelect. `select` comes from the factory config and is stable.

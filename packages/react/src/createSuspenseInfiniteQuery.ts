@@ -51,8 +51,10 @@ import {
   buildChainedSelect,
   callConfigForKey,
   mergeFactoryQueryKey,
+  mountWhileSuspended,
   normalizeQueryData,
   pickFetchOptions,
+  useMountQueryClient,
 } from "./utils.js"
 
 type SuspenseInfiniteFactoryCallOptions = {
@@ -389,6 +391,8 @@ const createSuspenseInfiniteQueryImpl = <
     Selected,
     TError
   > = (options: any): any => {
+    useMountQueryClient(reactor.queryClient)
+
     // Memoized and identity-preserving; see buildChainedSelect for why the
     // function identity matters to the observer's select-result cache.
     const chainedSelect = useMemo(
@@ -396,21 +400,26 @@ const createSuspenseInfiniteQueryImpl = <
       [options?.select]
     )
 
-    return useSuspenseInfiniteQuery(
-      {
-        queryKey: getQueryKey(),
-        queryFn,
-        initialPageParam,
-        getNextPageParam,
-        getPreviousPageParam,
-        maxPages,
-        staleTime,
-        ...rest,
-        ...options,
-        select: chainedSelect,
-      },
-      reactor.queryClient
-    )
+    try {
+      return useSuspenseInfiniteQuery(
+        {
+          queryKey: getQueryKey(),
+          queryFn,
+          initialPageParam,
+          getNextPageParam,
+          getPreviousPageParam,
+          maxPages,
+          staleTime,
+          ...rest,
+          ...options,
+          select: chainedSelect,
+        },
+        reactor.queryClient
+      )
+    } catch (thrown) {
+      mountWhileSuspended(reactor.queryClient, thrown)
+      throw thrown
+    }
   }
 
   // Invalidate function

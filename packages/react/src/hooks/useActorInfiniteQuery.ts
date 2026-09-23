@@ -20,6 +20,7 @@ import {
   callConfigForKey,
   mergeFactoryQueryKey,
   normalizeQueryData,
+  useMountQueryClient,
 } from "../utils.js"
 
 /**
@@ -154,6 +155,8 @@ export const useActorInfiniteQuery = <
   TPageParam,
   Selected
 > => {
+  useMountQueryClient(reactor.queryClient)
+
   // Always pass queryKey through generateQueryKey so it is merged with the
   // reactor/function identity. Using the custom key verbatim would cause cache
   // collisions if two different actors or methods share the same key string.

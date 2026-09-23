@@ -44,6 +44,7 @@ import type {
   MutationHookOptions,
   NoInfer,
 } from "./types.js"
+import { useMountQueryClient } from "./utils.js"
 
 // ============================================================================
 // Internal helpers
@@ -205,6 +206,7 @@ const createMutationImpl = <
       THookOnMutateResult
     >
   ) => {
+    useMountQueryClient(reactor.queryClient)
     const baseOptions = reactor.getQueryOptions({ functionName })
     const {
       invalidateQueries: hookInvalidateQueries,

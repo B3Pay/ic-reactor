@@ -39,7 +39,9 @@ import type {
 import {
   buildChainedSelect,
   createBoundedCache,
+  mountWhileSuspended,
   pickFetchOptions,
+  useMountQueryClient,
 } from "./utils.js"
 
 // ============================================================================
@@ -106,6 +108,7 @@ const createSuspenseQueryImpl = <
     Selected,
     TError
   > = (options: any): any => {
+    useMountQueryClient(reactor.queryClient)
     const baseOptions = reactor.getQueryOptions(params)
     // Memoized so the observer's select-result cache can hit; see
     // buildChainedSelect. `select` comes from the factory config and is stable.
@@ -113,17 +116,22 @@ const createSuspenseQueryImpl = <
       () => buildChainedSelect(select, options?.select),
       [options?.select]
     )
-    return useSuspenseQuery(
-      {
-        queryKey: baseOptions.queryKey,
-        staleTime,
-        ...rest,
-        ...options,
-        queryFn: baseOptions.queryFn,
-        select: chainedSelect,
-      },
-      reactor.queryClient
-    )
+    try {
+      return useSuspenseQuery(
+        {
+          queryKey: baseOptions.queryKey,
+          staleTime,
+          ...rest,
+          ...options,
+          queryFn: baseOptions.queryFn,
+          select: chainedSelect,
+        },
+        reactor.queryClient
+      )
+    } catch (thrown) {
+      mountWhileSuspended(reactor.queryClient, thrown)
+      throw thrown
+    }
   }
 
   const invalidate = async (): Promise<void> => {

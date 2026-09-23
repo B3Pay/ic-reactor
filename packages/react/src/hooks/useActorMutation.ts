@@ -19,6 +19,7 @@ import {
   TransformReturnRegistry,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
+import { useMountQueryClient } from "../utils.js"
 
 export interface UseActorMutationParameters<
   Service,
@@ -125,6 +126,8 @@ export const useActorMutation = <
   Transform,
   TOnMutateResult
 >): UseActorMutationResult<Service, Method, Transform, TOnMutateResult> => {
+  useMountQueryClient(reactor.queryClient)
+
   const mutationFn = useCallback(
     async (args: ReactorArgs<Service, Method, Transform>) =>
       reactor.callMethod({ functionName, callConfig, args }),
