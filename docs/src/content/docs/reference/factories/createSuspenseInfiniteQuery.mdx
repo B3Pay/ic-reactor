@@ -37,6 +37,18 @@ TypeScript infers the returned value as an array rather than a tuple and
 reports TS2322. [createInfiniteQuery](/v3/reference/factories/createinfinitequery)
 needs it for the same reason.
 
+`as const` makes nested arrays readonly as well, so it fails when an argument
+is an `opt` or a `vec`. For a method that takes `(opt text, nat, nat)`,
+`[[], cursor, 10n] as const` reports that `readonly []` is not assignable to
+`[] | [string]`. Annotate the return type for those methods instead:
+
+```typescript
+getArgs: (cursor): [[] | [string], bigint, bigint] => [[], cursor, 10n],
+```
+
+The function returned by `createSuspenseInfiniteQueryFactory` already knows the
+method, so the `getArgs` you pass to it needs neither.
+
 ## Key Differences from createInfiniteQuery
 
 | Feature          | `createInfiniteQuery`       | `createSuspenseInfiniteQuery` |
@@ -293,7 +305,7 @@ const getCategoryProductsQuery = createSuspenseInfiniteQueryFactory(backend, {
 })
 
 // Create with specific category
-function CategoryPage({ categoryId }: { categoryId: string }) {
+function CategoryProducts({ categoryId }: { categoryId: string }) {
   const query = getCategoryProductsQuery((offset) => [
     categoryId,
     { offset, limit: 20 }
@@ -301,9 +313,15 @@ function CategoryPage({ categoryId }: { categoryId: string }) {
 
   const { data } = query.useSuspenseInfiniteQuery()
 
+  return <ProductGrid products={data.pages.flatMap((p) => p.products)} />
+}
+
+// The boundary goes above the component that suspends: one inside it would
+// never show its fallback
+function CategoryPage({ categoryId }: { categoryId: string }) {
   return (
     <Suspense fallback={<ProductGridSkeleton />}>
-      <ProductGrid products={data.pages.flatMap((p) => p.products)} />
+      <CategoryProducts categoryId={categoryId} />
     </Suspense>
   )
 }

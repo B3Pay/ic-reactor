@@ -180,9 +180,12 @@ export function UserPage() {
 ## Notes
 
 <Aside type="tip">
-  A `*Factory` variant takes the **args tuple**, not a bare value — the same
-  array you would pass to `args`. Results are cached internally, so calling
-  `getUserQuery(["alice"])` multiple times returns the same object instance.
+  `createQueryFactory` and `createSuspenseQueryFactory` take the **args tuple**,
+  not a bare value — the same array you would pass to `args`. Their results are
+  cached, so calling `getUserQuery(["alice"])` again returns the same object
+  instance. `createInfiniteQueryFactory` and
+  `createSuspenseInfiniteQueryFactory` take a `getArgs` function instead, and
+  build a new query object on every call.
 </Aside>
 
 <Aside type="note">

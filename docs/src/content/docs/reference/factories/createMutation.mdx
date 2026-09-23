@@ -151,11 +151,15 @@ const likePostMutation = createMutation(backend, {
   functionName: "likePost",
 })
 
+// A query factory takes the args tuple, as in `getPostQuery([postId])`
+const getPostQuery = createQueryFactory(backend, { functionName: "getPost" })
+const { queryClient } = backend
+
 // In your component
 const { mutate } = likePostMutation.useMutation({
   onMutate: async (args) => {
     const [postId] = args
-    const queryKey = getPostQuery(postId).getQueryKey()
+    const queryKey = getPostQuery([postId]).getQueryKey()
 
     // Cancel outgoing refetches
     await queryClient.cancelQueries({ queryKey })
@@ -178,7 +182,7 @@ const { mutate } = likePostMutation.useMutation({
     const [postId] = args
     if (context?.previousPost) {
       queryClient.setQueryData(
-        getPostQuery(postId).getQueryKey(),
+        getPostQuery([postId]).getQueryKey(),
         context.previousPost
       )
     }
@@ -187,7 +191,7 @@ const { mutate } = likePostMutation.useMutation({
     // Refetch to ensure consistency
     const [postId] = args
     queryClient.invalidateQueries({
-      queryKey: getPostQuery(postId).getQueryKey(),
+      queryKey: getPostQuery([postId]).getQueryKey(),
     })
   },
 })
