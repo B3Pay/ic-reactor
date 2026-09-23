@@ -6,7 +6,9 @@ editUrl: false
 
 import { Aside, Steps, TabItem, Tabs } from "@astrojs/starlight/components"
 
-IC Reactor is compatible with React 18+, and works with TypeScript 5+.
+IC Reactor is compatible with React 18+ and needs TypeScript 5.7 or later: its
+declarations, and those of `@icp-sdk/core`, use generic typed arrays such as
+`Uint8Array<ArrayBuffer>`, which TypeScript 5.7 introduced.
 `@ic-reactor/react` needs `@tanstack/react-query` 5.90.2 or later.
 
 ## Prerequisites
