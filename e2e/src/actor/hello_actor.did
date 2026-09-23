@@ -1,4 +1,20 @@
+type Status = variant { Active; Frozen : text };
+type Profile = record {
+    owner : principal;
+    balance : nat;
+    nonce : nat64;
+    delta : int;
+    tags : vec text;
+    avatar : opt blob;
+    status : Status;
+};
 service : {
     "greet" : (text) -> (text) query;
-    "greet_update" : (text) -> (text)
+    "greet_update" : (text) -> (text);
+    "divide" : (nat, nat) -> (variant { Ok : nat; Err : text }) query;
+    "profile" : (principal) -> (Profile) query;
+    "increment" : () -> (nat);
+    "count" : () -> (nat) query;
+    "boom" : () -> ();
+    "whoami" : () -> (principal) query
 }

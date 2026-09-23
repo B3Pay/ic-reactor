@@ -1,7 +1,31 @@
 # End-to-End Test Workspace
 
 This directory contains a small `hello_actor` canister and a suite of `vitest`
-based tests that exercise the core runtime in a local replica.
+based tests that run `@ic-reactor/core`, `@ic-reactor/candid` and
+`@ic-reactor/react` against it on a local replica.
+
+## The canister
+
+Besides `greet` and `greet_update`, each method in `src/actor/src/lib.rs` puts
+one kind of value, or one kind of failure, on the wire:
+
+| Method      | Signature                                                | Covers                                                                                                                                                           |
+| ----------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `divide`    | `(nat, nat) -> (variant { Ok : nat; Err : text }) query` | Both arms of a Result. A zero divisor returns `Err`.                                                                                                             |
+| `profile`   | `(principal) -> (Profile) query`                         | A record of `principal`, `nat`, `nat64`, `int`, `vec text`, `opt blob` and a variant. The anonymous principal gets no avatar and the `Frozen` arm with its text. |
+| `increment` | `() -> (nat)`                                            | A stateful update call.                                                                                                                                          |
+| `count`     | `() -> (nat) query`                                      | A query that reads what `increment` wrote.                                                                                                                       |
+| `boom`      | `() -> ()`                                               | A trap, which the replica rejects.                                                                                                                               |
+| `whoami`    | `() -> (principal) query`                                | The caller, for the identity switch.                                                                                                                             |
+
+`src/actor/hello_actor.did` is written by hand, so change it together with
+`lib.rs`. The build embeds it as the canister's public `candid:service`
+metadata, which the `@ic-reactor/candid` tests fetch at run time, and the vite
+plugin regenerates `src/declarations/` from it each time vitest starts. Commit
+the regenerated declarations.
+
+The counter is shared by every test file, and vitest runs the files in
+parallel, so a test can only assert that the counter grows, not its value.
 
 ## Running tests
 
