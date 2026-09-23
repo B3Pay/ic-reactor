@@ -1,20 +1,35 @@
 import { IDL } from "@icp-sdk/core/candid"
 
 /**
- * The query key has to name the Candid value a call sends, and a blob is where
- * the JavaScript value and the Candid value part most. IDL.encode takes a blob
- * as a `Uint8Array` or as a plain array of bytes, and a DisplayReactor also
- * takes hex text, with or without `0x`, in either case. All of them send the
- * same bytes, but their JSON differs (`{"0":1,"1":2}`, `[1,2]`, `"0102"`), so
- * each form got a cache entry of its own. The key writes every blob the
- * reactor would send as a {@link BlobKey} instead, which `generateKey` writes
- * as its lowercase hex behind a tag no argument can produce.
+ * The query key has to name the Candid value a call sends: one key for
+ * arguments that send the same bytes, and different keys for arguments that
+ * send different bytes. The JSON of the JavaScript value does neither where a
+ * reactor takes one Candid value in several forms:
  *
- * Only a position the method's Candid type says is a blob is rewritten: a
- * `number[]` is a blob as a `vec nat8`, and the same array passed as a
- * `vec nat16` keeps the key it had. So does a value the reactor would refuse
- * as a blob, such as hex text given to a Reactor, and every argument that
- * holds no blob.
+ * - A blob. IDL.encode takes one as a `Uint8Array` or as a plain array of
+ *   bytes, and a DisplayReactor also takes hex text, with or without `0x`, in
+ *   either case. All of them send the same bytes, but their JSON differs
+ *   (`{"0":1,"1":2}`, `[1,2]`, `"0102"`), so each form got a cache entry of its
+ *   own. The key writes every blob the reactor would send as a
+ *   {@link BlobKey} instead, which `generateKey` writes as its lowercase hex
+ *   behind a tag no argument can produce.
+ * - In a DisplayReactor, an `opt` given bare, as `[value]`, or as `null`,
+ *   `undefined` or `[]` for none, and a variant with or without its `_type`.
+ *   The key writes each in the form the display codecs return it: none left
+ *   out, as an absent record field is, the value bare, and the variant with its
+ *   `_type`. An opt whose own values can be null, such as an opt of an opt,
+ *   keeps the wrapper around its value, so that the value stays apart from
+ *   none.
+ * - In a DisplayReactor, a `vec record { text; T }` given as an object. The
+ *   codec sends its entries in the object's order, but `generateKey` sorts an
+ *   object's keys, so two orders of one map, which send different vectors,
+ *   shared a key. The key lists the entries in order, as the pairs they are
+ *   sent as.
+ *
+ * Only a position the method's Candid type names is rewritten: a `number[]` is
+ * a blob as a `vec nat8`, and the same array passed as a `vec nat16` keeps the
+ * key it had. So does a value the reactor would refuse as a blob, such as hex
+ * text given to a Reactor, and every argument that holds none of these.
  *
  * Internal: deliberately not re-exported from `utils/index`.
  */
@@ -47,6 +62,24 @@ const hasOwn = (value: object, key: string): boolean =>
 
 const isByte = (type: IDL.Type): boolean =>
   type instanceof IDL.FixedNatClass && type._bits === 8
+
+const isBlob = (type: IDL.Type): boolean =>
+  type instanceof IDL.VecClass && isByte(type._type)
+
+/** Is `type` an `opt`, behind any recursive alias? As the variant codec asks. */
+const isOpt = (type: IDL.Type | undefined): boolean =>
+  type instanceof IDL.OptClass ||
+  (type instanceof IDL.RecClass && isOpt(type.getType()))
+
+/**
+ * Can a value of `type` itself be null: an `opt`'s none, `null`, or
+ * `reserved`, which takes any value? Behind any recursive alias.
+ */
+const holdsNull = (type: IDL.Type | undefined): boolean =>
+  type instanceof IDL.OptClass ||
+  type instanceof IDL.NullClass ||
+  type instanceof IDL.ReservedClass ||
+  (type instanceof IDL.RecClass && holdsNull(type.getType()))
 
 /** Two lowercase hex digits for each byte value. */
 const HEX_BYTES = Array.from({ length: 256 }, (_, byte) =>
@@ -82,34 +115,27 @@ function byteArrayHex(items: unknown[]): string | undefined {
 /** Hex text as `hexToUint8Array` reads it: an optional `0x`, then the digits. */
 const HEX_TEXT = /^(?:0x)?([0-9a-f]*)$/i
 
-const blobTypes = new WeakMap<IDL.Type, boolean>()
-
-/** Can a value of `type` hold a blob anywhere? */
-function holdsBlob(type: IDL.Type): boolean {
-  let holds = blobTypes.get(type)
-  if (holds === undefined) {
-    holds = reachesBlob(type, new Set())
-    blobTypes.set(type, holds)
-  }
-  return holds
-}
-
-function reachesBlob(type: IDL.Type, seen: Set<IDL.Type>): boolean {
+/** Can a value of `type` hold a value of a type `isTarget` picks, anywhere? */
+function reaches(
+  type: IDL.Type,
+  isTarget: (type: IDL.Type) => boolean,
+  seen: Set<IDL.Type>
+): boolean {
   if (seen.has(type)) return false
   seen.add(type)
+  if (isTarget(type)) return true
   if (type instanceof IDL.RecClass) {
     const inner = type.getType()
-    return inner !== undefined && reachesBlob(inner, seen)
+    return inner !== undefined && reaches(inner, isTarget, seen)
   }
-  if (type instanceof IDL.VecClass) {
-    return isByte(type._type) || reachesBlob(type._type, seen)
+  if (type instanceof IDL.VecClass || type instanceof IDL.OptClass) {
+    return reaches(type._type, isTarget, seen)
   }
-  if (type instanceof IDL.OptClass) return reachesBlob(type._type, seen)
   // A tuple is a RecordClass too.
   if (type instanceof IDL.RecordClass || type instanceof IDL.VariantClass) {
-    return type._fields.some(([, field]) => reachesBlob(field, seen))
+    return type._fields.some(([, field]) => reaches(field, isTarget, seen))
   }
-  // A func or service reference, a principal and the primitives hold no blob.
+  // A func or service reference, a principal and the primitives hold nothing.
   return false
 }
 
@@ -127,20 +153,27 @@ function mapItems(
 }
 
 /**
- * Walks an argument alongside its Candid type and replaces each blob in it
- * with a {@link BlobKey}. It reads the value the way the reactor encodes it:
- * as IDL.encode does, or, given the display shapes, as a DisplayReactor's
- * codecs do. Everything that holds no blob it returns as the same object, so it
- * serialises exactly as before.
+ * Walks an argument alongside its Candid type and writes each value that has
+ * more than one form in one form: a blob as a {@link BlobKey}, and in a
+ * DisplayReactor also an opt, a variant and a vector given as an object. It
+ * reads the value the way the reactor encodes it: as IDL.encode does, or,
+ * given the display shapes, as a DisplayReactor's codecs do. Everything that
+ * holds none of these, and every value already in that form, it returns as the
+ * same object, so it serialises exactly as before.
  */
 export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
+  /** Per type, whether a value of it can hold something the key rewrites. */
+  private readonly rewritten = new WeakMap<IDL.Type, boolean>()
+
   constructor(private readonly display?: DisplayArgShapes) {
     super()
   }
 
-  /** `args` with each blob that `argTypes` declare replaced by its key. */
+  /** `args` with each value that `argTypes` give more than one form rewritten. */
   public keyArgs(argTypes: readonly IDL.Type[], args: unknown[]): unknown[] {
-    if (!Array.isArray(args) || !argTypes.some(holdsBlob)) return args
+    if (!Array.isArray(args) || !argTypes.some((type) => this.rewrites(type))) {
+      return args
+    }
     try {
       return mapItems(args, (arg, i) =>
         i < argTypes.length ? argTypes[i].accept(this, arg) : arg
@@ -149,6 +182,27 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
       // Too deep to walk: the key stays what it always was.
       return args
     }
+  }
+
+  /** Can a value of `type` hold anything the key rewrites? */
+  private rewrites(type: IDL.Type): boolean {
+    let rewrites = this.rewritten.get(type)
+    if (rewrites === undefined) {
+      rewrites = reaches(type, (t) => this.isRewritten(t), new Set())
+      this.rewritten.set(type, rewrites)
+    }
+    return rewrites
+  }
+
+  /** Does the key write a value of `type` itself in a form of its own? */
+  private isRewritten(type: IDL.Type): boolean {
+    if (isBlob(type)) return true
+    if (!this.display) return false
+    return (
+      type instanceof IDL.OptClass ||
+      type instanceof IDL.VariantClass ||
+      (type instanceof IDL.VecClass && this.display.isTextKeyedPair(type._type))
+    )
   }
 
   /** The hex of a blob the reactor sends, or `undefined` for another value. */
@@ -177,7 +231,7 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
   ): Record<string, unknown> {
     let copy: Record<string, unknown> | undefined
     for (const [label, type] of fields) {
-      if (!hasOwn(value, label) || !holdsBlob(type)) continue
+      if (!hasOwn(value, label) || !this.rewrites(type)) continue
       const field = type.accept(this, value[label])
       if (Object.is(field, value[label])) continue
       copy ??= { ...value }
@@ -222,20 +276,18 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
       const hex = this.blobHex(value)
       return hex === undefined ? value : new BlobKey(hex)
     }
-    if (!holdsBlob(elemType)) return value
-    if (Array.isArray(value)) {
-      return mapItems(value, (item) => elemType.accept(this, item))
-    }
-    // A DisplayReactor also takes a `vec record { text; T }` as an object
-    // keyed by the text.
+    // A DisplayReactor also takes a `vec record { text; T }` as an object keyed
+    // by the text, and sends `Object.entries` of it: the pairs in the object's
+    // order. The key lists the same pairs in the same order, so it matches the
+    // vector sent, and the array of pairs, which sends the same one.
     if (this.display?.isTextKeyedPair(elemType) && isPlainObject(value)) {
-      const valueType = elemType._fields[1][1]
-      return this.mapFields(
-        value,
-        Object.keys(value).map((key): [string, IDL.Type] => [key, valueType])
-      )
+      const pairs: unknown[] = Object.entries(value)
+      return this.rewrites(elemType)
+        ? pairs.map((pair) => elemType.accept(this, pair))
+        : pairs
     }
-    return value
+    if (!this.rewrites(elemType) || !Array.isArray(value)) return value
+    return mapItems(value, (item) => elemType.accept(this, item))
   }
 
   visitOpt<T>(
@@ -243,26 +295,38 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
     elemType: IDL.Type<T>,
     value: unknown
   ): unknown {
-    if (!holdsBlob(elemType)) return value
     // IDL.encode takes `[]` for none and `[value]` for some.
-    if (
-      Array.isArray(value) &&
-      value.length === 1 &&
-      (!this.display || this.display.isOptionalWrapper(elemType, value[0]))
-    ) {
-      return mapItems(value, (item) => elemType.accept(this, item))
+    if (!this.display) {
+      return this.rewrites(elemType) &&
+        Array.isArray(value) &&
+        value.length === 1
+        ? mapItems(value, (item) => elemType.accept(this, item))
+        : value
     }
-    // A DisplayReactor also takes the value itself, and null or undefined for
-    // none.
+    // The optional codec takes null, undefined and `[]` for none. The key
+    // leaves none out, as it leaves out an absent record field, which the
+    // codec reads as none too.
     if (
-      !this.display ||
-      value === undefined ||
       value === null ||
+      value === undefined ||
       (Array.isArray(value) && value.length === 0)
     ) {
-      return value
+      return undefined
     }
-    return elemType.accept(this, value)
+    // `[inner]` is the wrapper around the value where the codec reads it so,
+    // and otherwise the value itself.
+    const wrapped =
+      Array.isArray(value) &&
+      value.length === 1 &&
+      this.display.isOptionalWrapper(elemType, value[0])
+    const inner: unknown = wrapped ? (value as unknown[])[0] : value
+    const key = this.rewrites(elemType) ? elemType.accept(this, inner) : inner
+    // The value bare, as the codec returns it. Where that could read as none,
+    // the key keeps the wrapper: for every value of a type whose own values
+    // can be null (an opt, `null`, `reserved`), and for a null the codec
+    // refuses, such as `[null]` for an `opt nat`.
+    if (key !== null && key !== undefined && !holdsNull(elemType)) return key
+    return wrapped && Object.is(key, inner) ? value : [key]
   }
 
   visitRecord(
@@ -280,7 +344,7 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
   ): unknown {
     if (!Array.isArray(value)) return value
     return mapItems(value, (item, i) =>
-      i < components.length && holdsBlob(components[i])
+      i < components.length && this.rewrites(components[i])
         ? components[i].accept(this, item)
         : item
     )
@@ -292,14 +356,46 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
     value: unknown
   ): unknown {
     if (!isPlainObject(value)) return value
-    // A DisplayReactor's variant names its arm in `_type`, beside the payload.
-    if (this.display && "_type" in value) {
-      return typeof value._type === "string"
-        ? this.mapArm(value, fields, value._type)
-        : value
+    if (!this.display) {
+      const tags = Object.keys(value)
+      return tags.length === 1 ? this.mapArm(value, fields, tags[0]) : value
     }
-    const tags = Object.keys(value)
-    return tags.length === 1 ? this.mapArm(value, fields, tags[0]) : value
+    // The variant codec names the arm in `_type`, or else by the one key the
+    // value has.
+    let tag: unknown = value._type
+    if (!("_type" in value)) {
+      const tags = Object.keys(value)
+      if (tags.length !== 1) return value
+      tag = tags[0]
+    }
+    const arm =
+      typeof tag === "string" && tag !== "_type"
+        ? fields.find(([label]) => label === tag)
+        : undefined
+    if (!arm) return value
+    const [label, type] = arm
+    const payload = hasOwn(value, label) ? value[label] : undefined
+    // What the codec sends: nothing for a null arm, whatever the payload, and
+    // nothing for a missing payload unless the arm is an opt, whose none that
+    // is.
+    const sent =
+      !(type instanceof IDL.NullClass) &&
+      ((payload !== null && payload !== undefined) || isOpt(type))
+    const key = !sent
+      ? undefined
+      : this.rewrites(type)
+        ? type.accept(this, payload)
+        : payload
+    // `{ _type, [label]: payload }`, as the codec returns a variant.
+    if (
+      value._type === label &&
+      Object.is(payload, key) &&
+      Object.keys(value).every((name) => name === "_type" || name === label)
+    ) {
+      return value
+    }
+    // A computed key defines the field, also for an arm named `__proto__`.
+    return key === undefined ? { _type: label } : { _type: label, [label]: key }
   }
 }
 

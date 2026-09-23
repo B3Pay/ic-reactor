@@ -348,7 +348,7 @@ describe("a blob argument's query key", () => {
         {
           to: { owner: OWNER, subaccount: new Uint8Array(BYTES) },
           amount: "1",
-          memo: [`0x${HEX.toUpperCase()}`],
+          memo: `0x${HEX.toUpperCase()}`,
           created_at_time: "7",
         },
         { _type: "Note", Note: "x" },
@@ -356,7 +356,7 @@ describe("a blob argument's query key", () => {
         undefined,
       ])
     ).toBe(
-      `[{"amount":"1","created_at_time":"7","memo":[${blob}],` +
+      `[{"amount":"1","created_at_time":"7","memo":${blob},` +
         `"to":{"owner":"aaaaa-aa","subaccount":${blob}}},` +
         `{"Note":"x","_type":"Note"},["aaaaa-aa"],null]`
     )
@@ -405,11 +405,13 @@ describe("the key of every argument that is not a blob", () => {
     }
   })
 
-  it("is byte-identical to the key before, in a DisplayReactor", () => {
+  // An opt or a variant given in another form is keyed in these forms: see
+  // display-query-key-forms.test.ts.
+  it("is byte-identical to the key before, in a DisplayReactor, in the forms its codecs return", () => {
     const reactor = makeDisplayReactor()
     const payloads = [
       { _type: "Amount", Amount: "18446744073709551615" },
-      { Note: "0102" },
+      { _type: "Note", Note: "0102" },
       { _type: "Ports", Ports: [1, 2, 3] },
     ]
 
@@ -422,8 +424,7 @@ describe("the key of every argument that is not a blob", () => {
           to: { owner: OWNER, subaccount: undefined },
           amount: "100000000",
           fee: "10000",
-          memo: null,
-          created_at_time: [],
+          memo: undefined,
         },
         payload,
         [OWNER, CANISTER_ID],
