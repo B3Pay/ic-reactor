@@ -321,20 +321,22 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
   // ════════════════════════════════════════════════════════════════════════
 
   public visitService(t: IDL.ServiceClass): ArgumentsServiceMeta<A> {
-    const result = {} as ArgumentsServiceMeta<A>
+    const entries: Array<[string, ArgumentsMeta<A>]> = []
 
     for (const [functionName, type] of t._fields) {
       // A method typed by a recursive func alias is an IDL.Rec around the
       // func, which `accept` described as a recursive field, not a method.
       const func = methodFunc(type)
       if (!func) continue
-      result[functionName as FunctionName<A>] = func.accept(
-        this,
-        functionName
-      ) as ArgumentsMeta<A>
+      entries.push([
+        functionName,
+        func.accept(this, functionName) as ArgumentsMeta<A>,
+      ])
     }
 
-    return result
+    // Object.fromEntries makes every method an own property. Assigning to a
+    // method named `__proto__` set the prototype instead.
+    return Object.fromEntries(entries) as ArgumentsServiceMeta<A>
   }
 
   public visitFunc(
@@ -389,8 +391,8 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
   ): RecordField {
     const name = this.currentName()
     const fields: FieldNode[] = []
-    const defaultValue: Record<string, unknown> = {}
-    const schemaShape: Record<string, z.ZodTypeAny> = {}
+    const defaultEntries: Array<[string, unknown]> = []
+    const schemaEntries: Array<[string, z.ZodTypeAny]> = []
 
     for (const [key, type] of fields_) {
       const field = this.withName(name ? `.${key}` : key, () =>
@@ -398,11 +400,16 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
       )
 
       fields.push(field)
-      defaultValue[key] = field.defaultValue
-      schemaShape[key] = field.schema
+      defaultEntries.push([key, field.defaultValue])
+      schemaEntries.push([key, field.schema])
     }
 
-    const schema = z.object(schemaShape)
+    // Object.fromEntries makes every field an own property, as in
+    // CandidFormVisitor. Assigning to a field named `__proto__` set the
+    // prototype instead, so the field was missing from the default and the
+    // schema.
+    const defaultValue = Object.fromEntries(defaultEntries)
+    const schema = z.object(Object.fromEntries(schemaEntries))
 
     return {
       type: "record",

@@ -1,6 +1,6 @@
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
-import type { BaseActor, FunctionName } from "@ic-reactor/core"
+import type { BaseActor } from "@ic-reactor/core"
 import * as z from "zod"
 import { isQuery } from "../helpers.js"
 import { methodFunc } from "../method-func.js"
@@ -160,18 +160,20 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
   }
 
   public visitService(t: IDL.ServiceClass): FormServiceMeta<A> {
-    const result = {} as FormServiceMeta<A>
+    const entries: Array<[string, FormArgumentsMeta]> = []
     for (const [functionName, type] of t._fields) {
       // A method typed by a recursive func alias is an IDL.Rec around the
       // func, which `accept` described as a recursive field, not a method.
       const func = methodFunc(type)
       if (!func) continue
-      result[functionName as FunctionName<A>] = func.accept(
-        this,
-        functionName
-      ) as FormArgumentsMeta
+      entries.push([
+        functionName,
+        func.accept(this, functionName) as FormArgumentsMeta,
+      ])
     }
-    return result
+    // Object.fromEntries makes every method an own property. Assigning to a
+    // method named `__proto__` set the prototype instead.
+    return Object.fromEntries(entries) as FormServiceMeta<A>
   }
 
   public visitFunc(t: IDL.FuncClass, functionName: string): FormArgumentsMeta {

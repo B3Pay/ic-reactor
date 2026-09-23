@@ -108,7 +108,12 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
   public getInputMeta<M extends FunctionName<A>>(
     methodName: M
   ): FormArgumentsMeta | undefined {
-    return this.methodMeta?.[methodName]
+    // Only a method's own entry: a plain read also found what every object
+    // inherits, so "toString" returned Object.prototype.toString.
+    const meta = this.methodMeta
+    return meta && Object.prototype.hasOwnProperty.call(meta, methodName)
+      ? meta[methodName]
+      : undefined
   }
 
   /**
@@ -121,7 +126,10 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
   public getOutputMeta<M extends FunctionName<A>>(
     methodName: M
   ): MethodMeta<A, M> | undefined {
-    return this.resultMeta?.[methodName]
+    const meta = this.resultMeta
+    return meta && Object.prototype.hasOwnProperty.call(meta, methodName)
+      ? meta[methodName]
+      : undefined
   }
 
   public getAllOutputMeta(): ServiceMeta<A> | null {
