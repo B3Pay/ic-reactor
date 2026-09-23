@@ -1,4 +1,5 @@
 import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants.js"
+import { BlobKey } from "./args-key.js"
 import { CanisterError } from "../errors/index.js"
 import { OkResult } from "../types/index.js"
 
@@ -9,12 +10,12 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 }
 
 /**
- * Leads the key of a float that JSON has no number for. A string that already
- * starts with it gets one more in front, so the count of leading U+0000s tells
- * the cases apart: none for any other string (or a BigInt), exactly one for a
- * tagged float, two or more for a string that began with U+0000. No string
- * argument can therefore serialise to a tagged float, and no other JSON type
- * serialises to a string at all.
+ * Leads the key of a float that JSON has no number for, and of a blob. A
+ * string that already starts with it gets one more in front, so the count of
+ * leading U+0000s tells the cases apart: none for any other string (or a
+ * BigInt), exactly one for a tagged float or blob, two or more for a string
+ * that began with U+0000. No string argument can therefore serialise to a
+ * tag, and no other JSON type serialises to a string at all.
  */
 const SPECIAL_NUMBER_TAG = "\u0000"
 
@@ -37,6 +38,12 @@ const SPECIAL_NUMBER_TAG = "\u0000"
  *   function is public and an infinite query's `getKeyArgs` may return any
  *   value, so a bare `"Infinity"` would let `[Infinity]` and `["Infinity"]`
  *   share a cache entry.
+ * - A blob given as a `Uint8Array`, a byte array or (to a DisplayReactor) hex
+ *   text sends the same bytes in every form. `Reactor.generateQueryKey` hands
+ *   each blob of the method's arguments over as a `BlobKey`, written here as
+ *   `"\u0000blob:"` and its lowercase hex. It carries the same tag, so no
+ *   argument can produce it: not hex text given to a Reactor, which refuses it,
+ *   and not a BigInt, whose digits are also hex.
  *
  * BigInts are written as decimal strings. Everything else — including every
  * string that does not start with U+0000, and an object whose keys are already
@@ -44,6 +51,7 @@ const SPECIAL_NUMBER_TAG = "\u0000"
  */
 export const generateKey = (args: any[]) => {
   return JSON.stringify(args, (_, v: unknown) => {
+    if (v instanceof BlobKey) return `${SPECIAL_NUMBER_TAG}blob:${v.hex}`
     if (typeof v === "string") {
       return v.startsWith(SPECIAL_NUMBER_TAG) ? SPECIAL_NUMBER_TAG + v : v
     }

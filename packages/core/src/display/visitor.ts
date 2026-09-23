@@ -14,7 +14,9 @@ import {
  * A `vec record { text; T }` displays as an object keyed by the text. The key
  * must really be `text`: any other 2-tuple stays a list of pairs.
  */
-function isTextKeyedPair(type: IDL.Type): boolean {
+export function isTextKeyedPair(
+  type: IDL.Type
+): type is IDL.TupleClass<unknown[]> {
   const fields = type instanceof IDL.TupleClass ? type._fields : undefined
   return fields?.length === 2 && fields[0][1].name === "text"
 }
@@ -142,6 +144,19 @@ function displaysAsArray(type: IDL.Type, depth = 0): boolean {
     type instanceof IDL.TupleClass ||
     type instanceof IDL.FuncClass
   )
+}
+
+/**
+ * Is `[inner]`, given for an `opt` of `elemType`, the Candid wrapper around one
+ * value, rather than a one-element value of `elemType` itself? See the
+ * optional codec's encode below, which decides with this.
+ */
+export function isOptionalWrapper(
+  elemType: IDL.Type,
+  inner: unknown,
+  elemIsArrayValued = displaysAsArray(elemType)
+): boolean {
+  return !elemIsArrayValued || couldBeDisplayOf(elemType, inner)
 }
 
 function createFixedNumberCodec(bits: number, signed: boolean): z.ZodTypeAny {
@@ -531,7 +546,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
      * (`[[]]` is some(empty)), and otherwise the array is the value.
      */
     const isWrappedValue = (inner: unknown): boolean =>
-      !elemIsArrayValued || couldBeDisplayOf(elemType, inner)
+      isOptionalWrapper(elemType, inner, elemIsArrayValued)
 
     return passThroughCodec({
       decode: (val) => {

@@ -520,7 +520,9 @@ The `{ transform }` segment is present whenever the reactor's transform is not
 serialized as JSON with `bigint` rendered as a decimal string and the keys of
 every plain object sorted, so `{ b, a }` and `{ a, b }` give the same key. A
 bare `JSON.stringify(args)` does not match it once a record's fields are out of
-alphabetical order. The `{ effectiveTarget }` segment is dropped when it names
+alphabetical order. A blob is written as a tag followed by its lowercase hex, so
+a `Uint8Array`, a `number[]` and a `DisplayReactor`'s hex text holding the same
+bytes give the same key. The `{ effectiveTarget }` segment is dropped when it names
 the same canister the key is already rooted at, and any custom `queryKey` is
 appended element-wise. Build keys with `generateQueryKey` (or a query object's
 `getQueryKey()`) rather than by hand.

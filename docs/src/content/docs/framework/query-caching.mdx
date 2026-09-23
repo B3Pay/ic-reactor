@@ -37,7 +37,7 @@ const { data } = useActorQuery({
 })
 ```
 
-Each unique combination of canister ID, function name, and arguments creates a separate cache entry. The whole `args` array is serialized into a **single** string segment, `argsJson` — arguments are never spread into separate elements. It is JSON with BigInt values written as decimal strings and the keys of every plain object sorted, so `{ b, a }` and `{ a, b }` share an entry, and a bare `JSON.stringify(args)` does not match it once a record's fields are out of alphabetical order.
+Each unique combination of canister ID, function name, and arguments creates a separate cache entry. The whole `args` array is serialized into a **single** string segment, `argsJson` — arguments are never spread into separate elements. It is JSON with BigInt values written as decimal strings and the keys of every plain object sorted, so `{ b, a }` and `{ a, b }` share an entry, and a bare `JSON.stringify(args)` does not match it once a record's fields are out of alphabetical order. A blob is written as a tag followed by its lowercase hex, so a `Uint8Array`, a `number[]` and a `DisplayReactor`'s hex text holding the same bytes share an entry too.
 
 The keys above are a `Reactor`'s: `[canisterId, functionName, argsJson]`. A `DisplayReactor` adds a `{ transform: "display" }` segment after the function name — `['rrkah-fqaaa...', 'getUser', { transform: 'display' }, '["user-123"]']` — so a `Reactor` and a `DisplayReactor` over one canister never share a cache entry. Build keys with `generateQueryKey` (below) or a query object's `getQueryKey()` rather than by hand.
 

@@ -31,6 +31,7 @@ import {
   toHashableKeySegment,
 } from "./utils/helper.js"
 import { toReactorQueryData } from "./utils/query-data.js"
+import { candidArgsKey } from "./utils/args-key.js"
 import {
   processQueryCallResponse,
   processUpdateCallResponse,
@@ -306,7 +307,9 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     }
 
     if (params.args) {
-      const argKey = generateKey(params.args)
+      const argKey = generateKey(
+        this.argsForQueryKey(params.functionName, params.args)
+      )
       queryKeys.push(argKey)
     }
     if (params.queryKey) {
@@ -319,6 +322,21 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
 
     return queryKeys
   }
+
+  /**
+   * The args as the query key records them: each blob the method's Candid
+   * type declares is keyed by its bytes, so a `Uint8Array` and a `number[]`
+   * holding the same bytes get one key. Every other value is unchanged. A
+   * subclass whose `transformArgs` takes other shapes reads them here too.
+   */
+  protected argsForQueryKey<M extends FunctionName<A>>(
+    functionName: M,
+    args: ReactorArgs<A, M, T>
+  ): unknown[] {
+    const func = this.getFuncClass(functionName)
+    return func ? candidArgsKey.keyArgs(func.argTypes, args) : args
+  }
+
   // ══════════════════════════════════════════════════════════════════════
   // QUERY OPTIONS
   // ══════════════════════════════════════════════════════════════════════
