@@ -238,7 +238,7 @@ interface ReactorParameters {
   name: string // Required: also the ic_env lookup key
   idlFactory: (IDL: any) => any
   canisterId?: string | Principal // Optional: resolved from the ic_env cookie via name
-  pollingOptions?: PollingOptions // Custom polling for update calls
+  pollingOptions?: PollingOptions // Update-call polling, shared by every call (see Custom Polling Options)
 }
 ```
 
@@ -566,10 +566,13 @@ await authentication.login()
 
 ### Custom Polling Options
 
-`pollingOptions` is the `PollingOptions` type from `@icp-sdk/core/agent`:
+`pollingOptions` is the `PollingOptions` type from `@icp-sdk/core/agent`. The
+reactor hands the same object to every update call, so a `strategy` set here
+polls all of them. `createPollingStrategy` is built to be shared that way: it
+keeps a separate attempt count, clock and timeout for each request.
 
 ```typescript
-import { defaultStrategy } from "@icp-sdk/core/agent"
+import { createPollingStrategy } from "@ic-reactor/core"
 
 const backend = new Reactor<_SERVICE>({
   clientManager,
@@ -577,9 +580,30 @@ const backend = new Reactor<_SERVICE>({
   name: "backend",
   canisterId: "...",
   pollingOptions: {
-    strategy: defaultStrategy(),
-    preSignReadStateRequest: false,
+    // Give up on a request that is still pending after two minutes
+    // (the default is five).
+    strategy: createPollingStrategy({ timeoutMs: 120_000 }),
   },
+})
+```
+
+Leave `strategy` out and the agent builds a fresh `defaultStrategy()` for each
+request.
+
+Don't put `defaultStrategy()`, or any other strategy from
+`@icp-sdk/core/agent`, in the reactor's `pollingOptions`. Those are made for a
+single request: `defaultStrategy()` starts its five-minute timeout when it is
+created and keeps one backoff for everything it polls. Five minutes after the
+reactor is built, every update call still pending at its first poll fails with
+`Request timed out after 300000 msec`. To use one, create it for the call:
+
+```typescript
+import { defaultStrategy } from "@icp-sdk/core/agent"
+
+const result = await backend.callMethod({
+  functionName: "transfer",
+  args: [transferArgs],
+  callConfig: { pollingOptions: { strategy: defaultStrategy() } },
 })
 ```
 
