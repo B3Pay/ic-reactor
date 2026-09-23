@@ -104,7 +104,10 @@ its root key, its Internet Identity provider, and the canister IDs a reactor
 resolves by name. It defaults to `true` only when both the agent host and the
 page are unambiguously a local replica, and `false` everywhere else, so a
 reactor with no configured `canisterId` works on `localhost` and throws on a
-real domain.
+real domain. The root key is the exception: with neither option set, it is
+judged by the agent host alone, so a page on a real domain pointed at a local
+replica still takes `IC_ROOT_KEY` from the cookie. Pass `allowEnvConfig: false`
+to refuse it.
 
 ```typescript
 import { ClientManager } from "@ic-reactor/react"
@@ -160,11 +163,13 @@ When communicating with the IC mainnet, the agent uses a hardcoded public key to
 
 <Aside type="note">
   `ClientManager` has the agent fetch that key before its first request whenever
-  the agent host is local or a dev-container tunnel (a trusted `ic_env` cookie
-  can supply it instead), so calls to a local replica work without an explicit
-  `initialize()`. Any other host counts as mainnet and never fetches it. Calling
-  `clientManager.initialize()` (as `useAuth` does) fetches it up front and sets
-  `agentState.isInitialized`, which the example below waits for.
+  the agent host is local or a dev-container tunnel, unless a key was supplied
+  (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env` cookie) or
+  `agentOptions.shouldFetchRootKey` is `false`, so calls to a local replica work
+  without an explicit `initialize()`. Any other host counts as mainnet and never
+  fetches it. Calling `clientManager.initialize()` (as `useAuth` does) fetches
+  it up front and sets `agentState.isInitialized`, which the example below waits
+  for.
 </Aside>
 
 ```tsx
