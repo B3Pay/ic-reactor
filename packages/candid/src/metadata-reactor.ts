@@ -215,7 +215,10 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
       throw new Error("Provide a value type first.")
     }
 
-    const serviceSource = `service : { __value : (${normalized}) -> (); }`
+    // The type gets lines of its own. On the service's line, a `//` comment
+    // closing the type, as one copied from a .did file often has, commented
+    // out the `) -> (); }` after it, and the source no longer parsed.
+    const serviceSource = `service : { __value : (\n${normalized}\n) -> (); }`
     const { idlFactory } = await this.adapter.parseCandidSource(serviceSource)
     const service = idlFactory({ IDL })
     const funcField = service._fields.find(
