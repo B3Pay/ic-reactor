@@ -184,7 +184,14 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     methodName: M
   ): IDL.FuncClass | null {
     const field = this.service._fields.find(([name]) => name === methodName)
-    return field ? field[1] : null
+    if (!field) return null
+    // A method typed by a recursive func alias (`type f = func (f) -> (f)`)
+    // is an `IDL.Rec` wrapping the func. The wrapper has no `argTypes`,
+    // `retTypes` or `annotations`, so every caller that read them off it
+    // failed, and `isQueryMethod` threw instead of answering.
+    let type: IDL.Type | undefined = field[1]
+    while (type instanceof IDL.RecClass) type = type.getType()
+    return type instanceof IDL.FuncClass ? type : null
   }
 
   /**
