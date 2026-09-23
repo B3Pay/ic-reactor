@@ -61,8 +61,12 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
 
   private methodMeta: FormServiceMeta<A> | null = null
   private resultMeta: ServiceMeta<A> | null = null
-  private static formVisitor = new CandidFormVisitor()
-  private static resultVisitor = new ResultFieldVisitor()
+  // One pair of visitors per reactor. The form visitor caches a schema per
+  // recursive type, keyed by a name no other type shares, and each schema
+  // holds its type. Shared by every instance, the cache kept every service
+  // any reactor had described alive for good.
+  private formVisitor = new CandidFormVisitor()
+  private resultVisitor = new ResultFieldVisitor()
 
   constructor(config: MetadataReactorParameters) {
     const superConfig = { ...config }
@@ -88,11 +92,11 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     const service = this.getServiceInterface()
     if (!service) return
     this.methodMeta = service.accept(
-      MetadataReactor.formVisitor,
+      this.formVisitor,
       null as any
     ) as FormServiceMeta<A>
     this.resultMeta = service.accept(
-      MetadataReactor.resultVisitor,
+      this.resultVisitor,
       null as any
     ) as ServiceMeta<A>
   }
@@ -145,7 +149,7 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     options: MethodMetadataOptions = {}
   ): Promise<CandidFormMetadata> {
     const parsed = await this.parseValueType(valueType)
-    const meta = MetadataReactor.formVisitor.buildValueMeta(parsed.type)
+    const meta = this.formVisitor.buildValueMeta(parsed.type)
     const hydration = this.hydrateValues([parsed.type], options)
     return { meta, hydration }
   }
@@ -230,17 +234,11 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     const service = IDL.Service({ [method[0]]: method[1] })
     this.methodMeta = {
       ...this.methodMeta,
-      ...(service.accept(
-        MetadataReactor.formVisitor,
-        null as any
-      ) as FormServiceMeta<A>),
+      ...(service.accept(this.formVisitor, null as any) as FormServiceMeta<A>),
     }
     this.resultMeta = {
       ...this.resultMeta,
-      ...(service.accept(
-        MetadataReactor.resultVisitor,
-        null as any
-      ) as ServiceMeta<A>),
+      ...(service.accept(this.resultVisitor, null as any) as ServiceMeta<A>),
     }
   }
 

@@ -87,9 +87,12 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   private argumentMeta: ArgumentsServiceMeta<A> | null = null
   private resultMeta: ServiceMeta<A> | null = null
 
-  // Visitors (stateless, can be reused)
-  private static argVisitor = new FieldVisitor()
-  private static resultVisitor = new ResultFieldVisitor()
+  // One pair of visitors per reactor. They are not stateless: the argument
+  // visitor caches a schema per recursive type, keyed by a name no other type
+  // shares, and each schema holds its type. Shared by every instance, the
+  // cache kept every service any reactor had described alive for good.
+  private argVisitor = new FieldVisitor()
+  private resultVisitor = new ResultFieldVisitor()
 
   constructor(config: CandidDisplayReactorParameters<A>) {
     super(config)
@@ -123,13 +126,13 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
 
     // Generate argument metadata
     this.argumentMeta = service.accept(
-      MetadataDisplayReactor.argVisitor,
+      this.argVisitor,
       null as any
     ) as ArgumentsServiceMeta<A>
 
     // Generate result metadata
     this.resultMeta = service.accept(
-      MetadataDisplayReactor.resultVisitor,
+      this.resultVisitor,
       null as any
     ) as ServiceMeta<A>
   }
@@ -225,16 +228,13 @@ export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
     this.argumentMeta = {
       ...this.argumentMeta,
       ...(service.accept(
-        MetadataDisplayReactor.argVisitor,
+        this.argVisitor,
         null as any
       ) as ArgumentsServiceMeta<A>),
     }
     this.resultMeta = {
       ...this.resultMeta,
-      ...(service.accept(
-        MetadataDisplayReactor.resultVisitor,
-        null as any
-      ) as ServiceMeta<A>),
+      ...(service.accept(this.resultVisitor, null as any) as ServiceMeta<A>),
     }
   }
 
