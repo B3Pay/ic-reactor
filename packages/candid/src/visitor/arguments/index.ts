@@ -1,4 +1,5 @@
 import { isQuery } from "../helpers.js"
+import { methodFunc } from "../method-func.js"
 import { withIntegerBounds } from "../integer-bounds.js"
 import { withFloatBounds } from "../float-bounds.js"
 import { checkTextFormat, checkNumberFormat } from "../constants.js"
@@ -319,7 +320,11 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
   public visitService(t: IDL.ServiceClass): ArgumentsServiceMeta<A> {
     const result = {} as ArgumentsServiceMeta<A>
 
-    for (const [functionName, func] of t._fields) {
+    for (const [functionName, type] of t._fields) {
+      // A method typed by a recursive func alias is an IDL.Rec around the
+      // func, which `accept` described as a recursive field, not a method.
+      const func = methodFunc(type)
+      if (!func) continue
       result[functionName as FunctionName<A>] = func.accept(
         this,
         functionName
