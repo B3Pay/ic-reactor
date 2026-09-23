@@ -61,7 +61,9 @@ Same as [useActorSuspenseQuery](/v3/reference/createactorhooks/useactorsuspenseq
 
 ## Return Value
 
-Returns a Suspense-enabled Query result object (errors are thrown, valid data returned).
+Returns a Suspense-enabled Query result object. `data` is always defined. A
+failed first load is thrown to the nearest Error Boundary; a failed refetch
+keeps `data` and sets `status: "error"` and `error` instead.
 
 ## See Also
 

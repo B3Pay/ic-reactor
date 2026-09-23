@@ -70,22 +70,22 @@ Same as [useActorQuery](/v3/reference/createactorhooks/useactorquery) **except**
 
 ### Key Options
 
-| Option         | Type       | Default  | Description                                |
-| -------------- | ---------- | -------- | ------------------------------------------ |
-| `functionName` | `string`   | Required | The canister method to call                |
-| `args`         | `array`    | `[]`     | Arguments to pass to the method            |
-| `staleTime`    | `number`   | `0`      | Time in ms before data is considered stale |
-| `select`       | `function` | -        | Transform the data before returning        |
+| Option         | Type       | Default  | Description                                                                                             |
+| -------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------- |
+| `functionName` | `string`   | Required | The canister method to call                                                                             |
+| `args`         | `array`    | `[]`     | Arguments to pass to the method                                                                         |
+| `staleTime`    | `number`   | `1000`   | Time in ms before data is considered stale. TanStack Query raises any lower value, `0` included, to 1 s |
+| `select`       | `function` | -        | Transform the data before returning                                                                     |
 
 ## Return Value
 
 Returns a TanStack Query suspense result. The key difference from `useActorQuery`:
 
-| Property | Type        | Description                          |
-| -------- | ----------- | ------------------------------------ |
-| `data`   | `TData`     | **Always defined** (never undefined) |
-| `error`  | `never`     | Errors are thrown, not returned      |
-| `status` | `'success'` | Always success (suspends otherwise)  |
+| Property | Type                   | Description                                                                                      |
+| -------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `data`   | `TData`                | **Always defined** (never undefined)                                                             |
+| `error`  | `TError \| null`       | A failed first load is thrown to the Error Boundary. A failed refetch keeps `data` and sets this |
+| `status` | `'success' \| 'error'` | `'error'` after a failed refetch; the component suspends until there is data                     |
 
 ## Examples
 
@@ -113,25 +113,36 @@ function App() {
 
 ### Multiple Suspense Queries
 
+Two suspense queries in the same component run one after the other: the first
+hook suspends the component, so the second call starts only once the first has
+returned. Give each query its own component under one boundary and they start
+together:
+
 ```tsx
 function Dashboard({ userId }: { userId: string }) {
-  // Both queries run in parallel
+  // Sibling components suspend separately, so both calls start at once
+  return (
+    <Suspense fallback={<Loading />}>
+      <Welcome userId={userId} />
+      <UserStats userId={userId} />
+    </Suspense>
+  )
+}
+
+function Welcome({ userId }: { userId: string }) {
   const { data: user } = useActorSuspenseQuery({
     functionName: "getUser",
     args: [userId],
   })
+  return <h1>Welcome, {user.name}</h1>
+}
 
+function UserStats({ userId }: { userId: string }) {
   const { data: stats } = useActorSuspenseQuery({
     functionName: "getUserStats",
     args: [userId],
   })
-
-  return (
-    <div>
-      <h1>Welcome, {user.name}</h1>
-      <Stats data={stats} />
-    </div>
-  )
+  return <Stats data={stats} />
 }
 ```
 

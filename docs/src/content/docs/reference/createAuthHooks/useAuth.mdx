@@ -64,11 +64,18 @@ logout() // Clears session and updates state
 
 ### authenticate()
 
-Restores an existing session without a popup. Resolves to the recovered `Identity`, or `undefined` when there is no session to restore (or the optional `@icp-sdk/auth` peer is not installed):
+Restores an existing session without a popup. Resolves to the recovered
+`Identity`. With no session to restore it resolves to the auth client's
+anonymous identity, so check `isAuthenticated` (or the principal) rather than
+the return value. It resolves `undefined` when the optional `@icp-sdk/auth`
+peer is not installed, or when it finds that a signed-in session has expired
+and ends it:
 
 ```typescript
 const { authenticate } = useAuth()
 const identity = await authenticate()
+const signedIn =
+  identity !== undefined && !identity.getPrincipal().isAnonymous()
 ```
 
 ## Return Value

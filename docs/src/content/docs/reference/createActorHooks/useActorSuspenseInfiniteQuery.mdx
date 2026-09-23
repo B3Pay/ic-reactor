@@ -100,19 +100,19 @@ Same as [useActorInfiniteQuery](/v3/reference/createactorhooks/useactorinfiniteq
 
 Returns a TanStack Query suspense infinite result. Key difference from `useActorInfiniteQuery`:
 
-| Property                 | Type                  | Description                          |
-| ------------------------ | --------------------- | ------------------------------------ |
-| `data`                   | `InfiniteData<TData>` | **Always defined** (never undefined) |
-| `data.pages`             | `TData[]`             | Array of all pages (at least one)    |
-| `data.pageParams`        | `TPageParam[]`        | Array of page parameters             |
-| `error`                  | `never`               | Errors are thrown, not returned      |
-| `status`                 | `'success'`           | Always success                       |
-| `hasNextPage`            | `boolean`             | More pages available                 |
-| `hasPreviousPage`        | `boolean`             | Previous pages available             |
-| `fetchNextPage`          | `function`            | Fetch next page                      |
-| `fetchPreviousPage`      | `function`            | Fetch previous page                  |
-| `isFetchingNextPage`     | `boolean`             | Fetching next page                   |
-| `isFetchingPreviousPage` | `boolean`             | Fetching previous page               |
+| Property                 | Type                   | Description                                                                                      |
+| ------------------------ | ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `data`                   | `InfiniteData<TData>`  | **Always defined** (never undefined)                                                             |
+| `data.pages`             | `TData[]`              | Array of all pages (at least one)                                                                |
+| `data.pageParams`        | `TPageParam[]`         | Array of page parameters                                                                         |
+| `error`                  | `TError \| null`       | A failed first load is thrown to the Error Boundary. A failed refetch keeps `data` and sets this |
+| `status`                 | `'success' \| 'error'` | `'error'` after a failed refetch; the component suspends until there is data                     |
+| `hasNextPage`            | `boolean`              | More pages available                                                                             |
+| `hasPreviousPage`        | `boolean`              | Previous pages available                                                                         |
+| `fetchNextPage`          | `function`             | Fetch next page                                                                                  |
+| `fetchPreviousPage`      | `function`             | Fetch previous page                                                                              |
+| `isFetchingNextPage`     | `boolean`              | Fetching next page                                                                               |
+| `isFetchingPreviousPage` | `boolean`              | Fetching previous page                                                                           |
 
 ## Examples
 
