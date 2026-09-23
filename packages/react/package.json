@@ -13,6 +13,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "react-server": "./dist/server.js",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },

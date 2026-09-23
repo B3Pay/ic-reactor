@@ -18,6 +18,8 @@ ledger reactor.
 - Internet Identity authentication through `AuthenticationManager`
 - Dynamic ICRC ledger queries against live mainnet canisters
 - Shared `ClientManager` between auth and canister interaction
+- A server component that reads the ledger per request with `ClientManager`
+  and `Reactor` imported from `@ic-reactor/react`
 
 ## Links
 
@@ -58,6 +60,36 @@ export function ICReactorProvider({ children }: { children: React.ReactNode }) {
       </AuthContext.Provider>
     </QueryClientProvider>
   )
+}
+```
+
+A server component imports the same package. Next.js resolves it through
+`@ic-reactor/react`'s `react-server` export condition, which carries the core
+classes and none of the hooks, and everything is built inside the request so
+no cache is shared between visitors:
+
+```tsx
+// src/app/LedgerSnapshot.tsx (no "use client")
+import { connection } from "next/server"
+import { QueryClient } from "@tanstack/react-query"
+import { ClientManager, Reactor } from "@ic-reactor/react"
+
+export default async function LedgerSnapshot() {
+  await connection() // read per request, never at build time
+
+  const clientManager = new ClientManager({
+    queryClient: new QueryClient(),
+    agentOptions: { host: "https://ic0.app" },
+  })
+  const ledger = new Reactor<_SERVICE>({
+    name: "ledger",
+    clientManager,
+    idlFactory,
+    canisterId,
+  })
+
+  const symbol = await ledger.fetchQuery({ functionName: "icrc1_symbol" })
+  // …
 }
 ```
 

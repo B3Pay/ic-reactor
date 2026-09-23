@@ -31,6 +31,15 @@ every v8 release peers `@icp-sdk/core@^5`, so on npm it needs
 
 Never call React hooks in loaders, actions, route modules, scripts, or tests.
 
+A React Server Component, server action or route handler may import
+`Reactor`, `DisplayReactor`, `ClientManager` and the rest of the core runtime
+from `@ic-reactor/react`: Next.js resolves the package's `react-server` export
+condition to an entry without hooks. Build them inside the request, never at
+module scope, and call `reactor.fetchQuery()` / `reactor.callMethod()` there.
+Hooks, `defineReactor`, `createActorHooks`, the query/mutation factories and the
+auth classes are missing exports in that graph; they belong in a `"use client"`
+module.
+
 ## Display vs Raw Values
 
 - Prefer `display: true` in `defineReactor(...)` (or `DisplayReactor`) for

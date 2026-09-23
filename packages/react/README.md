@@ -444,8 +444,9 @@ export const app = defineReactor<_SERVICE>({
 
 ```tsx
 // ✅ Per request: nothing is shared between users.
-// A server component imports from @ic-reactor/core, not @ic-reactor/react.
-import { ClientManager, Reactor } from "@ic-reactor/core"
+// In a server component this resolves to the `react-server` entry: the core
+// classes are there, the hooks are not.
+import { ClientManager, Reactor } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
 export default async function Page() {
@@ -465,13 +466,22 @@ export default async function Page() {
 Two further constraints on the App Router specifically:
 
 - Hooks are client-only, like every React hook — call them from a `"use client"`
-  module. A server component cannot import from `@ic-reactor/react` at all, not
-  even `Reactor` or `ClientManager`: its entry point also loads the hooks, and
-  `next build` fails with "You're importing a module that depends on
-  `useSyncExternalStore` into a React Server Component module". Import
-  `Reactor`, `DisplayReactor` and `ClientManager` from `@ic-reactor/core` there,
-  and list it in your own `package.json`, since a transitive dependency does not
-  resolve under pnpm.
+  module. A server component, server action or route handler resolves
+  `@ic-reactor/react` to its `react-server` entry, which Next.js (Turbopack and
+  webpack) selects through the export condition of that name. That entry exports
+  everything `@ic-reactor/core` does — `Reactor`, `DisplayReactor`,
+  `ClientManager`, the error classes and utilities — plus the validation helpers
+  (`mapValidationErrors`, `getFieldError`, …), and nothing that imports React.
+  Importing a hook, `defineReactor`, `createActorHooks`, a query or mutation
+  factory, or the auth classes there fails `next build` with "Export
+  defineReactor doesn't exist in target module"; hooks belong in a
+  `"use client"` module, and server code calls the reactor itself
+  (`reactor.fetchQuery()`, `reactor.callMethod()`) where client code would use a
+  factory's `.fetch()` or `.execute()`. TypeScript does not read the condition,
+  so the editor does not flag it first. A server-component bundler that ignores
+  `react-server` loads the full entry and rejects its hooks: import from
+  `@ic-reactor/core` there, and list it in your own `package.json`, since a
+  transitive dependency does not resolve under pnpm.
 - Hooks bind to their reactor's own `QueryClient` rather than to a
   `QueryClientProvider`, so `HydrationBoundary` prefetch does not feed them
   unless the provider's client _is_ that reactor's client. Next.js also
@@ -527,9 +537,10 @@ const transferMutation = createMutation(backend, {
 
 ## Re-exports
 
-`@ic-reactor/react` re-exports the core runtime, so client code can import these
-from a single package (a React Server Component imports them from
-`@ic-reactor/core` instead; see [Server-Side Rendering](#server-side-rendering)):
+`@ic-reactor/react` re-exports the core runtime, so client and server code can
+import these from a single package. A React Server Component resolves the
+package's `react-server` entry, which has them but none of the hooks; see
+[Server-Side Rendering](#server-side-rendering):
 
 - `ClientManager`
 - `Reactor`

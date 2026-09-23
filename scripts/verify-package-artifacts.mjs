@@ -213,8 +213,49 @@ try {
         fail(name, `import ${spec}`, e.stderr || e.stdout || e.message)
       }
 
-      // CJS require, only where a require condition is actually declared.
+      // The `react-server` entry, resolved the way a React Server Component
+      // bundle resolves it. It must load without reaching React at all (the
+      // resolve hook throws on any React specifier) and export no hook.
       const cond = manifest.exports?.[sub]
+      if (cond && typeof cond === "object" && "react-server" in cond) {
+        try {
+          const out = run(
+            process.execPath,
+            [
+              "--conditions=react-server",
+              "--input-type=module",
+              "-e",
+              `import * as nodeModule from "node:module"
+             if (typeof nodeModule.registerHooks === "function") {
+               nodeModule.registerHooks({
+                 resolve(specifier, context, next) {
+                   if (/^(react|react-dom)(\\/|$)|^@tanstack\\/react-query(\\/|$)/.test(specifier))
+                     throw new Error("the react-server entry resolved " + specifier)
+                   return next(specifier, context)
+                 },
+               })
+             }
+             const m = await import(${JSON.stringify(spec)})
+             const names = Object.keys(m)
+             if (names.length === 0) { console.error("no exports"); process.exit(1) }
+             const hooks = names.filter((n) => /^use[A-Z]/.test(n))
+             if (hooks.length) { console.error("exports hooks: " + hooks.join(", ")); process.exit(1) }
+             console.log("exports:" + names.length +
+               (nodeModule.registerHooks ? ", no React module resolved" : ""))`,
+            ],
+            { cwd: scratch }
+          )
+          ok(`import ${spec} [react-server] (${out.trim()})`)
+        } catch (e) {
+          fail(
+            name,
+            `import ${spec} [react-server]`,
+            e.stderr || e.stdout || e.message
+          )
+        }
+      }
+
+      // CJS require, only where a require condition is actually declared.
       const hasRequire = cond && typeof cond === "object" && "require" in cond
       if (hasRequire) {
         try {

@@ -1,8 +1,9 @@
-import React from "react"
+import React, { Suspense } from "react"
 import { ICReactorProvider } from "./providers"
 import { LedgerReactorProvider } from "./ledger-provider"
 import AuthSection from "./AuthSection"
 import TokenExplorer from "./TokenExplorer"
+import LedgerSnapshot from "./LedgerSnapshot"
 
 export default function Home() {
   return (
@@ -17,6 +18,16 @@ export default function Home() {
               Next.js 14 App Router + Server Side Hydration Safety Pattern
             </p>
           </div>
+
+          <Suspense
+            fallback={
+              <p className="max-w-xl mx-auto mb-8 text-center text-sm text-gray-400">
+                Reading the ledger on the server…
+              </p>
+            }
+          >
+            <LedgerSnapshot />
+          </Suspense>
 
           <AuthSection />
           <TokenExplorer />
