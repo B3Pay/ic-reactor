@@ -1,8 +1,10 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest"
+import { IC_ROOT_KEY } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { QueryClient } from "@tanstack/query-core"
 import { ClientManager } from "../src/client.js"
 import { Reactor } from "../src/reactor.js"
+import { uint8ArrayToHex } from "../src/utils/helper.js"
 import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
 
 const build = vi.hoisted(() => ({ dev: true }))
@@ -168,5 +170,130 @@ describe("ClientManager query signature verification in a development build", ()
 
     expect(verifies(mainnet)).toBe(true)
     expect(verifies(local)).toBe(true)
+  })
+})
+
+/**
+ * `HttpAgent` reads a host given without a scheme, such as `127.0.0.1:4943`,
+ * against the page's protocol. `ClientManager` read it with `new URL` alone,
+ * which rejects such a host or finds no hostname in it, and so took a local
+ * replica for mainnet: it checked the replica's query signatures and left the
+ * agent holding mainnet's root key. The replica's certificates fail that key
+ * until `initialize()` has fetched the right one, so a call made before then
+ * was refused.
+ */
+describe("ClientManager with a host given without a scheme, in a development build", () => {
+  const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+
+  // [case, page origin, `agentOptions.host`, the origin the agent reaches]
+  const LOCAL_REPLICAS = [
+    [
+      "a loopback replica",
+      "http://localhost:5173",
+      "127.0.0.1:4943",
+      "http://127.0.0.1:4943",
+    ],
+    [
+      "a replica's localhost subdomain",
+      "http://localhost:5173",
+      `${BACKEND}.localhost:4943`,
+      `http://${BACKEND}.localhost:4943`,
+    ],
+    [
+      "a replica forwarded by Codespaces",
+      "https://super-duper-guide-5173.app.github.dev",
+      "super-duper-guide-4943.app.github.dev",
+      "https://super-duper-guide-4943.app.github.dev",
+    ],
+  ] as const
+
+  let fake: FakeReplica | undefined
+
+  beforeEach(() => {
+    build.dev = true
+  })
+
+  afterEach(() => {
+    fake?.restore()
+    fake = undefined
+    vi.unstubAllGlobals()
+  })
+
+  const replicaAt = (origin: string) =>
+    installFakeReplica({
+      host: origin,
+      canisters: {
+        [BACKEND]: {
+          query: () => new Uint8Array(IDL.encode([IDL.Text], ["local"])),
+          update: () => new Uint8Array(IDL.encode([IDL.Nat], [1n])),
+        },
+      },
+    })
+
+  const managerFor = (host: string) =>
+    new ClientManager({
+      queryClient: new QueryClient(),
+      // A refused certificate is final; retrying it only slows the test down.
+      agentOptions: { host, retryTimes: 0 },
+    })
+
+  const backendOn = (clientManager: ClientManager) =>
+    new Reactor<{
+      whoami: () => Promise<string>
+      increment: () => Promise<bigint>
+    }>({
+      clientManager,
+      canisterId: BACKEND,
+      name: "backend",
+      idlFactory: ({ IDL }) =>
+        IDL.Service({
+          whoami: IDL.Func([], [IDL.Text], ["query"]),
+          increment: IDL.Func([], [IDL.Nat], []),
+        }),
+    })
+
+  const endpoints = () => fake?.requests.map((request) => request.endpoint)
+
+  it.each(LOCAL_REPLICAS)(
+    "skips the check for %s",
+    async (_, page, host, origin) => {
+      fake = replicaAt(origin)
+      onPage(page)
+      const clientManager = managerFor(host)
+
+      await expect(
+        backendOn(clientManager).callMethod({ functionName: "whoami" })
+      ).resolves.toBe("local")
+      expect(clientManager.isLocal).toBe(true)
+      expect(verifies(clientManager)).toBe(false)
+      // It never asked for the subnet's node keys: no signature was checked.
+      expect(endpoints()).not.toContain("read_state")
+    }
+  )
+
+  it.each(LOCAL_REPLICAS)(
+    "fetches the root key of %s before the first call",
+    async (_, page, host, origin) => {
+      fake = replicaAt(origin)
+      onPage(page)
+
+      // An update call's certificate is checked against the root key whether
+      // query signatures are checked or not.
+      await expect(
+        backendOn(managerFor(host)).callMethod({ functionName: "increment" })
+      ).resolves.toBe(1n)
+      expect(endpoints()).toEqual(["status", "call"])
+    }
+  )
+
+  it("checks query signatures for a mainnet host and keeps its root key", () => {
+    // Guard: a host without a scheme is not therefore a local one.
+    onPage()
+
+    const manager = managerFor("icp-api.io")
+
+    expect(manager.network).toBe("ic")
+    expect(verifies(manager)).toBe(true)
+    expect(uint8ArrayToHex(manager.agent.rootKey!)).toBe(IC_ROOT_KEY)
   })
 })
