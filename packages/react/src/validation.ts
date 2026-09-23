@@ -73,26 +73,33 @@ export function mapValidationErrors(
   error: ValidationError,
   options?: MapValidationErrorsOptions
 ): FieldErrors | FieldErrorsMultiple {
+  // Collected in a Map, not a plain object: a field named like an
+  // Object.prototype member (`constructor`, `toString`, `__proto__`) read that
+  // member back as if the field were already filled, which dropped its issue,
+  // and threw on `.push` with `multiple`. `Object.fromEntries` then creates
+  // every field as an own property, `__proto__` included.
   if (options?.multiple) {
-    const result: FieldErrorsMultiple = {}
+    const messages = new Map<string, string[]>()
     for (const issue of error.issues) {
       const fieldName = String(issue.path[0] ?? "")
-      if (!result[fieldName]) {
-        result[fieldName] = []
+      const fieldMessages = messages.get(fieldName)
+      if (fieldMessages) {
+        fieldMessages.push(issue.message)
+      } else {
+        messages.set(fieldName, [issue.message])
       }
-      result[fieldName].push(issue.message)
     }
-    return result
+    return Object.fromEntries(messages)
   }
 
-  const result: FieldErrors = {}
+  const messages = new Map<string, string>()
   for (const issue of error.issues) {
     const fieldName = String(issue.path[0] ?? "")
-    if (!result[fieldName]) {
-      result[fieldName] = issue.message
+    if (!messages.get(fieldName)) {
+      messages.set(fieldName, issue.message)
     }
   }
-  return result
+  return Object.fromEntries(messages)
 }
 
 /**
