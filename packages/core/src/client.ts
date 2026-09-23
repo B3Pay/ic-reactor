@@ -41,6 +41,28 @@ const hostnameOf = (origin: string | undefined): string | undefined => {
 }
 
 /**
+ * The hostname `HttpAgent` connects to for `host`, found the way the agent
+ * finds it (`determineHost` in `@icp-sdk/core`): on a page, a host that does
+ * not start with a scheme, such as `127.0.0.1:4943` or a bare Codespaces
+ * domain, is read against the page's protocol. `new URL` alone rejects such a
+ * host or finds no hostname in it, which took a local replica for mainnet.
+ * The agent's scheme test is copied as is, so `localhost:4943`, which it reads
+ * as the scheme `localhost:`, has no hostname here either.
+ */
+const agentHostnameOf = (host: string | undefined): string | undefined => {
+  if (!host) return undefined
+  try {
+    return (
+      !/^[a-z]+:/.test(host) && typeof window !== "undefined"
+        ? new URL(`${window.location.protocol}//${host}`)
+        : new URL(host)
+    ).hostname
+  } catch {
+    return undefined
+  }
+}
+
+/**
  * Tells `subscribers` about a change the manager has already made.
  *
  * Every subscriber is called even when one throws, and the first error is
@@ -188,8 +210,11 @@ export class ClientManager {
       }
     }
 
+    // The network the agent will talk to, which decides both the query
+    // signature default and whether the agent fetches its root key. It is read
+    // from the host as the agent reads it, so it matches `network`.
     const hostNetwork = getNetworkByHostname(
-      hostnameOf(agentOptions.host) ?? ""
+      agentHostnameOf(agentOptions.host) ?? ""
     )
 
     // A subnet's nodes sign every query response, and checking those
