@@ -21,12 +21,17 @@ export async function importCandidDefinition(
 
     // Transform ES6 export statements to assignments
     // This is safe because we're only transforming the syntax pattern,
-    // not evaluating arbitrary code
+    // not evaluating arbitrary code.
+    //
+    // Only at the start of a line: a Candid name is printed inside a string
+    // literal, and a name such as "export const x = 1" lost its "export "
+    // when the whole text was searched, so the field went out under another
+    // hash. A name can never start a line, since its line breaks are escaped.
     const transformedJs = candidJs
       // Replace 'export const name = value' with 'const name = value; exports.name = name'
-      .replace(/export\s+const\s+(\w+)\s*=/g, "const $1 =")
+      .replace(/^[ \t]*export\s+const\s+(\w+)\s*=/gm, "const $1 =")
       // Replace 'export function name' with 'function name'
-      .replace(/export\s+function\s+(\w+)/g, "function $1")
+      .replace(/^[ \t]*export\s+function\s+(\w+)/gm, "function $1")
 
     // Create a safe evaluation context with necessary globals
     // We provide IDL from the trusted @icp-sdk/core/candid package
