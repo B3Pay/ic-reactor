@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { QueryClient } from "@tanstack/react-query"
 import { Principal } from "@icp-sdk/core/principal"
+import {
+  DelegationChain,
+  DelegationIdentity,
+  Ed25519KeyIdentity,
+} from "@icp-sdk/core/identity"
 import { ClientManager } from "@ic-reactor/core"
 import { AuthenticationManager } from "../../src/auth/index.js"
 import { probeLocalInternetIdentity } from "../../src/auth/local-ii-probe.js"
@@ -37,6 +42,17 @@ vi.mock("../../src/auth/local-ii-probe.js", async (importOriginal) => ({
 function identity(text: string) {
   const principal = Principal.fromText(text)
   return { getPrincipal: () => principal } as any
+}
+
+/** An identity signing with a delegation that expires at `expiration`. */
+async function delegationIdentity(expiration: Date) {
+  const sessionKey = Ed25519KeyIdentity.generate()
+  const chain = await DelegationChain.create(
+    Ed25519KeyIdentity.generate(),
+    sessionKey.getPublicKey(),
+    expiration
+  )
+  return DelegationIdentity.fromDelegation(sessionKey, chain)
 }
 
 function createAuthClient() {
@@ -775,6 +791,46 @@ describe("AuthenticationManager session hygiene", () => {
     ).toBe(true)
   })
 
+  it("ends a v8 session whose own delegation lapsed while the client still vouches", async () => {
+    // v8's isAuthenticated() reads the delegation expiry every tab shares.
+    // After the session lapsed, a sign-in in another tab makes it true again,
+    // while this client still hands out the delegation that lapsed here. The
+    // storage every tab shares now holds that other tab's session, which v8's
+    // signOut() would delete.
+    const lapsing = await delegationIdentity(new Date(Date.now() + 60_000))
+    const authClient = createAuthClient()
+    authClient.signIn.mockResolvedValue(lapsing)
+    authClient.getIdentity.mockReturnValue(lapsing)
+    authClient.isAuthenticated.mockReturnValue(true)
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+    expect(clientManager.identity).toBe(lapsing)
+
+    vi.useFakeTimers({ toFake: ["Date"] })
+    try {
+      vi.setSystemTime(Date.now() + 120_000)
+
+      await expect(authentication.authenticate()).resolves.toBeUndefined()
+      expect(authentication.authState.isAuthenticated).toBe(false)
+      expect(clientManager.identity?.getPrincipal().isAnonymous()).toBe(true)
+
+      // The next check reads the lapsed identity back from the client.
+      await authentication.authenticate()
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(authClient.signOut).not.toHaveBeenCalled()
+    expect(clientManager.identity?.getPrincipal().isAnonymous()).toBe(true)
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(
+      authentication.authState.identity?.getPrincipal().isAnonymous()
+    ).toBe(true)
+  })
+
   it("still drops the lapsed delegation when signOut fails", async () => {
     // The delegation is already unusable; a storage error while forgetting it
     // is no reason to keep signing with it.
@@ -965,6 +1021,38 @@ describe("AuthenticationManager session hygiene", () => {
 
     expect(authentication.authState.isAuthenticated).toBe(true)
     expect(clientManager.identity?.getPrincipal().toText()).toBe("aaaaa-aa")
+  })
+
+  it("does not keep a lapsed v8 delegation when signOut fails", async () => {
+    // As above, but the delegation lapsed before the user pressed sign out,
+    // and another tab's sign-in since keeps v8's shared expiry live. What a
+    // reload would restore is that tab's session, not this one.
+    const lapsing = await delegationIdentity(new Date(Date.now() + 60_000))
+    const authClient = createAuthClient()
+    authClient.signIn.mockResolvedValue(lapsing)
+    authClient.getIdentity.mockReturnValue(lapsing)
+    authClient.isAuthenticated.mockReturnValue(true)
+    authClient.signOut.mockRejectedValue(new Error("storage unavailable"))
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await authentication.login()
+
+    vi.useFakeTimers({ toFake: ["Date"] })
+    try {
+      vi.setSystemTime(Date.now() + 120_000)
+
+      await expect(authentication.logout()).rejects.toThrow(
+        "storage unavailable"
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(clientManager.identity?.getPrincipal().isAnonymous()).toBe(true)
+    expect(authentication.authState.error?.message).toBe("storage unavailable")
   })
 })
 

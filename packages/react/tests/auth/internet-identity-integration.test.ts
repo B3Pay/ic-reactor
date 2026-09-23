@@ -15,6 +15,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { IDBFactory } from "fake-indexeddb"
 import { QueryClient } from "@tanstack/react-query"
 import { AuthClient } from "@icp-sdk/auth/client"
+import { IDL } from "@icp-sdk/core/candid"
+import { isDelegationValid, type DelegationChain } from "@icp-sdk/core/identity"
 import { Principal } from "@icp-sdk/core/principal"
 import { ClientManager } from "@ic-reactor/core"
 import {
@@ -265,6 +267,52 @@ describe("Internet Identity sign-in (real AuthClient)", () => {
     }
   })
 
+  it.runIf(isV10)(
+    "keeps a v10 session whose app delegation expired while nothing used it",
+    async () => {
+      // v10 renews the short-lived app delegation it signs with only after
+      // something has used it, and otherwise mints a new one at the next call.
+      // The delegation a live session holds can be past its expiry, so only
+      // the client's answer says whether the session is over.
+      const { authentication, clientManager } = createManager()
+      await authentication.prepareClient()
+      await withUserGesture(() => authentication.login())
+      const identity = authentication.authState.identity!
+      const user = identity.getPrincipal().toText()
+
+      vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true })
+      try {
+        // Past the 30 min app delegation, inside the 8 h session.
+        vi.setSystemTime(Date.now() + 31 * 60 * 1000)
+        const held = (
+          identity as unknown as { getDelegation(): DelegationChain }
+        ).getDelegation()
+        expect(isDelegationValid(held)).toBe(false)
+
+        await authentication.authenticate()
+
+        expect(authentication.authState.isAuthenticated).toBe(true)
+        // The next call mints a new app delegation and goes out as the user.
+        const mints = () =>
+          replica
+            .methodsCalled(provider.canisterId)
+            .filter((method) => method === "app_prepare_delegation").length
+        const minted = mints()
+        await clientManager.agent.query(provider.canisterId, {
+          methodName: "http_request",
+          arg: new Uint8Array(IDL.encode([], [])),
+        })
+        expect(mints()).toBe(minted + 1)
+        const calls = replica.requests.filter(
+          (request) => request.methodName === "http_request"
+        )
+        expect(calls[calls.length - 1]?.caller).toBe(user)
+      } finally {
+        vi.useRealTimers()
+      }
+    }
+  )
+
   it("logs out, clears the session and resets the agent to anonymous", async () => {
     const { authentication, clientManager } = createManager()
     await authentication.prepareClient()
@@ -465,6 +513,120 @@ describe("a session another tab ended and signed in to again (real AuthClient)",
     expect(provider.revokedSessions).toHaveLength(revoked)
     expect(tabB.authentication.authState.isAuthenticated).toBe(true)
     expect(await newTabIsSignedIn()).toBe(true)
+  })
+
+  describe.runIf(!isV10)("after the session lapsed in every tab (v8)", () => {
+    // v8's `isAuthenticated()` reads the delegation expiry v8 keeps in the
+    // `localStorage` every tab shares. `getIdentity()` returns the identity the
+    // client restored or signed in with, and v8 never reads storage again once
+    // it has loaded. So once the session has lapsed and the user signs in again
+    // in tab B, tab A's client says it is signed in again while it still hands
+    // out the delegation that lapsed, which the replica refuses.
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    /**
+     * Tabs A and B on one session, which lapses in both. The user then signs
+     * in again in tab B. Tab A's manager is not told, and still reports the
+     * session that lapsed.
+     */
+    async function lapseThenSignInInTabB() {
+      const tabA = createManager()
+      await tabA.authentication.prepareClient()
+      await withUserGesture(() => tabA.authentication.login())
+      const tabB = createManager()
+      await tabB.authentication.prepareClient()
+      await tabB.authentication.authenticate()
+      expect(tabB.authentication.authState.isAuthenticated).toBe(true)
+
+      // Past the provider's 8 h session.
+      vi.setSystemTime(Date.now() + 9 * 60 * 60 * 1000)
+      const before = readLocalStorage()
+      await withUserGesture(() => tabB.authentication.login())
+      deliverStorageEvents(before)
+
+      expect(await tabA.authentication.client!.isAuthenticated()).toBe(true)
+      expect(tabA.authentication.authState.isAuthenticated).toBe(true)
+      return { tabA, tabB }
+    }
+
+    async function expectSignedOut({
+      authentication,
+      clientManager,
+    }: ReturnType<typeof createManager>) {
+      expect(authentication.authState.isAuthenticated).toBe(false)
+      expect(
+        authentication.authState.identity?.getPrincipal().isAnonymous() ?? true
+      ).toBe(true)
+      expect((await clientManager.getUserPrincipal()).isAnonymous()).toBe(true)
+    }
+
+    it("signs tab A out and leaves tab B's session alone", async () => {
+      const { tabA, tabB } = await lapseThenSignInInTabB()
+
+      await tabA.authentication.authenticate()
+
+      await expectSignedOut(tabA)
+      // A later check, such as another `useAuth()` consumer mounting, reads
+      // the lapsed identity back from the client, which vouches for it again.
+      await tabA.authentication.authenticate()
+      await expectSignedOut(tabA)
+      // v8's `signOut()` deletes the session every tab shares. Tab B still
+      // holds its session, and a tab opened now restores it.
+      await tabB.authentication.authenticate()
+      expect(tabB.authentication.authState.isAuthenticated).toBe(true)
+      expect(await newTabIsSignedIn()).toBe(true)
+    })
+
+    it("does not sign with the lapsed delegation in a manager built over tab A's client", async () => {
+      // A client kept at module scope outlives the manager built for one
+      // mounted tree, and a manager built over it takes the client's state.
+      const { tabA } = await lapseThenSignInInTabB()
+
+      const next = createManager({ authClient: tabA.authentication.client! })
+      await vi.waitFor(() =>
+        expect(next.authentication.authState.identity).not.toBeNull()
+      )
+
+      await expectSignedOut(next)
+    })
+
+    it("does not bring the lapsed delegation back when tab A's next sign-in fails", async () => {
+      // When a sign-in fails, `login()` keeps the session the client already
+      // holds, if the client vouches for it.
+      const { tabA } = await lapseThenSignInInTabB()
+      await tabA.authentication.authenticate()
+      provider.setSignInError({ code: 3000, message: "User rejected" })
+
+      await expect(
+        withUserGesture(() => tabA.authentication.login())
+      ).rejects.toThrow("User rejected")
+
+      await expectSignedOut(tabA)
+    })
+
+    it("does not keep the lapsed delegation through an attribute request", async () => {
+      // A request that does not sign in reads the identity the client holds,
+      // and commits it when the client vouches for it.
+      const { tabA } = await lapseThenSignInInTabB()
+      const attributes = new IdentityAttributesManager(tabA.authentication)
+
+      await withUserGesture(() =>
+        attributes.request({
+          keys: ["email"],
+          nonce: new Uint8Array(32),
+          signIn: false,
+        })
+      )
+
+      await expectSignedOut(tabA)
+    })
   })
 })
 
