@@ -97,13 +97,21 @@ console.log(transferInput?.schema)
 
 `getAllOutputMeta()` returns metadata for all methods.
 
+`callMethod` already resolves the reply through this metadata, so it returns a
+`MethodResult`, not the raw Candid value. The raw value is in its `raw` field,
+and that is what `resolve(...)` takes.
+
 ```ts
 const transferOutput = reactor.getOutputMeta("icrc1_transfer")
-const raw = await reactor.callMethod({
+const result = await reactor.callMethod({
   functionName: "icrc1_transfer",
   args: [/* candid args */],
 })
-const resolved = transferOutput?.resolve(raw)
+
+console.log(result.results) // resolved nodes, one per return value
+
+// resolve() takes the raw Candid value, such as result.raw
+const resolved = transferOutput?.resolve(result.raw)
 ```
 
 ### Hydration from Candid Args Hex
@@ -121,12 +129,17 @@ Hydration status can be:
 - `error`
 
 ```ts
-const built = await reactor.buildForMethod("icrc1_transfer", {
-  candidArgsHex: "4449444c00017100",
+// icrc1_balance_of's argument, { owner = "aaaaa-aa"; subaccount = null },
+// Candid-encoded
+const built = await reactor.buildForMethod("icrc1_balance_of", {
+  candidArgsHex: "4449444c036d7b6e006c02b3b0dac30368ad86ca8305010102010000",
 })
 
-console.log(built.meta.defaults)
-console.log(built.hydration.status)
+console.log(built.meta.defaults) // [{ owner: "", subaccount: null }]
+console.log(built.hydration.status) // "hydrated"
+if (built.hydration.status === "hydrated") {
+  console.log(built.hydration.values) // [{ owner: "aaaaa-aa", subaccount: null }]
+}
 ```
 
 You can skip hydration if payloads include unsupported placeholders:
@@ -185,27 +198,48 @@ const meta = reactor.getInputMeta("get_metadata")
 
 ## Practical Pattern: Dynamic Form + Result Viewer
 
+The form metadata holds display types: text for principals and numbers, `null`
+for an empty `opt`, `{ _type }` for a variant. `MetadataReactor` is
+candid-native, so the values the user submits are converted to Candid before
+`callMethod`.
+
 ```ts
+import { didToDisplayCodec } from "@ic-reactor/core"
+import { IDL } from "@icp-sdk/core/candid"
+
 const methodName = "icrc1_transfer"
 const inputMeta = reactor.getInputMeta(methodName)
 if (!inputMeta) throw new Error("Method metadata missing")
 
-// 1) initialize form
-const formDefaults = inputMeta.defaults
+// 1) initialize the form with inputMeta.defaults. They are placeholders
+//    ("" for principals, text and numbers) that fail the schema until the
+//    user fills them in. Say the user entered:
+const formValues = [
+  {
+    to: { owner: "aaaaa-aa", subaccount: null },
+    amount: "100000",
+    fee: null,
+    memo: null,
+    from_subaccount: null,
+    created_at_time: null,
+  },
+]
 
 // 2) validate before submit
-inputMeta.schema.parse(formDefaults)
+const values = inputMeta.schema.parse(formValues)
 
-// 3) call
-const raw = await reactor.callMethod({
-  functionName: methodName,
-  args: formDefaults,
-})
+// 3) convert the display types to Candid (Principal, bigint, [] or [x])
+const func = reactor.getServiceInterface().fieldsAsObject()[methodName]
+const args = didToDisplayCodec(IDL.Tuple(...func.argTypes)).asCandid(values)
 
-// 4) resolve for rendering
-const outputMeta = reactor.getOutputMeta(methodName)
-const rendered = outputMeta?.resolve(raw)
+const result = await reactor.callMethod({ functionName: methodName, args })
+
+// 4) render: callMethod returns the resolved result, one node per value
+const rendered = result.results
 ```
+
+`MetadataDisplayReactor` takes display types in `callMethod`, so it sends the
+form values without step 3.
 
 ## Troubleshooting
 
