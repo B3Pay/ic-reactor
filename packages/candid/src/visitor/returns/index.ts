@@ -1,4 +1,5 @@
 import { isQuery } from "../helpers.js"
+import { methodFunc } from "../method-func.js"
 import { checkTextFormat, checkNumberFormat } from "../constants.js"
 import { formatLabel } from "../arguments/helpers.js"
 import {
@@ -259,7 +260,12 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     }
 
     const result = {} as ServiceMeta<A>
-    for (const [name, func] of t._fields) {
+    for (const [name, type] of t._fields) {
+      // A method typed by a recursive func alias is an IDL.Rec around the
+      // func. Read as the func itself, it had no annotations, and this threw
+      // out of initialize() for the whole service.
+      const func = methodFunc(type)
+      if (!func) continue
       // Process each service method using dedicated method handler
       result[name as FunctionName<A>] = this.visitFuncAsMethod(
         func,

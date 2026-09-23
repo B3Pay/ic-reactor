@@ -22,6 +22,7 @@ import {
   ExprHydration,
 } from "./visitor/candid/index.js"
 import { MetadataError } from "./visitor/arguments/index.js"
+import { methodFunc } from "./visitor/method-func.js"
 import {
   MethodMeta,
   MethodResult,
@@ -206,7 +207,10 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     if (!service) return null
     const field = service._fields.find(([name]) => name === methodName)
     if (!field) return null
-    return { name: field[0], func: field[1] as IDL.FuncClass }
+    // Unwrapped as the visitors do: a method typed by a recursive func alias
+    // is an IDL.Rec with no argTypes or retTypes of its own.
+    const func = methodFunc(field[1])
+    return func ? { name: field[0], func } : null
   }
 
   private async parseValueType(valueType: string): Promise<{ type: IDL.Type }> {
