@@ -49,8 +49,10 @@ import { CallConfig } from "@icp-sdk/core/agent"
 import { NoInfer } from "./types.js"
 import {
   buildChainedSelect,
+  callConfigForKey,
   mergeFactoryQueryKey,
   normalizeQueryData,
+  pickFetchOptions,
 } from "./utils.js"
 
 type SuspenseInfiniteFactoryCallOptions = {
@@ -345,7 +347,7 @@ const createSuspenseInfiniteQueryImpl = <
     const result = await reactor.callMethod({
       functionName,
       args,
-      callConfig,
+      callConfig: callConfigForKey(context.queryKey, callConfig),
     })
     return normalizeQueryData<ReactorReturnOk<Service, Method, Transform>>(
       result as ReactorReturnOk<Service, Method, Transform>
@@ -360,6 +362,8 @@ const createSuspenseInfiniteQueryImpl = <
     QueryKey,
     TPageParam
   > => ({
+    // How the query function runs, shared with the hook; see pickFetchOptions.
+    ...pickFetchOptions(rest),
     queryKey: getQueryKey(),
     queryFn,
     initialPageParam,

@@ -180,7 +180,8 @@ describe("useActorInfiniteQuery", () => {
       expect(mockReactor.callMethod).toHaveBeenCalledWith({
         functionName: "getPosts",
         args: [{ page: 1, limit: 5 }],
-        callConfig: undefined,
+        // Aimed at the canister its query key names (#558).
+        callConfig: { canisterId: "test-canister" },
       })
     })
   })

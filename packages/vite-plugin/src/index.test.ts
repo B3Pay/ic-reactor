@@ -877,6 +877,83 @@ describe("icReactor", () => {
       })
     })
 
+    // Two entries can share a name: one canister generated twice, as a
+    // DisplayReactor and as a Reactor, each into its own outDir. The name looks
+    // up the canister id, so it has to be the same, and it does not identify
+    // the entry.
+    const sameNameEntries = {
+      canisters: [
+        {
+          name: "backend",
+          didFile: DID_RELATIVE,
+          outDir: "src/display",
+          mode: "DisplayReactor" as const,
+        },
+        {
+          name: "backend",
+          didFile: DID_RELATIVE,
+          outDir: "src/raw",
+          mode: "Reactor" as const,
+        },
+      ],
+    }
+
+    it("should regenerate every entry that shares a name and the changed .did file", async () => {
+      const plugin = createVitePlugin(sameNameEntries)
+      resolveConfig(plugin, "serve")
+
+      await (plugin.handleHotUpdate as any)({
+        file: DID_IN_VITE_ROOT,
+        server: mockServer,
+      })
+
+      const regenerated = (runCanisterPipeline as any).mock.calls.map(
+        ([options]: any) => options.canisterConfig.outDir
+      )
+      expect(regenerated).toEqual(["src/display", "src/raw"])
+    })
+
+    it("should keep a failure from an entry after an entry with the same name succeeds", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      let finishDisplay: (result: unknown) => void = () => {}
+      ;(runCanisterPipeline as any).mockImplementation(
+        ({ canisterConfig }: any) =>
+          canisterConfig.outDir === "src/display"
+            ? new Promise((resolve) => {
+                finishDisplay = resolve
+              })
+            : Promise.resolve({ success: false, error: "src/raw: EACCES" })
+      )
+
+      const plugin = createVitePlugin(sameNameEntries)
+      resolveConfig(plugin, "serve")
+      ;(plugin.configureServer as any)(mockServer)
+
+      const update = (plugin.handleHotUpdate as any)({
+        file: DID_IN_VITE_ROOT,
+        server: mockServer,
+      })
+      // The Reactor entry fails first, then the DisplayReactor entry succeeds.
+      await vi.waitFor(() =>
+        expect(mockServer.ws.send).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "error" })
+        )
+      )
+      finishDisplay({ success: true })
+      await update
+
+      mockServer.ws.send.mockClear()
+      connectionListener()()
+
+      expect(mockServer.ws.send).toHaveBeenCalledWith({
+        type: "error",
+        err: expect.objectContaining({
+          message: expect.stringContaining("src/raw: EACCES"),
+          plugin: "ic-reactor-plugin",
+        }),
+      })
+    })
+
     it("should serialize regeneration for rapid saves of the same .did file", async () => {
       let releaseFirstRun: (result: unknown) => void = () => {}
       ;(runCanisterPipeline as any).mockImplementationOnce(

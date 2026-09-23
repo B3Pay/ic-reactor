@@ -217,8 +217,12 @@ export class CandidAdapter {
    */
   public async fetchCandidSource(canisterId: CanisterId): Promise<string> {
     // First attempt: Try getting Candid from metadata
+    let metadataError: unknown
     const fromMetadata = await this.fetchFromMetadata(canisterId).catch(
-      () => undefined
+      (error: unknown) => {
+        metadataError = error
+        return undefined
+      }
     )
 
     if (fromMetadata) {
@@ -226,15 +230,34 @@ export class CandidAdapter {
     }
 
     // Second attempt: Try the temporary hack method
+    let tmpHackError: unknown
     const fromTmpHack = await this.fetchFromTmpHack(canisterId).catch(
-      () => undefined
+      (error: unknown) => {
+        tmpHackError = error
+        return undefined
+      }
     )
 
     if (fromTmpHack) {
       return fromTmpHack
     }
 
-    throw new Error("Failed to retrieve Candid source by any method.")
+    // Say what stopped each attempt. Dropping both errors made a canister
+    // without Candid, a network outage and a local agent with no root key all
+    // read "by any method". The metadata request reports most failures as
+    // absent metadata, so "not available" is all that can be said without an
+    // error.
+    const metadata =
+      metadataError === undefined
+        ? "the candid:service metadata was not available"
+        : `reading the candid:service metadata failed: ${describeError(metadataError)}`
+    const tmpHack =
+      tmpHackError === undefined
+        ? "__get_candid_interface_tmp_hack returned no Candid"
+        : `calling __get_candid_interface_tmp_hack failed: ${describeError(tmpHackError)}`
+    throw new Error(
+      `Failed to retrieve Candid source by any method: ${metadata}; ${tmpHack}`
+    )
   }
 
   /**

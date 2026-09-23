@@ -1,4 +1,4 @@
-import type { Identity } from "@icp-sdk/core/agent"
+import type { HttpAgentOptions, Identity } from "@icp-sdk/core/agent"
 import type { ClientManagerParameters, AgentState } from "./types/client.js"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { QueryClient } from "@tanstack/query-core"
@@ -13,6 +13,16 @@ import {
   isMainnetHost,
   allowsEnvRootKey,
 } from "./utils/helper.js"
+
+/** The hostname of a page origin, or `undefined` when it is not a URL. */
+const hostnameOf = (origin: string | undefined): string | undefined => {
+  if (!origin) return undefined
+  try {
+    return new URL(origin).hostname
+  } catch {
+    return undefined
+  }
+}
 
 /**
  * ClientManager is a central class for managing the Internet Computer (IC) agent.
@@ -68,12 +78,18 @@ export class ClientManager {
    * @param parameters - Configuration options for the agent and network environment.
    */
   constructor({
-    agentOptions = {},
+    agentOptions: givenAgentOptions = {},
     queryClient,
     allowEnvConfig,
     allowEnvRootKey,
   }: ClientManagerParameters) {
     this.queryClient = queryClient
+
+    // Everything below resolves into this copy, never into the caller's
+    // object: that one may be frozen, or shared with another manager that must
+    // not inherit the host, the verification setting, or a root key this one
+    // took from the `ic_env` cookie under its own trust decision.
+    const agentOptions: HttpAgentOptions = { ...givenAgentOptions }
 
     this.agentState = {
       isInitialized: false,
@@ -89,11 +105,16 @@ export class ClientManager {
     // Locally deployed asset-canister pages and IC boundary domains can route
     // agent traffic through their serving origin. Ordinary web hosts (Vercel,
     // Cloudflare, etc.) cannot, so they retain the default IC API fallback.
-    if (typeof window !== "undefined") {
-      const browserOrigin = window.location.origin
-      const browserNetwork = getNetworkByHostname(
-        new URL(browserOrigin).hostname
-      )
+    //
+    // A page with no usable origin is skipped rather than parsed: React Native
+    // defines `window` without a `location`, and an opaque origin (a file://
+    // page in Firefox, an about:blank or srcdoc frame) reads as the string
+    // "null", which `new URL` rejects. Neither can route agent traffic.
+    const browserOrigin =
+      typeof window !== "undefined" ? window.location?.origin : undefined
+    const browserHostname = hostnameOf(browserOrigin)
+    if (browserOrigin && browserHostname !== undefined) {
+      const browserNetwork = getNetworkByHostname(browserHostname)
       if (browserNetwork === "local" || isMainnetHost(browserOrigin)) {
         agentOptions.host = agentOptions.host ?? browserOrigin
       }
@@ -198,10 +219,42 @@ export class ClientManager {
       return this.initPromise
     }
 
-    this.initPromise = (async () => {
+    // The attempt's promise is stored BEFORE the attempt runs. Running it
+    // notifies subscribers synchronously, and a subscriber may call back in
+    // from there: on "initializing" it has to join this attempt, and on the
+    // error of an attempt that failed synchronously it starts a retry, which
+    // stores a promise of its own. An async function runs up to its first
+    // `await` before its caller can store the promise it returns, so storing
+    // it on return left the "initializing" subscriber nothing to join, and
+    // let a failed attempt overwrite its retry's promise with its own
+    // rejection, which every later caller received while the retry ran.
+    let settle!: {
+      resolve: () => void
+      reject: (reason: unknown) => void
+    }
+    const attempt = new Promise<void>((resolve, reject) => {
+      settle = { resolve, reject }
+    })
+    this.initPromise = attempt
+    this.runAgentInitialization(attempt).then(settle.resolve, settle.reject)
+
+    return attempt
+  }
+
+  /**
+   * Runs one `initializeAgent` attempt. `attempt` is the promise its callers
+   * were given.
+   */
+  private async runAgentInitialization(attempt: Promise<void>) {
+    try {
       // A failed attempt leaves its error here and clears initPromise so the
-      // caller can retry. Clearing it as each attempt starts means a retry that
-      // succeeds reports the initialized state without the old error.
+      // caller can retry. Clearing it as each attempt starts means a retry
+      // that succeeds reports the initialized state without the old error.
+      //
+      // This runs inside the try because it notifies subscribers
+      // synchronously: one that throws has to fail this attempt like any
+      // other error, not reject it with `isInitializing` still set — which
+      // made every later call return the same rejected promise, forever.
       this.updateAgentState({ isInitializing: true, error: undefined })
       if (isDev() && typeof window !== "undefined") {
         console.info(
@@ -214,22 +267,23 @@ export class ClientManager {
           }
         )
       }
-      try {
-        if (this.isLocal) {
-          await this.#agent.fetchRootKey()
-        }
-        this.updateAgentState({ isInitialized: true, isInitializing: false })
-      } catch (error) {
-        this.updateAgentState({
-          error: error as Error,
-          isInitializing: false,
-        })
-        this.initPromise = undefined
-        throw error
+      if (this.isLocal) {
+        await this.#agent.fetchRootKey()
       }
-    })()
-
-    return this.initPromise
+      this.updateAgentState({ isInitialized: true, isInitializing: false })
+    } catch (error) {
+      // Only the attempt that owns initPromise clears it, and it does so
+      // before announcing the failure: a subscriber may retry from that
+      // announcement, and the retry's promise has to outlive this attempt.
+      if (this.initPromise === attempt) {
+        this.initPromise = undefined
+      }
+      this.updateAgentState({
+        error: error as Error,
+        isInitializing: false,
+      })
+      throw error
+    }
   }
 
   /**
@@ -355,10 +409,14 @@ export class ClientManager {
    * @returns An unsubscribe function.
    */
   public subscribe(callback: (identity: Identity) => void) {
-    this.#identitySubscribers.push(callback)
+    // Each subscription gets an entry of its own, so the unsubscribe it returns
+    // removes that one registration and no other. Filtering on the callback
+    // itself removed every registration of a function subscribed twice.
+    const subscription = (identity: Identity) => callback(identity)
+    this.#identitySubscribers.push(subscription)
     return () => {
       this.#identitySubscribers = this.#identitySubscribers.filter(
-        (sub) => sub !== callback
+        (sub) => sub !== subscription
       )
     }
   }
@@ -369,10 +427,12 @@ export class ClientManager {
    * @returns An unsubscribe function.
    */
   public subscribeAgentState(callback: (state: AgentState) => void) {
-    this.#agentStateSubscribers.push(callback)
+    // One entry per subscription, as in `subscribe`.
+    const subscription = (state: AgentState) => callback(state)
+    this.#agentStateSubscribers.push(subscription)
     return () => {
       this.#agentStateSubscribers = this.#agentStateSubscribers.filter(
-        (sub) => sub !== callback
+        (sub) => sub !== subscription
       )
     }
   }
