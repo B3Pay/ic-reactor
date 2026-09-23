@@ -331,7 +331,12 @@ export const uint8ArrayToHex = (bytes: Uint8Array | number[]): string => {
 }
 
 /**
- * Converts a hex string to Uint8Array (accepts with or without 0x prefix)
+ * Converts a hex string to Uint8Array (accepts with or without 0x prefix).
+ *
+ * Every byte is two hex digits, so an odd number of digits is refused. It
+ * used to be padded with a leading zero, which shifts every byte by one digit:
+ * a 64-digit subaccount that lost its last digit in a copy became a different
+ * 32-byte subaccount, which a ledger accepts.
  */
 export const hexToUint8Array = (hex: string): Uint8Array<ArrayBuffer> => {
   // Strip optional 0x prefix
@@ -344,13 +349,16 @@ export const hexToUint8Array = (hex: string): Uint8Array<ArrayBuffer> => {
     )
   }
 
+  if (stripped.length % 2 !== 0) {
+    throw new TypeError(
+      `[ic-reactor] hexToUint8Array: invalid hex string "${hex}" — it has an odd number of hex digits (${stripped.length}), and every byte is two`
+    )
+  }
+
   const normalized = stripped.toLowerCase()
 
-  // Handle odd-length hex strings by padding with leading zero
-  const paddedHex = normalized.length % 2 ? `0${normalized}` : normalized
-
   return new Uint8Array(
-    paddedHex.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
+    normalized.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
   )
 }
 
