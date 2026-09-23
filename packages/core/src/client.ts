@@ -25,6 +25,40 @@ const hostnameOf = (origin: string | undefined): string | undefined => {
 }
 
 /**
+ * Tells `subscribers` about a change the manager has already made.
+ *
+ * Every subscriber is called even when one throws, and the first error is
+ * rethrown once they all have been, so the caller still sees it. A throw used
+ * to end the loop, and the subscribers after it never heard about an identity
+ * the agent was already signing with.
+ *
+ * A subscriber may make a newer change from inside its callback: sign out a
+ * principal it does not accept, or retry an initialization that failed. That
+ * change tells every subscriber about itself, so once `isCurrent` says `value`
+ * has been replaced this loop stops rather than deliver the older value after
+ * the newer one. The last value each subscriber hears is the current one.
+ *
+ * The list is copied first, so a subscriber added during the loop is first
+ * called for the next change, as it was with `forEach`.
+ */
+function notifyAll<T>(
+  subscribers: ReadonlyArray<(value: T) => void>,
+  value: T,
+  isCurrent: () => boolean
+): void {
+  let failure: { error: unknown } | undefined
+  for (const subscriber of [...subscribers]) {
+    if (!isCurrent()) break
+    try {
+      subscriber(value)
+    } catch (error) {
+      failure ??= { error }
+    }
+  }
+  if (failure) throw failure.error
+}
+
+/**
  * ClientManager is a central class for managing the Internet Computer (IC) agent.
  *
  * It initializes the agent (connecting to local or mainnet) and integrates
@@ -57,6 +91,8 @@ export class ClientManager {
   #identitySubscribers: Array<(identity: Identity) => void> = []
   /** The identity currently installed on the agent, captured per call. */
   #identity?: Identity
+  /** Counts `updateAgent` calls, so a notification can tell it is stale. */
+  #identityRevision = 0
   #agentStateSubscribers: Array<(state: AgentState) => void> = []
   #targetCanisterIds: Set<string> = new Set()
   /** Resolved once in the constructor; see {@link trustsEnvConfig}. */
@@ -405,6 +441,13 @@ export class ClientManager {
 
   /**
    * Subscribes to identity changes (e.g., after login/logout).
+   *
+   * Callbacks run in the order they subscribed, after the agent already holds
+   * the new identity. A callback that throws does not stop the others; the
+   * first error is rethrown from `updateAgent` once they have all run. When a
+   * callback itself calls `updateAgent`, the identity that replaced this one
+   * is the last each callback hears.
+   *
    * @param callback - Function called with the new identity.
    * @returns An unsubscribe function.
    */
@@ -423,6 +466,11 @@ export class ClientManager {
 
   /**
    * Subscribes to changes in the agent's initialization state.
+   *
+   * Delivery works as for {@link subscribe}: every callback runs even when one
+   * throws, and a newer state set from inside a callback is the last state
+   * each callback hears.
+   *
    * @param callback - Function called with the updated agent state.
    * @returns An unsubscribe function.
    */
@@ -501,15 +549,25 @@ export class ClientManager {
   }
 
   private notifySubscribers(identity: Identity) {
-    this.#identitySubscribers.forEach((sub) => sub(identity))
+    const revision = ++this.#identityRevision
+    notifyAll(
+      this.#identitySubscribers,
+      identity,
+      () => this.#identityRevision === revision
+    )
   }
 
   private notifyAgentStateSubscribers(state: AgentState) {
-    this.#agentStateSubscribers.forEach((sub) => sub(state))
+    notifyAll(
+      this.#agentStateSubscribers,
+      state,
+      () => this.agentState === state
+    )
   }
 
   private updateAgentState(newState: Partial<AgentState>) {
-    this.agentState = { ...this.agentState, ...newState }
-    this.notifyAgentStateSubscribers(this.agentState)
+    const state = { ...this.agentState, ...newState }
+    this.agentState = state
+    this.notifyAgentStateSubscribers(state)
   }
 }
