@@ -79,6 +79,10 @@ The network is detected automatically: in the browser from the serving origin,
 in Node/SSR from `ICP_NETWORK` / `DFX_NETWORK`. Pass `agentOptions.host` to
 override it.
 
+On a non-mainnet host, `initialize()` fetches the replica's root key even if
+you passed `agentOptions.rootKey` or set `shouldFetchRootKey: false`, and the
+fetched key replaces yours.
+
 ### 2. Create Reactor
 
 The `Reactor` class wraps a canister with type-safe methods and caching:
