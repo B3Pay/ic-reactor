@@ -40,7 +40,69 @@ pub fn did_to_js(prog: String) -> Result<String, String> {
 
     let res = candid_parser::bindings::javascript::compile(&env, &actor);
 
-    Ok(computed_proto_keys(&res))
+    Ok(hex_nul_escapes(&computed_proto_keys(&res)))
+}
+
+/// Rewrites each `\0` escape inside a single-quoted string of `didToJs` or
+/// `didToTs` output as `\x00`.
+///
+/// candid_parser quotes names with Rust's `escape_debug`, which writes U+0000
+/// as `\0`. In JavaScript and TypeScript, `\0` followed by a digit is a legacy
+/// octal escape instead: a syntax error in a module, so the generated
+/// declarations did not load or compile, and in sloppy code, as
+/// `importCandidDefinition` evaluates it, another character. The name `"\001"`
+/// (U+0000 then `1`) printed as `'\01'` and became U+0001, a different field
+/// hash, so the call carried different bytes than the canister expects.
+///
+/// Comments are skipped: `didToTs` prints doc comments, which may hold a `'`.
+fn hex_nul_escapes(code: &str) -> String {
+    let mut out = String::with_capacity(code.len());
+    let mut chars = code.chars().peekable();
+    while let Some(c) = chars.next() {
+        out.push(c);
+        match c {
+            '\'' => {
+                while let Some(c) = chars.next() {
+                    match c {
+                        '\\' => match chars.next() {
+                            Some('0') => out.push_str("\\x00"),
+                            Some(escaped) => {
+                                out.push('\\');
+                                out.push(escaped);
+                            }
+                            None => out.push('\\'),
+                        },
+                        '\'' => {
+                            out.push(c);
+                            break;
+                        }
+                        _ => out.push(c),
+                    }
+                }
+            }
+            '/' if chars.peek() == Some(&'*') => {
+                out.push(chars.next().unwrap());
+                let mut prev = ' ';
+                for c in chars.by_ref() {
+                    out.push(c);
+                    if prev == '*' && c == '/' {
+                        break;
+                    }
+                    prev = c;
+                }
+            }
+            '/' if chars.peek() == Some(&'/') => {
+                for c in chars.by_ref() {
+                    out.push(c);
+                    if c == '\n' {
+                        break;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    out
 }
 
 /// Rewrites each `'__proto__' : …` entry of `didToJs` output as
@@ -102,7 +164,7 @@ pub fn did_to_ts(prog: String) -> Result<String, String> {
     let merged = IDLMergedProg::new(ast);
     let res = candid_parser::bindings::typescript::compile(&env, &actor, &merged);
 
-    Ok(res)
+    Ok(hex_nul_escapes(&res))
 }
 
 #[wasm_bindgen(js_name = validateIDL)]
