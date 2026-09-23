@@ -102,7 +102,9 @@ const blockIndex = await ledgerReactor.callMethod({
 })
 console.log("Transfer block index:", blockIndex)
 
-// Drop every cached query for this canister after a write
+// Mark every cached query for this canister stale after a write: mounted
+// queries refetch, but the entries stay, and fetchQuery (cache-first) still
+// returns them until they are refetched
 ledgerReactor.invalidateQueries()
 ```
 

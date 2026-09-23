@@ -99,13 +99,19 @@ function InfiniteList() {
     reactor: backendReactor,
     functionName: "get_posts",
     initialPageParam: 0n,
-    getArgs: (cursor) => [[], cursor, 10n] as const,
+    getArgs: (cursor): [[] | [string], bigint, bigint] => [[], cursor, 10n],
     getNextPageParam: (lastPage) =>
       lastPage.next_cursor.length === 0 ? undefined : lastPage.next_cursor[0],
   })
   // ...
 }
 ```
+
+Here `getArgs` spells out its return type. `useReactorInfiniteQuery` receives
+the reactor in the same call, so TypeScript types the returned array as
+`(bigint | never[])[]` rather than the argument tuple. `as const` doesn't help
+for this method: it also makes the empty `opt` array readonly, which
+`[] | [string]` rejects.
 
 ### With Suspense
 

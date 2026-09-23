@@ -6,14 +6,18 @@ editUrl: false
 
 import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
 
-Learn how to integrate IC Reactor with TanStack Form to create powerful, type-safe forms that interact directly with your Internet Computer canisters.
+Learn how to generate a TanStack Form from a Candid method: `FieldVisitor`
+turns the method's argument types into field metadata, default values and a
+Zod schema, and one component renders every field from that metadata. The demo
+builds the form for an `updateProfile(UserProfile)` IDL and shows the submitted
+values; it does not call a canister.
 
 ## Features Demonstrated
 
-- **Type-Safe Forms**: Form fields are typed based on your Candid definitions.
-- **Validation**: Client-side validation before sending data to the canister.
-- **Loading States**: Managing submission states and button feedback.
-- **Error Handling**: Mapping canister errors back to form fields.
+- **Generated Fields**: One field per Candid type, chosen by `field.component`
+  (records, variants, optionals, vectors, text, numbers, booleans).
+- **Defaults**: `meta.defaults` seeds the form.
+- **Validation**: `meta.schema` validates every change.
 
 ## Links
 
@@ -42,36 +46,39 @@ Learn how to integrate IC Reactor with TanStack Form to create powerful, type-sa
 
 ## Implementation
 
-```typescript
-const { mutateAsync } = useActorMutation({ functionName: "update_profile" })
+```tsx
+// src/App.tsx
+import { FieldVisitor } from "@ic-reactor/candid"
+import { IDL } from "@icp-sdk/core/candid"
+import { useForm } from "@tanstack/react-form"
 
-const form = useForm({
-  defaultValues: {
-    username: "",
-    bio: "",
-  },
-  onSubmit: async ({ value }) => {
-    await mutateAsync([value])
-  },
-})
+const visitor = new FieldVisitor()
+const meta = visitor.visitFunc(IDL.Func([UserProfile], [], []), "updateProfile")
 
-return (
-  <form
-    onSubmit={(e) => {
-      e.preventDefault()
-      form.handleSubmit()
-    }}
-  >
-    <form.Field
-      name="username"
-      children={(field) => (
-        <input
-          value={field.state.value}
-          onChange={(e) => field.handleChange(e.target.value)}
-        />
-      )}
-    />
-    <button type="submit">Update Profile</button>
-  </form>
-)
+function CandidForm() {
+  const form = useForm({
+    defaultValues: meta.defaults,
+    validators: { onChange: meta.schema },
+    onSubmit: async ({ value }) => {
+      console.log("Form Submitted:", value)
+    },
+  })
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault()
+        form.handleSubmit()
+      }}
+    >
+      {meta.args.map((field, index) => (
+        <DynamicField key={field.name || index} field={field} form={form} />
+      ))}
+      <button type="submit">Submit</button>
+    </form>
+  )
+}
 ```
+
+To send the values to a canister, convert them from display types to Candid
+first; see [CandidFormVisitor](/v3/packages/candid/fieldvisitor).

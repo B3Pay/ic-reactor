@@ -1,16 +1,20 @@
 ---
 title: "ICP Reactor Demo"
-description: Complete application showcasing the standard Reactor and authentication
+description: Full local ICP project with a backend, generated hooks and authentication
 editUrl: false
 ---
 
 import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
 
-This example provides a comprehensive overview of using the standard `Reactor` for complex canister interactions, combined with `Authentication` and `TanStack Query`.
+This example provides a comprehensive overview of a full local ICP project: a
+backend canister, a frontend using the reactor and hooks the Vite plugin
+generates, `Authentication` and `TanStack Query`.
 
 ## Features Demonstrated
 
-- **Standard Reactor**: Using direct Candid-to-TypeScript mappings.
+- **Generated Hooks**: The Vite plugin generates a `DisplayReactor` and its
+  hooks (`useBackendQuery`, `useBackendMutation`, ...) from the backend's
+  Candid.
 - **Authentication Hooks**: Integration with Internet Identity for secure calls.
 - **Typed Methods**: Fully typed query and mutation calls.
 - **Error Propagation**: Robust handling of canister errors and network issues.
@@ -42,21 +46,37 @@ This example provides a comprehensive overview of using the standard `Reactor` f
 
 ## Implementation
 
-```typescript
-const { login, logout, isAuthenticated } = useAuth()
-const { data, call } = useActorMethod({ functionName: "greet" })
+```tsx
+// frontend/src/App.tsx
+import { useState } from "react"
+import { useAuth } from "./lib/client"
+import { useBackendQuery } from "./generated/backend"
 
-return (
-  <div>
-    {!isAuthenticated ? (
-      <button onClick={() => login()}>Login</button>
-    ) : (
-      <>
+function GreetSection() {
+  const { login, logout, isAuthenticated } = useAuth()
+  const [name, setName] = useState("World")
+
+  // `greet` is a query: the hook fetches it, and again whenever `name` changes
+  const {
+    data: greeting,
+    isLoading,
+    refetch,
+  } = useBackendQuery({
+    functionName: "greet",
+    args: [name],
+  })
+
+  return (
+    <div>
+      {isAuthenticated ? (
         <button onClick={() => logout()}>Logout</button>
-        <button onClick={() => call(["IC"])}>Greet</button>
-        {data && <p>{data}</p>}
-      </>
-    )}
-  </div>
-)
+      ) : (
+        <button onClick={() => login()}>Login</button>
+      )}
+      <input value={name} onChange={(e) => setName(e.target.value)} />
+      <button onClick={() => refetch()}>Greet</button>
+      {isLoading ? <p>Loading...</p> : <p>{greeting}</p>}
+    </div>
+  )
+}
 ```

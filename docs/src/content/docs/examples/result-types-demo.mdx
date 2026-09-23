@@ -1,19 +1,26 @@
 ---
 title: "Result Types Demo"
-description: Automatic unwrapping of Candid Result (Variant) types
+description: Render any Candid return type from result metadata
 editUrl: false
 ---
 
 import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
 
-In Motoko and Rust, it's common to return a `Result<T, E>` variant. IC Reactor automatically unwraps these variants, providing a standard `Ok` value or throwing a typed `CanisterError` for `Err` values.
+This example renders canister return values — records, variants, vectors,
+tuples, recursive types and func references — from the metadata
+`ResultFieldVisitor` builds for a service's return types. Its `ResultRenderer`
+also has components for blobs and optionals, which the sample values do not
+reach. It works on a local IDL and sample values, so it needs no canister.
 
 ## Features Demonstrated
 
-- **Automatic Unwrapping**: Access `data` directly as the `Ok` value.
-- **Error Handling**: `Err` values from the canister are caught and presented as `error`.
-- **Recursive Variants**: Handling nested systems of results and variants.
-- **Type Safety**: Full TypeScript support for both success and error branches.
+- **Result Metadata**: `ResultFieldVisitor.visitService` builds one
+  `MethodMeta` per method.
+- **Resolution**: `resolve()` turns a raw Candid value into display-ready
+  nodes.
+- **Recursive Types**: a `Category` that contains itself renders level by level.
+- **Func References**: an ICRC ledger's archived-block callbacks render as
+  canister and method.
 
 ## Links
 
@@ -42,22 +49,25 @@ In Motoko and Rust, it's common to return a `Result<T, E>` variant. IC Reactor a
 
 ## Implementation
 
-When calling a method that returns a `Result`:
+```tsx
+// src/App.tsx
+import { ResultFieldVisitor } from "@ic-reactor/candid"
+import { IDL } from "@icp-sdk/core/candid"
 
-```typescript
-function MyComponent() {
-  const { data, error, isError } = useActorQuery({
-    functionName: "get_user_profile",
-    args: [userId],
-  })
+const visitor = new ResultFieldVisitor()
+const serviceMeta = visitor.visitService(testIDL({ IDL }))
 
-  // data contains the 'Ok' value if successful
-  // error contains the 'Err' value if the canister returned an error
+// Metadata for one method, resolved against a raw Candid value
+const resolved = serviceMeta["get_user"].resolve(mockUser)
 
-  if (isError) {
-    return <div>Error: {error.message}</div>
-  }
-
-  return <div>Welcome, {data.username}</div>
-}
+// One node per return value, each carrying its display value
+return resolved.results.map((result, i) => (
+  <ResultRenderer key={i} result={result} />
+))
 ```
+
+<Aside type="note">
+  Unwrapping a canister's `Result` variant is a different feature: a reactor
+  returns the `Ok` value and throws a `CanisterError` for `Err`. See
+  [Queries](/v3/framework/queries).
+</Aside>
