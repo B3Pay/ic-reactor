@@ -382,7 +382,8 @@ export class ValidationError extends Error {
   /**
    * Get the issues whose path contains the given segment: a field name, or an
    * array index. zod reports an index as a number, and `1` and `"1"` both
-   * match it.
+   * match it. Pass `""` for issues about the whole argument (an empty path),
+   * the key React's `mapValidationErrors` files them under.
    */
   getIssuesForPath(path: string | number): ValidationIssue[] {
     return this.issues.filter((issue) => pathHasSegment(issue.path, path))
@@ -390,7 +391,7 @@ export class ValidationError extends Error {
 
   /**
    * Check whether any issue's path contains the given segment, matched the
-   * same way as `getIssuesForPath`.
+   * same way as `getIssuesForPath`, `""` included.
    */
   hasErrorForPath(path: string | number): boolean {
     return this.issues.some((issue) => pathHasSegment(issue.path, path))
@@ -402,12 +403,17 @@ brand(ValidationError, VALIDATION_ERROR)
  * Compares segments as strings: a path stores an array index as a number, but
  * a caller often holds it as a string, such as one part of a form field name
  * like `items.1.amount`.
+ *
+ * `""` also matches an empty path. An issue about the whole argument (zod's
+ * object-level `.refine()`, or any issue of a primitive argument) has no
+ * segment to match, and `""` is where React's helpers file it.
  */
 function pathHasSegment(
   path: ValidationIssue["path"],
   segment: string | number
 ): boolean {
   const key = String(segment)
+  if (key === "" && path.length === 0) return true
   return path.some((part) => String(part) === key)
 }
 
