@@ -94,12 +94,24 @@ type FormRenderHint = {
 
 ## Validation Example (TanStack Form)
 
+The form metadata holds display types: text for principals and numbers, `null`
+for an empty `opt`, `{ _type }` for a variant. An actor takes Candid values, so
+the submitted values are converted to Candid before the call.
+
 ```ts
+import { didToDisplayCodec } from "@ic-reactor/core"
+import { IDL } from "@icp-sdk/core/candid"
+import { useForm } from "@tanstack/react-form"
+
+const { argTypes } = service.fieldsAsObject()["icrc1_transfer"]
+const argsCodec = didToDisplayCodec(IDL.Tuple(...argTypes))
+
 const form = useForm({
   defaultValues: methodMeta.defaults,
   validators: { onBlur: methodMeta.schema },
   onSubmit: async ({ value }) => {
-    await actor.icrc1_transfer(...value)
+    // Principal, bigint, [] or [x] for an opt, { Tag: payload } for a variant
+    await actor.icrc1_transfer(...argsCodec.asCandid(value))
   },
 })
 ```

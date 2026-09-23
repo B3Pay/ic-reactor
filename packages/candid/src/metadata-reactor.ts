@@ -6,6 +6,7 @@ import type {
 } from "@ic-reactor/core"
 import { hexToUint8Array } from "@ic-reactor/core"
 import { IDL } from "@icp-sdk/core/candid"
+import { decodeArgs } from "./decode-args.js"
 import { CandidReactor } from "./reactor.js"
 import type {
   DynamicMethodOptions,
@@ -312,7 +313,9 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
     }
 
     try {
-      const decoded = IDL.decode(argTypes, hexToUint8Array(candidArgsHex))
+      // Not IDL.decode, which drops a record field named `__proto__`: the
+      // form then read Object.prototype and hydrated "[object Object]".
+      const decoded = decodeArgs(argTypes, hexToUint8Array(candidArgsHex))
       const visitor = new CandidFormVisitor()
       const fields: FormFieldNode[] = argTypes
         .map(

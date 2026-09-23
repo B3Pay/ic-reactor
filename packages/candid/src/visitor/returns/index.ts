@@ -1,4 +1,5 @@
 import { isQuery } from "../helpers.js"
+import { labelValue } from "../label.js"
 import { methodFunc } from "../method-func.js"
 import { checkTextFormat, checkNumberFormat } from "../constants.js"
 import { formatLabel } from "../arguments/helpers.js"
@@ -204,19 +205,17 @@ function candidValueOf(node: ResultNode): unknown {
 
 /**
  * The value of the record field `key` in `data`: by name, or by position for
- * a record given as a tuple. A field named `__proto__` counts only as an own
- * property. Read by name, it is the value's prototype, and IDL.decode does
- * not keep a field of that name, so the field resolved to Object.prototype.
+ * a record given as a tuple. A name counts only where the value holds it, not
+ * on Object.prototype. Read plainly, a field named `toString` or `constructor`
+ * that a hand-built value left out resolved to the inherited function, and one
+ * named `__proto__`, which IDL.decode does not keep, to Object.prototype.
  */
 function recordFieldValue(
   data: Record<string, unknown>,
   key: string,
   index: number
 ): unknown {
-  const named =
-    key !== "__proto__" || Object.prototype.hasOwnProperty.call(data, key)
-      ? data[key]
-      : undefined
+  const named = labelValue(data, key)
   return named !== undefined ? named : data[index]
 }
 
@@ -557,10 +556,12 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     fields_: Array<[string, IDL.Type]>,
     label: string
   ): ResultNode<"variant"> {
-    const options: Record<string, ResultNode> = {}
-    for (const [key, type] of fields_) {
-      options[key] = type.accept(this, key) as ResultNode
-    }
+    // Object.fromEntries makes every option an own property. Assigning to a
+    // tag named `__proto__` set the prototype instead, which dropped the
+    // option from `options`, and from the check for a variant of null options.
+    const options: Record<string, ResultNode> = Object.fromEntries(
+      fields_.map(([key, type]) => [key, type.accept(this, key) as ResultNode])
+    )
     const isResult =
       ("Ok" in options && "Err" in options) ||
       ("ok" in options && "err" in options)
@@ -591,7 +592,15 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         // Support both raw { Selected: value } and transformed { _type: 'Selected', Selected: value }
         const selected =
           (variantData._type as string) || Object.keys(variantData)[0]
-        const optionNode = options[selected]
+        // Only a variant's own options: a plain read found Object.prototype
+        // members, so a `toString` tag the variant lacks threw a TypeError
+        // instead of saying the option is not found.
+        const optionNode = Object.prototype.hasOwnProperty.call(
+          options,
+          selected
+        )
+          ? options[selected]
+          : undefined
 
         if (!optionNode) {
           throw new MetadataError(
@@ -603,7 +612,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         return {
           ...node,
           selected,
-          selectedValue: optionNode.resolve(variantData[selected]),
+          // `{ _type }` alone leaves the payload out. A plain read then found
+          // an inherited member for a tag named `toString` or `constructor`.
+          selectedValue: optionNode.resolve(labelValue(variantData, selected)),
           raw: data,
         }
       },
