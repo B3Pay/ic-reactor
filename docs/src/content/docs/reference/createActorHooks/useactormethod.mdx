@@ -46,7 +46,10 @@ For update methods, the hook behaves like `useActorMutation`. Data is only fetch
 function Transfer() {
   const { call, isPending, data } = useActorMethod({
     functionName: "transfer",
-    invalidateQueries: [["icrc1_balance_of"]], // Optional: invalidate queries after success
+    // Optional: refetch every icrc1_balance_of query after a successful call
+    invalidateQueries: [
+      backend.generateQueryKey({ functionName: "icrc1_balance_of" }),
+    ],
   })
 
   const handleTransfer = async () => {
@@ -61,6 +64,11 @@ function Transfer() {
   )
 }
 ```
+
+Query keys start with the canister ID, so a hand-written key such as
+`["icrc1_balance_of"]` matches no query. Build keys with the reactor's
+`generateQueryKey`, or with `getQueryKey()` on a query object. A key built
+without `args` matches every query of that method, whatever its arguments.
 
 ## Options
 

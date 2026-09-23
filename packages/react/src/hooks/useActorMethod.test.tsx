@@ -152,6 +152,43 @@ describe("useActorMethod", () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey })
   })
+
+  it("refetches a mounted query named by a generateQueryKey key", async () => {
+    // The shape the useActorMethod docs use. Real keys start with the canister
+    // id, so a hand-written ["greet"] matches nothing, while a key built
+    // without args matches every greet entry, whatever its args.
+    const greetCalls = () =>
+      vi
+        .mocked(reactor.callMethod)
+        .mock.calls.filter(([params]) => params.functionName === "greet").length
+
+    const { result } = renderHook(
+      () => ({
+        greeting: useActorMethod({
+          reactor,
+          functionName: "greet",
+          args: ["world"],
+        }),
+        transfer: useActorMethod({
+          reactor,
+          functionName: "transfer",
+          invalidateQueries: [
+            reactor.generateQueryKey({ functionName: "greet" }),
+          ],
+        }),
+      }),
+      { wrapper }
+    )
+
+    await waitFor(() => expect(result.current.greeting.isSuccess).toBe(true))
+    expect(greetCalls()).toBe(1)
+
+    await act(async () => {
+      await result.current.transfer.call([{ to: "bob", amount: 50n }])
+    })
+
+    await waitFor(() => expect(greetCalls()).toBe(2))
+  })
 })
 
 describe("useActorMethod - Query Method Options", () => {
