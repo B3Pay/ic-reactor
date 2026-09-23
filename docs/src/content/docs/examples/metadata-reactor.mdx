@@ -1,15 +1,17 @@
 ---
 title: "Metadata Reactor Demo"
-description: Connect to any canister and inspect its input and output metadata
+description: Connect to a canister that exposes its Candid and inspect its input and output metadata
 editUrl: false
 ---
 
 import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
 
-This example uses a `MetadataDisplayReactor` to connect to any canister by ID,
-fetch its Candid at runtime, and show the form (input) and result (output)
-metadata the reactor generates for each method. It is plain TypeScript, with no
-framework.
+This example uses a `MetadataDisplayReactor` to connect by ID to any canister
+that exposes its Candid interface (as `candid:service` metadata or through
+`__get_candid_interface_tmp_hack`), fetch that Candid at runtime, and show the
+form (input) and result (output) metadata the reactor generates for each method.
+For a canister that exposes neither, `initialize()` throws and the demo reports
+that it failed to connect. It is plain TypeScript, with no framework.
 
 ## Features Demonstrated
 

@@ -6,10 +6,11 @@ editUrl: false
 
 import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
 
-This example renders canister return values of every shape — records,
-variants, vectors, tuples, recursive types, blobs and func references — from
-the metadata `ResultFieldVisitor` builds for a service's return types. It
-works on a local IDL and sample values, so it needs no canister.
+This example renders canister return values — records, variants, vectors,
+tuples, recursive types and func references — from the metadata
+`ResultFieldVisitor` builds for a service's return types. Its `ResultRenderer`
+also has components for blobs and optionals, which the sample values do not
+reach. It works on a local IDL and sample values, so it needs no canister.
 
 ## Features Demonstrated
 
