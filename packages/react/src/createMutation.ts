@@ -28,6 +28,7 @@
 import {
   useMutation,
   type MutationFunctionContext,
+  type UseMutationOptions,
 } from "@tanstack/react-query"
 import type {
   Reactor,
@@ -80,6 +81,10 @@ const createMutationImpl = <
     TOnMutateResult | undefined
   >
 ): MutationResult<Service, Method, Transform> => {
+  type TData = ReactorReturnOk<Service, Method, Transform>
+  type TError = ReactorReturnErr<Service, Method, Transform>
+  type TVariables = ReactorArgs<Service, Method, Transform>
+
   const {
     functionName,
     callConfig,
@@ -97,13 +102,11 @@ const createMutationImpl = <
    * Used as mutationFn so that onSuccess handles all post-mutation work
    * and there is no double-invalidation.
    */
-  const callFn = (
-    args: ReactorArgs<Service, Method, Transform>
-  ): Promise<ReactorReturnOk<Service, Method, Transform>> =>
+  const callFn = (args: TVariables): Promise<TData> =>
     reactor.callMethod({ functionName, args, callConfig })
 
   /**
-   * The factory's own `onMutate` result for each call through the hook.
+   * The factory's own `onMutate` result for each call.
    *
    * TanStack Query stores one `onMutate` result per mutation and hands it to
    * every callback. That slot holds the hook's result, which the mutation also
@@ -129,72 +132,157 @@ const createMutationImpl = <
       : onMutateResult) as TOnMutateResult | undefined
 
   /**
+   * The options a mutation of this factory runs with, on both call paths: the
+   * factory's config, the hook's options on top when there is a hook, and the
+   * callbacks of both levels chained, factory first. `useMutation()` hands
+   * them to TanStack Query's `useMutation`, and `execute()` builds a mutation
+   * from them in the QueryClient's MutationCache.
+   */
+  const mutationOptions = <THookOnMutateResult = unknown>(
+    options?: MutationHookOptions<
+      Service,
+      Method,
+      Transform,
+      THookOnMutateResult
+    >
+  ): UseMutationOptions<TData, TError, TVariables, THookOnMutateResult> => {
+    const {
+      invalidateQueries: hookInvalidateQueries,
+      onCanisterError: hookOnCanisterError,
+      ...restOptions
+    } = options ?? {}
+
+    return {
+      mutationKey: reactor.getQueryOptions({ functionName }).queryKey,
+      ...factoryOptions,
+      ...restOptions,
+      // Use callFn (not execute) to avoid double-invalidation:
+      // factoryInvalidateQueries are handled in onSuccess below.
+      mutationFn: callFn,
+      onSuccess: async (data, variables, onMutateResult, context) => {
+        // 1. Factory-level invalidation
+        if (factoryInvalidateQueries) {
+          await invalidateAll(reactor.queryClient, factoryInvalidateQueries)
+        }
+        // 2. Hook-level invalidation
+        if (hookInvalidateQueries) {
+          await invalidateAll(reactor.queryClient, hookInvalidateQueries)
+        }
+        // 3. Factory onSuccess
+        await factoryOnSuccess?.(
+          data,
+          variables,
+          factoryOnMutateResult(onMutateResult, context),
+          context
+        )
+        // 4. Hook onSuccess
+        await restOptions.onSuccess?.(data, variables, onMutateResult, context)
+      },
+      onError: async (error, variables, onMutateResult, context) => {
+        if (isCanisterError(error)) {
+          factoryOnCanisterError?.(error, variables)
+          hookOnCanisterError?.(error, variables)
+        }
+        // Awaited in order, like `onSuccess`. TanStack Query holds
+        // `onSettled` and the settled state until this promise resolves, so
+        // an async `onError` must be part of it.
+        await factoryOnError?.(
+          error,
+          variables,
+          factoryOnMutateResult(onMutateResult, context),
+          context
+        )
+        await restOptions.onError?.(error, variables, onMutateResult, context)
+      },
+      // `onMutate` and `onSettled` are composed like `onSuccess`/`onError`
+      // above. They used to arrive through the `...restOptions` spread, so a
+      // hook-level one silently replaced the factory's — factory teardown,
+      // telemetry or logging simply vanished the moment any call site passed
+      // its own, with no warning and no type error. Chaining is what a
+      // reader who has seen `onSuccess` chain already expects.
+      onMutate: async (variables, context) => {
+        if (factoryOnMutate) {
+          const result = await factoryOnMutate(variables, context)
+          if (context) factoryOnMutateResults.set(context, result)
+        }
+        // Without a hook-level `onMutate` this is `undefined`, and
+        // THookOnMutateResult is then `unknown`.
+        return (await restOptions.onMutate?.(
+          variables,
+          context
+        )) as THookOnMutateResult
+      },
+      onSettled: async (data, error, variables, onMutateResult, context) => {
+        await factoryOnSettled?.(
+          data,
+          error,
+          variables,
+          factoryOnMutateResult(onMutateResult, context),
+          context
+        )
+        await restOptions.onSettled?.(
+          data,
+          error,
+          variables,
+          onMutateResult,
+          context
+        )
+      },
+    }
+  }
+
+  /**
    * Imperative execution for non-React usage.
    *
-   * Runs the same factory-level chain the hook does — invalidation, then
-   * `onSuccess`, or `onCanisterError`/`onError` on failure — so a mutation
-   * object behaves the same through both call paths. Only hook-level callbacks
-   * are absent, because there is no hook here to supply them.
+   * Builds the mutation in the QueryClient's MutationCache and runs it, as
+   * TanStack Query's `useMutation` does, with the options the hook path uses
+   * minus the hook's own. It used to call the canister and the factory's
+   * callbacks itself, so the MutationCache never saw it: its global
+   * `onError`, `onSuccess` and `onSettled` did not run, `useIsMutating` did
+   * not count it, and neither the factory's `retry` or `networkMode` nor the
+   * same options in the QueryClient's mutation defaults applied to the call.
+   * The factory's `onMutate` and `onSettled` did not run either.
    *
-   * The callbacks get the same `{ client, meta, mutationKey }` context
-   * TanStack Query passes them on the hook path.
+   * Now the factory's chain runs as it does through `useMutation()`:
+   * `onMutate`, then the factory's invalidation and `onSuccess`, or
+   * `onCanisterError` and `onError` on failure, then `onSettled`. Each factory
+   * callback gets the result of the factory's `onMutate` for this call. Only
+   * hook-level callbacks are absent, because there is no hook here to supply
+   * them.
    *
-   * The error is rethrown after the callbacks run, so `await execute(...)`
-   * still rejects for the caller.
+   * It resolves with the method's result. On failure it rejects with the
+   * call's error once the callbacks have run, so `await execute(...)` still
+   * rejects for the caller.
    *
    * Use this in route loaders, scripts, or server-side code.
    */
-  const execute = async (
-    args: ReactorArgs<Service, Method, Transform>
-  ): Promise<ReactorReturnOk<Service, Method, Transform>> => {
-    // TanStack Query builds this for the hook path, and the callback types
-    // declare it as always present. None of it is mutation state, so this path
-    // builds the same object. Passing `undefined` made a callback that reads
-    // `context.client` throw here and nowhere else.
-    //
-    // The hook path takes `meta` and `mutationKey` from the client's defaulted
-    // options, so this runs the same spread through `defaultMutationOptions`.
-    // Reading `factoryOptions` alone dropped mutation defaults registered on
-    // the QueryClient (`defaultOptions.mutations`, `setMutationDefaults`).
-    const effectiveOptions = reactor.queryClient.defaultMutationOptions({
-      mutationKey: reactor.getQueryOptions({ functionName }).queryKey,
-      ...factoryOptions,
-    })
-    const context: MutationFunctionContext = {
-      client: reactor.queryClient,
-      meta: effectiveOptions.meta,
-      mutationKey: effectiveOptions.mutationKey,
-    }
-
-    let result: ReactorReturnOk<Service, Method, Transform>
+  const execute = async (args: TVariables): Promise<TData> => {
+    const { queryClient } = reactor
+    const options = mutationOptions()
+    const { onError } = options
+    // What the factory's `onError` or `onCanisterError` throws, if either
+    // does. execute() has always rejected with it, and a TanStack Query
+    // mutation at the 5.90.2 peer floor does too. Later releases reject with
+    // the call's error and report the thrown one as an unhandled rejection,
+    // which ends a Node script, so it is caught here and rethrown below.
+    let thrownByOnError: { error: unknown } | undefined
+    const mutation = queryClient
+      .getMutationCache()
+      .build<TData, TError, TVariables, unknown>(queryClient, {
+        ...options,
+        onError: async (error, variables, onMutateResult, context) => {
+          try {
+            await onError?.(error, variables, onMutateResult, context)
+          } catch (thrown) {
+            thrownByOnError = { error: thrown }
+          }
+        },
+      })
     try {
-      result = await callFn(args)
+      return await mutation.execute(args)
     } catch (error) {
-      if (isCanisterError(error)) {
-        // `catch` drops the type. `callMethod` rejects with this method's
-        // CanisterError, the one the hook path narrows to.
-        factoryOnCanisterError?.(
-          error as Parameters<NonNullable<typeof factoryOnCanisterError>>[0],
-          args
-        )
-      }
-      // `onMutate` does not run on this path, so there is no result to pass.
-      // Awaited like `onSuccess` below and like the hook path, so an async
-      // rollback or report finishes before `execute()` rejects.
-      await factoryOnError?.(
-        error as Parameters<NonNullable<typeof factoryOnError>>[0],
-        args,
-        undefined,
-        context
-      )
-      throw error
+      throw thrownByOnError ? thrownByOnError.error : error
     }
-
-    if (factoryInvalidateQueries) {
-      await invalidateAll(reactor.queryClient, factoryInvalidateQueries)
-    }
-    await factoryOnSuccess?.(result, args, undefined, context)
-    return result
   }
 
   // Hook implementation
@@ -207,103 +295,7 @@ const createMutationImpl = <
     >
   ) => {
     useMountQueryClient(reactor.queryClient)
-    const baseOptions = reactor.getQueryOptions({ functionName })
-    const {
-      invalidateQueries: hookInvalidateQueries,
-      onCanisterError: hookOnCanisterError,
-      ...restOptions
-    } = options ?? {}
-
-    return useMutation<
-      ReactorReturnOk<Service, Method, Transform>,
-      ReactorReturnErr<Service, Method, Transform>,
-      ReactorArgs<Service, Method, Transform>,
-      THookOnMutateResult
-    >(
-      {
-        mutationKey: baseOptions.queryKey,
-        ...factoryOptions,
-        ...restOptions,
-        // Use callFn (not execute) to avoid double-invalidation:
-        // factoryInvalidateQueries are handled in onSuccess below.
-        mutationFn: callFn,
-        onSuccess: async (data, variables, onMutateResult, context) => {
-          // 1. Factory-level invalidation
-          if (factoryInvalidateQueries) {
-            await invalidateAll(reactor.queryClient, factoryInvalidateQueries)
-          }
-          // 2. Hook-level invalidation
-          if (hookInvalidateQueries) {
-            await invalidateAll(reactor.queryClient, hookInvalidateQueries)
-          }
-          // 3. Factory onSuccess
-          await factoryOnSuccess?.(
-            data,
-            variables,
-            factoryOnMutateResult(onMutateResult, context),
-            context
-          )
-          // 4. Hook onSuccess
-          await restOptions.onSuccess?.(
-            data,
-            variables,
-            onMutateResult,
-            context
-          )
-        },
-        onError: async (error, variables, onMutateResult, context) => {
-          if (isCanisterError(error)) {
-            factoryOnCanisterError?.(error, variables)
-            hookOnCanisterError?.(error, variables)
-          }
-          // Awaited in order, like `onSuccess`. TanStack Query holds
-          // `onSettled` and the settled state until this promise resolves, so
-          // an async `onError` must be part of it.
-          await factoryOnError?.(
-            error,
-            variables,
-            factoryOnMutateResult(onMutateResult, context),
-            context
-          )
-          await restOptions.onError?.(error, variables, onMutateResult, context)
-        },
-        // `onMutate` and `onSettled` are composed like `onSuccess`/`onError`
-        // above. They used to arrive through the `...restOptions` spread, so a
-        // hook-level one silently replaced the factory's — factory teardown,
-        // telemetry or logging simply vanished the moment any call site passed
-        // its own, with no warning and no type error. Chaining is what a
-        // reader who has seen `onSuccess` chain already expects.
-        onMutate: async (variables, context) => {
-          if (factoryOnMutate) {
-            const result = await factoryOnMutate(variables, context)
-            if (context) factoryOnMutateResults.set(context, result)
-          }
-          // Without a hook-level `onMutate` this is `undefined`, and
-          // THookOnMutateResult is then `unknown`.
-          return (await restOptions.onMutate?.(
-            variables,
-            context
-          )) as THookOnMutateResult
-        },
-        onSettled: async (data, error, variables, onMutateResult, context) => {
-          await factoryOnSettled?.(
-            data,
-            error,
-            variables,
-            factoryOnMutateResult(onMutateResult, context),
-            context
-          )
-          await restOptions.onSettled?.(
-            data,
-            error,
-            variables,
-            onMutateResult,
-            context
-          )
-        },
-      },
-      reactor.queryClient
-    )
+    return useMutation(mutationOptions(options), reactor.queryClient)
   }
 
   return { useMutation: useMutationHook, execute }
@@ -320,8 +312,10 @@ export function createMutation<
   TOnMutateResult = unknown,
 >(
   reactor: Reactor<Service, Transform>,
-  // `execute()` runs the factory's `onSuccess` and `onError` without running
-  // its `onMutate`, so their `onMutate` result can also be `undefined`.
+  // A factory `onError` or `onSettled` gets no `onMutate` result when
+  // `onMutate` throws, so the result can also be `undefined`. `onSuccess`
+  // shares the type argument. It kept the `undefined` from when `execute()`
+  // ran no `onMutate`, although it now always gets a result.
   config: MutationConfig<
     NoInfer<Service>,
     Method,

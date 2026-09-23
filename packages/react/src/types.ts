@@ -502,7 +502,12 @@ export interface MutationResult<
     TOnMutateResult
   >
 
-  /** Execute the update call directly (outside of React) */
+  /**
+   * Execute the update call outside React. It runs in the QueryClient's
+   * MutationCache with the factory's options and callbacks, as `useMutation()`
+   * does without hook options. It resolves with the method's result and
+   * rejects with the call's error.
+   */
   execute: (
     args: ReactorArgs<Service, Method, Transform>
   ) => Promise<ReactorReturnOk<Service, Method, Transform>>
