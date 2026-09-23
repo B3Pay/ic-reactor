@@ -86,4 +86,30 @@ describe("normalizeCandidInterface", () => {
       normalizeCandidInterface("(service { f : () -> () }) -> ()", "m")
     ).toBe('service : { "m": (service { f : () -> () }) -> (); }')
   })
+
+  it("reads an escaped quote as part of a quoted name", () => {
+    expect(
+      normalizeCandidInterface(
+        '(record { "a \\" service: b" : nat }) -> ()',
+        "m"
+      )
+    ).toBe('service : { "m": (record { "a \\" service: b" : nat }) -> (); }')
+  })
+
+  it("reads a long unclosed quoted name in linear time", () => {
+    // CodeQL js/polynomial-redos. Quoted names were blanked with
+    // /"(?:[^"\\]|\\.)*"/g, which went back over the rest of the input from
+    // every quote it could not close, so the time grew with the square of the
+    // length: over nine seconds for this name. One pass takes milliseconds.
+    const unclosed = `"${'\\"'.repeat(100_000)}`
+    const started = performance.now()
+
+    expect(() => normalizeCandidInterface(unclosed, "m")).toThrow(
+      "Malformed candid interface: unbalanced delimiters"
+    )
+    const definition = `service : { ${unclosed}`
+    expect(normalizeCandidInterface(definition, "m")).toBe(definition)
+
+    expect(performance.now() - started).toBeLessThan(1_000)
+  })
 })
