@@ -203,6 +203,40 @@ export function installFakeIdentityProvider(
 
   const originalOpen = window.open
 
+  // After a sign-in, the signer's heartbeat keeps timers running: a status
+  // poll every 300 ms and a 2 s disconnect timeout whose callback removes its
+  // listener from `window`. One still pending when a test file ends fires
+  // after vitest has removed the jsdom globals, and fails the whole run with
+  // "removeEventListener is not a function" although every test passed.
+  // Timers started while the provider is installed are cleared on restore.
+  const originalSetTimeout = globalThis.setTimeout
+  const originalSetInterval = globalThis.setInterval
+  const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>()
+  const intervals = new Set<ReturnType<typeof setInterval>>()
+
+  globalThis.setTimeout = ((
+    handler: (...args: unknown[]) => void,
+    timeout?: number,
+    ...args: unknown[]
+  ) => {
+    const id = originalSetTimeout(() => {
+      pendingTimeouts.delete(id)
+      handler(...args)
+    }, timeout)
+    pendingTimeouts.add(id)
+    return id
+  }) as typeof setTimeout
+
+  globalThis.setInterval = ((
+    handler: (...args: unknown[]) => void,
+    timeout?: number,
+    ...args: unknown[]
+  ) => {
+    const id = originalSetInterval(handler, timeout, ...args)
+    intervals.add(id)
+    return id
+  }) as typeof setInterval
+
   const openSpy = vi.fn(
     (url?: string | URL, _target?: string, _features?: string) => {
       openedUrls.push(String(url ?? ""))
@@ -562,6 +596,12 @@ export function installFakeIdentityProvider(
     },
     restore() {
       window.open = originalOpen
+      globalThis.setTimeout = originalSetTimeout
+      globalThis.setInterval = originalSetInterval
+      pendingTimeouts.forEach((id) => clearTimeout(id))
+      pendingTimeouts.clear()
+      intervals.forEach((id) => clearInterval(id))
+      intervals.clear()
     },
   }
 }

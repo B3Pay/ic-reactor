@@ -11,7 +11,7 @@
  * run on a local network, where the fake replica can serve the root key the
  * minting agent trusts.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { IDBFactory } from "fake-indexeddb"
 import { QueryClient } from "@tanstack/react-query"
 import { AuthClient } from "@icp-sdk/auth/client"
@@ -491,5 +491,30 @@ describe("identity attributes (real AuthClient)", () => {
 
     expect(authentication.authState.error?.message).toContain("User rejected")
     expect(authentication.authState.isAuthenticating).toBe(false)
+  })
+})
+
+describe("fake identity provider", () => {
+  // After a sign-in the signer's heartbeat has a 2 s disconnect timeout
+  // pending, and its callback removes the heartbeat's listener from `window`.
+  // One still pending when a test file ends fires after vitest has removed the
+  // jsdom globals and fails the run with "removeEventListener is not a
+  // function" (seen in CI at the peer floors). restore() has to stop it.
+  it("stops the signer's heartbeat timers when restored", async () => {
+    const { authentication } = createManager()
+    await authentication.prepareClient()
+    await withUserGesture(() => authentication.login())
+
+    provider.restore()
+    const removeListener = vi.spyOn(window, "removeEventListener")
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 2_500))
+      expect(removeListener).not.toHaveBeenCalledWith(
+        "message",
+        expect.any(Function)
+      )
+    } finally {
+      removeListener.mockRestore()
+    }
   })
 })
