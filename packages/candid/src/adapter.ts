@@ -1,4 +1,4 @@
-import type { HttpAgent } from "@icp-sdk/core/agent"
+import type { ApiQueryResponse, HttpAgent } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
 import type {
   CandidAdapterParameters,
@@ -16,6 +16,25 @@ import { CanisterId } from "@ic-reactor/core"
 /** An error's message. The WASM parser throws plain strings. */
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+/**
+ * The error for a query that got no reply, with the replica's reject codes and
+ * message. The response itself can't go through `JSON.stringify`. It carries
+ * the node signatures, whose timestamps the agent decodes as bigints, so
+ * serializing it threw a TypeError that took the place of the reject message.
+ */
+function queryFailure(response: ApiQueryResponse): Error {
+  if (!("reject_message" in response)) {
+    return new Error(`Query failed: no reply (status: ${response.status})`)
+  }
+  const { reject_code, reject_message, error_code } = response
+  // The interface spec makes the error code optional. The message goes last:
+  // the replica may end it with a line of help and a link.
+  const codes = error_code
+    ? `reject code ${reject_code}, error code ${error_code}`
+    : `reject code ${reject_code}`
+  return new Error(`Query failed (${codes}): ${reject_message}`)
 }
 
 /**
@@ -378,7 +397,7 @@ export class CandidAdapter {
       return candidSource
     }
 
-    throw new Error(`Query failed: ${JSON.stringify(response)}`)
+    throw queryFailure(response)
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -426,7 +445,7 @@ export class CandidAdapter {
       return result[0]
     }
 
-    throw new Error(`Query failed: ${JSON.stringify(response)}`)
+    throw queryFailure(response)
   }
 
   /**
