@@ -109,13 +109,13 @@ new CandidDisplayReactor<A = BaseActor, T extends TransformKey = "display">(
 
 `CandidDisplayReactor` automatically converts Candid types to display-friendly formats:
 
-| Candid Type      | Display Type | Example                                  |
-| ---------------- | ------------ | ---------------------------------------- |
-| `nat`, `int`     | `string`     | `1000000n` → `"1000000"`                 |
-| `nat64`, `int64` | `string`     | `1234567890n` → `"1234567890"`           |
-| `principal`      | `string`     | `Principal.fromText(...)` → `"aaaaa-aa"` |
-| `opt T`          | `T \| null`  | `[value]` → `value`, `[]` → `null`       |
-| `blob`           | `string`     | Hex-encoded string (no `0x` prefix)      |
+| Candid Type      | Display Type     | Example                                  |
+| ---------------- | ---------------- | ---------------------------------------- |
+| `nat`, `int`     | `string`         | `1000000n` → `"1000000"`                 |
+| `nat64`, `int64` | `string`         | `1234567890n` → `"1234567890"`           |
+| `principal`      | `string`         | `Principal.fromText(...)` → `"aaaaa-aa"` |
+| `opt T`          | `T \| undefined` | `[value]` → `value`, `[]` → `undefined`  |
+| `blob`           | `string`         | Hex-encoded string (no `0x` prefix)      |
 
 <Aside type="tip">
   These transformations work bidirectionally! You can pass display types as
