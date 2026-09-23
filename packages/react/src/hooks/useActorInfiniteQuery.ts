@@ -16,7 +16,11 @@ import {
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { mergeFactoryQueryKey, normalizeQueryData } from "../utils.js"
+import {
+  callConfigForKey,
+  mergeFactoryQueryKey,
+  normalizeQueryData,
+} from "../utils.js"
 
 /**
  * Parameters for useActorInfiniteQuery hook.
@@ -189,12 +193,18 @@ export const useActorInfiniteQuery = <
 
   // Memoize queryFn to prevent recreation on every render
   const queryFn = useCallback(
-    async ({ pageParam }: { pageParam: TPageParam }) => {
+    async ({
+      pageParam,
+      queryKey: fetchedKey,
+    }: {
+      pageParam: TPageParam
+      queryKey: QueryKey
+    }) => {
       const args = getArgs(pageParam)
       const result = await reactor.callMethod({
         functionName,
         args,
-        callConfig,
+        callConfig: callConfigForKey(fetchedKey, callConfig),
       })
       return normalizeQueryData<ReactorReturnOk<Service, Method, Transform>>(
         result as ReactorReturnOk<Service, Method, Transform>
