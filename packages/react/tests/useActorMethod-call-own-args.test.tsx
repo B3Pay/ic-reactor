@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import React from "react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import {
+  CancelledError,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
+import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { ClientManager, Reactor } from "@ic-reactor/core"
 import { useActorMethod } from "../src/hooks/useActorMethod.js"
 
@@ -72,8 +77,9 @@ describe("useActorMethod call() with the hook's own args", () => {
       { wrapper }
     )
     await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
-    // A settle is identified by its timestamp, so keep this one apart from the
-    // mount's, as any real round trip to a canister would.
+    // Give the call a later timestamp than the mount, as any real round trip
+    // to a canister would. On the mount's timestamp the effects would skip the
+    // call's settle anyway, and the double report could not show.
     await settle()
 
     await act(async () => {
@@ -159,5 +165,200 @@ describe("useActorMethod call() with the hook's own args", () => {
       ["hello alice #1"],
       ["hello carol #2"],
     ])
+  })
+
+  /**
+   * Both sides used to claim a settle by its timestamp, and a timestamp does
+   * not identify a settle. A call now marks the settle its own fetch produced,
+   * as TanStack dispatches it, and reports what it settled with.
+   */
+  describe("tells settles apart without their timestamps", () => {
+    it("reports a call that an identity switch cancels after a failure", async () => {
+      // ClientManager.updateAgent cancels in-flight canister queries, and
+      // TanStack puts a cancelled query back the way it was before the fetch:
+      // here the earlier failure, timestamp included. Nothing new settles, so
+      // the effects have nothing to report, and the call's CancelledError was
+      // taken for that failure and dropped.
+      const onSuccess = vi.fn()
+      const onError = vi.fn()
+      callMethod.mockRejectedValueOnce(new Error("replica unavailable"))
+      const { result } = renderHook(
+        () =>
+          useActorMethod({
+            reactor,
+            functionName: "greet",
+            args: ["alice"],
+            onSuccess,
+            onError,
+          }),
+        { wrapper }
+      )
+      await waitFor(() => expect(onError).toHaveBeenCalledTimes(1))
+
+      let answerRefetch = (_greeting: string) => {}
+      callMethod
+        // The call: still waiting for an answer when the switch cancels it.
+        .mockReturnValueOnce(new Promise(() => {}))
+        // The refetch the switch starts for the entry the hook shows.
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            answerRefetch = resolve
+          })
+        )
+      let called: Promise<unknown> | undefined
+      act(() => {
+        called = result.current.call(["alice"])
+      })
+      act(() =>
+        reactor.clientManager.updateAgent(Ed25519KeyIdentity.generate())
+      )
+      await act(async () => {
+        expect(await called).toBeUndefined()
+      })
+
+      expect(onError).toHaveBeenCalledTimes(2)
+      expect(onError.mock.calls[1][0]).toBeInstanceOf(CancelledError)
+
+      // The effects still report the switch's own refetch, once.
+      await act(async () => answerRefetch("hello again, alice"))
+      await settle()
+      expect(onSuccess.mock.calls).toEqual([["hello again, alice"]])
+      expect(onError).toHaveBeenCalledTimes(2)
+    })
+
+    it("reports what a cancelled call resolves with when the entry had data", async () => {
+      // With data to go back to, TanStack resolves the cancelled call with it
+      // instead of rejecting, so call() returns the previous result. onSuccess
+      // gets what call() returned, as it does for a call with other args.
+      const onSuccess = vi.fn()
+      const { result } = renderHook(
+        () =>
+          useActorMethod({
+            reactor,
+            functionName: "greet",
+            args: ["alice"],
+            onSuccess,
+          }),
+        { wrapper }
+      )
+      await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+
+      // Neither the call nor the refetch the switch starts gets an answer.
+      callMethod.mockReturnValue(new Promise(() => {}))
+      let called: Promise<unknown> | undefined
+      act(() => {
+        called = result.current.call(["alice"])
+      })
+      act(() =>
+        reactor.clientManager.updateAgent(Ed25519KeyIdentity.generate())
+      )
+      await act(async () => {
+        expect(await called).toBe("hello alice #1")
+      })
+      await settle()
+
+      // Once for the mount, once for the call.
+      expect(onSuccess.mock.calls).toEqual([
+        ["hello alice #1"],
+        ["hello alice #1"],
+      ])
+    })
+
+    it("reports every call when settles share a millisecond", async () => {
+      const now = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000)
+      try {
+        const onSuccess = vi.fn()
+        const { result } = renderHook(
+          () =>
+            useActorMethod({
+              reactor,
+              functionName: "greet",
+              args: ["alice"],
+              onSuccess,
+            }),
+          { wrapper }
+        )
+        await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
+
+        await act(async () => {
+          await result.current.call(["alice"])
+        })
+        await act(async () => {
+          await result.current.call(["alice"])
+        })
+        await settle()
+
+        expect(result.current.queryResult?.dataUpdatedAt).toBe(
+          1_700_000_000_000
+        )
+        expect(onSuccess.mock.calls).toEqual([
+          ["hello alice #1"],
+          ["hello alice #2"],
+          ["hello alice #3"],
+        ])
+      } finally {
+        now.mockRestore()
+      }
+    })
+
+    it("leaves the app's own queries alone while a call is in flight", async () => {
+      // The listener sees every settle in the QueryClient, which an app may
+      // share. This app query hashes its own key, since hashKey cannot
+      // serialize a BigInt, so the listener must not hash keys itself.
+      const { result } = renderHook(
+        () => useActorMethod({ reactor, functionName: "greet", args: ["bob"] }),
+        { wrapper }
+      )
+      await waitFor(() => expect(result.current.isSuccess).toBe(true))
+      callMethod.mockReturnValueOnce(new Promise(() => {}))
+      act(() => {
+        void result.current.call(["bob"])
+      })
+
+      const balance = queryClient.fetchQuery({
+        queryKey: ["balance", 10n],
+        queryKeyHashFn: (key) =>
+          JSON.stringify(key, (_, value: unknown) =>
+            typeof value === "bigint" ? value.toString() : value
+          ),
+        queryFn: async () => 42,
+      })
+
+      await expect(balance).resolves.toBe(42)
+    })
+
+    it("reports a failed call that fails in the same millisecond as the last", async () => {
+      const now = vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000)
+      try {
+        const onError = vi.fn()
+        callMethod.mockRejectedValueOnce(new Error("first failure"))
+        const { result } = renderHook(
+          () =>
+            useActorMethod({
+              reactor,
+              functionName: "greet",
+              args: ["alice"],
+              onError,
+            }),
+          { wrapper }
+        )
+        await waitFor(() => expect(onError).toHaveBeenCalledTimes(1))
+
+        callMethod.mockRejectedValueOnce(new Error("second failure"))
+        await act(async () => {
+          await result.current.call(["alice"])
+        })
+        await settle()
+
+        expect(result.current.queryResult?.errorUpdatedAt).toBe(
+          1_700_000_000_000
+        )
+        expect(
+          onError.mock.calls.map(([error]) => (error as Error).message)
+        ).toEqual(["first failure", "second failure"])
+      } finally {
+        now.mockRestore()
+      }
+    })
   })
 })

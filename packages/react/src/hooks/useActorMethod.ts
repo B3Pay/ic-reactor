@@ -333,28 +333,49 @@ export function useActorMethod<
     }
   }, [isQuery, status, error, errorUpdatedAt])
 
-  // `call(args)` reports its own settle, because the args it fetched usually
-  // key an entry this observer does not watch. When they are the hook's own
-  // args, though, the effects above report the same settle too, and each
-  // callback used to fire twice for one call. Both sides now claim the settle
-  // by its timestamp before reporting it, so whichever runs second skips it.
-  const queryKeyRef = useCommittedRef(queryKey)
-  const claimCallSettle = useCallback(
-    (calledKey: QueryKey, outcome: "success" | "error"): boolean => {
-      if (hashKey(calledKey) !== hashKey(queryKeyRef.current)) return true
-      const state = reactor.queryClient.getQueryState(calledKey)
-      const settledAt =
-        outcome === "success" ? state?.dataUpdatedAt : state?.errorUpdatedAt
-      const notifiedAt =
-        outcome === "success" ? notifiedSuccessAt : notifiedErrorAt
-      if (settledAt !== undefined && notifiedAt.current === settledAt) {
-        return false
+  // `call(args)` reports its own outcome, once per call, because the args it
+  // fetched usually key an entry this observer does not watch. When they key
+  // the entry it does watch, the effects above see the same settle, and each
+  // callback used to fire twice for one call. So the settle that ends a call's
+  // fetch is marked as notified when it lands in the observed entry, and the
+  // effects skip it.
+  //
+  // A query cache listener sets that mark while TanStack dispatches the
+  // settle, before any render can show it. Matching a settle up by its
+  // timestamp afterwards could not tell settles apart: two in one millisecond
+  // share a timestamp. And a call that an identity switch cancels settles
+  // nothing: TanStack reverts the entry to its previous result, timestamp
+  // included, so the call's outcome looked reported already, and neither the
+  // call nor the effects reported it.
+  const observedKeyRef = useCommittedRef(queryKey)
+  const markCallSettle = (calledKey: QueryKey): (() => void) => {
+    const { queryClient } = reactor
+    // The hash TanStack files the called entry under, worked out the way
+    // `fetchQuery` does. The listener compares it with hashes TanStack has
+    // already computed rather than hashing keys itself: the QueryClient may be
+    // shared with the app, whose keys a custom `queryKeyHashFn` can let hold
+    // values that `hashKey` throws on, inside TanStack's dispatch.
+    const calledHash = queryClient.defaultQueryOptions({
+      queryKey: calledKey,
+    }).queryHash
+    let settled = false
+    return queryClient.getQueryCache().subscribe((event) => {
+      if (settled || event.type !== "updated") return
+      const { action, query } = event
+      // A fetch settles with one of these. `setQueryData` dispatches a
+      // success too, flagged manual, and it does not end this call's fetch.
+      const isSettle =
+        action.type === "error" || (action.type === "success" && !action.manual)
+      if (!isSettle || query.queryHash !== calledHash) return
+      settled = true
+      if (hashKey(calledKey) !== hashKey(observedKeyRef.current)) return
+      if (action.type === "success") {
+        notifiedSuccessAt.current = query.state.dataUpdatedAt
+      } else {
+        notifiedErrorAt.current = query.state.errorUpdatedAt
       }
-      notifiedAt.current = settledAt
-      return true
-    },
-    [reactor]
-  )
+    })
+  }
 
   // ============================================================================
   // Mutation Implementation
@@ -411,6 +432,14 @@ export function useActorMethod<
         // dedupe onto an in-flight request for the old args, returning that
         // response as though it answered this one.
         const calledKey = buildQueryKey(callArgs)
+        const stopMarking = markCallSettle(calledKey)
+        // Reported here rather than by the observer effects: this result
+        // usually lands under a key the mounted observer (bound to the hook's
+        // own args) does not watch. When it is that key, `markCallSettle` has
+        // already kept the effects from reporting it as well. Either way the
+        // callbacks get what the call settles with. For a cancelled call that
+        // is TanStack's `CancelledError`, or, when the entry had data, the
+        // data it reverted to, which `fetchQuery` resolves with instead.
         try {
           const result = await reactor.queryClient.fetchQuery<TQueryData>({
             queryKey: calledKey,
@@ -425,21 +454,15 @@ export function useActorMethod<
               ),
             staleTime: 0,
           })
-          // Dispatched here rather than by the observer effect: this result
-          // usually lands under a key the mounted observer (bound to the
-          // hook's own args) does not watch. When it is that key, the effect
-          // reports it as well, and `claimCallSettle` keeps it to one report.
-          if (claimCallSettle(calledKey, "success")) {
-            onSuccessRef.current?.(result)
-          }
+          onSuccessRef.current?.(result)
           return result
         } catch (error) {
-          if (claimCallSettle(calledKey, "error")) {
-            onErrorRef.current?.(
-              error as ReactorReturnErr<Service, Method, Transform>
-            )
-          }
+          onErrorRef.current?.(
+            error as ReactorReturnErr<Service, Method, Transform>
+          )
           return undefined
+        } finally {
+          stopMarking()
         }
       }
       // Otherwise just refetch
