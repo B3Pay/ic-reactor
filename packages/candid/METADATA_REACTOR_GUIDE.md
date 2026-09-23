@@ -123,20 +123,25 @@ interface FieldNode {
 
 ### Field Types
 
-| Type        | Component          | Description                               |
-| ----------- | ------------------ | ----------------------------------------- |
-| `record`    | `record-container` | Nested object with named fields           |
-| `variant`   | `variant-select`   | Discriminated union (like enum with data) |
-| `tuple`     | `tuple-container`  | Fixed-length array                        |
-| `optional`  | `optional-toggle`  | Nullable field                            |
-| `vector`    | `vector-list`      | Dynamic array                             |
-| `blob`      | `blob-upload`      | Binary data (vec nat8)                    |
-| `recursive` | `recursive-lazy`   | Self-referential type                     |
-| `principal` | `principal-input`  | IC Principal                              |
-| `text`      | `text-input`       | String                                    |
-| `number`    | `number-input`     | Integer or float                          |
-| `boolean`   | `boolean-checkbox` | Boolean                                   |
-| `null`      | `null-hidden`      | Null type                                 |
+| Type        | Component          | Description                                |
+| ----------- | ------------------ | ------------------------------------------ |
+| `record`    | `record-container` | Nested object with named fields            |
+| `variant`   | `variant-select`   | Discriminated union (like enum with data)  |
+| `tuple`     | `tuple-container`  | Fixed-length array                         |
+| `optional`  | `optional-toggle`  | Nullable field                             |
+| `vector`    | `vector-list`      | Dynamic array                              |
+| `blob`      | `blob-upload`      | Binary data (vec nat8)                     |
+| `recursive` | `recursive-lazy`   | Self-referential type                      |
+| `principal` | `principal-input`  | IC Principal                               |
+| `text`      | `text-input`       | String, and `nat`, `int`, `nat64`, `int64` |
+| `number`    | `number-input`     | Float, or an integer of up to 32 bits      |
+| `boolean`   | `boolean-checkbox` | Boolean                                    |
+| `null`      | `null-hidden`      | Null type                                  |
+
+`nat`, `int`, `nat64` and `int64` arguments are text fields, because a
+JavaScript number cannot hold every value: the form keeps them as decimal
+strings. Their `candidType` names the integer type, and their `inputProps` set
+`inputMode: "numeric"` and a digits-only `pattern`.
 
 ### Type-Specific Extras
 
@@ -193,10 +198,10 @@ interface OptionalField {
 
 ```typescript
 interface NumberField {
-  type: "number"
-  unsigned: boolean // nat vs int
+  type: "number" // float32/64, or nat8-32 and int8-32
+  unsigned: boolean // nat8-32 vs int8-32
   isFloat: boolean // float32/64
-  bits?: number // 8, 16, 32, 64
+  bits?: number // 8, 16, 32, or 64 for float64
   min?: string // Min value as string
   max?: string // Max value as string
   format: NumberFormat // "timestamp" | "cycle" | "normal"
@@ -208,7 +213,7 @@ interface NumberField {
 
 ```typescript
 interface TextField {
-  type: "text"
+  type: "text" // text, and nat, int, nat64, int64 as decimal strings
   minLength?: number
   maxLength?: number
   multiline?: boolean
@@ -248,18 +253,23 @@ interface ResultNode {
 
 ### Display Types
 
-| DisplayType | Description                                |
-| ----------- | ------------------------------------------ |
-| `string`    | Text, Principal, large numbers (as string) |
-| `number`    | Small integers, floats                     |
-| `boolean`   | Boolean values                             |
-| `null`      | Null values                                |
-| `object`    | Records                                    |
-| `array`     | Vectors, Tuples                            |
-| `variant`   | Variant types                              |
-| `result`    | Special case for `Ok`/`Err` variants       |
-| `nullable`  | Optional types                             |
-| `func`      | Function references (canister ID + method) |
+| DisplayType    | Description                                                             |
+| -------------- | ----------------------------------------------------------------------- |
+| `string`       | Text, Principal, large numbers (as string)                              |
+| `number`       | Small integers, floats                                                  |
+| `boolean`      | Boolean values                                                          |
+| `null`         | Null values                                                             |
+| `object`       | Records                                                                 |
+| `array`        | Vectors, Tuples                                                         |
+| `variant`      | Variant types                                                           |
+| `variant-null` | Variants whose options carry no data, like `variant { Active; Paused }` |
+| `result`       | Special case for `Ok`/`Err` variants                                    |
+| `nullable`     | Optional types                                                          |
+| `recursive`    | Self-referential types; the value is in `inner`                         |
+| `func`         | Function references (canister ID + method)                              |
+| `func-record`  | A record holding a callback (func reference) and its arguments          |
+| `blob`         | Not produced; blobs resolve as `string` (below)                         |
+| `unknown`      | Types with no display form, such as `reserved`                          |
 
 Blob nodes keep `type: "blob"` but resolve with `displayType: "string"` — the
 value is always a hex string, and `length` is the byte count. Key any
@@ -661,8 +671,23 @@ function ResultNode({ node }) {
         </div>
       )
 
+    case "recursive":
+      // A recursive type's value, resolved one level down
+      return <ResultNode node={node.inner} />
+
     default:
-      return <pre>{JSON.stringify(node.raw, null, 2)}</pre>
+      // variant-null, func-record and unknown. `raw` is the Candid value, and
+      // JSON.stringify throws on a bigint unless a replacer converts it.
+      return (
+        <pre>
+          {JSON.stringify(
+            node.raw,
+            (_key, value) =>
+              typeof value === "bigint" ? value.toString() : value,
+            2
+          )}
+        </pre>
+      )
   }
 }
 ```
