@@ -205,6 +205,53 @@ export function resolveDeclarationsBaseName(didFile: unknown): string {
   return baseName
 }
 
+/**
+ * Assert that `didFile` is not inside `<outDir>/declarations`.
+ *
+ * That directory is generated output. A run that does not find exactly its own
+ * files there replaces the whole directory, which removes everything else, so a
+ * `.did` kept in a folder inside it was read once and then deleted together
+ * with the folder, and every later run failed with "DID file not found". One
+ * kept directly inside it is overwritten by its own generated copy.
+ *
+ * The directories are compared as real locations, so a symlink or, on a
+ * case-insensitive volume, a difference in case cannot hide the overlap. The
+ * file's own name is not resolved: a link inside the directory is deleted
+ * whatever it points to.
+ */
+export function assertDidFileOutsideDeclarations(
+  didFile: string,
+  outDir: string
+): void {
+  const realDirectory = (target: string) => {
+    try {
+      return fs.realpathSync.native(target)
+    } catch {
+      return path.resolve(target)
+    }
+  }
+  const declarationsDir = path.join(realDirectory(outDir), "declarations")
+  const didEntry = path.join(
+    realDirectory(path.dirname(didFile)),
+    path.basename(didFile)
+  )
+  const relative = path.relative(declarationsDir, didEntry)
+  const [firstSegment] = relative.split(/[\\/]/)
+
+  if (relative === "" || firstSegment === ".." || path.isAbsolute(relative)) {
+    return
+  }
+
+  throw new CodegenConfigError(
+    `Invalid didFile ${JSON.stringify(didFile)}: it is inside ${JSON.stringify(
+      path.join(outDir, "declarations")
+    )}, the directory codegen generates this canister's declarations into. ` +
+      `Each run replaces that directory with the files it generates, so a .did file ` +
+      `kept there is overwritten or deleted. Move the .did file out of the declarations ` +
+      `directory and point didFile at its new location.`
+  )
+}
+
 /** Reactor classes the generator knows how to emit an import for. */
 export const REACTOR_CLASS_NAMES: readonly ReactorClassName[] = [
   "Reactor",
