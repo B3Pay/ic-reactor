@@ -229,6 +229,16 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
 > {
   private codec = new DisplayCodecVisitor()
 
+  /**
+   * The node of each recursive type, by the label it is met under. See
+   * {@link visitRec}. Keyed weakly by the type, so a type nothing else holds
+   * does not stay in memory for this cache.
+   */
+  private recNodes = new WeakMap<
+    IDL.Type,
+    Map<string, ResultNode<"recursive">>
+  >()
+
   private getCodec(t: IDL.Type): Codec {
     const codec = t.accept(this.codec, null) as any
     return {
@@ -802,12 +812,25 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     ty: IDL.ConstructType<T>,
     label: string
   ): ResultNode<"recursive"> {
-    // A node per occurrence, as the form visitor builds since #385. Caching it
-    // per RecClass gave every later occurrence the first one's label, so both
-    // subtrees of a binary tree read "__ret0". Building the inner node lazily
-    // is what stops the recursion, not the cache.
-    //
-    // Lazy extraction to prevent infinite loops
+    // One node per type and label. Caching it per RecClass alone gave every
+    // later occurrence the first one's label, so both subtrees of a binary
+    // tree read "__ret0" (#439). A node per occurrence fixed the labels but
+    // not the size: the inner node is built when a value first reaches it, so
+    // each level of a value built a new level of nodes and display codecs, and
+    // this visitor kept them for the reactor's lifetime. One Motoko list of
+    // 2,000 elements kept 7.6 MB, and a tree kept a node for each of its nodes.
+    // A node depends on nothing but the type and the label it is met under,
+    // so the node already built for the same pair describes this occurrence
+    // exactly, and the nodes a value needs are bounded by its type.
+    let byLabel = this.recNodes.get(ty)
+    const known = byLabel?.get(label)
+    if (known) return known
+    if (!byLabel) {
+      byLabel = new Map()
+      this.recNodes.set(ty, byLabel)
+    }
+
+    // Building the inner node lazily is what stops the recursion.
     let innerSchema: ResultNode | null = null
     const getInner = () =>
       (innerSchema ??= ty.accept(this, label) as ResultNode)
@@ -824,6 +847,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       },
     }
 
+    byLabel.set(label, node)
     return node
   }
 
