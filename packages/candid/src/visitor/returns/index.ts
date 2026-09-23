@@ -202,6 +202,24 @@ function candidValueOf(node: ResultNode): unknown {
   }
 }
 
+/**
+ * The value of the record field `key` in `data`: by name, or by position for
+ * a record given as a tuple. A field named `__proto__` counts only as an own
+ * property. Read by name, it is the value's prototype, and IDL.decode does
+ * not keep a field of that name, so the field resolved to Object.prototype.
+ */
+function recordFieldValue(
+  data: Record<string, unknown>,
+  key: string,
+  index: number
+): unknown {
+  const named =
+    key !== "__proto__" || Object.prototype.hasOwnProperty.call(data, key)
+      ? data[key]
+      : undefined
+  return named !== undefined ? named : data[index]
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // Simplified Result Field Visitor
 // ════════════════════════════════════════════════════════════════════════════
@@ -259,7 +277,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       )
     }
 
-    const result = {} as ServiceMeta<A>
+    const entries: Array<[string, MethodMeta<A>]> = []
     for (const [name, type] of t._fields) {
       // A method typed by a recursive func alias is an IDL.Rec around the
       // func. Read as the func itself, it had no annotations, and this threw
@@ -267,12 +285,14 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       const func = methodFunc(type)
       if (!func) continue
       // Process each service method using dedicated method handler
-      result[name as FunctionName<A>] = this.visitFuncAsMethod(
-        func,
-        name as FunctionName<A>
-      )
+      entries.push([
+        name,
+        this.visitFuncAsMethod(func, name as FunctionName<A>),
+      ])
     }
-    return result
+    // Object.fromEntries makes every method an own property. Assigning to a
+    // method named `__proto__` set the prototype instead.
+    return Object.fromEntries(entries) as ServiceMeta<A>
   }
 
   /**
@@ -356,7 +376,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
     fields_: Array<[string, IDL.Type]>,
     label: string
   ): ResultNode<"record"> | ResultNode<"funcRecord"> {
-    const fields: Record<string, ResultNode> = {}
+    const fieldEntries: Array<[string, ResultNode]> = []
     // Track func fields for funcRecord detection
     const funcEntries: Array<{
       key: string
@@ -366,7 +386,7 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
 
     for (const [key, type] of fields_) {
       const fieldNode = type.accept(this, key) as ResultNode
-      fields[key] = fieldNode
+      fieldEntries.push([key, fieldNode])
 
       if (type instanceof IDL.FuncClass) {
         funcEntries.push({
@@ -376,6 +396,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         })
       }
     }
+
+    // Object.fromEntries makes every field an own property. Assigning to a
+    // field named `__proto__` set the prototype instead, which dropped the
+    // field from the result tree.
+    const fields: Record<string, ResultNode> = Object.fromEntries(fieldEntries)
 
     // ── funcRecord: exactly one func field + other argument fields ──
     if (funcEntries.length === 1) {
@@ -388,10 +413,9 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         ? "query"
         : "update"
 
-      const argFields: Record<string, ResultNode> = {}
-      for (const [k, v] of Object.entries(fields)) {
-        if (k !== funcFieldKey) argFields[k] = v
-      }
+      const argFields: Record<string, ResultNode> = Object.fromEntries(
+        fieldEntries.filter(([k]) => k !== funcFieldKey)
+      )
 
       // defaultArgs are built from the other fields, and each value goes
       // through the display codec for its field's type, because a resolved
@@ -436,25 +460,24 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
             )
           }
           const recordData = data as Record<string, unknown>
-          const resolvedFields: Record<string, ResolvedNode> = {}
+          const resolvedEntries: Array<[string, ResolvedNode]> = []
           let index = 0
           for (const [key, field] of Object.entries(fields)) {
-            const value =
-              recordData[key] !== undefined
-                ? recordData[key]
-                : recordData[index]
-            resolvedFields[key] = field.resolve(value)
+            const value = recordFieldValue(recordData, key, index)
+            resolvedEntries.push([key, field.resolve(value)])
             index++
           }
+          const resolvedFields: Record<string, ResolvedNode> =
+            Object.fromEntries(resolvedEntries)
 
           const resolvedFuncField = resolvedFields[
             funcFieldKey
           ] as ResolvedNode<"func">
 
-          const resolvedArgFields: Record<string, ResolvedNode> = {}
-          for (const [k, v] of Object.entries(resolvedFields)) {
-            if (k !== funcFieldKey) resolvedArgFields[k] = v
-          }
+          const resolvedArgFields: Record<string, ResolvedNode> =
+            Object.fromEntries(
+              resolvedEntries.filter(([k]) => k !== funcFieldKey)
+            )
 
           // Build display-type default args ready for callMethod
           const argRecord = Object.fromEntries(
@@ -502,12 +525,11 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
           )
         }
         const recordData = data as Record<string, unknown>
-        const resolvedFields: Record<string, ResolvedNode> = {}
+        const resolvedEntries: Array<[string, ResolvedNode]> = []
         let index = 0
         for (const [key, field] of Object.entries(fields)) {
           // Try named key first, then try numeric index (for tuples/indexed records)
-          const value =
-            recordData[key] !== undefined ? recordData[key] : recordData[index]
+          const value = recordFieldValue(recordData, key, index)
 
           if (!field || typeof field.resolve !== "function") {
             throw new MetadataError(
@@ -517,10 +539,14 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
             )
           }
 
-          resolvedFields[key] = field.resolve(value)
+          resolvedEntries.push([key, field.resolve(value)])
           index++
         }
-        return { ...node, fields: resolvedFields, raw: data }
+        return {
+          ...node,
+          fields: Object.fromEntries(resolvedEntries),
+          raw: data,
+        }
       },
     }
     return node
