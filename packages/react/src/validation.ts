@@ -39,8 +39,19 @@ export interface MapValidationErrorsOptions {
 }
 
 /**
+ * The field an issue belongs to: the first segment of its path, as a string.
+ * An issue with an empty path is about the whole argument (a zod object-level
+ * `.refine()`, or any issue of a primitive argument) and belongs to `""`.
+ */
+function fieldNameOf(issue: ValidationIssue): string {
+  return String(issue.path[0] ?? "")
+}
+
+/**
  * Maps validation error issues to a simple field -> message object.
- * Returns the first error message for each field path.
+ * Returns the first error message for each field path, or every message with
+ * `{ multiple: true }`. Issues about the whole argument (an empty path) are
+ * filed under `""`.
  *
  * @example
  * ```tsx
@@ -60,15 +71,18 @@ export interface MapValidationErrorsOptions {
  * })
  * ```
  */
-export function mapValidationErrors(error: ValidationError): FieldErrors
+export function mapValidationErrors(
+  error: ValidationError,
+  options?: { multiple?: false }
+): FieldErrors
 export function mapValidationErrors(
   error: ValidationError,
   options: { multiple: true }
 ): FieldErrorsMultiple
 export function mapValidationErrors(
   error: ValidationError,
-  options: { multiple: false }
-): FieldErrors
+  options?: MapValidationErrorsOptions
+): FieldErrors | FieldErrorsMultiple
 export function mapValidationErrors(
   error: ValidationError,
   options?: MapValidationErrorsOptions
@@ -81,7 +95,7 @@ export function mapValidationErrors(
   if (options?.multiple) {
     const messages = new Map<string, string[]>()
     for (const issue of error.issues) {
-      const fieldName = String(issue.path[0] ?? "")
+      const fieldName = fieldNameOf(issue)
       const fieldMessages = messages.get(fieldName)
       if (fieldMessages) {
         fieldMessages.push(issue.message)
@@ -94,7 +108,7 @@ export function mapValidationErrors(
 
   const messages = new Map<string, string>()
   for (const issue of error.issues) {
-    const fieldName = String(issue.path[0] ?? "")
+    const fieldName = fieldNameOf(issue)
     if (!messages.get(fieldName)) {
       messages.set(fieldName, issue.message)
     }
@@ -104,7 +118,9 @@ export function mapValidationErrors(
 
 /**
  * Gets error message for a specific field from a ValidationError.
- * Returns undefined if no error exists for that field.
+ * Returns undefined if no error exists for that field. Pass `""` for issues
+ * about the whole argument (an empty path), the key `mapValidationErrors`
+ * files them under.
  *
  * @example
  * ```tsx
@@ -118,13 +134,14 @@ export function getFieldError(
   error: ValidationError,
   fieldName: string
 ): string | undefined {
-  const issue = error.issues.find((i) => String(i.path[0]) === fieldName)
+  const issue = error.issues.find((i) => fieldNameOf(i) === fieldName)
   return issue?.message
 }
 
 /**
  * Gets all error messages for a specific field from a ValidationError.
- * Returns empty array if no errors exist for that field.
+ * Returns empty array if no errors exist for that field. Pass `""` for issues
+ * about the whole argument (an empty path).
  *
  * @example
  * ```tsx
@@ -139,7 +156,7 @@ export function getFieldErrors(
   fieldName: string
 ): string[] {
   return error.issues
-    .filter((i) => String(i.path[0]) === fieldName)
+    .filter((i) => fieldNameOf(i) === fieldName)
     .map((i) => i.message)
 }
 
