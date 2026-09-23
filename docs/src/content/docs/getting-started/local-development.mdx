@@ -16,6 +16,7 @@ If you're using Vite, add the plugin to your `vite.config.ts`. It will automatic
 
 ```typescript
 // vite.config.ts
+import { defineConfig } from "vite"
 import { icReactor } from "@ic-reactor/vite-plugin"
 
 export default defineConfig({
@@ -100,9 +101,13 @@ optional `agentOptions` (the `HttpAgentOptions` handed to the underlying
 name of that option, still honoured for the root key alone. Network detection needs no flag — it always
 runs. `allowEnvConfig` controls whether the `ic_env` cookie is trusted at all:
 its root key, its Internet Identity provider, and the canister IDs a reactor
-resolves by name. It defaults to `true` for hosts that are unambiguously a local
-replica and `false` everywhere else, so a reactor with no configured
-`canisterId` works on `localhost` and throws on a real domain.
+resolves by name. It defaults to `true` only when both the agent host and the
+page are unambiguously a local replica, and `false` everywhere else, so a
+reactor with no configured `canisterId` works on `localhost` and throws on a
+real domain. The root key is the exception: with neither option set, it is
+judged by the agent host alone, so a page on a real domain pointed at a local
+replica still takes `IC_ROOT_KEY` from the cookie. Pass `allowEnvConfig: false`
+to refuse it.
 
 ```typescript
 import { ClientManager } from "@ic-reactor/react"
@@ -154,12 +159,17 @@ export const backend = new Reactor<_SERVICE>({
 
 ## Fetching Root Key
 
-When communicating with the IC mainnet, the agent uses a hardcoded public key to verify responses. For a local replica, the agent needs to fetch a different root key during initialization.
+When communicating with the IC mainnet, the agent uses a hardcoded public key to verify responses. For a local replica, the agent needs to fetch a different root key.
 
 <Aside type="note">
-  **Important:** You must explicitly call `clientManager.initialize()` or use
-  `useAuth` to ensure the root key is fetched. IC Reactor will not do this
-  automatically to avoid security risks in production.
+  `ClientManager` has the agent fetch that key before its first request whenever
+  the agent host is local or a dev-container tunnel, unless a key was supplied
+  (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env` cookie) or
+  `agentOptions.shouldFetchRootKey` is `false`, so calls to a local replica work
+  without an explicit `initialize()`. Any other host counts as mainnet and never
+  fetches it. Calling `clientManager.initialize()` (as `useAuth` does) fetches
+  it up front and sets `agentState.isInitialized`, which the example below waits
+  for.
 </Aside>
 
 ```tsx
@@ -185,9 +195,13 @@ function App() {
 
 ### "Fail to verify certificate"
 
-This error usually means the agent hasn't fetched the local root key.
+This error usually means the agent checked a local replica's certificate
+against mainnet's root key. IC Reactor fetches the local key only when the agent
+host is a local (or dev-container) host.
 
-**Solution:** Ensure you are calling `clientManager.initialize()` at the root of your application.
+**Solution:** Make sure the agent points at the local replica: serve the page
+from `localhost`/`127.0.0.1`, or set `agentOptions.host` to the replica's local
+address.
 
 ### "Can't connect to localhost:4943"
 
