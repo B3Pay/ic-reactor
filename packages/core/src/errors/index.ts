@@ -1,6 +1,67 @@
 import { NullishType } from "../display/types.js"
 
 /**
+ * `value` with every BigInt that `JSON.stringify` would reach in it written as
+ * its decimal string.
+ *
+ * Only the objects and arrays on the way to a BigInt are copied, as plain ones.
+ * Every other value is returned as it is (a `Map`, a `Uint8Array`, a nested
+ * error), because `JSON.stringify` hands what `toJSON` returns to the caller's
+ * replacer, and a replacer written for those types must still find them. An
+ * object with a `toJSON` of its own is left to it, and a cycle is left for
+ * `JSON.stringify` or the replacer to deal with.
+ */
+const withBigIntsAsStrings = (
+  value: unknown,
+  ancestors = new Set<object>()
+): unknown => {
+  if (typeof value === "bigint") return value.toString()
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    typeof (value as { toJSON?: unknown }).toJSON === "function" ||
+    ancestors.has(value)
+  ) {
+    return value
+  }
+
+  ancestors.add(value)
+  const source = value as Record<string, unknown>
+  let copy: Record<string, unknown> | undefined
+  for (const [key, item] of Object.entries(source)) {
+    const converted = withBigIntsAsStrings(item, ancestors)
+    if (converted === item) continue
+    copy ??= Array.isArray(source)
+      ? Object.assign(new Array<unknown>(source.length), source)
+      : { ...source }
+    copy[key] = converted
+  }
+  ancestors.delete(value)
+  return copy ?? value
+}
+
+/**
+ * An error's own enumerable properties, which is what `JSON.stringify` writes
+ * for it, with every BigInt in them written as its decimal string instead of
+ * throwing.
+ *
+ * These errors carry what the canister and the agent reported, and both
+ * routinely hold BigInts — every ICRC-1 transfer error has a `nat` in it, and a
+ * rejected query's cause carries node-signature timestamps — so serialising one
+ * (a log record, an API response) threw "Do not know how to serialize a
+ * BigInt", usually from inside the catch block handling it. Everything else
+ * serialises exactly as it did, and whatever holds no BigInt reaches a
+ * replacer as the same value.
+ *
+ * The result is a plain object, never an error: code that meets an error with
+ * a `toJSON` serialises whatever it returns the same way (Vitest's error
+ * serialiser does), so handing back an error would send it round again. A
+ * replacer that wants the error itself finds it at `this[key]`.
+ */
+const toJsonWithoutBigInts = (error: object): unknown =>
+  withBigIntsAsStrings({ ...error })
+
+/**
  * Interface representing the generic shape of an API error.
  */
 export interface ApiError {
@@ -25,6 +86,11 @@ export class CallError extends Error {
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, CallError)
     }
+  }
+
+  /** JSON form, with any BigInt in the cause written as a string. */
+  toJSON(): unknown {
+    return toJsonWithoutBigInts(this)
   }
 }
 
@@ -104,6 +170,14 @@ export class CanisterError<E = unknown> extends Error {
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, CanisterError)
     }
+  }
+
+  /**
+   * JSON form, with any BigInt in `err` written as a string. `err` itself
+   * keeps its typed value.
+   */
+  toJSON(): unknown {
+    return toJsonWithoutBigInts(this)
   }
 
   /**
@@ -228,6 +302,11 @@ export class ValidationError extends Error {
     if (Error.captureStackTrace) {
       Error.captureStackTrace(this, ValidationError)
     }
+  }
+
+  /** JSON form, with any BigInt in the issues written as a string. */
+  toJSON(): unknown {
+    return toJsonWithoutBigInts(this)
   }
 
   /**
