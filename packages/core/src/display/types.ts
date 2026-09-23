@@ -46,9 +46,145 @@ type AsObject<T, TBlob> = CombineObjects<
   }
 >
 
-type AsOptional<T, TBlob> = T extends [infer U]
-  ? NullishType<DisplayOf<U, TBlob>>
+/**
+ * Whether A and B are the same type. Assignability both ways is not enough:
+ * `opt reserved` wraps `any`, which is assignable to and from every optional.
+ */
+type IsSameType<A, B> =
+  (<G>() => G extends A ? 1 : 2) extends <G>() => G extends B ? 1 : 2
+    ? true
+    : false
+
+type IsInChain<T, Chain extends unknown[]> = Chain extends [
+  infer Head,
+  ...infer Rest,
+]
+  ? IsSameType<T, Head> extends true
+    ? true
+    : IsInChain<T, Rest>
+  : false
+
+/**
+ * `opt T` displays as T's display type, `null` or `undefined`, and so do
+ * nested optionals around T.
+ *
+ * `Chain` lists the optionals found so far directly inside one another. One
+ * that contains itself that way, `type T = opt T`, holds nothing but more
+ * optionals, which all display as `null` or `undefined`. Expanding it would
+ * never end, so it stops when an optional comes round a second time.
+ */
+type AsOptional<T, TBlob, Chain extends unknown[] = []> = T extends [infer U]
+  ? NullishType<
+      IsOptionalType<U> extends true
+        ? IsInChain<U, Chain> extends true
+          ? never
+          : AsOptional<U, TBlob, [...Chain, U]>
+        : DisplayOf<U, TBlob>
+    >
   : never
+
+/** The elements of those members of T that are arrays or tuples. */
+type ElementsOf<T> = Extract<T, readonly unknown[]>[number]
+
+/**
+ * Whether the elements of T's elements include an array or a tuple: arrays
+ * three deep, counting T. Optionals, vectors, tuples, maps and blobs are all
+ * arrays in generated declarations.
+ *
+ * TypeScript builds most of a display type as soon as it is named. Only an
+ * object type's members wait until something reads them, so a record field or
+ * a variant arm stops a type that contains itself, such as ICRC-3's `Value`.
+ * An optional, a vector, a tuple or a map had no such stop: a mapped type over
+ * a tuple builds every element at once, and `Record<string, X>` builds X. For
+ * Motoko's `type List = opt record { int; List }` that started
+ * `DisplayOf<List>` again before it had finished, until TypeScript gave up
+ * with TS2589, "Type instantiation is excessively deep and possibly infinite".
+ *
+ * Array and tuple type literals wait until their elements are read, too.
+ * Without a record or variant in between, a type can only lead back to itself
+ * through arrays within arrays, endlessly deep. So a vector, tuple or map whose
+ * element nests arrays this deep is written as one of those literals, or as a
+ * mapped type over `string` for a map. Anything shallower is built as before,
+ * into exactly the same types.
+ */
+type NestsArrays<T> = [
+  Extract<ElementsOf<ElementsOf<T>>, readonly unknown[]>,
+] extends [never]
+  ? false
+  : true
+
+type MapElements<T, TBlob> = { [K in keyof T]: DisplayOf<T[K], TBlob> }
+
+/**
+ * A vector or tuple displays as an array of its elements' display types. See
+ * {@link NestsArrays} for when it is built lazily.
+ *
+ * A tuple type literal has a fixed length, so tuples of 2 to 8 elements are
+ * spelled out. (A 1-tuple never gets here: it has the shape of an optional.) A
+ * longer tuple, or one with optional or rest elements, keeps the mapped type,
+ * and still fails with TS2589 if it contains itself.
+ */
+type AsArrayOrTuple<T extends any[], TBlob> =
+  NestsArrays<T[number]> extends false
+    ? MapElements<T, TBlob>
+    : number extends T["length"]
+      ? T extends Array<infer E>
+        ? E[] extends T
+          ? DisplayOf<E, TBlob>[]
+          : MapElements<T, TBlob>
+        : MapElements<T, TBlob>
+      : AsTuple<T, TBlob>
+
+type AsTuple<T extends any[], TBlob> = T["length"] extends 2
+  ? [DisplayOf<T[0], TBlob>, DisplayOf<T[1], TBlob>]
+  : T["length"] extends 3
+    ? [DisplayOf<T[0], TBlob>, DisplayOf<T[1], TBlob>, DisplayOf<T[2], TBlob>]
+    : T["length"] extends 4
+      ? [
+          DisplayOf<T[0], TBlob>,
+          DisplayOf<T[1], TBlob>,
+          DisplayOf<T[2], TBlob>,
+          DisplayOf<T[3], TBlob>,
+        ]
+      : T["length"] extends 5
+        ? [
+            DisplayOf<T[0], TBlob>,
+            DisplayOf<T[1], TBlob>,
+            DisplayOf<T[2], TBlob>,
+            DisplayOf<T[3], TBlob>,
+            DisplayOf<T[4], TBlob>,
+          ]
+        : T["length"] extends 6
+          ? [
+              DisplayOf<T[0], TBlob>,
+              DisplayOf<T[1], TBlob>,
+              DisplayOf<T[2], TBlob>,
+              DisplayOf<T[3], TBlob>,
+              DisplayOf<T[4], TBlob>,
+              DisplayOf<T[5], TBlob>,
+            ]
+          : T["length"] extends 7
+            ? [
+                DisplayOf<T[0], TBlob>,
+                DisplayOf<T[1], TBlob>,
+                DisplayOf<T[2], TBlob>,
+                DisplayOf<T[3], TBlob>,
+                DisplayOf<T[4], TBlob>,
+                DisplayOf<T[5], TBlob>,
+                DisplayOf<T[6], TBlob>,
+              ]
+            : T["length"] extends 8
+              ? [
+                  DisplayOf<T[0], TBlob>,
+                  DisplayOf<T[1], TBlob>,
+                  DisplayOf<T[2], TBlob>,
+                  DisplayOf<T[3], TBlob>,
+                  DisplayOf<T[4], TBlob>,
+                  DisplayOf<T[5], TBlob>,
+                  DisplayOf<T[6], TBlob>,
+                  DisplayOf<T[7], TBlob>,
+                ]
+              : MapElements<T, TBlob>
 
 /**
  * Generated declarations type a fixed-width integer vector (anything but blob)
@@ -109,9 +245,12 @@ export type DisplayOf<T, TBlob = BlobType> =
         : IsCandidVariant<T> extends true
           ? VariantUnionOf<T, TBlob>
           : T extends Array<[string, infer B]>
-            ? Record<string, DisplayOf<B, TBlob>>
+            ? NestsArrays<B> extends true
+              ? // The same type as the Record below, built lazily.
+                { [K in string]: DisplayOf<B, TBlob> }
+              : Record<string, DisplayOf<B, TBlob>>
             : T extends any[]
-              ? { [K in keyof T]: DisplayOf<T[K], TBlob> }
+              ? AsArrayOrTuple<T, TBlob>
               : T extends null
                 ? null
                 : T extends Principal
