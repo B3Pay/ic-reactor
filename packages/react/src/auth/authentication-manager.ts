@@ -156,10 +156,15 @@ export class AuthenticationManager {
   }
 
   public subscribeAuthState(callback: (state: AuthState) => void) {
-    this.authStateSubscribers.push(callback)
+    // Each subscription gets an entry of its own, so the unsubscribe it returns
+    // removes that one registration and no other. Filtering on the callback
+    // itself removed every registration of a function subscribed twice, as
+    // `ClientManager.subscribe` did before #513.
+    const subscription = (state: AuthState) => callback(state)
+    this.authStateSubscribers.push(subscription)
     return () => {
       this.authStateSubscribers = this.authStateSubscribers.filter(
-        (subscriber) => subscriber !== callback
+        (subscriber) => subscriber !== subscription
       )
     }
   }
