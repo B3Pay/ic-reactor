@@ -55,6 +55,77 @@ const TS_GLOBALS: [&str; 9] = [
     "BigInt64Array",
 ];
 
+/// The names candid_parser's JavaScript and TypeScript printers write with a
+/// `_` appended when a type has one (`class` as `class_`). A copy of
+/// `KEYWORDS` in candid_parser 0.4.1's `bindings/javascript.rs`, which is
+/// private.
+const JS_KEYWORDS: [&str; 64] = [
+    "abstract",
+    "arguments",
+    "await",
+    "boolean",
+    "break",
+    "byte",
+    "case",
+    "catch",
+    "char",
+    "class",
+    "const",
+    "continue",
+    "debugger",
+    "default",
+    "delete",
+    "do",
+    "double",
+    "else",
+    "enum",
+    "eval",
+    "export",
+    "extends",
+    "false",
+    "final",
+    "finally",
+    "float",
+    "for",
+    "function",
+    "goto",
+    "if",
+    "implements",
+    "import",
+    "in",
+    "instanceof",
+    "int",
+    "interface",
+    "let",
+    "long",
+    "native",
+    "new",
+    "null",
+    "package",
+    "private",
+    "protected",
+    "public",
+    "return",
+    "short",
+    "static",
+    "super",
+    "switch",
+    "synchronized",
+    "this",
+    "throw",
+    "throws",
+    "transient",
+    "true",
+    "try",
+    "typeof",
+    "var",
+    "void",
+    "volatile",
+    "while",
+    "with",
+    "yield",
+];
+
 #[wasm_bindgen(js_name = didToJs)]
 pub fn did_to_js(prog: String) -> Result<String, String> {
     let mut ast = parse_prog(&prog)?;
@@ -71,10 +142,45 @@ pub fn did_to_js(prog: String) -> Result<String, String> {
         env = TypeEnv::new();
         actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     }
+    if rename_keyword_actor_type(&mut ast, &env) {
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
 
     let res = candid_parser::bindings::javascript::compile(&env, &actor);
 
     Ok(hex_nul_escapes(&computed_proto_keys(&res)))
+}
+
+/// The type the actor names: `T` in `service : T` and `service : (…) -> T`.
+fn actor_type_name(ast: &IDLProg) -> Option<&str> {
+    let mut ty = &ast.actor.as_ref()?.typ;
+    loop {
+        match ty {
+            IDLType::VarT(id) => return Some(id),
+            IDLType::ClassT(_, inner) => ty = inner,
+            _ => return None,
+        }
+    }
+}
+
+/// Renames the actor's type when it is named like a JavaScript keyword, and
+/// returns whether it did.
+///
+/// candid_parser prints such a type with a `_` appended wherever it declares
+/// or refers to it, but writes the actor line with the bare name: `didToJs`
+/// wrote `return class;` and `didToTs` `export interface _SERVICE extends
+/// class {}`, and neither parses. Renamed to the name its declaration already
+/// prints, or to the first free name with more `_`, the type prints as before
+/// and the actor line refers to it.
+fn rename_keyword_actor_type(ast: &mut IDLProg, env: &TypeEnv) -> bool {
+    let keyword = match actor_type_name(ast) {
+        Some(name) if JS_KEYWORDS.contains(&name) => name.to_string(),
+        _ => return false,
+    };
+    let renamed = unused_type_name(env, &format!("{keyword}_"));
+    rename_type(ast, &keyword, &renamed);
+    true
 }
 
 /// `candidate`, or `candidate` followed by as many `_` as it takes to name no
@@ -287,6 +393,10 @@ pub fn did_to_ts(prog: String) -> Result<String, String> {
     let mut ast = parse_prog(&prog)?;
     let mut env = TypeEnv::new();
     let mut actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    if rename_keyword_actor_type(&mut ast, &env) {
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
 
     // The output exports each type under its own name, and also names the
     // imports `Principal` and `ActorMethod`, and the global `Array` and typed
