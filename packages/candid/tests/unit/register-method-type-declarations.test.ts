@@ -85,6 +85,38 @@ describe("registerMethod with type declarations", () => {
       'type A = record { "say \\"hi\\";" : text };\nservice : { "m": (A) -> (); }'
     )
   })
+
+  // `"a\\"` is the name `a\`: the quote after the escaped backslash closes it.
+  // The balance check took that quote for an escaped one and rejected the input.
+  it("keeps a quoted name that ends in an escaped backslash", () => {
+    expect(
+      normalizeCandidInterface('(record { "a\\\\" : nat }) -> ()', "m")
+    ).toBe('service : { "m": (record { "a\\\\" : nat }) -> (); }')
+    expect(
+      normalizeCandidInterface(
+        'type T = record { "a\\\\" : nat; b : text };\n(T) -> ()',
+        "m"
+      )
+    ).toBe(
+      'type T = record { "a\\\\" : nat; b : text };\nservice : { "m": (T) -> (); }'
+    )
+  })
+
+  it("registers a method whose field name ends in an escaped backslash", async () => {
+    const reactor = createReactor()
+
+    await reactor.registerMethod({
+      functionName: "m",
+      candid: '(record { "a\\\\" : nat; b : text }) -> () query',
+    })
+
+    expect(reactor.getMethodNames()).toEqual(["m"])
+    const [, func] = reactor
+      .getServiceInterface()
+      ._fields.find(([name]) => name === "m")!
+    const [arg] = (func as IDL.FuncClass).argTypes as [IDL.RecordClass]
+    expect(arg._fields.map(([name]) => name).sort()).toEqual(["a\\", "b"])
+  })
 })
 
 // ════════════════════════════════════════════════════════════════════════════

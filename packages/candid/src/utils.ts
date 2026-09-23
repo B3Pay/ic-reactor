@@ -279,12 +279,23 @@ function assertBalancedCandidInterface(source: string) {
   for (let i = 0; i < source.length; i++) {
     const char = source[i]
 
-    if (char === '"' && source[i - 1] !== "\\") {
-      inString = !inString
+    // Quotes and escapes are read as stripCandidComments reads them. Checking
+    // only the character before a quote took the quote closing "a\\" for an
+    // escaped one, so a name ending in an escaped backslash ran on to the end
+    // of the input and was reported as unbalanced.
+    if (inString) {
+      if (char === "\\") {
+        i++
+      } else if (char === '"') {
+        inString = false
+      }
       continue
     }
 
-    if (inString) continue
+    if (char === '"') {
+      inString = true
+      continue
+    }
 
     if (char in pairs) {
       stack.push(char)

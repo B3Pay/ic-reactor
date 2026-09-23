@@ -152,10 +152,12 @@ console.log(valueMeta.meta.defaults)
 ### Variable Reference Candidates
 
 `buildMethodVariableCandidates(methodName)` helps build mapping UIs for workflow tools.
+It lists the paths into the method's return value that a later step can
+reference. Arguments are not included.
 
 ```ts
 const candidates = reactor.buildMethodVariableCandidates("icrc1_transfer")
-// e.g. "$icrc1_transfer.Ok", "$icrc1_transfer.to.owner"
+// e.g. "$icrc1_transfer.Ok", "$icrc1_transfer.Err.InsufficientFunds.balance"
 ```
 
 ## Dynamic Method Workflow
