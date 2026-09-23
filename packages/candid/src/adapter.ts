@@ -62,6 +62,9 @@ export class CandidAdapter {
   /** Whether parser auto-loading has been attempted. */
   private parserLoadAttempted = false
 
+  /** The load of @ic-reactor/parser once started, which later callers await. */
+  private parserLoad?: Promise<void>
+
   /** Function to unsubscribe from identity updates. */
   public unsubscribe: () => void = noop
 
@@ -121,18 +124,18 @@ export class CandidAdapter {
     }
 
     if (this.parserLoadAttempted) {
-      return // Already tried loading
+      // Already tried loading. A load another call started may still be
+      // under way, and the parser cannot be used until it is done.
+      await this.parserLoad
+      return
     }
 
     this.parserLoadAttempted = true
 
+    const load = this.importParser()
+    this.parserLoad = load.catch(() => {})
     try {
-      this.parserModule = (await import(
-        "@ic-reactor/parser" as any
-      )) as unknown as ReactorParser
-      if (typeof this.parserModule?.default === "function") {
-        await (this.parserModule.default as () => Promise<void>)()
-      }
+      await load
     } catch (error) {
       throw new Error(`Error loading parser: ${error}`)
     }
@@ -143,25 +146,40 @@ export class CandidAdapter {
    * Useful for optional parser initialization.
    */
   private async tryLoadParser(): Promise<void> {
-    if (this.parserModule || this.parserLoadAttempted) {
+    if (this.parserModule) {
+      return
+    }
+
+    if (this.parserLoadAttempted) {
+      // A parse that starts while another is loading the parser waits for
+      // that load. It used to find no parser yet and compile on the didjs
+      // canister, which fails offline and where no didjs canister runs.
+      await this.parserLoad
       return
     }
 
     this.parserLoadAttempted = true
 
-    try {
-      this.parserModule = (await import(
-        "@ic-reactor/parser" as any
-      )) as unknown as ReactorParser
-      if (typeof this.parserModule?.default === "function") {
-        await (this.parserModule.default as () => Promise<void>)()
-      }
-    } catch {
-      // The package is a dependency, so the specifier resolves; what can still
-      // fail is instantiating the WASM in this runtime. Remote compilation
-      // through the didjs canister covers that case.
-      this.parserModule = undefined
+    // The package is a dependency, so the specifier resolves; what can still
+    // fail is instantiating the WASM in this runtime. Remote compilation
+    // through the didjs canister covers that case.
+    this.parserLoad = this.importParser().catch(() => {})
+    await this.parserLoad
+  }
+
+  /**
+   * Imports @ic-reactor/parser and runs its `init()`. The module is kept only
+   * once `init()` is done: the web build's `init()` fetches the WASM, and a
+   * parse that found the module earlier used it uninitialized.
+   */
+  private async importParser(): Promise<void> {
+    const module = (await import(
+      "@ic-reactor/parser" as any
+    )) as unknown as ReactorParser
+    if (typeof module?.default === "function") {
+      await (module.default as () => Promise<void>)()
     }
+    this.parserModule = module
   }
 
   /**
