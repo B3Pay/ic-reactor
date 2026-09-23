@@ -94,6 +94,43 @@ export interface ApiError {
   details: NullishType<Map<string, string>>
 }
 
+// `E` is only ever the checked type of a condition below, never inside an
+// `extends` clause. With `unknown extends E` or `"details" extends keyof E`
+// TypeScript stops treating CanisterError as covariant in E, and
+// CanisterError<ApiError> is no longer assignable to CanisterError<unknown>
+// (TS2322 in `create`).
+/**
+ * The type of {@link CanisterError.details} for an error value of type `E`.
+ *
+ * The constructor copies the `details` field of an error value that has a text
+ * `code` exactly as it is, and leaves `details` undefined for anything else.
+ * So this is that field's own type, decoded like the rest of the error, or
+ * `undefined`. Candid decoding never produces a `Map`: Orbit's
+ * `record { code : text; message : opt text; details : opt vec record { text; text } }`
+ * gives `[] | [Array<[string, string]>]` through a `Reactor` and
+ * `Record<string, string> | null | undefined` through a `DisplayReactor`. A
+ * variant error such as ICRC-1's `TransferError`, or any other value without a
+ * text `code`, gives `undefined`. A value of unknown type, or a record with a
+ * text `code` and no `details` field, gives `unknown`.
+ */
+export type CanisterErrorDetails<E> = [E] extends [never]
+  ? undefined
+  : E extends { code: string; details: infer D }
+    ? D
+    : E extends { code: string; details?: infer D }
+      ? D | undefined
+      : E extends
+            | string
+            | number
+            | bigint
+            | boolean
+            | symbol
+            | object
+            | null
+            | undefined
+        ? undefined
+        : unknown
+
 /**
  * Error thrown when there's an issue calling the canister.
  * This includes network errors, agent errors, canister not found, etc.
@@ -133,13 +170,17 @@ export class CanisterError<E = unknown> extends Error {
   public readonly err: E
   /** The error code, extracted from the error object or variant key */
   public readonly code: string
-  /** Optional error details Map */
-  public readonly details: NullishType<Map<string, string>>
+  /**
+   * The `details` field of an error value with a text `code`, as the canister
+   * returned it; `undefined` for any other error value. Its type follows the
+   * error value's: see {@link CanisterErrorDetails}.
+   */
+  public readonly details: CanisterErrorDetails<E>
 
   constructor(err: E) {
     let code: string | undefined
     let message: string | undefined
-    let details: NullishType<Map<string, string>> = undefined
+    let details: unknown = undefined
     let isApiShape = false
 
     if (typeof err === "object" && err !== null) {
@@ -151,7 +192,7 @@ export class CanisterError<E = unknown> extends Error {
           message = err.message
         }
         if ("details" in err) {
-          details = err.details as any
+          details = err.details
         }
       }
       // 2. Check for ic-reactor transformed variant shape (_type)
@@ -189,7 +230,7 @@ export class CanisterError<E = unknown> extends Error {
     this.name = "CanisterError"
     this.err = err
     this.code = finalCode
-    this.details = details
+    this.details = details as CanisterErrorDetails<E>
 
     // Maintains proper stack trace for where our error was thrown
     if (Error.captureStackTrace) {
