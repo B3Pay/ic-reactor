@@ -89,6 +89,42 @@ describe("Bindgen", () => {
     expect(fs.readFileSync(dtsPath, "utf-8")).toMatchSnapshot("ts-declarations")
   })
 
+  // Windows PowerShell's `Out-File -Encoding utf8` and editors set to "UTF-8
+  // with BOM" start the file with EF BB BF. The parser rejected the mark as an
+  // unknown token at 0..3, so generation failed.
+  it("generates the same declarations from a .did that starts with a UTF-8 byte order mark", async () => {
+    const root = createTempProject()
+    const bomBytes = Buffer.concat([
+      Buffer.from([0xef, 0xbb, 0xbf]),
+      Buffer.from(validDidContent),
+    ])
+    const plainDir = path.join(root, "plain")
+    const bomDir = path.join(root, "bom")
+    fs.mkdirSync(plainDir)
+    fs.mkdirSync(bomDir)
+    fs.writeFileSync(path.join(plainDir, "test.did"), validDidContent)
+    fs.writeFileSync(path.join(bomDir, "test.did"), bomBytes)
+
+    const generate = (dir: string) =>
+      generateDeclarations({
+        didFile: path.join(dir, "test.did"),
+        outDir: path.join(dir, "output"),
+        canisterName,
+      })
+    const read = (dir: string, fileName: string) =>
+      fs.readFileSync(path.join(dir, "output", "declarations", fileName))
+
+    expect((await generate(plainDir)).success).toBe(true)
+    const result = await generate(bomDir)
+
+    expect(result.error).toBeUndefined()
+    expect(result.success).toBe(true)
+    expect(read(bomDir, "test.js")).toEqual(read(plainDir, "test.js"))
+    expect(read(bomDir, "test.d.ts")).toEqual(read(plainDir, "test.d.ts"))
+    // The .did copy is a byte copy of the source, mark included.
+    expect(read(bomDir, "test.did")).toEqual(bomBytes)
+  })
+
   it("returns error if DID file missing", async () => {
     const root = createTempProject()
 

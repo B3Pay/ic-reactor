@@ -311,8 +311,16 @@ export async function generateDeclarations(
     // Read the DID content before any directory manipulation
     const didContent = fs.readFileSync(didFile, "utf-8")
 
-    const jsContent = didToJs(didContent)
-    const tsContent = didToTs(didContent)
+    // A UTF-8 byte order mark starts files saved by Windows PowerShell's
+    // `Out-File -Encoding utf8` and by editors set to "UTF-8 with BOM".
+    // readFileSync keeps it as U+FEFF (TextDecoder and fetch drop it), and the
+    // parser, like upstream Candid, rejects it as an unknown token at 0..3.
+    // It is dropped here, where the file is decoded, as the CLI does for
+    // ic-reactor.json. The .did copy below keeps the file's bytes.
+    const didSource = didContent.replace(/^\uFEFF/, "")
+
+    const jsContent = didToJs(didSource)
+    const tsContent = didToTs(didSource)
 
     // A .did that parses but declares no service is a normal thing to have — a
     // shared types file, say — but it compiles to a module with no `idlFactory`
