@@ -4,6 +4,7 @@ import os from "node:os"
 import path from "node:path"
 import { afterEach, describe, expect, it } from "vitest"
 import { runCanisterPipeline } from "./pipeline.js"
+import { generateReactorEntryFile } from "./generators/reactor.js"
 
 /** An `index.ts` as the generator wrote it before the index.generated.ts split. */
 const LEGACY_BACKEND_INDEX = `import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
@@ -220,6 +221,109 @@ describe("Codegen pipeline", () => {
         "",
       ].join("\n")
     )
+  })
+
+  describe("with Prettier installed at projectRoot", () => {
+    const prettierDir = path.dirname(
+      createRequire(import.meta.url).resolve("prettier/package.json")
+    )
+
+    /** A project whose Prettier config differs from the templates' style. */
+    function createFormattedProject() {
+      const projectRoot = createTempProject()
+      writeDid(projectRoot, "backend.did")
+      fs.mkdirSync(path.join(projectRoot, "node_modules"))
+      fs.symlinkSync(
+        prettierDir,
+        path.join(projectRoot, "node_modules", "prettier"),
+        "junction"
+      )
+      fs.writeFileSync(
+        path.join(projectRoot, ".prettierrc"),
+        JSON.stringify({ semi: true, singleQuote: true })
+      )
+      return projectRoot
+    }
+
+    /** What `prettier --check` says about a file in the project. */
+    async function isFormatted(filePath: string) {
+      const prettier = (await import("prettier")).default
+      const options = await prettier.resolveConfig(filePath)
+      return prettier.check(fs.readFileSync(filePath, "utf-8"), {
+        ...options,
+        filepath: filePath,
+      })
+    }
+
+    const options = (projectRoot: string) => ({
+      canisterConfig: { name: "backend", didFile: "backend.did" },
+      projectRoot,
+      globalConfig: { outDir: "src/declarations" },
+    })
+
+    // Only the declarations were formatted. index.generated.ts and index.ts
+    // came out in the template's style, so `prettier --check` failed on them,
+    // and once formatted, every run rewrote index.generated.ts.
+    it("formats index.generated.ts and index.ts with the project's config", async () => {
+      const projectRoot = createFormattedProject()
+      const outDir = path.join(projectRoot, "src/declarations/backend")
+
+      const result = await runCanisterPipeline(options(projectRoot))
+
+      expect(result.error).toBeUndefined()
+      expect(await isFormatted(path.join(outDir, "index.generated.ts"))).toBe(
+        true
+      )
+      expect(await isFormatted(path.join(outDir, "index.ts"))).toBe(true)
+      expect(
+        fs.readFileSync(path.join(outDir, "index.generated.ts"), "utf-8")
+      ).toContain("import { clientManager } from '../../clients';")
+    })
+
+    // Without the `.ic-reactor-owner` marker, which projects may leave out of
+    // version control, the owner is read from index.generated.ts, which is now
+    // formatted with the project's quotes and indent.
+    it("still finds the owner of a formatted directory that lost its marker", async () => {
+      const projectRoot = createFormattedProject()
+      fs.writeFileSync(
+        path.join(projectRoot, ".prettierrc"),
+        JSON.stringify({ singleQuote: true, useTabs: true })
+      )
+      writeDid(projectRoot, "ledger.did")
+      const shared = { outDir: "src/shared" }
+
+      const first = await runCanisterPipeline({
+        ...options(projectRoot),
+        canisterConfig: { name: "backend", didFile: "backend.did", ...shared },
+      })
+      expect(first.error).toBeUndefined()
+      fs.rmSync(path.join(projectRoot, "src/shared/.ic-reactor-owner"))
+
+      const second = await runCanisterPipeline({
+        ...options(projectRoot),
+        canisterConfig: { name: "ledger", didFile: "ledger.did", ...shared },
+      })
+
+      expect(second.success).toBe(false)
+      expect(second.error).toContain('was generated for canister "backend"')
+    })
+
+    it("replaces a wrapper an earlier version wrote in the template's style", async () => {
+      const projectRoot = createFormattedProject()
+      const outDir = path.join(projectRoot, "src/declarations/backend")
+      fs.mkdirSync(outDir, { recursive: true })
+      fs.writeFileSync(
+        path.join(outDir, "index.ts"),
+        generateReactorEntryFile()
+      )
+
+      const result = await runCanisterPipeline(options(projectRoot))
+
+      expect(result.error).toBeUndefined()
+      expect(fs.readFileSync(path.join(outDir, "index.ts"), "utf-8")).toContain(
+        "export * from './index.generated';"
+      )
+    })
   })
 
   it("leaves existing reactor files untouched when reactor generation is disabled", async () => {
