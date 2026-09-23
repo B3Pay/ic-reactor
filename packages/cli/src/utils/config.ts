@@ -84,7 +84,10 @@ export function loadConfig(configPath?: string): CodegenConfig | null {
 
   let parsed: unknown
   try {
-    parsed = JSON.parse(content)
+    // A byte order mark is what Windows PowerShell's `Set-Content -Encoding
+    // UTF8` and "UTF-8 with BOM" editors put first. JSON.parse rejects it with
+    // an error quoting a character nobody can see.
+    parsed = JSON.parse(content.replace(/^\uFEFF/, ""))
   } catch (error) {
     throw new CliError(
       `${CONFIG_FILE_NAME} at ${filePath} is not valid JSON: ${errorMessage(error)}`

@@ -32,6 +32,14 @@ describe("loadConfig", () => {
     expect(loadConfig(configPath)).toEqual(valid)
   })
 
+  // Saved as "UTF-8 with BOM", which Windows PowerShell's
+  // `Set-Content -Encoding UTF8` writes. JSON.parse used to reject it with
+  // an `Unexpected token` error that quotes the invisible mark.
+  it("accepts a config that starts with a UTF-8 byte order mark", () => {
+    const configPath = writeConfig(`\uFEFF${JSON.stringify(valid, null, 2)}`)
+    expect(loadConfig(configPath)).toEqual(valid)
+  })
+
   it("keeps unknown keys, which the JSON schema also allows", () => {
     const configPath = writeConfig(
       JSON.stringify({ ...valid, futureOption: true })
