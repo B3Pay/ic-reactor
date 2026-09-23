@@ -6,9 +6,12 @@
  * and query keys carry no caller principal, so a module-scope reactor is a
  * single cache shared by every request the server handles — one visitor's
  * caller-scoped result (`balanceOf(self)`, `myProfile`) can be served to the
- * next. `AuthenticationManager` is worse: it holds mutable identity state, and
- * `createAuthHooks`' `useSyncExternalStore` server snapshot reads whatever
- * identity that shared manager happens to hold at the moment of the render.
+ * next. `AuthenticationManager` is built from a `ClientManager` and signs in
+ * on that manager's agent, so it belongs in the same request as its
+ * `ClientManager`. On the server it loads no auth client and stays signed out
+ * unless app code signs in there, and a module-scope one would then leave that
+ * identity on the agent every request signs with. (The auth hooks themselves
+ * render a fixed signed-out state on the server.)
  *
  * Building inside a `useState` initializer gives each render tree its own set,
  * so nothing is shared across requests.

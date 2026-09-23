@@ -60,7 +60,7 @@ Follow these repository-specific patterns when suggesting code:
 
 - On a server (SSR/RSC), build the reactor, `ClientManager`, `AuthenticationManager`, and the query/mutation objects inside the request — never at module scope.
 - A reactor owns its `QueryClient`, and query keys are built by `reactor.generateQueryKey()` from the canister ID, function name, transform and args — and carry no caller principal. A module-scope reactor on a server is one cache shared by every request, so a caller-scoped result (`balanceOf(self)`, `myProfile`) is served to the next visitor.
-- `AuthenticationManager` is worse: it holds mutable identity state, and the auth hooks' `useSyncExternalStore` server snapshot reads whatever identity the shared manager happens to hold at render time.
+- `AuthenticationManager` is built from a `ClientManager` and signs in on that manager's agent, so it belongs in the same request as its `ClientManager`. On the server it loads no auth client and stays signed out unless app code signs in there, and a module-scope one would then leave that identity on the agent every request signs with. (The auth hooks themselves render a fixed signed-out state on the server.)
 - A bare `defineReactor(...)` call in a module body is still module scope. Hang construction off a per-render `useState` initializer inside a provider — the reference implementation is `examples/nextjs/src/service/provider.tsx`.
 - Module scope stays correct for client-only SPAs.
 
