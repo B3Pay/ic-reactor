@@ -792,6 +792,31 @@ describe("AuthenticationManager session hygiene", () => {
     ).toBe(true)
   })
 
+  it("does not install an identity the client will not vouch for when built over that client", async () => {
+    // The constructor reads a caller-built client's state as well. A client
+    // whose session lapsed before this manager was built (one kept at module
+    // scope, outliving the tree its first manager belonged to) still hands
+    // out the lapsed identity, and the constructor put it on the agent. The
+    // test above calls authenticate() at once, which supersedes that read.
+    const authClient = createAuthClient()
+    authClient.getIdentity.mockReturnValue(identity("aaaaa-aa"))
+    authClient.isAuthenticated.mockResolvedValue(false)
+
+    const authentication = new AuthenticationManager({
+      clientManager,
+      authClient,
+    })
+    await vi.waitFor(() =>
+      expect(authentication.authState.identity).not.toBeNull()
+    )
+
+    expect(clientManager.identity?.getPrincipal().isAnonymous()).toBe(true)
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect(
+      authentication.authState.identity?.getPrincipal().isAnonymous()
+    ).toBe(true)
+  })
+
   it("keeps the session when the expiry check itself fails", async () => {
     // A transient failure must not sign anyone out.
     const authClient = createAuthClient()

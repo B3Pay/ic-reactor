@@ -221,6 +221,39 @@ describe("Internet Identity sign-in (real AuthClient)", () => {
     )
   })
 
+  it("does not sign with a session that lapsed before a manager was built over its client", async () => {
+    // A client kept at module scope outlives the manager built for one mounted
+    // tree. Once its session has lapsed, it no longer vouches for it, but it
+    // still hands out the lapsed identity. A manager built over it then put
+    // that identity on the agent, under `isAuthenticated: false`.
+    const first = createManager()
+    await first.authentication.prepareClient()
+    await withUserGesture(() => first.authentication.login())
+    const client = first.authentication.client!
+
+    vi.useFakeTimers({ toFake: ["Date"] })
+    try {
+      // Past the provider's 8 h session.
+      vi.setSystemTime(Date.now() + 9 * 60 * 60 * 1000)
+      expect(await client.isAuthenticated()).toBe(false)
+
+      const next = createManager({ authClient: client })
+      await vi.waitFor(() =>
+        expect(next.authentication.authState.identity).not.toBeNull()
+      )
+
+      expect(next.authentication.authState.isAuthenticated).toBe(false)
+      expect((await next.clientManager.getUserPrincipal()).isAnonymous()).toBe(
+        true
+      )
+      expect(
+        next.authentication.authState.identity!.getPrincipal().isAnonymous()
+      ).toBe(true)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("logs out, clears the session and resets the agent to anonymous", async () => {
     const { authentication, clientManager } = createManager()
     await authentication.prepareClient()
