@@ -321,7 +321,10 @@ IC Reactor distinguishes canister business errors from transport/runtime errors.
 
 `CanisterError` carries the raw canister error value on `.err` — not `.detail`,
 `.data`, or `.message`. `.code` is the variant key, or the `code` field when the
-payload follows the ApiError shape, and `.details` is the optional `Map`. Always
+payload follows the ApiError shape. `.details` is that payload's own `details`
+field as decoded (never a `Map`: `[] | [Array<[string, string]>]` for an
+`opt vec record { text; text }` from a `Reactor`, a plain object from a
+`DisplayReactor`), and `undefined` for a payload without a text `code`. Always
 read the payload from `.err`.
 
 When using mutations, prefer:

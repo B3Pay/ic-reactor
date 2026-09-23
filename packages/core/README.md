@@ -437,9 +437,17 @@ interface CanisterError<E> {
   err: E // The raw error value from canister
   code: string // Error code (from variant key or "code" field)
   message: string // Human-readable message
-  details: Map<string, string> | null | undefined // Optional details
+  details: CanisterErrorDetails<E> // err.details when err has a text code
 }
 ```
+
+`details` is the error value's own `details` field, decoded like the rest of
+`err`, and `undefined` when `err` has no text `code`. It is never a `Map`. For
+an error record such as Orbit's
+`record { code : text; message : opt text; details : opt vec record { text; text } }`
+it is `[] | [Array<[string, string]>]` from a `Reactor` and
+`Record<string, string> | null | undefined` from a `DisplayReactor`; for a
+variant error such as ICRC-1's `TransferError` it is `undefined`.
 
 ## Utilities
 
