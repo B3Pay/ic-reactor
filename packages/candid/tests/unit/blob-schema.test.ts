@@ -67,15 +67,28 @@ describe("blob field schemas", () => {
     for (const value of ["hello", "ab cd", "0xzz", [256], [-1], [1.5]]) {
       expect(schema.safeParse(value).success, JSON.stringify(value)).toBe(false)
     }
-    for (const value of [
-      "",
-      "0xDEADbeef",
-      "abc",
-      [0, 255],
-      new Uint8Array(2),
-    ]) {
+    for (const value of ["", "0xDEADbeef", [0, 255], new Uint8Array(2)]) {
       expect(schema.safeParse(value).success, String(value)).toBe(true)
     }
+  })
+
+  it("rejects hex with an odd number of digits, as validateInput does", async () => {
+    // The codec padded "abc" to 0a bc, shifting every byte, so a 64-digit
+    // subaccount missing its last digit was sent as another 32-byte one.
+    const reactor = await displayReactor()
+    const field = reactor.getInputMeta("put")!.args[0]
+    const subaccount =
+      "0a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223242526272829"
+
+    for (const value of ["abc", "0xabc", subaccount.slice(0, 63)]) {
+      expect(field.schema.safeParse(value).success, value).toBe(false)
+      if (field.type === "blob") {
+        expect(field.validateInput(value).valid, value).toBe(false)
+      }
+      expect(await sends(reactor, value), value).toBe(false)
+    }
+    expect(field.schema.safeParse(subaccount).success).toBe(true)
+    expect(await sends(reactor, subaccount)).toBe(true)
   })
 
   it("rejects the same values in MetadataReactor", async () => {
