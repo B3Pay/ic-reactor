@@ -150,11 +150,11 @@ const App: React.FC<AppProps> = (props) => (
   is reused by every request served by the same server module graph, and query
   keys carry no caller principal — so one visitor's caller-scoped result
   (`balanceOf(self)`, `myProfile`) can be served to the next.
-  `AuthenticationManager` is worse: it holds mutable identity state that every
-  request would share. The auth hooks' server snapshot is a fixed signed-out
-  state, so a server render no longer shows it, but any code that reads
-  `authState`, or calls through the shared agent, still gets whichever identity
-  the manager holds at that moment.
+  `AuthenticationManager` is built from a `ClientManager` and signs in on that
+  manager's agent, so it belongs in the same request. On the server it loads no
+  auth client and stays signed out unless app code signs in there; a
+  module-scope one would then leave that identity on the agent every request
+  signs with. The auth hooks render a fixed signed-out state on the server.
 
 Constructing inside a `useState` initializer gives each render tree its own
 set. See [Server-Side
