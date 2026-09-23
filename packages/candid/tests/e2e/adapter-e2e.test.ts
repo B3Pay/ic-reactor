@@ -13,7 +13,10 @@ import { Principal } from "@icp-sdk/core/principal"
  * - NNS Governance: rrkah-fqaaa-aaaaa-aaaaq-cai
  * - Internet Identity: rdmx6-jaaaa-aaaaa-aaadq-cai
  */
-describe("CandidAdapter E2E", () => {
+// These tests call canisters on mainnet through a boundary node, and a slow or
+// dropped response is not a failure of this package. Retrying keeps one such
+// response from failing CI's Test job (seen on main, run 35804622116).
+describe("CandidAdapter E2E", { retry: 2 }, () => {
   let clientManager: CandidClientManager
   let adapter: CandidAdapter
 
