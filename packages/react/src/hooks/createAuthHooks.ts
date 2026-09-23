@@ -28,6 +28,24 @@ export interface CreateAuthHooksReturn {
 }
 
 /**
+ * The managers whose session a `useAuth()` has already started restoring.
+ *
+ * Restoring ends in `authenticate()`, which publishes `isAuthenticating: true`
+ * and then the restored state. It used to run once per mounted `useAuth()`
+ * rather than once per manager, so every consumer that mounted while signed out
+ * flipped `isAuthenticating` for the whole app, and one that mounted while a
+ * sign-in popup was open cleared `isAuthenticating` before the sign-in ended. A
+ * component that hides a `useAuth()` consumer while `isAuthenticating` never
+ * settled: each restore unmounted the consumer, and each remount restored
+ * again. Both clients answer from memory once loaded, so that loop ran on the
+ * microtask queue and the page never painted again.
+ *
+ * Keyed by manager rather than by `createAuthHooks` call, because reactors that
+ * share one `AuthenticationManager` each build their own hooks.
+ */
+const restoredSessions = new WeakSet<AuthenticationManager>()
+
+/**
  * The principal both hooks return.
  *
  * `authenticate()` and `logout()` leave the client's anonymous identity in
@@ -130,24 +148,35 @@ export const createAuthHooks = (
     const { isAuthenticated, isAuthenticating, identity, error } =
       useAuthState()
 
-    // Track if we've already initialized to avoid duplicate calls
+    // Keeps a StrictMode re-run of the effect below from repeating it.
     const initializedRef = useRef(false)
 
-    // Auto-initialize on first mount to restore previous session.
-    // `prepareClient` also warms up the AuthClient so a later `login()` can
-    // open the identity provider window inside the click handler.
+    // Restore the previous session when the first consumer of this manager
+    // mounts. `prepareClient` also warms up the AuthClient so a later
+    // `login()` can open the identity provider window inside the click handler.
     useEffect(() => {
-      if (!initializedRef.current) {
-        initializedRef.current = true
-        authentication
-          .prepareClient()
-          .catch(() => undefined)
-          .then(() => clientManager.initialize())
-          .then(() => authentication.authenticate())
-          // Failures are already reflected in authState/agentState; without
-          // this the rejection escapes as an unhandled promise rejection.
-          .catch(() => undefined)
+      if (initializedRef.current) return
+      initializedRef.current = true
+
+      if (restoredSessions.has(authentication)) {
+        // Restored already. A live session is still checked again, which
+        // notices a delegation that has lapsed since and publishes nothing
+        // while it is valid.
+        if (authentication.authState.isAuthenticated) {
+          authentication.authenticate().catch(() => undefined)
+        }
+        return
       }
+      restoredSessions.add(authentication)
+
+      authentication
+        .prepareClient()
+        .catch(() => undefined)
+        .then(() => clientManager.initialize())
+        .then(() => authentication.authenticate())
+        // Failures are already reflected in authState/agentState; without
+        // this the rejection escapes as an unhandled promise rejection.
+        .catch(() => undefined)
     }, [])
 
     const principal = usePrincipal(isAuthenticated, identity)
