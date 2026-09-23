@@ -186,6 +186,19 @@ export class ClientManager {
       agentOptions.rootKey = agentOptions.rootKey ?? canisterEnv.IC_ROOT_KEY
     }
 
+    // A local replica certifies its answers with its own root key.
+    // `initializeAgent` fetches it, but an agent built without one starts out
+    // holding mainnet's and checks every certificate against that until then.
+    // Nothing waits for `initializeAgent` before a call, so a call made in
+    // that window failed verification — and an update call had already run on
+    // the replica by the time it was reported as failed. Asking the agent to
+    // fetch the key itself makes every request wait for it instead. The agent
+    // shares one fetch between its requests and `initializeAgent`, and a root
+    // key given explicitly or taken from the `ic_env` cookie is used as is.
+    if (getNetworkByHostname(hostnameOf(agentOptions.host) ?? "") !== "ic") {
+      agentOptions.shouldFetchRootKey ??= true
+    }
+
     this.#agent = HttpAgent.createSync(agentOptions)
     this.updateAgentState({
       isLocalhost: this.isLocal,
