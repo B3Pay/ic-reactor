@@ -159,42 +159,100 @@ export function isOptionalWrapper(
   return !elemIsArrayValued || couldBeDisplayOf(elemType, inner)
 }
 
+const NAT_TEXT = /^\d+$/
+const INT_TEXT = /^-?\d+$/
+
+const invalidFixed = (bits: number, signed: boolean, expected: string) =>
+  `[ic-reactor] Invalid ${signed ? "int" : "nat"}${bits} display value: expected ${expected}`
+
+/**
+ * The number a display value of a fixed-width integer of 32 bits or fewer
+ * sends: the number itself, or the number integer text spells. Throws for a
+ * value the codec refuses.
+ */
+function fixedNumberOf(
+  bits: number,
+  signed: boolean,
+  val: string | number
+): number {
+  const min = signed ? -(2 ** (bits - 1)) : 0
+  const max = signed ? 2 ** (bits - 1) - 1 : 2 ** bits - 1
+  const num = typeof val === "string" ? Number(val) : val
+
+  if (typeof val === "string" && !(signed ? INT_TEXT : NAT_TEXT).test(val)) {
+    throw new TypeError(
+      `${invalidFixed(bits, signed, "an integer string")}, got "${val}"`
+    )
+  }
+
+  if (!Number.isInteger(num)) {
+    throw new TypeError(
+      `${invalidFixed(bits, signed, "an integer")}, got ${String(val)}`
+    )
+  }
+
+  if (num < min || num > max) {
+    throw new RangeError(
+      `${invalidFixed(bits, signed, `${min}..${max}`)}, got ${String(val)}`
+    )
+  }
+
+  return num
+}
+
+/**
+ * The number a display value of a float sends: the number itself, or the
+ * number text spells. Throws for a value the codec refuses.
+ */
+function floatNumberOf(bits: number, val: string | number): number {
+  const trimmed = typeof val === "string" ? val.trim() : undefined
+  if (trimmed === "") {
+    throw new TypeError(
+      `[ic-reactor] Invalid float${bits} display value: expected a number, got ""`
+    )
+  }
+  const num = trimmed === undefined ? (val as number) : Number(trimmed)
+  // A finite double can still overflow float32: IDL.encode narrows
+  // 3.4028236e38 to Infinity and sends that, so check the narrowed
+  // value for float32, not just the double.
+  const narrowed = bits === 32 ? Math.fround(num) : num
+  if (!Number.isFinite(narrowed)) {
+    throw new TypeError(
+      `[ic-reactor] Invalid float${bits} display value: expected a finite float${bits}, got ${String(val)}`
+    )
+  }
+  return num
+}
+
+/**
+ * The number the codec of a float, or of an integer of 32 bits or fewer,
+ * sends for display `text`. Throws for text the codec refuses. The query key
+ * reads numeric text with this, so it cannot drift from what the codec sends.
+ */
+export function numberOfText(
+  type: IDL.FixedNatClass | IDL.FixedIntClass | IDL.FloatClass,
+  text: string
+): number {
+  return type instanceof IDL.FloatClass
+    ? floatNumberOf(type._bits, text)
+    : fixedNumberOf(type._bits, type instanceof IDL.FixedIntClass, text)
+}
+
+/** Is `value` a Principal the principal codec takes as it is? */
+export function isDisplayPrincipal(value: unknown): value is Principal {
+  return value instanceof Principal
+}
+
 function createFixedNumberCodec(bits: number, signed: boolean): z.ZodTypeAny {
   const min = signed ? -(2 ** (bits - 1)) : 0
   const max = signed ? 2 ** (bits - 1) - 1 : 2 ** bits - 1
-  const integerPattern = signed ? /^-?\d+$/ : /^\d+$/
-  const typeName = `${signed ? "int" : "nat"}${bits}`
-
-  const parseDisplayNumber = (val: string | number): number => {
-    const num = typeof val === "string" ? Number(val) : val
-
-    if (typeof val === "string" && !integerPattern.test(val)) {
-      throw new TypeError(
-        `[ic-reactor] Invalid ${typeName} display value: expected an integer string, got "${val}"`
-      )
-    }
-
-    if (!Number.isInteger(num)) {
-      throw new TypeError(
-        `[ic-reactor] Invalid ${typeName} display value: expected an integer, got ${String(val)}`
-      )
-    }
-
-    if (num < min || num > max) {
-      throw new RangeError(
-        `[ic-reactor] Invalid ${typeName} display value: expected ${min}..${max}, got ${String(val)}`
-      )
-    }
-
-    return num
-  }
 
   return z.codec(
     z.number().int().min(min).max(max), // Candid format
     z.union([z.number(), z.string()]), // Display format
     {
       decode: (val) => val,
-      encode: parseDisplayNumber,
+      encode: (val) => fixedNumberOf(bits, signed, val),
     }
   )
 }
@@ -325,7 +383,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     // as a string (the visitors in @ic-reactor/candid emit "" and a string
     // schema for float32/float64), so a value that passed the form's own
     // validation must encode here too. Same contract as the ≤32-bit integers.
-    const typeName = `float${t._bits}`
+    //
     // NaN, Infinity and -Infinity are valid float32/float64 values, and
     // IDL.decode returns them as numbers. Zod 4's z.number() rejects all three,
     // so one of them in a result failed the decode of the whole response and
@@ -337,24 +395,7 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
       z.union([anyNumber, z.string()]), // Display format
       {
         decode: (val) => val,
-        encode: (val) => {
-          const num = typeof val === "string" ? Number(val.trim()) : val
-          if (typeof val === "string" && val.trim() === "") {
-            throw new TypeError(
-              `[ic-reactor] Invalid ${typeName} display value: expected a number, got ""`
-            )
-          }
-          // A finite double can still overflow float32: IDL.encode narrows
-          // 3.4028236e38 to Infinity and sends that, so check the narrowed
-          // value for float32, not just the double.
-          const narrowed = t._bits === 32 ? Math.fround(num) : num
-          if (!Number.isFinite(narrowed)) {
-            throw new TypeError(
-              `[ic-reactor] Invalid ${typeName} display value: expected a finite ${typeName}, got ${String(val)}`
-            )
-          }
-          return num
-        },
+        encode: (val) => floatNumberOf(t._bits, val),
       }
     )
   }

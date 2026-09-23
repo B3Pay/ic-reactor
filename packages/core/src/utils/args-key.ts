@@ -25,6 +25,24 @@ import { IDL } from "@icp-sdk/core/candid"
  *   object's keys, so two orders of one map, which send different vectors,
  *   shared a key. The key lists the entries in order, as the pairs they are
  *   sent as.
+ * - In a DisplayReactor, a float or an integer of 32 bits or fewer given as
+ *   numeric text, and a `Principal` given as the object. The key writes the
+ *   number the text spells and the principal's text, the forms the codecs
+ *   return. And in both reactors, any value of `reserved`, which sends
+ *   nothing: the key writes `null`, the value `reserved` decodes to.
+ *
+ * The JSON of a value the reactor refuses can also be the JSON of one it
+ * takes, so the refused call was answered from the other's cache entry
+ * instead of failing. `undefined` where Candid `null` is required is written
+ * as `null` in an array; a bigint is written as its decimal text (#515), the
+ * key of that text for a `text` or for a DisplayReactor's number; text given
+ * to a Reactor's integer is the key of the bigint it spells; a plain
+ * `{ __principal__ }` object, which is what JSON.parse returns for a
+ * Principal, is the key of the Principal; and a Reactor's variant with an
+ * `undefined` beside its arm is the key of the arm alone. The key checks each
+ * value of a primitive type, each record, and each variant a Reactor sends, as
+ * the codec or IDL.encode does, and writes one they refuse as a
+ * {@link RefusedKey}, behind a tag no value they take can produce.
  *
  * Only a position the method's Candid type names is rewritten: a `number[]` is
  * a blob as a `vec nat8`, and the same array passed as a `vec nat16` keeps the
@@ -39,6 +57,11 @@ export class BlobKey {
   constructor(readonly hex: string) {}
 }
 
+/** An argument value the reactor refuses, as the query key records it. */
+export class RefusedKey {
+  constructor(readonly value: unknown) {}
+}
+
 /**
  * The shapes a DisplayReactor's codecs take that IDL.encode does not. Passed
  * in by the DisplayReactor rather than imported here, so a Reactor does not
@@ -49,6 +72,16 @@ export interface DisplayArgShapes {
   isOptionalWrapper(elemType: IDL.Type, inner: unknown): boolean
   /** Is `type` a `record { text; T }`, whose vector is also taken as an object? */
   isTextKeyedPair(type: IDL.Type): type is IDL.TupleClass<unknown[]>
+  /**
+   * The number the codec of a float, or of an integer of 32 bits or fewer,
+   * sends for `text`. Throws for text the codec refuses.
+   */
+  numberOfText(
+    type: IDL.FixedNatClass | IDL.FixedIntClass | IDL.FloatClass,
+    text: string
+  ): number
+  /** Is `value` a Principal the principal codec takes as it is? */
+  isPrincipal(value: unknown): value is { toText(): string }
 }
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> => {
@@ -70,6 +103,22 @@ const isBlob = (type: IDL.Type): boolean =>
 const isOpt = (type: IDL.Type | undefined): boolean =>
   type instanceof IDL.OptClass ||
   (type instanceof IDL.RecClass && isOpt(type.getType()))
+
+/** Is `type` `reserved`, behind any recursive alias? */
+const isReserved = (type: IDL.Type | undefined): boolean =>
+  type instanceof IDL.ReservedClass ||
+  (type instanceof IDL.RecClass && isReserved(type.getType()))
+
+/** An integer type a DisplayReactor takes as a number or as text. */
+const isSmallInteger = (
+  type: IDL.Type
+): type is IDL.FixedNatClass | IDL.FixedIntClass =>
+  (type instanceof IDL.FixedNatClass || type instanceof IDL.FixedIntClass) &&
+  type._bits <= 32
+
+/** Does IDL.encode take `value` as a principal? It asks nothing more. */
+const isPrincipalLike = (value: unknown): boolean =>
+  Boolean(value && (value as { _isPrincipal?: unknown })._isPrincipal)
 
 /**
  * Can a value of `type` itself be null: an `opt`'s none, `null`, or
@@ -139,6 +188,25 @@ function reaches(
   return false
 }
 
+/** Sets `label` on `record`, a field named `__proto__` included. */
+function setField(
+  record: Record<string, unknown>,
+  label: string,
+  value: unknown
+): void {
+  if (label !== "__proto__") {
+    record[label] = value
+    return
+  }
+  // Defined, not assigned, so that a field named `__proto__` stays a field.
+  Object.defineProperty(record, label, {
+    value,
+    enumerable: true,
+    writable: true,
+    configurable: true,
+  })
+}
+
 /** `items` with `map` applied, or `items` itself when nothing changed. */
 function mapItems(
   items: unknown[],
@@ -154,8 +222,10 @@ function mapItems(
 
 /**
  * Walks an argument alongside its Candid type and writes each value that has
- * more than one form in one form: a blob as a {@link BlobKey}, and in a
- * DisplayReactor also an opt, a variant and a vector given as an object. It
+ * more than one form in one form: a blob as a {@link BlobKey}, a record
+ * without its undeclared fields, `reserved` as `null`, and in a DisplayReactor
+ * also an opt, a variant, a vector given as an object, numeric text and a
+ * Principal. A value the reactor refuses it writes as a {@link RefusedKey}. It
  * reads the value the way the reactor encodes it: as IDL.encode does, or,
  * given the display shapes, as a DisplayReactor's codecs do. Everything that
  * holds none of these, and every value already in that form, it returns as the
@@ -194,14 +264,36 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
     return rewrites
   }
 
-  /** Does the key write a value of `type` itself in a form of its own? */
+  /**
+   * Does the key check a value of `type` itself, or write it in a form of its
+   * own? A float is checked only in a DisplayReactor: a Reactor takes it only
+   * as a number, and no value it refuses there has a number's JSON.
+   */
   private isRewritten(type: IDL.Type): boolean {
-    if (isBlob(type)) return true
-    if (!this.display) return false
-    return (
-      type instanceof IDL.OptClass ||
+    if (
+      isBlob(type) ||
+      type instanceof IDL.NullClass ||
+      type instanceof IDL.BoolClass ||
+      type instanceof IDL.TextClass ||
+      type instanceof IDL.NatClass ||
+      type instanceof IDL.IntClass ||
+      type instanceof IDL.FixedNatClass ||
+      type instanceof IDL.FixedIntClass ||
+      type instanceof IDL.PrincipalClass ||
+      type instanceof IDL.ReservedClass ||
       type instanceof IDL.VariantClass ||
-      (type instanceof IDL.VecClass && this.display.isTextKeyedPair(type._type))
+      // For the fields it does not declare. A tuple is a RecordClass too, but
+      // it is an array.
+      (type instanceof IDL.RecordClass && !(type instanceof IDL.TupleClass))
+    ) {
+      return true
+    }
+    return (
+      !!this.display &&
+      (type instanceof IDL.FloatClass ||
+        type instanceof IDL.OptClass ||
+        (type instanceof IDL.VecClass &&
+          this.display.isTextKeyedPair(type._type)))
     )
   }
 
@@ -225,38 +317,142 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
       : undefined
   }
 
+  /**
+   * `value` with each of `fields` it has rewritten. With `onlyDeclared`, the
+   * fields a record does not declare are left out as well: neither IDL.encode
+   * nor the record codec sends them.
+   */
   private mapFields(
     value: Record<string, unknown>,
-    fields: ReadonlyArray<[string, IDL.Type]>
+    fields: ReadonlyArray<[string, IDL.Type]>,
+    onlyDeclared = false
   ): Record<string, unknown> {
     let copy: Record<string, unknown> | undefined
+    let declared = 0
     for (const [label, type] of fields) {
-      if (!hasOwn(value, label) || !this.rewrites(type)) continue
-      const field = type.accept(this, value[label])
-      if (Object.is(field, value[label])) continue
+      let field: unknown
+      if (hasOwn(value, label)) {
+        declared++
+        if (!this.rewrites(type)) continue
+        field = type.accept(this, value[label])
+        if (Object.is(field, value[label])) continue
+      } else if (this.display && isReserved(type)) {
+        // The record codec reads an absent field as undefined, which
+        // `reserved` takes. IDL.encode refuses the absent field itself.
+        field = null
+      } else {
+        continue
+      }
       copy ??= { ...value }
-      // Defined, not assigned, so that a field named `__proto__` stays a field.
-      Object.defineProperty(copy, label, {
-        value: field,
-        enumerable: true,
-        writable: true,
-        configurable: true,
-      })
+      setField(copy, label, field)
+    }
+    if (onlyDeclared && Object.keys(value).length > declared) {
+      const source = copy ?? value
+      const record: Record<string, unknown> = {}
+      for (const [label] of fields) {
+        if (hasOwn(source, label)) setField(record, label, source[label])
+      }
+      return record
     }
     return copy ?? value
   }
 
-  private mapArm(
-    value: Record<string, unknown>,
-    fields: Array<[string, IDL.Type]>,
-    tag: string
-  ): Record<string, unknown> {
-    const arm = fields.find(([label]) => label === tag)
-    return arm ? this.mapFields(value, [arm]) : value
-  }
-
   visitType<T>(_t: IDL.Type<T>, value: unknown): unknown {
     return value
+  }
+
+  // Each primitive is checked by its JavaScript type, as the codec or
+  // IDL.encode checks it first. A value of another type is refused whatever
+  // else is true of it. A value of the right type that is still refused, such
+  // as -1 for a `nat` or "abc" for a DisplayReactor's `nat`, keeps its key: no
+  // value taken there has the same JSON.
+
+  visitNull(_t: IDL.NullClass, value: unknown): unknown {
+    return value === null ? value : new RefusedKey(value)
+  }
+
+  visitBool(_t: IDL.BoolClass, value: unknown): unknown {
+    return typeof value === "boolean" ? value : new RefusedKey(value)
+  }
+
+  visitText(_t: IDL.TextClass, value: unknown): unknown {
+    return typeof value === "string" ? value : new RefusedKey(value)
+  }
+
+  visitNat(t: IDL.NatClass, value: unknown): unknown {
+    return this.keyInteger(t, value)
+  }
+
+  visitInt(t: IDL.IntClass, value: unknown): unknown {
+    return this.keyInteger(t, value)
+  }
+
+  visitFixedNat(t: IDL.FixedNatClass, value: unknown): unknown {
+    return this.keyInteger(t, value)
+  }
+
+  visitFixedInt(t: IDL.FixedIntClass, value: unknown): unknown {
+    return this.keyInteger(t, value)
+  }
+
+  visitFloat(t: IDL.FloatClass, value: unknown): unknown {
+    return this.display ? this.keyDisplayNumber(t, value) : value
+  }
+
+  visitPrincipal(_t: IDL.PrincipalClass, value: unknown): unknown {
+    if (!this.display) {
+      return isPrincipalLike(value) ? value : new RefusedKey(value)
+    }
+    // The principal codec takes text, which it returns, and a Principal.
+    if (typeof value === "string") return value
+    return this.display.isPrincipal(value)
+      ? value.toText()
+      : new RefusedKey(value)
+  }
+
+  visitReserved(_t: IDL.ReservedClass, _value: unknown): unknown {
+    // `reserved` takes any value and sends none.
+    return null
+  }
+
+  private keyInteger(
+    t: IDL.NatClass | IDL.IntClass | IDL.FixedNatClass | IDL.FixedIntClass,
+    value: unknown
+  ): unknown {
+    if (!this.display) {
+      // IDL.encode takes a bigint or a number.
+      return typeof value === "bigint" || typeof value === "number"
+        ? value
+        : new RefusedKey(value)
+    }
+    if (isSmallInteger(t)) return this.keyDisplayNumber(t, value)
+    // The codec of `nat`, `int` and the 64-bit integers takes only text.
+    return typeof value === "string" ? value : new RefusedKey(value)
+  }
+
+  /**
+   * A float or an integer of 32 bits or fewer in a DisplayReactor, whose
+   * codec takes a number or text and returns a number. Text is keyed as the
+   * number it sends, and an integer's -0 as the 0 it sends.
+   */
+  private keyDisplayNumber(
+    t: IDL.FixedNatClass | IDL.FixedIntClass | IDL.FloatClass,
+    value: unknown
+  ): unknown {
+    let number: number
+    if (typeof value === "number") {
+      number = value
+    } else if (typeof value !== "string") {
+      return new RefusedKey(value)
+    } else {
+      try {
+        number = this.display!.numberOfText(t, value)
+      } catch {
+        // Refused text keeps its key, which no number has.
+        return value
+      }
+    }
+    return number === 0 && !(t instanceof IDL.FloatClass) ? 0 : number
   }
 
   visitRec<T>(
@@ -279,8 +475,15 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
     // A DisplayReactor also takes a `vec record { text; T }` as an object keyed
     // by the text, and sends `Object.entries` of it: the pairs in the object's
     // order. The key lists the same pairs in the same order, so it matches the
-    // vector sent, and the array of pairs, which sends the same one.
-    if (this.display?.isTextKeyedPair(elemType) && isPlainObject(value)) {
+    // vector sent, and the array of pairs, which sends the same one. The codec
+    // takes every object that is not an array so, a boxed `true` included,
+    // whose JSON is that of the `true` it refuses.
+    if (
+      this.display?.isTextKeyedPair(elemType) &&
+      typeof value === "object" &&
+      value !== null &&
+      !Array.isArray(value)
+    ) {
       const pairs: unknown[] = Object.entries(value)
       return this.rewrites(elemType)
         ? pairs.map((pair) => elemType.accept(this, pair))
@@ -334,7 +537,24 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
     fields: Array<[string, IDL.Type]>,
     value: unknown
   ): unknown {
-    return isPlainObject(value) ? this.mapFields(value, fields) : value
+    // IDL.encode takes only an object, and `null` only for a record without
+    // fields, where it takes any object: a boxed `true` or a Date, whose JSON
+    // is that of the `true` or the text it refuses. The record codec passes
+    // any other value to it as it is.
+    if (typeof value !== "object") return new RefusedKey(value)
+    if (value === null) return fields.length > 0 ? new RefusedKey(value) : value
+    if (!isPlainObject(value)) return value
+    // IDL.encode calls the record's own `hasOwnProperty` for each field, which
+    // an object without Object.prototype does not have. The record codec
+    // reads its fields another way.
+    if (
+      !this.display &&
+      fields.length > 0 &&
+      Object.getPrototypeOf(value) === null
+    ) {
+      return new RefusedKey(value)
+    }
+    return this.mapFields(value, fields, true)
   }
 
   visitTuple<T extends any[]>(
@@ -357,8 +577,16 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
   ): unknown {
     if (!isPlainObject(value)) return value
     if (!this.display) {
+      // IDL.encode takes one own key, `undefined` or not, which names an arm,
+      // and calls the value's own `hasOwnProperty`. JSON leaves out a key whose
+      // value is undefined, so `{ A: 1, B: undefined }`, which it refuses, had
+      // the key of `{ A: 1 }`.
       const tags = Object.keys(value)
-      return tags.length === 1 ? this.mapArm(value, fields, tags[0]) : value
+      const arm =
+        tags.length === 1 && Object.getPrototypeOf(value) !== null
+          ? fields.find(([label]) => label === tags[0])
+          : undefined
+      return arm ? this.mapFields(value, [arm]) : new RefusedKey(value)
     }
     // The variant codec names the arm in `_type`, or else by the one key the
     // value has.
@@ -375,11 +603,12 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
     if (!arm) return value
     const [label, type] = arm
     const payload = hasOwn(value, label) ? value[label] : undefined
-    // What the codec sends: nothing for a null arm, whatever the payload, and
-    // nothing for a missing payload unless the arm is an opt, whose none that
-    // is.
+    // What the codec sends: nothing for a null or a reserved arm, whatever the
+    // payload, and nothing for a missing payload unless the arm is an opt,
+    // whose none that is.
     const sent =
       !(type instanceof IDL.NullClass) &&
+      !isReserved(type) &&
       ((payload !== null && payload !== undefined) || isOpt(type))
     const key = !sent
       ? undefined
