@@ -242,7 +242,14 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     rootField: FormFieldNode
   ): VariableRefCandidate[] {
     const out: VariableRefCandidate[] = []
-    const walk = (field: FormFieldNode, expr: string, label: string) => {
+    // `expanded` holds the recursive types already opened on the path to a
+    // field, so each is opened once per path and the walk ends.
+    const walk = (
+      field: FormFieldNode,
+      expr: string,
+      label: string,
+      expanded: ReadonlySet<string>
+    ) => {
       out.push({
         expr,
         label,
@@ -250,11 +257,23 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
         fieldType: field.type,
         sourceNodeId,
       })
-
+      walkChildren(field, expr, label, expanded)
+    }
+    const walkChildren = (
+      field: FormFieldNode,
+      expr: string,
+      label: string,
+      expanded: ReadonlySet<string>
+    ) => {
       switch (field.type) {
         case "record":
           for (const child of field.fields) {
-            walk(child, `${expr}.${child.label}`, `${label}.${child.label}`)
+            walk(
+              child,
+              `${expr}.${child.label}`,
+              `${label}.${child.label}`,
+              expanded
+            )
           }
           break
         case "tuple":
@@ -264,19 +283,38 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
           // and `$get_callback.canisterId` is not in the [principal, method]
           // pair it resolves against. The candidate's label keeps the name.
           field.fields.forEach((child, index) => {
-            walk(child, `${expr}.${index}`, `${label}.${child.label}`)
+            walk(child, `${expr}.${index}`, `${label}.${child.label}`, expanded)
           })
           break
         case "variant":
           for (const child of field.options) {
-            walk(child, `${expr}.${child.label}`, `${label}.${child.label}`)
+            walk(
+              child,
+              `${expr}.${child.label}`,
+              `${label}.${child.label}`,
+              expanded
+            )
           }
           break
         case "optional":
-          walk(field.innerField, `${expr}.some`, `${label}.some`)
+          walk(field.innerField, `${expr}.some`, `${label}.some`, expanded)
+          break
+        case "recursive":
+          // A recursive node stands for its inner type at the same path, so
+          // the inner type's members are its members. Stopping at every one
+          // offered nothing inside a result whose whole type is recursive,
+          // such as ICRC-3's GetBlocksResult. The type is opened the first
+          // time a path meets it; where it comes round again, the walk stops.
+          if (!expanded.has(field.typeName)) {
+            walkChildren(
+              field.extract(),
+              expr,
+              label,
+              new Set(expanded).add(field.typeName)
+            )
+          }
           break
         case "vector":
-        case "recursive":
         case "unknown":
         case "blob":
         case "principal":
@@ -288,7 +326,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       }
     }
 
-    walk(rootField, rootExpr, rootLabel)
+    walk(rootField, rootExpr, rootLabel, new Set())
     return out
   }
 
