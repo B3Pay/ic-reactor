@@ -150,10 +150,11 @@ Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
 (defaults to `"local"`).
 
 If environment detection fails, the plugin falls back to proxying `/api` to
-`http://127.0.0.1:4943`, and sets no cookie. It warns when that happens with
-canisters configured, and when a configured canister has no ID, because the
-failure is otherwise indistinguishable from success until the app breaks on an
-undefined canister id. Run with `DEBUG=ic-reactor` to see the `icp` output
+`http://127.0.0.1:4943`, and sets no cookie, or with no canisters configured one
+that names only icp-cli's built-in Internet Identity. It warns when that happens
+with canisters configured, and when a configured canister has no ID, because
+the failure is otherwise indistinguishable from success until the app breaks on
+an undefined canister id. Run with `DEBUG=ic-reactor` to see the `icp` output
 behind the warning.
 
 Detection is complete once `icp` reports the network and every configured
@@ -165,10 +166,12 @@ complete, page loads run no further `icp` commands, so redeploying into a
 fresh network, with new canister IDs and a new root key, needs a dev server
 restart. A configured canister you never deploy locally keeps detection
 incomplete, so every page load runs `icp` for it; set its `canisterId` and it
-counts as resolved.
+counts as resolved. If you never run a local network, set
+`injectEnvironment: false` and page loads run no `icp`.
 
-If your Vite config already sets `server.proxy["/api"]`, the plugin leaves that
-entry alone, whether detection succeeds or not.
+If your Vite config or another plugin sets `server.proxy["/api"]`, the plugin
+leaves that entry alone, whether detection succeeds or not, and that proxy does
+not follow detection.
 
 ## File Regeneration
 

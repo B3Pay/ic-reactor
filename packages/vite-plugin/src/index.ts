@@ -55,7 +55,17 @@ export interface IcReactorPluginOptions {
    */
   target?: CodegenTarget
   /**
-   * Automatically inject `ic_env` cookie for local development?
+   * Inject the local IC environment under `vite dev` and `vite preview`: set
+   * the `ic_env` cookie on each response and proxy `/api` to the network the
+   * `icp` CLI reports.
+   *
+   * Until `icp` reports a network and every configured canister has an ID
+   * (a configured `canisterId` counts), each page load asks `icp` again, so a
+   * deploy after the server started needs only a reload. Once detection is
+   * complete, page loads run no `icp` command, and a redeploy into a fresh
+   * network needs a restart. An `/api` proxy that the Vite config or another
+   * plugin sets is left alone.
+   *
    * Default: true
    */
   injectEnvironment?: boolean
@@ -378,7 +388,8 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
             proxyOptions.target = next.proxyTarget
           }
           if (previous) {
-            reportDetectionProgress(previous, next, ownsApiProxy)
+            // Only a proxy the plugin kept following moves with detection.
+            reportDetectionProgress(previous, next, apiProxyOptions.size > 0)
           }
         },
       })
@@ -393,6 +404,16 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
           // that configureServer adds sets it per response, from the latest
           // detection. See dev-environment.ts.
           proxy: apiProxy(userConfig, state.proxyTarget, (proxyOptions) => {
+            // A plugin whose config hook runs after this one can proxy /api
+            // as well. Vite merges its entry over the one returned here and
+            // keeps this `configure`, so a target other than the one returned
+            // here is that plugin's, and it stays where that plugin put it.
+            if (proxyOptions.target !== state.proxyTarget) {
+              debugLog(
+                "Another plugin changed the target of the /api proxy, so the plugin leaves that proxy alone."
+              )
+              return
+            }
             // Vite hands the proxy these options on every request, so a new
             // target set here takes effect on the next one.
             apiProxyOptions.add(proxyOptions)
@@ -681,16 +702,21 @@ function warnAboutIncompleteDetection(
   }
 }
 
-/** Report what a detection after startup found that the one before had not. */
+/**
+ * Report what a detection after startup found that the one before had not.
+ *
+ * @param followsApiProxy - Whether the `/api` proxy moves with detection. It
+ * does not when the Vite config or another plugin set its target.
+ */
 function reportDetectionProgress(
   previous: LocalEnvironmentState,
   next: LocalEnvironmentState,
-  ownsApiProxy: boolean
+  followsApiProxy: boolean
 ): void {
   if (!previous.environment && next.environment) {
     console.log(
       `[ic-reactor] Detected the local IC network: the ic_env cookie now carries its root key` +
-        (ownsApiProxy ? ` and /api goes to ${next.proxyTarget}.` : ".")
+        (followsApiProxy ? ` and /api goes to ${next.proxyTarget}.` : ".")
     )
   }
 

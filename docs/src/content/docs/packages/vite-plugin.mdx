@@ -140,7 +140,9 @@ plugin tries to read local network details from the `icp` CLI, then:
 3. proxies `/api` to the local replica
 
 If `icp` CLI environment detection is unavailable, the plugin falls back to
-proxying `/api` to `http://127.0.0.1:4943`, and sets no cookie.
+proxying `/api` to `http://127.0.0.1:4943`, and sets no cookie. With no
+canisters configured it still sets one, naming only icp-cli's built-in Internet
+Identity at `http://id.ai.localhost:8000/authorize`.
 
 Detection is complete once `icp` reports the network and every configured
 canister has an ID. Until then the plugin asks `icp` again on each page load,
@@ -152,10 +154,12 @@ redeploying into a fresh network, with new canister IDs and a new root key,
 needs a dev server restart. The terminal warns at startup while detection is
 incomplete, and says when a later page load completes it. A configured canister
 you never deploy locally keeps detection incomplete, so every page load runs
-`icp` for it; set its `canisterId` and it counts as resolved.
+`icp` for it; set its `canisterId` and it counts as resolved. If you never run a
+local network, set `injectEnvironment: false` and page loads run no `icp`.
 
-If your Vite config already sets `server.proxy["/api"]`, the plugin leaves that
-entry alone, whether detection succeeds or not.
+If your Vite config or another plugin sets `server.proxy["/api"]`, the plugin
+leaves that entry alone, whether detection succeeds or not, and that proxy does
+not follow detection.
 
 If you provide `canisterId` in the plugin config, that fixed ID overrides the
 auto-detected development value for that canister.

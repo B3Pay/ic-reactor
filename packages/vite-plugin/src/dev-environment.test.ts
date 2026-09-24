@@ -12,7 +12,7 @@ import os from "node:os"
 import path from "node:path"
 import type { AddressInfo } from "node:net"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { createServer, preview } from "vite"
+import { createServer, preview, type Plugin } from "vite"
 import { icReactor } from "./index.js"
 
 const ROOT_KEY =
@@ -163,14 +163,17 @@ describe.skipIf(process.platform === "win32")(
         target: "core",
       })
 
-    /** Start `vite dev` and serve its middlewares on a port. */
-    async function startDev(): Promise<number> {
+    /**
+     * Start `vite dev` and serve its middlewares on a port. `laterPlugins` run
+     * their config hooks after this plugin's.
+     */
+    async function startDev(laterPlugins: Plugin[] = []): Promise<number> {
       const server = await createServer({
         root,
         configFile: false,
         logLevel: "silent",
         server: { middlewareMode: true, hmr: false },
-        plugins: [plugin()],
+        plugins: [plugin(), ...laterPlugins],
       })
       closers.push(() => server.close())
       const httpServer = http.createServer(server.middlewares)
@@ -238,6 +241,45 @@ describe.skipIf(process.platform === "win32")(
       const api = await get(port, "/api/v2/status", "*/*")
       expect(api.status).toBe(200)
       expect(api.body).toBe("replica:/api/v2/status")
+    }, 30_000)
+
+    // A plugin whose config hook runs after this one can proxy /api too. Vite
+    // merges its entry over the plugin's own and keeps the plugin's
+    // `configure`, which then pointed /api back at the detected network.
+    it("leaves /api where a later plugin points it", async () => {
+      const { replicaUrl, setState } = await setUp((replicaUrl) => ({
+        network: { root_key: ROOT_KEY, api_url: replicaUrl },
+        ids: {},
+      }))
+      const backend = http.createServer((req, res) =>
+        res.end(`backend:${req.url}`)
+      )
+      const backendUrl = `http://127.0.0.1:${await listen(backend)}`
+      closers.push(() => new Promise((resolve) => backend.close(resolve)))
+      const port = await startDev([
+        {
+          name: "later-api-proxy",
+          config: () => ({
+            server: { proxy: { "/api": { target: backendUrl } } },
+          }),
+        },
+      ])
+
+      expect((await get(port, "/api/v2/status", "*/*")).body).toBe(
+        "backend:/api/v2/status"
+      )
+
+      // A detection after startup does not move it either.
+      setState({
+        network: { root_key: ROOT_KEY, api_url: replicaUrl },
+        ids: { backend: BACKEND_ID },
+      })
+      expect((await get(port, "/")).icEnv).toContain(
+        `PUBLIC_CANISTER_ID:backend=${BACKEND_ID}`
+      )
+      expect((await get(port, "/api/v2/status", "*/*")).body).toBe(
+        "backend:/api/v2/status"
+      )
     }, 30_000)
 
     it("does not run icp for a module request while detection is incomplete", async () => {

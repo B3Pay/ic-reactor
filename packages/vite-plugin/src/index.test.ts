@@ -713,6 +713,57 @@ describe("icReactor", () => {
         },
       })
     })
+
+    // A plugin whose config hook runs after this one can proxy /api as well.
+    // Vite merges its entry over the plugin's own and keeps the plugin's
+    // `configure`, which then took /api back to the detected network.
+    it("should leave /api where a later plugin points it", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {})
+      const consoleLogSpy = vi
+        .spyOn(console, "log")
+        .mockImplementation(() => {})
+      answerIcp({}, new Error("no local network is running"))
+      const plugin = createVitePlugin(mockOptions)
+      const laterTarget = "http://127.0.0.1:3000"
+
+      const resolved = await resolveViteConfig(
+        {
+          configFile: false,
+          logLevel: "silent",
+          plugins: [
+            plugin,
+            {
+              name: "later-api-proxy",
+              config: () => ({
+                server: { proxy: { "/api": { target: laterTarget } } },
+              }),
+            },
+          ],
+        },
+        "serve"
+      )
+      const apiEntry = resolved.server.proxy?.["/api"] as any
+      const proxyOptions = { ...apiEntry }
+      apiEntry.configure({}, proxyOptions)
+      expect(proxyOptions.target).toBe(laterTarget)
+
+      // The network comes up on another port. The cookie follows it, /api
+      // stays with the later plugin, and the terminal does not claim it moved.
+      answerIcp(
+        { test_canister: "mock-canister-id" },
+        { root_key: "mock-root-key", api_url: "http://127.0.0.1:8000" }
+      )
+      mockServer.middlewares.use.mockClear()
+      plugin.configureServer(mockServer)
+      expect(
+        await request(mockServer.middlewares.use.mock.calls[0][0])
+      ).toContain("ic_root_key%3Dmock-root-key")
+
+      expect(proxyOptions.target).toBe(laterTarget)
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        "[ic-reactor] Detected the local IC network: the ic_env cookie now carries its root key."
+      )
+    })
   })
 
   describe("buildStart", () => {
