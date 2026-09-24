@@ -573,9 +573,36 @@ export class AuthenticationManager {
       return this.authClient
     }
 
-    this.authClient = new AuthClient(this.toClientOptions(options))
+    return this.installClient(
+      new AuthClient(this.toClientOptions(options)),
+      options
+    )
+  }
+
+  /**
+   * Makes `client`, which this manager built for `options`, the current one.
+   *
+   * The client it replaces was built here too, for other options: a caller's
+   * `authClient` is never replaced. It was dropped with nothing released, so a
+   * v10 client kept its browser listeners, its state subscription and its
+   * session's refresh timer for the life of the page, one more for each switch
+   * between option sets, such as a one-click sign-in and a plain one (#729).
+   * v10 asks for `dispose()` on a client being discarded, and a new
+   * interaction already takes its signer channel from the old client, so this
+   * adds no failure of its own. A v8 client has nothing to dispose; see
+   * `withSharedIdleCallback()` for the callback it leaves registered.
+   */
+  private installClient(
+    client: AuthClientLike,
+    options?: AuthenticationClientOptions
+  ): AuthClientLike {
+    const replaced = this.authClient
+    this.authClient = client
     this.authClientOptions = options
-    return this.authClient
+    if (replaced && replaced !== client) {
+      disposeClient(replaced)
+    }
+    return client
   }
 
   /** @internal Used by IdentityAttributesManager. */
@@ -620,9 +647,10 @@ export class AuthenticationManager {
       return undefined
     }
 
-    this.authClient = new AuthClient(this.toClientOptions(options))
-    this.authClientOptions = options
-    return this.authClient
+    return this.installClient(
+      new AuthClient(this.toClientOptions(options)),
+      options
+    )
   }
 
   /**
@@ -635,7 +663,9 @@ export class AuthenticationManager {
    */
   private toClientOptions(options?: AuthenticationClientOptions): unknown {
     return toAuthClientConstructorOptions(
-      options,
+      this.authClientFlavor === "legacy"
+        ? withSharedIdleCallback(options)
+        : options,
       this.authClientFlavor,
       this.identityProviderPairing(options?.identityProvider),
       this.sessionAgentOptions()
@@ -1080,6 +1110,59 @@ function importAuthClientModule(): Promise<unknown> {
     // stub the specifier) throw synchronously rather than rejecting.
     return Promise.reject(error)
   }
+}
+
+/**
+ * Releases a client IC Reactor built and no longer uses. `dispose()` exists
+ * from `@icp-sdk/auth` v9; a v8 client has nothing to release. A throw is
+ * ignored: the client is being discarded either way.
+ */
+function disposeClient(client: AuthClientLike) {
+  try {
+    ;(client as { dispose?: () => void }).dispose?.()
+  } catch {
+    // Nothing more can be done for a client that failed to let go.
+  }
+}
+
+/** The wrapper each app `onIdle` gets; see {@link withSharedIdleCallback}. */
+const sharedIdleCallbacks = new WeakMap<() => unknown, () => unknown>()
+
+/**
+ * Hands every v8 client the same wrapper around the app's `idleOptions.onIdle`.
+ *
+ * v8's `IdleManager` is one per page. Each client registers its `onIdle` on it
+ * once it signs in or restores a session, and a callback cannot be removed, so
+ * a manager that rebuilt its client for per-call options ran the app's `onIdle`
+ * once per client it had built on every idle period: three times after a
+ * sign-in, a one-click sign-in and another sign-in (#729). The `IdleManager`
+ * runs its callbacks in one synchronous loop, so the wrapper runs `onIdle` on
+ * the first call of a loop and skips the calls after it. The same function
+ * gets the same wrapper however many managers pass it.
+ */
+function withSharedIdleCallback(
+  options?: AuthenticationClientOptions
+): AuthenticationClientOptions | undefined {
+  const onIdle = options?.idleOptions?.onIdle
+  if (!onIdle) {
+    return options
+  }
+  let shared = sharedIdleCallbacks.get(onIdle)
+  if (!shared) {
+    let running = false
+    shared = () => {
+      if (running) return undefined
+      running = true
+      // Cleared once the loop that called it is over, so the next idle period
+      // runs `onIdle` again.
+      queueMicrotask(() => {
+        running = false
+      })
+      return onIdle()
+    }
+    sharedIdleCallbacks.set(onIdle, shared)
+  }
+  return { ...options, idleOptions: { ...options.idleOptions, onIdle: shared } }
 }
 
 /**

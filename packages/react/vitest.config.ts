@@ -8,6 +8,7 @@ import { defineConfig } from "vitest/config"
  */
 const REAL_AUTH_CLIENT_TESTS = [
   "tests/auth/internet-identity-integration.test.ts",
+  "tests/auth/auth-client-lifecycle.test.ts",
 ]
 
 export default defineConfig({

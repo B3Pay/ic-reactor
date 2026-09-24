@@ -64,8 +64,9 @@ A v10 client will hand you a delegation broader than a `targets` list asks for.
 Pin `@icp-sdk/auth` to `^8` if you depend on canister-scoped delegations.
 
 > **Support scope.** The real-client suite
-> (`tests/auth/internet-identity-integration.test.ts`) runs the actual
-> `AuthClient` under v10 and under v8. A fake Internet Identity answers both
+> (`tests/auth/internet-identity-integration.test.ts` and
+> `tests/auth/auth-client-lifecycle.test.ts`) runs the actual `AuthClient`
+> under v10 and under v8. A fake Internet Identity answers both
 > sign-in protocols (`icrc34_delegation` and `ii_session_delegation`). A fake
 > replica certifies v10's mint and revoke calls
 > (`app_prepare_delegation`, `app_get_delegation`, `app_revoke_session`) and

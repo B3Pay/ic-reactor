@@ -160,7 +160,9 @@ serves neither — rather than opening a popup the app cannot see into.
   `idleOptions: { disableIdle: true }` to turn it off,
   `idleOptions: { idleTimeout: 30 * 60_000 }` to lengthen it, or
   `idleOptions: { disableDefaultIdleCallback: true, onIdle: … }` to keep the
-  detection but handle the timeout yourself. v10 drops `idleOptions` with a
+  detection but handle the timeout yourself. Your `onIdle` runs once per idle
+  period, even after the manager has built another client for per-call options
+  such as `openIdProvider`. v10 drops `idleOptions` with a
   warning and leaves the idle limit to the identity provider: pass
   `maxTimeToIdle` to `login()` to set it, and `disableBrowserActivity: true` if
   only requests should count as activity.
