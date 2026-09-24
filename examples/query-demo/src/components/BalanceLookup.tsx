@@ -1,14 +1,18 @@
 import { Suspense, useMemo, useState } from "react"
 import { Principal } from "@icp-sdk/core/principal"
+import type { ReactorArgsOf } from "@ic-reactor/react"
 import { styles } from "../styles"
 import { BalanceCard } from "./Cards"
-import { getIcpBalance, getCkBtcBalance, getCkEthBalance } from "../reactor"
+import {
+  getIcpBalance,
+  getCkBtcBalance,
+  getCkEthBalance,
+  type icpReactor,
+} from "../reactor"
 
-// Display account type (used with DisplayReactor)
-interface DisplayAccount {
-  owner: string
-  subaccount?: null | Uint8Array
-}
+// The ledger's account in display form (the owner as principal text), read
+// off the reactor rather than written out by hand.
+type DisplayAccount = ReactorArgsOf<typeof icpReactor, "icrc1_balance_of">[0]
 
 export function BalanceLookup() {
   const [principalInput, setPrincipalInput] = useState(

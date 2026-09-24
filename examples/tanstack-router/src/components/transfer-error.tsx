@@ -1,12 +1,12 @@
 import { isCanisterError, isCallError } from "@ic-reactor/react"
-import type { LedgerService } from "@/canisters/ledger/reactor"
-import type { ReactorReturnErr } from "@ic-reactor/react"
+import type { ReactorErrorOf } from "@ic-reactor/react"
+import type { ledgerReactor } from "@/canisters/ledger/reactor"
 
-// Type for the transfer error from the ICRC1 ledger
-export type TransferErrorType = ReactorReturnErr<
-  LedgerService,
-  "icrc1_transfer",
-  "display"
+// The error of an ICRC1 transfer, read off the reactor: its service and its
+// display transform come with it, so neither is spelled out here.
+export type TransferErrorType = ReactorErrorOf<
+  typeof ledgerReactor,
+  "icrc1_transfer"
 >
 
 /**
