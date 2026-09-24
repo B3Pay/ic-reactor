@@ -397,6 +397,8 @@ export interface ValidateCanisterConfigOptions {
   mode?: unknown
   /** Resolved runtime target (`canisterConfig.target` / global `target`). */
   target?: unknown
+  /** `canisterConfig.factories`, if the config sets it. */
+  factories?: unknown
 }
 
 /**
@@ -417,6 +419,7 @@ export function assertSafeCanisterConfig(
     projectRoot,
     mode,
     target,
+    factories,
   } = options
 
   assertSafeCanisterName(name)
@@ -426,6 +429,24 @@ export function assertSafeCanisterConfig(
   // module specifier they are imported from, so they must be known values.
   if (mode != null) assertOneOf("mode", mode, REACTOR_CLASS_NAMES)
   if (target != null) assertOneOf("target", target, CODEGEN_TARGETS)
+
+  // A string such as "false" would otherwise read as switched on.
+  if (factories != null && typeof factories !== "boolean") {
+    throw new CodegenConfigError(
+      `Invalid factories ${JSON.stringify(factories)} for canister ${JSON.stringify(name)}: ` +
+        `must be true or false.`
+    )
+  }
+  // The factories are React Query objects from @ic-reactor/react, which a
+  // core target is chosen to avoid.
+  if (factories === true && target != null && target !== "react") {
+    throw new CodegenConfigError(
+      `Invalid factories for canister ${JSON.stringify(name)}: the generated query and ` +
+        `mutation factories come from @ic-reactor/react, so they need target "react", ` +
+        `and this canister's target is ${JSON.stringify(target)}. Use the reactor's ` +
+        `fetchQuery() and callMethod() with target "core", or set target "react".`
+    )
+  }
 
   const outDir =
     canisterOutDir != null

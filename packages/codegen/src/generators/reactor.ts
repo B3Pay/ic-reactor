@@ -20,7 +20,12 @@
  *   } = createActorHooks(backendReactor)
  */
 
-import { toPascalCase, getReactorName, getServiceTypeName } from "../naming.js"
+import {
+  ACTOR_HOOK_EXPORTS,
+  getReactorName,
+  getServiceTypeName,
+  toPascalCase,
+} from "../naming.js"
 import type { CodegenTarget, ReactorClassName } from "../types.js"
 import { resolveDeclarationsBaseName } from "../validate.js"
 
@@ -72,8 +77,8 @@ function getReactorClassImportSource(
 }
 
 /**
- * The type arguments the generated `createActorHooks` call passes, or an empty
- * string when TypeScript should infer them.
+ * The transform the generated code names in the type arguments of a call that
+ * takes the reactor, or `undefined` when TypeScript should infer it.
  *
  * `createActorHooks` has one overload for `DisplayReactor<Service>` and one for
  * `Reactor<Service, Transform>`. For those two classes TypeScript reads the type
@@ -83,28 +88,43 @@ function getReactorClassImportSource(
  * or one with a recursive type such as Motoko's `List`, that comparison passes
  * TypeScript's instantiation limit, and the generated file fails to compile with
  * TS2589. Passing the service and the class's transform skips the inference and
- * produces the same hooks.
+ * produces the same hooks. The generated query and mutation factories take
+ * the reactor as `Reactor<Service, Transform>` too, and are passed the same
+ * type arguments, so they never depend on that inference either.
  *
  * The core classes keep the inferred call, so their output does not change.
+ */
+export function getExplicitTransform(
+  reactorClass: ReactorClassName
+): "candid" | "display" | "metadataDisplay" | undefined {
+  switch (reactorClass) {
+    case "Reactor":
+    case "DisplayReactor":
+      return undefined
+    case "CandidReactor":
+      return "candid"
+    case "CandidDisplayReactor":
+      return "display"
+    case "MetadataDisplayReactor":
+      return "metadataDisplay"
+    default:
+      // getReactorClassImportSource has already rejected any other value.
+      throw new Error(`Unknown reactor class ${JSON.stringify(reactorClass)}.`)
+  }
+}
+
+/**
+ * The type arguments the generated `createActorHooks` call passes, or an empty
+ * string when TypeScript should infer them. See {@link getExplicitTransform}.
  */
 function getHookTypeArguments(
   reactorClass: ReactorClassName,
   serviceName: string
 ): string {
-  switch (reactorClass) {
-    case "Reactor":
-    case "DisplayReactor":
-      return ""
-    case "CandidReactor":
-      return `<${serviceName}, "candid">`
-    case "CandidDisplayReactor":
-      return `<${serviceName}, "display">`
-    case "MetadataDisplayReactor":
-      return `<${serviceName}, "metadataDisplay">`
-    default:
-      // getReactorClassImportSource has already rejected any other value.
-      throw new Error(`Unknown reactor class ${JSON.stringify(reactorClass)}.`)
-  }
+  const transform = getExplicitTransform(reactorClass)
+  return transform === undefined
+    ? ""
+    : `<${serviceName}, ${JSON.stringify(transform)}>`
 }
 
 /**
@@ -136,18 +156,15 @@ export function generateReactorFile(options: ReactorGeneratorOptions): string {
   const canisterIdLine = canisterId
     ? `  canisterId: ${JSON.stringify(canisterId)},\n`
     : ""
+  const hookBindings = ACTOR_HOOK_EXPORTS.map(
+    ([member, suffix]) => `  ${member}: use${pascalName}${suffix},\n`
+  ).join("")
   const hookExports =
     runtimeTarget === "react"
       ? `
 
 export const {
-  useActorQuery: use${pascalName}Query,
-  useActorSuspenseQuery: use${pascalName}SuspenseQuery,
-  useActorInfiniteQuery: use${pascalName}InfiniteQuery,
-  useActorSuspenseInfiniteQuery: use${pascalName}SuspenseInfiniteQuery,
-  useActorMutation: use${pascalName}Mutation,
-  useActorMethod: use${pascalName}Method,
-} = createActorHooks${getHookTypeArguments(reactorClass, serviceName)}(${reactorName})
+${hookBindings}} = createActorHooks${getHookTypeArguments(reactorClass, serviceName)}(${reactorName})
 `
       : ""
 
@@ -176,10 +193,42 @@ ${canisterIdLine}  name: ${JSON.stringify(canisterName)},
 })${hookExports || "\n"}`
 }
 
+export interface ReactorEntryGeneratorOptions {
+  /**
+   * Whether `index.factories.generated.ts` is generated too. The wrapper then
+   * re-exports it next to `index.generated.ts`. Default: `false`.
+   */
+  factories?: boolean
+}
+
 /**
  * Generate the user-facing `index.ts` wrapper content.
  */
-export function generateReactorEntryFile(): string {
+export function generateReactorEntryFile(
+  options: ReactorEntryGeneratorOptions = {}
+): string {
+  if (options.factories) {
+    return `/**
+ * Canister entrypoint.
+ *
+ * Created once by @ic-reactor/codegen and safe to customize.
+ * Keep the re-exports below if you want generated exports and types to stay in sync.
+ *
+ * Recommended customization points:
+ * - define app-specific query/mutation factories next to the generated ones
+ * - add app-specific hooks and cache invalidation wiring
+ * - compose generated APIs into route loaders/actions
+ *
+ * Do not edit \`index.generated.ts\` or \`index.factories.generated.ts\`; they
+ * are regenerated on each codegen run.
+ * AI guide: https://ic-reactor.b3pay.net/llms-full.txt
+ * Skill install: npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
+ */
+export * from "./index.generated"
+export * from "./index.factories.generated"
+`
+  }
+
   return `/**
  * Canister entrypoint.
  *

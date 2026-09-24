@@ -19,8 +19,41 @@ tooling/automation.
 ## Generated File Model
 
 - `index.generated.ts` is managed output
+- `index.factories.generated.ts` is managed output, written only when the
+  canister sets `factories: true`
 - `index.ts` is a stable wrapper
 - app-specific logic should live in wrappers or adjacent modules
+
+## Generated Factories (`factories: true`)
+
+One object per method, bound to the generated reactor, picked from the
+method's annotation in the `.did`:
+
+- `query`/`composite_query` with no arguments: `createQuery` → `<method>Query`
+- `query`/`composite_query` with arguments: `createQueryFactory` →
+  `<method>Query`, called with the args (`getUserQuery([id]).fetch()`)
+- update or `oneway`: `createMutation` → `<method>Mutation`; never a query
+
+`<method>` is camelCase (`get_message` → `getMessageQuery`). A leading digit
+gets a `_` prefix; a name another method or `index.generated.ts` (the hooks)
+already uses gets `_` appended, methods taking names in Candid's order.
+`getFactoryExportNames(canisterName, methods)` returns the names.
+
+```ts
+import { getMessageQuery, setMessageMutation } from "./declarations/backend"
+
+const { data } = getMessageQuery.useQuery()
+setMessageMutation.useMutation({ invalidateQueries: [getMessageQuery.getQueryKey()] })
+await setMessageMutation.execute(["hello"]) // outside React
+```
+
+Needs `target: "react"` (`CodegenConfigError` otherwise). Switching it off
+removes the file. An `index.ts` the user edited is not rewritten; the run then
+returns a `warnings` entry until it has
+`export * from "./index.factories.generated"`. Do not hand-write
+`createQuery`/`createMutation` modules that only restate a method name; set
+`factories: true` and customize in `index.ts`, whose own exports take
+precedence over `export *`.
 
 ## Validation
 
