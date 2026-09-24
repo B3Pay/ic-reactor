@@ -8,7 +8,7 @@ import type { ReactorParameters } from "../src/types/reactor.js"
 import { DisplayReactor } from "../src/display-reactor.js"
 import { createPollingStrategy } from "../src/utils/polling.js"
 import { isValidationError } from "../src/errors/index.js"
-import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
+import { installFakeReplica, type FakeReplica } from "../src/testing/index.js"
 
 /**
  * An app that shows several canisters of one interface (a wallet of ICRC
