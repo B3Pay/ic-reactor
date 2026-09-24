@@ -16,7 +16,9 @@ ledger reactor.
 - Next.js App Router with client-side IC Reactor providers
 - Stable `QueryClient` creation across server and client rendering
 - Internet Identity authentication through `AuthenticationManager`
-- Dynamic ICRC ledger queries against live mainnet canisters
+- Dynamic ICRC ledger queries against live mainnet canisters, from one ledger
+  reactor and a `forCanister` sibling per token
+- A balance query that waits for a valid account with `skipToken`
 - Shared `ClientManager` between auth and canister interaction
 - A server component that reads the ledger per request with `ClientManager`
   and `Reactor` imported from `@ic-reactor/react`
@@ -94,6 +96,29 @@ export default async function LedgerSnapshot() {
   const symbol = await ledger.fetchQuery({ functionName: "icrc1_symbol" })
   // …
 }
+```
+
+The ledger provider builds one reactor for the ICRC interface and hands out
+hooks for the selected token's sibling. Each token's queries are keyed by its
+own canister, so no `queryKey` workaround is needed, and switching back to a
+token shows its cached values at once:
+
+```tsx
+// src/app/ledger-provider.tsx
+const [ledger] = useState(
+  () =>
+    new Reactor<_SERVICE>({
+      name: "ledger",
+      clientManager,
+      canisterId,
+      idlFactory,
+    })
+)
+
+const hooks = useMemo(
+  () => createActorHooks(ledger.forCanister(activeCanisterId)),
+  [ledger, activeCanisterId]
+)
 ```
 
 <Aside type="note">

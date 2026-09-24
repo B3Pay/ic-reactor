@@ -1,7 +1,13 @@
 "use client"
 
-import React, { ReactNode, useState, createContext, useContext } from "react"
-import { defineReactor } from "@ic-reactor/react"
+import React, {
+  ReactNode,
+  useMemo,
+  useState,
+  createContext,
+  useContext,
+} from "react"
+import { Reactor, createActorHooks } from "@ic-reactor/react"
 import { useICAuth } from "./providers"
 import { idlFactory, canisterId } from "../declarations/ledger"
 import type { _SERVICE } from "../declarations/ledger"
@@ -17,26 +23,34 @@ export function LedgerReactorProvider({ children }: { children: ReactNode }) {
   const { clientManager } = useICAuth()
   const [activeCanisterId, setActiveCanisterId] = useState(canisterId)
 
-  // One-call setup: defineReactor builds the reactor + bound hooks once, reusing
-  // the shared ClientManager from the auth provider.
-  const [{ reactor, ...hooks }] = useState(() =>
-    defineReactor<_SERVICE>({
-      name: "ledger",
-      clientManager,
-      canisterId: activeCanisterId,
-      idlFactory,
-    })
+  // One reactor for the ledger interface, built once per mounted tree on the
+  // ClientManager the auth provider shares. It is never retargeted: each
+  // token gets a sibling of its own from forCanister.
+  const [ledger] = useState(
+    () =>
+      new Reactor<_SERVICE>({
+        name: "ledger",
+        clientManager,
+        canisterId,
+        idlFactory,
+      })
   )
 
-  // Change the canister ID of the reactor when user selects a different token
-  const setCanisterId = (newId: string) => {
-    reactor.setCanisterId(newId)
-    setActiveCanisterId(newId)
-  }
+  // The selected token's hooks. forCanister returns the same sibling for the
+  // same canister, and its queries are keyed by that canister, so switching
+  // back to a token shows its cached data at once.
+  const hooks = useMemo(
+    () => createActorHooks(ledger.forCanister(activeCanisterId)),
+    [ledger, activeCanisterId]
+  )
 
   return (
     <LedgerReactorContext.Provider
-      value={{ hooks, setCanisterId, currentCanisterId: activeCanisterId }}
+      value={{
+        hooks,
+        setCanisterId: setActiveCanisterId,
+        currentCanisterId: activeCanisterId,
+      }}
     >
       {children}
     </LedgerReactorContext.Provider>

@@ -59,27 +59,23 @@ export default function TokenExplorer() {
     }
   }, [principal])
 
-  // Queries for token metadata directly from mainnet
-  // Pass queryKey so that the cache is partitioned by currentCanisterId and react-query knows to refetch when the selected token changes!
+  // Queries for token metadata directly from mainnet. The hooks belong to the
+  // selected token's reactor, and its query keys start with its canister, so
+  // each token is cached apart and a switch fetches the new token's values.
   const { data: name, isLoading: nameLoading } = useActorQuery({
     functionName: "icrc1_name",
-    queryKey: [currentCanisterId],
   })
   const { data: symbol, isLoading: symbolLoading } = useActorQuery({
     functionName: "icrc1_symbol",
-    queryKey: [currentCanisterId],
   })
   const { data: decimals, isLoading: decimalsLoading } = useActorQuery({
     functionName: "icrc1_decimals",
-    queryKey: [currentCanisterId],
   })
   const { data: fee, isLoading: feeLoading } = useActorQuery({
     functionName: "icrc1_fee",
-    queryKey: [currentCanisterId],
   })
   const { data: totalSupply, isLoading: supplyLoading } = useActorQuery({
     functionName: "icrc1_total_supply",
-    queryKey: [currentCanisterId],
   })
 
   // The account whose balance to show, once the address parses
@@ -103,7 +99,6 @@ export default function TokenExplorer() {
   } = useActorQuery({
     functionName: "icrc1_balance_of",
     args: account ? [account] : skipToken,
-    queryKey: [currentCanisterId],
   })
 
   const handleSearch = (e: React.FormEvent) => {
