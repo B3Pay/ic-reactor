@@ -25,6 +25,7 @@ import {
   useReactorQuery,
   useReactorSuspenseInfiniteQuery,
   useReactorSuspenseQuery,
+  type QueryFactoryFn,
   type SkipToken,
   type SkippedQuery,
 } from "../src/index.js"
@@ -140,6 +141,22 @@ describe("createQueryFactory takes skipToken in place of args", () => {
 
     // @ts-expect-error the skipped query has no fetch: check the args first
     void maybe.fetch()
+  })
+
+  it("keeps the factory's type as it was for ReturnType, Parameters and inference", () => {
+    // TypeScript reads these off the last call signature, so skipToken's
+    // signatures must not widen them.
+    expectTypeOf<ReturnType<typeof getBalance>>().toEqualTypeOf<typeof query>()
+    expectTypeOf<Parameters<typeof getBalance>[0]>().toEqualTypeOf<[Account]>()
+
+    // A helper written against QueryFactoryFn before skipToken existed
+    const fetchWith = <A, Q extends { fetch: () => Promise<unknown> }>(
+      factory: QueryFactoryFn<A, Q>,
+      args: A
+    ): Q => factory(args)
+    expectTypeOf(fetchWith(getBalance, [{ owner: "alice" }])).toEqualTypeOf<
+      typeof query
+    >()
   })
 })
 

@@ -647,10 +647,17 @@ export interface SkippableQueryFactoryFn<
   TQuery extends { useQuery: unknown },
 > extends QueryFactoryMethods {
   // Args first: a factory called with args must resolve to the full query
-  // object, not to the union the last signature returns.
+  // object, not to the union the args-or-skipToken signature returns.
   (args: TArgs): TQuery
   (args: SkipToken): SkippedQuery<TQuery>
   (args: TArgs | SkipToken): TQuery | SkippedQuery<TQuery>
+  // And args last as well: TypeScript reads an overloaded function's last
+  // signature for `ReturnType`, `Parameters` and inference, so
+  // `ReturnType<typeof getBalance>` stays the full query object, and a
+  // factory passed where a `QueryFactoryFn<A, Q>` is inferred still gives
+  // its args and query, as they did before `skipToken`. With the union
+  // signature last, all three widened to include the skipped query.
+  (args: TArgs): TQuery
 }
 
 // ============================================================================
