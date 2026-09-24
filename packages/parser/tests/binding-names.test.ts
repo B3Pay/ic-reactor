@@ -432,3 +432,404 @@ export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];`)
   })
 })
+
+// didToTs exports each type under its own name next to its own
+// `export interface _SERVICE`. A second `_SERVICE` merged into the service
+// interface or clashed with it (TS2300, TS2310), so the reactor was typed
+// against the wrong interface. A type named like a TypeScript type keyword,
+// such as `string`, could not be declared (TS2427, TS2457), and every reference
+// to it meant TypeScript's type. Such a type is now renamed with `_` appended,
+// in didToJs as in didToTs, except a `_SERVICE` that is the service itself.
+describe("a Candid type named _SERVICE or like a TypeScript type keyword", () => {
+  const CASES = {
+    serviceRecord: {
+      did: `
+        type _SERVICE = record { owner : principal };
+        service : { get : () -> (_SERVICE) query }
+      `,
+      consumer: `
+        import type { Principal } from "@icp-sdk/core/principal"
+        import type { _SERVICE, _SERVICE_ } from "./serviceRecord.js"
+
+        declare const service: _SERVICE
+        declare const owner: Principal
+        export const record: Promise<_SERVICE_> = service.get()
+        export const value: _SERVICE_ = { owner }
+        // The service's keys are its methods, and nothing merged into it.
+        export const methods: Record<keyof _SERVICE, true> = { get: true }
+      `,
+      methods: {
+        get: IDL.Func([], [IDL.Record({ owner: IDL.Principal })], ["query"]),
+      },
+      init: [] as IDL.Type[],
+    },
+    serviceAlias: {
+      did: `
+        type _SERVICE = text;
+        service : { get : () -> (_SERVICE) query }
+      `,
+      consumer: `
+        import type { _SERVICE, _SERVICE_ } from "./serviceAlias.js"
+
+        declare const service: _SERVICE
+        export const text: Promise<string> = service.get()
+        export const alias: _SERVICE_ = "text"
+        export const methods: Record<keyof _SERVICE, true> = { get: true }
+      `,
+      methods: { get: IDL.Func([], [IDL.Text], ["query"]) },
+      init: [] as IDL.Type[],
+    },
+    serviceFunc: {
+      did: `
+        type _SERVICE = func (nat) -> (nat) query;
+        service : { apply : _SERVICE; pass : (_SERVICE) -> () }
+      `,
+      consumer: `
+        import type { Principal } from "@icp-sdk/core/principal"
+        import type { _SERVICE, _SERVICE_ } from "./serviceFunc.js"
+
+        declare const service: _SERVICE
+        declare const principal: Principal
+        export const applied: Promise<bigint> = service.apply(1n)
+        export const passed: Promise<undefined> = service.pass([principal, "apply"])
+        export const func: _SERVICE_ = service.apply
+        export const methods: Record<keyof _SERVICE, true> = { apply: true, pass: true }
+      `,
+      methods: {
+        apply: IDL.Func([IDL.Nat], [IDL.Nat], ["query"]),
+        pass: IDL.Func([IDL.Func([IDL.Nat], [IDL.Nat], ["query"])], [], []),
+      },
+      init: [] as IDL.Type[],
+    },
+    // The actor's own type keeps its name, and is declared once.
+    serviceItself: {
+      did: `
+        type _SERVICE = service { get : () -> (text) query };
+        service : _SERVICE
+      `,
+      consumer: `
+        import type { _SERVICE } from "./serviceItself.js"
+
+        declare const service: _SERVICE
+        export const text: Promise<string> = service.get()
+        export const methods: Record<keyof _SERVICE, true> = { get: true }
+      `,
+      methods: { get: IDL.Func([], [IDL.Text], ["query"]) },
+      init: [] as IDL.Type[],
+    },
+    serviceClass: {
+      did: `
+        type _SERVICE = service { set : (nat) -> () };
+        service : (nat) -> _SERVICE
+      `,
+      consumer: `
+        import type { _SERVICE } from "./serviceClass.js"
+
+        declare const service: _SERVICE
+        export const set: Promise<undefined> = service.set(1n)
+        export const methods: Record<keyof _SERVICE, true> = { set: true }
+      `,
+      methods: { set: IDL.Func([IDL.Nat], [], []) },
+      init: [IDL.Nat],
+    },
+    // An alias of the service, and a recursive one, are the service too.
+    serviceAliasOfService: {
+      did: `
+        type _SERVICE = Api;
+        type Api = service { self : () -> (_SERVICE) query };
+        service : _SERVICE
+      `,
+      consumer: `
+        import type { Principal } from "@icp-sdk/core/principal"
+        import type { _SERVICE, Api } from "./serviceAliasOfService.js"
+
+        declare const service: _SERVICE
+        export const self: Promise<Principal> = service.self()
+        export const same: Api = service
+        export const methods: Record<keyof _SERVICE, true> = { self: true }
+      `,
+      methods: {},
+      init: [] as IDL.Type[],
+    },
+    keywords: {
+      did: `
+        type string = record { value : text };
+        type number = nat;
+        type bigint = int;
+        type symbol = variant { a; b };
+        type object = record { string; number };
+        type any = vec string;
+        type unknown = record { next : opt unknown };
+        type never = func (string) -> (number) query;
+        type undefined = service { get : () -> (undefined) query };
+        service : (object) -> {
+          put : (string, number, bigint, symbol) -> (any);
+          walk : (unknown) -> (never) query;
+          call : never;
+          peer : () -> (undefined) query;
+        }
+      `,
+      consumer: `
+        import type { Principal } from "@icp-sdk/core/principal"
+        import type {
+          _SERVICE,
+          any_,
+          bigint_,
+          never_,
+          number_,
+          object_,
+          string_,
+          symbol_,
+          undefined_,
+          unknown_,
+        } from "./keywords.js"
+
+        declare const service: _SERVICE
+        declare const peer: undefined_
+        const text: string_ = { value: "text" }
+        const count: number_ = 1n
+        const delta: bigint_ = -1n
+        const tag: symbol_ = { a: null }
+        const chain: unknown_ = { next: [{ next: [] }] }
+
+        export const pair: object_ = [text, count]
+        export const put: Promise<any_> = service.put(text, count, delta, tag)
+        export const texts: string_[] = [] as any_
+        export const walked: Promise<[Principal, string]> = service.walk(chain)
+        export const called: Promise<number_> = service.call(text)
+        export const func: never_ = service.call
+        export const peered: Promise<Principal> = service.peer()
+        export const got: Promise<Principal> = peer.get()
+      `,
+      methods: {
+        put: IDL.Func(
+          [
+            IDL.Record({ value: IDL.Text }),
+            IDL.Nat,
+            IDL.Int,
+            IDL.Variant({ a: IDL.Null, b: IDL.Null }),
+          ],
+          [IDL.Vec(IDL.Record({ value: IDL.Text }))],
+          []
+        ),
+        call: IDL.Func([IDL.Record({ value: IDL.Text })], [IDL.Nat], ["query"]),
+      },
+      init: [IDL.Tuple(IDL.Record({ value: IDL.Text }), IDL.Nat)],
+    },
+    // The actor's type, when it is named like a keyword, is renamed too.
+    keywordActor: {
+      did: `
+        type string = service { greet : (text) -> (text) query };
+        service : string
+      `,
+      consumer: `
+        import type { _SERVICE, string_ } from "./keywordActor.js"
+
+        declare const service: _SERVICE
+        export const greeting: Promise<string> = service.greet("world")
+        export const same: string_ = service
+      `,
+      methods: { greet: IDL.Func([IDL.Text], [IDL.Text], ["query"]) },
+      init: [] as IDL.Type[],
+    },
+    // When another type already has the name, it takes the next free one.
+    taken: {
+      did: `
+        type _SERVICE = record { a : text };
+        type _SERVICE_ = nat;
+        type string = text;
+        type string_ = nat;
+        service : { get : (_SERVICE_, string_) -> (_SERVICE, string) query }
+      `,
+      consumer: `
+        import type {
+          _SERVICE,
+          _SERVICE_,
+          _SERVICE__,
+          string_,
+          string__,
+        } from "./taken.js"
+
+        declare const service: _SERVICE
+        const first: _SERVICE_ = 1n
+        const second: string_ = 2n
+        export const got: Promise<[_SERVICE__, string__]> = service.get(first, second)
+        export const record: _SERVICE__ = { a: "a" }
+        export const text: string__ = "text"
+      `,
+      methods: {
+        get: IDL.Func(
+          [IDL.Nat, IDL.Nat],
+          [IDL.Record({ a: IDL.Text }), IDL.Text],
+          ["query"]
+        ),
+      },
+      init: [] as IDL.Type[],
+    },
+  }
+
+  it("renames the type in didToJs and didToTs alike", () => {
+    const did = `
+      // Not the service.
+      type _SERVICE = record { owner : principal; name : string };
+      type string = variant { short : text; long : text };
+      service : (string) -> {
+        get : () -> (_SERVICE) query;
+        set : (_SERVICE) -> ();
+      }
+    `
+
+    expect(parser.didToJs(did)).toBe(`export const idlFactory = ({ IDL }) => {
+  const string_ = IDL.Variant({ 'long' : IDL.Text, 'short' : IDL.Text });
+  const _SERVICE_ = IDL.Record({ 'owner' : IDL.Principal, 'name' : string_ });
+  return IDL.Service({
+    'get' : IDL.Func([], [_SERVICE_], ['query']),
+    'set' : IDL.Func([_SERVICE_], [], []),
+  });
+};
+export const init = ({ IDL }) => {
+  const string_ = IDL.Variant({ 'long' : IDL.Text, 'short' : IDL.Text });
+  return [string_];
+};`)
+    expect(parser.didToTs(did))
+      .toBe(`import type { Principal } from '@icp-sdk/core/principal';
+import type { ActorMethod } from '@icp-sdk/core/agent';
+import type { IDL } from '@icp-sdk/core/candid';
+
+/**
+ * Not the service.
+ */
+export interface _SERVICE_ { 'owner' : Principal, 'name' : string_ }
+export type string_ = { 'long' : string } |
+  { 'short' : string };
+export interface _SERVICE {
+  'get' : ActorMethod<[], _SERVICE_>,
+  'set' : ActorMethod<[_SERVICE_], undefined>,
+}
+export declare const idlFactory: IDL.InterfaceFactory;
+export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];`)
+  })
+
+  it("prints one interface _SERVICE, with the actor's docs, when the actor is the service named _SERVICE", () => {
+    const did = `
+      // Declares the service.
+      type _SERVICE = service {
+        get : () -> (text) query;
+        // Returns the service itself.
+        self : () -> (_SERVICE) query;
+      };
+      // The actor.
+      service : _SERVICE
+    `
+
+    expect(parser.didToTs(did))
+      .toBe(`import type { Principal } from '@icp-sdk/core/principal';
+import type { ActorMethod } from '@icp-sdk/core/agent';
+import type { IDL } from '@icp-sdk/core/candid';
+
+/**
+ * Declares the service.
+ * The actor.
+ */
+export interface _SERVICE {
+  'get' : ActorMethod<[], string>,
+  /**
+   * Returns the service itself.
+   */
+  'self' : ActorMethod<[], Principal>,
+}
+export declare const idlFactory: IDL.InterfaceFactory;
+export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];`)
+    expect(parser.didToJs(did)).toBe(`export const idlFactory = ({ IDL }) => {
+  const _SERVICE = IDL.Rec();
+  _SERVICE.fill(
+    IDL.Service({
+      'get' : IDL.Func([], [IDL.Text], ['query']),
+      'self' : IDL.Func([], [_SERVICE], ['query']),
+    })
+  );
+  return _SERVICE.getType();
+};
+export const init = ({ IDL }) => { return []; };`)
+  })
+
+  it("gives didToTs output that type-checks with skipLibCheck off", () => {
+    const files: Record<string, string> = {}
+    for (const [name, { did, consumer }] of Object.entries(CASES)) {
+      files[`${name}.d.ts`] = parser.didToTs(did)
+      files[`${name}.js`] = parser.didToJs(did)
+      files[`${name}-consumer.ts`] = consumer
+    }
+
+    expect(typeErrors(files)).toEqual([])
+    // A full TypeScript program is checked here; on a busy CI runner that can
+    // take longer than vitest's 5 s default.
+  }, 30_000)
+
+  it("gives didToJs output that loads, with the service the Candid declares", async () => {
+    for (const { did, methods, init: initTypes } of Object.values(CASES)) {
+      const js = parser.didToJs(did)
+      for (const { idlFactory, init } of [
+        loadStrict(js),
+        await importCandidDefinition(js),
+      ]) {
+        const service = idlFactory({ IDL })
+        for (const [name, func] of Object.entries(methods)) {
+          expect(method(service, name).display()).toBe(func.display())
+        }
+        expect(init?.({ IDL }).map((type) => type.display())).toEqual(
+          initTypes.map((type) => type.display())
+        )
+      }
+    }
+  })
+
+  // Only type names are renamed. A field, a method or a comment may use the
+  // names, and so may a type whose name merely starts with one.
+  it("changes nothing when only a field, a method or a comment has the name", () => {
+    const did = `
+      // string, number, _SERVICE and undefined, in a comment.
+      type Strings = record { string : text; "_SERVICE" : nat; undefined : null };
+      type _SERVICE_ = text;
+      type strings = variant { number; bigint };
+      service : { "_SERVICE" : (Strings) -> (_SERVICE_) query; string : (strings) -> () }
+    `
+
+    expect(parser.didToJs(did)).toBe(`export const idlFactory = ({ IDL }) => {
+  const Strings = IDL.Record({
+    'string' : IDL.Text,
+    'undefined' : IDL.Null,
+    '_SERVICE' : IDL.Nat,
+  });
+  const _SERVICE_ = IDL.Text;
+  const strings = IDL.Variant({ 'number' : IDL.Null, 'bigint' : IDL.Null });
+  return IDL.Service({
+    '_SERVICE' : IDL.Func([Strings], [_SERVICE_], ['query']),
+    'string' : IDL.Func([strings], [], []),
+  });
+};
+export const init = ({ IDL }) => { return []; };`)
+    expect(parser.didToTs(did))
+      .toBe(`import type { Principal } from '@icp-sdk/core/principal';
+import type { ActorMethod } from '@icp-sdk/core/agent';
+import type { IDL } from '@icp-sdk/core/candid';
+
+/**
+ * string, number, _SERVICE and undefined, in a comment.
+ */
+export interface Strings {
+  'string' : string,
+  'undefined' : null,
+  '_SERVICE' : bigint,
+}
+export type _SERVICE_ = string;
+export type strings = { 'number' : null } |
+  { 'bigint' : null };
+export interface _SERVICE {
+  '_SERVICE' : ActorMethod<[Strings], _SERVICE_>,
+  'string' : ActorMethod<[strings], undefined>,
+}
+export declare const idlFactory: IDL.InterfaceFactory;
+export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];`)
+  })
+})

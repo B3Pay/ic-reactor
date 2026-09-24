@@ -84,7 +84,31 @@ const ts = didToTs("service:{}")
 // export interface _SERVICE ...
 ```
 
-### Field names that look like numeric ids
+#### Renamed types
+
+`didToTs` exports each Candid type under its own name, next to the `_SERVICE`
+interface. A type TypeScript cannot declare under its name is renamed with `_`
+appended, and `didToJs` uses the same name:
+
+- a type named like a TypeScript type keyword: `string`, `number`, `bigint`,
+  `symbol`, `object`, `any`, `unknown`, `never` or `undefined`;
+- a type named `_SERVICE` that is not the service itself;
+- a type named like a JavaScript keyword, such as `class` (candid_parser's own
+  rule).
+
+```typescript
+didToTs(`type string = record { value : text };
+service : { get : () -> (string) query }`)
+// export interface string_ { 'value' : string }
+// export interface _SERVICE { 'get' : ActorMethod<[], string_> }
+```
+
+When `string_` is taken by another type, the next free name (`string__`) is
+used. A service type named `_SERVICE` that the service uses
+(`service : _SERVICE`) keeps its name and is declared once, as the `_SERVICE`
+interface.
+
+#### Field names that look like numeric ids
 
 Candid identifies a named record field or variant tag by the hash of its name.
 `@icp-sdk/core` reads an IDL key spelled `_<digits>_` or `_0x<hex digits>_`,

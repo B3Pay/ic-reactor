@@ -100,6 +100,17 @@ let that package load the parser when needed.
   (`0 : nat`) still prints as `_0_`. A hand-written `.did` that spells a
   Motoko numeric field as `_0_` must write it as `0`, the way Motoko prints
   it.
+- `didToTs` exports each Candid type under its own name, next to the service
+  interface `_SERVICE`. A type TypeScript cannot declare under its name is
+  renamed with `_` appended, in `didToJs` and `didToTs` alike: a type named
+  like a TypeScript type keyword (`string`, `number`, `bigint`, `symbol`,
+  `object`, `any`, `unknown`, `never`, `undefined`), and a type named
+  `_SERVICE` that is not the service itself. `type string = record { … }` is
+  exported as `string_`, or as `string__` when a type already has that name,
+  the way candid_parser renames a JavaScript keyword (`class` becomes
+  `class_`). A service type named `_SERVICE` that the service uses
+  (`service : _SERVICE`) keeps its name and is declared once, as the
+  `_SERVICE` interface.
 - Candid imports cannot be resolved from a single source string. Every function
   throws for `import service "file.did"`, because the methods of the imported
   service would be missing from the result. A plain `import "file.did"` is

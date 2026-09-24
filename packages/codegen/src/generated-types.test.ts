@@ -25,6 +25,22 @@ service : {
 }
 `
 
+/**
+ * Types the declarations cannot export under their Candid names: `_SERVICE`,
+ * next to the declarations' own `_SERVICE` interface, and `string`, a
+ * TypeScript type keyword. The reactor was typed against the Candid `text`
+ * (`string`), or against an interface merged with a Candid record.
+ */
+const RESERVED_NAMES_DID = `type _SERVICE = text;
+type string = record { value : text };
+type Account = record { owner : principal; name : string };
+
+service : {
+  get : () -> (_SERVICE) query;
+  put : (string) -> (Account);
+}
+`
+
 describe("generated files", () => {
   let project = ""
 
@@ -54,6 +70,7 @@ describe("generated files", () => {
       `import type { ClientManager } from "@ic-reactor/core"\n\nexport declare const clientManager: ClientManager\n`
     )
     fs.writeFileSync(path.join(project, "list.did"), MOTOKO_LIST_DID)
+    fs.writeFileSync(path.join(project, "reserved.did"), RESERVED_NAMES_DID)
   })
 
   afterAll(() => {
@@ -75,6 +92,47 @@ describe("generated files", () => {
       entries.push(path.join(project, outDir, "index.ts"))
     }
 
+    expect(typeErrors(entries)).toEqual([])
+  }, 120_000)
+
+  it("type a reactor by the service when the .did declares types named _SERVICE or string", async () => {
+    const outDir = path.join("src", "reserved")
+    const result = await runCanisterPipeline({
+      canisterConfig: {
+        name: "reserved",
+        didFile: "reserved.did",
+        mode: "Reactor",
+        outDir,
+      },
+      projectRoot: project,
+      globalConfig: { outDir: "src", clientManagerPath: "../clients" },
+    })
+    expect(result.error).toBeUndefined()
+
+    const caller = path.join(project, "src", "reserved-caller.ts")
+    fs.writeFileSync(
+      caller,
+      `import type { Principal } from "@icp-sdk/core/principal"
+import { reservedReactor } from "./reserved"
+import type { _SERVICE_, string_ } from "./reserved/declarations/reserved"
+
+declare const owner: Principal
+const text: string_ = { value: "text" }
+
+export const got: Promise<_SERVICE_> = reservedReactor.callMethod({
+  functionName: "get",
+})
+export const put: Promise<{ owner: Principal; name: string_ }> =
+  reservedReactor.callMethod({ functionName: "put", args: [text] })
+export const name: string_ = { value: owner.toText() }
+`
+    )
+
+    expect(typeErrors([caller])).toEqual([])
+  }, 120_000)
+
+  /** TypeScript's errors for `entries` and every file they import. */
+  function typeErrors(entries: string[]): string[] {
     const program = ts.createProgram(entries, {
       target: ts.ScriptTarget.ES2022,
       module: ts.ModuleKind.ESNext,
@@ -84,13 +142,11 @@ describe("generated files", () => {
       skipLibCheck: true,
       types: [],
     })
-    const errors = ts.getPreEmitDiagnostics(program).map((diagnostic) => {
+    return ts.getPreEmitDiagnostics(program).map((diagnostic) => {
       const where = diagnostic.file
         ? path.relative(project, diagnostic.file.fileName)
         : "(global)"
       return `${where}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")}`
     })
-
-    expect(errors).toEqual([])
-  }, 120_000)
+  }
 })

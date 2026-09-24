@@ -56,6 +56,26 @@ const TS_GLOBALS: [&str; 9] = [
     "BigInt64Array",
 ];
 
+/// The interface `didToTs` output declares the service as, which the generated
+/// reactor imports.
+const TS_SERVICE: &str = "_SERVICE";
+
+/// The names TypeScript keeps for its own types. No type or interface can be
+/// declared under one (TS2427, TS2457), and every reference to one means
+/// TypeScript's type. `boolean`, `void` and `null` are kept too, but they are
+/// JavaScript keywords, which candid_parser already prints with `_` appended.
+const TS_TYPE_KEYWORDS: [&str; 9] = [
+    "any",
+    "bigint",
+    "never",
+    "number",
+    "object",
+    "string",
+    "symbol",
+    "undefined",
+    "unknown",
+];
+
 /// The names candid_parser's JavaScript and TypeScript printers write with a
 /// `_` appended when a type has one (`class` as `class_`). A copy of
 /// `KEYWORDS` in candid_parser 0.4.1's `bindings/javascript.rs`, which is
@@ -151,6 +171,10 @@ pub fn did_to_js(prog: String) -> Result<String, String> {
         env = TypeEnv::new();
         actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     }
+    if rename_ts_reserved_types(&mut ast, &env) {
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
 
     let res = candid_parser::bindings::javascript::compile(&env, &actor);
 
@@ -185,6 +209,69 @@ fn rename_keyword_actor_type(ast: &mut IDLProg, env: &TypeEnv) -> bool {
     };
     let renamed = unused_type_name(env, &format!("{keyword}_"));
     rename_type(ast, &keyword, &renamed);
+    true
+}
+
+/// Renames each type `didToTs` output cannot declare under its own name, and
+/// returns whether it renamed one: a type named like a TypeScript type keyword,
+/// such as `string`, and a type named `_SERVICE` that is not the actor's.
+///
+/// `didToTs` exports each type under its own name next to its own `export
+/// interface _SERVICE`. `export interface string` does not compile (TS2427),
+/// and every reference to `string` meant TypeScript's `string`, so a method
+/// returning the Candid record was typed as returning text. A second
+/// `_SERVICE` merged into the service interface, or clashed with it (TS2300),
+/// and the reactor was typed against the wrong interface. Such a type takes
+/// the name with `_` appended (`string_`, `_SERVICE_`), the way candid_parser
+/// renames a JavaScript keyword, or the first free name with more `_`.
+/// `didToJs` renames the same types, so both outputs use one name.
+///
+/// A `_SERVICE` the actor names (`service : _SERVICE`) is the interface the
+/// output needs, and keeps its name: see `fold_actor_into_service_type`.
+fn rename_ts_reserved_types(ast: &mut IDLProg, env: &TypeEnv) -> bool {
+    let actor = actor_type_name(ast).map(str::to_string);
+    let reserved: Vec<&String> = env
+        .0
+        .keys()
+        .filter(|name| {
+            TS_TYPE_KEYWORDS.contains(&name.as_str())
+                || (name.as_str() == TS_SERVICE && actor.as_deref() != Some(TS_SERVICE))
+        })
+        .collect();
+    for name in &reserved {
+        let renamed = unused_type_name(env, &format!("{name}_"));
+        rename_type(ast, name, &renamed);
+    }
+    !reserved.is_empty()
+}
+
+/// Returns whether the actor is the type named `_SERVICE` (`service :
+/// _SERVICE`, or `service : (…) -> _SERVICE`), and when it is, moves the
+/// actor's doc comment onto that type.
+///
+/// candid_parser prints the type's declaration, which already is the
+/// `_SERVICE` interface or an alias of it, and then the actor line `export
+/// interface _SERVICE extends _SERVICE {}`: an interface that extends itself
+/// (TS2310), or one that clashes with the alias (TS2300). `didToTs` drops that
+/// line, so the actor's docs go with the declaration instead of landing on the
+/// line after it.
+fn fold_actor_into_service_type(ast: &mut IDLProg) -> bool {
+    if actor_type_name(ast) != Some(TS_SERVICE) {
+        return false;
+    }
+    let docs = ast
+        .actor
+        .as_mut()
+        .map(|actor| std::mem::take(&mut actor.docs))
+        .unwrap_or_default();
+    for dec in &mut ast.decs {
+        if let Dec::TypD(binding) = dec {
+            if binding.id == TS_SERVICE {
+                binding.docs.extend(docs);
+                break;
+            }
+        }
+    }
     true
 }
 
@@ -468,6 +555,11 @@ pub fn did_to_ts(prog: String) -> Result<String, String> {
         env = TypeEnv::new();
         actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     }
+    if rename_ts_reserved_types(&mut ast, &env) {
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
+    let actor_is_service_type = fold_actor_into_service_type(&mut ast);
 
     // The output exports each type under its own name, and also names the
     // imports `Principal` and `ActorMethod`, and the global `Array` and typed
@@ -518,6 +610,11 @@ pub fn did_to_ts(prog: String) -> Result<String, String> {
         for (renamed, aliased) in &imports {
             res = res.replacen(renamed, aliased, 1);
         }
+    }
+    if actor_is_service_type {
+        // The declarations each end a line, and the actor line follows them.
+        let actor_line = format!("\nexport interface {TS_SERVICE} extends {TS_SERVICE} {{}}\n");
+        res = res.replacen(&actor_line, "\n", 1);
     }
 
     Ok(hex_nul_escapes(&res))
