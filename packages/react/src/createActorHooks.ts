@@ -44,14 +44,19 @@ import {
   useActorMethod,
   UseActorMethodParameters,
 } from "./hooks/useActorMethod.js"
-import { InfiniteQueryConfig } from "./createInfiniteQuery.js"
+import { SkippableInfiniteQueryConfig } from "./createInfiniteQuery.js"
 import { SuspenseInfiniteQueryConfig } from "./createSuspenseInfiniteQuery.js"
-import { QueryConfig, SuspenseQueryConfig, MutationConfig } from "./types.js"
+import {
+  SkippableQueryConfig,
+  SuspenseQueryConfig,
+  MutationConfig,
+} from "./types.js"
 
 export type ActorHooks<Service, Transform extends TransformKey> = {
+  // `args` may be `skipToken` here, and not in the suspense hooks below.
   useActorQuery: {
     <Method extends FunctionName<Service>>(
-      config: QueryConfig<
+      config: SkippableQueryConfig<
         Service,
         Method,
         Transform,
@@ -62,7 +67,7 @@ export type ActorHooks<Service, Transform extends TransformKey> = {
       ReactorReturnErr<Service, Method, Transform>
     >
     <Method extends FunctionName<Service>, TData>(
-      config: QueryConfig<Service, Method, Transform, TData>
+      config: SkippableQueryConfig<Service, Method, Transform, TData>
     ): UseQueryResult<TData, ReactorReturnErr<Service, Method, Transform>>
   }
 
@@ -96,7 +101,7 @@ export type ActorHooks<Service, Transform extends TransformKey> = {
       TPageParam
     >,
   >(
-    config: InfiniteQueryConfig<
+    config: SkippableInfiniteQueryConfig<
       Service,
       Method,
       Transform,

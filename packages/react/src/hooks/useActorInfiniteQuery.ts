@@ -1,10 +1,12 @@
-import { useMemo, useCallback } from "react"
+import { useMemo } from "react"
 import {
   QueryKey,
   useInfiniteQuery,
+  skipToken,
   UseInfiniteQueryResult,
   UseInfiniteQueryOptions,
   InfiniteData,
+  type SkipToken,
 } from "@tanstack/react-query"
 import {
   FunctionName,
@@ -51,8 +53,15 @@ export interface UseActorInfiniteQueryParameters<
   reactor: Reactor<Service, Transform>
   /** The method name to call on the canister */
   functionName: Method
-  /** Function to get args from page parameter */
-  getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
+  /**
+   * Function to get args from page parameter, or TanStack Query's `skipToken`
+   * while the args are not known: the query then waits without fetching,
+   * keyed by its method and `queryKey`, the prefix every key its args will
+   * give it extends.
+   */
+  getArgs:
+    | ((pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>)
+    | SkipToken
   /**
    * Narrows what the cache key derives from the call arguments.
    *
@@ -125,6 +134,17 @@ export type UseActorInfiniteQueryResult<
  *   initialPageParam: 0,
  *   getNextPageParam: (lastPage) => lastPage.nextOffset,
  * })
+ *
+ * // Wait for the args: no fetch until userId is known
+ * const { data } = useReactorInfiniteQuery({
+ *   reactor,
+ *   functionName: "getUserItems",
+ *   getArgs: userId
+ *     ? (pageParam) => [{ userId, offset: pageParam, limit: 10 }] as const
+ *     : skipToken,
+ *   initialPageParam: 0,
+ *   getNextPageParam: (lastPage) => lastPage.nextOffset,
+ * })
  */
 export const useActorInfiniteQuery = <
   Service,
@@ -162,6 +182,14 @@ export const useActorInfiniteQuery = <
   // reactor/function identity. Using the custom key verbatim would cause cache
   // collisions if two different actors or methods share the same key string.
   const baseQueryKey = useMemo(() => {
+    // Waiting for its args: keyed by the method and the custom key, which
+    // every key the args will give extends.
+    if (getArgs === skipToken) {
+      return reactor.generateQueryKey(
+        { functionName, queryKey: mergeFactoryQueryKey(queryKey) },
+        callConfig
+      )
+    }
     // Fold the call arguments into the key. They live in the `getArgs`
     // closure rather than in the config, so without this two hooks on the
     // same method with different arguments share one cache entry and serve
@@ -196,24 +224,27 @@ export const useActorInfiniteQuery = <
   ])
 
   // Memoize queryFn to prevent recreation on every render
-  const queryFn = useCallback(
-    async ({
-      pageParam,
-      queryKey: fetchedKey,
-    }: {
-      pageParam: TPageParam
-      queryKey: QueryKey
-    }) => {
-      const args = getArgs(pageParam)
-      const result = await reactor.callMethod({
-        functionName,
-        args,
-        callConfig: callConfigForKey(fetchedKey, callConfig),
-      })
-      return normalizeQueryData<ReactorReturnOk<Service, Method, Transform>>(
-        result as ReactorReturnOk<Service, Method, Transform>
-      )
-    },
+  const queryFn = useMemo(
+    () =>
+      getArgs === skipToken
+        ? skipToken
+        : async ({
+            pageParam,
+            queryKey: fetchedKey,
+          }: {
+            pageParam: TPageParam
+            queryKey: QueryKey
+          }) => {
+            const args = getArgs(pageParam)
+            const result = await reactor.callMethod({
+              functionName,
+              args,
+              callConfig: callConfigForKey(fetchedKey, callConfig),
+            })
+            return normalizeQueryData<
+              ReactorReturnOk<Service, Method, Transform>
+            >(result as ReactorReturnOk<Service, Method, Transform>)
+          },
     [reactor, functionName, getArgs, callConfig]
   )
 

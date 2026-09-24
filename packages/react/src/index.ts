@@ -22,3 +22,9 @@ export * from "./createMutation.js"
 export * from "./auth/index.js"
 
 export * from "./types.js"
+
+// TanStack Query's marker for a query whose args are not known yet, which the
+// non-suspense query hooks and createQueryFactory take in place of args. It is
+// the same symbol as @tanstack/react-query's, so either import works.
+export { skipToken } from "@tanstack/react-query"
+export type { SkipToken } from "@tanstack/react-query"

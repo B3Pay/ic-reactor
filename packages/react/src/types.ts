@@ -25,6 +25,7 @@ import {
   UseSuspenseQueryResult,
   UseMutationOptions,
   UseMutationResult,
+  SkipToken,
 } from "@tanstack/react-query"
 
 // ============================================================================
@@ -130,6 +131,46 @@ export type QueryConfig<
   Transform extends TransformKey = "candid",
   Selected = QueryFnData<Service, Method, Transform>,
 > = BaseQueryConfig<Service, Method, Transform, Selected>
+
+/**
+ * Configuration for the non-suspense query hook of `createActorHooks` and
+ * `defineReactor` (`useActorQuery`): a {@link QueryConfig} whose `args` may
+ * also be TanStack Query's `skipToken`, for a query whose arguments are not
+ * known yet.
+ *
+ * A skipped query does not fetch. It is keyed by its method alone (plus what
+ * `callConfig` adds), the prefix every key its arguments will give it
+ * extends, so it never reads an entry cached for some arguments. Once `args`
+ * holds arguments, the query is keyed and fetched as usual.
+ *
+ * The suspense hooks do not take `skipToken`: TanStack Query has no way to
+ * suspend on a query that cannot run.
+ *
+ * @example
+ * ```typescript
+ * import { skipToken } from "@ic-reactor/react"
+ *
+ * function Balance({ owner }: { owner?: string }) {
+ *   // No `!`, no placeholder account, no `enabled`
+ *   const { data } = useActorQuery({
+ *     functionName: "icrc1_balance_of",
+ *     args: owner ? [{ owner }] : skipToken,
+ *   })
+ * }
+ * ```
+ */
+export interface SkippableQueryConfig<
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = QueryFnData<Service, Method, Transform>,
+> extends Omit<QueryConfig<Service, Method, Transform, Selected>, "args"> {
+  /**
+   * Arguments to pass to the method, or `skipToken` while they are not
+   * known: the query then waits without fetching.
+   */
+  args?: ReactorArgs<Service, Method, Transform> | SkipToken
+}
 
 /**
  * Configuration for createSuspenseQuery (useSuspenseQuery).
@@ -545,6 +586,67 @@ export interface QueryFactoryMethods {
  */
 export interface QueryFactoryFn<TArgs, TQuery> extends QueryFactoryMethods {
   (args: TArgs): TQuery
+}
+
+/**
+ * What a query factory returns for `skipToken`: the query's `useQuery` hook
+ * alone, which renders a query that waits without fetching.
+ *
+ * The imperative members are left out because there is no call to make or
+ * entry to read until the args are known: narrow to the args first to reach
+ * `fetch()`, `invalidate()` or the cache controls.
+ *
+ * @template TQuery - The query object the factory returns for args
+ *
+ * @example
+ * ```typescript
+ * const getBalance = createQueryFactory(ledger, {
+ *   functionName: "icrc1_balance_of",
+ * })
+ *
+ * // A SkippedQuery: only useQuery(), which does not fetch
+ * const { data } = getBalance(skipToken).useQuery()
+ * ```
+ */
+export type SkippedQuery<TQuery extends { useQuery: unknown }> = Pick<
+  TQuery,
+  "useQuery"
+>
+
+/**
+ * The function `createQueryFactory` returns: a {@link QueryFactoryFn} that
+ * also takes TanStack Query's `skipToken` in place of args, for a component
+ * whose args are not known yet. For `skipToken` it returns a
+ * {@link SkippedQuery}, whose `useQuery()` waits without fetching, keyed by
+ * the factory's `getQueryKey()` prefix. Given `args ? [args] : skipToken`, it
+ * returns either, and `useQuery()` can be called on the result directly.
+ *
+ * `createSuspenseQueryFactory` returns a plain {@link QueryFactoryFn}: a
+ * suspense query cannot wait on `skipToken`.
+ *
+ * @template TArgs - The method's arguments
+ * @template TQuery - The query object it returns for args
+ *
+ * @example
+ * ```typescript
+ * const getBalance = createQueryFactory(ledger, {
+ *   functionName: "icrc1_balance_of",
+ * })
+ *
+ * function Balance({ owner }: { owner?: string }) {
+ *   const { data } = getBalance(owner ? [{ owner }] : skipToken).useQuery()
+ * }
+ * ```
+ */
+export interface SkippableQueryFactoryFn<
+  TArgs,
+  TQuery extends { useQuery: unknown },
+> extends QueryFactoryMethods {
+  // Args first: a factory called with args must resolve to the full query
+  // object, not to the union the last signature returns.
+  (args: TArgs): TQuery
+  (args: SkipToken): SkippedQuery<TQuery>
+  (args: TArgs | SkipToken): TQuery | SkippedQuery<TQuery>
 }
 
 // ============================================================================

@@ -2,8 +2,10 @@ import { useMemo } from "react"
 import {
   QueryKey,
   useQuery,
+  skipToken,
   QueryObserverOptions,
   UseQueryResult,
+  type SkipToken,
 } from "@tanstack/react-query"
 import {
   FunctionName,
@@ -34,7 +36,12 @@ export interface UseActorQueryParameters<
 > {
   reactor: Reactor<Service, Transform>
   functionName: Method
-  args?: ReactorArgs<Service, Method, Transform>
+  /**
+   * The method's arguments, or TanStack Query's `skipToken` while they are
+   * not known: the query then waits without fetching, keyed by its method
+   * alone, the prefix every key its arguments will give it extends.
+   */
+  args?: ReactorArgs<Service, Method, Transform> | SkipToken
   callConfig?: CallConfig
   queryKey?: QueryKey
 }
@@ -73,6 +80,13 @@ export type UseActorQueryResult<
  *   args: ["user-123"],
  *   select: (user) => user.name,
  * })
+ *
+ * // Wait for the args: no fetch until userId is known
+ * const { data } = useReactorQuery({
+ *   reactor,
+ *   functionName: "getUser",
+ *   args: userId ? [userId] : skipToken,
+ * })
  */
 export const useActorQuery = <
   Service,
@@ -99,12 +113,21 @@ export const useActorQuery = <
   // `Reactor.getQueryRetry`.
   const { queryKey, queryFn, retry } = useMemo(
     () =>
-      reactor.getQueryOptions<Method>({
-        callConfig,
-        functionName,
-        args,
-        queryKey: defaultQueryKey,
-      }),
+      args === skipToken
+        ? // Waiting for its args: keyed by the method alone, which every key
+          // the args will give extends, with nothing to run until then.
+          {
+            queryKey: reactor.generateQueryKey({ functionName }, callConfig),
+            // Kept as the unique symbol, which an object literal widens.
+            queryFn: skipToken as SkipToken,
+            retry: undefined,
+          }
+        : reactor.getQueryOptions<Method>({
+            callConfig,
+            functionName,
+            args,
+            queryKey: defaultQueryKey,
+          }),
     // `canisterId` is mutable reactor state that `setCanisterId` can change,
     // while `reactor` itself stays the same object — so it has to be a
     // dependency in its own right or the key stays pinned to the old canister.

@@ -42,6 +42,7 @@ import {
   QueryFunctionContext,
   FetchInfiniteQueryOptions,
   InfiniteQueryObserverOptions,
+  SkipToken,
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
 import type {
@@ -165,6 +166,54 @@ export interface InfiniteQueryConfig<
     firstPageParam: TPageParam,
     allPageParams: TPageParam[]
   ) => TPageParam | undefined | null
+}
+
+/**
+ * Configuration for the non-suspense infinite query hook of
+ * `createActorHooks` and `defineReactor` (`useActorInfiniteQuery`): an
+ * {@link InfiniteQueryConfig} whose `getArgs` may also be TanStack Query's
+ * `skipToken`, for a list whose arguments are not known yet.
+ *
+ * A skipped list does not fetch. It is keyed by its method and config
+ * `queryKey` (plus what `callConfig` adds), the prefix every key its
+ * arguments will give it extends. Once `getArgs` is a function, the list is
+ * keyed and fetched as usual. `useActorSuspenseInfiniteQuery` does not take
+ * `skipToken`.
+ *
+ * @example
+ * ```typescript
+ * import { skipToken } from "@ic-reactor/react"
+ *
+ * const { data } = useActorInfiniteQuery({
+ *   functionName: "get_transactions",
+ *   getArgs: account
+ *     ? (start: bigint) => [{ account, start, length: 20n }]
+ *     : skipToken,
+ *   initialPageParam: 0n,
+ *   getNextPageParam: (lastPage) => lastPage.next[0],
+ * })
+ * ```
+ */
+export interface SkippableInfiniteQueryConfig<
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  TPageParam = unknown,
+  Selected = InfiniteData<
+    InfiniteQueryPageData<Service, Method, Transform>,
+    TPageParam
+  >,
+> extends Omit<
+  InfiniteQueryConfig<Service, Method, Transform, TPageParam, Selected>,
+  "getArgs"
+> {
+  /**
+   * Function to get args from page parameter, or `skipToken` while the args
+   * are not known: the list then waits without fetching.
+   */
+  getArgs:
+    | ((pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>)
+    | SkipToken
 }
 
 /**

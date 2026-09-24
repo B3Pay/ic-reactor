@@ -145,22 +145,51 @@ actually gives you. You do not need an `unwrap()` helper of your own.
 
 ## Conditional Queries
 
-You can use the `enabled` option to conditionally execute a query:
+When a query's arguments are not known yet, pass TanStack Query's `skipToken`
+in their place. `@ic-reactor/react` re-exports it. The query waits without
+calling the canister and fetches as soon as the arguments exist:
 
 ```tsx
+import { skipToken } from "@ic-reactor/react"
+
 function UserProfile({ userId }: { userId: string | null }) {
   const { data } = useActorQuery({
     functionName: "getUser",
-    args: [userId!],
-    // Only fetch when userId exists
-    enabled: !!userId,
+    // Type-checked as [string] once userId is there: no `!`, no placeholder
+    args: userId ? [userId] : skipToken,
   })
 }
 ```
 
+The same goes for a query factory, whose query for `skipToken` has only
+`useQuery()`, and for `useActorInfiniteQuery`, as `getArgs`:
+
+```tsx
+const getUser = createQueryFactory(backend, { functionName: "getUser" })
+
+const { data } = getUser(userId ? [userId] : skipToken).useQuery()
+```
+
+A skipped query is keyed by its method alone, the prefix of the key its
+arguments will give it. The suspense hooks and factories do not take
+`skipToken`, since a suspense query has to be able to run.
+
+When the arguments are known but the query should still wait, use the
+`enabled` option:
+
+```tsx
+const { isAuthenticated } = useAuth()
+
+const { data } = useActorQuery({
+  functionName: "getProfile",
+  args: [profileId],
+  // Only fetch when signed in
+  enabled: isAuthenticated,
+})
+```
+
 This is particularly useful when:
 
-- Waiting for other data before fetching
 - Only fetching when authenticated
 - Disabling queries in certain UI states
 

@@ -55,7 +55,7 @@ function UserProfile({ userId }: { userId: string }) {
 
 | Option                 | Type                            | Default       | Description                                                                      |
 | ---------------------- | ------------------------------- | ------------- | -------------------------------------------------------------------------------- |
-| `args`                 | `array`                         | `[]`          | Arguments to pass to the method                                                  |
+| `args`                 | `array \| skipToken`            | `[]`          | Arguments to pass to the method, or `skipToken` while they are not known         |
 | `enabled`              | `boolean`                       | `true`        | Whether the query should run                                                     |
 | `staleTime`            | `number`                        | `0`           | Time in ms before data is considered stale                                       |
 | `gcTime`               | `number`                        | `300000`      | Time in ms before unused data is garbage collected                               |
@@ -97,13 +97,40 @@ const { data, isPending, error } = useActorQuery({
 })
 ```
 
-### Conditional Query
+### Waiting for Args
+
+When the arguments are not known yet, pass TanStack Query's `skipToken`
+(re-exported by `@ic-reactor/react`) in their place. The query waits without
+calling the canister, and fetches as soon as `args` holds real arguments:
 
 ```tsx
+import { skipToken } from "@ic-reactor/react"
+
+function UserProfile({ userId }: { userId: string | undefined }) {
+  const { data } = useActorQuery({
+    functionName: "getUser",
+    // No `userId!`, no placeholder id, no `enabled`
+    args: userId ? [userId] : skipToken,
+  })
+}
+```
+
+A skipped query is keyed by its method alone (plus what `callConfig` adds),
+the prefix of the key its arguments will give it. `refetch()` has nothing to
+run until then.
+
+### Conditional Query
+
+Use `enabled` when the arguments are known but the query should still wait,
+for a reason of your own:
+
+```tsx
+const { isAuthenticated } = useAuth()
+
 const { data } = useActorQuery({
   functionName: "getUser",
   args: [userId],
-  enabled: !!userId, // Only fetch when userId exists
+  enabled: isAuthenticated, // Only fetch once signed in
 })
 ```
 
@@ -219,6 +246,8 @@ after it, never in place of the identity prefix.
 ### Dependent Queries
 
 ```tsx
+import { skipToken } from "@ic-reactor/react"
+
 function UserPosts({ userId }: { userId: string }) {
   // First query
   const { data: user } = useActorQuery({
@@ -226,11 +255,10 @@ function UserPosts({ userId }: { userId: string }) {
     args: [userId],
   })
 
-  // Dependent query - only runs when user exists
+  // Dependent query - waits until the first one has the user's id
   const { data: posts } = useActorQuery({
     functionName: "getUserPosts",
-    args: [user?.id ?? ""],
-    enabled: !!user?.id,
+    args: user ? [user.id] : skipToken,
   })
 
   return <PostList posts={posts} />
@@ -270,6 +298,13 @@ The types are automatically inferred from your actor interface, so you typically
   `ClientManager`'s own agent, and an `{ effectiveTarget }` segment follows
   when `callConfig` targets a different canister or subnet. See
   [generateQueryKey](/v3/reference/reactor#generatequerykey) for the full shape.
+</Aside>
+
+<Aside type="note">
+  `skipToken` works in `useActorQuery` and `useActorInfiniteQuery` (as
+  `getArgs`). The suspense hooks do not take it: TanStack Query cannot suspend
+  on a query that has nothing to run. Render the suspense query in a component
+  that only mounts once the arguments exist.
 </Aside>
 
 <Aside type="tip">

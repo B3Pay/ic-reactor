@@ -52,6 +52,32 @@ module.
   major, `defineReactor` includes it too, because of the deprecated flag; the
   smallest setup is `createActorHooks(new Reactor(...))` + `createAuthHooks`.
 
+## Queries Whose Args Are Not Known Yet
+
+Pass `skipToken` (re-exported from TanStack Query) in place of args; the
+query waits without calling the canister and fetches once the args exist:
+
+```ts
+import { skipToken } from "@ic-reactor/react"
+
+const { data } = useActorQuery({
+  functionName: "icrc1_balance_of",
+  args: owner ? [{ owner, subaccount: [] }] : skipToken,
+})
+
+// A factory from createQueryFactory: its skipped query has only useQuery()
+const getBalance = createQueryFactory(ledger, { functionName: "icrc1_balance_of" })
+const { data: same } = getBalance(
+  owner ? [{ owner, subaccount: [] }] : skipToken
+).useQuery()
+```
+
+It works in `useActorQuery`, `useReactorQuery`, `useActorInfiniteQuery`
+(`getArgs: skipToken`) and query factories from `createQueryFactory`. Never
+write `args: [owner!]`, a placeholder account or `as any` plus `enabled`. The
+suspense hooks and factories reject it; keep `enabled` for conditions that are
+not about missing args.
+
 ## Types From a Reactor
 
 To type a prop, form state or error view, read the type off the reactor:

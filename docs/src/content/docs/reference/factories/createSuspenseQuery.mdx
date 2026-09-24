@@ -345,8 +345,11 @@ for details.
 </Aside>
 
 <Aside type="caution">
-  Suspense queries don't support the `enabled` option. If you need conditional
-  fetching, use [createQuery](/v3/reference/factories/createquery) instead.
+  Suspense queries don't support the `enabled` option, and
+  `createSuspenseQueryFactory` does not take `skipToken` in place of args: a
+  suspense query has to be able to run. If you need conditional fetching, use
+  [createQuery](/v3/reference/factories/createquery) instead, or mount the
+  suspense query only once its args exist.
 </Aside>
 
 <Aside type="note">

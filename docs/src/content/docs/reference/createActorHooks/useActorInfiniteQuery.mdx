@@ -69,12 +69,12 @@ function ItemList() {
 
 ### Required Options
 
-| Option             | Type                  | Description                              |
-| ------------------ | --------------------- | ---------------------------------------- |
-| `functionName`     | `string`              | The canister method to call              |
-| `getArgs`          | `(pageParam) => Args` | Function that returns args for each page |
-| `initialPageParam` | `TPageParam`          | Initial page parameter                   |
-| `getNextPageParam` | `function`            | Returns next page param or undefined     |
+| Option             | Type                               | Description                                                                       |
+| ------------------ | ---------------------------------- | --------------------------------------------------------------------------------- |
+| `functionName`     | `string`                           | The canister method to call                                                       |
+| `getArgs`          | `(pageParam) => Args \| skipToken` | Function that returns args for each page, or `skipToken` while they are not known |
+| `initialPageParam` | `TPageParam`                       | Initial page parameter                                                            |
+| `getNextPageParam` | `function`                         | Returns next page param or undefined                                              |
 
 ### Optional Options
 
@@ -96,6 +96,26 @@ those arguments carry the cursor, `getKeyArgs` returns the part that identifies
 the list. It is required when `initialPageParam` changes between renders, as
 `Date.now()` does: without it every render keys a new query and refetches the
 first page.
+
+While the list's arguments are not known yet, pass TanStack Query's
+`skipToken` (re-exported by `@ic-reactor/react`) as `getArgs`. The list waits
+without calling the canister, keyed by its method and `queryKey`, and fetches
+its first page once `getArgs` is a function:
+
+```tsx
+import { skipToken } from "@ic-reactor/react"
+
+const { data } = useActorInfiniteQuery({
+  functionName: "getPosts",
+  getArgs: authorId
+    ? (offset: number) => [{ authorId, offset, limit: 10 }]
+    : skipToken,
+  initialPageParam: 0,
+  getNextPageParam: (lastPage) => lastPage.nextOffset,
+})
+```
+
+`useActorSuspenseInfiniteQuery` does not take `skipToken`.
 
 ### Callback Signatures
 

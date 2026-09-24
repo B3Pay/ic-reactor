@@ -360,12 +360,13 @@ function UserProfile({ userId }: { userId: string }) {
 Create type-safe reusable patterns:
 
 ```typescript
-// Type-safe query factory
-function useUser(userId: string) {
+import { skipToken } from "@ic-reactor/react"
+
+// Type-safe query factory: waits while there is no userId
+function useUser(userId: string | undefined) {
   return useActorQuery({
     functionName: "getUser",
-    args: [userId],
-    enabled: !!userId,
+    args: userId ? [userId] : skipToken,
   })
 }
 

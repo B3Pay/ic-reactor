@@ -63,6 +63,21 @@ const { data } = useReactorQuery({
 })
 ```
 
+### Waiting for Args
+
+`args` takes TanStack Query's `skipToken` while the arguments are not known;
+see [useActorQuery](/v3/reference/createactorhooks/useactorquery#waiting-for-args):
+
+```tsx
+import { skipToken, useReactorQuery } from "@ic-reactor/react"
+
+const { data } = useReactorQuery({
+  reactor: backend,
+  functionName: "getUser",
+  args: userId ? [userId] : skipToken,
+})
+```
+
 ### Type-Safe Queries
 
 TypeScript infers types from the passed `reactor` instance:

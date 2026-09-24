@@ -203,6 +203,12 @@ export function App() {
   bundle; see [Bundle Size](#bundle-size).
 - Use generated hooks from `@ic-reactor/vite-plugin` or `@ic-reactor/cli` when
   you have larger canisters or frequent `.did` changes.
+- When a query's arguments are not known yet, pass `skipToken` (re-exported
+  from TanStack Query) in their place: `args: owner ? [owner] : skipToken` in
+  `useActorQuery`, `getArgs: skipToken` in `useActorInfiniteQuery`, or
+  `getBalance(owner ? [owner] : skipToken).useQuery()` on a query factory. The
+  query waits without calling the canister. Placeholder args with `enabled`,
+  or a `!`, are not needed. The suspense variants do not take it.
 - Call a method that changes state through a mutation (`useActorMutation`,
   `useActorMethod`, `createMutation`), never a query hook or factory. A query
   runs its method again on every refetch (mount, window focus, reconnect,
@@ -670,6 +676,9 @@ package's `react-server` entry, which has them but none of the hooks; see
 - `CallError`
 - `CanisterError`
 - `ValidationError`
+
+The main entry also re-exports TanStack Query's `skipToken` (and its
+`SkipToken` type), the same symbol `@tanstack/react-query` exports.
 
 ## See Also
 

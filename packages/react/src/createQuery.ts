@@ -34,6 +34,8 @@ import { useMemo } from "react"
 import {
   QueryKey,
   useQuery,
+  skipToken,
+  type SkipToken,
   type UseQueryOptions,
   type Updater,
 } from "@tanstack/react-query"
@@ -41,10 +43,12 @@ import type {
   QueryFnData,
   QueryError,
   QueryConfig,
+  SkippableQueryConfig,
   UseQueryWithSelect,
   QueryResult,
   QueryFactoryConfig,
-  QueryFactoryFn,
+  SkippableQueryFactoryFn,
+  SkippedQuery,
   NoInfer,
 } from "./types.js"
 import {
@@ -68,7 +72,9 @@ const createQueryImpl = <
   Selected = QueryFnData<Service, Method, Transform>,
 >(
   reactor: Reactor<Service, Transform>,
-  config: QueryConfig<Service, Method, Transform, Selected>
+  // `args` is `skipToken` only for a factory's skipped query, which exposes
+  // nothing but `useQuery`; see createQueryFactory.
+  config: SkippableQueryConfig<Service, Method, Transform, Selected>
 ): QueryResult<
   QueryFnData<Service, Method, Transform>,
   Selected,
@@ -87,9 +93,29 @@ const createQueryImpl = <
     ...rest
   } = config
 
+  const skipped = args === skipToken
+
   // `callConfig` goes wherever the hooks send it: to the call and into the
   // key, so a query of another canister or agent has an entry of its own.
-  const params = { functionName, args, queryKey: customQueryKey, callConfig }
+  const params = {
+    functionName,
+    args: skipped ? undefined : args,
+    queryKey: customQueryKey,
+    callConfig,
+  }
+
+  // What the hook observes: the call, or for a query still waiting for its
+  // args, the method's key, which every key the args will give extends, with
+  // nothing to run.
+  const queryOptions = () =>
+    skipped
+      ? {
+          queryKey: reactor.generateQueryKey({ functionName }, callConfig),
+          // Kept as the unique symbol, which an object literal widens.
+          queryFn: skipToken as SkipToken,
+          retry: undefined,
+        }
+      : reactor.getQueryOptions(params)
 
   const getQueryKey = (): QueryKey =>
     reactor.generateQueryKey(params, callConfig)
@@ -133,7 +159,7 @@ const createQueryImpl = <
 
   const useQueryHook = ((options?: UseQueryHookOptions) => {
     useMountQueryClient(reactor.queryClient)
-    const baseOptions = reactor.getQueryOptions(params)
+    const baseOptions = queryOptions()
     // Memoized so the observer's select-result cache can hit; see
     // buildChainedSelect. `select` comes from the factory config and is stable.
     const chainedSelect = useMemo(
@@ -226,6 +252,11 @@ export function createQuery<
  * their args. Pass the function itself to a mutation's `invalidateQueries` to
  * refresh every instance after the mutation.
  *
+ * It also takes TanStack Query's `skipToken` in place of args, for a
+ * component whose args are not known yet, and returns a query with only
+ * `useQuery()`, which waits without fetching; see
+ * {@link SkippableQueryFactoryFn}.
+ *
  * @example
  * const getBalance = createQueryFactory(ledger, {
  *   functionName: "icrc1_balance_of",
@@ -233,6 +264,11 @@ export function createQuery<
  *
  * // In a component
  * const { data } = getBalance([{ owner, subaccount: [] }]).useQuery()
+ *
+ * // In a component whose owner may not be known yet
+ * const { data: maybe } = getBalance(
+ *   owner ? [{ owner, subaccount: [] }] : skipToken
+ * ).useQuery()
  *
  * // Refetch every account's balance after a transfer
  * const transfer = createMutation(ledger, {
@@ -248,7 +284,7 @@ export function createQueryFactory<
 >(
   reactor: Reactor<Service, Transform>,
   config: QueryFactoryConfig<NoInfer<Service>, Method, Transform, Selected>
-): QueryFactoryFn<
+): SkippableQueryFactoryFn<
   ReactorArgs<Service, Method, Transform>,
   QueryResult<
     QueryFnData<Service, Method, Transform>,
@@ -256,16 +292,37 @@ export function createQueryFactory<
     QueryError<Service, Method, Transform>
   >
 > {
-  const cache =
-    createBoundedCache<
-      QueryResult<
-        QueryFnData<Service, Method, Transform>,
-        Selected,
-        QueryError<Service, Method, Transform>
-      >
-    >()
+  type Query = QueryResult<
+    QueryFnData<Service, Method, Transform>,
+    Selected,
+    QueryError<Service, Method, Transform>
+  >
 
-  const factory = (args: ReactorArgs<Service, Method, Transform>) => {
+  const cache = createBoundedCache<Query>()
+
+  // One skipped query per factory, built on first use. Only its hook is
+  // handed out: until the args are known there is no call to make and no
+  // entry of their own to read or write.
+  let skippedQuery: SkippedQuery<Query> | undefined
+
+  function factory(args: ReactorArgs<Service, Method, Transform>): Query
+  function factory(args: SkipToken): SkippedQuery<Query>
+  function factory(
+    args: ReactorArgs<Service, Method, Transform> | SkipToken
+  ): Query | SkippedQuery<Query>
+  function factory(
+    args: ReactorArgs<Service, Method, Transform> | SkipToken
+  ): Query | SkippedQuery<Query> {
+    if (args === skipToken) {
+      skippedQuery ??= {
+        useQuery: createQueryImpl<Service, Method, Transform, Selected>(
+          reactor,
+          { ...config, args: skipToken }
+        ).useQuery,
+      }
+      return skippedQuery
+    }
+
     const key = reactor.generateQueryKey(
       { functionName: config.functionName as Method, args },
       config.callConfig

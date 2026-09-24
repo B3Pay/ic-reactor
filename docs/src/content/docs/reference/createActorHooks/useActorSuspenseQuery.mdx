@@ -268,6 +268,13 @@ function UserPosts({ userId }: { userId: string }) {
   Error Boundary to catch and display errors gracefully.
 </Aside>
 
+<Aside type="note">
+  `args` does not take `skipToken`: a suspense query has to be able to run.
+  Mount the component only once its arguments exist, or use
+  [useActorQuery](/v3/reference/createactorhooks/useactorquery#waiting-for-args),
+  which does.
+</Aside>
+
 <Aside type="tip">
   With suspense, you can assume `data` is always defined in your component. This
   leads to cleaner code without null checks.
