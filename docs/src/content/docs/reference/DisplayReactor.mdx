@@ -212,12 +212,12 @@ and zod, whether or not it is set.
 
 #### Container Types
 
-| Candid           | TypeScript      | Display                | Notes                                        |
-| ---------------- | --------------- | ---------------------- | -------------------------------------------- |
-| `opt T`          | `[T] \| []`     | `T \| undefined`       | None is `undefined`; input also takes `null` |
-| `vec T`          | `T[]`           | `Display<T>[]`         | Elements are transformed                     |
-| `vec (text, T)`  | `[string, T][]` | `{ [key: string]: T }` | Key-value pairs as Object                    |
-| `record { ... }` | `{ ... }`       | `{ ... }`              | Nested fields transformed                    |
+| Candid           | TypeScript      | Display                | Notes                                              |
+| ---------------- | --------------- | ---------------------- | -------------------------------------------------- |
+| `opt T`          | `[T] \| []`     | `T \| undefined`       | None is `undefined`; input also takes `null`       |
+| `vec T`          | `T[]`           | `Display<T>[]`         | Elements are transformed                           |
+| `vec (text, T)`  | `[string, T][]` | `{ [key: string]: T }` | [One value per key](#working-with-key-value-pairs) |
+| `record { ... }` | `{ ... }`       | `{ ... }`              | Nested fields transformed                          |
 
 #### Variant Types
 
@@ -495,6 +495,20 @@ const value = metadata["key1"]
 As an argument, the map is also taken as the array of pairs or as a `Map`.
 Each is sent as its entries in its own order: an object's, the array's, or the
 `Map`'s insertion order.
+
+<Aside type="caution" title="An object holds each key once, in its own order">
+  A JavaScript object cannot hold a key twice, and it puts integer-like keys
+  (`"0"` to `"4294967294"`) first, in ascending order, before every other key.
+  So when a result's `vec record { text; T }` becomes an object, a repeated key
+  keeps only its last value (an HTTP response's second `Set-Cookie` header
+  replaces the first), and integer-like keys move to the front: `10, 2, b, 1`
+  displays as `1, 2, 10, b`. Sending that object back sends the vector it
+  holds, not the one read. Where repeated keys or their order matter, such as
+  HTTP headers, ICRC-21 consent message fields or ICRC-3 maps with numeric
+  keys, call the method through a plain [`Reactor`](/v3/reference/reactor),
+  which returns the array of pairs as received. A `DisplayReactor` argument
+  given as the array of pairs is sent as it is.
+</Aside>
 
 ### Form Handling
 

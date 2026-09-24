@@ -313,15 +313,16 @@ reactor.name // string
 
 ### Type Transformations
 
-| Candid Type                | Reactor (raw) | DisplayReactor          |
-| -------------------------- | ------------- | ----------------------- |
-| `nat`, `int`               | `bigint`      | `string`                |
-| `nat8/16/32`, `int8/16/32` | `number`      | `number`                |
-| `nat64`, `int64`           | `bigint`      | `string`                |
-| `float32`, `float64`       | `number`      | `number`                |
-| `Principal`                | `Principal`   | `string`                |
-| `vec nat8` (blob)          | `Uint8Array`  | `string` (hex, no `0x`) |
-| `Result<Ok, Err>`          | Unwrapped     | Unwrapped               |
+| Candid Type                | Reactor (raw)   | DisplayReactor          |
+| -------------------------- | --------------- | ----------------------- |
+| `nat`, `int`               | `bigint`        | `string`                |
+| `nat8/16/32`, `int8/16/32` | `number`        | `number`                |
+| `nat64`, `int64`           | `bigint`        | `string`                |
+| `float32`, `float64`       | `number`        | `number`                |
+| `Principal`                | `Principal`     | `string`                |
+| `vec nat8` (blob)          | `Uint8Array`    | `string` (hex, no `0x`) |
+| `vec record { text; T }`   | `[string, T][]` | `Record<string, T>`     |
+| `Result<Ok, Err>`          | Unwrapped       | Unwrapped               |
 
 Fixed-width integers up to 32 bits stay numbers on both sides; only the 64-bit
 types cross the `bigint` ↔ `string` boundary. On encode, the ≤32-bit codecs also
@@ -334,6 +335,16 @@ refused rather than sent as `Infinity`. `JSON.stringify` writes `NaN` and
 `±Infinity` as `null` and `-0` as `0`, so after a JSON round trip (a persisted
 query cache, SSR hydration) an `opt` float that held `NaN` is sent as none and a
 required one is refused. Keep such floats out of JSON where they can occur.
+
+A `vec record { text; T }` displays as an object keyed by the text. An object
+holds each key once and puts integer-like keys (`"0"` to `"4294967294"`) first,
+in ascending order, so a repeated key in a result keeps only its last value (an
+HTTP response's second `Set-Cookie` header is lost) and integer-like keys move
+to the front; sending the object back sends that vector, not the one read.
+Where either matters, such as HTTP headers, ICRC-21 consent message fields or
+ICRC-3 maps with numeric keys, use a plain `Reactor`, which returns the array
+of pairs. As an argument the map is also taken as the array of pairs, sent as
+it is, or as a `Map`, sent in insertion order.
 
 ### Usage
 

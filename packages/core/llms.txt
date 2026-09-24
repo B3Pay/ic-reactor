@@ -35,6 +35,9 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 - Floats display as numbers and `NaN`/`±Infinity`/`-0` are sent back as read,
   but JSON writes `NaN`/`±Infinity` as `null` and `-0` as `0`: after a JSON
   round trip an `opt` float that held `NaN` is sent as none
+- `vec record { text; T }` displays as an object: a repeated key keeps its last
+  value and integer-like keys come first in ascending order. Use `Reactor`
+  where repeated keys or their order matter (HTTP headers, ICRC-21 fields)
 
 ## Local Environment Root Key
 
