@@ -561,8 +561,9 @@ form, whichever it was given in, so an `opt` given bare or as `[value]`, none
 given as `null`, `undefined` or `[]`, and a variant given with or without
 `_type` give the same key. A `vec record { text; T }` given to it as an object
 or a `Map` is written as its entries in order, since the order is part of what
-it sends. Fields a record
-does not declare are left out and every value of `reserved` is written as
+it sends. A record or variant given to it as a class instance is written as the
+plain object its codec sends, a field its class supplies through a getter
+included. Fields a record does not declare are left out and every value of `reserved` is written as
 `null`, since neither is sent, and a `DisplayReactor` writes a float or an
 integer of 32 bits or fewer given as text as its number, and a `Principal` as
 its text. An argument the reactor refuses, such as `undefined` where Candid
