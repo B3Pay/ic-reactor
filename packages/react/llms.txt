@@ -18,7 +18,8 @@ every v8 release peers `@icp-sdk/core@^5`, so on npm it needs
 
 ## Start Here
 
-- Fastest setup: `defineReactor(...)`
+- Fastest setup: `defineReactor(...)` (raw Candid values) or
+  `defineDisplayReactor(...)` (display values); same options
 - Existing reactor instance: `createActorHooks(reactor)`
 - Reusable shared operations: `createQuery(...)`, `createMutation(...)`
 
@@ -42,9 +43,12 @@ module.
 
 ## Display vs Raw Values
 
-- Prefer `display: true` in `defineReactor(...)` (or `DisplayReactor`) for
-  UI/form code.
+- Prefer `defineDisplayReactor(...)` (or `DisplayReactor`) for UI/form code.
+  `defineReactor({ display: true })` is deprecated; do not generate it.
 - Use raw `Reactor` when you intentionally need native `bigint`/`Principal`.
+- Bundle cost: `DisplayReactor` adds zod (about 24 kB gzipped). Until the next
+  major, `defineReactor` includes it too, because of the deprecated flag; the
+  smallest setup is `createActorHooks(new Reactor(...))` + `createAuthHooks`.
 
 ## Mutation Error Handling
 

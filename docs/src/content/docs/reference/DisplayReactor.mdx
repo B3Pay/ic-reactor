@@ -139,6 +139,37 @@ const backend = new DisplayReactor<_SERVICE>({
 const { useActorQuery, useActorMutation } = createActorHooks(backend)
 ```
 
+### With defineDisplayReactor
+
+`defineDisplayReactor` does the whole setup in one call — `QueryClient`,
+`ClientManager`, the `DisplayReactor`, its hooks and the Internet Identity
+hooks — and takes the same options as `defineReactor`, plus `validators`:
+
+```typescript
+import { defineDisplayReactor } from "@ic-reactor/react"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+export const {
+  reactor: backend,
+  useActorQuery,
+  useAuth,
+} = defineDisplayReactor<_SERVICE>({
+  name: "backend",
+  idlFactory,
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+})
+```
+
+It replaces `defineReactor({ display: true })`, which still works but is
+deprecated: the flag makes every `defineReactor` bundle carry `DisplayReactor`
+and zod, whether or not it is set.
+
+<Aside type="note">
+  The display codecs are built on zod, which adds about 85 kB minified (24 kB
+  gzipped) to a bundle that does not already include it. See [Bundle
+  Size](/v3/packages/react#bundle-size) for what each setup path costs.
+</Aside>
+
 ## Type Transformations
 
 <CardGrid>

@@ -22,6 +22,7 @@ const RUNTIME_EXPORTS: Record<string, "function" | "string" | "object"> = {
   createActorHooks: "function",
   createActorMethodHooks: "function",
   defineReactor: "function",
+  defineDisplayReactor: "function",
   createQuery: "function",
   createQueryFactory: "function",
   createSuspenseQuery: "function",

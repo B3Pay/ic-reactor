@@ -14,7 +14,7 @@
  */
 import { AuthenticationManager } from "@ic-reactor/react"
 import {
-  defineReactor,
+  defineDisplayReactor,
   createSuspenseQuery,
   createSuspenseQueryFactory,
   createMutation,
@@ -36,39 +36,37 @@ export const queryClient = new QueryClient({
 })
 
 // ============================================================================
-// 2. Initialize Reactors with defineReactor (display: true ⇒ DisplayReactor)
+// 2. Initialize Reactors with defineDisplayReactor (display values)
 // ============================================================================
 
 // ICP Ledger — this first call creates the shared ClientManager
-export const { reactor: icpReactor, clientManager } = defineReactor<Ledger>({
-  name: "icp",
-  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
-  idlFactory: ledgerIdlFactory,
-  display: true,
-  queryClient,
-  agentOptions: { host: "https://ic0.app" },
-})
+export const { reactor: icpReactor, clientManager } =
+  defineDisplayReactor<Ledger>({
+    name: "icp",
+    canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+    idlFactory: ledgerIdlFactory,
+    queryClient,
+    agentOptions: { host: "https://ic0.app" },
+  })
 
 // ckBTC Ledger — reuses the same ClientManager (shared agent)
-export const { reactor: ckBTCReactor } = defineReactor<Ledger>({
+export const { reactor: ckBTCReactor } = defineDisplayReactor<Ledger>({
   name: "ckbtc",
   canisterId: "mxzaz-hqaaa-aaaar-qaada-cai",
   idlFactory: ledgerIdlFactory,
-  display: true,
   clientManager,
 })
 
 // ckETH Ledger — reuses the same ClientManager (shared agent)
-export const { reactor: ckETHReactor } = defineReactor<Ledger>({
+export const { reactor: ckETHReactor } = defineDisplayReactor<Ledger>({
   name: "cketh",
   canisterId: "ss2fx-dyaaa-aaaar-qacoq-cai",
   idlFactory: ledgerIdlFactory,
-  display: true,
   clientManager,
 })
 
 // ============================================================================
-// 3. Auth (uses the ClientManager created by defineReactor)
+// 3. Auth (uses the ClientManager created by defineDisplayReactor)
 // ============================================================================
 
 export const authentication = new AuthenticationManager({ clientManager })

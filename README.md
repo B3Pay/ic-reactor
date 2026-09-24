@@ -96,14 +96,17 @@ export const {
   name: "backend",
   idlFactory,
   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
-  display: true,
 })
 ```
 
 One call creates the `QueryClient`, `ClientManager`, reactor, and bound hooks —
 including `useAuth`, `useAgentState`, `useUserPrincipal`, and
-`useIdentityAttributes`. Steps 1–3 below show the manual equivalent, for when you
-need explicit construction order.
+`useIdentityAttributes`. For UI-friendly values (text instead of `bigint` and
+`Principal`), `defineDisplayReactor` takes the same options and builds a
+`DisplayReactor`; it replaces `defineReactor({ display: true })`, which is
+deprecated. Steps 1–3 below show the manual equivalent, for when you need
+explicit construction order or the smallest bundle (see
+[Bundle Size](./packages/react/README.md#bundle-size)).
 
 ### 1. Create a shared client manager and reactor
 

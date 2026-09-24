@@ -11,6 +11,7 @@ export * from "./validation.js"
 // React-specific exports
 export * from "./createActorHooks.js"
 export * from "./defineReactor.js"
+export * from "./defineDisplayReactor.js"
 
 export * from "./createQuery.js"
 export * from "./createSuspenseQuery.js"

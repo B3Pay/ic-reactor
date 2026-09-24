@@ -169,6 +169,10 @@ export function App() {
 
 ## Main APIs
 
+- `defineReactor(...)` for one-call setup: the `QueryClient`, `ClientManager`,
+  a `Reactor`, its actor hooks and the Internet Identity hooks together;
+  `defineDisplayReactor(...)` takes the same options and builds a
+  `DisplayReactor` instead
 - `createActorHooks(reactor)` for per-canister hooks like `useActorQuery` and
   `useActorMutation`
 - `createAuthHooks(authentication)` for `useAuth`, `useAgentState`, and
@@ -187,10 +191,43 @@ export function App() {
 - Use query and mutation factories when you also need loader, action, service,
   or test usage through `.fetch()`, `.prefetch()`, `.execute()`, `.invalidate()`,
   `.getCacheData()`, or `.setData()`.
-- Use `DisplayReactor` when you want UI-friendly values such as strings instead
-  of `bigint` or `Principal`.
+- Use `DisplayReactor` (or `defineDisplayReactor`) when you want UI-friendly
+  values such as strings instead of `bigint` or `Principal`. It adds zod to the
+  bundle; see [Bundle Size](#bundle-size).
 - Use generated hooks from `@ic-reactor/vite-plugin` or `@ic-reactor/cli` when
   you have larger canisters or frequent `.did` changes.
+
+## Bundle Size
+
+What each setup path adds to a browser bundle, measured with esbuild 0.28
+(minified ESM, `@ic-reactor/core` bundled). The peers `react`,
+`@tanstack/react-query` and `@icp-sdk/*` are left out, since an app ships them
+either way; so is `@icp-sdk/auth`, which loads as its own chunk on first use.
+
+| Setup                                                            | Minified | Gzipped | zod |
+| ---------------------------------------------------------------- | -------: | ------: | :-: |
+| `createActorHooks` + `Reactor` + `ClientManager`                 |    31 kB |  9.8 kB | no  |
+| … + `AuthenticationManager` + `createAuthHooks`                  |    52 kB | 14.9 kB | no  |
+| … + `IdentityAttributesManager` + `createIdentityAttributeHooks` |    58 kB | 16.7 kB | no  |
+| `createActorHooks` + `DisplayReactor` + `ClientManager`          |   129 kB | 37.3 kB | yes |
+| `defineDisplayReactor`                                           |   158 kB | 45.4 kB | yes |
+| `defineReactor`                                                  |   158 kB | 45.4 kB | yes |
+
+`DisplayReactor` builds its codecs on zod's classic API, which does not
+tree-shake. That is about 85 kB minified (24 kB gzipped) of every row marked
+"yes"; an app that already bundles zod for its own code pays it once.
+
+`defineReactor` costs as much as `defineDisplayReactor` today, even without
+`display`: its deprecated `display: true` option can still build a
+`DisplayReactor`, so the class and zod stay in the bundle. When that option is
+removed at the next major, `defineReactor` drops to about 60 kB minified,
+17.6 kB gzipped. Until then, an app that wants the smallest bundle and has no
+use for `DisplayReactor` sets up with `createActorHooks(new Reactor(...))` and
+`createAuthHooks` (see [Internet Identity](#internet-identity)).
+
+Both `define*` functions also include the identity-attribute code (about 6 kB
+minified, 1.8 kB gzipped) whether or not the app calls `useIdentityAttributes`,
+because it is part of the object they return.
 
 ## Factory Example
 
