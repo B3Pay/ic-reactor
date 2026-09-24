@@ -744,25 +744,33 @@ that depends on this package alone can test its components against a fake
 replica instead of a `Reactor` stub:
 
 ```tsx
+import { afterEach, beforeEach, expect, it } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import { ClientManager, Reactor, createActorHooks } from "@ic-reactor/react"
 import {
   createTestCanister,
   installFakeReplica,
+  type FakeReplica,
 } from "@ic-reactor/react/testing"
 import { QueryClient } from "@tanstack/react-query"
 import { idlFactory, type _SERVICE } from "./declarations/backend"
 
 const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+let replica: FakeReplica
 
-it("reads the balance", async () => {
-  const replica = installFakeReplica({
+beforeEach(() => {
+  replica = installFakeReplica({
     canisters: {
       [BACKEND]: createTestCanister<_SERVICE>(idlFactory, {
         balance: () => 42n,
       }),
     },
   })
+})
+// Also when the test fails, so the next test gets a fetch of its own.
+afterEach(() => replica.restore())
+
+it("reads the balance", async () => {
   // Built after the fake is installed, and pointed at it.
   const reactor = new Reactor<_SERVICE>({
     clientManager: new ClientManager({
@@ -780,7 +788,6 @@ it("reads the balance", async () => {
   )
 
   await waitFor(() => expect(result.current.data).toBe(42n))
-  replica.restore()
 })
 ```
 

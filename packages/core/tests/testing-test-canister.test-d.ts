@@ -7,7 +7,7 @@
  * Checked by `pnpm typecheck` (tests are in the typecheck project), not by
  * vitest.
  */
-import { describe, it, expectTypeOf } from "vitest"
+import { describe, it, expectTypeOf, vi } from "vitest"
 import type { ActorMethod } from "@icp-sdk/core/agent"
 import type { IDL } from "@icp-sdk/core/candid"
 import type { Principal } from "@icp-sdk/core/principal"
@@ -103,6 +103,28 @@ describe("createTestCanister handlers", () => {
         return text
       },
     })
+  })
+})
+
+describe("createTestCanister handlers as vi.fn() mocks", () => {
+  it("are accepted, typed from TestCanisterHandler", () => {
+    const transfer = vi.fn<TestCanisterHandler<Ledger, "transfer">>(
+      ([{ amount }]) => ({ Ok: amount })
+    )
+    const balanceOf = vi.fn(() => 0n)
+
+    createTestCanister<Ledger>(idlFactory, {
+      transfer,
+      balance_of: balanceOf,
+    })
+    transfer.mockReturnValueOnce({
+      Err: { InsufficientFunds: { balance: 0n } },
+    })
+    // @ts-expect-error the mock keeps the handler's result type
+    transfer.mockReturnValueOnce({ Ok: 1 })
+    expectTypeOf(transfer.mock.calls[0][0]).toEqualTypeOf<
+      [{ to: Principal; amount: bigint }]
+    >()
   })
 })
 

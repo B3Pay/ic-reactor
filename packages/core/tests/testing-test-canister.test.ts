@@ -6,7 +6,7 @@
  * `CanisterError`, a trap into `CallError`, and the caller the agent signs as —
  * instead of a stub cast to `Reactor` that re-implements some of that.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { QueryClient } from "@tanstack/query-core"
 import { Actor, HttpAgent, type ActorMethod } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
@@ -20,6 +20,7 @@ import {
   createTestCanister,
   installFakeReplica,
   type FakeReplica,
+  type TestCanisterHandler,
   type TestCanisterHandlers,
 } from "../src/testing/index.js"
 
@@ -223,6 +224,31 @@ describe("createTestCanister through a DisplayReactor", () => {
     await expect(display.callMethod({ functionName: "whoami" })).resolves.toBe(
       user.getPrincipal().toText()
     )
+  })
+})
+
+describe("a vi.fn() handler", () => {
+  it("changes an answer per test and records what the canister received", async () => {
+    // What a test on a reactor built at module scope does: that reactor keeps
+    // the fake it was built with, so the handler changes rather than the fake.
+    const deposit = vi.fn<TestCanisterHandler<Backend, "deposit">>(
+      ([amount]) => ({ Ok: amount })
+    )
+    install({ deposit })
+    const reactor = reactorOn()
+
+    deposit.mockReturnValueOnce({ Err: { Paused: { until: 9n } } })
+    await expect(
+      reactor.callMethod({ functionName: "deposit", args: [4n] })
+    ).rejects.toSatisfy(isCanisterError)
+    await expect(
+      reactor.callMethod({ functionName: "deposit", args: [5n] })
+    ).resolves.toBe(5n)
+
+    expect(deposit.mock.calls.map(([args]) => args)).toEqual([[4n], [5n]])
+    expect(deposit).toHaveBeenLastCalledWith([5n], {
+      caller: Principal.anonymous(),
+    })
   })
 })
 

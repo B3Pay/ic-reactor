@@ -90,6 +90,29 @@ the loading state.
   it. A handler for a method the service does not have throws when you create
   the canister, and TypeScript flags it first.
 
+A handler can be a `vi.fn()` mock, typed with `TestCanisterHandler`. A test can
+then change one answer, or check what the canister received, without
+installing another fake:
+
+```typescript
+import { expect, vi } from "vitest"
+import {
+  createTestCanister,
+  type TestCanisterHandler,
+} from "@ic-reactor/react/testing"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const deposit = vi.fn<TestCanisterHandler<_SERVICE, "deposit">>(([amount]) => ({
+  Ok: amount,
+}))
+const backend = createTestCanister<_SERVICE>(idlFactory, { deposit })
+
+// In a test:
+deposit.mockReturnValueOnce({ Err: { InvalidAmount: null } })
+// ...and after the call:
+expect(deposit).toHaveBeenCalledWith([10n], expect.anything())
+```
+
 ## Install the Fake Replica
 
 `installFakeReplica` replaces the global `fetch` with the fake. It runs the
@@ -359,7 +382,9 @@ The fake implements the endpoints an agent uses to call a canister: the root
 key, queries, update calls (answered synchronously) and the `read_state` an
 agent does before it trusts a query. It does not run canister code, cycles,
 timers, inter-canister calls, the management canister, subnet endpoints or
-HTTP asset certification. For those, test against a replica or PocketIC.
+HTTP asset certification, and it serves no canister metadata. For those, test
+against a replica or PocketIC. Without metadata, a `CandidReactor` under test
+needs its `candid` passed in rather than fetched.
 
 ## See Also
 
