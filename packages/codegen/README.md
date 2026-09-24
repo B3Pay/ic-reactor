@@ -84,8 +84,9 @@ await setMessageMutation.execute(["hello"]) // anywhere
 
 The default `index.ts` wrapper re-exports the file. Switching `factories` off
 removes it (only while it still carries codegen's header) and restores the
-plain wrapper if nobody edited it. It needs `target: "react"`; with
-`target: "core"` the run fails with a `CodegenConfigError`.
+plain wrapper if nobody edited it. It needs `target: "react"`: with
+`target: "core"`, `assertSafeCanisterConfig` throws a `CodegenConfigError` and
+the run fails before it writes anything.
 
 ## Generators
 

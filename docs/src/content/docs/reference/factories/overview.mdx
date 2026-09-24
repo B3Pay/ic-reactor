@@ -8,6 +8,14 @@ import { Aside, Card, CardGrid, LinkCard } from "@astrojs/starlight/components"
 
 Factory functions let you create **reusable, pre-configured** query and mutation objects. Unlike hooks which are created fresh on each render, factories create stable objects you can use across loaders, components, and utilities.
 
+<Aside type="tip">
+  With the [CLI](/v3/packages/cli) or the [Vite
+  plugin](/v3/packages/vite-plugin), set `factories: true` on a canister to
+  generate a `createQuery`, `createQueryFactory` or `createMutation` object for
+  every method of its `.did`, chosen by the method's annotation. See [Query and
+  Mutation Factories](/v3/packages/codegen#query-and-mutation-factories).
+</Aside>
+
 ## Why Use Factories?
 
 <CardGrid>

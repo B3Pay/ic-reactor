@@ -47,7 +47,8 @@ setMessageMutation.useMutation({ invalidateQueries: [getMessageQuery.getQueryKey
 await setMessageMutation.execute(["hello"]) // outside React
 ```
 
-Needs `target: "react"` (`CodegenConfigError` otherwise). Switching it off
+Needs `target: "react"`; with `target: "core"` the config is rejected
+(`CodegenConfigError`) before anything is written. Switching it off
 removes the file. An `index.ts` the user edited is not rewritten; the run then
 returns a `warnings` entry until it has
 `export * from "./index.factories.generated"`. Do not hand-write
