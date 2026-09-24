@@ -426,7 +426,7 @@ describe("createReactorProvider", () => {
       expect(dispose).not.toHaveBeenCalled()
     })
 
-    it("disposes each manager the value holds once", () => {
+    it("disposes each manager built for the value once", () => {
       let built: AuthenticationManager[] = []
       const { ReactorProvider } = createReactorProvider(() => {
         const todo = defineTodo()
@@ -457,6 +457,63 @@ describe("createReactorProvider", () => {
       render(<ReactorProvider />).unmount()
 
       expect(dispose.mock.contexts).toEqual([authentication])
+    })
+
+    it("disposes a manager the factory built and handed to a reactor", () => {
+      let authentication: AuthenticationManager | undefined
+      const { ReactorProvider } = createReactorProvider(() => {
+        const managers = createManagers()
+        authentication = managers.authentication
+        // Only the reactor holds it: the value has no property that is it.
+        return {
+          todo: defineReactor<TodoActor>({
+            name: "todo",
+            idlFactory,
+            canisterId: CANISTER_ID,
+            authentication,
+          }),
+        }
+      })
+
+      render(<ReactorProvider />).unmount()
+
+      expect(dispose.mock.contexts).toEqual([authentication])
+    })
+
+    it("leaves alone a manager built outside the factory", () => {
+      // An app-wide manager every token provider shares, so that one sign-in
+      // covers them all, as defineReactor's `authentication` option offers.
+      // Switching the token remounts the provider, and releasing the app's
+      // manager then would stop its client following the session.
+      const { authentication: shared } = createManagers()
+      const { ReactorProvider, useReactor } = createReactorProvider(
+        ({ canisterId }: { canisterId: string }) => ({
+          ledger: defineReactor<TodoActor>({
+            name: "ledger",
+            idlFactory,
+            canisterId,
+            authentication: shared,
+          }),
+          shared,
+        })
+      )
+      let ledger: { authentication: AuthenticationManager } | undefined
+      function Probe() {
+        ledger = useReactor("ledger")
+        return null
+      }
+      const tree = (canisterId: string) => (
+        <ReactorProvider key={canisterId} canisterId={canisterId}>
+          <Probe />
+        </ReactorProvider>
+      )
+
+      const view = render(tree(CANISTER_ID))
+      view.rerender(tree("aaaaa-aa"))
+      view.unmount()
+
+      expect(ledger!.authentication).toBe(shared)
+      expect(dispose).not.toHaveBeenCalled()
     })
   })
 

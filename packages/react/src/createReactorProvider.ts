@@ -26,7 +26,10 @@ import type { ReactElement, ReactNode } from "react"
 import { QueryClientProvider } from "@tanstack/react-query"
 import type { QueryClient } from "@tanstack/react-query"
 import type { AuthenticationManager } from "./auth/authentication-manager.js"
-import { authenticationOf } from "./ownedAuthentication.js"
+import {
+  authenticationOf,
+  collectAuthentication,
+} from "./ownedAuthentication.js"
 
 /**
  * Props of the provider {@link createReactorProvider} returns: `children`, and
@@ -99,14 +102,14 @@ export interface CreateReactorProviderReturn<
  * generic signatures. `useReactor("todo")` returns one property of it.
  *
  * When the tree unmounts, the provider disposes each `AuthenticationManager`
- * the value holds, releasing the Internet Identity client it built: the value
- * itself when it is one, those among its own properties, and the one each
- * `defineReactor` result there uses (a result that never built one builds
- * none). `dispose()` only forgets the client, and the next sign-in builds a
- * new one, so this is safe under StrictMode, which runs the cleanup and then
- * the effect again on the same value. Everything the value holds therefore
- * belongs to the provider: build it in the factory rather than handing in a
- * manager other trees share.
+ * built for the value, releasing the Internet Identity client it built: those
+ * constructed while the factory ran, and the one a `defineReactor` result in
+ * the value, or among its own properties, builds on first use (a result that
+ * never used authentication builds none). A manager built elsewhere and
+ * handed in, such as an app-wide one passed as `authentication` or as a
+ * prop, is left to whoever built it. `dispose()` only forgets the client, and
+ * the next sign-in builds a new one, so this is safe under StrictMode, which
+ * runs the cleanup and then the effect again on the same value.
  *
  * It also renders a `QueryClientProvider` for the value's QueryClient; see
  * {@link CreateReactorProviderOptions.queryClientProvider}.
@@ -223,9 +226,12 @@ export function createReactorProvider<
       const pending = uncommitted.get(providerProps)
       if (pending) return pending
       const { children: _children, ...props } = providerProps
-      const value = factory(props as unknown as TProps)
+      const { value, built: authentication } = collectAuthentication(() =>
+        factory(props as unknown as TProps)
+      )
       const next: Built<TValue> = {
         value,
+        authentication,
         queryClient: queryClientProvider ? soleQueryClient(value) : undefined,
       }
       if (!isServer()) {
@@ -235,12 +241,12 @@ export function createReactorProvider<
       return next
     })
 
-    // Releases the Internet Identity clients the value's managers built once
-    // this tree unmounts. A v10 client listens to the page until it is
-    // disposed, so each remount would otherwise leave one behind. dispose()
-    // only forgets the client: StrictMode runs this cleanup and then the
-    // effect again on the same value, and the next sign-in builds a new one.
-    // A server runs no effects, and its managers build no client.
+    // Releases the Internet Identity clients of the managers built for this
+    // value once this tree unmounts. A v10 client listens to the page until
+    // it is disposed, so each remount would otherwise leave one behind.
+    // dispose() only forgets the client: StrictMode runs this cleanup and then
+    // the effect again on the same value, and the next sign-in builds a new
+    // one. A server runs no effects, and its managers build no client.
     useEffect(() => {
       // Committed: the value is this mount's, and a later mount of the same
       // element builds its own.
@@ -248,7 +254,7 @@ export function createReactorProvider<
         uncommitted.delete(built.pendingProps)
         built.pendingProps = undefined
       }
-      return () => disposeAuthentication(built.value)
+      return () => disposeAuthentication(built)
     }, [built])
 
     const provided = createElement(
@@ -285,6 +291,8 @@ export function createReactorProvider<
 /** What a provider built, and until it commits, the props it built it from. */
 interface Built<TValue> {
   value: TValue
+  /** The managers constructed while the factory ran. */
+  authentication: AuthenticationManager[]
   queryClient: QueryClient | undefined
   pendingProps?: object
 }
@@ -338,25 +346,15 @@ function soleQueryClient(value: object): QueryClient | undefined {
   return client
 }
 
-function isAuthenticationManager(
-  candidate: object
-): candidate is AuthenticationManager {
-  const manager = candidate as Partial<AuthenticationManager>
-  return (
-    typeof manager.dispose === "function" &&
-    typeof manager.subscribeAuthState === "function"
-  )
-}
-
 /**
- * Disposes each `AuthenticationManager` the value holds, once each: the value
- * or its own properties when they are one, and the one a `defineReactor`
- * result among them uses, if it has built or been given one.
+ * Disposes each `AuthenticationManager` built for the value, once each: those
+ * constructed while the factory ran, and the one each `defineReactor` result
+ * in the value or among its own properties has built since. A manager built
+ * elsewhere and handed in is left to whoever built it.
  */
-function disposeAuthentication(value: object): void {
-  const managers = new Set<AuthenticationManager>()
+function disposeAuthentication({ value, authentication }: Built<object>): void {
+  const managers = new Set(authentication)
   for (const part of partsOf(value)) {
-    if (isAuthenticationManager(part)) managers.add(part)
     const owned = authenticationOf(part)
     if (owned) managers.add(owned)
   }

@@ -573,10 +573,12 @@ the value's QueryClient, so `useQueryClient()`, React Query Devtools and a
 `HydrationBoundary` below it use the cache the hooks fill; pass
 `{ queryClientProvider: false }` to keep your own.
 
-When the tree unmounts, the provider disposes each `AuthenticationManager` the
-value holds, releasing the Internet Identity client it built: a v10 client keeps
+When the tree unmounts, the provider disposes each `AuthenticationManager`
+built for the value (in the factory, or later by a `defineReactor` result in
+it), releasing the Internet Identity client it built: a v10 client keeps
 listening to the page until it is disposed, so each remount would otherwise
-leave one behind. A provider you write yourself has to do the same from its
+leave one behind. A manager built elsewhere and passed in, such as an app-wide
+one, is left alone. A provider you write yourself has to do the same from its
 cleanup:
 
 ```tsx

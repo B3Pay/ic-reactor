@@ -65,8 +65,10 @@ export const { ReactorProvider, useReactor } = createReactorProvider(() =>
   it may return a record (`useReactor("ledger")`) or query/mutation objects.
 - `useReactor()` is typed as the factory's return: never write `as any` hook
   forwarders or a hand-rolled context + `useEffect(dispose)` provider.
-- It disposes the value's `AuthenticationManager`s on unmount and renders a
-  `QueryClientProvider` for the value's single QueryClient.
+- It disposes the `AuthenticationManager`s built for the value (in the factory,
+  or later by a `defineReactor` result in it) on unmount, leaves managers built
+  elsewhere alone, and renders a `QueryClientProvider` for the value's single
+  QueryClient.
 - Factory props are read once per mount; change the provider's `key` to rebuild.
 - Never call `createAuthHooks`/`createActorHooks` during render; take the hooks
   from `useReactor()`.

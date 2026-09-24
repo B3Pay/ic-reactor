@@ -23,6 +23,7 @@ import {
   LOCAL_INTERNET_IDENTITY_CANISTER_ID,
   localInternetIdentityProvider,
 } from "./constants.js"
+import { recordAuthentication } from "../ownedAuthentication.js"
 import {
   detectAuthClientFlavor,
   detectAuthClientInstanceFlavor,
@@ -131,6 +132,9 @@ export class AuthenticationManager {
     ...clientOptions
   }: AuthenticationManagerParameters) {
     this.clientManager = clientManager
+    // For `createReactorProvider`, which disposes the managers built while
+    // its factory ran, and leaves alone those built elsewhere.
+    recordAuthentication(this)
     const canisterEnv =
       typeof window !== "undefined" ? getAuthenticationCanisterEnv() : undefined
     this.envIdentityProvider = identityProvider

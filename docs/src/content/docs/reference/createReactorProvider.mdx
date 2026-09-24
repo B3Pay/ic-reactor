@@ -223,10 +223,11 @@ that canister.
 - **Hydration.** The browser builds its own value from the same props and
   renders the same first pass, so it hydrates without a mismatch.
 - **Unmount.** The provider calls `dispose()` on every `AuthenticationManager`
-  the value holds, which releases the Internet Identity client it built: the
-  value itself when it is one, those among its own properties, and the one each
-  `defineReactor` result there uses. A `defineReactor` result whose tree never
-  used authentication has built no manager, and none is built to be disposed.
+  built for the value, which releases the Internet Identity client it built:
+  those constructed while the factory ran, and the one each `defineReactor`
+  result in the value builds on first use. A `defineReactor` result whose tree
+  never used authentication has built no manager, and none is built to be
+  disposed.
 - **StrictMode.** `dispose()` only forgets the client, and the next sign-in
   builds a new one, so StrictMode's extra cleanup and effect on the same value
   leave the session and its restore intact. StrictMode also calls a `useState`
@@ -255,11 +256,12 @@ that canister.
 
 </Aside>
 
-<Aside type="caution">
-  Everything the value holds belongs to the provider and is released with it.
-  Build the managers inside the factory. A manager imported from module scope
-  and returned by the factory is disposed whenever a provider holding it
-  unmounts, while other trees may still use it.
+<Aside type="note" title="Managers built elsewhere">
+  A manager the factory did not build, such as an app-wide one passed to
+  `defineReactor` as `authentication`, or one handed in as a prop, is left
+  alone: it belongs to whoever built it, and other trees may still use it. So
+  several providers can share one sign-in, and switching a keyed provider to
+  another canister does not release the app's session.
 </Aside>
 
 ## Replacing a Hand-Written Provider

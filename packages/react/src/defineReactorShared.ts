@@ -256,12 +256,12 @@ export function defineReactorWith<
     },
   }
 
-  // For `createReactorProvider`, which disposes the manager when its tree
-  // unmounts. It reads the manager without the getter above, so a tree that
-  // never touched authentication does not build one just to release it.
-  registerAuthentication(
-    result,
-    () => authenticationInstance ?? providedAuthentication
+  // For `createReactorProvider`, which disposes the manager this result
+  // builds when its tree unmounts. It reads the manager without the getter
+  // above, so a tree that never touched authentication does not build one
+  // just to release it. A supplied manager is not this result's to release.
+  registerAuthentication(result, () =>
+    providedAuthentication ? undefined : authenticationInstance
   )
 
   return result
