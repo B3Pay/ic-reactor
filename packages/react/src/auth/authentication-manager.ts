@@ -43,6 +43,15 @@ export interface AuthenticationManagerParameters extends AuthenticationClientOpt
   internetIdentityId?: string
 }
 
+/**
+ * What `@icp-sdk/auth` v9 and later add to a client, read by shape because
+ * {@link AuthClientLike} describes the methods every supported major shares.
+ */
+type SubscribableAuthClient = AuthClientLike & {
+  subscribe?: (listener: () => void) => () => void
+  getPrincipal?: () => Principal | undefined
+}
+
 type AuthClientConstructor = {
   // The translated options are the installed client's shape, not IC Reactor's:
   // `toAuthClientConstructorOptions` rewrites them per detected flavor, so this
@@ -82,6 +91,15 @@ export class AuthenticationManager {
   /** See {@link sessionChecked}. */
   private sessionCheckedValue = false
   private sessionCheckedSubscribers: Array<() => void> = []
+  /** Stops following the current client's session record; see `watchClient()`. */
+  private unwatchClient?: () => void
+  /**
+   * Set when the client's session record changed while an operation of this
+   * manager's own was running; see `followClient()`.
+   */
+  private clientChangedDuringOperation = false
+  /** Counts `followClient()` passes, so that only the latest one publishes. */
+  private followRevision = 0
   private readonly identityProvider?: string | URL
   /** The provider taken from the `ic_env` cookie, when no caller set one. */
   private readonly envIdentityProvider?: string | URL
@@ -144,6 +162,7 @@ export class AuthenticationManager {
       // client handed in here was treated as v8, and `targets` reached it
       // without the warning that it is ignored.
       this.authClientFlavor = detectAuthClientInstanceFlavor(authClient)
+      this.watchClient(authClient)
       this.syncStateFromClient(this.authStateRevision).catch((error) => {
         this.updateState({ error: error as Error, isAuthenticating: false })
       })
@@ -224,7 +243,10 @@ export class AuthenticationManager {
    * which runs the cleanup and then the effect again on the same manager. With
    * `@icp-sdk/auth` v8 there is nothing to release, and the manager only drops
    * its reference. A client passed in as `authClient` belongs to the caller: it
-   * is never disposed, and the manager goes on using it.
+   * is never disposed, and the manager goes on using it, but stops following its
+   * session record until its next {@link prepareClient}, {@link login} or
+   * {@link authenticate}, so that the caller's client does not keep a
+   * discarded manager alive.
    *
    * The auth state and the identity on the agent are left as they are.
    *
@@ -237,6 +259,7 @@ export class AuthenticationManager {
    * ```
    */
   public dispose(): void {
+    this.stopWatchingClient()
     if (this.authClientWasProvided) {
       return
     }
@@ -290,6 +313,7 @@ export class AuthenticationManager {
     const clientOptions = this.resolveClientOptions(options)
 
     if (this.authClient && !this.shouldRecreateClient(clientOptions)) {
+      this.watchClient(this.authClient)
       return this.authClient
     }
 
@@ -367,6 +391,9 @@ export class AuthenticationManager {
   }
 
   private async checkSession(): Promise<Identity | undefined> {
+    if (this.authClient) {
+      this.watchClient(this.authClient)
+    }
     if (this.authState.isAuthenticated) {
       // Returning on the cached flag alone meant a delegation that expired
       // mid-session was never re-observed: the UI kept rendering a signed-in
@@ -643,12 +670,151 @@ export class AuthenticationManager {
     options?: AuthenticationClientOptions
   ): AuthClientLike {
     const replaced = this.authClient
+    this.stopWatchingClient()
     this.authClient = client
     this.authClientOptions = options
     if (replaced && replaced !== client) {
       disposeClient(replaced)
     }
+    this.watchClient(client)
     return client
+  }
+
+  /**
+   * Follows a v10 client's session record, which every tab of the origin
+   * shares.
+   *
+   * The manager learned about the session only through its own calls, while a
+   * v10 client follows the other tabs. After a sign-out in another tab, this
+   * tab's client dropped the session and its manager went on reporting the
+   * user signed in, with the replaced identity on the agent signing calls as
+   * the account the user had left. After a sign-in there as another account,
+   * the manager kept the old account while the client held the new one. When
+   * the old identity's app delegation then lapsed, its mint was refused and
+   * the client removed the record every tab reads, signing the new account out
+   * of every tab (#754). `subscribe()` fires after the record changes, here or
+   * in another tab, and the manager then reads the client again.
+   *
+   * v8 has no notification and never revokes a session, so a v8 client is not
+   * followed.
+   */
+  private watchClient(client: AuthClientLike) {
+    if (this.unwatchClient || this.authClientFlavor !== "session") {
+      return
+    }
+    const { subscribe } = client as SubscribableAuthClient
+    if (typeof subscribe !== "function") {
+      return
+    }
+    this.unwatchClient = subscribe.call(client, () => {
+      // The client tells its listeners before it starts restoring for the new
+      // record, which it does right after they return. Reading it a microtask
+      // later waits for that restore. The state is published whether or not a
+      // subscriber throws, and there is no caller to hand that error to.
+      void Promise.resolve()
+        .then(() => this.followClient(client))
+        .catch(() => undefined)
+    })
+  }
+
+  private stopWatchingClient() {
+    this.unwatchClient?.()
+    this.unwatchClient = undefined
+  }
+
+  /**
+   * Reads the session from `client` after its record changed, and publishes
+   * it when it differs from what this manager holds, as `syncStateFromClient()`
+   * derives it. An error recorded for the session it replaces goes with it.
+   *
+   * An operation of the manager's own, which sets `isAuthenticating`, writes
+   * the record itself and publishes what the client holds when it ends, so a
+   * change during one is read again once it has. So is a change whose read
+   * something else published over.
+   */
+  private async followClient(client: AuthClientLike): Promise<void> {
+    if (client !== this.authClient) {
+      return
+    }
+    if (this.authState.isAuthenticating) {
+      this.clientChangedDuringOperation = true
+      return
+    }
+    const pass = ++this.followRevision
+    const revision = this.authStateRevision
+    const session = await this.readFollowedSession(client)
+    if (pass !== this.followRevision || client !== this.authClient) {
+      return
+    }
+    if (revision !== this.authStateRevision) {
+      return this.followClient(client)
+    }
+    if (!session) {
+      return
+    }
+    const current = this.authState
+    const anonymous = session.identity.getPrincipal().isAnonymous()
+    const unchanged =
+      session.isAuthenticated === current.isAuthenticated &&
+      (session.identity === current.identity ||
+        (!session.isAuthenticated &&
+          anonymous &&
+          current.identity?.getPrincipal().isAnonymous() === true))
+    if (unchanged) {
+      this.markSessionChecked()
+      return
+    }
+    // As in `authenticate()`, an agent that is anonymous already is left as
+    // it is.
+    if (!anonymous || !this.agentIsAnonymous()) {
+      this.clientManager.updateAgent(session.identity)
+    }
+    this.publishSession({
+      identity: session.identity,
+      isAuthenticated: session.isAuthenticated,
+      isAuthenticating: false,
+      error: undefined,
+    })
+  }
+
+  /**
+   * The session `client` holds, or `undefined` to leave the manager's as it is.
+   *
+   * v10 refuses to hand out an identity while the record names a sign-in it
+   * holds no credential for, as when restoring the account another tab signed
+   * in as failed. The session this manager holds is kept then only while the
+   * record still names its account. One for any other account must not stay
+   * on the agent.
+   */
+  private async readFollowedSession(
+    client: AuthClientLike
+  ): Promise<{ identity: Identity; isAuthenticated: boolean } | undefined> {
+    try {
+      const clientIdentity = await client.getIdentity()
+      const isAuthenticated = this.vouchesFor(
+        clientIdentity,
+        await client.isAuthenticated()
+      )
+      // The rule `authenticate()` applies to an identity the client no longer
+      // vouches for.
+      const identity =
+        isAuthenticated || clientIdentity.getPrincipal().isAnonymous()
+          ? clientIdentity
+          : new AnonymousIdentity()
+      return { identity, isAuthenticated }
+    } catch {
+      const { isAuthenticated, identity } = this.authState
+      const held = isAuthenticated
+        ? identity?.getPrincipal().toText()
+        : undefined
+      const named = (client as SubscribableAuthClient)
+        .getPrincipal?.()
+        ?.toText()
+      if (held === undefined || held === named) {
+        return undefined
+      }
+      return { identity: new AnonymousIdentity(), isAuthenticated: false }
+    }
   }
 
   /** @internal Used by IdentityAttributesManager. */
@@ -685,6 +851,7 @@ export class AuthenticationManager {
     options?: AuthenticationClientOptions
   ): AuthClientLike | undefined {
     if (this.authClient && !this.shouldRecreateClient(options)) {
+      this.watchClient(this.authClient)
       return this.authClient
     }
 
@@ -1086,6 +1253,19 @@ export class AuthenticationManager {
       } catch (error) {
         failure ??= { error }
       }
+    }
+    // The operation that held off `followClient()` is over: read the client
+    // again, once its caller has moved on.
+    const client = this.authClient
+    if (
+      this.clientChangedDuringOperation &&
+      !this.authStateValue.isAuthenticating &&
+      client
+    ) {
+      this.clientChangedDuringOperation = false
+      void Promise.resolve()
+        .then(() => this.followClient(client))
+        .catch(() => undefined)
     }
     if (failure) throw failure.error
   }

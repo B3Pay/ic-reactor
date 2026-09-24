@@ -344,6 +344,17 @@ already signed in, and the [protected route](#protected-routes) waits instead of
 redirecting. A restore that fails settles it as well, and the hooks then report
 the user signed out.
 
+### Several Tabs
+
+Every tab of an origin shares the stored session. With `@icp-sdk/auth` v10 the
+`AuthenticationManager` follows it: when the user signs out in another tab,
+this tab's manager signs out too and puts the anonymous identity on the agent,
+and when they sign in there as another account, this tab adopts that account.
+Neither needs a call in this tab. The hooks re-render with the new state, and
+the queries of every connected canister are swept as on any sign-in or
+sign-out. With v8, which tells a tab nothing, a tab notices only when it checks
+the session again, as `authenticate()` or a newly mounted `useAuth()` does.
+
 ### Session Duration
 
 By default, Internet Identity sessions last 8 hours. You can customize this:

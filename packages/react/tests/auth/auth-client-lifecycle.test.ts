@@ -376,3 +376,60 @@ describe("a provider that builds its managers per mount (real AuthClient)", () =
     expect(authentication.client).toBeUndefined()
   })
 })
+
+describe("following a v10 client's session record (real AuthClient)", () => {
+  // The manager subscribes to the client it uses, so that a sign-out or a
+  // sign-in in another tab reaches it (#754). A subscription holds the manager,
+  // so it has to end with the manager's use of that client.
+
+  /** The clients the manager is subscribed to right now. */
+  function trackSubscriptions() {
+    const subscribed = new Set<AuthClient>()
+    const subscribe = AuthClient.prototype.subscribe
+    vi.spyOn(AuthClient.prototype, "subscribe").mockImplementation(function (
+      this: AuthClient,
+      listener: () => void
+    ) {
+      const unsubscribe = subscribe.call(this, listener)
+      subscribed.add(this)
+      return () => {
+        subscribed.delete(this)
+        unsubscribe()
+      }
+    })
+    return subscribed
+  }
+
+  it.runIf(isV10)(
+    "stops following each client it replaces or releases (v10)",
+    async () => {
+      const subscribed = trackSubscriptions()
+      const { authentication } = createManager()
+
+      await authentication.prepareClient()
+      expect([...subscribed]).toEqual([authentication.client])
+      await authentication.prepareClient({ openIdProvider: "google" })
+      expect([...subscribed]).toEqual([authentication.client])
+
+      authentication.dispose()
+      expect(subscribed.size).toBe(0)
+    }
+  )
+
+  it.runIf(isV10)(
+    "follows a client handed to it again once it is used after dispose() (v10)",
+    async () => {
+      const subscribed = trackSubscriptions()
+      const authClient = new AuthClient()
+      const { authentication } = createManager({ authClient })
+      expect([...subscribed]).toEqual([authClient])
+
+      authentication.dispose()
+      expect(subscribed.size).toBe(0)
+
+      await authentication.prepareClient()
+      expect([...subscribed]).toEqual([authClient])
+      authClient.dispose()
+    }
+  )
+})

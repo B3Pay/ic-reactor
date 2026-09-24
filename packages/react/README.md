@@ -57,6 +57,11 @@ Two options exist only on v10: `maxTimeToIdle` on `login()` and
 `disableBrowserActivity` on the client. IC Reactor forwards them to a v10 client
 and drops them on v8 with a one-time warning, since v8 has no equivalent.
 
+A v10 client also tells IC Reactor when the session changes in another tab of
+the origin. `AuthenticationManager` follows it: a sign-out in another tab signs
+this tab out, and a sign-in there as another account is adopted here, with no
+call in this tab. A v8 tab notices only when it checks the session again.
+
 One difference is security-relevant and warns unconditionally: **`targets` on
 `login()` is ignored by v10.** v8 forwards it to restrict the delegation to named
 canisters; v10 removed it and scopes a session at the identity provider instead.
