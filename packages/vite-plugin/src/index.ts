@@ -7,7 +7,13 @@
  * 3. Hot-reloads when .did files change
  */
 
-import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite"
+import type {
+  Plugin,
+  ProxyOptions,
+  ResolvedConfig,
+  UserConfig,
+  ViteDevServer,
+} from "vite"
 import fs from "node:fs"
 import path from "node:path"
 import {
@@ -18,10 +24,14 @@ import {
   type CodegenConfig,
   type CodegenTarget,
 } from "@ic-reactor/codegen"
-import { getIcEnvironmentInfo, buildIcEnvCookie } from "./env.js"
+import {
+  createLocalEnvironment,
+  icEnvMiddleware,
+  type LocalEnvironment,
+  type LocalEnvironmentState,
+} from "./dev-environment.js"
 
 const PLUGIN_NAME = "ic-reactor-plugin"
-const DEFAULT_LOCAL_REPLICA = "http://127.0.0.1:4943"
 
 export interface IcReactorPluginOptions {
   /**
@@ -95,6 +105,15 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
   // which one we are in. Both `config` and `configResolved` carry the command;
   // build is the safer default for the case where neither has run.
   let command: ResolvedConfig["command"] = "build"
+
+  /**
+   * The local IC environment `vite dev` and `vite preview` inject. The
+   * `config` hook creates it when `injectEnvironment` is on.
+   */
+  let localEnvironment: LocalEnvironment | undefined
+
+  /** The options of the plugin's `/api` proxy, as Vite hands them over. */
+  const apiProxyOptions = new Set<ProxyOptions>()
 
   // Set once the dev server exists, so a `buildStart` failure in dev can reach
   // the browser overlay too — in dev, `configureServer` runs before Vite calls
@@ -332,7 +351,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
     name: PLUGIN_NAME,
     enforce: "pre", // Run before other plugins
 
-    config(userConfig, { command: viteCommand }) {
+    async config(userConfig, { command: viteCommand }) {
       command = viteCommand
 
       if (viteCommand !== "serve" || !injectEnvironment) {
@@ -341,113 +360,45 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
 
       // ── Local Development Proxy & Cookies ────────────────────────────────
 
-      // Always include internet_identity if not present (common need)
-      const canisterNames = canisters
-        .map((c) => c.name)
-        .filter((n): n is string => !!n)
-      if (!canisterNames.includes("internet_identity")) {
-        canisterNames.push("internet_identity")
-      }
+      // The plugin's own `/api` entry, unless the Vite config has one.
+      const ownsApiProxy = !userConfig.server?.proxy?.["/api"]
 
-      // `configResolved` has not run yet, so resolve the root the way Vite
-      // will. icp finds the project from the directory it starts in, and with
-      // `vite apps/web` or a `root` option that is not the process cwd.
-      const { environment: icEnv, diagnostics } = getIcEnvironmentInfo(
-        canisterNames,
-        path.resolve(userConfig.root ?? process.cwd())
-      )
-
-      if (!icEnv) {
-        // Failing detection used to be indistinguishable from success: no
-        // cookie was set, no warning was printed, and the app only broke much
-        // later on an undefined canister id. Stay quiet in env-only mode
-        // (no canisters configured), where there is nothing to inject anyway.
-        if (canisters.length > 0) {
-          console.warn(
-            `[ic-reactor] Could not detect the local IC environment, falling back to ${DEFAULT_LOCAL_REPLICA}. ` +
-              `Canister IDs and the root key will not be injected — is the local replica running? ` +
-              `Re-run with DEBUG=ic-reactor to see the \`icp\` output.`
-          )
-        }
-
-        for (const diagnostic of diagnostics) {
-          debugLog(diagnostic)
-        }
-
-        const envOnlyCookie =
-          canisters.length === 0
-            ? buildIcEnvCookie(
-                {},
-                undefined,
-                "http://id.ai.localhost:8000/authorize"
-              )
-            : undefined
-
-        // Fallback: proxy /api to default local replica. In env-only mode,
-        // still provide the standard ICP CLI built-in local II URL.
-        return {
-          server: {
-            headers: envOnlyCookie
-              ? {
-                  "Set-Cookie": `ic_env=${envOnlyCookie}; Path=/; SameSite=Lax;`,
-                }
-              : undefined,
-            proxy: apiProxy(userConfig, DEFAULT_LOCAL_REPLICA),
-          },
-        }
-      }
-
-      // The replica can be UP -- `icp network status` succeeds, so icEnv is
-      // truthy and the check above never fires -- while a configured canister
-      // has never been deployed. Every `icp canister status <name>` then fails
-      // and that id is simply absent, so the cookie goes out carrying a root key
-      // and no PUBLIC_CANISTER_ID for it. That is the same "indistinguishable
-      // from success until the app breaks on an undefined canister id" failure
-      // the branch above exists to prevent, and it is the more common one.
-      //
-      // Only configured canisters are reported: `internet_identity` is appended
-      // to canisterNames for convenience and is routinely not deployed.
-      // An explicitly configured `canisterId` counts as resolved: the cookie
-      // below merges configuredCanisterIds over the detected ones, so the app
-      // does receive a valid PUBLIC_CANISTER_ID. Warning on those told the user
-      // to deploy a canister whose id they had already supplied.
-      const missingCanisterIds = canisters
-        .map((canister) => canister.name)
-        .filter((name): name is string => !!name)
-        .filter(
-          (name) => !icEnv.canisterIds[name] && !configuredCanisterIds[name]
-        )
-
-      if (missingCanisterIds.length > 0) {
-        const names = missingCanisterIds.map((name) => `"${name}"`).join(", ")
-        const it = missingCanisterIds.length === 1 ? "it" : "them"
-        console.warn(
-          `[ic-reactor] The local replica is running, but no canister ID could be resolved for ${names}. ` +
-            `Deploy ${it} (\`icp deploy\`) — until then the injected ic_env carries no PUBLIC_CANISTER_ID ` +
-            `for ${it} and the app will see an undefined canister id. ` +
-            `Re-run with DEBUG=ic-reactor to see the \`icp\` output.`
-        )
-      }
-
-      for (const diagnostic of diagnostics) {
-        debugLog(diagnostic)
-      }
-
-      const cookieValue = buildIcEnvCookie(
-        {
-          ...icEnv.canisterIds,
-          ...configuredCanisterIds,
+      const environment = createLocalEnvironment({
+        canisterNames: canisters
+          .map((canister) => canister.name)
+          .filter((name): name is string => !!name),
+        configuredCanisterIds,
+        // `configResolved` has not run yet, so resolve the root the way Vite
+        // will. icp finds the project from the directory it starts in, and
+        // with `vite apps/web` or a `root` option that is not the process cwd.
+        projectRoot: path.resolve(userConfig.root ?? process.cwd()),
+        onDiagnostic: debugLog,
+        onUpdate: (previous, next) => {
+          for (const proxyOptions of apiProxyOptions) {
+            proxyOptions.target = next.proxyTarget
+          }
+          if (previous) {
+            reportDetectionProgress(previous, next, ownsApiProxy)
+          }
         },
-        icEnv.rootKey,
-        icEnv.internetIdentityProvider
-      )
+      })
+      localEnvironment = environment
+
+      const state = await environment.detect()
+      warnAboutIncompleteDetection(state, canisters.length > 0, ownsApiProxy)
 
       return {
         server: {
-          headers: {
-            "Set-Cookie": `ic_env=${cookieValue}; Path=/; SameSite=Lax;`,
-          },
-          proxy: apiProxy(userConfig, icEnv.proxyTarget),
+          // The cookie is not a static `server.headers` entry: the middleware
+          // that configureServer adds sets it per response, from the latest
+          // detection. See dev-environment.ts.
+          proxy: apiProxy(userConfig, state.proxyTarget, (proxyOptions) => {
+            // Vite hands the proxy these options on every request, so a new
+            // target set here takes effect on the next one.
+            apiProxyOptions.add(proxyOptions)
+            proxyOptions.target =
+              environment.state?.proxyTarget ?? state.proxyTarget
+          }),
         },
       }
     },
@@ -462,6 +413,12 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
 
     configureServer(server) {
       devServer = server
+
+      // Added here rather than returned as a post hook, so it runs before
+      // Vite's own middlewares, which serve the page.
+      if (localEnvironment) {
+        server.middlewares.use(icEnvMiddleware(localEnvironment))
+      }
 
       // Replay the unfixed failures described at pendingFailures to each client
       // that connects. A canister leaves the replay once it regenerates.
@@ -497,6 +454,14 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       const onDidEvent = (file: string) => regenerateForDid(file, server)
       server.watcher.on("change", onDidEvent)
       server.watcher.on("add", onDidEvent)
+    },
+
+    // `vite preview` resolves the config with the `serve` command too, and
+    // used to inherit the cookie from `server.headers`.
+    configurePreviewServer(server) {
+      if (localEnvironment) {
+        server.middlewares.use(icEnvMiddleware(localEnvironment))
+      }
     },
 
     async buildStart() {
@@ -639,8 +604,16 @@ function describeError(error: unknown): string {
  * pointed `/api` at icp-cli's port 8000 got 4943 instead, and nothing reported
  * the swap. Vite's merge skips an undefined value, so returning nothing leaves
  * the user's entry in place.
+ *
+ * `configure` receives the options object Vite builds the proxy from. Every
+ * supported Vite major copies it for each request, so the target can follow
+ * detection while the server runs.
  */
-function apiProxy(userConfig: UserConfig, target: string) {
+function apiProxy(
+  userConfig: UserConfig,
+  target: string,
+  configure: (options: ProxyOptions) => void
+): Record<string, ProxyOptions> | undefined {
   if (userConfig.server?.proxy?.["/api"]) {
     debugLog(
       `The Vite config already proxies /api, so the plugin keeps that proxy instead of sending /api to ${target}.`
@@ -648,7 +621,96 @@ function apiProxy(userConfig: UserConfig, target: string) {
     return undefined
   }
 
-  return { "/api": { target, changeOrigin: true } }
+  return {
+    "/api": {
+      target,
+      changeOrigin: true,
+      configure: (_proxy, options) => configure(options),
+    },
+  }
+}
+
+/** `"a"`, or `"a", "b"`: canister names as the warnings quote them. */
+function quoteNames(names: string[]): string {
+  return names.map((name) => `"${name}"`).join(", ")
+}
+
+/**
+ * Warn at startup when detection is incomplete, and say what the plugin does
+ * about it: it asks `icp` again on each page load until detection completes.
+ *
+ * Failing detection used to be indistinguishable from success: no cookie was
+ * set, no warning was printed, and the app only broke later on an undefined
+ * canister id.
+ */
+function warnAboutIncompleteDetection(
+  state: LocalEnvironmentState,
+  hasCanisters: boolean,
+  ownsApiProxy: boolean
+): void {
+  if (!state.environment) {
+    // Env-only mode (no canisters configured) has nothing to inject.
+    if (!hasCanisters) return
+    const proxyNote = ownsApiProxy
+      ? ` and /api goes to ${state.proxyTarget} for now`
+      : ""
+    console.warn(
+      `[ic-reactor] Could not detect the local IC environment, so no ic_env cookie is set${proxyNote}. ` +
+        `Is the local network running? The plugin asks \`icp\` again on each page load until it answers` +
+        `${ownsApiProxy ? ", then sends /api to the network it reports" : ""}: start the network ` +
+        `(\`icp network start\`) and reload the page. Re-run with DEBUG=ic-reactor to see the \`icp\` output.`
+    )
+    return
+  }
+
+  // The network can be up while a configured canister has never been
+  // deployed. Every `icp canister status <name>` then fails and that id is
+  // absent, so the cookie carries a root key and no PUBLIC_CANISTER_ID for it,
+  // which is the same silent failure. Only configured canisters count, and one
+  // with a configured `canisterId` is resolved.
+  const missing = state.missingCanisterIds
+  if (missing.length > 0) {
+    const it = missing.length === 1 ? "it" : "them"
+    console.warn(
+      `[ic-reactor] The local replica is running, but no canister ID could be resolved for ${quoteNames(missing)}. ` +
+        `Until one is, the ic_env cookie carries no PUBLIC_CANISTER_ID for ${it} and the app will see an ` +
+        `undefined canister id. Deploy ${it} (\`icp deploy\`) and reload the page: the plugin asks \`icp\` ` +
+        `again on each page load until every configured canister has an ID. ` +
+        `Re-run with DEBUG=ic-reactor to see the \`icp\` output.`
+    )
+  }
+}
+
+/** Report what a detection after startup found that the one before had not. */
+function reportDetectionProgress(
+  previous: LocalEnvironmentState,
+  next: LocalEnvironmentState,
+  ownsApiProxy: boolean
+): void {
+  if (!previous.environment && next.environment) {
+    console.log(
+      `[ic-reactor] Detected the local IC network: the ic_env cookie now carries its root key` +
+        (ownsApiProxy ? ` and /api goes to ${next.proxyTarget}.` : ".")
+    )
+  }
+
+  const resolved = previous.missingCanisterIds.filter(
+    (name) => !next.missingCanisterIds.includes(name)
+  )
+  if (next.environment && resolved.length > 0) {
+    console.log(
+      `[ic-reactor] The ic_env cookie now carries the canister ID${
+        resolved.length === 1 ? "" : "s"
+      } for ${quoteNames(resolved)}.`
+    )
+  }
+
+  if (next.complete && !previous.complete) {
+    console.log(
+      "[ic-reactor] Every configured canister has an ID, so page loads no longer run `icp`. " +
+        "Restart the dev server after redeploying into a fresh network."
+    )
+  }
 }
 
 /**

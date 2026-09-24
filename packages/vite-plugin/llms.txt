@@ -36,7 +36,12 @@ icReactor({
   `injectEnvironment`, `failOnError`
 - Per canister (inside `canisters[]`): `name`, `didFile`, `outDir`,
   `clientManagerPath`, `target`, `mode`, `canisterId`
-- `injectEnvironment` for local `ic_env` cookie + `/api` proxy behavior. The
+- `injectEnvironment` for local `ic_env` cookie + `/api` proxy behavior in
+  `vite dev` and `vite preview`. While `icp` reports no network or a
+  configured canister has no ID, each page load asks `icp` again, so deploying
+  after `vite dev` started needs only a reload; once every configured canister
+  resolves, page loads run no `icp` command and a redeploy into a fresh
+  network needs a restart. `/api` follows the detected network. The
   consumer side is a positive allowlist: `ClientManager` trusts the cookie — its
   root key, its Internet Identity provider, and the canister IDs a reactor
   resolves by name — only for loopback, `localhost`, and dev-container hosts.

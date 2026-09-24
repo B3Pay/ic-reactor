@@ -69,14 +69,14 @@ plus hooks named after the canister — for a canister named `backend`:
 
 ## Plugin Options
 
-| Option              | Type                | Default                                       | Description                                                         |
-| :------------------ | :------------------ | :-------------------------------------------- | :------------------------------------------------------------------ |
-| `canisters`         | `CanisterConfig[]`  | —                                             | Canister configurations (required).                                 |
-| `outDir`            | `string`            | `"src/declarations"`                          | Base output directory for generated files.                          |
-| `clientManagerPath` | `string`            | `"../../clients"`                             | Default client manager import path (relative from generated files). |
-| `target`            | `"react" \| "core"` | `"react"`                                     | Default generated runtime target.                                   |
-| `injectEnvironment` | `boolean`           | `true`                                        | Inject `ic_env` cookie and proxy during `vite dev`.                 |
-| `failOnError`       | `boolean`           | `true` on `vite build`, `false` on `vite dev` | Abort the Vite run when a canister fails to generate.               |
+| Option              | Type                | Default                                       | Description                                                            |
+| :------------------ | :------------------ | :-------------------------------------------- | :--------------------------------------------------------------------- |
+| `canisters`         | `CanisterConfig[]`  | —                                             | Canister configurations (required).                                    |
+| `outDir`            | `string`            | `"src/declarations"`                          | Base output directory for generated files.                             |
+| `clientManagerPath` | `string`            | `"../../clients"`                             | Default client manager import path (relative from generated files).    |
+| `target`            | `"react" \| "core"` | `"react"`                                     | Default generated runtime target.                                      |
+| `injectEnvironment` | `boolean`           | `true`                                        | Inject `ic_env` cookie and proxy during `vite dev` and `vite preview`. |
+| `failOnError`       | `boolean`           | `true` on `vite build`, `false` on `vite dev` | Abort the Vite run when a canister fails to generate.                  |
 
 ### Per-canister options
 
@@ -131,16 +131,28 @@ Set `target` to control whether generated files include React hooks:
 
 ## Local Development
 
-When `injectEnvironment` is enabled during `vite dev`, the plugin tries to read
-local network details from the `icp` CLI, then:
+When `injectEnvironment` is enabled during `vite dev` or `vite preview`, the
+plugin tries to read local network details from the `icp` CLI, then:
 
 1. resolves canister IDs (including `internet_identity`, which is added
    automatically if not already in your canister list)
-2. sets the `ic_env` cookie
+2. sets the `ic_env` cookie on each response
 3. proxies `/api` to the local replica
 
-If `icp` CLI environment detection is unavailable, the plugin still falls back
-to proxying `/api` to `http://127.0.0.1:4943`, but it skips cookie injection.
+If `icp` CLI environment detection is unavailable, the plugin falls back to
+proxying `/api` to `http://127.0.0.1:4943`, and sets no cookie.
+
+Detection is complete once `icp` reports the network and every configured
+canister has an ID. Until then the plugin asks `icp` again on each page load,
+and that page gets the answer, so you can start `vite dev` first and then run
+`icp network start` and `icp deploy`: reload the page, no restart needed. The
+`/api` proxy moves to the network `icp` reports, the fallback included. Once
+detection is complete, page loads run no further `icp` commands, so
+redeploying into a fresh network, with new canister IDs and a new root key,
+needs a dev server restart. The terminal warns at startup while detection is
+incomplete, and says when a later page load completes it. A configured canister
+you never deploy locally keeps detection incomplete, so every page load runs
+`icp` for it; set its `canisterId` and it counts as resolved.
 
 If your Vite config already sets `server.proxy["/api"]`, the plugin leaves that
 entry alone, whether detection succeeds or not.

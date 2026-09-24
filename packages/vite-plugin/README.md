@@ -134,12 +134,13 @@ Supported `target` values:
 
 ## Local Development Behavior
 
-When `injectEnvironment` is enabled during `vite dev`, the plugin:
+When `injectEnvironment` is enabled during `vite dev` or `vite preview`, the
+plugin:
 
 1. asks `icp` for the local network status
 2. resolves canister IDs — `internet_identity` is added automatically if not
    already in your canister list
-3. sets the `ic_env` cookie
+3. sets the `ic_env` cookie on each response
 4. proxies `/api` to the local replica
 
 If a canister has a `canisterId` set in the plugin config, that value overrides
@@ -148,11 +149,23 @@ the auto-detected ID for that canister.
 Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
 (defaults to `"local"`).
 
-If environment detection fails, the plugin still falls back to proxying `/api`
-to `http://127.0.0.1:4943`, but it will not inject canister metadata. It warns
-when that happens with canisters configured, because the failure is otherwise
-indistinguishable from success until the app breaks on an undefined canister
-id. Run with `DEBUG=ic-reactor` to see the `icp` output behind the warning.
+If environment detection fails, the plugin falls back to proxying `/api` to
+`http://127.0.0.1:4943`, and sets no cookie. It warns when that happens with
+canisters configured, and when a configured canister has no ID, because the
+failure is otherwise indistinguishable from success until the app breaks on an
+undefined canister id. Run with `DEBUG=ic-reactor` to see the `icp` output
+behind the warning.
+
+Detection is complete once `icp` reports the network and every configured
+canister has an ID. Until then the plugin asks `icp` again on each page load,
+and that page gets the answer: start `vite dev` first, then run
+`icp network start` and `icp deploy`, and reload the page. The `/api` proxy
+moves to the network `icp` reports, the fallback included. Once detection is
+complete, page loads run no further `icp` commands, so redeploying into a
+fresh network, with new canister IDs and a new root key, needs a dev server
+restart. A configured canister you never deploy locally keeps detection
+incomplete, so every page load runs `icp` for it; set its `canisterId` and it
+counts as resolved.
 
 If your Vite config already sets `server.proxy["/api"]`, the plugin leaves that
 entry alone, whether detection succeeds or not.

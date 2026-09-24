@@ -5,7 +5,7 @@
  * and building the `ic_env` cookie for the browser.
  */
 
-import { execFileSync } from "child_process"
+import { execFile } from "child_process"
 
 export interface IcEnvironment {
   environment: string
@@ -28,29 +28,64 @@ export interface IcEnvironmentDetection {
 }
 
 /**
+ * How long one `icp` command may run. The dev server runs detection while a
+ * page request waits for it, so a command that never exits must not hold the
+ * page forever.
+ */
+const ICP_TIMEOUT_MS = 10_000
+
+/**
+ * Run `icp` with `args` in `cwd` and resolve with its stdout.
+ *
+ * Asynchronous, so a page request that waits for detection does not block the
+ * dev server's other requests. stderr is captured rather than shown, so a
+ * failure can explain itself: it only reaches the terminal if the caller prints
+ * the diagnostics. stdin is closed, so a command that asks a question fails
+ * instead of waiting for an answer.
+ */
+function runIcp(args: string[], cwd: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(
+      "icp",
+      args,
+      {
+        cwd,
+        encoding: "utf-8",
+        timeout: ICP_TIMEOUT_MS,
+        windowsHide: true,
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          reject(Object.assign(error, { stderr }))
+        } else {
+          resolve(stdout)
+        }
+      }
+    )
+    child.stdin?.end()
+  })
+}
+
+/**
  * Detect the IC environment using the `icp` CLI.
  *
  * @param projectRoot - Directory `icp` runs in. `icp` finds its project by
  * looking for `icp.yaml` there and in each parent directory, so this has to be
  * the app's root and not wherever the process happened to start.
  */
-export function getIcEnvironmentInfo(
+export async function getIcEnvironmentInfo(
   canisterNames: string[],
   projectRoot: string = process.cwd()
-): IcEnvironmentDetection {
+): Promise<IcEnvironmentDetection> {
   const networkName = process.env.ICP_ENVIRONMENT || "local"
   const diagnostics: string[] = []
 
   try {
     const networkStatus = JSON.parse(
-      execFileSync("icp", ["network", "status", "-e", networkName, "--json"], {
-        cwd: projectRoot,
-        encoding: "utf-8",
-        // stderr is piped rather than ignored so a failure can explain itself.
-        // Piping still keeps it off the terminal — it only reaches the user if
-        // the caller decides to print the diagnostics we collect below.
-        stdio: ["ignore", "pipe", "pipe"],
-      })
+      await runIcp(
+        ["network", "status", "-e", networkName, "--json"],
+        projectRoot
+      )
     )
 
     const rootKey = networkStatus.root_key
@@ -70,16 +105,15 @@ export function getIcEnvironmentInfo(
 
     const canisterIds: Record<string, string> = {}
 
+    // One at a time, as icp is run from a terminal. Each command reads the
+    // project's state, and these are not known to be safe to run at once.
     for (const name of canisterNames) {
       try {
-        const canisterId = execFileSync(
-          "icp",
-          ["canister", "status", name, "-e", networkName, "-i"],
-          {
-            cwd: projectRoot,
-            encoding: "utf-8",
-            stdio: ["ignore", "pipe", "pipe"],
-          }
+        const canisterId = (
+          await runIcp(
+            ["canister", "status", name, "-e", networkName, "-i"],
+            projectRoot
+          )
         ).trim()
 
         if (canisterId) {
@@ -143,7 +177,7 @@ export function buildIcEnvCookie(
 }
 
 /**
- * Turn whatever `execFileSync` threw into one readable line.
+ * Turn whatever `icp` failed with into one readable line.
  *
  * The interesting part is almost always the captured stderr — the thrown
  * Error's own message is just "Command failed: icp ..." — but stderr is absent
