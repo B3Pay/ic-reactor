@@ -270,12 +270,12 @@ After initialization or method registration, all inherited Reactor methods work:
 See [Reactor](/v3/reference/reactor) for full documentation.
 
 `forCanister(canisterId)` gives a `CandidReactor` for the other canister that
-starts with this reactor's interface, Candid source and adapter, so it is ready
-to call without another `initialize()`. Its `initialize()` parses the same
-source, or fetches its own canister's Candid when there is none. A method
-registered on either one afterwards stays on that one. The display and
-metadata reactors do the same, and also pass on their validators or build
-their metadata for the sibling.
+starts with this reactor's interface, Candid source and adapter. A sibling of an
+initialized reactor is ready to call without another `initialize()`, and its
+`initialize()` parses the same source, or fetches its own canister's Candid
+when there is none. A method registered on either one afterwards stays on that
+one. The display and metadata reactors do the same, and also pass on their
+validators or build their metadata for the sibling.
 
 ---
 

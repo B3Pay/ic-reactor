@@ -33,9 +33,10 @@ from `@tanstack/react-query` instead.
   known at build time
 - `MetadataReactor` + `CandidFormVisitor` for form metadata
 - `reactor.forCanister(canisterId)` on any of the four reactors: a memoized
-  sibling of the same class for another canister of the same interface,
-  ready to call with this reactor's interface, Candid source and adapter
-  (plus validators or metadata). Register later methods on each one that needs them
+  sibling of the same class for another canister of the same interface. It
+  starts with this reactor's interface, Candid source and adapter (plus
+  validators or metadata), so a sibling of an initialized reactor is ready to
+  call. Register later methods on each one that needs them
 
 ## Parser Strategy
 
