@@ -314,38 +314,43 @@ const balance = await backend.callMethod({
 // balance is string, not bigint
 ```
 
-### Dynamic Canister Switching
+### Many Canisters of One Interface
 
-Like `Reactor`, `DisplayReactor` supports dynamic canister switching via `setCanisterId`. This is particularly useful for multi-token wallets:
+Like `Reactor`, `DisplayReactor` gives a sibling for another canister of the
+same interface with [`forCanister`](/v3/reference/reactor#forcanister). This is
+the multi-token wallet pattern: one reactor per token, all on the same agent
+and cache, with the display transform and validators passed on:
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
 import { idlFactory, type _SERVICE } from "./declarations/icrc1"
 
-// Create a reusable ICRC-1 token reactor. It still needs a canister ID to
-// start from: the constructor throws without one outside a local replica,
-// before any setCanisterId call below can run.
+// The reactor the siblings are made from. It still needs a canister ID of its
+// own: the constructor throws without one outside a local replica.
 const tokenReactor = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "token",
-  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP ledger until switched
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP ledger
 })
 
 async function getTokenInfo(canisterId: string) {
-  // Switch to the target token canister
-  tokenReactor.setCanisterId(canisterId)
+  // The same reactor each time for the same canister
+  const token = tokenReactor.forCanister(canisterId)
 
-  // Queries and mutations now target the new canister
+  // Two calls for two tokens can run at once without crossing
   const [name, symbol, decimals] = await Promise.all([
-    tokenReactor.callMethod({ functionName: "icrc1_name" }),
-    tokenReactor.callMethod({ functionName: "icrc1_symbol" }),
-    tokenReactor.callMethod({ functionName: "icrc1_decimals" }),
+    token.callMethod({ functionName: "icrc1_name" }),
+    token.callMethod({ functionName: "icrc1_symbol" }),
+    token.callMethod({ functionName: "icrc1_decimals" }),
   ])
 
   return { name, symbol, decimals } // All display types (strings)
 }
 ```
+
+`setCanisterId` still retargets one reactor in place, for code that follows a
+single selection, but every call and view built on that reactor moves with it.
 
 ### With React Hooks
 

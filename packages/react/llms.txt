@@ -78,6 +78,17 @@ write `args: [owner!]`, a placeholder account or `as any` plus `enabled`. The
 suspense hooks and factories reject it; keep `enabled` for conditions that are
 not about missing args.
 
+## Many Canisters of One Interface
+
+For a multi-token wallet, make one reactor and derive the others with
+`reactor.forCanister(canisterId)`: a memoized sibling of the same class on the
+same `ClientManager`, keyed by its own canister. Build hooks on it with
+`useMemo(() => createActorHooks(ledger.forCanister(id)), [id])`. A single query
+object can instead take `callConfig: { canisterId }` in `createQuery`,
+`createSuspenseQuery` and their factories. Do not retarget a shared reactor
+with `setCanisterId`, or add the canister to `queryKey` by hand: keys already
+start with the canister.
+
 ## Types From a Reactor
 
 To type a prop, form state or error view, read the type off the reactor:

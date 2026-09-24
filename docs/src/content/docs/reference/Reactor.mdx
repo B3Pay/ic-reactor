@@ -312,9 +312,79 @@ Useful for introspection and codec generation.
 
 ---
 
+### forCanister
+
+Get a reactor for another canister of the same interface, such as another ICRC
+ledger. It is the same class (a `DisplayReactor` gives a `DisplayReactor`) on
+the same `ClientManager`, so it shares the agent, identity and `QueryClient`,
+and it starts with this reactor's interface, name, polling options and, for a
+`DisplayReactor`, validators. Only the canister differs.
+
+```typescript
+const ledger = new DisplayReactor<Ledger>({
+  clientManager,
+  idlFactory,
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP
+})
+
+const ckbtc = ledger.forCanister("mxzaz-hqaaa-aaaar-qaada-cai")
+const symbol = await ckbtc.fetchQuery({ functionName: "icrc1_symbol" })
+```
+
+The same canister id always gives the same reactor, and every sibling shares
+that memo, so it is safe to call during render. Hooks, query objects and
+mutations built on a sibling key and call its canister, so several tokens can be
+on screen at once:
+
+```tsx
+import { useMemo } from "react"
+import { createActorHooks } from "@ic-reactor/react"
+
+function TokenSymbol({ canisterId }: { canisterId: string }) {
+  const { useActorQuery } = useMemo(
+    () => createActorHooks(ledger.forCanister(canisterId)),
+    [canisterId]
+  )
+  const { data } = useActorQuery({ functionName: "icrc1_symbol" })
+  return <span>{data}</span>
+}
+```
+
+#### Parameters
+
+| Option       | Type                  | Description        |
+| ------------ | --------------------- | ------------------ |
+| `canisterId` | `string \| Principal` | The other canister |
+
+#### Returns
+
+A reactor of the same type as the one it was called on.
+
+<Aside type="tip">
+  Prefer `forCanister` to `setCanisterId` whenever more than one canister of an
+  interface is in use. `setCanisterId` moves every view built on the reactor at
+  once, so two tokens cannot be shown together. A sibling keeps its canister for
+  good: never call `setCanisterId` on one, ask `forCanister` for the other
+  canister instead. It is a separate reactor even for the original's own
+  canister, and keeps that canister when the original moves.
+</Aside>
+
+<Aside type="note">
+  A sibling gets its own copy of the interface and, on a `DisplayReactor`, its
+  own validator registry, starting from what the original has when the sibling
+  is made. A validator or, on a candid package reactor, a method registered
+  later reaches only the reactor it was registered on. All four candid package
+  reactors support `forCanister` and pass on their Candid source and adapter as
+  well. A subclass of your own whose constructor takes other options overrides
+  the protected `siblingParameters(canisterId)` to return them.
+</Aside>
+
+---
+
 ### setCanisterId
 
-Dynamically update the canister ID for this reactor. This is useful when you want to reuse a reactor instance to interact with different canisters of the same type (e.g., multiple ICRC tokens).
+Dynamically update the canister ID for this reactor. This is useful when one reactor instance should follow a single selection, and nothing else built on it needs the previous canister. For several canisters of the same type at once (e.g., multiple ICRC tokens), use [`forCanister`](#forcanister) instead.
 
 ```typescript
 // Switch to a different ledger canister
@@ -462,7 +532,11 @@ export const ledger = new Reactor<LedgerService>({
 
 ### Dynamic Canister Switching
 
-Use `setCanisterId` to reuse a single reactor instance for multiple canisters of the same type. This is useful for multi-token wallets or canister explorers:
+For a multi-token wallet or a canister explorer, give each canister its own
+sibling with [`forCanister`](#forcanister) and build the hooks or query
+objects on it. A single reactor can instead follow one selection with
+`setCanisterId`, as this route loader does; every query object built on that
+reactor then moves with it:
 
 ```typescript
 import { createFileRoute } from "@tanstack/react-router"

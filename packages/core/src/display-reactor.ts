@@ -1,4 +1,5 @@
 import { IDL } from "@icp-sdk/core/candid"
+import type { Principal } from "@icp-sdk/core/principal"
 import { Reactor } from "./reactor.js"
 import {
   didToDisplayCodec,
@@ -191,6 +192,23 @@ export class DisplayReactor<
       } catch (error) {
         console.error(`Failed to initialize codecs for ${methodName}:`, error)
       }
+    }
+  }
+
+  /**
+   * A sibling from `forCanister` also starts with the validators this reactor
+   * has when it is made, in a registry of its own: `registerValidator` on
+   * either one afterwards reaches that one alone.
+   */
+  protected siblingParameters(
+    canisterId: Principal
+  ): DisplayReactorParameters<A> {
+    return {
+      ...super.siblingParameters(canisterId),
+      // Keyed by method name, as registerValidator stored them.
+      validators: Object.fromEntries(this.validators) as NonNullable<
+        DisplayReactorParameters<A>["validators"]
+      >,
     }
   }
 

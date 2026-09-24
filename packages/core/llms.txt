@@ -31,6 +31,12 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
   principal's cached data. After 3 runs each overtaken by another switch it
   rejects with a `CallError`
 - Use `callMethod` for imperative update/query calls
+- Several canisters of one interface (a multi-token wallet): build one reactor
+  and call `reactor.forCanister(canisterId)` for each other canister. It gives a
+  memoized sibling of the same class on the same `ClientManager`, with the
+  interface, polling options and validators, keyed by its own canister. Do not
+  retarget a shared reactor with `setCanisterId` or hand-build one reactor per
+  canister
 
 ## DisplayReactor Guidance
 

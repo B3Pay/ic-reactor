@@ -59,7 +59,9 @@ const ckbtcBalance = createQueryFactory(ledger, {
 ```
 
 `getQueryKey()`, `invalidate()` and the other cache controls act on that
-entry, and a factory's own `getQueryKey()` is rooted at that canister.
+entry, and a factory's own `getQueryKey()` is rooted at that canister. For a
+whole reactor per canister, with every query and mutation on it, see
+[`forCanister`](/v3/reference/reactor#forcanister).
 
 ## Return Value
 

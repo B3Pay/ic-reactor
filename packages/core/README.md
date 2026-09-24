@@ -311,6 +311,11 @@ await reactor.invalidateQueries({ functionName: "get_data" }, {
   canisterId: otherCanisterId,
 }) // specific overridden canister
 
+// A reactor for another canister of the same interface (another ICRC ledger):
+// same class, ClientManager, interface, name and polling options, memoized by
+// canister id
+const ckbtc = reactor.forCanister("mxzaz-hqaaa-aaaar-qaada-cai")
+
 // Get query options for TanStack Query. For an update method they also carry
 // a `retry` of only SysTransient rejections (see `getQueryRetry`), since each
 // retry executes the update again.
@@ -731,6 +736,31 @@ const nft = new Reactor<NFT>({
 // Sign in once (via @ic-reactor/react) — every reactor picks up the identity
 await authentication.login()
 ```
+
+For several canisters of one interface, such as the ICRC ledgers of a
+multi-token wallet, build one reactor and ask it for the others with
+`forCanister(canisterId)`. Each sibling is the same class on the same
+`ClientManager`, starts with the reactor's interface, polling options and (for
+a `DisplayReactor`) validators, and keys its queries by its own canister. The
+same id always gives the same sibling:
+
+```typescript
+const icp = new DisplayReactor<Ledger>({
+  clientManager,
+  idlFactory: ledgerIdl,
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+
+const ckbtc = icp.forCanister("mxzaz-hqaaa-aaaar-qaada-cai")
+const [icpSymbol, ckbtcSymbol] = await Promise.all([
+  icp.fetchQuery({ functionName: "icrc1_symbol" }),
+  ckbtc.fetchQuery({ functionName: "icrc1_symbol" }),
+])
+```
+
+Prefer it to `setCanisterId`, which retargets one shared reactor and every
+view built on it at once.
 
 ### Custom Polling Options
 

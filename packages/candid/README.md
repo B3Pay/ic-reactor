@@ -391,6 +391,11 @@ After initialization or registration, all standard `Reactor` methods work:
 - `fetchQuery()` - Fetch with TanStack Query caching
 - `getQueryOptions()` - Get query options for React hooks
 - `invalidateQueries()` - Invalidate cached queries
+- `forCanister(canisterId)` - A reactor of the same class for another
+  canister of the same interface. It starts with this reactor's interface,
+  Candid source and adapter (and its validators or metadata, for the display
+  and metadata reactors). A method registered on either one later stays on
+  that one
 - etc.
 
 ### Types

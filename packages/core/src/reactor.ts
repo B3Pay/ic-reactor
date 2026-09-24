@@ -165,6 +165,12 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public canisterId: Principal
   public service: IDL.ServiceClass
   public pollingOptions: PollingOptions
+  /**
+   * The reactors {@link forCanister} made, by canister id. A reactor and
+   * every sibling it made share one map, so each canister has one reactor
+   * across the family, whichever member was asked.
+   */
+  private siblings?: Map<string, Reactor<A, T>>
 
   constructor(config: ReactorParameters) {
     this.clientManager = config.clientManager
@@ -268,6 +274,99 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    */
   public setCanisterName(name: string): void {
     this.name = name
+  }
+
+  /**
+   * A reactor of the same class for another canister of the same interface,
+   * such as another ICRC ledger. It shares this reactor's `ClientManager`
+   * (so its agent, identity and `QueryClient`), name and polling options. It
+   * starts from the interface, transform and validators this reactor has
+   * when it is made. Only the canister differs.
+   *
+   * The same canister id always gives the same reactor, so it is safe to
+   * call during render and as a dependency of `useMemo`. The siblings of a
+   * reactor share that memo: `a.forCanister(x).forCanister(y)` is
+   * `a.forCanister(y)`. The result is a separate reactor even for this
+   * reactor's own canister, and it keeps its canister when this one's
+   * `setCanisterId` moves.
+   *
+   * Use one sibling per canister instead of retargeting a shared reactor
+   * with {@link setCanisterId}. Their query keys start with their own
+   * canister, so several tokens' queries live side by side in the cache,
+   * and no call or retry of one is sent to another. A mutation invalidates
+   * its own canister's queries. Never `setCanisterId` a sibling: ask for the
+   * other canister's instead.
+   *
+   * A subclass whose constructor takes options of its own passes them on by
+   * overriding the protected `siblingParameters(canisterId)`.
+   *
+   * @param canisterId - The other canister, as text or a `Principal`.
+   *
+   * @example
+   * ```typescript
+   * const ledger = new DisplayReactor<Ledger>({
+   *   clientManager,
+   *   idlFactory,
+   *   name: "ledger",
+   *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP
+   * })
+   *
+   * // ckBTC, through the same agent, cache and interface
+   * const ckbtc = ledger.forCanister("mxzaz-hqaaa-aaaar-qaada-cai")
+   * const symbol = await ckbtc.fetchQuery({ functionName: "icrc1_symbol" })
+   *
+   * // In React: one set of hooks per token, memoized by its canister
+   * const hooks = useMemo(
+   *   () => createActorHooks(ledger.forCanister(tokenId)),
+   *   [tokenId]
+   * )
+   * ```
+   */
+  public forCanister(canisterId: CanisterId): this {
+    const id = Principal.from(canisterId).toText()
+    const siblings = (this.siblings ??= new Map())
+    let sibling = siblings.get(id)
+    if (!sibling) {
+      // The class this reactor was made with, so a DisplayReactor's sibling
+      // is a DisplayReactor, and a subclass's is that subclass.
+      const Sibling = this.constructor as new (
+        config: ReactorParameters
+      ) => Reactor<A, T>
+      sibling = new Sibling(this.siblingParameters(Principal.fromText(id)))
+      sibling.siblings = siblings
+      siblings.set(id, sibling)
+    }
+    return sibling as this
+  }
+
+  /**
+   * The constructor options {@link forCanister} makes a sibling with: this
+   * reactor's `ClientManager`, name and polling options, the sibling's
+   * `canisterId`, and an `idlFactory` that gives a copy of the service this
+   * reactor has now. The copy is the sibling's own: a candid package reactor
+   * that registers a method or re-reads its interface later changes its own
+   * service, not a sibling's, which could not call the method without the
+   * codecs and metadata built for it.
+   *
+   * A subclass whose constructor takes more adds it to what this returns,
+   * as `DisplayReactor` adds its validators.
+   *
+   * @param canisterId - The sibling's canister.
+   */
+  protected siblingParameters(canisterId: Principal): ReactorParameters {
+    // A method typed by a recursive func alias is an `IDL.Rec`, which the
+    // service holds as it is, like a plain `IDL.Func`.
+    const methods = Object.fromEntries(this.service._fields) as Record<
+      string,
+      IDL.FuncClass
+    >
+    return {
+      clientManager: this.clientManager,
+      name: this.name,
+      canisterId,
+      idlFactory: () => IDL.Service(methods),
+      pollingOptions: this.pollingOptions,
+    }
   }
 
   protected verifyCanister() {

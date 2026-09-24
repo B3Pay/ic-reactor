@@ -256,17 +256,26 @@ const cachedBalance = await reactor.fetchQueryDynamic({
 
 After initialization or method registration, all inherited Reactor methods work:
 
-| Method                | Description                       |
-| --------------------- | --------------------------------- |
-| `callMethod()`        | Direct canister call              |
-| `fetchQuery()`        | Fetch with TanStack Query caching |
-| `getQueryOptions()`   | Get options for `useQuery`        |
-| `getQueryData()`      | Get cached data without fetching  |
-| `invalidateQueries()` | Invalidate cached queries         |
-| `generateQueryKey()`  | Generate cache key for a method   |
-| `setCanisterId()`     | Switch to a different canister ID |
+| Method                | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `callMethod()`        | Direct canister call                                       |
+| `fetchQuery()`        | Fetch with TanStack Query caching                          |
+| `getQueryOptions()`   | Get options for `useQuery`                                 |
+| `getQueryData()`      | Get cached data without fetching                           |
+| `invalidateQueries()` | Invalidate cached queries                                  |
+| `generateQueryKey()`  | Generate cache key for a method                            |
+| `setCanisterId()`     | Switch to a different canister ID                          |
+| `forCanister()`       | Sibling reactor for another canister of the same interface |
 
 See [Reactor](/v3/reference/reactor) for full documentation.
+
+`forCanister(canisterId)` gives a `CandidReactor` for the other canister that
+starts with this reactor's interface, Candid source and adapter, so it is ready
+to call without another `initialize()`. Its `initialize()` parses the same
+source, or fetches its own canister's Candid when there is none. A method
+registered on either one afterwards stays on that one. The display and
+metadata reactors do the same, and also pass on their validators or build
+their metadata for the sibling.
 
 ---
 

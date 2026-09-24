@@ -9,6 +9,7 @@ import type { CandidReactorParameters, DynamicMethodOptions } from "./types.js"
 import { Reactor } from "@ic-reactor/core"
 import { CandidAdapter } from "./adapter.js"
 import { IDL } from "@icp-sdk/core/candid"
+import type { Principal } from "@icp-sdk/core/principal"
 import { normalizeCandidInterface } from "./utils.js"
 
 export class CandidReactor<
@@ -36,6 +37,23 @@ export class CandidReactor<
       this.adapter = new CandidAdapter({
         clientManager: this.clientManager,
       })
+    }
+  }
+
+  /**
+   * A sibling from `forCanister` also gets this reactor's Candid source and
+   * adapter. It starts from the interface this reactor has now, and its
+   * `initialize()` parses the same source, or fetches its own canister's
+   * Candid when there is none. `registerMethod` on either one afterwards
+   * reaches that one alone.
+   */
+  protected override siblingParameters(
+    canisterId: Principal
+  ): ReactorParameters & CandidReactorParameters {
+    return {
+      ...super.siblingParameters(canisterId),
+      candid: this.candidSource,
+      adapter: this.adapter,
     }
   }
 

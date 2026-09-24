@@ -14,6 +14,7 @@ import {
   didTypeFromArray,
 } from "@ic-reactor/core"
 import { IDL } from "@icp-sdk/core/candid"
+import type { Principal } from "@icp-sdk/core/principal"
 
 // ============================================================================
 // CandidDisplayReactor
@@ -107,6 +108,23 @@ export class CandidDisplayReactor<
       this.adapter = new CandidAdapter({
         clientManager: this.clientManager,
       })
+    }
+  }
+
+  /**
+   * A sibling from `forCanister` also gets this reactor's Candid source and
+   * adapter, on top of the interface and validators `DisplayReactor` passes
+   * on. Its `initialize()` parses the same source, or fetches its own
+   * canister's Candid when there is none. `registerMethod` on either one
+   * afterwards reaches that one alone.
+   */
+  protected override siblingParameters(
+    canisterId: Principal
+  ): DisplayReactorParameters<A> & CandidDisplayReactorParameters<A> {
+    return {
+      ...super.siblingParameters(canisterId),
+      candid: this.candidSource,
+      adapter: this.adapter,
     }
   }
 
