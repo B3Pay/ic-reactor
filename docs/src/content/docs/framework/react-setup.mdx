@@ -492,6 +492,8 @@ useEffect(() => () => value.authentication.dispose(), [value])
 `dispose()` only forgets the client, and the next sign-in builds a new one, so
 this is safe under StrictMode, which runs the cleanup and the effect again on
 the same managers. A client passed in as `authClient` is left alone.
+Both Next.js examples, [Pages Router](/v3/examples/nextjs) and
+[App Router](/v3/examples/nextjs-app-router), use `createReactorProvider`.
 
 Two further constraints on the Next.js App Router specifically:
 

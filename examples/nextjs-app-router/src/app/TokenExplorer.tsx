@@ -1,15 +1,13 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from "react"
-import { useLedgerReactor } from "./ledger-provider"
 import { Principal } from "@icp-sdk/core/principal"
-import { useICAuth } from "./providers"
 import {
-  createAuthHooks,
   formatTokenAmount,
   isPrincipalText,
   skipToken,
 } from "@ic-reactor/react"
+import { useLedger } from "./providers"
 import type { Account } from "../declarations/ledger"
 
 const POPULAR_TOKENS = [
@@ -46,12 +44,17 @@ const POPULAR_TOKENS = [
 ]
 
 export default function TokenExplorer() {
-  const { hooks, setCanisterId, currentCanisterId } = useLedgerReactor()
-  const { useActorQuery } = hooks
-
-  const { authentication } = useICAuth()
-  const { useUserPrincipal } = createAuthHooks(authentication)
+  const { useActorQuery, useUserPrincipal } = useLedger()
   const principal = useUserPrincipal()
+
+  // Every query below goes to the selected ledger through `callConfig`. Its
+  // query key starts with that canister, so each token has cache entries of
+  // its own, and switching back to one shows what was already fetched.
+  const [currentCanisterId, setCanisterId] = useState(POPULAR_TOKENS[0].id)
+  const callConfig = useMemo(
+    () => ({ canisterId: currentCanisterId }),
+    [currentCanisterId]
+  )
 
   const [searchTarget, setSearchTarget] = useState("")
   const [activeAddress, setActiveAddress] = useState<string>("")
@@ -64,23 +67,26 @@ export default function TokenExplorer() {
     }
   }, [principal])
 
-  // Queries for token metadata directly from mainnet. The hooks belong to the
-  // selected token's reactor, and its query keys start with its canister, so
-  // each token is cached apart and a switch fetches the new token's values.
+  // Queries for token metadata directly from mainnet
   const { data: name, isLoading: nameLoading } = useActorQuery({
     functionName: "icrc1_name",
+    callConfig,
   })
   const { data: symbol, isLoading: symbolLoading } = useActorQuery({
     functionName: "icrc1_symbol",
+    callConfig,
   })
   const { data: decimals, isLoading: decimalsLoading } = useActorQuery({
     functionName: "icrc1_decimals",
+    callConfig,
   })
   const { data: fee, isLoading: feeLoading } = useActorQuery({
     functionName: "icrc1_fee",
+    callConfig,
   })
   const { data: totalSupply, isLoading: supplyLoading } = useActorQuery({
     functionName: "icrc1_total_supply",
+    callConfig,
   })
 
   // The account whose balance to show, once the address parses
@@ -104,6 +110,7 @@ export default function TokenExplorer() {
   } = useActorQuery({
     functionName: "icrc1_balance_of",
     args: account ? [account] : skipToken,
+    callConfig,
   })
 
   const handleSearch = (e: React.FormEvent) => {

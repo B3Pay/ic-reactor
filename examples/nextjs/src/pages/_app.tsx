@@ -1,11 +1,6 @@
 import { AppProps } from "next/app"
-import { useEffect } from "react"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
-import {
-  ICReactorProvider,
-  useAgentState,
-  useClientManager
-} from "service/provider"
+import { ICReactorProvider } from "service/provider"
 
 import "styles/global.css"
 
@@ -13,28 +8,16 @@ import "styles/global.css"
  * Everything that touches the reactor lives below the provider, so the hooks
  * resolve against this tree's managers rather than a module-scope singleton
  * shared by every server-rendered request.
+ *
+ * Nothing waits for `clientManager.initialize()` before rendering: on a local
+ * replica the agent fetches the root key before its first request, and
+ * `useAuth()` initializes the agent when it restores the session. So the
+ * pages render on the server too, and the static export carries their HTML.
  */
-const AppShell: React.FC<AppProps> = ({ Component, pageProps }) => {
-  const clientManager = useClientManager()
-  const { isInitialized } = useAgentState()
-
-  useEffect(() => {
-    clientManager.initialize().catch(console.error)
-  }, [clientManager])
-
-  if (!isInitialized) return null
-
-  return (
-    <>
-      <Component {...pageProps} />
-      <ReactQueryDevtools initialIsOpen={false} position="bottom" />
-    </>
-  )
-}
-
-const App: React.FC<AppProps> = props => (
+const App: React.FC<AppProps> = ({ Component, pageProps }) => (
   <ICReactorProvider>
-    <AppShell {...props} />
+    <Component {...pageProps} />
+    <ReactQueryDevtools initialIsOpen={false} position="bottom" />
   </ICReactorProvider>
 )
 

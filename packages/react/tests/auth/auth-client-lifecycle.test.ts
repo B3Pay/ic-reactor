@@ -328,8 +328,9 @@ describe("dispose() (real AuthClient)", () => {
 })
 
 describe("a provider that builds its managers per mount (real AuthClient)", () => {
-  // As examples/nextjs/src/service/provider.tsx does, which is how a
-  // server-rendered app keeps one request's session away from the next.
+  // Written by hand, as examples/nextjs/src/service/provider.tsx was before
+  // createReactorProvider: how a server-rendered app keeps one request's
+  // session away from the next.
   function createReactorContext() {
     const { clientManager, authentication } = createManager()
     return {

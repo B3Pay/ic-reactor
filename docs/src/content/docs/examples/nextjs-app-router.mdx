@@ -7,19 +7,19 @@ editUrl: false
 import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
 
 This example demonstrates a hydration-safe IC Reactor setup in a Next.js App
-Router application. Browser-only IC Reactor state stays inside client
-providers, while one `ClientManager` is shared by authentication and a dynamic
-ledger reactor.
+Router application. `createReactorProvider` builds the client-side reactor, its
+`QueryClient` and its `AuthenticationManager` once per render tree, so a server
+render never shares a cache or an identity with another request, and one
+`ClientManager` serves both sign-in and the ledger queries.
 
 ## Features Demonstrated
 
-- Next.js App Router with client-side IC Reactor providers
-- Stable `QueryClient` creation across server and client rendering
-- Internet Identity authentication through `AuthenticationManager`
-- Dynamic ICRC ledger queries against live mainnet canisters, from one ledger
-  reactor and a `forCanister` sibling per token
+- Next.js App Router with a client provider from `createReactorProvider`
+- A `QueryClient` per render tree, on the server and in the browser
+- Internet Identity authentication through the provider's `useAuth`
+- Dynamic ICRC ledger queries against live mainnet canisters, switched with
+  `callConfig: { canisterId }`
 - A balance query that waits for a valid account with `skipToken`
-- Shared `ClientManager` between auth and canister interaction
 - A server component that reads the ledger per request with `ClientManager`
   and `Reactor` imported from `@ic-reactor/react`
 
@@ -41,32 +41,61 @@ ledger reactor.
 ## Key Code
 
 ```tsx
+// src/app/providers.tsx
 "use client"
+import { QueryClient } from "@tanstack/react-query"
+import {
+  createReactorProvider,
+  defineReactor,
+  reactorRetry,
+} from "@ic-reactor/react"
+import { idlFactory, canisterId } from "../declarations/ledger"
+import type { _SERVICE } from "../declarations/ledger"
 
-export function ICReactorProvider({ children }: { children: React.ReactNode }) {
-  const queryClient = getQueryClient()
-
-  const [authContext] = useState(() => {
-    const clientManager = new ClientManager({
-      queryClient,
+export const { ReactorProvider: ICReactorProvider, useReactor: useLedger } =
+  createReactorProvider(() =>
+    defineReactor<_SERVICE>({
+      name: "ledger",
+      idlFactory,
+      canisterId,
       agentOptions: { host: "https://ic0.app" },
+      queryClient: new QueryClient({
+        defaultOptions: {
+          queries: { staleTime: 60 * 1000, retry: reactorRetry },
+        },
+      }),
     })
-    const authentication = new AuthenticationManager({ clientManager })
-    return { clientManager, authentication }
-  })
-
-  // Releases the Internet Identity client once this tree unmounts.
-  useEffect(() => () => authContext.authentication.dispose(), [authContext])
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthContext.Provider value={authContext}>
-        {children}
-      </AuthContext.Provider>
-    </QueryClientProvider>
   )
+```
+
+`page.tsx`, a server component, renders `<ICReactorProvider>` around the page.
+Client components take their hooks from `useLedger()`, typed as
+`defineReactor`'s result. The token explorer keeps the selected ledger in state
+and sends every query there through `callConfig`; each query key starts with
+that canister, so every token has cache entries of its own:
+
+```tsx
+// src/app/TokenExplorer.tsx
+"use client"
+export default function TokenExplorer() {
+  const { useActorQuery, useUserPrincipal } = useLedger()
+  const [currentCanisterId, setCanisterId] = useState(POPULAR_TOKENS[0].id)
+  const callConfig = useMemo(
+    () => ({ canisterId: currentCanisterId }),
+    [currentCanisterId]
+  )
+
+  const { data: symbol } = useActorQuery({
+    functionName: "icrc1_symbol",
+    callConfig,
+  })
+  // …
 }
 ```
+
+When the tree unmounts, the provider disposes the Internet Identity client its
+`AuthenticationManager` built. See
+[createReactorProvider](/v3/reference/createreactorprovider).
 
 A server component imports the same package. Next.js resolves it through
 `@ic-reactor/react`'s `react-server` export condition, which carries the core
@@ -108,27 +137,26 @@ export default async function LedgerSnapshot() {
 }
 ```
 
-The ledger provider builds one reactor for the ICRC interface and hands out
-hooks for the selected token's sibling. Each token's queries are keyed by its
-own canister, so no `queryKey` workaround is needed, and switching back to a
-token shows its cached values at once:
+The balance query waits for a valid account with `skipToken`, so it needs no
+placeholder account, cast or `enabled` flag:
 
 ```tsx
-// src/app/ledger-provider.tsx
-const [ledger] = useState(
-  () =>
-    new Reactor<_SERVICE>({
-      name: "ledger",
-      clientManager,
-      canisterId,
-      idlFactory,
-    })
-)
+// src/app/TokenExplorer.tsx
+const account = useMemo((): Account | undefined => {
+  try {
+    return activeAddress
+      ? { owner: Principal.fromText(activeAddress), subaccount: [] }
+      : undefined
+  } catch {
+    return undefined
+  }
+}, [activeAddress])
 
-const hooks = useMemo(
-  () => createActorHooks(ledger.forCanister(activeCanisterId)),
-  [ledger, activeCanisterId]
-)
+const { data: balance } = useActorQuery({
+  functionName: "icrc1_balance_of",
+  args: account ? [account] : skipToken,
+  callConfig,
+})
 ```
 
 <Aside type="note">

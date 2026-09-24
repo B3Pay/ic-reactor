@@ -1,9 +1,10 @@
 import { Todo } from "declarations/todo/todo.did"
 import { useState } from "react"
-import { useMutateTodo } from "service/provider"
+import { useTodo } from "service/provider"
 
 const RenderTodo = ({ id, completed, description }: Todo) => {
-  const { mutate, error, isPending } = useMutateTodo({
+  const { useActorMutation } = useTodo()
+  const { mutate, error, isPending } = useActorMutation({
     functionName: "toggleTodo"
   })
 

@@ -3,13 +3,14 @@
 This example demonstrates a hydration-safe IC Reactor setup in a Next.js 14 App
 Router application.
 
-It keeps browser-only IC Reactor state inside client providers, then shares one
-`ClientManager` between authentication and a ledger reactor. The token explorer
-queries live mainnet ICRC ledgers such as ICP, ckBTC, ckETH, ckUSDT, and
-ckUSDC: `src/app/ledger-provider.tsx` builds one reactor for the ICRC interface
-and hands out hooks for `ledger.forCanister(selectedToken)`, so each token has
-its own reactor and cache entries. The balance query waits for a valid account
-with `skipToken`.
+`src/app/providers.tsx` builds the client-side ledger reactor with
+`createReactorProvider`: its `QueryClient`, `ClientManager` and
+`AuthenticationManager` are built once per render tree, so a server render
+never shares a cache or an identity with another request, and components take
+typed hooks from `useLedger()`. The token explorer queries live mainnet ICRC
+ledgers such as ICP, ckBTC, ckETH, ckUSDT, and ckUSDC, sending each query to the
+selected ledger with `callConfig: { canisterId }`. The balance query waits for a valid
+account with `skipToken`.
 
 `src/app/LedgerSnapshot.tsx` is a server component. It imports `ClientManager`
 and `Reactor` from `@ic-reactor/react` like the client code does; Next.js

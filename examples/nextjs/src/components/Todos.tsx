@@ -1,8 +1,9 @@
-import { useQueryTodo } from "service/provider"
+import { useTodo } from "service/provider"
 import RenderTodo from "./Todo"
 
 const Todos = () => {
-  const { data, error, isPending } = useQueryTodo({
+  const { useActorQuery } = useTodo()
+  const { data, error, isPending } = useActorQuery({
     functionName: "getAllTodos",
     refetchInterval: 5000
   })

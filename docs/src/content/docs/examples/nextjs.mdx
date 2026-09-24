@@ -15,8 +15,9 @@ uses `dfx` for local deployment and declaration generation.
 - **Motoko Backend**: A local todo canister under `backend/`.
 - **Manual declaration flow**: `dfx generate` output is committed under
   `src/declarations/todo/`.
-- **IC Reactor hooks**: `createActorHooks` wraps a `Reactor` built from those
-  generated declarations.
+- **IC Reactor hooks**: `createReactorProvider` builds a `defineReactor` over
+  those generated declarations once per render tree, and components read its
+  typed hooks with `useTodo()`.
 
 ## Links
 
@@ -48,100 +49,63 @@ npm run dev
 
 ```tsx
 // src/service/provider.tsx
-import { createContext, useContext, useEffect, useState } from "react"
-import type { ReactNode } from "react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import {
-  ClientManager,
-  AuthenticationManager,
-  Reactor,
-  createActorHooks,
-  createAuthHooks,
-} from "@ic-reactor/react"
+import { createReactorProvider, defineReactor } from "@ic-reactor/react"
 import { canisterId, idlFactory } from "declarations/todo"
 import type { _SERVICE } from "declarations/todo/todo.did"
 
-function createReactorContext() {
-  const queryClient = new QueryClient()
-
-  const clientManager = new ClientManager({
-    queryClient,
-    agentOptions: {
-      host: process.env.NEXT_PUBLIC_IC_HOST || "http://127.0.0.1:4943",
-    },
-  })
-  const authentication = new AuthenticationManager({ clientManager })
-  const todoReactor = new Reactor<_SERVICE>({
-    name: "todo",
-    clientManager,
-    canisterId,
-    idlFactory,
-  })
-
-  return {
-    queryClient,
-    clientManager,
-    authentication,
-    todoReactor,
-    auth: createAuthHooks(authentication),
-    todo: createActorHooks(todoReactor),
-  }
-}
-
-type ReactorContextValue = ReturnType<typeof createReactorContext>
-
-const ReactorContext = createContext<ReactorContextValue | null>(null)
-
-export function ICReactorProvider({ children }: { children: ReactNode }) {
-  // Runs once per mounted tree — and a server render is its own tree, so each
-  // request gets its own managers and its own cache.
-  const [value] = useState(createReactorContext)
-
-  // Releases the auth client once this tree unmounts. dispose() only forgets
-  // it: StrictMode runs this cleanup and the effect again on the same managers,
-  // and the next sign-in builds a new client.
-  useEffect(() => () => value.authentication.dispose(), [value])
-
-  return (
-    <QueryClientProvider client={value.queryClient}>
-      <ReactorContext.Provider value={value}>
-        {children}
-      </ReactorContext.Provider>
-    </QueryClientProvider>
+export const { ReactorProvider: ICReactorProvider, useReactor: useTodo } =
+  createReactorProvider(() =>
+    defineReactor<_SERVICE>({
+      name: "todo",
+      canisterId,
+      idlFactory,
+      agentOptions: {
+        host: process.env.NEXT_PUBLIC_IC_HOST || "http://127.0.0.1:4943",
+      },
+    })
   )
-}
-
-export function useICReactor() {
-  const context = useContext(ReactorContext)
-  if (!context) {
-    throw new Error("useICReactor must be used inside <ICReactorProvider>")
-  }
-  return context
-}
 ```
 
-Bind the hooks with the hook's **own** function type rather than a
-`Parameters<...>` wrapper — `useActorQuery` is generic over the method name, and
-a rest-args wrapper collapses it to the base signature, degrading `data` to
-`unknown` at every call site:
+The factory runs once per mounted tree, and a server render is its own tree,
+so each request gets its own `QueryClient`, `ClientManager`, reactor and
+`AuthenticationManager`. Components take their hooks from `useTodo()`, which is
+typed as `defineReactor`'s result, so `useActorQuery` keeps its own signature:
+`functionName` is checked and `data` is typed without a wrapper or a cast.
 
 ```tsx
-type TodoHooks = ReturnType<typeof createReactorContext>["todo"]
+// src/components/Todos.tsx
+import { useTodo } from "service/provider"
 
-export const useQueryTodo: TodoHooks["useActorQuery"] = (...args: any[]) =>
-  (useICReactor().todo.useActorQuery as any)(...args)
+const Todos = () => {
+  const { useActorQuery } = useTodo()
+  const { data, isPending } = useActorQuery({
+    functionName: "getAllTodos",
+    refetchInterval: 5000,
+  })
+  // data: Todo[] | undefined
+}
 ```
 
-Then wrap the app once, and keep anything that touches the reactor below it:
+Then wrap the app once, and keep anything that touches the reactor below it.
+The provider also renders a `QueryClientProvider` for the reactor's
+`QueryClient`, which the React Query Devtools read:
 
 ```tsx
 // src/pages/_app.tsx
-const App: React.FC<AppProps> = (props) => (
+const App: React.FC<AppProps> = ({ Component, pageProps }) => (
   <ICReactorProvider>
-    <AppShell {...props} />
+    <Component {...pageProps} />
+    <ReactQueryDevtools initialIsOpen={false} position="bottom" />
   </ICReactorProvider>
 )
 ```
+
+Nothing waits for `clientManager.initialize()` before rendering: on a local
+replica the agent fetches the root key before its first request, and
+`useAuth()` initializes the agent while it restores the session. The pages
+therefore render on the server as well, and the static export carries their
+HTML: the todo list in its loading state and the login button in the
+`isAuthenticating` state the auth hooks show until the session is read.
 
 <Aside type="note">
   This example is intentionally a manual `dfx` workflow reference. If you want
@@ -163,11 +127,12 @@ const App: React.FC<AppProps> = (props) => (
   with `isAuthenticating: true`, which is what a browser shows until its
   session restore settles.
 
-Constructing inside a `useState` initializer gives each render tree its own
-set. In the browser, the `AuthenticationManager` of a tree that unmounts still
-holds the Internet Identity client it built, and a v10 client keeps listening to
-the page until it is disposed, so the provider calls
-`authentication.dispose()` from its cleanup. See [Server-Side
+`createReactorProvider` builds the value in a `useState` initializer, which
+gives each render tree its own set. In the browser, the `AuthenticationManager`
+of a tree that unmounts still holds the Internet Identity client it built, and
+a v10 client keeps listening to the page until it is disposed, so the provider
+disposes it from its cleanup. See
+[createReactorProvider](/v3/reference/createreactorprovider) and [Server-Side
 Rendering](/v3/framework/react-setup#server-side-rendering).
 
 </Aside>
