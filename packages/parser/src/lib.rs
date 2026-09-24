@@ -833,10 +833,20 @@ enum CandidType {
     Future,
 }
 
+/// The key `didToJs` and `didToTs` print for a record field or variant tag:
+/// `_<id>_` for a numeric one, `_<hash>_` for one named like a numeric id (see
+/// `hash_numeric_looking_labels`), and the name for any other.
+///
+/// `parseDid` named a field `_0_` both when it was the field `0` and when it
+/// was named `_0_`, so `record { _0_ : nat; 0 : text }` listed two fields
+/// named `_0_`, and the name of the second did not match its key in the IDL.
 fn label_to_string(label: &candid_parser::candid::types::Label) -> String {
     match label {
         candid_parser::candid::types::Label::Id(id)
         | candid_parser::candid::types::Label::Unnamed(id) => format!("_{}_", id),
+        candid_parser::candid::types::Label::Named(name) if reads_as_number(name) => {
+            format!("_{}_", idl_hash(name))
+        }
         candid_parser::candid::types::Label::Named(name) => name.clone(),
     }
 }

@@ -36,7 +36,9 @@ Returns TypeScript declaration source for the same Candid interface.
 ### `parseDid(candid: string): CandidSchema`
 
 Returns a structured description of the interface — the declared types and the
-service — instead of generated source.
+service — instead of generated source. Each record field and variant tag is
+named by the key `didToJs` prints for it: `_0_` for the numeric field `0`, and
+the hash key described under Notes for a field named like a numeric id.
 
 ### `validateIDL(candid: string): boolean`
 
@@ -92,8 +94,8 @@ let that package load the parser when needed.
 - `didToJs` / `didToTs` return source strings rather than ready-made JS objects.
 - A record field or variant tag whose name looks like a numeric id, `_<digits>_`
   or `_0x<hex digits>_` for a number below 2^32 (such as `_0_`), is printed
-  under the hash of its name in both `didToJs` and `didToTs`: `_0_` becomes
-  `_4735054_`. Candid identifies a named field by that hash, but
+  under the hash of its name in both `didToJs` and `didToTs`, and `parseDid`
+  names it the same way: `_0_` becomes `_4735054_`. Candid identifies a named field by that hash, but
   `@icp-sdk/core` reads a key spelled like a number as that number, so under
   its own name the field would be sent and read as field 0. Use the printed
   key for the value. Every other name prints as written, and a numeric field

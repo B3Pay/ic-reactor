@@ -321,4 +321,47 @@ export interface _SERVICE { 'get' : ActorMethod<[Names, Tags], Pair> }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];`)
   })
+
+  // parseDid names a numeric field `_0_`, the key didToJs prints for it, and
+  // named the field `_0_` the same, so this record listed two fields named
+  // `_0_`, and the name of the first no longer matched its key in the IDL.
+  it("names the field in parseDid by the key didToJs prints", () => {
+    const { types } = parser.parseDid(`
+      type Both = record {
+        // Named _0_.
+        _0_ : nat;
+        0 : text;
+        _12a_ : bool;
+      };
+      type Tags = variant { _0x10_; 16 : text };
+    `)
+
+    expect(types).toEqual([
+      {
+        name: "Both",
+        type: {
+          kind: "record",
+          fields: [
+            { name: "_0_", type: { kind: "text" } },
+            {
+              name: hashed("_0_"),
+              type: { kind: "nat" },
+              metadata: { description: "Named _0_.", docs: ["Named _0_."] },
+            },
+            { name: "_12a_", type: { kind: "bool" } },
+          ],
+        },
+      },
+      {
+        name: "Tags",
+        type: {
+          kind: "variant",
+          fields: [
+            { name: "_16_", type: { kind: "text" } },
+            { name: hashed("_0x10_"), type: { kind: "null" } },
+          ],
+        },
+      },
+    ])
+  })
 })

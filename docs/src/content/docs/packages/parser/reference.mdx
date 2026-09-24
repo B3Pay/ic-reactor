@@ -123,8 +123,9 @@ didToTs(`service : { get : () -> (record { _0_ : nat; 0 : text }) query }`)
 // … ActorMethod<[], { _0_ : string, _4735054_ : bigint }>
 ```
 
-Use the printed key (`_4735054_`) for the value in calls and results. Names
-that do not match the pattern print as written. A hand-written `.did` that
+Use the printed key (`_4735054_`) for the value in calls and results.
+[`parseDid`](#parsedid) names the field by the same key. Names that do not
+match the pattern print as written. A hand-written `.did` that
 spells a Motoko numeric field as `_0_` must write it as `0`, the way Motoko
 prints it; spelled `_0_`, it is the field named `_0_`.
 
@@ -140,6 +141,10 @@ declarations plus the service declaration), including any metadata tags.
 - A `CandidSchema`: `{ types: CandidTypeDeclaration[]; service: CandidServiceDeclaration | null }`.
   Doc-comment metadata and validation tags are carried on the nodes — see
   [Candid Metadata Tags](/v3/packages/parser/metadata-tags).
+- Each record field and variant tag is named by the key `didToJs` prints for
+  it: `_0_` for the numeric field `0`, and `_4735054_` for a field named `_0_`
+  (see [Field names that look like numeric ids](#field-names-that-look-like-numeric-ids)).
+  Types keep their Candid names, including one `didToTs` renames.
 
 ```typescript
 const schema = parseDid("service:{}")
