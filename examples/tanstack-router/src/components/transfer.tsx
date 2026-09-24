@@ -4,12 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
 import { TransferError } from "./transfer-error"
 import {
-  icrc1BalanceOfSuspenseQuery,
   icrc1DecimalsSuspenseQuery,
   useIcrc1TransferMutation,
 } from "@/canisters/ledger/hooks"
 
-export function Transfer({ owner }: { owner: string }) {
+export function Transfer() {
   const { data: decimals } = icrc1DecimalsSuspenseQuery.useSuspenseQuery()
   const [to, setTo] = useState("")
   const [amount, setAmount] = useState("")
@@ -21,9 +20,10 @@ export function Transfer({ owner }: { owner: string }) {
     error,
     reset,
   } = useIcrc1TransferMutation({
+    // The mutation factory has already refetched the balances by now: it
+    // lists icrc1BalanceOfSuspenseQuery in its invalidateQueries.
     onSuccess: (blockIndex) => {
       // blockIndex is the Ok value from the canister
-      icrc1BalanceOfSuspenseQuery([{ owner }]).invalidate()
       setResult(`Transfer successful! Block index: ${String(blockIndex)}`)
       setTo("")
       setAmount("")

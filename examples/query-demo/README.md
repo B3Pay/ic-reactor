@@ -59,13 +59,16 @@ import { createMutation } from "@ic-reactor/react"
 
 export const icpTransferMutation = createMutation(icpReactor, {
   functionName: "icrc1_transfer",
+  // The query factory itself: every balance it has returned, whatever the
+  // account, is refetched after a transfer
+  invalidateQueries: [getIcpBalance],
 })
 ```
 
 ```tsx
-const balanceQuery = getIcpBalance([account])
 const transfer = icpTransferMutation.useMutation({
-  invalidateQueries: [balanceQuery.getQueryKey()],
+  // Optional: more queries for this call site, invalidated after the factory's
+  invalidateQueries: [{ functionName: "icrc1_total_supply" }],
 })
 ```
 

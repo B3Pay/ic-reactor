@@ -11,8 +11,9 @@
  * // Prefetch in loaders
  * const data = await icrc1BalanceOfSuspenseQuery([{ owner }]).fetch()
  *
- * // Invalidate cache
+ * // Invalidate one account's balance, or every balance this factory made
  * icrc1BalanceOfSuspenseQuery([{ owner }]).invalidate()
+ * icrc1BalanceOfSuspenseQuery.invalidate()
  *
  * // Get query key for cache manipulation
  * const key = icrc1BalanceOfSuspenseQuery([{ owner }]).getQueryKey()

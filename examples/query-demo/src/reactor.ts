@@ -220,7 +220,9 @@ export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
  */
 export const icpTransferMutation = createMutation(icpReactor, {
   functionName: "icrc1_transfer",
-  invalidateQueries: [],
+  // Every ICP balance getIcpBalance has returned, whatever the account: a
+  // transfer changes the sender's and the recipient's
+  invalidateQueries: [getIcpBalance],
   onSuccess: (txId) => {
     console.log("Transfer successful! Transaction ID:", txId)
   },

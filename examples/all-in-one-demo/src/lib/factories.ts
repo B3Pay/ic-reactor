@@ -51,10 +51,10 @@ export const getLikesSuspense = createSuspenseQuery(backendReactor, {
 
 export const batchCreatePosts = createMutation(backendReactor, {
   functionName: "batch_create_posts",
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["get_posts"] })
-    queryClient.invalidateQueries({ queryKey: ["get_logs"] })
-  },
+  // The query objects, not hand-written keys: every key starts with the
+  // canister id, so `["get_posts"]` would match nothing. getPostsCount also
+  // refreshes getPostsCountSuspense, which shares its key.
+  invalidateQueries: [getPosts, getPostsCount, getLogs],
 })
 
 export const createPost = createMutation(backendReactor, {

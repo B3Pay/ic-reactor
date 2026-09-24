@@ -95,7 +95,7 @@ function TokenWallet() {
       </Card>
 
       <Suspense fallback={<TransferSkeleton />}>
-        <Transfer owner={principal.toString()} />
+        <Transfer />
       </Suspense>
     </div>
   )

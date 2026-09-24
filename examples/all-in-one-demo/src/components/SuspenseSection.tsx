@@ -3,7 +3,6 @@ import { getLikesSuspense, getPostsCountSuspense } from "../lib/factories"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import { queryClient } from "@/lib/client"
 
 function NumberSkeleton() {
   return <Skeleton className="h-9 w-16 bg-muted/50" />
@@ -45,9 +44,10 @@ function TotalLikes() {
 
 export function SuspenseSection() {
   const handleReload = () => {
-    // Resetting queries clears the cache, forcing useSuspenseQuery to re-suspend
-    queryClient.resetQueries({ queryKey: getPostsCountSuspense.getQueryKey() })
-    queryClient.resetQueries({ queryKey: getLikesSuspense.getQueryKey() })
+    // Resetting a query clears its cache entry, so useSuspenseQuery suspends
+    // again until the canister answers
+    void getPostsCountSuspense.reset()
+    void getLikesSuspense.reset()
   }
 
   return (

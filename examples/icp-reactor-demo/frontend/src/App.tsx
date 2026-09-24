@@ -226,17 +226,14 @@ function MessageSection() {
   const [newMessage, setNewMessage] = useState("")
 
   // 🎯 Auto-generated hooks!
-  const {
-    data: message,
-    isLoading,
-    refetch,
-  } = useBackendQuery({
+  const { data: message, isLoading } = useBackendQuery({
     functionName: "get_message",
   })
 
   const { mutate: setMessage, isPending } = useBackendMutation({
     functionName: "set_message",
-    onSuccess: () => refetch(), // Manually refetch after mutation
+    // Refetch every get_message query once the update succeeds
+    invalidateQueries: [{ functionName: "get_message" }],
   })
 
   const handleSetMessage = () => {
@@ -288,7 +285,6 @@ function CounterSection() {
     data: counter,
     isLoading,
     isFetching,
-    refetch,
   } = useBackendQuery({
     functionName: "get_counter",
     refetchInterval: 3000, // Explicitly set refetch interval
@@ -296,7 +292,7 @@ function CounterSection() {
 
   const { mutate: increment, isPending } = useBackendMutation({
     functionName: "increment",
-    onSuccess: () => refetch(),
+    invalidateQueries: [{ functionName: "get_counter" }],
   })
 
   return (
