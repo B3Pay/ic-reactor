@@ -46,6 +46,18 @@ if (error instanceof CanisterError) {
 }
 ```
 
+An error record with a text `code` is read as an API error, such as Orbit's
+`record { code : text; message : opt text; details : opt vec record { text; text } }`.
+Its `code` is `error.code`, its `details` field is `error.details` as decoded,
+and its message is `error.message`: the text, or the text inside the
+`opt text`, so a `Reactor` and a `DisplayReactor` give the same message. With
+no message, `error.message` is the record written as JSON.
+
+`CanisterError.isApiError(value)` checks only that `code`, `message` and
+`details` are present. It narrows to `ApiError`, whose `message` and `details`
+are `unknown` unless you name them (`ApiError<Message, Details>`), so check
+their shape before using them.
+
 ### CallError
 
 Thrown for network, agent, or canister trap errors:

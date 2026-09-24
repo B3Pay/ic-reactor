@@ -1,5 +1,3 @@
-import { NullishType } from "../display/types.js"
-
 /**
  * `value` with every BigInt that `JSON.stringify` would reach in it written as
  * its decimal string.
@@ -86,12 +84,43 @@ const hasBrand = (value: unknown, symbol: symbol): boolean =>
   (value as Record<symbol, unknown>)[symbol] === true
 
 /**
- * Interface representing the generic shape of an API error.
+ * The shape of an API error record: a `code`, a `message` and `details`, such
+ * as Orbit's
+ * `record { code : text; message : opt text; details : opt vec record { text; text } }`.
+ *
+ * `message` and `details` are `unknown` unless given, because decoding
+ * decides their types: that record gives `[] | [string]` and
+ * `[] | [Array<[string, string]>]` through a `Reactor`, and
+ * `string | null | undefined` and `Record<string, string> | null | undefined`
+ * through a `DisplayReactor`. Neither is ever a `Map`. Name them for an error
+ * type you know, e.g. `ApiError<[] | [string], [] | [Array<[string, string]>]>`.
+ *
+ * @typeParam Message - The type of `message`
+ * @typeParam Details - The type of `details`
  */
-export interface ApiError {
+export interface ApiError<Message = unknown, Details = unknown> {
   code: string
-  message: NullishType<string>
-  details: NullishType<Map<string, string>>
+  message: Message
+  details: Details
+}
+
+/**
+ * The message of an API-shaped error value: its `message` when that is text,
+ * or the text in a raw `opt text`, `[string]`, which is how a `Reactor`
+ * decodes Orbit's `message : opt text`. A `DisplayReactor` unwraps the opt to
+ * the text itself, so both give the same message. Anything else, `[]`
+ * included, gives none.
+ */
+const apiErrorMessage = (message: unknown): string | undefined => {
+  if (typeof message === "string") return message
+  if (
+    Array.isArray(message) &&
+    message.length === 1 &&
+    typeof message[0] === "string"
+  ) {
+    return message[0]
+  }
+  return undefined
 }
 
 // `E` is only ever the checked type of a condition below, never inside an
@@ -188,8 +217,8 @@ export class CanisterError<E = unknown> extends Error {
       if ("code" in err && typeof err.code === "string") {
         code = err.code
         isApiShape = true
-        if ("message" in err && typeof err.message === "string") {
-          message = err.message
+        if ("message" in err) {
+          message = apiErrorMessage(err.message)
         }
         if ("details" in err) {
           details = err.details
@@ -248,6 +277,10 @@ export class CanisterError<E = unknown> extends Error {
 
   /**
    * Type guard to check if an error object follows the API error format.
+   *
+   * It checks only that `code`, `message` and `details` are present, so it
+   * narrows `message` and `details` to `unknown`: read their types from the
+   * canister's Candid type, or check them before use.
    */
   static isApiError(error: unknown): error is ApiError {
     if (typeof error !== "object" || error === null) {

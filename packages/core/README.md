@@ -475,6 +475,20 @@ it is `[] | [Array<[string, string]>]` from a `Reactor` and
 `Record<string, string> | null | undefined` from a `DisplayReactor`; for a
 variant error such as ICRC-1's `TransferError` it is `undefined`.
 
+For an error value with a text `code` (the API shape), `message` is the value's
+own `message`: its text, or the text inside an `opt text`, which a `Reactor`
+decodes as `[string]` and a `DisplayReactor` as the text itself, so both give
+Orbit's `"Account not found"`. Without one (an empty `opt`, say), `message` is
+the value written as JSON. For any other error value it is
+`"Canister Error: "` followed by the value, written as JSON when it is an
+object.
+
+`CanisterError.isApiError(value)` checks only that `value` has `code`,
+`message` and `details`. It narrows to `ApiError`, whose `message` and
+`details` are `unknown` unless you name them, as decoding decides their types:
+`ApiError<[] | [string], [] | [Array<[string, string]>]>` for Orbit's error
+through a `Reactor`.
+
 ## Utilities
 
 ### Result Unwrapping
