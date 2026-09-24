@@ -347,12 +347,17 @@ const DECIMAL_TEXT = /^(-)?(\d*)(?:\.(\d*))?$/
  * parseTokenAmount("1.1", 18) // 1100000000000000000n
  * parseTokenAmount("0.123456789", 8) // throws RangeError: 9 fraction digits
  *
- * // In a form: show the message, send nothing
- * try {
- *   const amount = parseTokenAmount(input, decimals)
- *   transfer.execute([{ to: { owner }, amount: amount.toString() }])
- * } catch (error) {
- *   setAmountError((error as Error).message)
+ * // In a form: show the message and send nothing, or send the exact amount
+ * const onSubmit = () => {
+ *   let amount: bigint
+ *   try {
+ *     amount = parseTokenAmount(input, decimals)
+ *   } catch (error) {
+ *     setAmountError((error as Error).message)
+ *     return
+ *   }
+ *   // A DisplayReactor's mutation takes the nat as text
+ *   transfer.mutate([{ to: { owner }, amount: amount.toString() }])
  * }
  * ```
  */
