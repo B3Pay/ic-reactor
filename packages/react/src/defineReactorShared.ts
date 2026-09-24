@@ -23,6 +23,7 @@ import type { UseIdentityAttributesReturn } from "./auth/createIdentityAttribute
 import { createAuthHooks } from "./hooks/createAuthHooks.js"
 import type { CreateAuthHooksReturn } from "./hooks/createAuthHooks.js"
 import type { AuthenticationManagerParameters } from "./auth/authentication-manager.js"
+import { registerAuthentication } from "./ownedAuthentication.js"
 
 /** Options shared by both the standard and display variants of defineReactor. */
 export interface DefineReactorSharedParameters
@@ -236,7 +237,7 @@ export function defineReactorWith<
   const getAttributeHooks = () =>
     (attributeHooks ??= createIdentityAttributeHooks(getIdentityAttributes()))
 
-  return {
+  const result: DefineReactorResult<Service, Transform, R> = {
     ...hooks,
     reactor,
     clientManager,
@@ -254,4 +255,14 @@ export function defineReactorWith<
       return getIdentityAttributes()
     },
   }
+
+  // For `createReactorProvider`, which disposes the manager when its tree
+  // unmounts. It reads the manager without the getter above, so a tree that
+  // never touched authentication does not build one just to release it.
+  registerAuthentication(
+    result,
+    () => authenticationInstance ?? providedAuthentication
+  )
+
+  return result
 }

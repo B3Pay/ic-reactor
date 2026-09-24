@@ -20,6 +20,7 @@ every v8 release peers `@icp-sdk/core@^5`, so on npm it needs
 
 - Fastest setup: `defineReactor(...)` (raw Candid values) or
   `defineDisplayReactor(...)` (display values); same options
+- Server-rendered app (Next.js, any React SSR): `createReactorProvider(factory)`
 - Existing reactor instance: `createActorHooks(reactor)`
 - Reusable shared operations: `createQuery(...)`, `createMutation(...)`
 
@@ -39,9 +40,36 @@ A React Server Component, server action or route handler may import
 from `@ic-reactor/react`: Next.js resolves the package's `react-server` export
 condition to an entry without hooks. Build them inside the request, never at
 module scope, and call `reactor.fetchQuery()` / `reactor.callMethod()` there.
-Hooks, `defineReactor`, `createActorHooks`, the query/mutation factories and the
-auth classes are missing exports in that graph; they belong in a `"use client"`
-module.
+Hooks, `defineReactor`, `createActorHooks`, `createReactorProvider`, the
+query/mutation factories and the auth classes are missing exports in that
+graph; they belong in a `"use client"` module.
+
+## Server-Rendered Apps: createReactorProvider
+
+A module-scope reactor on a server is one cache shared by every request (query
+keys carry no caller). Build client-side reactors per mount instead:
+
+```tsx
+"use client"
+import { createReactorProvider, defineReactor } from "@ic-reactor/react"
+
+export const { ReactorProvider, useReactor } = createReactorProvider(() =>
+  defineReactor<_SERVICE>({ name: "backend", idlFactory, canisterId })
+)
+
+// layout: <ReactorProvider>{children}</ReactorProvider>
+// component: const { useActorQuery, useAuth } = useReactor()
+```
+
+- The factory runs once per mounted provider (once per request on a server);
+  it may return a record (`useReactor("ledger")`) or query/mutation objects.
+- `useReactor()` is typed as the factory's return: never write `as any` hook
+  forwarders or a hand-rolled context + `useEffect(dispose)` provider.
+- It disposes the value's `AuthenticationManager`s on unmount and renders a
+  `QueryClientProvider` for the value's single QueryClient.
+- Factory props are read once per mount; change the provider's `key` to rebuild.
+- Never call `createAuthHooks`/`createActorHooks` during render; take the hooks
+  from `useReactor()`.
 
 ## Display vs Raw Values
 

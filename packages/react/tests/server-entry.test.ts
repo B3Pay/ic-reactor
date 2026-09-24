@@ -132,6 +132,7 @@ describe("the react-server entry", () => {
         "createAuthHooks",
         "createIdentityAttributeHooks",
         "defineReactor",
+        "createReactorProvider",
         "createQuery",
         "createMutation",
       ])

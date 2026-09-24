@@ -105,6 +105,10 @@ export default defineConfig({
               link: "/packages/candid/metadatadisplayreactor",
             },
             {
+              label: "createReactorProvider",
+              link: "/reference/createreactorprovider",
+            },
+            {
               label: "createAuthHooks",
               items: [
                 {
@@ -319,6 +323,10 @@ export default defineConfig({
                   items: [
                     { label: "Overview", link: "/packages/react" },
                     { label: "React Setup", link: "/framework/react-setup" },
+                    {
+                      label: "createReactorProvider",
+                      link: "/reference/createreactorprovider",
+                    },
                     {
                       label: "createActorHooks",
                       link: "/reference/createactorhooks/overview",

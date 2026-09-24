@@ -180,6 +180,9 @@ export function App() {
   a `Reactor`, its actor hooks and the Internet Identity hooks together;
   `defineDisplayReactor(...)` takes the same options and builds a
   `DisplayReactor` instead
+- `createReactorProvider(factory)` for a server-rendered app: a provider that
+  builds the reactors once per mounted tree (so once per request on a server)
+  and a `useReactor()` hook that returns them fully typed
 - `createActorHooks(reactor)` for per-canister hooks like `useActorQuery` and
   `useActorMutation`
 - `createAuthHooks(authentication)` for `useAuth`, `useAgentState`, and
@@ -195,6 +198,9 @@ export function App() {
 ## Choosing the Right Pattern
 
 - Use `createActorHooks` for the simplest component-first integration.
+- Use `createReactorProvider` when the app renders on a server (Next.js, any
+  React SSR) or a part of the UI needs reactors of its own: module-scope
+  reactors are right only for a client-only app.
 - Use query and mutation factories when you also need loader, action, service,
   or test usage through `.fetch()`, `.prefetch()`, `.execute()`, `.invalidate()`,
   `.getCacheData()`, or `.setData()`.
@@ -531,11 +537,47 @@ export default async function Page() {
 }
 ```
 
-A provider that builds its managers per mount, as a server-rendered app does,
-should also release the Internet Identity client when the tree unmounts. An
-`AuthenticationManager` builds that client on first use, and a v10 client keeps
-listening to the page until it is disposed, so each remount would leave one
-behind. Call `authentication.dispose()` from the provider's cleanup:
+Client components need their reactors built inside the React tree too.
+`createReactorProvider` builds them once per mounted provider, in a `useState`
+initializer, and a server render is a tree of its own, so each request gets its
+own reactors, cache and `AuthenticationManager`. `useReactor()` returns what
+the factory built with its full type, so the hooks on it keep their generic
+signatures:
+
+```tsx
+// src/reactor.tsx
+"use client"
+import { createReactorProvider, defineReactor } from "@ic-reactor/react"
+
+export const { ReactorProvider, useReactor } = createReactorProvider(() =>
+  defineReactor<_SERVICE>({ name: "backend", idlFactory, canisterId })
+)
+```
+
+```tsx
+// app/layout.tsx (a server component) renders
+// <ReactorProvider>{children}</ReactorProvider>, and a client component
+// below it takes its hooks from useReactor():
+export function Profile() {
+  const { useActorQuery } = useReactor()
+  const { data } = useActorQuery({ functionName: "get_my_profile" })
+  return <h1>{data?.name}</h1>
+}
+```
+
+The factory can return a record (`{ backend, ledger }`, read with
+`useReactor("ledger")`), reactors and managers built by hand, or query and
+mutation objects. It receives the provider's props, read once per mount; a new
+`key` builds a new value. The provider also renders a `QueryClientProvider` for
+the value's QueryClient, so `useQueryClient()`, React Query Devtools and a
+`HydrationBoundary` below it use the cache the hooks fill; pass
+`{ queryClientProvider: false }` to keep your own.
+
+When the tree unmounts, the provider disposes each `AuthenticationManager` the
+value holds, releasing the Internet Identity client it built: a v10 client keeps
+listening to the page until it is disposed, so each remount would otherwise
+leave one behind. A provider you write yourself has to do the same from its
+cleanup:
 
 ```tsx
 const [value] = useState(createReactorContext)
@@ -545,7 +587,6 @@ useEffect(() => () => value.authentication.dispose(), [value])
 `dispose()` only forgets the client, and the next sign-in builds a new one, so
 this is safe under StrictMode, which runs the cleanup and the effect again on
 the same managers. A client passed in as `authClient` is left alone.
-`examples/nextjs/src/service/provider.tsx` does this.
 
 Two further constraints on the App Router specifically:
 
@@ -568,9 +609,10 @@ Two further constraints on the App Router specifically:
   transitive dependency does not resolve under pnpm.
 - Hooks bind to their reactor's own `QueryClient` rather than to a
   `QueryClientProvider`, so `HydrationBoundary` prefetch does not feed them
-  unless the provider's client _is_ that reactor's client. Next.js also
-  evaluates a shared module twice on the server (the RSC and SSR graphs), so a
-  module-scope reactor is two different instances there.
+  unless the provider's client _is_ that reactor's client, as it is below
+  `createReactorProvider`'s provider. Next.js also evaluates a shared module
+  twice on the server (the RSC and SSR graphs), so a module-scope reactor is
+  two different instances there.
 
 If none of that applies — a client-only SPA — module-scope reactors are exactly
 right and none of this is a concern.

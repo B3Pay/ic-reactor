@@ -34,6 +34,9 @@ import {
 import type { AuthClientLike } from "../../src/auth/types.js"
 import { detectAuthClientFlavor } from "../../src/auth/auth-client-compat.js"
 import { createAuthHooks } from "../../src/hooks/createAuthHooks.js"
+import { createReactorProvider } from "../../src/createReactorProvider.js"
+import { defineReactor } from "../../src/defineReactor.js"
+import type { IDL } from "@icp-sdk/core/candid"
 import {
   installFakeIdentityProvider,
   withUserGesture,
@@ -500,6 +503,80 @@ describe("a provider that builds its managers per mount (real AuthClient)", () =
   it("still signs in and out under StrictMode", async () => {
     // StrictMode runs the provider's cleanup, and so dispose(), and then its
     // effect again, on the same managers.
+    const { unmount, authentication } = await mount(true)
+
+    await withUserGesture(() => authentication.login())
+    expect(authentication.authState.isAuthenticated).toBe(true)
+    await authentication.logout()
+    expect(authentication.authState.isAuthenticated).toBe(false)
+
+    unmount()
+    expect(authentication.client).toBeUndefined()
+  })
+})
+
+describe("createReactorProvider (real AuthClient)", () => {
+  // The provider does what the hand-written one above does, for the manager a
+  // defineReactor result builds on the first useAuth(): nothing reads it until
+  // then, so the provider finds it through the result rather than a getter.
+  const idlFactory: IDL.InterfaceFactory = ({ IDL }) => IDL.Service({})
+  const { ReactorProvider, useReactor } = createReactorProvider(() =>
+    defineReactor({
+      name: "backend",
+      idlFactory,
+      canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+      agentOptions: { host: LOCAL_HOST },
+    })
+  )
+
+  /** The value the mounted tree uses. */
+  let mounted: ReturnType<typeof useReactor> | undefined
+
+  function Header() {
+    mounted = useReactor()
+    mounted.useAuth()
+    return null
+  }
+
+  /** Mounts the provider and waits for `useAuth()` to restore the session. */
+  async function mount(strict = false) {
+    const tree = createElement(ReactorProvider, null, createElement(Header))
+    const view = render(strict ? createElement(StrictMode, null, tree) : tree)
+    const { authentication } = mounted!
+    await vi.waitFor(() =>
+      expect(authentication.authState.identity).not.toBeNull()
+    )
+    return { ...view, authentication }
+  }
+
+  it.runIf(isV10)(
+    "leaves no client listening to the page after 50 remounts (v10)",
+    async () => {
+      const liveListeners = trackClientListeners()
+
+      for (let remount = 0; remount < 50; remount++) {
+        const { unmount, authentication } = await mount()
+        expect(authentication.client).toBeDefined()
+        unmount()
+        expect(authentication.client).toBeUndefined()
+      }
+
+      expect(liveListeners()).toBe(0)
+    }
+  )
+
+  it("restores a stored session under StrictMode", async () => {
+    await signInInAnotherTab()
+
+    const { authentication } = await mount(true)
+
+    await vi.waitFor(() =>
+      expect(authentication.authState.isAuthenticated).toBe(true)
+    )
+    expect(authentication.client).toBeDefined()
+  })
+
+  it("still signs in and out under StrictMode, and releases the client on unmount", async () => {
     const { unmount, authentication } = await mount(true)
 
     await withUserGesture(() => authentication.login())

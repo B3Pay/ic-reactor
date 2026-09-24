@@ -378,7 +378,9 @@ server-rendered app builds one per render tree, and a widget may build its own
 reactor stack each time it opens. The manager builds its Internet Identity
 client on first use, and a `@icp-sdk/auth` v10 client listens to the page
 (activity, focus and the session record every tab shares) until it is disposed.
-Release it from the cleanup of whatever built the manager:
+A provider from [`createReactorProvider`](/v3/reference/createreactorprovider)
+disposes every manager its value holds when its tree unmounts. A manager built
+per mount any other way is released from the cleanup of whatever built it:
 
 ```tsx
 const [authentication] = useState(

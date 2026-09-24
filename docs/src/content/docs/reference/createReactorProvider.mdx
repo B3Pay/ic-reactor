@@ -1,0 +1,281 @@
+---
+title: createReactorProvider
+description: Build reactors once per mounted tree, with typed hooks, for server-rendered apps
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+`createReactorProvider` builds your reactors inside the React tree instead of at
+module scope, once per mounted provider, and returns a `useReactor()` hook that
+hands them to components with their full types. It is the setup a
+server-rendered app (Next.js, or any React SSR) needs, and it replaces the
+provider such apps used to write by hand.
+
+## Import
+
+```typescript
+import { createReactorProvider } from "@ic-reactor/react"
+```
+
+## Usage
+
+```tsx
+// src/reactor.tsx
+"use client"
+import { createReactorProvider, defineReactor } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/todo"
+
+export const { ReactorProvider, useReactor } = createReactorProvider(() =>
+  defineReactor<_SERVICE>({ name: "todo", idlFactory, canisterId })
+)
+```
+
+```tsx
+// src/app/layout.tsx (a server component)
+import { ReactorProvider } from "../reactor"
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <html lang="en">
+      <body>
+        <ReactorProvider>{children}</ReactorProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+```tsx
+// Any client component below the provider
+"use client"
+import { useReactor } from "../reactor"
+
+export function Todos() {
+  const { useActorQuery, useAuth } = useReactor()
+  const { isAuthenticated } = useAuth()
+  const { data } = useActorQuery({ functionName: "getAllTodos" })
+
+  if (!isAuthenticated) return <p>Sign in to see your todos</p>
+  return (
+    <ul>
+      {data?.map((todo) => (
+        <li key={String(todo.id)}>{todo.description}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+`useReactor()` returns exactly what the factory built, so `useActorQuery` keeps
+its own signature: `functionName` is checked against the service, `args` are
+typed for that method and `data` is the method's result. No wrapper and no
+cast is involved.
+
+## When to Use It
+
+- **Server-rendered apps.** A module-scope reactor is created once per server
+  process and shared by every request. It owns its `QueryClient`, and query keys
+  carry no caller principal, so one visitor's caller-scoped result
+  (`get_my_balance`, `my_profile`) can be served to the next. The provider's
+  factory runs in a `useState` initializer, and a server render is a tree of its
+  own, so each request builds its own reactors, cache and
+  `AuthenticationManager`.
+- **Reactors that belong to part of the UI**, such as a widget that builds its
+  own stack each time it opens, or a canister chosen by the user (see
+  [Props and rebuilding](#props-and-rebuilding)).
+
+A client-only SPA can keep its reactors at module scope; see
+[React Setup](/v3/framework/react-setup).
+
+## Parameters
+
+| Parameter | Type                           | Description                                                                                        |
+| --------- | ------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `factory` | `(props: TProps) => TValue`    | Builds the value. Runs once per mounted provider, with the provider's props other than `children`. |
+| `options` | `CreateReactorProviderOptions` | Optional. See [Options](#options).                                                                 |
+
+The factory can return anything the app sets up: a `defineReactor` or
+`defineDisplayReactor` result, a record of them, reactors and managers built by
+hand, or query and mutation objects from `createQuery` and `createMutation`.
+
+## Return Value
+
+| Property          | Type                                                         | Description                                                                              |
+| ----------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `ReactorProvider` | `(props: TProps & { children?: ReactNode }) => ReactElement` | Builds the value when it mounts and provides it to the tree below.                       |
+| `useReactor`      | `() => TValue` and `(key) => TValue[key]`                    | Hook returning the value, or one of its properties by name. Throws outside the provider. |
+
+Rename them when you destructure, to read well at the call site:
+
+```typescript
+export const { ReactorProvider: TodoProvider, useReactor: useTodo } =
+  createReactorProvider(() => defineReactor<_SERVICE>({ ... }))
+```
+
+## Options
+
+| Option                | Type      | Default | Description                                                                                                                  |
+| --------------------- | --------- | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `queryClientProvider` | `boolean` | `true`  | Render a `QueryClientProvider` for the value's QueryClient, when the value holds exactly one. Pass `false` to keep your own. |
+
+The reactor hooks do not need a `QueryClientProvider`: each binds to its
+reactor's own QueryClient. The provider renders one so that code below it that
+reads the context, such as `useQueryClient()`, React Query Devtools and
+`HydrationBoundary`, works with the same cache the reactor hooks fill. It looks
+for the QueryClient on the value and its own properties: a `defineReactor`
+result, a reactor and a `ClientManager` each bring their manager's, and a
+`QueryClient` counts as itself. With several distinct clients it renders none.
+
+## Several Canisters
+
+Return a record. Reactors that share an `AuthenticationManager` share its
+`ClientManager`, so one sign-in covers all of them:
+
+```tsx
+export const { ReactorProvider, useReactor } = createReactorProvider(() => {
+  const backend = defineReactor<Backend>({
+    name: "backend",
+    idlFactory: backendIdl,
+    canisterId: backendId,
+  })
+  const ledger = defineDisplayReactor<Ledger>({
+    name: "ledger",
+    idlFactory: ledgerIdl,
+    canisterId: ledgerId,
+    authentication: backend.authentication,
+  })
+  const profile = createQuery(backend.reactor, { functionName: "get_profile" })
+
+  return { backend, ledger, profile }
+})
+
+function Supply() {
+  // A DisplayReactor's nat arrives as text.
+  const { data } = useReactor("ledger").useActorQuery({
+    functionName: "icrc1_total_supply",
+  })
+  return <span>{data}</span>
+}
+
+function SignIn() {
+  const { login, isAuthenticated } = useReactor("backend").useAuth()
+  return isAuthenticated ? null : (
+    <button onClick={() => login()}>Sign in</button>
+  )
+}
+
+function Profile() {
+  const { data } = useReactor("profile").useQuery()
+  return <h1>{data?.name}</h1>
+}
+```
+
+Query and mutation objects built in the factory belong to that tree too, which
+is what a server-rendered app needs: a module-scope `createQuery` is bound to a
+module-scope reactor.
+
+## Props and Rebuilding
+
+The factory receives the provider's props, other than `children`. They are read
+once, when the provider mounts, like the initial value of `useState`. To build
+a new value, give the provider a new `key`: React unmounts the old tree, which
+releases the old value, and mounts a new one.
+
+```tsx
+export const { ReactorProvider: LedgerProvider, useReactor: useLedger } =
+  createReactorProvider(({ canisterId }: { canisterId: string }) =>
+    defineDisplayReactor<Ledger>({ name: "ledger", idlFactory, canisterId })
+  )
+
+function TokenPage({ canisterId }: { canisterId: string }) {
+  return (
+    <LedgerProvider key={canisterId} canisterId={canisterId}>
+      <TokenDetails />
+    </LedgerProvider>
+  )
+}
+```
+
+The whole tree below remounts, not only the value, because a TanStack query
+observer keeps the QueryClient it started with. Props are also how a server
+component hands runtime configuration, such as a host read from a server-only
+environment variable, to the reactors a client component builds. To switch
+between canisters of one interface without rebuilding, pass
+`callConfig: { canisterId }` to the query hooks instead; the query key follows
+that canister.
+
+## Lifecycle
+
+- **Server render.** The factory runs for each request's render, and nothing
+  runs in an effect, so the first render is complete HTML. The auth hooks show
+  their fixed server state (signed out, `isAuthenticating: true`) and queries
+  without data render their pending state.
+- **Hydration.** The browser builds its own value from the same props and
+  renders the same first pass, so it hydrates without a mismatch.
+- **Unmount.** The provider calls `dispose()` on every `AuthenticationManager`
+  the value holds, which releases the Internet Identity client it built: the
+  value itself when it is one, those among its own properties, and the one each
+  `defineReactor` result there uses. A `defineReactor` result whose tree never
+  used authentication has built no manager, and none is built to be disposed.
+- **StrictMode.** `dispose()` only forgets the client, and the next sign-in
+  builds a new one, so StrictMode's extra cleanup and effect on the same value
+  leave the session and its restore intact.
+
+<Aside type="caution">
+  Everything the value holds belongs to the provider and is released with it.
+  Build the managers inside the factory. A manager imported from module scope
+  and returned by the factory is disposed whenever a provider holding it
+  unmounts, while other trees may still use it.
+</Aside>
+
+## Replacing a Hand-Written Provider
+
+Before `createReactorProvider`, an SSR app built its context by hand and then
+forwarded each hook out of it. A hook that is generic over the method name has
+no parameter tuple a typed wrapper can name, so those forwarders needed casts:
+
+```tsx
+// ❌ No longer needed
+const [value] = useState(createReactorContext)
+useEffect(() => () => value.authentication.dispose(), [value])
+
+export const useQueryTodo: TodoHooks["useActorQuery"] = (...args: any[]) =>
+  (useICReactor().todo.useActorQuery as any)(...args)
+```
+
+```tsx
+// ✅
+export const { ReactorProvider, useReactor } = createReactorProvider(() =>
+  defineReactor<_SERVICE>({ name: "todo", idlFactory, canisterId })
+)
+
+const { useActorQuery } = useReactor()
+```
+
+## Notes
+
+<Aside type="note">
+  Call `createReactorProvider` at module scope. It builds nothing itself, only a
+  React context; every mounted provider builds its own value. In the Next.js App
+  Router its module needs `"use client"`, like any module with hooks, and a
+  server component renders the provider from there. It is not exported from the
+  `react-server` entry.
+</Aside>
+
+<Aside type="tip">
+  `useReactor` is a hook: call it in a component or a custom hook, below the
+  provider. The hooks it returns are stable for the life of the provider, so
+  destructuring them during render follows the rules of hooks.
+</Aside>
+
+## See Also
+
+- [React Setup: Server-Side Rendering](/v3/framework/react-setup#server-side-rendering)
+- [Next.js App Router example](/v3/examples/nextjs-app-router)
+- [Next.js Pages Router example](/v3/examples/nextjs)
+- [Authentication: Discarding a Manager](/v3/guides/authentication#discarding-a-manager)

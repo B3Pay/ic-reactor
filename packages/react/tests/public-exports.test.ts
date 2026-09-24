@@ -27,6 +27,7 @@ const RUNTIME_EXPORTS: Record<
   createActorMethodHooks: "function",
   defineReactor: "function",
   defineDisplayReactor: "function",
+  createReactorProvider: "function",
   createQuery: "function",
   createQueryFactory: "function",
   createSuspenseQuery: "function",
