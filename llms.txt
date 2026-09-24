@@ -50,8 +50,8 @@ Parser lane:
 
 | Package                   | Owns                                                                                                               | Start here                                                                                    |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, `@tanstack/query-core` cache integration | `packages/core/src/`, `packages/core/README.md`                                               |
-| `@ic-reactor/react`       | React hook factories, query/mutation factories, `useActorMethod`, Internet Identity auth, and identity-attribute hooks | `packages/react/src/`, `packages/react/README.md`, `skill-packages/ic-reactor-hooks/SKILL.md` |
+| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, `@tanstack/query-core` cache integration; `@ic-reactor/core/testing` fake replica | `packages/core/src/`, `packages/core/README.md`                                               |
+| `@ic-reactor/react`       | React hook factories, query/mutation factories, `useActorMethod`, `createReactorProvider`, Internet Identity auth, and identity-attribute hooks; a React-free `react-server` entry and `@ic-reactor/react/testing` | `packages/react/src/`, `packages/react/README.md`, `skill-packages/ic-reactor-hooks/SKILL.md` |
 | `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                                      | `packages/candid/src/`, `packages/candid/README.md`                                           |
 | `@ic-reactor/parser`      | Rust/WASM Candid parser; one `.` entrypoint with browser/node conditional exports                                 | `packages/parser/src/`, `packages/parser/README.md`                                           |
 | `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline used by CLI and Vite plugin                                  | `packages/codegen/src/`, `packages/codegen/README.md`                                         |
@@ -62,12 +62,20 @@ Parser lane:
 
 | Task                                      | Preferred reference                                                                                                |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| One-call React setup (reactor + hooks)    | `defineReactor` in `packages/react/src/defineReactor.ts`, `skill-packages/ic-reactor-hooks/SKILL.md`               |
+| One-call React setup (reactor + hooks)    | `defineReactor` in `packages/react/src/defineReactor.ts`; `defineDisplayReactor` for display values in `packages/react/src/defineDisplayReactor.ts` (shared body in `packages/react/src/defineReactorShared.ts`; `defineReactor({ display: true })` is deprecated); `skill-packages/ic-reactor-hooks/SKILL.md` |
+| Server-rendered app (Next.js, any SSR)    | `createReactorProvider(factory)` → `{ ReactorProvider, useReactor }`, which builds the value per mounted provider and disposes the managers it built, in `packages/react/src/createReactorProvider.ts`; `examples/nextjs/src/service/provider.tsx`; `https://ic-reactor.b3pay.net/v3/reference/createreactorprovider` |
+| React Server Component / server entry     | `packages/react/src/server.ts` (the `react-server` export condition: core runtime and validation helpers, no hooks), `packages/react/tests/server-entry.test.ts` |
 | Build a React canister integration        | `packages/react/README.md`, `docs/src/content/docs/framework/react-setup.mdx`                                      |
+| Query args not known yet                  | `skipToken` from `@ic-reactor/react` in place of args (`useActorQuery`, `useActorInfiniteQuery` `getArgs`, `createQueryFactory`); not in suspense hooks or `createQuery` |
+| Many canisters of one interface           | `reactor.forCanister(canisterId)` in `packages/core/src/reactor.ts`; `callConfig: { canisterId }` for a single query |
+| Types from a reactor                      | `ReactorArgsOf` / `ReactorDataOf` / `ReactorErrorOf<typeof reactor, M>`, `ServiceOf`, `TransformOf` in `packages/core/src/types/reactor.ts` |
+| Token amounts and principal input         | `formatTokenAmount`, `parseTokenAmount`, `isPrincipalText` in `packages/core/src/utils/`, `docs/src/content/docs/reference/Utilities.mdx` |
+| Test canister code without a replica      | `installFakeReplica` + `createTestCanister` from `@ic-reactor/core/testing` (`@ic-reactor/react/testing` in React apps), `packages/core/src/testing/`, `docs/src/content/docs/guides/testing.mdx` |
 | Choose inside-React vs outside-React APIs | `skill-packages/ic-reactor-hooks/SKILL.md`, `llms-full.txt`                                                        |
 | Add reusable query/mutation factories     | `docs/src/content/docs/reference/factories/overview.mdx`, `skill-packages/ic-reactor-hooks/references/patterns.md` |
 | Add auth/login or identity attributes     | `AuthenticationManager` + `createAuthHooks`, `IdentityAttributesManager` + `createIdentityAttributeHooks` in `packages/react/src/auth/`, `docs/src/content/docs/guides/authentication.mdx` |
 | Change generated hook output              | `packages/codegen/src/`, then verify CLI/Vite consumers                                                            |
+| Generate query/mutation objects per method | `factories: true` on a canister entry (`target: "react"`) writes `index.factories.generated.ts`; `packages/codegen/src/generators/factories.ts`, `examples/codegen-in-action/` |
 | Configure Vite generation                 | `packages/vite-plugin/README.md`, `docs/src/content/docs/packages/vite-plugin.mdx`                                 |
 | Configure CLI generation                  | `packages/cli/README.md`, `docs/src/content/docs/packages/cli.mdx`                                                 |
 | Work with unknown/runtime Candid          | `packages/candid/README.md`, `docs/src/content/docs/packages/candid/index.mdx`                                     |
@@ -129,6 +137,15 @@ React hooks (`useActorQuery`, `.useQuery()`, `.useMutation()`,
 custom hooks.
 
 Outside React, use imperative APIs: query `.fetch()`, `.prefetch()`,
-`.invalidate()`, `.getCacheData()`, mutation `.execute(args)`, or direct reactor
-methods such as `.fetchQuery()`, `.getQueryData()`, `.invalidateQueries()`, and
-`.callMethod()`.
+`.invalidate()`, `.getCacheData()`, `.cancel()`, `.reset()`,
+`.optimisticUpdate()`, mutation `.execute(args)`, or direct reactor methods such
+as `.fetchQuery()`, `.getQueryData()`, `.invalidateQueries()` (returns a
+`Promise`), and `.callMethod()`. Wrap any other fetch of a canister query
+through the `QueryClient` in `clientManager.fetchAcrossIdentitySwitch(() => ...)`.
+
+State-changing update methods: mutations only (`useActorMutation` /
+`useActorMethod` / `createMutation`, with `retry: reactorUpdateRetry` if any).
+Query hooks and factories re-run their method on every refetch, and an update
+method in a query retries only SysTransient unless the query sets `retry`.
+A mutation's `invalidateQueries` takes query objects, query factories and
+`{ functionName, args? }` descriptors, never hand-written keys.

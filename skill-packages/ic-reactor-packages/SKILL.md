@@ -43,6 +43,9 @@ entry points, verification commands, or known failure modes.
 | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Agent/query runtime, canister calls, display transforms       | `packages/core`                                                                                          |
 | React hooks, factories, `defineReactor`, `useActorMethod`     | `packages/react` and `ic-reactor-hooks`                                                                  |
+| `defineDisplayReactor`, `createReactorProvider`               | `packages/react/src/defineDisplayReactor.ts`, `packages/react/src/createReactorProvider.ts`              |
+| React Server Component entry (`react-server` condition)       | `packages/react/src/server.ts`, `packages/react/tests/server-entry.test.ts`                              |
+| Fake replica for tests (`@ic-reactor/core/testing`)           | `packages/core/src/testing/`, `packages/react/src/testing.ts` (`@ic-reactor/react/testing`)              |
 | Internet Identity login and auth state                        | `packages/react/src/auth/authentication-manager.ts`                                                      |
 | Signed OpenID identity attributes                             | `packages/react/src/auth/identity-attributes-manager.ts`                                                 |
 | React auth and identity-attribute hooks                       | `packages/react/src/hooks/createAuthHooks.ts`, `packages/react/src/auth/createIdentityAttributeHooks.ts` |

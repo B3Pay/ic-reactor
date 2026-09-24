@@ -21,8 +21,15 @@ Treat the published documentation and package manifests as the v3 release line.
 - Describe published documentation as IC Reactor v3.
 - Keep package-specific docs aligned with the released `@ic-reactor/core` v3.12.5 runtime and its published tooling.
 - Prefer `@icp-sdk/*` package names in docs and examples.
-- Prefer `defineReactor(...)` for React setup; use `ClientManager` + `Reactor` + `createActorHooks` when explicit construction order is needed.
-- `createAuthHooks` takes an `AuthenticationManager`, not a `ClientManager`. `useIdentityAttributes` comes from `createIdentityAttributeHooks`, not `createAuthHooks`.
+- Prefer `defineReactor(...)` for React setup, and `defineDisplayReactor(...)` (same options) for display values; `defineReactor({ display: true })` is deprecated, so never generate it. Use `ClientManager` + `Reactor` + `createActorHooks` when explicit construction order is needed.
+- In a server-rendered app, build reactors and query/mutation objects per request with `createReactorProvider(factory)` and read them with its `useReactor` hook, never at module scope (reference: `examples/nextjs/src/service/provider.tsx`). A React Server Component may import the core runtime (`Reactor`, `DisplayReactor`, `ClientManager`, `formatTokenAmount`, ...) from `@ic-reactor/react` through its `react-server` export condition; hooks, factories, `defineReactor` and the auth classes are not exported there.
+- `createAuthHooks` takes an `AuthenticationManager`, not a `ClientManager`. `useIdentityAttributes` comes from `createIdentityAttributeHooks`, not `createAuthHooks`. `useAuth()` reports `isAuthenticating: true` until the first session restore settles.
+- Call state-changing update methods only through mutations (`useActorMutation`, `useActorMethod`, `createMutation`), never a query hook or factory, which re-runs its method on every refetch. Give an update mutation `retry: reactorUpdateRetry`, never a numeric retry.
+- A mutation's `invalidateQueries` takes query objects, query factories and `{ functionName, args? }` descriptors; never hand-write a key. `reactor.invalidateQueries(...)` returns a `Promise`.
+- Wrap a hand-written `queryClient.fetchQuery` / `fetchInfiniteQuery` of a canister query in `clientManager.fetchAcrossIdentitySwitch(() => ...)`, as `query.fetch()` and `reactor.fetchQuery()` already are, so a sign-in mid-fetch cannot return the previous principal's data.
+- Pass `skipToken` in place of args that are not known yet, use `reactor.forCanister(canisterId)` for many canisters of one interface, derive types with `ReactorArgsOf` / `ReactorDataOf` / `ReactorErrorOf<typeof reactor, "method">`, show or read token amounts with `formatTokenAmount` / `parseTokenAmount`, and validate typed principals with `isPrincipalText`.
+- For codegen projects, `factories: true` on a canister entry generates a query or mutation object per method (`index.factories.generated.ts`); prefer it over hand-written per-method factory modules.
+- Tests run the real reactor against `installFakeReplica` from `@ic-reactor/core/testing` (`@ic-reactor/react/testing` in React apps) instead of stubbing a `Reactor`.
 
 ## Skills
 

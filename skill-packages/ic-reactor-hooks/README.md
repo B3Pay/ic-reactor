@@ -4,7 +4,8 @@ AI agent skill for building and refactoring `@ic-reactor/react` integrations in 
 
 ## What This Skill Covers
 
-- `defineReactor(...)` — one-call `QueryClient` + `ClientManager` + reactor + hooks setup
+- `defineReactor(...)` / `defineDisplayReactor(...)` — one-call `QueryClient` + `ClientManager` + reactor + hooks setup (`Reactor` or `DisplayReactor`)
+- `createReactorProvider(...)` — per-request setup for server-rendered apps
 - `createActorHooks(...)` — typed hook suite for a canister
 - `createQuery` / `createMutation` factory patterns — reusable inside and outside React
 - `createQueryFactory` / `createSuspenseQueryFactory` — cached operation factories for dynamic args
