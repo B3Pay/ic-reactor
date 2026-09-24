@@ -1,3 +1,4 @@
+use candid_parser::candid::{idl_hash, types::Label};
 use candid_parser::syntax::{
     Binding, Dec, IDLActorType, IDLMergedProg, IDLProg, IDLType, TypeField,
 };
@@ -146,6 +147,10 @@ pub fn did_to_js(prog: String) -> Result<String, String> {
         env = TypeEnv::new();
         actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     }
+    if hash_numeric_looking_labels(&mut ast) {
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
 
     let res = candid_parser::bindings::javascript::compile(&env, &actor);
 
@@ -193,53 +198,115 @@ fn unused_type_name(env: &TypeEnv, candidate: &str) -> String {
     name
 }
 
-/// Renames the type `from` to `to` in `ast`: its declaration and every
-/// reference to it. Field labels and method names are not type names and stay.
-fn rename_type(ast: &mut IDLProg, from: &str, to: &str) {
-    fn rename_in(ty: &mut IDLType, from: &str, to: &str) {
+/// Calls `visit` on every type in `ast`: each declared type, the actor's type,
+/// and every type nested in them, outer types first.
+fn visit_types<F: FnMut(&mut IDLType)>(ast: &mut IDLProg, visit: &mut F) {
+    fn visit_in<F: FnMut(&mut IDLType)>(ty: &mut IDLType, visit: &mut F) {
+        visit(ty);
         match ty {
-            IDLType::VarT(id) => {
-                if id == from {
-                    *id = to.to_string();
-                }
-            }
             IDLType::FuncT(func) => {
                 for arg in func.args.iter_mut().chain(func.rets.iter_mut()) {
-                    rename_in(&mut arg.typ, from, to);
+                    visit_in(&mut arg.typ, visit);
                 }
             }
-            IDLType::OptT(inner) | IDLType::VecT(inner) => rename_in(inner, from, to),
+            IDLType::OptT(inner) | IDLType::VecT(inner) => visit_in(inner, visit),
             IDLType::RecordT(fields) | IDLType::VariantT(fields) => {
                 for field in fields {
-                    rename_in(&mut field.typ, from, to);
+                    visit_in(&mut field.typ, visit);
                 }
             }
             IDLType::ServT(methods) => {
                 for method in methods {
-                    rename_in(&mut method.typ, from, to);
+                    visit_in(&mut method.typ, visit);
                 }
             }
             IDLType::ClassT(args, inner) => {
                 for arg in args {
-                    rename_in(&mut arg.typ, from, to);
+                    visit_in(&mut arg.typ, visit);
                 }
-                rename_in(inner, from, to);
+                visit_in(inner, visit);
             }
-            IDLType::PrimT(_) | IDLType::PrincipalT => {}
+            IDLType::VarT(_) | IDLType::PrimT(_) | IDLType::PrincipalT => {}
         }
     }
 
     for dec in &mut ast.decs {
         if let Dec::TypD(binding) = dec {
-            if binding.id == from {
-                binding.id = to.to_string();
-            }
-            rename_in(&mut binding.typ, from, to);
+            visit_in(&mut binding.typ, visit);
         }
     }
     if let Some(actor) = &mut ast.actor {
-        rename_in(&mut actor.typ, from, to);
+        visit_in(&mut actor.typ, visit);
     }
+}
+
+/// Renames the type `from` to `to` in `ast`: its declaration and every
+/// reference to it. Field labels and method names are not type names and stay.
+fn rename_type(ast: &mut IDLProg, from: &str, to: &str) {
+    for dec in &mut ast.decs {
+        if let Dec::TypD(binding) = dec {
+            if binding.id == from {
+                binding.id = to.to_string();
+            }
+        }
+    }
+    visit_types(ast, &mut |ty| {
+        if let IDLType::VarT(id) = ty {
+            if id == from {
+                *id = to.to_string();
+            }
+        }
+    });
+}
+
+/// Whether `@icp-sdk/core` reads a record field or variant tag key as a number
+/// instead of hashing it: the key is spelled `_<digits>_` or `_0x<hex>_`, and
+/// the number is below 2^32. A copy of the rule in its `idlLabelToId`.
+fn reads_as_number(name: &str) -> bool {
+    let Some(inner) = name.strip_prefix('_').and_then(|n| n.strip_suffix('_')) else {
+        return false;
+    };
+    let (digits, radix) = match inner.strip_prefix("0x") {
+        Some(hex) if !hex.is_empty() && hex.bytes().all(|b| b.is_ascii_hexdigit()) => (hex, 16),
+        _ if !inner.is_empty() && inner.bytes().all(|b| b.is_ascii_digit()) => (inner, 10),
+        _ => return false,
+    };
+    // The digits are checked above, so this only fails on overflow, and a
+    // number from 2^32 up is hashed as a name.
+    u32::from_str_radix(digits, radix).is_ok()
+}
+
+/// Rewrites each record field and variant tag whose name `@icp-sdk/core`
+/// reads as a number, such as `_0_`, as the id the name hashes to, and returns
+/// whether it rewrote one.
+///
+/// A named field's id is the hash of its name, whatever the name looks like,
+/// so a canister expects the field `_0_` as hash("_0_") = 4735054.
+/// candid_parser prints the field as the key `'_0_'`, the key it prints the
+/// field `0` as, and `@icp-sdk/core` reads a key spelled like that as the
+/// number. The call carried id 0 instead, and the canister rejected it, or read
+/// an `opt` field as none. `record { _0_ : nat; 0 : text }` printed both
+/// fields under one key, and the object literal kept only the last.
+///
+/// A rewritten field prints under its hash, `_4735054_`, the way candid_parser
+/// prints a numeric field, in both `didToJs` and `didToTs`, so the types and
+/// the IDL use the same key. Every other name prints as before, including one
+/// `@icp-sdk/core` hashes itself, such as `_4294967296_`.
+fn hash_numeric_looking_labels(ast: &mut IDLProg) -> bool {
+    let mut rewritten = false;
+    visit_types(ast, &mut |ty| {
+        if let IDLType::RecordT(fields) | IDLType::VariantT(fields) = ty {
+            for field in fields {
+                if let Label::Named(name) = &field.label {
+                    if reads_as_number(name) {
+                        field.label = Label::Id(idl_hash(name));
+                        rewritten = true;
+                    }
+                }
+            }
+        }
+    });
+    rewritten
 }
 
 /// Replaces each identifier in `code` that `names` maps, outside quoted
@@ -394,6 +461,10 @@ pub fn did_to_ts(prog: String) -> Result<String, String> {
     let mut env = TypeEnv::new();
     let mut actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     if rename_keyword_actor_type(&mut ast, &env) {
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
+    if hash_numeric_looking_labels(&mut ast) {
         env = TypeEnv::new();
         actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     }

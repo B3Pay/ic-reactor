@@ -90,6 +90,16 @@ let that package load the parser when needed.
 
 - The package is compiled from Rust to WebAssembly.
 - `didToJs` / `didToTs` return source strings rather than ready-made JS objects.
+- A record field or variant tag whose name looks like a numeric id, `_<digits>_`
+  or `_0x<hex digits>_` for a number below 2^32 (such as `_0_`), is printed
+  under the hash of its name in both `didToJs` and `didToTs`: `_0_` becomes
+  `_4735054_`. Candid identifies a named field by that hash, but
+  `@icp-sdk/core` reads a key spelled like a number as that number, so under
+  its own name the field would be sent and read as field 0. Use the printed
+  key for the value. Every other name prints as written, and a numeric field
+  (`0 : nat`) still prints as `_0_`. A hand-written `.did` that spells a
+  Motoko numeric field as `_0_` must write it as `0`, the way Motoko prints
+  it.
 - Candid imports cannot be resolved from a single source string. Every function
   throws for `import service "file.did"`, because the methods of the imported
   service would be missing from the result. A plain `import "file.did"` is

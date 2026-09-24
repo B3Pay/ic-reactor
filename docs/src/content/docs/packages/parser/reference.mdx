@@ -84,6 +84,24 @@ const ts = didToTs("service:{}")
 // export interface _SERVICE ...
 ```
 
+### Field names that look like numeric ids
+
+Candid identifies a named record field or variant tag by the hash of its name.
+`@icp-sdk/core` reads an IDL key spelled `_<digits>_` or `_0x<hex digits>_`,
+for a number below 2^32, as that number instead, the spelling it uses for
+numeric fields such as `0 : nat`. So `didToJs` and `didToTs` print a field
+_named_ like that under its hash, and it is sent and read by that hash:
+
+```typescript
+didToTs(`service : { get : () -> (record { _0_ : nat; 0 : text }) query }`)
+// … ActorMethod<[], { _0_ : string, _4735054_ : bigint }>
+```
+
+Use the printed key (`_4735054_`) for the value in calls and results. Names
+that do not match the pattern print as written. A hand-written `.did` that
+spells a Motoko numeric field as `_0_` must write it as `0`, the way Motoko
+prints it; spelled `_0_`, it is the field named `_0_`.
+
 ### `parseDid`
 
 `parseDid(candid: string): CandidSchema`
