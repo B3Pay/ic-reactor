@@ -616,6 +616,59 @@ describe("a Candid type named _SERVICE or like a TypeScript type keyword", () =>
       },
       init: [IDL.Tuple(IDL.Record({ value: IDL.Text }), IDL.Nat)],
     },
+    // A type operator's keyword started `keyof T` wherever the type was
+    // named, so the output did not parse.
+    operators: {
+      did: `
+        type keyof = record { value : text };
+        type readonly = vec keyof;
+        type unique = variant { a : keyof; b : opt unique };
+        type infer = service { get : () -> (keyof) query };
+        service : {
+          put : (keyof, readonly) -> (unique);
+          peer : (infer) -> (opt infer) query;
+        }
+      `,
+      consumer: `
+        import type { Principal } from "@icp-sdk/core/principal"
+        import type {
+          _SERVICE,
+          infer_,
+          keyof_,
+          readonly_,
+          unique_,
+        } from "./operators.js"
+
+        declare const service: _SERVICE
+        declare const peer: infer_
+        declare const principal: Principal
+        const text: keyof_ = { value: "text" }
+        const texts: readonly_ = [text]
+
+        export const put: Promise<unique_> = service.put(text, texts)
+        export const tag: unique_ = { b: [{ a: text }] }
+        export const peered: Promise<[] | [Principal]> = service.peer(principal)
+        export const got: Promise<keyof_> = peer.get()
+      `,
+      methods: {
+        peer: IDL.Func(
+          [
+            IDL.Service({
+              get: IDL.Func([], [IDL.Record({ value: IDL.Text })], ["query"]),
+            }),
+          ],
+          [
+            IDL.Opt(
+              IDL.Service({
+                get: IDL.Func([], [IDL.Record({ value: IDL.Text })], ["query"]),
+              })
+            ),
+          ],
+          ["query"]
+        ),
+      },
+      init: [] as IDL.Type[],
+    },
     // The actor's type, when it is named like a keyword, is renamed too.
     keywordActor: {
       did: `

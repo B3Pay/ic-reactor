@@ -87,11 +87,13 @@ const ts = didToTs("service:{}")
 #### Renamed types
 
 `didToTs` exports each Candid type under its own name, next to the `_SERVICE`
-interface. A type TypeScript cannot declare under its name is renamed with `_`
-appended, and `didToJs` uses the same name:
+interface. A type TypeScript cannot declare or refer to under its name is
+renamed with `_` appended, and `didToJs` uses the same name:
 
 - a type named like a TypeScript type keyword: `string`, `number`, `bigint`,
   `symbol`, `object`, `any`, `unknown`, `never` or `undefined`;
+- a type named like a TypeScript type operator: `keyof`, `readonly`, `unique`
+  or `infer`;
 - a type named `_SERVICE` that is not the service itself;
 - a type named like a JavaScript keyword, such as `class` (candid_parser's own
   rule).

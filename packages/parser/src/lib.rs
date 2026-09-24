@@ -60,19 +60,26 @@ const TS_GLOBALS: [&str; 9] = [
 /// reactor imports.
 const TS_SERVICE: &str = "_SERVICE";
 
-/// The names TypeScript keeps for its own types. No type or interface can be
-/// declared under one (TS2427, TS2457), and every reference to one means
-/// TypeScript's type. `boolean`, `void` and `null` are kept too, but they are
-/// JavaScript keywords, which candid_parser already prints with `_` appended.
-const TS_TYPE_KEYWORDS: [&str; 9] = [
+/// The names a type in `didToTs` output cannot have. TypeScript keeps most of
+/// them for its own types: no type or interface can be declared under one
+/// (TS2427, TS2457), and every reference to one means TypeScript's type.
+/// `infer`, `keyof`, `readonly` and `unique` start a type operator (`keyof T`),
+/// so a reference to a type with one of those names did not parse. `boolean`,
+/// `void` and `null` are kept too, but they are JavaScript keywords, which
+/// candid_parser already prints with `_` appended.
+const TS_TYPE_KEYWORDS: [&str; 13] = [
     "any",
     "bigint",
+    "infer",
+    "keyof",
     "never",
     "number",
     "object",
+    "readonly",
     "string",
     "symbol",
     "undefined",
+    "unique",
     "unknown",
 ];
 

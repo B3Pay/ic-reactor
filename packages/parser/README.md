@@ -101,10 +101,11 @@ let that package load the parser when needed.
   Motoko numeric field as `_0_` must write it as `0`, the way Motoko prints
   it.
 - `didToTs` exports each Candid type under its own name, next to the service
-  interface `_SERVICE`. A type TypeScript cannot declare under its name is
-  renamed with `_` appended, in `didToJs` and `didToTs` alike: a type named
-  like a TypeScript type keyword (`string`, `number`, `bigint`, `symbol`,
-  `object`, `any`, `unknown`, `never`, `undefined`), and a type named
+  interface `_SERVICE`. A type TypeScript cannot declare or refer to under its
+  name is renamed with `_` appended, in `didToJs` and `didToTs` alike: a type
+  named like a TypeScript type keyword (`string`, `number`, `bigint`,
+  `symbol`, `object`, `any`, `unknown`, `never`, `undefined`) or type
+  operator (`keyof`, `readonly`, `unique`, `infer`), and a type named
   `_SERVICE` that is not the service itself. `type string = record { … }` is
   exported as `string_`, or as `string__` when a type already has that name,
   the way candid_parser renames a JavaScript keyword (`class` becomes
