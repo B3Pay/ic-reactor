@@ -333,11 +333,16 @@ describe("ClientManager.fetchAcrossIdentitySwitch", () => {
       })
     })
     await vi.waitFor(() => expect(runs).toBe(1))
-    // The app's own cancellation: the data is put back, and is still alice's.
+    // A renewal, then the app's own cancellation.
     clientManager.updateAgent(alice)
     void queryClient.cancelQueries({ queryKey: key })
 
-    await expect(pending).resolves.toBe("alice's profile")
+    // TanStack settles it with the data it put back, still alice's, or, in
+    // releases before that, with a CancelledError. Either is passed on.
+    const outcome = await pending.catch((error: unknown) => error)
+    expect(
+      outcome === "alice's profile" || outcome instanceof CancelledError
+    ).toBe(true)
     expect(runs).toBe(1)
   })
 })
