@@ -656,6 +656,31 @@ import type {
 } from "@ic-reactor/core"
 ```
 
+### Types From a Reactor
+
+The same types, read off a reactor instance with `typeof`, so neither the
+service type nor the transform has to be spelled out:
+
+```typescript
+import type {
+  ServiceOf, // The reactor's service type
+  TransformOf, // "candid", "display", or a subclass's transform
+  ReactorArgsOf, // ReactorArgs<Service, M, Transform>
+  ReactorDataOf, // ReactorReturnOk<Service, M, Transform>
+  ReactorErrorOf, // ReactorReturnErr<Service, M, Transform>
+} from "@ic-reactor/core"
+
+const ledger = new DisplayReactor<Ledger>({
+  clientManager,
+  idlFactory,
+  name: "ledger",
+})
+
+type Account = ReactorArgsOf<typeof ledger, "icrc1_balance_of">[0] // { owner: string; ... }
+type Balance = ReactorDataOf<typeof ledger, "icrc1_balance_of"> // string
+type TransferError = ReactorErrorOf<typeof ledger, "icrc1_transfer">
+```
+
 ### State Types
 
 ```typescript

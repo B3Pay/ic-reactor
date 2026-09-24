@@ -89,6 +89,16 @@ fetched.
 domains and returns `false` for a mainnet dapp on a custom domain. Never use it
 as a "safe to trust local configuration" test.
 
+## Types From a Reactor
+
+Read a method's types off the reactor instead of spelling out the service and
+transform: `ReactorArgsOf<typeof ledger, "icrc1_balance_of">[0]` (the account
+in the reactor's form), `ReactorDataOf<typeof ledger, M>` (what the call
+resolves with), `ReactorErrorOf<typeof ledger, M>` (a hook's `error`), plus
+`ServiceOf<typeof ledger>` and `TransformOf<typeof ledger>`. They replace
+`ReactorArgs<_SERVICE, M, "display">` and friends and hand-written copies of
+display types. They work for `Reactor`, `DisplayReactor` and any subclass.
+
 ## Error Types
 
 - `CanisterError`: canister `Result.Err`

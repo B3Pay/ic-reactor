@@ -7,6 +7,7 @@ import type {
 import type { Principal } from "@icp-sdk/core/principal"
 import type { QueryKey } from "@tanstack/query-core"
 import type { ClientManager } from "../client.js"
+import type { Reactor } from "../reactor.js"
 import type {
   CallError,
   CanisterError,
@@ -256,3 +257,124 @@ export interface ReactorCallParams<
 > extends ReactorQueryParams<A, M, T> {
   callConfig?: CallConfig
 }
+
+// ══════════════════════════════════════════════════════════════════════════
+// INSTANCE-INFERRED TYPES - the types above, read off a reactor's own type
+// ══════════════════════════════════════════════════════════════════════════
+
+/**
+ * The service type of a reactor, read from the reactor's own type. Pass
+ * `typeof reactor` for a `Reactor`, a `DisplayReactor` or a subclass of
+ * either.
+ *
+ * Code that has only the reactor in scope, such as a component that imports
+ * it, then needs neither the service type exported next to it nor the
+ * transform spelled out. {@link ReactorArgsOf}, {@link ReactorDataOf} and
+ * {@link ReactorErrorOf} build on it.
+ *
+ * @typeParam R - The reactor's type, as `typeof reactor`.
+ *
+ * @example
+ * ```typescript
+ * const ledger = new DisplayReactor<Ledger>({ clientManager, name: "ledger", idlFactory })
+ *
+ * // "icrc1_balance_of" | "icrc1_transfer" | ...
+ * type LedgerMethod = FunctionName<ServiceOf<typeof ledger>>
+ * ```
+ */
+export type ServiceOf<R extends { readonly _actor: unknown }> = R["_actor"]
+
+/**
+ * The transform of a reactor, read from the reactor's own type: `"candid"`
+ * for a `Reactor`, `"display"` for a `DisplayReactor`, and the key a subclass
+ * passes on, such as a `MetadataReactor`'s `"metadata"`.
+ *
+ * @typeParam R - The reactor's type, as `typeof reactor`.
+ *
+ * @example
+ * ```typescript
+ * const ledger = new DisplayReactor<Ledger>({ clientManager, name: "ledger", idlFactory })
+ *
+ * type LedgerTransform = TransformOf<typeof ledger> // "display"
+ * ```
+ */
+export type TransformOf<R extends { readonly _actor: unknown }> =
+  R extends Reactor<ServiceOf<R>, infer T extends TransformKey> ? T : never
+
+/**
+ * The arguments a reactor's method takes, in the reactor's own form: raw
+ * Candid values for a `Reactor`, display values (text for a `nat` or a
+ * `principal`) for a `DisplayReactor`. It is
+ * `ReactorArgs<Service, M, Transform>` with the service and transform read
+ * from `typeof reactor`, so neither has to be named.
+ *
+ * @typeParam R - The reactor's type, as `typeof reactor`.
+ * @typeParam M - The method.
+ *
+ * @example
+ * ```typescript
+ * const ledger = new DisplayReactor<Ledger>({ clientManager, name: "ledger", idlFactory })
+ *
+ * // `{ owner: string; subaccount?: ... }`: the account in display form,
+ * // derived rather than written out by hand
+ * type Account = ReactorArgsOf<typeof ledger, "icrc1_balance_of">[0]
+ * ```
+ */
+export type ReactorArgsOf<
+  R extends { readonly _actor: unknown },
+  M extends FunctionName<ServiceOf<R>>,
+> = ReactorArgs<ServiceOf<R>, M, TransformOf<R>>
+
+/**
+ * What a reactor's method resolves with: the `Ok` value of a Candid `Result`,
+ * or the whole result of a method that returns none, in the reactor's own
+ * form. It is what `callMethod`, a mutation and its `execute()` resolve with,
+ * `ReactorReturnOk<Service, M, Transform>` with the service and transform read
+ * from `typeof reactor`.
+ *
+ * The query hooks and factories cache it as
+ * `ReactorQueryData<ReactorDataOf<R, M>>`, which is the same type unless the
+ * result can be `undefined`: TanStack Query reserves `undefined` for "not
+ * cached", so such a result is cached as `null`.
+ *
+ * @typeParam R - The reactor's type, as `typeof reactor`.
+ * @typeParam M - The method.
+ *
+ * @example
+ * ```typescript
+ * const ledger = new DisplayReactor<Ledger>({ clientManager, name: "ledger", idlFactory })
+ *
+ * type Balance = ReactorDataOf<typeof ledger, "icrc1_balance_of"> // string
+ * ```
+ */
+export type ReactorDataOf<
+  R extends { readonly _actor: unknown },
+  M extends FunctionName<ServiceOf<R>>,
+> = ReactorReturnOk<ServiceOf<R>, M, TransformOf<R>>
+
+/**
+ * The errors a call of a reactor's method rejects with: a `CanisterError`
+ * holding the `Err` value of its Candid `Result` in the reactor's own form, a
+ * `CallError` or a `ValidationError`. It is
+ * `ReactorReturnErr<Service, M, Transform>` with the service and transform
+ * read from `typeof reactor`, and the type a hook's `error` holds.
+ *
+ * @typeParam R - The reactor's type, as `typeof reactor`.
+ * @typeParam M - The method.
+ *
+ * @example
+ * ```typescript
+ * const ledger = new DisplayReactor<Ledger>({ clientManager, name: "ledger", idlFactory })
+ *
+ * type TransferError = ReactorErrorOf<typeof ledger, "icrc1_transfer">
+ *
+ * function describe(error: TransferError): string {
+ *   if (isCanisterError(error)) return error.code // "InsufficientFunds", ...
+ *   return error.message
+ * }
+ * ```
+ */
+export type ReactorErrorOf<
+  R extends { readonly _actor: unknown },
+  M extends FunctionName<ServiceOf<R>>,
+> = ReactorReturnErr<ServiceOf<R>, M, TransformOf<R>>

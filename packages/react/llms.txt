@@ -52,6 +52,14 @@ module.
   major, `defineReactor` includes it too, because of the deprecated flag; the
   smallest setup is `createActorHooks(new Reactor(...))` + `createAuthHooks`.
 
+## Types From a Reactor
+
+To type a prop, form state or error view, read the type off the reactor:
+`ReactorArgsOf<typeof reactor, "method">[0]`, `ReactorDataOf<typeof reactor,
+"method">` and `ReactorErrorOf<typeof reactor, "method">` (re-exported from
+core). They follow the reactor's transform, so do not hand-write display
+shapes or spell out `ReactorReturnErr<_SERVICE, M, "display">`.
+
 ## Update Methods: Use Mutations
 
 Query hooks and factories run their method again on every refetch (mount,
