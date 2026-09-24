@@ -195,7 +195,9 @@ agent retries that error, and a query hook may retry the query, so the fake
 also logs it with `console.error` the first time: look there when a test times
 out waiting for data. Every request that is not an IC API call, on any origin,
 goes to the `fetch` the fake replaced, so your app's own REST calls and a
-request mock such as MSW keep working.
+request mock such as MSW keep working. Install the fake after MSW's
+`server.listen()`, so that IC API calls reach the fake before MSW sees them as
+unhandled requests.
 
 ## Test a React Component
 
