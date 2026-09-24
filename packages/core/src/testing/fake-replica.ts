@@ -125,8 +125,10 @@ export interface FakeReplica {
   readonly requests: readonly FakeReplicaRequest[]
   /**
    * Takes the fake out of `globalThis.fetch`, putting back the `fetch` it
-   * replaced. Calling it again does nothing, and fakes may be restored in
-   * any order. An agent built while the fake was installed keeps calling it.
+   * replaced, along with any wrapper a test installed around it since.
+   * Calling it again does nothing, and several fakes may be restored in any
+   * order: one installed over this fake keeps its place. An agent built while
+   * the fake was installed keeps calling it.
    */
   restore(): void
 }
@@ -827,12 +829,15 @@ export function installFakeReplica(
     rootKey,
     requests,
     restore() {
+      if (link.restored) return
       link.restored = true
-      // Only when this fake is still the one in place: a fetch installed
-      // over it since keeps its place, and restoring that one skips this.
-      if (globalThis.fetch === fetch) {
-        globalThis.fetch = liveFetchUnder(link)
-      }
+      // A fake installed over this one and not yet restored keeps its place,
+      // and skips this one from now on. Anything else is taken out with this
+      // fake: a wrapper a test put around it to drop or delay responses, as
+      // it was before the fake was installed.
+      const above = linkOf(globalThis.fetch)
+      if (globalThis.fetch !== fetch && above && !above.restored) return
+      globalThis.fetch = liveFetchUnder(link)
     },
   }
 }

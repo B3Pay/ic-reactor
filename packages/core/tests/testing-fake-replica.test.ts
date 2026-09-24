@@ -554,6 +554,23 @@ describe("the fake replica's routing", () => {
     }
   })
 
+  it("takes out a wrapper a test put around it", async () => {
+    // As a test that drops a response does: its wrapper calls the fake, and
+    // left in place it would answer every later test from this one's fake.
+    const previous = globalThis.fetch
+    const replica = installFakeReplica({ host: HOST })
+    const fake = globalThis.fetch
+    globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) =>
+      fake(input, init)) as typeof fetch
+    try {
+      replica.restore()
+
+      expect(globalThis.fetch).toBe(previous)
+    } finally {
+      globalThis.fetch = previous
+    }
+  })
+
   it("leaves a fetch installed over it in place when restored again", () => {
     const previous = globalThis.fetch
     const replica = installFakeReplica()

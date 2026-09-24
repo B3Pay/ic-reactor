@@ -120,8 +120,9 @@ canisters you give it, by canister ID, and answers at `replica.host`. Unless you
 pass a `host`, that is where a `ClientManager` built with no `host` sends its
 calls: the page's origin in a browser-like environment such as Vitest's jsdom
 or happy-dom (`http://localhost:3000`), and `http://127.0.0.1:4943` in plain
-Node. Call `restore()` to put the previous `fetch` back. It is safe to call
-twice, and several fakes may be restored in any order.
+Node. Call `restore()` to put the previous `fetch` back, along with any wrapper
+your test put around the fake. It is safe to call twice, and several fakes may
+be restored in any order.
 
 ```typescript
 import { afterEach, beforeEach, expect, it } from "vitest"
