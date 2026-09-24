@@ -6,6 +6,13 @@ editUrl: false
 
 `useAuth` is the primary hook for authentication. It automatically initializes the client on mount and provides access to auth state and methods.
 
+The first `useAuth()` to mount restores the previous session. Until that
+restore has settled, `isAuthenticating` is `true`: on the first render, in a
+server render, and while the stored session is read. So a component that shows
+a spinner while `isAuthenticating` never takes the state before the restore for
+a signed-out user. A restore that fails, such as one against a local replica
+that cannot be reached, settles it too.
+
 ## Usage
 
 ```tsx
@@ -86,12 +93,16 @@ const signedIn =
 | `logout`           | `(options?: { returnTo?: string }) => Promise<void>` | Logs the user out                                                                    |
 | `authenticate`     | `() => Promise<Identity \| undefined>`               | Restores an existing session without a popup                                         |
 | `isAuthenticated`  | `boolean`                                            | Whether the user is currently authenticated                                          |
-| `isAuthenticating` | `boolean`                                            | Whether an authentication process is in progress                                     |
+| `isAuthenticating` | `boolean`                                            | Whether the session is being restored, or a sign-in or sign-out is in progress       |
 | `identity`         | `Identity \| null`                                   | The current user's `@icp-sdk/core/agent` Identity                                    |
 | `principal`        | `Principal \| null`                                  | The signed-in user's `@icp-sdk/core/principal` Principal, or `null` while signed out |
 | `error`            | `Error \| undefined`                                 | Last authentication error                                                            |
 
 ## Protected Routes Pattern
+
+`isAuthenticating` covers the session restore, so this guard shows `<Loading />`
+on a reload or deep link until the stored session has been read, and redirects
+only a user the restore found signed out:
 
 ```tsx
 import { useAuth } from "../reactor/hooks"

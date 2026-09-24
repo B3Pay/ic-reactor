@@ -78,12 +78,14 @@ function usePrincipal(
  * on the client. A constant also keeps a server render from showing whatever a
  * manager shared across requests happens to hold.
  *
- * It is the state an `AuthenticationManager` starts in. Once hydrated, React
- * compares it with the live state and renders again with that.
+ * It is the state the hooks report before the session has been checked: a
+ * server cannot know the session, so it renders the "checking" state that a
+ * browser shows until its restore settles. Once hydrated, React compares it
+ * with the live state and renders again with that.
  */
 const SERVER_AUTH_STATE: AuthState = Object.freeze({
   identity: null,
-  isAuthenticating: false,
+  isAuthenticating: true,
   isAuthenticated: false,
   error: undefined,
 })
@@ -149,9 +151,35 @@ export const createAuthHooks = (
   const getAgentState = () => clientManager.agentState
   const getServerAgentState = () => serverAgentState
 
-  const subscribeAuthState = (callback: () => void) =>
-    authentication.subscribeAuthState(callback)
-  const getAuthState = () => authentication.authState
+  // Until the session has been checked, `authState` is the signed-out state
+  // the manager starts in, and reporting it as the answer sent signed-in users
+  // to the login page (#621). `useAuth()` starts the check from an effect, so
+  // on the first render nothing had been checked, yet `isAuthenticating` was
+  // false: a guard that redirects when `!isAuthenticating && !isAuthenticated`
+  // redirected before the session was ever read. The hooks report
+  // `isAuthenticating: true` until the check settles instead. The snapshot is
+  // kept per source state, because `useSyncExternalStore` needs the same object
+  // back until something changes.
+  let unchecked: { source: AuthState; state: AuthState } | undefined
+  const subscribeAuthState = (callback: () => void) => {
+    const unsubscribeState = authentication.subscribeAuthState(callback)
+    const unsubscribeChecked = authentication.subscribeSessionChecked(callback)
+    return () => {
+      unsubscribeState()
+      unsubscribeChecked()
+    }
+  }
+  const getAuthState = () => {
+    const state = authentication.authState
+    if (authentication.sessionChecked || state.isAuthenticating) return state
+    if (unchecked?.source !== state) {
+      unchecked = {
+        source: state,
+        state: Object.freeze({ ...state, isAuthenticating: true }),
+      }
+    }
+    return unchecked.state
+  }
   const getServerAuthState = () => SERVER_AUTH_STATE
 
   /**
@@ -175,6 +203,11 @@ export const createAuthHooks = (
   /**
    * Main authentication hook that provides login/logout methods and auth state.
    * Automatically initializes the session on first use, restoring any previous session.
+   *
+   * `isAuthenticating` is `true` until that restore has settled, including on
+   * the first render and in a server render, so a guard that shows a spinner
+   * while `isAuthenticating` never takes the state before the restore for a
+   * signed-out user. A restore that fails settles it too.
    *
    * @example
    * function AuthButton() {
@@ -220,10 +253,25 @@ export const createAuthHooks = (
         .prepareClient()
         .catch(() => undefined)
         .then(() => clientManager.initialize())
-        .then(() => authentication.authenticate())
+        .then(() => {
+          // A check that has settled already and found no session, such as
+          // the one a manager runs over a client handed to its constructor,
+          // or a route loader's `authenticate()`, answered what this restore
+          // would. Running it again only flashed `isAuthenticating`, and a
+          // guard redirected a second time. A live session is still checked,
+          // which publishes nothing while it is valid.
+          const { isAuthenticated, error } = authentication.authState
+          if (authentication.sessionChecked && !isAuthenticated && !error) {
+            return undefined
+          }
+          return authentication.authenticate()
+        })
         // Failures are already reflected in authState/agentState; without
         // this the rejection escapes as an unhandled promise rejection.
         .catch(() => undefined)
+        // A restore that failed before it reached `authenticate()`, such as a
+        // root key that could not be fetched, has settled all the same.
+        .finally(() => authentication.markSessionChecked())
     }, [])
 
     const principal = usePrincipal(isAuthenticated, identity)

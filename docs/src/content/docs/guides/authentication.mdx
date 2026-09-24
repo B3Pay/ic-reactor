@@ -316,7 +316,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isAuthenticating } = useAuth()
   const location = useLocation()
 
-  // Show loading while checking auth state
+  // Show loading while the session is restored, so a reload does not send a
+  // signed-in user to the login page
   if (isAuthenticating) {
     return <LoadingSpinner />
   }
@@ -333,6 +334,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 ## Session Persistence
 
 Sessions are automatically persisted in IndexedDB. When users return to your app, the `useAuth` hook automatically triggers session restoration. `clientManager.initialize()` only initializes the agent — outside React, call `authentication.authenticate()` to restore a session.
+
+`useAuth()` reports `isAuthenticating: true` until that restore has settled,
+from the first render on and in a server render too. So the login button in
+[useAuth](#useauth) shows "Connecting..." rather than "Login" to a user who is
+already signed in, and the [protected route](#protected-routes) waits instead of
+redirecting. A restore that fails settles it as well, and the hooks then report
+the user signed out.
 
 ### Session Duration
 

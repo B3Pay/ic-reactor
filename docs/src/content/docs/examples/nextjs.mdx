@@ -154,7 +154,9 @@ const App: React.FC<AppProps> = (props) => (
   manager's agent, so it belongs in the same request. On the server it loads no
   auth client and stays signed out unless app code signs in there; a
   module-scope one would then leave that identity on the agent every request
-  signs with. The auth hooks render a fixed signed-out state on the server.
+  signs with. The auth hooks render a fixed state on the server: signed out,
+  with `isAuthenticating: true`, which is what a browser shows until its
+  session restore settles.
 
 Constructing inside a `useState` initializer gives each render tree its own
 set. See [Server-Side

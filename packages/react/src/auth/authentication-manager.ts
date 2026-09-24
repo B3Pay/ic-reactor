@@ -79,6 +79,9 @@ export class AuthenticationManager {
     isAuthenticated: false,
     error: undefined,
   }
+  /** See {@link sessionChecked}. */
+  private sessionCheckedValue = false
+  private sessionCheckedSubscribers: Array<() => void> = []
   private readonly identityProvider?: string | URL
   /** The provider taken from the `ic_env` cookie, when no caller set one. */
   private readonly envIdentityProvider?: string | URL
@@ -154,6 +157,54 @@ export class AuthenticationManager {
   /** @internal Used by IdentityAttributesManager. */
   public get client() {
     return this.authClient
+  }
+
+  /**
+   * @internal Used by the auth hooks.
+   *
+   * Whether this manager has checked its client for a session: a restore has
+   * settled, whether it found a session, found none or failed, or a sign-in or
+   * sign-out has completed. Until then {@link authState} is the signed-out state
+   * the manager starts in, which says nothing about the session, so the auth
+   * hooks report `isAuthenticating: true` instead.
+   */
+  public get sessionChecked(): boolean {
+    return this.sessionCheckedValue
+  }
+
+  /**
+   * @internal Used by the auth hooks.
+   *
+   * Records that the session has been checked, and tells the auth hooks the
+   * first time. A restore that failed counts: waiting on one that will not be
+   * retried would leave the hooks reporting `isAuthenticating: true` for good.
+   */
+  public markSessionChecked() {
+    if (this.sessionCheckedValue) return
+    this.sessionCheckedValue = true
+    const subscribers = this.sessionCheckedSubscribers
+    this.sessionCheckedSubscribers = []
+    for (const subscriber of subscribers) subscriber()
+  }
+
+  /**
+   * @internal Used by the auth hooks.
+   *
+   * Calls `callback` once, when {@link sessionChecked} turns true. Nothing else
+   * announces it when the check that settles it publishes no state, as a
+   * restore that failed before it read the client does not.
+   *
+   * @returns An unsubscribe function.
+   */
+  public subscribeSessionChecked(callback: () => void) {
+    if (this.sessionCheckedValue) return () => {}
+    const subscription = () => callback()
+    this.sessionCheckedSubscribers.push(subscription)
+    return () => {
+      this.sessionCheckedSubscribers = this.sessionCheckedSubscribers.filter(
+        (subscriber) => subscriber !== subscription
+      )
+    }
   }
 
   /**
@@ -265,6 +316,16 @@ export class AuthenticationManager {
   }
 
   public authenticate = async (): Promise<Identity | undefined> => {
+    try {
+      return await this.checkSession()
+    } finally {
+      // Marked once the result is published, so the hooks never show the
+      // starting state as the answer. A failed restore settles it too.
+      this.markSessionChecked()
+    }
+  }
+
+  private async checkSession(): Promise<Identity | undefined> {
     if (this.authState.isAuthenticated) {
       // Returning on the cached flag alone meant a delegation that expired
       // mid-session was never re-observed: the UI kept rendering a signed-in
@@ -404,7 +465,7 @@ export class AuthenticationManager {
       }
 
       this.clientManager.updateAgent(identity)
-      this.updateState({
+      this.publishSession({
         identity,
         isAuthenticated: true,
         isAuthenticating: false,
@@ -444,7 +505,7 @@ export class AuthenticationManager {
       await this.authClient.signOut(options)
       const identity = await this.authClient.getIdentity()
       this.clientManager.updateAgent(identity)
-      this.updateState({
+      this.publishSession({
         identity,
         isAuthenticated: false,
         isAuthenticating: false,
@@ -475,13 +536,13 @@ export class AuthenticationManager {
         // Without this the manager was left with `isAuthenticating: true` and
         // no recorded error, so a button disabled on `isAuthenticating` stayed
         // stuck and nothing told the app why.
-        this.updateState({ error: error as Error, isAuthenticating: false })
+        this.publishSession({ error: error as Error, isAuthenticating: false })
       } else {
         const identity = new AnonymousIdentity()
         this.clientManager.updateAgent(identity)
         // The error stays recorded: the device is signed out, but the session
         // may still be live at the identity provider.
-        this.updateState({
+        this.publishSession({
           identity,
           isAuthenticated: false,
           isAuthenticating: false,
@@ -793,29 +854,33 @@ export class AuthenticationManager {
       return
     }
 
-    const clientIdentity = await this.authClient.getIdentity()
-    const isAuthenticated = this.vouchesFor(
-      clientIdentity,
-      await this.authClient.isAuthenticated()
-    )
-    if (revision !== this.authStateRevision) {
-      return
+    try {
+      const clientIdentity = await this.authClient.getIdentity()
+      const isAuthenticated = this.vouchesFor(
+        clientIdentity,
+        await this.authClient.isAuthenticated()
+      )
+      if (revision !== this.authStateRevision) {
+        return
+      }
+      // The rule `authenticate()` applies. A caller-built client can outlive
+      // the manager it was first given to, and once its session has lapsed it
+      // still hands out the lapsed identity while no longer vouching for it.
+      // Nothing may be signed with that.
+      const identity =
+        isAuthenticated || clientIdentity.getPrincipal().isAnonymous()
+          ? clientIdentity
+          : new AnonymousIdentity()
+      this.clientManager.updateAgent(identity)
+      this.updateState({
+        identity,
+        isAuthenticated,
+        isAuthenticating: false,
+        error: undefined,
+      })
+    } finally {
+      this.markSessionChecked()
     }
-    // The rule `authenticate()` applies. A caller-built client can outlive
-    // the manager it was first given to, and once its session has lapsed it
-    // still hands out the lapsed identity while no longer vouching for it.
-    // Nothing may be signed with that.
-    const identity =
-      isAuthenticated || clientIdentity.getPrincipal().isAnonymous()
-        ? clientIdentity
-        : new AnonymousIdentity()
-    this.clientManager.updateAgent(identity)
-    this.updateState({
-      identity,
-      isAuthenticated,
-      isAuthenticating: false,
-      error: undefined,
-    })
   }
 
   /** @internal Used by IdentityAttributesManager. */
@@ -833,7 +898,7 @@ export class AuthenticationManager {
       await this.clientManager.initializeAgent()
     }
     this.clientManager.updateAgent(identity)
-    this.updateState({ identity, isAuthenticated, isAuthenticating: false })
+    this.publishSession({ identity, isAuthenticated, isAuthenticating: false })
   }
 
   /** @internal Used by IdentityAttributesManager. */
@@ -867,7 +932,7 @@ export class AuthenticationManager {
     if (!this.agentIsAnonymous()) {
       this.clientManager.updateAgent(identity)
     }
-    this.updateState({
+    this.publishSession({
       identity,
       isAuthenticated: false,
       isAuthenticating: false,
@@ -901,6 +966,19 @@ export class AuthenticationManager {
       this.internetIdentityId,
       this.localAuthorizePath
     )
+  }
+
+  /**
+   * Publishes what a check of the session found, then marks the session
+   * checked. In that order, so the auth hooks never take the state before it
+   * for the answer.
+   */
+  private publishSession(newState: Partial<AuthState>) {
+    try {
+      this.updateState(newState)
+    } finally {
+      this.markSessionChecked()
+    }
   }
 
   /**

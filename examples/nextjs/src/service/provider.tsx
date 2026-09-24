@@ -11,7 +11,8 @@
  * `ClientManager`. On the server it loads no auth client and stays signed out
  * unless app code signs in there, and a module-scope one would then leave that
  * identity on the agent every request signs with. (The auth hooks themselves
- * render a fixed signed-out state on the server.)
+ * render a fixed state on the server: signed out, with `isAuthenticating:
+ * true`, as a browser shows until its session restore settles.)
  *
  * Building inside a `useState` initializer gives each render tree its own set,
  * so nothing is shared across requests.
