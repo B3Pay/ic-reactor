@@ -22,8 +22,11 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 - A sign-in or sign-out cancels a `fetchQuery` in flight; it then fetches again
   for the new identity and resolves with that answer, never with TanStack's
   `CancelledError`. Wrap other imperative fetches of canister queries (for
-  example `queryClient.fetchInfiniteQuery`) in
-  `clientManager.fetchAcrossIdentitySwitch(() => ...)` for the same behaviour
+  example `queryClient.fetchQuery` or `queryClient.fetchInfiniteQuery`) in
+  `clientManager.fetchAcrossIdentitySwitch(() => ...)` for the same behaviour:
+  unwrapped, a cancelled refetch of a stale entry resolves with the previous
+  principal's cached data. After 3 runs each overtaken by another switch it
+  rejects with a `CallError`
 - Use `callMethod` for imperative update/query calls
 
 ## DisplayReactor Guidance
