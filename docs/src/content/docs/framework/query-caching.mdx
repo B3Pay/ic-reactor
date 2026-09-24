@@ -373,7 +373,7 @@ variants and factory instances) acts on its own cache entry:
 | `optimisticUpdate(updater)` | Cancels the fetch in flight, writes `updater(cached)`, resolves with `{ rollback() }`           |
 | `cancel()`                  | Cancels the fetch in flight; the entry keeps the value it held before                           |
 | `reset()`                   | Clears the entry (or restores `initialData`); a mounted hook refetches, a suspense one suspends |
-| `setData(updater)`          | Writes a raw value, or `updater(cached)`, with no cancel and no rollback                        |
+| `setData(updater)`          | Writes a raw value, or `updater(cached)`, with no cancel and no rollback (not on infinite ones) |
 | `invalidate()`              | Marks it stale; a mounted hook refetches                                                        |
 
 `cancel()`, `reset()` and `optimisticUpdate()` match the query's key exactly,

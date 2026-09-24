@@ -511,6 +511,17 @@ export interface QueryFactoryMethods {
  *
  * @template TArgs - The method's arguments
  * @template TQuery - The query object it returns
+ *
+ * @example
+ * ```typescript
+ * const getPost = createQueryFactory(backend, { functionName: "get_post" })
+ *
+ * // One post's query object
+ * const { data } = getPost([postId]).useQuery()
+ *
+ * // Every post's, whatever its args
+ * await getPost.invalidate()
+ * ```
  */
 export interface QueryFactoryFn<TArgs, TQuery> extends QueryFactoryMethods {
   (args: TArgs): TQuery
@@ -525,6 +536,18 @@ export interface QueryFactoryFn<TArgs, TQuery> extends QueryFactoryMethods {
  * `createQuery`, `createSuspenseQuery`, `createInfiniteQuery` or
  * `createSuspenseInfiniteQuery` (factory instances included), or a query
  * factory function, whose key covers every query it returns.
+ *
+ * @example
+ * ```typescript
+ * const postsQuery = createQuery(backend, { functionName: "get_posts" })
+ * const getPost = createQueryFactory(backend, { functionName: "get_post" })
+ *
+ * // Both are key sources, so both go straight into invalidateQueries
+ * createMutation(backend, {
+ *   functionName: "create_post",
+ *   invalidateQueries: [postsQuery, getPost],
+ * })
+ * ```
  */
 export interface QueryKeySource {
   /** The key, or key prefix, of the queries it names. */
