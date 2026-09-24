@@ -160,7 +160,7 @@ describe("a Candid field or variant tag named like a numeric id", () => {
   )
 
   // The Rust crate writes a nested type's table entry after the type that
-  // holds it, and @icp-sdk/core writes it first, so the bytes for \`maybe\`
+  // holds it, and @icp-sdk/core writes it first, so the bytes for `maybe`
   // differ in that order alone. The test above reads them.
   it.each(REFERENCE.filter(({ method }) => method !== "maybe"))(
     "encodes $method($value) to the Rust candid crate's bytes",

@@ -421,7 +421,11 @@ type CanisterId = string | Principal
 
 2. **Parsing Candid**: Once the raw Candid source is retrieved, it needs to be compiled to JavaScript:
    - First tries the local WASM parser (if loaded) - instant, no network
-   - Falls back to the remote didjs canister - requires network request
+   - Falls back to the remote didjs canister - requires network request. It
+     runs upstream `candid_parser` without the local parser's fixes, so a
+     record field or variant tag named like a numeric id, such as `_0_`, keeps
+     the key `_0_` there, which `@icp-sdk/core` sends as field 0 (the local
+     parser prints `_4735054_`).
 
 3. **Evaluation**: The compiled JavaScript is dynamically imported to extract the `idlFactory` and optional `init` function.
 

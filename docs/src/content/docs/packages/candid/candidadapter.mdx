@@ -22,6 +22,12 @@ Fetching the Candid source and compiling it to JavaScript are two separate steps
 1. **Local parser** (preferred) — the [`@ic-reactor/parser`](/v3/packages/parser) WASM module, a dependency of this package, loaded on first use
 2. **didjs canister** (fallback) — remote `did_to_js` call
 
+The didjs canister runs upstream `candid_parser` without the local parser's
+fixes. For an interface with a record field or variant tag named like a
+numeric id, such as `_0_`, it prints the key `_0_`, which `@icp-sdk/core` sends
+as field 0, where the local parser prints `_4735054_` (see
+[Field names that look like numeric ids](/v3/packages/parser/reference#field-names-that-look-like-numeric-ids)).
+
 ```typescript
 import { CandidAdapter } from "@ic-reactor/candid"
 
