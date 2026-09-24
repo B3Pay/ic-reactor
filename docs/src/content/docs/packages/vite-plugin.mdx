@@ -165,7 +165,9 @@ If you provide `canisterId` in the plugin config, that fixed ID overrides the
 auto-detected development value for that canister.
 
 `ClientManager` trusts the `ic_env` cookie only on a local replica: cookies are
-not origin-isolated, so on a custom domain or mainnet the cookie is ignored.
+not origin-isolated, so on a custom domain, on mainnet, and on Codespaces or
+Gitpod (whose workspaces share a parent domain with every other user's) the
+cookie is ignored.
 There, and in Node or during SSR where there is no cookie at all, a generated
 reactor with no `canisterId` throws `canisterId is required` as soon as its
 module is imported. Set the per-canister `canisterId` to write the ID into
