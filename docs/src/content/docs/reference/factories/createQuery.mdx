@@ -29,13 +29,14 @@ const userProfileQuery = createQuery(backend, {
 
 ## Configuration
 
-| Option         | Type                 | Default  | Description                     |
-| -------------- | -------------------- | -------- | ------------------------------- |
-| `functionName` | `string`             | Required | The canister method to call     |
-| `args`         | `Args`               | `[]`     | Arguments for the method        |
-| `select`       | `(data) => Selected` | -        | Transform data before returning |
-| `staleTime`    | `number`             | `300000` | Time before data is stale (ms)  |
-| `queryKey`     | `QueryKey`           | Auto     | Custom query key segments       |
+| Option         | Type                 | Default  | Description                                      |
+| -------------- | -------------------- | -------- | ------------------------------------------------ |
+| `functionName` | `string`             | Required | The canister method to call                      |
+| `args`         | `Args`               | `[]`     | Arguments for the method                         |
+| `select`       | `(data) => Selected` | -        | Transform data before returning                  |
+| `staleTime`    | `number`             | `300000` | Time before data is stale (ms)                   |
+| `queryKey`     | `QueryKey`           | Auto     | Custom query key segments                        |
+| `callConfig`   | `CallConfig`         | -        | Canister, agent or effective target for the call |
 
 The config also takes TanStack Query's query options. `networkMode`, `retry`,
 `retryDelay` and `meta` decide how the canister call runs, so they apply to
@@ -44,6 +45,21 @@ The config also takes TanStack Query's query options. `networkMode`, `retry`,
 only. The config's `select` is applied by the query object itself, so
 `fetch()`, `getCacheData()` and `useQuery()` all return the selected value;
 `setData` still takes the raw value.
+
+`callConfig` goes where it goes in `useActorQuery`: to the call and into the
+query key. A `canisterId` there sends the query to another canister of the
+same interface and caches it under that canister, so one reactor can back
+query objects for several ledgers:
+
+```typescript
+const ckbtcBalance = createQueryFactory(ledger, {
+  functionName: "icrc1_balance_of",
+  callConfig: { canisterId: "mxzaz-hqaaa-aaaar-qaada-cai" },
+})
+```
+
+`getQueryKey()`, `invalidate()` and the other cache controls act on that
+entry, and a factory's own `getQueryKey()` is rooted at that canister.
 
 ## Return Value
 
@@ -383,10 +399,10 @@ const renameUser = createMutation(backend, {
 | `getQueryKey` | `() => QueryKey`      | The method's key prefix, shared by every instance |
 | `invalidate`  | `() => Promise<void>` | Invalidate every instance (active ones refetch)   |
 
-The prefix is the reactor's canister and the method, so it also matches a
-query of the same method made elsewhere, such as with `useActorQuery`. A
-config `queryKey` comes after the args in each instance's key, so it does not
-narrow the prefix.
+The prefix is the canister (the config's `callConfig.canisterId`, else the
+reactor's) and the method, so it also matches a query of the same method made
+elsewhere, such as with `useActorQuery`. A config `queryKey` comes after the
+args in each instance's key, so it does not narrow the prefix.
 
 ### Factory Caching
 

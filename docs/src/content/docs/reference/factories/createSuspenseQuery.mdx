@@ -41,13 +41,14 @@ const userQuery = createSuspenseQuery(backend, {
 
 ## Configuration
 
-| Option         | Type                 | Default  | Description                     |
-| -------------- | -------------------- | -------- | ------------------------------- |
-| `functionName` | `string`             | Required | The canister method to call     |
-| `args`         | `Args`               | `[]`     | Arguments for the method        |
-| `select`       | `(data) => Selected` | -        | Transform data before returning |
-| `staleTime`    | `number`             | `300000` | Time before data is stale (ms)  |
-| `queryKey`     | `QueryKey`           | Auto     | Custom query key segments       |
+| Option         | Type                 | Default  | Description                                      |
+| -------------- | -------------------- | -------- | ------------------------------------------------ |
+| `functionName` | `string`             | Required | The canister method to call                      |
+| `args`         | `Args`               | `[]`     | Arguments for the method                         |
+| `select`       | `(data) => Selected` | -        | Transform data before returning                  |
+| `staleTime`    | `number`             | `300000` | Time before data is stale (ms)                   |
+| `queryKey`     | `QueryKey`           | Auto     | Custom query key segments                        |
+| `callConfig`   | `CallConfig`         | -        | Canister, agent or effective target for the call |
 
 ## Return Value
 

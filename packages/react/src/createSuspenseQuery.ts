@@ -71,15 +71,18 @@ const createSuspenseQueryImpl = <
   const {
     functionName,
     args,
+    callConfig,
     staleTime = 5 * 60 * 1000,
     select,
     queryKey: customQueryKey,
     ...rest
   } = config
 
-  const params = { functionName, args, queryKey: customQueryKey }
+  // `callConfig` goes wherever the hooks send it: to the call and into the
+  // key, so a query of another canister or agent has an entry of its own.
+  const params = { functionName, args, queryKey: customQueryKey, callConfig }
 
-  const getQueryKey = () => reactor.generateQueryKey(params)
+  const getQueryKey = () => reactor.generateQueryKey(params, callConfig)
 
   const applySelect = (raw: TData): Selected =>
     select ? select(raw) : (raw as unknown as Selected)
@@ -152,7 +155,7 @@ const createSuspenseQueryImpl = <
     Selected,
     TError
   >["getCacheData"] = (selectFn?: (data: Selected) => unknown): any => {
-    const raw = reactor.getQueryData(params)
+    const raw = reactor.getQueryData(params, callConfig)
     if (raw === undefined) return undefined
     const selected = applySelect(raw)
     return selectFn ? selectFn(selected) : selected
@@ -256,10 +259,10 @@ export function createSuspenseQueryFactory<
     >()
 
   const factory = (args: ReactorArgs<Service, Method, Transform>) => {
-    const key = reactor.generateQueryKey({
-      functionName: config.functionName as Method,
-      args,
-    })
+    const key = reactor.generateQueryKey(
+      { functionName: config.functionName as Method, args },
+      config.callConfig
+    )
     const cacheKey = JSON.stringify(key)
 
     const existing = cache.get(cacheKey)
@@ -283,9 +286,13 @@ export function createSuspenseQueryFactory<
     return result
   }
 
-  // The method's own prefix. A config `queryKey` follows the args segment in
-  // every instance's key, so it cannot narrow the prefix.
+  // The method's own prefix, at the canister and agent the config's
+  // `callConfig` names. A config `queryKey` follows the args segment in every
+  // instance's key, so it cannot narrow the prefix.
   return withQueryFactoryMethods(factory, reactor, () =>
-    reactor.generateQueryKey({ functionName: config.functionName as Method })
+    reactor.generateQueryKey(
+      { functionName: config.functionName as Method },
+      config.callConfig
+    )
   )
 }

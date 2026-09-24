@@ -44,59 +44,42 @@ import {
   useActorMethod,
   UseActorMethodParameters,
 } from "./hooks/useActorMethod.js"
-import type { CallConfig } from "@icp-sdk/core/agent"
 import { InfiniteQueryConfig } from "./createInfiniteQuery.js"
 import { SuspenseInfiniteQueryConfig } from "./createSuspenseInfiniteQuery.js"
 import { QueryConfig, SuspenseQueryConfig, MutationConfig } from "./types.js"
 
-/**
- * The bound query hooks forward their config to `useActorQuery` and
- * `useActorSuspenseQuery`, which take `callConfig`. `QueryConfig` is shared with
- * `createQuery`, which does not use it, so it is added here and not there.
- */
-type WithCallConfig<Config> = Config & {
-  /** Agent call configuration (canisterId override, effectiveCanisterId, etc.) */
-  callConfig?: CallConfig
-}
-
 export type ActorHooks<Service, Transform extends TransformKey> = {
   useActorQuery: {
     <Method extends FunctionName<Service>>(
-      config: WithCallConfig<
-        QueryConfig<
-          Service,
-          Method,
-          Transform,
-          ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
-        >
+      config: QueryConfig<
+        Service,
+        Method,
+        Transform,
+        ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
       >
     ): UseQueryResult<
       ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
       ReactorReturnErr<Service, Method, Transform>
     >
     <Method extends FunctionName<Service>, TData>(
-      config: WithCallConfig<QueryConfig<Service, Method, Transform, TData>>
+      config: QueryConfig<Service, Method, Transform, TData>
     ): UseQueryResult<TData, ReactorReturnErr<Service, Method, Transform>>
   }
 
   useActorSuspenseQuery: {
     <Method extends FunctionName<Service>>(
-      config: WithCallConfig<
-        SuspenseQueryConfig<
-          Service,
-          Method,
-          Transform,
-          ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
-        >
+      config: SuspenseQueryConfig<
+        Service,
+        Method,
+        Transform,
+        ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>
       >
     ): UseSuspenseQueryResult<
       ReactorQueryData<ReactorReturnOk<Service, Method, Transform>>,
       ReactorReturnErr<Service, Method, Transform>
     >
     <Method extends FunctionName<Service>, TData>(
-      config: WithCallConfig<
-        SuspenseQueryConfig<Service, Method, Transform, TData>
-      >
+      config: SuspenseQueryConfig<Service, Method, Transform, TData>
     ): UseSuspenseQueryResult<
       TData,
       ReactorReturnErr<Service, Method, Transform>

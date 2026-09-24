@@ -83,6 +83,25 @@ export interface BaseQueryConfig<
   functionName: Method
   /** Arguments to pass to the method (if any) */
   args?: ReactorArgs<Service, Method, Transform>
+  /**
+   * Call configuration for the method, as `Reactor.callMethod` takes it: a
+   * `canisterId` sends the query to another canister of the same interface,
+   * an `agent` sends it through another agent, `effectiveCanisterId` routes
+   * it. The query key carries what it sets, as the hooks' keys do, so the
+   * answer is cached apart from the reactor's own canister and agent, and
+   * `getQueryKey()`, `invalidate()` and the other cache controls act on that
+   * entry.
+   *
+   * @example
+   * ```typescript
+   * // The same ledger interface, another token's canister
+   * const ckbtcSymbol = createQuery(ledger, {
+   *   functionName: "icrc1_symbol",
+   *   callConfig: { canisterId: "mxzaz-hqaaa-aaaar-qaada-cai" },
+   * })
+   * ```
+   */
+  callConfig?: CallConfig
   /** The query key to use for this query */
   queryKey?: QueryKey
   /**
@@ -473,11 +492,12 @@ export interface SuspenseQueryResult<
 export interface QueryFactoryMethods {
   /**
    * The key prefix every query of this factory shares, whatever its args: the
-   * canister and the method, plus the reactor's transform segment, and for an
-   * infinite factory its `callConfig` and config `queryKey`. TanStack Query
-   * matches keys by prefix, so the prefix covers every args instance and
-   * every infinite page set. Queries of the same method made elsewhere share
-   * it too.
+   * canister (the config's `callConfig.canisterId`, else the reactor's) and
+   * the method, plus the reactor's transform segment and any agent or
+   * effective-target segment the config's `callConfig` adds, and for an
+   * infinite factory its config `queryKey`. TanStack Query matches keys by
+   * prefix, so the prefix covers every args instance and every infinite page
+   * set. Queries of the same method made elsewhere share it too.
    *
    * @example
    * ```typescript
