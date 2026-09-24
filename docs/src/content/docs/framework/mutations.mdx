@@ -308,56 +308,45 @@ return (
 
 ## Optimistic Updates
 
-You can perform optimistic updates using standard TanStack Query patterns:
+Show the result before the canister answers with a query object's
+`optimisticUpdate()`. Return it from `onMutate` and roll back in `onError`:
 
 ```tsx
-import { useQueryClient } from "@tanstack/react-query"
+import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "../reactor"
 
-function LikeButton({ postId }: { postId: string }) {
-  const queryClient = useQueryClient()
+// Module scope, next to the reactor
+const getPost = createQueryFactory(backend, { functionName: "getPost" })
 
+function LikeButton({ postId }: { postId: string }) {
   const { mutate } = useActorMutation({
     functionName: "likePost",
-    onMutate: async (args) => {
-      const [postId] = args
-      const queryKey = backend.generateQueryKey({
-        functionName: "getPost",
-        args: [postId],
-      })
-
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey })
-
-      // Snapshot the previous value
-      const previousPost = queryClient.getQueryData(queryKey)
-
-      // Optimistically update to the new value
-      queryClient.setQueryData(queryKey, (old: any) => ({
-        ...old,
-        likes: old.likes + 1,
-      }))
-
-      // Return a context object with the snapshotted value
-      return { previousPost, queryKey }
-    },
-    onError: (err, args, context) => {
-      // If the mutation fails, use the context to roll back
-      if (context?.previousPost) {
-        queryClient.setQueryData(context.queryKey, context.previousPost)
-      }
-    },
-    onSettled: (data, error, args, context) => {
-      // Always refetch after error or success
-      if (context?.queryKey) {
-        queryClient.invalidateQueries({ queryKey: context.queryKey })
-      }
-    },
+    // Cancels the post's fetch in flight, writes the new value, and resolves
+    // with a rollback. `post` is typed from getPost; likes is a nat (bigint).
+    onMutate: ([postId]) =>
+      getPost([postId]).optimisticUpdate((post) => ({
+        ...post,
+        likes: post.likes + 1n,
+      })),
+    // The call failed: show the post as it was
+    onError: (_error, _args, update) => update?.rollback(),
+    // Refetch either way: a call that failed in transit may still have run
+    onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
   })
 
   return <button onClick={() => mutate([postId])}>Like</button>
 }
 ```
+
+`optimisticUpdate` works on the query's raw data, before any `select`, and
+calls the updater only when a value is cached: with nothing on screen there is
+nothing to update. `rollback()` writes back the value from before the update
+with its original fetch time. To refetch only after a success, list the query
+in `invalidateQueries: [getPost]` instead of using `onSettled`.
+
+It works on the reactor's own QueryClient, so no `QueryClientProvider` is
+needed. `useQueryClient()` throws without one; when you need the client itself,
+use `backend.queryClient`.
 
 ## Mutation Factory
 

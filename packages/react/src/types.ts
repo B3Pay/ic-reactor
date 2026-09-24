@@ -224,6 +224,109 @@ export interface UseSuspenseQueryWithSelect<
 }
 
 // ============================================================================
+// Cache Controls
+// ============================================================================
+
+/**
+ * What `optimisticUpdate()` resolves with: the way back to the value the
+ * cache held before the update.
+ *
+ * @example
+ * ```typescript
+ * const update = await postQuery.optimisticUpdate((post) => ({
+ *   ...post,
+ *   likes: post.likes + 1n,
+ * }))
+ * // The call failed: show the post as it was
+ * update.rollback()
+ * ```
+ */
+export interface OptimisticRollback {
+  /**
+   * Write back the value the cache held before the update, with the time it
+   * was fetched, so it is as fresh or as stale as it was. It does nothing
+   * when the update wrote nothing. It restores that value even if a fetch or
+   * another update has written since; invalidate the query afterwards when
+   * the canister's current value matters.
+   */
+  rollback: () => void
+}
+
+/**
+ * The operations every query object has on its own cache entry, on the
+ * reactor's QueryClient. They act on that one entry: other args of the same
+ * method, and other queries under the same key prefix, are left alone.
+ *
+ * @template TQueryFnData - The raw (pre-`select`) data the entry holds
+ */
+export interface QueryCacheControls<TQueryFnData> {
+  /**
+   * Cancel this query's fetch in flight, if there is one. The entry keeps
+   * the value it held before that fetch started, and a later refetch runs as
+   * usual.
+   *
+   * @example
+   * ```typescript
+   * // Before writing to the cache, so an older answer cannot land on top
+   * await postQuery.cancel()
+   * postQuery.setData(draft)
+   * ```
+   */
+  cancel: () => Promise<void>
+
+  /**
+   * Reset this query's entry to its initial state, as TanStack Query's
+   * `resetQueries` does: its data is cleared, or goes back to `initialData`
+   * when one was given. A mounted hook then fetches it again, and a suspense
+   * hook suspends until it has. It resolves once that fetch settles.
+   *
+   * @example
+   * ```typescript
+   * // A reload button that shows the Suspense fallback again
+   * <button onClick={() => void statsQuery.reset()}>Reload</button>
+   * ```
+   */
+  reset: () => Promise<void>
+
+  /**
+   * Replace this query's cached value for the duration of a mutation, and
+   * get back a rollback for when it fails.
+   *
+   * It cancels the query's fetch in flight, so an answer from before the
+   * mutation cannot overwrite the new value, then writes what `updater`
+   * returns for the cached value. `updater` gets and returns the raw,
+   * pre-`select` data. When nothing is cached yet it is not called, nothing
+   * is cancelled or written, and `rollback()` does nothing: there is no
+   * value on screen to update, and the query's own fetch will bring one.
+   *
+   * Return it from `onMutate`, so the rollback reaches `onError`.
+   *
+   * @param updater - The new value, from the cached one. Do not mutate the
+   * cached value in place; return a new one.
+   *
+   * @example
+   * ```typescript
+   * const getPost = createQueryFactory(backend, { functionName: "getPost" })
+   * const likePost = createMutation(backend, { functionName: "likePost" })
+   *
+   * const { mutate } = likePost.useMutation({
+   *   onMutate: ([postId]) =>
+   *     getPost([postId]).optimisticUpdate((post) => ({
+   *       ...post,
+   *       likes: post.likes + 1n,
+   *     })),
+   *   onError: (_error, _args, update) => update?.rollback(),
+   *   // Refetch either way: a call that failed in transit may still have run
+   *   onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
+   * })
+   * ```
+   */
+  optimisticUpdate: (
+    updater: (old: TQueryFnData) => TQueryFnData
+  ) => Promise<OptimisticRollback>
+}
+
+// ============================================================================
 // Result Interfaces
 // ============================================================================
 
@@ -238,7 +341,7 @@ export interface BaseQueryResult<
   TQueryFnData,
   TSelected = TQueryFnData,
   _TError = Error,
-> {
+> extends QueryCacheControls<TQueryFnData> {
   /** Fetch data in loader (uses ensureQueryData for cache-first) */
   fetch: () => Promise<TSelected>
 

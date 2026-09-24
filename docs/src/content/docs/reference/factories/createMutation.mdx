@@ -154,49 +154,27 @@ const likePostMutation = createMutation(backend, {
 
 // A query factory takes the args tuple, as in `getPostQuery([postId])`
 const getPostQuery = createQueryFactory(backend, { functionName: "getPost" })
-const { queryClient } = backend
 
 // In your component
 const { mutate } = likePostMutation.useMutation({
-  onMutate: async (args) => {
-    const [postId] = args
-    const queryKey = getPostQuery([postId]).getQueryKey()
-
-    // Cancel outgoing refetches
-    await queryClient.cancelQueries({ queryKey })
-
-    // Snapshot current value
-    const previousPost = queryClient.getQueryData(queryKey)
-
-    // Optimistically update
-    queryClient.setQueryData(queryKey, (old: Post) => ({
-      ...old,
-      likes: old.likes + 1,
+  // Cancel outgoing refetches, write the new value, and return the rollback.
+  // `post` is typed from the query; likes is a nat (bigint).
+  onMutate: ([postId]) =>
+    getPostQuery([postId]).optimisticUpdate((post) => ({
+      ...post,
+      likes: post.likes + 1n,
       isLiked: true,
-    }))
-
-    // Return context with snapshot
-    return { previousPost }
-  },
-  onError: (err, args, context) => {
-    // Rollback on error
-    const [postId] = args
-    if (context?.previousPost) {
-      queryClient.setQueryData(
-        getPostQuery([postId]).getQueryKey(),
-        context.previousPost
-      )
-    }
-  },
-  onSettled: (data, error, args) => {
-    // Refetch to ensure consistency
-    const [postId] = args
-    queryClient.invalidateQueries({
-      queryKey: getPostQuery([postId]).getQueryKey(),
-    })
-  },
+    })),
+  // Rollback on error
+  onError: (_error, _args, update) => update?.rollback(),
+  // Refetch to ensure consistency: a failed call may still have run
+  onSettled: (_data, _error, [postId]) => getPostQuery([postId]).invalidate(),
 })
 ```
+
+`optimisticUpdate` skips the update when nothing is cached for the query, and
+`rollback()` restores the value it replaced with its original fetch time. A
+factory-level `onMutate` works the same way, and `execute()` runs it too.
 
 ### Form with React Hook Form
 
@@ -525,8 +503,9 @@ Disable buttons and show loading indicators:
 </Aside>
 
 <Aside type="caution">
-  Optimistic updates require careful rollback handling. Always implement
-  `onError` to restore previous state.
+  An optimistic update needs a rollback. Return a query object's
+  `optimisticUpdate()` from `onMutate` and call `rollback()` on the result in
+  `onError`.
 </Aside>
 
 ## See Also

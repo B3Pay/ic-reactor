@@ -229,47 +229,34 @@ function CreateUserForm() {
 ### Optimistic Updates
 
 ```tsx
-import { useQueryClient } from "@tanstack/react-query"
+import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "../reactor"
 
-function LikeButton({ postId }: { postId: string }) {
-  const queryClient = useQueryClient()
-  const queryKey = backend.generateQueryKey({
-    functionName: "getPost",
-    args: [postId],
-  })
+const getPost = createQueryFactory(backend, { functionName: "getPost" })
 
+function LikeButton({ postId }: { postId: string }) {
   const { mutate } = useActorMutation({
     functionName: "likePost",
-    onMutate: async () => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey })
-
-      // Snapshot previous value
-      const previousPost = queryClient.getQueryData(queryKey)
-
-      // Optimistically update
-      queryClient.setQueryData(queryKey, (old: Post) => ({
-        ...old,
-        likes: old.likes + 1,
+    // Cancel outgoing refetches, write the new value, keep a rollback
+    onMutate: ([postId]) =>
+      getPost([postId]).optimisticUpdate((post) => ({
+        ...post,
+        likes: post.likes + 1n,
         isLiked: true,
-      }))
-
-      return { previousPost }
-    },
-    onError: (err, vars, context) => {
-      // Rollback on error
-      queryClient.setQueryData(queryKey, context?.previousPost)
-    },
-    onSettled: () => {
-      // Refetch to ensure consistency
-      queryClient.invalidateQueries({ queryKey })
-    },
+      })),
+    // Rollback on error
+    onError: (_error, _args, update) => update?.rollback(),
+    // Refetch to ensure consistency
+    onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
   })
 
   return <button onClick={() => mutate([postId])}>❤️ Like</button>
 }
 ```
+
+The updater is typed from the query and gets its cached raw value; it is not
+called when nothing is cached. See
+[Optimistic Updates](/v3/framework/mutations#optimistic-updates).
 
 ### Canister Error Handling
 

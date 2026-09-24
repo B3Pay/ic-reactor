@@ -51,6 +51,7 @@ import {
   buildChainedSelect,
   createBoundedCache,
   pickFetchOptions,
+  queryCacheControls,
   retryOption,
   useMountQueryClient,
   withQueryFactoryMethods,
@@ -181,6 +182,7 @@ const createQueryImpl = <
     getQueryKey,
     getCacheData,
     setData,
+    ...queryCacheControls<TData>(reactor, getQueryKey),
   }
 }
 

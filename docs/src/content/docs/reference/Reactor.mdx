@@ -409,27 +409,27 @@ export async function loader({ params }) {
 
 ### Cache Manipulation
 
+Write through the reactor's own QueryClient, `backend.queryClient`. It is the
+client the hooks read, and unlike `useQueryClient()` it needs no
+`QueryClientProvider` and works outside React:
+
 ```typescript
-import { useQueryClient } from "@tanstack/react-query"
+function updateUserCache(userId: string, updates: Partial<User>) {
+  const queryKey = backend.generateQueryKey({
+    functionName: "getUser",
+    args: [userId],
+  })
 
-function useUpdateUserCache() {
-  const queryClient = useQueryClient()
-
-  const updateUser = (userId: string, updates: Partial<User>) => {
-    const queryKey = backend.generateQueryKey({
-      functionName: "getUser",
-      args: [userId],
-    })
-
-    queryClient.setQueryData(queryKey, (old: User) => ({
-      ...old,
-      ...updates,
-    }))
-  }
-
-  return updateUser
+  // `old` is undefined when the user is not cached
+  backend.queryClient.setQueryData<User>(queryKey, (old) =>
+    old ? { ...old, ...updates } : old
+  )
 }
 ```
+
+A query object from `createQuery` or a query factory does the same with its
+data type already known: `getUser([userId]).setData(...)`, or
+`optimisticUpdate(...)` with a rollback for a mutation.
 
 ### Multiple Canisters
 

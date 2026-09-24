@@ -42,6 +42,7 @@ import {
   createBoundedCache,
   mountWhileSuspended,
   pickFetchOptions,
+  queryCacheControls,
   retryOption,
   useMountQueryClient,
   withQueryFactoryMethods,
@@ -172,6 +173,7 @@ const createSuspenseQueryImpl = <
     getQueryKey,
     getCacheData,
     setData,
+    ...queryCacheControls<TData>(reactor, getQueryKey),
   }
 }
 

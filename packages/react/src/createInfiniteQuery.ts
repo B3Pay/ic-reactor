@@ -44,13 +44,18 @@ import {
   InfiniteQueryObserverOptions,
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
-import type { NoInfer, QueryFactoryMethods } from "./types.js"
+import type {
+  NoInfer,
+  QueryCacheControls,
+  QueryFactoryMethods,
+} from "./types.js"
 import {
   buildChainedSelect,
   callConfigForKey,
   mergeFactoryQueryKey,
   normalizeQueryData,
   pickFetchOptions,
+  queryCacheControls,
   retryOption,
   useMountQueryClient,
   withQueryFactoryMethods,
@@ -237,6 +242,10 @@ export interface UseInfiniteQueryWithSelect<
 /**
  * Result from createInfiniteQuery
  *
+ * `cancel()`, `reset()` and `optimisticUpdate()` act on the whole page set:
+ * `optimisticUpdate` gets and returns the raw `InfiniteData`, `{ pages,
+ * pageParams }`.
+ *
  * @template TPageData - The raw page data type
  * @template TPageParam - The page parameter type
  * @template Selected - The type after select transformation
@@ -247,7 +256,7 @@ export interface InfiniteQueryResult<
   TPageParam,
   Selected = InfiniteData<TPageData, TPageParam>,
   TError = Error,
-> {
+> extends QueryCacheControls<InfiniteData<TPageData, TPageParam>> {
   /** Fetch first page in loader (uses ensureQueryData for cache-first) */
   fetch: () => Promise<Selected>
 
@@ -474,6 +483,7 @@ const createInfiniteQueryImpl = <
     invalidate,
     getQueryKey,
     getCacheData,
+    ...queryCacheControls<TInfiniteData>(reactor, getQueryKey),
   }
 }
 

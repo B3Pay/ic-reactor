@@ -74,17 +74,33 @@ getPreviousPageParam: (
 
 ## Return Value
 
-| Property           | Type                                   | Description                                |
-| ------------------ | -------------------------------------- | ------------------------------------------ |
-| `fetch`            | `() => Promise<T>`                     | Fetch first page (for loaders)             |
-| `useInfiniteQuery` | `(options?) => UseInfiniteQueryResult` | React hook                                 |
-| `invalidate`       | `() => Promise<void>`                  | Invalidate the cache (refetches if active) |
-| `getQueryKey`      | `() => QueryKey`                       | Get the query key                          |
-| `getCacheData`     | `(select?) => T \| undefined`          | Read from cache without fetching           |
+| Property           | Type                                   | Description                                              |
+| ------------------ | -------------------------------------- | -------------------------------------------------------- |
+| `fetch`            | `() => Promise<T>`                     | Fetch first page (for loaders)                           |
+| `useInfiniteQuery` | `(options?) => UseInfiniteQueryResult` | React hook                                               |
+| `invalidate`       | `() => Promise<void>`                  | Invalidate the cache (refetches if active)               |
+| `getQueryKey`      | `() => QueryKey`                       | Get the query key                                        |
+| `getCacheData`     | `(select?) => T \| undefined`          | Read from cache without fetching                         |
+| `cancel`           | `() => Promise<void>`                  | Cancel the fetch in flight                               |
+| `reset`            | `() => Promise<void>`                  | Reset to initial state; mounted hooks refetch            |
+| `optimisticUpdate` | `(updater) => Promise<{ rollback }>`   | Cancel, write `updater(cached pages)`, return a rollback |
 
-These five keys are the whole object. To force a refetch from a component, use
+These eight keys are the whole object. To force a refetch from a component, use
 the `refetch` returned by `useInfiniteQuery()`; outside React, call
-`invalidate()`.
+`invalidate()`, or `reset()` to drop the loaded pages and start again from the
+first one.
+
+`optimisticUpdate` gets and returns the raw `InfiniteData`,
+`{ pages, pageParams }`, before `select`. For example, to show a new post at
+the top of the first page while it is being created:
+
+```typescript
+const draft = await postsQuery.optimisticUpdate((data) => ({
+  ...data,
+  pages: [[newPost, ...data.pages[0]], ...data.pages.slice(1)],
+}))
+// in onError: draft.rollback()
+```
 
 A sign-in or sign-out while `fetch()` is in flight does not reject it: the
 previous identity's first page is dropped, and `fetch()` runs again for the new

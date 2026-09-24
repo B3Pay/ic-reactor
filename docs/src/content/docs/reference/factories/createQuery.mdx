@@ -49,15 +49,18 @@ only. The config's `select` is applied by the query object itself, so
 
 The factory returns an object with these utilities:
 
-| Property       | Type                           | Description                              |
-| -------------- | ------------------------------ | ---------------------------------------- |
-| `fetch`        | `() => Promise<T>`             | Cache-first fetch — use in route loaders |
-| `prefetch`     | `() => Promise<void>`          | Fire-and-forget cache warm-up            |
-| `useQuery`     | `(options?) => UseQueryResult` | React hook for components                |
-| `invalidate`   | `() => Promise<void>`          | Invalidate cache (refetches if active)   |
-| `getQueryKey`  | `() => QueryKey`               | Get the TanStack Query key               |
-| `getCacheData` | `(select?) => T`               | Read from cache without fetching         |
-| `setData`      | `(updater) => T \| undefined`  | Write raw data into cache                |
+| Property           | Type                                 | Description                                        |
+| ------------------ | ------------------------------------ | -------------------------------------------------- |
+| `fetch`            | `() => Promise<T>`                   | Cache-first fetch — use in route loaders           |
+| `prefetch`         | `() => Promise<void>`                | Fire-and-forget cache warm-up                      |
+| `useQuery`         | `(options?) => UseQueryResult`       | React hook for components                          |
+| `invalidate`       | `() => Promise<void>`                | Invalidate cache (refetches if active)             |
+| `getQueryKey`      | `() => QueryKey`                     | Get the TanStack Query key                         |
+| `getCacheData`     | `(select?) => T`                     | Read from cache without fetching                   |
+| `setData`          | `(updater) => T \| undefined`        | Write raw data into cache                          |
+| `cancel`           | `() => Promise<void>`                | Cancel this query's fetch in flight                |
+| `reset`            | `() => Promise<void>`                | Reset to initial state; mounted hooks refetch      |
+| `optimisticUpdate` | `(updater) => Promise<{ rollback }>` | Cancel, write `updater(cached)`, return a rollback |
 
 ---
 
@@ -270,12 +273,41 @@ const cachedName = userQuery.getCacheData((user) => user.name)
 // Force invalidation (refetches if query is active)
 await userQuery.invalidate()
 
-// Write directly into cache (optimistic updates)
+// Write directly into cache
 userQuery.setData(updatedUser)
 
 // Or use an updater function. `old` is undefined when nothing is cached yet.
 userQuery.setData((old) => (old ? { ...old, name: "Alice" } : old))
+
+// Cancel the fetch in flight, or reset the entry to its initial state
+await userQuery.cancel()
+await userQuery.reset()
 ```
+
+### Optimistic Updates
+
+`optimisticUpdate` cancels the query's fetch in flight, so an older answer
+cannot land on top, writes what the updater returns for the cached value, and
+resolves with a rollback. Return it from a mutation's `onMutate`:
+
+```typescript
+const renameUser = createMutation(backend, {
+  functionName: "renameUser",
+  onMutate: ([userId, name]) =>
+    getUserQuery([userId]).optimisticUpdate((user) => ({ ...user, name })),
+  onError: (_error, _args, update) => update?.rollback(),
+  invalidateQueries: [getUserQuery],
+})
+```
+
+The updater gets the raw data, before the config's `select`, and is typed
+from the method. It is not called when nothing is cached, and `rollback()`
+then does nothing. `rollback()` writes back the replaced value with its
+original fetch time.
+
+`cancel()`, `reset()` and `optimisticUpdate()` act on this query's own entry
+only. `invalidate()` matches by key prefix, so on a query object without args
+it also reaches the same method's queries with args; these three do not.
 
 ### Prefetching on Hover
 

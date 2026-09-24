@@ -51,15 +51,18 @@ const userQuery = createSuspenseQuery(backend, {
 
 ## Return Value
 
-| Property           | Type                                   | Description                              |
-| ------------------ | -------------------------------------- | ---------------------------------------- |
-| `fetch`            | `() => Promise<T>`                     | Cache-first fetch — use in route loaders |
-| `prefetch`         | `() => Promise<void>`                  | Fire-and-forget cache warm-up            |
-| `useSuspenseQuery` | `(options?) => UseSuspenseQueryResult` | Suspense hook                            |
-| `invalidate`       | `() => Promise<void>`                  | Invalidate cache (refetches if active)   |
-| `getQueryKey`      | `() => QueryKey`                       | Get the query key                        |
-| `getCacheData`     | `(select?) => T`                       | Read from cache without fetching         |
-| `setData`          | `(updater) => T \| undefined`          | Write raw data into cache                |
+| Property           | Type                                   | Description                                        |
+| ------------------ | -------------------------------------- | -------------------------------------------------- |
+| `fetch`            | `() => Promise<T>`                     | Cache-first fetch — use in route loaders           |
+| `prefetch`         | `() => Promise<void>`                  | Fire-and-forget cache warm-up                      |
+| `useSuspenseQuery` | `(options?) => UseSuspenseQueryResult` | Suspense hook                                      |
+| `invalidate`       | `() => Promise<void>`                  | Invalidate cache (refetches if active)             |
+| `getQueryKey`      | `() => QueryKey`                       | Get the query key                                  |
+| `getCacheData`     | `(select?) => T`                       | Read from cache without fetching                   |
+| `setData`          | `(updater) => T \| undefined`          | Write raw data into cache                          |
+| `cancel`           | `() => Promise<void>`                  | Cancel this query's fetch in flight                |
+| `reset`            | `() => Promise<void>`                  | Reset to initial state; mounted hooks refetch      |
+| `optimisticUpdate` | `(updater) => Promise<{ rollback }>`   | Cancel, write `updater(cached)`, return a rollback |
 
 ---
 

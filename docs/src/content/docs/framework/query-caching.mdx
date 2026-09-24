@@ -339,49 +339,46 @@ const { mutate } = useActorMutation({
 Update the UI immediately, then sync with the server:
 
 ```typescript
-import { useQueryClient } from "@tanstack/react-query"
+import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-function LikeButton({ postId }: { postId: string }) {
-  const queryClient = useQueryClient()
-  const queryKey = backend.generateQueryKey({
-    functionName: "getPost",
-    args: [postId],
-  })
+const getPost = createQueryFactory(backend, { functionName: "getPost" })
 
+function LikeButton({ postId }: { postId: string }) {
   const { mutate } = useActorMutation({
     functionName: "likePost",
-    onMutate: async () => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey })
-
-      // Snapshot the previous value
-      const previous = queryClient.getQueryData(queryKey)
-
-      // Optimistically update
-      queryClient.setQueryData(queryKey, (old: Post) => ({
-        ...old,
-        likes: old.likes + 1,
-      }))
-
-      // Return context with previous value
-      return { previous }
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previous) {
-        queryClient.setQueryData(queryKey, context.previous)
-      }
-    },
-    onSettled: () => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey })
-    },
+    // Cancel the post's fetch in flight, write the new value, keep a rollback
+    onMutate: ([postId]) =>
+      getPost([postId]).optimisticUpdate((post) => ({
+        ...post,
+        likes: post.likes + 1n,
+      })),
+    // Roll back on error
+    onError: (_error, _args, update) => update?.rollback(),
+    // Always refetch after error or success
+    onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
   })
 
   return <button onClick={() => mutate([postId])}>Like</button>
 }
 ```
+
+### Query Object Cache Controls
+
+Every query object (`createQuery`, `createSuspenseQuery`, the infinite
+variants and factory instances) acts on its own cache entry:
+
+| Method                      | What it does                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------------- |
+| `optimisticUpdate(updater)` | Cancels the fetch in flight, writes `updater(cached)`, resolves with `{ rollback() }`           |
+| `cancel()`                  | Cancels the fetch in flight; the entry keeps the value it held before                           |
+| `reset()`                   | Clears the entry (or restores `initialData`); a mounted hook refetches, a suspense one suspends |
+| `setData(updater)`          | Writes a raw value, or `updater(cached)`, with no cancel and no rollback                        |
+| `invalidate()`              | Marks it stale; a mounted hook refetches                                                        |
+
+`cancel()`, `reset()` and `optimisticUpdate()` match the query's key exactly,
+so other args of the same method are left alone. An infinite query's
+`optimisticUpdate` gets and returns its `{ pages, pageParams }`.
 
 ## QueryClient Configuration
 

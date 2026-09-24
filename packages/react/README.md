@@ -271,7 +271,7 @@ const { data } = profileQuery.useSuspenseQuery()
 // Prefetch before navigating (fire-and-forget)
 profileQuery.prefetch()
 
-// Optimistic update
+// Write into the cache
 profileQuery.setData({ id: "alice", name: "Alice" })
 
 // Mutation with extra invalidation: a query object, a query factory, a
@@ -574,20 +574,48 @@ right and none of this is a concern.
 Every object returned by `createQuery`, `createSuspenseQuery`, and their
 factory variants exposes:
 
-| Method                              | Description                                                                                     |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `fetch()`                           | Cache-first fetch — returns data, populates cache. Use in route loaders.                        |
-| `prefetch()`                        | Fire-and-forget cache warm-up. Use on hover or before navigation.                               |
-| `invalidate()`                      | Invalidates the cache entry (triggers refetch if query is mounted).                             |
-| `getQueryKey()`                     | Returns the TanStack Query key for this query.                                                  |
-| `getCacheData(select?)`             | Read directly from cache without fetching. Returns `undefined` if not cached.                   |
-| `setData(updater)`                  | Write raw data into the cache. Accepts a value or updater function. Use for optimistic updates. |
-| `useQuery()` / `useSuspenseQuery()` | React hook for the query.                                                                       |
+| Method                              | Description                                                                                |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| `fetch()`                           | Cache-first fetch — returns data, populates cache. Use in route loaders.                   |
+| `prefetch()`                        | Fire-and-forget cache warm-up. Use on hover or before navigation.                          |
+| `invalidate()`                      | Invalidates the cache entry (triggers refetch if query is mounted).                        |
+| `getQueryKey()`                     | Returns the TanStack Query key for this query.                                             |
+| `getCacheData(select?)`             | Read directly from cache without fetching. Returns `undefined` if not cached.              |
+| `setData(updater)`                  | Write raw data into the cache. Accepts a value or updater function.                        |
+| `optimisticUpdate(updater)`         | Cancel the fetch in flight, write `updater(cached)`, resolve with `{ rollback() }`.        |
+| `cancel()`                          | Cancel this query's fetch in flight; the entry keeps its previous value.                   |
+| `reset()`                           | Reset this entry to its initial state; a mounted hook refetches, a suspense hook suspends. |
+| `useQuery()` / `useSuspenseQuery()` | React hook for the query.                                                                  |
 
 A sign-in or sign-out while `fetch()` is in flight does not reject it: the
 previous identity's answer is dropped, and `fetch()` runs again for the new
 identity and resolves with that answer. The infinite query factories' `fetch()`
 behaves the same.
+
+`optimisticUpdate`, `cancel` and `reset` act on the query's own entry only, and
+the infinite query objects have them too, over their `{ pages, pageParams }`.
+An optimistic update is three lines of mutation config:
+
+```tsx
+const getPost = createQueryFactory(backend, { functionName: "get_post" })
+const likePost = createMutation(backend, { functionName: "like_post" })
+
+// In a component
+const { mutate } = likePost.useMutation({
+  onMutate: ([postId]) =>
+    getPost([postId]).optimisticUpdate((post) => ({
+      ...post,
+      likes: post.likes + 1n,
+    })),
+  onError: (_error, _args, update) => update?.rollback(),
+  onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
+})
+```
+
+The updater gets the raw, typed value and is not called when nothing is
+cached. Use `backend.queryClient` rather than `useQueryClient()` when you need
+the QueryClient itself: the hooks bind to the reactor's client, and
+`useQueryClient()` throws without the optional `QueryClientProvider`.
 
 The function a factory variant returns (`createQueryFactory`,
 `createSuspenseQueryFactory`, `createInfiniteQueryFactory`,

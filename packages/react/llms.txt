@@ -87,6 +87,32 @@ const createPost = createMutation(backend, {
 A query factory function also has `getQueryKey()` (the prefix of all its
 queries) and `invalidate()`.
 
+## Optimistic Updates
+
+Use the query object's `optimisticUpdate(updater)`, never a hand-rolled
+cancel/snapshot/`setQueryData`/rollback or `useQueryClient()` (it throws
+without the optional `QueryClientProvider`; use `reactor.queryClient`):
+
+```ts
+const getPost = createQueryFactory(backend, { functionName: "get_post" })
+const likePost = createMutation(backend, { functionName: "like_post" })
+
+// In a component
+const { mutate } = likePost.useMutation({
+  onMutate: ([postId]) =>
+    getPost([postId]).optimisticUpdate((post) => ({
+      ...post,
+      likes: post.likes + 1n,
+    })),
+  onError: (_error, _args, update) => update?.rollback(),
+  onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
+})
+```
+
+The updater gets the typed raw (pre-`select`) value and is skipped when
+nothing is cached. Query objects also have `cancel()` and `reset()` (reset
+re-suspends a suspense query). All three act on the query's own entry only.
+
 ## Mutation Error Handling
 
 For canister `Result.Err` variants, use `onCanisterError`. Keep `onError` for

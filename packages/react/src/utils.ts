@@ -15,6 +15,8 @@ import type {
 import { generateKey } from "@ic-reactor/core"
 import type {
   InvalidationTarget,
+  OptimisticRollback,
+  QueryCacheControls,
   QueryFactoryMethods,
   QueryKeySource,
 } from "./types.js"
@@ -356,4 +358,64 @@ export function withQueryFactoryMethods<Factory extends object>(
       reactor.queryClient.invalidateQueries({ queryKey: getQueryKey() }),
   }
   return Object.assign(factory, methods)
+}
+
+/** The rollback of an optimistic update that wrote nothing. */
+const NOTHING_TO_ROLL_BACK: OptimisticRollback = { rollback: () => {} }
+
+/**
+ * The {@link QueryCacheControls} of a query object: `cancel`, `reset` and
+ * `optimisticUpdate` on its own entry of the reactor's QueryClient.
+ *
+ * They match the key exactly. A query object's key is also the prefix of
+ * other entries (a query without args prefixes every args instance of its
+ * method), and cancelling or resetting those would reach queries this object
+ * does not own. `getQueryKey` is called each time, so the controls follow a
+ * `setCanisterId`.
+ */
+export function queryCacheControls<TQueryFnData>(
+  reactor: { readonly queryClient: QueryClient },
+  getQueryKey: () => QueryKey
+): QueryCacheControls<TQueryFnData> {
+  return {
+    cancel: () =>
+      reactor.queryClient.cancelQueries({
+        queryKey: getQueryKey(),
+        exact: true,
+      }),
+
+    reset: () =>
+      reactor.queryClient.resetQueries({
+        queryKey: getQueryKey(),
+        exact: true,
+      }),
+
+    optimisticUpdate: async (updater) => {
+      const { queryClient } = reactor
+      const queryKey = getQueryKey()
+      // Nothing cached means nothing on screen to update. Cancelling the
+      // entry's first fetch would also leave it pending with no data.
+      if (queryClient.getQueryData(queryKey) === undefined) {
+        return NOTHING_TO_ROLL_BACK
+      }
+      // A fetch in flight would otherwise land after the write below with the
+      // canister's answer from before the mutation. Cancelling reverts the
+      // entry to what it held before that fetch, so it is read afterwards.
+      await queryClient.cancelQueries({ queryKey, exact: true })
+      const snapshot = queryClient.getQueryState<TQueryFnData>(queryKey)
+      if (snapshot?.data === undefined) return NOTHING_TO_ROLL_BACK
+      const { data: previous, dataUpdatedAt } = snapshot
+      queryClient.setQueryData<TQueryFnData>(queryKey, updater(previous))
+      return {
+        rollback: () => {
+          // With its own timestamp: written back as new, a value from before
+          // the mutation would look freshly fetched and skip the refetches
+          // its age calls for.
+          queryClient.setQueryData<TQueryFnData>(queryKey, previous, {
+            updatedAt: dataUpdatedAt,
+          })
+        },
+      }
+    },
+  }
 }
