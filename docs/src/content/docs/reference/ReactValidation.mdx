@@ -14,10 +14,10 @@ These helpers read the `ValidationError` a validator's verdict produces. A
 validator that throws or rejects instead is reported as a `CallError` whose
 `cause` is what it threw, so `extractValidationErrors` returns `null` for it
 and `handleValidationError` hands it to `onOtherError`. The hooks and factories
-call `callMethod()`, which runs validators synchronously: a validator that
-returns a promise, such as `fromZodSchema(schema, { async: true })`, refuses
-every call they make. Run async validation with the reactor's `validate()` or
-`callMethodWithValidation()`.
+call `callMethod()`, which runs validators synchronously, so they refuse every
+call to a method whose validator returns a promise, such as
+`fromZodSchema(schema, { async: true })`, with a `CallError`. Run async
+validation with the reactor's `validate()` or `callMethodWithValidation()`.
 
 ## Import
 
