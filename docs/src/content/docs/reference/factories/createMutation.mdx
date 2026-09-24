@@ -295,9 +295,11 @@ invalidated after the factory's. Each entry is one of:
 
 The method name and args of a `{ functionName, args? }` entry are type-checked
 against the canister, and its key is built when the mutation succeeds, so it
-follows a `setCanisterId`. An infinite list keys its pages apart from its
-args, so name one by its query object or factory, or by the method alone. A
-query object or factory is invalidated in its own reactor's QueryClient.
+follows a `setCanisterId`. It names queries of the canister the mutation was
+sent to, which is the one in the mutation's `callConfig.canisterId` when it
+sets one. An infinite list keys its pages apart from its args, so name one by
+its query object or factory, or by the method alone. A query object or factory
+is invalidated in its own reactor's QueryClient.
 
 #### Option 1: Fixed Queries (known up front)
 

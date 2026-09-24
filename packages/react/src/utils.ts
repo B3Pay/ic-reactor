@@ -291,7 +291,8 @@ const isQueryKeySource = (value: object): value is QueryKeySource =>
  */
 function invalidateTarget<Service, Transform extends TransformKey>(
   reactor: Reactor<Service, Transform>,
-  target: InvalidationTarget<Service, Transform> | null
+  target: InvalidationTarget<Service, Transform> | null,
+  canisterId: CallConfig["canisterId"]
 ): Promise<void> {
   // React Query reads `{ queryKey: undefined }` as "match everything", so an
   // absent entry would invalidate every query in the client, the app's
@@ -321,10 +322,14 @@ function invalidateTarget<Service, Transform extends TransformKey>(
   // made without args lacks, and would match none of those.
   const hasArgs = (args as readonly unknown[] | undefined)?.length
   return reactor.queryClient.invalidateQueries({
-    queryKey: reactor.generateQueryKey({
-      functionName,
-      args: hasArgs ? args : undefined,
-    }),
+    // At the canister the mutation was sent to, whose queries it changed.
+    // Only the canister is taken from its `callConfig`: an agent or effective
+    // target segment would narrow the prefix to the queries sent the same
+    // way, while the canister's state changed for every caller.
+    queryKey: reactor.generateQueryKey(
+      { functionName, args: hasArgs ? args : undefined },
+      canisterId ? { canisterId } : undefined
+    ),
   })
 }
 
@@ -336,17 +341,23 @@ function invalidateTarget<Service, Transform extends TransformKey>(
  *
  * An entry is a query key, a query object or query factory (anything with a
  * `getQueryKey()`), or a `{ functionName, args? }` descriptor, which is keyed
- * by `reactor.generateQueryKey`. `undefined` entries are skipped.
+ * by `reactor.generateQueryKey` at the canister `callConfig`, the mutation's,
+ * sends it to. `undefined` entries are skipped.
  */
 export async function invalidateTargets<
   Service,
   Transform extends TransformKey,
 >(
   reactor: Reactor<Service, Transform>,
-  targets: readonly InvalidationTarget<Service, Transform>[] | undefined
+  targets: readonly InvalidationTarget<Service, Transform>[] | undefined,
+  callConfig?: CallConfig
 ): Promise<void> {
   if (!targets || targets.length === 0) return
-  await Promise.all(targets.map((target) => invalidateTarget(reactor, target)))
+  await Promise.all(
+    targets.map((target) =>
+      invalidateTarget(reactor, target, callConfig?.canisterId)
+    )
+  )
 }
 
 /**

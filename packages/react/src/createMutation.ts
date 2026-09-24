@@ -148,9 +148,9 @@ const createMutationImpl = <
       mutationFn: callFn,
       onSuccess: async (data, variables, onMutateResult, context) => {
         // 1. Factory-level invalidation
-        await invalidateTargets(reactor, factoryInvalidateQueries)
+        await invalidateTargets(reactor, factoryInvalidateQueries, callConfig)
         // 2. Hook-level invalidation
-        await invalidateTargets(reactor, hookInvalidateQueries)
+        await invalidateTargets(reactor, hookInvalidateQueries, callConfig)
         // 3. Factory onSuccess
         await factoryOnSuccess?.(
           data,

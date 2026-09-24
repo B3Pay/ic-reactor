@@ -152,10 +152,10 @@ export const useActorMutation = <
       // Undefined entries are skipped: React Query reads
       // `{ queryKey: undefined }` as "match everything", and the natural
       // `[maybeQuery]` idiom produces one whenever the query is absent.
-      await invalidateTargets(reactor, invalidateQueries)
+      await invalidateTargets(reactor, invalidateQueries, callConfig)
       await onSuccess?.(...params)
     },
-    [reactor, invalidateQueries, onSuccess]
+    [reactor, invalidateQueries, onSuccess, callConfig]
   )
 
   const handleError = useCallback(

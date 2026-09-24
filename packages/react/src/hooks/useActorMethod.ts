@@ -459,7 +459,7 @@ export function useActorMethod<
       // that fails does not reject `invalidateQueries`, so it cannot turn the
       // update, which has already run on the canister, into a failure.
       onSuccess: async (data) => {
-        await invalidateTargets(reactor, invalidateQueries)
+        await invalidateTargets(reactor, invalidateQueries, callConfig)
         onSuccessRef.current?.(data)
       },
       onError: (error) => {

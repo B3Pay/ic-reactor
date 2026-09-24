@@ -542,15 +542,17 @@ export interface QueryKeySource {
  * A method of the mutation's own reactor, and optionally one set of its
  * arguments: the same shape `Reactor.invalidateQueries` takes. Its key is
  * built by the reactor's `generateQueryKey` when the mutation succeeds, so it
- * follows a `setCanisterId` and carries the reactor's transform segment.
+ * follows a `setCanisterId` and carries the reactor's transform segment. It
+ * is rooted at the canister the mutation was sent to: the reactor's, or the
+ * one the mutation's `callConfig.canisterId` names.
  *
  * Without `args` it names every query of the method, whatever its args,
  * infinite queries included. With `args` it names the queries made with those
  * args by `createQuery`, a query factory or the hooks, and `args: []` names a
  * method without parameters as no `args` does. An infinite query keys its
  * page set by its first page's args in another form, which `args` does not
- * match, and a query sent to another canister through `callConfig` is keyed
- * apart: name either by its query object or key instead.
+ * match, and a query of another canister than the mutation's is keyed apart:
+ * name either by its query object or key instead.
  *
  * @example
  * ```typescript

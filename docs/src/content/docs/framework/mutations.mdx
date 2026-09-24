@@ -158,7 +158,8 @@ Each entry is one of:
 
 - a method of the mutation's reactor, `{ functionName }` or
   `{ functionName, args }`. The method name and the args are type-checked
-  against the canister, and the key is built when the mutation succeeds;
+  against the canister, and the key is built when the mutation succeeds, for
+  the canister the mutation was sent to (its `callConfig.canisterId`, if set);
 - a query object from `createQuery`, `createSuspenseQuery`,
   `createInfiniteQuery` or `createSuspenseInfiniteQuery`;
 - a query factory from `createQueryFactory` and the other `create*Factory`

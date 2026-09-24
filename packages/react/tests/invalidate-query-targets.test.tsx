@@ -321,6 +321,27 @@ describe("createMutation invalidateQueries entries", () => {
     expect(isInvalidated(countQuery.getQueryKey())).toBe(true)
   })
 
+  it("keys a descriptor at the canister the mutation's callConfig sends it to", async () => {
+    // The transfer went to OTHER_CANISTER, so that canister's queries are the
+    // ones it changed; the reactor's own canister's are left alone.
+    const otherCount = reactor.generateQueryKey(
+      { functionName: "get_count" },
+      { canisterId: OTHER_CANISTER }
+    )
+    const ownCount = reactor.generateQueryKey({ functionName: "get_count" })
+    seed(otherCount, 0n)
+    seed(ownCount, 0n)
+
+    await createMutation(reactor, {
+      functionName: "create_post",
+      callConfig: { canisterId: OTHER_CANISTER },
+      invalidateQueries: [{ functionName: "get_count" }],
+    }).execute(["new"])
+
+    expect(isInvalidated(otherCount)).toBe(true)
+    expect(isInvalidated(ownCount)).toBe(false)
+  })
+
   it("invalidates a query of another reactor in that reactor's own QueryClient", async () => {
     const otherClient = newQueryClient()
     const otherReactor = makeReactor(
@@ -484,6 +505,43 @@ describe("the hooks' invalidateQueries entries", () => {
 
     expect(isInvalidated(countQuery.getQueryKey())).toBe(true)
     expect(isInvalidated(postKey)).toBe(true)
+  })
+
+  it("the hooks key a descriptor at the canister their callConfig names", async () => {
+    const otherCount = reactor.generateQueryKey(
+      { functionName: "get_count" },
+      { canisterId: OTHER_CANISTER }
+    )
+    const ownCount = reactor.generateQueryKey({ functionName: "get_count" })
+    seed(otherCount, 0n)
+    seed(ownCount, 0n)
+    const callConfig = { canisterId: OTHER_CANISTER }
+    const invalidateQueries = [{ functionName: "get_count" as const }]
+
+    const mutation = renderHook(() =>
+      useActorMutation({
+        reactor,
+        functionName: "create_post",
+        callConfig,
+        invalidateQueries,
+      })
+    )
+    await act(() => mutation.result.current.mutateAsync(["new"]))
+    expect(isInvalidated(otherCount)).toBe(true)
+    expect(isInvalidated(ownCount)).toBe(false)
+
+    seed(otherCount, 0n)
+    const method = renderHook(() =>
+      useActorMethod({
+        reactor,
+        functionName: "create_post",
+        callConfig,
+        invalidateQueries,
+      })
+    )
+    await act(() => method.result.current.call(["new"]))
+    expect(isInvalidated(otherCount)).toBe(true)
+    expect(isInvalidated(ownCount)).toBe(false)
   })
 
   it("useActorMethod skips an undefined entry instead of invalidating every query", async () => {
