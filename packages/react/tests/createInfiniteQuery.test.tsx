@@ -87,6 +87,10 @@ const createMockReactor = (queryClient: QueryClient) => {
   return {
     queryClient,
     callMethod,
+    // `fetch()` runs through it; a mock reactor has no identity to switch.
+    clientManager: {
+      fetchAcrossIdentitySwitch: <T,>(fetch: () => Promise<T>) => fetch(),
+    },
     generateQueryKey: vi
       .fn()
       .mockImplementation(({ functionName, queryKey }) => [

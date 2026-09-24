@@ -382,9 +382,12 @@ const createSuspenseInfiniteQueryImpl = <
 
   // Fetch function for loaders (cache-first, fetches first page)
   const fetch = async (): Promise<Selected> => {
-    // Use ensureInfiniteQueryData to get cached data or fetch if stale
-    const result = await reactor.queryClient.ensureInfiniteQueryData(
-      getInfiniteQueryOptions()
+    // Use ensureInfiniteQueryData to get cached data or fetch if stale. A
+    // sign-in or sign-out while it is in flight cancels it; it then runs again
+    // for the new identity rather than rejecting with TanStack's
+    // CancelledError, as `reactor.fetchQuery` does.
+    const result = await reactor.clientManager.fetchAcrossIdentitySwitch(() =>
+      reactor.queryClient.ensureInfiniteQueryData(getInfiniteQueryOptions())
     )
 
     // Result is already InfiniteData format

@@ -691,6 +691,12 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * now, use {@link callMethod} or `queryClient.fetchQuery` with the options
    * from {@link getQueryOptions}.
    *
+   * A sign-in or sign-out while the fetch is in flight cancels it, so the
+   * previous identity's answer is never cached. The fetch then runs again for
+   * the identity installed now and resolves with that answer, rather than
+   * rejecting with TanStack's `CancelledError`; see
+   * {@link ClientManager.fetchAcrossIdentitySwitch}.
+   *
    * @param options - Further TanStack Query options for the fetch, such as
    * `retry`, `networkMode` or `meta`. The query key and function always come
    * from `params`. The query factories pass their config's options through
@@ -713,16 +719,24 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     // `Error` rather than this method's error type, which stops type-checking
     // as soon as the reactor's error classes grow a member.
     const { queryKey, queryFn, retry } = this.getQueryOptions(params)
-    return this.queryClient.ensureQueryData<
-      ReactorQueryData<ReactorReturnOk<A, M, T>>,
-      ReactorReturnErr<A, M, T>
-    >({
-      ...options,
-      // The update method's default, unless the caller set a `retry`.
-      ...(retry !== undefined && options?.retry === undefined ? { retry } : {}),
-      queryKey,
-      queryFn,
-    })
+    // `updateAgent` cancels a fetch in flight when the principal changes. It
+    // used to reject with TanStack's CancelledError, an error type no reactor
+    // call documents, so a route loader running during a sign-out showed its
+    // error boundary. It now runs again for the new identity.
+    return this.clientManager.fetchAcrossIdentitySwitch(() =>
+      this.queryClient.ensureQueryData<
+        ReactorQueryData<ReactorReturnOk<A, M, T>>,
+        ReactorReturnErr<A, M, T>
+      >({
+        ...options,
+        // The update method's default, unless the caller set a `retry`.
+        ...(retry !== undefined && options?.retry === undefined
+          ? { retry }
+          : {}),
+        queryKey,
+        queryFn,
+      })
+    )
   }
 
   /**

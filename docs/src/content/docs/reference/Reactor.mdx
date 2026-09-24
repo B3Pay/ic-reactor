@@ -525,6 +525,14 @@ const result = await backend.fetchQuery(
 )
 ```
 
+A sign-in or sign-out while the fetch is in flight cancels it, so the previous
+identity's answer is never cached (see
+[ClientManager](/v3/reference/clientmanager#automatic-query-invalidation)). The
+fetch then runs again for the identity installed now and resolves with that
+answer, rather than rejecting with TanStack's `CancelledError`. A route loader
+that awaits it during a sign-out gets the signed-out answer, not its error
+boundary. The query factories' `fetch()` does the same.
+
 ---
 
 ### getQueryData

@@ -385,9 +385,11 @@ const createInfiniteQueryImpl = <
       return select ? select(cachedData) : (cachedData as Selected)
     }
 
-    // Fetch if not in cache
-    const result = await reactor.queryClient.fetchInfiniteQuery(
-      getInfiniteQueryOptions()
+    // Fetch if not in cache. A sign-in or sign-out while it is in flight
+    // cancels it; it then runs again for the new identity rather than
+    // rejecting with TanStack's CancelledError, as `reactor.fetchQuery` does.
+    const result = await reactor.clientManager.fetchAcrossIdentitySwitch(() =>
+      reactor.queryClient.fetchInfiniteQuery(getInfiniteQueryOptions())
     )
 
     // Result is already InfiniteData format

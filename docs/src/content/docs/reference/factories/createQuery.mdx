@@ -374,6 +374,13 @@ distinct argument sets.
   [Reactor](/v3/reference/reactor).
 </Aside>
 
+<Aside type="note">
+  A sign-in or sign-out while `fetch()` is in flight does not reject it. The
+  previous identity's answer is dropped, and `fetch()` runs again for the new
+  identity and resolves with that answer, so a loader never sees TanStack's
+  `CancelledError` for it.
+</Aside>
+
 <Aside type="caution">
   If you need Suspense-based loading (where `data` is never undefined), use
   [createSuspenseQuery](/v3/reference/factories/createsuspensequery) instead.

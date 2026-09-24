@@ -87,6 +87,10 @@ These five keys are the whole object. To force a refetch from a component, use
 the `refetch` returned by `useSuspenseInfiniteQuery()`; outside React, call
 `invalidate()`.
 
+A sign-in or sign-out while `fetch()` is in flight does not reject it: the
+previous identity's first page is dropped, and `fetch()` runs again for the new
+identity and resolves with that page.
+
 ---
 
 ## Examples

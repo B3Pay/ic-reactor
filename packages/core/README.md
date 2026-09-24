@@ -118,7 +118,8 @@ const greeting = await backend.callMethod({
 })
 
 // Fetch with caching: cache-first, so a cached value is returned even if
-// it is stale or was invalidated
+// it is stale or was invalidated. A sign-in or sign-out while it is in
+// flight makes it fetch again for the new identity rather than reject.
 const cachedGreeting = await backend.fetchQuery({
   functionName: "greet",
   args: ["World"],

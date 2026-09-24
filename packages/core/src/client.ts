@@ -104,6 +104,28 @@ function notifyAll<T>(
 }
 
 /**
+ * How many times {@link ClientManager.fetchAcrossIdentitySwitch} runs a fetch
+ * again after a principal switch cancelled it. Each run needs a switch of its
+ * own while it is in flight, so the bound is reached only when the identity
+ * keeps changing faster than the canister answers.
+ */
+const IDENTITY_SWITCH_REFETCHES = 3
+
+/**
+ * Whether `error` is the `CancelledError` a TanStack Query fetch rejects with
+ * when it is cancelled. The class cannot be imported to test against:
+ * `@tanstack/query-core` is an optional peer that core imports only for types,
+ * and the QueryClient may come from another copy of it. The class extends
+ * `Error` only in later v5 releases, but every v5 release sets its own
+ * `revert` and `silent` fields.
+ */
+const isQueryCancellation = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  "revert" in error &&
+  "silent" in error
+
+/**
  * ClientManager is a central class for managing the Internet Computer (IC) agent.
  *
  * It initializes the agent (connecting to local or mainnet) and integrates
@@ -154,6 +176,11 @@ export class ClientManager {
    * kept, because an identity object may change its principal afterwards.
    */
   #principal?: string
+  /**
+   * Counts `updateAgent` calls that switched to another principal, so a fetch
+   * can tell that one cancelled it; see {@link fetchAcrossIdentitySwitch}.
+   */
+  #principalSwitches = 0
   /** Counts `updateAgent` calls, so a notification can tell it is stale. */
   #identityRevision = 0
   #agentStateSubscribers: Array<(state: AgentState) => void> = []
@@ -653,6 +680,9 @@ export class ClientManager {
     // sweeps, as until then nothing was installed to compare with.
     const renewal =
       this.#identity !== undefined && principal === this.#principal
+    if (!renewal) {
+      this.#principalSwitches++
+    }
     const sweep = !renewal && canisterIds.size > 0
     if (sweep) {
       void this.queryClient.cancelQueries({ predicate: ofConnectedCanister })
@@ -705,6 +735,58 @@ export class ClientManager {
     }
 
     this.notifySubscribers(identity)
+  }
+
+  /**
+   * Runs `fetch`, a fetch of a registered canister's query through
+   * {@link queryClient}, and runs it again when a switch to another principal
+   * cancels it.
+   *
+   * `updateAgent` cancels those queries when the principal changes, so an
+   * answer fetched for the previous principal never reaches the cache. A
+   * query with a mounted observer refetches afterwards. An imperative fetch
+   * has no observer, and its promise rejected with TanStack's
+   * `CancelledError`, which is neither a `CallError` nor a `CanisterError`, so
+   * a route loader running during a sign-in or sign-out failed. Through this
+   * method it resolves with the answer for the identity installed now, as a
+   * mounted query would show; the previous identity's answer is still never
+   * cached.
+   *
+   * `Reactor.fetchQuery`, and with it the query factories' `fetch()`, runs
+   * through here. Wrap any other fetch of a canister query the same way.
+   *
+   * A rejection other than a cancellation, and a cancellation with no
+   * principal switch while `fetch` ran, such as one from
+   * `queryClient.cancelQueries()`, is passed on as is. So is the cancellation
+   * after three runs again, each cut short by another switch, so the loop
+   * always ends.
+   *
+   * @param fetch - Starts the fetch. It is called once per run, so it has to
+   * start a fetch each time rather than return one promise it kept.
+   * @returns What `fetch` resolved with.
+   *
+   * @example
+   * ```typescript
+   * const pages = await clientManager.fetchAcrossIdentitySwitch(() =>
+   *   clientManager.queryClient.fetchInfiniteQuery(options)
+   * )
+   * ```
+   */
+  public async fetchAcrossIdentitySwitch<T>(
+    fetch: () => Promise<T>
+  ): Promise<T> {
+    for (let refetches = 0; ; refetches++) {
+      const switches = this.#principalSwitches
+      try {
+        return await fetch()
+      } catch (error) {
+        const cancelledBySwitch =
+          this.#principalSwitches !== switches && isQueryCancellation(error)
+        if (!cancelledBySwitch || refetches >= IDENTITY_SWITCH_REFETCHES) {
+          throw error
+        }
+      }
+    }
   }
 
   private notifySubscribers(identity: Identity) {

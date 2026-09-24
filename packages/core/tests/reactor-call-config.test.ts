@@ -71,6 +71,8 @@ describe("Reactor callConfig overrides", () => {
       registerCanisterId: vi.fn(),
       initialize: vi.fn(),
       queryClient: new QueryClient(),
+      // `fetchQuery` runs through it; this mock has no identity to switch.
+      fetchAcrossIdentitySwitch: <T>(fetch: () => Promise<T>) => fetch(),
     } as unknown as ClientManager
 
     reactor = new Reactor<TestActor>({

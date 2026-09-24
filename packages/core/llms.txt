@@ -19,6 +19,11 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 - Reuse one `ClientManager` across multiple canisters
 - Use `fetchQuery` / `getQueryData` / `invalidateQueries` for cache-aware calls
+- A sign-in or sign-out cancels a `fetchQuery` in flight; it then fetches again
+  for the new identity and resolves with that answer, never with TanStack's
+  `CancelledError`. Wrap other imperative fetches of canister queries (for
+  example `queryClient.fetchInfiniteQuery`) in
+  `clientManager.fetchAcrossIdentitySwitch(() => ...)` for the same behaviour
 - Use `callMethod` for imperative update/query calls
 
 ## DisplayReactor Guidance

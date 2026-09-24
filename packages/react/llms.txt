@@ -29,6 +29,8 @@ every v8 release peers `@icp-sdk/core@^5`, so on npm it needs
   `useActorMethod`, `.useQuery()`, `.useMutation()`
 - Outside React (loaders/actions/services/tests): `.fetch()`, `.prefetch()`,
   `.invalidate()`, `.getCacheData()`, `.execute(args)`
+- A sign-in or sign-out while `.fetch()` is in flight makes it fetch again for
+  the new identity; it does not reject with TanStack's `CancelledError`
 
 Never call React hooks in loaders, actions, route modules, scripts, or tests.
 

@@ -551,6 +551,11 @@ factory variants exposes:
 | `setData(updater)`                  | Write raw data into the cache. Accepts a value or updater function. Use for optimistic updates. |
 | `useQuery()` / `useSuspenseQuery()` | React hook for the query.                                                                       |
 
+A sign-in or sign-out while `fetch()` is in flight does not reject it: the
+previous identity's answer is dropped, and `fetch()` runs again for the new
+identity and resolves with that answer. The infinite query factories' `fetch()`
+behaves the same.
+
 ## Canister Error Handling
 
 Canister methods can return `Result { Err: E }` variants. These are surfaced

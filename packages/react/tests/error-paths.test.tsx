@@ -83,6 +83,11 @@ const createRejectingReactor = (
   return {
     queryClient,
     callMethod,
+    // The infinite factories' `fetch()` runs through it; a mock reactor has
+    // no identity to switch.
+    clientManager: {
+      fetchAcrossIdentitySwitch: <T,>(fetch: () => Promise<T>) => fetch(),
+    },
     canisterId: "test-canister",
     isQueryMethod: vi.fn().mockImplementation(isQueryMethod),
     generateQueryKey: vi.fn().mockImplementation(keyFor),

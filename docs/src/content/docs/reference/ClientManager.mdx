@@ -158,6 +158,22 @@ When the new identity has the principal already installed — a renewed delegati
 
 ---
 
+### fetchAcrossIdentitySwitch
+
+Run an imperative fetch of a registered canister's query, and run it again when a switch to another principal cancels it:
+
+```typescript
+const pages = await clientManager.fetchAcrossIdentitySwitch(() =>
+  clientManager.queryClient.fetchInfiniteQuery(options)
+)
+```
+
+`updateAgent()` cancels those queries when the principal changes. A query with a mounted observer refetches afterwards, but an imperative fetch has no observer, and its promise would reject with TanStack's `CancelledError`. Through this method it resolves with the answer for the identity installed now. `Reactor.fetchQuery()` and the query factories' `fetch()` already run through it.
+
+Any other rejection, and a cancellation with no principal switch behind it (your own `cancelQueries()`), is passed on as is. After three runs in a row each cut short by another switch, the cancellation is passed on too. `fetch` is called once per run, so it must start a new fetch each time.
+
+---
+
 ### getUserPrincipal
 
 Get the current user's Principal. This forwards `agent.getPrincipal()`, so it returns a **promise**:
@@ -362,7 +378,7 @@ console.log(clientManager.agentHost?.toString()) // The host URL
 
 When the principal changes, `updateAgent()` sweeps the cached queries of every canister registered with this ClientManager:
 
-- **In-flight queries are cancelled**, so a response signed by the previous identity cannot land after the switch
+- **In-flight queries are cancelled**, so a response signed by the previous identity cannot land after the switch. A `fetchQuery()` or factory `fetch()` that was waiting on one runs again for the new identity and resolves with that answer (see [fetchAcrossIdentitySwitch](#fetchacrossidentityswitch))
 - **Inactive entries are removed** — not just invalidated. Query keys carry no principal, so a merely-stale entry (a balance whose component has unmounted, a cached profile) would stay readable through `getQueryData` or `fetchQuery` under the new identity
 - **Active entries are invalidated**, so their mounted observers refetch as the new identity. They keep showing the previous identity's data only for the length of that refetch
 
