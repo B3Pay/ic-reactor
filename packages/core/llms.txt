@@ -32,6 +32,9 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 - `fromZodSchema(schema, { async: true })` for a zod schema with async
   refinements; async validators run only in `validate()` and
   `callMethodWithValidation()` (`callMethod()` and the React hooks refuse them)
+- Floats display as numbers and `NaN`/`±Infinity`/`-0` are sent back as read,
+  but JSON writes `NaN`/`±Infinity` as `null` and `-0` as `0`: after a JSON
+  round trip an `opt` float that held `NaN` is sent as none
 
 ## Local Environment Root Key
 

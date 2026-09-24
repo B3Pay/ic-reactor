@@ -14,12 +14,12 @@ import { CallError } from "../src/errors/index.js"
  * decided alone.
  *
  * For floats IDL.encode accepts what the codec refuses. The float codec
- * rejects NaN and the infinities, and a float32 value that only overflows when
- * narrowed (3.4028236e38 becomes Infinity), so it does not send a value the
- * caller never wrote. Inside a variant those values went out anyway. For other
- * payloads the call still failed, but with IDL.encode's generic "Invalid
- * variant" message in place of the codec's error naming the problem, which is
- * the error transformArgsWithCodec exists to surface.
+ * rejects a float32 value that only overflows when narrowed (3.4028236e38
+ * becomes Infinity), so it does not send a value the caller never wrote.
+ * Inside a variant it went out anyway. For other payloads the call still
+ * failed, but with IDL.encode's generic "Invalid variant" message in place of
+ * the codec's error naming the problem, which is the error
+ * transformArgsWithCodec exists to surface.
  */
 
 type SetLimit = { Limit: number } | { Market: null }
@@ -89,13 +89,13 @@ describe("DisplayReactor with an invalid variant payload", () => {
     expect((error as Error).message).toMatch(/finite float32/)
   })
 
-  it("does not send a NaN nested in a variant's record payload", async () => {
+  it("does not send text that is not a number nested in a variant's record payload", async () => {
     const { reactor, sent } = makeDisplay(PlaceType)
 
     const error = await failure(
       reactor.callMethod({
         functionName: "place",
-        args: [{ Order: { price: NaN, note: "limit" } }] as never,
+        args: [{ Order: { price: "twelve", note: "limit" } }] as never,
       })
     )
 
@@ -110,7 +110,7 @@ describe("DisplayReactor with an invalid variant payload", () => {
     const error = await failure(
       reactor.callMethod({
         functionName: "set_limit",
-        args: [{ _type: "Limit", Limit: Infinity }] as never,
+        args: [{ _type: "Limit", Limit: "Infinity" }] as never,
       })
     )
 

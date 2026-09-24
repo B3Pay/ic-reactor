@@ -235,6 +235,11 @@ function fixedNumberOf(
 /**
  * The number a display value of a float sends: the number itself, or the
  * number text spells. Throws for a value the codec refuses.
+ *
+ * A number is sent as it is, NaN, Infinity, -Infinity and -0 included:
+ * IDL.decode returns each of them, and a value read from a canister has to
+ * encode back to the bytes it came from. Text is what a form holds, and has
+ * to spell a finite number, as the form schemas in @ic-reactor/candid check.
  */
 function floatNumberOf(bits: number, val: string | number): number {
   const trimmed = typeof val === "string" ? val.trim() : undefined
@@ -245,10 +250,11 @@ function floatNumberOf(bits: number, val: string | number): number {
   }
   const num = trimmed === undefined ? (val as number) : Number(trimmed)
   // A finite double can still overflow float32: IDL.encode narrows
-  // 3.4028236e38 to Infinity and sends that, so check the narrowed
-  // value for float32, not just the double.
+  // 3.4028236e38 to Infinity and sends that, a value the caller never
+  // wrote, so check the narrowed value for float32, not just the double.
   const narrowed = bits === 32 ? Math.fround(num) : num
-  if (!Number.isFinite(narrowed)) {
+  const overflows = Number.isFinite(num) && !Number.isFinite(narrowed)
+  if (overflows || (trimmed !== undefined && !Number.isFinite(narrowed))) {
     throw new TypeError(
       `[ic-reactor] Invalid float${bits} display value: expected a finite float${bits}, got ${String(val)}`
     )
@@ -420,7 +426,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
     // IDL.decode returns them as numbers. Zod 4's z.number() rejects all three,
     // so one of them in a result failed the decode of the whole response and
     // DisplayReactor fell back to the raw Candid value. Both schemas accept any
-    // number. Encode below still refuses non-finite input with its own error.
+    // number, and so does encode, so a value read can be sent back (#632).
+    // Encode refuses, with its own error, only text that is not a finite
+    // number and a finite number that float32 cannot hold.
     const anyNumber = z.custom<number>((val) => typeof val === "number")
     return z.codec(
       anyNumber, // Candid format
@@ -786,8 +794,8 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
         // No try/catch here. A payload codec throws when the payload is
         // invalid, and returning the untransformed value instead skipped every
         // check it makes. IDL.encode then accepted what the float codec
-        // refuses (NaN, Infinity, a float32 that overflows when narrowed) and
-        // replaced every other codec error with a generic "Invalid variant".
+        // refuses (a float32 that overflows when narrowed) and replaced every
+        // other codec error with a generic "Invalid variant".
         // transformArgsWithCodec wraps the error with the argument context.
 
         // Format 1: With _type property (from decode output)

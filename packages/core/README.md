@@ -318,6 +318,7 @@ reactor.name // string
 | `nat`, `int`               | `bigint`      | `string`                |
 | `nat8/16/32`, `int8/16/32` | `number`      | `number`                |
 | `nat64`, `int64`           | `bigint`      | `string`                |
+| `float32`, `float64`       | `number`      | `number`                |
 | `Principal`                | `Principal`   | `string`                |
 | `vec nat8` (blob)          | `Uint8Array`  | `string` (hex, no `0x`) |
 | `Result<Ok, Err>`          | Unwrapped     | Unwrapped               |
@@ -325,6 +326,14 @@ reactor.name // string
 Fixed-width integers up to 32 bits stay numbers on both sides; only the 64-bit
 types cross the `bigint` ↔ `string` boundary. On encode, the ≤32-bit codecs also
 accept numeric strings so form inputs can be submitted directly.
+
+Floats stay numbers too, and every value a canister returns, `NaN`, `±Infinity`
+and `-0` included, is sent back as the same bytes. Float text, as a form holds
+it, must spell a finite number, and a finite number `float32` cannot hold is
+refused rather than sent as `Infinity`. `JSON.stringify` writes `NaN` and
+`±Infinity` as `null` and `-0` as `0`, so after a JSON round trip (a persisted
+query cache, SSR hydration) an `opt` float that held `NaN` is sent as none and a
+required one is refused. Keep such floats out of JSON where they can occur.
 
 ### Usage
 

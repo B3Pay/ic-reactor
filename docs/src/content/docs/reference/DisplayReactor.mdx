@@ -191,17 +191,17 @@ and zod, whether or not it is set.
 
 #### Numeric Types
 
-| Candid    | TypeScript | Display  | Notes                         |
-| --------- | ---------- | -------- | ----------------------------- |
-| `nat`     | `bigint`   | `string` | Arbitrary precision preserved |
-| `int`     | `bigint`   | `string` | Arbitrary precision preserved |
-| `nat64`   | `bigint`   | `string` | 64-bit integers as strings    |
-| `int64`   | `bigint`   | `string` | 64-bit integers as strings    |
-| `nat8`    | `number`   | `number` | No change needed              |
-| `nat16`   | `number`   | `number` | No change needed              |
-| `nat32`   | `number`   | `number` | No change needed              |
-| `float32` | `number`   | `number` | No change needed              |
-| `float64` | `number`   | `number` | No change needed              |
+| Candid    | TypeScript | Display  | Notes                                                     |
+| --------- | ---------- | -------- | --------------------------------------------------------- |
+| `nat`     | `bigint`   | `string` | Arbitrary precision preserved                             |
+| `int`     | `bigint`   | `string` | Arbitrary precision preserved                             |
+| `nat64`   | `bigint`   | `string` | 64-bit integers as strings                                |
+| `int64`   | `bigint`   | `string` | 64-bit integers as strings                                |
+| `nat8`    | `number`   | `number` | No change needed                                          |
+| `nat16`   | `number`   | `number` | No change needed                                          |
+| `nat32`   | `number`   | `number` | No change needed                                          |
+| `float32` | `number`   | `number` | `NaN`, `±Infinity`, `-0` kept; [JSON loses them](#floats) |
+| `float64` | `number`   | `number` | `NaN`, `±Infinity`, `-0` kept; [JSON loses them](#floats) |
 
 #### Identity & Binary Types
 
@@ -413,8 +413,8 @@ const avatar = user.avatar // Already undefined or value
 ### Handling Blobs (Binary Data)
 
 Every blob (`vec nat8`) decodes to a lowercase hex string with no `0x`
-prefix, whatever its size. One Candid type, one JavaScript type — a display
-value is always JSON-safe, so persisting or serialising it never corrupts
+prefix, whatever its size. One Candid type, one JavaScript type — hex text is
+always JSON-safe, so persisting or serialising a display value never corrupts
 binary fields.
 
 <Aside type="caution" title="Changed behavior — was size-dependent">
@@ -450,6 +450,27 @@ mutate([
   },
 ])
 ```
+
+### Floats
+
+`float32` and `float64` display as JavaScript numbers, and every value a
+canister can return, `NaN`, `Infinity`, `-Infinity` and `-0` included, is sent
+back as the same bytes. As an argument a float is also taken as the text a form
+holds, such as `"3.14"`, which must spell a finite number: `""`, `"abc"`,
+`"Infinity"` and `"NaN"` are refused, as the form schemas of `@ic-reactor/candid`
+refuse them. A finite number that `float32` cannot hold, such as `3.5e38`, is
+refused too, since Candid encoding would send it as `Infinity`.
+
+<Aside type="caution" title="JSON cannot hold every float">
+  `JSON.stringify` writes `NaN`, `Infinity` and `-Infinity` as `null`, and `-0`
+  as `0`. After a JSON round trip, such as a persisted query cache, SSR
+  hydration or a value posted to your server, an `opt float64` that held `NaN`
+  comes back as `null` and is sent as none, a required float comes back as
+  `null` and the call is refused, and `-0` is sent as `0`. Where such values can
+  occur (a rate computed as 0/0, for example), keep them out of JSON or
+  serialise them yourself. Query keys are not affected: they write each of these
+  values apart from every other.
+</Aside>
 
 ### Working with Key-Value Pairs
 
@@ -707,7 +728,7 @@ try {
 - Building user interfaces
 - Working with forms
 - Displaying data in components
-- Serializing data to JSON
+- Serializing data to JSON (mind [non-finite floats](#floats))
 - You want simpler type handling
 - You need client-side validation
 
