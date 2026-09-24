@@ -396,7 +396,7 @@ queryClient.invalidateQueries({ queryKey: [canisterId] })
 
 Because the scope is the canister ID — the first segment of every reactor query key — non-reactor queries in a shared `QueryClient` are not refetched or removed on sign-in or sign-out.
 
-A new identity for the principal already installed is not a switch: the cached answers are already that principal's, so the sweep is skipped. Only the entries whose last fetch failed are invalidated, since the previous identity (an expired delegation, say) may be why they failed. The first `updateAgent()` after construction always sweeps, whatever it installs.
+A new identity for the principal already installed is not a switch: the cached answers are already that principal's, so the sweep is skipped. Only the entries whose last fetch failed are invalidated, since the previous identity (an expired delegation, say) may be why they failed. A fetch already in flight, signed by the previous identity, is left to finish, and its answer is kept; if it fails instead, its entry is invalidated too. The first `updateAgent()` after construction always sweeps, whatever it installs.
 
 <Aside type="caution">
   The comparison sees only the principal. An identity that changes what a

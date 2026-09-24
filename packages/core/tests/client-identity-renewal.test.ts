@@ -142,6 +142,96 @@ describe("ClientManager.updateAgent with the principal already installed", () =>
     unmount()
   })
 
+  describe("a fetch in flight that the previous identity signed", () => {
+    /**
+     * Mounts a query whose first fetch waits for the test, and later ones
+     * answer "100". The first fetch is signed by `signedIn`.
+     */
+    async function mountHeld() {
+      let answer!: (value: string) => void
+      let fail!: (error: Error) => void
+      const held = new Promise<string>((resolve, reject) => {
+        answer = resolve
+        fail = reject
+      })
+      const unmount = mount("balance", () =>
+        signedAs.length === 1 ? held : Promise.resolve("100")
+      )
+      await vi.waitFor(() => expect(signedAs).toHaveLength(1))
+      return { answer, fail, unmount }
+    }
+
+    it("is refetched as the new identity when it fails after the renewal", async () => {
+      // The window regains focus when the sign-in popup closes, and TanStack
+      // refetches then, before the sign-in has returned the new delegation.
+      const first = await mountHeld()
+      const renewed = await delegate(root, 60)
+
+      clientManager.updateAgent(renewed)
+      first.fail(new Error("Invalid delegation expiry"))
+
+      await vi.waitFor(() =>
+        expect(queryClient.getQueryData([CANISTER_ID, "balance"])).toBe("100")
+      )
+      expect(signedAs).toEqual([signedIn, renewed])
+      first.unmount()
+    })
+
+    it("is not refetched when it answers after the renewal", async () => {
+      const first = await mountHeld()
+
+      clientManager.updateAgent(await delegate(root, 60))
+      first.answer("99")
+      await settle()
+      await settle()
+
+      expect(queryClient.getQueryData([CANISTER_ID, "balance"])).toBe("99")
+      expect(signedAs).toHaveLength(1)
+      first.unmount()
+    })
+
+    it("is not refetched when the app cancels it", async () => {
+      const first = await mountHeld()
+
+      clientManager.updateAgent(await delegate(root, 60))
+      await queryClient.cancelQueries({ queryKey: [CANISTER_ID, "balance"] })
+      await settle()
+      await settle()
+
+      expect(signedAs).toHaveLength(1)
+      first.unmount()
+    })
+
+    it("is watched only until it settles", async () => {
+      const cache = queryClient.getQueryCache()
+      const first = await mountHeld()
+
+      clientManager.updateAgent(await delegate(root, 60))
+      expect(cache.hasListeners()).toBe(true)
+      first.answer("99")
+      await settle()
+
+      expect(cache.hasListeners()).toBe(false)
+      first.unmount()
+    })
+
+    it("is left to the sweep when another principal signs in meanwhile", async () => {
+      const cache = queryClient.getQueryCache()
+      const first = await mountHeld()
+      clientManager.updateAgent(await delegate(root, 60))
+
+      const other = Ed25519KeyIdentity.generate()
+      clientManager.updateAgent(other)
+
+      expect(cache.hasListeners()).toBe(false)
+      await vi.waitFor(() =>
+        expect(queryClient.getQueryData([CANISTER_ID, "balance"])).toBe("100")
+      )
+      expect(signedAs).toEqual([signedIn, other])
+      first.unmount()
+    })
+  })
+
   it("marks an inactive entry whose last fetch failed for a refetch", async () => {
     const key = [CANISTER_ID, "failed_earlier"]
     await queryClient

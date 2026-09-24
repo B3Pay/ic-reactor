@@ -1,7 +1,7 @@
 import type { HttpAgentOptions, Identity } from "@icp-sdk/core/agent"
 import type { ClientManagerParameters, AgentState } from "./types/client.js"
 import type { Principal } from "@icp-sdk/core/principal"
-import type { QueryClient, QueryKey } from "@tanstack/query-core"
+import type { Query, QueryClient, QueryKey } from "@tanstack/query-core"
 
 import { HttpAgent } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
@@ -181,6 +181,11 @@ export class ClientManager {
    * can tell that one cancelled it; see {@link fetchAcrossIdentitySwitch}.
    */
   #principalSwitches = 0
+  /**
+   * Stops watching the fetches the last renewal found in flight; see
+   * {@link refetchWhenFetchFails}. Every `updateAgent` call ends that watch.
+   */
+  #stopWatchingRenewal?: () => void
   /** Counts `updateAgent` calls, so a notification can tell it is stale. */
   #identityRevision = 0
   #agentStateSubscribers: Array<(state: AgentState) => void> = []
@@ -667,8 +672,9 @@ export class ClientManager {
    * answers are already that principal's and are kept: nothing is cancelled or
    * removed, and no query that succeeded refetches. Only queries whose last
    * fetch failed are invalidated, since the old identity may be why they
-   * failed (an expired delegation, or one not valid for that canister). The
-   * first call after construction always sweeps.
+   * failed (an expired delegation, or one not valid for that canister), and
+   * so is a query whose fetch was in flight and fails afterwards. The first
+   * call after construction always sweeps.
    *
    * The comparison sees only the principal. An identity that changes what a
    * canister is told under the same principal, such as an `AttributesIdentity`
@@ -724,6 +730,18 @@ export class ClientManager {
     if (sweep) {
       void this.queryClient.cancelQueries({ predicate: ofConnectedCanister })
     }
+    // A later call decides for itself what the fetches in flight need.
+    this.#stopWatchingRenewal?.()
+    this.#stopWatchingRenewal = undefined
+    // Read before the failed entries below start fetches of their own: these
+    // are the fetches the previous identity signed.
+    const signedBefore =
+      renewal && canisterIds.size > 0
+        ? this.queryClient.getQueryCache().findAll({
+            predicate: ofConnectedCanister,
+            fetchStatus: "fetching",
+          })
+        : []
 
     // The agent is mutated in place, so anything holding a reference to
     // `clientManager.agent` — an SDK Actor built during app setup, a transform
@@ -769,9 +787,70 @@ export class ClientManager {
         predicate: (query) =>
           query.state.status === "error" && ofConnectedCanister(query),
       })
+      // A fetch the previous identity signed may fail only after this, and
+      // its failure is as likely to be that identity's doing. Nothing above
+      // sees it: it is not an error yet, and it is not cancelled so that its
+      // answer, when one arrives, is kept.
+      if (signedBefore.length > 0) {
+        this.#stopWatchingRenewal = this.refetchWhenFetchFails(
+          signedBefore,
+          identity
+        )
+      }
     }
 
     this.notifySubscribers(identity)
+  }
+
+  /**
+   * Watches `queries`, each with a fetch in flight, and invalidates one whose
+   * fetch settles with an error while `identity` is still installed, so that
+   * a mounted query refetches as that identity, as the failed entries do.
+   * A query stops being watched once its fetch settles, or when it leaves the
+   * cache, and the watch ends once none are left.
+   *
+   * @returns Ends the watch.
+   */
+  private refetchWhenFetchFails(
+    queries: ReadonlyArray<Query>,
+    identity: Identity
+  ): () => void {
+    const watched = new Set<Query>(queries)
+    const end = () => {
+      unsubscribe()
+      if (this.#stopWatchingRenewal === end) {
+        this.#stopWatchingRenewal = undefined
+      }
+    }
+    const unsubscribe = this.queryClient.getQueryCache().subscribe((event) => {
+      if (!watched.has(event.query)) return
+      if (event.type === "removed") {
+        watched.delete(event.query)
+      } else if (event.type === "updated") {
+        const { action, query } = event
+        if (action.type === "error") {
+          watched.delete(query)
+          // A cancellation is someone's choice to stop the fetch, not a
+          // failure, though older v5 releases report it as an error too.
+          if (!isQueryCancellation(action.error)) {
+            // Once TanStack has finished settling this fetch, which it is in
+            // the middle of here.
+            void Promise.resolve().then(() => {
+              if (this.#identity !== identity) return
+              void this.queryClient.invalidateQueries({
+                queryKey: query.queryKey,
+                exact: true,
+              })
+            })
+          }
+        } else if (query.state.fetchStatus === "idle") {
+          // Answered, or cancelled and put back as it was.
+          watched.delete(query)
+        }
+      }
+      if (watched.size === 0) end()
+    })
+    return end
   }
 
   /**
