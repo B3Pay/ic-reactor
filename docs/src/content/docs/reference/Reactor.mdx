@@ -502,13 +502,18 @@ value does it call the canister and cache the result. A `staleTime` passed in
 the options has no effect.
 
 To get a value the canister returns now, call `callMethod` (no cache), or use
-the query client's own `fetchQuery`, which refetches when the entry is stale:
+the query client's own `fetchQuery`, which refetches when the entry is stale.
+Wrap it in `clientManager.fetchAcrossIdentitySwitch`: when a sign-in or
+sign-out cancels a refetch of an entry that held data, TanStack resolves it with
+that data, the previous principal's, and the wrapper runs it again instead:
 
 ```typescript
-const fresh = await backend.queryClient.fetchQuery({
-  ...backend.getQueryOptions({ functionName: "getUser", args: ["user-123"] }),
-  staleTime: 0,
-})
+const fresh = await backend.clientManager.fetchAcrossIdentitySwitch(() =>
+  backend.queryClient.fetchQuery({
+    ...backend.getQueryOptions({ functionName: "getUser", args: ["user-123"] }),
+    staleTime: 0,
+  })
+)
 ```
 
 An optional second argument passes further TanStack Query options for the

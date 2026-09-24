@@ -688,8 +688,10 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * is none. Like TanStack Query's `ensureQueryData`, it is cache-first: a
    * cached value is returned even when it is stale or was invalidated, and a
    * `staleTime` in `options` has no effect. For a value the canister returns
-   * now, use {@link callMethod} or `queryClient.fetchQuery` with the options
-   * from {@link getQueryOptions}.
+   * now, use {@link callMethod}, or `queryClient.fetchQuery` with the options
+   * from {@link getQueryOptions} inside
+   * {@link ClientManager.fetchAcrossIdentitySwitch}, which keeps a sign-in or
+   * sign-out from resolving it with the previous principal's cached data.
    *
    * A sign-in or sign-out while the fetch is in flight cancels it, so the
    * previous identity's answer is never cached. The fetch then runs again for
