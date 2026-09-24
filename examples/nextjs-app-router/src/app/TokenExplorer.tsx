@@ -1,10 +1,11 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useLedgerReactor } from "./ledger-provider"
 import { Principal } from "@icp-sdk/core/principal"
 import { useICAuth } from "./providers"
-import { createAuthHooks } from "@ic-reactor/react"
+import { createAuthHooks, skipToken } from "@ic-reactor/react"
+import type { Account } from "../declarations/ledger"
 
 const POPULAR_TOKENS = [
   {
@@ -81,29 +82,28 @@ export default function TokenExplorer() {
     queryKey: [currentCanisterId],
   })
 
-  // Safely parse principal for the balance query
-  let parsedAccount: any = null
-  try {
-    if (activeAddress) {
-      parsedAccount = {
-        owner: Principal.fromText(activeAddress),
-        subaccount: [],
-      }
+  // The account whose balance to show, once the address parses
+  const account = useMemo((): Account | undefined => {
+    try {
+      return activeAddress
+        ? { owner: Principal.fromText(activeAddress), subaccount: [] }
+        : undefined
+    } catch {
+      return undefined
     }
-  } catch (e) {}
+  }, [activeAddress])
 
-  const defaultAccount = { owner: Principal.anonymous(), subaccount: [] as [] }
-
-  // Fetch live balance of the selected target principal
+  // Fetch live balance of the selected target principal. Until there is an
+  // account, skipToken keeps the query waiting: no placeholder account, no
+  // cast, no `enabled`, and the args are type-checked.
   const {
     data: balance,
     isLoading: balanceLoading,
     refetch: refetchBalance,
   } = useActorQuery({
     functionName: "icrc1_balance_of",
-    args: [parsedAccount || defaultAccount] as any,
-    enabled: !!parsedAccount,
-    queryKey: [currentCanisterId, activeAddress],
+    args: account ? [account] : skipToken,
+    queryKey: [currentCanisterId],
   })
 
   const handleSearch = (e: React.FormEvent) => {
