@@ -109,6 +109,10 @@ const createDefaultQueryClient = () =>
  * the lazily created auth managers, for `defineReactor` and
  * `defineDisplayReactor`. Not part of the public API.
  *
+ * `caller` is the function the app called; the errors below name it, so an
+ * app that called `defineDisplayReactor` is not sent looking for a
+ * `defineReactor` call it never made.
+ *
  * @internal
  */
 export function defineReactorWith<
@@ -116,6 +120,7 @@ export function defineReactorWith<
   Transform extends TransformKey,
   R extends Reactor<Service, Transform>,
 >(
+  caller: "defineReactor" | "defineDisplayReactor",
   params: DefineReactorSharedParameters,
   createReactor: (config: ReactorParameters) => R
 ): DefineReactorResult<Service, Transform, R> {
@@ -143,7 +148,7 @@ export function defineReactorWith<
     providedAuthentication.clientManager !== providedClientManager
   ) {
     throw new Error(
-      `[ic-reactor] defineReactor("${name}") received an \`authentication\` manager bound to a different \`clientManager\`. ` +
+      `[ic-reactor] ${caller}("${name}") received an \`authentication\` manager bound to a different \`clientManager\`. ` +
         `Sign-in would update the authentication manager's agent while this reactor calls through another one, ` +
         `leaving its calls anonymous. Pass \`clientManager: authentication.clientManager\`, or omit \`clientManager\` to adopt it.`
     )
@@ -153,7 +158,7 @@ export function defineReactorWith<
   // already constructed, so these options could only be dropped on the floor.
   if (providedAuthentication && auth) {
     throw new Error(
-      `[ic-reactor] defineReactor("${name}") received both \`authentication\` and \`auth\`. ` +
+      `[ic-reactor] ${caller}("${name}") received both \`authentication\` and \`auth\`. ` +
         `The supplied manager is already configured, so \`auth\` (${Object.keys(auth).join(", ")}) would be ignored. ` +
         `Pass those options where that AuthenticationManager is created, or drop \`authentication\` to build one here.`
     )
@@ -173,7 +178,7 @@ export function defineReactorWith<
       .filter(Boolean)
       .join(", ")
     throw new Error(
-      `[ic-reactor] defineReactor("${name}") received both a ClientManager and \`${passed}\`. ` +
+      `[ic-reactor] ${caller}("${name}") received both a ClientManager and \`${passed}\`. ` +
         `That option is resolved when a ClientManager is constructed, so the supplied one already carries its own ` +
         `decision and this would be ignored — silently changing nothing about whether the ic_env cookie is trusted. ` +
         `Pass it where that ClientManager is created, or drop \`clientManager\` to build one here.`

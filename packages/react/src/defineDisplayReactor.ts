@@ -49,6 +49,7 @@ export function defineDisplayReactor<Service = BaseActor>(
   params: DefineDisplayReactorOptions<Service>
 ): DefineReactorResult<Service, "display", DisplayReactor<Service>> {
   return defineReactorWith<Service, "display", DisplayReactor<Service>>(
+    "defineDisplayReactor",
     params,
     (config) =>
       new DisplayReactor<Service>({

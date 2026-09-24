@@ -28,6 +28,7 @@ import {
   defineReactor,
   reactorRetry,
 } from "../src/index.js"
+import type { DefineReactorSharedParameters } from "../src/index.js"
 
 const idlFactory: IDL.InterfaceFactory = ({ IDL }) =>
   IDL.Service({
@@ -132,6 +133,33 @@ describe("defineDisplayReactor", () => {
         allowEnvConfig: true,
       })
     ).toThrow(/allowEnvConfig/)
+  })
+
+  it("names the function the app called in those errors", () => {
+    const raw = defineReactor<Service>(base)
+    const other = new ClientManager({ queryClient: new QueryClient() })
+    const refused: Partial<DefineReactorSharedParameters>[] = [
+      { clientManager: other, authentication: raw.authentication },
+      {
+        authentication: raw.authentication,
+        auth: { derivationOrigin: "https://app.example.com" },
+      },
+      { clientManager: other, allowEnvConfig: true },
+    ]
+
+    for (const options of refused) {
+      // An app that called defineDisplayReactor has no defineReactor call to
+      // look for.
+      expect(() =>
+        defineDisplayReactor<Service>({ ...base, ...options })
+      ).toThrow(/^\[ic-reactor\] defineDisplayReactor\("ledger"\) /)
+      expect(() => defineReactor<Service>({ ...base, ...options })).toThrow(
+        /^\[ic-reactor\] defineReactor\("ledger"\) /
+      )
+      expect(() =>
+        defineReactor<Service>({ ...base, ...options, display: true })
+      ).toThrow(/^\[ic-reactor\] defineReactor\("ledger"\) /)
+    }
   })
 })
 

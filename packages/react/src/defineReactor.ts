@@ -1,13 +1,13 @@
-import { Reactor } from "@ic-reactor/core"
-import type { BaseActor, DisplayReactor } from "@ic-reactor/core"
+// DisplayReactor is only for the deprecated `display: true` path. It is what
+// puts DisplayReactor and zod in every bundle that uses defineReactor; drop it
+// with that path.
+import { DisplayReactor, Reactor } from "@ic-reactor/core"
+import type { BaseActor } from "@ic-reactor/core"
 import { defineReactorWith } from "./defineReactorShared.js"
 import type {
   DefineReactorSharedParameters,
   DefineReactorResult,
 } from "./defineReactorShared.js"
-// Only for the deprecated `display: true` path. It is what puts DisplayReactor
-// and zod in every bundle that uses defineReactor; drop it with that path.
-import { defineDisplayReactor } from "./defineDisplayReactor.js"
 import type { DefineDisplayReactorOptions } from "./defineDisplayReactor.js"
 
 export type {
@@ -122,10 +122,18 @@ export function defineReactor<Service = BaseActor>(
   | DefineReactorResult<Service, "display", DisplayReactor<Service>>
   | DefineReactorResult<Service, "candid", Reactor<Service, "candid">> {
   if (params.display) {
-    return defineDisplayReactor<Service>(params)
+    // What defineDisplayReactor builds, but under this function's name, so an
+    // error names the call the app actually made.
+    const { validators } = params
+    return defineReactorWith<Service, "display", DisplayReactor<Service>>(
+      "defineReactor",
+      params,
+      (config) => new DisplayReactor<Service>({ ...config, validators })
+    )
   }
 
   return defineReactorWith<Service, "candid", Reactor<Service, "candid">>(
+    "defineReactor",
     params,
     (config) => new Reactor<Service>(config)
   )
