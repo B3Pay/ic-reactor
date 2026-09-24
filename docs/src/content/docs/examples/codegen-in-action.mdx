@@ -13,6 +13,8 @@ This example provides a side-by-side comparison of how `@ic-reactor/codegen` is 
 - **Shared Core**: Understand how both tools use the same underlying codegen logic.
 - **Consistent Output**: Verify that hooks generated via CLI match those from the Vite plugin.
 - **Project Structure**: Best practices for organizing generated declarations.
+- **Generated Factories**: `factories: true` generates a query or mutation
+  object per method, next to the bound hooks.
 
 ## Links
 
@@ -42,6 +44,24 @@ This example provides a side-by-side comparison of how `@ic-reactor/codegen` is 
 ## Implementation
 
 The example is a single Vite app with one Candid file, `backend/backend.did`, generated twice. The Vite plugin writes `src/canisters-vite/backend` on every `vite` run, and `pnpm codegen:cli` writes `src/canisters-cli/backend` from `ic-reactor.json`. The two directories sit side by side so you can diff them. Both come out of the same `@ic-reactor/codegen` pipeline, and the app imports the Vite plugin's copy.
+
+Both configs set `factories: true`, so each directory also holds
+`index.factories.generated.ts`. The `.did` has one query method, `get`, and
+two update methods, `inc` and `add`, which generate `getQuery`, `incMutation`
+and `addMutation`. The app reads the counter and increments it through them:
+
+```tsx
+import { getQuery, incMutation } from "./canisters-vite/backend"
+
+const { data: counter } = getQuery.useQuery()
+const { mutate: inc } = incMutation.useMutation({
+  invalidateQueries: [getQuery.getQueryKey()],
+})
+```
+
+See
+[Query and Mutation Factories](/v3/packages/codegen#query-and-mutation-factories)
+for what each kind of method generates.
 
 ### CLI vs Vite Plugin
 

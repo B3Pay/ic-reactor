@@ -1,7 +1,7 @@
 /**
  * Ledger Reactor
  *
- * Hand-maintained, not codegen output: current codegen writes only
+ * Hand-maintained, not codegen output: codegen writes the reactor into
  * index.generated.ts (see examples/codegen-in-action).
  * This file provides the shared reactor instance for the ledger canister.
  *

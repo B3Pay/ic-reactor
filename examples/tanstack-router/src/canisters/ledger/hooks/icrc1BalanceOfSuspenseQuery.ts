@@ -1,8 +1,9 @@
 /**
  * Query Factory: icrc1_balance_of
  *
- * Hand-maintained, not codegen output: current codegen writes only
- * index.generated.ts (see examples/codegen-in-action).
+ * Hand-maintained, not codegen output. Codegen's `factories: true` generates
+ * the createQuery, createQueryFactory and createMutation kinds for every
+ * method (see examples/codegen-in-action), but not the suspense ones used here.
  *
  * @example
  * // Use in components

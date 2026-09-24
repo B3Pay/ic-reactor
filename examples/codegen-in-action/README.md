@@ -16,6 +16,12 @@ It uses a single DID file (`backend/backend.did`) and generates code in two ways
 
 This makes it easy to verify both tools are behaving consistently while relying on the same codegen package.
 
+Both configs set `factories: true`, so each output also holds
+`index.factories.generated.ts`: `getQuery` for the query method `get`, and
+`incMutation` and `addMutation` for the update methods `inc` and `add`, bound to
+the generated `backendReactor`. `src/main.tsx` reads the counter with
+`getQuery.useQuery()` and increments it with `incMutation.useMutation()`.
+
 ## Run locally
 
 ```bash

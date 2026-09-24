@@ -104,10 +104,11 @@ function TokenWallet() {
 
 The modules in `src/canisters/ledger/hooks/` wrap the reactor in reusable query
 objects, usable both inside components and in loaders. They are hand-maintained,
-not codegen output: `ic-reactor generate` and the Vite plugin write only
-`index.generated.ts` (the reactor plus six bound hooks, as in
-[Codegen in Action](/v3/examples/codegen-in-action)) and never emit
-`createQuery` / `createMutation` objects.
+not codegen output. Codegen's
+[`factories: true`](/v3/packages/codegen#query-and-mutation-factories) generates
+the `createQuery`, `createQueryFactory` and `createMutation` kinds for every
+method of a `.did`, as in [Codegen in Action](/v3/examples/codegen-in-action),
+but not the suspense factories these loaders use.
 
 ```typescript
 // src/canisters/ledger/hooks/icrc1NameQuery.ts
