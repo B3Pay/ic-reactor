@@ -6,7 +6,7 @@ import {
 } from "@ic-reactor/react"
 
 import { queryClient } from "./client"
-import { backendReactor } from "../canisters/backend"
+import { backendReactor } from "../declarations/backend"
 
 export const likeHeart = createMutation(backendReactor, {
   functionName: "like",

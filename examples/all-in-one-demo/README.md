@@ -124,20 +124,29 @@ Unlike the traditional `dfx` approach that uses `.env` files, ICP CLI uses a coo
 4. **In the app**: `@ic-reactor/react` reads the cookie automatically — while the
    app is served from a local replica. Cookies are not origin-isolated, so on a
    custom domain or mainnet the cookie is ignored: bake the canister IDs in at
-   build time there, or pass `allowEnvConfig: true` to `ClientManager`
+   build time there (the plugin's per-canister `canisterId` option), or pass
+   `allowEnvConfig: true` to `ClientManager`
+
+The Vite plugin (`vite.config.ts`) generates the backend's reactor and hooks
+into `src/declarations/backend/` from `backend/backend.did`, on every build and
+whenever the `.did` changes under `vite dev`:
 
 ```typescript
-// src/lib/config.ts
+// src/lib/client.ts: yours; the generated reactor imports it
 export const clientManager = new ClientManager({
   queryClient,
 })
 
-export const reactor = new DisplayReactor<_SERVICE>({
+// src/declarations/backend/index.generated.ts: rewritten on every generation
+export const backendReactor = new DisplayReactor<BackendService>({
   clientManager,
-  name: "backend", // Looks up PUBLIC_CANISTER_ID:backend from cookie
   idlFactory,
+  name: "backend", // No canisterId: looks up PUBLIC_CANISTER_ID:backend in the cookie
 })
 ```
+
+`src/lib/factories.ts` builds the app's queries and mutations on
+`backendReactor`, imported from `src/declarations/backend`.
 
 ## 🧪 What to Try
 

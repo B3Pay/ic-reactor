@@ -1,6 +1,6 @@
 ---
 title: "All-in-One Demo"
-description: Complete example with optimistic updates and Rust backend
+description: Complete example with optimistic updates and a Motoko backend
 editUrl: false
 ---
 
@@ -11,7 +11,9 @@ A simplified "Twitter-like" dApp that demonstrates the full power of IC Reactor,
 ## Features Demonstrated
 
 - **Optimistic Updates**: UI updates instantly when you "Like" a post, rolling back on error.
-- **Rust Backend**: Includes a simple Rust canister for posts and likes.
+- **Motoko Backend**: Includes a simple Motoko canister for posts and likes.
+- **Generated Reactor**: The Vite plugin generates the backend's `DisplayReactor`
+  and hooks into `src/declarations/backend/` from its Candid.
 - **Authentication**: Connect with Internet Identity.
 - **Form Handling**: Creating new posts with loading states.
 - **Automatic Refetching**: Lists update automatically after mutations.
@@ -48,7 +50,7 @@ A simplified "Twitter-like" dApp that demonstrates the full power of IC Reactor,
 ```typescript
 // src/lib/factories.ts
 import { createMutation, createQuery } from "@ic-reactor/react"
-import { backendReactor } from "../canisters/backend"
+import { backendReactor } from "../declarations/backend"
 
 export const getLikes = createQuery(backendReactor, {
   functionName: "get_likes",
