@@ -4,6 +4,7 @@ import { Principal } from "@icp-sdk/core/principal"
 import { QueryClient } from "@tanstack/query-core"
 import { ClientManager } from "../src/client.js"
 import { Reactor } from "../src/reactor.js"
+import type { ReactorParameters } from "../src/types/reactor.js"
 import { DisplayReactor } from "../src/display-reactor.js"
 import { createPollingStrategy } from "../src/utils/polling.js"
 import { isValidationError } from "../src/errors/index.js"
@@ -167,6 +168,42 @@ describe("Reactor.forCanister", () => {
       IDL.Func([], [IDL.Text], ["query"]),
     ])
     expect(ckbtc.getServiceInterface()._fields).toHaveLength(2)
+  })
+})
+
+describe("forCanister on a subclass", () => {
+  it("builds the subclass, whose own members come along", async () => {
+    class SymbolReactor extends Reactor<Ledger> {
+      symbol() {
+        return this.fetchQuery({ functionName: "icrc1_symbol" })
+      }
+    }
+    const icp = new SymbolReactor({
+      clientManager,
+      name: "ledger",
+      canisterId: ICP,
+      idlFactory,
+    })
+
+    const ckbtc = icp.forCanister(CKBTC)
+    expect(ckbtc).toBeInstanceOf(SymbolReactor)
+    await expect(ckbtc.symbol()).resolves.toBe("ckBTC")
+  })
+
+  it("throws rather than hand out a reactor its constructor put on another canister", () => {
+    // A constructor that pins the canister instead of taking the one given.
+    class IcpLedger extends Reactor<Ledger> {
+      constructor(config: ReactorParameters) {
+        super({ ...config, canisterId: ICP })
+      }
+    }
+    const icp = new IcpLedger({ clientManager, name: "ledger", idlFactory })
+
+    expect(() => icp.forCanister(CKBTC)).toThrow(
+      `forCanister("${CKBTC}") on "ledger" made a reactor for ${ICP} instead`
+    )
+    // Not remembered either: asking again fails the same way.
+    expect(() => icp.forCanister(CKBTC)).toThrow("IcpLedger constructor")
   })
 })
 

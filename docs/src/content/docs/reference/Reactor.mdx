@@ -377,7 +377,9 @@ A reactor of the same type as the one it was called on.
   later reaches only the reactor it was registered on. All four candid package
   reactors support `forCanister` and pass on their Candid source and adapter as
   well. A subclass of your own whose constructor takes other options overrides
-  the protected `siblingParameters(canisterId)` to return them.
+  the protected `siblingParameters(canisterId)` to return them. Its constructor
+  has to use the `canisterId` it is given: `forCanister` throws rather than hand
+  out a reactor that a constructor put on a canister of its own.
 </Aside>
 
 ---

@@ -298,7 +298,10 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * other canister's instead.
    *
    * A subclass whose constructor takes options of its own passes them on by
-   * overriding the protected `siblingParameters(canisterId)`.
+   * overriding the protected `siblingParameters(canisterId)`. Its constructor
+   * has to build the reactor for the `canisterId` it is given: one that sets
+   * a canister of its own makes this throw rather than hand out a reactor
+   * for the wrong canister.
    *
    * @param canisterId - The other canister, as text or a `Principal`.
    *
@@ -333,6 +336,18 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
         config: ReactorParameters
       ) => Reactor<A, T>
       sibling = new Sibling(this.siblingParameters(Principal.fromText(id)))
+      // A subclass constructor that sets a canister of its own, rather than
+      // the one it is given, made a reactor for that canister, which this
+      // then handed out and remembered under `id`: every call meant for `id`
+      // silently went to the other canister.
+      if (sibling.canisterId.toText() !== id) {
+        throw new Error(
+          `[ic-reactor] forCanister("${id}") on "${this.name}" made a reactor for ` +
+            `${sibling.canisterId.toText()} instead: the ${Sibling.name} constructor ` +
+            `does not use the canisterId it is given. Make it use config.canisterId, ` +
+            `or construct the reactor for that canister yourself.`
+        )
+      }
       sibling.siblings = siblings
       siblings.set(id, sibling)
     }
