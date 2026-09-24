@@ -189,11 +189,13 @@ export interface CreateReactorProviderReturn<
  */
 export function createReactorProvider<
   TValue extends object,
-  TProps extends object = {},
+  // `| undefined` so that a factory whose props are optional, as in
+  // `({ host = "..." }: { host?: string } = {})`, still types them.
+  TProps extends object | undefined = {},
 >(
   factory: (props: TProps) => TValue,
   options: CreateReactorProviderOptions = {}
-): CreateReactorProviderReturn<TValue, TProps> {
+): CreateReactorProviderReturn<TValue, NonNullable<TProps>> {
   const { queryClientProvider = true } = options
   const ReactorContext = createContext<TValue | null>(null)
 
@@ -212,7 +214,7 @@ export function createReactorProvider<
   const uncommitted = new WeakMap<object, Built<TValue>>()
 
   function ReactorProvider(
-    providerProps: ReactorProviderProps<TProps>
+    providerProps: ReactorProviderProps<NonNullable<TProps>>
   ): ReactElement {
     // Once per mounted tree. A server renders each request as a tree of its
     // own, so each request builds its own value and nothing it caches is seen

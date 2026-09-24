@@ -156,6 +156,37 @@ describe("createReactorProvider", () => {
     provider.ReactorProvider({ canisterId: 1 })
   })
 
+  it("types optional factory props, with or without a default", () => {
+    const withDefault = createReactorProvider(
+      ({ host = "https://icp-api.io" }: { host?: string } = {}) =>
+        defineReactor<TodoService>({
+          name: "todo",
+          idlFactory,
+          canisterId: "",
+          agentOptions: { host },
+        })
+    )
+    expectTypeOf(withDefault.ReactorProvider)
+      .parameter(0)
+      .toEqualTypeOf<ReactorProviderProps<{ host?: string }>>()
+    withDefault.ReactorProvider({})
+    withDefault.ReactorProvider({ host: "http://127.0.0.1:4943" })
+    // @ts-expect-error host is a string
+    withDefault.ReactorProvider({ host: 1 })
+
+    const optional = createReactorProvider((props?: { host?: string }) =>
+      defineReactor<TodoService>({
+        name: "todo",
+        idlFactory,
+        canisterId: "",
+        agentOptions: { host: props?.host },
+      })
+    )
+    optional.ReactorProvider({ host: "http://127.0.0.1:4943" })
+    // @ts-expect-error not a prop the factory takes
+    optional.ReactorProvider({ canisterId: "aaaaa-aa" })
+  })
+
   it("takes only an object as the value", () => {
     // @ts-expect-error a value has to be an object to hold reactors
     createReactorProvider(() => "todo")

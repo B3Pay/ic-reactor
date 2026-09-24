@@ -201,6 +201,11 @@ function TokenPage({ canisterId }: { canisterId: string }) {
 }
 ```
 
+The provider's props are typed from the factory's parameter, so a required
+prop is required on the provider. Optional props work too, with defaults in the
+parameter: `({ host = "https://icp-api.io" }: { host?: string } = {}) => ...`
+lets `<ReactorProvider>` be rendered with or without `host`.
+
 The whole tree below remounts, not only the value, because a TanStack query
 observer keeps the QueryClient it started with. Props are also how a server
 component hands runtime configuration, such as a host read from a server-only
