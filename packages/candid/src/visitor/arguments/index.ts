@@ -298,9 +298,13 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     const canister = this.withName("[0]", () =>
       this.visitPrincipal(IDL.Principal, "canisterId")
     )
-    const method = this.withName("[1]", () =>
-      this.visitText(IDL.Text, "methodName")
-    )
+    // The method name is part of the reference, not a `text` value of the
+    // method's own. A reference with no method names nothing to call, so it
+    // keeps the check that plain text no longer has.
+    const method: TextField = {
+      ...this.withName("[1]", () => this.visitText(IDL.Text, "methodName")),
+      schema: z.string().min(1, "Required"),
+    }
 
     return {
       type: "tuple",

@@ -12,8 +12,9 @@ import { FieldVisitor } from "../../src/visitor/arguments/index.js"
  * method may take it (an empty memo, a key prefix, a search that matches
  * everything). Both form visitors rejected it as "Required", so such a call
  * could not be made or replayed from a generated form (#611). Plain text now
- * takes any string. A format read from the label keeps its own check, and
- * numbers still need digits.
+ * takes any string. A format read from the label keeps its own check,
+ * numbers still need digits, and a func reference still needs its method
+ * name.
  */
 
 function createMockClientManager(): ClientManager {
@@ -55,11 +56,17 @@ describe("CandidFormVisitor (MetadataReactor)", () => {
     expect(meta.args[0].schema.safeParse(meta.defaults[0]).success).toBe(true)
   })
 
-  it("accepts an empty text in a func reference's method name", () => {
+  it("still requires a func reference's method name", () => {
+    // The method name is part of the reference, not a text value: a
+    // reference with none names nothing to call.
     const visitor = new CandidFormVisitor()
     const meta = visitor.buildValueMeta(IDL.Func([], [], []))
+    const reference = meta.args[0]
+    if (reference.type !== "tuple") throw new Error("expected a tuple")
 
-    expect(meta.args[0].schema.safeParse(["aaaaa-aa", ""]).success).toBe(true)
+    expect(reference.schema.safeParse(["aaaaa-aa", "next"]).success).toBe(true)
+    expect(reference.schema.safeParse(["aaaaa-aa", ""]).success).toBe(false)
+    expect(reference.fields[1].schema.safeParse("").success).toBe(false)
   })
 
   it("still requires a number", async () => {
@@ -134,6 +141,20 @@ describe("FieldVisitor (MetadataDisplayReactor)", () => {
     expect(schemaOf("website").safeParse("").success).toBe(false)
     expect(schemaOf("canister_id").safeParse("").success).toBe(false)
     expect(schemaOf("eth_address").safeParse("").success).toBe(false)
+  })
+
+  it("still requires a func reference's method name", () => {
+    const visitor = new FieldVisitor()
+    const meta = visitor.visitFunc(
+      IDL.Func([IDL.Func([], [], ["query"])], [], []),
+      "subscribe"
+    )
+    const reference = meta.args[0]
+    if (reference.type !== "tuple") throw new Error("expected a tuple")
+
+    expect(reference.schema.safeParse(["aaaaa-aa", "next"]).success).toBe(true)
+    expect(reference.schema.safeParse(["aaaaa-aa", ""]).success).toBe(false)
+    expect(reference.fields[1].schema.safeParse("").success).toBe(false)
   })
 
   it("still requires a number", async () => {

@@ -133,8 +133,18 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     const canister = this.withName("[0]", () =>
       this.visitPrincipal(IDL.Principal, "canisterId")
     )
+    // The method name is part of the reference, not a `text` value of the
+    // method's own. A reference with no method names nothing to call, so it
+    // keeps the check that plain text no longer has.
     const method = this.withName("[1]", () =>
-      this.visitText(IDL.Text, "methodName")
+      this.primitive(
+        "text",
+        "methodName",
+        this.currentName(),
+        "text",
+        "",
+        z.string().min(1, "Required")
+      )
     )
 
     return {

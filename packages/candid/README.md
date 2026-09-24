@@ -246,7 +246,7 @@ console.log(arg0.schema) // Zod schema for this field
 
 **Features:**
 
-- **Zod Validation**: Includes method-level and field-level schemas (`schema`) for runtime validation. A `text` field accepts `""`, since Candid text has no required-ness; principals and numbers must be filled in.
+- **Zod Validation**: Includes method-level and field-level schemas (`schema`) for runtime validation. A `text` field accepts `""`, since Candid text has no required-ness; principals, numbers and a func reference's method name must be filled in.
 - **Component Hints**: Includes `component` values for renderer selection (`variant-select`, `vector-list`, `blob-upload`, etc.).
 - **Render Hints**: Includes `renderHint` for primitive/compound strategy and input type hints.
 - **Form Defaults**: Includes ready-to-use `defaults` for form initialization.

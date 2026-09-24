@@ -225,8 +225,8 @@ interface TextField {
 A plain `text` field's schema takes any string, `""` included: Candid `text`
 has no required-ness, and a method may take an empty one. A text field whose
 label gives it a format (see [Format Detection](#format-detection)) keeps that
-format's check and rejects `""`, and the numbers held as text still need
-digits.
+format's check and rejects `""`, the numbers held as text still need
+digits, and a func reference still needs its method name.
 
 ## Result Metadata
 
