@@ -73,21 +73,21 @@ describe("Factories generator", () => {
     })
 
     expect(content).toContain(
-      "export const getMessageQuery = createQuery(backendReactor, {"
+      "export const getMessageQuery = /* @__PURE__ */ createQuery(backendReactor, {"
     )
     expect(content).toContain(
-      "export const getUserQuery = createQueryFactory(backendReactor, {"
+      "export const getUserQuery = /* @__PURE__ */ createQueryFactory(backendReactor, {"
     )
     // A composite query is a query too.
     expect(content).toContain(
-      "export const listPostsQuery = createQueryFactory(backendReactor, {"
+      "export const listPostsQuery = /* @__PURE__ */ createQueryFactory(backendReactor, {"
     )
     expect(content).toContain(
-      "export const setMessageMutation = createMutation(backendReactor, {"
+      "export const setMessageMutation = /* @__PURE__ */ createMutation(backendReactor, {"
     )
     // A oneway method changes state and is never read, so it is an update.
     expect(content).toContain(
-      "export const notifyMutation = createMutation(backendReactor, {"
+      "export const notifyMutation = /* @__PURE__ */ createMutation(backendReactor, {"
     )
   })
 
@@ -103,10 +103,10 @@ describe("Factories generator", () => {
     })
 
     expect(content).toContain(
-      "export const getBtcAddressMutation = createMutation(backendReactor, {"
+      "export const getBtcAddressMutation = /* @__PURE__ */ createMutation(backendReactor, {"
     )
     expect(content).toContain(
-      "export const balanceMutation = createMutation(backendReactor, {"
+      "export const balanceMutation = /* @__PURE__ */ createMutation(backendReactor, {"
     )
     expect(moduleShape(content)).toEqual({
       imports: ["createMutation", "backendReactor"],
@@ -150,7 +150,7 @@ describe("Factories generator", () => {
       'import { workflowEngineReactor } from "./index.generated"'
     )
     expect(content).toContain(
-      "export const getMessageQuery = createQuery(workflowEngineReactor, {"
+      "export const getMessageQuery = /* @__PURE__ */ createQuery(workflowEngineReactor, {"
     )
   })
 
@@ -175,13 +175,13 @@ describe("Factories generator", () => {
         'import { ledgerReactor, type LedgerService } from "./index.generated"'
       )
       expect(content).toContain(
-        `export const getMessageQuery = createQuery<LedgerService, "${transform}", "get_message">(ledgerReactor, {`
+        `export const getMessageQuery = /* @__PURE__ */ createQuery<LedgerService, "${transform}", "get_message">(ledgerReactor, {`
       )
       expect(content).toContain(
-        `export const getUserQuery = createQueryFactory<LedgerService, "${transform}", "get_user">(ledgerReactor, {`
+        `export const getUserQuery = /* @__PURE__ */ createQueryFactory<LedgerService, "${transform}", "get_user">(ledgerReactor, {`
       )
       expect(content).toContain(
-        `export const setMessageMutation = createMutation<LedgerService, "${transform}", "set_message">(ledgerReactor, {`
+        `export const setMessageMutation = /* @__PURE__ */ createMutation<LedgerService, "${transform}", "set_message">(ledgerReactor, {`
       )
     }
   )
@@ -315,10 +315,10 @@ describe("Factories generator", () => {
         "backendReactor",
       ])
       expect(content).toContain(
-        "export const createMutation = _createMutation(backendReactor, {"
+        "export const createMutation = /* @__PURE__ */ _createMutation(backendReactor, {"
       )
       expect(content).toContain(
-        "export const createQuery = _createQuery(backendReactor, {"
+        "export const createQuery = /* @__PURE__ */ _createQuery(backendReactor, {"
       )
     })
 

@@ -189,6 +189,12 @@ also passes the service, the transform and the method name as type arguments,
 as `index.generated.ts` does for `createActorHooks`, so TypeScript never has to
 infer the service from a subclass of `Reactor`.
 
+Each call in the file is annotated `/* @__PURE__ */`: creating a factory has no
+side effects, and the annotation tells the bundler so. Vite, Rollup, esbuild
+and webpack then leave out every factory the app does not import, although the
+`index.ts` wrapper re-exports them all, and an app that imports only a bound
+hook from the canister's entry point bundles none of them.
+
 ### Export names
 
 Every Candid method name, however it is spelled, gets a valid identifier that

@@ -5,7 +5,8 @@
  * config sets `factories: true`: one query or mutation object per method,
  * bound to the reactor `index.generated.ts` exports.
  *
- * Generated output example (for canister "backend"):
+ * Generated output example (for canister "backend"), with the `@__PURE__`
+ * annotation each call carries left out:
  *
  *   import { createMutation, createQuery } from "@ic-reactor/react"
  *   import { backendReactor } from "./index.generated"
@@ -106,7 +107,8 @@ function commentLiteral(name: string): string {
  * that takes no arguments gets `createQuery`, one that takes arguments gets
  * `createQueryFactory`, and an update or oneway method gets `createMutation`.
  * Only the factories the file calls are imported, so it compiles under
- * `noUnusedLocals`.
+ * `noUnusedLocals`, and each call is marked `@__PURE__`, so a bundler drops
+ * the factories an app never imports.
  *
  * @example
  * generateFactoriesFile({
@@ -160,6 +162,11 @@ import { ${reactorName}${transform === undefined ? "" : `, type ${serviceName}`}
 
   // Every interpolated method name is JSON.stringify'd: it comes from the
   // .did, which can name a method with any text.
+  //
+  // Each call is marked pure. A bundler otherwise keeps every top-level call
+  // it cannot prove free of side effects, so an app that imported one factory,
+  // or only a hook through the `export *` wrapper, shipped a factory for every
+  // method of the service. Creating a factory only builds closures.
   const body = entries
     .map(({ method, exportName, factory }) => {
       const typeArguments =
@@ -167,7 +174,7 @@ import { ${reactorName}${transform === undefined ? "" : `, type ${serviceName}`}
           ? ""
           : `<${serviceName}, ${JSON.stringify(transform)}, ${JSON.stringify(method.name)}>`
       return `/** ${commentLiteral(method.name)}: ${describeMethod(method, exportName)} */
-export const ${exportName} = ${local(factory)}${typeArguments}(${reactorName}, {
+export const ${exportName} = /* @__PURE__ */ ${local(factory)}${typeArguments}(${reactorName}, {
   functionName: ${JSON.stringify(method.name)},
 })
 `

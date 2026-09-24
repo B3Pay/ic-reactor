@@ -342,7 +342,7 @@ describe("generate", () => {
           "utf-8"
         )
       ).toContain(
-        "export const greetQuery = createQueryFactory(backendReactor, {"
+        "export const greetQuery = /* @__PURE__ */ createQueryFactory(backendReactor, {"
       )
       expect(
         fs.readFileSync(

@@ -75,6 +75,9 @@ order (by name): a name an earlier method took, or one `index.generated.ts`
 exports (such as the hook `useBackendQuery`), gets `_` appended until it is
 free. `getFactoryExportNames(canisterName, methods)` returns the names.
 
+Each call is annotated `/* @__PURE__ */`, so a bundler leaves out the factories
+an app does not import, although the wrapper re-exports them all.
+
 ```typescript
 import { getMessageQuery, setMessageMutation } from "./declarations/backend"
 

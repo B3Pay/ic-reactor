@@ -16,16 +16,16 @@ import { backendReactor } from "./index.generated"
  */
 
 /** "add": update. */
-export const addMutation = createMutation(backendReactor, {
+export const addMutation = /* @__PURE__ */ createMutation(backendReactor, {
   functionName: "add",
 })
 
 /** "get": query, no arguments. */
-export const getQuery = createQuery(backendReactor, {
+export const getQuery = /* @__PURE__ */ createQuery(backendReactor, {
   functionName: "get",
 })
 
 /** "inc": update. */
-export const incMutation = createMutation(backendReactor, {
+export const incMutation = /* @__PURE__ */ createMutation(backendReactor, {
   functionName: "inc",
 })
