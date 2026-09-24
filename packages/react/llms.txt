@@ -48,6 +48,12 @@ module.
 - Prefer `defineDisplayReactor(...)` (or `DisplayReactor`) for UI/form code.
   `defineReactor({ display: true })` is deprecated; do not generate it.
 - Use raw `Reactor` when you intentionally need native `bigint`/`Principal`.
+- Token amounts are base units (e8s) either way. Show one with
+  `formatTokenAmount(balance, decimals, { maxFractionDigits: 4 })` and read
+  typed text with `parseTokenAmount(text, decimals)` (a `bigint`; pass
+  `.toString()` to a `DisplayReactor`). Never `Number(x) / 10 ** decimals` or
+  `Math.floor(Number(text) * 10 ** decimals)`: both lose digits. Both helpers
+  are also exported from the `react-server` entry.
 - Bundle cost: `DisplayReactor` adds zod (about 24 kB gzipped). Until the next
   major, `defineReactor` includes it too, because of the deprecated flag; the
   smallest setup is `createActorHooks(new Reactor(...))` + `createAuthHooks`.

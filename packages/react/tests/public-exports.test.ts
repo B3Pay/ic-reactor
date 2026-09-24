@@ -115,6 +115,8 @@ const RUNTIME_EXPORTS: Record<
   isNullish: "function",
   nonNullish: "function",
   jsonToString: "function",
+  formatTokenAmount: "function",
+  parseTokenAmount: "function",
 
   // Core environment helpers
   isDev: "function",

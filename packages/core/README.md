@@ -392,6 +392,9 @@ const balance = await backend.callMethod({
 // balance is "100000000" (string) instead of 100000000n (bigint)
 ```
 
+That balance is base units (e8s). Show it with
+[`formatTokenAmount`](#token-amounts), not `Number(balance) / 1e8`.
+
 The display types are derived from the service type parameter. A
 `DisplayReactor` created without one is typed by `BaseActor`, and every
 method's display-side args and results are `unknown` (an untyped `Reactor`
@@ -536,6 +539,60 @@ object.
 through a `Reactor`.
 
 ## Utilities
+
+### Token Amounts
+
+A ledger counts in base units (e8s, satoshis, wei): a `nat`, which a `Reactor`
+returns as a `bigint` and a `DisplayReactor` as integer text. Converting through
+`Number` loses digits — `Math.floor(Number("0.29") * 10 ** 8)` is `28999999`,
+so a transfer of 0.29 sends 0.28999999 — and a balance past 2^53 base units
+(9 × 10^7 ICP, or 0.009 of an 18-decimal token) prints wrong. `formatTokenAmount`
+and `parseTokenAmount` work on the digits, so they are exact for every amount:
+
+```typescript
+import { formatTokenAmount, parseTokenAmount } from "@ic-reactor/core"
+
+// Base units → text. Takes a bigint, a DisplayReactor's text or a safe
+// integer, and decimals as a number, bigint or text.
+formatTokenAmount(150_000_000n, 8) // "1.5"
+formatTokenAmount("123456789", 8, { maxFractionDigits: 2 }) // "1.23"
+formatTokenAmount(100_000_000n, 8, { minFractionDigits: 2 }) // "1.00"
+formatTokenAmount(123_456_789_000n, 8, { locale: "de-DE" }) // "1.234,56789"
+
+// Text a person typed → base units
+parseTokenAmount("0.29", 8) // 29000000n
+parseTokenAmount("1.1", 18) // 1100000000000000000n
+parseTokenAmount("0.123456789", 8) // throws RangeError
+```
+
+`formatTokenAmount(value, decimals, options?)`:
+
+| Option              | Default                  | Effect                                                                             |
+| ------------------- | ------------------------ | ---------------------------------------------------------------------------------- |
+| `maxFractionDigits` | `decimals`               | The most fraction digits to show; the rest are dropped as `roundingMode` says.     |
+| `minFractionDigits` | `0`                      | Pad the fraction with zeros to at least this many digits.                          |
+| `trimTrailingZeros` | `true`                   | Drop zeros at the end of the fraction; `false` pads it to `maxFractionDigits`.     |
+| `roundingMode`      | `"trunc"`                | `"trunc"` cuts, so a balance never shows more than is held; `"halfExpand"` rounds. |
+| `locale`            | none                     | Separators, grouping and digits of a BCP 47 locale, through `Intl.NumberFormat`.   |
+| `useGrouping`       | `false`, or the locale's | Group thousands: `,` without a locale, the locale's own separator with one.        |
+
+Without a `locale` the text is plain (`-`, digits and `.`): the same on the
+server and in every browser, and the form `parseTokenAmount` reads back. A
+negative amount (an `int`) gets a leading `-` unless every digit shown is zero.
+
+`parseTokenAmount(text, decimals, { allowNegative? })` takes digits with at
+most one `.`, trimming whitespace around them, and accepts `"5."` and `".5"`.
+It refuses the rest rather than guess:
+
+- a blank value, letters, grouping (`"1,000"`), an exponent (`"1e-8"`) or a
+  sign other than `-`: `TypeError`;
+- more fraction digits than the token has, unless the extra ones are zeros:
+  `RangeError`, since rounding would send something other than what was typed;
+- a negative amount, unless `allowNegative: true`: `RangeError`. A ledger's
+  amounts are `nat`.
+
+It returns a `bigint`, which a `Reactor` takes as it is. A `DisplayReactor`
+takes a `nat` as text, so pass it `amount.toString()`.
 
 ### Result Unwrapping
 

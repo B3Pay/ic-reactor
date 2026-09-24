@@ -676,6 +676,10 @@ package's `react-server` entry, which has them but none of the hooks; see
 - `CallError`
 - `CanisterError`
 - `ValidationError`
+- `formatTokenAmount` and `parseTokenAmount`, which convert a ledger's base
+  units to and from decimal text exactly (see
+  [Token Amounts](../core/README.md#token-amounts)); do not use `Number` for
+  either
 
 The main entry also re-exports TanStack Query's `skipToken` (and its
 `SkipToken` type), the same symbol `@tanstack/react-query` exports.

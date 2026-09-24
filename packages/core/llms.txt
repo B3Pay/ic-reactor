@@ -56,6 +56,31 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
   value and integer-like keys come first in ascending order. Use `Reactor`
   where repeated keys or their order matter (HTTP headers, ICRC-21 fields)
 
+## Token Amounts
+
+- Ledger amounts are base units (e8s): a `bigint` from `Reactor`, integer text
+  from `DisplayReactor`. Never convert them with `Number`, `parseFloat`,
+  `Math.pow` or `toFixed`: `Math.floor(Number("0.29") * 10 ** 8)` is 28999999
+- Show one with `formatTokenAmount(value, decimals, { maxFractionDigits?,
+  minFractionDigits?, trimTrailingZeros?, roundingMode?, locale?, useGrouping? })`;
+  it takes the reactor's value and `icrc1_decimals` as returned, truncates past
+  `maxFractionDigits` unless `roundingMode: "halfExpand"`, and is plain text
+  (`"1234.5"`) unless given a `locale`
+- Read typed text with `parseTokenAmount(text, decimals)`, which returns a
+  `bigint` and throws a `TypeError` for text that is not digits with one `.`
+  (grouping, exponents) and a `RangeError` for more fraction digits than the
+  token has or a negative amount (`{ allowNegative: true }` for an `int`).
+  Pass `amount.toString()` to a `DisplayReactor`
+
+```ts
+const amount = parseTokenAmount(input, decimals) // "0.29", 8 -> 29000000n
+await ledger.callMethod({
+  functionName: "icrc1_transfer",
+  args: [{ to: { owner }, amount: amount.toString() }], // DisplayReactor
+})
+formatTokenAmount(balance, decimals, { maxFractionDigits: 4 }) // "1.2345"
+```
+
 ## Local Environment Root Key
 
 In a browser with no `agentOptions.host`, the agent routes through the page

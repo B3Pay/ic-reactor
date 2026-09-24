@@ -218,6 +218,7 @@ export default defineConfig({
               ],
             },
             { label: "Validation", link: "/reference/reactvalidation" },
+            { label: "Utilities", link: "/reference/utilities" },
           ],
         },
         {
@@ -350,6 +351,7 @@ export default defineConfig({
                       link: "/reference/displayreactor",
                     },
                     { label: "Validation", link: "/reference/reactvalidation" },
+                    { label: "Utilities", link: "/reference/utilities" },
                   ],
                 },
                 {

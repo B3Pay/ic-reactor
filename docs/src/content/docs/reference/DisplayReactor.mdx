@@ -345,7 +345,8 @@ async function getTokenInfo(canisterId: string) {
     token.callMethod({ functionName: "icrc1_decimals" }),
   ])
 
-  return { name, symbol, decimals } // All display types (strings)
+  // name and symbol are text; decimals, a nat8, is a number
+  return { name, symbol, decimals }
 }
 ```
 
@@ -370,10 +371,15 @@ function Balance({ principal }: { principal: string }) {
     args: [principal], // string, not Principal
   })
 
-  // balance is string, ready for display
-  return <span>{balance} ICP</span>
+  // balance is the nat as text, in e8s. Format it exactly; Number(balance) / 1e8
+  // loses digits.
+  if (balance === undefined) return <span>…</span>
+  return <span>{formatTokenAmount(balance, 8)} ICP</span>
 }
 ```
+
+See [Token amounts](/v3/reference/utilities#token-amounts) for
+`formatTokenAmount` and `parseTokenAmount`.
 
 ### Handling Variants
 
@@ -553,6 +559,12 @@ function TransferForm() {
   )
 }
 ```
+
+This amount field takes base units (e8s). A field a person types a token
+amount into, such as `"1.5"`, is read with
+[`parseTokenAmount`](/v3/reference/utilities#parsetokenamount):
+`mutate([recipient, parseTokenAmount(amount, decimals).toString()])`. It throws
+on text it cannot read exactly instead of rounding it.
 
 ### Accessing the Codec
 
@@ -773,7 +785,8 @@ try {
 
 <Aside type="caution">
   If you need to perform math with large numbers, convert back to BigInt:
-  `BigInt(balance)`
+  `BigInt(balance)`. To show a token amount or read one a person typed, use
+  `formatTokenAmount` and `parseTokenAmount`, never `Number`.
 </Aside>
 
 ## See Also
@@ -782,4 +795,5 @@ try {
 - [Type Safety](/v3/guides/type-safety) — Type system details
 - [createActorHooks](/v3/reference/createactorhooks/overview) — Create React hooks from a reactor
 - [React Validation](/v3/reference/reactvalidation) — React validation utilities
+- [Utilities](/v3/reference/utilities) — Exact token-amount formatting and parsing
 - [Error Handling](/v3/guides/error-handling) — Handle validation and canister errors

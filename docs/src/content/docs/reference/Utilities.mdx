@@ -1,0 +1,211 @@
+---
+title: Utilities
+description: Exact token-amount formatting and parsing, and the other value helpers @ic-reactor/core exports
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+## Overview
+
+`@ic-reactor/core` exports plain functions for the values a canister call
+hands you. They import nothing from React, so `@ic-reactor/react` re-exports
+them from both of its entries: a client component, a server component, a route
+loader and a Node script import them the same way.
+
+```typescript
+import { formatTokenAmount, parseTokenAmount } from "@ic-reactor/react"
+// or, without React
+import { formatTokenAmount, parseTokenAmount } from "@ic-reactor/core"
+```
+
+## Token amounts
+
+A ledger counts in base units — e8s for ICP, satoshis for ckBTC, wei for
+ckETH — as a `nat`. A `Reactor` returns it as a `bigint` and a `DisplayReactor`
+as integer text such as `"150000000"`. Turning that into what a person reads,
+and what a person types back into base units, is where apps lose money:
+
+```typescript
+// ❌ Number math is binary floating point
+Math.floor(Number("0.29") * Math.pow(10, 8)) // 28999999: sends 0.28999999
+BigInt(Math.floor(Number("1.1") * 10 ** 18)) // 1100000000000000128n
+Number(balance) / 1e8 // wrong past 2^53 base units
+```
+
+`formatTokenAmount` and `parseTokenAmount` work on the decimal digits and never
+go through a `Number`, so they are exact for every amount a ledger can hold,
+at any number of decimals.
+
+### formatTokenAmount
+
+Shows an amount of base units as decimal text.
+
+```typescript
+function formatTokenAmount(
+  value: bigint | string | number,
+  decimals: number | bigint | string,
+  options?: FormatTokenAmountOptions
+): string
+```
+
+- `value` — the amount in base units: a `bigint` (`Reactor`), integer text
+  (`DisplayReactor`) or a safe integer. Decimal text such as `"1.5"` is refused
+  with a `TypeError`; that is what `parseTokenAmount` reads.
+- `decimals` — the token's decimals, from 0 to 255, in whatever form
+  `icrc1_decimals` or `icrc1_metadata` returned them.
+
+```typescript
+formatTokenAmount(150_000_000n, 8) // "1.5"
+formatTokenAmount("100000000", 8) // "1"
+formatTokenAmount(1n, 8) // "0.00000001"
+formatTokenAmount(-150_000_000n, 8) // "-1.5"
+formatTokenAmount(10n ** 30n + 1n, 18) // "1000000000000.000000000000000001"
+```
+
+#### Options
+
+| Option              | Type                          | Default                  | Effect                                                                                                   |
+| ------------------- | ----------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `maxFractionDigits` | `number`                      | `decimals`               | The most fraction digits to show. Digits past it are dropped as `roundingMode` says.                     |
+| `minFractionDigits` | `number`                      | `0`                      | Pad the fraction with zeros to at least this many digits.                                                |
+| `trimTrailingZeros` | `boolean`                     | `true`                   | Drop zeros at the end of the fraction, down to `minFractionDigits`. `false` pads to `maxFractionDigits`. |
+| `roundingMode`      | `"trunc" \| "halfExpand"`     | `"trunc"`                | `"trunc"` cuts the dropped digits; `"halfExpand"` rounds half away from zero.                            |
+| `locale`            | `string \| readonly string[]` | none                     | A BCP 47 locale whose separators, grouping and digits to use, through `Intl.NumberFormat`.               |
+| `useGrouping`       | `boolean`                     | `false`, or the locale's | Group thousands: `,` every three digits without a locale, the locale's own grouping with one.            |
+
+```typescript
+formatTokenAmount(123_456_789n, 8, { maxFractionDigits: 4 }) // "1.2345"
+formatTokenAmount(123_456_789n, 8, {
+  maxFractionDigits: 4,
+  roundingMode: "halfExpand",
+}) // "1.2346"
+formatTokenAmount(100_000_000n, 8, { minFractionDigits: 2 }) // "1.00"
+formatTokenAmount(100_000_000n, 8, { trimTrailingZeros: false }) // "1.00000000"
+formatTokenAmount(123_456_789_000_000n, 8, { useGrouping: true }) // "1,234,567.89"
+formatTokenAmount(123_456_789_000n, 8, { locale: "de-DE" }) // "1.234,56789"
+```
+
+Truncating is the default so a balance never shows more than is held: a
+balance of 0.99999999 shown to two digits is `"0.99"`, where `toFixed(2)` and
+`Intl.NumberFormat` show `"1.00"`. Pass `roundingMode: "halfExpand"` for their
+rounding, which suits totals and statistics better than balances.
+
+A negative amount, which only an `int` can hold, gets a leading `-` (with a
+`locale`, the locale's sign), unless every digit shown is zero: `-1n` shown to
+two digits is `"0"`, not `"-0"`.
+
+<Aside type="tip">
+  Without a `locale` the text is plain: `-`, the digits `0`-`9` and `.`. It is
+  the same on the server and in every browser, so a server-rendered amount
+  hydrates without a mismatch, and it is the form `parseTokenAmount` reads back.
+  With a `locale`, the sign, separators, grouping and digits are the ones
+  `Intl.NumberFormat` writes for the same number and fraction digits, and the
+  digits stay exact past what a `Number` holds.
+</Aside>
+
+### parseTokenAmount
+
+Reads decimal text, as a person types it, into base units.
+
+```typescript
+function parseTokenAmount(
+  text: string,
+  decimals: number | bigint | string,
+  options?: { allowNegative?: boolean }
+): bigint
+```
+
+```typescript
+parseTokenAmount("1.5", 8) // 150000000n
+parseTokenAmount("0.29", 8) // 29000000n
+parseTokenAmount("1.1", 18) // 1100000000000000000n
+parseTokenAmount(" 5. ", 8) // 500000000n
+parseTokenAmount(".5", 8) // 50000000n
+parseTokenAmount("1.100000000", 8) // 110000000n: extra zeros change nothing
+```
+
+It accepts digits with at most one `.`, with whitespace around them trimmed,
+and refuses everything else rather than guess at it:
+
+| Input                             | Error        | Why                                                                                     |
+| --------------------------------- | ------------ | --------------------------------------------------------------------------------------- |
+| `""`, `"."`, `"abc"`, `"1.5 ICP"` | `TypeError`  | Not an amount.                                                                          |
+| `"1,000"`, `"1,5"`, `"1 000"`     | `TypeError`  | A comma groups thousands in one locale and separates the fraction in another.           |
+| `"1e-8"`, `"+1"`, `"0x10"`        | `TypeError`  | Only plain decimal notation.                                                            |
+| `"0.123456789"` at 8 decimals     | `RangeError` | More fraction digits than the token has. Rounding would send something else than typed. |
+| `"-1.5"`                          | `RangeError` | A ledger's amounts are `nat`. Pass `{ allowNegative: true }` for an `int`.              |
+
+Every message starts with `[ic-reactor] parseTokenAmount:` and quotes what
+it refused, so a form can show it, or map the error class to its own wording.
+
+The result is a `bigint`. A `Reactor` takes it as it is. A `DisplayReactor`
+takes a `nat` as text and refuses a `bigint`, so pass it `amount.toString()`.
+
+### In a form
+
+```tsx
+import { useState } from "react"
+import { parseTokenAmount, formatTokenAmount } from "@ic-reactor/react"
+import { balanceQuery, decimalsQuery, transferMutation } from "./ledger"
+
+function Transfer({ owner }: { owner: string }) {
+  const { data: decimals } = decimalsQuery.useSuspenseQuery()
+  const { data: balance } = balanceQuery([{ owner }]).useSuspenseQuery()
+  const { mutate, isPending } = transferMutation.useMutation()
+  const [to, setTo] = useState("")
+  const [amount, setAmount] = useState("")
+  const [error, setError] = useState<string | null>(null)
+
+  const onSubmit = (event: React.FormEvent) => {
+    event.preventDefault()
+    try {
+      const units = parseTokenAmount(amount, decimals)
+      setError(null)
+      mutate([{ to: { owner: to }, amount: units.toString() }])
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit}>
+      <p>
+        Balance:{" "}
+        {formatTokenAmount(balance, decimals, { maxFractionDigits: 4 })}
+      </p>
+      <input value={to} onChange={(e) => setTo(e.target.value)} />
+      {/* text, not type="number": a number input can hold "1e-8" */}
+      <input
+        inputMode="decimal"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+      />
+      {error && <p role="alert">{error}</p>}
+      <button disabled={isPending}>Send</button>
+    </form>
+  )
+}
+```
+
+`examples/tanstack-router/src/components/transfer.tsx` is this component in a
+running app.
+
+### On the server
+
+Both are plain functions, so a React Server Component can format an amount it
+fetched itself. `examples/nextjs-app-router/src/app/LedgerSnapshot.tsx`:
+
+```tsx
+import { formatTokenAmount } from "@ic-reactor/react"
+
+// `ledger` is a Reactor built inside the request
+const [decimals, totalSupply] = await Promise.all([
+  ledger.fetchQuery({ functionName: "icrc1_decimals" }),
+  ledger.fetchQuery({ functionName: "icrc1_total_supply" }),
+])
+formatTokenAmount(totalSupply, decimals, {
+  maxFractionDigits: 0,
+  locale: "en-US",
+}) // whole tokens, grouped, such as "513,084,297"
+```
