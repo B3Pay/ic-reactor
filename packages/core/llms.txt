@@ -76,7 +76,8 @@ as a "safe to trust local configuration" test.
 - An update call runs again on every attempt. `reactorUpdateRetry` /
   `isRetryableUpdateError` retry only a `SysTransient` rejection, which proves
   the call never ran. `getQueryOptions` and `fetchQuery` give an update method
-  this retry (`Reactor.getQueryRetry`) unless the caller sets `retry`.
+  a retry of only `SysTransient`, as often as the QueryClient's `retry`
+  default allows (`Reactor.getQueryRetry`), unless the caller sets `retry`.
 
 ## Generated Files
 

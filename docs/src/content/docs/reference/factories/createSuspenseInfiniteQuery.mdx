@@ -370,9 +370,9 @@ const todoListQuery = todoListInfiniteQuery((offset: string) => [
   (mount, window focus, reconnect, invalidation), retry and uncached `fetch()`,
   each time as a new call. Use it only for an update method that is safe to
   repeat, and use `createMutation` for a method that changes state. With no
-  `retry` config, hook or `fetch` option set, an update method retries only a
-  `SysTransient` rejection, which proves the call never ran. See [Update Methods
-  in Queries](/v3/framework/queries#update-methods-in-queries).
+  `retry` in the factory config or the hook's options, an update method retries
+  only a `SysTransient` rejection, which proves the call never ran. See [Update
+  Methods in Queries](/v3/framework/queries#update-methods-in-queries).
 </Aside>
 
 <Aside type="tip">

@@ -105,19 +105,19 @@ use have refetched.
 
 All react-query options are available:
 
-| Option                 | Type                 | Default     | Description                                              |
-| :--------------------- | :------------------- | :---------- | :------------------------------------------------------- |
-| `enabled`              | `boolean`            | `true`      | For queries: whether to auto-fetch.                      |
-| `staleTime`            | `number`             | `0`         | How long data stays fresh (ms).                          |
-| `gcTime`               | `number`             | `300000`    | Time before unused data is garbage collected (ms).       |
-| `refetchInterval`      | `number \| false`    | `false`     | Polling interval in ms.                                  |
-| `refetchOnWindowFocus` | `boolean`            | `true`      | Refetch when window regains focus.                       |
-| `refetchOnMount`       | `boolean`            | `true`      | Refetch when component mounts.                           |
-| `refetchOnReconnect`   | `boolean`            | `true`      | Refetch when network reconnects.                         |
-| `retry`                | `number \| boolean`  | see below   | Number of retry attempts.                                |
-| `retryDelay`           | `number \| function` | exponential | Delay between retries.                                   |
-| `networkMode`          | `string`             | `"online"`  | Network mode (`"online"`, `"always"`, `"offlineFirst"`). |
-| `placeholderData`      | `TData \| function`  | -           | Placeholder data while loading.                          |
+| Option                 | Type                            | Default     | Description                                              |
+| :--------------------- | :------------------------------ | :---------- | :------------------------------------------------------- |
+| `enabled`              | `boolean`                       | `true`      | For queries: whether to auto-fetch.                      |
+| `staleTime`            | `number`                        | `0`         | How long data stays fresh (ms).                          |
+| `gcTime`               | `number`                        | `300000`    | Time before unused data is garbage collected (ms).       |
+| `refetchInterval`      | `number \| false`               | `false`     | Polling interval in ms.                                  |
+| `refetchOnWindowFocus` | `boolean`                       | `true`      | Refetch when window regains focus.                       |
+| `refetchOnMount`       | `boolean`                       | `true`      | Refetch when component mounts.                           |
+| `refetchOnReconnect`   | `boolean`                       | `true`      | Refetch when network reconnects.                         |
+| `retry`                | `number \| boolean \| function` | see below   | Number of retry attempts, or a predicate.                |
+| `retryDelay`           | `number \| function`            | exponential | Delay between retries.                                   |
+| `networkMode`          | `string`                        | `"online"`  | Network mode (`"online"`, `"always"`, `"offlineFirst"`). |
+| `placeholderData`      | `TData \| function`             | -           | Placeholder data while loading.                          |
 
 `retry`, `retryDelay`, `networkMode` and `meta` decide how a call runs, so they
 apply to both kinds of method: to a query method's fetches and `call()`, and to
@@ -135,6 +135,8 @@ QueryClient's defaults for that kind of call:
   never ran.
 
 ```tsx
+import { reactorUpdateRetry } from "@ic-reactor/react"
+
 const { call } = useReactorMethod({
   reactor,
   functionName: "transfer",

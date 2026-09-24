@@ -259,7 +259,7 @@ cannot tell a refetch or a retry from a second call.
   accepted the call), a `SysUnknown` rejection and an HTTP error are not
   retried, so a lost response surfaces as an error instead of a second
   execution. A `retry` the query sets — as a hook option, in a factory's
-  config, or in `fetch` options — wins.
+  config, or in the options of `Reactor.fetchQuery` — wins.
 - **Refetches still run the method again.** Limit them with `staleTime`,
   `refetchOnWindowFocus: false` and `refetchOnReconnect: false`.
 
@@ -277,17 +277,26 @@ const { data: address } = useActorQuery({
 How often the `SysTransient` retry runs follows the QueryClient's `retry`
 default for the query, which it narrows rather than replaces:
 
-| `retry` set by                                                    | Query method                                                            | Update method                                       |
-| ----------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------- |
-| The query itself (hook option, factory config, `fetch` options)   | used as given                                                           | used as given                                       |
-| `setQueryDefaults` or `defaultOptions.queries` of the QueryClient | used as given                                                           | `SysTransient` only, as often as the default allows |
-| Nothing                                                           | TanStack's default: 3 retries in a browser for a hook, none for `fetch` | `SysTransient` only, up to 3 times in a browser     |
+| `retry` set by                                                       | Query method                                                                                             | Update method                                       |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| The query itself (hook option, factory config, `fetchQuery` options) | used as given                                                                                            | used as given                                       |
+| `setQueryDefaults` or `defaultOptions.queries` of the QueryClient    | used as given                                                                                            | `SysTransient` only, as often as the default allows |
+| Nothing                                                              | TanStack's default: 3 retries in a browser for a hook, none for `fetch()`, `prefetch()` and `fetchQuery` | `SysTransient` only, up to 3 times in a browser     |
 
 With the QueryClient `defineReactor` creates, whose default is `reactorRetry`,
 an update method retries as `reactorUpdateRetry` does: a `SysTransient`
 rejection up to 3 times in a browser, nothing on the server. A default of
 `retry: false` retries nothing. `Reactor.getQueryRetry(functionName, queryKey)`
 returns the `retry` a query of the method falls back to.
+
+The last row has one case where an update method retries more than a query
+method: on a QueryClient with no `retry` default at all, a factory's `fetch()`
+and `prefetch()`, `Reactor.fetchQuery`, and `queryClient.fetchQuery` with the
+options from `getQueryOptions` retry a `SysTransient` rejection up to 3 times
+in a browser, where TanStack Query would not retry a query method's fetch.
+The call provably never ran, so sending it again is safe, but a loader waits
+through the backoff before it sees the error. Set `retry: false` on the
+factory to fail at once.
 
 ## Suspense Queries
 

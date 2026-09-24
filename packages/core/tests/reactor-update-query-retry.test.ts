@@ -188,17 +188,19 @@ describe("Reactor.getQueryRetry", () => {
     }
   })
 
-  it.each<[string, QueryObserverOptions["retry"], number, boolean]>([
-    ["retry: false", false, 0, false],
-    ["retry: 0", 0, 0, false],
-    ["retry: 1", 1, 0, true],
-    ["retry: 1", 1, 1, false],
-    ["retry: true", true, 7, true],
-    ["a function", (count) => count < 2, 1, true],
-    ["a function", (count) => count < 2, 2, false],
+  // The client's retry comes last: the title's placeholders take the entries
+  // in order, and a function or `false` does not print as a count.
+  it.each<[string, number, boolean, QueryObserverOptions["retry"]]>([
+    ["retry: false", 0, false, false],
+    ["retry: 0", 0, false, 0],
+    ["retry: 1", 0, true, 1],
+    ["retry: 1", 1, false, 1],
+    ["retry: true", 7, true, true],
+    ["a function", 1, true, (count) => count < 2],
+    ["a function", 2, false, (count) => count < 2],
   ])(
     "under the client default %s, after %i failures, retries: %s",
-    (_, clientRetry, failureCount, expected) => {
+    (_, failureCount, expected, clientRetry) => {
       queryClient.setDefaultOptions({ queries: { retry: clientRetry } })
       expect(retryOf("increment")!(failureCount, transient)).toBe(expected)
     }

@@ -60,7 +60,9 @@ query only when repeating it is safe (a certified read).
 
 Without a `retry` of its own, a query of an update method retries only a
 `SysTransient` rejection (`isRetryableUpdateError`), within the QueryClient's
-`retry` default. Mutations retry nothing unless you set `retry`; use
+`retry` default. Mutations retry nothing unless `retry` is set on them or as
+the QueryClient's `mutations.retry` default, which also reaches
+`useActorMethod` update calls and `createMutation().execute()`; use
 `reactorUpdateRetry` to retry a mutation only when that cannot run it twice.
 
 ## Mutation Error Handling

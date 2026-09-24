@@ -157,11 +157,11 @@ describe("useActorMethod call() of an update method", () => {
   })
 
   describe("without a retry on the hook", () => {
-    it("sends it once, whatever the query defaults say", async () => {
-      // The query default that defineReactor installs, and a plain count.
-      createReactor({
-        defaultOptions: { queries: { retry: reactorRetry, retryDelay: 1 } },
-      })
+    it.each([
+      ["reactorRetry, the query default defineReactor installs", reactorRetry],
+      ["a plain count", 3],
+    ])("sends it once under a query default of %s", async (_, retry) => {
+      createReactor({ defaultOptions: { queries: { retry, retryDelay: 1 } } })
       failuresLeft = 1
       const onError = vi.fn()
       const { result } = renderTransfer({ onError })
