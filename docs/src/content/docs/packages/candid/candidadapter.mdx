@@ -57,6 +57,12 @@ The didjs canister ID is auto-selected based on network:
 - **IC Mainnet**: `a4gq6-oaaaa-aaaab-qaa4q-cai`
 - **Local**: `bd3sg-teaaa-aaaaa-qaaba-cai` (must be deployed to the local replica)
 
+The default is read from `clientManager.isLocal` each time the adapter needs
+it, and an ID passed here or assigned to `didjsCanisterId` wins. The adapter
+keeps no subscription on the client manager, so an adapter, or a candid
+reactor that created one, needs no cleanup when it is dropped. The deprecated
+`unsubscribe()` is a no-op.
+
 ---
 
 ## Methods
@@ -204,10 +210,10 @@ Requires the parser to be loaded.
 
 ## Properties
 
-| Property          | Type                  | Description                  |
-| ----------------- | --------------------- | ---------------------------- |
-| `clientManager`   | `CandidClientManager` | The client manager instance  |
-| `didjsCanisterId` | `CanisterId`          | The didjs canister ID in use |
+| Property          | Type                  | Description                                                                                            |
+| ----------------- | --------------------- | ------------------------------------------------------------------------------------------------------ |
+| `clientManager`   | `CandidClientManager` | The client manager instance                                                                            |
+| `didjsCanisterId` | `CanisterId`          | The didjs canister ID in use: the one given or assigned, otherwise the default for the current network |
 
 ---
 

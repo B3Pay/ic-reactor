@@ -6,7 +6,6 @@ import {
   DEFAULT_IC_DIDJS_ID,
   DEFAULT_LOCAL_DIDJS_ID,
 } from "../../src/constants.js"
-import type { Identity } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 
 // Mock the @icp-sdk/core/agent module
@@ -157,44 +156,34 @@ describe("CandidAdapter Integration", () => {
       expect(adapterIC.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
     })
 
-    it("should re-evaluate didjs ID when identity changes", () => {
-      let identityCallback: ((identity: Identity) => void) | null = null
-
+    it("should re-evaluate didjs ID when the network changes", () => {
       // Start as local
       const clientManager: CandidClientManager = {
         agent: mockAgent,
         isLocal: true,
-        subscribe: vi.fn().mockImplementation((callback) => {
-          identityCallback = callback
-          return vi.fn()
-        }),
+        subscribe: vi.fn().mockReturnValue(vi.fn()),
       }
 
       // Create adapter with local client manager (no custom didjsCanisterId)
       const adapter = new CandidAdapter({ clientManager })
       expect(adapter.didjsCanisterId).toBe(DEFAULT_LOCAL_DIDJS_ID)
 
-      // Simulate identity change and network switch to IC
-      ;(clientManager as any).isLocal = false
-
-      // Trigger identity change callback
-      identityCallback!({} as Identity)
+      // Simulate a network switch to IC. The ID is read from the client
+      // manager, so no identity change has to announce it.
+      clientManager.isLocal = false
 
       // Should now use IC didjs ID
       expect(adapter.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
+      expect(clientManager.subscribe).not.toHaveBeenCalled()
     })
 
-    it("should not change custom didjsCanisterId on identity changes", () => {
-      let identityCallback: ((identity: Identity) => void) | null = null
+    it("should not change custom didjsCanisterId when the network changes", () => {
       const customId = "my-custom-didjs"
 
       const clientManager: CandidClientManager = {
         agent: mockAgent,
         isLocal: true,
-        subscribe: vi.fn().mockImplementation((callback) => {
-          identityCallback = callback
-          return vi.fn()
-        }),
+        subscribe: vi.fn().mockReturnValue(vi.fn()),
       }
 
       // Create adapter with custom didjsCanisterId
@@ -205,10 +194,7 @@ describe("CandidAdapter Integration", () => {
       expect(adapter.didjsCanisterId).toBe(customId)
 
       // Simulate network switch
-      ;(clientManager as any).isLocal = false
-
-      // Trigger identity change
-      identityCallback!({} as Identity)
+      clientManager.isLocal = false
 
       // Should still use custom ID
       expect(adapter.didjsCanisterId).toBe(customId)
@@ -422,7 +408,7 @@ describe("CandidAdapter Integration", () => {
   })
 
   describe("Memory and Cleanup", () => {
-    it("should properly cleanup subscriptions", () => {
+    it("should leave no subscription to clean up", () => {
       const unsubscribeMock = vi.fn()
       const clientManager: CandidClientManager = {
         agent: mockAgent,
@@ -432,15 +418,13 @@ describe("CandidAdapter Integration", () => {
 
       const adapter = new CandidAdapter({ clientManager })
 
-      // Verify subscription was set up
-      expect(clientManager.subscribe).toHaveBeenCalled()
+      // Nothing was registered on the client manager
+      expect(clientManager.subscribe).not.toHaveBeenCalled()
 
-      // Cleanup
+      // The deprecated unsubscribe is a no-op, and calling it is safe
       adapter.unsubscribe()
-      expect(unsubscribeMock).toHaveBeenCalled()
-
-      // Multiple calls should be safe
       expect(() => adapter.unsubscribe()).not.toThrow()
+      expect(unsubscribeMock).not.toHaveBeenCalled()
     })
 
     it("should handle multiple adapter instances independently", async () => {

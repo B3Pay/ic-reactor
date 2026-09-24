@@ -90,9 +90,18 @@ export interface MetadataReactorParameters extends CandidReactorParameters {
 export interface CandidClientManager {
   /** The HTTP agent used for making requests. */
   agent: HttpAgent
-  /** Whether the agent is connected to a local network. */
+  /**
+   * Whether the agent is connected to a local network. `CandidAdapter` reads
+   * it whenever it needs its default didjs canister, so an implementation
+   * whose network can change needs nothing more to be followed.
+   */
   isLocal: boolean
-  /** Subscribe to identity changes. Returns an unsubscribe function. */
+  /**
+   * Subscribe to identity changes. Returns an unsubscribe function.
+   *
+   * `CandidAdapter` does not call it. It stays part of the interface so
+   * existing implementations and callers keep compiling.
+   */
   subscribe(callback: (identity: Identity) => void): () => void
 }
 

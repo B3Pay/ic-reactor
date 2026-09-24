@@ -75,10 +75,10 @@ describe("CandidAdapter", () => {
       expect(adapter.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
     })
 
-    it("should subscribe to identity changes", () => {
+    it("should not subscribe to identity changes", () => {
       new CandidAdapter({ clientManager: mockClientManager })
 
-      expect(mockClientManager.subscribe).toHaveBeenCalled()
+      expect(mockClientManager.subscribe).not.toHaveBeenCalled()
     })
 
     it("should use custom didjsCanisterId if provided", () => {
@@ -107,14 +107,14 @@ describe("CandidAdapter", () => {
       expect(adapter.didjsCanisterId).toBe(DEFAULT_IC_DIDJS_ID)
     })
 
-    it("should provide unsubscribe function", () => {
+    it("should keep unsubscribe as a no-op", () => {
       const mockUnsubscribe = vi.fn()
       mockClientManager.subscribe = vi.fn().mockReturnValue(mockUnsubscribe)
 
       const adapter = new CandidAdapter({ clientManager: mockClientManager })
 
-      adapter.unsubscribe()
-      expect(mockUnsubscribe).toHaveBeenCalled()
+      expect(() => adapter.unsubscribe()).not.toThrow()
+      expect(mockUnsubscribe).not.toHaveBeenCalled()
     })
   })
 

@@ -298,8 +298,10 @@ new CandidAdapter(params: CandidAdapterParameters)
 | `didjsCanisterId` | `CanisterId`          | No       | Custom didjs canister ID                           |
 
 When `didjsCanisterId` is omitted it defaults to `a4gq6-oaaaa-aaaab-qaa4q-cai`
-on mainnet and `bd3sg-teaaa-aaaaa-qaaba-cai` locally, and is re-evaluated
-whenever the identity changes.
+on mainnet and `bd3sg-teaaa-aaaaa-qaaba-cai` locally, read from
+`clientManager.isLocal` each time it is needed. The adapter keeps no
+subscription on the client manager, so an adapter or candid reactor that is
+dropped needs no cleanup.
 
 #### Properties
 
@@ -336,11 +338,11 @@ whenever the identity changes.
 | `fetchFromTmpHack(canisterId)`                  | Get Candid via tmp hack method    |
 | `compileRemote(candidSource, didjsCanisterId?)` | Compile Candid via didjs canister |
 
-##### Cleanup
+##### Deprecated
 
-| Method          | Description                          |
-| --------------- | ------------------------------------ |
-| `unsubscribe()` | Cleanup identity change subscription |
+| Method          | Description                                                                  |
+| --------------- | ---------------------------------------------------------------------------- |
+| `unsubscribe()` | No-op kept for compatibility. The adapter no longer subscribes to identities |
 
 ### `CandidReactor`
 
@@ -417,7 +419,7 @@ type CanisterId = string | Principal
 
 4. **Dynamic Execution**: `registerMethod()` wraps the provided Candid signature in a temporary service definition, compiles it to an `idlFactory`, and merges the resulting field into the reactor's service. The call itself then goes through the core `Reactor`, which encodes arguments with `IDL.encode` and dispatches via `agent.query()` / `agent.call()` — no `Actor` is ever constructed.
 
-5. **Identity Changes**: The adapter subscribes to identity changes from the ClientManager. When the identity changes, it re-evaluates the default didjs canister ID (unless a custom one was provided).
+5. **Network and Identity**: The adapter keeps no subscription on the ClientManager. It reads `clientManager.isLocal` whenever it needs the default didjs canister ID (unless a custom one was provided or assigned), and it reads `clientManager.agent` for each request, so a sign-in or sign-out needs nothing from it, and a dropped adapter or candid reactor needs no cleanup.
 
 ## Standalone Usage
 
@@ -431,7 +433,7 @@ import { CandidAdapter } from "@ic-reactor/candid"
 const clientManager = {
   agent: await HttpAgent.create({ host: "https://ic0.app" }),
   isLocal: false,
-  subscribe: () => () => {}, // No-op subscription
+  subscribe: () => () => {}, // Part of the interface; the adapter never calls it
 }
 
 const adapter = new CandidAdapter({ clientManager })
