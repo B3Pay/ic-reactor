@@ -8,7 +8,8 @@
  *
  * Project structure:
  * - src/lib/client.ts        → Your ClientManager & auth hooks (you own this)
- * - src/canisters/backend/   → Auto-generated reactor & hooks (don't edit)
+ * - src/generated/backend/   → Generated reactor & hooks (index.generated.ts
+ *                               is rewritten on every run; index.ts is yours)
  */
 
 import { Suspense, useState } from "react"
@@ -110,7 +111,7 @@ export const clientManager = new ClientManager({ ... })
 export const authentication = new AuthenticationManager({ clientManager })
 export const { useAuth } = createAuthHooks(authentication)
 
-// src/canisters/backend/index.ts (AUTO-GENERATED)
+// src/generated/backend/index.generated.ts (GENERATED)
 import { clientManager } from "../../lib/client"
 export const { useBackendQuery, useBackendMutation } = ...`}
       </pre>

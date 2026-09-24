@@ -1,14 +1,17 @@
 # 🚀 IC-Reactor + ICP-CLI Demo
 
-> **Demo for DFINITY DX Team**: Showcasing how ic-reactor integrates seamlessly with the new `icp-cli` and `@icp-sdk/bindgen` workflow.
+> **Demo for DFINITY DX Team**: Showcasing how ic-reactor integrates seamlessly with the new `icp-cli` workflow and the IC Reactor Vite plugin.
 
 ## Overview
 
 This example demonstrates how to use **ic-reactor** with the new ICP SDK ecosystem:
 
 - **`icp-cli`** - New CLI for building and deploying canisters
-- **`@icp-sdk/bindgen`** - Vite plugin to generate TypeScript bindings from `.did` files
-- **`@icp-sdk/core/agent/canister-env`** - Runtime canister ID resolution via cookies
+- **`@ic-reactor/vite-plugin`** - Generates the backend's typed reactor and
+  React hooks from its `.did` file, and injects the local `ic_env` cookie
+  during `vite dev`
+- **`ic_env` cookie** - Canister IDs and the root key reach the app at run time
+  while it is served from the local replica
 
 ## Project Structure
 
@@ -16,79 +19,86 @@ This example demonstrates how to use **ic-reactor** with the new ICP SDK ecosyst
 icp-reactor-demo/
 ├── icp.yaml                    # ICP-CLI project config
 ├── backend/
-│   ├── canister.yaml           # Backend canister config
-│   ├── src/
-│   │   └── lib.rs              # Rust canister code
-│   └── dist/
-│       ├── backend.wasm        # Built canister
-│       └── backend.did         # Candid interface
+│   ├── canister.yaml           # Backend canister config (Motoko recipe)
+│   ├── main.mo                 # Motoko canister code
+│   └── backend.did             # Candid interface
 └── frontend/
     ├── canister.yaml           # Frontend asset canister config
     ├── package.json
-    ├── vite.config.ts          # Uses the IC Reactor and bindgen plugins
+    ├── vite.config.ts          # Uses the IC Reactor Vite plugin
     └── src/
         ├── App.tsx             # Main app with ic-reactor
         ├── lib/
-        │   └── reactor.ts      # IC-Reactor configuration
-        └── generated/          # Generated declarations and reactors
+        │   └── client.ts       # Your QueryClient, ClientManager and auth hooks
+        └── generated/backend/  # Written by the Vite plugin
+            ├── declarations/   # Candid bindings
+            ├── index.generated.ts  # Reactor + hooks, rewritten on every run
+            └── index.ts        # Stable wrapper, yours to extend
 ```
 
 ## Key Features
 
-### 1. Zero-Config Canister ID Resolution
+### 1. Generated Reactor and Hooks
 
-With `@icp-sdk/core/agent/canister-env`, canister IDs are served via cookies from the asset canister:
-
-```tsx
-import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
-
-const canisterEnv = getCanisterEnv<{
-  "PUBLIC_CANISTER_ID:backend": string
-}>()
-
-const backendId = canisterEnv["PUBLIC_CANISTER_ID:backend"]
-```
-
-### 2. Automatic Bindgen Integration
-
-The `@icp-sdk/bindgen` Vite plugin watches your `.did` files and generates TypeScript bindings:
+The Vite plugin reads `backend/backend.did` and writes the reactor and hooks
+into `src/generated/backend/`, on every build and whenever the `.did` changes
+under `vite dev`:
 
 ```ts
-// vite.config.ts
-import { icpBindgen } from "@icp-sdk/bindgen/plugins/vite"
+// frontend/vite.config.ts
+import { icReactor } from "@ic-reactor/vite-plugin"
 
 export default defineConfig({
   plugins: [
     react(),
-    icpBindgen({
-      didFile: "../../backend/dist/backend.did",
-      outDir: "./src/backend/api",
+    icReactor({
+      canisters: [
+        {
+          name: "backend",
+          didFile: "../backend/backend.did",
+          mode: "DisplayReactor",
+        },
+      ],
+      clientManagerPath: "../../lib/client",
+      outDir: "./src/generated",
     }),
   ],
 })
 ```
 
-### 3. IC-Reactor with Runtime Environment
+### 2. You Own the ClientManager
 
-IC-Reactor can now consume the canister environment automatically:
+The generated reactor imports `clientManager` from `src/lib/client.ts`, so the
+agent, the `QueryClient` and authentication stay in your code:
 
 ```tsx
-// lib/reactor.ts
-import { ClientManager, DisplayReactor } from "@ic-reactor/react"
-import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
-import { idlFactory, type _SERVICE } from "../backend/api/backend"
+// frontend/src/lib/client.ts
+export const clientManager = new ClientManager({ queryClient })
+export const authentication = new AuthenticationManager({ clientManager })
+export const { useAuth, useAgentState, useUserPrincipal } =
+  createAuthHooks(authentication)
 
-// Get canister ID from runtime environment (cookie)
-const canisterEnv = getCanisterEnv<{
-  "PUBLIC_CANISTER_ID:backend": string
-}>()
-
-export const reactor = new DisplayReactor<_SERVICE>({
+// frontend/src/generated/backend/index.generated.ts (generated)
+export const backendReactor = new DisplayReactor<BackendService>({
   clientManager,
-  canisterId: canisterEnv["PUBLIC_CANISTER_ID:backend"],
   idlFactory,
+  name: "backend",
 })
+export const { useActorQuery: useBackendQuery /* , ... */ } =
+  createActorHooks(backendReactor)
 ```
+
+### 3. Canister IDs From the `ic_env` Cookie
+
+The generated reactor has no `canisterId`: `ClientManager` resolves
+`PUBLIC_CANISTER_ID:backend` from the `ic_env` cookie, which the plugin sets
+under `vite dev` and the asset canister sets when it serves the app. It trusts
+that cookie only on a local replica, because cookies are not origin-isolated.
+On mainnet or a custom domain the reactor throws `canisterId is required` as
+soon as it is imported, so set the per-canister `canisterId` in the plugin
+config for those builds (it is written into `index.generated.ts`), or pass
+`allowEnvConfig: true` to `ClientManager` if you trust every subdomain of the
+domain you serve from.
 
 ## Quick Start
 
@@ -128,37 +138,14 @@ pnpm --dir frontend dev
 
 Visit the Vite URL printed in the terminal (normally `http://localhost:5173/`).
 
-## Before vs After
-
-### ❌ Before (Hard-coded IDs)
-
-```tsx
-// Required: .env file with CANISTER_ID_BACKEND
-// Required: Vite define block for process.env
-// Required: Rebuild for each environment
-
-const canisterId = process.env.CANISTER_ID_BACKEND // 😱 Hard-coded at build time
-```
-
-### ✅ After (Runtime Resolution)
-
-```tsx
-// No .env file needed!
-// No rebuild for production!
-// Works on any network automatically!
-
-import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
-const { "PUBLIC_CANISTER_ID:backend": canisterId } = getCanisterEnv()
-```
-
 ## Demo Flow for Raymond
 
 1. **Show icp.yaml** - Single config file for the whole project
 2. **Run `icp deploy`** - One command deploys everything
 3. **Explain cookie flow** - Asset canister serves IDs via `ic_env` cookie
-4. **Show reactor.ts** - Clean integration with `@icp-sdk/core`
-5. **Edit backend** - Change `.did`, bindings regenerate automatically
-6. **Deploy to mainnet** - Same frontend works without rebuild!
+4. **Show lib/client.ts and generated/backend** - You own the ClientManager; the plugin owns the reactor and hooks
+5. **Edit backend** - Change `.did`, bindings regenerate automatically under `vite dev`
+6. **Deploy to mainnet** - Set the backend's `canisterId` in the plugin config first (see Key Features 3)
 
 ---
 
