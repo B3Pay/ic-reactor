@@ -42,9 +42,10 @@ import {
 } from "./utils/agent.js"
 import {
   CallError,
-  CanisterError,
-  ValidationError,
   isRetryableUpdateError,
+  isCallError,
+  isCanisterError,
+  isValidationError,
 } from "./errors/index.js"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
@@ -661,10 +662,12 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       // DisplayReactor reports a validator that threw as a CallError, and
       // wrapping it again would bury what the validator threw one `cause`
       // deeper than `validate()` and `callMethodWithValidation()` put it.
+      // The guards also know these errors from another copy of this package,
+      // such as a ValidationError a validator built against that copy throws.
       if (
-        error instanceof CanisterError ||
-        error instanceof ValidationError ||
-        error instanceof CallError
+        isCanisterError(error) ||
+        isValidationError(error) ||
+        isCallError(error)
       ) {
         throw error
       }

@@ -25,7 +25,12 @@ import {
   isTextKeyedPair,
   numberOfText,
 } from "./display/visitor.js"
-import { CallError, CanisterError, ValidationError } from "./errors/index.js"
+import {
+  CallError,
+  CanisterError,
+  ValidationError,
+  isValidationError,
+} from "./errors/index.js"
 import {
   DisplayReactorParameters,
   DisplayValidator,
@@ -62,10 +67,11 @@ function methodDisplayCodecs(methodType: IDL.Type): {
  * the arguments nor the canister's answer. Only `callMethod` used to wrap it;
  * the other two passed it through raw, so a failed lookup's
  * `TypeError: Failed to fetch` matched none of the documented error checks. A
- * `ValidationError` it throws is a verdict, and stays one.
+ * `ValidationError` it throws is a verdict, and stays one, including one from
+ * another copy of this package, which `instanceof` does not recognise.
  */
 function validatorFailure(methodName: string, error: unknown): Error {
-  if (error instanceof ValidationError) return error
+  if (isValidationError(error)) return error
   const reason = error instanceof Error ? error.message : String(error)
   return new CallError(
     `Failed to validate the arguments of "${methodName}": ${reason}`,

@@ -17,7 +17,9 @@ import {
   DisplayReactor,
   ValidationError,
   isCallError,
+  isCanisterError,
   isRetryableReactorError,
+  isValidationError,
   type Validator,
 } from "../src/index.js"
 import { IDL } from "@icp-sdk/core/candid"
@@ -192,4 +194,78 @@ describe("an async validator that rejects", () => {
       await expect(entryPoint(reactor)).rejects.toBe(verdict)
     }
   )
+})
+
+describe("a reactor error from another copy of the package", () => {
+  // An app can load two copies of the package (a version range the package
+  // manager cannot dedupe), so a validator or a subclass can throw errors of
+  // the other copy's classes. `instanceof` fails across copies; the brands
+  // the error guards read do not.
+  const otherCopy = async () => {
+    vi.resetModules()
+    return import("../src/errors/index.js")
+  }
+
+  it.each(allEntryPoints)(
+    "thrown by a validator as a ValidationError is passed on as it is by %s",
+    async (_, entryPoint) => {
+      const { ValidationError: OtherValidationError } = await otherCopy()
+      const verdict = new OtherValidationError("greet", [
+        { path: [], message: "Not today" },
+      ])
+      expect(verdict).not.toBeInstanceOf(ValidationError)
+      const { reactor, executeQuery } = setup(() => {
+        throw verdict
+      })
+
+      const error = await rejectionOf(entryPoint(reactor))
+
+      expect(error).toBe(verdict)
+      expect(isValidationError(error)).toBe(true)
+      expect(executeQuery).not.toHaveBeenCalled()
+    }
+  )
+
+  it.each(allEntryPoints.filter(([name]) => name !== "callMethod()"))(
+    "rejected by an async validator as a ValidationError is passed on as it is by %s",
+    async (_, entryPoint) => {
+      const { ValidationError: OtherValidationError } = await otherCopy()
+      const verdict = new OtherValidationError("greet", [
+        { path: [], message: "Not today" },
+      ])
+      const { reactor } = setup(async () => {
+        throw verdict
+      })
+
+      await expect(entryPoint(reactor)).rejects.toBe(verdict)
+    }
+  )
+
+  it("thrown as a CanisterError by a subclass's transformResult reaches callMethod()'s caller as it is", async () => {
+    const { CanisterError: OtherCanisterError } = await otherCopy()
+    const answer = new OtherCanisterError({ NotFound: null })
+    expect(answer).not.toBeInstanceOf(CanisterError)
+
+    class Unwrapping extends DisplayReactor<TestActor> {
+      protected override transformResult(): never {
+        throw answer
+      }
+    }
+    const reactor = new Unwrapping({
+      name: "other-copy",
+      idlFactory,
+      canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+      clientManager: new ClientManager({ queryClient: new QueryClient() }),
+    })
+    vi.spyOn(reactor as any, "executeQuery").mockResolvedValue(
+      IDL.encode([IDL.Text], ["Hello, alice"])
+    )
+
+    const error = await rejectionOf(
+      reactor.callMethod({ functionName: "greet", args: ["alice"] })
+    )
+
+    expect(error).toBe(answer)
+    expect(isCanisterError(error)).toBe(true)
+  })
 })
