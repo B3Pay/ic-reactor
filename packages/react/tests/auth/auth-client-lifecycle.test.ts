@@ -42,7 +42,7 @@ import {
   withUserGesture,
   type FakeIdentityProvider,
 } from "./fake-identity-provider.js"
-import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
+import { installFakeReplica, type FakeReplica } from "../../src/testing.js"
 
 /** Which major this run resolved `@icp-sdk/auth` to. */
 const isV10 = detectAuthClientFlavor(AuthClient) === "session"

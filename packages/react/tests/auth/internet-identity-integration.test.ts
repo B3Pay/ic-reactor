@@ -35,7 +35,7 @@ import {
   fromBase64,
   type FakeIdentityProvider,
 } from "./fake-identity-provider.js"
-import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
+import { installFakeReplica, type FakeReplica } from "../../src/testing.js"
 import { installFakeWebLocks } from "./fake-web-locks.js"
 
 /** Which major this run resolved `@icp-sdk/auth` to. */
@@ -45,6 +45,12 @@ const LOCAL_HOST = "http://localhost:4943"
 
 let provider: FakeIdentityProvider
 let replica: FakeReplica
+
+/** Names of the canister methods called on `canisterId`, in order. */
+const methodsCalled = (canisterId: string) =>
+  replica.requests
+    .filter((request) => request.canisterId === canisterId)
+    .flatMap((request) => (request.methodName ? [request.methodName] : []))
 /** Every manager a test built, so the clients they made can be released. */
 const managers: AuthenticationManager[] = []
 
@@ -184,7 +190,7 @@ describe("Internet Identity sign-in (real AuthClient)", () => {
 
       await withUserGesture(() => authentication.login())
 
-      expect(replica.methodsCalled(provider.canisterId)).toEqual(
+      expect(methodsCalled(provider.canisterId)).toEqual(
         expect.arrayContaining(["app_prepare_delegation", "app_get_delegation"])
       )
       // Signed as the session the popup issued, not as the account or as
@@ -298,9 +304,9 @@ describe("Internet Identity sign-in (real AuthClient)", () => {
         expect(authentication.authState.isAuthenticated).toBe(true)
         // The next call mints a new app delegation and goes out as the user.
         const mints = () =>
-          replica
-            .methodsCalled(provider.canisterId)
-            .filter((method) => method === "app_prepare_delegation").length
+          methodsCalled(provider.canisterId).filter(
+            (method) => method === "app_prepare_delegation"
+          ).length
         const minted = mints()
         await clientManager.agent.query(provider.canisterId, {
           methodName: "http_request",

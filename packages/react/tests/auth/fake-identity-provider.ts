@@ -28,7 +28,7 @@ import {
 import { Principal } from "@icp-sdk/core/principal"
 import { IDL } from "@icp-sdk/core/candid"
 import { LOCAL_INTERNET_IDENTITY_CANISTER_ID } from "../../src/auth/constants.js"
-import type { FakeCanister } from "./fake-replica.js"
+import type { FakeCanister } from "../../src/testing.js"
 
 interface JsonRpcRequest {
   jsonrpc: "2.0"

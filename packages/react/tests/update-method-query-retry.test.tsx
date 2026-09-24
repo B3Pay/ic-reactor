@@ -30,7 +30,11 @@ import {
   createSuspenseInfiniteQuery,
   createSuspenseInfiniteQueryFactory,
 } from "../src/createSuspenseInfiniteQuery.js"
-import { installFakeReplica, type FakeReplica } from "./auth/fake-replica.js"
+import {
+  createTestCanister,
+  installFakeReplica,
+  type FakeReplica,
+} from "../src/testing.js"
 
 /**
  * An update method used through a query hook or factory runs again on the
@@ -476,12 +480,9 @@ describe("a lost response to an update method run through a query", () => {
     replica = installFakeReplica({
       host: HOST,
       canisters: {
-        [CANISTER_ID]: {
-          update: () => {
-            executions += 1
-            return new Uint8Array(IDL.encode([IDL.Nat], [BigInt(executions)]))
-          },
-        },
+        [CANISTER_ID]: createTestCanister<Counter>(counterInterface, {
+          increment: () => BigInt(++executions),
+        }),
       },
     })
     const replicaFetch = globalThis.fetch
