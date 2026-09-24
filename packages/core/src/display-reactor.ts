@@ -24,6 +24,7 @@ import {
   isOptionalWrapper,
   isTextKeyedPair,
   numberOfText,
+  textMapEntries,
 } from "./display/visitor.js"
 import {
   CallError,
@@ -83,6 +84,7 @@ function validatorFailure(methodName: string, error: unknown): Error {
 const displayArgsKey = new ArgsKeyVisitor({
   isOptionalWrapper,
   isTextKeyedPair,
+  textMapEntries,
   numberOfText,
   isPrincipal: isDisplayPrincipal,
 })

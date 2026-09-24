@@ -20,11 +20,11 @@ import { IDL } from "@icp-sdk/core/candid"
  *   `_type`. An opt whose own values can be null, such as an opt of an opt,
  *   keeps the wrapper around its value, so that the value stays apart from
  *   none.
- * - In a DisplayReactor, a `vec record { text; T }` given as an object. The
- *   codec sends its entries in the object's order, but `generateKey` sorts an
- *   object's keys, so two orders of one map, which send different vectors,
- *   shared a key. The key lists the entries in order, as the pairs they are
- *   sent as.
+ * - In a DisplayReactor, a `vec record { text; T }` given as an object or a
+ *   `Map`. The codec sends its entries in the object's order, but
+ *   `generateKey` sorts an object's keys, so two orders of one map, which
+ *   send different vectors, shared a key, and the JSON of a Map is `{}`. The
+ *   key lists the entries in order, as the pairs they are sent as.
  * - In a DisplayReactor, a float or an integer of 32 bits or fewer given as
  *   numeric text, and a `Principal` given as the object. The key writes the
  *   number the text spells and the principal's text, the forms the codecs
@@ -72,6 +72,11 @@ export interface DisplayArgShapes {
   isOptionalWrapper(elemType: IDL.Type, inner: unknown): boolean
   /** Is `type` a `record { text; T }`, whose vector is also taken as an object? */
   isTextKeyedPair(type: IDL.Type): type is IDL.TupleClass<unknown[]>
+  /**
+   * The pairs the codec of a `vec record { text; T }` sends for an object
+   * given for it, in the order it sends them.
+   */
+  textMapEntries(value: object): unknown[]
   /**
    * The number the codec of a float, or of an integer of 32 bits or fewer,
    * sends for `text`. Throws for text the codec refuses.
@@ -473,18 +478,19 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
       return hex === undefined ? value : new BlobKey(hex)
     }
     // A DisplayReactor also takes a `vec record { text; T }` as an object keyed
-    // by the text, and sends `Object.entries` of it: the pairs in the object's
-    // order. The key lists the same pairs in the same order, so it matches the
-    // vector sent, and the array of pairs, which sends the same one. The codec
-    // takes every object that is not an array so, a boxed `true` included,
-    // whose JSON is that of the `true` it refuses.
+    // by the text, or as a Map, and sends its entries: the pairs in the
+    // object's order, or the Map's. The key lists the same pairs in the same
+    // order, so it matches the vector sent, and the array of pairs, which
+    // sends the same one. The codec takes every object that is not an array
+    // so, a boxed `true` included, whose JSON is that of the `true` it
+    // refuses.
     if (
       this.display?.isTextKeyedPair(elemType) &&
       typeof value === "object" &&
       value !== null &&
       !Array.isArray(value)
     ) {
-      const pairs: unknown[] = Object.entries(value)
+      const pairs = this.display.textMapEntries(value)
       return this.rewrites(elemType)
         ? pairs.map((pair) => elemType.accept(this, pair))
         : pairs

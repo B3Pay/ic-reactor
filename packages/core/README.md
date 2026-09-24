@@ -559,8 +559,9 @@ a `Uint8Array`, a `number[]` and a `DisplayReactor`'s hex text holding the same
 bytes give the same key. A `DisplayReactor` writes each `opt` and variant in one
 form, whichever it was given in, so an `opt` given bare or as `[value]`, none
 given as `null`, `undefined` or `[]`, and a variant given with or without
-`_type` give the same key. A `vec record { text; T }` given to it as an object is written as
-its entries in order, since the order is part of what it sends. Fields a record
+`_type` give the same key. A `vec record { text; T }` given to it as an object
+or a `Map` is written as its entries in order, since the order is part of what
+it sends. Fields a record
 does not declare are left out and every value of `reserved` is written as
 `null`, since neither is sent, and a `DisplayReactor` writes a float or an
 integer of 32 bits or fewer given as text as its number, and a `Principal` as

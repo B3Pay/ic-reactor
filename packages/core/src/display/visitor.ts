@@ -22,6 +22,38 @@ export function isTextKeyedPair(
 }
 
 /**
+ * Is `value` a `Map`? One from another realm (an iframe, a `vm` context) is
+ * not an instance of this realm's `Map`, so its tag is read, and then
+ * `Map.prototype.has`, which throws for anything but a real Map, decides.
+ */
+function isMap(value: object): value is Map<unknown, unknown> {
+  if (value instanceof Map) return true
+  if (Object.prototype.toString.call(value) !== "[object Map]") return false
+  try {
+    Map.prototype.has.call(value, undefined)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * The pairs the codec of a `vec record { text; T }` sends for an object given
+ * for it, in the order it sends them: a `Map`'s entries in insertion order,
+ * and any other object's own enumerable entries in the object's order. The
+ * query key reads the object with this, so it cannot drift from what the
+ * codec sends.
+ */
+export function textMapEntries(value: object): unknown[] {
+  // `Object.entries` of a Map is `[]`, so a Map used to be sent as an empty
+  // vector. Its own `entries` could be overridden; Map.prototype's reads the
+  // data itself.
+  return isMap(value)
+    ? Array.from(Map.prototype.entries.call(value))
+    : Object.entries(value)
+}
+
+/**
  * Could `value` be the display value of `type`, as the codecs encode it?
  *
  * Only a `false` answer is definite. It is given only where the type's codec,
@@ -529,10 +561,9 @@ export class DisplayCodecVisitor extends IDL.Visitor<unknown, z.ZodTypeAny> {
           if (Array.isArray(val)) {
             return val.map((elem) => encodeElem(elem))
           }
-          const entries =
-            val && typeof val === "object" ? Object.entries(val) : val
-          if (!Array.isArray(entries)) return entries
-          return entries.map((elem) => encodeElem(elem))
+          // Anything but an object goes on as it is, for IDL.encode to refuse.
+          if (!val || typeof val !== "object") return val
+          return textMapEntries(val).map((elem) => encodeElem(elem))
         },
       })
     }
