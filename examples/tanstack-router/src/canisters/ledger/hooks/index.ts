@@ -1,9 +1,10 @@
 /**
  * Hook barrel exports
  *
- * Hand-maintained, not codegen output. Codegen's `factories: true` generates
- * the createQuery, createQueryFactory and createMutation kinds for every
- * method (see examples/codegen-in-action), but not the suspense ones used here.
+ * Hand-maintained, because this example writes its reactor by hand. In a
+ * project whose reactor codegen generates, `factories: true` generates the
+ * non-suspense modules here under the same names (see
+ * examples/codegen-in-action), but no suspense factories.
  */
 export * from "./icrc1NameQuery"
 export * from "./icrc1SymbolQuery"

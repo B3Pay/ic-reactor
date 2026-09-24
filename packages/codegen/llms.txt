@@ -40,7 +40,8 @@ already uses gets `_` appended, methods taking names in Candid's order.
 `getFactoryExportNames(canisterName, methods)` returns the names.
 
 Each call is annotated `/* @__PURE__ */`, so unused factories are tree-shaken
-even through the wrapper's `export *`.
+even through the wrapper's `export *`. They are module-scope, like the
+generated reactor: client-only apps; on a server build the reactor per request.
 
 ```ts
 import { getMessageQuery, setMessageMutation } from "./declarations/backend"

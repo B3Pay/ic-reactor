@@ -3,7 +3,8 @@
  *
  * Hand-maintained, not codegen output. Codegen's `factories: true` generates
  * the createQuery, createQueryFactory and createMutation kinds for every
- * method (see examples/codegen-in-action), but not the suspense ones used here.
+ * method (see examples/codegen-in-action), but no suspense factories like
+ * this one.
  *
  * @example
  * // Use in components

@@ -73,10 +73,14 @@ in camelCase (`get_message` gives `getMessageQuery`). A name that would begin
 with a digit gets a leading `_`, and methods take their names in Candid's
 order (by name): a name an earlier method took, or one `index.generated.ts`
 exports (such as the hook `useBackendQuery`), gets `_` appended until it is
-free. `getFactoryExportNames(canisterName, methods)` returns the names.
+free. `getFactoryExportNames(canisterName, methods)` returns the names. A
+method added later can therefore take a name an existing method had, when it
+sorts first; each export's doc comment names the method it calls.
 
 Each call is annotated `/* @__PURE__ */`, so a bundler leaves out the factories
-an app does not import, although the wrapper re-exports them all.
+an app does not import, although the wrapper re-exports them all. Like the
+reactor they are bound to, they are module-scope objects: fine for a
+client-only app, while a server-rendered one builds its reactor per request.
 
 ```typescript
 import { getMessageQuery, setMessageMutation } from "./declarations/backend"

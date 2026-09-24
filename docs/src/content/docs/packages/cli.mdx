@@ -135,7 +135,10 @@ update or oneway method. Each is named after its method in camelCase with a
 ```tsx
 import { getMessageQuery, setMessageMutation } from "./declarations/backend"
 
+// In a component
 const { data } = getMessageQuery.useQuery()
+
+// Anywhere, outside React included
 await setMessageMutation.execute(["hello"])
 ```
 

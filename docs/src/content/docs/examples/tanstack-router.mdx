@@ -103,12 +103,14 @@ function TokenWallet() {
 ### Per-Method Query Modules
 
 The modules in `src/canisters/ledger/hooks/` wrap the reactor in reusable query
-objects, usable both inside components and in loaders. They are hand-maintained,
-not codegen output. Codegen's
+objects, usable both inside components and in loaders. They are hand-maintained
+because this example writes its reactor by hand. In a project whose reactor
+codegen generates,
 [`factories: true`](/v3/packages/codegen#query-and-mutation-factories) generates
-the `createQuery`, `createQueryFactory` and `createMutation` kinds for every
-method of a `.did`, as in [Codegen in Action](/v3/examples/codegen-in-action),
-but not the suspense factories these loaders use.
+the non-suspense ones, such as `icrc1NameQuery` below and
+`icrc1TransferMutation`, under the same names, as in
+[Codegen in Action](/v3/examples/codegen-in-action). It generates no suspense
+factories such as `icrc1BalanceOfSuspenseQuery`.
 
 ```typescript
 // src/canisters/ledger/hooks/icrc1NameQuery.ts

@@ -195,6 +195,14 @@ and webpack then leave out every factory the app does not import, although the
 `index.ts` wrapper re-exports them all, and an app that imports only a bound
 hook from the canister's entry point bundles none of them.
 
+<Aside type="caution">
+  The factories are module-scope objects bound to the module-scope reactor in
+  `index.generated.ts`, which is right for a client-only app. On a server, a
+  module-scope reactor shares one cache across every request; see [Server-Side
+  Rendering](/v3/framework/react-setup#server-side-rendering) for building the
+  reactor, and any query objects over it, per request instead.
+</Aside>
+
 ### Export names
 
 Every Candid method name, however it is spelled, gets a valid identifier that
@@ -214,6 +222,13 @@ no other export of the canister uses:
   `getThingQuery` and `getThingQuery_`, and a query method `use_backend` in
   canister `backend` gives `useBackendQuery_`, since `useBackendQuery` is the
   bound hook.
+
+Since names are taken in that order, a method added later can take a name an
+existing method had: adding `"get-thing"` to a service that has `getThing`
+gives the new method `getThingQuery`, because it sorts first, and moves
+`getThing` to `getThingQuery_`. If both take the same arguments, code that
+imported `getThingQuery` still compiles and now calls the new method. The doc
+comment above each generated export names the method it calls.
 
 `getFactoryExportNames(canisterName, methods)` returns the names for a list of
 methods, such as `parseDid(source).service.methods` from

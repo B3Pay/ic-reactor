@@ -1,9 +1,9 @@
 /**
  * Mutation Hook: icrc1_transfer
  *
- * Hand-maintained, not codegen output. Codegen's `factories: true` generates
- * the createQuery, createQueryFactory and createMutation kinds for every
- * method (see examples/codegen-in-action), but not the suspense ones used here.
+ * Hand-maintained, because this example writes its reactor by hand. In a
+ * project whose reactor codegen generates, `factories: true` generates this
+ * same object under this same name (see examples/codegen-in-action).
  * This hook wraps the icrc1_transfer update method.
  *
  * @example
