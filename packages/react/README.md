@@ -570,8 +570,15 @@ The factory can return a record (`{ backend, ledger }`, read with
 mutation objects. It receives the provider's props, read once per mount; a new
 `key` builds a new value. The provider also renders a `QueryClientProvider` for
 the value's QueryClient, so `useQueryClient()`, React Query Devtools and a
-`HydrationBoundary` below it use the cache the hooks fill; pass
+`HydrationBoundary` below it use the cache the hooks fill. Below it, that
+provider takes the place of an outer `QueryClientProvider`; pass
 `{ queryClientProvider: false }` to keep your own.
+
+A suspense hook below the provider may suspend its first render: the provider
+reuses the value that render built when React renders it again. A provider that
+a transition mounts (`startTransition`, a client-side navigation) can be built
+again on each retry, so wrap its suspending components in a `<Suspense>`
+boundary inside the provider.
 
 When the tree unmounts, the provider disposes each `AuthenticationManager`
 built for the value (in the factory, or later by a `defineReactor` result in

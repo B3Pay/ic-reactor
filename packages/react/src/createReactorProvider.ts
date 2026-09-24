@@ -50,7 +50,10 @@ export interface CreateReactorProviderOptions {
    * Rendered only when the value holds exactly one QueryClient, found on the
    * value and on its own properties: a `defineReactor` result, a reactor or a
    * `ClientManager` brings its manager's, and a `QueryClient` counts as
-   * itself. Pass `false` to leave that context to a provider of your own.
+   * itself. Below the provider it takes the place of an outer
+   * `QueryClientProvider`, so a plain `useQuery` there caches in the
+   * reactors' QueryClient too. Pass `false` to leave that context to a
+   * provider of your own.
    *
    * @default true
    */

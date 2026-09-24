@@ -70,6 +70,9 @@ export const { ReactorProvider, useReactor } = createReactorProvider(() =>
   elsewhere alone, and renders a `QueryClientProvider` for the value's single
   QueryClient.
 - Factory props are read once per mount; change the provider's `key` to rebuild.
+- A provider mounted by a transition (router navigation, `startTransition`)
+  needs a `<Suspense>` boundary inside it around components that use suspense
+  hooks; otherwise each retry can rebuild the value and refetch.
 - Never call `createAuthHooks`/`createActorHooks` during render; take the hooks
   from `useReactor()`.
 

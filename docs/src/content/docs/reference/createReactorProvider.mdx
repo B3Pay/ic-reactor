@@ -130,6 +130,10 @@ reads the context, such as `useQueryClient()`, React Query Devtools and
 for the QueryClient on the value and its own properties: a `defineReactor`
 result, a reactor and a `ClientManager` each bring their manager's, and a
 `QueryClient` counts as itself. With several distinct clients it renders none.
+Below the provider it takes the place of an outer `QueryClientProvider`, so a
+plain `useQuery` there caches in the reactors' QueryClient too; pass
+`queryClientProvider: false` if other queries must stay in a client of their
+own.
 
 ## Several Canisters
 
