@@ -186,13 +186,14 @@ When communicating with the IC mainnet, the agent uses a hardcoded public key to
 
 <Aside type="note">
   `ClientManager` has the agent fetch that key before its first request whenever
-  the agent host is local or a dev-container tunnel, unless a key was supplied
+  the agent host is local, Codespaces or Gitpod, unless a key was supplied
   (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env` cookie) or
   `agentOptions.shouldFetchRootKey` is `false`, so calls to a local replica work
   without an explicit `initialize()`. Any other host counts as mainnet and never
   fetches it. Calling `clientManager.initialize()` (as `useAuth` does) fetches
-  it up front and sets `agentState.isInitialized`, which the example below waits
-  for.
+  it up front, replacing a key from the cookie, and sets
+  `agentState.isInitialized`, which the example below waits for. A key you pass
+  as `agentOptions.rootKey` is kept instead, and `initialize()` fetches nothing.
 </Aside>
 
 ```tsx

@@ -75,7 +75,8 @@ Pin `@icp-sdk/auth` to `^8` if you depend on canister-scoped delegations.
 > v10 makes those calls through an agent of its own. Off mainnet, IC Reactor
 > gives that agent the replica your app already uses and has it fetch the
 > network's root key, since certificates from a local replica or testnet cannot
-> be checked against mainnet's. The suite covers that path. What it does not
+> be checked against mainnet's. A root key you passed as `agentOptions.rootKey`
+> goes to that agent instead, as your app's own agent keeps it. The suite covers that path. What it does not
 > cover is a deployed Internet Identity canister.
 
 `@icp-sdk/auth` is an optional peer. `AuthenticationManager` reaches it through a

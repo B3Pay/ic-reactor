@@ -72,10 +72,12 @@ substituted canister id still verifies against the real mainnet root key, so
 certificate verification cannot catch it.
 
 On a host whose network isn't `"ic"`, `ClientManager.initialize()` fetches the
-replica's root key and replaces whatever key the agent holds: the cookie's, one
-passed as `agentOptions.rootKey`, or mainnet's under
-`shouldFetchRootKey: false`. A supplied key covers only the calls made before
-`initialize()` finishes.
+replica's root key and replaces the cookie's key, or mainnet's under
+`shouldFetchRootKey: false` with no key. A key passed as `agentOptions.rootKey`
+is kept: `initialize()` fetches nothing, resolves even when `/api/v2/status` is
+unreachable, and every call is verified against that key
+(`clientManager.explicitRootKey` reports it). On a mainnet host nothing is
+fetched.
 
 `isMainnetHost` is a boundary-node check only; it recognises three canonical
 domains and returns `false` for a mainnet dapp on a custom domain. Never use it

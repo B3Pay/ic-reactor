@@ -589,17 +589,20 @@ export class AuthenticationManager {
    * certificate against mainnet's, which a local replica or testnet cannot
    * satisfy, so sign-in would fail at the first mint. Off mainnet it gets the
    * replica this app already talks to and fetches that network's root key, the
-   * same trust the app's own agent needs there. On mainnet nothing is passed,
-   * and the client keeps its defaults.
+   * same trust the app's own agent needs there. When the app passed its own
+   * `agentOptions.rootKey`, which its agent keeps, the minting agent gets that
+   * key instead and verifies against it too. On mainnet nothing is passed, and
+   * the client keeps its defaults.
    */
   private sessionAgentOptions(): Record<string, unknown> | undefined {
     if (!this.clientManager.isLocal) {
       return undefined
     }
     const host = this.clientManager.agentHost
+    const rootKey = this.clientManager.explicitRootKey
     return {
       ...(host ? { host: host.toString() } : {}),
-      shouldFetchRootKey: true,
+      ...(rootKey ? { rootKey } : { shouldFetchRootKey: true }),
     }
   }
 

@@ -81,10 +81,14 @@ boundary domain; any other page falls back to mainnet), in Node/SSR from
 `ICP_NETWORK` / `DFX_NETWORK`. Pass `agentOptions.host` to override it.
 
 On a local host (`localhost`, a loopback address, or a `*.github.dev` or
-`*.gitpod.io` tunnel), `initialize()` fetches the replica's root key even if you
-passed `agentOptions.rootKey` or set `shouldFetchRootKey: false`, and the fetched
-key replaces yours. Any other host, including a custom testnet domain, is treated
-as mainnet: nothing is fetched and a supplied key is kept.
+`*.gitpod.io` tunnel), `initialize()` fetches the replica's root key and replaces
+the key the agent holds: one from the `ic_env` cookie, or mainnet's under
+`shouldFetchRootKey: false`. A key you pass as `agentOptions.rootKey` is kept
+instead: `initialize()` fetches nothing (so `/api/v2/status` need not be
+reachable), and every call is verified against your key, which
+`clientManager.explicitRootKey` reports. Any other host, including a custom
+testnet domain, is treated as mainnet: nothing is fetched and a supplied key is
+kept.
 
 ### 2. Create Reactor
 
@@ -159,9 +163,10 @@ agent host and the page origin are both unambiguously a local replica: loopback
 (all of 127.0.0.0/8), and `localhost` and its subdomains. Codespaces and Gitpod
 domains are not on that list: every workspace shares its parent domain with
 strangers' workspaces, so there the cookie needs `allowEnvConfig: true`, and the
-agent fetches the root key from the replica. The page counts because the page is what decides who
-the siblings are: a document served from `app.example.com` shares its cookie jar
-with every other `*.example.com`, whatever host its agent talks to. The exported
+agent fetches the root key from the replica. The page counts because the page is
+what decides who the siblings are: a document served from `app.example.com`
+shares its cookie jar with every other `*.example.com`, whatever host its agent
+talks to. The exported
 `allowsEnvRootKey(host)` answers this for one host, and `ClientManager` asks it
 of both and resolves the pair once into the `trustsEnvConfig` getter that every
 consumer reads.
@@ -249,6 +254,7 @@ clientManager.queryClient // TanStack QueryClient
 clientManager.network // "local" | "remote" | "ic"
 clientManager.isLocal // boolean — true whenever network !== "ic"
 clientManager.trustsEnvConfig // boolean — whether the ic_env cookie is trusted here
+clientManager.explicitRootKey // Uint8Array | undefined — agentOptions.rootKey, kept by initialize()
 
 // Async: forwards HttpAgent.getPrincipal()
 const principal = await clientManager.getUserPrincipal()

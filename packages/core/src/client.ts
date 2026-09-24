@@ -187,6 +187,8 @@ export class ClientManager {
   #targetCanisterIds: Set<string> = new Set()
   /** Resolved once in the constructor; see {@link trustsEnvConfig}. */
   #trustsEnvConfig: boolean
+  /** The caller's own `agentOptions.rootKey`; see {@link explicitRootKey}. */
+  #explicitRootKey?: Uint8Array
 
   /**
    * The TanStack QueryClient used for managing cached canister data and invalidating queries on identity changes.
@@ -216,6 +218,9 @@ export class ClientManager {
     // not inherit the host, the verification setting, or a root key this one
     // took from the `ic_env` cookie under its own trust decision.
     const agentOptions: HttpAgentOptions = { ...givenAgentOptions }
+    // Read from the caller's options, before the `ic_env` cookie can fill the
+    // copy: only a key the caller chose is kept by `initializeAgent`.
+    this.#explicitRootKey = givenAgentOptions.rootKey ?? undefined
 
     this.agentState = {
       isInitialized: false,
@@ -345,9 +350,9 @@ export class ClientManager {
     // that window failed verification — and an update call had already run on
     // the replica by the time it was reported as failed. Asking the agent to
     // fetch the key itself makes every request wait for it instead. The agent
-    // shares one fetch between its requests and `initializeAgent`, and a root
-    // key given explicitly or taken from the `ic_env` cookie is used as is
-    // until `initializeAgent` replaces it with the fetched one.
+    // shares one fetch between its requests and `initializeAgent`. A root key
+    // given explicitly is used as is and kept; one taken from the `ic_env`
+    // cookie is used until `initializeAgent` replaces it with the fetched one.
     if (hostNetwork !== "ic") {
       agentOptions.shouldFetchRootKey ??= true
     }
@@ -374,10 +379,14 @@ export class ClientManager {
   /**
    * Specifically initializes the HttpAgent.
    * On local networks, this includes fetching the root key for certificate verification.
-   * That covers every host whose network isn't `"ic"`, dev-container tunnels
-   * included. The fetched key replaces whatever key the agent holds: one passed
-   * as `agentOptions.rootKey`, one from the `ic_env` cookie, or mainnet's when
-   * `shouldFetchRootKey` is `false`.
+   * That covers every host whose network isn't `"ic"`, Codespaces and Gitpod
+   * included. The fetched key replaces the key the agent holds: one from the
+   * `ic_env` cookie, or mainnet's when `shouldFetchRootKey` is `false`.
+   *
+   * A key passed as `agentOptions.rootKey` is kept instead: nothing is
+   * fetched, so `/api/v2/status` is not requested and need not be reachable,
+   * and the agent verifies against that key before and after this call alike.
+   * On a mainnet host nothing is fetched either way.
    *
    * @returns A promise that resolves when the agent is fully initialized.
    */
@@ -437,7 +446,15 @@ export class ClientManager {
           }
         )
       }
-      if (this.isLocal) {
+      // A key the caller passed is the key they chose to verify against: a
+      // PocketIC or testnet key, or that of the network behind a local proxy.
+      // It used to be replaced here by whatever the host served, so calls made
+      // before this point checked one key and later calls another, and this
+      // failed whenever `/api/v2/status` could not be reached. A key from the
+      // `ic_env` cookie is still replaced: the replica's own is the one to
+      // trust. `shouldFetchRootKey: false` alone still fetches, as code
+      // written for older agents relies on this call for the key.
+      if (this.isLocal && !this.#explicitRootKey) {
         await this.#agent.fetchRootKey()
       }
       this.updateAgentState({ isInitialized: true, isInitializing: false })
@@ -499,6 +516,16 @@ export class ClientManager {
    */
   get trustsEnvConfig(): boolean {
     return this.#trustsEnvConfig
+  }
+
+  /**
+   * The root key the caller passed as `agentOptions.rootKey`, which the agent
+   * keeps: on a local host {@link initializeAgent} does not replace it with
+   * the key the host serves. `undefined` when none was passed, also when the
+   * agent took one from the `ic_env` cookie.
+   */
+  get explicitRootKey(): Uint8Array | undefined {
+    return this.#explicitRootKey
   }
 
   /**

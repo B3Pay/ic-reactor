@@ -100,6 +100,7 @@ Network detection needs no flag — see [Network Configuration](#network-configu
 | `network`         | `"ic" \| "local" \| "remote"` | Current network type                                                         |
 | `isLocal`         | `boolean`                     | Whether connected to local replica                                           |
 | `trustsEnvConfig` | `boolean`                     | Whether the `ic_env` cookie is trusted for this agent host and page (getter) |
+| `explicitRootKey` | `Uint8Array \| undefined`     | The `agentOptions.rootKey` you passed, which `initialize()` keeps (getter)   |
 
 ### AgentState Type
 
@@ -128,7 +129,9 @@ This method:
 1. Initializes the HttpAgent (fetches root key for local networks)
 2. Returns the ClientManager instance
 
-When the agent host is local or a dev-container tunnel (`network` is not `"ic"`), `initialize()` fetches the root key from the replica's `/api/v2/status` even if one was supplied (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env` cookie) or `agentOptions.shouldFetchRootKey` is `false`. The fetched key replaces the supplied one, so the agent verifies against a supplied key only until `initialize()` finishes, and `initialize()` rejects if `/api/v2/status` can't be reached. On a mainnet host it fetches nothing and a supplied key stays.
+When the agent host is local, Codespaces or Gitpod (`network` is not `"ic"`), `initialize()` fetches the root key from the replica's `/api/v2/status` and replaces the key the agent holds: `IC_ROOT_KEY` from the `ic_env` cookie, or mainnet's when `agentOptions.shouldFetchRootKey` is `false` and no key was passed. It rejects if `/api/v2/status` can't be reached.
+
+A key you pass as `agentOptions.rootKey` is kept: `initialize()` fetches nothing, so it resolves even when `/api/v2/status` is unreachable, and every call, before and after it, is verified against your key. Pass one to pin a key obtained out of band, such as a PocketIC or testnet key, or that of the network behind a local proxy. A key that does not match the replica fails every certified call. On a mainnet host nothing is fetched and a supplied key stays.
 
 Session restoration is **not** part of this call — it belongs to `AuthenticationManager.authenticate()` (or the `useAuth` hook, which calls it for you).
 
@@ -439,15 +442,15 @@ npm install @icp-sdk/auth
 
 <Aside type="note">
   Calls to a local replica do not wait for `initialize()`: when the agent host
-  is local or a dev-container tunnel (`network` is not `"ic"`), `ClientManager`
-  has the agent fetch the root key before its first request, unless a root key
-  was supplied (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env`
-  cookie) or `agentOptions.shouldFetchRootKey` is `false`. Any other host counts
-  as mainnet and never fetches it. `initialize()` fetches it up front and sets
-  `agentState.isInitialized`, for a loading screen that waits on it. It fetches
-  the key even when one was supplied, and replaces it (see
-  [initialize](#initialize)). The React auth hooks (`useAuth`) call it
-  automatically.
+  is local, Codespaces or Gitpod (`network` is not `"ic"`), `ClientManager` has
+  the agent fetch the root key before its first request, unless a root key was
+  supplied (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env` cookie)
+  or `agentOptions.shouldFetchRootKey` is `false`. Any other host counts as
+  mainnet and never fetches it. `initialize()` fetches it up front and sets
+  `agentState.isInitialized`, for a loading screen that waits on it. It replaces
+  a key from the cookie with the fetched one, and keeps a key passed as
+  `agentOptions.rootKey` without fetching (see [initialize](#initialize)). The
+  React auth hooks (`useAuth`) call it automatically.
 </Aside>
 
 ## External Authentication
