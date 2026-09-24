@@ -138,10 +138,13 @@ export type QueryConfig<
  * also be TanStack Query's `skipToken`, for a query whose arguments are not
  * known yet.
  *
- * A skipped query does not fetch. It is keyed by its method alone (plus what
- * `callConfig` adds), the prefix every key its arguments will give it
- * extends, so it never reads an entry cached for some arguments. Once `args`
- * holds arguments, the query is keyed and fetched as usual.
+ * A skipped query does not fetch. It has an entry of its own under its
+ * method's key (at the canister and agent `callConfig` names), which no
+ * call's key shares, so it shows no data until the arguments arrive, not
+ * even that of a call made without arguments. Once `args` holds arguments,
+ * the query is keyed and fetched as usual. Its `refetch()` has nothing to
+ * run: TanStack Query answers it with a "Missing queryFn" error, so offer a
+ * refresh only once the arguments exist.
  *
  * The suspense hooks do not take `skipToken`: TanStack Query has no way to
  * suspend on a query that cannot run.
@@ -617,9 +620,10 @@ export type SkippedQuery<TQuery extends { useQuery: unknown }> = Pick<
  * The function `createQueryFactory` returns: a {@link QueryFactoryFn} that
  * also takes TanStack Query's `skipToken` in place of args, for a component
  * whose args are not known yet. For `skipToken` it returns a
- * {@link SkippedQuery}, whose `useQuery()` waits without fetching, keyed by
- * the factory's `getQueryKey()` prefix. Given `args ? [args] : skipToken`, it
- * returns either, and `useQuery()` can be called on the result directly.
+ * {@link SkippedQuery}, whose `useQuery()` waits without fetching, in an
+ * entry of its own under the factory's `getQueryKey()` prefix. Given
+ * `args ? [args] : skipToken`, it returns either, and `useQuery()` can be
+ * called on the result directly.
  *
  * `createSuspenseQueryFactory` returns a plain {@link QueryFactoryFn}: a
  * suspense query cannot wait on `skipToken`.

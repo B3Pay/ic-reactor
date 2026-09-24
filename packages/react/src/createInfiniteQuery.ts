@@ -174,11 +174,12 @@ export interface InfiniteQueryConfig<
  * {@link InfiniteQueryConfig} whose `getArgs` may also be TanStack Query's
  * `skipToken`, for a list whose arguments are not known yet.
  *
- * A skipped list does not fetch. It is keyed by its method and config
- * `queryKey` (plus what `callConfig` adds), the prefix every key its
- * arguments will give it extends. Once `getArgs` is a function, the list is
- * keyed and fetched as usual. `useActorSuspenseInfiniteQuery` does not take
- * `skipToken`.
+ * A skipped list does not fetch. It has an entry of its own under its method
+ * and config `queryKey` (at the canister and agent `callConfig` names), which
+ * no call's key shares, so it shows no data until the arguments arrive. Once
+ * `getArgs` is a function, the list is keyed and fetched as usual. Its
+ * `refetch()` has nothing to run: TanStack Query answers it with a "Missing
+ * queryFn" error. `useActorSuspenseInfiniteQuery` does not take `skipToken`.
  *
  * @example
  * ```typescript

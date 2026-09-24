@@ -47,13 +47,13 @@ function Feed() {
 
 ### Required Options
 
-| Option             | Type                               | Description                                                         |
-| ------------------ | ---------------------------------- | ------------------------------------------------------------------- |
-| `reactor`          | `Reactor<A, T>`                    | The Reactor instance to use                                         |
-| `functionName`     | `string`                           | The canister method to call                                         |
-| `getArgs`          | `(pageParam) => Args \| skipToken` | Builds the call arguments for each page; `skipToken` waits for them |
-| `initialPageParam` | `TPageParam`                       | Page param the first fetch starts from                              |
-| `getNextPageParam` | `function`                         | Function to determine the next page param (cursor/index)            |
+| Option             | Type                                 | Description                                                         |
+| ------------------ | ------------------------------------ | ------------------------------------------------------------------- |
+| `reactor`          | `Reactor<A, T>`                      | The Reactor instance to use                                         |
+| `functionName`     | `string`                             | The canister method to call                                         |
+| `getArgs`          | `((pageParam) => Args) \| skipToken` | Builds the call arguments for each page; `skipToken` waits for them |
+| `initialPageParam` | `TPageParam`                         | Page param the first fetch starts from                              |
+| `getNextPageParam` | `function`                           | Function to determine the next page param (cursor/index)            |
 
 <Aside type="caution">
   There is no `args` option on this hook — arguments come from `getArgs`, which

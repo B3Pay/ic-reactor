@@ -13,9 +13,9 @@ import { createQueryFactory } from "../src/createQuery.js"
  * placeholder args, a non-null assertion or an `as any` cast, and turned the
  * query off with `enabled`. The non-suspense query hooks and
  * createQueryFactory now take TanStack Query's `skipToken` in place of args.
- * A skipped query does not call the canister, is keyed by its method alone
- * (the prefix of the key its args will give it), and fetches as usual once
- * real args arrive.
+ * A skipped query does not call the canister, waits in an entry of its own
+ * under its method's key (the prefix of the key its args will give it), and
+ * fetches as usual once real args arrive.
  */
 
 interface LedgerActor {
@@ -80,8 +80,20 @@ describe("skipToken in place of args", () => {
       .getAll()
       .map((query) => query.queryKey)
 
+  /**
+   * The key of a skipped query: `prefix`, the method's key, and one segment
+   * more, so it sits under the method without being any call's key.
+   */
+  const expectSkippedKeyUnder = (
+    key: readonly unknown[],
+    prefix: readonly unknown[]
+  ) => {
+    expect(key).toHaveLength(prefix.length + 1)
+    expect(key.slice(0, prefix.length)).toEqual(prefix)
+  }
+
   describe("useActorQuery", () => {
-    it("waits without calling the canister, keyed by the method alone", async () => {
+    it("waits without calling the canister, under the method's key", async () => {
       const { useActorQuery } = createActorHooks(reactor)
       const { result } = renderHook(() =>
         useActorQuery({
@@ -97,7 +109,8 @@ describe("skipToken in place of args", () => {
       expect(calls).toEqual([])
       expect(result.current.fetchStatus).toBe("idle")
       expect(result.current.data).toBeUndefined()
-      expect(cachedKeys()).toEqual([[LEDGER, "icrc1_balance_of"]])
+      expect(cachedKeys()).toHaveLength(1)
+      expectSkippedKeyUnder(cachedKeys()[0], [LEDGER, "icrc1_balance_of"])
     })
 
     it("fetches once args arrive, under a key its skipped key prefixes", async () => {
@@ -155,9 +168,8 @@ describe("skipToken in place of args", () => {
           callConfig: { canisterId: CKBTC },
         })
       )
-      await waitFor(() =>
-        expect(cachedKeys()).toEqual([[CKBTC, "icrc1_balance_of"]])
-      )
+      await waitFor(() => expect(cachedKeys()).toHaveLength(1))
+      expectSkippedKeyUnder(cachedKeys()[0], [CKBTC, "icrc1_balance_of"])
       expect(calls).toEqual([])
     })
   })
@@ -187,12 +199,15 @@ describe("skipToken in place of args", () => {
       await new Promise((resolve) => setTimeout(resolve, 20))
       expect(calls).toEqual([])
       expect(result.current.fetchStatus).toBe("idle")
-      // The method and the custom key: the prefix of the key its args give.
-      const skippedKey = reactor.generateQueryKey({
+      // Under the method and the custom key: the prefix of the key its args
+      // give.
+      const prefix = reactor.generateQueryKey({
         functionName: "get_blocks",
         queryKey: ["history"],
       })
-      expect(cachedKeys()).toEqual([skippedKey])
+      expect(cachedKeys()).toHaveLength(1)
+      expectSkippedKeyUnder(cachedKeys()[0], prefix)
+      const skippedKey = cachedKeys()[0]
 
       rerender({ owner: "alice" })
       await waitFor(() =>
@@ -206,9 +221,9 @@ describe("skipToken in place of args", () => {
         },
       ])
       const realKey = cachedKeys().find(
-        (key) => key.length > skippedKey.length
+        (key) => JSON.stringify(key) !== JSON.stringify(skippedKey)
       )!
-      expect(realKey.slice(0, skippedKey.length)).toEqual(skippedKey)
+      expect(realKey.slice(0, prefix.length)).toEqual(prefix)
     })
   })
 
@@ -223,7 +238,7 @@ describe("skipToken in place of args", () => {
       expect(getBalance(skipToken)).toBe(skipped)
     })
 
-    it("waits at the factory's prefix, then fetches once args arrive", async () => {
+    it("waits under the factory's prefix, then fetches once args arrive", async () => {
       const getBalance = createQueryFactory(reactor, {
         functionName: "icrc1_balance_of",
         select: (balance) => balance.toString(),
@@ -237,7 +252,8 @@ describe("skipToken in place of args", () => {
       await new Promise((resolve) => setTimeout(resolve, 20))
       expect(calls).toEqual([])
       expect(result.current.fetchStatus).toBe("idle")
-      expect(cachedKeys()).toEqual([getBalance.getQueryKey()])
+      expect(cachedKeys()).toHaveLength(1)
+      expectSkippedKeyUnder(cachedKeys()[0], getBalance.getQueryKey())
 
       rerender({ owner: "bob" })
       await waitFor(() => expect(result.current.data).toBe("42"))
@@ -254,9 +270,8 @@ describe("skipToken in place of args", () => {
       })
       renderHook(() => getBalance(skipToken).useQuery())
 
-      await waitFor(() =>
-        expect(cachedKeys()).toEqual([[CKBTC, "icrc1_balance_of"]])
-      )
+      await waitFor(() => expect(cachedKeys()).toHaveLength(1))
+      expectSkippedKeyUnder(cachedKeys()[0], [CKBTC, "icrc1_balance_of"])
       expect(getBalance.getQueryKey()).toEqual([CKBTC, "icrc1_balance_of"])
       expect(calls).toEqual([])
     })

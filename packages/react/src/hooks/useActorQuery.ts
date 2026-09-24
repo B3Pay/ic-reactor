@@ -17,7 +17,7 @@ import {
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { retryOption, useMountQueryClient } from "../utils.js"
+import { retryOption, skippedQueryKey, useMountQueryClient } from "../utils.js"
 
 export interface UseActorQueryParameters<
   Service,
@@ -38,8 +38,9 @@ export interface UseActorQueryParameters<
   functionName: Method
   /**
    * The method's arguments, or TanStack Query's `skipToken` while they are
-   * not known: the query then waits without fetching, keyed by its method
-   * alone, the prefix every key its arguments will give it extends.
+   * not known: the query then waits without fetching, in an entry of its own
+   * under its method's key, which no call's key shares, so it shows no data
+   * until the arguments arrive.
    */
   args?: ReactorArgs<Service, Method, Transform> | SkipToken
   callConfig?: CallConfig
@@ -114,10 +115,13 @@ export const useActorQuery = <
   const { queryKey, queryFn, retry } = useMemo(
     () =>
       args === skipToken
-        ? // Waiting for its args: keyed by the method alone, which every key
-          // the args will give extends, with nothing to run until then.
+        ? // Waiting for its args: an entry of its own under the method's key,
+          // with nothing to run until then; see skippedQueryKey.
           {
-            queryKey: reactor.generateQueryKey({ functionName }, callConfig),
+            queryKey: skippedQueryKey(
+              reactor.generateQueryKey({ functionName }, callConfig),
+              "query"
+            ),
             // Kept as the unique symbol, which an object literal widens.
             queryFn: skipToken as SkipToken,
             retry: undefined,

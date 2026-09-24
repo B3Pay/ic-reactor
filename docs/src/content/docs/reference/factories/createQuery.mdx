@@ -423,8 +423,8 @@ function Balance({ owner }: { owner?: Principal }) {
 }
 ```
 
-The skipped query is keyed by the factory's `getQueryKey()` prefix. Its
-imperative members (`fetch()`, `invalidate()`, the cache controls) are left
+The skipped query has a cache entry of its own under the factory's
+`getQueryKey()` prefix, which no call's key shares. Its imperative members (`fetch()`, `invalidate()`, the cache controls) are left
 out, since there is no call or entry until the args are known: check the args
 before reaching for them. `createSuspenseQueryFactory` does not take
 `skipToken`.

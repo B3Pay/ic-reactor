@@ -170,9 +170,12 @@ const getUser = createQueryFactory(backend, { functionName: "getUser" })
 const { data } = getUser(userId ? [userId] : skipToken).useQuery()
 ```
 
-A skipped query is keyed by its method alone, the prefix of the key its
-arguments will give it. The suspense hooks and factories do not take
-`skipToken`, since a suspense query has to be able to run.
+A skipped query has a cache entry of its own under its method's key, which no
+call's key shares, so it shows no data until its arguments arrive. Its
+`refetch()` has nothing to run (TanStack Query answers it with a "Missing
+queryFn" error), so offer a refresh only once the arguments exist. The
+suspense hooks and factories do not take `skipToken`, since a suspense query
+has to be able to run.
 
 When the arguments are known but the query should still wait, use the
 `enabled` option:

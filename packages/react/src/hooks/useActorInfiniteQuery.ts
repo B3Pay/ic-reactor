@@ -23,6 +23,7 @@ import {
   mergeFactoryQueryKey,
   normalizeQueryData,
   retryOption,
+  skippedQueryKey,
   useMountQueryClient,
 } from "../utils.js"
 
@@ -55,9 +56,9 @@ export interface UseActorInfiniteQueryParameters<
   functionName: Method
   /**
    * Function to get args from page parameter, or TanStack Query's `skipToken`
-   * while the args are not known: the query then waits without fetching,
-   * keyed by its method and `queryKey`, the prefix every key its args will
-   * give it extends.
+   * while the args are not known: the query then waits without fetching, in
+   * an entry of its own under its method and `queryKey`, which no call's key
+   * shares, so it shows no data until the args arrive.
    */
   getArgs:
     | ((pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>)
@@ -182,12 +183,16 @@ export const useActorInfiniteQuery = <
   // reactor/function identity. Using the custom key verbatim would cause cache
   // collisions if two different actors or methods share the same key string.
   const baseQueryKey = useMemo(() => {
-    // Waiting for its args: keyed by the method and the custom key, which
-    // every key the args will give extends.
+    // Waiting for its args: an entry of its own under the method and the
+    // custom key, which every key the args will give extends; see
+    // skippedQueryKey.
     if (getArgs === skipToken) {
-      return reactor.generateQueryKey(
-        { functionName, queryKey: mergeFactoryQueryKey(queryKey) },
-        callConfig
+      return skippedQueryKey(
+        reactor.generateQueryKey(
+          { functionName, queryKey: mergeFactoryQueryKey(queryKey) },
+          callConfig
+        ),
+        "infinite"
       )
     }
     // Fold the call arguments into the key. They live in the `getArgs`

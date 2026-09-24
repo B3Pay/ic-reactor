@@ -97,6 +97,36 @@ export function mountWhileSuspended(
 export const FACTORY_KEY_ARGS_QUERY_KEY = "__ic_reactor_factory_key_args"
 
 /**
+ * Internal query-key segment that ends the key of a query waiting on
+ * `skipToken`. Not part of the public API.
+ */
+export const SKIPPED_QUERY_KEY = "__ic_reactor_skipped"
+
+/**
+ * The key of a query whose args are `skipToken`: `prefix`, the method's key
+ * that every key its args give extends, and then a segment no call's key has.
+ *
+ * It used to be the bare prefix, which is also the key of a query of the same
+ * method made without args, as a method with no parameters is called. The
+ * skipped query then showed that query's data though its own args were not
+ * known. And TanStack Query refetches an entry with the options of whichever
+ * of its observers rendered last, so an invalidation, including the sweep a
+ * sign-in or sign-out runs, could find `skipToken` in place of the query
+ * function: the refetch failed with "Missing queryFn" and the other query
+ * kept the previous caller's answer.
+ *
+ * `kind` keeps a waiting list apart from a waiting query of the same method,
+ * since TanStack Query does not share an entry between `useQuery` and
+ * `useInfiniteQuery`.
+ */
+export function skippedQueryKey(
+  prefix: QueryKey,
+  kind: "query" | "infinite"
+): QueryKey {
+  return [...prefix, { [SKIPPED_QUERY_KEY]: kind }]
+}
+
+/**
  * The call config an infinite query's function fetches with: the caller's,
  * aimed at the canister its query key names unless the caller named one.
  *

@@ -115,9 +115,12 @@ function UserProfile({ userId }: { userId: string | undefined }) {
 }
 ```
 
-A skipped query is keyed by its method alone (plus what `callConfig` adds),
-the prefix of the key its arguments will give it. `refetch()` has nothing to
-run until then.
+A skipped query has a cache entry of its own under its method's key (at the
+canister `callConfig` names), which no call's key shares: it shows no data
+until its arguments arrive, not even that of a query of the method made
+without arguments. `refetch()` has nothing to run until then, and TanStack
+Query answers it with a "Missing queryFn" error, so offer a refresh only once
+the arguments exist.
 
 ### Conditional Query
 

@@ -57,6 +57,7 @@ import {
   pickFetchOptions,
   queryCacheControls,
   retryOption,
+  skippedQueryKey,
   useMountQueryClient,
   withQueryFactoryMethods,
 } from "./utils.js"
@@ -105,12 +106,15 @@ const createQueryImpl = <
   }
 
   // What the hook observes: the call, or for a query still waiting for its
-  // args, the method's key, which every key the args will give extends, with
-  // nothing to run.
+  // args, an entry of its own under the method's key, with nothing to run;
+  // see skippedQueryKey.
   const queryOptions = () =>
     skipped
       ? {
-          queryKey: reactor.generateQueryKey({ functionName }, callConfig),
+          queryKey: skippedQueryKey(
+            reactor.generateQueryKey({ functionName }, callConfig),
+            "query"
+          ),
           // Kept as the unique symbol, which an object literal widens.
           queryFn: skipToken as SkipToken,
           retry: undefined,
