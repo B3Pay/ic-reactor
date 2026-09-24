@@ -256,6 +256,8 @@ export const getProfile = createSuspenseQueryFactory(backend, {
 
 export const updateProfile = createMutation(backend, {
   functionName: "update_profile",
+  // Every get_profile query this factory made, whatever the args
+  invalidateQueries: [getProfile],
   onCanisterError: (err) => console.error("Canister Err variant:", err.code),
 })
 ```
@@ -272,11 +274,19 @@ profileQuery.prefetch()
 // Optimistic update
 profileQuery.setData({ id: "alice", name: "Alice" })
 
-// Mutation with cache invalidation
+// Mutation with extra invalidation: a query object, a query factory, a
+// `{ functionName, args? }` method of the reactor, or a query key
 const mutation = updateProfile.useMutation({
-  invalidateQueries: [profileQuery.getQueryKey()],
+  invalidateQueries: [{ functionName: "list_profiles" }],
 })
 ```
+
+An `invalidateQueries` entry of `createMutation`, `useActorMutation` and
+`useActorMethod` is a query object, a query factory (every query it returns),
+a `{ functionName, args? }` method of the mutation's reactor, whose name and
+args are type-checked, or a query key. The invalidation is awaited before
+`onSuccess`. Query keys start with the canister ID, so a hand-written
+`["get_profile"]` matches nothing.
 
 ## Internet Identity
 
@@ -578,6 +588,12 @@ A sign-in or sign-out while `fetch()` is in flight does not reject it: the
 previous identity's answer is dropped, and `fetch()` runs again for the new
 identity and resolves with that answer. The infinite query factories' `fetch()`
 behaves the same.
+
+The function a factory variant returns (`createQueryFactory`,
+`createSuspenseQueryFactory`, `createInfiniteQueryFactory`,
+`createSuspenseInfiniteQueryFactory`) also has `getQueryKey()`, the key prefix
+every query it returns shares, and `invalidate()`, which invalidates all of
+them whatever their args.
 
 ## Canister Error Handling
 

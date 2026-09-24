@@ -27,10 +27,12 @@ import {
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
 import {
+  invalidateTargets,
   normalizeQueryData,
   pickFetchOptions,
   useMountQueryClient,
 } from "../utils.js"
+import type { InvalidationTarget } from "../types.js"
 
 /**
  * Configuration for useActorMethod hook.
@@ -94,15 +96,19 @@ export interface UseActorMethodParameters<
   onError?: (error: ReactorReturnErr<Service, Method, Transform>) => void
 
   /**
-   * Query keys to invalidate after a successful mutation.
+   * Queries to invalidate after a successful mutation.
    * Only applies to mutation methods (updates).
+   *
+   * Each entry is a query key, a query object or query factory, or a
+   * `{ functionName, args? }` method of `reactor`; see
+   * {@link InvalidationTarget}. `undefined` entries are skipped.
    *
    * The invalidation is awaited before `onSuccess` runs, as in
    * `useActorMutation` and `createMutation`, so `onSuccess` sees the
    * refetched data, and `call()` resolves once the invalidated queries in use
    * have refetched.
    */
-  invalidateQueries?: QueryKey[]
+  invalidateQueries?: InvalidationTarget<Service, Transform>[]
 }
 
 /**
@@ -453,13 +459,7 @@ export function useActorMethod<
       // that fails does not reject `invalidateQueries`, so it cannot turn the
       // update, which has already run on the canister, into a failure.
       onSuccess: async (data) => {
-        if (invalidateQueries && invalidateQueries.length > 0) {
-          await Promise.all(
-            invalidateQueries.map((queryKey) =>
-              reactor.queryClient.invalidateQueries({ queryKey })
-            )
-          )
-        }
+        await invalidateTargets(reactor, invalidateQueries)
         onSuccessRef.current?.(data)
       },
       onError: (error) => {

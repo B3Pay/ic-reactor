@@ -44,7 +44,7 @@ import {
   InfiniteQueryObserverOptions,
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { NoInfer } from "./types.js"
+import type { NoInfer, QueryFactoryMethods } from "./types.js"
 import {
   buildChainedSelect,
   callConfigForKey,
@@ -53,6 +53,7 @@ import {
   pickFetchOptions,
   retryOption,
   useMountQueryClient,
+  withQueryFactoryMethods,
 } from "./utils.js"
 
 type InfiniteQueryFactoryFn<
@@ -61,7 +62,7 @@ type InfiniteQueryFactoryFn<
   Transform extends TransformKey,
   TPageParam,
   Selected,
-> = {
+> = QueryFactoryMethods & {
   (
     getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
   ): InfiniteQueryResult<
@@ -548,6 +549,9 @@ export function createInfiniteQuery<
  * // Create query with specific args builder
  * const userPostsQuery = getPostsQuery((cursor) => [{ userId, cursor, limit: 10 }])
  * const { data, fetchNextPage } = userPostsQuery.useInfiniteQuery()
+ *
+ * // Every list this factory made, whatever its args and pages
+ * await getPostsQuery.invalidate()
  */
 
 export function createInfiniteQueryFactory<
@@ -569,13 +573,7 @@ export function createInfiniteQueryFactory<
     Selected
   >
 ): InfiniteQueryFactoryFn<Service, Method, Transform, TPageParam, Selected> {
-  const factory: InfiniteQueryFactoryFn<
-    Service,
-    Method,
-    Transform,
-    TPageParam,
-    Selected
-  > = (
+  const factory = (
     getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
   ) => {
     // `getKeyArgs` and the args-derived key segment are applied by the impl,
@@ -598,5 +596,15 @@ export function createInfiniteQueryFactory<
     })
   }
 
-  return factory
+  // What every instance's key starts with: the method, the `callConfig`
+  // segments and the config `queryKey`. The args segment comes after them.
+  return withQueryFactoryMethods(factory, reactor, () =>
+    reactor.generateQueryKey(
+      {
+        functionName: config.functionName as Method,
+        queryKey: config.queryKey,
+      },
+      config.callConfig
+    )
+  )
 }

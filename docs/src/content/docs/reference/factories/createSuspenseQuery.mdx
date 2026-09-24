@@ -288,6 +288,21 @@ function UserProfile({ userId }: { userId: string }) {
 }
 ```
 
+The factory function also has `getQueryKey()`, the key prefix every query it
+returns shares, and `invalidate()`, which invalidates all of them whatever the
+args. Pass the factory to a mutation's `invalidateQueries` to refresh every
+instance:
+
+```typescript
+const renameUser = createMutation(backend, {
+  functionName: "renameUser",
+  invalidateQueries: [getUserQuery],
+})
+```
+
+See [createQueryFactory](/v3/reference/factories/createquery#every-instance-at-once)
+for details.
+
 ---
 
 ## When to Use Suspense

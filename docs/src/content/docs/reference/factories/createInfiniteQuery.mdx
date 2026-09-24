@@ -424,6 +424,25 @@ function UserPosts({ userId }: { userId: string }) {
 }
 ```
 
+### Every List at Once
+
+The factory function has `getQueryKey()` and `invalidate()`, which cover every
+list it returns, whatever its `getArgs` and however many pages it loaded:
+
+```typescript
+// Refetch every loaded list
+await getPostsQuery.invalidate()
+
+// Or after a mutation
+const createPost = createMutation(backend, {
+  functionName: "createPost",
+  invalidateQueries: [getPostsQuery],
+})
+```
+
+The prefix is built from the method, the factory's `callConfig` and its config
+`queryKey`, the part of the key every instance shares.
+
 ### Factory Cache Identity (Route/Search Params)
 
 By default, `createInfiniteQueryFactory(...)` derives the query key from the

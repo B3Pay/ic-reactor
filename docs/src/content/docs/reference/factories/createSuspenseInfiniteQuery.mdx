@@ -331,6 +331,23 @@ function CategoryPage({ categoryId }: { categoryId: string }) {
 }
 ```
 
+### Every List at Once
+
+The factory function has `getQueryKey()` and `invalidate()`, which cover every
+list it returns, whatever its `getArgs`, per-call `queryKey` or number of
+loaded pages:
+
+```typescript
+// Refetch every category's product list
+await getCategoryProductsQuery.invalidate()
+
+// Or after a mutation
+const addProduct = createMutation(backend, {
+  functionName: "addProduct",
+  invalidateQueries: [getCategoryProductsQuery],
+})
+```
+
 ### Factory Cache Identity (Route/Search Params)
 
 `createSuspenseInfiniteQueryFactory(...)` derives the query key from

@@ -47,9 +47,7 @@ function Transfer() {
   const { call, isPending, data } = useActorMethod({
     functionName: "transfer",
     // Optional: refetch every icrc1_balance_of query after a successful call
-    invalidateQueries: [
-      backend.generateQueryKey({ functionName: "icrc1_balance_of" }),
-    ],
+    invalidateQueries: [{ functionName: "icrc1_balance_of" }],
     // `call` never rejects: a failed call resolves `undefined` and reports
     // its error here, so react to the outcome in the callbacks
     onSuccess: () => alert("Transfer successful!"),
@@ -68,10 +66,12 @@ function Transfer() {
 }
 ```
 
-Query keys start with the canister ID, so a hand-written key such as
-`["icrc1_balance_of"]` matches no query. Build keys with the reactor's
-`generateQueryKey`, or with `getQueryKey()` on a query object. A key built
-without `args` matches every query of that method, whatever its arguments.
+An `invalidateQueries` entry is a `{ functionName, args? }` method of the
+hook's reactor, a query object or query factory, or a query key. Without
+`args`, a method entry covers every query of that method, whatever its
+arguments. Query keys start with the canister ID, so a hand-written key such
+as `["icrc1_balance_of"]` matches no query; build one with the reactor's
+`generateQueryKey` or a query object's `getQueryKey()`.
 
 ## Options
 
@@ -87,7 +87,7 @@ without `args` matches every query of that method, whatever its arguments.
 | `queryKey`          | `QueryKey`             | Custom query key for queries.                           |
 | `onSuccess`         | `(data) => void`       | Callback when the method call succeeds.                 |
 | `onError`           | `(error) => void`      | Callback when the method call fails.                    |
-| `invalidateQueries` | `QueryKey[]`           | For mutations: keys to invalidate after success.        |
+| `invalidateQueries` | `InvalidationTarget[]` | For mutations: queries to invalidate after success.     |
 
 For an update method, the `invalidateQueries` invalidation is awaited before
 `onSuccess` runs, as in `useActorMutation` and `createMutation`. `onSuccess`

@@ -34,6 +34,7 @@ import type {
   UseSuspenseQueryWithSelect,
   SuspenseQueryResult,
   SuspenseQueryFactoryConfig,
+  QueryFactoryFn,
   NoInfer,
 } from "./types.js"
 import {
@@ -43,6 +44,7 @@ import {
   pickFetchOptions,
   retryOption,
   useMountQueryClient,
+  withQueryFactoryMethods,
 } from "./utils.js"
 
 // ============================================================================
@@ -200,6 +202,27 @@ export function createSuspenseQuery<
 // Convenience: Create suspense query with dynamic args
 // ============================================================================
 
+/**
+ * Create a suspense query factory: a function that takes the method's args
+ * and returns the suspense query object for them, the same object for the
+ * same args.
+ *
+ * The function also has `getQueryKey()`, the key prefix every query it
+ * returns shares, and `invalidate()`, which invalidates all of them whatever
+ * their args. Pass the function itself to a mutation's `invalidateQueries` to
+ * refresh every instance after the mutation.
+ *
+ * @example
+ * const getBalance = createSuspenseQueryFactory(ledger, {
+ *   functionName: "icrc1_balance_of",
+ * })
+ *
+ * // In a component under <Suspense>
+ * const { data } = getBalance([{ owner, subaccount: [] }]).useSuspenseQuery()
+ *
+ * // Refetch every account's balance
+ * await getBalance.invalidate()
+ */
 export function createSuspenseQueryFactory<
   Service,
   Transform extends TransformKey,
@@ -213,12 +236,13 @@ export function createSuspenseQueryFactory<
     Transform,
     Selected
   >
-): (
-  args: ReactorArgs<Service, Method, Transform>
-) => SuspenseQueryResult<
-  QueryFnData<Service, Method, Transform>,
-  Selected,
-  QueryError<Service, Method, Transform>
+): QueryFactoryFn<
+  ReactorArgs<Service, Method, Transform>,
+  SuspenseQueryResult<
+    QueryFnData<Service, Method, Transform>,
+    Selected,
+    QueryError<Service, Method, Transform>
+  >
 > {
   const cache =
     createBoundedCache<
@@ -229,7 +253,7 @@ export function createSuspenseQueryFactory<
       >
     >()
 
-  return (args: ReactorArgs<Service, Method, Transform>) => {
+  const factory = (args: ReactorArgs<Service, Method, Transform>) => {
     const key = reactor.generateQueryKey({
       functionName: config.functionName as Method,
       args,
@@ -256,4 +280,10 @@ export function createSuspenseQueryFactory<
     cache.set(cacheKey, result)
     return result
   }
+
+  // The method's own prefix. A config `queryKey` follows the args segment in
+  // every instance's key, so it cannot narrow the prefix.
+  return withQueryFactoryMethods(factory, reactor, () =>
+    reactor.generateQueryKey({ functionName: config.functionName as Method })
+  )
 }

@@ -208,30 +208,40 @@ const { data } = useActorQuery({
 
 ## Manual Invalidation
 
-### Using QueryClient
+### Using Query Objects
 
-Invalidate queries directly with the QueryClient:
+A query object and a query factory invalidate their own queries:
 
 ```typescript
-import { useQueryClient } from "@tanstack/react-query"
+import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-function RefreshButton() {
-  const queryClient = useQueryClient()
+const getUser = createQueryFactory(backend, { functionName: "getUser" })
 
+function RefreshButton({ userId }: { userId: string }) {
   const handleRefresh = () => {
-    // Invalidate a specific query
-    queryClient.invalidateQueries({
-      queryKey: backend.generateQueryKey({
-        functionName: "getUser",
-        args: ["user-123"],
-      }),
-    })
+    // One user's query
+    void getUser([userId]).invalidate()
   }
 
-  return <button onClick={handleRefresh}>Refresh</button>
+  const handleRefreshAll = () => {
+    // Every getUser query this factory made, whatever the args
+    void getUser.invalidate()
+  }
+
+  return (
+    <>
+      <button onClick={handleRefresh}>Refresh</button>
+      <button onClick={handleRefreshAll}>Refresh all users</button>
+    </>
+  )
 }
 ```
+
+`getUser.getQueryKey()` is the key prefix those queries share, for any other
+QueryClient call. For the client itself use `backend.queryClient`: the hooks
+bind to the reactor's own client, and `useQueryClient()` throws when there is
+no `QueryClientProvider`, which is optional.
 
 ### Invalidate All Canister Queries
 
@@ -291,44 +301,37 @@ await backend.invalidateQueries({
 The simplest way to refetch related data after a mutation:
 
 ```typescript
-import { backend } from "./reactor"
-
 const { mutate } = useActorMutation({
   functionName: "createPost",
   invalidateQueries: [
-    backend.generateQueryKey({ functionName: "getPosts" }),
-    backend.generateQueryKey({ functionName: "getPostCount" }),
+    { functionName: "getPosts" }, // every getPosts query, whatever its args
+    { functionName: "getPostCount" },
   ],
 })
 ```
 
+An entry can also be a query object or a query factory (`[postsQuery]`,
+`[getUser]`), or a query key. The invalidation is awaited before `onSuccess`
+runs. See [Mutations](/v3/framework/mutations#invalidating-queries-after-mutation).
+
 ### Using onSuccess
 
-For more control, use `onSuccess`:
+For more control, use `onSuccess`. Here the new post goes straight into the
+cached list instead of being refetched:
 
 ```typescript
-import { useQueryClient } from "@tanstack/react-query"
+import { createQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-function CreatePost() {
-  const queryClient = useQueryClient()
+const postsQuery = createQuery(backend, { functionName: "getPosts" })
 
-  const { mutate } = useActorMutation({
-    functionName: "createPost",
-    onSuccess: (newPost) => {
-      // Invalidate posts list
-      queryClient.invalidateQueries({
-        queryKey: backend.generateQueryKey({ functionName: "getPosts" }),
-      })
-
-      // Or directly update the cache
-      queryClient.setQueryData(
-        backend.generateQueryKey({ functionName: "getPosts" }),
-        (old: Post[]) => [...old, newPost]
-      )
-    },
-  })
-}
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  onSuccess: (newPost) => {
+    // `old` is undefined when the list is not cached yet
+    postsQuery.setData((old) => (old ? [...old, newPost] : old))
+  },
+})
 ```
 
 ## Optimistic Updates

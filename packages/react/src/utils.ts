@@ -5,8 +5,19 @@
 import { useEffect } from "react"
 import type { QueryClient, QueryKey } from "@tanstack/react-query"
 import type { CallConfig } from "@icp-sdk/core/agent"
-import type { ReactorQueryData } from "@ic-reactor/core"
+import type {
+  FunctionName,
+  Reactor,
+  ReactorArgs,
+  ReactorQueryData,
+  TransformKey,
+} from "@ic-reactor/core"
 import { generateKey } from "@ic-reactor/core"
+import type {
+  InvalidationTarget,
+  QueryFactoryMethods,
+  QueryKeySource,
+} from "./types.js"
 
 /**
  * Keep `queryClient` mounted while the calling component is.
@@ -267,4 +278,82 @@ export function createBoundedCache<V>(limit: number = FACTORY_CACHE_LIMIT) {
       return entries.size
     },
   }
+}
+
+const isQueryKeySource = (value: object): value is QueryKeySource =>
+  typeof (value as Partial<QueryKeySource>).getQueryKey === "function"
+
+/**
+ * Invalidate one `invalidateQueries` entry; see {@link invalidateTargets}.
+ */
+function invalidateTarget<Service, Transform extends TransformKey>(
+  reactor: Reactor<Service, Transform>,
+  target: InvalidationTarget<Service, Transform> | null
+): Promise<void> {
+  // React Query reads `{ queryKey: undefined }` as "match everything", so an
+  // absent entry would invalidate every query in the client, the app's
+  // unrelated non-canister ones included. `null` only comes from untyped code
+  // and would do the same.
+  if (target == null) return Promise.resolve()
+  if (Array.isArray(target)) {
+    return reactor.queryClient.invalidateQueries({ queryKey: target })
+  }
+  if (isQueryKeySource(target)) {
+    // A query object or factory invalidates on its own reactor's client, which
+    // is not this reactor's when each reactor has a QueryClient of its own.
+    return target.invalidate
+      ? target.invalidate()
+      : reactor.queryClient.invalidateQueries({
+          queryKey: target.getQueryKey(),
+        })
+  }
+  // A `{ functionName, args? }` descriptor. Its key is built now rather than
+  // when the mutation was set up, so it follows a `setCanisterId`.
+  const { functionName, args } = target as {
+    functionName: FunctionName<Service>
+    args?: ReactorArgs<Service, FunctionName<Service>, Transform>
+  }
+  return reactor.queryClient.invalidateQueries({
+    queryKey: reactor.generateQueryKey({ functionName, args }),
+  })
+}
+
+/**
+ * Invalidate every entry of a mutation's `invalidateQueries` in parallel, on
+ * behalf of `reactor`, the mutation's own. It resolves once every active
+ * query they matched has refetched; a refetch that fails does not reject it,
+ * so it cannot turn an update that already ran into a failure.
+ *
+ * An entry is a query key, a query object or query factory (anything with a
+ * `getQueryKey()`), or a `{ functionName, args? }` descriptor, which is keyed
+ * by `reactor.generateQueryKey`. `undefined` entries are skipped.
+ */
+export async function invalidateTargets<
+  Service,
+  Transform extends TransformKey,
+>(
+  reactor: Reactor<Service, Transform>,
+  targets: readonly InvalidationTarget<Service, Transform>[] | undefined
+): Promise<void> {
+  if (!targets || targets.length === 0) return
+  await Promise.all(targets.map((target) => invalidateTarget(reactor, target)))
+}
+
+/**
+ * Give an args-late query factory function its {@link QueryFactoryMethods}.
+ *
+ * `getQueryKey` builds the prefix every query of the factory shares, and is
+ * called each time so that it follows a `setCanisterId`.
+ */
+export function withQueryFactoryMethods<Factory extends object>(
+  factory: Factory,
+  reactor: { readonly queryClient: QueryClient },
+  getQueryKey: () => QueryKey
+): Factory & QueryFactoryMethods {
+  const methods: QueryFactoryMethods = {
+    getQueryKey,
+    invalidate: () =>
+      reactor.queryClient.invalidateQueries({ queryKey: getQueryKey() }),
+  }
+  return Object.assign(factory, methods)
 }

@@ -323,6 +323,35 @@ const { data: alice } = aliceQuery.useQuery()
 const { data: bob } = bobQuery.useQuery()
 ```
 
+### Every Instance at Once
+
+The factory function itself has `getQueryKey()` and `invalidate()`. They cover
+every query it returns, whatever the args:
+
+```typescript
+// Refetch every user on screen
+await getUserQuery.invalidate()
+
+// The key prefix those queries share, for QueryClient calls of your own
+backend.queryClient.getQueriesData({ queryKey: getUserQuery.getQueryKey() })
+
+// Or hand the factory to a mutation
+const renameUser = createMutation(backend, {
+  functionName: "renameUser",
+  invalidateQueries: [getUserQuery],
+})
+```
+
+| Property      | Type                  | Description                                       |
+| ------------- | --------------------- | ------------------------------------------------- |
+| `getQueryKey` | `() => QueryKey`      | The method's key prefix, shared by every instance |
+| `invalidate`  | `() => Promise<void>` | Invalidate every instance (active ones refetch)   |
+
+The prefix is the reactor's canister and the method, so it also matches a
+query of the same method made elsewhere, such as with `useActorQuery`. A
+config `queryKey` comes after the args in each instance's key, so it does not
+narrow the prefix.
+
 ### Factory Caching
 
 Factory instances are cached internally:

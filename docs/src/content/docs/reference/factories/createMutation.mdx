@@ -22,7 +22,7 @@ import { backend } from "./reactor"
 
 const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  invalidateQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
+  invalidateQueries: [{ functionName: "getPosts" }],
 })
 ```
 
@@ -32,7 +32,7 @@ const createPostMutation = createMutation(backend, {
 | ------------------- | ------------------------------------------- | ------------------------------------------- |
 | `functionName`      | `string`                                    | The canister method to call (Required)      |
 | `callConfig`        | `CallConfig`                                | IC call configuration                       |
-| `invalidateQueries` | `QueryKey[]`                                | Queries to invalidate on success            |
+| `invalidateQueries` | `InvalidationTarget[]`                      | Queries to invalidate on success            |
 | `onSuccess`         | `(data, variables, context) => void`        | Called on success                           |
 | `onError`           | `(error, variables, context) => void`       | Called on any error (network or canister)   |
 | `onCanisterError`   | `(error, variables) => void`                | Called specifically on canister logic error |
@@ -96,9 +96,7 @@ import { backend } from "../../reactor"
 
 const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  invalidateQueries: [
-    backend.generateQueryKey({ functionName: "getPosts" }),
-  ],
+  invalidateQueries: [{ functionName: "getPosts" }],
 })
 
 export const Route = createFileRoute("/posts/new")({
@@ -214,9 +212,7 @@ interface TransferForm {
 
 const transferMutation = createMutation(backend, {
   functionName: "transfer",
-  invalidateQueries: [
-    backend.generateQueryKey({ functionName: "getBalance" }),
-  ],
+  invalidateQueries: [{ functionName: "getBalance" }],
 })
 
 function TransferPage() {
@@ -305,51 +301,67 @@ a server, as for queries.
 
 ### Multiple Related Refetches
 
-`invalidateQueries` is always an **array of query keys** — never a function of the mutation arguments. Supply it on the factory when the keys are known up front, or on `useMutation()` when they depend on component state.
+`invalidateQueries` is a **list**, never a function of the mutation arguments.
+Supply it on the factory when the queries are known up front, or on
+`useMutation()` when they depend on component state. The hook's list is
+invalidated after the factory's. Each entry is one of:
 
-#### Option 1: Static Keys (if args are known in advance)
+| Entry                    | Invalidates                                                          |
+| ------------------------ | -------------------------------------------------------------------- |
+| `{ functionName }`       | Every query of that method of this reactor, whatever its args        |
+| `{ functionName, args }` | That method's query for those args                                   |
+| A query object           | That query, from any `create*Query` (suspense and infinite included) |
+| A query factory          | Every query it returns, whatever its args, from any `create*Factory` |
+| A `QueryKey`             | The queries under that key                                           |
+| `undefined`              | Nothing, so `[maybeQuery]` is safe                                   |
+
+The method name and args of a `{ functionName, args? }` entry are type-checked
+against the canister, and its key is built when the mutation succeeds, so it
+follows a `setCanisterId`. A query object or factory is invalidated in its own
+reactor's QueryClient.
+
+#### Option 1: Fixed Queries (known up front)
 
 ```typescript
 const createCommentMutation = createMutation(backend, {
   functionName: "createComment",
   invalidateQueries: [
-    backend.generateQueryKey({ functionName: "getUserActivity" }),
+    { functionName: "getUserActivity" },
+    { functionName: "getComments" }, // every post's comments
   ],
 })
 ```
 
-#### Option 2: Dynamic Keys (Recommended)
+#### Option 2: Per-Component Queries
 
-To keep your code clean and reusable, define helper functions for your query keys:
+When the queries depend on props, pass the query objects to `useMutation()`:
 
 ```typescript
-// Define reusable query key helpers
-const getPostKey = (postId: string) =>
-  backend.generateQueryKey({ functionName: "getPost", args: [postId] })
+import { createQueryFactory } from "@ic-reactor/react"
 
-const getCommentsKey = (postId: string) =>
-  backend.generateQueryKey({ functionName: "getComments", args: [postId] })
+const getPost = createQueryFactory(backend, { functionName: "getPost" })
+const getComments = createQueryFactory(backend, {
+  functionName: "getComments",
+})
 
 const createCommentMutation = createMutation(backend, {
   functionName: "createComment",
 })
 
 // In your component
-function CommentForm({ postId }) {
-  const queryClient = useQueryClient()
-
+function CommentForm({ postId }: { postId: string }) {
   const { mutate } = createCommentMutation.useMutation({
-    // Invalidate the post and comments after mutation
-    invalidateQueries: [getPostKey(postId), getCommentsKey(postId)],
+    // Invalidate this post and its comments after the mutation
+    invalidateQueries: [getPost([postId]), getComments([postId])],
   })
 
   // ...
 }
 ```
 
-### Refetching with Query Factories
+### Refetching with Query Objects
 
-If you are using `createQuery` (or other query factories), you can use their `getQueryKey` method directly:
+Pass a query object or a query factory as it is:
 
 ```typescript
 import { createQuery, createMutation } from "@ic-reactor/react"
@@ -361,10 +373,7 @@ const postsQuery = createQuery(backend, {
 
 const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  invalidateQueries: [
-    // Use the factory's getQueryKey method
-    postsQuery.getQueryKey(),
-  ],
+  invalidateQueries: [postsQuery],
 })
 ```
 
@@ -458,9 +467,15 @@ Always specify which queries should be invalidated:
 const mutation = createMutation(backend, {
   functionName: "createPost",
   invalidateQueries: [
-    backend.generateQueryKey({ functionName: "getPosts" }),
-    backend.generateQueryKey({ functionName: "getPostCount" }),
+    { functionName: "getPosts" },
+    { functionName: "getPostCount" },
   ],
+})
+
+// ❌ Bad - keys start with the canister ID, so this matches nothing
+const mutation = createMutation(backend, {
+  functionName: "createPost",
+  invalidateQueries: [["getPosts"]],
 })
 
 // ❌ Bad - no invalidation, cache becomes stale
@@ -497,7 +512,9 @@ Disable buttons and show loading indicators:
 
 <Aside type="tip">
   Use `invalidateQueries` for automatic cache invalidation. This is more
-  reliable than manually calling `queryClient.invalidateQueries()`.
+  reliable than manually calling `queryClient.invalidateQueries()`: it is
+  awaited before `onSuccess`, and a method or query object cannot be misspelled
+  into a key that matches nothing.
 </Aside>
 
 <Aside type="note">

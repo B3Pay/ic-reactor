@@ -9,6 +9,9 @@
  * @example
  * const transferMutation = createMutation(reactor, {
  *   functionName: "transfer",
+ *   // Refetched before onSuccess runs: a query factory covers every args
+ *   // instance, a `{ functionName }` every query of that method
+ *   invalidateQueries: [getBalance, { functionName: "get_history" }],
  *   onSuccess: () => console.log("Success!"),
  * })
  *
@@ -45,23 +48,7 @@ import type {
   MutationHookOptions,
   NoInfer,
 } from "./types.js"
-import { useMountQueryClient } from "./utils.js"
-
-// ============================================================================
-// Internal helpers
-// ============================================================================
-
-/** Invalidate a list of query keys in parallel, filtering out undefineds. */
-async function invalidateAll(
-  queryClient: Reactor<any, any>["queryClient"],
-  keys: (import("@tanstack/react-query").QueryKey | undefined)[]
-): Promise<void> {
-  await Promise.all(
-    keys.map((queryKey) =>
-      queryKey ? queryClient.invalidateQueries({ queryKey }) : Promise.resolve()
-    )
-  )
-}
+import { invalidateTargets, useMountQueryClient } from "./utils.js"
 
 // ============================================================================
 // Internal Implementation
@@ -161,13 +148,9 @@ const createMutationImpl = <
       mutationFn: callFn,
       onSuccess: async (data, variables, onMutateResult, context) => {
         // 1. Factory-level invalidation
-        if (factoryInvalidateQueries) {
-          await invalidateAll(reactor.queryClient, factoryInvalidateQueries)
-        }
+        await invalidateTargets(reactor, factoryInvalidateQueries)
         // 2. Hook-level invalidation
-        if (hookInvalidateQueries) {
-          await invalidateAll(reactor.queryClient, hookInvalidateQueries)
-        }
+        await invalidateTargets(reactor, hookInvalidateQueries)
         // 3. Factory onSuccess
         await factoryOnSuccess?.(
           data,

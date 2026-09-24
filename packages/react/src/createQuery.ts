@@ -44,6 +44,7 @@ import type {
   UseQueryWithSelect,
   QueryResult,
   QueryFactoryConfig,
+  QueryFactoryFn,
   NoInfer,
 } from "./types.js"
 import {
@@ -52,6 +53,7 @@ import {
   pickFetchOptions,
   retryOption,
   useMountQueryClient,
+  withQueryFactoryMethods,
 } from "./utils.js"
 
 // ============================================================================
@@ -209,6 +211,29 @@ export function createQuery<
 // Convenience: Create query with dynamic args
 // ============================================================================
 
+/**
+ * Create a query factory: a function that takes the method's args and returns
+ * the query object for them, the same object for the same args.
+ *
+ * The function also has `getQueryKey()`, the key prefix every query it
+ * returns shares, and `invalidate()`, which invalidates all of them whatever
+ * their args. Pass the function itself to a mutation's `invalidateQueries` to
+ * refresh every instance after the mutation.
+ *
+ * @example
+ * const getBalance = createQueryFactory(ledger, {
+ *   functionName: "icrc1_balance_of",
+ * })
+ *
+ * // In a component
+ * const { data } = getBalance([{ owner, subaccount: [] }]).useQuery()
+ *
+ * // Refetch every account's balance after a transfer
+ * const transfer = createMutation(ledger, {
+ *   functionName: "icrc1_transfer",
+ *   invalidateQueries: [getBalance],
+ * })
+ */
 export function createQueryFactory<
   Service,
   Transform extends TransformKey,
@@ -217,12 +242,13 @@ export function createQueryFactory<
 >(
   reactor: Reactor<Service, Transform>,
   config: QueryFactoryConfig<NoInfer<Service>, Method, Transform, Selected>
-): (
-  args: ReactorArgs<Service, Method, Transform>
-) => QueryResult<
-  QueryFnData<Service, Method, Transform>,
-  Selected,
-  QueryError<Service, Method, Transform>
+): QueryFactoryFn<
+  ReactorArgs<Service, Method, Transform>,
+  QueryResult<
+    QueryFnData<Service, Method, Transform>,
+    Selected,
+    QueryError<Service, Method, Transform>
+  >
 > {
   const cache =
     createBoundedCache<
@@ -233,7 +259,7 @@ export function createQueryFactory<
       >
     >()
 
-  return (args: ReactorArgs<Service, Method, Transform>) => {
+  const factory = (args: ReactorArgs<Service, Method, Transform>) => {
     const key = reactor.generateQueryKey({
       functionName: config.functionName as Method,
       args,
@@ -253,4 +279,10 @@ export function createQueryFactory<
     cache.set(cacheKey, result)
     return result
   }
+
+  // The method's own prefix. A config `queryKey` follows the args segment in
+  // every instance's key, so it cannot narrow the prefix.
+  return withQueryFactoryMethods(factory, reactor, () =>
+    reactor.generateQueryKey({ functionName: config.functionName as Method })
+  )
 }

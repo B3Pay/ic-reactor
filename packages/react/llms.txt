@@ -67,6 +67,26 @@ the QueryClient's `mutations.retry` default, which also reaches
 `useActorMethod` update calls and `createMutation().execute()`; use
 `reactorUpdateRetry` to retry a mutation only when that cannot run it twice.
 
+## Invalidating After a Mutation
+
+`invalidateQueries` on `createMutation`, `.useMutation()`, `useActorMutation`
+and `useActorMethod` takes, per entry: a `{ functionName, args? }` method of
+the mutation's reactor (type-checked; without `args` it covers every query of
+the method, infinite ones included), a query object, a query factory (every
+query it returns, whatever the args), or a query key. The invalidation is
+awaited before `onSuccess`. Never hand-write a key such as `["get_posts"]`:
+keys start with the canister ID, so it matches nothing.
+
+```ts
+const createPost = createMutation(backend, {
+  functionName: "create_post",
+  invalidateQueries: [getPosts, { functionName: "get_posts_count" }],
+})
+```
+
+A query factory function also has `getQueryKey()` (the prefix of all its
+queries) and `invalidate()`.
+
 ## Mutation Error Handling
 
 For canister `Result.Err` variants, use `onCanisterError`. Keep `onError` for

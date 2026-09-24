@@ -292,6 +292,11 @@ mutation pending until those refetches finish, as TanStack Query recommends.
 With the `no-floating-promises` lint rule, a call you do not want to wait for
 needs a `void` in front of it.
 
+In a mutation, list the queries in its `invalidateQueries` option instead. The
+same `{ functionName, args? }` shape works there, resolved against the
+mutation's reactor: `invalidateQueries: [{ functionName: "getUser" }]`. See
+[Mutations](/v3/framework/mutations#invalidating-queries-after-mutation).
+
 ---
 
 ### getServiceInterface

@@ -344,6 +344,148 @@ export interface SuspenseQueryResult<
 }
 
 // ============================================================================
+// Query Factory Functions
+// ============================================================================
+
+/**
+ * The members every args-late query factory function carries
+ * (`createQueryFactory`, `createSuspenseQueryFactory`,
+ * `createInfiniteQueryFactory`, `createSuspenseInfiniteQueryFactory`).
+ *
+ * A factory makes one query per set of args, so there was no key to name all
+ * of them: invalidating a list after a mutation meant keeping the args of each
+ * instance around. These address every query the factory returns at once.
+ */
+export interface QueryFactoryMethods {
+  /**
+   * The key prefix every query of this factory shares, whatever its args: the
+   * canister and the method, plus the reactor's transform segment, and for an
+   * infinite factory its `callConfig` and config `queryKey`. TanStack Query
+   * matches keys by prefix, so the prefix covers every args instance and
+   * every infinite page set. Queries of the same method made elsewhere share
+   * it too.
+   *
+   * @example
+   * ```typescript
+   * const getBalance = createQueryFactory(ledger, {
+   *   functionName: "icrc1_balance_of",
+   * })
+   *
+   * // Every cached balance, whatever the account
+   * ledger.queryClient.getQueriesData({ queryKey: getBalance.getQueryKey() })
+   * ```
+   */
+  getQueryKey: () => QueryKey
+  /**
+   * Invalidate every query of this factory, whatever its args, on the
+   * reactor's QueryClient. It resolves once the active ones have refetched; a
+   * refetch that fails does not reject it.
+   *
+   * @example
+   * ```typescript
+   * // After a transfer, refresh every balance on screen
+   * await getBalance.invalidate()
+   * ```
+   */
+  invalidate: () => Promise<void>
+}
+
+/**
+ * The function `createQueryFactory` and `createSuspenseQueryFactory` return:
+ * called with args it returns the query object for them, the same object for
+ * the same args, and it also carries {@link QueryFactoryMethods}.
+ *
+ * @template TArgs - The method's arguments
+ * @template TQuery - The query object it returns
+ */
+export interface QueryFactoryFn<TArgs, TQuery> extends QueryFactoryMethods {
+  (args: TArgs): TQuery
+}
+
+// ============================================================================
+// Invalidation Targets
+// ============================================================================
+
+/**
+ * Anything that knows the key of its queries: a query object from
+ * `createQuery`, `createSuspenseQuery`, `createInfiniteQuery` or
+ * `createSuspenseInfiniteQuery` (factory instances included), or a query
+ * factory function, whose key covers every query it returns.
+ */
+export interface QueryKeySource {
+  /** The key, or key prefix, of the queries it names. */
+  getQueryKey: () => QueryKey
+  /**
+   * Invalidate those queries on the QueryClient they are cached in.
+   * `invalidateQueries` calls it when it is there, so a query of another
+   * reactor with a QueryClient of its own is invalidated in that client. The
+   * key goes to the mutation's reactor's QueryClient otherwise.
+   */
+  invalidate?: () => Promise<void>
+}
+
+/**
+ * A method of the mutation's own reactor, and optionally one set of its
+ * arguments: the same shape `Reactor.invalidateQueries` takes. Its key is
+ * built by the reactor's `generateQueryKey` when the mutation succeeds, so it
+ * follows a `setCanisterId` and carries the reactor's transform segment.
+ *
+ * Without `args` it names every query of the method, whatever its args,
+ * infinite queries included. With `args` it names the queries for those args.
+ * A query sent to another canister through `callConfig` is keyed apart; name
+ * it by its query object or key instead.
+ *
+ * @example
+ * ```typescript
+ * invalidateQueries: [
+ *   { functionName: "get_posts" },
+ *   { functionName: "get_post", args: [postId] },
+ * ]
+ * ```
+ */
+export type QueryDescriptor<
+  Service = BaseActor,
+  Transform extends TransformKey = "candid",
+> = {
+  [Method in FunctionName<Service>]: {
+    /** The method whose queries to name */
+    functionName: Method
+    /** The arguments of the one query to name; omit for every query of the method */
+    args?: ReactorArgs<Service, Method, Transform>
+  }
+}[FunctionName<Service>]
+
+/**
+ * One entry of `invalidateQueries`: which queries a successful mutation
+ * invalidates.
+ *
+ * - a query key, as `generateQueryKey` or `getQueryKey()` builds it;
+ * - a query object or query factory ({@link QueryKeySource});
+ * - a method of the mutation's own reactor, with or without args
+ *   ({@link QueryDescriptor});
+ * - `undefined`, which is skipped, so `[maybeQuery]` and
+ *   `[maybeQuery?.getQueryKey()]` are safe when the query is absent.
+ *
+ * TanStack Query matches each key by prefix.
+ *
+ * @example
+ * ```typescript
+ * createMutation(backend, {
+ *   functionName: "create_post",
+ *   invalidateQueries: [
+ *     postsQuery, // a query object
+ *     getPost, // a query factory: every post, whatever its args
+ *     { functionName: "get_posts_count" }, // a method of this reactor
+ *   ],
+ * })
+ * ```
+ */
+export type InvalidationTarget<
+  Service = BaseActor,
+  Transform extends TransformKey = "candid",
+> = QueryKey | QueryKeySource | QueryDescriptor<Service, Transform> | undefined
+
+// ============================================================================
 // Actor Mutation Types
 // ============================================================================
 
@@ -372,13 +514,21 @@ export interface MutationConfig<
   /** Call configuration for the actor method */
   callConfig?: CallConfig
   /**
-   * Queries to invalidate upon successful mutation.
+   * Queries to invalidate upon successful mutation, before `onSuccess` runs.
+   * The mutation stays pending until the invalidated queries in use have
+   * refetched, so `onSuccess` reads the refetched data.
    *
-   * `undefined` entries are skipped, so the common
-   * `[maybeQuery?.getQueryKey()]` idiom is safe when the optional query object
-   * is absent.
+   * Each entry is a query key, a query object or query factory, or a
+   * `{ functionName, args? }` method of this mutation's reactor; see
+   * {@link InvalidationTarget}. `undefined` entries are skipped, so
+   * `[maybeQuery]` is safe when the optional query object is absent.
+   *
+   * @example
+   * ```typescript
+   * invalidateQueries: [getPosts, { functionName: "get_posts_count" }]
+   * ```
    */
-  invalidateQueries?: (QueryKey | undefined)[]
+  invalidateQueries?: InvalidationTarget<Service, Transform>[]
   /**
    * Callback for canister-level business logic errors.
    * Called when the canister returns a Result { Err: E } variant.
@@ -447,16 +597,19 @@ export interface MutationHookOptions<
   "mutationFn"
 > {
   /**
-   * Query keys to invalidate upon successful mutation.
-   * Use query.getQueryKey() to get the key from a query result.
+   * Queries to invalidate upon successful mutation, after the factory's own
+   * `invalidateQueries` and before `onSuccess`. Takes the same entries:
+   * a query key, a query object or query factory, or a
+   * `{ functionName, args? }` method of the mutation's reactor; see
+   * {@link InvalidationTarget}.
    *
    * @example
    * const balanceQuery = getIcpBalance([account])
    * useMutation({
-   *   invalidateQueries: [balanceQuery.getQueryKey()],
+   *   invalidateQueries: [balanceQuery],
    * })
    */
-  invalidateQueries?: (QueryKey | undefined)[]
+  invalidateQueries?: InvalidationTarget<Service, Transform>[]
   /**
    * Callback for canister-level business logic errors.
    * Called when the canister returns a Result { Err: E } variant.
@@ -490,7 +643,7 @@ export interface MutationResult<
    * @example
    * // With invalidateQueries to auto-update balance after transfer
    * const { mutate } = icpTransferMutation.useMutation({
-   *   invalidateQueries: [userBalanceQuery.getQueryKey()], // Auto-invalidate after success!
+   *   invalidateQueries: [userBalanceQuery], // Auto-invalidate after success!
    * })
    */
   useMutation: <TOnMutateResult = unknown>(

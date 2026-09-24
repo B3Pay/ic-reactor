@@ -139,41 +139,68 @@ mutate([{ title: "New Post", content: "Hello world!" }], {
 
 ## Invalidating Queries After Mutation
 
-The most common pattern after a mutation is to invalidate related queries. Use the `invalidateQueries` option:
+The most common pattern after a mutation is to invalidate related queries. List
+them in the `invalidateQueries` option:
+
+```tsx
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  invalidateQueries: [
+    // Every getPosts query, whatever its args, infinite lists included
+    { functionName: "getPosts" },
+    // Only the getPost query for this id
+    { functionName: "getPost", args: [postId] },
+  ],
+})
+```
+
+Each entry is one of:
+
+- a method of the mutation's reactor, `{ functionName }` or
+  `{ functionName, args }`. The method name and the args are type-checked
+  against the canister, and the key is built when the mutation succeeds;
+- a query object from `createQuery`, `createSuspenseQuery`,
+  `createInfiniteQuery` or `createSuspenseInfiniteQuery`;
+- a query factory from `createQueryFactory` and the other `create*Factory`
+  functions, which covers every query it returns, whatever its args;
+- a query key, from `generateQueryKey` or `getQueryKey()`.
+
+With query objects and factories defined in a shared module, pass them as they
+are:
+
+```tsx
+import { postsQuery, getPost } from "../queries"
+
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  invalidateQueries: [postsQuery, getPost],
+})
+```
+
+The invalidation runs after the canister call succeeds and before `onSuccess`.
+The mutation stays pending until the invalidated queries that are in use have
+refetched, so `onSuccess` reads the refetched data. `undefined` entries are
+skipped, so `[maybeQuery]` is safe when a query is optional.
+
+<Aside type="caution">
+  Every query key starts with the canister ID, so a hand-written key such as
+  `["getPosts"]` matches nothing. Name the method, pass the query object, or
+  build the key with `generateQueryKey`.
+</Aside>
+
+For anything a fixed list cannot express, invalidate in `onSuccess`, and await
+it so the mutation waits for the refetch:
 
 ```tsx
 import { backend } from "../reactor"
 
 const { mutate } = useActorMutation({
   functionName: "createPost",
-  invalidateQueries: [
-    // Invalidate the posts list after creating
-    backend.generateQueryKey({ functionName: "getPosts" }),
-  ],
+  onSuccess: async (post) => {
+    await backend.invalidateQueries({ functionName: "getPosts" })
+    navigate(`/posts/${post.id}`)
+  },
 })
-```
-
-Or use `onSuccess` with the query client for more control:
-
-```tsx
-import { useQueryClient } from "@tanstack/react-query"
-import { backend } from "../reactor"
-
-function CreatePost() {
-  const queryClient = useQueryClient()
-
-  const { mutate } = useActorMutation({
-    functionName: "createPost",
-    onSuccess: () => {
-      // Invalidate
-      backend.invalidateQueries({ functionName: "getPosts" })
-      // or
-      queryClient.invalidateQueries({
-        queryKey: backend.generateQueryKey({ functionName: "getPosts" }),
-      })
-    },
-  })
-}
 ```
 
 ## Form Handling
@@ -343,7 +370,7 @@ import { backend } from "../reactor"
 // Define mutation once
 const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  invalidateQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
+  invalidateQueries: [{ functionName: "getPosts" }],
 })
 
 // Use in components
@@ -360,10 +387,9 @@ async function createPostInLoader(data: PostInput) {
 ```
 
 `execute()` behaves like the hook path at the factory level: it runs the
-factory's `invalidateQueries` and `onSuccess` on success, or its
-`onCanisterError` and `onError` on failure — then rethrows so the `await` still
-rejects. Factory-level `onMutate` and `onSettled` belong to TanStack Query's
-mutation lifecycle and only run through `useMutation()`. See
+factory's `onMutate`, then its `invalidateQueries` and `onSuccess` on success,
+or its `onCanisterError` and `onError` on failure, then its `onSettled`, and
+rethrows a failure so the `await` still rejects. See
 [createMutation](/v3/reference/factories/createmutation) for details.
 
 ## Error Handling
