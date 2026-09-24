@@ -3,7 +3,7 @@ import { QueryClient } from "@tanstack/query-core"
 import { IDL } from "@icp-sdk/core/candid"
 import { ClientManager } from "../src/client.js"
 import { Reactor } from "../src/reactor.js"
-import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
+import { installFakeReplica, type FakeReplica } from "../src/testing/index.js"
 
 /**
  * Codespaces and Gitpod forward a local dev server and replica to the browser

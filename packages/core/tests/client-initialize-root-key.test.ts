@@ -5,7 +5,7 @@ import { IDL } from "@icp-sdk/core/candid"
 import { ClientManager } from "../src/client.js"
 import { Reactor } from "../src/reactor.js"
 import { hexToUint8Array, uint8ArrayToHex } from "../src/utils/helper.js"
-import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
+import { installFakeReplica, type FakeReplica } from "../src/testing/index.js"
 
 /**
  * On a local host, `initialize()` fetched the replica's root key and replaced

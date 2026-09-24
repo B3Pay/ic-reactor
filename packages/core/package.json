@@ -16,6 +16,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js",
+      "default": "./dist/testing/index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
@@ -64,9 +69,13 @@
   },
   "peerDependencies": {
     "@icp-sdk/core": "^6.1.0",
+    "@noble/curves": "^2.2.0",
     "@tanstack/query-core": "^5.0.0"
   },
   "peerDependenciesMeta": {
+    "@noble/curves": {
+      "optional": true
+    },
     "@tanstack/query-core": {
       "optional": true
     }

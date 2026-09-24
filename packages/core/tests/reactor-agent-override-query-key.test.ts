@@ -6,7 +6,7 @@ import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { ClientManager } from "../src/client.js"
 import { Reactor } from "../src/reactor.js"
 import { DisplayReactor } from "../src/display-reactor.js"
-import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
+import { installFakeReplica, type FakeReplica } from "../src/testing/index.js"
 
 /**
  * `callConfig.agent` sends one call through another agent: another identity,
