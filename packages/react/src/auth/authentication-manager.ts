@@ -248,7 +248,10 @@ export class AuthenticationManager {
    * {@link authenticate}, so that the caller's client does not keep a
    * discarded manager alive.
    *
-   * The auth state and the identity on the agent are left as they are.
+   * The auth state and the identity on the agent are left as they are. A
+   * restore reading the client when it is released ends without publishing
+   * what it read, and a sign-in or sign-out under way ends with what the
+   * released client reports.
    *
    * @example
    * ```tsx
@@ -444,20 +447,36 @@ export class AuthenticationManager {
       // would put the signed-out user's delegation back on the agent.
       const revision = this.authStateRevision
       try {
-        if (!this.authClient) {
-          const authClient = await this.initializeClient(
-            this.resolveClientOptions()
-          )
-          if (!authClient) {
-            this.updateState({ isAuthenticating: false })
-            return undefined
-          }
+        let client =
+          this.authClient ??
+          (await this.initializeClient(this.resolveClientOptions()))
+        if (!client) {
+          this.updateState({ isAuthenticating: false })
+          return undefined
         }
-        const clientIdentity = await this.authClient!.getIdentity()
-        const isAuthenticated = this.vouchesFor(
-          clientIdentity,
-          await this.authClient!.isAuthenticated()
-        )
+        let { clientIdentity, isAuthenticated } =
+          await this.readClientSession(client)
+        // Per-call options can replace the client while it is read, and
+        // `dispose()` can release it. Both answers used to be read from
+        // whichever client was current at the time, so they could come from two
+        // clients. A v10 client disposed while it restores hands out the
+        // anonymous identity, and the record its replacement reads still says
+        // signed in: the manager reported the anonymous principal signed in.
+        // The client in use now is read instead, and a manager that let go of
+        // its client publishes nothing. Nothing may be signed with what a
+        // released client held.
+        while (
+          revision === this.authStateRevision &&
+          client !== this.authClient
+        ) {
+          if (!this.authClient) {
+            this.updateState({ isAuthenticating: false })
+            return this.authState.identity || undefined
+          }
+          client = this.authClient
+          ;({ clientIdentity, isAuthenticated } =
+            await this.readClientSession(client))
+        }
 
         if (revision !== this.authStateRevision) {
           // Superseded — leave whatever ran in the meantime in place.
@@ -563,20 +582,21 @@ export class AuthenticationManager {
   }
 
   public logout = async (options?: { returnTo?: string }) => {
-    if (!this.authClient) {
-      // None built yet, or released by `dispose()`. Signing out needs no user
-      // gesture, so one can be built here.
-      await this.ensureClient()
-    }
-    if (!this.authClient) {
+    // None built yet, or released by `dispose()`. Signing out needs no user
+    // gesture, so one can be built here.
+    const client = this.authClient ?? (await this.ensureClient())
+    if (!client) {
       throw new Error(
         "Authentication module is missing or failed to initialize. To use logout, install the optional auth peer: npm install @icp-sdk/auth. If it is already installed and your bundler could not resolve it, pass a pre-constructed client instead: new AuthenticationManager({ clientManager, authClient: new AuthClient(...) })"
       )
     }
     this.updateState({ isAuthenticating: true, error: undefined })
     try {
-      await this.authClient.signOut(options)
-      const identity = await this.authClient.getIdentity()
+      // The client the sign-out started on, even once `dispose()` has released
+      // it, as when the sign-out closes the widget that built this manager.
+      // Reading `this.authClient` then failed the sign-out with a TypeError.
+      await client.signOut(options)
+      const identity = await client.getIdentity()
       this.clientManager.updateAgent(identity)
       this.publishSession({
         identity,
@@ -600,7 +620,7 @@ export class AuthenticationManager {
       // replace the newer state, as in `authenticate()`.
       const revision = this.authStateRevision
       const stillSignedIn = await Promise.resolve()
-        .then(() => this.authClient?.isAuthenticated() ?? false)
+        .then(() => client.isAuthenticated())
         .catch(() => true)
       if (revision !== this.authStateRevision) {
         throw error
@@ -778,6 +798,19 @@ export class AuthenticationManager {
   }
 
   /**
+   * The identity `client` hands out, and whether it vouches for it (see
+   * `vouchesFor()`). Both are read from the same client.
+   */
+  private async readClientSession(client: AuthClientLike) {
+    const clientIdentity = await client.getIdentity()
+    const isAuthenticated = this.vouchesFor(
+      clientIdentity,
+      await client.isAuthenticated()
+    )
+    return { clientIdentity, isAuthenticated }
+  }
+
+  /**
    * The session `client` holds, or `undefined` to leave the manager's as it is.
    *
    * v10 refuses to hand out an identity while the record names a sign-in it
@@ -790,11 +823,8 @@ export class AuthenticationManager {
     client: AuthClientLike
   ): Promise<{ identity: Identity; isAuthenticated: boolean } | undefined> {
     try {
-      const clientIdentity = await client.getIdentity()
-      const isAuthenticated = this.vouchesFor(
-        clientIdentity,
-        await client.isAuthenticated()
-      )
+      const { clientIdentity, isAuthenticated } =
+        await this.readClientSession(client)
       // The rule `authenticate()` applies to an identity the client no longer
       // vouches for.
       const identity =
@@ -821,22 +851,26 @@ export class AuthenticationManager {
   public async signInOrRecoverIdentity(
     options?: AuthClientSignInOptions
   ): Promise<Identity> {
-    if (!this.authClient) {
+    // Held, because `dispose()` can release it while the popup is open. The
+    // recovery below then failed with a TypeError instead of the client's own
+    // error.
+    const client = this.authClient
+    if (!client) {
       throw new Error(
         "Authentication module is missing or failed to initialize. To use login, install the optional auth peer: npm install @icp-sdk/auth. If it is already installed and your bundler could not resolve it, pass a pre-constructed client instead: new AuthenticationManager({ clientManager, authClient: new AuthClient(...) })"
       )
     }
 
     try {
-      return await this.authClient.signIn(
+      return await client.signIn(
         toAuthClientSignInOptions(options, this.authClientFlavor)
       )
     } catch (error) {
-      const identity = await Promise.resolve(
-        this.authClient.getIdentity()
-      ).catch(() => null)
+      const identity = await Promise.resolve(client.getIdentity()).catch(
+        () => null
+      )
       const isAuthenticated = await Promise.resolve(
-        this.authClient.isAuthenticated()
+        client.isAuthenticated()
       ).catch(() => false)
 
       if (identity && this.vouchesFor(identity, isAuthenticated)) {

@@ -433,3 +433,88 @@ describe("following a v10 client's session record (real AuthClient)", () => {
     }
   )
 })
+
+describe("a client that changes under a check in flight (real AuthClient)", () => {
+  // A restore reads the client twice, for the identity and for whether it
+  // vouches for it, with an await between. Per-call options can replace the
+  // client in between, and `dispose()` can release it. The two answers then
+  // came from different clients, or the second from none.
+
+  /** Leaves a session in the storage every tab shares, as a tab signed in. */
+  async function signInInAnotherTab() {
+    const tab = createManager()
+    await tab.authentication.prepareClient()
+    await withUserGesture(() => tab.authentication.login())
+    return provider.rootIdentity.getPrincipal().toText()
+  }
+
+  it("restores the account from the client it moved to", async () => {
+    const account = await signInInAnotherTab()
+    const { authentication, clientManager } = createManager()
+    await authentication.prepareClient()
+
+    const restoring = authentication.authenticate()
+    // A one-click button prepared while the stored session is still read.
+    authentication.getPreparedClient({ openIdProvider: "google" })
+    await restoring
+
+    const { identity, isAuthenticated, error } = authentication.authState
+    expect(error).toBeUndefined()
+    expect(isAuthenticated).toBe(true)
+    expect(identity?.getPrincipal().toText()).toBe(account)
+    expect((await clientManager.getUserPrincipal()).toText()).toBe(account)
+  })
+
+  it("ends a restore quietly when the client is released under it", async () => {
+    await signInInAnotherTab()
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    const { authentication } = createManager()
+    await authentication.prepareClient()
+
+    const restoring = authentication.authenticate()
+    authentication.dispose()
+    await expect(restoring).resolves.toBeUndefined()
+
+    const { isAuthenticated, isAuthenticating, error } =
+      authentication.authState
+    expect(error).toBeUndefined()
+    expect(isAuthenticating).toBe(false)
+    expect(isAuthenticated).toBe(false)
+    expect(consoleError).not.toHaveBeenCalled()
+    // Nothing built another client for the manager that let go of its own.
+    expect(authentication.client).toBeUndefined()
+  })
+
+  it("signs out when the client is released during the sign-out", async () => {
+    const { authentication, clientManager } = createManager()
+    await authentication.prepareClient()
+    await withUserGesture(() => authentication.login())
+
+    const signingOut = authentication.logout()
+    authentication.dispose()
+    await expect(signingOut).resolves.toBeUndefined()
+
+    expect(authentication.authState.error).toBeUndefined()
+    expect(authentication.authState.isAuthenticated).toBe(false)
+    expect((await clientManager.getUserPrincipal()).isAnonymous()).toBe(true)
+    expect(await newTabIsSignedIn()).toBe(false)
+  })
+
+  it("fails a sign-in the client is released under with the client's own error", async () => {
+    const { authentication } = createManager()
+    await authentication.prepareClient()
+
+    const signingIn = withUserGesture(() => authentication.login())
+    // The user closes the widget that built the manager with the popup open.
+    authentication.dispose()
+    const failure = await signingIn.then(
+      () => undefined,
+      (error: Error) => error
+    )
+
+    // v8 has nothing to cancel, and its sign-in finishes.
+    if (isV10) expect(failure?.name).toBe("SupersededError")
+    expect(failure).not.toBeInstanceOf(TypeError)
+    expect(authentication.authState.error).not.toBeInstanceOf(TypeError)
+  })
+})
