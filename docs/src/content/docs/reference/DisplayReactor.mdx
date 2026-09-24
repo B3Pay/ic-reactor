@@ -510,6 +510,16 @@ const { data } = useActorQuery({
 // data.bio is string | null (was [string] | [])
 ```
 
+The display types come from the service type parameter
+(`new DisplayReactor<_SERVICE>(...)`). Without one, the reactor is typed by
+`BaseActor` and knows nothing about the Candid, so every method's display-side
+arguments and results are `unknown`: validators receive `unknown` args, and
+results must be narrowed before they are rendered. (An untyped `Reactor` types
+the same values as `any`, because the raw side passes `BaseActor`'s `any`
+through.) Pass the service type from your generated declarations, or cast to
+the display shape you expect where the interface is only known at run time, as
+with a [`CandidDisplayReactor`](/v3/packages/candid/candiddisplayreactor#types-with-and-without-a-service-type).
+
 ## Validation
 
 DisplayReactor includes optional argument validation. Validators receive **display types**,

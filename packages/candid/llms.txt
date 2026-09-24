@@ -26,6 +26,11 @@ from `@tanstack/react-query` instead.
 
 - `CandidAdapter` for fetching/parsing Candid definitions
 - `CandidReactor` for dynamic reactor behavior
+- `CandidDisplayReactor` for dynamic calls with display types (strings for
+  `bigint` and `Principal`). Without a service type parameter its display-side
+  args, validator args and results are `unknown`: cast them to the display
+  shape, or pass `new CandidDisplayReactor<Service>(...)` when the interface is
+  known at build time
 - `MetadataReactor` + `CandidFormVisitor` for form metadata
 
 ## Parser Strategy

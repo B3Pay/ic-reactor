@@ -25,6 +25,10 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 - Choose `DisplayReactor` when users type/read principals and numbers in forms
 - Validation can run on display values before calls
+- Pass the service type (`new DisplayReactor<_SERVICE>(...)`). Without it the
+  display-side args, validator args and results are `unknown` (an untyped
+  `Reactor` gives `any`); cast to the display shape only when the interface is
+  known only at run time
 
 ## Local Environment Root Key
 

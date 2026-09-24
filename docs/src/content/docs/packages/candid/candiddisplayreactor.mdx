@@ -103,6 +103,66 @@ new CandidDisplayReactor<A = BaseActor, T extends TransformKey = "display">(
   </TabItem>
 </Tabs>
 
+### Types: with and without a service type
+
+The Candid usually arrives at run time, so a `CandidDisplayReactor` is usually
+created without a service type. `A` then defaults to `BaseActor`, and every
+method's display-side arguments and results are typed `unknown`: nothing about
+their shape is known when the code compiles. Validators receive `unknown` args,
+and a `callMethod()` result has to be narrowed before it is rendered or passed
+on. (An untyped `CandidReactor` types the same values as `any` instead, because
+the raw side passes `BaseActor`'s `any` through.) There are two ways to work
+with these values:
+
+- **Cast to the display shape you expect.** For example
+  `const [input] = args as [{ to: string; amount: string }]` in a validator, or
+  `(await reactor.callMethod(...)) as string` for a `nat` result. The cast is
+  not checked against the Candid, so keep it next to the code that relies on it.
+- **Pass a service type** when the interface is known at build time. Write it
+  in Candid types, as `@icp-sdk/bindgen` generates it; the reactor derives the
+  display types from it:
+
+```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+import type { ActorMethod } from "@icp-sdk/core/agent"
+import type { Principal } from "@icp-sdk/core/principal"
+
+interface TokenService {
+  icrc1_balance_of: ActorMethod<[{ owner: Principal }], bigint>
+  transfer: ActorMethod<
+    [{ to: Principal; amount: bigint }],
+    { Ok: bigint } | { Err: string }
+  >
+}
+
+const reactor = new CandidDisplayReactor<TokenService>({
+  name: "token",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+  candid: `service : {
+    icrc1_balance_of : (record { owner : principal }) -> (nat) query;
+    transfer : (record { to : principal; amount : nat }) -> (variant { Ok : nat; Err : text });
+  }`,
+})
+await reactor.initialize()
+
+// input is { to: string; amount: string }: no cast
+reactor.registerValidator("transfer", ([input]) =>
+  input.to
+    ? { success: true }
+    : { success: false, issues: [{ path: ["to"], message: "Required" }] }
+)
+
+// balance is string
+const balance = await reactor.callMethod({
+  functionName: "icrc1_balance_of",
+  args: [{ owner: "aaaaa-aa" }],
+})
+```
+
+The type parameter only names types. The methods the reactor can call still
+come from the Candid it parses or fetches, so keep the two in step.
+
 ---
 
 ## Type Transformations
@@ -179,8 +239,9 @@ await reactor.registerMethods([
 ## Validation (Inherited from DisplayReactor)
 
 Add form validation that works with display types. A reactor created without a
-service type passes its validators `unknown`, so name the display shape you
-expect:
+service type passes its validators `unknown` args, so name the display shape
+you expect (or pass a service type; see
+[Types: with and without a service type](#types-with-and-without-a-service-type)):
 
 ```typescript
 // Register a validator
@@ -292,11 +353,12 @@ async function getTokenBalance(canisterId: string, owner: string) {
     candid: "(record { owner : principal }) -> (nat) query",
   })
 
-  // Pass Principal as string, get balance as string
-  const balance = await reactor.callMethod({
-    functionName: "icrc1_balance_of" as any,
+  // Pass Principal as string, get balance as string. The untyped reactor
+  // returns `unknown`; a nat displays as a string.
+  const balance = (await reactor.callMethod({
+    functionName: "icrc1_balance_of",
     args: [{ owner }], // owner is a string like "aaaaa-aa"
-  })
+  })) as string
 
   return balance // "1000000" - ready for UI display!
 }
@@ -306,6 +368,7 @@ async function getTokenBalance(canisterId: string, owner: string) {
 
 ```typescript
 import { CandidDisplayReactor } from "@ic-reactor/candid"
+import { ValidationError } from "@ic-reactor/core"
 
 const reactor = new CandidDisplayReactor({
   name: "transfer-actor",
@@ -373,7 +436,7 @@ function useDynamicBalance(reactor: CandidDisplayReactor, owner: string) {
       })
       // An untyped reactor returns `unknown`; a nat displays as a string
       return (await reactor.callMethod({
-        functionName: "icrc1_balance_of" as any,
+        functionName: "icrc1_balance_of",
         args: [{ owner }], // String input
       })) as string
     },

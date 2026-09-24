@@ -86,7 +86,10 @@ const displayArgsKey = new ArgsKeyVisitor({
  * Use `DisplayReactor` for UI/forms where principals and numeric values should
  * be string-friendly. Use `Reactor` when you need raw Candid types directly.
  *
- * @typeParam A - The actor service type
+ * @typeParam A - The actor service type, in Candid types. The display types
+ *   are derived from it. Without it (`BaseActor`), every method's display-side
+ *   arguments and results are typed `unknown`, where a raw `Reactor` gives
+ *   `any`: pass the service type, or cast to the display shape you expect.
  *
  * @example
  * ```typescript

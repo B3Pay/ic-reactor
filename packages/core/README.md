@@ -344,6 +344,11 @@ const balance = await backend.callMethod({
 // balance is "100000000" (string) instead of 100000000n (bigint)
 ```
 
+The display types are derived from the service type parameter. A
+`DisplayReactor` created without one is typed by `BaseActor`, and every
+method's display-side args and results are `unknown` (an untyped `Reactor`
+gives `any`): pass the service type, or cast to the display shape you expect.
+
 ### Form Validation
 
 `DisplayReactor` supports validators for mutation arguments:
