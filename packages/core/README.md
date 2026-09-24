@@ -918,6 +918,73 @@ const state = await backend.subnetState({ paths: [...] })
 const agent = backend.agent
 ```
 
+## Testing
+
+`@ic-reactor/core/testing` runs code that uses IC Reactor against a fake
+replica, with no replica to start and no `Reactor` stub to cast.
+`installFakeReplica` replaces the global `fetch` and answers the agent with the
+canisters you give it; `createTestCanister` builds one from handlers typed from
+your service. `ClientManager`, `Reactor`, `DisplayReactor`, query keys and error
+unwrapping all run as in production.
+
+```typescript
+import { afterEach, beforeEach, expect, it } from "vitest"
+import { QueryClient } from "@tanstack/query-core"
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import {
+  createTestCanister,
+  installFakeReplica,
+  type FakeReplica,
+} from "@ic-reactor/core/testing"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+let replica: FakeReplica
+
+beforeEach(() => {
+  replica = installFakeReplica({
+    canisters: {
+      [BACKEND]: createTestCanister<_SERVICE>(idlFactory, {
+        // Decoded arguments and the verified caller in, a Candid result out.
+        greet: ([name], { caller }) => `Hello, ${name} (${caller.toText()})`,
+      }),
+    },
+  })
+})
+afterEach(() => replica.restore())
+
+it("greets", async () => {
+  // Built after the fake is installed: an agent keeps the fetch it found.
+  const backend = new Reactor<_SERVICE>({
+    clientManager: new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: replica.host },
+    }),
+    name: "backend",
+    canisterId: BACKEND,
+    idlFactory,
+  })
+
+  await expect(
+    backend.fetchQuery({ functionName: "greet", args: ["Ada"] })
+  ).resolves.toBe("Hello, Ada (2vxsx-fae)")
+})
+```
+
+- Return `{ Err: ... }` from a handler to get a `CanisterError`; throw to get
+  the `CallError` of a canister trap.
+- Sign in with `clientManager.updateAgent(Ed25519KeyIdentity.generate())`; the
+  fake checks request signatures and passes the caller to each handler.
+- `replica.requests` lists every request the fake received.
+- The fake answers the IC API on `replica.host` only
+  (`http://127.0.0.1:4943` unless you pass `host`), and fails the IC API on
+  any other origin without touching the network.
+
+The main entry never imports this entry point. It signs with `@noble/curves`,
+an optional peer dependency that `@icp-sdk/core` already installs; add it as a
+devDependency only under a strict package manager. See the
+[Testing guide](https://ic-reactor.b3pay.net/v3/guides/testing).
+
 ## Documentation
 
 For comprehensive guides and API reference, visit the [documentation site](https://ic-reactor.b3pay.net/v3).

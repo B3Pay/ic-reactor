@@ -70,6 +70,11 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
     description="Exact token-amount formatting and parsing, and other value helpers."
     href="/v3/reference/utilities"
   />
+  <LinkCard
+    title="Testing Utilities"
+    description="A fake replica and typed test canisters, from the @ic-reactor/core/testing entry point."
+    href="/v3/reference/testing"
+  />
 </CardGrid>
 
 ## Quick Start
@@ -187,6 +192,32 @@ await backend.callMethod({
 Use `openIdProvider: "google"`, `"apple"`, `"microsoft"`, or a provider issuer
 URL. For lower-level requests, build scoped keys with `identityAttributeKeys()`
 and pass them to `identityAttributes.request()`.
+
+## Testing
+
+`@ic-reactor/core/testing` is a separate entry point for tests. It installs a
+fake replica that answers your agent with canisters written as typed handlers,
+so `ClientManager`, `Reactor` and `DisplayReactor` run unmodified with no
+replica:
+
+```typescript
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/core/testing"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const replica = installFakeReplica({
+  canisters: {
+    [canisterId]: createTestCanister<_SERVICE>(idlFactory, {
+      greet: ([name]) => `Hello, ${name}!`,
+    }),
+  },
+})
+// Build the ClientManager afterwards, with agentOptions: { host: replica.host }.
+```
+
+The main entry never imports it. See the [Testing guide](/v3/guides/testing).
 
 ## See Also
 

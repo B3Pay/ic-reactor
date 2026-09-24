@@ -206,6 +206,21 @@ query). All three act on the query's own entry only.
 For canister `Result.Err` variants, use `onCanisterError`. Keep `onError` for
 network/agent and unexpected errors.
 
+## Testing
+
+- Import `installFakeReplica` and `createTestCanister` from
+  `@ic-reactor/react/testing` (the same as `@ic-reactor/core/testing`) and run
+  the real reactor and hooks against the fake replica, instead of a stub cast
+  `as unknown as Reactor`.
+- Install the fake before any `ClientManager` is built, and point it at
+  `replica.host`. For a module-scope `defineReactor(...)`, install the fake at
+  the top of the test file (or in a Vitest setup file) and `await import(...)`
+  the component afterwards; in Vitest's jsdom a manager with no `host` uses the
+  page origin, `http://localhost:3000`, so pass that as the fake's `host`.
+- Reset a shared reactor between tests with `queryClient.clear()`.
+- Test a signed-in user with `clientManager.updateAgent(identity)`; the kit does
+  not simulate Internet Identity sign-in.
+
 ## Generated Files
 
 Do not hand-edit generated `index.generated.ts` files. Put app-specific code in

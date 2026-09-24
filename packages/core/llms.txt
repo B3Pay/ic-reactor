@@ -163,6 +163,28 @@ display types. They work for `Reactor`, `DisplayReactor` and any subclass.
   a retry of only `SysTransient`, as often as the QueryClient's `retry`
   default allows (`Reactor.getQueryRetry`), unless the caller sets `retry`.
 
+## Testing
+
+- Test against the fake replica in `@ic-reactor/core/testing` (a React app
+  imports the same from `@ic-reactor/react/testing`). Do not hand-build an
+  object and cast it `as unknown as Reactor`, and do not hard-code query keys
+  in tests: use the real reactor and `reactor.generateQueryKey(...)`.
+- `installFakeReplica({ canisters: { [canisterId]: createTestCanister<_SERVICE>(idlFactory, { greet: ([name], { caller }) => ... }) } })`
+  replaces the global `fetch`. Build the `ClientManager` after it, with
+  `agentOptions: { host: replica.host }` (default `http://127.0.0.1:4943`),
+  and call `replica.restore()` in `afterEach`. An agent keeps the `fetch` it
+  found when it was built, so a module-scope reactor needs the fake installed
+  before its module is imported.
+- A handler gets the decoded argument tuple and `{ caller }` and returns the
+  raw Candid result (`bigint`, `Principal`, `[] | [T]`). Return `{ Err: ... }`
+  for a `CanisterError`; throw for the `CallError` of a trap.
+- Test a signed-in user with
+  `clientManager.updateAgent(Ed25519KeyIdentity.generate())`.
+- `replica.requests` lists every request (`endpoint`, `canisterId`,
+  `methodName`, `caller`).
+- The main entry never imports it. `@noble/curves` is an optional peer, already
+  installed by `@icp-sdk/core`; strict installs add it as a devDependency.
+
 ## Generated Files
 
 If generated declarations are wrong, change source `.did` or codegen templates.

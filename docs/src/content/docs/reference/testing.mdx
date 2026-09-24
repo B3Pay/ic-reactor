@@ -1,0 +1,192 @@
+---
+title: Testing Utilities
+description: installFakeReplica and createTestCanister, the fake replica and typed test canisters of @ic-reactor/core/testing
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+## Overview
+
+`@ic-reactor/core/testing` runs the code under test against a fake replica.
+The fake answers an `HttpAgent`'s requests with canisters written as typed
+handlers, and signs its answers so the agent verifies them as it would a
+replica's. `ClientManager`, `Reactor`, `DisplayReactor`, their query keys and
+error unwrapping, and the React hooks all run unmodified.
+
+It is a separate entry point. The main entry never imports it, so it adds
+nothing to an app bundle. The [Testing guide](/v3/guides/testing) walks
+through writing tests with it.
+
+## Import
+
+```typescript
+import {
+  createTestCanister,
+  installFakeReplica,
+  type FakeReplica,
+} from "@ic-reactor/core/testing"
+
+// The same bindings, for an app that depends on @ic-reactor/react alone
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/react/testing"
+```
+
+<Aside type="note">
+  The fake signs with `@noble/curves`, an optional peer dependency that
+  `@icp-sdk/core` already installs. Add it as a devDependency only if your
+  package manager installs strictly.
+</Aside>
+
+## installFakeReplica
+
+```typescript
+function installFakeReplica(options?: FakeReplicaOptions): FakeReplica
+```
+
+Replaces `globalThis.fetch` with a fake replica and returns it. Install it
+before building the agents under test: an `HttpAgent` keeps the `fetch` it
+found when it was built.
+
+### Options
+
+| Option      | Type                           | Default                   | Description                                                                            |
+| ----------- | ------------------------------ | ------------------------- | -------------------------------------------------------------------------------------- |
+| `host`      | `string`                       | `"http://127.0.0.1:4943"` | The origin the fake answers for. Build the agents under test with this host.           |
+| `canisters` | `Record<string, FakeCanister>` | `{}`                      | The canisters the fake runs, by canister ID. A call to any other canister is rejected. |
+
+A key of `canisters` that is not a canister ID throws.
+
+### Returns: `FakeReplica`
+
+| Member      | Type                            | Description                                                                              |
+| ----------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
+| `host`      | `string`                        | The origin the fake answers for.                                                         |
+| `rootKey`   | `Uint8Array`                    | The DER root key the fake signs with. An agent on a local host fetches it from the fake. |
+| `requests`  | `readonly FakeReplicaRequest[]` | Every request an agent sent, in order.                                                   |
+| `restore()` | `() => void`                    | Puts back the `fetch` the fake replaced. Restore several fakes in the reverse order.     |
+
+Each `FakeReplicaRequest` has an `endpoint` (`"status"`, `"query"`, `"call"` or
+`"read_state"`), and where they apply its `canisterId`, `methodName` and
+`caller` (as text). A request the fake refused carries a `refused` reason.
+
+### Behaviour
+
+| Situation                                                  | What the agent gets                                                            |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| A query or update call a handler answers                   | The reply, certified (update) or signed by a node (query), as from a replica   |
+| A handler throws                                           | A reject with code 5 (`CanisterError`) and error code `IC0503`, as for a trap  |
+| A call to a canister the fake does not run                 | A reject with code 3 (`DestinationInvalid`)                                    |
+| A canister with no `query` (or `update`) handler is called | A reject with code 3                                                           |
+| A request whose signature or delegation does not verify    | HTTP 400, recorded with a `refused` reason                                     |
+| An IC API request to another origin                        | A network error naming the fake's host, so a test never reaches a real network |
+| Any other request                                          | Passed to the `fetch` the fake replaced                                        |
+
+The fake checks signatures by Ed25519, ECDSA P-256 and secp256k1 keys, and
+delegation chains between them, as a replica does: the signer, each
+delegation's signature, expiry and targets. It refuses any other kind of key.
+The anonymous principal needs no signature.
+
+A call is answered by the canister it names; an `effectiveCanisterId` only
+routes it, as on a replica. Update calls are answered synchronously; nothing
+polls. A second fake installed while one is installed answers its own host and
+passes the IC API on any other origin to the earlier one.
+
+## createTestCanister
+
+```typescript
+function createTestCanister<A = BaseActor>(
+  idlFactory: ReactorParameters["idlFactory"], // what a Reactor takes
+  handlers: TestCanisterHandlers<A>
+): FakeCanister
+```
+
+Builds a canister for `installFakeReplica` from the service's Candid interface
+and a handler per method. The fake decodes each call's arguments with the
+interface, runs the handler and encodes its result.
+
+```typescript
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/core/testing"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const replica = installFakeReplica({
+  canisters: {
+    "bkyz2-fmaaa-aaaaa-qaaaq-cai": createTestCanister<_SERVICE>(idlFactory, {
+      greet: ([name]) => `Hello, ${name}!`,
+      whoami: (_args, { caller }) => caller,
+      transfer: async ([{ amount }]) =>
+        amount > 100n
+          ? { Err: { InsufficientFunds: { balance: 100n } } }
+          : { Ok: amount },
+    }),
+  },
+})
+```
+
+### Handlers
+
+`TestCanisterHandlers<A>` maps each method name of the service `A` to an
+optional handler:
+
+```typescript
+type TestCanisterHandler<A, M extends FunctionName<A>> = (
+  args: ActorMethodParameters<A[M]>,
+  context: FakeCallContext
+) => ActorMethodReturnType<A[M]> | Promise<ActorMethodReturnType<A[M]>>
+```
+
+- `args` is the method's decoded argument tuple, as `callMethod` takes it.
+- `context.caller` is the `Principal` the request was signed as, after the
+  fake checked the signature.
+- The result is the method's Candid result: one value, a tuple for several
+  results, nothing for none. Return `{ Err: ... }` to make a reactor throw a
+  `CanisterError`.
+- Throwing rejects the call as a trap, and a reactor throws a `CallError`.
+
+The values are the raw Candid ones (`bigint`, `Principal`, `[] | [T]` for an
+`opt`) whichever reactor the test calls through.
+
+### Rejections
+
+- A query call to a method the interface does not mark `query` or
+  `composite_query` is rejected, as a replica rejects it.
+- A call to a method with no handler is rejected with a message that names
+  the method.
+- A result the method's Candid type does not accept rejects the call with a
+  message that names the handler.
+- A handler for a method the service does not have throws when the canister is
+  created.
+
+## FakeCanister
+
+`installFakeReplica` runs any object of this shape. Implement it directly to
+answer with bytes the service's types would not produce.
+
+```typescript
+interface FakeCanister {
+  query?(
+    method: string,
+    arg: Uint8Array,
+    context: FakeCallContext
+  ): Uint8Array | Promise<Uint8Array>
+  update?(
+    method: string,
+    arg: Uint8Array,
+    context: FakeCallContext
+  ): Uint8Array | Promise<Uint8Array>
+}
+```
+
+Each handler receives the Candid-encoded argument and returns the
+Candid-encoded reply. Throwing rejects the call as a trap.
+
+## See Also
+
+- [Testing guide](/v3/guides/testing)
+- [Reactor](/v3/reference/reactor)
+- [Error Handling](/v3/guides/error-handling)

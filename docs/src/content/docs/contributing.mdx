@@ -64,6 +64,10 @@ pnpm test-e2e
 ```
 
 If you are adding a feature, include tests and documentation where applicable.
+A test that needs a canister runs a real `Reactor` against the fake replica
+from `@ic-reactor/core/testing` (see [Testing](/v3/guides/testing)) rather
+than a hand-built object cast to `Reactor`, which has to re-implement query
+keys and error unwrapping and can drift from them.
 
 ## Before Opening a PR
 

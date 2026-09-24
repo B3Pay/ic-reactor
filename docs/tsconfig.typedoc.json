@@ -14,7 +14,8 @@
     // (TS5101, deprecated and removed in TS 7). Without it, `paths` resolves
     // relative to this file, which is what we want.
     "paths": {
-      "@ic-reactor/core": ["../packages/core/src/index.ts"]
+      "@ic-reactor/core": ["../packages/core/src/index.ts"],
+      "@ic-reactor/core/testing": ["../packages/core/src/testing/index.ts"]
     }
   },
   "include": [

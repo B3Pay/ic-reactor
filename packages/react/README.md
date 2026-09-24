@@ -737,6 +737,59 @@ package's `react-server` entry, which has them but none of the hooks; see
 The main entry also re-exports TanStack Query's `skipToken` (and its
 `SkipToken` type), the same symbol `@tanstack/react-query` exports.
 
+## Testing
+
+`@ic-reactor/react/testing` re-exports `@ic-reactor/core/testing`, so an app
+that depends on this package alone can test its components against a fake
+replica instead of a `Reactor` stub:
+
+```tsx
+import { renderHook, waitFor } from "@testing-library/react"
+import { ClientManager, Reactor, createActorHooks } from "@ic-reactor/react"
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/react/testing"
+import { QueryClient } from "@tanstack/react-query"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+
+it("reads the balance", async () => {
+  const replica = installFakeReplica({
+    canisters: {
+      [BACKEND]: createTestCanister<_SERVICE>(idlFactory, {
+        balance: () => 42n,
+      }),
+    },
+  })
+  // Built after the fake is installed, and pointed at it.
+  const reactor = new Reactor<_SERVICE>({
+    clientManager: new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: replica.host },
+    }),
+    name: "backend",
+    canisterId: BACKEND,
+    idlFactory,
+  })
+  const { useActorQuery } = createActorHooks(reactor)
+
+  const { result } = renderHook(() =>
+    useActorQuery({ functionName: "balance" })
+  )
+
+  await waitFor(() => expect(result.current.data).toBe(42n))
+  replica.restore()
+})
+```
+
+A reactor built at module scope, such as one from `defineReactor`, builds its
+agent when its module is imported: install the fake first, then import the
+component under test dynamically. The
+[Testing guide](https://ic-reactor.b3pay.net/v3/guides/testing) shows how, and
+how to test as a signed-in user.
+
 ## See Also
 
 - Docs: https://ic-reactor.b3pay.net/v3/packages/react
