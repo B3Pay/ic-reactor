@@ -285,10 +285,18 @@ describe("ClientManager.trustsEnvConfig", () => {
   it("uses the same host allowlist the root key does, on both sides", () => {
     expect(trusts("http://127.0.0.1:4943")).toBe(true)
     expect(trusts("http://localhost:4943")).toBe(true)
+    // A dev-container domain is shared with strangers' workspaces (#643).
     expect(
       trusts(
         "https://foo-4943.app.github.dev",
         undefined,
+        "https://foo-4943.app.github.dev"
+      )
+    ).toBe(false)
+    expect(
+      trusts(
+        "https://foo-4943.app.github.dev",
+        { allowEnvConfig: true },
         "https://foo-4943.app.github.dev"
       )
     ).toBe(true)

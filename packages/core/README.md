@@ -75,9 +75,10 @@ const clientManager = new ClientManager({
 await clientManager.initialize()
 ```
 
-The network is detected automatically: in the browser from the serving origin,
-in Node/SSR from `ICP_NETWORK` / `DFX_NETWORK`. Pass `agentOptions.host` to
-override it.
+The network is detected automatically: in the browser from the serving origin
+(`localhost`, a loopback address, a Codespaces or Gitpod domain, or an IC
+boundary domain; any other page falls back to mainnet), in Node/SSR from
+`ICP_NETWORK` / `DFX_NETWORK`. Pass `agentOptions.host` to override it.
 
 On a local host (`localhost`, a loopback address, or a `*.github.dev` or
 `*.gitpod.io` tunnel), `initialize()` fetches the replica's root key even if you
@@ -155,8 +156,10 @@ be told: an `IC_ROOT_KEY`, an Internet Identity provider, and the
 configured. Cookies are not origin-isolated — any sibling subdomain of the
 registrable domain can write `ic_env` — so all three are trusted only when the
 agent host and the page origin are both unambiguously a local replica: loopback
-(all of 127.0.0.0/8), `localhost` and its subdomains, and the dev-container
-domains that tunnel one. The page counts because the page is what decides who
+(all of 127.0.0.0/8), and `localhost` and its subdomains. Codespaces and Gitpod
+domains are not on that list: every workspace shares its parent domain with
+strangers' workspaces, so there the cookie needs `allowEnvConfig: true`, and the
+agent fetches the root key from the replica. The page counts because the page is what decides who
 the siblings are: a document served from `app.example.com` shares its cookie jar
 with every other `*.example.com`, whatever host its agent talks to. The exported
 `allowsEnvRootKey(host)` answers this for one host, and `ClientManager` asks it

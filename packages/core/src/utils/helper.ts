@@ -200,9 +200,12 @@ const isLoopbackAddress = (hostname: string): boolean =>
  * catch, because the attacker names a real canister whose responses verify
  * against the real root key.
  *
- * Accepted: loopback, `localhost` and its subdomains, and the dev-container
- * domains that tunnel a local replica. Everything else must opt in explicitly
- * through `allowEnvConfig`.
+ * Accepted: loopback and `localhost` and its subdomains. Everything else must
+ * opt in explicitly through `allowEnvConfig`, including the Codespaces and
+ * Gitpod domains that forward a local replica (`network` `"remote"`). Every
+ * user of those platforms gets a subdomain of the same parent, which is not a
+ * public suffix, so a page in a stranger's workspace can set `ic_env` for
+ * yours. They used to be accepted.
  *
  * This answers the question for ONE host. `ClientManager` asks it of both the
  * agent host and the page origin — the page being what decides who can write
@@ -222,10 +225,7 @@ export const allowsEnvRootKey = (host?: string): boolean => {
   if (hostname === "localhost" || hostname.endsWith(".localhost")) return true
   // The whole of 127.0.0.0/8 is loopback, not just 127.0.0.1 — a replica bound
   // to 127.0.0.2 is exactly as local as one on 127.0.0.1, and so is ::1.
-  if (isLoopbackAddress(hostname)) return true
-
-  // Codespaces / Gitpod forward a local replica over a generated domain.
-  return getNetworkByHostname(hostname) === "remote"
+  return isLoopbackAddress(hostname)
 }
 
 /**

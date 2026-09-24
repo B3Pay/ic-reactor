@@ -46,8 +46,8 @@ icReactor({
   leaves alone. The
   consumer side is a positive allowlist: `ClientManager` trusts the cookie — its
   root key, its Internet Identity provider, and the canister IDs a reactor
-  resolves by name — only for loopback, `localhost`, and dev-container hosts.
-  Serving a dev build over a tunnel or custom domain needs
+  resolves by name — only for loopback and `localhost` hosts. Serving a dev
+  build over a tunnel (Codespaces and Gitpod included) or custom domain needs
   `allowEnvConfig: true` (formerly `allowEnvRootKey`); without it a generated
   reactor that carries no `canisterId` throws instead of reading one from the
   cookie — see `packages/core/llms.txt`

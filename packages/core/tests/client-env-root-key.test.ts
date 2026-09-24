@@ -72,9 +72,13 @@ describe("allowsEnvRootKey", () => {
     }
   })
 
-  it("accepts dev-container domains that tunnel a local replica", () => {
-    expect(allowsEnvRootKey("https://foo-4943.app.github.dev")).toBe(true)
-    expect(allowsEnvRootKey("https://foo-4943.gitpod.io")).toBe(true)
+  it("refuses dev-container domains, which strangers' workspaces share", () => {
+    // Every codespace is a subdomain of app.github.dev, which is not a public
+    // suffix, so a page in someone else's codespace can set `ic_env` for
+    // yours (#643). They need `allowEnvConfig` like any shared domain.
+    expect(allowsEnvRootKey("https://foo-4943.app.github.dev")).toBe(false)
+    expect(allowsEnvRootKey("https://attacker-8080.app.github.dev")).toBe(false)
+    expect(allowsEnvRootKey("https://foo-4943.gitpod.io")).toBe(false)
   })
 
   it("refuses mainnet boundary domains", () => {

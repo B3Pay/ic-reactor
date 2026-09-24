@@ -232,6 +232,11 @@ export class ClientManager {
     // agent traffic through their serving origin. Ordinary web hosts (Vercel,
     // Cloudflare, etc.) cannot, so they retain the default IC API fallback.
     //
+    // A Codespaces or Gitpod page ("remote") is a local dev server forwarded
+    // to the browser, so it routes like a local one. It used to fall back to
+    // mainnet, so a dev app in a codespace sent its local canister IDs to
+    // ic0.app, and whatever mainnet canister had that ID answered.
+    //
     // A page with no usable origin is skipped rather than parsed: React Native
     // defines `window` without a `location`, and an opaque origin (a file://
     // page in Firefox, an about:blank or srcdoc frame) reads as the string
@@ -244,7 +249,7 @@ export class ClientManager {
     const browserHostname = hostnameOf(browserOrigin)
     if (browserOrigin && browserHostname !== undefined) {
       const browserNetwork = getNetworkByHostname(browserHostname)
-      if (browserNetwork === "local" || isMainnetHost(browserOrigin)) {
+      if (browserNetwork !== "ic" || isMainnetHost(browserOrigin)) {
         agentOptions.host = agentOptions.host ?? browserOrigin
       }
     }
@@ -296,6 +301,9 @@ export class ClientManager {
     // from an ic-domains custom domain fell through it and took its root key
     // from a cookie. allowsEnvRootKey instead accepts only hosts that are
     // unambiguously a local replica; anything else must pass allowEnvConfig.
+    // That includes the Codespaces and Gitpod domains: every workspace on
+    // them is a sibling of every stranger's, so their cookie is not the
+    // replica's. A root key the agent needs there is fetched from the replica.
     //
     // Resolved ONCE here and read back through `trustsEnvConfig`, because the
     // cookie carries three values and each was deciding for itself: the root
@@ -478,8 +486,10 @@ export class ClientManager {
    * this agent's host.
    *
    * `true` when BOTH the agent host and the page origin are unambiguously a
-   * local replica, or when the caller passed `allowEnvConfig`. The page counts
-   * because the page is what decides who can write the cookie.
+   * local replica (loopback, `localhost` and its subdomains), or when the
+   * caller passed `allowEnvConfig`. The page counts because the page is what
+   * decides who can write the cookie. A Codespaces or Gitpod domain shares its
+   * parent with other users' workspaces, so it needs `allowEnvConfig`.
    * Every consumer of that cookie reads this one decision, so the root key, the
    * Internet Identity provider and a reactor's canister ID cannot disagree
    * about whether the environment is trustworthy.

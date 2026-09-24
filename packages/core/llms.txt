@@ -46,11 +46,17 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 ## Local Environment Root Key
 
+In a browser with no `agentOptions.host`, the agent routes through the page
+origin when the page is local (`localhost`, loopback), a Codespaces or Gitpod
+domain (`network: "remote"`), or an IC boundary domain; any other page falls
+back to mainnet.
+
 The `ic_env` cookie is trusted only for hosts that `allowsEnvRootKey(host)`
-accepts: loopback (all of 127.0.0.0/8 and `::1`), `localhost` and its subdomains,
-and the dev-container domains that tunnel a local replica. Cookies are not
-origin-isolated, so this is a positive allowlist — any other host (custom domain,
-tunnel, staging) must opt in with `allowEnvConfig: true` on
+accepts: loopback (all of 127.0.0.0/8 and `::1`), and `localhost` and its
+subdomains. Cookies are not origin-isolated, so this is a positive allowlist —
+any other host (custom domain, tunnel, staging, and Codespaces or Gitpod, whose
+workspaces share a parent domain with strangers') must opt in with
+`allowEnvConfig: true` on
 `ClientManagerParameters`. The deprecated `allowEnvRootKey` still works but is
 scoped to what it always granted — the root key alone — so it does not make
 `trustsEnvConfig` true.
