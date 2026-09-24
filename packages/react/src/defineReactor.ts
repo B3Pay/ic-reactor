@@ -39,12 +39,14 @@ export interface DefineDisplayReactorParameters<
 }
 
 /**
- * Builds a DisplayReactor and its hooks.
+ * The `display: true` form: builds a DisplayReactor and its hooks.
  *
- * @deprecated Use `defineDisplayReactor(...)`, which takes the same options
- * without `display`. The flag keeps working until the next major, but it makes
- * every bundle that calls `defineReactor` carry `DisplayReactor` and zod, even
- * when it never sets the flag.
+ * @deprecated `defineReactor({ display: true })` is deprecated: pass the same
+ * options, without `display`, to `defineDisplayReactor(...)`. Only this form
+ * is; `defineReactor` without `display` builds a plain `Reactor` and is not
+ * deprecated. The flag keeps working until the next major, but it makes every
+ * bundle that calls `defineReactor` carry `DisplayReactor` and zod, even when
+ * it never sets the flag.
  */
 export function defineReactor<Service = BaseActor>(
   params: DefineDisplayReactorParameters<Service>
