@@ -167,7 +167,11 @@ describe("fetchQuery across an identity switch", () => {
       clientManager.updateAgent(Ed25519KeyIdentity.generate())
     }
 
-    expect(await settled).toBeInstanceOf(CancelledError)
+    // A CallError, the type a reactor call documents, with TanStack's
+    // cancellation as its cause.
+    const error = await settled
+    expect(error).toBeInstanceOf(CallError)
+    expect((error as CallError).cause).toBeInstanceOf(CancelledError)
     expect(calls).toHaveLength(4)
   })
 
@@ -216,13 +220,21 @@ describe("fetchQuery across an identity switch", () => {
 })
 
 describe("ClientManager.fetchAcrossIdentitySwitch", () => {
-  it("runs a fetch of its own again when a switch cancels it", async () => {
-    const queryClient = new QueryClient()
-    const clientManager = new ClientManager({
+  let queryClient: QueryClient
+  let clientManager: ClientManager
+
+  beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    clientManager = new ClientManager({
       queryClient,
       agentOptions: { host: "https://icp-api.io" },
     })
     clientManager.registerCanisterId(CANISTER_ID)
+  })
+
+  it("runs a fetch of its own again when a switch cancels it", async () => {
     const answers = [deferred<string>(), deferred<string>()]
     let run = 0
     const queryFn = () => answers[run++].promise
@@ -236,5 +248,96 @@ describe("ClientManager.fetchAcrossIdentitySwitch", () => {
     answers[1].resolve("bob")
 
     await expect(pending).resolves.toBe("bob")
+  })
+
+  /**
+   * TanStack does not reject a cancelled fetch of an entry that held data
+   * before the fetch began: it puts that data back and resolves the fetch
+   * with it. After a switch, that data is the previous principal's.
+   */
+  it("runs a fetch of a cached entry again when a switch puts the old data back", async () => {
+    const key = [CANISTER_ID, "profile"]
+    queryClient.setQueryData(key, "alice's profile")
+    const answers: Array<(value: string) => void> = []
+    const queryFn = () =>
+      new Promise<string>((resolve) => answers.push(resolve))
+
+    const pending = clientManager.fetchAcrossIdentitySwitch(() =>
+      queryClient.fetchQuery({ queryKey: key, queryFn, staleTime: 0 })
+    )
+    await vi.waitFor(() => expect(answers).toHaveLength(1))
+    clientManager.updateAgent(Ed25519KeyIdentity.generate())
+    await vi.waitFor(() => expect(answers).toHaveLength(2))
+    answers[1]("bob's profile")
+
+    await expect(pending).resolves.toBe("bob's profile")
+  })
+
+  it("does the same for the infinite query in its example", async () => {
+    const key = [CANISTER_ID, "feed"]
+    const answers: Array<(value: string) => void> = []
+    const options = {
+      queryKey: key,
+      queryFn: () => new Promise<string>((resolve) => answers.push(resolve)),
+      initialPageParam: 0,
+      getNextPageParam: () => undefined,
+      staleTime: 0,
+    }
+    const first = queryClient.fetchInfiniteQuery(options)
+    answers[0]("alice's page")
+    await first
+
+    const pending = clientManager.fetchAcrossIdentitySwitch(() =>
+      queryClient.fetchInfiniteQuery(options)
+    )
+    await vi.waitFor(() => expect(answers).toHaveLength(2))
+    clientManager.updateAgent(Ed25519KeyIdentity.generate())
+    await vi.waitFor(() => expect(answers).toHaveLength(3))
+    answers[2]("bob's page")
+
+    await expect(pending).resolves.toMatchObject({ pages: ["bob's page"] })
+  })
+
+  it("rejects with a CallError when every run is overtaken by a switch", async () => {
+    // Each run resolves only after a switch, as a fetch that TanStack
+    // resolves with the data it put back does.
+    const runs: Array<(value: string) => void> = []
+    const pending = clientManager.fetchAcrossIdentitySwitch(
+      () => new Promise<string>((resolve) => runs.push(resolve))
+    )
+    const settled = pending.catch((error: unknown) => error)
+    for (let run = 1; run <= 4; run++) {
+      await vi.waitFor(() => expect(runs).toHaveLength(run))
+      clientManager.updateAgent(Ed25519KeyIdentity.generate())
+      runs[run - 1]("someone's profile")
+    }
+
+    const error = await settled
+    expect(error).toBeInstanceOf(CallError)
+    expect((error as CallError).cause).toBeUndefined()
+    expect(runs).toHaveLength(4)
+  })
+
+  it("passes on what a fetch settles with while the principal stays", async () => {
+    const alice = Ed25519KeyIdentity.generate()
+    clientManager.updateAgent(alice)
+    const key = [CANISTER_ID, "profile"]
+    queryClient.setQueryData(key, "alice's profile")
+    let runs = 0
+    const pending = clientManager.fetchAcrossIdentitySwitch(() => {
+      runs++
+      return queryClient.fetchQuery({
+        queryKey: key,
+        queryFn: () => new Promise<string>(() => {}),
+        staleTime: 0,
+      })
+    })
+    await vi.waitFor(() => expect(runs).toBe(1))
+    // The app's own cancellation: the data is put back, and is still alice's.
+    clientManager.updateAgent(alice)
+    void queryClient.cancelQueries({ queryKey: key })
+
+    await expect(pending).resolves.toBe("alice's profile")
+    expect(runs).toBe(1)
   })
 })

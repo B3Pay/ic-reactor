@@ -6,6 +6,7 @@ import type { Query, QueryClient, QueryKey } from "@tanstack/query-core"
 import { HttpAgent } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { IC_HOST_NETWORK_URI } from "./utils/constants.js"
+import { CallError } from "./errors/index.js"
 import {
   getNetworkByHostname,
   getProcessEnvNetwork,
@@ -105,7 +106,7 @@ function notifyAll<T>(
 
 /**
  * How many times {@link ClientManager.fetchAcrossIdentitySwitch} runs a fetch
- * again after a principal switch cancelled it. Each run needs a switch of its
+ * again after a principal switch overtook it. Each run needs a switch of its
  * own while it is in flight, so the bound is reached only when the identity
  * keeps changing faster than the canister answers.
  */
@@ -855,27 +856,28 @@ export class ClientManager {
 
   /**
    * Runs `fetch`, a fetch of a registered canister's query through
-   * {@link queryClient}, and runs it again when a switch to another principal
-   * cancels it.
+   * {@link queryClient}, and runs it again when the principal switches while
+   * it runs.
    *
    * `updateAgent` cancels those queries when the principal changes, so an
    * answer fetched for the previous principal never reaches the cache. A
    * query with a mounted observer refetches afterwards. An imperative fetch
-   * has no observer, and its promise rejected with TanStack's
-   * `CancelledError`, which is neither a `CallError` nor a `CanisterError`, so
-   * a route loader running during a sign-in or sign-out failed. Through this
-   * method it resolves with the answer for the identity installed now, as a
-   * mounted query would show; the previous identity's answer is still never
-   * cached.
+   * has no observer: TanStack rejects its promise with a `CancelledError`,
+   * which is neither a `CallError` nor a `CanisterError`, or, when the entry
+   * held data before the fetch began, resolves it with that data, which is
+   * the previous principal's. Through this method it resolves with the
+   * answer for the identity installed now, as a mounted query would show; the
+   * previous identity's answer is still never cached.
    *
    * `Reactor.fetchQuery`, and with it the query factories' `fetch()`, runs
    * through here. Wrap any other fetch of a canister query the same way.
    *
-   * A rejection other than a cancellation, and a cancellation with no
-   * principal switch while `fetch` ran, such as one from
-   * `queryClient.cancelQueries()`, is passed on as is. So is the cancellation
-   * after three runs again, each cut short by another switch, so the loop
-   * always ends.
+   * Whatever `fetch` settles with while the principal stays is passed on as
+   * is, including a cancellation from `queryClient.cancelQueries()`. After
+   * three runs again, each overtaken by another switch, it rejects with a
+   * `CallError` whose `cause` is what the last run settled with, if it
+   * rejected, so the loop always ends and never returns an answer that may
+   * be another principal's.
    *
    * @param fetch - Starts the fetch. It is called once per run, so it has to
    * start a fetch each time rather than return one promise it kept.
@@ -893,14 +895,25 @@ export class ClientManager {
   ): Promise<T> {
     for (let refetches = 0; ; refetches++) {
       const switches = this.#principalSwitches
+      let settled: { value: T } | { error: unknown }
       try {
-        return await fetch()
+        settled = { value: await fetch() }
       } catch (error) {
-        const cancelledBySwitch =
-          this.#principalSwitches !== switches && isQueryCancellation(error)
-        if (!cancelledBySwitch || refetches >= IDENTITY_SWITCH_REFETCHES) {
-          throw error
-        }
+        settled = { error }
+      }
+      // A switch while it ran makes what it settled with the previous
+      // principal's: a cancellation, or the data a cancelled fetch of a
+      // cached entry is put back to. Only rejecting the cancellation used to
+      // leave that data to be returned to the principal signed in now.
+      if (this.#principalSwitches === switches) {
+        if ("error" in settled) throw settled.error
+        return settled.value
+      }
+      if (refetches >= IDENTITY_SWITCH_REFETCHES) {
+        throw new CallError(
+          `The principal changed while this query was fetched, ${refetches + 1} times in a row, so none of its answers is known to be the current principal's.`,
+          "error" in settled ? settled.error : undefined
+        )
       }
     }
   }
