@@ -98,8 +98,9 @@ are two cache entries, and each is fetched from the canister. Keys without an
 override, or whose override is the manager's own agent, have no such segment.
 `invalidateQueries({ functionName })` still matches both entries, and
 `updateAgent()` still sweeps the override's entries with the rest of the
-canister's. The number is not stable across processes, so an override entry
-in a dehydrated server cache is not picked up by the client.
+canister's. Each process counts from a random start, so an override entry in
+a dehydrated server cache, or in a cache persisted and restored later, is not
+found by another process's agents.
 
 <Aside type="caution">
   Query keys name the canister, not the `ClientManager`. Two `ClientManager`s on

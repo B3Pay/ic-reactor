@@ -87,15 +87,21 @@ function retriesAgain(
  * The agents calls have named through `callConfig.agent`, each with the number
  * its query keys carry. A key has to serialise and hash, which an agent does
  * not, so the key holds the number instead of the agent. The map is weak so a
- * dropped agent can still be collected. The numbers count up from 1 in each
- * process, so a key that holds one names nothing in another process.
+ * dropped agent can still be collected.
+ *
+ * A registry counts up from a random start rather than from 1. A key leaves
+ * its process when a server's cache is dehydrated into the page, or a cache
+ * is persisted and restored in a later session, and two registries counting
+ * from 1 give their first agents the same number: the entry the server fetched
+ * through its override agent answered the browser's first override agent,
+ * whoever that agent signs as. From random starts, two registries' numbers
+ * practically never meet, so such an entry is simply not found.
  *
  * The registry sits behind a global symbol, like the error brands, so every
- * copy of this package in one app numbers agents from the same sequence. Two
- * copies counting on their own would each give their first agent 1, and two
- * reactors on one QueryClient could again share an entry between two agents.
+ * copy of this package in one app numbers agents from the same sequence, and
+ * two reactors on one QueryClient never share an entry between two agents.
  * Where the global object cannot take the property (a frozen global), this
- * copy keeps its own registry instead.
+ * copy keeps its own registry instead, from a start of its own.
  */
 const AGENT_ORDINALS = Symbol.for("@ic-reactor/core/agentOrdinals")
 
@@ -106,12 +112,19 @@ interface AgentOrdinals {
 
 let ownAgentOrdinals: AgentOrdinals | undefined
 
+/**
+ * Where a registry starts counting: a random integer from 1 to 2^48, which
+ * leaves the numbers exact however many agents a long-running server numbers
+ * after it.
+ */
+const firstAgentOrdinal = (): number => Math.floor(Math.random() * 2 ** 48) + 1
+
 /** The registry of {@link AGENT_ORDINALS}, created on first use. */
 function agentOrdinals(): AgentOrdinals {
   const global = globalThis as { [AGENT_ORDINALS]?: AgentOrdinals }
   const shared = global[AGENT_ORDINALS]
   if (shared) return shared
-  ownAgentOrdinals ??= { byAgent: new WeakMap(), next: 1 }
+  ownAgentOrdinals ??= { byAgent: new WeakMap(), next: firstAgentOrdinal() }
   try {
     global[AGENT_ORDINALS] = ownAgentOrdinals
   } catch {

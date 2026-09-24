@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
-import { QueryClient } from "@tanstack/query-core"
+import { QueryClient, dehydrate, hydrate } from "@tanstack/query-core"
 import { HttpAgent, type Agent } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
@@ -375,5 +375,78 @@ describe("the agent numbers", () => {
 
     expect(keyOf(b)).not.toEqual(keyOfA)
     expect(keyOf(a)).toEqual(keyOfA)
+  })
+
+  /**
+   * The classes of a copy of the package loaded as another process loads it:
+   * with no registry on its global object yet.
+   */
+  const anotherProcess = async () => {
+    delete global[REGISTRY]
+    vi.resetModules()
+    const [{ Reactor: ProcessReactor }, { ClientManager: ProcessManager }] =
+      await Promise.all([
+        import("../src/reactor.js"),
+        import("../src/client.js"),
+      ])
+    const clientManager = new ProcessManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: HOST, retryTimes: 0 },
+    })
+    const reactor = new ProcessReactor<Service>({
+      clientManager,
+      name: "backend",
+      canisterId: CANISTER,
+      idlFactory,
+    })
+    return { clientManager, reactor }
+  }
+
+  it("differ between two processes", async () => {
+    // Two registries counting from 1 both gave their first agent 1.
+    const firstKeyIn = async () =>
+      (await anotherProcess()).reactor.generateQueryKey(
+        { functionName: "whoami" },
+        { agent: someAgent() }
+      )[2]
+
+    const inServer = await firstKeyIn()
+    const inBrowser = await firstKeyIn()
+
+    expect(inBrowser).not.toEqual(inServer)
+  })
+
+  it("keep a dehydrated override entry from answering another process's agent", async () => {
+    // The server fetches `whoami` through an admin's agent and dehydrates
+    // its cache into the page.
+    const server = await anotherProcess()
+    await expect(
+      server.reactor.fetchQuery({
+        functionName: "whoami",
+        callConfig: { agent: await adminAgent() },
+      })
+    ).resolves.toBe(adminText)
+    const page = JSON.parse(
+      JSON.stringify(dehydrate(server.clientManager.queryClient))
+    ) as ReturnType<typeof dehydrate>
+
+    // The browser hydrates it, then asks through the user's own agent: its
+    // first override agent, as the admin's was the server's.
+    const browser = await anotherProcess()
+    hydrate(browser.clientManager.queryClient, page)
+    const userAgent = await HttpAgent.create({
+      host: HOST,
+      identity: user,
+      shouldFetchRootKey: true,
+      retryTimes: 0,
+    })
+
+    await expect(
+      browser.reactor.fetchQuery({
+        functionName: "whoami",
+        callConfig: { agent: userAgent },
+      })
+    ).resolves.toBe(userText)
+    expect(whoamiQueries()).toHaveLength(2)
   })
 })

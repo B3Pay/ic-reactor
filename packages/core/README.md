@@ -588,8 +588,9 @@ numbers that agent within the running process. The same query through that
 agent and through the manager's agent are two cache entries, since each is
 answered for its own identity or network. Keys without an override are
 unchanged, `invalidateQueries({ functionName })` matches both entries, and
-`updateAgent()` sweeps both. The number is not stable across processes, so a
-dehydrated server cache does not carry override entries to the client.
+`updateAgent()` sweeps both. Each process counts from a random start, so an
+override entry in a dehydrated server cache, or in a cache persisted and
+restored later, is not found by another process's agents.
 
 Query keys name the canister, not the `ClientManager`. Two `ClientManager`s on
 the same canister (two identities, or a local replica and mainnet) must each
