@@ -77,4 +77,31 @@ describe("createReactorProvider on a server", () => {
     expect(mount).not.toHaveBeenCalled()
     expect(dispose).not.toHaveBeenCalled()
   })
+
+  it("builds a separate value for each request that renders the same element", () => {
+    // A browser reuses a value its uncommitted render built, for the render
+    // React retries after a suspend. A server commits nothing, so a value it
+    // kept for a module-scope element would reach every later request.
+    const factory = vi.fn(() => ({
+      queryClient: new QueryClient(),
+    }))
+    const { ReactorProvider, useReactor } = createReactorProvider(factory)
+    const seen: unknown[] = []
+    function Page() {
+      seen.push(useReactor())
+      return null
+    }
+    const element = (
+      <ReactorProvider>
+        <Page />
+      </ReactorProvider>
+    )
+
+    renderToString(element)
+    renderToString(element)
+
+    expect(factory).toHaveBeenCalledTimes(2)
+    expect(seen).toHaveLength(2)
+    expect(seen[0]).not.toBe(seen[1])
+  })
 })

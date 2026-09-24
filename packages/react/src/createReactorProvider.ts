@@ -111,6 +111,14 @@ export interface CreateReactorProviderReturn<
  * It also renders a `QueryClientProvider` for the value's QueryClient; see
  * {@link CreateReactorProviderOptions.queryClientProvider}.
  *
+ * A suspense hook below the provider may suspend its first render: React
+ * renders the same element again when the data arrives, and the provider
+ * reuses the value that first render built, whether the Suspense boundary
+ * sits above the provider or, while hydrating, there is none. A provider that
+ * a transition mounts (`startTransition`, a client-side navigation) can be
+ * rendered from a new element on each retry and build a new value each time,
+ * so give its suspending components a `<Suspense>` boundary inside it.
+ *
  * Call `createReactorProvider` at module scope: it builds nothing itself,
  * only the context, and every mounted provider builds its own value. In the
  * Next.js App Router that module needs `"use client"`, like any module with
@@ -189,19 +197,40 @@ export function createReactorProvider<
   const { queryClientProvider = true } = options
   const ReactorContext = createContext<TValue | null>(null)
 
-  function ReactorProvider({
-    children,
-    ...props
-  }: ReactorProviderProps<TProps>): ReactElement {
+  // What a browser render built and has not committed yet, by the props
+  // object that render received. React throws away the state of a tree that
+  // suspends before it first commits, and renders it again, from the same
+  // element, once the promise settles. A value built afresh for that render
+  // came with an empty QueryClient, so a suspense query below, with no
+  // Suspense boundary between it and this provider, fetched again, suspended
+  // again and rebuilt the value in an endless loop of canister calls. The
+  // render that follows reuses the value instead, and so does StrictMode's
+  // second call of the initializer, which would otherwise build a value only
+  // to drop it. A server keeps nothing here: it never commits, and a
+  // module-scope element rendered for each request would hand one request's
+  // value to the next.
+  const uncommitted = new WeakMap<object, Built<TValue>>()
+
+  function ReactorProvider(
+    providerProps: ReactorProviderProps<TProps>
+  ): ReactElement {
     // Once per mounted tree. A server renders each request as a tree of its
     // own, so each request builds its own value and nothing it caches is seen
     // by another. The props are read here only; a new `key` builds again.
     const [built] = useState(() => {
+      const pending = uncommitted.get(providerProps)
+      if (pending) return pending
+      const { children: _children, ...props } = providerProps
       const value = factory(props as unknown as TProps)
-      return {
+      const next: Built<TValue> = {
         value,
         queryClient: queryClientProvider ? soleQueryClient(value) : undefined,
       }
+      if (!isServer()) {
+        next.pendingProps = providerProps
+        uncommitted.set(providerProps, next)
+      }
+      return next
     })
 
     // Releases the Internet Identity clients the value's managers built once
@@ -210,12 +239,20 @@ export function createReactorProvider<
     // only forgets the client: StrictMode runs this cleanup and then the
     // effect again on the same value, and the next sign-in builds a new one.
     // A server runs no effects, and its managers build no client.
-    useEffect(() => () => disposeAuthentication(built.value), [built])
+    useEffect(() => {
+      // Committed: the value is this mount's, and a later mount of the same
+      // element builds its own.
+      if (built.pendingProps) {
+        uncommitted.delete(built.pendingProps)
+        built.pendingProps = undefined
+      }
+      return () => disposeAuthentication(built.value)
+    }, [built])
 
     const provided = createElement(
       ReactorContext.Provider,
       { value: built.value },
-      children
+      providerProps.children
     )
     return built.queryClient
       ? createElement(
@@ -242,6 +279,19 @@ export function createReactorProvider<
 
   return { ReactorProvider, useReactor }
 }
+
+/** What a provider built, and until it commits, the props it built it from. */
+interface Built<TValue> {
+  value: TValue
+  queryClient: QueryClient | undefined
+  pendingProps?: object
+}
+
+/**
+ * Whether this render runs on a server, as TanStack Query decides it: Deno
+ * defines `window` without being a browser.
+ */
+const isServer = () => typeof window === "undefined" || "Deno" in globalThis
 
 /**
  * The value and each of its own data properties: where a built value keeps

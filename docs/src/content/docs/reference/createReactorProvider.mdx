@@ -224,7 +224,31 @@ that canister.
   used authentication has built no manager, and none is built to be disposed.
 - **StrictMode.** `dispose()` only forgets the client, and the next sign-in
   builds a new one, so StrictMode's extra cleanup and effect on the same value
-  leave the session and its restore intact.
+  leave the session and its restore intact. StrictMode also calls a `useState`
+  initializer twice; the second call reuses the value the first built, so the
+  factory runs once.
+- **Suspense.** A suspense hook below the provider may suspend its first
+  render. React renders the same element again once the data arrives, and the
+  provider reuses the value that render built, so the query is not sent again
+  from an empty cache. That holds with the Suspense boundary above the
+  provider, and while hydrating with none at all.
+
+<Aside type="caution" title="A provider mounted by a transition">
+  A transition (`startTransition`, a client-side navigation) keeps the old
+  screen while the new tree suspends, and can render a new provider element on
+  each retry, which builds a new value each time. If a component below such a
+  provider suspends, put a `<Suspense>` boundary inside the provider, around
+  it, so the provider commits once:
+
+```tsx
+<ReactorProvider>
+  <Suspense fallback={<Spinner />}>
+    <Dashboard />
+  </Suspense>
+</ReactorProvider>
+```
+
+</Aside>
 
 <Aside type="caution">
   Everything the value holds belongs to the provider and is released with it.

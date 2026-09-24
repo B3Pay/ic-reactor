@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react"
-import React, { StrictMode } from "react"
+import React, { StrictMode, Suspense, startTransition, useState } from "react"
 import { hydrateRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import {
@@ -64,6 +64,29 @@ function defineTodo(options: { signedIn?: boolean } = {}) {
     (async ({ args }: { args?: string[] }) => `hello ${args?.[0]}`) as never
   )
   return todo
+}
+
+/**
+ * A provider over `defineTodo()` and a component that reads its greeting with
+ * a suspense query, with a count of the canister calls every value made.
+ */
+function defineSuspendingGreeting() {
+  const factory = vi.fn(() => defineTodo())
+  const { ReactorProvider, useReactor } = createReactorProvider(factory)
+  function Greeting() {
+    const { data } = useReactor().useActorSuspenseQuery({
+      functionName: "greet",
+      args: ["alice"],
+    })
+    return <p>{data}</p>
+  }
+  const calls = () =>
+    factory.mock.results.reduce(
+      (sum, { value }) =>
+        sum + vi.mocked(value.reactor.callMethod).mock.calls.length,
+      0
+    )
+  return { factory, ReactorProvider, Greeting, calls }
 }
 
 /** A bare `ClientManager` + `AuthenticationManager` pair. */
@@ -437,6 +460,102 @@ describe("createReactorProvider", () => {
     })
   })
 
+  describe("a tree that suspends before it first commits", () => {
+    // React throws away the state of a tree that suspends before its first
+    // commit and renders it again once the promise settles. A value built
+    // afresh for that render came with an empty QueryClient, so the suspense
+    // query fetched again and suspended again: the tree never showed, and the
+    // canister was called over and over.
+    const setup = defineSuspendingGreeting
+
+    it("builds one value while a Suspense boundary above it waits", async () => {
+      const { factory, ReactorProvider, Greeting, calls } = setup()
+
+      render(
+        <Suspense fallback={<p>waiting</p>}>
+          <ReactorProvider>
+            <Greeting />
+          </ReactorProvider>
+        </Suspense>
+      )
+
+      expect(await screen.findByText("hello alice")).toBeTruthy()
+      expect(factory).toHaveBeenCalledTimes(1)
+      expect(calls()).toBe(1)
+    })
+
+    it("builds one value under StrictMode as well", async () => {
+      const { factory, ReactorProvider, Greeting, calls } = setup()
+
+      render(
+        <StrictMode>
+          <Suspense fallback={<p>waiting</p>}>
+            <ReactorProvider>
+              <Greeting />
+            </ReactorProvider>
+          </Suspense>
+        </StrictMode>
+      )
+
+      expect(await screen.findByText("hello alice")).toBeTruthy()
+      expect(factory).toHaveBeenCalledTimes(1)
+      expect(calls()).toBe(1)
+    })
+
+    it("builds one value when a transition mounts it, with a boundary inside it", async () => {
+      // A transition keeps what is on screen while the new tree suspends, and
+      // renders the component that started it again for each retry: a new
+      // provider element each time, so nothing ties the retry to the value
+      // built before. The documented remedy is a Suspense boundary between
+      // the provider and what suspends, which lets the provider commit.
+      const { factory, ReactorProvider, Greeting, calls } = setup()
+      let show: () => void = () => {}
+      function App() {
+        const [shown, setShown] = useState(false)
+        show = () => startTransition(() => setShown(true))
+        return shown ? (
+          <ReactorProvider>
+            <Suspense fallback={<p>waiting</p>}>
+              <Greeting />
+            </Suspense>
+          </ReactorProvider>
+        ) : (
+          <p>hidden</p>
+        )
+      }
+
+      render(<App />)
+      await act(async () => show())
+
+      expect(await screen.findByText("hello alice")).toBeTruthy()
+      expect(factory).toHaveBeenCalledTimes(1)
+      expect(calls()).toBe(1)
+    })
+
+    it("builds a new value when the same element mounts again", () => {
+      const { ReactorProvider, useReactor } = createReactorProvider(() =>
+        defineTodo()
+      )
+      const seen: unknown[] = []
+      function Probe() {
+        seen.push(useReactor())
+        return null
+      }
+      // One element object, mounted twice: the second mount is a tree of its
+      // own, and the first one's value was released with it.
+      const element = (
+        <ReactorProvider>
+          <Probe />
+        </ReactorProvider>
+      )
+
+      render(element).unmount()
+      render(element).unmount()
+
+      expect(new Set(seen).size).toBe(2)
+    })
+  })
+
   describe("under StrictMode", () => {
     it("keeps one value across the effect StrictMode runs twice, and restores the session", async () => {
       const { ReactorProvider, useReactor } = createReactorProvider(() =>
@@ -492,6 +611,34 @@ describe("createReactorProvider", () => {
       container.remove()
     })
 
+    it("hydrates a tree that suspends, with no Suspense boundary above it", async () => {
+      // The browser's first render suspends while its fresh QueryClient
+      // fetches what the server fetched with its own. With no boundary, React
+      // renders the root again once the data arrives, and has to find the
+      // same value then.
+      const { factory, ReactorProvider, Greeting, calls } =
+        defineSuspendingGreeting()
+      container.innerHTML = "<p>hello alice</p>"
+      const hydrationErrors: unknown[] = []
+
+      await act(async () => {
+        root = hydrateRoot(
+          container,
+          <ReactorProvider>
+            <Greeting />
+          </ReactorProvider>,
+          { onRecoverableError: (error) => hydrationErrors.push(error) }
+        )
+      })
+      await waitFor(() => expect(calls()).toBe(1))
+      await act(async () => {})
+
+      expect(container.textContent).toBe("hello alice")
+      expect(factory).toHaveBeenCalledTimes(1)
+      expect(calls()).toBe(1)
+      expect(hydrationErrors).toEqual([])
+    })
+
     it("renders on the server without effects, and hydrates without a mismatch", async () => {
       const factory = vi.fn(() => defineTodo({ signedIn: true }))
       const { ReactorProvider, useReactor } = createReactorProvider(factory)
@@ -509,20 +656,22 @@ describe("createReactorProvider", () => {
         })
         return <p>{data ?? "loading"}</p>
       }
-      const app = (
+      // A function, as the server and the browser each create their own
+      // element: they are two processes, and share no objects.
+      const app = () => (
         <ReactorProvider>
           <Header />
           <Greeting />
         </ReactorProvider>
       )
 
-      container.innerHTML = renderToString(app)
+      container.innerHTML = renderToString(app())
       expect(container.textContent).toBe("checkingloading")
       expect(dispose).not.toHaveBeenCalled()
 
       const hydrationErrors: unknown[] = []
       await act(async () => {
-        root = hydrateRoot(container, app, {
+        root = hydrateRoot(container, app(), {
           onRecoverableError: (error) => hydrationErrors.push(error),
         })
       })
