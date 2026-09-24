@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { HttpErrorCode, ProtocolError } from "@icp-sdk/core/agent"
 import {
   CallError,
   CanisterError,
@@ -127,6 +128,60 @@ describe("isRetryableReactorError", () => {
     it("does not retry a CallError with no agent error underneath", () => {
       // No `kind` and no reject code means no request was made.
       expect(isRetryableReactorError(new CallError("odd"))).toBe(false)
+    })
+  })
+
+  /**
+   * The agent reports a non-2xx answer as a ProtocolError whose code is an
+   * HttpErrorCode, after sending the request `retryTimes` (3) more times
+   * itself. Every agent error without a reject code used to be retryable, so
+   * a refusal such as an expired delegation's 400 was sent 16 times, for
+   * about 20 seconds, before a query showed its error (#646).
+   */
+  describe("HTTP error answers", () => {
+    const httpError = (status: number, bodyText = "") =>
+      new CallError(
+        `Failed to call method "icrc1_name": HTTP ${status}`,
+        ProtocolError.fromCode(
+          new HttpErrorCode(status, "", [], bodyText || undefined)
+        )
+      )
+
+    it.each([
+      [400, "Invalid delegation expiry: the delegation has expired"],
+      [401, ""],
+      [403, "Forbidden"],
+      [404, "Not Found"],
+      [413, "Payload Too Large"],
+    ])("does not retry a %i refusal", (status, bodyText) => {
+      expect(isRetryableReactorError(httpError(status, bodyText))).toBe(false)
+    })
+
+    it.each([408, 429])("retries a %i, which asks to try again", (status) => {
+      expect(isRetryableReactorError(httpError(status))).toBe(true)
+    })
+
+    it.each([500, 502, 503, 504])("retries a %i server error", (status) => {
+      expect(isRetryableReactorError(httpError(status))).toBe(true)
+    })
+
+    it("reads the status structurally, for an error from another copy of the SDK", () => {
+      // Not an instance of this copy's HttpErrorCode: only its name and status.
+      const foreign = new CallError("refused", {
+        name: "ProtocolError",
+        kind: "Protocol",
+        code: { name: "HttpErrorCode", status: 403, statusText: "Forbidden" },
+      })
+      expect(isRetryableReactorError(foreign)).toBe(false)
+    })
+
+    it("ignores a status on a code that is not an HttpErrorCode", () => {
+      // Only the agent's HTTP error code says the answer was an HTTP refusal.
+      const other = new CallError("odd", {
+        kind: "Protocol",
+        code: { name: "SomethingElse", status: 400 },
+      })
+      expect(isRetryableReactorError(other)).toBe(true)
     })
   })
 })

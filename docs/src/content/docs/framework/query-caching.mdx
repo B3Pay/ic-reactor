@@ -379,9 +379,11 @@ const queryClient = new QueryClient({
 ### Smart Retry Logic
 
 Retrying helps only when the failure could change next time — a transport
-fault, a transient replica rejection. A canister `Err` variant, a validation
-failure, or a Candid encode error is deterministic, and retrying it spends
-several attempts and seconds of backoff to reach the same failure. IC Reactor
+fault, a transient replica rejection, an HTTP 5xx, 408 or 429 answer. A
+canister `Err` variant, a validation failure, a Candid encode error, or an
+HTTP 4xx refusal such as an expired delegation's is deterministic, and
+retrying it spends several attempts and seconds of backoff to reach the same
+failure. IC Reactor
 ships this classification as `reactorRetry`, which is already the query default
 in the `QueryClient` that `defineReactor` creates. Opt in on a `QueryClient`
 you construct yourself:

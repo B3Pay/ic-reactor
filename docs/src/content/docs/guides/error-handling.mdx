@@ -295,9 +295,11 @@ Most canister-call failures cannot change on retry: a canister `Err` variant, a
 decode failure on the reply (the same reply decodes to the same error — and for
 an update, the canister may already have committed the change, so a retry would
 submit it again), a replica rejection the replica will simply repeat for an
-identical call. Retrying those costs several attempts and seconds of backoff to
-arrive at the same failure. Only a `CallError` caused by an agent-level fault —
-a transport, protocol, or certificate failure, or a
+identical call, an HTTP 4xx refusal of the request itself (an expired or
+invalid delegation, a bad signature, a malformed request). Retrying those
+costs several attempts and seconds of backoff to arrive at the same failure.
+Only a `CallError` caused by an agent-level fault — a transport, protocol, or
+certificate failure, an HTTP 5xx, 408 or 429 answer, or a
 `SysTransient`/`SysUnknown` rejection — can plausibly produce a different
 result next time.
 
@@ -307,7 +309,11 @@ IC Reactor ships this classification as two functions, exported from
 - **`isRetryableReactorError(error)`** — returns `true` only when a retry could
   help. `CanisterError`, `ValidationError`, and a `CallError` without an
   agent error underneath (encode/decode/transform failures) are never
-  retryable. Within agent errors the bias runs the other way: an unrecognized
+  retryable, and neither is an HTTP 4xx answer other than 408 and 429. The
+  agent has already sent such a request `retryTimes` more times (3 by
+  default) before it reports the error, so a session whose delegation has
+  lapsed fails after those 4 requests instead of 16 and about 20 seconds of
+  backoff. Within agent errors the bias runs the other way: an unrecognized
   `kind`, or a rejection whose code cannot be read, still retries, so an
   unfamiliar transport-level fault is never silently made fatal.
 - **`reactorRetry(failureCount, error)`** — a TanStack Query `retry` predicate

@@ -437,6 +437,14 @@ const RETRYABLE_REJECT_CODES = new Set([
 ])
 
 /**
+ * HTTP client errors worth sending again: 408 Request Timeout and 429 Too
+ * Many Requests say the request came too early or too slowly, not that it was
+ * wrong. Every other 4xx refuses the request itself, and the replica or
+ * boundary node refuses an identical one the same way.
+ */
+const RETRYABLE_HTTP_CLIENT_ERRORS = new Set([408, 429])
+
+/**
  * Whether retrying a failed canister call could plausibly produce a different
  * result.
  *
@@ -449,11 +457,19 @@ const RETRYABLE_REJECT_CODES = new Set([
  *   these, including our own Candid encode/decode and transform failures, so
  *   the wrapper alone says nothing. The decision comes from the cause:
  *   - an agent error (it carries a `kind`): retried, except for a rejection
- *     whose reject code is one the replica will simply repeat;
+ *     whose reject code is one the replica will simply repeat, and an HTTP
+ *     4xx answer other than 408 and 429;
  *   - anything else: not retried, because no agent error means no request was
  *     ever made — the failure happened in encoding, decoding or transforming,
  *     and the identical input produces the identical failure.
  * - any other error: not retried, for the same reason.
+ *
+ * An HTTP 4xx answer is a refusal of the request itself: an expired or
+ * invalid delegation, a bad signature, a malformed request. The agent has
+ * already sent it `retryTimes` more times (3 by default) before it reports
+ * the error, so a query retry would only repeat those attempts, about 20
+ * seconds of them for a session whose delegation has lapsed. 408 and 429
+ * still retry, as do 5xx answers.
  *
  * Within agent errors the bias is toward retrying: an unrecognised `kind`, or a
  * rejection whose code cannot be read, still retries, so an unfamiliar
@@ -480,6 +496,11 @@ export function isRetryableReactorError(error: unknown): boolean {
   const rejectCode = readRejectCode(cause)
   if (typeof rejectCode === "number") {
     return RETRYABLE_REJECT_CODES.has(rejectCode)
+  }
+
+  const httpStatus = readHttpStatus(cause)
+  if (httpStatus !== undefined && httpStatus >= 400 && httpStatus < 500) {
+    return RETRYABLE_HTTP_CLIENT_ERRORS.has(httpStatus)
   }
 
   // Transport, protocol and certificate failures carry no reject code.
@@ -514,6 +535,23 @@ function readRejectCode(cause: unknown): number | undefined {
   if (typeof candidate?.rejectCode === "number") return candidate.rejectCode
   if (typeof candidate?.code?.rejectCode === "number") {
     return candidate.code.rejectCode
+  }
+  return undefined
+}
+
+/**
+ * Pull the HTTP status out of a `CallError.cause` that reports an HTTP error
+ * answer.
+ *
+ * The agent reports a non-2xx answer as a `ProtocolError` whose `code` is an
+ * `HttpErrorCode` carrying the `status`. The code is recognised by its `name`
+ * and `status` rather than with `instanceof`, so an error from another copy of
+ * `@icp-sdk/core` classifies the same way.
+ */
+function readHttpStatus(cause: unknown): number | undefined {
+  const code = (cause as { code?: { name?: unknown; status?: unknown } })?.code
+  if (code?.name === "HttpErrorCode" && typeof code.status === "number") {
+    return code.status
   }
   return undefined
 }
