@@ -680,6 +680,8 @@ package's `react-server` entry, which has them but none of the hooks; see
   units to and from decimal text exactly (see
   [Token Amounts](../core/README.md#token-amounts)); do not use `Number` for
   either
+- `isPrincipalText`, which checks a principal a person typed without a `try`
+  around `Principal.fromText`
 
 The main entry also re-exports TanStack Query's `skipToken` (and its
 `SkipToken` type), the same symbol `@tanstack/react-query` exports.

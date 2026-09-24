@@ -594,6 +594,28 @@ It refuses the rest rather than guess:
 It returns a `bigint`, which a `Reactor` takes as it is. A `DisplayReactor`
 takes a `nat` as text, so pass it `amount.toString()`.
 
+### Principal Text
+
+`isPrincipalText(value)` tells whether a value is the text of a principal — a
+user, a canister, `aaaaa-aa` or the anonymous `2vxsx-fae` — so a form can check
+a pasted recipient without a `try` around `Principal.fromText`:
+
+```typescript
+import { isPrincipalText } from "@ic-reactor/core"
+
+const to = input.trim()
+if (!isPrincipalText(to)) {
+  setError("Enter a principal such as ryjl3-tyaaa-aaaaa-aaaba-cai")
+} else {
+  // DisplayReactor: pass `to`. Reactor: pass Principal.fromText(to).
+}
+```
+
+It is `true` exactly when `Principal.fromText` reads the text and the principal
+is at most 29 bytes, the most the Internet Computer accepts: canonical text
+only, lowercase with its dashes and checksum, and no whitespace. It returns a
+`boolean` rather than narrowing, so a `string` it refuses stays a `string`.
+
 ### Result Unwrapping
 
 A method returning `variant { Ok : T; Err : E }` does not hand you the raw

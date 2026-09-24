@@ -1,3 +1,4 @@
+import { Principal } from "@icp-sdk/core/principal"
 import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants.js"
 import { BlobKey, RefusedKey } from "./args-key.js"
 import { CanisterError } from "../errors/index.js"
@@ -384,6 +385,50 @@ export const hexToUint8Array = (hex: string): Uint8Array<ArrayBuffer> => {
 export const formatHexDisplay = (hex: string): `0x${string}` => {
   const normalized = hex.replace(/^0x/i, "")
   return `0x${normalized}`
+}
+
+/** The longest principal the Internet Computer accepts, in bytes. */
+const MAX_PRINCIPAL_BYTES = 29
+
+/**
+ * Whether `value` is the text of a principal: a user, canister or the
+ * anonymous principal, as a person pastes it into a form.
+ *
+ * It is `true` exactly when `Principal.fromText(value)` reads it and the
+ * principal is at most 29 bytes, the most the Internet Computer accepts. That
+ * means the canonical form only: lowercase, grouped by dashes, with a matching
+ * checksum and no whitespace, so trim what a person typed first. Use it where
+ * an input is validated, instead of a `try` around `Principal.fromText`. A
+ * `DisplayReactor` then takes the text as it is; a `Reactor` takes
+ * `Principal.fromText(text)`.
+ *
+ * It returns a `boolean`, not a type guard, so a `string` it refuses is still
+ * typed a `string` afterwards.
+ *
+ * @param value - Anything; only a string can pass.
+ * @returns `true` for the text of a principal.
+ *
+ * @example
+ * ```ts
+ * import { isPrincipalText } from "@ic-reactor/core"
+ *
+ * isPrincipalText("ryjl3-tyaaa-aaaaa-aaaba-cai") // true: a canister
+ * isPrincipalText("aaaaa-aa") // true: the management canister
+ * isPrincipalText("2vxsx-fae") // true: the anonymous principal
+ * isPrincipalText("ryjl3-tyaaa") // false: the checksum does not match
+ * isPrincipalText(" aaaaa-aa") // false: trim first
+ * isPrincipalText("RYJL3-TYAAA-AAAAA-AAABA-CAI") // false: not canonical
+ * ```
+ */
+export const isPrincipalText = (value: unknown): boolean => {
+  if (typeof value !== "string") return false
+  try {
+    return (
+      Principal.fromText(value).toUint8Array().length <= MAX_PRINCIPAL_BYTES
+    )
+  } catch {
+    return false
+  }
 }
 
 /**

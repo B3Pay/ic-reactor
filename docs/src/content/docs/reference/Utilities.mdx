@@ -209,3 +209,45 @@ formatTokenAmount(totalSupply, decimals, {
   locale: "en-US",
 }) // whole tokens, grouped, such as "513,084,297"
 ```
+
+## Principal text
+
+### isPrincipalText
+
+Whether a value is the text of a principal: a user, a canister, the management
+canister `aaaaa-aa` or the anonymous principal `2vxsx-fae`.
+
+```typescript
+function isPrincipalText(value: unknown): boolean
+```
+
+It is `true` exactly when `Principal.fromText(value)` reads the value and the
+principal is at most 29 bytes, the most the Internet Computer accepts. That is
+canonical text only — lowercase, grouped by dashes, with a matching checksum
+and no whitespace — so trim what a person typed first. It never throws, and
+anything other than a string is `false`.
+
+```typescript
+isPrincipalText("ryjl3-tyaaa-aaaaa-aaaba-cai") // true
+isPrincipalText("ryjl3-tyaaa") // false: the checksum does not match
+isPrincipalText(" aaaaa-aa") // false: trim first
+isPrincipalText("RYJL3-TYAAA-AAAAA-AAABA-CAI") // false: not canonical
+```
+
+Use it where an input is validated, instead of a `try` around
+`Principal.fromText`:
+
+```tsx
+const handleLookup = () => {
+  const owner = input.trim()
+  if (!isPrincipalText(owner)) return setError("Invalid principal ID")
+  setAccount({ owner }) // a DisplayReactor takes the text as it is
+}
+```
+
+A `Reactor` takes a `Principal`, so pass it `Principal.fromText(owner)` once
+the check passes. `isPrincipalText` returns a `boolean` rather than being a type
+guard: a `string` it refuses is still typed a `string`, where a guard would
+narrow it to `never`.
+
+`@ic-reactor/candid`'s `isPrincipalId` is the same check.

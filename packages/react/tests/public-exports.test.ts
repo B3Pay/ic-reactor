@@ -117,6 +117,7 @@ const RUNTIME_EXPORTS: Record<
   jsonToString: "function",
   formatTokenAmount: "function",
   parseTokenAmount: "function",
+  isPrincipalText: "function",
 
   // Core environment helpers
   isDev: "function",
