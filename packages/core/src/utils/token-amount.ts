@@ -13,25 +13,46 @@
 /** The most decimals, and fraction digits, these helpers accept: a `nat8`. */
 const MAX_DIGITS = 255
 
-/** How a value is quoted in an error message. */
-const show = (value: unknown): string =>
-  typeof value === "string"
-    ? JSON.stringify(value)
-    : typeof value === "bigint"
-      ? `${value}n`
-      : String(value)
+/** The most characters of a refused value an error message quotes. */
+const MAX_SHOWN = 40
+
+/**
+ * How a value is quoted in an error message. A form may show the message, and
+ * what was typed or pasted can be any length, so a long value is cut.
+ */
+const show = (value: unknown): string => {
+  const text =
+    typeof value === "string"
+      ? JSON.stringify(value)
+      : typeof value === "bigint"
+        ? `${value}n`
+        : String(value)
+  return text.length > MAX_SHOWN ? `${text.slice(0, MAX_SHOWN)}…` : text
+}
+
+/**
+ * `digits` without the zeros at its end. A loop rather than `/0+$/`, which
+ * retries from every zero of a long run and so takes quadratic time on text
+ * such as `"0.000…0001"`.
+ */
+const withoutTrailingZeros = (digits: string): string => {
+  let end = digits.length
+  while (end > 0 && digits.charCodeAt(end - 1) === 48) end--
+  return digits.slice(0, end)
+}
 
 /** A token's decimals as a count from 0 to 255, or an error naming `fn`. */
 const toDecimals = (decimals: unknown, fn: string): number => {
+  // A bigint or digit text is whole however large; past what a Number holds
+  // it becomes Infinity, which the range check below refuses.
   const count =
-    typeof decimals === "number"
-      ? decimals
-      : typeof decimals === "bigint"
-        ? Number(decimals)
-        : typeof decimals === "string" && /^\d+$/.test(decimals)
-          ? Number(decimals)
-          : NaN
-  if (!Number.isInteger(count)) {
+    typeof decimals === "bigint" ||
+    (typeof decimals === "string" && /^\d+$/.test(decimals))
+      ? Number(decimals)
+      : typeof decimals === "number" && Number.isInteger(decimals)
+        ? decimals
+        : undefined
+  if (count === undefined) {
     throw new TypeError(
       `[ic-reactor] ${fn}: decimals must be a whole number (a number, bigint or digit string such as icrc1_decimals returns), got ${show(decimals)}`
     )
@@ -155,8 +176,13 @@ const localeStyle = (
 }
 
 /** `digits` with a `,` between each group of three from the right. */
-const groupThousands = (digits: string): string =>
-  digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+const groupThousands = (digits: string): string => {
+  let grouped = digits.slice(0, digits.length % 3 || 3)
+  for (let at = grouped.length; at < digits.length; at += 3) {
+    grouped += `,${digits.slice(at, at + 3)}`
+  }
+  return grouped
+}
 
 /**
  * Show an amount of a token's base units as decimal text, exactly.
@@ -179,8 +205,9 @@ const groupThousands = (digits: string): string =>
  * @returns The amount as decimal text, `"1.5"` for 150000000 e8s.
  * @throws TypeError when `value` is not an integer amount, or `decimals` is
  * not a whole number.
- * @throws RangeError when `decimals` or a digit option is outside 0-255, or
- * `minFractionDigits` exceeds `maxFractionDigits`.
+ * @throws RangeError when `decimals` or a digit option is outside 0-255,
+ * `minFractionDigits` exceeds `maxFractionDigits`, `roundingMode` is not one
+ * of the two, or `Intl.NumberFormat` refuses `locale`.
  *
  * @example
  * ```ts
@@ -245,7 +272,7 @@ export function formatTokenAmount(
   fraction =
     options.trimTrailingZeros === false
       ? fraction.padEnd(maxDigits, "0")
-      : fraction.replace(/0+$/, "").padEnd(minDigits, "0")
+      : withoutTrailingZeros(fraction).padEnd(minDigits, "0")
   // Nothing shown is not negative: -0.001 to two digits is "0", not "-0".
   const signed = negative && magnitude !== 0n
 
@@ -353,7 +380,7 @@ export function parseTokenAmount(
     )
   }
   // Zeros past the token's digits change nothing, so only the rest count.
-  const significant = fraction.replace(/0+$/, "")
+  const significant = withoutTrailingZeros(fraction)
   if (significant.length > scale) {
     throw new RangeError(
       `[ic-reactor] parseTokenAmount: ${show(text)} has ${significant.length} fraction digits, more than the token's ${scale} decimals`

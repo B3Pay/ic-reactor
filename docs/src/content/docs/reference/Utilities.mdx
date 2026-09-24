@@ -137,7 +137,9 @@ and refuses everything else rather than guess at it:
 | `"-1.5"`                          | `RangeError` | A ledger's amounts are `nat`. Pass `{ allowNegative: true }` for an `int`.              |
 
 Every message starts with `[ic-reactor] parseTokenAmount:` and quotes what
-it refused, so a form can show it, or map the error class to its own wording.
+it refused (up to 40 characters of it), so a form can show it, or map the
+error class to its own wording. Checking a long paste takes time in proportion
+to its length, so it is safe to run on every keystroke.
 
 The result is a `bigint`. A `Reactor` takes it as it is. A `DisplayReactor`
 takes a `nat` as text and refuses a `bigint`, so pass it `amount.toString()`.
@@ -146,7 +148,11 @@ takes a `nat` as text and refuses a `bigint`, so pass it `amount.toString()`.
 
 ```tsx
 import { useState } from "react"
-import { parseTokenAmount, formatTokenAmount } from "@ic-reactor/react"
+import {
+  formatTokenAmount,
+  isPrincipalText,
+  parseTokenAmount,
+} from "@ic-reactor/react"
 import { balanceQuery, decimalsQuery, transferMutation } from "./ledger"
 
 function Transfer({ owner }: { owner: string }) {
@@ -159,10 +165,12 @@ function Transfer({ owner }: { owner: string }) {
 
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault()
+    const recipient = to.trim()
+    if (!isPrincipalText(recipient)) return setError("Invalid principal ID")
     try {
       const units = parseTokenAmount(amount, decimals)
       setError(null)
-      mutate([{ to: { owner: to }, amount: units.toString() }])
+      mutate([{ to: { owner: recipient }, amount: units.toString() }])
     } catch (err) {
       setError((err as Error).message)
     }

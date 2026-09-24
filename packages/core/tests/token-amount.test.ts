@@ -4,7 +4,7 @@
  *
  * Seven examples converted with `Number` and `Math.pow`, which is lossy:
  * `Math.floor(Number("0.29") * 10 ** 8)` is 28999999, so the app sent
- * 0.28999999 for 0.29, and at 18 decimals 1.1 became 1100000000000000100.
+ * 0.28999999 for 0.29, and at 18 decimals 1.1 became 1100000000000000128.
  * These tests pin that both helpers are exact for every amount, that parsing
  * refuses what it cannot represent instead of rounding it, and that the two
  * round-trip.
@@ -225,7 +225,11 @@ describe("formatTokenAmount", () => {
       expect(() => formatTokenAmount(1n, undefined as never)).toThrow(TypeError)
       expect(() => formatTokenAmount(1n, -1)).toThrow(RangeError)
       expect(() => formatTokenAmount(1n, 256)).toThrow(RangeError)
-      expect(() => formatTokenAmount(1n, 10n ** 400n)).toThrow(TypeError)
+      // Whole, however large, so out of range rather than not whole.
+      expect(() => formatTokenAmount(1n, 10n ** 400n)).toThrow(RangeError)
+      expect(() => formatTokenAmount(1n, "9".repeat(400))).toThrow(RangeError)
+      expect(() => formatTokenAmount(1n, -1n)).toThrow(RangeError)
+      expect(() => formatTokenAmount(1n, Infinity)).toThrow(TypeError)
       expect(formatTokenAmount(1n, 255)).toBe(`0.${"0".repeat(254)}1`)
     })
 
@@ -339,6 +343,63 @@ describe("parseTokenAmount", () => {
     expect(() => parseTokenAmount("1", -1)).toThrow(RangeError)
     expect(() => parseTokenAmount("1", 256)).toThrow(RangeError)
     expect(() => parseTokenAmount("1", 8.5)).toThrow(TypeError)
+  })
+})
+
+describe("long input", () => {
+  // Text comes from a person, and a paste can be any length. Trimming zeros
+  // with /0+$/ retried from every zero of a run, so 200000 of them took
+  // seconds; a loop takes well under a millisecond. The bound is loose enough
+  // for a loaded machine and far below the quadratic time.
+  const elapsed = (run: () => void): number => {
+    const start = performance.now()
+    run()
+    return performance.now() - start
+  }
+
+  it("parses a long run of fraction zeros in linear time", () => {
+    const text = `0.${"0".repeat(200_000)}1`
+    expect(
+      elapsed(() => expect(() => parseTokenAmount(text, 8)).toThrow(RangeError))
+    ).toBeLessThan(1000)
+    const zeros = `1.${"0".repeat(200_000)}`
+    let units = 0n
+    expect(
+      elapsed(() => {
+        units = parseTokenAmount(zeros, 8)
+      })
+    ).toBeLessThan(1000)
+    expect(units).toBe(100_000_000n)
+  })
+
+  it("groups a long whole part in linear time", () => {
+    // 1 and 99999 zeros: 100000 digits, the first group one digit long.
+    const value = 10n ** 99_999n
+    let text = ""
+    expect(
+      elapsed(() => {
+        text = formatTokenAmount(value, 0, { useGrouping: true })
+      })
+    ).toBeLessThan(1000)
+    // Compared as a boolean: a failing toBe would print both 133k-character
+    // strings.
+    expect(text === `1${",000".repeat(33_333)}`).toBe(true)
+    expect(formatTokenAmount(1_234n, 0, { useGrouping: true })).toBe("1,234")
+    expect(formatTokenAmount(123n, 0, { useGrouping: true })).toBe("123")
+    expect(formatTokenAmount(0n, 0, { useGrouping: true })).toBe("0")
+  })
+
+  it("quotes at most 40 characters of what it refused", () => {
+    const pasted = `${"1".repeat(10_000)}x`
+    let message = ""
+    try {
+      parseTokenAmount(pasted, 8)
+    } catch (error) {
+      message = (error as Error).message
+    }
+    expect(message).toMatch(/is not a decimal amount/)
+    expect(message).toContain(`"${"1".repeat(39)}…`)
+    expect(message.length).toBeLessThan(250)
   })
 })
 
