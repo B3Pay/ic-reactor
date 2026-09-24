@@ -31,6 +31,9 @@ import { hasLabel } from "./label.js"
  *   wherever it holds them, a getter over a private field included, but JSON
  *   writes only its own enumerable properties, in their own order. The key
  *   reads the labels as the codecs do, into the plain object they send.
+ * - A record field defined as not enumerable, and in a DisplayReactor also a
+ *   variant's `_type` or payload. IDL.encode and the codecs send it, but JSON
+ *   leaves it out. The key copies it into a plain object that writes it.
  * - In a DisplayReactor, a float or an integer of 32 bits or fewer given as
  *   numeric text, and a `Principal` given as the object. The key writes the
  *   number the text spells and the principal's text, the forms the codecs
@@ -103,6 +106,10 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 
 const hasOwn = (value: object, key: string): boolean =>
   Object.prototype.hasOwnProperty.call(value, key)
+
+/** Does JSON write `key` of `value`: is it an own enumerable property? */
+const isEnumerable = (value: object, key: string): boolean =>
+  Object.prototype.propertyIsEnumerable.call(value, key)
 
 const isByte = (type: IDL.Type): boolean =>
   type instanceof IDL.FixedNatClass && type._bits === 8
@@ -348,7 +355,9 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
   /**
    * `value` with each of `fields` it has rewritten. With `onlyDeclared`, the
    * fields a record does not declare are left out as well: neither IDL.encode
-   * nor the record codec sends them.
+   * nor the record codec sends them. A field that is not enumerable, which
+   * both send but JSON does not write, is copied into a plain object that
+   * writes it.
    */
   private mapFields(
     value: Record<string, unknown>,
@@ -357,10 +366,16 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
   ): Record<string, unknown> {
     let copy: Record<string, unknown> | undefined
     let declared = 0
+    // IDL.encode asks `hasOwnProperty` and the record codec `hasLabel`, so
+    // both send a field defined as not enumerable. JSON leaves it out, so two
+    // records that differed only there, and sent different bytes, shared a
+    // key.
+    let hidden = false
     for (const [label, type] of fields) {
       let field: unknown
       if (hasOwn(value, label)) {
         declared++
+        if (!isEnumerable(value, label)) hidden = true
         if (!this.rewrites(type)) continue
         field = type.accept(this, value[label])
         if (Object.is(field, value[label])) continue
@@ -374,11 +389,13 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
       copy ??= { ...value }
       setField(copy, label, field)
     }
-    if (onlyDeclared && Object.keys(value).length > declared) {
-      const source = copy ?? value
+    if (hidden || (onlyDeclared && Object.keys(value).length > declared)) {
       const record: Record<string, unknown> = {}
       for (const [label] of fields) {
-        if (hasOwn(source, label)) setField(record, label, source[label])
+        // The copy is a spread, which holds only enumerable fields, so a
+        // hidden one it did not rewrite is still read from the value.
+        if (copy && hasOwn(copy, label)) setField(record, label, copy[label])
+        else if (hasOwn(value, label)) setField(record, label, value[label])
       }
       return record
     }
@@ -664,11 +681,15 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
       : this.rewrites(type)
         ? type.accept(this, payload)
         : payload
-    // `{ _type, [label]: payload }`, as the codec returns a variant.
+    // `{ _type, [label]: payload }`, as the codec returns a variant, and as
+    // JSON writes it: a `_type` or a payload that is not enumerable is left
+    // out of the JSON, though the codec reads it.
     if (
       isPlainObject(variant) &&
       variant._type === label &&
       Object.is(payload, key) &&
+      isEnumerable(variant, "_type") &&
+      (key === undefined || isEnumerable(variant, label)) &&
       Object.keys(variant).every((name) => name === "_type" || name === label)
     ) {
       return value
