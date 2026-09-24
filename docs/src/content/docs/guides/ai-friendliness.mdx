@@ -52,11 +52,11 @@ npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
 
 ## End-to-End Type Safety
 
-Since IC Reactor is built with extreme type safety in mind, AI assistants can easily infer the available methods and argument types for your canisters once you've defined the IDL factory.
+Since IC Reactor is built with extreme type safety in mind, AI assistants can easily infer the available methods and argument types for your canisters once the reactor has its service type. The types come from the service type parameter (`_SERVICE` in the generated declarations); the IDL factory only drives encoding at run time.
 
-### Tip: Provide the IDL Factory
+### Tip: Provide the Generated Declarations
 
-When asking an AI to write code for a specific canister, always provide the generated IDL factory (e.g., `my_canister.did.js`) or the Candid interface. The AI can then write perfectly typed `useActorQuery` or `useActorMutation` hooks.
+When asking an AI to write code for a specific canister, always provide the generated declarations (the IDL factory and the `_SERVICE` type, e.g. `my_canister.did.js` and `my_canister.did.d.ts`) or the Candid interface. The AI can then write perfectly typed `useActorQuery` or `useActorMutation` hooks.
 
 ## Display Types (Auto Transformations)
 
@@ -64,8 +64,9 @@ To make AI-generated code cleaner and less error-prone, you can use `DisplayReac
 
 ```typescript
 import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
 
-const reactor = new DisplayReactor({
+const reactor = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend",
@@ -74,6 +75,11 @@ const reactor = new DisplayReactor({
 
 const { useActorQuery, useActorMutation } = createActorHooks(reactor)
 ```
+
+Keep the `<_SERVICE>` type parameter. Without it the reactor knows nothing
+about the Candid, and every display-side argument and result is typed
+`unknown`; see
+[Types: with and without a service type](/v3/packages/candid/candiddisplayreactor#types-with-and-without-a-service-type).
 
 ## Prompting Examples
 
