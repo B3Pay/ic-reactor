@@ -10,7 +10,8 @@ canister and manually generated `dfx` declarations. It shows how to use
 - a local Motoko todo canister under `backend/`
 - `dfx` for local replica, deployment, and declaration generation
 - `ClientManager({ queryClient, agentOptions })` shared by auth and the todo
-  reactor
+  reactor, built per render tree in a provider so a server render never shares
+  a cache or an identity with another request
 - `createActorHooks` over a `Reactor` built from generated declarations
 
 ## Run
@@ -37,8 +38,9 @@ host.
 
 ## Key Files
 
-- `src/service/client.ts` creates the shared `ClientManager` and auth hooks
-- `src/service/todo.ts` creates the `Reactor` and bound hooks from generated
-  declarations
+- `src/service/provider.tsx` builds the `QueryClient`, `ClientManager`,
+  `AuthenticationManager` and todo `Reactor` inside `ICReactorProvider`, and
+  exports the bound auth and todo hooks
+- `src/pages/_app.tsx` wraps the app in `ICReactorProvider`
 - `src/pages/index.tsx` renders the app
 - `src/declarations/todo/` contains the `dfx generate` output used by the app

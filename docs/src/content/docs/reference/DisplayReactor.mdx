@@ -149,7 +149,7 @@ const { useActorQuery, useActorMutation } = createActorHooks(backend)
     `Principal` → `string` Ready for display
   </Card>
   <Card title="Optionals" icon="approve-check">
-    `[T] | []` → `T | null` JavaScript-native nullish
+    `[T] | []` → `T | undefined` JavaScript-native nullish
   </Card>
   <Card title="Blobs" icon="document">
     `vec nat8` → hex `string`, at every size
@@ -376,7 +376,7 @@ const avatar = user.avatar.length > 0 ? user.avatar[0] : null
 
 // With DisplayReactor
 const description = user.bio ?? "No bio"
-const avatar = user.avatar // Already null or value
+const avatar = user.avatar // Already undefined or value
 ```
 
 ### Handling Blobs (Binary Data)
@@ -507,7 +507,7 @@ const { data } = useActorQuery({
 
 // data.balance is string (was bigint)
 // data.createdAt is string (was bigint)
-// data.bio is string | null (was [string] | [])
+// data.bio is string | null | undefined (was [string] | []); none arrives as undefined
 ```
 
 The display types come from the service type parameter
