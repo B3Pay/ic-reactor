@@ -66,6 +66,7 @@ You can also use individual generators if you need more granular control:
 
 - **`toPascalCase` / `getReactorName` / `getServiceTypeName`**: Naming helpers.
 - **`assertSafeCanisterConfig` and friends**: Validate a canister config before generating; the pipeline runs these itself.
+- **`findSharedOutDirs` / `sharedOutDirMessage`**: Find the configured entries that would generate into a directory an earlier entry already uses — two entries with the same `name` under the global `outDir`, say, which the pipeline's owner marker cannot tell apart — and word the error the CLI and the Vite plugin report for them. Directories are compared by their real location on disk.
 
 `parseDIDFile` / `extractMethods` (and the `MethodInfo` / `MethodType` types)
 have been removed. They regex-scraped the pretty-printed JS from

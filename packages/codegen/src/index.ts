@@ -41,5 +41,9 @@ export type {
   ValidateCanisterConfigOptions,
 } from "./validate.js"
 
+// Entries that would generate into one directory (run by the CLI and the vite
+// plugin across every configured entry)
+export { findSharedOutDirs, sharedOutDirMessage } from "./shared-out-dir.js"
+
 // Individual Generators (Advanced Usage)
 export * from "./generators/index.js"

@@ -40,6 +40,10 @@ validate first: `assertSafeCanisterConfig`, `assertSafeCanisterName`,
 - each `outDir` carries a `.ic-reactor-owner` marker, so two canisters cannot
   write to the same directory. Without it both runs report success while the
   second replaces the first one's declarations.
+- the marker records a canister name, so it cannot tell apart two entries with
+  the same `name` and `outDir`. `findSharedOutDirs(entries, outDir,
+  projectRoot)` finds those across every configured entry, and the CLI and the
+  Vite plugin fail the later entry with `sharedOutDirMessage(...)`
 
 ## Full References
 

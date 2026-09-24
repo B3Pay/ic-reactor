@@ -11,7 +11,9 @@ import type { Plugin, ResolvedConfig, UserConfig, ViteDevServer } from "vite"
 import fs from "node:fs"
 import path from "node:path"
 import {
+  findSharedOutDirs,
   runCanisterPipeline,
+  sharedOutDirMessage,
   type CanisterConfig,
   type CodegenConfig,
   type CodegenTarget,
@@ -118,6 +120,34 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
     }
   }
 
+  /** How an error names an entry: its position, since names can repeat. */
+  const describeEntry = (canister: CanisterConfig) =>
+    `canisters[${canisters.indexOf(canister)}] (${JSON.stringify(canister.name)})`
+
+  /**
+   * The CLI's error for an entry that generates into the directory of an
+   * earlier entry, or `undefined` when it has a directory of its own.
+   *
+   * The pipeline's owner marker records a name, so two entries with the same
+   * `name` and `outDir` both passed it. Both generated into one directory at
+   * once, and which one's output survived changed from run to run while the
+   * build succeeded. Every configured entry takes part, including ones this run
+   * does not regenerate. Called right before each entry's pipeline starts: an
+   * earlier entry's pipeline creates its directory before its first await, so
+   * a later entry reaching that directory through a symlink or a spelling that
+   * differs only in case is caught too, as the CLI catches it.
+   */
+  const sharedOutDirError = (canister: CanisterConfig): string | undefined => {
+    const first = findSharedOutDirs(
+      canisters.map((entry) => [entry, entry] as const),
+      outDir,
+      projectRoot
+    ).get(canister)
+    return first === undefined
+      ? undefined
+      : sharedOutDirMessage(describeEntry(canister), describeEntry(first))
+  }
+
   const configuredCanisterIds = Object.fromEntries(
     canisters
       .filter((canister) => !!canister.canisterId)
@@ -206,6 +236,15 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
     if (running) {
       rerunQueued.add(canisterConfig)
       return running
+    }
+
+    const sharedError = sharedOutDirError(canisterConfig)
+    if (sharedError !== undefined) {
+      pendingFailures.set(
+        canisterConfig,
+        reportFailure(server, `Regeneration failed for ${sharedError}`)
+      )
+      return Promise.resolve()
     }
 
     const run = runCanisterPipeline({
@@ -496,14 +535,20 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
         `[ic-reactor] Generating canister bindings for ${pending.length} canisters...`
       )
 
+      // Each entry is checked just before its pipeline starts, so the check
+      // sees the directories the entries before it have claimed.
       const outcomes = await Promise.allSettled(
-        pending.map((canisterConfig) =>
-          runCanisterPipeline({
+        pending.map((canisterConfig) => {
+          const sharedError = sharedOutDirError(canisterConfig)
+          if (sharedError !== undefined) {
+            return Promise.reject(new SharedOutDirError(sharedError))
+          }
+          return runCanisterPipeline({
             canisterConfig,
             projectRoot,
             globalConfig,
           })
-        )
+        })
       )
 
       outcomes.forEach((outcome, index) => {
@@ -528,9 +573,12 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
         const name = canister?.name ?? `canister #${index}`
 
         if (outcome.status === "rejected") {
-          return [
-            { canister, detail: `${name}: ${describeError(outcome.reason)}` },
-          ]
+          // The shared-outDir error names the entry itself.
+          const detail =
+            outcome.reason instanceof SharedOutDirError
+              ? outcome.reason.message
+              : `${name}: ${describeError(outcome.reason)}`
+          return [{ canister, detail }]
         }
         if (!outcome.value.success) {
           return [
@@ -573,6 +621,9 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
 
   return plugin
 }
+
+/** An entry refused because an earlier entry generates into its directory. */
+class SharedOutDirError extends Error {}
 
 /** One readable line for whatever the pipeline threw. */
 function describeError(error: unknown): string {

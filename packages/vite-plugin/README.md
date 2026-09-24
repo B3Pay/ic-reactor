@@ -112,6 +112,13 @@ of a `.did` file being edited.
 - `mode`
 - `canisterId`
 
+Each entry needs an output directory of its own. Two entries with the same
+`name` and no `outDir`, or with `outDir` values that reach one directory, would
+overwrite each other's output, so the plugin generates the first of them and
+fails the later one with the error the CLI reports. To generate one canister
+twice, say as a `DisplayReactor` and as a `Reactor`, give each entry its own
+`outDir`.
+
 Supported `mode` values:
 
 - `Reactor`

@@ -90,6 +90,15 @@ plus hooks named after the canister — for a canister named `backend`:
 | `target`            | `string` | Override runtime target for this canister.                                                                               |
 | `canisterId`        | `string` | Canister ID written into `index.generated.ts`. Needed for any build not served from a local replica; see below.          |
 
+Each entry needs an output directory of its own. Two entries with the same
+`name` and no `outDir`, or with `outDir` values that reach one directory, would
+overwrite each other's output. The plugin generates the first of them and fails
+the later one with the error the CLI reports, which names both entries by their
+position in `canisters`. Under `vite build` that fails the build; under
+`vite dev` it goes to the terminal and the browser error overlay. To generate
+one canister twice, say as a `DisplayReactor` and as a `Reactor`, give each
+entry its own `outDir`.
+
 ## Reactor Mode
 
 Set `mode` per canister to choose the generated reactor class:

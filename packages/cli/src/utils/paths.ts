@@ -10,8 +10,9 @@ import path from "node:path"
  * directory compare equal.
  *
  * The directory often does not exist yet, so this resolves the longest part of
- * the path that does and appends the rest unchanged, as codegen's private helper
- * of the same name does. It calls `fs.realpathSync.native`, which follows
+ * the path that does and appends the rest unchanged, as the private helper of
+ * the same name behind codegen's `findSharedOutDirs` does. It calls
+ * `fs.realpathSync.native`, which follows
  * symlinks and, on a case-insensitive macOS volume, returns each existing part
  * in the case stored on disk. `fs.realpathSync` keeps the case the caller wrote.
  *
@@ -20,8 +21,10 @@ import path from "node:path"
  * difference only in case shows once the directory exists, including a
  * directory an earlier canister created in the same run.
  *
- * `generate` compares output directories with this to find entries that share
- * one, and `--clean` to tell a configured canister's output from stale output.
+ * `--clean` compares output directories with this to tell a configured
+ * canister's output from stale output, and `init` to write the client manager
+ * import between real locations. `generate` finds entries that share an output
+ * directory with codegen's `findSharedOutDirs`.
  */
 export function realpathAllowingMissing(target: string): string {
   const missing: string[] = []

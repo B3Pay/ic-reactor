@@ -10,8 +10,10 @@ const createVitePlugin =
   (vitePluginModule as any).icReactor ??
   (vitePluginModule as any).icReactorPlugin
 
-// Mock internal dependencies
-vi.mock("@ic-reactor/codegen", () => ({
+// Mock the pipeline. The shared-outDir check only resolves paths, so it runs
+// for real: it is what decides whether the plugin calls the pipeline at all.
+vi.mock("@ic-reactor/codegen", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@ic-reactor/codegen")>()),
   runCanisterPipeline: vi.fn(),
 }))
 
@@ -584,6 +586,57 @@ describe("icReactor", () => {
       })
     })
 
+    // Two entries with one name and one outDir generated into one directory at
+    // once, and which one's output survived changed from run to run.
+    const sharedOutDirEntries = {
+      canisters: [
+        { name: "backend", didFile: DID_RELATIVE, mode: "Reactor" as const },
+        { name: "backend", didFile: DID_RELATIVE },
+      ],
+    }
+    const SHARED_OUT_DIR_MESSAGE =
+      'canisters[1] ("backend"): generates into the same output directory as ' +
+      'canisters[0] ("backend"). Each run replaces that directory\'s declarations ' +
+      "and index.generated.ts, so the two would overwrite each other. Give each " +
+      'canister its own "outDir", or its own "name" if it uses the global outDir.'
+
+    it("should fail the build for an entry that shares a name and an outDir with an earlier one", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      const plugin = createVitePlugin(sharedOutDirEntries)
+      resolveConfig(plugin, "build")
+
+      await expect(
+        (plugin.buildStart as any).call(buildContext())
+      ).rejects.toThrowError(
+        `Failed to generate 1 of 2 canisters:\n  - ${SHARED_OUT_DIR_MESSAGE}`
+      )
+      // Only the first entry generated.
+      expect(
+        (runCanisterPipeline as any).mock.calls.map(
+          ([options]: any) => options.canisterConfig
+        )
+      ).toEqual([sharedOutDirEntries.canisters[0]])
+    })
+
+    it("should report an entry that shares an outDir to the overlay in dev", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      const plugin = createVitePlugin(sharedOutDirEntries)
+      resolveConfig(plugin, "serve")
+      ;(plugin.configureServer as any)(mockServer)
+      const context = buildContext()
+
+      await (plugin.buildStart as any).call(context)
+
+      expect(context.error).not.toHaveBeenCalled()
+      expect(runCanisterPipeline).toHaveBeenCalledOnce()
+      expect(mockServer.ws.send).toHaveBeenCalledWith({
+        type: "error",
+        err: expect.objectContaining({
+          message: expect.stringContaining(SHARED_OUT_DIR_MESSAGE),
+        }),
+      })
+    })
+
     it("should honour an explicit failOnError override in dev", async () => {
       vi.spyOn(console, "error").mockImplementation(() => {})
       ;(runCanisterPipeline as any).mockResolvedValue({
@@ -982,6 +1035,39 @@ describe("icReactor", () => {
           plugin: "ic-reactor-plugin",
         }),
       })
+    })
+
+    it("should not regenerate an entry that shares a name and an outDir with an earlier one", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {})
+      const entries = [
+        { name: "backend", didFile: DID_RELATIVE, mode: "Reactor" as const },
+        { name: "backend", didFile: DID_RELATIVE },
+      ]
+      const plugin = createVitePlugin({ canisters: entries })
+      serve(plugin)
+
+      await emit("change", DID_IN_VITE_ROOT)
+
+      expect(
+        (runCanisterPipeline as any).mock.calls.map(
+          ([options]: any) => options.canisterConfig
+        )
+      ).toEqual([entries[0]])
+      const refusal = expect.objectContaining({
+        type: "error",
+        err: expect.objectContaining({
+          message: expect.stringContaining(
+            'Regeneration failed for canisters[1] ("backend"): generates into ' +
+              'the same output directory as canisters[0] ("backend").'
+          ),
+        }),
+      })
+      expect(mockServer.ws.send).toHaveBeenCalledWith(refusal)
+
+      // A tab that connects later still sees it.
+      mockServer.ws.send.mockClear()
+      connectionListener()()
+      expect(mockServer.ws.send).toHaveBeenCalledWith(refusal)
     })
 
     it("should serialize regeneration for rapid saves of the same .did file", async () => {

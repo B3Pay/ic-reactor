@@ -25,6 +25,8 @@ icReactor({
 - Regenerates declarations + `index.generated.ts`
 - Preserves user-facing `index.ts` wrapper after initial creation
 - Relative paths (`didFile`, `outDir`) resolve against Vite's `config.root`
+- Each entry needs its own output directory: a later entry with the same
+  `name` and `outDir` as an earlier one fails, with the CLI's error
 - A failed canister fails `vite build`; in `vite dev` it goes to the terminal
   and the browser error overlay instead
 

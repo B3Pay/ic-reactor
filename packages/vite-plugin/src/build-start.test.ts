@@ -121,11 +121,8 @@ describe("buildStart with the real codegen pipeline", () => {
     ).toHaveLength(2)
   })
 
-  // The pipeline refuses an outDir that another canister owns, and it learns
-  // the owner from a file each run writes. buildStart starts every canister at
-  // once, and a clean checkout, which is what CI builds, has no such file yet.
-  // The guard therefore depends on each run claiming the directory before its
-  // first await.
+  // A clean checkout, which is what CI builds, has no generated directories
+  // and no owner marker yet, and buildStart starts every canister at once.
   it("refuses a second canister that shares an outDir on a clean checkout", async () => {
     vi.spyOn(console, "log").mockImplementation(() => {})
     const root = createProject()
@@ -143,7 +140,7 @@ describe("buildStart with the real codegen pipeline", () => {
     const context = buildContext({ watchMode: false })
 
     await expect(plugin.buildStart.call(context)).rejects.toThrowError(
-      /beta: .*Two canisters cannot share an outDir/
+      /canisters\[1\] \("beta"\): generates into the same output directory as canisters\[0\] \("alpha"\)/
     )
 
     // The refused canister must not have replaced the output it collided with.
@@ -156,5 +153,82 @@ describe("buildStart with the real codegen pipeline", () => {
     expect(
       fs.readFileSync(path.join(outDir, "index.generated.ts"), "utf-8")
     ).toContain('name: "alpha"')
+  })
+
+  // The owner marker records a name, so it cannot tell two entries with the
+  // same name apart. Both generated into one directory at once and the build
+  // passed: over six builds, one emitted `new Reactor` and the rest
+  // `new DisplayReactor`. The CLI refuses this config.
+  it("fails the build when two entries share a name and an outDir", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    const root = createProject()
+    fs.writeFileSync(path.join(root, "backend.did"), service("greet"))
+
+    const plugin = icReactor({
+      canisters: [
+        { name: "backend", didFile: "backend.did", mode: "DisplayReactor" },
+        { name: "backend", didFile: "backend.did", mode: "Reactor" },
+      ],
+      target: "core",
+    }) as any
+    plugin.configResolved({ root, command: "build" })
+
+    for (let build = 0; build < 2; build++) {
+      const context = buildContext({ watchMode: false })
+      await expect(plugin.buildStart.call(context)).rejects.toThrowError(
+        'canisters[1] ("backend"): generates into the same output directory as ' +
+          'canisters[0] ("backend"). Each run replaces that directory\'s ' +
+          "declarations and index.generated.ts, so the two would overwrite each " +
+          'other. Give each canister its own "outDir", or its own "name" if it ' +
+          "uses the global outDir."
+      )
+      // The first entry keeps the directory, on every build.
+      const generated = fs.readFileSync(
+        path.join(root, "src/declarations/backend/index.generated.ts"),
+        "utf-8"
+      )
+      expect(generated).toContain("new DisplayReactor")
+      expect(generated).not.toContain("new Reactor")
+    }
+  })
+
+  // The link dangles until the first entry generates, as a committed link
+  // beside ignored output does in a new clone. Only the directory the first
+  // entry creates shows that the second one reaches it.
+  it("fails the build when an entry's outDir is a link to the directory an earlier entry creates", async () => {
+    vi.spyOn(console, "log").mockImplementation(() => {})
+    const root = createProject()
+    fs.writeFileSync(path.join(root, "backend.did"), service("backend_only"))
+    fs.writeFileSync(path.join(root, "ledger.did"), service("ledger_only"))
+    fs.mkdirSync(path.join(root, "src"))
+    fs.symlinkSync(
+      path.join(root, "src/declarations/backend"),
+      path.join(root, "src/ledger"),
+      "junction"
+    )
+
+    const plugin = icReactor({
+      canisters: [
+        { name: "backend", didFile: "backend.did" },
+        { name: "backend", didFile: "ledger.did", outDir: "src/ledger" },
+      ],
+      target: "core",
+    }) as any
+    plugin.configResolved({ root, command: "build" })
+
+    await expect(
+      plugin.buildStart.call(buildContext({ watchMode: false }))
+    ).rejects.toThrowError(
+      /canisters\[1\] \("backend"\): generates into the same output directory as canisters\[0\]/
+    )
+    expect(
+      fs.readFileSync(
+        path.join(root, "src/declarations/backend/declarations/backend.js"),
+        "utf-8"
+      )
+    ).toContain("backend_only")
+    expect(
+      fs.readdirSync(path.join(root, "src/declarations/backend/declarations"))
+    ).not.toContain("ledger.js")
   })
 })

@@ -54,6 +54,10 @@ await runCanisterPipeline({
 
 - `runCanisterPipeline` for full end-to-end generation.
 - Naming helpers like `toPascalCase`, `getReactorName`, and `getServiceTypeName`.
+- `findSharedOutDirs` and `sharedOutDirMessage`, which the CLI and the Vite
+  plugin run across every configured entry to refuse one that would generate
+  into the directory of an earlier entry, such as two entries with the same
+  `name` under the global `outDir`.
 - Lower-level generators when you need declarations, reactor files, or client files separately.
 
 For each canister, the pipeline writes into `<outDir>/<name>/`:
