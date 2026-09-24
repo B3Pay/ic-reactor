@@ -77,8 +77,8 @@ certificate verification cannot catch it.
 On a host whose network isn't `"ic"`, `ClientManager.initialize()` fetches the
 replica's root key and replaces the cookie's key, or mainnet's under
 `shouldFetchRootKey: false` with no key. A key passed as `agentOptions.rootKey`
-is kept: `initialize()` fetches nothing, resolves even when `/api/v2/status` is
-unreachable, and every call is verified against that key
+is kept: `initialize()` fetches nothing, resolves even when the replica's status
+endpoint is unreachable, and every call is verified against that key
 (`clientManager.explicitRootKey` reports it). On a mainnet host nothing is
 fetched.
 
