@@ -10,6 +10,13 @@ export interface UseAuthReturn {
   login: (options?: AuthenticationSignInOptions) => Promise<void>
   logout: (options?: { returnTo?: string }) => Promise<void>
   isAuthenticated: boolean
+  /**
+   * `true` while a sign-in or sign-out is in progress, and until the session
+   * restore the first `useAuth()` starts has settled: on the first render, in
+   * a server render and while the stored session is read. A restore that fails
+   * settles it too. Show a loading state while it is `true` rather than
+   * treating `isAuthenticated: false` as signed out.
+   */
   isAuthenticating: boolean
   /**
    * The signed-in user's principal, or `null` while signed out. A signed-out
