@@ -215,8 +215,9 @@ network/agent and unexpected errors.
 - Install the fake before any `ClientManager` is built, and point it at
   `replica.host`. For a module-scope `defineReactor(...)`, install the fake at
   the top of the test file (or in a Vitest setup file) and `await import(...)`
-  the component afterwards; in Vitest's jsdom a manager with no `host` uses the
-  page origin, `http://localhost:3000`, so pass that as the fake's `host`.
+  the component afterwards. In jsdom a manager with no `host` and a fake with
+  no `host` both use the page origin, so they meet; if the app passes
+  `agentOptions.host`, pass the same `host` to `installFakeReplica`.
 - Reset a shared reactor between tests with `queryClient.clear()`.
 - Test a signed-in user with `clientManager.updateAgent(identity)`; the kit does
   not simulate Internet Identity sign-in.

@@ -52,12 +52,17 @@ found when it was built.
 
 ### Options
 
-| Option      | Type                           | Default                   | Description                                                                            |
-| ----------- | ------------------------------ | ------------------------- | -------------------------------------------------------------------------------------- |
-| `host`      | `string`                       | `"http://127.0.0.1:4943"` | The origin the fake answers for. Build the agents under test with this host.           |
-| `canisters` | `Record<string, FakeCanister>` | `{}`                      | The canisters the fake runs, by canister ID. A call to any other canister is rejected. |
+| Option      | Type                           | Default   | Description                                                                            |
+| ----------- | ------------------------------ | --------- | -------------------------------------------------------------------------------------- |
+| `host`      | `string`                       | See below | The origin the fake answers for. Build the agents under test with this host.           |
+| `canisters` | `Record<string, FakeCanister>` | `{}`      | The canisters the fake runs, by canister ID. A call to any other canister is rejected. |
 
 A key of `canisters` that is not a canister ID throws.
+
+With no `host`, the fake answers where a `ClientManager` built with no `host`
+sends its calls: the page's origin when the test environment has a local one
+(`http://localhost:3000` in Vitest's jsdom and happy-dom), and
+`http://127.0.0.1:4943` otherwise, as in plain Node.
 
 ### Returns: `FakeReplica`
 
@@ -66,7 +71,7 @@ A key of `canisters` that is not a canister ID throws.
 | `host`      | `string`                        | The origin the fake answers for.                                                         |
 | `rootKey`   | `Uint8Array`                    | The DER root key the fake signs with. An agent on a local host fetches it from the fake. |
 | `requests`  | `readonly FakeReplicaRequest[]` | Every request an agent sent, in order.                                                   |
-| `restore()` | `() => void`                    | Puts back the `fetch` the fake replaced. Restore several fakes in the reverse order.     |
+| `restore()` | `() => void`                    | Takes the fake out of `fetch`. Safe to call twice; several fakes restore in any order.   |
 
 Each `FakeReplicaRequest` has an `endpoint` (`"status"`, `"query"`, `"call"` or
 `"read_state"`), and where they apply its `canisterId`, `methodName` and
@@ -74,15 +79,15 @@ Each `FakeReplicaRequest` has an `endpoint` (`"status"`, `"query"`, `"call"` or
 
 ### Behaviour
 
-| Situation                                                  | What the agent gets                                                            |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| A query or update call a handler answers                   | The reply, certified (update) or signed by a node (query), as from a replica   |
-| A handler throws                                           | A reject with code 5 (`CanisterError`) and error code `IC0503`, as for a trap  |
-| A call to a canister the fake does not run                 | A reject with code 3 (`DestinationInvalid`)                                    |
-| A canister with no `query` (or `update`) handler is called | A reject with code 3                                                           |
-| A request whose signature or delegation does not verify    | HTTP 400, recorded with a `refused` reason                                     |
-| An IC API request to another origin                        | A network error naming the fake's host, so a test never reaches a real network |
-| Any other request                                          | Passed to the `fetch` the fake replaced                                        |
+| Situation                                                  | What the agent gets                                                           |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| A query or update call a handler answers                   | The reply, certified (update) or signed by a node (query), as from a replica  |
+| A handler throws                                           | A reject with code 5 (`CanisterError`) and error code `IC0503`, as for a trap |
+| A call to a canister the fake does not run                 | A reject with code 3 (`DestinationInvalid`)                                   |
+| A canister with no `query` (or `update`) handler is called | A reject with code 3                                                          |
+| A request whose signature or delegation does not verify    | HTTP 400, recorded with a `refused` reason                                    |
+| An IC API request to another origin                        | A network error naming the fake's host, logged once with `console.error`      |
+| Any other request, on any origin                           | Passed to the `fetch` the fake replaced                                       |
 
 The fake checks signatures by Ed25519, ECDSA P-256 and secp256k1 keys, and
 delegation chains between them, as a replica does: the signer, each

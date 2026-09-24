@@ -786,7 +786,9 @@ it("reads the balance", async () => {
 
 A reactor built at module scope, such as one from `defineReactor`, builds its
 agent when its module is imported: install the fake first, then import the
-component under test dynamically. The
+component under test dynamically. With no `host` on either side, its
+`ClientManager` and the fake both use the page's origin in jsdom, so they
+meet. The
 [Testing guide](https://ic-reactor.b3pay.net/v3/guides/testing) shows how, and
 how to test as a signed-in user.
 

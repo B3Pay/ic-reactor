@@ -37,6 +37,7 @@ import {
 } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { Principal } from "@icp-sdk/core/principal"
+import { getNetworkByHostname } from "../utils/helper.js"
 
 /** Who sent a call, as the fake replica reports it to a canister. */
 export interface FakeCallContext {
@@ -96,7 +97,10 @@ export interface FakeReplicaOptions {
    * The origin the fake answers for. Point the agents under test at it, for
    * example with `agentOptions: { host: replica.host }`.
    *
-   * @defaultValue `"http://127.0.0.1:4943"`
+   * @defaultValue Where a `ClientManager` built with no `host` sends its
+   * calls: the page's origin when the test environment has a local one
+   * (`http://localhost:3000` in Vitest's jsdom and happy-dom), and
+   * `"http://127.0.0.1:4943"` otherwise.
    */
   host?: string
   /**
@@ -120,8 +124,9 @@ export interface FakeReplica {
   /** Every request an agent sent to the fake, in order. */
   readonly requests: readonly FakeReplicaRequest[]
   /**
-   * Puts back the `fetch` the fake replaced. An agent built while the fake
-   * was installed keeps calling it.
+   * Takes the fake out of `globalThis.fetch`, putting back the `fetch` it
+   * replaced. Calling it again does nothing, and fakes may be restored in
+   * any order. An agent built while the fake was installed keeps calling it.
    */
   restore(): void
 }
@@ -145,14 +150,88 @@ export class FakeReplicaReject extends Error {
 
 const DEFAULT_HOST = "http://127.0.0.1:4943"
 
+/**
+ * The page's origin when it is one a `ClientManager` with no `host` sends
+ * its calls to and the fake can answer for: a local or remote development
+ * origin, such as jsdom's `http://localhost:3000`. A mainnet origin is left
+ * out, as its agents check certificates against mainnet's root key.
+ */
+function localPageOrigin(): string | undefined {
+  try {
+    const origin = (globalThis as { location?: { origin?: string } }).location
+      ?.origin
+    if (!origin) return undefined
+    const { protocol, hostname } = new URL(origin)
+    return (protocol === "http:" || protocol === "https:") &&
+      getNetworkByHostname(hostname) !== "ic"
+      ? origin
+      : undefined
+  } catch {
+    // No page (Node), an opaque origin ("null"), or a `location` that throws.
+    return undefined
+  }
+}
+
+/**
+ * The IC HTTP API paths an agent requests: the status endpoint, and a
+ * canister's or subnet's `query`, `call` and `read_state`. Anything else, such
+ * as an app's own `/api/v1/...` REST calls, is not the fake's to answer.
+ */
+const IC_API_PATH =
+  /^\/api\/v\d+\/(?:status|(?:canister|subnet)\/[^/]+\/(?:query|call|read_state))$/
+
+/**
+ * The URL a request is for. An agent always asks for an absolute one; an app
+ * may ask for a path, which a browser, happy-dom or a request mock such as
+ * MSW reads against the page. `undefined` when it cannot be read at all.
+ */
+function urlOf(input: RequestInfo | URL): URL | undefined {
+  const raw = input instanceof Request ? input.url : String(input)
+  let base: string | undefined
+  try {
+    base = (globalThis as { location?: { href?: string } }).location?.href
+  } catch {
+    base = undefined
+  }
+  try {
+    return new URL(raw, base)
+  } catch {
+    return undefined
+  }
+}
+
 /** Marks a `fetch` an installed fake replica put in place. */
 const FAKE_REPLICA_FETCH = Symbol.for("@ic-reactor/core/testing/fakeReplica")
 
 type Fetch = typeof globalThis.fetch
 
-const isFakeReplicaFetch = (fetch: Fetch): boolean =>
-  (fetch as Fetch & { [FAKE_REPLICA_FETCH]?: true })[FAKE_REPLICA_FETCH] ===
-  true
+/** What a fake replica's `fetch` knows about its place in the chain. */
+interface FakeReplicaLink {
+  /** The `fetch` the fake replaced. */
+  readonly previous: Fetch
+  /** Whether its `restore()` has been called. */
+  restored: boolean
+}
+
+// A test environment may have had no `fetch` before the fake installed one.
+const linkOf = (fetch: Fetch | undefined): FakeReplicaLink | undefined =>
+  typeof fetch === "function"
+    ? (fetch as Fetch & { [FAKE_REPLICA_FETCH]?: FakeReplicaLink })[
+        FAKE_REPLICA_FETCH
+      ]
+    : undefined
+
+/**
+ * The `fetch` to put back in place of a fake: the one it replaced, past any
+ * fakes under it that were restored while this one was installed over them.
+ */
+function liveFetchUnder(link: FakeReplicaLink): Fetch {
+  let fetch = link.previous
+  for (let under = linkOf(fetch); under?.restored; under = linkOf(fetch)) {
+    fetch = under.previous
+  }
+  return fetch
+}
 
 const encoder = new TextEncoder()
 // Copied: a jsdom test setup often installs Node's `TextEncoder`, whose bytes
@@ -315,12 +394,14 @@ const messageOf = (error: unknown) =>
  * is built when its module is first imported, so install the fake in a setup
  * file, or import that module after installing it.
  *
- * Point the agents at `replica.host`. The fake answers the IC API there and
- * refuses the IC API on any other origin as a network error, so a test never
- * reaches a real network by mistake. Other requests go to the `fetch` it
- * replaced. A fake installed while another is installed answers its own host
- * and hands the IC API on any other origin to the earlier one; restore them in
- * the reverse order.
+ * Point the agents at `replica.host`. By default it is where a `ClientManager`
+ * built with no `host` sends its calls: the page's origin in a browser-like
+ * test environment such as jsdom, else `http://127.0.0.1:4943`. The fake
+ * answers the IC API there and refuses the IC API on any other origin as a
+ * network error, which it also logs once, so a test never reaches a real
+ * network by mistake. Every other request, on any origin, goes to the `fetch`
+ * it replaced. A fake installed while another is installed answers its own
+ * host and hands the IC API on any other origin to the earlier one.
  *
  * It checks each request's signatures as a replica does, and refuses one that
  * does not verify with HTTP 400. It can check Ed25519, ECDSA P-256 and
@@ -383,7 +464,7 @@ const messageOf = (error: unknown) =>
 export function installFakeReplica(
   options: FakeReplicaOptions = {}
 ): FakeReplica {
-  const host = new URL(options.host ?? DEFAULT_HOST).origin
+  const host = new URL(options.host ?? localPageOrigin() ?? DEFAULT_HOST).origin
   const canisters: Record<string, FakeCanister> = { ...options.canisters }
   const requests: FakeReplicaRequest[] = []
 
@@ -638,22 +719,36 @@ export function installFakeReplica(
     return cborResponse({ certificate })
   }
 
-  const previousFetch = globalThis.fetch
+  const link: FakeReplicaLink = {
+    previous: globalThis.fetch,
+    restored: false,
+  }
+  // Origins a misrouted IC API request came from, each logged once.
+  const misrouted = new Set<string>()
 
   const fakeFetch = async (
     input: RequestInfo | URL,
     init?: RequestInit
   ): Promise<Response> => {
-    const url = new URL(input instanceof Request ? input.url : String(input))
-    const isIcApi = /^\/api\/v\d+\//.test(url.pathname)
+    // Read per request: a fake installed under this one may be restored since.
+    const next = liveFetchUnder(link)
+    const url = urlOf(input)
+    if (!url || !IC_API_PATH.test(url.pathname)) return next(input, init)
 
     if (url.origin !== host) {
-      if (!isIcApi) return previousFetch(input, init)
-      if (isFakeReplicaFetch(previousFetch)) return previousFetch(input, init)
-      throw new TypeError(
+      if (linkOf(next)) return next(input, init)
+      const message =
         `fake replica: no route to ${url.origin}. The fake answers ${host}; ` +
-          `build the agent with \`agentOptions: { host: replica.host }\``
-      )
+        `build the agent with \`agentOptions: { host: replica.host }\`, ` +
+        `or install the fake with \`host: "${url.origin}"\``
+      // The agent retries a failed request, and a query hook retries a
+      // failed query, so the error below can surface long after the test
+      // timed out. Logged here, the cause shows up at once.
+      if (!misrouted.has(url.origin)) {
+        misrouted.add(url.origin)
+        console.error(message)
+      }
+      throw new TypeError(message)
     }
 
     if (url.pathname === "/api/v2/status") {
@@ -722,16 +817,22 @@ export function installFakeReplica(
     }
   }
 
-  globalThis.fetch = Object.assign(fakeFetch, {
-    [FAKE_REPLICA_FETCH]: true as const,
+  const fetch = Object.assign(fakeFetch, {
+    [FAKE_REPLICA_FETCH]: link,
   }) as Fetch
+  globalThis.fetch = fetch
 
   return {
     host,
     rootKey,
     requests,
     restore() {
-      globalThis.fetch = previousFetch
+      link.restored = true
+      // Only when this fake is still the one in place: a fetch installed
+      // over it since keeps its place, and restoring that one skips this.
+      if (globalThis.fetch === fetch) {
+        globalThis.fetch = liveFetchUnder(link)
+      }
     },
   }
 }

@@ -22,6 +22,7 @@ import {
   isCanisterError,
 } from "@ic-reactor/core"
 import { createActorHooks } from "../src/createActorHooks.js"
+import { defineReactor } from "../src/defineReactor.js"
 import * as testing from "../src/testing.js"
 import {
   createTestCanister,
@@ -172,6 +173,36 @@ describe("the hooks on a test canister", () => {
     ).toBe("TooLarge")
     // Counted for the principal the agent signed as.
     expect([...counts]).toEqual([[user.getPrincipal().toText(), 5n]])
+  })
+
+  it("answer a reactor defineReactor builds with no host, at the page's origin", async () => {
+    // The app pattern the kit has to serve with no configuration: in jsdom a
+    // ClientManager with no host calls the page's origin, and so does a fake
+    // installed with none.
+    replica.restore()
+    replica = installFakeReplica({
+      canisters: {
+        [COUNTER]: createTestCanister<Counter>(counterInterface, {
+          count: () => 7n,
+        }),
+      },
+    })
+    expect(replica.host).toBe(window.location.origin)
+    const { useActorQuery, authentication } = defineReactor<Counter>({
+      name: "counter",
+      canisterId: COUNTER,
+      idlFactory: counterInterface,
+    })
+
+    try {
+      const { result } = renderHook(() =>
+        useActorQuery({ functionName: "count" })
+      )
+
+      await waitFor(() => expect(result.current.data).toBe(7n))
+    } finally {
+      authentication.dispose()
+    }
   })
 
   it("query through a DisplayReactor, in its display forms", async () => {

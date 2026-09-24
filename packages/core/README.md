@@ -976,9 +976,11 @@ it("greets", async () => {
 - Sign in with `clientManager.updateAgent(Ed25519KeyIdentity.generate())`; the
   fake checks request signatures and passes the caller to each handler.
 - `replica.requests` lists every request the fake received.
-- The fake answers the IC API on `replica.host` only
-  (`http://127.0.0.1:4943` unless you pass `host`), and fails the IC API on
-  any other origin without touching the network.
+- The fake answers the IC API on `replica.host` only, and fails (and logs
+  once) an IC API request to any other origin without touching the network.
+  With no `host` it answers where a `ClientManager` with no `host` calls: the
+  page's origin in jsdom or happy-dom, `http://127.0.0.1:4943` in plain Node.
+  Every other request goes to the `fetch` it replaced.
 
 The main entry never imports this entry point. It signs with `@noble/curves`,
 an optional peer dependency that `@icp-sdk/core` already installs; add it as a

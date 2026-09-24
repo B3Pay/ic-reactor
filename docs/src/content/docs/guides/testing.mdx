@@ -93,9 +93,12 @@ the loading state.
 ## Install the Fake Replica
 
 `installFakeReplica` replaces the global `fetch` with the fake. It runs the
-canisters you give it, by canister ID, and answers at `replica.host`,
-`http://127.0.0.1:4943` unless you pass another `host`. Call `restore()` to put
-the previous `fetch` back.
+canisters you give it, by canister ID, and answers at `replica.host`. Unless you
+pass a `host`, that is where a `ClientManager` built with no `host` sends its
+calls: the page's origin in a browser-like environment such as Vitest's jsdom
+or happy-dom (`http://localhost:3000`), and `http://127.0.0.1:4943` in plain
+Node. Call `restore()` to put the previous `fetch` back. It is safe to call
+twice, and several fakes may be restored in any order.
 
 ```typescript
 import { afterEach, beforeEach, expect, it } from "vitest"
@@ -162,9 +165,13 @@ it("refuses a zero deposit", async () => {
 </Aside>
 
 The fake answers the IC API on its own host only. A call that reaches the IC
-API on any other origin fails at once with a message that names the fake's
-host, so a test that forgot `agentOptions.host` never reaches a real network.
-Requests that are not IC API calls go to the `fetch` the fake replaced.
+API on any other origin fails with a network error that names the fake's host,
+so a test that forgot `agentOptions.host` never reaches a real network. The
+agent retries that error, and a query hook may retry the query, so the fake
+also logs it with `console.error` the first time: look there when a test times
+out waiting for data. Every request that is not an IC API call, on any origin,
+goes to the `fetch` the fake replaced, so your app's own REST calls and a
+request mock such as MSW keep working.
 
 ## Test a React Component
 
@@ -249,9 +256,10 @@ export const { queryClient, useActorQuery, useActorMutation } =
 
 A test file's static imports run before its body, so that module would build
 its agent before the fake is installed. Install the fake at the top of the test
-file and import your components after it. Give the fake the host your
-`ClientManager` uses: with no `host` option, a page in Vitest's jsdom
-environment uses its own origin, `http://localhost:3000`.
+file and import your components after it. With no `host` option on either
+side, your `ClientManager` and the fake both use the page's origin, so they
+meet with no configuration. If your app passes `agentOptions.host`, pass the
+same `host` to `installFakeReplica`.
 
 Here `Balance` renders `Balance: {data}` from `useActorQuery({ functionName:
 "balance" })` and a Deposit button that runs the `deposit` mutation, which
@@ -269,7 +277,6 @@ import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 let balance = 0n
 
 const replica = installFakeReplica({
-  host: "http://localhost:3000",
   canisters: {
     [canisterId]: createTestCanister<_SERVICE>(idlFactory, {
       balance: () => balance,
