@@ -613,8 +613,13 @@ const { mutate } = likePost.useMutation({
 ```
 
 The updater gets the raw, typed value and is not called when nothing is
-cached. Use `backend.queryClient` rather than `useQueryClient()` when you need
-the QueryClient itself: the hooks bind to the reactor's client, and
+cached. Refetch once the mutation settles, as `onSettled` does here: the fetch
+`optimisticUpdate` cancels may be a refetch an invalidation or a sign-in
+started. `rollback()` does nothing after a sign-in or sign-out, because the
+value it kept was the previous principal's.
+
+Use `backend.queryClient` rather than `useQueryClient()` when you need the
+QueryClient itself: the hooks bind to the reactor's client, and
 `useQueryClient()` throws without the optional `QueryClientProvider`.
 
 The function a factory variant returns (`createQueryFactory`,

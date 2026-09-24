@@ -110,8 +110,12 @@ const { mutate } = likePost.useMutation({
 ```
 
 The updater gets the typed raw (pre-`select`) value and is skipped when
-nothing is cached. Query objects also have `cancel()` and `reset()` (reset
-re-suspends a suspense query). All three act on the query's own entry only.
+nothing is cached. Always refetch once the mutation settles (`onSettled`
+`invalidate()`, or the query in `invalidateQueries`): the fetch it cancels may
+be a refetch an invalidation or a sign-in started. `rollback()` does nothing
+after a sign-in or sign-out, since the snapshot was the previous principal's.
+Query objects also have `cancel()` and `reset()` (reset re-suspends a suspense
+query). All three act on the query's own entry only.
 
 ## Mutation Error Handling
 

@@ -244,10 +244,15 @@ export interface UseSuspenseQueryWithSelect<
 export interface OptimisticRollback {
   /**
    * Write back the value the cache held before the update, with the time it
-   * was fetched, so it is as fresh or as stale as it was. It does nothing
-   * when the update wrote nothing. It restores that value even if a fetch or
-   * another update has written since; invalidate the query afterwards when
-   * the canister's current value matters.
+   * was fetched, so it is as fresh or as stale as it was. A value that was
+   * invalidated is invalidated again, so a mounted query refetches it, as
+   * the refetch the update cancelled would have.
+   *
+   * It does nothing when the update wrote nothing, or when another principal
+   * has signed in or out since: the value was the previous principal's, and
+   * the sign-in has already removed or refetched it. It restores that value
+   * even if a fetch or another update has written since; invalidate the
+   * query afterwards when the canister's current value matters.
    */
   rollback: () => void
 }
@@ -297,7 +302,13 @@ export interface QueryCacheControls<TQueryFnData> {
    * returns for the cached value. `updater` gets and returns the raw,
    * pre-`select` data. When nothing is cached yet it is not called, nothing
    * is cancelled or written, and `rollback()` does nothing: there is no
-   * value on screen to update, and the query's own fetch will bring one.
+   * value on screen to update, and the query's own fetch will bring one. The
+   * same goes when another principal signs in or out while it cancels, since
+   * the cached value is then the previous principal's.
+   *
+   * The fetch it cancels may be a refetch an invalidation or a sign-in
+   * started, so refetch the query once the mutation settles, with
+   * `invalidate()` in `onSettled` or the query in `invalidateQueries`.
    *
    * Return it from `onMutate`, so the rollback reaches `onError`.
    *

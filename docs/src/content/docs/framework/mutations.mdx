@@ -341,8 +341,14 @@ function LikeButton({ postId }: { postId: string }) {
 `optimisticUpdate` works on the query's raw data, before any `select`, and
 calls the updater only when a value is cached: with nothing on screen there is
 nothing to update. `rollback()` writes back the value from before the update
-with its original fetch time. To refetch only after a success, list the query
-in `invalidateQueries: [getPost]` instead of using `onSettled`.
+with its original fetch time, and invalidates it again if it was invalidated.
+After a sign-in or sign-out it does nothing, since that value was the previous
+principal's and the sign-in has already removed or refetched it.
+
+Always refetch the query once the mutation settles: the fetch that
+`optimisticUpdate` cancels may be a refetch an invalidation or a sign-in
+started. `onSettled` above does that either way. To refetch only after a
+success, list the query in `invalidateQueries: [getPost]` instead.
 
 It works on the reactor's own QueryClient, so no `QueryClientProvider` is
 needed. `useQueryClient()` throws without one; when you need the client itself,

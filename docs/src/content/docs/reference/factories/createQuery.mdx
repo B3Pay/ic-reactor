@@ -303,7 +303,11 @@ const renameUser = createMutation(backend, {
 The updater gets the raw data, before the config's `select`, and is typed
 from the method. It is not called when nothing is cached, and `rollback()`
 then does nothing. `rollback()` writes back the replaced value with its
-original fetch time.
+original fetch time, and invalidates it again if it was invalidated. After a
+sign-in or sign-out it does nothing: the value was the previous principal's.
+Refetch the query once the mutation settles, as `invalidateQueries` does
+here, since the fetch `optimisticUpdate` cancels may be one an invalidation
+started.
 
 `cancel()`, `reset()` and `optimisticUpdate()` act on this query's own entry
 only. `invalidate()` matches by key prefix, so on a query object without args

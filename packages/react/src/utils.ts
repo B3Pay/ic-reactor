@@ -6,6 +6,7 @@ import { useEffect } from "react"
 import type { QueryClient, QueryKey } from "@tanstack/react-query"
 import type { CallConfig } from "@icp-sdk/core/agent"
 import type {
+  ClientManager,
   FunctionName,
   Reactor,
   ReactorArgs,
@@ -363,6 +364,24 @@ export function withQueryFactoryMethods<Factory extends object>(
 /** The rollback of an optimistic update that wrote nothing. */
 const NOTHING_TO_ROLL_BACK: OptimisticRollback = { rollback: () => {} }
 
+/** What {@link queryCacheControls} reads from a reactor. */
+interface CacheOwner {
+  readonly queryClient: QueryClient
+  readonly clientManager: Pick<ClientManager, "identity">
+}
+
+/**
+ * The principal whose answers the reactor's cache holds: the one installed on
+ * the manager's agent, `undefined` before one is.
+ *
+ * Query keys carry no principal. `ClientManager.updateAgent` sweeps the cache
+ * instead when another principal signs in, removing inactive entries and
+ * refetching active ones, so a value read from the cache is this principal's
+ * only while it stays installed.
+ */
+const cachedPrincipal = (reactor: CacheOwner): string | undefined =>
+  reactor.clientManager.identity?.getPrincipal().toText()
+
 /**
  * The {@link QueryCacheControls} of a query object: `cancel`, `reset` and
  * `optimisticUpdate` on its own entry of the reactor's QueryClient.
@@ -374,7 +393,7 @@ const NOTHING_TO_ROLL_BACK: OptimisticRollback = { rollback: () => {} }
  * `setCanisterId`.
  */
 export function queryCacheControls<TQueryFnData>(
-  reactor: { readonly queryClient: QueryClient },
+  reactor: CacheOwner,
   getQueryKey: () => QueryKey
 ): QueryCacheControls<TQueryFnData> {
   return {
@@ -398,22 +417,38 @@ export function queryCacheControls<TQueryFnData>(
       if (queryClient.getQueryData(queryKey) === undefined) {
         return NOTHING_TO_ROLL_BACK
       }
+      const principal = cachedPrincipal(reactor)
       // A fetch in flight would otherwise land after the write below with the
       // canister's answer from before the mutation. Cancelling reverts the
       // entry to what it held before that fetch, so it is read afterwards.
       await queryClient.cancelQueries({ queryKey, exact: true })
+      // A sign-in or sign-out while that ran left the previous principal's
+      // value in the entry until the sweep's refetch lands. An update built
+      // on it would show that value to the principal signed in now.
+      if (cachedPrincipal(reactor) !== principal) return NOTHING_TO_ROLL_BACK
       const snapshot = queryClient.getQueryState<TQueryFnData>(queryKey)
       if (snapshot?.data === undefined) return NOTHING_TO_ROLL_BACK
-      const { data: previous, dataUpdatedAt } = snapshot
+      const { data: previous, dataUpdatedAt, isInvalidated } = snapshot
       queryClient.setQueryData<TQueryFnData>(queryKey, updater(previous))
       return {
         rollback: () => {
+          // After a switch to another principal, `previous` is the previous
+          // principal's value, which the sweep has removed or is refetching.
+          // Written back, it would be served to the one signed in now.
+          if (cachedPrincipal(reactor) !== principal) return
           // With its own timestamp: written back as new, a value from before
           // the mutation would look freshly fetched and skip the refetches
           // its age calls for.
           queryClient.setQueryData<TQueryFnData>(queryKey, previous, {
             updatedAt: dataUpdatedAt,
           })
+          // The write clears the invalidated mark too, and the fetch the
+          // update cancelled was often the refetch an invalidation started.
+          // Marked again, the value reads as outdated as it was, and a
+          // mounted query refetches it.
+          if (isInvalidated) {
+            void queryClient.invalidateQueries({ queryKey, exact: true })
+          }
         },
       }
     },
