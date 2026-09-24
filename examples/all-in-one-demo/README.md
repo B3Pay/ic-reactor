@@ -106,10 +106,12 @@ all-in-one-demo/
 │   └── canister.yaml     # Internet Identity configuration
 ├── src/
 │   ├── lib/
-│   │   └── config.ts     # Reactor configuration with withCanisterEnv
-│   ├── declarations/     # Generated TypeScript bindings
+│   │   ├── client.ts     # Your QueryClient and ClientManager
+│   │   └── factories.ts  # Query and mutation objects on backendReactor
+│   ├── declarations/
+│   │   └── backend/      # Reactor, hooks and bindings the Vite plugin writes
 │   └── ...               # React components
-└── vite.config.ts        # Vite config with ic_env cookie setup
+└── vite.config.ts        # IC Reactor Vite plugin: generation and the ic_env cookie
 ```
 
 ## 🔧 How it Works

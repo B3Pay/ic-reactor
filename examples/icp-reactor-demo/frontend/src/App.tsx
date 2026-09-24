@@ -101,7 +101,7 @@ function ZeroConfigBanner() {
         <div className="banner-item">
           <span className="banner-icon">⚡</span>
           <span className="banner-text">
-            Plugin generates <code>canisters/*</code>
+            Plugin generates <code>generated/*</code>
           </span>
         </div>
       </div>
