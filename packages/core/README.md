@@ -136,9 +136,10 @@ const fromCache = backend.getQueryData({
   args: ["World"],
 })
 
-// Invalidate cache: mounted queries refetch; fetchQuery still returns the
-// cached value until one of them has refetched
-backend.invalidateQueries({ functionName: "greet" })
+// Invalidate cache: mounted queries refetch, and the promise resolves once
+// they have. fetchQuery still returns the cached value until one of them has
+// refetched
+await backend.invalidateQueries({ functionName: "greet" })
 ```
 
 ## ClientManager API
@@ -300,11 +301,13 @@ const cached = reactor.getQueryData({
   args: [],
 }, { canisterId: otherCanisterId })
 
-// Invalidate cached queries
-reactor.invalidateQueries() // all queries for this canister
-reactor.invalidateQueries({ functionName: "get_data" }) // specific method
-reactor.invalidateQueries({ functionName: "get_user", args: ["user-1"] }) // specific args
-reactor.invalidateQueries({ functionName: "get_data" }, {
+// Invalidate cached queries. Each call returns a promise that resolves once
+// the active queries it matched have refetched (a failed refetch does not
+// reject it)
+await reactor.invalidateQueries() // all queries for this canister
+await reactor.invalidateQueries({ functionName: "get_data" }) // specific method
+await reactor.invalidateQueries({ functionName: "get_user", args: ["user-1"] }) // specific args
+await reactor.invalidateQueries({ functionName: "get_data" }, {
   canisterId: otherCanisterId,
 }) // specific overridden canister
 

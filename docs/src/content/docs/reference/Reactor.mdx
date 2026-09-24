@@ -270,18 +270,27 @@ Query's own three retries in a browser): `reactorUpdateRetry` under
 Invalidate all cached queries for this canister:
 
 ```typescript
-// After a successful mutation, invalidate all queries for this canister
+// After a successful mutation, invalidate all queries for this canister and
+// wait for the ones in use to refetch
 await backend.callMethod({ functionName: "updateProfile", args: [newProfile] })
-backend.invalidateQueries()
+await backend.invalidateQueries()
 
 // Invalidate a cached query that used a per-call canister override
-backend.invalidateQueries(
+await backend.invalidateQueries(
   { functionName: "getUser", args: ["user-123"] },
   { canisterId: otherCanisterId }
 )
 ```
 
 This will mark all queries as stale and trigger a refetch for any active queries.
+
+It returns TanStack Query's `Promise<void>`, which resolves once the active
+queries it matched have refetched. A refetch that fails does not reject it.
+Await it when the next step should see the refetched data. An arrow that
+returns it, such as `onSuccess: () => backend.invalidateQueries()`, keeps the
+mutation pending until those refetches finish, as TanStack Query recommends.
+With the `no-floating-promises` lint rule, a call you do not want to wait for
+needs a `void` in front of it.
 
 ---
 

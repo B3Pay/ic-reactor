@@ -531,6 +531,13 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * Invalidate cached queries for this canister.
    * This will mark matching queries as stale and trigger a refetch for any active queries.
    *
+   * It returns TanStack Query's promise, which resolves once the active
+   * queries it matched have refetched. A refetch that fails does not reject
+   * it. Await it where the next step should read the refetched data, such as
+   * in a mutation's `onSuccess`; an arrow that returns it, like
+   * `onSuccess: () => reactor.invalidateQueries(...)`, keeps the mutation
+   * pending until those refetches finish.
+   *
    * @param params - Optional parameters to filter the invalidation. Without a
    * `functionName`, every query of the canister is invalidated.
    * @param callConfig - Optional call configuration. Its `canisterId` selects
@@ -538,8 +545,9 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    *
    * @example
    * ```typescript
-   * // Invalidate all queries for this canister
-   * reactor.invalidateQueries()
+   * // Invalidate all queries for this canister, and wait for the active
+   * // ones to refetch
+   * await reactor.invalidateQueries()
    *
    * // Invalidate only 'getUser' queries
    * reactor.invalidateQueries({ functionName: 'getUser' })
@@ -554,7 +562,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public invalidateQueries<M extends FunctionName<A>>(
     params?: Partial<ReactorQueryParams<A, M, T>>,
     callConfig?: CallConfig
-  ) {
+  ): Promise<void> {
     // Without a method there is nothing narrower than the canister to match
     // on: a key built with an undefined functionName matches no entry at all,
     // since TanStack compares prefix segments one by one. The canister is the
@@ -575,9 +583,9 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
               : this.canisterId.toString(),
           ]
 
-    void this.queryClient.invalidateQueries({
-      queryKey,
-    })
+    // Returned rather than dropped, so a caller can wait for the refetches.
+    // It used to be `void`, and awaiting the call waited for nothing.
+    return this.queryClient.invalidateQueries({ queryKey })
   }
 
   // ══════════════════════════════════════════════════════════════════════

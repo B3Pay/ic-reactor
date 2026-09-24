@@ -175,7 +175,7 @@ describe("a query sent through callConfig.agent", () => {
       callConfig: { agent },
     })
 
-    reactor.invalidateQueries({ functionName: "echo" })
+    await reactor.invalidateQueries({ functionName: "echo" })
 
     const state = (key: readonly unknown[]) =>
       clientManager.queryClient.getQueryState(key)

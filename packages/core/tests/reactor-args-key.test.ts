@@ -102,7 +102,7 @@ describe("the args segment of a query key", () => {
         })
       ).toBe(10n)
 
-      reactor.invalidateQueries({
+      await reactor.invalidateQueries({
         functionName: "icrc1_balance_of" as never,
         args: reordered as never,
       })

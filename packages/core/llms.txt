@@ -19,6 +19,9 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 
 - Reuse one `ClientManager` across multiple canisters
 - Use `fetchQuery` / `getQueryData` / `invalidateQueries` for cache-aware calls
+- `invalidateQueries` returns TanStack Query's `Promise<void>`: `await` it to
+  wait until the active queries it matched have refetched (a failed refetch
+  does not reject it); prefix a call you do not wait for with `void`
 - A sign-in or sign-out cancels a `fetchQuery` in flight; it then fetches again
   for the new identity and resolves with that answer, never with TanStack's
   `CancelledError`. Wrap other imperative fetches of canister queries (for

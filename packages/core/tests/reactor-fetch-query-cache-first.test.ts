@@ -43,7 +43,7 @@ describe("Reactor.fetchQuery is cache-first", () => {
   it("returns the cached value after an invalidation, and ignores staleTime", async () => {
     expect(await reactor.fetchQuery({ functionName: "count" })).toBe(1n)
 
-    reactor.invalidateQueries({ functionName: "count" })
+    await reactor.invalidateQueries({ functionName: "count" })
 
     expect(await reactor.fetchQuery({ functionName: "count" })).toBe(1n)
     expect(

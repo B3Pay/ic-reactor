@@ -237,17 +237,23 @@ function RefreshButton() {
 
 ```typescript
 // Invalidate ALL queries for this canister
-backend.invalidateQueries()
+await backend.invalidateQueries()
 ```
+
+`invalidateQueries` returns TanStack Query's `Promise<void>`, which resolves
+once the active queries it matched have refetched; a failed refetch does not
+reject it. Await it when the next step should read the refetched data, and
+prefix a call you do not wait for with `void` if you lint with
+`no-floating-promises`.
 
 ### Invalidate by Function Name
 
 ```typescript
 // Invalidate all getUser queries (any args)
-backend.invalidateQueries({ functionName: "getUser" })
+await backend.invalidateQueries({ functionName: "getUser" })
 
 // Invalidate getUser queries for a specific overridden target canister
-backend.invalidateQueries(
+await backend.invalidateQueries(
   { functionName: "getUser" },
   { canisterId: otherCanisterId }
 )
@@ -257,7 +263,7 @@ backend.invalidateQueries(
 
 ```typescript
 // Invalidate getUser query for specific user
-backend.invalidateQueries(
+await backend.invalidateQueries(
   {
     functionName: "getUser",
     args: ["user-123"],
@@ -272,7 +278,7 @@ backend.invalidateQueries(
 
 ```typescript
 // Invalidate query with custom key
-backend.invalidateQueries({
+await backend.invalidateQueries({
   functionName: "getData",
   queryKey: ["version", "2"],
 })
