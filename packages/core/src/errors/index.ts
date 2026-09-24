@@ -563,3 +563,54 @@ export function reactorRetry(failureCount: number, error: unknown): boolean {
   if (typeof window === "undefined") return false
   return failureCount < 3 && isRetryableReactorError(error)
 }
+
+/** SysTransient: the system could not take the call in. */
+const SYS_TRANSIENT = 2
+
+/**
+ * Whether a failed update call can be sent again without the canister running
+ * it twice.
+ *
+ * Every attempt at an update call is a new call under a new request id, so the
+ * IC cannot tell a retry from a second call and runs both. A retry is safe
+ * only when the failure proves the canister never ran the first attempt, and
+ * only a SysTransient rejection (reject code 2) does: the system could not
+ * take the call in. A transport failure can come after the replica accepted
+ * the call, a SysUnknown rejection says its outcome is unknown, and an HTTP
+ * error can come from a boundary node that had already passed the call on, so
+ * none of them is retryable here, although {@link isRetryableReactorError}
+ * retries them for a query method.
+ *
+ * `Reactor.getQueryRetry` builds on it: a query of an update method that sets
+ * no `retry` of its own retries only what this accepts.
+ */
+export function isRetryableUpdateError(error: unknown): boolean {
+  if (!isCallError(error)) return false
+  return readRejectCode(error.cause) === SYS_TRANSIENT
+}
+
+/**
+ * A TanStack Query `retry` for update calls: up to 3 retries of a failure that
+ * {@link isRetryableUpdateError} accepts, none of anything else, and none on
+ * the server, like {@link reactorRetry}.
+ *
+ * On the QueryClient `defineReactor` creates, it is how a query of an update
+ * method retries when the query sets no `retry` (see `Reactor.getQueryRetry`).
+ * Mutations retry nothing by default. Give one this to retry an update only
+ * when that cannot run it twice.
+ *
+ * @example
+ * ```ts
+ * createMutation(ledger, {
+ *   functionName: "icrc1_transfer",
+ *   retry: reactorUpdateRetry,
+ * })
+ * ```
+ */
+export function reactorUpdateRetry(
+  failureCount: number,
+  error: unknown
+): boolean {
+  if (typeof window === "undefined") return false
+  return failureCount < 3 && isRetryableUpdateError(error)
+}

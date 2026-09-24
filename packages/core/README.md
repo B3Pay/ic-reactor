@@ -291,7 +291,9 @@ reactor.invalidateQueries({ functionName: "get_data" }, {
   canisterId: otherCanisterId,
 }) // specific overridden canister
 
-// Get query options for TanStack Query
+// Get query options for TanStack Query. For an update method they also carry
+// a `retry` of only SysTransient rejections (see `getQueryRetry`), since each
+// retry executes the update again.
 const options = reactor.getQueryOptions({ functionName: "get_data" })
 ```
 

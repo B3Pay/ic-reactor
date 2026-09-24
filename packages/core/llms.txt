@@ -67,6 +67,17 @@ as a "safe to trust local configuration" test.
 - `CallError`: transport/agent failures
 - `ValidationError`: display-validator failures
 
+## Retries
+
+- `reactorRetry` / `isRetryableReactorError`: retry only what could change —
+  transport, certificate, HTTP 5xx/408/429, `SysTransient`/`SysUnknown`. Never
+  a `CanisterError`, a `ValidationError`, an encode/decode failure or another
+  HTTP 4xx (an expired delegation's 400, a 403).
+- An update call runs again on every attempt. `reactorUpdateRetry` /
+  `isRetryableUpdateError` retry only a `SysTransient` rejection, which proves
+  the call never ran. `getQueryOptions` and `fetchQuery` give an update method
+  this retry (`Reactor.getQueryRetry`) unless the caller sets `retry`.
+
 ## Generated Files
 
 If generated declarations are wrong, change source `.did` or codegen templates.

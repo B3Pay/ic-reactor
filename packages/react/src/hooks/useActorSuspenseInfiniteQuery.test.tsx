@@ -88,6 +88,8 @@ const createMockReactor = (queryClient: QueryClient) => {
         functionName,
         ...(args ? [JSON.stringify(args)] : []),
       ]),
+    // The methods are queries, which keep the QueryClient's retry.
+    getQueryRetry: vi.fn(() => undefined),
   } as unknown as Reactor<TestActor>
 }
 

@@ -404,6 +404,11 @@ For custom attempt counts, build your own predicate on
 `isRetryableReactorError` — see
 [Error Handling — Retry Configuration](/v3/guides/error-handling#retry-configuration).
 
+An update method run through a query is narrowed further: without a `retry` of
+its own, it retries only a `SysTransient` rejection, since any other retry
+could execute it a second time. See
+[Update Methods in Queries](/v3/framework/queries#update-methods-in-queries).
+
 ## Prefetching
 
 Prefetch data before it's needed:

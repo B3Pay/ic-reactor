@@ -5,7 +5,11 @@ import type {
   ReadStateOptions,
 } from "@icp-sdk/core/agent"
 import type { ClientManager } from "./client.js"
-import type { QueryKey, FetchQueryOptions } from "@tanstack/query-core"
+import type {
+  QueryKey,
+  FetchQueryOptions,
+  QueryOptions,
+} from "@tanstack/query-core"
 import type {
   ReactorParameters,
   BaseActor,
@@ -36,7 +40,12 @@ import {
   processQueryCallResponse,
   processUpdateCallResponse,
 } from "./utils/agent.js"
-import { CallError, CanisterError, ValidationError } from "./errors/index.js"
+import {
+  CallError,
+  CanisterError,
+  ValidationError,
+  isRetryableUpdateError,
+} from "./errors/index.js"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
 /**
@@ -54,6 +63,24 @@ async function anonymousIfAgentIs(
   } catch {
     return undefined
   }
+}
+
+/**
+ * Whether a TanStack Query `retry` value retries after `failureCount`
+ * failures, read the way TanStack Query reads it. Unset, it is TanStack
+ * Query's own default: three retries in a browser, none on a server.
+ */
+function retriesAgain(
+  retry: QueryOptions["retry"],
+  failureCount: number,
+  error: unknown
+): boolean {
+  if (retry === undefined) {
+    return typeof window !== "undefined" && failureCount < 3
+  }
+  if (typeof retry === "function") return retry(failureCount, error as never)
+  if (typeof retry === "number") return failureCount < retry
+  return retry
 }
 
 /**
@@ -344,6 +371,56 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   // QUERY OPTIONS
   // ══════════════════════════════════════════════════════════════════════
 
+  /**
+   * The `retry` a TanStack query of `functionName`, cached under `queryKey`,
+   * runs with when the query sets no `retry` of its own.
+   *
+   * For a query method it is `undefined`, and the QueryClient's `retry`
+   * defaults apply as usual.
+   *
+   * An update method runs on the canister again each time the query function
+   * runs, as a new call the IC cannot tell from a retry, so a retry after a
+   * lost response executed the update a second time. For one it is a function
+   * that retries only a failure proving the canister never ran the call, a
+   * SysTransient rejection (see `isRetryableUpdateError`), and only as often
+   * as the QueryClient's `retry` default for `queryKey` would: its
+   * `setQueryDefaults` or `defaultOptions.queries`, or TanStack Query's own
+   * three retries in a browser when neither sets one. With the QueryClient
+   * `defineReactor` creates, that is `reactorUpdateRetry`, and with a default
+   * of `retry: false` nothing is retried. A transport failure, a SysUnknown
+   * rejection and an HTTP error are not retried. Refetches on mount, window
+   * focus, reconnect and invalidation still run the method again.
+   *
+   * {@link getQueryOptions}, {@link fetchQuery} and the query hooks and
+   * factories of `@ic-reactor/react` apply it, and a `retry` the query sets
+   * itself wins over it.
+   *
+   * @param functionName - The method the query calls.
+   * @param queryKey - The query's key, which selects its QueryClient defaults.
+   */
+  public getQueryRetry<M extends FunctionName<A>>(
+    functionName: M,
+    queryKey: QueryKey
+  ): ((failureCount: number, error: unknown) => boolean) | undefined {
+    if (this.isQueryMethod(functionName)) return undefined
+    return (failureCount, error) => {
+      if (!isRetryableUpdateError(error)) return false
+      // Read when a retry is due, so the QueryClient's defaults of the moment
+      // decide, as they do for a query method.
+      const { queryClient } = this
+      const retry =
+        queryClient.getQueryDefaults(queryKey).retry ??
+        queryClient.getDefaultOptions().queries?.retry
+      return retriesAgain(retry, failureCount, error)
+    }
+  }
+
+  /**
+   * The key and function of a TanStack query of the method, for
+   * `queryClient.fetchQuery`, `prefetchQuery` or `useQuery`. For an update
+   * method they also hold the `retry` from {@link getQueryRetry}; spread a
+   * `retry` of your own after them to replace it.
+   */
   public getQueryOptions<M extends FunctionName<A>>(
     params: ReactorCallParams<A, M, T>
   ): FetchQueryOptions<ReactorQueryData<ReactorReturnOk<A, M, T>>> {
@@ -359,14 +436,20 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       canisterId: params.callConfig?.canisterId || this.canisterId,
     }
 
+    const queryKey = this.generateQueryKey(params, params.callConfig)
+    const retry = this.getQueryRetry(params.functionName, queryKey)
+
     return {
-      queryKey: this.generateQueryKey(params, params.callConfig),
+      queryKey,
       queryFn: async () => {
         const result = await this.callMethod({ ...params, callConfig })
         return toReactorQueryData<ReactorReturnOk<A, M, T>>(
           result as ReactorReturnOk<A, M, T>
         )
       },
+      // Left out for a query method: even as `undefined` it would replace the
+      // QueryClient's `retry` default.
+      ...(retry ? { retry } : {}),
     }
   }
 
@@ -528,6 +611,8 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * `retry`, `networkMode` or `meta`. The query key and function always come
    * from `params`. The query factories pass their config's options through
    * here, so a subclass that overrides this method still sees their fetches.
+   * Without a `retry` here, an update method retries as
+   * {@link getQueryRetry} says.
    */
   public async fetchQuery<M extends FunctionName<A>>(
     params: ReactorCallParams<A, M, T>,
@@ -543,12 +628,14 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     // its whole return type mixed in option types keyed to TanStack's default
     // `Error` rather than this method's error type, which stops type-checking
     // as soon as the reactor's error classes grow a member.
-    const { queryKey, queryFn } = this.getQueryOptions(params)
+    const { queryKey, queryFn, retry } = this.getQueryOptions(params)
     return this.queryClient.ensureQueryData<
       ReactorQueryData<ReactorReturnOk<A, M, T>>,
       ReactorReturnErr<A, M, T>
     >({
       ...options,
+      // The update method's default, unless the caller set a `retry`.
+      ...(retry !== undefined && options?.retry === undefined ? { retry } : {}),
       queryKey,
       queryFn,
     })

@@ -98,6 +98,9 @@ const createRejectingReactor = (
       .mockImplementation((params: any) =>
         queryClient.getQueryData(keyFor(params))
       ),
+    // Only the infinite queries ask, and they call query methods, which keep
+    // the QueryClient's retry.
+    getQueryRetry: vi.fn(() => undefined),
   } as unknown as Reactor<TestActor>
 }
 

@@ -53,21 +53,21 @@ function UserProfile({ userId }: { userId: string }) {
 
 ### Optional Options
 
-| Option                 | Type                 | Default     | Description                                        |
-| ---------------------- | -------------------- | ----------- | -------------------------------------------------- |
-| `args`                 | `array`              | `[]`        | Arguments to pass to the method                    |
-| `enabled`              | `boolean`            | `true`      | Whether the query should run                       |
-| `staleTime`            | `number`             | `0`         | Time in ms before data is considered stale         |
-| `gcTime`               | `number`             | `300000`    | Time in ms before unused data is garbage collected |
-| `refetchInterval`      | `number \| false`    | `false`     | Polling interval in ms                             |
-| `refetchOnWindowFocus` | `boolean`            | `true`      | Refetch when window regains focus                  |
-| `refetchOnMount`       | `boolean`            | `true`      | Refetch when component mounts                      |
-| `refetchOnReconnect`   | `boolean`            | `true`      | Refetch when network reconnects                    |
-| `retry`                | `number \| boolean`  | `3`         | Number of retry attempts                           |
-| `retryDelay`           | `number \| function` | exponential | Delay between retries                              |
-| `select`               | `function`           | -           | Transform the data before returning                |
-| `queryKey`             | `array`              | -           | Additional query key segments                      |
-| `callConfig`           | `CallConfig`         | -           | IC agent call configuration                        |
+| Option                 | Type                            | Default       | Description                                                                      |
+| ---------------------- | ------------------------------- | ------------- | -------------------------------------------------------------------------------- |
+| `args`                 | `array`                         | `[]`          | Arguments to pass to the method                                                  |
+| `enabled`              | `boolean`                       | `true`        | Whether the query should run                                                     |
+| `staleTime`            | `number`                        | `0`           | Time in ms before data is considered stale                                       |
+| `gcTime`               | `number`                        | `300000`      | Time in ms before unused data is garbage collected                               |
+| `refetchInterval`      | `number \| false`               | `false`       | Polling interval in ms                                                           |
+| `refetchOnWindowFocus` | `boolean`                       | `true`        | Refetch when window regains focus                                                |
+| `refetchOnMount`       | `boolean`                       | `true`        | Refetch when component mounts                                                    |
+| `refetchOnReconnect`   | `boolean`                       | `true`        | Refetch when network reconnects                                                  |
+| `retry`                | `number \| boolean \| function` | QueryClient's | Retry policy ([update methods](/v3/framework/queries#update-methods-in-queries)) |
+| `retryDelay`           | `number \| function`            | exponential   | Delay between retries                                                            |
+| `select`               | `function`                      | -             | Transform the data before returning                                              |
+| `queryKey`             | `array`                         | -             | Additional query key segments                                                    |
+| `callConfig`           | `CallConfig`                    | -             | IC agent call configuration                                                      |
 
 ## Return Value
 
@@ -249,6 +249,16 @@ useActorQuery<
 The types are automatically inferred from your actor interface, so you typically don't need to specify them manually.
 
 ## Notes
+
+<Aside type="caution">
+  An update method passed here runs on the canister again on every refetch
+  (mount, window focus, reconnect, invalidation) and retry, each time as a new
+  call. Use it only for an update method that is safe to repeat, and use
+  `useActorMutation` or `useActorMethod` for a method that changes state. With
+  no `retry` hook option set, an update method retries only a `SysTransient`
+  rejection, which proves the call never ran. See [Update Methods in
+  Queries](/v3/framework/queries#update-methods-in-queries).
+</Aside>
 
 <Aside type="note">
   The query key is automatically generated as `[canisterId, functionName,

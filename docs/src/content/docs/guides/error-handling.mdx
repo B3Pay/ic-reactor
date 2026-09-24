@@ -340,6 +340,43 @@ const queryClient = new QueryClient({
 })
 ```
 
+### Retrying Update Calls
+
+A retry of an update call is a second call: every attempt goes out under a new
+request id, so the canister runs each one it receives. A retry is safe only
+when the failure proves the canister never ran the first attempt, and only a
+`SysTransient` rejection does. A transport failure can come after the replica
+accepted the call, and a `SysUnknown` rejection says its outcome is unknown,
+so `isRetryableReactorError` — right for query methods — would let a lost
+response execute an update twice. Two more functions cover update calls:
+
+- **`isRetryableUpdateError(error)`** — `true` only for a `CallError` caused by
+  a `SysTransient` rejection.
+- **`reactorUpdateRetry(failureCount, error)`** — up to 3 retries of such a
+  failure, none of anything else, and none on the server.
+
+The query hooks and factories apply this rule to an update method whose query
+sets no `retry` of its own, within what the QueryClient's `retry` default
+allows; see
+[Update Methods in Queries](/v3/framework/queries#update-methods-in-queries).
+Mutations retry nothing by default. To retry one only when that cannot run it
+twice:
+
+```typescript
+import { createMutation, reactorUpdateRetry } from "@ic-reactor/react"
+
+const transfer = createMutation(ledger, {
+  functionName: "icrc1_transfer",
+  retry: reactorUpdateRetry,
+})
+```
+
+A `mutations.retry` in the QueryClient's defaults applies to every mutation:
+`useActorMutation`, `useActorMethod`'s update calls and `createMutation`,
+through `useMutation()` and `execute()` alike. A plain number there re-sends
+state-changing calls after any failure; `reactorUpdateRetry` is the safe
+choice for such a default.
+
 ### Custom Retry Logic
 
 Combine `isRetryableReactorError` with your own policy when you need different
@@ -360,7 +397,7 @@ const queryClient = new QueryClient({
       },
     },
     mutations: {
-      retry: false, // Never retry mutations by default
+      retry: false, // Never retry mutations (TanStack Query's default)
     },
   },
 })

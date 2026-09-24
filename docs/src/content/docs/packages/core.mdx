@@ -101,7 +101,7 @@ const greeting = await backend.fetchQuery({
 
 Whether a failed call is worth retrying is decided by what failed, and most
 failures are deterministic. `@ic-reactor/core` exports the classification
-(`@ic-reactor/react` re-exports both functions):
+(`@ic-reactor/react` re-exports these functions):
 
 ```typescript
 import { reactorRetry, isRetryableReactorError } from "@ic-reactor/core"
@@ -133,6 +133,16 @@ errors, none otherwise, and always `false` on the server so a failed prefetch
 keeps failing fast. `defineReactor` in `@ic-reactor/react` already installs it
 as the query default on the `QueryClient` it creates; a `QueryClient` you
 construct yourself opts in as shown above.
+
+An update call is different: each attempt is a new call that the canister
+runs, so only a failure that proves the first attempt never ran is safe to
+retry. `isRetryableUpdateError(error)` accepts just that, a `SysTransient`
+rejection, and `reactorUpdateRetry(failureCount, error)` retries it up to 3
+times in a browser. A query of an update method with no `retry` of its own
+retries this way within the QueryClient's `retry` default, as
+`Reactor.getQueryRetry(functionName, queryKey)` returns; `getQueryOptions` and
+`fetchQuery` apply it. See
+[Update Methods in Queries](/v3/framework/queries#update-methods-in-queries).
 
 ## Identity Attributes
 

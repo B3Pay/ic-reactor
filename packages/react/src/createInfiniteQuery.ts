@@ -51,6 +51,7 @@ import {
   mergeFactoryQueryKey,
   normalizeQueryData,
   pickFetchOptions,
+  retryOption,
   useMountQueryClient,
 } from "./utils.js"
 
@@ -359,14 +360,20 @@ const createInfiniteQueryImpl = <
     TPageData,
     QueryKey,
     TPageParam
-  > => ({
-    // How the query function runs, shared with the hook; see pickFetchOptions.
-    ...pickFetchOptions(rest),
-    queryKey: getQueryKey(),
-    queryFn,
-    initialPageParam,
-    getNextPageParam,
-  })
+  > => {
+    const queryKey = getQueryKey()
+    return {
+      // How the query function runs, shared with the hook; see
+      // pickFetchOptions. An update method's `retry` defaults as
+      // `Reactor.getQueryRetry` says.
+      ...pickFetchOptions(rest),
+      ...retryOption(rest.retry, reactor.getQueryRetry(functionName, queryKey)),
+      queryKey,
+      queryFn,
+      initialPageParam,
+      getNextPageParam,
+    }
+  }
 
   // Fetch function for loaders (cache-first, fetches first page)
   const fetch = async (): Promise<Selected> => {
@@ -403,9 +410,11 @@ const createInfiniteQueryImpl = <
       [options?.select]
     )
 
+    const queryKey = getQueryKey()
+
     return useInfiniteQuery(
       {
-        queryKey: getQueryKey(),
+        queryKey,
         queryFn,
         initialPageParam,
         getNextPageParam,
@@ -415,6 +424,12 @@ const createInfiniteQueryImpl = <
         ...rest,
         ...options,
         select: chainedSelect,
+        // The hook's `retry`, else the config's, else an update method's
+        // default; see `Reactor.getQueryRetry`.
+        ...retryOption(
+          options?.retry ?? rest.retry,
+          reactor.getQueryRetry(functionName, queryKey)
+        ),
       } as any,
       reactor.queryClient
     )

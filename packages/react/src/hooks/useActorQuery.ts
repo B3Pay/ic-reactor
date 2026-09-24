@@ -15,7 +15,7 @@ import {
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { useMountQueryClient } from "../utils.js"
+import { retryOption, useMountQueryClient } from "../utils.js"
 
 export interface UseActorQueryParameters<
   Service,
@@ -95,7 +95,9 @@ export const useActorQuery = <
   useMountQueryClient(reactor.queryClient)
 
   // Memoize query options to prevent unnecessary re-computations
-  const { queryKey, queryFn } = useMemo(
+  // For an update method, the options also carry its default `retry`; see
+  // `Reactor.getQueryRetry`.
+  const { queryKey, queryFn, retry } = useMemo(
     () =>
       reactor.getQueryOptions<Method>({
         callConfig,
@@ -121,6 +123,7 @@ export const useActorQuery = <
       queryFn,
       ...options,
       queryKey,
+      ...retryOption(options.retry, retry),
     },
     reactor.queryClient
   )

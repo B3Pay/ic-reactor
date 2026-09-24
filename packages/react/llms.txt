@@ -50,6 +50,19 @@ module.
   major, `defineReactor` includes it too, because of the deprecated flag; the
   smallest setup is `createActorHooks(new Reactor(...))` + `createAuthHooks`.
 
+## Update Methods: Use Mutations
+
+Query hooks and factories run their method again on every refetch (mount,
+window focus, reconnect, invalidation) and retry, and an update method
+executes on the canister each time. Use `useActorMutation`, `useActorMethod`
+or `createMutation` for methods that change state; pass an update method to a
+query only when repeating it is safe (a certified read).
+
+Without a `retry` of its own, a query of an update method retries only a
+`SysTransient` rejection (`isRetryableUpdateError`), within the QueryClient's
+`retry` default. Mutations retry nothing unless you set `retry`; use
+`reactorUpdateRetry` to retry a mutation only when that cannot run it twice.
+
 ## Mutation Error Handling
 
 For canister `Result.Err` variants, use `onCanisterError`. Keep `onError` for

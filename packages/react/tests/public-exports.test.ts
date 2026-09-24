@@ -72,7 +72,9 @@ const RUNTIME_EXPORTS: Record<string, "function" | "string" | "object"> = {
   isCallError: "function",
   isValidationError: "function",
   isRetryableReactorError: "function",
+  isRetryableUpdateError: "function",
   reactorRetry: "function",
+  reactorUpdateRetry: "function",
 
   // Core call/result helpers
   extractOkResult: "function",

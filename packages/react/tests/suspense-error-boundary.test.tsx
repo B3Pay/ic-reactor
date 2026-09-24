@@ -53,6 +53,8 @@ const createRejectingReactor = (queryClient: QueryClient, error: unknown) => {
       .mockImplementation((params: any) =>
         queryClient.getQueryData(keyFor(params))
       ),
+    // The methods are queries, which keep the QueryClient's retry.
+    getQueryRetry: vi.fn(() => undefined),
   } as unknown as Reactor<TestActor>
 }
 

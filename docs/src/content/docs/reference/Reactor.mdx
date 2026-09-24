@@ -230,7 +230,37 @@ const result = useQuery(queryOptions)
 
 #### Returns
 
-Object containing `queryKey` and `queryFn` for TanStack Query.
+Object containing `queryKey` and `queryFn` for TanStack Query. For an update
+method it also holds a `retry` from [`getQueryRetry`](#getqueryretry), which
+retries only a `SysTransient` rejection; spread a `retry` of your own after
+the options to replace it. A query method's options hold no `retry`, so the
+QueryClient's default applies.
+
+---
+
+### getQueryRetry
+
+The `retry` a TanStack query of a method falls back to when the query sets
+none. Every query path applies it: `getQueryOptions`, `fetchQuery`, and the
+query hooks and factories of `@ic-reactor/react`.
+
+```typescript
+const retry = backend.getQueryRetry(
+  "get_btc_address",
+  backend.generateQueryKey({ functionName: "get_btc_address" })
+)
+```
+
+For a query method it returns `undefined`, and the QueryClient's `retry`
+defaults apply. An update method runs on the canister again each time the
+query function runs, as a new call the IC cannot tell from a retry, so for one
+it returns a function that retries only a `SysTransient` rejection (see
+`isRetryableUpdateError`), which proves the canister never ran the call. It
+retries that only as often as the QueryClient's `retry` default for the key
+allows (`setQueryDefaults`, then `defaultOptions.queries`, then TanStack
+Query's own three retries in a browser): `reactorUpdateRetry` under
+`defineReactor`'s `reactorRetry`, nothing under `retry: false`. See
+[Update Methods in Queries](/v3/framework/queries#update-methods-in-queries).
 
 ---
 
@@ -483,7 +513,9 @@ const fresh = await backend.queryClient.fetchQuery({
 An optional second argument passes further TanStack Query options for the
 fetch, such as `retry`, `networkMode` or `meta`. The query key and function
 always come from the first argument. A query factory's `fetch()` passes its
-config's `networkMode`, `retry`, `retryDelay` and `meta` this way.
+config's `networkMode`, `retry`, `retryDelay` and `meta` this way. Without a
+`retry` there, an update method retries only a `SysTransient` rejection; see
+[getQueryRetry](#getqueryretry).
 
 ```typescript
 const result = await backend.fetchQuery(

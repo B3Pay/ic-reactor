@@ -146,6 +146,26 @@ export function pickFetchOptions<Config extends object>(
 }
 
 /**
+ * The `retry` entry of a query's options: the query's own `retry` when it sets
+ * one, otherwise the reactor's default for its method, and no entry when
+ * neither is set, so the QueryClient's defaults apply.
+ *
+ * The default is `Reactor.getQueryRetry`'s: `undefined` for a query method,
+ * and for an update method a retry of only the failures that prove the
+ * canister never ran the call, since each attempt runs the update again.
+ * Spread this after the caller's options. An update method's default then also
+ * replaces a `retry: undefined` spread in from them, which would otherwise
+ * select TanStack Query's own three retries.
+ */
+export function retryOption<TRetry, TDefault>(
+  ownRetry: TRetry | undefined,
+  defaultRetry: TDefault | undefined
+): { retry?: TRetry | TDefault } {
+  const retry = ownRetry ?? defaultRetry
+  return retry === undefined ? {} : { retry }
+}
+
+/**
  * Merge a base query key, optional per-call query key, and optional key-args
  * into a single query key array.
  *

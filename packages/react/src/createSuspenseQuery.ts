@@ -41,6 +41,7 @@ import {
   createBoundedCache,
   mountWhileSuspended,
   pickFetchOptions,
+  retryOption,
   useMountQueryClient,
 } from "./utils.js"
 
@@ -97,6 +98,8 @@ const createSuspenseQueryImpl = <
     const baseOptions = reactor.getQueryOptions(params)
     return reactor.queryClient.prefetchQuery({
       ...fetchOptions,
+      // An update method's default `retry`; see `Reactor.getQueryRetry`.
+      ...retryOption(fetchOptions.retry, baseOptions.retry),
       queryKey: baseOptions.queryKey,
       queryFn: baseOptions.queryFn,
       staleTime,
@@ -125,6 +128,9 @@ const createSuspenseQueryImpl = <
           ...options,
           queryFn: baseOptions.queryFn,
           select: chainedSelect,
+          // The hook's `retry`, else the config's, else an update method's
+          // default; see `Reactor.getQueryRetry`.
+          ...retryOption(options?.retry ?? rest.retry, baseOptions.retry),
         },
         reactor.queryClient
       )

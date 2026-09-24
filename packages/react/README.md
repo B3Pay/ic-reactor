@@ -196,6 +196,14 @@ export function App() {
   bundle; see [Bundle Size](#bundle-size).
 - Use generated hooks from `@ic-reactor/vite-plugin` or `@ic-reactor/cli` when
   you have larger canisters or frequent `.did` changes.
+- Call a method that changes state through a mutation (`useActorMutation`,
+  `useActorMethod`, `createMutation`), never a query hook or factory. A query
+  runs its method again on every refetch (mount, window focus, reconnect,
+  invalidation), and an update method executes each time. Without a `retry` of
+  its own, a query of an update method retries only a `SysTransient`
+  rejection, which proves the call never ran, so a lost response is not
+  executed twice; see
+  [Update Methods in Queries](https://ic-reactor.b3pay.net/v3/framework/queries#update-methods-in-queries).
 
 ## Bundle Size
 
