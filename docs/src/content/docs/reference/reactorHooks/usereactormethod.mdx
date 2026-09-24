@@ -114,10 +114,37 @@ All react-query options are available:
 | `refetchOnWindowFocus` | `boolean`            | `true`      | Refetch when window regains focus.                       |
 | `refetchOnMount`       | `boolean`            | `true`      | Refetch when component mounts.                           |
 | `refetchOnReconnect`   | `boolean`            | `true`      | Refetch when network reconnects.                         |
-| `retry`                | `number \| boolean`  | `3`         | Number of retry attempts.                                |
+| `retry`                | `number \| boolean`  | see below   | Number of retry attempts.                                |
 | `retryDelay`           | `number \| function` | exponential | Delay between retries.                                   |
 | `networkMode`          | `string`             | `"online"`  | Network mode (`"online"`, `"always"`, `"offlineFirst"`). |
 | `placeholderData`      | `TData \| function`  | -           | Placeholder data while loading.                          |
+
+`retry`, `retryDelay`, `networkMode` and `meta` decide how a call runs, so they
+apply to both kinds of method: to a query method's fetches and `call()`, and to
+an update method's `call()`, which runs as a mutation. Unset, each follows the
+QueryClient's defaults for that kind of call:
+
+- A **query method** retries as the QueryClient's query `retry` says
+  (`reactorRetry` with `defineReactor`).
+- An **update method** retries as the QueryClient's **mutation** defaults say,
+  which retry nothing unless the app set `mutations.retry`. The query default
+  does not apply: each attempt of an update is a new call the canister runs,
+  so a retry after a lost response would execute it twice. Set `retry` here
+  only for an update that is safe to repeat, or use `reactorUpdateRetry`, which
+  retries only a `SysTransient` rejection, the one failure that proves the call
+  never ran.
+
+```tsx
+const { call } = useReactorMethod({
+  reactor,
+  functionName: "transfer",
+  // Retry only when the canister provably never ran the call.
+  retry: reactorUpdateRetry,
+  // A local replica answers while the browser reports itself offline.
+  networkMode: "always",
+  meta: { errorMessage: "Could not send the transfer" },
+})
+```
 
 ## Return Value
 

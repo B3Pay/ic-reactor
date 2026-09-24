@@ -288,7 +288,13 @@ Because the mutation is in the `MutationCache`, the rest of TanStack Query sees
 it too: the `MutationCache`'s global `onError`, `onSuccess` and `onSettled` run
 for it, `useIsMutating` and `useMutationState` include it, and the factory's
 `retry`, `networkMode` and `scope`, and the QueryClient's mutation defaults,
-apply to it. With the default `networkMode: "online"`, a call made while TanStack
+apply to it. That includes a `mutations.retry` default: it now re-sends a
+failed `execute()` call as it does a `useMutation()` one, and each retry of an
+update method is a new call that the canister runs, so a lost response can
+execute it twice. Set `retry` on the factory to decide per method, for
+example `retry: false`, or `retry: reactorUpdateRetry`, which retries only a
+`SysTransient` rejection, the one failure that proves the call never ran.
+With the default `networkMode: "online"`, a call made while TanStack
 Query considers the browser offline pauses, like a `useMutation()` call, until
 the connection is back and a mounted QueryClient resumes it (any IC Reactor
 hook, or a `QueryClientProvider`, mounts one). Set `networkMode: "always"` on

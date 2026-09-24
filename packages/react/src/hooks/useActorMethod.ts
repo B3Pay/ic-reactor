@@ -39,6 +39,13 @@ import {
  * This is a unified hook that handles both query and mutation methods.
  * Query-specific options (like refetchInterval) only apply to query methods.
  * Mutation-specific options (like invalidateQueries) only apply to mutation methods.
+ *
+ * `retry`, `retryDelay`, `networkMode` and `meta` decide how a call runs, so
+ * they apply to both. An update method's call is a mutation: without a `retry`
+ * here it follows the QueryClient's mutation defaults, which retry nothing
+ * unless the app set `mutations.retry`, because each attempt runs the update
+ * on the canister again. Its query defaults, such as `reactorRetry`, do not
+ * apply to it.
  */
 export interface UseActorMethodParameters<
   Service = BaseActor,
@@ -416,6 +423,16 @@ export function useActorMethod<
   >(
     {
       mutationKey: queryKey,
+      // The hook's `retry`, `retryDelay`, `networkMode` and `meta`, the options
+      // that decide how a call runs, as the query branch's `call()` applies
+      // them. They reached only the query branch, so an update's call ignored
+      // them: it stayed paused offline under `networkMode: "always"` and
+      // reached the MutationCache callbacks without the hook's `meta`. Unset
+      // ones are left to the QueryClient's mutation defaults, which retry
+      // nothing unless the app set `mutations.retry`: each attempt of an
+      // update is a new call the canister runs, so only a `retry` given here
+      // or in those defaults sends one again.
+      ...pickFetchOptions(queryOptions),
       // Normalized like the query branch, so `data`, `call()` and `onSuccess`
       // mean the same thing for both kinds of method. The hook cannot type the
       // two branches apart: a Candid service type does not say which methods

@@ -250,6 +250,12 @@ const createMutationImpl = <
    * hook-level callbacks are absent, because there is no hook here to supply
    * them.
    *
+   * The QueryClient's mutation defaults apply as well, so a `mutations.retry`
+   * there re-sends a failed call here too. Each retry of an update method is
+   * a new call the canister runs; set `retry` on the factory (`false`, or
+   * `reactorUpdateRetry` to retry only a SysTransient rejection) to decide it
+   * per method.
+   *
    * It resolves with the method's result. On failure it rejects with the
    * call's error once the callbacks have run, so `await execute(...)` still
    * rejects for the caller.

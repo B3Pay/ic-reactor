@@ -393,6 +393,29 @@ const { mutate } = useActorMutation({
 })
 ```
 
+## Retries
+
+Mutations retry nothing by default, as in TanStack Query, and that is the safe
+default for update methods: each attempt is a new call under a new request
+id, which the canister runs, so a retry after a lost response executes the
+update twice. Set `retry` only for an update that is safe to repeat, or use
+`reactorUpdateRetry`, which retries only a `SysTransient` rejection, the one
+failure that proves the call never ran:
+
+```tsx
+import { reactorUpdateRetry } from "@ic-reactor/react"
+
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+  retry: reactorUpdateRetry,
+})
+```
+
+A `mutations.retry` in the QueryClient's `defaultOptions` applies to every
+mutation: `useActorMutation`, `useActorMethod`'s update calls, and
+`createMutation` through both `useMutation()` and `execute()`. Prefer
+`reactorUpdateRetry` there over a plain number.
+
 ## Type Safety
 
 Like queries, mutations are fully type-safe:

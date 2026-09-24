@@ -371,8 +371,12 @@ Types are automatically inferred from your actor interface.
 </Aside>
 
 <Aside type="note">
-  Unlike queries, mutations don't automatically retry by default. Set `retry:
-  true` or `retry: 3` if you want retry behavior.
+  Unlike queries, mutations don't automatically retry by default. A retry of an
+  update method is a new call the canister runs, so `retry: 3` can execute a
+  transfer twice when a response is lost. `retry: reactorUpdateRetry` retries
+  only a `SysTransient` rejection, which proves the call never ran. A
+  `mutations.retry` in the QueryClient's defaults applies to every mutation,
+  this hook's included.
 </Aside>
 
 ## See Also
