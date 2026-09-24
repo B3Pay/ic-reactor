@@ -84,6 +84,54 @@ function retriesAgain(
 }
 
 /**
+ * The agents calls have named through `callConfig.agent`, each with the number
+ * its query keys carry. A key has to serialise and hash, which an agent does
+ * not, so the key holds the number instead of the agent. The map is weak so a
+ * dropped agent can still be collected. The numbers count up from 1 in each
+ * process, so a key that holds one names nothing in another process.
+ *
+ * The registry sits behind a global symbol, like the error brands, so every
+ * copy of this package in one app numbers agents from the same sequence. Two
+ * copies counting on their own would each give their first agent 1, and two
+ * reactors on one QueryClient could again share an entry between two agents.
+ * Where the global object cannot take the property (a frozen global), this
+ * copy keeps its own registry instead.
+ */
+const AGENT_ORDINALS = Symbol.for("@ic-reactor/core/agentOrdinals")
+
+interface AgentOrdinals {
+  readonly byAgent: WeakMap<Agent, number>
+  next: number
+}
+
+let ownAgentOrdinals: AgentOrdinals | undefined
+
+/** The registry of {@link AGENT_ORDINALS}, created on first use. */
+function agentOrdinals(): AgentOrdinals {
+  const global = globalThis as { [AGENT_ORDINALS]?: AgentOrdinals }
+  const shared = global[AGENT_ORDINALS]
+  if (shared) return shared
+  ownAgentOrdinals ??= { byAgent: new WeakMap(), next: 1 }
+  try {
+    global[AGENT_ORDINALS] = ownAgentOrdinals
+  } catch {
+    // A frozen global: number the agents in this copy alone.
+  }
+  return ownAgentOrdinals
+}
+
+/** The number query keys carry for `agent`; see {@link AGENT_ORDINALS}. */
+function agentOrdinal(agent: Agent): number {
+  const registry = agentOrdinals()
+  let ordinal = registry.byAgent.get(agent)
+  if (ordinal === undefined) {
+    ordinal = registry.next++
+    registry.byAgent.set(agent, ordinal)
+  }
+  return ordinal
+}
+
+/**
  * Reactor class for interacting with IC canisters.
  *
  * This class provides core functionality for:
@@ -311,6 +359,18 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     // `invalidateQueries({ functionName })` still matches keys that carry args.
     if (this.transform !== "candid") {
       queryKeys.push({ transform: this.transform })
+    }
+
+    // A query sent through another agent is answered for that agent's
+    // identity or network, so it must not share an entry with the same query
+    // sent through the manager's agent. It did: whichever ran first answered
+    // both, and a `whoami` or a balance of self came back for the wrong
+    // principal (#642). Only an agent other than the manager's adds the
+    // segment, so every other key keeps its exact bytes, and it sits before
+    // the args for the same prefix-matching reason as the transform segment.
+    const agent = callConfig?.agent
+    if (agent && agent !== this.clientManager.agent) {
+      queryKeys.push({ agent: agentOrdinal(agent) })
     }
 
     const effectiveTarget =

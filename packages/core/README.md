@@ -517,7 +517,7 @@ const scopedKey = reactor.generateQueryKey(
 ```
 
 The key shape is
-`[resolvedCanisterId, functionName, { transform }?, { effectiveTarget }?, argKey?, ...queryKey]`.
+`[resolvedCanisterId, functionName, { transform }?, { agent }?, { effectiveTarget }?, argKey?, ...queryKey]`.
 The `{ transform }` segment is present whenever the reactor's transform is not
 `"candid"`, so the keys above are a `Reactor`'s. A `DisplayReactor` key carries
 `{ transform: "display" }`: the first call above returns
@@ -552,7 +552,23 @@ hooks) or `createInfiniteQuery` / `createSuspenseInfiniteQuery`, use the same
 `callConfig` when generating or looking up query keys. `createQuery`,
 `createSuspenseQuery` and their `...Factory` variants take no `callConfig`: a
 config that carries one fails with TS2353. The cache key is partitioned by the
-resolved target canister and, when present, `effectiveCanisterId`.
+resolved target canister and, when present, `effectiveCanisterId` and
+`callConfig.agent`.
+
+A `callConfig.agent` that is not the `ClientManager`'s own agent adds an
+`{ agent: n }` segment after `{ transform }` and before `argKey`, where `n`
+numbers that agent within the running process. The same query through that
+agent and through the manager's agent are two cache entries, since each is
+answered for its own identity or network. Keys without an override are
+unchanged, `invalidateQueries({ functionName })` matches both entries, and
+`updateAgent()` sweeps both. The number is not stable across processes, so a
+dehydrated server cache does not carry override entries to the client.
+
+Query keys name the canister, not the `ClientManager`. Two `ClientManager`s on
+the same canister (two identities, or a local replica and mainnet) must each
+get their own `QueryClient`: sharing one, their reactors share cache entries,
+and one manager's `updateAgent()` sweeps the other's. `defineReactor` builds a
+`QueryClient` per manager by default.
 
 ## TypeScript Types
 

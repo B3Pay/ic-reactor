@@ -265,9 +265,10 @@ The types are automatically inferred from your actor interface, so you typically
   argKey, ...queryKey]`. `argKey` is the arguments serialized as one JSON
   string, with BigInt values as decimal strings and plain-object keys sorted,
   so queries with different arguments are cached separately. A `DisplayReactor`
-  adds a `{ transform: "display" }` segment after `functionName`, and an
-  `{ effectiveTarget }` segment follows when `callConfig` targets a different
-  canister or subnet. See
+  adds a `{ transform: "display" }` segment after `functionName`, an
+  `{ agent }` segment follows when `callConfig.agent` is not the
+  `ClientManager`'s own agent, and an `{ effectiveTarget }` segment follows
+  when `callConfig` targets a different canister or subnet. See
   [generateQueryKey](/v3/reference/reactor#generatequerykey) for the full shape.
 </Aside>
 

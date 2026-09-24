@@ -130,6 +130,8 @@ describe("Reactor callConfig overrides", () => {
       })
     ).toBe("default-ok")
 
+    // The override's agent is part of its key too (#642), so the entry is
+    // read back with the same callConfig it was fetched with.
     expect(
       reactor.getQueryData(
         {
@@ -137,6 +139,7 @@ describe("Reactor callConfig overrides", () => {
         },
         {
           canisterId: overrideCanisterId,
+          agent: overrideAgent,
         }
       )
     ).toBe("override-ok")

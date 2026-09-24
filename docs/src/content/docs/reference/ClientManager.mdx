@@ -389,6 +389,14 @@ npm install @icp-sdk/auth
   identity. This is the recommended pattern.
 </Aside>
 
+<Aside type="caution">
+  Give each ClientManager its own `QueryClient`. Query keys name the canister,
+  not the manager, so two managers on the same canister (two identities, or a
+  local replica and mainnet) that share a `QueryClient` share cache entries, and
+  one manager's `updateAgent()` sweeps the other's. `defineReactor` builds a
+  `QueryClient` per manager by default.
+</Aside>
+
 <Aside type="tip">
   Network detection needs no flag. In the browser the host is inferred from
   `window.location.origin` when the page is served from `localhost`/`127.0.0.1`
