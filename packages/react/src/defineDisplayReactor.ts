@@ -21,8 +21,10 @@ export interface DefineDisplayReactorOptions<
  * A DisplayReactor takes and returns UI-friendly values — text for
  * `Principal`, `nat`, `int` and 64-bit integers, hex for blobs — which suits
  * forms and components. Its codecs are built on zod, so this adds zod to the
- * bundle; `defineReactor`, which builds a plain `Reactor` with raw Candid
- * values, does not need it.
+ * bundle. `defineReactor`, which builds a plain `Reactor` with raw Candid
+ * values, does not need zod, but until its deprecated `display` flag is removed
+ * at the next major it bundles zod anyway; `createActorHooks(new Reactor(...))`
+ * is the setup without it.
  *
  * Replaces `defineReactor({ display: true })`, which is deprecated.
  *
