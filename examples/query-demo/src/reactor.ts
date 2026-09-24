@@ -18,6 +18,7 @@ import {
   createSuspenseQuery,
   createSuspenseQueryFactory,
   createMutation,
+  formatTokenAmount,
 } from "@ic-reactor/react"
 import { createAuthHooks } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
@@ -91,6 +92,13 @@ export const icpSymbolQuery = createSuspenseQuery(icpReactor, {
   functionName: "icrc1_symbol",
 })
 
+/** Large amounts in compact notation, such as "513.08M". */
+const compactFormat = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  notation: "compact",
+  compactDisplay: "short",
+})
+
 /**
  * Query with custom staleTime.
  * Total supply doesn't change often, so we can cache it longer.
@@ -98,17 +106,8 @@ export const icpSymbolQuery = createSuspenseQuery(icpReactor, {
 export const icpTotalSupplyQuery = createSuspenseQuery(icpReactor, {
   functionName: "icrc1_total_supply",
   staleTime: 10 * 60 * 1000, // 10 minutes
-  // Transform the raw balance into a formatted string with commas
-  select: (supply) => {
-    const num = parseFloat(supply)
-    return (
-      new Intl.NumberFormat("en-US", {
-        maximumFractionDigits: 2,
-        notation: "compact",
-        compactDisplay: "short",
-      }).format(num) + " ICP"
-    )
-  },
+  // The supply is e8s as text: shown in compact notation as whole ICP
+  select: (supply) => compactFormat.format(BigInt(supply) / 10n ** 8n) + " ICP",
 })
 
 /**
@@ -117,7 +116,8 @@ export const icpTotalSupplyQuery = createSuspenseQuery(icpReactor, {
  */
 export const icpFeeQuery = createSuspenseQuery(icpReactor, {
   functionName: "icrc1_fee",
-  select: (fee) => `${fee} ICP`,
+  // The fee is e8s as text: "10000" is 0.0001 ICP
+  select: (fee) => `${formatTokenAmount(fee, 8)} ICP`,
 })
 
 // ============================================================================
@@ -132,38 +132,30 @@ const TOKEN_DECIMALS: Record<string, number> = {
 }
 
 /**
- * Helper function to format balances from e8s to human-readable format.
- * The DisplayReactor returns the balance as a string in the smallest unit (e8s).
- * We need to divide by 10^decimals to get the actual token amount.
+ * Helper function to format balances from base units to human-readable format.
+ * The DisplayReactor returns the balance as a string in the smallest unit (e8s,
+ * or wei for ckETH), which formatTokenAmount shifts by the token's decimals on
+ * the digits, with no floating-point math.
  */
 const formatBalance = (balance: string, symbol: string) => {
   const decimals = TOKEN_DECIMALS[symbol] ?? 8
-  const raw = parseFloat(balance.replace(/,/g, ""))
-  const actual = raw / Math.pow(10, decimals)
+  const whole = BigInt(balance) / 10n ** BigInt(decimals)
 
-  // Format with appropriate precision
-  if (actual === 0) {
+  // Use compact notation for large amounts, fixed for small
+  if (whole >= 1000n) {
+    return `${compactFormat.format(whole)} ${symbol}`
+  }
+  if (balance === "0") {
     return `0 ${symbol}`
   }
 
-  // Use compact notation for large amounts, fixed for small
-  if (actual >= 1000) {
-    return (
-      new Intl.NumberFormat("en-US", {
-        maximumFractionDigits: 2,
-        notation: "compact",
-        compactDisplay: "short",
-      }).format(actual) + ` ${symbol}`
-    )
-  }
-
-  // For smaller amounts, show more precision
-  return (
-    new Intl.NumberFormat("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: actual < 1 ? 6 : 4,
-    }).format(actual) + ` ${symbol}`
-  )
+  // For smaller amounts, show more precision, cut rather than rounded up
+  // past what the account holds
+  const amount = formatTokenAmount(balance, decimals, {
+    minFractionDigits: 2,
+    maxFractionDigits: whole < 1n ? 6 : 4,
+  })
+  return `${amount} ${symbol}`
 }
 
 // ============================================================================
