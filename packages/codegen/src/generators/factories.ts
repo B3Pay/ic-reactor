@@ -29,9 +29,26 @@ import {
 import type { FactoryMethod, ReactorClassName } from "../types.js"
 import { getExplicitTransform } from "./reactor.js"
 
-/** The managed file this generator's output is written to. */
+/**
+ * The managed file this generator's output is written to, next to
+ * `index.generated.ts` in the canister's output directory.
+ *
+ * @example
+ * path.join(canisterOutDir, FACTORIES_FILE_NAME)
+ * // "src/declarations/backend/index.factories.generated.ts"
+ */
 export const FACTORIES_FILE_NAME = "index.factories.generated.ts"
 
+/**
+ * Options for {@link generateFactoriesFile}.
+ *
+ * @example
+ * const options: FactoriesGeneratorOptions = {
+ *   canisterName: "backend",
+ *   methods: [{ name: "get_message", mode: "query", args: [] }],
+ *   reactorClass: "Reactor",
+ * }
+ */
 export interface FactoriesGeneratorOptions {
   /** Canister name (e.g. "backend") */
   canisterName: string

@@ -263,6 +263,10 @@ export interface PipelineResult {
    * Things the run could not fix for the user, such as an `index.ts` of
    * their own that does not re-export the factories it generated. The CLI
    * and the Vite plugin print them. Absent when there are none.
+   *
+   * @example
+   * const result = await runCanisterPipeline(options)
+   * for (const warning of result.warnings ?? []) console.warn(warning)
    */
   warnings?: string[]
 }

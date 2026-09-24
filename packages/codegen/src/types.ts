@@ -52,6 +52,11 @@ export interface CanisterConfig {
    * Needs `target: "react"`: the factories come from `@ic-reactor/react`.
    * Default: `false`, which writes no such file and removes one that an
    * earlier run wrote.
+   *
+   * @example
+   * { name: "backend", didFile: "./backend/backend.did", factories: true }
+   * // index.factories.generated.ts:
+   * // export const getMessageQuery = createQuery(backendReactor, { functionName: "get_message" })
    */
   factories?: boolean
 }
@@ -59,6 +64,9 @@ export interface CanisterConfig {
 /**
  * A service method as the factories generator reads it. Each entry of
  * `parseDid(source).service.methods` from `@ic-reactor/parser` has this shape.
+ *
+ * @example
+ * const method: FactoryMethod = { name: "get_user", mode: "query", args: [{ kind: "principal" }] }
  */
 export interface FactoryMethod {
   /** The method's name, exactly as the service declares it. */

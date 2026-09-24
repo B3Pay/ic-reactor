@@ -193,6 +193,15 @@ ${canisterIdLine}  name: ${JSON.stringify(canisterName)},
 })${hookExports || "\n"}`
 }
 
+/**
+ * Options for {@link generateReactorEntryFile}.
+ *
+ * @example
+ * generateReactorEntryFile({ factories: true })
+ * // …
+ * // export * from "./index.generated"
+ * // export * from "./index.factories.generated"
+ */
 export interface ReactorEntryGeneratorOptions {
   /**
    * Whether `index.factories.generated.ts` is generated too. The wrapper then
@@ -202,7 +211,12 @@ export interface ReactorEntryGeneratorOptions {
 }
 
 /**
- * Generate the user-facing `index.ts` wrapper content.
+ * Generate the user-facing `index.ts` wrapper content. With
+ * `{ factories: true }` it re-exports `index.factories.generated.ts` as well;
+ * without options it is the wrapper earlier versions wrote.
+ *
+ * @example
+ * createFile(path.join(canisterOutDir, "index.ts"), generateReactorEntryFile())
  */
 export function generateReactorEntryFile(
   options: ReactorEntryGeneratorOptions = {}
