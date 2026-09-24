@@ -211,6 +211,14 @@ const inputMeta = reactor.getInputMeta("icrc1_transfer")
 console.log(inputMeta?.schema) // Zod tuple for full argument validation
 ```
 
+A result record holding one callback and the values to call it with (an
+archived block range, a streaming strategy) resolves as a `funcRecord` node
+whose `defaultArgs` are those values as the callback's arguments. On
+`MetadataReactor` they are Candid values, so a `MetadataReactor` built from
+the node's `funcClass` takes them as they are:
+`callMethod({ functionName: node.methodName, args: node.defaultArgs })`.
+`MetadataDisplayReactor` gives display-typed ones for its own `callMethod`.
+
 ### CandidFormVisitor (Low-Level Form Metadata)
 
 Use `CandidFormVisitor` when you already have an `IDL.ServiceClass` and want direct visitor output.
@@ -238,7 +246,7 @@ console.log(arg0.schema) // Zod schema for this field
 
 **Features:**
 
-- **Zod Validation**: Includes method-level and field-level schemas (`schema`) for runtime validation.
+- **Zod Validation**: Includes method-level and field-level schemas (`schema`) for runtime validation. A `text` field accepts `""`, since Candid text has no required-ness; principals and numbers must be filled in.
 - **Component Hints**: Includes `component` values for renderer selection (`variant-select`, `vector-list`, `blob-upload`, etc.).
 - **Render Hints**: Includes `renderHint` for primitive/compound strategy and input type hints.
 - **Form Defaults**: Includes ready-to-use `defaults` for form initialization.

@@ -15,6 +15,7 @@ import type {
   MethodMeta,
   ServiceMeta,
   MethodResult,
+  ResultFieldVisitorOptions,
 } from "./types.js"
 
 import { sha256 } from "@noble/hashes/sha2.js"
@@ -229,6 +230,17 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
 > {
   private codec = new DisplayCodecVisitor()
 
+  /** Whether a func record's `defaultArgs` are Candid values. */
+  private readonly candidDefaultArgs: boolean
+
+  /**
+   * @param options - How nodes are built. See {@link ResultFieldVisitorOptions}.
+   */
+  constructor(options: ResultFieldVisitorOptions = {}) {
+    super()
+    this.candidDefaultArgs = options.defaultArgs === "candid"
+  }
+
   /**
    * The node of each recursive type, by the label it is met under. See
    * {@link visitRec}. Keyed weakly by the type, so a type nothing else holds
@@ -426,11 +438,14 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
         fieldEntries.filter(([k]) => k !== funcFieldKey)
       )
 
-      // defaultArgs are built from the other fields, and each value goes
+      // defaultArgs are built from the other fields. Each is the Candid value
+      // read back from its resolved field. For display defaults it then goes
       // through the display codec for its field's type, because a resolved
-      // node carries a display `value` only for primitives. The codec decodes
-      // the Candid value read back from the resolved field, so an already
-      // transformed input gives the same result. Two layouts are in
+      // node carries a display `value` only for primitives, so an already
+      // transformed input gives the same result. Candid defaults are that
+      // value as it is: a MetadataReactor's callMethod takes Candid, and the
+      // display codec's round trip would lose what display values cannot
+      // hold, such as an enabled but empty `opt vec`. Two layouts are in
       // use. In the ICP ledger's ArchivedBlocksRange the callback takes
       // `{ start; length }` and the fields beside it are start and length, so
       // together they make the one record argument. In ICRC-3's
@@ -438,9 +453,12 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
       // field, and a streaming strategy's callback takes its `token` field, so
       // that single field is the argument.
       const argEntries = fields_.filter(([k]) => k !== funcFieldKey)
-      const argCodecs = Object.fromEntries(
-        argEntries.map(([k, type]) => [k, this.getCodec(type)])
-      )
+      const candidDefaultArgs = this.candidDefaultArgs
+      const argCodecs: Record<string, Codec> = candidDefaultArgs
+        ? {}
+        : Object.fromEntries(
+            argEntries.map(([k, type]) => [k, this.getCodec(type)])
+          )
       const argIsField =
         funcType.argTypes.length === 1 &&
         argEntries.length === 1 &&
@@ -488,11 +506,13 @@ export class ResultFieldVisitor<A = BaseActor> extends IDL.Visitor<
               resolvedEntries.filter(([k]) => k !== funcFieldKey)
             )
 
-          // Build display-type default args ready for callMethod
+          // Build default args ready for the callback reactor's callMethod
           const argRecord = Object.fromEntries(
             Object.entries(resolvedArgFields).map(([k, v]) => [
               k,
-              argCodecs[k].decode(candidValueOf(v)),
+              candidDefaultArgs
+                ? candidValueOf(v)
+                : argCodecs[k].decode(candidValueOf(v)),
             ])
           )
           const defaultArgs =

@@ -643,6 +643,11 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     )
   }
 
+  /**
+   * Any string, including "". Candid `text` has no required-ness, and an
+   * empty text is a value a method may take: the form used to reject it as
+   * "Required", so such a call could not be made or replayed from the form.
+   */
   public visitText(_t: IDL.TextClass, label: string): FormFieldNode {
     return this.primitive(
       "text",
@@ -650,7 +655,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       this.currentName(),
       "text",
       "",
-      z.string().min(1, "Required")
+      z.string()
     )
   }
 

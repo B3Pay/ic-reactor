@@ -32,6 +32,25 @@ export type DisplayType =
   | "func-record"
   | "unknown"
 
+/**
+ * Options for `ResultFieldVisitor`.
+ */
+export interface ResultFieldVisitorOptions {
+  /**
+   * The type space of a func record's `defaultArgs`, which should match the
+   * `callMethod` of the reactor that calls the callback.
+   *
+   * - `"display"` (the default): display types, as `MetadataDisplayReactor`
+   *   and `DisplayReactor` take them (text for a `nat64` or a principal,
+   *   `null` for an empty `opt`).
+   * - `"candid"`: Candid values, as `MetadataReactor` and `Reactor` take them
+   *   (a bigint, a `Principal`, `[]` or `[x]`). They are read back from the
+   *   resolved record, so `resolve()` must be given the Candid value, as both
+   *   metadata reactors do.
+   */
+  defaultArgs?: "display" | "candid"
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // Unified Result Node - Single Structure for Schema & Resolved Data
 // ════════════════════════════════════════════════════════════════════════════
@@ -167,14 +186,22 @@ interface FuncRecordNodeExtras {
   /** All fields including the func field (superset of argFields + funcField) */
   fields: Record<string, ResultNode>
   /**
-   * The display-type argument values extracted from argFields, ready to pass
-   * to `callMethod({ args: defaultArgs })`. Populated after `resolve()`.
+   * The argument values extracted from argFields, ready to pass to
+   * `callMethod({ args: defaultArgs })` on a reactor for the callback.
+   * Populated after `resolve()`.
    *
-   * For a func that takes `(record { start: nat; length: nat })`, this would
-   * be `[{ start: "100", length: "50" }]` (display strings for BigInt fields).
+   * They are in the type space of the reactor that resolved the record, set
+   * by {@link ResultFieldVisitorOptions.defaultArgs}. On a
+   * `MetadataDisplayReactor` (the visitor's default) they are display types:
+   * for a func that takes `(record { start: nat; length: nat })`, this would
+   * be `[{ start: "100", length: "50" }]`. On a `MetadataReactor` they are
+   * Candid values: `[{ start: 100n, length: 50n }]`, with a `Principal` for a
+   * principal and `[]` or `[x]` for an `opt`.
+   *
    * When the func takes exactly the type of the one non-func field, that
    * field is the argument: ICRC-3's `{ args; callback }` gives
-   * `[[{ start: "0", length: "2" }]]`.
+   * `[[{ start: "0", length: "2" }]]` (display) or
+   * `[[{ start: 0n, length: 2n }]]` (Candid).
    *
    * `undefined` before resolve.
    */

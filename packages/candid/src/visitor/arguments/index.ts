@@ -920,9 +920,16 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
 
   /**
    * Generate format-specific zod schema for text fields.
+   *
+   * Plain text takes any string, including "": Candid `text` has no
+   * required-ness, and a method may take an empty one. Rejecting it as
+   * "Required" meant such a call could not be made or replayed from the form.
+   * A format read from the label keeps its own check.
    */
   private getTextSchema(format: TextFormat): z.ZodTypeAny {
     switch (format) {
+      case "plain":
+        return z.string()
       case "email":
         return z.email("Invalid email address")
       case "url":

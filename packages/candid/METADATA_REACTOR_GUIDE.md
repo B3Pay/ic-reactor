@@ -222,6 +222,12 @@ interface TextField {
 }
 ```
 
+A plain `text` field's schema takes any string, `""` included: Candid `text`
+has no required-ness, and a method may take an empty one. A text field whose
+label gives it a format (see [Format Detection](#format-detection)) keeps that
+format's check and rejects `""`, and the numbers held as text still need
+digits.
+
 ## Result Metadata
 
 ### MethodMeta Structure
@@ -328,6 +334,36 @@ const rawResult = {
   raw: [Principal, "get_transactions"]
 }
 ```
+
+### Func Records and `defaultArgs`
+
+A record with exactly one `func` field, like the `archived_transactions` entry
+above, resolves as a `funcRecord` node (`displayType: "func-record"`). Besides
+`canisterId`, `methodName` and `funcClass`, it carries `defaultArgs`: the
+values beside the callback, arranged as the callback's arguments. When the
+callback takes exactly the type of the one other field (ICRC-3's
+`{ args; callback }`), that field is the argument.
+
+```typescript
+// `archived` is the resolved funcRecord node
+const archive = new MetadataDisplayReactor({
+  name: "archive",
+  canisterId: archived.canisterId,
+  clientManager,
+  funcClass: { methodName: archived.methodName, func: archived.funcClass },
+})
+
+await archive.callMethod({
+  functionName: archived.methodName,
+  args: archived.defaultArgs, // [{ start: "0", length: "100" }]
+})
+```
+
+`defaultArgs` are in the type space of the reactor that resolved the record,
+which is the one its `callMethod` takes: display types on
+`MetadataDisplayReactor`, and Candid values on `MetadataReactor`
+(`[{ start: 0n, length: 100n }]`, with a `Principal` for a principal and `[]`
+or `[x]` for an `opt`). Build the callback's reactor with the same class.
 
 ## Format Detection
 
