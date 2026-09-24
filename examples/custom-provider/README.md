@@ -1,7 +1,10 @@
 # Custom Provider Example
 
 This Vite example demonstrates a custom React provider around IC Reactor hooks
-for dynamic ICRC1 canister IDs.
+for dynamic ICRC1 canister IDs. `src/ICRC1Provider.tsx` builds it with
+`createReactorProvider`, whose factory creates a `Reactor` for the provider's
+`canisterId` prop; `App` keys the provider by that ID, so a new ID builds a new
+reactor.
 
 The app uses package-level defaults for auth and local development:
 

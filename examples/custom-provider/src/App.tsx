@@ -70,8 +70,8 @@ const App = () => {
         </button>
       </form>
 
-      {/* Token Provider */}
-      <ICRC1Provider canisterId={canisterId}>
+      {/* Token Provider: a new canister ID mounts a new one */}
+      <ICRC1Provider key={canisterId} canisterId={canisterId}>
         {/* Token Info Card */}
         <div className="card">
           <div className="card-header">
