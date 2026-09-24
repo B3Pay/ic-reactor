@@ -88,6 +88,12 @@ formatTokenAmount(balance, decimals, { maxFractionDigits: 4 }) // "1.2345"
   canonical text of at most 29 bytes and never throws. A `DisplayReactor`
   takes the text; a `Reactor` takes `Principal.fromText(text)`
 
+## Showing Raw Values
+
+- `jsonToString(value)` is `JSON.stringify(value, null, 2)` that writes a
+  `bigint` as its digits, a `Principal` as its text and a `Uint8Array` as hex.
+  Use it to print a result instead of writing a BigInt replacer by hand
+
 ## Local Environment Root Key
 
 In a browser with no `agentOptions.host`, the agent routes through the page

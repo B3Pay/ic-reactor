@@ -431,15 +431,67 @@ export const isPrincipalText = (value: unknown): boolean => {
   }
 }
 
+/** A principal, from this copy of `@icp-sdk/core` or another. */
+const isPrincipalValue = (value: unknown): value is { toText(): string } =>
+  typeof value === "object" &&
+  value !== null &&
+  (value as { _isPrincipal?: unknown })._isPrincipal === true &&
+  typeof (value as { toText?: unknown }).toText === "function"
+
 /**
- * Converts a JSON-serializable value to a string, handling BigInt values.
- * @param value - The value to convert
- * @returns A string representation of the value
+ * Writes a value as indented JSON text, to show or log what a canister call
+ * returned. `JSON.stringify` throws on a `bigint` and writes a principal and a
+ * blob in forms nobody reads, so the values a `Reactor` returns are written as
+ * a `DisplayReactor` shows them:
+ *
+ * - a `bigint` as its decimal digits, in quotes: `"100000000"`;
+ * - a `Principal` as its text, `"aaaaa-aa"`, where `JSON.stringify` writes
+ *   `{"__principal__":"aaaaa-aa"}`;
+ * - a `Uint8Array` (a `blob`) as lowercase hex without `0x`, `"0a0b"`, where
+ *   `JSON.stringify` writes an object keyed by index, `{"0":10,"1":11}`;
+ * - any other typed array (a `vec nat16`, `vec int64`, ...) as an array of its
+ *   numbers, a `bigint` among them as its digits.
+ *
+ * Everything else is written as `JSON.stringify(value, null, 2)` writes it. The
+ * text is for people: it does not say which strings were a `bigint`, a
+ * principal or bytes, so it does not parse back into the value.
+ *
+ * @param value - The value to write, such as a call's result.
+ * @returns The value as JSON, indented by two spaces.
+ *
+ * @example
+ * ```ts
+ * import { jsonToString } from "@ic-reactor/core"
+ * import { Principal } from "@icp-sdk/core/principal"
+ *
+ * jsonToString({
+ *   owner: Principal.fromText("aaaaa-aa"),
+ *   subaccount: [new Uint8Array([1, 2])],
+ *   amount: 5n,
+ * })
+ * // {
+ * //   "owner": "aaaaa-aa",
+ * //   "subaccount": [
+ * //     "0102"
+ * //   ],
+ * //   "amount": "5"
+ * // }
+ * ```
  */
-export const jsonToString = (value: any): string => {
+export const jsonToString = (value: unknown): string => {
   return JSON.stringify(
     value,
-    (_, v) => (typeof v === "bigint" ? v.toString() : v),
+    function (this: unknown, key: string, json: unknown) {
+      // `json` has already been through `toJSON`, which a Principal defines,
+      // so read the value itself from the object holding it.
+      const raw = (this as Record<string, unknown>)[key]
+      if (isPrincipalValue(raw)) return raw.toText()
+      if (raw instanceof Uint8Array) return uint8ArrayToHex(raw)
+      if (ArrayBuffer.isView(raw) && !(raw instanceof DataView)) {
+        return Array.from(raw as unknown as ArrayLike<number | bigint>)
+      }
+      return typeof json === "bigint" ? json.toString() : json
+    },
     2
   )
 }

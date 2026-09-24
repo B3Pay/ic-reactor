@@ -616,6 +616,26 @@ is at most 29 bytes, the most the Internet Computer accepts: canonical text
 only, lowercase with its dashes and checksum, and no whitespace. It returns a
 `boolean` rather than narrowing, so a `string` it refuses stays a `string`.
 
+### JSON for Display
+
+`jsonToString(value)` writes a call's result as JSON indented by two spaces, for
+a `<pre>` or a log line. `JSON.stringify` throws on a `bigint` and writes a
+`Principal` as `{"__principal__":"…"}` and a `Uint8Array` as an object keyed by
+index, so `jsonToString` writes a raw `Reactor` value the way a `DisplayReactor`
+shows it: a `bigint` as its digits, a `Principal` as its text, a `Uint8Array`
+as lowercase hex, and any other typed array as an array of numbers. Other
+values are written as `JSON.stringify(value, null, 2)` writes them.
+
+```typescript
+import { jsonToString } from "@ic-reactor/core"
+
+jsonToString({ owner: principal, amount: 5n, memo: [new Uint8Array([1, 2])] })
+// { "owner": "aaaaa-aa", "amount": "5", "memo": ["0102"] }, indented
+```
+
+The text is for reading: it does not record which strings were numbers,
+principals or bytes, so it does not parse back into the value.
+
 ### Result Unwrapping
 
 A method returning `variant { Ok : T; Err : E }` does not hand you the raw

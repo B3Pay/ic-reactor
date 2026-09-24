@@ -251,3 +251,51 @@ guard: a `string` it refuses is still typed a `string`, where a guard would
 narrow it to `never`.
 
 `@ic-reactor/candid`'s `isPrincipalId` is the same check.
+
+## JSON for display
+
+### jsonToString
+
+Writes a value as JSON indented by two spaces, for a `<pre>`, a toast or a log
+line.
+
+```typescript
+function jsonToString(value: unknown): string
+```
+
+`JSON.stringify` throws on a `bigint`, writes a `Principal` as
+`{"__principal__":"aaaaa-aa"}` and writes a `Uint8Array` as an object keyed by
+index. `jsonToString` writes the values a `Reactor` returns the way a
+`DisplayReactor` shows them:
+
+| Value                                  | Written as                                    |
+| -------------------------------------- | --------------------------------------------- |
+| `bigint`                               | its decimal digits, in quotes: `"100000000"`  |
+| `Principal`                            | its text: `"aaaaa-aa"`                        |
+| `Uint8Array` (a `blob`)                | lowercase hex without `0x`: `"0a0b"`          |
+| another typed array (`vec nat16`, ...) | an array of its numbers                       |
+| anything else                          | as `JSON.stringify(value, null, 2)` writes it |
+
+```typescript
+import { jsonToString } from "@ic-reactor/core"
+import { Principal } from "@icp-sdk/core/principal"
+
+jsonToString({
+  owner: Principal.fromText("aaaaa-aa"),
+  subaccount: [new Uint8Array([1, 2])],
+  amount: 5n,
+})
+// {
+//   "owner": "aaaaa-aa",
+//   "subaccount": [
+//     "0102"
+//   ],
+//   "amount": "5"
+// }
+```
+
+A principal is recognised whichever copy of `@icp-sdk/core` created it. The
+text is for reading: it does not record which strings were numbers, principals
+or bytes, so it does not parse back into the value. Use it in place of a
+hand-written replacer such as
+`JSON.stringify(value, (_, v) => (typeof v === "bigint" ? v.toString() : v))`.
