@@ -4,7 +4,12 @@ import React, { useState, useEffect, useMemo } from "react"
 import { useLedgerReactor } from "./ledger-provider"
 import { Principal } from "@icp-sdk/core/principal"
 import { useICAuth } from "./providers"
-import { createAuthHooks, skipToken } from "@ic-reactor/react"
+import {
+  createAuthHooks,
+  formatTokenAmount,
+  isPrincipalText,
+  skipToken,
+} from "@ic-reactor/react"
 import type { Account } from "../declarations/ledger"
 
 const POPULAR_TOKENS = [
@@ -103,26 +108,27 @@ export default function TokenExplorer() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!searchTarget.trim()) return
-    try {
-      Principal.fromText(searchTarget.trim())
-      setActiveAddress(searchTarget.trim())
-    } catch (e) {
+    const target = searchTarget.trim()
+    if (!target) return
+    if (isPrincipalText(target)) {
+      setActiveAddress(target)
+    } else {
       alert("Invalid Principal ID format. Please verify and try again.")
     }
   }
 
-  const formatAmount = (val: any, decs: any) => {
-    if (val === undefined || val === null) return "0"
-    const bigVal = BigInt(val)
-    const factor = BigInt(10) ** BigInt(decs || 8)
-    const integerPart = bigVal / factor
-    const fractionalPart = bigVal % factor
-    const fractionStr = fractionalPart
-      .toString()
-      .padStart(Number(decs || 8), "0")
-    return `${integerPart}.${fractionStr.slice(0, 4)}`
-  }
+  // Four decimal places, cut rather than rounded, exact at any size and for
+  // any decimals (ckETH has 18, ckUSDC 6).
+  const formatAmount = (
+    amount: bigint | undefined,
+    decs: number | undefined
+  ) =>
+    amount === undefined || decs === undefined
+      ? "0"
+      : formatTokenAmount(amount, decs, {
+          maxFractionDigits: 4,
+          trimTrailingZeros: false,
+        })
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md max-w-xl mx-auto mt-6">

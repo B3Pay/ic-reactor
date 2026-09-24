@@ -1,4 +1,4 @@
-import { generateKey } from "@ic-reactor/react"
+import { formatTokenAmount, generateKey } from "@ic-reactor/react"
 import { useRef } from "react"
 import {
   balanceQuery,
@@ -7,7 +7,13 @@ import {
   retrieveBtcMutation,
   CKBTC_MINTER_CANISTER_ID,
 } from "./reactor"
-import { formatBalance } from "./util"
+
+/** ckBTC counts in satoshis: 1 ckBTC is 10^8. */
+const CKBTC_DECIMALS = 8
+
+/** The ckBTC amount, exactly, for satoshis given as a DisplayReactor's text. */
+const formatBalance = (satoshis: string | undefined) =>
+  satoshis === undefined ? "—" : formatTokenAmount(satoshis, CKBTC_DECIMALS)
 
 interface MinterRetrieveBTCProps {
   userPrincipal: string

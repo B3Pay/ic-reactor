@@ -1,6 +1,5 @@
 import { Suspense, useMemo, useState } from "react"
-import { Principal } from "@icp-sdk/core/principal"
-import type { ReactorArgsOf } from "@ic-reactor/react"
+import { isPrincipalText, type ReactorArgsOf } from "@ic-reactor/react"
 import { styles } from "../styles"
 import { BalanceCard } from "./Cards"
 import {
@@ -22,13 +21,12 @@ export function BalanceLookup() {
   const [error, setError] = useState<string | null>(null)
 
   const handleLookup = () => {
-    try {
-      // Validate the principal format
-      Principal.fromText(principalInput)
-      // With  owner should be a string (the principal text)
-      setAccount({ owner: principalInput, subaccount: null })
+    const owner = principalInput.trim()
+    if (isPrincipalText(owner)) {
+      // A DisplayReactor takes the owner as the principal's text
+      setAccount({ owner, subaccount: null })
       setError(null)
-    } catch {
+    } else {
       setError("Invalid Principal ID")
       setAccount(null)
     }

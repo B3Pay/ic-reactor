@@ -1,3 +1,4 @@
+import { formatTokenAmount } from "@ic-reactor/react"
 import { Principal } from "@icp-sdk/core/principal"
 import { icdvBalanceQuery } from "../reactor"
 
@@ -12,9 +13,13 @@ export const MyICDVBalance = ({ principal }: MyICDVBalanceProps) => {
     refetch,
   } = icdvBalanceQuery([{ owner: principal, subaccount: [] }]).useQuery()
 
+  // ICDV has 8 decimals. Four places, cut rather than rounded up.
   const formatBalance = (bal: bigint | undefined) => {
     if (bal === undefined) return "—"
-    return (Number(bal) / 1e8).toFixed(4)
+    return formatTokenAmount(bal, 8, {
+      minFractionDigits: 4,
+      maxFractionDigits: 4,
+    })
   }
 
   return (

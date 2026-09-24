@@ -1,4 +1,11 @@
-import { Reactor, ClientManager } from "@ic-reactor/react"
+import {
+  Reactor,
+  ClientManager,
+  formatTokenAmount,
+  isCanisterError,
+  jsonToString,
+  parseTokenAmount,
+} from "@ic-reactor/react"
 import { AuthenticationManager } from "@ic-reactor/react"
 import { Principal } from "@icp-sdk/core/principal"
 import { QueryClient } from "@tanstack/query-core"
@@ -89,15 +96,20 @@ async function updateToken(canisterId: string) {
     // key update
     ledgerReactor.setCanisterId(canisterId)
 
-    const [name, tokenSymbol, tokenDecimals] = await Promise.all([
+    const [name, symbol, decimals] = await Promise.all([
       ledgerReactor.fetchQuery({ functionName: "icrc1_name" }),
       ledgerReactor.fetchQuery({ functionName: "icrc1_symbol" }),
       ledgerReactor.fetchQuery({ functionName: "icrc1_decimals" }),
     ])
+    if (activeCanisterId !== canisterId) return
 
+    // Balances and transfers read these, so a token with other decimals
+    // (ckETH has 18) is not shown and sent as if it had ICP's 8.
+    tokenSymbol = symbol
+    tokenDecimals = decimals
     tokenNameEl.textContent = name
-    tokenSymbolEl.textContent = tokenSymbol
-    tokenDecimalsEl.textContent = tokenDecimals.toString()
+    tokenSymbolEl.textContent = symbol
+    tokenDecimalsEl.textContent = decimals.toString()
 
     const principal = await clientManager.getUserPrincipal()
     if (principal && !principal.isAnonymous()) {
@@ -125,8 +137,8 @@ async function fetchBalance(owner: Principal, canisterId: string) {
       args: [{ owner, subaccount: [] }],
     })
 
-    const balanceNum = Number(balance) / Math.pow(10, tokenDecimals)
-    balanceDisplay.textContent = `${balanceNum} ${tokenSymbol}`
+    // Exact at any size, where Number(balance) / 10 ** decimals is not.
+    balanceDisplay.textContent = `${formatTokenAmount(balance, tokenDecimals)} ${tokenSymbol}`
   } catch (error) {
     console.error("Failed to fetch balance:", error)
     if (activeCanisterId === canisterId) {
@@ -177,9 +189,9 @@ transferBtn.addEventListener("click", async () => {
     transferStatus.textContent = "Transferring..."
     transferStatus.style.color = "#fbbf24"
 
-    const amountBigInt = BigInt(
-      Math.floor(Number(amount) * Math.pow(10, tokenDecimals))
-    )
+    // "0.29" is 29000000 e8s; Math.floor(Number("0.29") * 10 ** 8) is
+    // 28999999. Throws on text it cannot read exactly, before anything is sent.
+    const amountBigInt = parseTokenAmount(amount, tokenDecimals)
     const principal = await clientManager.getUserPrincipal()
 
     const blockIndex = await ledgerReactor.callMethod({
@@ -203,13 +215,12 @@ transferBtn.addEventListener("click", async () => {
     transferAmountInput.value = ""
     transferToInput.value = ""
   } catch (error) {
-    transferStatus.textContent = `Transfer failed: ${JSON.stringify(
-      error,
-      (_, v) => (typeof v === "bigint" ? v.toString() : v)
-    )}`
-    transferStatus.style.color = "#f87171"
     console.error("Transfer error:", error)
-    transferStatus.textContent = `Error: ${error}`
+    // A ledger's TransferError holds bigints, which jsonToString writes as
+    // digits (JSON.stringify throws on them).
+    transferStatus.textContent = isCanisterError(error)
+      ? `Transfer failed: ${jsonToString(error.err)}`
+      : `Error: ${error}`
     transferStatus.style.color = "#f87171"
   }
 })

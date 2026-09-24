@@ -4,16 +4,9 @@ import { QueryClient } from "@tanstack/react-query"
 // A server component: this import resolves through @ic-reactor/react's
 // `react-server` export condition, which carries the core runtime classes and
 // none of the hooks.
-import { ClientManager, Reactor } from "@ic-reactor/react"
+import { ClientManager, Reactor, formatTokenAmount } from "@ic-reactor/react"
 import { idlFactory, canisterId } from "../declarations/ledger"
 import type { _SERVICE } from "../declarations/ledger"
-
-// Whole tokens only: the fraction does not matter at total-supply scale.
-function formatWholeTokens(amount: bigint, decimals: number) {
-  const base = 10n ** BigInt(decimals)
-  const whole = amount / base
-  return whole.toLocaleString("en-US")
-}
 
 /**
  * Reads the ICP ledger on the server, once per request.
@@ -47,7 +40,14 @@ export default async function LedgerSnapshot() {
 
     return (
       <p className="max-w-xl mx-auto mb-8 text-center text-sm text-gray-500">
-        Rendered on the server: {formatWholeTokens(totalSupply, decimals)}{" "}
+        Rendered on the server:{" "}
+        {/* Whole tokens only: the fraction does not matter at total-supply
+            scale. formatTokenAmount is React-free, so the react-server entry
+            exports it too. */}
+        {formatTokenAmount(totalSupply, decimals, {
+          maxFractionDigits: 0,
+          locale: "en-US",
+        })}{" "}
         {symbol} in circulation.
       </p>
     )

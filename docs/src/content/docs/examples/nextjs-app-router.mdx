@@ -77,7 +77,7 @@ no cache is shared between visitors:
 // src/app/LedgerSnapshot.tsx (no "use client")
 import { connection } from "next/server"
 import { QueryClient } from "@tanstack/react-query"
-import { ClientManager, Reactor } from "@ic-reactor/react"
+import { ClientManager, Reactor, formatTokenAmount } from "@ic-reactor/react"
 
 export default async function LedgerSnapshot() {
   await connection() // read per request, never at build time
@@ -93,7 +93,17 @@ export default async function LedgerSnapshot() {
     canisterId,
   })
 
-  const symbol = await ledger.fetchQuery({ functionName: "icrc1_symbol" })
+  const [symbol, decimals, totalSupply] = await Promise.all([
+    ledger.fetchQuery({ functionName: "icrc1_symbol" }),
+    ledger.fetchQuery({ functionName: "icrc1_decimals" }),
+    ledger.fetchQuery({ functionName: "icrc1_total_supply" }),
+  ])
+  // Whole tokens, exact: the utilities import no React, so the react-server
+  // entry exports them too.
+  const supply = formatTokenAmount(totalSupply, decimals, {
+    maxFractionDigits: 0,
+    locale: "en-US",
+  })
   // …
 }
 ```

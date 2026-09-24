@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { isPrincipalText, parseTokenAmount } from "@ic-reactor/react"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
@@ -41,14 +42,21 @@ export function Transfer() {
     reset() // Clear any previous errors
     if (!to || !amount) return
 
-    try {
-      const multiplier = Math.pow(10, Number(decimals))
-      const amountString = Math.floor(Number(amount) * multiplier).toString()
+    const owner = to.trim()
+    if (!isPrincipalText(owner)) {
+      setResult("Invalid Principal ID")
+      return
+    }
 
-      transfer([{ to: { owner: to }, amount: amountString }])
+    try {
+      // Exact decimal arithmetic: "0.29" at 8 decimals is 29000000 e8s, where
+      // Math.floor(Number("0.29") * 10 ** 8) gives 28999999. Text with more
+      // fraction digits than the token has is refused, not rounded.
+      const units = parseTokenAmount(amount, decimals)
+      // The DisplayReactor takes a nat as its decimal text.
+      transfer([{ to: { owner }, amount: units.toString() }])
     } catch (err) {
-      console.error(err)
-      setResult(`Invalid Principal ID or Amount: ${(err as Error).message}`)
+      setResult(`Invalid Amount: ${(err as Error).message}`)
     }
   }
 
@@ -73,11 +81,11 @@ export function Transfer() {
           <div>
             <label className="text-sm text-gray-400 block mb-1">Amount</label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              step="any"
             />
           </div>
           <Button type="submit" disabled={isPending} className="w-full">
@@ -131,11 +139,11 @@ export function TransferSkeleton() {
           <div>
             <label className="text-sm text-gray-400 block mb-1">Amount</label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value=""
               onChange={() => {}}
               placeholder="0.00"
-              step="any"
             />
           </div>
           <Button type="submit" disabled={true} className="w-full">

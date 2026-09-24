@@ -1,3 +1,4 @@
+import { formatTokenAmount } from "@ic-reactor/react"
 import { useAuth, useCkbtcLedgerQuery, useUserPrincipal } from "./reactor"
 import Login from "./Login"
 import GetBTCAddress from "./GetBTCAddress"
@@ -48,7 +49,11 @@ const App = () => {
             </div>
             <div className="token-stat">
               <span className="token-stat-value">
-                {fee ? (Number(fee) / 10 ** (decimals || 8)).toFixed(8) : "—"}
+                {fee !== undefined && decimals !== undefined
+                  ? formatTokenAmount(fee, decimals, {
+                      trimTrailingZeros: false,
+                    })
+                  : "—"}
               </span>
               <span className="token-stat-label">Fee</span>
             </div>
