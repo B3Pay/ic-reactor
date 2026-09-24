@@ -149,6 +149,11 @@ export class ClientManager {
   #identitySubscribers: Array<(identity: Identity) => void> = []
   /** The identity currently installed on the agent, captured per call. */
   #identity?: Identity
+  /**
+   * The principal `#identity` had when it was installed. It is read then and
+   * kept, because an identity object may change its principal afterwards.
+   */
+  #principal?: string
   /** Counts `updateAgent` calls, so a notification can tell it is stale. */
   #identityRevision = 0
   #agentStateSubscribers: Array<(state: AgentState) => void> = []
@@ -584,18 +589,39 @@ export class ClientManager {
   }
 
   /**
-   * Replaces the current agent's identity and invalidates TanStack queries.
+   * Installs `identity` on the agent, cleans the cached queries of every
+   * registered canister when the principal changes, and notifies identity
+   * subscribers.
+   *
+   * Query keys carry no principal, so on a switch to another principal
+   * (signing in, signing out, switching users) the cache is swept: queries in
+   * flight are cancelled, inactive entries are removed, and the rest are
+   * invalidated, so mounted queries refetch as the new principal.
+   *
+   * When `identity` has the principal already installed (a renewed delegation,
+   * a sign-in while signed in, an identity attribute request), the cached
+   * answers are already that principal's and are kept: nothing is cancelled or
+   * removed, and no query that succeeded refetches. Only queries whose last
+   * fetch failed are invalidated, since the old identity may be why they
+   * failed (an expired delegation, or one not valid for that canister). The
+   * first call after construction always sweeps.
+   *
+   * The comparison sees only the principal. An identity that changes what a
+   * canister is told under the same principal, such as an `AttributesIdentity`
+   * adding signed `sender_info` to each request, keeps answers computed
+   * without it. After installing or removing one, invalidate the affected
+   * queries yourself, e.g. with `reactor.invalidateQueries()`.
+   *
    * @param identity - The new identity to use.
    */
   public updateAgent(identity: Identity) {
+    const principal = identity.getPrincipal().toText()
     if (isDev() && typeof window !== "undefined") {
       console.info(
         `%cic-reactor:%c Updating agent identity`,
         "color: #3b82f6; font-weight: bold",
         "color: inherit",
-        {
-          principal: identity.getPrincipal().toText(),
-        }
+        { principal }
       )
     }
     // Cancel in-flight queries for connected canisters to prevent race conditions
@@ -614,7 +640,20 @@ export class ClientManager {
       const root = queryKey[0]
       return typeof root === "string" && canisterIds.has(root)
     }
-    const sweep = canisterIds.size > 0
+
+    // The same principal again (a renewed delegation, a sign-in while signed
+    // in, an identity attribute request) keeps the cache. The sweep exists
+    // because query keys carry no principal, so it has nothing to protect
+    // when every canister still sees the same caller. It used to run anyway,
+    // and each of those dropped every inactive entry, refetched every mounted
+    // query and rejected every imperative fetch in flight. The principal is
+    // compared with the one read when the previous identity was installed,
+    // not read from that object again: an identity object that changed its
+    // principal since is a switch. The first call after construction always
+    // sweeps, as until then nothing was installed to compare with.
+    const renewal =
+      this.#identity !== undefined && principal === this.#principal
+    const sweep = !renewal && canisterIds.size > 0
     if (sweep) {
       void this.queryClient.cancelQueries({ predicate: ofConnectedCanister })
     }
@@ -626,6 +665,7 @@ export class ClientManager {
     // that submitted it is handled per call instead, in `Reactor.executeCall`.
     this.#agent.replaceIdentity(identity)
     this.#identity = identity
+    this.#principal = principal
 
     // Clean the cache BEFORE notifying, and after the agent already holds the
     // new identity. A subscriber commonly reacts by starting an imperative
@@ -652,6 +692,15 @@ export class ClientManager {
       // principal in the key itself.
       void this.queryClient.invalidateQueries({
         predicate: ofConnectedCanister,
+      })
+    } else if (renewal && canisterIds.size > 0) {
+      // The previous identity may be why a fetch failed: a delegation that
+      // had expired, or one not valid for that canister. Those entries are
+      // refetched as the new identity. An answer that arrived is still the
+      // same caller's, and stays.
+      void this.queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.state.status === "error" && ofConnectedCanister(query),
       })
     }
 

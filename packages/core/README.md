@@ -205,8 +205,15 @@ const identity = await authentication.authenticate()
 ```
 
 Signing in calls `clientManager.updateAgent(identity)`, which replaces the
-agent's identity, notifies identity subscribers, and invalidates the cached
-queries of every connected canister.
+agent's identity, notifies identity subscribers, and, when the principal
+changes, sweeps the cached queries of every connected canister: in-flight
+queries are cancelled, inactive entries removed and the rest invalidated. A new
+identity for the principal already installed (a renewed delegation, a sign-in
+while signed in) keeps the cache and refetches only the queries whose last
+fetch failed. The comparison sees only the principal, so after installing or
+removing an identity that changes what a canister is told under the same
+principal, such as an `AttributesIdentity`, invalidate the affected queries
+yourself.
 
 ### State Subscriptions
 

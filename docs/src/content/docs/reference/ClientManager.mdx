@@ -146,13 +146,15 @@ await clientManager.initializeAgent()
 
 ### updateAgent
 
-Swap the agent's identity and invalidate the queries of every registered canister:
+Swap the agent's identity and, when the principal changes, sweep the queries of every registered canister:
 
 ```typescript
 clientManager.updateAgent(newIdentity)
 ```
 
-In-flight queries for those canisters are cancelled first, so results signed by the previous identity cannot land in the cache. Queries that do not belong to a registered canister — the rest of your app's REST/GraphQL data — are left untouched.
+On a switch to another principal, in-flight queries for those canisters are cancelled first, so results signed by the previous identity cannot land in the cache (see [Automatic Query Invalidation](#automatic-query-invalidation)). Queries that do not belong to a registered canister — the rest of your app's REST/GraphQL data — are left untouched.
+
+When the new identity has the principal already installed — a renewed delegation, a sign-in while signed in, an identity attribute request — the cache is kept: nothing is cancelled or removed, and only queries whose last fetch failed are refetched. The first `updateAgent()` after construction always sweeps.
 
 ---
 
@@ -358,7 +360,7 @@ console.log(clientManager.agentHost?.toString()) // The host URL
 
 ## Automatic Query Invalidation
 
-When the identity changes, `updateAgent()` sweeps the cached queries of every canister registered with this ClientManager:
+When the principal changes, `updateAgent()` sweeps the cached queries of every canister registered with this ClientManager:
 
 - **In-flight queries are cancelled**, so a response signed by the previous identity cannot land after the switch
 - **Inactive entries are removed** — not just invalidated. Query keys carry no principal, so a merely-stale entry (a balance whose component has unmounted, a cached profile) would stay readable through `getQueryData` or `fetchQuery` under the new identity
@@ -372,6 +374,17 @@ queryClient.invalidateQueries({ queryKey: [canisterId] })
 ```
 
 Because the scope is the canister ID — the first segment of every reactor query key — non-reactor queries in a shared `QueryClient` are not refetched or removed on sign-in or sign-out.
+
+A new identity for the principal already installed is not a switch: the cached answers are already that principal's, so the sweep is skipped. Only the entries whose last fetch failed are invalidated, since the previous identity (an expired delegation, say) may be why they failed. The first `updateAgent()` after construction always sweeps, whatever it installs.
+
+<Aside type="caution">
+  The comparison sees only the principal. An identity that changes what a
+  canister is told under the same principal, such as an `AttributesIdentity`
+  from `@icp-sdk/core/identity`, which adds signed `sender_info` to every
+  request, keeps the answers computed without it. After installing or removing
+  one, invalidate the affected queries yourself, for example with
+  `reactor.invalidateQueries()`.
+</Aside>
 
 ## Pay-as-you-go Authentication
 
