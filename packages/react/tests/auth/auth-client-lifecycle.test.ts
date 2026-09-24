@@ -11,6 +11,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { cleanup, render } from "@testing-library/react"
+import * as React from "react"
 import {
   StrictMode,
   createContext,
@@ -18,6 +19,7 @@ import {
   useContext,
   useEffect,
   useState,
+  type ComponentType,
   type ReactNode,
 } from "react"
 import { IDBFactory } from "fake-indexeddb"
@@ -225,6 +227,24 @@ function trackClientListeners() {
   }
 }
 
+/** React's `<Activity>`, from React 19.2 on. */
+const Activity = (
+  React as unknown as {
+    Activity?: ComponentType<{
+      mode: "visible" | "hidden"
+      children?: ReactNode
+    }>
+  }
+).Activity
+
+/** Leaves a session in the storage every tab shares, as a tab signed in. */
+async function signInInAnotherTab() {
+  const tab = createManager()
+  await tab.authentication.prepareClient()
+  await withUserGesture(() => tab.authentication.login())
+  return provider.rootIdentity.getPrincipal().toText()
+}
+
 /** Whether a tab opened now finds a session to restore. */
 async function newTabIsSignedIn() {
   const tab = createManager()
@@ -362,6 +382,121 @@ describe("a provider that builds its managers per mount (real AuthClient)", () =
     }
   )
 
+  it.runIf(isV10)(
+    "leaves no client listening to the page after remounts that do not wait for the restore (v10)",
+    async () => {
+      const liveListeners = trackClientListeners()
+
+      // A widget opened and closed again before its session was read: the
+      // restore its useAuth() started built the client after dispose().
+      for (let remount = 0; remount < 10; remount++) {
+        render(
+          createElement(ICReactorProvider, null, createElement(Header))
+        ).unmount()
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      expect(liveListeners()).toBe(0)
+      expect(managers.every(({ client }) => client === undefined)).toBe(true)
+    }
+  )
+
+  it("restores a stored session under StrictMode", async () => {
+    // StrictMode disposes the managers in the provider's cleanup while the
+    // restore its useAuth() started is still running, and mounts again.
+    await signInInAnotherTab()
+
+    const { authentication } = await mount(true)
+
+    await vi.waitFor(() =>
+      expect(authentication.authState.isAuthenticated).toBe(true)
+    )
+    expect(authentication.client).toBeDefined()
+  })
+
+  it.runIf(Activity !== undefined)(
+    "restores again when <Activity> shows the tree it hid during the restore",
+    async () => {
+      // Hiding runs the provider's cleanup, and so dispose(), and keeps the
+      // managers for when the tree is shown again.
+      await signInInAnotherTab()
+      const App = ({ mode }: { mode: "visible" | "hidden" }) =>
+        createElement(
+          Activity!,
+          { mode },
+          createElement(ICReactorProvider, null, createElement(Header))
+        )
+      const view = render(createElement(App, { mode: "visible" }))
+      const { authentication } = mounted!
+
+      view.rerender(createElement(App, { mode: "hidden" }))
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      // Nothing is mounted, so the restore stopped and built nothing.
+      expect(authentication.client).toBeUndefined()
+
+      view.rerender(createElement(App, { mode: "visible" }))
+      await vi.waitFor(() =>
+        expect(authentication.authState.isAuthenticated).toBe(true)
+      )
+      expect(authentication.client).toBeDefined()
+    }
+  )
+
+  it.runIf(Activity !== undefined)(
+    "restores again when <Activity> hid the tree while the session was read",
+    async () => {
+      await signInInAnotherTab()
+      const App = ({ mode }: { mode: "visible" | "hidden" }) =>
+        createElement(
+          Activity!,
+          { mode },
+          createElement(ICReactorProvider, null, createElement(Header))
+        )
+      const view = render(createElement(App, { mode: "visible" }))
+      const { authentication } = mounted!
+      // Hidden once the restore has started reading the client.
+      const { authenticate } = authentication
+      vi.spyOn(authentication, "authenticate").mockImplementationOnce(() => {
+        const reading = authenticate()
+        view.rerender(createElement(App, { mode: "hidden" }))
+        return reading
+      })
+
+      await vi.waitFor(() =>
+        expect(authentication.releaseCount).toBeGreaterThan(0)
+      )
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      expect(authentication.client).toBeUndefined()
+
+      view.rerender(createElement(App, { mode: "visible" }))
+      await vi.waitFor(() =>
+        expect(authentication.authState.isAuthenticated).toBe(true)
+      )
+    }
+  )
+
+  it("restores a manager mounted again after the restore it discarded", async () => {
+    // The cleanup disposed the manager, and the same one is mounted again.
+    await signInInAnotherTab()
+    const { authentication } = createManager()
+    const { useAuth } = createAuthHooks(authentication)
+    let isAuthenticated: boolean | undefined
+    function Consumer() {
+      ;({ isAuthenticated } = useAuth())
+      return null
+    }
+
+    render(createElement(Consumer)).unmount()
+    authentication.dispose()
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    // Nothing is mounted, so the restore stopped and built nothing.
+    expect(authentication.client).toBeUndefined()
+
+    render(createElement(Consumer))
+    await vi.waitFor(() => expect(isAuthenticated).toBe(true))
+    expect(authentication.client).toBeDefined()
+  })
+
   it("still signs in and out under StrictMode", async () => {
     // StrictMode runs the provider's cleanup, and so dispose(), and then its
     // effect again, on the same managers.
@@ -439,14 +574,6 @@ describe("a client that changes under a check in flight (real AuthClient)", () =
   // vouches for it, with an await between. Per-call options can replace the
   // client in between, and `dispose()` can release it. The two answers then
   // came from different clients, or the second from none.
-
-  /** Leaves a session in the storage every tab shares, as a tab signed in. */
-  async function signInInAnotherTab() {
-    const tab = createManager()
-    await tab.authentication.prepareClient()
-    await withUserGesture(() => tab.authentication.login())
-    return provider.rootIdentity.getPrincipal().toText()
-  }
 
   it("restores the account from the client it moved to", async () => {
     const account = await signInInAnotherTab()

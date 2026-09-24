@@ -53,6 +53,13 @@ export interface CreateAuthHooksReturn {
 const restoredSessions = new WeakSet<AuthenticationManager>()
 
 /**
+ * How many `useAuth()` consumers of each manager are mounted, so that a
+ * restore can tell a manager that was discarded from one StrictMode released
+ * and mounted again; see `useAuth()`.
+ */
+const mountedConsumers = new WeakMap<AuthenticationManager, number>()
+
+/**
  * The principal both hooks return.
  *
  * `authenticate()` and `logout()` leave the client's anonymous identity in
@@ -242,25 +249,64 @@ export const createAuthHooks = (
     // mounts. `prepareClient` also warms up the AuthClient so a later
     // `login()` can open the identity provider window inside the click handler.
     useEffect(() => {
-      if (initializedRef.current) return
+      mountedConsumers.set(
+        authentication,
+        (mountedConsumers.get(authentication) ?? 0) + 1
+      )
+      const unmount = () => {
+        mountedConsumers.set(
+          authentication,
+          (mountedConsumers.get(authentication) ?? 1) - 1
+        )
+      }
+
+      if (initializedRef.current && restoredSessions.has(authentication)) {
+        return unmount
+      }
+      const firstRun = !initializedRef.current
       initializedRef.current = true
 
       if (restoredSessions.has(authentication)) {
         // Restored already. A live session is still checked again, which
         // notices a delegation that has lapsed since and publishes nothing
         // while it is valid.
-        if (authentication.authState.isAuthenticated) {
+        if (firstRun && authentication.authState.isAuthenticated) {
           authentication.authenticate().catch(() => undefined)
         }
-        return
+        return unmount
       }
       restoredSessions.add(authentication)
 
-      authentication
+      // A provider that builds its managers per mount disposes the manager
+      // from its cleanup. One that unmounted before this restore had built
+      // the client still got one, built after `dispose()` and never released,
+      // so each quick remount left a live client listening to the page. The
+      // restore stops instead once the manager has been disposed since it
+      // began and no `useAuth()` of it is mounted, releasing what it built.
+      // StrictMode's cleanup disposes the manager too, but mounts this
+      // consumer again before the restore looks, and that restore goes on.
+      // One that stopped counts as not having run, so a manager mounted again,
+      // as `<Activity>` mounts a tree it showed again, restores.
+      const releases = authentication.releaseCount
+      const abandoned = () => {
+        if (
+          authentication.releaseCount === releases ||
+          (mountedConsumers.get(authentication) ?? 0) > 0
+        ) {
+          return false
+        }
+        authentication.dispose()
+        restoredSessions.delete(authentication)
+        return true
+      }
+
+      void authentication
         .prepareClient()
         .catch(() => undefined)
-        .then(() => clientManager.initialize())
-        .then(() => {
+        .then(async () => {
+          if (abandoned()) return false
+          await clientManager.initialize()
+          if (abandoned()) return false
           // A check that has settled already and found no session, such as
           // the one a manager runs over a client handed to its constructor,
           // or a route loader's `authenticate()`, answered what this restore
@@ -269,16 +315,21 @@ export const createAuthHooks = (
           // which publishes nothing while it is valid.
           const { isAuthenticated, error } = authentication.authState
           if (authentication.sessionChecked && !isAuthenticated && !error) {
-            return undefined
+            return true
           }
-          return authentication.authenticate()
+          await authentication.authenticate().catch(() => undefined)
+          return !abandoned()
         })
         // Failures are already reflected in authState/agentState; without
-        // this the rejection escapes as an unhandled promise rejection.
-        .catch(() => undefined)
-        // A restore that failed before it reached `authenticate()`, such as a
+        // this the rejection escapes as an unhandled promise rejection. A
+        // restore that failed before it reached `authenticate()`, such as a
         // root key that could not be fetched, has settled all the same.
-        .finally(() => authentication.markSessionChecked())
+        .catch(() => true)
+        .then((settled) => {
+          if (settled) authentication.markSessionChecked()
+        })
+
+      return unmount
     }, [])
 
     const principal = usePrincipal(isAuthenticated, identity)

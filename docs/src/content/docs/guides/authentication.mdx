@@ -395,6 +395,12 @@ does not sign anyone out. A client you passed in as `authClient` is never
 disposed. With v8 there is nothing to release, and the manager only drops its
 reference.
 
+A tree can unmount before the session restore its `useAuth()` started has
+finished, as a widget closed right after it opened does. That restore then
+stops without building a client, and if the same manager is mounted again, as
+`<Activity>` mounts a tree it shows again, its `useAuth()` restores the session
+from the start.
+
 ## Automatic Query Invalidation
 
 When the user's principal changes — on login, logout, and session restore — IC Reactor sweeps the cache of every **connected canister**: in-flight queries are cancelled, inactive cached entries are **removed**, and active queries are invalidated so they refetch as the new identity.

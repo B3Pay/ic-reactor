@@ -100,6 +100,8 @@ export class AuthenticationManager {
   private clientChangedDuringOperation = false
   /** Counts `followClient()` passes, so that only the latest one publishes. */
   private followRevision = 0
+  /** Counts `dispose()` calls; see {@link releaseCount}. */
+  private releases = 0
   private readonly identityProvider?: string | URL
   /** The provider taken from the `ic_env` cookie, when no caller set one. */
   private readonly envIdentityProvider?: string | URL
@@ -209,6 +211,17 @@ export class AuthenticationManager {
   /**
    * @internal Used by the auth hooks.
    *
+   * How many times {@link dispose} has run. A restore the hooks started
+   * compares it with the count it began with, to tell whether the manager was
+   * released while it ran.
+   */
+  public get releaseCount(): number {
+    return this.releases
+  }
+
+  /**
+   * @internal Used by the auth hooks.
+   *
    * Calls `callback` once, when {@link sessionChecked} turns true. Nothing else
    * announces it when the check that settles it publishes no state, as a
    * restore that failed before it read the client does not.
@@ -251,7 +264,9 @@ export class AuthenticationManager {
    * The auth state and the identity on the agent are left as they are. A
    * restore reading the client when it is released ends without publishing
    * what it read, and a sign-in or sign-out under way ends with what the
-   * released client reports.
+   * released client reports. A restore `useAuth()` started stops, and
+   * releases any client it built meanwhile, once no `useAuth()` of this
+   * manager is mounted; one mounted later restores again.
    *
    * @example
    * ```tsx
@@ -262,6 +277,7 @@ export class AuthenticationManager {
    * ```
    */
   public dispose(): void {
+    this.releases++
     this.stopWatchingClient()
     if (this.authClientWasProvided) {
       return
@@ -384,12 +400,17 @@ export class AuthenticationManager {
   }
 
   public authenticate = async (): Promise<Identity | undefined> => {
+    const releases = this.releases
     try {
       return await this.checkSession()
     } finally {
       // Marked once the result is published, so the hooks never show the
-      // starting state as the answer. A failed restore settles it too.
-      this.markSessionChecked()
+      // starting state as the answer. A failed restore settles it too. One
+      // that `dispose()` cut short read nothing, and leaves the check to the
+      // restore of whatever mounts this manager again.
+      if (releases === this.releases || this.authClient) {
+        this.markSessionChecked()
+      }
     }
   }
 
