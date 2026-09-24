@@ -341,8 +341,9 @@ function invalidateTarget<Service, Transform extends TransformKey>(
  *
  * An entry is a query key, a query object or query factory (anything with a
  * `getQueryKey()`), or a `{ functionName, args? }` descriptor, which is keyed
- * by `reactor.generateQueryKey` at the canister `callConfig`, the mutation's,
- * sends it to. `undefined` entries are skipped.
+ * by `reactor.generateQueryKey` at the canister the mutation was sent to:
+ * the one its `callConfig.canisterId` names, else the reactor's. `undefined`
+ * entries are skipped.
  */
 export async function invalidateTargets<
   Service,
