@@ -316,8 +316,15 @@ function invalidateTarget<Service, Transform extends TransformKey>(
     functionName: FunctionName<Service>
     args?: ReactorArgs<Service, FunctionName<Service>, Transform>
   }
+  // `args: []`, all that a method without parameters takes, names the same
+  // queries as no args. Keyed as given, it adds an args segment that a query
+  // made without args lacks, and would match none of those.
+  const hasArgs = (args as readonly unknown[] | undefined)?.length
   return reactor.queryClient.invalidateQueries({
-    queryKey: reactor.generateQueryKey({ functionName, args }),
+    queryKey: reactor.generateQueryKey({
+      functionName,
+      args: hasArgs ? args : undefined,
+    }),
   })
 }
 

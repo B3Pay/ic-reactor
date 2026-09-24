@@ -545,9 +545,12 @@ export interface QueryKeySource {
  * follows a `setCanisterId` and carries the reactor's transform segment.
  *
  * Without `args` it names every query of the method, whatever its args,
- * infinite queries included. With `args` it names the queries for those args.
- * A query sent to another canister through `callConfig` is keyed apart; name
- * it by its query object or key instead.
+ * infinite queries included. With `args` it names the queries made with those
+ * args by `createQuery`, a query factory or the hooks, and `args: []` names a
+ * method without parameters as no `args` does. An infinite query keys its
+ * page set by its first page's args in another form, which `args` does not
+ * match, and a query sent to another canister through `callConfig` is keyed
+ * apart: name either by its query object or key instead.
  *
  * @example
  * ```typescript

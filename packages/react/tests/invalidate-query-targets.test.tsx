@@ -262,6 +262,27 @@ describe("createMutation invalidateQueries entries", () => {
     expect(isInvalidated(getPost(["b"]).getQueryKey())).toBe(false)
   })
 
+  it("takes the empty args of a method without parameters as no args", async () => {
+    // A query made without args has no args segment, and one made with
+    // `args: []` has one; `args: []` in a descriptor names both.
+    const countQuery = createQuery(reactor, { functionName: "get_count" })
+    const countWithArgs = createQuery(reactor, {
+      functionName: "get_count",
+      args: [],
+    })
+    expect(countWithArgs.getQueryKey()).not.toEqual(countQuery.getQueryKey())
+    seed(countQuery.getQueryKey(), 0n)
+    seed(countWithArgs.getQueryKey(), 0n)
+
+    await createMutation(reactor, {
+      functionName: "create_post",
+      invalidateQueries: [{ functionName: "get_count", args: [] }],
+    }).execute(["new"])
+
+    expect(isInvalidated(countQuery.getQueryKey())).toBe(true)
+    expect(isInvalidated(countWithArgs.getQueryKey())).toBe(true)
+  })
+
   it("keys a descriptor with the reactor's transform", async () => {
     const display = new DisplayReactor<BlogActor>({
       clientManager,
