@@ -281,8 +281,9 @@ blob-specific rendering (byte count, hash summary) on `node.type`.
 // Raw canister response
 const rawResult = { Ok: 1000000000n } // bigint
 
-// Get metadata
+// Get metadata (undefined for a method the service does not have)
 const meta = reactor.getOutputMeta("icrc1_transfer")
+if (!meta) throw new Error("icrc1_transfer is not in the service")
 
 // Resolve to display types
 const resolved = meta.resolve(rawResult)
@@ -385,8 +386,9 @@ console.log(methods) // ["icrc1_balance_of", "icrc1_transfer", ...]
 ### Building Dynamic Forms
 
 ```typescript
-// Get input metadata for a method
+// Get input metadata for a method (undefined if the service lacks it)
 const inputMeta = reactor.getInputMeta("icrc1_transfer")
+if (!inputMeta) throw new Error("icrc1_transfer is not in the service")
 
 console.log(inputMeta.functionName) // "icrc1_transfer"
 console.log(inputMeta.functionType) // "update"
@@ -417,6 +419,7 @@ import { isFieldType } from "@ic-reactor/candid"
 
 // Get metadata
 const inputMeta = reactor.getInputMeta("icrc1_transfer")
+if (!inputMeta) throw new Error("icrc1_transfer is not in the service")
 
 // Create form
 const form = useForm({
@@ -736,17 +739,17 @@ formatLabel("userAddress") // "User Address"
 
 ### MetadataDisplayReactor
 
-| Method                         | Description                                    |
-| ------------------------------ | ---------------------------------------------- |
-| `initialize()`                 | Parse Candid and generate metadata             |
-| `getMethodNames()`             | Get list of available method names             |
-| `getInputMeta(name)`           | Get input form metadata for a method           |
-| `getOutputMeta(name)`          | Get output display metadata for a method       |
-| `getAllInputMeta()`            | Get input metadata for all methods             |
-| `getAllOutputMeta()`           | Get output metadata for all methods            |
-| `registerMethod(options)`      | Register a dynamic method at runtime           |
-| `callMethod(options)`          | Call a method with display type transformation |
-| `callDynamicWithMeta(options)` | Register, call, and return metadata            |
+| Method                         | Description                                              |
+| ------------------------------ | -------------------------------------------------------- |
+| `initialize()`                 | Parse Candid and generate metadata                       |
+| `getMethodNames()`             | Get list of available method names                       |
+| `getInputMeta(name)`           | Get input form metadata for a method, or `undefined`     |
+| `getOutputMeta(name)`          | Get output display metadata for a method, or `undefined` |
+| `getAllInputMeta()`            | Get input metadata for all methods                       |
+| `getAllOutputMeta()`           | Get output metadata for all methods                      |
+| `registerMethod(options)`      | Register a dynamic method at runtime                     |
+| `callMethod(options)`          | Call a method with display type transformation           |
+| `callDynamicWithMeta(options)` | Register, call, and return metadata                      |
 
 ### Construction
 

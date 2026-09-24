@@ -921,17 +921,17 @@ console.log("Balance:", balance)
 
 ### MetadataDisplayReactor
 
-| Method                         | Description                                    |
-| ------------------------------ | ---------------------------------------------- |
-| `initialize()`                 | Parse Candid and generate metadata             |
-| `getMethodNames()`             | Get list of available method names             |
-| `getInputMeta(name)`           | Get input form metadata for a method           |
-| `getOutputMeta(name)`          | Get output display metadata for a method       |
-| `getAllInputMeta()`            | Get input metadata for all methods             |
-| `getAllOutputMeta()`           | Get output metadata for all methods            |
-| `registerMethod(options)`      | Register a dynamic method                      |
-| `callMethod(options)`          | Call a method with display type transformation |
-| `callDynamicWithMeta(options)` | Register, call, and return metadata            |
+| Method                         | Description                                              |
+| ------------------------------ | -------------------------------------------------------- |
+| `initialize()`                 | Parse Candid and generate metadata                       |
+| `getMethodNames()`             | Get list of available method names                       |
+| `getInputMeta(name)`           | Get input form metadata for a method, or `undefined`     |
+| `getOutputMeta(name)`          | Get output display metadata for a method, or `undefined` |
+| `getAllInputMeta()`            | Get input metadata for all methods                       |
+| `getAllOutputMeta()`           | Get output metadata for all methods                      |
+| `registerMethod(options)`      | Register a dynamic method                                |
+| `callMethod(options)`          | Call a method with display type transformation           |
+| `callDynamicWithMeta(options)` | Register, call, and return metadata                      |
 
 ### FieldNode Properties
 

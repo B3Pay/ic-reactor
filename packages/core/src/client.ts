@@ -126,9 +126,22 @@ function notifyAll<T>(
  *
  * @example
  * ```typescript
- * // Reuse the same ClientManager across multiple canisters
- * const backend = new Reactor<BackendService>({ clientManager, idlFactory: backendIdl, name: "backend" })
- * const ledger = new Reactor<LedgerService>({ clientManager, idlFactory: ledgerIdl, name: "ledger" })
+ * // Reuse the same ClientManager across multiple canisters. `canisterId` is
+ * // required in Node, where the constructor otherwise throws; a browser page
+ * // may omit it only where the ic_env cookie is trusted (a local replica, or
+ * // `allowEnvConfig: true`).
+ * const backend = new Reactor<BackendService>({
+ *   clientManager,
+ *   idlFactory: backendIdl,
+ *   name: "backend",
+ *   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+ * })
+ * const ledger = new Reactor<LedgerService>({
+ *   clientManager,
+ *   idlFactory: ledgerIdl,
+ *   name: "ledger",
+ *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+ * })
  * ```
  */
 export class ClientManager {

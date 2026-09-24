@@ -220,9 +220,9 @@ function availableOptions(options: Array<{ label: string }>): string {
  *   }
  * })
  *
- * // Render fields dynamically
+ * // Render fields dynamically. A top-level argument's name is `[index]`.
  * methodMeta.args.map((field, index) => (
- *   <form.Field key={index} name={field.name}>
+ *   <form.Field key={index} name={`[${index}]`}>
  *     {(fieldApi) => <DynamicInput field={field} fieldApi={fieldApi} />}
  *   </form.Field>
  * ))
