@@ -344,7 +344,8 @@ to the front; sending the object back sends that vector, not the one read.
 Where either matters, such as HTTP headers, ICRC-21 consent message fields or
 ICRC-3 maps with numeric keys, use a plain `Reactor`, which returns the array
 of pairs. As an argument the map is also taken as the array of pairs, sent as
-it is, or as a `Map`, sent in insertion order.
+it is, or as a `Map`, sent in insertion order; the argument type names only the
+object, so either needs a cast.
 
 ### Usage
 

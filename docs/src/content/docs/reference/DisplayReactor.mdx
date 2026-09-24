@@ -494,7 +494,8 @@ const value = metadata["key1"]
 
 As an argument, the map is also taken as the array of pairs or as a `Map`.
 Each is sent as its entries in its own order: an object's, the array's, or the
-`Map`'s insertion order.
+`Map`'s insertion order. The argument's TypeScript type names only the object,
+so the other two need a cast.
 
 <Aside type="caution" title="An object holds each key once, in its own order">
   A JavaScript object cannot hold a key twice, and it puts integer-like keys
@@ -507,7 +508,7 @@ Each is sent as its entries in its own order: an object's, the array's, or the
   HTTP headers, ICRC-21 consent message fields or ICRC-3 maps with numeric
   keys, call the method through a plain [`Reactor`](/v3/reference/reactor),
   which returns the array of pairs as received. A `DisplayReactor` argument
-  given as the array of pairs is sent as it is.
+  given as the array of pairs, with a cast, is sent as it is.
 </Aside>
 
 ### Form Handling

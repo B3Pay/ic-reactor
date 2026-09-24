@@ -470,12 +470,13 @@ export class DisplayReactor<
    * them. A blob given as hex text, bytes or a byte array is keyed by its
    * bytes, as a Reactor keys it. An opt given bare, wrapped or as any form of
    * none, and a variant with or without its `_type`, are keyed in one form,
-   * and a `vec record { text; T }` given as an object by its entries in the
-   * order they are sent. A float or an integer of 32 bits or fewer given as
-   * text is keyed as its number, and a Principal as its text. A value the
-   * codecs refuse is keyed behind a tag, apart from every value they take. A
-   * method without a codec sends its args to IDL.encode unchanged, so they are
-   * read as a Reactor's are.
+   * a `vec record { text; T }` given as an object or a `Map` by its entries
+   * in the order they are sent, and a record or variant given as a class
+   * instance as the plain object the codecs send. A float or an integer of
+   * 32 bits or fewer given as text is keyed as its number, and a Principal
+   * as its text. A value the codecs refuse is keyed behind a tag, apart from
+   * every value they take. A method without a codec sends its args to
+   * IDL.encode unchanged, so they are read as a Reactor's are.
    */
   protected argsForQueryKey<M extends FunctionName<A>>(
     functionName: M,

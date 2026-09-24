@@ -265,8 +265,9 @@ describe("DisplayReactor sending a non-finite float back (#632)", () => {
 
   it("loses NaN to none after a JSON round trip, as documented", async () => {
     // Guards the documented limit: JSON writes NaN as null, which an opt
-    // sends as none, and -0 as 0. A value that has to survive JSON needs a
-    // plain Reactor, or its floats kept apart from the JSON.
+    // sends as none, and -0 as 0. A plain Reactor's value loses them to JSON
+    // too, so a value that has to survive JSON needs its floats serialised
+    // apart from it.
     const reactor = makeRates()
     const read = { rate: [NaN], x: -0 }
     vi.spyOn(reactor as any, "executeQuery").mockResolvedValue(
