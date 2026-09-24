@@ -38,12 +38,14 @@ describe("Helpers", () => {
       expect(isPrincipalId({} as any)).toBe(false)
     })
 
-    it("is core's isPrincipalText, so it refuses a principal over 29 bytes", () => {
+    it("is core's isPrincipalText, so it refuses a principal over 29 bytes and the JSON form", () => {
       const long = Principal.fromUint8Array(new Uint8Array(30)).toText()
-      for (const text of ["aaaaa-aa", "ryjl3-tyaaa", "", long]) {
+      const json = '{"__principal__":"aaaaa-aa"}'
+      for (const text of ["aaaaa-aa", "ryjl3-tyaaa", "", long, json]) {
         expect(isPrincipalId(text)).toBe(isPrincipalText(text))
       }
       expect(isPrincipalId(long)).toBe(false)
+      expect(isPrincipalId(json)).toBe(false)
     })
   })
 

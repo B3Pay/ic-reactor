@@ -4,8 +4,9 @@
  * Examples validated a principal a person typed with a `try` around
  * `Principal.fromText`, and `@ic-reactor/candid` carried the same check as
  * `isPrincipalId`, which core users could not reach. These tests pin what
- * passes (exactly the text `Principal.fromText` reads, up to the 29 bytes the
- * Internet Computer accepts) and that the check never throws.
+ * passes (canonical text `Principal.fromText` reads, up to the 29 bytes the
+ * Internet Computer accepts, and not the JSON form it also reads) and that
+ * the check never throws.
  */
 import { describe, it, expect, expectTypeOf } from "vitest"
 import { Principal } from "@icp-sdk/core/principal"
@@ -20,7 +21,7 @@ describe("isPrincipalText", () => {
     expect(isPrincipalText(user)).toBe(true)
   })
 
-  it("accepts what Principal.fromText reads, and nothing it refuses", () => {
+  it("accepts the text Principal.fromText reads, and nothing it refuses", () => {
     for (const text of [
       "ryjl3-tyaaa-aaaaa-aaaba-cai",
       "ryjl3-tyaaa", // checksum does not match
@@ -44,6 +45,20 @@ describe("isPrincipalText", () => {
     expect(isPrincipalText("ryjl3-tyaaa")).toBe(false)
     expect(isPrincipalText(" aaaaa-aa")).toBe(false)
     expect(isPrincipalText("RYJL3-TYAAA-AAAAA-AAABA-CAI")).toBe(false)
+  })
+
+  it("refuses the JSON form, which Principal.fromText also reads", () => {
+    // Principal.toJSON writes this, and Principal.fromText parses it back,
+    // whitespace and all. It is not the principal's text: shown, compared or
+    // used as a query key, it differs from "aaaaa-aa".
+    for (const json of [
+      '{"__principal__":"aaaaa-aa"}',
+      JSON.stringify(Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai")),
+      ' { "__principal__" : "2vxsx-fae" } ',
+    ]) {
+      expect(() => Principal.fromText(json)).not.toThrow()
+      expect(isPrincipalText(json), json).toBe(false)
+    }
   })
 
   it("refuses a principal longer than the 29 bytes the Internet Computer accepts", () => {

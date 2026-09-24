@@ -611,10 +611,11 @@ if (!isPrincipalText(to)) {
 }
 ```
 
-It is `true` exactly when `Principal.fromText` reads the text and the principal
-is at most 29 bytes, the most the Internet Computer accepts: canonical text
-only, lowercase with its dashes and checksum, and no whitespace. It returns a
-`boolean` rather than narrowing, so a `string` it refuses stays a `string`.
+It is `true` exactly when the text is the canonical text of a principal of at
+most 29 bytes, the most the Internet Computer accepts: lowercase with its dashes
+and checksum, and no whitespace. The JSON form `{"__principal__":"…"}`, which
+`Principal.fromText` also reads, is refused. It returns a `boolean` rather than
+narrowing, so a `string` it refuses stays a `string`.
 
 ### JSON for Display
 

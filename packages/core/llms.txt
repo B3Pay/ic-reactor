@@ -85,7 +85,8 @@ formatTokenAmount(balance, decimals, { maxFractionDigits: 4 }) // "1.2345"
 
 - Validate a principal a person typed with `isPrincipalText(text.trim())`
   rather than `try { Principal.fromText(text) } catch {}`. It accepts only
-  canonical text of at most 29 bytes and never throws. A `DisplayReactor`
+  canonical text of at most 29 bytes (not the `{"__principal__":…}` JSON form
+  `Principal.fromText` also reads) and never throws. A `DisplayReactor`
   takes the text; a `Reactor` takes `Principal.fromText(text)`
 
 ## Showing Raw Values

@@ -394,13 +394,15 @@ const MAX_PRINCIPAL_BYTES = 29
  * Whether `value` is the text of a principal: a user, canister or the
  * anonymous principal, as a person pastes it into a form.
  *
- * It is `true` exactly when `Principal.fromText(value)` reads it and the
- * principal is at most 29 bytes, the most the Internet Computer accepts. That
- * means the canonical form only: lowercase, grouped by dashes, with a matching
- * checksum and no whitespace, so trim what a person typed first. Use it where
- * an input is validated, instead of a `try` around `Principal.fromText`. A
- * `DisplayReactor` then takes the text as it is; a `Reactor` takes
- * `Principal.fromText(text)`.
+ * It is `true` exactly when `value` is the canonical text of a principal of
+ * at most 29 bytes, the most the Internet Computer accepts: lowercase, grouped
+ * by dashes, with a matching checksum and no whitespace, so trim what a person
+ * typed first. `Principal.fromText` also reads the JSON form
+ * `{"__principal__":"aaaaa-aa"}`, with whitespace around it; this refuses it,
+ * so text that passes is the principal's own text, fit to show, compare or put
+ * in a URL. Use it where an input is validated, instead of a `try` around
+ * `Principal.fromText`. A `DisplayReactor` then takes the text as it is; a
+ * `Reactor` takes `Principal.fromText(text)`.
  *
  * It returns a `boolean`, not a type guard, so a `string` it refuses is still
  * typed a `string` afterwards.
@@ -418,13 +420,18 @@ const MAX_PRINCIPAL_BYTES = 29
  * isPrincipalText("ryjl3-tyaaa") // false: the checksum does not match
  * isPrincipalText(" aaaaa-aa") // false: trim first
  * isPrincipalText("RYJL3-TYAAA-AAAAA-AAABA-CAI") // false: not canonical
+ * isPrincipalText('{"__principal__":"aaaaa-aa"}') // false: JSON, not text
  * ```
  */
 export const isPrincipalText = (value: unknown): boolean => {
   if (typeof value !== "string") return false
   try {
+    const principal = Principal.fromText(value)
+    // `fromText` checks its checksum against the text it decoded, which is
+    // the inner text when `value` is the JSON form, so compare with `value`.
     return (
-      Principal.fromText(value).toUint8Array().length <= MAX_PRINCIPAL_BYTES
+      principal.toText() === value &&
+      principal.toUint8Array().length <= MAX_PRINCIPAL_BYTES
     )
   } catch {
     return false
