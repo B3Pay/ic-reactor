@@ -1012,6 +1012,40 @@ describe("icReactor", () => {
       })
     })
 
+    it("should pass factories through to codegen via canister config", async () => {
+      const canister = { ...mockOptions.canisters[0], factories: true }
+      const plugin = createVitePlugin({ ...mockOptions, canisters: [canister] })
+      resolveConfig(plugin)
+
+      await (plugin.buildStart as any).call(buildContext())
+
+      expect(runCanisterPipeline).toHaveBeenCalledWith(
+        expect.objectContaining({
+          canisterConfig: { ...mockOptions.canisters[0], factories: true },
+        })
+      )
+    })
+
+    // Such as an index.ts of the user's own that does not re-export the
+    // factories: the run succeeded, and only the user can fix it.
+    it("should print the pipeline's warnings without failing the build", async () => {
+      ;(runCanisterPipeline as any).mockResolvedValue({
+        success: true,
+        warnings: ["index.ts does not re-export the factories."],
+      })
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const plugin = createVitePlugin(mockOptions)
+      resolveConfig(plugin)
+      const context = buildContext()
+
+      await (plugin.buildStart as any).call(context)
+
+      expect(context.error).not.toHaveBeenCalled()
+      expect(warn).toHaveBeenCalledWith(
+        "[ic-reactor] test_canister: index.ts does not re-export the factories."
+      )
+    })
+
     it("should pass the configured runtime target to codegen", async () => {
       const plugin = createVitePlugin({
         ...mockOptions,
@@ -1089,6 +1123,23 @@ describe("icReactor", () => {
       await emit("change", DID_IN_VITE_ROOT)
 
       expect(runCanisterPipeline).toHaveBeenCalledOnce()
+    })
+
+    it("should print the pipeline's warnings when it regenerates", async () => {
+      ;(runCanisterPipeline as any).mockResolvedValue({
+        success: true,
+        warnings: ["index.ts does not re-export the factories."],
+      })
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+      const plugin = createVitePlugin(mockOptions)
+      serve(plugin)
+
+      await emit("change", DID_IN_VITE_ROOT)
+
+      expect(warn).toHaveBeenCalledWith(
+        "[ic-reactor] test_canister: index.ts does not re-export the factories."
+      )
+      expect(mockServer.ws.send).toHaveBeenCalledWith({ type: "full-reload" })
     })
 
     it("should regenerate for a .did file resolved against the Vite root", async () => {

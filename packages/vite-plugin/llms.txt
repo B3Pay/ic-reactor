@@ -35,7 +35,12 @@ icReactor({
 - Plugin level: `canisters`, `outDir`, `clientManagerPath`, `target`,
   `injectEnvironment`, `failOnError`
 - Per canister (inside `canisters[]`): `name`, `didFile`, `outDir`,
-  `clientManagerPath`, `target`, `mode`, `canisterId`
+  `clientManagerPath`, `target`, `mode`, `canisterId`, `factories`
+- `factories: true` also generates `index.factories.generated.ts`: per method,
+  `createQuery`/`createQueryFactory` (`<method>Query`) for query methods and
+  `createMutation` (`<method>Mutation`) for update/oneway methods, bound to the
+  generated reactor. Needs `target: "react"`; an edited `index.ts` gets a
+  terminal warning until it re-exports `./index.factories.generated`
 - `injectEnvironment` for local `ic_env` cookie + `/api` proxy behavior in
   `vite dev` and `vite preview`. While `icp` reports no network or a
   configured canister has no ID, each page load asks `icp` again, so deploying
@@ -56,7 +61,8 @@ icReactor({
 ## Best Practices
 
 - Keep custom code in stable wrapper/factory modules
-- Do not hand-edit generated `index.generated.ts`
+- Do not hand-edit generated `index.generated.ts` or
+  `index.factories.generated.ts`
 
 ## Full References
 

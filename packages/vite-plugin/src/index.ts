@@ -36,7 +36,9 @@ const PLUGIN_NAME = "ic-reactor-plugin"
 export interface IcReactorPluginOptions {
   /**
    * Canister configurations.
-   * `name` is required for each canister.
+   * `name` is required for each canister. Set `factories: true` on an entry to
+   * also generate `index.factories.generated.ts`, a query or mutation object
+   * per method bound to the generated reactor; see `CanisterConfig.factories`.
    */
   canisters: CanisterConfig[]
   /**
@@ -282,6 +284,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       globalConfig,
     })
       .then((result) => {
+        reportWarnings(name, result.warnings)
         if (result.success) {
           // A later connection must not be handed a failure that has since been
           // fixed.
@@ -540,6 +543,9 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       outcomes.forEach((outcome, index) => {
         const canister = pending[index]
         const source = sources[canisters.indexOf(canister)]
+        if (outcome.status === "fulfilled") {
+          reportWarnings(canister.name, outcome.value.warnings)
+        }
         if (
           outcome.status === "fulfilled" &&
           outcome.value.success &&
@@ -610,6 +616,17 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
 
 /** An entry refused because an earlier entry generates into its directory. */
 class SharedOutDirError extends Error {}
+
+/**
+ * Print what a canister's generation could not fix itself, such as an
+ * `index.ts` of the user's own that does not re-export the factories it
+ * generated. A warning never fails the run.
+ */
+function reportWarnings(name: string, warnings: string[] | undefined): void {
+  for (const warning of warnings ?? []) {
+    console.warn(`[ic-reactor] ${name}: ${warning}`)
+  }
+}
 
 /** One readable line for whatever the pipeline threw. */
 function describeError(error: unknown): string {

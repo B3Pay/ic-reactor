@@ -108,6 +108,7 @@ export async function generateCommand(options: GenerateOptions) {
   let successCount = 0
   let errorCount = 0
   const errorMessages: string[] = []
+  const warningMessages: string[] = []
 
   // Run pipeline for each canister
   for (const name of canistersToProcess) {
@@ -139,6 +140,10 @@ export async function generateCommand(options: GenerateOptions) {
         generateReactor: !options.bindgenOnly,
       })
 
+      for (const warning of result.warnings ?? []) {
+        warningMessages.push(`${name}: ${warning}`)
+      }
+
       if (result.success) {
         successCount++
       } else {
@@ -152,6 +157,12 @@ export async function generateCommand(options: GenerateOptions) {
   }
 
   spinner.stop(`${generationLabel} generation complete`)
+
+  // Printed whatever the outcome: each one is something the run could not fix
+  // itself, such as an index.ts of the user's own that misses the factories.
+  for (const msg of warningMessages) {
+    p.log.warn(msg)
+  }
 
   if (errorMessages.length > 0) {
     console.log()

@@ -58,9 +58,35 @@ exports the reactor and six hooks named after the canister
 `use<Canister>InfiniteQuery`, `use<Canister>SuspenseInfiniteQuery`,
 `use<Canister>Mutation`, `use<Canister>Method`).
 
+Set `factories: true` on a canister to also generate
+`index.factories.generated.ts`, a query or mutation object per method bound to
+the generated reactor: `createQuery` for a query method without arguments,
+`createQueryFactory` for one with arguments, and `createMutation` for an
+update or oneway method, named `<method>Query` or `<method>Mutation` with the
+method name in camelCase. The default `index.ts` wrapper re-exports it; an
+`index.ts` you have edited is left alone, and the plugin warns in the terminal
+until it re-exports the factories. It needs `target: "react"`. See
+https://ic-reactor.b3pay.net/v3/packages/codegen#query-and-mutation-factories
+for the naming rule for any method name.
+
+```ts
+icReactor({
+  canisters: [
+    { name: "backend", didFile: "./backend/backend.did", factories: true },
+  ],
+})
+```
+
+```tsx
+import { getMessageQuery, setMessageMutation } from "./declarations/backend"
+
+const { data } = getMessageQuery.useQuery()
+await setMessageMutation.execute(["hello"])
+```
+
 If Prettier resolves from Vite's `config.root`, the plugin formats the
-generated `.js`, `.d.ts`, `index.generated.ts` and the `index.ts` wrapper it
-writes with it and your Prettier config, so a rebuild leaves formatted,
+generated `.js`, `.d.ts`, `index.generated.ts`, `index.factories.generated.ts`
+and the `index.ts` wrapper it writes with it and your Prettier config, so a rebuild leaves formatted,
 committed output unchanged. Without Prettier the declarations hold the Candid
 parser's output followed by a newline, and a formatting error never fails the
 build.
@@ -112,6 +138,7 @@ of a `.did` file being edited.
 - `target`
 - `mode`
 - `canisterId`
+- `factories`: also generate `index.factories.generated.ts` (default `false`)
 
 Each entry needs an output directory of its own. Two entries with the same
 `name` and no `outDir`, or with `outDir` values that reach one directory, would
@@ -177,7 +204,8 @@ not follow detection.
 ## File Regeneration
 
 On startup and on `.did` file changes, the plugin regenerates declarations and
-the managed `index.generated.ts` implementation. The user-facing `index.ts`
+the managed `index.generated.ts` implementation, and `index.factories.generated.ts`
+for a canister that sets `factories: true`. The user-facing `index.ts`
 entry is created once, then preserved unless it still matches the default
 wrapper or a legacy generated scaffold that can be migrated automatically.
 When a watched `.did` file changes, the plugin sends a full browser reload so

@@ -22,7 +22,16 @@ rather than replacing it.
 - JSON Schema: `./node_modules/@ic-reactor/cli/schema.json`
 - Key fields: `outDir`, `clientManagerPath`, `target`, `canisters`
 - Per canister: `name`, `didFile` (required), `outDir`, `clientManagerPath`,
-  `target`, `mode`, `canisterId`
+  `target`, `mode`, `canisterId`, `factories`
+
+`"factories": true` also writes `index.factories.generated.ts`: `createQuery`
+(query, no args) or `createQueryFactory` (query with args) as `<method>Query`,
+and `createMutation` (update/oneway, never a query) as `<method>Mutation`, all
+bound to the generated reactor, method names in camelCase. Needs
+`target: "react"`. The default `index.ts` re-exports it; an edited `index.ts`
+gets a printed warning until it adds
+`export * from "./index.factories.generated"`. Naming rule:
+https://ic-reactor.b3pay.net/v3/packages/codegen#query-and-mutation-factories
 
 Set `canisterId` for any build not served from a local replica. Without it the
 generated reactor reads its id from the `ic_env` cookie, which a
@@ -44,10 +53,11 @@ rejected.
 
 ## Generated Files
 
-- Managed: `index.generated.ts` (overwritten every generation)
+- Managed: `index.generated.ts` (overwritten every generation), and
+  `index.factories.generated.ts` with `factories: true` (removed when off)
 - Stable wrapper: `index.ts` (safe to customize)
 
-Do not hand-edit `index.generated.ts`.
+Do not hand-edit `index.generated.ts` or `index.factories.generated.ts`.
 
 `generate --clean` removes the output directories of canisters that are no
 longer in the config (the renamed-canister case). Configured canisters are left
