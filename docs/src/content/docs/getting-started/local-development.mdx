@@ -180,6 +180,14 @@ export const clientManager = new ClientManager({
 })
 ```
 
+Internet Identity sign-in needs a provider URL the browser can reach. Off
+mainnet, `AuthenticationManager` derives a local one
+(`http://<canister>.localhost:<port>/authorize`), and the plugin's cookie
+carries the same kind of URL. Neither resolves in a browser outside the
+workspace, so pass `identityProvider` and `internetIdentityId` to
+`AuthenticationManager` for an Internet Identity your browser can open (see
+[Authentication](/v3/guides/authentication)).
+
 ## Fetching Root Key
 
 When communicating with the IC mainnet, the agent uses a hardcoded public key to verify responses. For a local replica, the agent needs to fetch a different root key.
