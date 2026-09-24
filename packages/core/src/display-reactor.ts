@@ -25,7 +25,7 @@ import {
   isTextKeyedPair,
   numberOfText,
 } from "./display/visitor.js"
-import { CanisterError, ValidationError } from "./errors/index.js"
+import { CallError, CanisterError, ValidationError } from "./errors/index.js"
 import {
   DisplayReactorParameters,
   DisplayValidator,
@@ -53,6 +53,24 @@ function methodDisplayCodecs(methodType: IDL.Type): {
     args: didToDisplayCodec(didTypeFromArray(funcType.argTypes)),
     result: didToDisplayCodec(didTypeFromArray(funcType.retTypes)),
   }
+}
+
+/**
+ * What a validator that throws or rejects is reported as, the same way at
+ * every entry point (`callMethod`, `callMethodWithValidation`, `validate`): a
+ * {@link CallError} with what it threw as `cause`. It is neither a verdict on
+ * the arguments nor the canister's answer. Only `callMethod` used to wrap it;
+ * the other two passed it through raw, so a failed lookup's
+ * `TypeError: Failed to fetch` matched none of the documented error checks. A
+ * `ValidationError` it throws is a verdict, and stays one.
+ */
+function validatorFailure(methodName: string, error: unknown): Error {
+  if (error instanceof ValidationError) return error
+  const reason = error instanceof Error ? error.message : String(error)
+  return new CallError(
+    `Failed to validate the arguments of "${methodName}": ${reason}`,
+    error
+  )
 }
 
 /** The args of a DisplayReactor's query key, read as its codecs take them. */
@@ -240,6 +258,12 @@ export class DisplayReactor<
    * Arguments are in display format (strings for Principal/bigint).
    * Useful for form validation before submission.
    *
+   * Async validators run here, including `fromZodSchema(schema, { async: true })`.
+   * A validator that throws or rejects makes this reject with a `CallError`
+   * whose `cause` is what it threw, as `callMethod()` and
+   * `callMethodWithValidation()` do; a `ValidationError` it throws is passed
+   * on as it is.
+   *
    * @param methodName - The name of the method
    * @param args - The display-type arguments to validate
    * @returns ValidationResult indicating success or failure
@@ -268,7 +292,11 @@ export class DisplayReactor<
       return { success: true }
     }
 
-    return validator(args)
+    try {
+      return await validator(args)
+    } catch (error) {
+      throw validatorFailure(String(methodName), error)
+    }
   }
 
   /**
@@ -293,7 +321,11 @@ export class DisplayReactor<
 
   /**
    * Call a method with async validation support.
-   * Use this instead of callMethod() when you have async validators.
+   * Use this instead of callMethod() when you have async validators, such as
+   * `fromZodSchema(schema, { async: true })`.
+   *
+   * A failed validation rejects with a `ValidationError`, and a validator
+   * that throws or rejects with a `CallError` whose `cause` is what it threw.
    *
    * @example
    * ```typescript
@@ -379,7 +411,12 @@ export class DisplayReactor<
     const argsToValidate = validator && this.argsToValidate(methodName, args)
 
     if (validator && argsToValidate) {
-      const result = validator(argsToValidate)
+      let result: ValidationResult | Promise<ValidationResult>
+      try {
+        result = validator(argsToValidate)
+      } catch (error) {
+        throw validatorFailure(String(methodName), error)
+      }
 
       // Handle Promise (async validator)
       if (
@@ -392,8 +429,11 @@ export class DisplayReactor<
         // an unhandled rejection on top of the refusal below.
         void (result as Promise<ValidationResult>).then(undefined, () => {})
         throw new Error(
-          `Async validators are not supported in callMethod(). ` +
-            `Use reactor.callMethodWithValidation() for async validation.`
+          `Async validators are not supported in callMethod(): the validator ` +
+            `for "${String(methodName)}" returned a promise. callMethod() runs ` +
+            `validators synchronously, and so do the query and mutation hooks ` +
+            `and factories that call it. Use reactor.callMethodWithValidation() ` +
+            `for async validation, or register a synchronous validator.`
         )
       }
 

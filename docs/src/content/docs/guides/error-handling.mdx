@@ -82,6 +82,11 @@ try {
 }
 ```
 
+A validator that throws or rejects, rather than returning its verdict, is
+not a `ValidationError`: `callMethod()`, `callMethodWithValidation()` and
+`validate()` all report it as a `CallError` whose `cause` is what the validator
+threw, and nothing is sent to the canister.
+
 `@ic-reactor/react` also ships form helpers built on it —
 `mapValidationErrors`, `getFieldError`, `getFieldErrors`,
 `extractValidationErrors`, and `handleValidationError`. See

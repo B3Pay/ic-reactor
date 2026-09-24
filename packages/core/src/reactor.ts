@@ -643,8 +643,16 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
 
       return this.transformResult(params.functionName, response)
     } catch (error) {
-      // Re-throw CanisterError as-is (business logic error from canister)
-      if (error instanceof CanisterError || error instanceof ValidationError) {
+      // Re-throw CanisterError as-is (business logic error from canister), and
+      // a ValidationError or a CallError, which are already reactor errors: a
+      // DisplayReactor reports a validator that threw as a CallError, and
+      // wrapping it again would bury what the validator threw one `cause`
+      // deeper than `validate()` and `callMethodWithValidation()` put it.
+      if (
+        error instanceof CanisterError ||
+        error instanceof ValidationError ||
+        error instanceof CallError
+      ) {
         throw error
       }
 

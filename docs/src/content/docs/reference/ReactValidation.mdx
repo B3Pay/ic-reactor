@@ -10,6 +10,15 @@ import { Aside, Tabs, TabItem } from "@astrojs/starlight/components"
 
 The `@ic-reactor/react` package provides utilities to easily handle validation errors thrown by `DisplayReactor`. These helpers make it simple to integrate with form libraries like React Hook Form or manage state manually.
 
+These helpers read the `ValidationError` a validator's verdict produces. A
+validator that throws or rejects instead is reported as a `CallError` whose
+`cause` is what it threw, so `extractValidationErrors` returns `null` for it
+and `handleValidationError` hands it to `onOtherError`. The hooks and factories
+call `callMethod()`, which runs validators synchronously: a validator that
+returns a promise, such as `fromZodSchema(schema, { async: true })`, refuses
+every call they make. Run async validation with the reactor's `validate()` or
+`callMethodWithValidation()`.
+
 ## Import
 
 ```typescript

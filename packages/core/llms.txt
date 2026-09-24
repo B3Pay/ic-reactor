@@ -29,6 +29,9 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
   display-side args, validator args and results are `unknown` (an untyped
   `Reactor` gives `any`); cast to the display shape only when the interface is
   known only at run time
+- `fromZodSchema(schema, { async: true })` for a zod schema with async
+  refinements; async validators run only in `validate()` and
+  `callMethodWithValidation()` (`callMethod()` and the React hooks refuse them)
 
 ## Local Environment Root Key
 
@@ -64,7 +67,8 @@ as a "safe to trust local configuration" test.
 ## Error Types
 
 - `CanisterError`: canister `Result.Err`
-- `CallError`: transport/agent failures
+- `CallError`: transport/agent failures, and a validator that threw
+  (the thrown value is `cause`)
 - `ValidationError`: display-validator failures
 
 ## Retries

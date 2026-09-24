@@ -399,6 +399,19 @@ try {
 }
 ```
 
+`fromZodSchema(schema)` turns a zod schema into a validator for the first
+argument. A schema with an async refinement or transform needs
+`fromZodSchema(schema, { async: true })`, which parses with `safeParseAsync`
+and returns an async validator. Async validators run in `validate()` and
+`callMethodWithValidation()`. `callMethod()`, and the React hooks and factories
+that call it, run validators synchronously and refuse a call whose validator
+returns a promise.
+
+A validator that throws or rejects is reported alike by `callMethod()`,
+`callMethodWithValidation()` and `validate()`: as a `CallError` whose `cause` is
+what it threw, before anything is sent. A `ValidationError` it throws is passed
+on as it is.
+
 ## Error Handling
 
 ### Error Types

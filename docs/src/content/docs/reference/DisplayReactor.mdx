@@ -620,9 +620,28 @@ const transferSchema = z.object({
 backend.registerValidator("transfer", fromZodSchema(transferSchema))
 ```
 
+The schema checks the method's first argument. zod refuses a schema with an
+async refinement or transform on its synchronous path, so pass
+`{ async: true }` for one: the validator then parses with `safeParseAsync` and
+returns a promise, and runs where async validators run (below).
+
+```typescript
+const recipientSchema = z.object({
+  to: z
+    .string()
+    .refine(async (to) => !(await isBlocked(to)), "Address is blocked"),
+})
+
+backend.registerValidator(
+  "transfer",
+  fromZodSchema(recipientSchema, { async: true })
+)
+```
+
 ### Async Validators
 
-For async validation (e.g., checking a blocklist), use `callMethodWithValidation`:
+For async validation (e.g., checking a blocklist), use `validate()` or
+`callMethodWithValidation`:
 
 ```typescript
 backend.registerValidator("transfer", async ([input]) => {
@@ -641,6 +660,35 @@ await backend.callMethodWithValidation({
   functionName: "transfer",
   args: [formData],
 })
+```
+
+`callMethod()` runs validators synchronously, and so do the query and mutation
+hooks and factories that call it. They refuse a call whose validator returns a
+promise, with a `CallError` that names the method, without sending anything.
+
+### When a Validator Throws
+
+A validator that throws or rejects (a blocklist lookup that fails, say) is
+reported the same way by `callMethod()`, `callMethodWithValidation()` and
+`validate()`: as a `CallError` whose `cause` is what the validator threw, and
+the canister is not called. It is not a verdict on the arguments, so it is not
+a `ValidationError`, and it is not the canister's answer, so a `CanisterError`
+the validator's own lookup threw is not passed on as one. A `ValidationError`
+the validator throws is passed on as it is.
+
+```typescript
+try {
+  await backend.callMethodWithValidation({
+    functionName: "transfer",
+    args: [formData],
+  })
+} catch (error) {
+  if (isValidationError(error)) {
+    // the validator's verdict: error.issues
+  } else if (isCallError(error)) {
+    // a failed call, or a validator that threw: error.cause
+  }
+}
 ```
 
 <Aside type="tip">
