@@ -42,8 +42,8 @@ export function Transfer() {
     reset() // Clear any previous errors
     if (!to || !amount) return
 
-    const owner = to.trim()
-    if (!isPrincipalText(owner)) {
+    const recipient = to.trim()
+    if (!isPrincipalText(recipient)) {
       setResult("Invalid Principal ID")
       return
     }
@@ -54,7 +54,7 @@ export function Transfer() {
       // fraction digits than the token has is refused, not rounded.
       const units = parseTokenAmount(amount, decimals)
       // The DisplayReactor takes a nat as its decimal text.
-      transfer([{ to: { owner }, amount: units.toString() }])
+      transfer([{ to: { owner: recipient }, amount: units.toString() }])
     } catch (err) {
       setResult(`Invalid Amount: ${(err as Error).message}`)
     }

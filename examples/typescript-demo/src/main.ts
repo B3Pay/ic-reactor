@@ -81,12 +81,16 @@ const transferBtn = document.querySelector<HTMLButtonElement>("#transfer-btn")!
 const transferStatus =
   document.querySelector<HTMLDivElement>("#transfer-status")!
 
-let tokenDecimals = 8
+// The selected token's decimals, or undefined while they load: the reactor
+// already calls the new canister by then, so the previous token's decimals
+// would show and send the wrong amounts (ckETH has 18, ICP 8).
+let tokenDecimals: number | undefined
 let tokenSymbol = "ICP"
 
 async function updateToken(canisterId: string) {
   try {
     activeCanisterId = canisterId
+    tokenDecimals = undefined
 
     tokenNameEl.textContent = "Loading..."
     tokenSymbolEl.textContent = "Loading..."
@@ -103,8 +107,6 @@ async function updateToken(canisterId: string) {
     ])
     if (activeCanisterId !== canisterId) return
 
-    // Balances and transfers read these, so a token with other decimals
-    // (ckETH has 18) is not shown and sent as if it had ICP's 8.
     tokenSymbol = symbol
     tokenDecimals = decimals
     tokenNameEl.textContent = name
@@ -136,9 +138,13 @@ async function fetchBalance(owner: Principal, canisterId: string) {
       functionName: "icrc1_balance_of",
       args: [{ owner, subaccount: [] }],
     })
+    // Another token was selected meanwhile, or this one's decimals have not
+    // loaded; updateToken fetches the balance again once they have.
+    const decimals = tokenDecimals
+    if (activeCanisterId !== canisterId || decimals === undefined) return
 
     // Exact at any size, where Number(balance) / 10 ** decimals is not.
-    balanceDisplay.textContent = `${formatTokenAmount(balance, tokenDecimals)} ${tokenSymbol}`
+    balanceDisplay.textContent = `${formatTokenAmount(balance, decimals)} ${tokenSymbol}`
   } catch (error) {
     console.error("Failed to fetch balance:", error)
     if (activeCanisterId === canisterId) {
@@ -184,6 +190,12 @@ transferBtn.addEventListener("click", async () => {
     transferStatus.style.color = "#f87171"
     return
   }
+  const decimals = tokenDecimals
+  if (decimals === undefined) {
+    transferStatus.textContent = "Wait for the token's details to load"
+    transferStatus.style.color = "#f87171"
+    return
+  }
 
   try {
     transferStatus.textContent = "Transferring..."
@@ -191,9 +203,9 @@ transferBtn.addEventListener("click", async () => {
 
     // "0.29" is 29000000 e8s; Math.floor(Number("0.29") * 10 ** 8) is
     // 28999999. Throws on text it cannot read exactly, before anything is sent.
-    const amountBigInt = parseTokenAmount(amount, tokenDecimals)
-    const principal = await clientManager.getUserPrincipal()
-
+    // Nothing is awaited between reading the decimals and the call, so the
+    // amount goes to the token it was read for.
+    const amountBigInt = parseTokenAmount(amount, decimals)
     const blockIndex = await ledgerReactor.callMethod({
       functionName: "icrc1_transfer",
       args: [
@@ -208,6 +220,7 @@ transferBtn.addEventListener("click", async () => {
       ],
     })
 
+    const principal = await clientManager.getUserPrincipal()
     transferStatus.textContent = `Transfer successful! Height: ${blockIndex}`
     transferStatus.style.color = "#4ade80"
     ledgerReactor.invalidateQueries()
