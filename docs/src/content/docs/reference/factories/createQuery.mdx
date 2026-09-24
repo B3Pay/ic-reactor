@@ -414,20 +414,28 @@ The factory also takes TanStack Query's `skipToken`, re-exported by
 args are not known yet needs no placeholder args and no `enabled`:
 
 ```tsx
-import { skipToken } from "@ic-reactor/react"
+import { createQueryFactory, skipToken } from "@ic-reactor/react"
+import type { Principal } from "@icp-sdk/core/principal"
+
+// `ledger` is a Reactor of the ICRC-1 ledger, so an account's owner is a
+// Principal (a DisplayReactor's takes the principal's text)
+const getBalance = createQueryFactory(ledger, {
+  functionName: "icrc1_balance_of",
+})
 
 function Balance({ owner }: { owner?: Principal }) {
   const { data } = getBalance(
     owner ? [{ owner, subaccount: [] }] : skipToken
   ).useQuery()
+  return <span>{data?.toString() ?? "…"}</span>
 }
 ```
 
 The skipped query has a cache entry of its own under the factory's
-`getQueryKey()` prefix, which no call's key shares. Its imperative members (`fetch()`, `invalidate()`, the cache controls) are left
-out, since there is no call or entry until the args are known: check the args
-before reaching for them. `createSuspenseQueryFactory` does not take
-`skipToken`.
+`getQueryKey()` prefix, which no call's key shares. Its imperative members
+(`fetch()`, `invalidate()`, the cache controls) are left out, since there is
+no call or entry until the args are known: check the args before reaching for
+them. `createSuspenseQueryFactory` does not take `skipToken`.
 
 ### Factory Caching
 
