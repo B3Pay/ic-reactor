@@ -15,9 +15,11 @@
  * true`, as a browser shows until its session restore settles.)
  *
  * Building inside a `useState` initializer gives each render tree its own set,
- * so nothing is shared across requests.
+ * so nothing is shared across requests. In the browser, the provider's cleanup
+ * disposes the Internet Identity client its `AuthenticationManager` built, so a
+ * remount does not leave the old one listening to the page.
  */
-import { createContext, useContext, useState } from "react"
+import { createContext, useContext, useEffect, useState } from "react"
 import type { ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
@@ -67,6 +69,11 @@ export function ICReactorProvider({ children }: { children: ReactNode }) {
   // The initializer runs once per mounted tree — and a server render is its own
   // tree, so each request gets its own managers and its own cache.
   const [value] = useState(createReactorContext)
+
+  // Releases the auth client once this tree unmounts. dispose() only forgets
+  // it: StrictMode runs this cleanup and the effect again on the same managers,
+  // and the next sign-in builds a new client.
+  useEffect(() => () => value.authentication.dispose(), [value])
 
   return (
     <QueryClientProvider client={value.queryClient}>

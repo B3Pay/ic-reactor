@@ -1,6 +1,12 @@
 "use client"
 
-import React, { createContext, useContext, useState, ReactNode } from "react"
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ClientManager } from "@ic-reactor/react"
 import { AuthenticationManager } from "@ic-reactor/react"
@@ -52,6 +58,12 @@ export function ICReactorProvider({ children }: { children: ReactNode }) {
     const authentication = new AuthenticationManager({ clientManager })
     return { clientManager, authentication }
   })
+
+  // Releases the Internet Identity client the manager built once this tree
+  // unmounts. dispose() only forgets it, so StrictMode, which runs this cleanup
+  // and the effect again on the same manager, leaves the next sign-in to build
+  // a new one.
+  useEffect(() => () => authContext.authentication.dispose(), [authContext])
 
   return (
     <QueryClientProvider client={queryClient}>

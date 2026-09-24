@@ -359,6 +359,31 @@ login({
   security requirements when setting session duration.
 </Aside>
 
+## Discarding a Manager
+
+An `AuthenticationManager` built once at module scope lives as long as the page
+and needs nothing more. One built per mount does not: a provider in a
+server-rendered app builds one per render tree, and a widget may build its own
+reactor stack each time it opens. The manager builds its Internet Identity
+client on first use, and a `@icp-sdk/auth` v10 client listens to the page
+(activity, focus and the session record every tab shares) until it is disposed.
+Release it from the cleanup of whatever built the manager:
+
+```tsx
+const [authentication] = useState(
+  () => new AuthenticationManager({ clientManager })
+)
+useEffect(() => () => authentication.dispose(), [authentication])
+```
+
+`dispose()` disposes the client the manager built and forgets it, so a later
+`login()`, `logout()` or `prepareClient()` builds a new one. That keeps it safe
+under StrictMode, which runs the cleanup and the effect again on the same
+manager. It leaves the auth state and the agent's identity as they are, and it
+does not sign anyone out. A client you passed in as `authClient` is never
+disposed. With v8 there is nothing to release, and the manager only drops its
+reference.
+
 ## Automatic Query Invalidation
 
 When the user's principal changes — on login, logout, and session restore — IC Reactor sweeps the cache of every **connected canister**: in-flight queries are cancelled, inactive cached entries are **removed**, and active queries are invalidated so they refetch as the new identity.

@@ -53,6 +53,9 @@ export function ICReactorProvider({ children }: { children: React.ReactNode }) {
     return { clientManager, authentication }
   })
 
+  // Releases the Internet Identity client once this tree unmounts.
+  useEffect(() => () => authContext.authentication.dispose(), [authContext])
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthContext.Provider value={authContext}>

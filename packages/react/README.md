@@ -510,6 +510,22 @@ export default async function Page() {
 }
 ```
 
+A provider that builds its managers per mount, as a server-rendered app does,
+should also release the Internet Identity client when the tree unmounts. An
+`AuthenticationManager` builds that client on first use, and a v10 client keeps
+listening to the page until it is disposed, so each remount would leave one
+behind. Call `authentication.dispose()` from the provider's cleanup:
+
+```tsx
+const [value] = useState(createReactorContext)
+useEffect(() => () => value.authentication.dispose(), [value])
+```
+
+`dispose()` only forgets the client, and the next sign-in builds a new one, so
+this is safe under StrictMode, which runs the cleanup and the effect again on
+the same managers. A client passed in as `authClient` is left alone.
+`examples/nextjs/src/service/provider.tsx` does this.
+
 Two further constraints on the App Router specifically:
 
 - Hooks are client-only, like every React hook — call them from a `"use client"`

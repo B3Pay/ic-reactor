@@ -208,6 +208,47 @@ export class AuthenticationManager {
   }
 
   /**
+   * Releases the `@icp-sdk/auth` client this manager built.
+   *
+   * A v10 client hooks the page when it is built: activity listeners on
+   * `document`, focus and visibility listeners, a watch on the session record
+   * that every tab shares and, once signed in, a refresh timer. Nothing
+   * releases them when the manager is dropped, so a manager built per mount,
+   * as a server-rendered app builds one in its provider, left one live client
+   * behind on each remount. Call this when you discard the manager, from the
+   * cleanup of whatever built it.
+   *
+   * The client is disposed and forgotten, so a later {@link prepareClient},
+   * {@link login}, {@link logout} or restore that needs a client builds a new
+   * one. That keeps it safe in an effect cleanup under React's StrictMode,
+   * which runs the cleanup and then the effect again on the same manager. With
+   * `@icp-sdk/auth` v8 there is nothing to release, and the manager only drops
+   * its reference. A client passed in as `authClient` belongs to the caller: it
+   * is never disposed, and the manager goes on using it.
+   *
+   * The auth state and the identity on the agent are left as they are.
+   *
+   * @example
+   * ```tsx
+   * const [authentication] = useState(
+   *   () => new AuthenticationManager({ clientManager })
+   * )
+   * useEffect(() => () => authentication.dispose(), [authentication])
+   * ```
+   */
+  public dispose(): void {
+    if (this.authClientWasProvided) {
+      return
+    }
+    const client = this.authClient
+    this.authClient = undefined
+    this.authClientOptions = undefined
+    if (client) {
+      disposeClient(client)
+    }
+  }
+
+  /**
    * Subscribes to auth state changes.
    *
    * Callbacks run in the order they subscribed, after the state has changed. A
@@ -495,6 +536,11 @@ export class AuthenticationManager {
   }
 
   public logout = async (options?: { returnTo?: string }) => {
+    if (!this.authClient) {
+      // None built yet, or released by `dispose()`. Signing out needs no user
+      // gesture, so one can be built here.
+      await this.ensureClient()
+    }
     if (!this.authClient) {
       throw new Error(
         "Authentication module is missing or failed to initialize. To use logout, install the optional auth peer: npm install @icp-sdk/auth. If it is already installed and your bundler could not resolve it, pass a pre-constructed client instead: new AuthenticationManager({ clientManager, authClient: new AuthClient(...) })"

@@ -48,7 +48,7 @@ npm run dev
 
 ```tsx
 // src/service/provider.tsx
-import { createContext, useContext, useState } from "react"
+import { createContext, useContext, useEffect, useState } from "react"
 import type { ReactNode } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
@@ -96,6 +96,11 @@ export function ICReactorProvider({ children }: { children: ReactNode }) {
   // Runs once per mounted tree — and a server render is its own tree, so each
   // request gets its own managers and its own cache.
   const [value] = useState(createReactorContext)
+
+  // Releases the auth client once this tree unmounts. dispose() only forgets
+  // it: StrictMode runs this cleanup and the effect again on the same managers,
+  // and the next sign-in builds a new client.
+  useEffect(() => () => value.authentication.dispose(), [value])
 
   return (
     <QueryClientProvider client={value.queryClient}>
@@ -159,7 +164,10 @@ const App: React.FC<AppProps> = (props) => (
   session restore settles.
 
 Constructing inside a `useState` initializer gives each render tree its own
-set. See [Server-Side
+set. In the browser, the `AuthenticationManager` of a tree that unmounts still
+holds the Internet Identity client it built, and a v10 client keeps listening to
+the page until it is disposed, so the provider calls
+`authentication.dispose()` from its cleanup. See [Server-Side
 Rendering](/v3/framework/react-setup#server-side-rendering).
 
 </Aside>
