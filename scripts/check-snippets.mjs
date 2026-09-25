@@ -509,6 +509,9 @@ function compile(project, byModule) {
     )
   }
   const host = ts.createCompilerHost(options)
+  // `types` and the other lookups a program without a tsconfig makes start
+  // from the current directory; make that the project, wherever this runs.
+  host.getCurrentDirectory = () => project
   const cache = ts.createModuleResolutionCache(project, (name) => name, options)
   host.resolveModuleNameLiterals = (
     literals,
