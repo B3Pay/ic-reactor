@@ -41,5 +41,8 @@ packages need tests, builds, docs, or export updates.
   and the rules for the AI context files
 - Root `llms.txt`, `llms-full.txt` and `packages/*/llms.txt`, the consumer
   guides that ship with the docs and the npm packages
+- `skill-packages/ic-reactor/`, the consumer skill, which apps install as a
+  Claude Code plugin (`.claude-plugin/marketplace.json`) or with the `skills`
+  CLI
 - `CLAUDE.md`, `.github/copilot-instructions.md`, and `.cursorrules` for
   agent-specific discovery

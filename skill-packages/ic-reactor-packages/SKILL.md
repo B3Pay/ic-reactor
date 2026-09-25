@@ -1,13 +1,14 @@
 ---
 name: ic-reactor-packages
 description: >-
-  Inspect, modify, review, or document the IC Reactor monorepo package
-  architecture. Use when work spans package ownership, package.json exports,
-  tsconfig/project references, build/test scripts, generated artifacts,
-  dependency boundaries, release readiness, or deciding where an AI agent should
-  start for @ic-reactor/core, @ic-reactor/react, @ic-reactor/candid,
-  @ic-reactor/parser, @ic-reactor/codegen, @ic-reactor/cli, or
-  @ic-reactor/vite-plugin.
+  For contributors working inside the B3Pay/ic-reactor monorepo: inspect,
+  modify, review or document its package architecture. Use when work spans
+  package ownership, package.json exports, tsconfig/project references,
+  build/test scripts, generated artifacts, dependency boundaries, release
+  readiness, or deciding where to start in @ic-reactor/core,
+  @ic-reactor/react, @ic-reactor/candid, @ic-reactor/parser,
+  @ic-reactor/codegen, @ic-reactor/cli or @ic-reactor/vite-plugin. In an app
+  that installs @ic-reactor packages, use the ic-reactor skill instead.
 ---
 
 # IC Reactor Packages
@@ -56,6 +57,7 @@ entry points, verification commands, or known failure modes.
 | Vite `.did` watching and environment injection                | `packages/vite-plugin`                                                                                   |
 | Local Internet Identity `/authorize` detection                | `packages/react/src/auth/local-ii-probe.ts`, `packages/react/src/auth/constants.ts`                      |
 | `ic_env` trust decision (`allowEnvConfig`, `trustsEnvConfig`) | `packages/core/src/client.ts`, `packages/core/src/utils/helper.ts`, `packages/core/src/reactor.ts`       |
+| Consumer agent skill and the Claude Code plugin               | `skill-packages/ic-reactor/`, `.claude-plugin/marketplace.json`                                          |
 
 `AuthenticationManager.prepareClient()` probes the locally deployed Internet
 Identity canister and picks `/authorize` or the legacy `/#authorize`, or refuses

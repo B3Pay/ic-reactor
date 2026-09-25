@@ -185,8 +185,8 @@ Repository AI context:
 - `AGENTS.md` — task-to-source routing, verification by change type, and the
   rules for the AI context files (read this first)
 - `CLAUDE.md` — Claude / Anthropic project context
-- `skill-packages/` — local skill packages (multi-agent compatible)
-- `B3Pay/ic-reactor-skills` — external IC Reactor skills repo (mirror)
+- `skill-packages/ic-reactor-hooks/` and `skill-packages/ic-reactor-packages/`
+  — contributor skills for work in this repository
 
 Consumer AI context (for apps that install the packages; keep repo paths,
 pnpm commands and CI notes out of these):
@@ -198,6 +198,10 @@ pnpm commands and CI notes out of these):
 - `packages/<name>/llms.txt` — each package's guide, shipped in its tarball
   and opening with an `Applies to` version line; the package README points to
   it
+- `skill-packages/ic-reactor/` — the consumer Agent Skill, which is also the
+  Claude Code plugin listed in `.claude-plugin/marketplace.json`; apps install
+  it with `/plugin install ic-reactor@ic-reactor` or
+  `npx skills add B3Pay/ic-reactor --skill ic-reactor`
 
 ## Adding a package
 

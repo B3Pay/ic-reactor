@@ -1,18 +1,20 @@
 ---
 name: ic-reactor-hooks
 description: >-
-  Create, refactor, review, and document IC Reactor React hook integrations for
-  Internet Computer (ICP) apps. Use when working with @ic-reactor/react,
-  createActorHooks, createQuery/createMutation factory patterns, useActorMethod,
-  TanStack Query cache invalidation, generated hooks from the ic-reactor CLI or
-  Vite plugin, or when explaining hook usage inside React components versus
-  imperative usage outside React (fetch/execute/invalidate in loaders, actions,
-  services, and tests).
+  For contributors working inside the B3Pay/ic-reactor repository: create,
+  refactor, review and document the @ic-reactor/react hook layer and how the
+  repository's docs, examples and codegen templates use it (createActorHooks,
+  createQuery/createMutation factories, useActorMethod, TanStack Query cache
+  invalidation, generated hooks, inside versus outside React). Use when
+  changing packages/react or its tests, docs or examples. In an app that
+  installs @ic-reactor packages, use the ic-reactor skill instead.
 ---
 
 # IC Reactor Hooks
 
 Use this skill to implement or explain hook patterns in this repository with minimal rework and consistent cache behavior.
+
+This skill is for work on IC Reactor itself. Code in an app that installs the packages is covered by the consumer skill in `skill-packages/ic-reactor/`, which apps install as a Claude Code plugin or with the `skills` CLI; keep it in step when a hook's public behavior changes.
 
 Read `references/patterns.md` only when you need concrete examples, file pointers, or exact API surface reminders.
 
