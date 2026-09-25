@@ -64,8 +64,9 @@ const { mutate } = useActorMutation({
 
 ## Documentation
 
-- Refer to `llms.txt` in the root directory for compact package/task routing.
-- Refer to `llms-full.txt` for a longer API overview and task-oriented AI guide.
+- Refer to `AGENTS.md` for which source files own a task and the minimum verification per kind of change.
+- `llms.txt` (index) and `llms-full.txt` (complete guide) are the consumer guides for apps that install the packages, published at the docs root; `packages/*/llms.txt` ship in each npm tarball. Keep repo paths and contributor workflow out of all three.
+- Record user-visible changes under `## Unreleased` in `CHANGELOG.md`.
 - Refer to `README.md` for the current package map, install paths, and examples.
 - Refer to `/docs` for detailed guides and examples.
 - Refer to `skill-packages/ic-reactor-packages/SKILL.md` for package ownership, exports, generated artifacts, and verification workflows.

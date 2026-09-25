@@ -54,10 +54,33 @@ Use this map before editing so you can start in the package that owns the behavi
 | `@ic-reactor/cli`         | `ic-reactor` command-line interface and config schema                                                  | `packages/cli/src/`, `packages/cli/schema.json`                                                   |
 | `@ic-reactor/vite-plugin` | Vite integration, `.did` watching, environment-cookie injection                                        | `packages/vite-plugin/src/`, `examples/vite-plugin-demo/`, `examples/vite-environment-variables/` |
 
+## Where to start for a task
+
+| Task                                        | Start here                                                                                                                                                                |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| One-call React setup                        | `packages/react/src/defineReactor.ts`, `packages/react/src/defineDisplayReactor.ts` (shared body in `defineReactorShared.ts`), `skill-packages/ic-reactor-hooks/SKILL.md` |
+| Server-rendered apps                        | `packages/react/src/createReactorProvider.ts`, `examples/nextjs/src/service/provider.tsx`, `examples/nextjs-app-router/src/app/providers.tsx`                             |
+| React Server Components                     | `packages/react/src/server.ts` (the `react-server` entry), `packages/react/tests/server-entry.test.ts`                                                                    |
+| Hooks and query/mutation factories          | `packages/react/src/createActorHooks.ts`, `packages/react/src/create*.ts`, `packages/react/src/types.ts`, `docs/src/content/docs/reference/factories/`                    |
+| `skipToken`, invalidation targets           | `packages/react/src/types.ts` (`SkippableQueryConfig`, `InvalidationTarget`), `packages/react/src/utils.ts`                                                               |
+| Many canisters of one interface             | `Reactor.forCanister` in `packages/core/src/reactor.ts`                                                                                                                   |
+| Types from a reactor                        | `packages/core/src/types/reactor.ts` (`ReactorArgsOf`, `ReactorDataOf`, `ReactorErrorOf`, `ServiceOf`, `TransformOf`)                                                     |
+| Token amounts and principal text            | `packages/core/src/utils/token-amount.ts`, `packages/core/src/utils/helper.ts`, `docs/src/content/docs/reference/Utilities.mdx`                                           |
+| Retries and errors                          | `packages/core/src/errors/index.ts`, `docs/src/content/docs/guides/error-handling.mdx`                                                                                    |
+| Identity switches and the cache             | `ClientManager.updateAgent` and `fetchAcrossIdentitySwitch` in `packages/core/src/client.ts`                                                                              |
+| Internet Identity auth, identity attributes | `packages/react/src/auth/`, `packages/react/src/hooks/createAuthHooks.ts`, `docs/src/content/docs/guides/authentication.mdx`                                              |
+| Testing kit                                 | `packages/core/src/testing/`, `packages/react/src/testing.ts`, `docs/src/content/docs/guides/testing.mdx`                                                                 |
+| Generated hooks and factories               | `packages/codegen/src/` (factories in `generators/factories.ts`), then the CLI and Vite consumers; `examples/codegen-in-action/`                                          |
+| CLI config and commands                     | `packages/cli/src/`, `packages/cli/schema.json`                                                                                                                           |
+| Vite generation and `ic_env` injection      | `packages/vite-plugin/src/`, `examples/vite-plugin-demo/`, `examples/vite-environment-variables/`                                                                         |
+| Runtime Candid, metadata forms              | `packages/candid/src/`, `packages/candid/METADATA_REACTOR_GUIDE.md`                                                                                                       |
+| `.did` parsing                              | `packages/parser/src/` (Rust), `packages/parser/tests/`                                                                                                                   |
+| Consumer AI guides                          | `llms.txt`, `llms-full.txt`, `packages/*/llms.txt`; see [AI context files](#ai-context-files)                                                                             |
+
 ## Verification commands
 
 - Format check (CI gate; covers the whole repo, with exclusions declared in `.prettierignore`): `pnpm format:check`
-- AI context check (CI gate; asserts `llms.txt` versions match every `package.json` and each `packages/*/llms.txt` exists): `pnpm check:ai-context`
+- AI context check (CI gate): `pnpm check:ai-context`; see [AI context files](#ai-context-files) for what it asserts.
 - Lint used by CI: `pnpm lint` — ESLint flat config over `packages/*/src` and `packages/*/tests`. Run `pnpm build` first: the type-aware rules read core's emitted `.d.ts`, and without a build they degrade to `any` and stop reporting. A new package needs a `tsconfig.typecheck.json` and an entry in `TYPECHECK_PROJECTS`.
 - Type check used by CI: `pnpm typecheck` — runs each package's own `typecheck` script plus `e2e/`'s, covering `src` and tests. The root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing.
 - Package builds: `pnpm build`
@@ -68,14 +91,68 @@ Use this map before editing so you can start in the package that owns the behavi
 - Docs build: `pnpm docs:build`, `pnpm docs:check-links`
 - Dependency audit (CI gate on every PR): `pnpm verify:audit`
 
-Generated outputs under `dist`, `.dfx`, `.icp`, `.mops`, `target`, `.next`, `.astro`, and `*.tsbuildinfo` are normally build artifacts. Do not hand-edit generated hook files; change the generator, wrapper, or source `.did` instead.
+### Verification by change type
+
+| Change                                     | Minimum verification                                                                     |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| Docs only                                  | `pnpm format:check`, `pnpm check:ai-context`, `pnpm docs:build`, `pnpm docs:check-links` |
+| AI context files, `CHANGELOG.md`           | `pnpm check:ai-context`, `pnpm format:check`                                             |
+| Skill, frontmatter or agent metadata       | a YAML/frontmatter parse check, `pnpm format:check`                                      |
+| React hooks, factories or auth             | `pnpm --filter @ic-reactor/react test`                                                   |
+| Core runtime                               | `pnpm --filter @ic-reactor/core test`                                                    |
+| Parser or candid                           | `pnpm --filter @ic-reactor/parser build`, `pnpm --filter @ic-reactor/candid test`        |
+| Codegen, CLI or Vite output                | `pnpm --filter @ic-reactor/codegen test`, plus the affected CLI or Vite plugin tests     |
+| Broad package change                       | `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm lint`                                 |
+| Package `exports`, `files` or build output | `pnpm verify:packages`                                                                   |
+| Examples                                   | `pnpm typecheck:examples`, `pnpm build:examples`                                         |
+| A bug fix                                  | `pnpm verify:test-fails <test file> --package <pkg>` on the new test                     |
+
+Do not run a package build and a package test at the same time when parser or
+candid tests read the parser's `dist`: a parser build removes and recreates it.
+
+## Generated files
+
+Outputs under `dist`, `.dfx`, `.icp`, `.mops`, `target`, `.next`, `.astro`, and `*.tsbuildinfo` are build artifacts, and so are generated canister declarations, `index.generated.ts` and `index.factories.generated.ts` in the examples. Do not hand-edit them; change the generator in `packages/codegen/src/`, the wrapper, or the source `.did` instead, then regenerate and check the affected CLI or Vite consumer. `docs/src/content/docs/libs/` is TypeDoc output rewritten by `pnpm docs:build`.
 
 ## AI context files
 
-- `llms.txt`: compact package/task routing manifest
-- `llms-full.txt`: longer AI-friendly API and task guide
+Two audiences, kept apart:
 
-### How to use skills
+- **Consumers** (agents writing apps that install the packages):
+  - `llms.txt`: an index in the llmstxt.org shape (H1, `>` summary, short
+    orientation, `##` sections of `[title](url): note` links, `## Optional`
+    last). `.github/workflows/docs.yml` publishes it at
+    `https://ic-reactor.b3pay.net/llms.txt`. Its links point at the `.md`
+    companions `starlight-page-actions` publishes for each docs page under
+    `/v3/` (source-cased: `reference/ClientManager.md`, and `packages/candid.md`
+    for `packages/candid/index.mdx`).
+  - `llms-full.txt`: the complete consumer guide, published at
+    `https://ic-reactor.b3pay.net/llms-full.txt`. Every snippet must compile
+    against the public API of the current packages.
+  - `packages/<name>/llms.txt`: each package's own guide, shipped in its npm
+    tarball through `"files"`.
+  - `CHANGELOG.md`: per-package Added / Changed / Deprecated / Fixed under
+    `## Unreleased`.
+  - Keep repo paths, pnpm commands and CI notes out of these files.
+- **Contributors** (agents working in this repository): this file,
+  `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md` and
+  `skill-packages/`.
+
+`pnpm check:ai-context` (`scripts/check-ai-context.js`) asserts that:
+
+- `llms.txt` lists every package at its `package.json` version
+  (`` - `@ic-reactor/core`: `3.12.5` ``);
+- every package but the parser ships a `packages/<name>/llms.txt`;
+- no file in `scripts/ai-context-files.js` names a version no package is at,
+  or a docs path other than `/v3/`.
+
+`scripts/release.js` and `scripts/release-tools.js` rewrite the versions in
+every file listed in `scripts/ai-context-files.js`, on lines that name a
+released package. The parser has no release script: bumping it means updating
+`llms.txt`, `llms-full.txt` and the lane lines in the contributor files by
+hand, and the check names each one that is stale.
+
+## How to use skills
 
 - Discovery: Skill bodies live on disk at `skill-packages/<skill-name>/SKILL.md`. Agent-specific metadata is in `skill-packages/<skill-name>/agents/`.
 - Trigger rules: If the user names a skill (with `$SkillName` or plain text) OR the task clearly matches a skill's description, use that skill for the turn.

@@ -30,6 +30,11 @@ Start in the package that owns the behavior:
 | `@ic-reactor/cli`         | `packages/cli/src/`, `packages/cli/schema.json`                                                   |
 | `@ic-reactor/vite-plugin` | `packages/vite-plugin/src/`, `examples/vite-plugin-demo/`, `examples/vite-environment-variables/` |
 
+`AGENTS.md` maps tasks to source files ("Where to start for a task") and lists
+the minimum verification per kind of change. The root `llms.txt` and
+`llms-full.txt` are consumer guides for apps that install the packages, not
+repository routing; keep contributor content out of them.
+
 ## Skills
 
 Skills are structured instruction sets stored in `skill-packages/`. When a task matches a skill's description, load the skill's `SKILL.md` and follow its workflow.
@@ -163,7 +168,7 @@ pnpm build:examples     # Build every example app (CI gate)
 pnpm lint               # ESLint over packages/*/src and packages/*/tests (CI gate)
 pnpm format             # Format the whole repo with Prettier
 pnpm format:check       # Verify formatting without writing (CI gate, whole repo)
-pnpm check:ai-context   # Verify llms.txt versions match package.json (CI gate)
+pnpm check:ai-context   # AI guides: package versions, docs paths (CI gate)
 pnpm size               # size-limit gate for core/react/candid/parser (CI gate)
 pnpm verify:packages    # Pack + publint + attw + real-Node import of published artifacts
 pnpm verify:peer-floors # Typecheck + test core/react at the lowest peer versions they accept, and compile the built declarations with the oldest supported TypeScript (CI gate; build first)
@@ -209,8 +214,16 @@ through workspace symlinks, so nothing else sees the published artifact.
 
 ## Key File References
 
-- `llms.txt` — Compact AI routing manifest
-- `llms-full.txt` — Longer AI-friendly API and task guide
+- `AGENTS.md` — Task routing to source files, verification by change type, and
+  the rules for the AI context files
+- `llms.txt` — Consumer index (llmstxt.org shape), published at
+  `https://ic-reactor.b3pay.net/llms.txt`; no repo paths or contributor workflow
+- `llms-full.txt` — Complete consumer guide, published at
+  `https://ic-reactor.b3pay.net/llms-full.txt`; its snippets must compile
+- `packages/*/llms.txt` — Per-package consumer guides shipped in the npm
+  tarballs
+- `CHANGELOG.md` — Per-package changes; add user-visible ones under
+  `## Unreleased`
 - `README.md` — Root package overview, install paths, examples, and AI context index
 - `skill-packages/ic-reactor-hooks/SKILL.md` — Hook patterns skill
 - `skill-packages/ic-reactor-packages/SKILL.md` — Package ownership and verification skill

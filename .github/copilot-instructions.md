@@ -95,7 +95,8 @@ Follow these repository-specific patterns when suggesting code:
 
 ## Where to look for examples
 
-- `llms.txt`
+- `AGENTS.md` (task-to-source-file routing and verification by change type)
+- `llms-full.txt` (the consumer guide; `llms.txt` is its index)
 - `README.md`
 - `packages/react/src/`
 - `packages/react/README.md`
@@ -106,15 +107,13 @@ Follow these repository-specific patterns when suggesting code:
 - `packages/vite-plugin/README.md`
 - `examples/all-in-one-demo/src/lib/factories.ts`
 - `examples/tanstack-router/src/canisters/ledger/hooks/`
-- `AGENTS.md`
-- `llms-full.txt`
 - `skill-packages/ic-reactor-hooks/SKILL.md`
 - `skill-packages/ic-reactor-packages/SKILL.md`
 
 ## Verification
 
 - Format check (CI gate; covers the whole repo): `pnpm format:check`
-- AI context check (CI gate): `pnpm check:ai-context`
+- AI context check (CI gate): `pnpm check:ai-context` (package versions and docs paths in the AI guides). `llms.txt`, `llms-full.txt` and `packages/*/llms.txt` are consumer guides: keep repo paths and contributor workflow out of them, and record user-visible changes in `CHANGELOG.md`.
 - Lint used by CI: `pnpm lint` (ESLint flat config over `packages/*/src` and `packages/*/tests`; run `pnpm build` first or the type-aware rules degrade to `any` and stop reporting)
 - Type check used by CI: `pnpm typecheck` (every package plus `e2e/`, `src` and tests; the root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing)
 - Package builds: `pnpm build`

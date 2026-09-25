@@ -403,7 +403,7 @@ pnpm typecheck
 # Check formatting (CI gate; covers the whole repo)
 pnpm format:check
 
-# Check llms.txt versions against every package.json (CI gate)
+# Check package versions and docs paths in the AI guides (CI gate)
 pnpm check:ai-context
 
 # Pack, install outside the workspace, and verify the published artifacts
@@ -423,15 +423,24 @@ This repository is intentionally structured to work well with AI coding assistan
 
 ### AI context files
 
-| File                                                                   | Purpose                                       |
-| ---------------------------------------------------------------------- | --------------------------------------------- |
-| [`llms.txt`](./llms.txt)                                               | Compact package/task routing manifest         |
-| [`llms-full.txt`](./llms-full.txt)                                     | Longer prompt-ready API and task guide        |
-| [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context            |
-| [`AGENTS.md`](./AGENTS.md)                                             | OpenAI Codex agent instructions               |
-| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                   |
-| [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                              |
-| [`skill-packages/`](./skill-packages/)                                 | Local skill packages (multi-agent compatible) |
+For apps that use IC Reactor (published with the docs and in the npm packages):
+
+| File                               | Purpose                                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [`llms.txt`](./llms.txt)           | Index of the docs in the llmstxt.org format, served at `https://ic-reactor.b3pay.net/llms.txt`  |
+| [`llms-full.txt`](./llms-full.txt) | Complete guide with setup choices, snippets and anti-patterns, served at `/llms-full.txt`       |
+| `packages/*/llms.txt`              | Each package's own guide, shipped in its tarball: `node_modules/@ic-reactor/<package>/llms.txt` |
+| [`CHANGELOG.md`](./CHANGELOG.md)   | Per-package changes with migration hints                                                        |
+
+For agents working in this repository:
+
+| File                                                                   | Purpose                                                                    |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [`AGENTS.md`](./AGENTS.md)                                             | Task-to-source routing, verification by change type, AI context file rules |
+| [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context                                         |
+| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                                                |
+| [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                                                           |
+| [`skill-packages/`](./skill-packages/)                                 | Local skill packages (multi-agent compatible)                              |
 
 ### Skill: `ic-reactor-hooks`
 

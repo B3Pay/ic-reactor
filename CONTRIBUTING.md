@@ -44,7 +44,7 @@ CI gate operate on exactly the same set of files.
 5. Run the remaining CI gates before opening a PR:
 
 ```bash
-pnpm check:ai-context  # llms.txt versions match every package.json
+pnpm check:ai-context  # package versions and docs paths in the AI guides
 pnpm lint              # ESLint over packages/*/src and packages/*/tests
 pnpm typecheck         # every package and e2e/, including their tests
 ```
@@ -182,11 +182,20 @@ AI-assisted contributions are welcome, but contributors are responsible for corr
 
 Repository AI context:
 
-- `llms.txt` — high-level context for LLMs
+- `AGENTS.md` — task-to-source routing, verification by change type, and the
+  rules for the AI context files (read this first)
 - `CLAUDE.md` — Claude / Anthropic project context
-- `AGENTS.md` — OpenAI Codex agent instructions
 - `skill-packages/` — local skill packages (multi-agent compatible)
 - `B3Pay/ic-reactor-skills` — external IC Reactor skills repo (mirror)
+
+Consumer AI context (for apps that install the packages; keep repo paths,
+pnpm commands and CI notes out of these):
+
+- `llms.txt` — index of the docs in the llmstxt.org format, published at
+  `https://ic-reactor.b3pay.net/llms.txt`
+- `llms-full.txt` — the complete guide, published at
+  `https://ic-reactor.b3pay.net/llms-full.txt`
+- `packages/<name>/llms.txt` — each package's guide, shipped in its tarball
 
 ## Adding a package
 

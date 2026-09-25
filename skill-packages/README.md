@@ -8,7 +8,7 @@ This directory contains AI agent skill packages for the IC Reactor v3 project. S
 - Runtime packages: `@ic-reactor/core`, `@ic-reactor/react`, and `@ic-reactor/candid` (`3.12.5`).
 - Code generation packages: `@ic-reactor/codegen`, `@ic-reactor/cli`, and `@ic-reactor/vite-plugin` (`0.14.0`).
 - Parser package: `@ic-reactor/parser` (`0.5.0`).
-- Shared AI package summary: [`../llms.txt`](../llms.txt).
+- Consumer AI guides: [`../llms.txt`](../llms.txt) (index) and [`../llms-full.txt`](../llms-full.txt) (complete guide); contributor routing: [`../AGENTS.md`](../AGENTS.md).
 
 ## Available Skills
 
@@ -17,8 +17,8 @@ This directory contains AI agent skill packages for the IC Reactor v3 project. S
 | [`ic-reactor-hooks`](./ic-reactor-hooks/)       | React hooks, query/mutation factories, generated hooks, cache patterns, and inside/outside React usage |
 | [`ic-reactor-packages`](./ic-reactor-packages/) | Monorepo package ownership, generated artifacts, documentation consistency, and verification workflow  |
 
-Use root `llms.txt` for compact repository routing and `llms-full.txt` when an
-agent needs a longer prompt-ready IC Reactor API guide. Skills should stay
+Use root `AGENTS.md` for repository routing and verification, and
+`llms-full.txt` when an agent needs the complete consumer API guide. Skills should stay
 focused on workflow and link to `references/` for concrete examples.
 
 ## Agent Compatibility
