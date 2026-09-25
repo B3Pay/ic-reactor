@@ -403,7 +403,7 @@ pnpm typecheck
 # Check formatting (CI gate; covers the whole repo)
 pnpm format:check
 
-# Check package versions and docs paths in the AI guides (CI gate)
+# Check versions, package stamps and docs links in the AI guides (CI gate)
 pnpm check:ai-context
 
 # Pack, install outside the workspace, and verify the published artifacts

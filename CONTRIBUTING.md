@@ -44,7 +44,7 @@ CI gate operate on exactly the same set of files.
 5. Run the remaining CI gates before opening a PR:
 
 ```bash
-pnpm check:ai-context  # package versions and docs paths in the AI guides
+pnpm check:ai-context  # versions, package stamps and docs links in the AI guides
 pnpm lint              # ESLint over packages/*/src and packages/*/tests
 pnpm typecheck         # every package and e2e/, including their tests
 ```

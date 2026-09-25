@@ -142,16 +142,25 @@ Two audiences, kept apart:
 
 `pnpm check:ai-context` (`scripts/check-ai-context.js`) asserts that:
 
-- `llms.txt` lists every package at its `package.json` version
-  (`` - `@ic-reactor/core`: `3.12.5` ``);
-- every package but the parser ships a `packages/<name>/llms.txt`;
+- `llms.txt` and `llms-full.txt` list every package at its `package.json`
+  version (`` - `@ic-reactor/core`: `3.12.5` ``);
+- every package, the parser included, ships a `packages/<name>/llms.txt`
+  whose stamp line names its own current version
+  (``Applies to `@ic-reactor/core` 3.12.5.``);
 - no file in `scripts/ai-context-files.js` names a version no package is at,
-  or a docs path other than `/v3/`.
+  or a docs path other than `/v3/`;
+- every `https://ic-reactor.b3pay.net/...` link in those files, the root and
+  package READMEs, `CHANGELOG.md` and `CONTRIBUTING.md` is `/llms.txt`,
+  `/llms-full.txt` or a `/v3/` page that exists in `docs/src/content/docs/`:
+  a lowercase route (`/v3/reference/clientmanager`) or a source-cased `.md`
+  companion (`/v3/reference/ClientManager.md`), with any `#fragment` naming a
+  heading of that page. `libs/` (TypeDoc output) is not checked.
 
 `scripts/release.js` and `scripts/release-tools.js` rewrite the versions in
 every file listed in `scripts/ai-context-files.js`, on lines that name a
-released package. The parser has no release script: bumping it means updating
-`llms.txt`, `llms-full.txt` and the lane lines in the contributor files by
+released package, so the stamps and version lists follow a release. The parser
+has no release script: bumping it means updating `llms.txt`, `llms-full.txt`,
+`packages/parser/llms.txt` and the lane lines in the contributor files by
 hand, and the check names each one that is stale.
 
 ## How to use skills
