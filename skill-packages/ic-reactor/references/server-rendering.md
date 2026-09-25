@@ -79,8 +79,8 @@ export function PostCount() {
   package exports; rename them freely.
 - `useReactor()` is typed as the factory's return value; `useReactor("key")`
   returns one property. Never write `as any` hook forwarders or a hand-made
-  context provider, and never call `createActorHooks` or `createAuthHooks` in
-  a component.
+  context provider, and take the provider's hooks from `useReactor()` rather
+  than calling `createActorHooks` or `createAuthHooks` in a component.
 - The factory receives the provider's props other than `children`, read once
   per mount. Give the provider a new `key` to build a new value.
 - On unmount the provider calls `dispose()` on the `AuthenticationManager`s

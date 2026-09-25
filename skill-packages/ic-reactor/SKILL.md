@@ -271,7 +271,8 @@ re-exports `@ic-reactor/core`.
 
 - Call a hook in a loader, action, service or script; use `query.fetch()`,
   `mutation.execute()`, `reactor.fetchQuery()` or `callMethod()`.
-- Call `createActorHooks` or `createAuthHooks` in a component body.
+- Call `createActorHooks` or `createAuthHooks` on every render; build them
+  at module scope, in the provider factory, or in a `useMemo`.
 - Put an update method in `useActorQuery`, `createQuery` or
   `createQueryFactory`; use a mutation.
 - Give an update mutation, `useActorMethod` or a `mutations.retry` default a
@@ -314,6 +315,6 @@ Read only the file the task needs:
   sign-in and route guards, identity attributes, error narrowing, retries,
   and tests against the fake replica.
 
-Docs: https://ic-reactor.b3pay.net/llms.txt lists every page as a Markdown
-link (such as https://ic-reactor.b3pay.net/v3/framework/mutations.md), and
+Docs: https://ic-reactor.b3pay.net/llms.txt lists the docs pages as Markdown
+links (such as https://ic-reactor.b3pay.net/v3/framework/mutations.md), and
 https://ic-reactor.b3pay.net/llms-full.txt is the complete guide in one file.
