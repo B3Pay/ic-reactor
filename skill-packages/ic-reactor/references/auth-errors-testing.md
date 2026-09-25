@@ -113,6 +113,31 @@ export async function rename(name: string) {
 `.message`. The guards also recognise errors from another copy of the
 package, so prefer them to `instanceof`.
 
+A hook's `error` is typed `ReactorErrorOf<typeof reactor, "method">`, whose
+`CanisterError` holds the method's `Err` type. A caught value is `unknown`,
+and so is `.err` after `isCanisterError`; type the value first:
+
+```ts
+import {
+  formatTokenAmount,
+  isCanisterError,
+  type ReactorErrorOf,
+} from "@ic-reactor/react"
+import { ledger } from "./ledger"
+
+type TransferFailure = ReactorErrorOf<typeof ledger, "icrc1_transfer">
+
+export function shortfall(caught: unknown, decimals: number) {
+  const error = caught as TransferFailure
+  // `ledger` is a raw Reactor, so the variant is { InsufficientFunds: ... };
+  // on a DisplayReactor, compare error.err._type instead
+  if (isCanisterError(error) && "InsufficientFunds" in error.err) {
+    return formatTokenAmount(error.err.InsufficientFunds.balance, decimals)
+  }
+  return undefined
+}
+```
+
 ## Retries
 
 ```ts

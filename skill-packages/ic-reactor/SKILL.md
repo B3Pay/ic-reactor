@@ -93,8 +93,11 @@ This skill describes these versions:
 `ClientManager`, the reactor, the six hooks of `createActorHooks`, and
 `useAuth`, `useAgentState`, `useUserPrincipal`, `useIdentityAttributes`,
 `authentication` and `identityAttributes`. `defineDisplayReactor` takes the
-same options and uses display values: `string` for `nat`, `int` and
-`principal`, hex for `blob`, `T | undefined` for `opt`. Always pass the
+same options and uses display values: `string` for `nat`, `int`, `nat64`,
+`int64` and `principal`, hex for `blob`, `T | undefined` for `opt`, and
+`{ _type: "Name", Name: value }` for a variant (`{ _type: "Name" }` when the
+case has no value, so switch on `_type`, never `"Name" in value`). A query
+whose whole result is an empty `opt` holds `null`. Always pass the
 `<_SERVICE>` type argument. `canisterId` is required except on a local
 replica whose `ic_env` cookie names it. A React app imports everything,
 `ClientManager` and `Reactor` included, from `@ic-reactor/react`, which
@@ -214,6 +217,10 @@ re-exports `@ic-reactor/core`.
   `ValidationError`: a `DisplayReactor` validator refused the arguments
   (`mapValidationErrors(error)` gives form field messages). Narrow with
   `isCanisterError`, `isCallError`, `isValidationError`, not `instanceof`.
+  A hook's `error` is typed `ReactorErrorOf<typeof reactor, "method">`, so
+  its `.err` is the method's `Err` type. In a `catch`, `isCanisterError`
+  gives `.err: unknown`: type the caught value as that `ReactorErrorOf`
+  first.
 - `reactorRetry` (the query retry `defineReactor` sets; set it yourself on a
   `QueryClient` you build) retries transport, certificate, HTTP 5xx/408/429
   and `SysTransient`/`SysUnknown` failures, never a `CanisterError`, a
@@ -274,6 +281,7 @@ re-exports `@ic-reactor/core`.
 - Write `args: [userId!]`, a placeholder account, or `as any` plus `enabled`;
   pass `skipToken`.
 - Check `"Ok" in data`; `data` is already the `Ok` payload.
+- Test a `DisplayReactor` variant with `"Name" in value`; read `value._type`.
 - Compute amounts with `Number(x) / 10 ** decimals`, `parseFloat` or
   `toFixed`; use `formatTokenAmount` / `parseTokenAmount`.
 - Retarget a shared reactor with `setCanisterId`; use `forCanister`.

@@ -83,10 +83,11 @@ the six hooks of `createActorHooks`, and `useAuth`, `useAgentState`,
 `useUserPrincipal`, `useIdentityAttributes`, `authentication`,
 `identityAttributes`. `defineDisplayReactor` takes the same options and gives
 display values instead (strings for `bigint` and `Principal`, hex for blobs,
-`T | undefined` for `opt`). `canisterId` is required except on a local replica
-whose `ic_env` cookie names it. `./declarations/backend` stands for your
-canister's declarations: `idlFactory` from the generated `.js`, `_SERVICE` from
-the `.d.ts` (with the CLI or the Vite plugin,
+`T | undefined` for `opt`, `{ _type: "A", A: value }` for a variant, and just
+`{ _type: "A" }` for a case without a value). `canisterId` is required except
+on a local replica whose `ic_env` cookie names it. `./declarations/backend`
+stands for your canister's declarations: `idlFactory` from the generated
+`.js`, `_SERVICE` from the `.d.ts` (with the CLI or the Vite plugin,
 `src/declarations/<name>/declarations/<did>.js` and `.d.ts`, named after the
 `.did` file), and `canisterId` your canister's id as text.
 

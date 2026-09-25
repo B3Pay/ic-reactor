@@ -138,6 +138,7 @@ show and a form can send:
 | `blob`                           | `Uint8Array`                        | hex `string`, no `0x`  |
 | `opt T`                          | `[] \| [T]`                         | `T \| undefined`       |
 | `variant { A: T }`               | `{ A: T }`                          | `{ _type: "A", A: T }` |
+| `variant { A }` (no value)       | `{ A: null }`                       | `{ _type: "A" }`       |
 | `vec record { text; T }`         | `[string, T][]`                     | `{ [key: string]: T }` |
 | `Result` (`Ok`/`Err`)            | Ok value, or throws `CanisterError` | same                   |
 
