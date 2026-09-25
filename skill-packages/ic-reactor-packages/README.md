@@ -37,7 +37,9 @@ packages need tests, builds, docs, or export updates.
 
 ## Companion References
 
-- Root `llms.txt` for compact package/task routing
-- Root `llms-full.txt` for a prompt-ready AI guide
-- `AGENTS.md`, `CLAUDE.md`, `.github/copilot-instructions.md`, and `.cursorrules`
-  for agent-specific discovery
+- Root `AGENTS.md` for task-to-source routing, verification by change type,
+  and the rules for the AI context files
+- Root `llms.txt`, `llms-full.txt` and `packages/*/llms.txt`, the consumer
+  guides that ship with the docs and the npm packages
+- `CLAUDE.md`, `.github/copilot-instructions.md`, and `.cursorrules` for
+  agent-specific discovery
