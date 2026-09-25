@@ -245,6 +245,17 @@ unreleased too, and are not listed here.
   as an edited `index.ts` that does not re-export the factories.
 - `findSharedOutDirs` and `sharedOutDirMessage`, moved here from the CLI.
 
+#### Changed
+
+- The `index.ts` that generation creates once now points agents at the
+  `ic-reactor` Agent Skill published from this repository
+  (`/plugin install ic-reactor@ic-reactor` in Claude Code after
+  `/plugin marketplace add B3Pay/ic-reactor`, or
+  `npx skills add B3Pay/ic-reactor --skill ic-reactor`) instead of the
+  contributor skill in `B3Pay/ic-reactor-skills`. Migration: none; an existing
+  `index.ts` is never rewritten, so edit its comment by hand if you want the
+  new pointer.
+
 ### @ic-reactor/cli
 
 #### Added
