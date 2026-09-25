@@ -42,9 +42,12 @@ This skill describes these versions:
    https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
 2. **Find the canister's types.** Method names, argument tuples and results
    come from `_SERVICE` in the declarations generated from the `.did`
-   (`idlFactory` is in the generated `.js`). With the Vite plugin or the CLI,
-   import from the canister's entry, `src/declarations/<name>/index.ts`. Never
-   guess a method name or argument shape.
+   (`idlFactory` is in the generated `.js`). The Vite plugin and the CLI write
+   them to `src/declarations/<name>/declarations/`, as `<did>.d.ts` and
+   `<did>.js` named after the `.did` file. The canister's entry,
+   `src/declarations/<name>/index.ts`, exports the generated reactor, hooks,
+   query/mutation objects and the service type as `<Name>Service`, but not
+   `_SERVICE` or `idlFactory`. Never guess a method name or argument shape.
 3. **Reuse the app's setup.** Search for `defineReactor`,
    `defineDisplayReactor`, `createReactorProvider`, `new ClientManager`,
    `icReactor(` and `ic-reactor.json` first. An app's reactors share one
@@ -61,10 +64,13 @@ This skill describes these versions:
   (raw `bigint`, `Principal`) or `defineDisplayReactor<_SERVICE>(...)`
   (strings, for forms and display), in a module.
 - **Many canisters, or `.did` files that change:** `@ic-reactor/vite-plugin`
-  (Vite) or `@ic-reactor/cli`, with `factories: true` on each canister.
+  (Vite) or `@ic-reactor/cli`, with `factories: true` on each canister, in a
+  client-only app.
 - **Server-rendered React (Next.js, any SSR):**
   `createReactorProvider(() => defineReactor(...))` in a `"use client"`
-  module; components call `useReactor()`.
+  module; components call `useReactor()`. The generated entry builds its
+  reactor at module scope, so take only the declarations from codegen
+  (`ic-reactor generate --bindgen-only`, or the `declarations/` folder).
 - **React Server Component, server action, route handler:** `ClientManager`
   and `Reactor` built inside the request, then `fetchQuery()` /
   `callMethod()`.
@@ -181,8 +187,9 @@ re-exports `@ic-reactor/core`.
   `formatTokenAmount` from `@ic-reactor/react` (its `react-server` entry
   loads no React). Hooks, `defineReactor`, `defineDisplayReactor`,
   `createReactorProvider`, `createActorHooks`, the query/mutation factories,
-  `skipToken` and the auth classes are not exported there, and generated
-  canister modules must not be imported there.
+  `skipToken` and the auth classes are not exported there. Never import a
+  generated canister entry (`index.ts` and the `*.generated.ts` files) there;
+  its `declarations/` folder (`idlFactory`, `_SERVICE`) is safe.
 
 ### Sign-in (Internet Identity)
 
@@ -224,10 +231,12 @@ re-exports `@ic-reactor/core`.
 
 ### Code generation
 
-- Each canister's output holds `declarations/`, `index.generated.ts`
-  (`<name>Reactor`, hooks `use<Name>Query`, `use<Name>Mutation`, ...),
+- Each canister's output holds `declarations/` (`idlFactory`, `_SERVICE`),
+  `index.generated.ts` (`<name>Reactor`, the `<Name>Service` type, hooks
+  `use<Name>Query`, `use<Name>Mutation`, ...),
   `index.factories.generated.ts` with `factories: true` (`<method>Query`,
   `<method>Mutation`), and `index.ts`, created once and yours to edit.
+  Importing `index.ts` builds the reactor and its `ClientManager`.
 - Never edit the generated files; change the `.did` or the options and
   generate again. Custom objects and invalidation wiring go in `index.ts`,
   where an export of the same name replaces the generated one.
@@ -243,8 +252,11 @@ re-exports `@ic-reactor/core`.
 - Run the real reactor and hooks against `installFakeReplica` and
   `createTestCanister` from `@ic-reactor/react/testing`
   (`@ic-reactor/core/testing` without React). Install the fake before any
-  `ClientManager` is built; with a module-scope `defineReactor`, install it at
-  the top of the test file and `await import(...)` the modules under test.
+  `ClientManager` is built; with a module-scope `defineReactor` or generated
+  entry, install it at the top of the test file and `await import(...)` the
+  modules under test. For generated code, import `idlFactory` and `_SERVICE`
+  from the canister's `declarations/` folder, and key the fake by the
+  `canisterId` the generator wrote.
 - A handler returns `{ Err: ... }` for a `CanisterError` and throws for a
   `CallError`. Test a signed-in user with `clientManager.updateAgent(identity)`.
 

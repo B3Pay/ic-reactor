@@ -86,8 +86,9 @@ display values instead (strings for `bigint` and `Principal`, hex for blobs,
 `T | undefined` for `opt`). `canisterId` is required except on a local replica
 whose `ic_env` cookie names it. `./declarations/backend` stands for your
 canister's declarations: `idlFactory` from the generated `.js`, `_SERVICE` from
-the `.d.ts` (`src/declarations/<name>/declarations/<name>.js` and `.d.ts` with
-the CLI or the Vite plugin), and `canisterId` your canister's id as text.
+the `.d.ts` (with the CLI or the Vite plugin,
+`src/declarations/<name>/declarations/<did>.js` and `.d.ts`, named after the
+`.did` file), and `canisterId` your canister's id as text.
 
 ## When to Use What
 
@@ -239,7 +240,10 @@ export const { ReactorProvider, useReactor } = createReactorProvider(() =>
 Run the real reactor and hooks against `installFakeReplica` and
 `createTestCanister` from `@ic-reactor/react/testing`. Install the fake before
 any `ClientManager` is built: for a module-scope `defineReactor`, at the top of
-the test file, then `await import(...)` the components. A handler returns
+the test file, then `await import(...)` the components. Generated code is
+module scope too: import `idlFactory` and `_SERVICE` from the canister's
+`declarations/` folder, key the fake by the `canisterId` the generator wrote,
+and `await import(...)` the entry after the fake. A handler returns
 `{ Err: ... }` for a `CanisterError` and throws for a `CallError`. Reset a
 shared reactor with `queryClient.clear()`, and test a signed-in user with
 `clientManager.updateAgent(identity)`.

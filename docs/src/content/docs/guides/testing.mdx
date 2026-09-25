@@ -335,6 +335,37 @@ it("shows the balance and deposits", async () => {
 Installing the fake in a Vitest `setupFiles` module works too, since those run
 before each test file's imports.
 
+Code from the Vite plugin or the CLI is module scope as well: importing a
+canister's entry (`src/declarations/backend`) builds its reactor and imports
+your `src/clients.ts`. That entry does not export `idlFactory` or `_SERVICE`.
+Take them from the canister's `declarations/` folder, which builds nothing,
+key the fake by the `canisterId` the generator wrote into
+`index.generated.ts`, and import the entry, and anything that imports it,
+after the fake:
+
+```tsx
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/react/testing"
+import {
+  idlFactory,
+  type _SERVICE,
+} from "./declarations/backend/declarations/backend"
+
+const replica = installFakeReplica({
+  canisters: {
+    "rrkah-fqaaa-aaaaa-aaaaq-cai": createTestCanister<_SERVICE>(idlFactory, {
+      balance: () => 0n,
+    }),
+  },
+})
+
+// Balance imports its query from "./declarations/backend"
+const { Balance } = await import("./Balance")
+const { queryClient } = await import("./clients")
+```
+
 ## Test as a Signed-In User
 
 A handler's `{ caller }` is the principal the request was signed as, checked

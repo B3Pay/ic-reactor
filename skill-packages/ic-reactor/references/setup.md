@@ -4,6 +4,10 @@ Examples for the setups in the skill's decision table. The imports from
 `./declarations/backend` stand for the canister's declarations: `idlFactory`
 from the generated `.js`, the `_SERVICE` type from the `.d.ts`, and
 `canisterId`, the canister's id as text (a constant or a build-time value).
+The Vite plugin and the CLI write the first two to
+`src/declarations/<name>/declarations/<did>.js` and `.d.ts`, named after the
+`.did` file; the canister's entry, `src/declarations/<name>/index.ts`,
+exports neither (see "Using the output" below).
 
 ## One-call setup: `defineReactor` / `defineDisplayReactor`
 
@@ -180,11 +184,13 @@ export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
 
 ### Using the output
 
-Each canister's folder (`src/declarations/backend/`) holds `declarations/`,
-`index.generated.ts` (`backendReactor` and `useBackendQuery`,
-`useBackendMutation`, ...), `index.factories.generated.ts` with
-`factories: true` (`getPostsQuery`, `getPostQuery`, `likePostMutation`, ...)
-and `index.ts`, the stable entry you import and may edit.
+Each canister's folder (`src/declarations/backend/`) holds `declarations/`
+(`backend.js` with `idlFactory`, `backend.d.ts` with `_SERVICE`),
+`index.generated.ts` (`backendReactor`, the `BackendService` type and
+`useBackendQuery`, `useBackendMutation`, ...), `index.factories.generated.ts`
+with `factories: true` (`getPostsQuery`, `getPostQuery`, `likePostMutation`,
+...) and `index.ts`, the stable entry you import and may edit. The
+`declarations/` files are named after the `.did` file.
 
 ```tsx
 import { getPostQuery, likePostMutation } from "./declarations/backend"

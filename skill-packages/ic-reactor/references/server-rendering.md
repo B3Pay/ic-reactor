@@ -129,7 +129,11 @@ export default async function Supply() {
   module"). If the bundler ignores the `react-server` condition, add
   `@ic-reactor/core` as a dependency and import the runtime from it.
 - Generated canister modules (codegen, including `factories: true` objects)
-  import hooks and live at module scope: never import them into server code.
+  import hooks and live at module scope: never import them into server code,
+  or into the provider factory. Their `declarations/` folder imports neither,
+  so both may take `idlFactory` and `_SERVICE` from
+  `./declarations/<name>/declarations/<did>`, or generate only that folder
+  with `ic-reactor generate --bindgen-only`.
 - `reactorRetry` retries nothing where there is no `window`. For query
   retries on a server, pass
   `{ retry: (count, error) => count < 3 && isRetryableReactorError(error) }`

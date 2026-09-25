@@ -230,6 +230,44 @@ it("renders the profile", async () => {
 })
 ```
 
+With the Vite plugin or the CLI, the canister's entry
+(`./declarations/backend`) builds its reactor and imports `src/clients.ts`,
+which builds the `ClientManager`. Import the declarations from its
+`declarations/` folder, which builds nothing, and the entry after the fake:
+
+```tsx
+import { afterAll, afterEach, expect, it } from "vitest"
+import { render, screen } from "@testing-library/react"
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/react/testing"
+import {
+  idlFactory,
+  type _SERVICE,
+} from "./declarations/backend/declarations/backend"
+
+const replica = installFakeReplica({
+  canisters: {
+    // The canisterId the generator wrote into index.generated.ts
+    "rrkah-fqaaa-aaaaa-aaaaq-cai": createTestCanister<_SERVICE>(idlFactory, {
+      get_post: ([id]) => ({ id, title: "Hello", likes: 3n }),
+    }),
+  },
+})
+afterAll(() => replica.restore())
+
+const { Post } = await import("./Post") // uses getPostQuery from the entry
+const { queryClient } = await import("./clients")
+
+afterEach(() => queryClient.clear())
+
+it("renders the post", async () => {
+  render(<Post id="1" />)
+  expect(await screen.findByText("3 likes")).toBeTruthy()
+})
+```
+
 - With no `host` on either side, the app's `ClientManager` and the fake both
   use the page origin (jsdom, happy-dom). If the app passes
   `agentOptions.host`, pass the same `host` to `installFakeReplica`.

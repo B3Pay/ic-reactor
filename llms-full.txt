@@ -108,8 +108,9 @@ The snippets below import `canisterId`, `idlFactory` and the `_SERVICE` type
 from `./declarations/backend`, which stands for your canister's declarations.
 `idlFactory` comes from the generated `.js` file and `_SERVICE` from the
 `.d.ts`. With the CLI or the Vite plugin those are
-`src/declarations/<name>/declarations/<name>.js` and `.d.ts`; the folder's own
-`index.ts` exports the generated reactor and hooks, not `idlFactory`.
+`src/declarations/<name>/declarations/<did>.js` and `.d.ts`, named after the
+`.did` file; the folder's own `index.ts` exports the generated reactor and
+hooks, not `idlFactory`.
 `canisterId` is the canister's id as text: a constant, or a value from your
 build's environment.
 
@@ -983,6 +984,11 @@ it("turns an Err into a CanisterError", async () => {
   test file (or in a setup file) and `await import(...)` the components after
   it. With no `host` on either side, both use the page origin in jsdom or
   happy-dom. Reset a shared reactor between tests with `queryClient.clear()`.
+- Generated code is module scope too: its entry imports your `clientManager`.
+  Import `idlFactory` and `_SERVICE` from the canister's `declarations/`
+  folder (it builds nothing), key the fake by the `canisterId` the generator
+  wrote into `index.generated.ts`, and `await import(...)` the entry and the
+  components after the fake.
 - Test a signed-in user with `clientManager.updateAgent(identity)`, for
   example `Ed25519KeyIdentity.generate()`; the kit does not simulate Internet
   Identity.
