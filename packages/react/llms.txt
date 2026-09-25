@@ -34,7 +34,7 @@ every v8 release peers `@icp-sdk/core@^5`, so on npm it needs
   the new identity; it does not reject with TanStack's `CancelledError`.
   `.prefetch()` fetches again the same way and never rejects, and a query
   method's `call()` / `refetch()` from `useActorMethod` resolve with the new
-  identity's answer
+  identity's answer (`undefined` if that fetch fails)
 
 Never call React hooks in loaders, actions, route modules, scripts, or tests.
 

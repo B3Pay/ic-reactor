@@ -48,6 +48,8 @@ let replica: FakeReplica
 let holding: boolean
 /** The calls it holds, each answered by calling it. */
 let held: Array<() => void>
+/** A caller the canister traps for, after answering any call it held. */
+let failFor: string | undefined
 let reactor: Reactor<GreeterActor>
 
 /** Let the observer's notification and the effects it causes run. */
@@ -57,13 +59,16 @@ const settle = () =>
 beforeEach(() => {
   holding = false
   held = []
+  failFor = undefined
   replica = installFakeReplica({
     canisters: {
       [CANISTER_ID]: createTestCanister<GreeterActor>(idlFactory, {
         // A caller-scoped answer: who the replica says sent the call.
         greet: async ([name], { caller }) => {
           if (holding) await new Promise<void>((answer) => held.push(answer))
-          return `${name}, ${nameOf(caller.toText())}`
+          const who = nameOf(caller.toText())
+          if (who === failFor) throw new Error(`${who} may not call greet`)
+          return `${name}, ${who}`
         },
       }),
     },
@@ -213,6 +218,46 @@ describe("useActorMethod call() and refetch() on a query across a sign-in", () =
     expect(await signInBobDuring(() => result.current.refetch())).toBe(
       "hi, bob"
     )
+  })
+
+  // A mounted entry keeps the data it was put back to when the refetch the
+  // switch starts fails, and TanStack's `refetch()` resolves with that data
+  // all the same. It is alice's, and bob is signed in.
+  it("resolves call() with undefined, not the previous principal's data, when the new principal's refetch fails", async () => {
+    const onSuccess = vi.fn()
+    const onError = vi.fn()
+    const { result } = renderHook(() =>
+      useActorMethod({
+        reactor,
+        functionName: "greet",
+        args: ["hi"],
+        onSuccess,
+        onError,
+      })
+    )
+    await waitFor(() => expect(result.current.data).toBe("hi, alice"))
+    failFor = "bob"
+
+    expect(await signInBobDuring(() => result.current.call())).toBeUndefined()
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1))
+    await settle()
+
+    // The effects report the failed refetch, once.
+    expect(onSuccess.mock.calls).toEqual([["hi, alice"]])
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(isCallError(onError.mock.calls[0][0])).toBe(true)
+  })
+
+  it("resolves refetch() with undefined, not the previous principal's data, when the new principal's refetch fails", async () => {
+    const { result } = renderHook(() =>
+      useActorMethod({ reactor, functionName: "greet", args: ["hi"] })
+    )
+    await waitFor(() => expect(result.current.data).toBe("hi, alice"))
+    failFor = "bob"
+
+    expect(
+      await signInBobDuring(() => result.current.refetch())
+    ).toBeUndefined()
   })
 
   it("reports a CallError when the principal keeps switching", async () => {

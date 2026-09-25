@@ -170,7 +170,8 @@ export interface UseActorMethodResult<
    * `onError` itself. `call()` refetches the hook's own args, as `refetch()`
    * does. A sign-in or sign-out while either is in flight cancels the fetch,
    * which then runs again for the principal signed in, so the call resolves
-   * with that principal's answer rather than the previous one's; see
+   * with that principal's answer rather than the previous one's, or
+   * `undefined` when that fetch fails; see
    * `ClientManager.fetchAcrossIdentitySwitch`.
    */
   call: (
@@ -193,8 +194,8 @@ export interface UseActorMethodResult<
    * For queries only: Refetch the query
    *
    * A sign-in or sign-out while it is in flight makes it refetch for the
-   * principal signed in, and it resolves with that principal's answer, as
-   * `call()` does.
+   * principal signed in, and it resolves with that principal's answer, or
+   * `undefined` when that refetch fails, as `call()` does.
    */
   refetch: () => Promise<
     ReactorQueryData<ReactorReturnOk<Service, Method, Transform>> | undefined
@@ -493,23 +494,26 @@ export function useActorMethod<
   // previous principal's, or rejects it with a `CancelledError` when the entry
   // had none, and a call used to resolve with, and report, whichever it got.
   // Through `fetchAcrossIdentitySwitch` it runs again for the principal signed
-  // in, as `reactor.fetchQuery()` and the factories' `fetch()` do. After three
-  // runs in a row, each overtaken by another switch, that rejects with a
-  // `CallError`, which is reported to `onError` like any other failure.
+  // in, as `reactor.fetchQuery()` and the factories' `fetch()` do. When the
+  // principal switches during that run too, and during each of two more, that
+  // rejects with a `CallError`, which is reported to `onError` like any other
+  // failure.
 
   const refetchLatest = async (): Promise<TQueryData | undefined> => {
     if (!isQuery) return undefined
     let runs = 0
     try {
-      const { data } = await reactor.clientManager.fetchAcrossIdentitySwitch(
-        () =>
-          // A run after a switch joins the refetch the switch started for
-          // this entry, rather than cancel it and start another.
-          queryResult.refetch(
-            runs++ === 0 ? undefined : { cancelRefetch: false }
-          )
+      const result = await reactor.clientManager.fetchAcrossIdentitySwitch(() =>
+        // A run after a switch joins the refetch the switch started for
+        // this entry, rather than cancel it and start another.
+        queryResult.refetch(runs++ === 0 ? undefined : { cancelRefetch: false })
       )
-      return data
+      // `refetch()` resolves even when the fetch fails, and the result keeps
+      // the entry's last data. After a switch that is the data the entry was
+      // put back to, the previous principal's, so a failed run for the
+      // principal signed in resolves `undefined` instead. The effects report
+      // the failure to `onError`.
+      return runs > 1 && result.isError ? undefined : result.data
     } catch (error) {
       // Only that CallError: `refetch()` itself never rejects. The effects
       // report what the entry settles with, and it settles nothing for this.
