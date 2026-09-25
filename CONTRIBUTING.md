@@ -45,9 +45,14 @@ CI gate operate on exactly the same set of files.
 
 ```bash
 pnpm check:ai-context  # versions, package stamps and docs links in the AI guides
+pnpm check:snippets    # compiles the ts/tsx snippets of the guides and READMEs
 pnpm lint              # ESLint over packages/*/src and packages/*/tests
 pnpm typecheck         # every package and e2e/, including their tests
 ```
+
+`pnpm check:snippets` and `pnpm lint` read the packages' built declarations,
+so run `pnpm build` first. See [Code snippets](#code-snippets) for what to do
+when a snippet fails.
 
 If you touched `packages/` or `examples/`, also type-check and build every
 example app. `tsc` never loads a bundler, so an example can type-check cleanly
@@ -81,6 +86,32 @@ It packs each publishable package, installs the tarballs into a scratch project
 outside the workspace, imports and requires every entry point in real Node, and
 runs `publint` + `attw`. Nothing else in CI can catch a broken published
 artifact, because in-repo consumers resolve through workspace symlinks.
+
+## Code snippets
+
+`pnpm check:snippets` compiles every ` ```ts `, ` ```tsx ` and
+` ```typescript ` fence of `llms.txt`, `llms-full.txt`, `packages/*/llms.txt`,
+`skill-packages/**/*.md`, `README.md` and `packages/*/README.md`, each as its
+own module, against the built packages. Agents copy these snippets into apps
+as they stand, so when one fails, fix the snippet: add the import it is
+missing, or update it to the current API.
+
+A snippet may use names its app would define without importing them: a
+canister's `./declarations/backend`, a `./reactor` module, a `clientManager`
+built earlier on the page. Those come from `scripts/check-snippets/`:
+`app/` is the app every document shares, and a directory named in
+`CONTEXTS` in `scripts/check-snippets.mjs` holds what differs for one
+document. A relative import resolves to the module of the same path there,
+and `globals.ts` lists the names a snippet may use without importing. Add a
+missing app name there, never a library export such as `createQuery`: a
+snippet that uses one must import it.
+
+A fence that is not code to paste, such as a type signature or an interface
+restating a library type, opts out with `nocheck` after its language,
+` ```ts nocheck `, or with `// @snippet-skip` as its first line. Give a
+placeholder such as `...` a real value instead. `pnpm check:snippets --verbose`
+lists every snippet with its result, and `pnpm check:snippets --docs` also
+compiles the docs site's pages, reporting their failures without failing.
 
 ## Pre-commit hooks
 

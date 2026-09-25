@@ -64,6 +64,7 @@ pnpm format:check
 pnpm check:ai-context
 pnpm typecheck
 pnpm build
+pnpm check:snippets
 pnpm test
 pnpm build:examples
 ```

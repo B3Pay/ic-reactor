@@ -114,6 +114,7 @@ Follow these repository-specific patterns when suggesting code:
 
 - Format check (CI gate; covers the whole repo): `pnpm format:check`
 - AI context check (CI gate): `pnpm check:ai-context` (versions, package guide stamps and docs links in the AI guides). `llms.txt`, `llms-full.txt`, `packages/*/llms.txt` and the consumer skill `skill-packages/ic-reactor/` are consumer guides: keep repo paths and contributor workflow out of them, update them together when public API guidance changes, and record user-visible changes in `CHANGELOG.md`.
+- Snippet check (CI gate; run `pnpm build` first): `pnpm check:snippets` compiles the `ts`/`tsx` fences of the AI guides, the skills and the READMEs against the built packages. Fix a failing snippet in its file; app names snippets assume live in `scripts/check-snippets/`, never library exports.
 - Lint used by CI: `pnpm lint` (ESLint flat config over `packages/*/src` and `packages/*/tests`; run `pnpm build` first or the type-aware rules degrade to `any` and stop reporting)
 - Type check used by CI: `pnpm typecheck` (every package plus `e2e/`, `src` and tests; the root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing)
 - Package builds: `pnpm build`

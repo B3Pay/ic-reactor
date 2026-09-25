@@ -87,6 +87,7 @@ Use this map before editing so you can start in the package that owns the behavi
 
 - Format check (CI gate; covers the whole repo, with exclusions declared in `.prettierignore`): `pnpm format:check`
 - AI context check (CI gate): `pnpm check:ai-context`; see [AI context files](#ai-context-files) for what it asserts.
+- Snippet check (CI gate; run `pnpm build` first): `pnpm check:snippets` compiles every `ts`/`tsx`/`typescript` fence of `llms.txt`, `llms-full.txt`, `packages/*/llms.txt`, `skill-packages/**/*.md` and the root and package READMEs against the built packages. Fix a failing snippet in its file. The app names snippets take for granted (`./declarations/backend`, `./reactor`, a `clientManager`) live in `scripts/check-snippets/`; never declare a library export there. A fence that is not code to paste opts out with ` ```ts nocheck `. See `CONTRIBUTING.md` (Code snippets).
 - Lint used by CI: `pnpm lint` — ESLint flat config over `packages/*/src` and `packages/*/tests`. Run `pnpm build` first: the type-aware rules read core's emitted `.d.ts`, and without a build they degrade to `any` and stop reporting. A new package needs a `tsconfig.typecheck.json` and an entry in `TYPECHECK_PROJECTS`.
 - Type check used by CI: `pnpm typecheck` — runs each package's own `typecheck` script plus `e2e/`'s, covering `src` and tests. The root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing.
 - Package builds: `pnpm build`
@@ -102,13 +103,13 @@ Use this map before editing so you can start in the package that owns the behavi
 | Change                                     | Minimum verification                                                                     |
 | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
 | Docs only                                  | `pnpm format:check`, `pnpm check:ai-context`, `pnpm docs:build`, `pnpm docs:check-links` |
-| AI context files, `CHANGELOG.md`           | `pnpm check:ai-context`, `pnpm format:check`                                             |
+| AI context files, READMEs, `CHANGELOG.md`  | `pnpm check:ai-context`, `pnpm check:snippets`, `pnpm format:check`                      |
 | Skill, frontmatter or agent metadata       | a YAML/frontmatter parse check, `pnpm format:check`                                      |
 | React hooks, factories or auth             | `pnpm --filter @ic-reactor/react test`                                                   |
 | Core runtime                               | `pnpm --filter @ic-reactor/core test`                                                    |
 | Parser or candid                           | `pnpm --filter @ic-reactor/parser build`, `pnpm --filter @ic-reactor/candid test`        |
 | Codegen, CLI or Vite output                | `pnpm --filter @ic-reactor/codegen test`, plus the affected CLI or Vite plugin tests     |
-| Broad package change                       | `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm lint`                                 |
+| Broad package change                       | `pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm lint`, `pnpm check:snippets`          |
 | Package `exports`, `files` or build output | `pnpm verify:packages`                                                                   |
 | Examples                                   | `pnpm typecheck:examples`, `pnpm build:examples`                                         |
 | A bug fix                                  | `pnpm verify:test-fails <test file> --package <pkg>` on the new test                     |
@@ -134,7 +135,8 @@ Two audiences, kept apart:
     for `packages/candid/index.mdx`).
   - `llms-full.txt`: the complete consumer guide, published at
     `https://ic-reactor.b3pay.net/llms-full.txt`. Every snippet must compile
-    against the public API of the current packages.
+    against the public API of the current packages; `pnpm check:snippets`
+    compiles them, and those of every other file here and the READMEs.
   - `packages/<name>/llms.txt`: each package's own guide, shipped in its npm
     tarball through `"files"`. It opens with an `Applies to` line naming the
     package and its version, holds a setup snippet, a when-to-use table and a
