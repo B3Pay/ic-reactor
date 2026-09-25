@@ -151,7 +151,7 @@ await backend.invalidateQueries({ functionName: "greet" })
 
 ### Constructor Options
 
-```typescript
+```typescript nocheck
 interface ClientManagerParameters {
   queryClient: QueryClient // TanStack Query client (required)
   agentOptions?: HttpAgentOptions // Custom HttpAgent options (host, identity, rootKey, ...)
@@ -270,7 +270,7 @@ const principal = await clientManager.getUserPrincipal()
 
 ### Constructor Options
 
-```typescript
+```typescript nocheck
 interface ReactorParameters {
   clientManager: ClientManager
   name: string // Required: also the ic_env lookup key
@@ -290,7 +290,7 @@ key `PUBLIC_CANISTER_ID:<name>`; the constructor throws if it is not there.
 const result = await reactor.callMethod({
   functionName: "my_method",
   args: [arg1, arg2],
-  callConfig: { effectiveCanisterId: ... }, // optional
+  callConfig: { effectiveCanisterId: principal }, // optional
 })
 
 // Fetch and cache data
@@ -301,10 +301,13 @@ const data = await reactor.fetchQuery({
 })
 
 // Get cached data (synchronous, no network)
-const cached = reactor.getQueryData({
-  functionName: "get_data",
-  args: [],
-}, { canisterId: otherCanisterId })
+const cached = reactor.getQueryData(
+  {
+    functionName: "get_data",
+    args: [],
+  },
+  { canisterId: otherCanisterId }
+)
 
 // Invalidate cached queries. Each call returns a promise that resolves once
 // the active queries it matched have refetched (a failed refetch does not
@@ -312,9 +315,12 @@ const cached = reactor.getQueryData({
 await reactor.invalidateQueries() // all queries for this canister
 await reactor.invalidateQueries({ functionName: "get_data" }) // specific method
 await reactor.invalidateQueries({ functionName: "get_user", args: ["user-1"] }) // specific args
-await reactor.invalidateQueries({ functionName: "get_data" }, {
-  canisterId: otherCanisterId,
-}) // specific overridden canister
+await reactor.invalidateQueries(
+  { functionName: "get_data" },
+  {
+    canisterId: otherCanisterId,
+  }
+) // specific overridden canister
 
 // A reactor for another canister of the same interface (another ICRC ledger):
 // same class, ClientManager, interface, name and polling options, memoized by
@@ -410,7 +416,11 @@ gives `any`): pass the service type, or cast to the display shape you expect.
 `DisplayReactor` supports validators for mutation arguments:
 
 ```typescript
-import { DisplayReactor, ValidationError } from "@ic-reactor/core"
+import {
+  DisplayReactor,
+  ValidationError,
+  isPrincipalText,
+} from "@ic-reactor/core"
 
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
@@ -422,10 +432,11 @@ const backend = new DisplayReactor<_SERVICE>({
       const [{ to, amount }] = args
       const issues = []
 
-      if (!to || to.length < 5) {
+      if (!isPrincipalText(to)) {
         issues.push({ path: ["to"], message: "Invalid recipient" })
       }
-      if (!amount || parseFloat(amount) <= 0) {
+      // A nat as integer text: compare it as a bigint, never with parseFloat
+      if (!/^\d+$/.test(amount) || BigInt(amount) === 0n) {
         issues.push({ path: ["amount"], message: "Amount must be positive" })
       }
 
@@ -490,6 +501,12 @@ import {
 ### Handling Errors
 
 ```typescript
+import {
+  isCallError,
+  isCanisterError,
+  isValidationError,
+} from "@ic-reactor/core"
+
 try {
   await backend.callMethod({
     functionName: "transfer",
@@ -512,7 +529,7 @@ try {
 
 ### CanisterError Properties
 
-```typescript
+```typescript nocheck
 interface CanisterError<E> {
   err: E // The raw error value from canister
   code: string // Error code (from variant key or "code" field)
@@ -779,6 +796,7 @@ import type {
   ReactorDataOf, // ReactorReturnOk<Service, M, Transform>
   ReactorErrorOf, // ReactorReturnErr<Service, M, Transform>
 } from "@ic-reactor/core"
+import { DisplayReactor } from "@ic-reactor/core"
 
 const ledger = new DisplayReactor<Ledger>({
   clientManager,
@@ -796,13 +814,12 @@ type TransferError = ReactorErrorOf<typeof ledger, "icrc1_transfer">
 ```typescript
 import type { AgentState } from "@ic-reactor/core"
 
-interface AgentState {
-  isInitialized: boolean
-  isInitializing: boolean
-  error: Error | undefined
-  network: string | undefined
-  isLocalhost: boolean
-}
+const state: AgentState = clientManager.agentState
+state.isInitialized // boolean
+state.isInitializing // boolean
+state.error // Error | undefined
+state.network // string | undefined
+state.isLocalhost // boolean
 ```
 
 `AuthState` is exported by [`@ic-reactor/react`](../react), not by this package:
@@ -816,6 +833,8 @@ import type { AuthState } from "@ic-reactor/react"
 ### Multiple Canisters
 
 ```typescript
+import { ClientManager, DisplayReactor, Reactor } from "@ic-reactor/core"
+
 const clientManager = new ClientManager({ queryClient })
 
 // All reactors share the same agent and identity
@@ -850,6 +869,8 @@ a `DisplayReactor`) validators, and keys its queries by its own canister. The
 same id always gives the same sibling:
 
 ```typescript
+import { DisplayReactor } from "@ic-reactor/core"
+
 const icp = new DisplayReactor<Ledger>({
   clientManager,
   idlFactory: ledgerIdl,
@@ -875,7 +896,7 @@ polls all of them. `createPollingStrategy` is built to be shared that way: it
 keeps a separate attempt count, clock and timeout for each request.
 
 ```typescript
-import { createPollingStrategy } from "@ic-reactor/core"
+import { Reactor, createPollingStrategy } from "@ic-reactor/core"
 
 const backend = new Reactor<_SERVICE>({
   clientManager,
@@ -913,11 +934,13 @@ const result = await backend.callMethod({
 ### Direct Agent Access
 
 ```typescript
+import { StatePaths } from "@icp-sdk/core/agent"
+
 // Get subnet ID
 const subnetId = await backend.subnetId()
 
-// Read subnet state
-const state = await backend.subnetState({ paths: [...] })
+// Read subnet state: the well-known paths are on StatePaths
+const state = await backend.subnetState({ paths: [StatePaths.time] })
 
 // Access underlying agent
 const agent = backend.agent
