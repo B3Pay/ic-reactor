@@ -646,10 +646,10 @@ factory variants exposes:
 
 A sign-in or sign-out while `fetch()` is in flight does not reject it: the
 previous identity's answer is dropped, and `fetch()` runs again for the new
-identity and resolves with that answer. The infinite query factories' `fetch()`
-behaves the same. `prefetch()` runs again too, and still never rejects: when
-that run succeeds, the cache holds the new identity's answer by the time it
-resolves.
+identity and resolves with that answer. `prefetch()` runs again too, and still
+never rejects: when that run succeeds, the cache holds the new identity's
+answer by the time it resolves. The infinite query factories' `fetch()` behaves
+the same (they have no `prefetch()`).
 
 `optimisticUpdate`, `cancel` and `reset` act on the query's own entry only, and
 the infinite query objects have them too, over their `{ pages, pageParams }`.

@@ -28,8 +28,8 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
   example `queryClient.fetchQuery` or `queryClient.fetchInfiniteQuery`) in
   `clientManager.fetchAcrossIdentitySwitch(() => ...)` for the same behaviour:
   unwrapped, a cancelled refetch of a stale entry resolves with the previous
-  principal's cached data. After 3 runs each overtaken by another switch it
-  rejects with a `CallError`
+  principal's cached data. When 3 runs again are each overtaken by another
+  switch too, it rejects with a `CallError`
 - Use `callMethod` for imperative update/query calls
 - Several canisters of one interface (a multi-token wallet): build one reactor
   and call `reactor.forCanister(canisterId)` for each other canister. It gives a

@@ -173,7 +173,7 @@ const pages = await clientManager.fetchAcrossIdentitySwitch(() =>
 
 `updateAgent()` cancels those queries when the principal changes. A query with a mounted observer refetches afterwards, but an imperative fetch has no observer. TanStack rejects its promise with a `CancelledError`, or, when the entry already held data before the fetch began (a stale entry that `fetchQuery` or `fetchInfiniteQuery` refetches), resolves it with that data, which is the previous principal's. Through this method it resolves with the answer for the identity installed now. `Reactor.fetchQuery()`, the query factories' `fetch()` and `prefetch()`, and a query method's `call()` and `refetch()` from `useActorMethod` already run through it.
 
-Whatever the fetch settles with while the principal stays is passed on as is, including a cancellation from your own `cancelQueries()`. After three runs in a row, each overtaken by another switch, it rejects with a `CallError` rather than return an answer that may belong to a previous principal. `fetch` is called once per run, so it must start a new fetch each time.
+Whatever the fetch settles with while the principal stays is passed on as is, including a cancellation from your own `cancelQueries()`. When it has run again three times and another switch overtook each of those runs too, it rejects with a `CallError` rather than return an answer that may belong to a previous principal. `fetch` is called once per run, so it must start a new fetch each time.
 
 ---
 
