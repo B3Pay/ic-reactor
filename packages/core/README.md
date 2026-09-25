@@ -1,5 +1,10 @@
 # @ic-reactor/core
 
+> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
+> (`node_modules/@ic-reactor/core/llms.txt`) before writing code with it. It
+> is written for the installed version and lists the patterns to use and the
+> mistakes to avoid.
+
 <div align="center">
   <strong>The Core Library for Internet Computer Applications</strong>
   <br><br>

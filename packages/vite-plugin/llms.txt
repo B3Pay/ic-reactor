@@ -1,70 +1,140 @@
-# @ic-reactor/vite-plugin — AI Quick Guide
+# @ic-reactor/vite-plugin
 
-Vite integration for automatic IC Reactor generation from `.did` files.
+> Vite plugin that generates typed declarations, a reactor with bound React
+> hooks, and optionally one query or mutation object per method from `.did`
+> files, regenerates on change, and gives `vite dev` the local canister ids
+> and an `/api` proxy to the local replica.
+
+Applies to `@ic-reactor/vite-plugin` 0.14.0.
+
+Read this file from `node_modules/@ic-reactor/vite-plugin/llms.txt` when
+writing code against the installed version. The complete guide for every
+package is https://ic-reactor.b3pay.net/llms-full.txt, and behaviour changes
+are in https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
 
 ## Install
 
 ```bash
 pnpm add -D @ic-reactor/vite-plugin
-pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
+pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 ```
 
-## Minimal Setup
+## Setup and Usage
 
 ```ts
+// vite.config.ts
+import { defineConfig } from "vite"
 import { icReactor } from "@ic-reactor/vite-plugin"
 
-icReactor({
-  canisters: [{ name: "backend", didFile: "./backend/backend.did" }],
+export default defineConfig({
+  plugins: [
+    icReactor({
+      // outDir: "src/declarations" and clientManagerPath: "../../clients"
+      // by default, so src/clients.ts must export `clientManager`
+      canisters: [
+        {
+          name: "backend",
+          didFile: "./backend/backend.did",
+          factories: true, // also a query or mutation object per method
+          canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai", // for production builds
+        },
+      ],
+    }),
+  ],
 })
 ```
 
-## Behavior
+```tsx
+// src/App.tsx: the generated entry is src/declarations/backend/index.ts
+import { getPostsQuery, useBackendMutation } from "./declarations/backend"
 
-- Runs codegen on startup and `.did` changes
-- Regenerates declarations + `index.generated.ts`
-- Preserves user-facing `index.ts` wrapper after initial creation
-- Relative paths (`didFile`, `outDir`) resolve against Vite's `config.root`
+export function Posts() {
+  const { data: posts } = getPostsQuery.useQuery()
+  const create = useBackendMutation({
+    functionName: "create_post",
+    invalidateQueries: [getPostsQuery],
+  })
+  return (
+    <button onClick={() => create.mutate(["Hello"])}>
+      {posts?.length ?? 0} posts
+    </button>
+  )
+}
+```
+
+`src/clients.ts` is yours:
+`export const clientManager = new ClientManager({ queryClient })`, with
+`ClientManager` from `@ic-reactor/react` and a `QueryClient` from
+`@tanstack/react-query` (set `retry: reactorRetry` in its query defaults).
+
+## When to Use What
+
+| Need                                              | Use                                                    |
+| ------------------------------------------------- | ------------------------------------------------------ |
+| Vite app, `.did` files in the repo                | this plugin                                            |
+| No Vite, or generation as a CI step               | `@ic-reactor/cli`                                      |
+| Query and mutation objects per method             | `factories: true` on the canister entry                |
+| Raw Candid values instead of display values       | `mode: "Reactor"` on the canister entry                |
+| No React                                          | `target: "core"`                                       |
+| Local canister ids and `/api` proxy in `vite dev` | `injectEnvironment` (on by default)                    |
+| A project without a local network                 | `injectEnvironment: false`, so page loads run no `icp` |
+
+## Options
+
+- Plugin level: `canisters` (required), `outDir`, `clientManagerPath`,
+  `target`, `injectEnvironment`, `failOnError`.
+- Per canister: `name` and `didFile` (required), `outDir`,
+  `clientManagerPath`, `target`, `mode`, `canisterId`, `factories`. Relative
+  paths resolve against Vite's `root`.
+- `failOnError` defaults to `true` under `vite build` and `false` under
+  `vite dev`, where a failure goes to the terminal and the browser overlay.
 - Each entry needs its own output directory: a later entry with the same
-  `name` and `outDir` as an earlier one fails, with the CLI's error
-- A failed canister fails `vite build`; in `vite dev` it goes to the terminal
-  and the browser error overlay instead
+  `name` and `outDir` as an earlier one fails.
 
-## Key Options
+## Generated Files
 
-- Plugin level: `canisters`, `outDir`, `clientManagerPath`, `target`,
-  `injectEnvironment`, `failOnError`
-- Per canister (inside `canisters[]`): `name`, `didFile`, `outDir`,
-  `clientManagerPath`, `target`, `mode`, `canisterId`, `factories`
-- `factories: true` also generates `index.factories.generated.ts`: per method,
-  `createQuery`/`createQueryFactory` (`<method>Query`) for query methods and
-  `createMutation` (`<method>Mutation`) for update/oneway methods, bound to the
-  generated reactor. Needs `target: "react"`; an edited `index.ts` gets a
-  terminal warning until it re-exports `./index.factories.generated`
-- `injectEnvironment` for local `ic_env` cookie + `/api` proxy behavior in
-  `vite dev` and `vite preview`. While `icp` reports no network or a
-  configured canister has no ID, each page load asks `icp` again, so deploying
-  after `vite dev` started needs only a reload; once every configured canister
-  resolves, page loads run no `icp` command and a redeploy into a fresh
-  network needs a restart. `/api` follows the detected network, unless the
-  Vite config or another plugin sets its own `/api` proxy, which the plugin
-  leaves alone. The
-  consumer side is a positive allowlist: `ClientManager` trusts the cookie — its
-  root key, its Internet Identity provider, and the canister IDs a reactor
-  resolves by name — only for loopback and `localhost` hosts. Serving a dev
-  build over a tunnel (Codespaces and Gitpod included) or custom domain needs
-  `allowEnvConfig: true` (formerly `allowEnvRootKey`); without it a generated
-  reactor that carries no `canisterId` throws instead of reading one from the
-  cookie — see `packages/core/llms.txt`
-- `failOnError` overrides the default (`true` for build, `false` for dev)
+Per canister, under `<outDir>/<name>/`: `declarations/` (`idlFactory` and
+`_SERVICE`), `index.generated.ts` (`<name>Reactor` and six hooks
+`use<Name>Query`, `use<Name>Mutation`, ...), `index.factories.generated.ts`
+with `factories: true` (`<method>Query`, `<method>Mutation`), and `index.ts`,
+which is created once and then yours. Generation runs on startup and on every
+`.did` change. An edited `index.ts` gets a terminal warning until it
+re-exports `./index.factories.generated`; a warning never fails the build.
 
-## Best Practices
+## Local Environment (`injectEnvironment`)
 
-- Keep custom code in stable wrapper/factory modules
-- Do not hand-edit generated `index.generated.ts` or
-  `index.factories.generated.ts`
+- Under `vite dev` and `vite preview` the plugin sets the `ic_env` cookie
+  (root key, Internet Identity provider, `PUBLIC_CANISTER_ID:<name>`) on each
+  response and proxies `/api` to the network `icp` reports.
+- While `icp` reports no network or a configured canister has no id, each page
+  load asks `icp` again, so deploying after `vite dev` started needs only a
+  reload. Once every canister resolves, page loads run no `icp` command, and a
+  redeploy into a fresh network needs a restart.
+- An `/api` proxy set by the Vite config or another plugin is left alone.
+- `ClientManager` trusts the cookie only on loopback and `localhost` hosts. A
+  dev build served over a tunnel, Codespaces, Gitpod or a custom domain needs
+  `allowEnvConfig: true` on the `ClientManager`; without it a generated
+  reactor with no `canisterId` throws instead of reading one from the cookie.
+- The cookie does not exist in production: set `canisterId` on every entry
+  whose build is served anywhere else.
 
-## Full References
+## Do Not
 
-- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Vite plugin docs: https://ic-reactor.b3pay.net/v3/packages/vite-plugin
+- Edit `index.generated.ts`, `index.factories.generated.ts` or
+  `declarations/`; edit the `.did` or the plugin options.
+- Hand-write per-method `createQuery` / `createMutation` modules; set
+  `factories: true` and customize in `index.ts`.
+- Rely on the `ic_env` cookie outside local development.
+- Point two entries at one output directory.
+- Import generated modules into a React Server Component, or use them per
+  request on a server: they are module scope and import hooks.
+
+## Docs
+
+- Vite plugin: https://ic-reactor.b3pay.net/v3/packages/vite-plugin.md
+- Quick start: https://ic-reactor.b3pay.net/v3/getting-started/quick-start.md
+- Local development: https://ic-reactor.b3pay.net/v3/getting-started/local-development.md
+- Codegen (factory naming rules): https://ic-reactor.b3pay.net/v3/packages/codegen.md
+- Vite plugin example: https://ic-reactor.b3pay.net/v3/examples/vite-plugin.md
+- Index of all docs: https://ic-reactor.b3pay.net/llms.txt
+- Full guide: https://ic-reactor.b3pay.net/llms-full.txt

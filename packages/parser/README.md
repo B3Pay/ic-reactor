@@ -1,5 +1,10 @@
 # @ic-reactor/parser
 
+> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
+> (`node_modules/@ic-reactor/parser/llms.txt`) before writing code with it. It
+> is written for the installed version and lists the patterns to use and the
+> mistakes to avoid.
+
 WASM-based Candid parser used by IC Reactor tooling and dynamic Candid
 workflows. It turns raw Candid source into JavaScript IDL factories or
 TypeScript declaration strings.

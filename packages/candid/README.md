@@ -1,5 +1,10 @@
 # @ic-reactor/candid
 
+> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
+> (`node_modules/@ic-reactor/candid/llms.txt`) before writing code with it. It
+> is written for the installed version and lists the patterns to use and the
+> mistakes to avoid.
+
 Lightweight adapter for fetching and parsing Candid definitions from Internet Computer canisters.
 
 ## Features

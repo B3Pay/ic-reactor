@@ -9,6 +9,7 @@
     "dist/bundler/*",
     "!dist/**/.gitignore",
     "README.md",
+    "llms.txt",
     "LICENSE_MIT",
     "LICENSE_APACHE"
   ],

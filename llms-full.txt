@@ -715,8 +715,9 @@ export const requestEmail = () =>
   cache entries and refetches mounted queries as the new principal. A renewed
   delegation for the same principal keeps the cache.
 
-Local Internet Identity: `localInternetIdentityProvider(port, canisterId?,
-authorizePath?)` builds `http://<canisterId>.localhost:<port>/authorize`, and
+Local Internet Identity:
+`localInternetIdentityProvider(port, canisterId?, authorizePath?)` builds
+`http://<canisterId>.localhost:<port>/authorize`, and
 `authentication.prepareClient()` probes the canister for `/authorize` or the
 legacy `/#authorize`. Only Internet Identity builds up to `release-2026-03-16`
 serve a local frontend; a login that hangs on the gateway's "Response
@@ -846,14 +847,21 @@ whose interface is known only at run time: `CandidAdapter` fetches and parses
 Candid, `CandidReactor` / `CandidDisplayReactor` call it dynamically, and
 `MetadataReactor` / `MetadataDisplayReactor` produce form and result metadata.
 `forCanister` works on all four. `@ic-reactor/parser` is a dependency of
-candid and loads on first parse. Import it from its single entrypoint:
+candid and loads on first parse. To parse Candid yourself, import it from its
+single entrypoint:
 
 ```ts
-import { didToJs, parseDid, validateIDL } from "@ic-reactor/parser"
+import init, { didToJs, parseDid, validateIDL } from "@ic-reactor/parser"
+
+await init() // required on the web build (browsers, bundlers); a no-op on Node
+const schema = parseDid("service : { greet : (text) -> (text) query }")
+console.log(schema.service?.methods) // [{ name: "greet", mode: "query", ... }]
 ```
 
 There are no `/web`, `/nodejs` or `/bundler` subpaths; conditional exports pick
-the browser or Node build. Do not deep-import `dist/`.
+the browser or Node build. Do not deep-import `dist/`. `validateIDL` throws the
+parser's message for invalid Candid instead of returning `false`, and
+`didToJs` / `didToTs` return source strings.
 
 ## Testing
 

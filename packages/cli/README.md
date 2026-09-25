@@ -1,5 +1,10 @@
 # @ic-reactor/cli
 
+> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
+> (`node_modules/@ic-reactor/cli/llms.txt`) before writing code with it. It
+> is written for the installed version and lists the patterns to use and the
+> mistakes to avoid.
+
 Command-line code generation for IC Reactor. It uses the shared
 `@ic-reactor/codegen` pipeline to generate declarations and typed reactor entry
 files from your `.did` files, with optional React hook exports.

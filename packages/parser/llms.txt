@@ -1,0 +1,107 @@
+# @ic-reactor/parser
+
+> A Candid parser compiled from Rust to WebAssembly. It validates Candid
+> source, turns it into JavaScript IDL factories and TypeScript declarations,
+> describes its types and methods, and checks upgrade compatibility.
+
+Applies to `@ic-reactor/parser` 0.5.0.
+
+Read this file from `node_modules/@ic-reactor/parser/llms.txt` when writing
+code against the installed version. The complete guide for every package is
+https://ic-reactor.b3pay.net/llms-full.txt, and behaviour changes are in
+https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
+
+## Install
+
+```bash
+pnpm add @ic-reactor/parser
+```
+
+Most apps do not install it directly: `@ic-reactor/candid` depends on it and
+loads it when it parses, and `@ic-reactor/codegen` (behind the CLI and the Vite
+plugin) uses it to write declarations.
+
+## Setup and Usage
+
+```ts
+import init, {
+  didToJs,
+  didToTs,
+  parseDid,
+  validateIDL,
+} from "@ic-reactor/parser"
+
+const candid = `service : {
+  greet : (text) -> (text) query;
+  set_greeting : (text) -> ();
+}`
+
+await init() // required on the web build (browsers, bundlers); a no-op on Node
+
+try {
+  validateIDL(candid) // true, or throws the parser's message as a string
+} catch (message) {
+  throw new Error(`Invalid Candid: ${String(message)}`)
+}
+
+for (const method of parseDid(candid).service?.methods ?? []) {
+  console.log(method.name, method.mode) // "greet query", "set_greeting update"
+}
+
+const js = didToJs(candid) // JavaScript source exporting idlFactory and init
+const dts = didToTs(candid) // TypeScript declarations with interface _SERVICE
+console.log(js, dts)
+```
+
+## When to Use What
+
+| Need                                                 | Use                                                |
+| ---------------------------------------------------- | -------------------------------------------------- |
+| Check that Candid source parses and type-checks      | `validateIDL(source)` inside `try` / `catch`       |
+| JavaScript `idlFactory` source for a `.did`          | `didToJs(source)`                                  |
+| TypeScript declarations (`_SERVICE`) for a `.did`    | `didToTs(source)`                                  |
+| Types and methods as data (names, modes, arguments)  | `parseDid(source)`                                 |
+| Is a new interface a safe upgrade of the old one     | `verifyCompatibility(oldDid, newDid)`              |
+| Call a canister whose Candid you fetched at run time | `@ic-reactor/candid` (it runs this parser for you) |
+| Generate files from `.did` in a project              | `@ic-reactor/vite-plugin` or `@ic-reactor/cli`     |
+
+## Details
+
+- One entrypoint, `@ic-reactor/parser`. Export conditions pick the build:
+  `browser`, `workerd` and the default resolve to the web build, which needs
+  `await init()` (or `initSync(module)`) before any other call; `node`
+  resolves to the Node build, which initializes itself.
+- `didToJs` and `didToTs` return source strings, not modules.
+- Invalid Candid throws the parser's message as a string. An input the parser
+  itself fails on throws an `Error` with the original as `cause`, and later
+  calls keep working.
+- A record field or variant tag whose name looks like a numeric id (`_0_`) is
+  printed under the hash of its name (`_4735054_`), and `parseDid` names it the
+  same way, because that is the field a canister expects. A hand-written
+  `.did` that spells a Motoko numeric field `_0_` must write `0`.
+- A Candid type named `_SERVICE`, like a TypeScript type keyword (`string`,
+  `number`, `bigint`, `symbol`, `object`, `any`, `unknown`, `never`,
+  `undefined`) or like a type operator (`keyof`, `readonly`, `unique`,
+  `infer`) is renamed with `_` appended (`string_`).
+- Candid imports cannot be resolved from one source string: every function
+  throws for `import service "file.did"`, and a plain `import` is ignored.
+- `verifyCompatability(a, b)` is deprecated;
+  `verifyCompatibility(oldDid, newDid)` takes the old interface first and
+  returns `false` instead of throwing for an incompatible upgrade.
+
+## Do Not
+
+- Call a function on the web build before `await init()`.
+- Import `@ic-reactor/parser/web`, `/nodejs` or `/bundler`, or deep-import
+  `dist/`: there is only the `.` entry.
+- Expect `validateIDL` to return `false`; catch what it throws.
+- Rename the hashed or suffixed names in generated declarations by hand.
+
+## Docs
+
+- Parser package: https://ic-reactor.b3pay.net/v3/packages/parser.md
+- Parser reference: https://ic-reactor.b3pay.net/v3/packages/parser/reference.md
+- Metadata tags: https://ic-reactor.b3pay.net/v3/packages/parser/metadata-tags.md
+- Candid package: https://ic-reactor.b3pay.net/v3/packages/candid.md
+- Index of all docs: https://ic-reactor.b3pay.net/llms.txt
+- Full guide: https://ic-reactor.b3pay.net/llms-full.txt

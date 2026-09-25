@@ -1,5 +1,10 @@
 # @ic-reactor/react
 
+> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
+> (`node_modules/@ic-reactor/react/llms.txt`) before writing code with it. It
+> is written for the installed version and lists the patterns to use and the
+> mistakes to avoid.
+
 React bindings for IC Reactor. This package re-exports everything from
 `@ic-reactor/core` and adds hook factories, auth hooks, direct reactor hooks,
 and reusable query or mutation factories built around TanStack Query.

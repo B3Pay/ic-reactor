@@ -196,6 +196,8 @@ pnpm commands and CI notes out of these):
 - `llms-full.txt` — the complete guide, published at
   `https://ic-reactor.b3pay.net/llms-full.txt`
 - `packages/<name>/llms.txt` — each package's guide, shipped in its tarball
+  and opening with an `Applies to` version line; the package README points to
+  it
 
 ## Adding a package
 

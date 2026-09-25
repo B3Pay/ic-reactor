@@ -221,7 +221,7 @@ through workspace symlinks, so nothing else sees the published artifact.
 - `llms-full.txt` — Complete consumer guide, published at
   `https://ic-reactor.b3pay.net/llms-full.txt`; its snippets must compile
 - `packages/*/llms.txt` — Per-package consumer guides shipped in the npm
-  tarballs
+  tarballs, each opening with an `Applies to` version line
 - `CHANGELOG.md` — Per-package changes; add user-visible ones under
   `## Unreleased`
 - `README.md` — Root package overview, install paths, examples, and AI context index

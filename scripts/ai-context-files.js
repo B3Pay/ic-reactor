@@ -24,4 +24,5 @@ export const AI_CONTEXT_FILES = [
   "packages/codegen/llms.txt",
   "packages/cli/llms.txt",
   "packages/vite-plugin/llms.txt",
+  "packages/parser/llms.txt",
 ]

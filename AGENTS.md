@@ -130,7 +130,9 @@ Two audiences, kept apart:
     `https://ic-reactor.b3pay.net/llms-full.txt`. Every snippet must compile
     against the public API of the current packages.
   - `packages/<name>/llms.txt`: each package's own guide, shipped in its npm
-    tarball through `"files"`.
+    tarball through `"files"`. It opens with an `Applies to` line naming the
+    package and its version, holds a setup snippet, a when-to-use table and a
+    do-not list, and the package README's first lines point agents to it.
   - `CHANGELOG.md`: per-package Added / Changed / Deprecated / Fixed under
     `## Unreleased`.
   - Keep repo paths, pnpm commands and CI notes out of these files.
