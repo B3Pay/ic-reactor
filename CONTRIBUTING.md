@@ -153,6 +153,17 @@ The `environment:` key is read from the tagged revision, like the preflight, so 
 - Prefer small, focused PRs.
 - Include tests where applicable.
 - Add or update documentation for public API changes.
+- Record a change users will notice under `## Unreleased` in
+  [`CHANGELOG.md`](./CHANGELOG.md), in its package's Added, Changed,
+  Deprecated or Fixed list. A behaviour change gets a one-line migration hint.
+
+## Changelog at release time
+
+The release scripts do not edit `CHANGELOG.md`. Before tagging, move the
+entries of the packages being released from `## Unreleased` into a new section
+named after the release (for example `## core, react, candid 3.13.0`), and
+leave the other lanes' entries under `## Unreleased`. The GitHub release that
+the tag creates still generates its own notes from the merged pull requests.
 
 ## Code style
 

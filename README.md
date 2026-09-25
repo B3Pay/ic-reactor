@@ -44,6 +44,9 @@ IC Reactor gives you a higher-level API than raw `Actor` usage while keeping typ
 | [`@ic-reactor/cli`](./packages/cli)                 | Generate declarations + typed hooks/reactors                                   |
 | [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for watch-mode hook generation                                     |
 
+What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md), including
+the changes on `main` that no release carries yet.
+
 ## Install
 
 ### React apps
@@ -362,7 +365,8 @@ console.log(balance)
 
 ## Documentation
 
-- Docs site source: [`./docs`](./docs)
+- Docs site: [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/) (source: [`./docs`](./docs))
+- Changelog: [`CHANGELOG.md`](./CHANGELOG.md)
 - Package docs:
   - [`@ic-reactor/react`](./packages/react/README.md)
   - [`@ic-reactor/core`](./packages/core/README.md)
