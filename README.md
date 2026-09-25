@@ -300,15 +300,19 @@ npx @ic-reactor/cli generate
 
 Each generated canister directory contains `declarations/`, a managed
 `index.generated.ts`, and a stable `index.ts` wrapper. The generated file exports
-the reactor plus typed React hooks only:
+the reactor plus typed React hooks:
 
 - `use<Canister>Query`, `use<Canister>SuspenseQuery`, `use<Canister>InfiniteQuery`,
   `use<Canister>SuspenseInfiniteQuery`, `use<Canister>Mutation`, `use<Canister>Method`
 
-Codegen does not emit `createQuery` / `createMutation` objects. For outside-React
-use, call the generated reactor directly (`.fetchQuery()`, `.callMethod()`,
-`.invalidateQueries()`), or hand-write factory objects over it in a wrapper
-module.
+Set `factories: true` on a canister (with `target: "react"`, the default) to
+also generate `index.factories.generated.ts`: a `<method>Query` per query
+method (`createQuery`, or `createQueryFactory` when it takes arguments) and a
+`<method>Mutation` (`createMutation`) per update or oneway method, used with
+`.useQuery()` / `.useMutation()` in components and `.fetch()` / `.execute()`
+outside React. The `index.ts` that codegen creates re-exports it. Without
+`factories: true`, call the generated reactor directly outside React
+(`.fetchQuery()`, `.callMethod()`, `.invalidateQueries()`).
 
 ## Dynamic Candid (Explorers and Dev Tools)
 
