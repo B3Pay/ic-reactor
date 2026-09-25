@@ -94,22 +94,44 @@ values.
 
 ## Agent Skills
 
-The `ic-reactor-hooks` skill guides an agent through hook and factory work:
-`createActorHooks`, reusable `createQuery` / `createMutation` objects, using
-the same object inside React and in loaders or actions, cache invalidation,
-and when to use generated hooks. It is published in
-[`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) for use
-in any project:
+The `ic-reactor` skill packs this guidance as an
+[Agent Skill](https://agentskills.io): which setup fits the app, the rules for
+queries, mutations, invalidation, server rendering, sign-in, errors, token
+amounts and tests, the mistakes to avoid, and type-checked examples the agent
+loads only when a task needs them. It starts by sending the agent to the
+`llms.txt` of the packages you installed, so it follows your version. Agents
+load it on their own when a task matches, or when you ask for it by name.
 
-```bash
-npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
-```
-
-Then ask for it by name:
+In Claude Code, add the IC Reactor repository as a plugin marketplace and
+install the plugin:
 
 ```text
-Use $ic-reactor-hooks to refactor this canister integration into reusable query and mutation factories, then show usage in a React component and a loader/action.
+/plugin marketplace add B3Pay/ic-reactor
+/plugin install ic-reactor@ic-reactor
 ```
+
+The plugin's version follows `@ic-reactor/react`, and an installed copy
+changes only when that version does. Turn on auto-update for the marketplace
+in `/plugin` (**Marketplaces** tab), or run
+`claude plugin update ic-reactor@ic-reactor` after upgrading the packages.
+
+For Codex, Cursor, GitHub Copilot, Gemini CLI, OpenCode and other agents that
+read skill folders, install it from your app's root with the
+[`skills`](https://github.com/vercel-labs/skills) CLI:
+
+```bash
+npx skills add B3Pay/ic-reactor --skill ic-reactor
+```
+
+It copies the skill into each agent's skills folder, such as
+`.agents/skills/ic-reactor/` or `.claude/skills/ic-reactor/`, where you can
+commit it with the app. Both installs take the skill from the repository's
+main branch, which can describe changes that no release carries yet. The
+skill's first step sends the agent to the `llms.txt` of your installed
+packages, and that guide wins where the two differ.
+
+The repository's other skills, `ic-reactor-hooks` and `ic-reactor-packages`,
+are written for work on IC Reactor itself, not for apps.
 
 ## Prompting Examples
 

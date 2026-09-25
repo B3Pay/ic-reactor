@@ -423,14 +423,15 @@ This repository is intentionally structured to work well with AI coding assistan
 
 ### AI context files
 
-For apps that use IC Reactor (published with the docs and in the npm packages):
+For apps that use IC Reactor (published with the docs, shipped in the npm packages, or installed as a skill):
 
-| File                               | Purpose                                                                                         |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------- |
-| [`llms.txt`](./llms.txt)           | Index of the docs in the llmstxt.org format, served at `https://ic-reactor.b3pay.net/llms.txt`  |
-| [`llms-full.txt`](./llms-full.txt) | Complete guide with setup choices, snippets and anti-patterns, served at `/llms-full.txt`       |
-| `packages/*/llms.txt`              | Each package's own guide, shipped in its tarball: `node_modules/@ic-reactor/<package>/llms.txt` |
-| [`CHANGELOG.md`](./CHANGELOG.md)   | Per-package changes with migration hints                                                        |
+| File                                                         | Purpose                                                                                         |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| [`llms.txt`](./llms.txt)                                     | Index of the docs in the llmstxt.org format, served at `https://ic-reactor.b3pay.net/llms.txt`  |
+| [`llms-full.txt`](./llms-full.txt)                           | Complete guide with setup choices, snippets and anti-patterns, served at `/llms-full.txt`       |
+| `packages/*/llms.txt`                                        | Each package's own guide, shipped in its tarball: `node_modules/@ic-reactor/<package>/llms.txt` |
+| [`CHANGELOG.md`](./CHANGELOG.md)                             | Per-package changes with migration hints                                                        |
+| [`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) | Agent skill and Claude Code plugin; install below                                               |
 
 For agents working in this repository:
 
@@ -440,35 +441,39 @@ For agents working in this repository:
 | [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context                                         |
 | [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                                                |
 | [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                                                           |
-| [`skill-packages/`](./skill-packages/)                                 | Local skill packages (multi-agent compatible)                              |
+| [`skill-packages/`](./skill-packages/)                                 | Contributor skills (`ic-reactor-hooks`, `ic-reactor-packages`)             |
 
-### Skill: `ic-reactor-hooks`
+### Agent skill: `ic-reactor`
 
-The `ic-reactor-hooks` skill is available in two places:
+[`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) is an
+[Agent Skill](https://agentskills.io) for apps that use IC Reactor: setup
+choices, queries and mutations, cache invalidation, server rendering, sign-in,
+errors, token amounts, testing and the mistakes to avoid, with type-checked
+examples. It sends the agent to the installed packages' `llms.txt` first, so
+it follows the app's version.
 
-- **In-repo**: [`skill-packages/ic-reactor-hooks/`](./skill-packages/ic-reactor-hooks/) — used by agents working directly in this repository
-- **External**: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — standalone installable skill for use in any ICP project
-
-Both locations contain the same skill content with multi-agent metadata (OpenAI, Claude, Copilot).
-
-Use it when asking an agent to:
-
-- create/refactor `createActorHooks(...)` integrations
-- build reusable `createQuery` / `createMutation` modules
-- explain inside-React vs outside-React usage (`fetch`, `execute`, `invalidate`)
-- choose between manual hooks and generated hooks (CLI / Vite plugin)
-
-Example prompt:
+In Claude Code, this repository is a plugin marketplace:
 
 ```text
-Use $ic-reactor-hooks to create a reusable query/mutation factory pair for my canister and show usage both inside a React component and in a route loader.
+/plugin marketplace add B3Pay/ic-reactor
+/plugin install ic-reactor@ic-reactor
 ```
 
-Example install (for external projects):
+For Codex, Cursor, GitHub Copilot, Gemini CLI and other agents, install it
+with the [`skills`](https://github.com/vercel-labs/skills) CLI:
 
 ```bash
-npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
+npx skills add B3Pay/ic-reactor --skill ic-reactor
 ```
+
+Then ask for it by name, or let the agent pick it up:
+
+```text
+Use the ic-reactor skill to add a transfer form for my ledger canister, with the balance refreshed after each transfer.
+```
+
+The `ic-reactor-hooks` and `ic-reactor-packages` skills in `skill-packages/`
+are for agents working on this repository.
 
 ## Contributing
 

@@ -278,3 +278,4 @@ shared reactor with `queryClient.clear()`, and test a signed-in user with
 - Testing: https://ic-reactor.b3pay.net/v3/guides/testing.md
 - Index of all docs: https://ic-reactor.b3pay.net/llms.txt
 - Full guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Agent skill for Claude Code and other agents: https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor

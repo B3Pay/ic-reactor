@@ -290,3 +290,4 @@ values; return `{ Err: ... }` for a `CanisterError` and throw for a
 - Testing kit: https://ic-reactor.b3pay.net/v3/reference/testing.md
 - Index of all docs: https://ic-reactor.b3pay.net/llms.txt
 - Full guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Agent skill for Claude Code and other agents: https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor

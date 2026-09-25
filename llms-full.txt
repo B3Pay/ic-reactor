@@ -14,6 +14,11 @@ migration hints for behaviour changes. Each installed package also carries a
 guide for its own API at `node_modules/@ic-reactor/<package>/llms.txt`,
 written for the version installed.
 
+The rules below also ship as the `ic-reactor` Agent Skill. In Claude Code:
+`/plugin marketplace add B3Pay/ic-reactor`, then
+`/plugin install ic-reactor@ic-reactor`. For other agents:
+`npx skills add B3Pay/ic-reactor --skill ic-reactor`.
+
 Package versions this guide describes:
 
 - `@ic-reactor/core`: `3.12.5`
@@ -1023,6 +1028,7 @@ it("turns an Err into a CanisterError", async () => {
 - Documentation: https://ic-reactor.b3pay.net/v3/
 - Index for agents: https://ic-reactor.b3pay.net/llms.txt
 - Changelog: https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md
+- Agent skill: https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor
 - React setup: https://ic-reactor.b3pay.net/v3/framework/react-setup.md
 - Queries: https://ic-reactor.b3pay.net/v3/framework/queries.md
 - Mutations: https://ic-reactor.b3pay.net/v3/framework/mutations.md

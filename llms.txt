@@ -81,5 +81,6 @@ Package versions this guide describes:
 - [MetadataReactor](https://ic-reactor.b3pay.net/v3/packages/candid/metadatareactor.md): form and result metadata generated from Candid
 - [Parser reference](https://ic-reactor.b3pay.net/v3/packages/parser/reference.md): parser functions and the names it renames
 - [All examples](https://ic-reactor.b3pay.net/v3/examples.md): every example app, with StackBlitz links
-- [AI Friendliness](https://ic-reactor.b3pay.net/v3/guides/ai-friendliness.md): how to point an agent at these files, and a snippet for your own AGENTS.md
+- [AI Friendliness](https://ic-reactor.b3pay.net/v3/guides/ai-friendliness.md): how to point an agent at these files, install the agent skill, and a snippet for your own AGENTS.md
+- [Agent skill](https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor): the `ic-reactor` skill; in Claude Code `/plugin marketplace add B3Pay/ic-reactor` then `/plugin install ic-reactor@ic-reactor`, elsewhere `npx skills add B3Pay/ic-reactor --skill ic-reactor`
 - [Source](https://github.com/B3Pay/ic-reactor): the monorepo; contributors start at its AGENTS.md
