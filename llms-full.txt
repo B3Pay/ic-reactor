@@ -99,6 +99,15 @@ pnpm add @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core
 Code generation: `pnpm add -D @ic-reactor/vite-plugin` (Vite) or
 `pnpm add -D @ic-reactor/cli` (anything else; Node.js 22.12 or later).
 
+The snippets below import `canisterId`, `idlFactory` and the `_SERVICE` type
+from `./declarations/backend`, which stands for your canister's declarations.
+`idlFactory` comes from the generated `.js` file and `_SERVICE` from the
+`.d.ts`. With the CLI or the Vite plugin those are
+`src/declarations/<name>/declarations/<name>.js` and `.d.ts`; the folder's own
+`index.ts` exports the generated reactor and hooks, not `idlFactory`.
+`canisterId` is the canister's id as text: a constant, or a value from your
+build's environment.
+
 ## Choose a Setup
 
 | Your app                                                    | Use                                                                               |
@@ -209,6 +218,7 @@ second `AuthenticationManager` for the same app.
 Use this when construction order must be explicit:
 
 ```ts
+// src/manual.ts
 import {
   ClientManager,
   DisplayReactor,
@@ -356,6 +366,32 @@ factory function has `getQueryKey()` (the prefix of all its queries) and
 `invalidate()`. `createQuery`, `createSuspenseQuery` and the query factories
 take `callConfig` as the hooks do:
 `createQuery(ledger, { functionName: "icrc1_symbol", callConfig: { canisterId: ckbtcId } })`.
+
+Paginated reads take TanStack's `initialPageParam` and `getNextPageParam`,
+plus `getArgs`, which turns a page param into the method's argument tuple:
+
+```ts
+import { createInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+// list_posts : (record { offset : nat; limit : nat })
+//   -> (record { posts : vec Post; next : opt nat }) query
+export const postPages = createInfiniteQuery(backend, {
+  functionName: "list_posts",
+  initialPageParam: "0", // a DisplayReactor takes a nat as text
+  getArgs: (offset) => [{ offset, limit: "20" }] as const,
+  getNextPageParam: (lastPage) => lastPage.next, // undefined: no next page
+})
+
+// In a component:
+//   const { data, fetchNextPage, hasNextPage } = postPages.useInfiniteQuery()
+//   const posts = data?.pages.flatMap((page) => page.posts) ?? []
+// In a loader: await postPages.fetch()
+```
+
+Keep `as const` on what `getArgs` returns: without it the args are inferred
+as an array rather than a tuple, and `createInfiniteQuery` rejects them.
+`useActorInfiniteQuery` takes the same fields.
 
 ## Cache Invalidation and Optimistic Updates
 

@@ -84,7 +84,10 @@ the six hooks of `createActorHooks`, and `useAuth`, `useAgentState`,
 `identityAttributes`. `defineDisplayReactor` takes the same options and gives
 display values instead (strings for `bigint` and `Principal`, hex for blobs,
 `T | undefined` for `opt`). `canisterId` is required except on a local replica
-whose `ic_env` cookie names it.
+whose `ic_env` cookie names it. `./declarations/backend` stands for your
+canister's declarations: `idlFactory` from the generated `.js`, `_SERVICE` from
+the `.d.ts` (`src/declarations/<name>/declarations/<name>.js` and `.d.ts` with
+the CLI or the Vite plugin), and `canisterId` your canister's id as text.
 
 ## When to Use What
 
@@ -179,6 +182,11 @@ export const { ReactorProvider, useReactor } = createReactorProvider(() =>
   `getBalance(owner ? [account] : skipToken).useQuery()` with
   `createQueryFactory` (that skipped object has only `useQuery()`). The
   suspense hooks, `createQuery` and `createSuspenseQuery` do not take it.
+- Paginated reads: `createInfiniteQuery` (or `useActorInfiniteQuery`) takes
+  `functionName`, `initialPageParam`, `getNextPageParam` and
+  `getArgs: (page) => [...] as const`. Keep `as const`: without it
+  `createInfiniteQuery` infers an array rather than the argument tuple and
+  rejects it.
 - A `Result` is unwrapped: `data` is the `Ok` payload and an `Err` arrives as a
   `CanisterError` in `error`.
 - Query hooks and objects take TanStack's options (`select`, `staleTime`,
