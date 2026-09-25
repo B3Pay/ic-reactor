@@ -138,6 +138,8 @@ the returned `clientManager` **and** `authentication` into the next
 `defineReactor` call:
 
 ```ts
+import { defineReactor } from "@ic-reactor/react"
+
 const ledger = defineReactor<_LEDGER>({
   name: "ledger",
   idlFactory: ledgerIdl,

@@ -116,6 +116,8 @@ Source: `packages/core/src/reactor.ts`, `packages/core/src/errors/index.ts`
 Use for component-focused code when method names vary:
 
 ```tsx
+import { createActorHooks } from "@ic-reactor/react"
+
 const { useActorQuery, useActorMutation } = createActorHooks(backendReactor)
 
 function Profile({ userId }: { userId: string }) {
@@ -143,6 +145,8 @@ function Profile({ userId }: { userId: string }) {
 Define once at module scope in a client-only app (repo example: `examples/all-in-one-demo/src/lib/factories.ts`). In a server-rendered app these belong to a per-request provider instead — see Common Mistakes below:
 
 ```ts
+import { createMutation, createQuery } from "@ic-reactor/react"
+
 export const getLikes = createQuery(backendReactor, {
   functionName: "get_likes",
   refetchInterval: 3000,
@@ -190,6 +194,8 @@ update's `call()` too, so pass `retry` only for query methods or pass
 `reactorUpdateRetry`:
 
 ```tsx
+import { useActorMethod } from "@ic-reactor/react"
+
 const method = useActorMethod({
   reactor: backendReactor,
   functionName: "get_user",
@@ -208,6 +214,8 @@ Source: `packages/react/src/hooks/useActorMethod.ts`
 Use query factory objects:
 
 ```ts
+import { createQuery } from "@ic-reactor/react"
+
 const userQuery = createQuery(backendReactor, {
   functionName: "get_user",
   args: ["user-1"],
@@ -224,6 +232,8 @@ The factory modules in `examples/tanstack-router/src/canisters/ledger/hooks/` us
 Use `.execute(args)`:
 
 ```ts
+import { createMutation } from "@ic-reactor/react"
+
 const transfer = createMutation(ledgerReactor, {
   functionName: "icrc1_transfer",
 })
