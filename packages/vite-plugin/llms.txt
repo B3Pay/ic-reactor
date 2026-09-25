@@ -70,6 +70,10 @@ export function Posts() {
 `export const clientManager = new ClientManager({ queryClient })`, with
 `ClientManager` from `@ic-reactor/react` and a `QueryClient` from
 `@tanstack/react-query` (set `retry: reactorRetry` in its query defaults).
+For Internet Identity sign-in, build
+`new AuthenticationManager({ clientManager })` in the same module and export
+`useAuth` from `createAuthHooks(authentication)`; every generated reactor on
+that `clientManager` then calls as the signed-in user.
 
 ## When to Use What
 

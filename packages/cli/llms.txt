@@ -46,14 +46,27 @@ Needs Node.js 22.12 or later, and TypeScript 5.7 or later in the app.
 files:
 
 ```ts
-import { ClientManager, reactorRetry } from "@ic-reactor/react"
+import {
+  AuthenticationManager,
+  ClientManager,
+  createAuthHooks,
+  reactorRetry,
+} from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
 export const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: reactorRetry } },
 })
 export const clientManager = new ClientManager({ queryClient })
+
+// Optional Internet Identity sign-in (needs @icp-sdk/auth); every generated
+// reactor on this clientManager then calls as the signed-in user
+export const authentication = new AuthenticationManager({ clientManager })
+export const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
 ```
+
+`ic-reactor init` writes a plainer `src/clients.ts` (a `QueryClient` with
+TanStack's defaults and the `ClientManager`); extend it as above.
 
 Using the output of `generate`:
 
