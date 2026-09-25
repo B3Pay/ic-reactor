@@ -113,7 +113,7 @@ Follow these repository-specific patterns when suggesting code:
 ## Verification
 
 - Format check (CI gate; covers the whole repo): `pnpm format:check`
-- AI context check (CI gate): `pnpm check:ai-context` (versions, package guide stamps and docs links in the AI guides). `llms.txt`, `llms-full.txt` and `packages/*/llms.txt` are consumer guides: keep repo paths and contributor workflow out of them, and record user-visible changes in `CHANGELOG.md`.
+- AI context check (CI gate): `pnpm check:ai-context` (versions, package guide stamps and docs links in the AI guides). `llms.txt`, `llms-full.txt`, `packages/*/llms.txt` and the consumer skill `skill-packages/ic-reactor/` are consumer guides: keep repo paths and contributor workflow out of them, update them together when public API guidance changes, and record user-visible changes in `CHANGELOG.md`.
 - Lint used by CI: `pnpm lint` (ESLint flat config over `packages/*/src` and `packages/*/tests`; run `pnpm build` first or the type-aware rules degrade to `any` and stop reporting)
 - Type check used by CI: `pnpm typecheck` (every package plus `e2e/`, `src` and tests; the root `tsconfig.json` is references-only, so `pnpm exec tsc --noEmit` at the root checks nothing)
 - Package builds: `pnpm build`
