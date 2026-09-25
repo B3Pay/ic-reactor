@@ -19,6 +19,7 @@
     "typecheck:examples": "node scripts/typecheck-examples.js",
     "build:examples": "node scripts/build-examples.js",
     "check:ai-context": "node scripts/check-ai-context.js",
+    "check:snippets": "node scripts/check-snippets.mjs",
     "verify:test-fails": "node scripts/verify-test-fails.js",
     "release": "node scripts/release.js",
     "release:tools": "node scripts/release-tools.js",
