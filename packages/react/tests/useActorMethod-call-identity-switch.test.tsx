@@ -260,6 +260,36 @@ describe("useActorMethod call() and refetch() on a query across a sign-in", () =
     ).toBeUndefined()
   })
 
+  // Not overtaken this time: bob signs in, and his refetch fails, before the
+  // call. The entry still holds alice's answer, with bob's error.
+  it("resolves call() and refetch() undefined after a switch whose refetch failed", async () => {
+    const onError = vi.fn()
+    const { result } = renderHook(() =>
+      useActorMethod({
+        reactor,
+        functionName: "greet",
+        args: ["hi"],
+        onError,
+      })
+    )
+    await waitFor(() => expect(result.current.data).toBe("hi, alice"))
+    failFor = "bob"
+    act(() => reactor.clientManager.updateAgent(bob))
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1))
+
+    let called: unknown = "sentinel"
+    let refetched: unknown = "sentinel"
+    await act(async () => {
+      called = await result.current.call()
+    })
+    await act(async () => {
+      refetched = await result.current.refetch()
+    })
+
+    expect(called).toBeUndefined()
+    expect(refetched).toBeUndefined()
+  })
+
   it("reports a CallError when the principal keeps switching", async () => {
     const onSuccess = vi.fn()
     const onError = vi.fn()
@@ -300,5 +330,40 @@ describe("useActorMethod call() and refetch() on a query across a sign-in", () =
     expect(onSuccess).not.toHaveBeenCalled()
     expect(onError).toHaveBeenCalledTimes(1)
     expect(isCallError(onError.mock.calls[0][0])).toBe(true)
+  })
+})
+
+describe("useActorMethod call() and refetch() on a query that fails", () => {
+  // A failed call resolves `undefined` and reports the error to `onError`,
+  // for `call()` as for `call(args)`. TanStack's `refetch()` resolves with
+  // the entry's last answer even when the fetch fails.
+  it("resolves call() and refetch() undefined, not the last answer", async () => {
+    const onError = vi.fn()
+    const { result } = renderHook(() =>
+      useActorMethod({
+        reactor,
+        functionName: "greet",
+        args: ["hi"],
+        onError,
+      })
+    )
+    await waitFor(() => expect(result.current.data).toBe("hi, alice"))
+    failFor = "alice"
+
+    let called: unknown = "sentinel"
+    await act(async () => {
+      called = await result.current.call()
+    })
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(1))
+    let refetched: unknown = "sentinel"
+    await act(async () => {
+      refetched = await result.current.refetch()
+    })
+    await waitFor(() => expect(onError).toHaveBeenCalledTimes(2))
+
+    expect(called).toBeUndefined()
+    expect(refetched).toBeUndefined()
+    // The hook's `data` still holds the last answer, as TanStack keeps it.
+    expect(result.current.data).toBe("hi, alice")
   })
 })

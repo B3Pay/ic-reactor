@@ -168,10 +168,10 @@ export interface UseActorMethodResult<
    * For a query method, `call(args)` fetches those args from the canister
    * even when they are cached, and reports the result to `onSuccess` or
    * `onError` itself. `call()` refetches the hook's own args, as `refetch()`
-   * does. A sign-in or sign-out while either is in flight cancels the fetch,
-   * which then runs again for the principal signed in, so the call resolves
-   * with that principal's answer rather than the previous one's, or
-   * `undefined` when that fetch fails; see
+   * does. Either resolves `undefined` when its fetch fails. A sign-in or
+   * sign-out while either is in flight cancels the fetch, which then runs
+   * again for the principal signed in, so the call resolves with that
+   * principal's answer rather than the previous one's; see
    * `ClientManager.fetchAcrossIdentitySwitch`.
    */
   call: (
@@ -193,9 +193,11 @@ export interface UseActorMethodResult<
   /**
    * For queries only: Refetch the query
    *
-   * A sign-in or sign-out while it is in flight makes it refetch for the
-   * principal signed in, and it resolves with that principal's answer, or
-   * `undefined` when that refetch fails, as `call()` does.
+   * Resolves with the answer, or `undefined` when the refetch fails, whose
+   * error the hook reports to `onError`; `data` keeps the last answer. A
+   * sign-in or sign-out while it is in flight makes it refetch for the
+   * principal signed in, and it resolves with that principal's answer, as
+   * `call()` does.
    */
   refetch: () => Promise<
     ReactorQueryData<ReactorReturnOk<Service, Method, Transform>> | undefined
@@ -508,12 +510,14 @@ export function useActorMethod<
         // this entry, rather than cancel it and start another.
         queryResult.refetch(runs++ === 0 ? undefined : { cancelRefetch: false })
       )
-      // `refetch()` resolves even when the fetch fails, and the result keeps
-      // the entry's last data. After a switch that is the data the entry was
-      // put back to, the previous principal's, so a failed run for the
-      // principal signed in resolves `undefined` instead. The effects report
-      // the failure to `onError`.
-      return runs > 1 && result.isError ? undefined : result.data
+      // TanStack's `refetch()` resolves even when the fetch fails, with the
+      // entry's last answer still in the result. After a sign-in or sign-out
+      // that is the previous principal's: the entry is put back to it when
+      // the switch cancels a fetch, and keeps it when the new principal's
+      // refetch fails. So a failed refetch resolves `undefined`, as a failed
+      // `call(args)` does, and the effects report the failure to `onError`.
+      // The hook's `data` keeps the last answer, as TanStack's does.
+      return result.isError ? undefined : result.data
     } catch (error) {
       // Only that CallError: `refetch()` itself never rejects. The effects
       // report what the entry settles with, and it settles nothing for this.
