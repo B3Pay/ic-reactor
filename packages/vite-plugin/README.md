@@ -75,6 +75,8 @@ https://ic-reactor.b3pay.net/v3/packages/codegen#query-and-mutation-factories
 for the naming rule for any method name.
 
 ```ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+
 icReactor({
   canisters: [
     { name: "backend", didFile: "./backend/backend.did", factories: true },
@@ -105,6 +107,8 @@ runtime package instead of `@ic-reactor/react`.
 ## Options
 
 ```ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+
 icReactor({
   canisters: [
     {

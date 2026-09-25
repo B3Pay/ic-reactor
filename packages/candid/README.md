@@ -125,6 +125,8 @@ const balance = await reactor.fetchQuery({
 You can also register individual methods on-the-fly, even if they contain complex type definitions natively output by AI models (such as recursive variants or records):
 
 ```typescript
+import { CandidReactor } from "@ic-reactor/candid"
+
 // Start with just a canister ID
 const reactor = new CandidReactor({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -301,7 +303,7 @@ const remoteJsCode = await adapter.compileRemote(
 
 #### Constructor
 
-```typescript
+```typescript nocheck
 new CandidAdapter(params: CandidAdapterParameters)
 ```
 
@@ -363,7 +365,7 @@ Extends `Reactor` from `@ic-reactor/core`.
 
 #### Constructor
 
-```typescript
+```typescript nocheck
 new CandidReactor(config: CandidReactorParameters)
 ```
 
@@ -405,7 +407,7 @@ After initialization or registration, all standard `Reactor` methods work:
 
 ### Types
 
-```typescript
+```typescript nocheck
 interface CandidDefinition {
   idlFactory: IDL.InterfaceFactory
   init?: (args: { IDL: typeof IDL }) => IDL.Type<unknown>[]
@@ -413,7 +415,7 @@ interface CandidDefinition {
 
 interface CandidAdapterParameters {
   clientManager: CandidClientManager
-  didjsCanisterId?: string
+  didjsCanisterId?: CanisterId
 }
 
 interface CandidClientManager {

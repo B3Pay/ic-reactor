@@ -194,10 +194,7 @@ function UpdateProfileButton() {
   })
 
   return (
-    <button
-      disabled={isPending}
-      onClick={() => mutate([{ name: "Alice", bio: "Hello IC" }])}
-    >
+    <button disabled={isPending} onClick={() => mutate([{ name: "Alice" }])}>
       {isPending ? "Saving..." : "Save"}
     </button>
   )
