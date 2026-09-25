@@ -171,7 +171,7 @@ const pages = await clientManager.fetchAcrossIdentitySwitch(() =>
 )
 ```
 
-`updateAgent()` cancels those queries when the principal changes. A query with a mounted observer refetches afterwards, but an imperative fetch has no observer. TanStack rejects its promise with a `CancelledError`, or, when the entry already held data before the fetch began (a stale entry that `fetchQuery` or `fetchInfiniteQuery` refetches), resolves it with that data, which is the previous principal's. Through this method it resolves with the answer for the identity installed now. `Reactor.fetchQuery()` and the query factories' `fetch()` already run through it.
+`updateAgent()` cancels those queries when the principal changes. A query with a mounted observer refetches afterwards, but an imperative fetch has no observer. TanStack rejects its promise with a `CancelledError`, or, when the entry already held data before the fetch began (a stale entry that `fetchQuery` or `fetchInfiniteQuery` refetches), resolves it with that data, which is the previous principal's. Through this method it resolves with the answer for the identity installed now. `Reactor.fetchQuery()` and the query factories' `fetch()` and `prefetch()` already run through it.
 
 Whatever the fetch settles with while the principal stays is passed on as is, including a cancellation from your own `cancelQueries()`. After three runs in a row, each overtaken by another switch, it rejects with a `CallError` rather than return an answer that may belong to a previous principal. `fetch` is called once per run, so it must start a new fetch each time.
 
@@ -383,7 +383,7 @@ console.log(clientManager.agentHost?.toString()) // The host URL
 
 When the principal changes, `updateAgent()` sweeps the cached queries of every canister registered with this ClientManager:
 
-- **In-flight queries are cancelled**, so a response signed by the previous identity cannot land after the switch. A `fetchQuery()` or factory `fetch()` that was waiting on one runs again for the new identity and resolves with that answer (see [fetchAcrossIdentitySwitch](#fetchacrossidentityswitch))
+- **In-flight queries are cancelled**, so a response signed by the previous identity cannot land after the switch. A `fetchQuery()` or factory `fetch()` that was waiting on one runs again for the new identity and resolves with that answer, and a factory `prefetch()` runs again too (see [fetchAcrossIdentitySwitch](#fetchacrossidentityswitch))
 - **Inactive entries are removed** — not just invalidated. Query keys carry no principal, so a merely-stale entry (a balance whose component has unmounted, a cached profile) would stay readable through `getQueryData` or `fetchQuery` under the new identity
 - **Active entries are invalidated**, so their mounted observers refetch as the new identity. They keep showing the previous identity's data only for the length of that refetch
 

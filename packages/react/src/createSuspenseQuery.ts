@@ -102,14 +102,20 @@ const createSuspenseQueryImpl = <
   /** Fire-and-forget prefetch — warms the cache without blocking. */
   const prefetch = (): Promise<void> => {
     const baseOptions = reactor.getQueryOptions(params)
-    return reactor.queryClient.prefetchQuery({
-      ...fetchOptions,
-      // An update method's default `retry`; see `Reactor.getQueryRetry`.
-      ...retryOption(fetchOptions.retry, baseOptions.retry),
-      queryKey: baseOptions.queryKey,
-      queryFn: baseOptions.queryFn,
-      staleTime,
-    })
+    // Runs again when a sign-in or sign-out cancels it, and never rejects;
+    // see `prefetch` in createQuery.
+    return reactor.clientManager
+      .fetchAcrossIdentitySwitch(() =>
+        reactor.queryClient.prefetchQuery({
+          ...fetchOptions,
+          // An update method's default `retry`; see `Reactor.getQueryRetry`.
+          ...retryOption(fetchOptions.retry, baseOptions.retry),
+          queryKey: baseOptions.queryKey,
+          queryFn: baseOptions.queryFn,
+          staleTime,
+        })
+      )
+      .catch(() => undefined)
   }
 
   const useSuspenseQueryHook: UseSuspenseQueryWithSelect<

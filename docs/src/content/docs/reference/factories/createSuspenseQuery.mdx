@@ -65,6 +65,13 @@ const userQuery = createSuspenseQuery(backend, {
 | `reset`            | `() => Promise<void>`                  | Reset to initial state; mounted hooks refetch      |
 | `optimisticUpdate` | `(updater) => Promise<{ rollback }>`   | Cancel, write `updater(cached)`, return a rollback |
 
+A sign-in or sign-out while `fetch()` or `prefetch()` is in flight cancels its
+fetch, so the previous identity's answer is never cached, and it runs again
+for the new identity. `fetch()` resolves with that answer rather than
+rejecting with TanStack's `CancelledError`. `prefetch()` still never rejects,
+and when that run succeeds the cache holds the new identity's answer by the
+time it resolves.
+
 ---
 
 ## Examples

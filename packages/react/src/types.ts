@@ -424,6 +424,12 @@ export interface BaseQueryResult<
    * Useful for preloading data before navigating to a route.
    *
    * Unlike `fetch()`, this returns a void promise so it can be fire-and-forget.
+   * It never rejects: after a failed fetch the cached data is left as it was.
+   *
+   * A sign-in or sign-out while it is in flight cancels the fetch, so the
+   * previous principal's answer is never cached, and it runs again for the
+   * principal signed in, as `fetch()` does. When that run succeeds, the cache
+   * holds that principal's answer by the time the promise resolves.
    *
    * @example
    * // In a route hover handler

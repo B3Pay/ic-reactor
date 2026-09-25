@@ -143,14 +143,24 @@ const createQueryImpl = <
   /** Fire-and-forget prefetch — warms the cache without blocking. */
   const prefetch = (): Promise<void> => {
     const baseOptions = reactor.getQueryOptions(params)
-    return reactor.queryClient.prefetchQuery({
-      ...fetchOptions,
-      // An update method's default `retry`; see `Reactor.getQueryRetry`.
-      ...retryOption(fetchOptions.retry, baseOptions.retry),
-      queryKey: baseOptions.queryKey,
-      queryFn: baseOptions.queryFn,
-      staleTime,
-    })
+    // A sign-in or sign-out cancels a prefetch in flight, and TanStack
+    // resolves it all the same: an entry nothing observes was left empty, and
+    // one a mounted query shows still held the previous principal's data
+    // until that query's refetch landed. It now runs again for the principal
+    // signed in, as `fetch()` does. Like `prefetchQuery` it never rejects, so
+    // the CallError for a principal that keeps switching is dropped too.
+    return reactor.clientManager
+      .fetchAcrossIdentitySwitch(() =>
+        reactor.queryClient.prefetchQuery({
+          ...fetchOptions,
+          // An update method's default `retry`; see `Reactor.getQueryRetry`.
+          ...retryOption(fetchOptions.retry, baseOptions.retry),
+          queryKey: baseOptions.queryKey,
+          queryFn: baseOptions.queryFn,
+          staleTime,
+        })
+      )
+      .catch(() => undefined)
   }
 
   // The hook publicly exposes the overloaded UseQueryWithSelect signature.
