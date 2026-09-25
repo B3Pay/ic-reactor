@@ -34,7 +34,7 @@ This skill describes these versions:
 ## Workflow
 
 1. **Read the guide for the installed version.** Each package ships one, such
-   as `node_modules/@ic-reactor/react/llms.txt`, opening with
+   as `node_modules/@ic-reactor/react/llms.txt`, whose first lines include
    ``Applies to `@ic-reactor/react` <version>.``. When that version differs
    from the list above, the installed guide wins. A package without the file
    or that line predates these guides: read
