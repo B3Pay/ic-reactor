@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import React from "react"
-import {
-  CancelledError,
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ActorMethod } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
@@ -173,12 +169,14 @@ describe("useActorMethod call() with the hook's own args", () => {
    * as TanStack dispatches it, and reports what it settled with.
    */
   describe("tells settles apart without their timestamps", () => {
-    it("reports a call that an identity switch cancels after a failure", async () => {
+    it("reports the new identity's answer to a call a switch cancels after a failure", async () => {
       // ClientManager.updateAgent cancels in-flight canister queries, and
       // TanStack puts a cancelled query back the way it was before the fetch:
-      // here the earlier failure, timestamp included. Nothing new settles, so
-      // the effects have nothing to report, and the call's CancelledError was
-      // taken for that failure and dropped.
+      // here the earlier failure, timestamp included, and nothing settles
+      // for the cancelled fetch. The call used to report TanStack's
+      // CancelledError. It now runs again for the new identity, joining the
+      // refetch the switch starts for the entry the hook shows, and reports
+      // that answer.
       const onSuccess = vi.fn()
       const onError = vi.fn()
       callMethod.mockRejectedValueOnce(new Error("replica unavailable"))
@@ -212,24 +210,24 @@ describe("useActorMethod call() with the hook's own args", () => {
       act(() =>
         reactor.clientManager.updateAgent(Ed25519KeyIdentity.generate())
       )
-      await act(async () => {
-        expect(await called).toBeUndefined()
-      })
-
-      expect(onError).toHaveBeenCalledTimes(2)
-      expect(onError.mock.calls[1][0]).toBeInstanceOf(CancelledError)
-
-      // The effects still report the switch's own refetch, once.
       await act(async () => answerRefetch("hello again, alice"))
+      await act(async () => {
+        expect(await called).toBe("hello again, alice")
+      })
       await settle()
+
+      // The call reports the refetch it joined, and the effects leave that
+      // settle to it.
       expect(onSuccess.mock.calls).toEqual([["hello again, alice"]])
-      expect(onError).toHaveBeenCalledTimes(2)
+      expect(onError).toHaveBeenCalledTimes(1)
+      expect(callMethod).toHaveBeenCalledTimes(3)
     })
 
-    it("reports what a cancelled call resolves with when the entry had data", async () => {
+    it("reports the new identity's answer, not the data a cancelled call reverts to", async () => {
       // With data to go back to, TanStack resolves the cancelled call with it
-      // instead of rejecting, so call() returns the previous result. onSuccess
-      // gets what call() returned, as it does for a call with other args.
+      // instead of rejecting, and call() used to return and report that
+      // previous result, which was the previous identity's. It now runs
+      // again for the new identity.
       const onSuccess = vi.fn()
       const { result } = renderHook(
         () =>
@@ -243,8 +241,12 @@ describe("useActorMethod call() with the hook's own args", () => {
       )
       await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1))
 
-      // Neither the call nor the refetch the switch starts gets an answer.
-      callMethod.mockReturnValue(new Promise(() => {}))
+      let answerRefetch = (_greeting: string) => {}
+      callMethod.mockReturnValueOnce(new Promise(() => {})).mockReturnValueOnce(
+        new Promise((resolve) => {
+          answerRefetch = resolve
+        })
+      )
       let called: Promise<unknown> | undefined
       act(() => {
         called = result.current.call(["alice"])
@@ -252,15 +254,16 @@ describe("useActorMethod call() with the hook's own args", () => {
       act(() =>
         reactor.clientManager.updateAgent(Ed25519KeyIdentity.generate())
       )
+      await act(async () => answerRefetch("hello again, alice"))
       await act(async () => {
-        expect(await called).toBe("hello alice #1")
+        expect(await called).toBe("hello again, alice")
       })
       await settle()
 
       // Once for the mount, once for the call.
       expect(onSuccess.mock.calls).toEqual([
         ["hello alice #1"],
-        ["hello alice #1"],
+        ["hello again, alice"],
       ])
     })
 

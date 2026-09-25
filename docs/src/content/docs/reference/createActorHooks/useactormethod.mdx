@@ -158,6 +158,24 @@ const { call } = useActorMethod({
 | `queryResult`    | `UseQueryResult`                                          | The raw result if it's a query.                                                                                                                                                                                                                          |
 | `mutationResult` | `UseMutationResult`                                       | The raw result if it's a mutation.                                                                                                                                                                                                                       |
 
+### Across a sign-in or sign-out
+
+For a query method, `call(args)` fetches those args from the canister even
+when they are cached (or joins a fetch of them already in flight), and
+`call()` and `refetch()` refetch the hook's own args. A sign-in or sign-out that switches the principal while one of them is
+in flight cancels its fetch, so the previous principal's answer is never
+cached, and the fetch runs again for the principal signed in. The promise
+resolves with that principal's answer, never with the previous principal's
+data or TanStack's `CancelledError`, and `onSuccess` or `onError` hears of it
+once. If the principal switches again during each of three runs in a row, the
+call reports a `CallError` to `onError` and resolves `undefined` rather than
+an answer that may be a previous principal's. `reactor.fetchQuery()` and the
+query factories' `fetch()` behave the same; see
+[fetchAcrossIdentitySwitch](/v3/reference/clientmanager#fetchacrossidentityswitch).
+
+An update method's `call()` runs as a mutation, which a sign-in or sign-out
+does not cancel.
+
 ## See Also
 
 - [useReactorMethod](/v3/reference/reactorhooks/usereactormethod) — Raw version

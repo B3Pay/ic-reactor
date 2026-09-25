@@ -164,6 +164,14 @@ export interface UseActorMethodResult<
    * Call the method with optional arguments.
    * For queries: triggers a refetch
    * For mutations: executes the mutation with the provided args
+   *
+   * For a query method, `call(args)` fetches those args from the canister
+   * even when they are cached, and reports the result to `onSuccess` or
+   * `onError` itself. `call()` refetches the hook's own args, as `refetch()`
+   * does. A sign-in or sign-out while either is in flight cancels the fetch,
+   * which then runs again for the principal signed in, so the call resolves
+   * with that principal's answer rather than the previous one's; see
+   * `ClientManager.fetchAcrossIdentitySwitch`.
    */
   call: (
     args?: ReactorArgs<Service, Method, Transform>
@@ -183,6 +191,10 @@ export interface UseActorMethodResult<
 
   /**
    * For queries only: Refetch the query
+   *
+   * A sign-in or sign-out while it is in flight makes it refetch for the
+   * principal signed in, and it resolves with that principal's answer, as
+   * `call()` does.
    */
   refetch: () => Promise<
     ReactorQueryData<ReactorReturnOk<Service, Method, Transform>> | undefined
@@ -470,8 +482,43 @@ export function useActorMethod<
   )
 
   // ============================================================================
-  // Unified Call Function
+  // Refetch and Call Functions
   // ============================================================================
+
+  // A query's `call()` and `refetch()` resolve with the answer for the
+  // principal signed in when they settle. `ClientManager.updateAgent` cancels
+  // a fetch in flight when a sign-in or sign-out switches the principal, so
+  // that the previous principal's answer is never cached. TanStack then
+  // resolves the fetch with the data it puts the entry back to, which is the
+  // previous principal's, or rejects it with a `CancelledError` when the entry
+  // had none, and a call used to resolve with, and report, whichever it got.
+  // Through `fetchAcrossIdentitySwitch` it runs again for the principal signed
+  // in, as `reactor.fetchQuery()` and the factories' `fetch()` do. After three
+  // runs in a row, each overtaken by another switch, that rejects with a
+  // `CallError`, which is reported to `onError` like any other failure.
+
+  const refetchLatest = async (): Promise<TQueryData | undefined> => {
+    if (!isQuery) return undefined
+    let runs = 0
+    try {
+      const { data } = await reactor.clientManager.fetchAcrossIdentitySwitch(
+        () =>
+          // A run after a switch joins the refetch the switch started for
+          // this entry, rather than cancel it and start another.
+          queryResult.refetch(
+            runs++ === 0 ? undefined : { cancelRefetch: false }
+          )
+      )
+      return data
+    } catch (error) {
+      // Only that CallError: `refetch()` itself never rejects. The effects
+      // report what the entry settles with, and it settles nothing for this.
+      onErrorRef.current?.(
+        error as ReactorReturnErr<Service, Method, Transform>
+      )
+      return undefined
+    }
+  }
 
   const callLatest = async (
     callArgs?: ReactorArgs<Service, Method, Transform>
@@ -485,38 +532,47 @@ export function useActorMethod<
         // dedupe onto an in-flight request for the old args, returning that
         // response as though it answered this one.
         const calledKey = buildQueryKey(callArgs)
-        const stopMarking = markCallSettle(calledKey)
         // Reported here rather than by the observer effects: this result
         // usually lands under a key the mounted observer (bound to the hook's
         // own args) does not watch. When it is that key, `markCallSettle` has
         // already kept the effects from reporting it as well. Either way the
-        // callbacks get what the call settles with. For a cancelled call that
-        // is TanStack's `CancelledError`, or, when the entry had data, the
-        // data it reverted to, which `fetchQuery` resolves with instead.
+        // callbacks get what the call settles with.
         try {
-          const result = await reactor.queryClient.fetchQuery<
-            TQueryData,
-            ReactorReturnErr<Service, Method, Transform>
-          >({
-            // The options the hook's own fetches run with: `retry`,
-            // `retryDelay`, `networkMode` and `meta`. With only a key and a
-            // function, a call ran on the QueryClient's defaults. It failed on
-            // the first error the hook retried through, stayed paused offline
-            // under `networkMode: "always"`, and reached the QueryCache
-            // callbacks without the hook's `meta`.
-            ...pickFetchOptions(queryOptions),
-            queryKey: calledKey,
-            // Normalize for the same reason as the observer's queryFn.
-            queryFn: async () =>
-              normalizeQueryData<TData>(
-                (await reactor.callMethod({
-                  functionName,
-                  args: callArgs,
-                  callConfig,
-                })) as TData
-              ),
-            staleTime: 0,
-          })
+          const result = await reactor.clientManager.fetchAcrossIdentitySwitch(
+            async () => {
+              // Each run marks the settle of its own fetch. A run a switch
+              // overtook may have settled with the previous principal's answer,
+              // which the effects must not report either.
+              const stopMarking = markCallSettle(calledKey)
+              try {
+                return await reactor.queryClient.fetchQuery<
+                  TQueryData,
+                  ReactorReturnErr<Service, Method, Transform>
+                >({
+                  // The options the hook's own fetches run with: `retry`,
+                  // `retryDelay`, `networkMode` and `meta`. With only a key and
+                  // a function, a call ran on the QueryClient's defaults. It
+                  // failed on the first error the hook retried through, stayed
+                  // paused offline under `networkMode: "always"`, and reached
+                  // the QueryCache callbacks without the hook's `meta`.
+                  ...pickFetchOptions(queryOptions),
+                  queryKey: calledKey,
+                  // Normalize for the same reason as the observer's queryFn.
+                  queryFn: async () =>
+                    normalizeQueryData<TData>(
+                      (await reactor.callMethod({
+                        functionName,
+                        args: callArgs,
+                        callConfig,
+                      })) as TData
+                    ),
+                  staleTime: 0,
+                })
+              } finally {
+                stopMarking()
+              }
+            }
+          )
           onSuccessRef.current?.(result)
           return result
         } catch (error) {
@@ -524,13 +580,10 @@ export function useActorMethod<
             error as ReactorReturnErr<Service, Method, Transform>
           )
           return undefined
-        } finally {
-          stopMarking()
         }
       }
       // Otherwise just refetch
-      const { data } = await queryResult.refetch()
-      return data
+      return refetchLatest()
     } else {
       // For mutations, execute with provided args
       return mutationResult
@@ -556,18 +609,6 @@ export function useActorMethod<
     } else {
       mutationResult.reset()
     }
-  }
-
-  // ============================================================================
-  // Refetch Function
-  // ============================================================================
-
-  const refetchLatest = async () => {
-    if (isQuery) {
-      const result = await queryResult.refetch()
-      return result.data
-    }
-    return undefined
   }
 
   // `call`, `reset` and `refetch` keep one identity for the life of the
