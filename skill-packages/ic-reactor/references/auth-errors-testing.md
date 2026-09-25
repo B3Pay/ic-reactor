@@ -293,6 +293,12 @@ it("renders the post", async () => {
 })
 ```
 
+Vitest runs `vite.config.ts` unless a `vitest.config.ts` replaces it, so the
+Vite plugin generates again in mode `test`. When it takes `canisterId` from
+`loadEnv`, set that variable for the test mode (`CANISTER_ID_BACKEND=...` in
+`.env.test`); otherwise the regenerated `index.generated.ts` has no id and
+importing it throws `canisterId is required`.
+
 - With no `host` on either side, the app's `ClientManager` and the fake both
   use the page origin (jsdom, happy-dom). If the app passes
   `agentOptions.host`, pass the same `host` to `installFakeReplica`.

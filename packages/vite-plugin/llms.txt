@@ -128,6 +128,11 @@ re-exports `./index.factories.generated`; a warning never fails the build.
   generated reactor and wins over the local id under `vite dev` too, so take
   it from the environment (`loadEnv`, as above) when the local and production
   ids differ, rather than hard-coding the production id.
+- Vitest runs `vite.config.ts` unless a `vitest.config.ts` replaces it, so
+  the plugin generates again when tests run, in mode `test`. Set the
+  `canisterId` variable for that mode too (for example in `.env.test`), or
+  the regenerated reactor has no id and importing it in a test throws
+  `canisterId is required`.
 
 ## Do Not
 

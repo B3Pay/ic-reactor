@@ -366,6 +366,14 @@ const { Balance } = await import("./Balance")
 const { queryClient } = await import("./clients")
 ```
 
+Vitest runs `vite.config.ts` unless a `vitest.config.ts` replaces it, so the
+Vite plugin generates the code again when the tests start, in mode `test`. If
+the config takes the canister's `canisterId` from `loadEnv`, set that variable
+for the test mode as well, for example
+`CANISTER_ID_BACKEND=rrkah-fqaaa-aaaaa-aaaaq-cai` in `.env.test`. Without it
+the regenerated reactor has no canister ID, and importing it throws
+`canisterId is required`.
+
 ## Test as a Signed-In User
 
 A handler's `{ caller }` is the principal the request was signed as, checked

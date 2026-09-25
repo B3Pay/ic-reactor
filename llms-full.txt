@@ -989,7 +989,11 @@ it("turns an Err into a CanisterError", async () => {
   Import `idlFactory` and `_SERVICE` from the canister's `declarations/`
   folder (it builds nothing), key the fake by the `canisterId` the generator
   wrote into `index.generated.ts`, and `await import(...)` the entry and the
-  components after the fake.
+  components after the fake. Vitest runs `vite.config.ts` (unless a
+  `vitest.config.ts` replaces it), so the Vite plugin generates again in mode
+  `test`: set the variable a `loadEnv` `canisterId` comes from in
+  `.env.test`, or importing the regenerated entry throws
+  `canisterId is required`.
 - Test a signed-in user with `clientManager.updateAgent(identity)`, for
   example `Ed25519KeyIdentity.generate()`; the kit does not simulate Internet
   Identity.

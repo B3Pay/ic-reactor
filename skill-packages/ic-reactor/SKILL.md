@@ -263,7 +263,10 @@ re-exports `@ic-reactor/core`.
   entry, install it at the top of the test file and `await import(...)` the
   modules under test. For generated code, import `idlFactory` and `_SERVICE`
   from the canister's `declarations/` folder, and key the fake by the
-  `canisterId` the generator wrote.
+  `canisterId` the generator wrote. Vitest runs `vite.config.ts` unless a
+  `vitest.config.ts` replaces it, so the Vite plugin generates again in mode
+  `test`: a `canisterId` read with `loadEnv` needs its variable in
+  `.env.test`, or the regenerated reactor has no id and importing it throws.
 - A handler returns `{ Err: ... }` for a `CanisterError` and throws for a
   `CallError`. Test a signed-in user with `clientManager.updateAgent(identity)`.
 
