@@ -37,6 +37,12 @@ A skill is a set of local instructions to follow that is stored in a `SKILL.md` 
 
 ### Available skills
 
+The consumer skill, for apps that install the packages (not for work in this repository):
+
+- `ic-reactor`: Setup choices, queries and mutations, invalidation, server rendering, sign-in, errors, token amounts, testing and anti-patterns for app code. It is the Claude Code plugin that `.claude-plugin/marketplace.json` lists, and other agents install it with `npx skills add B3Pay/ic-reactor --skill ic-reactor`. Update it when public API guidance changes, as you would `llms-full.txt`. (file: `skill-packages/ic-reactor/SKILL.md`)
+
+Contributor skills, for work in this repository:
+
 - `ic-reactor-hooks`: Create, refactor, and document Reactor hook integrations for this repo, including `createActorHooks`, query/mutation factories, `useActorMethod`, and generated hooks. Use when implementing or explaining hook usage inside React components versus imperative usage outside React. (file: `skill-packages/ic-reactor-hooks/SKILL.md`)
 - `ic-reactor-packages`: Inspect, modify, review, or document the IC Reactor monorepo package architecture, package ownership, exports, tsconfig/project references, generated artifacts, dependency boundaries, and package verification workflows. Use when deciding which package owns a behavior or when work spans package metadata/build/test/release readiness. (file: `skill-packages/ic-reactor-packages/SKILL.md`)
 
@@ -135,10 +141,18 @@ Two audiences, kept apart:
     do-not list, and the package README's first lines point agents to it.
   - `CHANGELOG.md`: per-package Added / Changed / Deprecated / Fixed under
     `## Unreleased`.
+  - `skill-packages/ic-reactor/`: the consumer Agent Skill (`SKILL.md` and
+    `references/`). The folder is also the Claude Code plugin that
+    `.claude-plugin/marketplace.json` lists (`.claude-plugin/plugin.json`
+    beside a root `SKILL.md`), and the `skills` CLI installs the same folder,
+    so there is no second copy. Its `SKILL.md` lists the versions it describes
+    in the `llms.txt` line shape, and its plugin `version` is the runtime
+    version.
   - Keep repo paths, pnpm commands and CI notes out of these files.
 - **Contributors** (agents working in this repository): this file,
-  `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md` and
-  `skill-packages/`.
+  `CLAUDE.md`, `.cursorrules`, `.github/copilot-instructions.md` and the
+  contributor skills `skill-packages/ic-reactor-hooks/` and
+  `skill-packages/ic-reactor-packages/`.
 
 `pnpm check:ai-context` (`scripts/check-ai-context.js`) asserts that:
 
@@ -155,17 +169,29 @@ Two audiences, kept apart:
   a lowercase route (`/v3/reference/clientmanager`) or a source-cased `.md`
   companion (`/v3/reference/ClientManager.md`), with any `#fragment` naming a
   heading of that page. `libs/` (TypeDoc output) is not checked.
+- every `skill-packages/<name>/SKILL.md` has frontmatter with only Agent
+  Skills keys, a `name` equal to its folder and a `description` of at most
+  1024 characters, and every skill's `SKILL.md` and `references/*.md` are in
+  `scripts/ai-context-files.js`;
+- `.claude-plugin/marketplace.json` and each plugin's `plugin.json` parse,
+  their names agree, each `source` is a directory holding a skill, and a
+  plugin `version` equals `@ic-reactor/react`'s;
+- the consumer skill's `SKILL.md` and references name no repository path, and
+  its version list is current.
 
 `scripts/release.js` and `scripts/release-tools.js` rewrite the versions in
 every file listed in `scripts/ai-context-files.js`, on lines that name a
-released package, so the stamps and version lists follow a release. The parser
+released package, so the stamps and version lists follow a release. A plugin
+manifest's `"version"` line names no package, so `scripts/release.js` sets the
+manifests in `RUNTIME_PLUGIN_MANIFESTS` to the runtime version separately;
+Claude Code updates an installed plugin only when that version changes. The parser
 has no release script: bumping it means updating `llms.txt`, `llms-full.txt`,
 `packages/parser/llms.txt` and the lane lines in the contributor files by
 hand, and the check names each one that is stale.
 
 ## How to use skills
 
-- Discovery: Skill bodies live on disk at `skill-packages/<skill-name>/SKILL.md`. Agent-specific metadata is in `skill-packages/<skill-name>/agents/`.
+- Discovery: Skill bodies live on disk at `skill-packages/<skill-name>/SKILL.md`. Agent-specific metadata for the contributor skills is in `skill-packages/<skill-name>/agents/`.
 - Trigger rules: If the user names a skill (with `$SkillName` or plain text) OR the task clearly matches a skill's description, use that skill for the turn.
 - Missing/blocked: If a named skill is missing or the path can't be read, say so briefly and continue with the best fallback.
 - Progressive disclosure:
