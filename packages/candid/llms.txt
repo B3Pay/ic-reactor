@@ -18,8 +18,9 @@ pnpm add @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core
 ```
 
 `ClientManager` comes from `@ic-reactor/core` and needs a `QueryClient` from
-`@tanstack/query-core`. Both are only transitive dependencies of this package,
-which pnpm does not let the app import, so list them. A React app imports
+`@tanstack/query-core`. The first is only a transitive dependency of this
+package, which pnpm does not let the app import, and the second an optional
+peer of core, so list both. A React app imports
 `ClientManager` from `@ic-reactor/react` and `QueryClient` from
 `@tanstack/react-query` instead. `@ic-reactor/parser` comes with this package
 and loads on the first parse, as a chunk of its own.

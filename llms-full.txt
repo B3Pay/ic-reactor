@@ -608,10 +608,12 @@ export function MyProfile() {
 - The factory receives the provider's props other than `children`, read once
   per mount; give the provider a new `key` to build again.
 - On unmount the provider disposes the `AuthenticationManager`s built for its
-  value and leaves managers built elsewhere alone. It renders a
-  `QueryClientProvider` for the value's `QueryClient`, so `useQueryClient()`
-  and `HydrationBoundary` below it use the cache the hooks fill; pass
-  `{ queryClientProvider: false }` to keep your own.
+  value and leaves managers built elsewhere alone. When the value holds
+  exactly one `QueryClient` (every reactor in it built on one
+  `ClientManager`, as passing `authentication` on does), it renders a
+  `QueryClientProvider` for it, so `useQueryClient()` and `HydrationBoundary`
+  below it use the cache the hooks fill; pass `{ queryClientProvider: false }`
+  to keep your own.
 - A provider mounted by a transition (router navigation, `startTransition`)
   needs a `<Suspense>` boundary inside it around suspending components.
 
@@ -649,10 +651,11 @@ export default async function Supply() {
 Hooks, `defineReactor`, `defineDisplayReactor`, `createReactorProvider`,
 `createActorHooks`, the query/mutation factories, `skipToken`, the auth classes
 and the identity-attribute helpers are missing exports in the `react-server`
-graph (`next build`: "Export X doesn't exist in target module"). Import from
-`@ic-reactor/core` instead when the RSC bundler ignores the `react-server`
-condition. Generated canister modules (hooks and `factories: true` objects)
-import hooks, so a server component must not import them.
+graph (`next build`: "Export X doesn't exist in target module"). When the RSC
+bundler ignores the `react-server` condition, add `@ic-reactor/core` as a
+dependency and import the runtime from it instead. Generated canister modules
+(hooks and `factories: true` objects) import hooks, so a server component must
+not import them.
 
 Module scope stays correct in client-only apps.
 
@@ -781,6 +784,12 @@ Retries:
   of an update is a new call the canister runs, so use
   `retry: reactorUpdateRetry` (predicate `isRetryableUpdateError`), which
   retries only `SysTransient`, never a number.
+- `reactorRetry` and `reactorUpdateRetry` return `false` wherever there is no
+  `window` (Node scripts, server rendering, web workers), as TanStack Query
+  retries nothing on a server by default; the agent still resends a failed
+  HTTP request itself (3 times by default). For query retries in a Node
+  script, pass the predicate:
+  `retry: (count, error) => count < 3 && isRetryableReactorError(error)`.
 
 ## Code Generation
 
