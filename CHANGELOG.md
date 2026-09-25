@@ -93,8 +93,12 @@ unreleased too, and are not listed here.
   `timeoutMs` (#563). Migration: `timeoutMs: Infinity` restores polling without
   a limit.
 - `DisplayReactor` sends `NaN`, `±Infinity` and `-0` floats back as it read
-  them (#632).
-- `jsonToString` writes a `Principal` as its text and a `Uint8Array` as hex.
+  them, instead of refusing a non-finite float (#632). Migration: none; text
+  from a form must still spell a finite number.
+- `jsonToString` writes a `Principal` as its text and a `Uint8Array` as hex,
+  instead of `{"__principal__": ...}` and an object keyed by index. Migration:
+  drop a custom replacer that did this, and update code that parsed the old
+  output.
 
 #### Fixed
 
@@ -137,6 +141,8 @@ unreleased too, and are not listed here.
 - `AuthenticationManager.dispose()` releases the auth client the manager built
   (#745).
 - `@ic-reactor/react/testing` re-exports `@ic-reactor/core/testing`.
+  `@noble/curves` is a new optional peer dependency here too, used only by
+  this entry.
 
 #### Changed
 
@@ -149,16 +155,19 @@ unreleased too, and are not listed here.
   defaults now apply to it (#564). Migration: a `mutations.retry` default now
   retries `execute()` too; use `reactorUpdateRetry` for update methods.
 - `useActorMethod` awaits `invalidateQueries` before `onSuccess`, and `call()`
-  resolves after the invalidated queries have refetched (#564).
+  resolves after the invalidated queries have refetched (#564). Migration:
+  none; `onSuccess` now reads fresh data.
 - `useActorMethod` applies its `retry`, `retryDelay`, `networkMode` and `meta`
   to an update method's `call()` (#564). Migration: replace a numeric `retry`
   on a hook that calls an update method with `reactorUpdateRetry`.
 - `useActorMethod` skips an `undefined` entry of `invalidateQueries` instead of
-  invalidating every query.
+  invalidating every query. Migration: none.
 - On `@icp-sdk/auth` v10, `AuthenticationManager` follows sign-outs and account
-  switches made in other tabs and updates the agent (#754).
+  switches made in other tabs and updates the agent (#754). Migration: none;
+  expect `useAuth()` to change when another tab signs out.
 - `authentication.logout()` on a manager with no client builds one instead of
-  throwing "Authentication module is missing".
+  throwing "Authentication module is missing". Migration: remove a `catch`
+  for that error.
 
 #### Deprecated
 
@@ -189,11 +198,14 @@ unreleased too, and are not listed here.
 - `MetadataReactor` gives func-record `defaultArgs` in Candid form, so
   `callMethod({ args: defaultArgs })` on a reactor built from the node's
   `funcClass` works (#611). `MetadataDisplayReactor` keeps display defaults.
+  Migration: use `MetadataDisplayReactor` where the code expects display
+  defaults.
 - `CandidFormVisitor` and `FieldVisitor` accept `""` for a `text` field. A text
   field with a format, a number and a func reference's method name are still
-  required (#611).
+  required (#611). Migration: none.
 - `isPrincipalId` calls `isPrincipalText`, so it refuses a principal longer
-  than 29 bytes and the `{"__principal__": ...}` JSON form.
+  than 29 bytes and the `{"__principal__": ...}` JSON form. Migration: pass
+  principal text.
 
 #### Deprecated
 
@@ -251,10 +263,10 @@ unreleased too, and are not listed here.
 
 - An entry that shares its output directory with an earlier one (same `name`
   and `outDir`) fails, as it does in the CLI; under `vite build` that fails the
-  build (#565).
+  build (#565). Migration: give each entry its own `outDir`.
 - `injectEnvironment` sets the `ic_env` cookie on each response. While `icp`
   reports no network or a configured canister has no id, each page load asks
   `icp` again, so deploying after `vite dev` started needs only a reload
   (#664). The `/api` proxy follows the detected network unless the Vite config
   or another plugin sets its own `/api` proxy. `vite preview` gets the same
-  cookie.
+  cookie. Migration: none.

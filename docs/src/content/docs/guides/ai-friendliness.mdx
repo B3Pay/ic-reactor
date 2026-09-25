@@ -21,11 +21,13 @@ calling an update method through a query hook or doing token math with
 | A page's Markdown                                                            | Every docs page is also served as Markdown: use **Copy Markdown** or **Open in Claude** at the top of the page, or the `.md` URL that `/llms.txt` lists for it |
 | [`CHANGELOG.md`](https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md) | What changed in each package, with a migration hint for each behaviour change                                                                                  |
 
-Prefer the copy in `node_modules`: it describes exactly the version your app
-has installed, and each one opens with the version it applies to
-(``Applies to `@ic-reactor/react` …``). The copies on this site are published
-from the main branch, so they can describe changes that no release carries yet;
-the changelog's Unreleased section lists those.
+Prefer the copy in `node_modules`: it ships with the package, so it describes
+the version your app has installed, and it opens with that version
+(``Applies to `@ic-reactor/react` …``). A package whose `llms.txt` is missing
+or has no such line predates these guides; use the copies on this site for it.
+The copies on this site are published from the main branch, so they can
+describe changes that no release carries yet; the changelog's Unreleased
+section lists those.
 
 ## Tell Your Agent About Them
 
