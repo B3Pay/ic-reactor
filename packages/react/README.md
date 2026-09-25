@@ -313,6 +313,9 @@ alongside the actor hooks:
 
 ```tsx
 // src/reactor.ts
+import { defineReactor } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
+
 export const { useActorQuery, useAuth, useIdentityAttributes, authentication } =
   defineReactor<_SERVICE>({
     name: "backend",
@@ -390,6 +393,7 @@ If your bundler cannot resolve the optional peer at all, construct the client
 yourself and inject it — IC Reactor then never imports `@icp-sdk/auth`:
 
 ```ts
+import { AuthenticationManager } from "@ic-reactor/react"
 import { AuthClient } from "@icp-sdk/auth/client"
 
 const authentication = new AuthenticationManager({
@@ -445,7 +449,11 @@ await requestOpenIdAttributes({
 
 // ❌ gesture is gone by the time the window would open
 const nonce = await backend.callMethod({ functionName: "register_begin" })
-await requestOpenIdAttributes({ nonce, openIdProvider: "google", keys })
+await requestOpenIdAttributes({
+  nonce,
+  openIdProvider: "google",
+  keys: ["email", "name"],
+})
 ```
 
 ```tsx
@@ -514,6 +522,8 @@ cached result for a caller-scoped method (`get_my_balance`, a deposit address,
 
 ```tsx
 // ❌ Shared by every request on the server
+import { defineReactor } from "@ic-reactor/react"
+
 export const app = defineReactor<_SERVICE>({
   name: "backend",
   idlFactory,
@@ -594,6 +604,8 @@ one, is left alone. A provider you write yourself has to do the same from its
 cleanup:
 
 ```tsx
+import { useEffect, useState } from "react"
+
 const [value] = useState(createReactorContext)
 useEffect(() => () => value.authentication.dispose(), [value])
 ```
@@ -661,6 +673,9 @@ the infinite query objects have them too, over their `{ pages, pageParams }`.
 An optimistic update is three lines of mutation config:
 
 ```tsx
+import { createMutation, createQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const getPost = createQueryFactory(backend, { functionName: "get_post" })
 const likePost = createMutation(backend, { functionName: "like_post" })
 
@@ -700,6 +715,9 @@ via `onCanisterError`. This callback is supported on both `createMutation` and
 the direct `useActorMutation` hook:
 
 ```tsx
+import { createMutation } from "@ic-reactor/react"
+import { backend, useActorMutation } from "./reactor"
+
 // Via createActorHooks
 const { mutate } = useActorMutation({
   functionName: "transfer",
