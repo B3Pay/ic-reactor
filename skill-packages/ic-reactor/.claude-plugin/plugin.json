@@ -1,0 +1,12 @@
+{
+  "name": "ic-reactor",
+  "version": "3.12.5",
+  "description": "Skill for writing app code with IC Reactor: canister setup, queries and mutations, cache invalidation, Internet Identity sign-in, server rendering, token amounts and tests against a fake replica.",
+  "author": {
+    "name": "Behrad Deylami",
+    "url": "https://github.com/B3Pay"
+  },
+  "homepage": "https://ic-reactor.b3pay.net/v3/guides/ai-friendliness",
+  "repository": "https://github.com/B3Pay/ic-reactor",
+  "license": "MIT"
+}
