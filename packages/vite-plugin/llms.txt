@@ -23,24 +23,28 @@ pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
 
 ```ts
 // vite.config.ts
-import { defineConfig } from "vite"
+import { defineConfig, loadEnv } from "vite"
 import { icReactor } from "@ic-reactor/vite-plugin"
 
-export default defineConfig({
-  plugins: [
-    icReactor({
-      // outDir: "src/declarations" and clientManagerPath: "../../clients"
-      // by default, so src/clients.ts must export `clientManager`
-      canisters: [
-        {
-          name: "backend",
-          didFile: "./backend/backend.did",
-          factories: true, // also a query or mutation object per method
-          canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai", // for production builds
-        },
-      ],
-    }),
-  ],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "")
+  return {
+    plugins: [
+      icReactor({
+        // outDir: "src/declarations" and clientManagerPath: "../../clients"
+        // by default, so src/clients.ts must export `clientManager`
+        canisters: [
+          {
+            name: "backend",
+            didFile: "./backend/backend.did",
+            factories: true, // also a query or mutation object per method
+            // Used under `vite dev` too, in place of the local id
+            canisterId: env.CANISTER_ID_BACKEND,
+          },
+        ],
+      }),
+    ],
+  }
 })
 ```
 
@@ -116,7 +120,10 @@ re-exports `./index.factories.generated`; a warning never fails the build.
   `allowEnvConfig: true` on the `ClientManager`; without it a generated
   reactor with no `canisterId` throws instead of reading one from the cookie.
 - The cookie does not exist in production: set `canisterId` on every entry
-  whose build is served anywhere else.
+  whose build is served anywhere else. A set `canisterId` is written into the
+  generated reactor and wins over the local id under `vite dev` too, so take
+  it from the environment (`loadEnv`, as above) when the local and production
+  ids differ, rather than hard-coding the production id.
 
 ## Do Not
 

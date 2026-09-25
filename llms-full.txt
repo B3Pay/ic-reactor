@@ -795,23 +795,27 @@ or you want consistent typed exports.
 
 ```ts
 // vite.config.ts
-import { defineConfig } from "vite"
+import { defineConfig, loadEnv } from "vite"
 import { icReactor } from "@ic-reactor/vite-plugin"
 
-export default defineConfig({
-  plugins: [
-    icReactor({
-      canisters: [
-        {
-          name: "backend",
-          didFile: "./backend/backend.did",
-          factories: true,
-          // Pin the id for builds not served from a local replica
-          canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
-        },
-      ],
-    }),
-  ],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "")
+  return {
+    plugins: [
+      icReactor({
+        canisters: [
+          {
+            name: "backend",
+            didFile: "./backend/backend.did",
+            factories: true,
+            // Written into the generated reactor, and used under `vite dev`
+            // too in place of the local id: set it per environment
+            canisterId: env.CANISTER_ID_BACKEND,
+          },
+        ],
+      }),
+    ],
+  }
 })
 ```
 
