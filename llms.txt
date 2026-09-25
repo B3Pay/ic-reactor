@@ -4,7 +4,7 @@
 
 Install `@ic-reactor/react` in a React app and `@ic-reactor/core` anywhere else; `@ic-reactor/react` re-exports all of core. Start with `defineReactor(...)`, or `defineDisplayReactor(...)` when the UI should get strings instead of `bigint` and `Principal`. In a server-rendered app, build it per request with `createReactorProvider(...)`. Call query methods through query hooks or query objects, and state-changing update methods only through mutations. Hooks run only in React components; loaders, actions and scripts use `.fetch()`, `.execute()`, `.invalidate()` and `reactor.callMethod()`.
 
-Each installed package carries a short guide for its own API at `node_modules/@ic-reactor/<package>/llms.txt`. The complete guide, with setup choices, snippets and the mistakes to avoid, is [llms-full.txt](https://ic-reactor.b3pay.net/llms-full.txt). What changed between releases is in the [changelog](https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md).
+This file is published from the main branch, so it can describe changes that no release carries yet. Each installed package carries a short guide for its own API at `node_modules/@ic-reactor/<package>/llms.txt`, which matches the installed version. The complete guide, with setup choices, snippets and the mistakes to avoid, is [llms-full.txt](https://ic-reactor.b3pay.net/llms-full.txt). What changed between releases is in the [changelog](https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md).
 
 Package versions this guide describes:
 

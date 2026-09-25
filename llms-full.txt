@@ -6,11 +6,13 @@
 > avoid.
 
 This guide is for code that uses the published packages. The short index of
-the documentation is https://ic-reactor.b3pay.net/llms.txt. Each installed
-package also carries a guide for its own API at
-`node_modules/@ic-reactor/<package>/llms.txt`, written for the version
-installed. Behaviour changes between releases, with migration hints, are in
-https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
+the documentation is https://ic-reactor.b3pay.net/llms.txt. Both are published
+from the main branch, so they can describe changes that no release carries
+yet; the Unreleased section of
+https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md lists those, with
+migration hints for behaviour changes. Each installed package also carries a
+guide for its own API at `node_modules/@ic-reactor/<package>/llms.txt`,
+written for the version installed.
 
 Package versions this guide describes:
 
