@@ -4,7 +4,7 @@
 > fetch and parse a canister's Candid, call its methods dynamically, and build
 > form and result metadata from it. For explorers, dev tools and generic UIs.
 
-Applies to `@ic-reactor/candid` 3.12.5.
+Applies to `@ic-reactor/candid` 3.13.0.
 
 Read this file from `node_modules/@ic-reactor/candid/llms.txt` when writing
 code against the installed version. The complete guide for every package is

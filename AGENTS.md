@@ -8,9 +8,9 @@ Treat the published documentation and package manifests as the v3 release line.
 
 ### Packages
 
-- `@ic-reactor/core` (`packages/core`, `3.12.5`) — core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration.
-- `@ic-reactor/react` (`packages/react`, `3.12.5`) — React bindings, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks.
-- `@ic-reactor/candid` (`packages/candid`, `3.12.5`) — dynamic Candid adapter/reactors and metadata reactors.
+- `@ic-reactor/core` (`packages/core`, `3.13.0`) — core runtime, `ClientManager`, `Reactor`, `DisplayReactor`, cache integration.
+- `@ic-reactor/react` (`packages/react`, `3.13.0`) — React bindings, actor hooks, query/mutation factories, Internet Identity auth, and identity-attribute hooks.
+- `@ic-reactor/candid` (`packages/candid`, `3.13.0`) — dynamic Candid adapter/reactors and metadata reactors.
 - `@ic-reactor/parser` (`packages/parser`, `0.6.0`) — Rust/WASM Candid parser.
 - `@ic-reactor/codegen` (`packages/codegen`, `0.15.0`) — shared generation pipeline used by CLI and Vite plugin.
 - `@ic-reactor/cli` (`packages/cli`, `0.15.0`) — `ic-reactor` CLI for explicit declaration/reactor generation.
@@ -19,7 +19,7 @@ Treat the published documentation and package manifests as the v3 release line.
 ### Package alignment rules
 
 - Describe published documentation as IC Reactor v3.
-- Keep package-specific docs aligned with the released `@ic-reactor/core` v3.12.5 runtime and its published tooling.
+- Keep package-specific docs aligned with the released `@ic-reactor/core` v3.13.0 runtime and its published tooling.
 - Prefer `@icp-sdk/*` package names in docs and examples.
 - Prefer `defineReactor(...)` for React setup, and `defineDisplayReactor(...)` (same options) for display values; `defineReactor({ display: true })` is deprecated, so never generate it. Use `ClientManager` + `Reactor` + `createActorHooks` when explicit construction order is needed.
 - In a server-rendered app, build reactors and query/mutation objects per request with `createReactorProvider(factory)` and read them with its `useReactor` hook, never at module scope (reference: `examples/nextjs/src/service/provider.tsx`). A React Server Component may import the core runtime (`Reactor`, `DisplayReactor`, `ClientManager`, `formatTokenAmount`, ...) from `@ic-reactor/react` through its `react-server` export condition; hooks, factories, `defineReactor` and the auth classes are not exported there.
@@ -159,10 +159,10 @@ Two audiences, kept apart:
 `pnpm check:ai-context` (`scripts/check-ai-context.js`) asserts that:
 
 - `llms.txt` and `llms-full.txt` list every package at its `package.json`
-  version (`` - `@ic-reactor/core`: `3.12.5` ``);
+  version (`` - `@ic-reactor/core`: `3.13.0` ``);
 - every package, the parser included, ships a `packages/<name>/llms.txt`
   whose stamp line names its own current version
-  (``Applies to `@ic-reactor/core` 3.12.5.``);
+  (``Applies to `@ic-reactor/core` 3.13.0.``);
 - no file in `scripts/ai-context-files.js` names a version no package is at,
   or a docs path other than `/v3/`;
 - every `https://ic-reactor.b3pay.net/...` link in those files, the root and

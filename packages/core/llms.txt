@@ -4,7 +4,7 @@
 > typed methods, TanStack Query caching, typed errors and exact token amounts.
 > No React: React apps install `@ic-reactor/react`, which re-exports all of this.
 
-Applies to `@ic-reactor/core` 3.12.5.
+Applies to `@ic-reactor/core` 3.13.0.
 
 Read this file from `node_modules/@ic-reactor/core/llms.txt` when writing code
 against the installed version. The complete guide for every package is

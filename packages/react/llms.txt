@@ -4,7 +4,7 @@
 > for Internet Computer canisters, on TanStack Query. Re-exports all of
 > `@ic-reactor/core`.
 
-Applies to `@ic-reactor/react` 3.12.5.
+Applies to `@ic-reactor/react` 3.13.0.
 
 Read this file from `node_modules/@ic-reactor/react/llms.txt` when writing
 code against the installed version. The complete guide for every package is

@@ -8,9 +8,9 @@ This file is published from the main branch, so it can describe changes that no 
 
 Package versions this guide describes:
 
-- `@ic-reactor/core`: `3.12.5`
-- `@ic-reactor/react`: `3.12.5`
-- `@ic-reactor/candid`: `3.12.5`
+- `@ic-reactor/core`: `3.13.0`
+- `@ic-reactor/react`: `3.13.0`
+- `@ic-reactor/candid`: `3.13.0`
 - `@ic-reactor/codegen`: `0.15.0`
 - `@ic-reactor/cli`: `0.15.0`
 - `@ic-reactor/vite-plugin`: `0.15.0`

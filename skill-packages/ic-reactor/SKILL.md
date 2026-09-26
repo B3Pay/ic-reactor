@@ -25,9 +25,9 @@ React. This skill is for code that uses the published packages.
 
 This skill describes these versions:
 
-- `@ic-reactor/core`: `3.12.5`
-- `@ic-reactor/react`: `3.12.5`
-- `@ic-reactor/candid`: `3.12.5`
+- `@ic-reactor/core`: `3.13.0`
+- `@ic-reactor/react`: `3.13.0`
+- `@ic-reactor/candid`: `3.13.0`
 - `@ic-reactor/vite-plugin`: `0.15.0`
 - `@ic-reactor/cli`: `0.15.0`
 
