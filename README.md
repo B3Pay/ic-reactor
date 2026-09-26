@@ -177,14 +177,18 @@ function Greeting() {
 }
 
 function AuthButton() {
-  const { login, logout, isAuthenticated, principal } = useAuth()
+  const { login, logout, isAuthenticated, isAuthenticating, principal } =
+    useAuth()
 
+  // True until the stored session has been restored: without this check a
+  // reload shows "Login" to a user who is signed in
+  if (isAuthenticating) return <button disabled>Checking session…</button>
   return isAuthenticated ? (
-    <button onClick={() => logout()}>
+    <button onClick={() => void logout()}>
       Logout {principal?.toText().slice(0, 8)}...
     </button>
   ) : (
-    <button onClick={() => login()}>Login</button>
+    <button onClick={() => void login()}>Login</button>
   )
 }
 
