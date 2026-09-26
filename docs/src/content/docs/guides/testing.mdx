@@ -284,8 +284,12 @@ A test file's static imports run before its body, so that module would build
 its agent before the fake is installed. Install the fake at the top of the test
 file and import your components after it. With no `host` option on either
 side, your `ClientManager` and the fake both use the page's origin, so they
-meet with no configuration. If your app passes `agentOptions.host`, pass the
-same `host` to `installFakeReplica`.
+meet with no configuration. If your app passes a local `agentOptions.host`,
+pass the same `host` to `installFakeReplica`. An agent on a mainnet host
+(`https://ic0.app`, `https://icp-api.io`) checks certificates against
+mainnet's root key and never fetches the fake's, so every call fails with a
+certificate verification `CallError`. Build that `ClientManager` in the test
+with `agentOptions: { host: replica.host, rootKey: replica.rootKey }`.
 
 Here `Balance` renders `Balance: {data}` from `useActorQuery({ functionName:
 "balance" })` and a Deposit button that runs the `deposit` mutation, which

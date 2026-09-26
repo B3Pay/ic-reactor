@@ -300,8 +300,13 @@ Vite plugin generates again in mode `test`. When it takes `canisterId` from
 importing it throws `canisterId is required`.
 
 - With no `host` on either side, the app's `ClientManager` and the fake both
-  use the page origin (jsdom, happy-dom). If the app passes
-  `agentOptions.host`, pass the same `host` to `installFakeReplica`.
+  use the page origin (jsdom, happy-dom). If the app passes a local
+  `agentOptions.host`, pass the same `host` to `installFakeReplica`. An agent
+  on a mainnet host (`https://ic0.app`, `https://icp-api.io`) checks
+  certificates against mainnet's root key, so against the fake every call
+  fails with a certificate verification `CallError`: in the test, build that
+  `ClientManager` with
+  `agentOptions: { host: replica.host, rootKey: replica.rootKey }`.
 - A handler returns `{ Err: ... }` to produce a `CanisterError` and throws to
   produce the `CallError` of a trap.
 - Test a signed-in user with a test identity, not `login()`:

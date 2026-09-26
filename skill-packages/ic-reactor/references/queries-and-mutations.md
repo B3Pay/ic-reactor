@@ -1,8 +1,9 @@
 # Queries, Mutations and the Cache
 
-The examples use the `defineDisplayReactor` setup from `setup.md` (`backend`,
-`useActorQuery`, `useActorMutation` from `./reactor`, and `ledger` from
-`./ledger`), so arguments and results are display values.
+The examples use the setup from `setup.md`: `backend`, `useActorQuery` and
+`useActorMutation` from `./reactor`, a `defineDisplayReactor`, so the
+backend's arguments and results are display values; and `ledger` from
+`./ledger`, a raw `Reactor` of an ICRC-1 ledger (`bigint`, `Principal`).
 
 ## Hooks in a component
 
