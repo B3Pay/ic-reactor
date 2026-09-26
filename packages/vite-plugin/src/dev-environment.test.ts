@@ -132,9 +132,10 @@ describe.skipIf(process.platform === "win32")(
       fs.writeFileSync(path.join(bin, "icp"), FAKE_ICP, { mode: 0o755 })
       vi.stubEnv("PATH", `${bin}${path.delimiter}${process.env.PATH ?? ""}`)
 
-      const replica = http.createServer((req, res) =>
+      const replica = http.createServer((req, res) => {
+        res.writeHead(200, { "Content-Type": "text/plain" })
         res.end(`replica:${req.url}`)
-      )
+      })
       const replicaUrl = `http://127.0.0.1:${await listen(replica)}`
       closers.push(() => new Promise((resolve) => replica.close(resolve)))
 
@@ -251,9 +252,10 @@ describe.skipIf(process.platform === "win32")(
         network: { root_key: ROOT_KEY, api_url: replicaUrl },
         ids: {},
       }))
-      const backend = http.createServer((req, res) =>
+      const backend = http.createServer((req, res) => {
+        res.writeHead(200, { "Content-Type": "text/plain" })
         res.end(`backend:${req.url}`)
-      )
+      })
       const backendUrl = `http://127.0.0.1:${await listen(backend)}`
       closers.push(() => new Promise((resolve) => backend.close(resolve)))
       const port = await startDev([

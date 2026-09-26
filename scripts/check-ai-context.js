@@ -271,6 +271,7 @@ function headingIds(page) {
     const text = heading[1]
       .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // [text](url) -> text
       .replace(/<[^>]+>/g, "") // inline HTML or JSX
+      .replace(/</g, "") // a stray "<"; the slug drops it anyway
       .replace(/[`*]/g, "")
     const base = slugify(text)
     const count = seen.get(base) ?? 0
