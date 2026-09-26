@@ -8,6 +8,7 @@ backend's arguments and results are display values; and `ledger` from
 ## Hooks in a component
 
 ```tsx
+// src/ProfileCard.tsx
 import { skipToken } from "@ic-reactor/react"
 import { useActorMutation, useActorQuery } from "./reactor"
 

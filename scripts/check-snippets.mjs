@@ -173,9 +173,9 @@ const CONTEXTS = {
   "README.md": "readme",
   "packages/react/README.md": "react-readme",
   "packages/core/README.md": "core",
+  // Its `./ledger` is a DisplayReactor (core/ledger.ts), not the guides' own
   "packages/core/llms.txt": "core",
   "packages/candid/README.md": "candid",
-  "packages/candid/llms.txt": "candid",
   "skill-packages/ic-reactor-hooks/SKILL.md": "hooks-skill",
   "skill-packages/ic-reactor-hooks/references/patterns.md": "hooks-skill",
 }

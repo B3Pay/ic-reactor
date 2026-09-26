@@ -193,6 +193,7 @@ with `factories: true` (`getPostsQuery`, `getPostQuery`, `likePostMutation`,
 `declarations/` files are named after the `.did` file.
 
 ```tsx
+// src/Post.tsx
 import { getPostQuery, likePostMutation } from "./declarations/backend"
 
 export function Post({ id }: { id: string }) {
