@@ -83,11 +83,11 @@
   "devDependencies": {
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
-    "@size-limit/preset-small-lib": "^13.0.3",
+    "@size-limit/preset-small-lib": "^14.0.0",
     "@tanstack/query-core": "^5.102.8",
     "@types/node": "^26.5.1",
     "fake-indexeddb": "^6.2.5",
-    "size-limit": "^13.0.3",
+    "size-limit": "^14.0.0",
     "vitest": "^5.0.0"
   },
   "size-limit": [
