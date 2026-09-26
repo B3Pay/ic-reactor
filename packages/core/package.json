@@ -65,11 +65,11 @@
   "author": "Behrad Deylami",
   "license": "MIT",
   "dependencies": {
-    "zod": "^4.6.2"
+    "zod": "^4.6.5"
   },
   "peerDependencies": {
     "@icp-sdk/core": "^6.1.0",
-    "@noble/curves": "^2.2.0",
+    "@noble/curves": "^2.4.0",
     "@tanstack/query-core": "^5.0.0"
   },
   "peerDependenciesMeta": {
@@ -82,13 +82,13 @@
   },
   "devDependencies": {
     "@icp-sdk/core": "^6.1.0",
-    "@noble/curves": "^2.2.0",
+    "@noble/curves": "^2.4.0",
     "@size-limit/preset-small-lib": "^13.0.3",
-    "@tanstack/query-core": "^5.102.8",
-    "@types/node": "^26.5.1",
+    "@tanstack/query-core": "^5.103.2",
+    "@types/node": "^26.6.2",
     "fake-indexeddb": "^6.2.5",
     "size-limit": "^13.0.3",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.1"
   },
   "size-limit": [
     {

@@ -11,8 +11,8 @@
     "@ic-reactor/react": "^3.13.0",
     "@icp-sdk/auth": "^8.0.3",
     "@icp-sdk/core": "^6.1.0",
-    "@tanstack/react-query": "^5.102",
-    "@tanstack/react-query-devtools": "^5.102.8",
+    "@tanstack/react-query": "^5.103",
+    "@tanstack/react-query-devtools": "^5.103.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
