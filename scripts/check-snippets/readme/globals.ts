@@ -11,5 +11,5 @@ export const getProfile = createQuery(backendReactor, {
 
 export const updateProfile = createMutation(backendReactor, {
   functionName: "update_profile",
-  invalidateQueries: [getProfile.getQueryKey()],
+  invalidateQueries: [getProfile],
 })

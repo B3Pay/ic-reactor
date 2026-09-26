@@ -238,7 +238,7 @@ export const getProfile = createQuery(backendReactor, {
 
 export const updateProfile = createMutation(backendReactor, {
   functionName: "update_profile",
-  invalidateQueries: [getProfile.getQueryKey()],
+  invalidateQueries: [getProfile],
 })
 ```
 
@@ -247,7 +247,7 @@ Inside React:
 ```tsx
 const { data } = getProfile.useQuery()
 const { mutateAsync } = updateProfile.useMutation({
-  onSettled: () => toast.success("Profile updated!"),
+  onSuccess: () => toast.success("Profile updated!"),
 })
 ```
 

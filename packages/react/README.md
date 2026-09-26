@@ -286,7 +286,7 @@ const profileQuery = getProfile(["alice"])
 const { data } = profileQuery.useSuspenseQuery()
 
 // Prefetch before navigating (fire-and-forget)
-profileQuery.prefetch()
+void profileQuery.prefetch()
 
 // Write into the cache
 profileQuery.setData({ id: "alice", name: "Alice" })
