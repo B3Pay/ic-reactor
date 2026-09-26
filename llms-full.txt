@@ -24,9 +24,9 @@ Package versions this guide describes:
 - `@ic-reactor/core`: `3.13.0`
 - `@ic-reactor/react`: `3.13.0`
 - `@ic-reactor/candid`: `3.13.0`
-- `@ic-reactor/codegen`: `0.15.0`
-- `@ic-reactor/cli`: `0.15.0`
-- `@ic-reactor/vite-plugin`: `0.15.0`
+- `@ic-reactor/codegen`: `0.15.1`
+- `@ic-reactor/cli`: `0.15.1`
+- `@ic-reactor/vite-plugin`: `0.15.1`
 - `@ic-reactor/parser`: `0.6.0`
 
 ## What IC Reactor Is
