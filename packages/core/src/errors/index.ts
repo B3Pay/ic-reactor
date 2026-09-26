@@ -1,3 +1,5 @@
+import { isServer } from "../utils/server.js"
+
 /**
  * `value` with every BigInt that `JSON.stringify` would reach in it written as
  * its decimal string.
@@ -593,7 +595,7 @@ export function reactorRetry(failureCount: number, error: unknown): boolean {
   // TanStack defaults to zero retries on the server. Supplying a predicate
   // overrides that, so a failed prefetch or render would pick up the 1s/2s/4s
   // backoffs and add seven seconds to a request that used to fail fast.
-  if (typeof window === "undefined") return false
+  if (isServer()) return false
   return failureCount < 3 && isRetryableReactorError(error)
 }
 
@@ -644,6 +646,6 @@ export function reactorUpdateRetry(
   failureCount: number,
   error: unknown
 ): boolean {
-  if (typeof window === "undefined") return false
+  if (isServer()) return false
   return failureCount < 3 && isRetryableUpdateError(error)
 }

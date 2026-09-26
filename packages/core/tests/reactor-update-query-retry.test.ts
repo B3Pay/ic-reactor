@@ -124,6 +124,14 @@ describe("reactorUpdateRetry", () => {
     expect(typeof window).toBe("undefined")
     expect(reactorUpdateRetry(0, transient)).toBe(false)
   })
+
+  // Deno can define `window`, and TanStack Query counts it as a server all the
+  // same, with no retries by default.
+  it("does not retry under Deno, even with a window", () => {
+    vi.stubGlobal("window", {})
+    vi.stubGlobal("Deno", {})
+    expect(reactorUpdateRetry(0, transient)).toBe(false)
+  })
 })
 
 describe("Reactor.getQueryRetry", () => {
@@ -174,6 +182,12 @@ describe("Reactor.getQueryRetry", () => {
     const retry = retryOf("increment")!
     expect(retry(2, transient)).toBe(true)
     expect(retry(3, transient)).toBe(false)
+  })
+
+  it("does not retry under Deno when the client sets none, as TanStack Query's default", () => {
+    vi.stubGlobal("Deno", {})
+    const retry = retryOf("increment")!
+    expect(retry(0, transient)).toBe(false)
   })
 
   it("is reactorUpdateRetry under reactorRetry, the default of defineReactor", () => {

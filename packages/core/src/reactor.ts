@@ -48,6 +48,7 @@ import {
   isValidationError,
 } from "./errors/index.js"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
+import { isServer } from "./utils/server.js"
 
 /**
  * A fresh `AnonymousIdentity` when `agent` currently signs as the anonymous
@@ -77,7 +78,7 @@ function retriesAgain(
   error: unknown
 ): boolean {
   if (retry === undefined) {
-    return typeof window !== "undefined" && failureCount < 3
+    return !isServer() && failureCount < 3
   }
   if (typeof retry === "function") return retry(failureCount, error as never)
   if (typeof retry === "number") return failureCount < retry

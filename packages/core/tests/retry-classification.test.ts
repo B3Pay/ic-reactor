@@ -218,4 +218,14 @@ describe("reactorRetry", () => {
     expect(typeof window).toBe("undefined")
     expect(reactorRetry(0, transient)).toBe(false)
   })
+
+  it("does not retry under Deno, which TanStack counts as a server even with a window", () => {
+    vi.stubGlobal("window", {})
+    vi.stubGlobal("Deno", {})
+    try {
+      expect(reactorRetry(0, transient)).toBe(false)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
 })
