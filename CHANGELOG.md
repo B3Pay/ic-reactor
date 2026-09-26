@@ -162,6 +162,15 @@ unreleased too, and are not listed here.
   on a hook that calls an update method with `reactorUpdateRetry`.
 - `useActorMethod` skips an `undefined` entry of `invalidateQueries` instead of
   invalidating every query. Migration: none.
+- A query method's `call()` and `refetch()` from `useActorMethod` fetch again
+  for the new principal when a sign-in or sign-out lands mid-call, and resolve
+  with that answer instead of the previous principal's cached data or
+  TanStack's `CancelledError`. When their fetch fails they resolve `undefined`
+  (and report the error to `onError`) instead of the entry's last answer.
+  Migration: treat an `undefined` result as a failed call.
+- A query object's `prefetch()` fetches again for the new principal when a
+  sign-in or sign-out overtakes it, so the cache never keeps the previous
+  principal's answer. Migration: none.
 - On `@icp-sdk/auth` v10, `AuthenticationManager` follows sign-outs and account
   switches made in other tabs and updates the agent (#754). Migration: none;
   expect `useAuth()` to change when another tab signs out.

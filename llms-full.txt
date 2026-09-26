@@ -477,9 +477,12 @@ when a sign-in or sign-out switches the principal mid-fetch (after that they
 reject with a `CallError`). Wrap a fetch you write against the `QueryClient`
 yourself (`queryClient.fetchQuery`, `fetchInfiniteQuery`, `ensureQueryData`) in
 `clientManager.fetchAcrossIdentitySwitch(() => ...)`: unwrapped, a switch can
-resolve it with the previous principal's cached data. `useActorMethod`'s
-`call()` is not protected this way, so loaders and services use
-`query.fetch()` or `reactor.fetchQuery()`.
+resolve it with the previous principal's cached data. A query object's
+`.prefetch()` fetches again the same way and never rejects, and a query
+method's `call()` and `refetch()` from `useActorMethod` resolve with the new
+principal's answer (`undefined` if that fetch fails). Loaders and services
+still use `query.fetch()` or `reactor.fetchQuery()`: hooks belong in
+components.
 
 ## Several Canisters of One Interface
 

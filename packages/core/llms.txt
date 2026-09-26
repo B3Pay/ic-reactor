@@ -17,68 +17,6 @@ https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
 pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 ```
 
-## Core Building Blocks
-
-- `ClientManager` for shared agent + QueryClient state
-- `Reactor` for raw Candid values
-- `DisplayReactor` for UI-friendly transformed values
-
-## Preferred Usage
-
-- Reuse one `ClientManager` across multiple canisters
-- Use `fetchQuery` / `getQueryData` / `invalidateQueries` for cache-aware calls
-- `invalidateQueries` returns TanStack Query's `Promise<void>`: `await` it to
-  wait until the active queries it matched have refetched (a failed refetch
-  does not reject it); prefix a call you do not wait for with `void`
-- A sign-in or sign-out cancels a `fetchQuery` in flight; it then fetches again
-  for the new identity and resolves with that answer, never with TanStack's
-  `CancelledError`. Wrap other imperative fetches of canister queries (for
-  example `queryClient.fetchQuery` or `queryClient.fetchInfiniteQuery`) in
-  `clientManager.fetchAcrossIdentitySwitch(() => ...)` for the same behaviour:
-  unwrapped, a cancelled refetch of a stale entry resolves with the previous
-  principal's cached data. When 3 runs again are each overtaken by another
-  switch too, it rejects with a `CallError`
-- Use `callMethod` for imperative update/query calls
-- Several canisters of one interface (a multi-token wallet): build one reactor
-  and call `reactor.forCanister(canisterId)` for each other canister. It gives a
-  memoized sibling of the same class on the same `ClientManager`, with the
-  interface, polling options and validators, keyed by its own canister. Do not
-  retarget a shared reactor with `setCanisterId` or hand-build one reactor per
-  canister
-
-## DisplayReactor Guidance
-
-- Choose `DisplayReactor` when users type/read principals and numbers in forms
-- Validation can run on display values before calls
-- Pass the service type (`new DisplayReactor<_SERVICE>(...)`). Without it the
-  display-side args, validator args and results are `unknown` (an untyped
-  `Reactor` gives `any`); cast to the display shape only when the interface is
-  known only at run time
-- `fromZodSchema(schema, { async: true })` for a zod schema with async
-  refinements; async validators run only in `validate()` and
-  `callMethodWithValidation()` (`callMethod()` and the React hooks refuse them)
-- Floats display as numbers and `NaN`/`±Infinity`/`-0` are sent back as read,
-  but JSON writes `NaN`/`±Infinity` as `null` and `-0` as `0`: after a JSON
-  round trip an `opt` float that held `NaN` is sent as none
-- `vec record { text; T }` displays as an object: a repeated key keeps its last
-  value and integer-like keys come first in ascending order. Use `Reactor`
-  where repeated keys or their order matter (HTTP headers, ICRC-21 fields)
-
-## Token Amounts
-
-- Ledger amounts are base units (e8s): a `bigint` from `Reactor`, integer text
-  from `DisplayReactor`. Never convert them with `Number`, `parseFloat`,
-  `Math.pow` or `toFixed`: `Math.floor(Number("0.29") * 10 ** 8)` is 28999999
-- Show one with `formatTokenAmount(value, decimals, { maxFractionDigits?,
-  minFractionDigits?, trimTrailingZeros?, roundingMode?, locale?, useGrouping? })`;
-  it takes the reactor's value and `icrc1_decimals` as returned, truncates past
-  `maxFractionDigits` unless `roundingMode: "halfExpand"`, and is plain text
-  (`"1234.5"`) unless given a `locale`
-- Read typed text with `parseTokenAmount(text, decimals)`, which returns a
-  `bigint` and throws a `TypeError` for text that is not digits with one `.`
-  (grouping, exponents) and a `RangeError` for more fraction digits than the
-  token has or a negative amount (`{ allowNegative: true }` for an `int`).
-  Pass `amount.toString()` to a `DisplayReactor`
 ## Setup and Usage
 
 ```ts

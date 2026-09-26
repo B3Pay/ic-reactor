@@ -245,8 +245,10 @@ method's `call()` as well as to query methods, so a generic `retry: 3`
 re-sends state-changing update calls. Pass `retry` only for query methods, or
 pass `reactorUpdateRetry`. Without a hook `retry`, an update's `call()` follows
 the QueryClient's mutation defaults (no retry unless `mutations.retry` is set).
-`call()` is not protected across a sign-in or sign-out, so loaders and services
-use `query.fetch()` or `reactor.fetchQuery()` instead.
+A query method's `call()` and `refetch()` fetch again for the new principal
+when a sign-in or sign-out lands mid-call, and resolve `undefined` if that
+fetch fails. Loaders and services still use `query.fetch()` or
+`reactor.fetchQuery()`, since hooks belong in components.
 
 Prefer query/mutation factories when the method-specific API is clearer or you need outside-React access.
 

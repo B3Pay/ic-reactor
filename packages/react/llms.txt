@@ -40,15 +40,6 @@ export const {
   useAuth,
 } = defineReactor<_SERVICE>({ name: "backend", idlFactory, canisterId })
 
-- Inside React components/custom hooks: `useActorQuery`, `useActorMutation`,
-  `useActorMethod`, `.useQuery()`, `.useMutation()`
-- Outside React (loaders/actions/services/tests): `.fetch()`, `.prefetch()`,
-  `.invalidate()`, `.getCacheData()`, `.execute(args)`
-- A sign-in or sign-out while `.fetch()` is in flight makes it fetch again for
-  the new identity; it does not reject with TanStack's `CancelledError`.
-  `.prefetch()` fetches again the same way and never rejects, and a query
-  method's `call()` / `refetch()` from `useActorMethod` resolve with the new
-  identity's answer (`undefined` if that fetch fails)
 export function Profile({ userId }: { userId?: string }) {
   const profile = useActorQuery({
     functionName: "get_profile",
@@ -121,7 +112,10 @@ stands for your canister's declarations: `idlFactory` from the generated
   `.getQueryData()`, `.invalidateQueries()`, `.callMethod()`.
 - `.fetch()` and `reactor.fetchQuery()` fetch again as the new principal when a
   sign-in or sign-out lands mid-fetch; they never reject with TanStack's
-  `CancelledError`. Wrap your own `queryClient.fetchQuery` or
+  `CancelledError`. `.prefetch()` fetches again the same way and never
+  rejects, and a query method's `call()` / `refetch()` from `useActorMethod`
+  resolve with the new principal's answer (`undefined` if that fetch fails).
+  Wrap your own `queryClient.fetchQuery` or
   `fetchInfiniteQuery` of a canister query in
   `clientManager.fetchAcrossIdentitySwitch(() => ...)`.
 

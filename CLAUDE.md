@@ -43,13 +43,14 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
 
 - **`ic-reactor-hooks`**: Create, refactor, and document Reactor hook integrations, including `createActorHooks`, query/mutation factories, `useActorMethod`, and generated hooks. Use when implementing or explaining hook usage inside React components versus imperative usage outside React. (file: `skill-packages/ic-reactor-hooks/SKILL.md`)
 - **`ic-reactor-packages`**: Inspect, modify, review, or document package ownership, exports, tsconfig/project references, generated artifacts, dependency boundaries, and verification workflows across the IC Reactor monorepo. Use when deciding which package owns behavior or when work spans package metadata/build/test/release readiness. (file: `skill-packages/ic-reactor-packages/SKILL.md`)
+- **`ic-reactor`** (consumer skill, published for app developers): how an app sets up, calls, caches, signs in, renders on a server and tests with IC Reactor, using only public APIs. It is installed in app projects through the Claude Code plugin marketplace in `.claude-plugin/marketplace.json` (`/plugin marketplace add B3Pay/ic-reactor`) or `npx skills add B3Pay/ic-reactor --skill ic-reactor`. Update it together with the package `llms.txt` guides whenever public API or behaviour changes. (file: `skill-packages/ic-reactor/SKILL.md`)
 
 ### How to Use Skills
 
 1. **Discovery**: Skill instructions live in `skill-packages/<skill-name>/SKILL.md`.
 2. **Trigger**: If the user names a skill or the task matches a skill's description, use that skill.
 3. **Progressive disclosure**: Read the `SKILL.md` first; load `references/` files only when concrete examples are needed.
-4. **Agent metadata**: Claude-specific metadata is in `skill-packages/<skill-name>/agents/claude.yaml`.
+4. **Agent metadata**: Claude-specific metadata for the contributor skills is in `skill-packages/<skill-name>/agents/claude.yaml`; the consumer skill's plugin manifest is `skill-packages/ic-reactor/.claude-plugin/plugin.json`.
 
 ## Core Principles
 
