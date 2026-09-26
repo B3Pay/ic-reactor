@@ -80,7 +80,7 @@
     "@icp-sdk/auth-v8": "npm:@icp-sdk/auth@^8.0.3",
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
-    "@size-limit/preset-small-lib": "^13.0.3",
+    "@size-limit/preset-small-lib": "^14.0.0",
     "@tanstack/react-query": "^5.102.8",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.1",
@@ -91,7 +91,7 @@
     "jsdom": "^30.0.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "size-limit": "^13.0.3",
+    "size-limit": "^14.0.0",
     "vitest": "^5.0.0"
   },
   "size-limit": [

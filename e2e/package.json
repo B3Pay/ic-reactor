@@ -14,7 +14,7 @@
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/react": "workspace:*",
     "@ic-reactor/vite-plugin": "workspace:*",
-    "@icp-sdk/auth": "^8.0.3",
+    "@icp-sdk/auth": "^10.0.0",
     "@icp-sdk/core": "^6.1.0"
   },
   "devDependencies": {
@@ -31,7 +31,7 @@
     "@types/node-fetch": "3.0.2",
     "@types/react": "^19.3.0",
     "babel-jest": "^30.5.1",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.3",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.14.3",
     "jest": "^30.5.1",
