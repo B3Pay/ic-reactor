@@ -185,8 +185,9 @@ const CONTEXTS = {
  * consumers paste into. `verbatimModuleSyntax` is on there, so a snippet that
  * imports a type without `type` fails in that app and fails here. Unlike the
  * template, `noUnusedLocals` and `noUnusedParameters` are off (a snippet
- * declares names to show them, not to use them), and `@types/node` replaces
- * `vite/client`, for the `vite.config.ts` and script snippets.
+ * declares names to show them, not to use them), and `@types/node` joins the
+ * template's `vite/client`, for the `vite.config.ts` and script snippets.
+ * `vite/client` types `import.meta.env`, where a Vite app reads a canister id.
  */
 const COMPILER_OPTIONS = {
   target: "ES2022",
@@ -201,7 +202,7 @@ const COMPILER_OPTIONS = {
   noEmit: true,
   skipLibCheck: true,
   noFallthroughCasesInSwitch: true,
-  types: ["node"],
+  types: ["node", "vite/client"],
 }
 
 /**
