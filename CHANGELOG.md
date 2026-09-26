@@ -22,7 +22,9 @@ This section covers everything merged on `main` since core, react and candid
 - `reactor.forCanister(canisterId)` returns a memoized sibling reactor for
   another canister of the same interface. It has the same class, `ClientManager`
   and validators, and its calls and query keys use its own canister. Use it
-  instead of `setCanisterId` or one hand-built reactor per canister.
+  instead of `setCanisterId` or one hand-built reactor per canister. A
+  subclass's constructor must build on the `canisterId` it is given;
+  `forCanister` throws when the new reactor lands on another canister.
 - `ServiceOf`, `TransformOf`, `ReactorArgsOf`, `ReactorDataOf` and
   `ReactorErrorOf` read a method's types off `typeof reactor`.
 - `formatTokenAmount(value, decimals, options?)` and
@@ -63,23 +65,26 @@ This section covers everything merged on `main` since core, react and candid
   Migration: call state-changing methods through a mutation.
 - `Reactor.fetchQuery()`, and so every query factory's `fetch()`, fetches again
   as the new principal when a sign-in or sign-out cancels it, instead of
-  rejecting with TanStack's `CancelledError` (#647). After three switches in a
-  row it rejects with a `CallError`. Migration: remove `CancelledError`
-  handling from loaders.
+  rejecting with TanStack's `CancelledError` (#647). When the first run and
+  three runs again are each overtaken by a switch, it rejects with a
+  `CallError`. Migration: remove `CancelledError` handling from loaders.
 - `ClientManager.updateAgent()` keeps the cache when the new identity has the
   principal already installed, as a renewed delegation or a repeated sign-in
-  does; only failed entries refetch (#719). Migration: after installing an
-  identity that changes what canisters see under the same principal, such as
-  an `AttributesIdentity`, invalidate the affected queries yourself.
-- Codespaces (`*.github.dev`) and Gitpod (`*.gitpod.io`) pages route through
-  their own origin with network `"remote"`, and their `ic_env` cookie is no
-  longer trusted (#643). Migration: pass `allowEnvConfig: true` to read the
-  cookie on those hosts.
+  does. Only entries that failed, or whose fetch in flight then fails, refetch
+  (#719). Migration: after installing an identity that changes what canisters
+  see under the same principal, such as an `AttributesIdentity`, invalidate the
+  affected queries yourself.
+- Codespaces (`*.github.dev`) and Gitpod (`*.gitpod.io`) pages without an
+  `agentOptions.host` route through their own origin with network `"remote"`
+  instead of `https://ic0.app`, and their `ic_env` cookie is no longer trusted
+  (#643). Migration: pass `allowEnvConfig: true` to read the cookie on those
+  hosts.
 - In a development build, `ClientManager` skips query signature verification by
-  default only for a local replica. A dev page whose agent points at mainnet
-  (e.g. `https://icp-api.io`) now verifies signatures, as a production build
-  does, and a web worker follows the same default as its page. Migration: none;
-  an explicit `verifyQuerySignatures` still wins.
+  default only for a local replica or a Codespaces or Gitpod tunnel to one. A
+  dev page whose agent points at any other host, such as mainnet's
+  `https://icp-api.io`, now verifies signatures, as a production build does,
+  and a web worker follows the same default as its page. Migration: none; an
+  explicit `verifyQuerySignatures` still wins.
 - On a local host, `initialize()` keeps a root key passed as
   `agentOptions.rootKey` instead of replacing it with the replica's (#713).
   Migration: pass the replica's key, or no key.
@@ -137,10 +142,10 @@ This section covers everything merged on `main` since core, react and candid
   so a sign-in during its polling no longer reports a committed call as failed.
   `pollingOptions.blsVerify` now also checks synchronous (v4) responses, not
   only polled ones.
-- On a local replica, the agent fetches the root key before its first request. A
-  call made before `initialize()` finished no longer fails certificate
-  verification, including an update call that had already run on the replica
-  when it was reported as failed.
+- On a local replica with no root key supplied, the agent fetches the replica's
+  key before its first request. A call made before `initialize()` finished no
+  longer fails certificate verification, including an update call that had
+  already run on the replica when it was reported as failed.
 - `ClientManager` host detection: every loopback address (`127.0.0.0/8`,
   `[::1]`) counts as local (#512). A host without a scheme, such as
   `127.0.0.1:4943`, is read the way `HttpAgent` reads it instead of as mainnet.
@@ -163,8 +168,6 @@ This section covers everything merged on `main` since core, react and candid
 - A sign-in or sign-out sweeps the query cache once instead of once per
   registered canister. With 1,000 canisters the sweep takes 0.7 ms instead of
   166 ms.
-- A same-principal renewal refetches a query whose fetch in flight then fails,
-  instead of leaving it in error (#719).
 - Query keys follow the Candid value a call sends, so one call is no longer
   answered from another's cache entry:
   - records with the same fields in any order share a key, while `NaN`,
@@ -176,6 +179,10 @@ This section covers everything merged on `main` since core, react and candid
     or variant given as a class instance or with a non-enumerable field (#768);
   - an argument the reactor refuses, such as `undefined` for `null` or a bigint
     for `text`, fails instead of returning a valid call's cached result (#765).
+- A query sent through `callConfig.agent` (another identity or network) gets a
+  cache entry of its own. It used to share the entry of the same query through
+  the manager's agent, so whichever ran first answered both, such as a
+  `whoami` for the wrong principal (#642).
 - After `setCanisterId`, a retry or refetch of an existing query fetches the
   canister its key names. It used to cache the new canister's answer under the
   old canister's key (#509).
@@ -225,6 +232,11 @@ This section covers everything merged on `main` since core, react and candid
   instead of 470 ms (#485). Long lists such as a Motoko `List` display and
   encode up to 1,875 elements. They used to fail past about 586 elements and
   return the raw Candid value.
+- Under Deno, `reactorRetry` retries nothing, as on any other server and as
+  TanStack Query's own default does. Deno can define `window`, so a failed
+  call during Deno server rendering was retried three times with backoff.
+  `reactorUpdateRetry` and an update method's query retry follow the same
+  rule.
 - Docs corrected to match the package. `Reactor.fetchQuery()` is cache-first and
   returns a stale or invalidated entry as is (#595). An empty `opt` displays as
   `undefined` (#589). The packages need TypeScript 5.7 or later, which their
@@ -237,9 +249,11 @@ This section covers everything merged on `main` since core, react and candid
 - `defineDisplayReactor(options)` takes `defineReactor`'s options and builds a
   `DisplayReactor` (#746).
 - `createReactorProvider(factory, options?)` returns
-  `{ ReactorProvider, useReactor }`. It builds the reactors once per mounted provider, so once per
-  request on a server, and disposes the `AuthenticationManager`s built for its
-  value on unmount (#745).
+  `{ ReactorProvider, useReactor }`. It builds the reactors once per mounted
+  provider, so once per request on a server, and disposes the
+  `AuthenticationManager`s built for its value on unmount (#745). When the
+  value holds one `QueryClient`, it also renders a `QueryClientProvider` for
+  it; `queryClientProvider: false` opts out.
 - A `react-server` export condition. React Server Components, server actions
   and route handlers import the core runtime (`Reactor`, `DisplayReactor`,
   `ClientManager`, the token helpers) from `@ic-reactor/react`; hooks and
@@ -251,8 +265,9 @@ This section covers everything merged on `main` since core, react and candid
   and typed `{ functionName, args? }` descriptors. Query factory functions gain
   `getQueryKey()` and `invalidate()`. New types: `InvalidationTarget`,
   `QueryKeySource`, `QueryDescriptor`, `QueryFactoryFn`, `QueryFactoryMethods`.
-- Query objects gain `cancel()`, `reset()` and `optimisticUpdate(updater)`,
-  which resolves with `{ rollback() }`.
+- Query objects, those of the infinite factories included, gain `cancel()`,
+  `reset()` and `optimisticUpdate(updater)`, which resolves with
+  `{ rollback() }`.
 - `callConfig` in `createQuery`, `createSuspenseQuery` and their factories.
 - `AuthenticationManager.dispose()` releases the auth client the manager built
   (#745).
@@ -300,8 +315,6 @@ This section covers everything merged on `main` since core, react and candid
   to `call()`, for an update method as for a query method's `call(args)` (#564).
   Migration: replace a numeric `retry` on a hook that calls an update method
   with `reactorUpdateRetry`.
-- `useActorMethod` skips an `undefined` entry of `invalidateQueries` instead of
-  invalidating every query. Migration: none.
 - A query method's `call()` and `refetch()` from `useActorMethod` fetch again
   for the new principal when a sign-in or sign-out lands mid-call, and resolve
   with that answer instead of the previous principal's cached data or
@@ -335,8 +348,10 @@ This section covers everything merged on `main` since core, react and candid
     instead of twice. A call that settles in the same millisecond as the
     previous result is still reported (#497);
   - `onSuccess` no longer runs for `placeholderData`, such as `keepPreviousData`
-    (#501), or for `initialData` that no call returned (#564).
-- Query hooks and factories:
+    (#501), or for `initialData` that no call returned (#564);
+  - an `undefined` entry of `invalidateQueries` is skipped, as the mutation
+    hooks skip it, instead of invalidating every query in the client.
+- Hooks and factories:
   - `useActorInfiniteQuery` and `useActorSuspenseInfiniteQuery` apply
     `getKeyArgs` as the factories do. An `initialPageParam` that changes on
     every render, such as `Date.now()`, no longer refetches the first page
@@ -392,8 +407,9 @@ This section covers everything merged on `main` since core, react and candid
   the auth client does not vouch for:
   - a manager built over a caller's `authClient` whose session has lapsed puts
     the anonymous identity on the agent;
-  - on v10, finding a lapsed session no longer calls the client's `signOut()`.
-    That call could end or revoke a sign-in made in another tab;
+  - on v10, a lapsed session is ended in this tab only, without calling the
+    client's `signOut()`, which acts on the whole origin and could end or
+    revoke a sign-in made in another tab;
   - on v8, a tab whose own delegation has lapsed signs out even after another
     tab signs in again (#755). A signed-out tab no longer reports signed in as
     the anonymous principal once another tab signs in.
@@ -505,6 +521,11 @@ This section covers everything merged on `main` since core, react and candid
   `export function`, which sent that field under another hash.
 
 ### @ic-reactor/parser
+
+#### Added
+
+- The package ships `llms.txt`, a usage guide for coding agents, as the other
+  packages do (`node_modules/@ic-reactor/parser/llms.txt`).
 
 #### Changed
 
