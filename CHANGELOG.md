@@ -12,8 +12,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-This section covers everything merged on `main` since core, react and candid
-3.12.5, codegen, cli and vite-plugin 0.14.0, and parser 0.5.0.
+Nothing yet.
+
+## core, react, candid 3.13.0
+
+Changes since core, react and candid 3.12.5.
 
 ### @ic-reactor/core
 
@@ -520,41 +523,9 @@ This section covers everything merged on `main` since core, react and candid
   no longer rewrites a Candid name that contains `export const` or
   `export function`, which sent that field under another hash.
 
-### @ic-reactor/parser
+## codegen, cli, vite-plugin 0.15.0
 
-#### Added
-
-- The package ships `llms.txt`, a usage guide for coding agents, as the other
-  packages do (`node_modules/@ic-reactor/parser/llms.txt`).
-
-#### Changed
-
-- `didToJs` and `didToTs` key a record field or variant tag whose name looks
-  like a numeric id (`_0_`) by the hash of its name (`_4735054_`), and
-  `parseDid` names it the same way, matching what a canister expects (#631).
-  Migration: a hand-written `.did` that spells a Motoko numeric field `_0_`
-  must write `0`.
-- A Candid type named `_SERVICE`, like a TypeScript type keyword (`string`,
-  `number`, `bigint`, ...) or like a type operator (`keyof`, `readonly`,
-  `unique`, `infer`) is renamed with `_` appended, e.g. `string_` (#737).
-  Migration: import the renamed type.
-
-#### Fixed
-
-- `didToJs` and `didToTs` output now loads and compiles in more cases. A field,
-  variant tag or method named `__proto__` is kept, printed as `['__proto__']`
-  (#560). U+0000 in a name prints as `\x00` instead of `\0`, which read as an
-  octal escape: it failed in strict mode or changed the field's hash. A type
-  named `IDL`, `Principal`, `ActorMethod`, `Array` or a typed array no longer
-  clashes with the binding's own names. A service whose actor type is named like
-  a JavaScript keyword (`type class = service {…}; service : class`) now refers
-  to the printed `class_` (#738).
-- `parseDid` returns `service: null`, as its type says, instead of `undefined`
-  for Candid that declares no service (#506). Code that checks `=== undefined`
-  must check `null` instead; `== null` works either way.
-- Docs: the README now says `validateIDL` returns `true` or throws the parser's
-  error as a string. It never returned `false` as the README had said; use
-  `CandidAdapter.validateCandid` for a boolean.
+Changes since codegen, cli and vite-plugin 0.14.0.
 
 ### @ic-reactor/codegen
 
@@ -663,3 +634,43 @@ This section covers everything merged on `main` since core, react and candid
   and one `Reactor` output in different `outDir`s) now both regenerate when
   their `.did` is saved. The second entry's failure is still shown to browsers
   that connect later (#504).
+
+## parser 0.6.0
+
+Changes since parser 0.5.0.
+
+### @ic-reactor/parser
+
+#### Added
+
+- The package ships `llms.txt`, a usage guide for coding agents, as the other
+  packages do (`node_modules/@ic-reactor/parser/llms.txt`).
+
+#### Changed
+
+- `didToJs` and `didToTs` key a record field or variant tag whose name looks
+  like a numeric id (`_0_`) by the hash of its name (`_4735054_`), and
+  `parseDid` names it the same way, matching what a canister expects (#631).
+  Migration: a hand-written `.did` that spells a Motoko numeric field `_0_`
+  must write `0`.
+- A Candid type named `_SERVICE`, like a TypeScript type keyword (`string`,
+  `number`, `bigint`, ...) or like a type operator (`keyof`, `readonly`,
+  `unique`, `infer`) is renamed with `_` appended, e.g. `string_` (#737).
+  Migration: import the renamed type.
+
+#### Fixed
+
+- `didToJs` and `didToTs` output now loads and compiles in more cases. A field,
+  variant tag or method named `__proto__` is kept, printed as `['__proto__']`
+  (#560). U+0000 in a name prints as `\x00` instead of `\0`, which read as an
+  octal escape: it failed in strict mode or changed the field's hash. A type
+  named `IDL`, `Principal`, `ActorMethod`, `Array` or a typed array no longer
+  clashes with the binding's own names. A service whose actor type is named like
+  a JavaScript keyword (`type class = service {…}; service : class`) now refers
+  to the printed `class_` (#738).
+- `parseDid` returns `service: null`, as its type says, instead of `undefined`
+  for Candid that declares no service (#506). Code that checks `=== undefined`
+  must check `null` instead; `== null` works either way.
+- Docs: the README now says `validateIDL` returns `true` or throws the parser's
+  error as a string. It never returned `false` as the README had said; use
+  `CandidAdapter.validateCandid` for a boolean.
