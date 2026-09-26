@@ -1,4 +1,6 @@
-// `src/reactor.ts` of the guides: `defineDisplayReactor` over the backend.
+// `./reactor` of the documents that assume the guides' setup without showing
+// it (the consumer guides check against their own `src/reactor.ts`):
+// `defineDisplayReactor` over the backend.
 import { defineDisplayReactor } from "@ic-reactor/react"
 import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 

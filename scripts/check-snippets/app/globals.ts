@@ -1,6 +1,8 @@
 // Names a snippet of the default app may use without importing them: the
 // canister's declarations and the objects an app builds once. Never a library
-// export: a snippet that uses one must import it.
+// export: a snippet that uses one must import it. The consumer guides
+// (llms.txt, llms-full.txt, the package guides, skill-packages/ic-reactor)
+// get none of these: their snippets import every name they use.
 import type { Principal } from "@icp-sdk/core/principal"
 
 export { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"

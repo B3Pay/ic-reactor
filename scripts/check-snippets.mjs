@@ -45,6 +45,28 @@
  * checker, and never declare a library export there: a snippet that uses
  * `createQuery` must import it, or an agent pasting it cannot run it.
  *
+ * ## The consumer guides
+ *
+ * `llms.txt`, `llms-full.txt`, each package's `llms.txt` and the consumer skill
+ * (`skill-packages/ic-reactor/`) are what an agent in another project reads,
+ * and it pastes their snippets into an app that has none of the names above.
+ * Two rules are stricter there:
+ *
+ * - A snippet gets no globals. Every name it uses is imported or declared in
+ *   it.
+ * - A relative import resolves first to a module the guide shows: a snippet
+ *   of the same document (or of the same skill) whose first line names its
+ *   file, such as `// src/reactor.ts` for `./reactor`. Only a module the guide
+ *   never shows, such as the canister's declarations, comes from a fixture.
+ *
+ * ## Server code
+ *
+ * A snippet whose first line calls it a React Server Component, or that holds
+ * a `"use server"` directive, imports `@ic-reactor/react` as Next.js resolves
+ * it there: the `react-server` entry, which exports no hooks, no hook
+ * factories and no `defineReactor`. TypeScript alone reads the `types`
+ * condition and would accept them.
+ *
  * ## Opting out
  *
  * A fence that is not code to paste, such as a type signature or an interface
@@ -98,6 +120,46 @@ const LANGUAGES = { ts: ".ts", typescript: ".ts", tsx: ".tsx" }
 
 const SKIP_INFO = "nocheck"
 const SKIP_COMMENT = /^\s*\/\/\s*@snippet-skip\b/
+
+/**
+ * A first line naming the file the snippet is, such as `// src/reactor.ts`
+ * or `// app/Supply.tsx: a React Server Component`. It captures the path
+ * without its extension.
+ */
+const MODULE_HEADER = /^\s*\/\/\s*((?:[\w.-]+\/)*[\w-]+)\.tsx?\b/
+
+/**
+ * A snippet of server code: a first line calling it a React Server
+ * Component, or a `"use server"` directive (a server action).
+ */
+const SERVER_HEADER = /\bReact Server Component\b/i
+const USE_SERVER = /^\s*["']use server["']/m
+
+/**
+ * The guides an agent in a consumer project reads: the docs site's
+ * `llms.txt` and `llms-full.txt`, each package's `llms.txt` (shipped in its
+ * tarball) and the consumer skill. The agent pastes their snippets into an app
+ * that has none of this checker's globals, so a snippet there gets no
+ * globals: every name it uses is imported, declared, or exported by a module
+ * the guide itself shows.
+ */
+function isConsumerGuide(file) {
+  return (
+    file === "llms.txt" ||
+    file === "llms-full.txt" ||
+    /^packages\/[^/]+\/llms\.txt$/.test(file) ||
+    file.startsWith("skill-packages/ic-reactor/")
+  )
+}
+
+/**
+ * The documents whose snippets share the modules they define: all the files
+ * of one skill (its SKILL.md and references), otherwise one document.
+ */
+function moduleGroup(file) {
+  const skill = /^skill-packages\/[^/]+\//.exec(file)
+  return skill ? skill[0] : file
+}
 
 /** The default app, `scripts/check-snippets/app/`. */
 const DEFAULT_CONTEXT = "app"
@@ -263,12 +325,20 @@ function collectSnippets(files, docs) {
       const skipped =
         fence.info.includes(SKIP_INFO) ||
         (firstLine !== undefined && SKIP_COMMENT.test(firstLine))
+      const defines =
+        firstLine === undefined ? undefined : MODULE_HEADER.exec(firstLine)
       snippets.push({
         file,
         line: fence.line,
         lang: fence.lang,
         code: fence.code,
         context: CONTEXTS[file] ?? DEFAULT_CONTEXT,
+        group: moduleGroup(file),
+        defines: defines ? defines[1].split("/") : undefined,
+        selfContained: isConsumerGuide(file),
+        server:
+          (firstLine !== undefined && SERVER_HEADER.test(firstLine)) ||
+          USE_SERVER.test(fence.code),
         skipped,
         docs,
       })
@@ -392,6 +462,41 @@ function findFixture(project, context, specifier) {
   return undefined
 }
 
+/**
+ * The snippet module a relative import of a consumer guide names when the
+ * guide shows that module itself: a snippet of the same document, or of the
+ * same skill, whose first line names a path ending in the import's
+ * (`// src/reactor.ts` for `./reactor`). The nearest one above the importing
+ * snippet wins, then the first below it, then the first in another file of
+ * the skill. The import is then checked against the module the reader was
+ * shown, and a fixture cannot hide a name that module does not export.
+ *
+ * The READMEs keep their fixtures: they show a module such as `src/reactor.ts`
+ * several times, once per alternative setup, and later sections mean the
+ * first.
+ */
+function findPageModule(byModule, snippet, specifier) {
+  if (!snippet.selfContained) return undefined
+  const segments = specifier
+    .split("/")
+    .filter((segment) => segment !== "." && segment !== "..")
+  const matches = (other) =>
+    other !== snippet &&
+    other.group === snippet.group &&
+    other.defines !== undefined &&
+    other.defines.length >= segments.length &&
+    other.defines.slice(-segments.length).join("/") === segments.join("/")
+  const candidates = [...byModule].filter(([, other]) => matches(other))
+  const rank = ([, other]) =>
+    other.file !== snippet.file
+      ? Number.MAX_SAFE_INTEGER
+      : other.line < snippet.line
+        ? snippet.line - other.line
+        : Number.MAX_SAFE_INTEGER / 2 + other.line
+  candidates.sort((a, b) => rank(a) - rank(b))
+  return candidates[0]?.[0]
+}
+
 // ── The compilation ──────────────────────────────────────────────────────────
 
 function readJson(path) {
@@ -471,9 +576,11 @@ function writeSnippets(project, snippets) {
       globals.set(globalsFile, globalNames(globalsFile))
     }
     const declared = declaredNames(parse(modulePath, snippet.code))
-    const imported = [...globals.get(globalsFile)]
-      .filter(([name]) => !declared.has(name))
-      .map(([name, kind]) => (kind === "type" ? `type ${name}` : name))
+    const imported = snippet.selfContained
+      ? []
+      : [...globals.get(globalsFile)]
+          .filter(([name]) => !declared.has(name))
+          .map(([name, kind]) => (kind === "type" ? `type ${name}` : name))
     const specifier = toPosix(
       relative(dirname(modulePath), globalsFile)
     ).replace(/\.ts$/, "")
@@ -508,11 +615,21 @@ function compile(project, byModule) {
       ts.flattenDiagnosticMessageText(errors[0].messageText, "\n")
     )
   }
+  const reactServerTypes = realpathSync(
+    join(rootDir, "packages", "react", "dist", "server.d.ts")
+  )
   const host = ts.createCompilerHost(options)
   // `types` and the other lookups a program without a tsconfig makes start
   // from the current directory; make that the project, wherever this runs.
   host.getCurrentDirectory = () => project
   const cache = ts.createModuleResolutionCache(project, (name) => name, options)
+  const snippetModule = (fileName) => ({
+    resolvedModule: {
+      resolvedFileName: fileName,
+      extension: fileName.endsWith(".tsx") ? ts.Extension.Tsx : ts.Extension.Ts,
+      isExternalLibraryImport: false,
+    },
+  })
   host.resolveModuleNameLiterals = (
     literals,
     containingFile,
@@ -521,6 +638,20 @@ function compile(project, byModule) {
     containingSourceFile
   ) =>
     literals.map((literal) => {
+      const snippet = byModule.get(containingFile)
+      // TypeScript reads the `types` condition before `react-server`, so it
+      // types a server component's import with the main entry, hooks and all.
+      // Next.js resolves the `react-server` entry, where a hook is a missing
+      // export; type a server snippet's import with that entry too.
+      if (snippet?.server && literal.text === "@ic-reactor/react") {
+        return {
+          resolvedModule: {
+            resolvedFileName: reactServerTypes,
+            extension: ts.Extension.Dts,
+            isExternalLibraryImport: true,
+          },
+        }
+      }
       const resolved = ts.resolveModuleName(
         literal.text,
         containingFile,
@@ -534,7 +665,6 @@ function compile(project, byModule) {
           compilerOptions
         )
       )
-      const snippet = byModule.get(containingFile)
       if (
         resolved.resolvedModule ||
         !snippet ||
@@ -542,17 +672,10 @@ function compile(project, byModule) {
       ) {
         return resolved
       }
+      const shown = findPageModule(byModule, snippet, literal.text)
+      if (shown) return snippetModule(shown)
       const fixture = findFixture(project, snippet.context, literal.text)
-      if (!fixture) return resolved
-      return {
-        resolvedModule: {
-          resolvedFileName: fixture,
-          extension: fixture.endsWith(".tsx")
-            ? ts.Extension.Tsx
-            : ts.Extension.Ts,
-          isExternalLibraryImport: false,
-        },
-      }
+      return fixture ? snippetModule(fixture) : resolved
     })
 
   const program = ts.createProgram({
@@ -697,4 +820,5 @@ try {
     rmSync(project, { recursive: true, force: true })
   }
 }
-process.exit(exitCode)
+// Not process.exit(): it can cut off output still being written to a pipe.
+process.exitCode = exitCode

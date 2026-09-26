@@ -106,6 +106,16 @@ and `globals.ts` lists the names a snippet may use without importing. Add a
 missing app name there, never a library export such as `createQuery`: a
 snippet that uses one must import it.
 
+The consumer guides (`llms.txt`, `llms-full.txt`, `packages/*/llms.txt` and
+`skill-packages/ic-reactor/`) get no globals, since an agent pastes them into
+an app that has none: each of their snippets imports or declares every name
+it uses. A relative import there resolves first to a snippet of the same
+guide (or skill) whose first line names that file, such as `// src/reactor.ts`
+for `./reactor`, so it is checked against the module the reader was shown.
+A snippet whose first line calls it a React Server Component, or that has a
+`"use server"` directive, is compiled against the `react-server` entry of
+`@ic-reactor/react`, where hooks and `defineReactor` do not exist.
+
 A fence that is not code to paste, such as a type signature or an interface
 restating a library type, opts out with `nocheck` after its language,
 ` ```ts nocheck `, or with `// @snippet-skip` as its first line. Give a
