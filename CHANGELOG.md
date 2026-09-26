@@ -523,9 +523,12 @@ Changes since core, react and candid 3.12.5.
   no longer rewrites a Candid name that contains `export const` or
   `export function`, which sent that field under another hash.
 
-## codegen, cli, vite-plugin 0.15.0
+## codegen, cli, vite-plugin 0.15.1
 
-Changes since codegen, cli and vite-plugin 0.14.0.
+Changes since codegen, cli and vite-plugin 0.14.0. Version 0.15.0 was tagged
+but never published: its release job stopped before publishing, because
+codegen's tests needed packages that job did not build. 0.15.1 is the first
+release with these changes.
 
 ### @ic-reactor/codegen
 

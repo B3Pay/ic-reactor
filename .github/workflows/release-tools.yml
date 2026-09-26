@@ -219,8 +219,15 @@ jobs:
       - name: Setup Rust for the parser wasm build
         uses: ./.github/actions/setup-rust-wasm
 
+      # Also build @ic-reactor/react and @ic-reactor/candid with their own
+      # graphs. codegen's generated-types test type-checks generated code by
+      # linking the built core, react and candid packages into a scratch
+      # project, and neither react nor candid is in codegen's dependency graph.
+      # Building only the graph failed the tools-v0.15.0 codegen leg with
+      # "Cannot find module '@ic-reactor/react'", although CI, which builds
+      # every package, was green.
       - name: Build package dependency graph
-        run: pnpm -r --filter "{./${{ matrix.workspace }}}..." build
+        run: pnpm -r --filter "{./${{ matrix.workspace }}}..." --filter "@ic-reactor/react..." --filter "@ic-reactor/candid..." build
 
       - name: Run tests
         run: pnpm -r --filter "{./${{ matrix.workspace }}}" test

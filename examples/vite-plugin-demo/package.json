@@ -16,7 +16,7 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
-    "@ic-reactor/vite-plugin": "^0.15.0",
+    "@ic-reactor/vite-plugin": "^0.15.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
