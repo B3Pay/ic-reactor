@@ -4,7 +4,7 @@
 > source, turns it into JavaScript IDL factories and TypeScript declarations,
 > describes its types and methods, and checks upgrade compatibility.
 
-Applies to `@ic-reactor/parser` 0.5.0.
+Applies to `@ic-reactor/parser` 0.6.0.
 
 Read this file from `node_modules/@ic-reactor/parser/llms.txt` when writing
 code against the installed version. The complete guide for every package is

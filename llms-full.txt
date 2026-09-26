@@ -27,7 +27,7 @@ Package versions this guide describes:
 - `@ic-reactor/codegen`: `0.14.0`
 - `@ic-reactor/cli`: `0.14.0`
 - `@ic-reactor/vite-plugin`: `0.14.0`
-- `@ic-reactor/parser`: `0.5.0`
+- `@ic-reactor/parser`: `0.6.0`
 
 ## What IC Reactor Is
 
