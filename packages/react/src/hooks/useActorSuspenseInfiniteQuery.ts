@@ -21,6 +21,7 @@ import {
   mergeFactoryQueryKey,
   mountWhileSuspended,
   normalizeQueryData,
+  retryOption,
   useMountQueryClient,
 } from "../utils.js"
 
@@ -217,12 +218,20 @@ export const useActorSuspenseInfiniteQuery = <
     [reactor, functionName, getArgs, callConfig]
   )
 
+  // The method's default `retry`: for an update method, only failures that
+  // prove the canister never ran the call; see `Reactor.getQueryRetry`.
+  const defaultRetry = useMemo(
+    () => reactor.getQueryRetry(functionName, baseQueryKey),
+    [reactor, functionName, baseQueryKey]
+  )
+
   try {
     return useSuspenseInfiniteQuery(
       {
         queryKey: baseQueryKey,
         queryFn,
         ...options,
+        ...retryOption(options.retry, defaultRetry),
       } as any,
       reactor.queryClient
     ) as UseActorSuspenseInfiniteQueryResult<

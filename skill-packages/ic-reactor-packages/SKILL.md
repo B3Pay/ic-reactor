@@ -1,13 +1,14 @@
 ---
 name: ic-reactor-packages
 description: >-
-  Inspect, modify, review, or document the IC Reactor monorepo package
-  architecture. Use when work spans package ownership, package.json exports,
-  tsconfig/project references, build/test scripts, generated artifacts,
-  dependency boundaries, release readiness, or deciding where an AI agent should
-  start for @ic-reactor/core, @ic-reactor/react, @ic-reactor/candid,
-  @ic-reactor/parser, @ic-reactor/codegen, @ic-reactor/cli, or
-  @ic-reactor/vite-plugin.
+  For contributors working inside the B3Pay/ic-reactor monorepo: inspect,
+  modify, review or document its package architecture. Use when work spans
+  package ownership, package.json exports, tsconfig/project references,
+  build/test scripts, generated artifacts, dependency boundaries, release
+  readiness, or deciding where to start in @ic-reactor/core,
+  @ic-reactor/react, @ic-reactor/candid, @ic-reactor/parser,
+  @ic-reactor/codegen, @ic-reactor/cli or @ic-reactor/vite-plugin. In an app
+  that installs @ic-reactor packages, use the ic-reactor skill instead.
 ---
 
 # IC Reactor Packages
@@ -43,6 +44,9 @@ entry points, verification commands, or known failure modes.
 | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | Agent/query runtime, canister calls, display transforms       | `packages/core`                                                                                          |
 | React hooks, factories, `defineReactor`, `useActorMethod`     | `packages/react` and `ic-reactor-hooks`                                                                  |
+| `defineDisplayReactor`, `createReactorProvider`               | `packages/react/src/defineDisplayReactor.ts`, `packages/react/src/createReactorProvider.ts`              |
+| React Server Component entry (`react-server` condition)       | `packages/react/src/server.ts`, `packages/react/tests/server-entry.test.ts`                              |
+| Fake replica for tests (`@ic-reactor/core/testing`)           | `packages/core/src/testing/`, `packages/react/src/testing.ts` (`@ic-reactor/react/testing`)              |
 | Internet Identity login and auth state                        | `packages/react/src/auth/authentication-manager.ts`                                                      |
 | Signed OpenID identity attributes                             | `packages/react/src/auth/identity-attributes-manager.ts`                                                 |
 | React auth and identity-attribute hooks                       | `packages/react/src/hooks/createAuthHooks.ts`, `packages/react/src/auth/createIdentityAttributeHooks.ts` |
@@ -53,6 +57,7 @@ entry points, verification commands, or known failure modes.
 | Vite `.did` watching and environment injection                | `packages/vite-plugin`                                                                                   |
 | Local Internet Identity `/authorize` detection                | `packages/react/src/auth/local-ii-probe.ts`, `packages/react/src/auth/constants.ts`                      |
 | `ic_env` trust decision (`allowEnvConfig`, `trustsEnvConfig`) | `packages/core/src/client.ts`, `packages/core/src/utils/helper.ts`, `packages/core/src/reactor.ts`       |
+| Consumer agent skill and the Claude Code plugin               | `skill-packages/ic-reactor/`, `.claude-plugin/marketplace.json`                                          |
 
 `AuthenticationManager.prepareClient()` probes the locally deployed Internet
 Identity canister and picks `/authorize` or the legacy `/#authorize`, or refuses
@@ -72,6 +77,7 @@ Use CI-aligned commands:
 
 - Format check (CI gate, covers the whole repo): `pnpm format:check`
 - AI context check (CI gate): `pnpm check:ai-context`
+- Snippet check (CI gate; run after `pnpm build`): `pnpm check:snippets` compiles the `ts`/`tsx` fences of the AI guides, skills and READMEs
 - Lint (CI gate; run after `pnpm build`): `pnpm lint`
 - Type check every package and `e2e/`, including tests (CI gate): `pnpm typecheck`
 - Strict project-reference sanity: `pnpm exec tsc -b`

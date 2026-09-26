@@ -70,7 +70,8 @@ describe("the onMutate result is typed in the later callbacks", () => {
     createMutation(reactor, {
       functionName: "likePost",
       onMutate: () => ({ previous: 1n }),
-      // `execute()` calls onSuccess without running onMutate first.
+      // Still typed as possibly undefined, from when `execute()` ran no
+      // onMutate. It now runs one, so a follow-up could narrow this.
       onSuccess: (_data, _variables, onMutateResult) => {
         expectTypeOf(onMutateResult).toEqualTypeOf<Snapshot | undefined>()
       },

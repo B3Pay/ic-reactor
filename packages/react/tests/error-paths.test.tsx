@@ -83,6 +83,11 @@ const createRejectingReactor = (
   return {
     queryClient,
     callMethod,
+    // The infinite factories' `fetch()` runs through it; a mock reactor has
+    // no identity to switch.
+    clientManager: {
+      fetchAcrossIdentitySwitch: <T,>(fetch: () => Promise<T>) => fetch(),
+    },
     canisterId: "test-canister",
     isQueryMethod: vi.fn().mockImplementation(isQueryMethod),
     generateQueryKey: vi.fn().mockImplementation(keyFor),
@@ -98,6 +103,9 @@ const createRejectingReactor = (
       .mockImplementation((params: any) =>
         queryClient.getQueryData(keyFor(params))
       ),
+    // Only the infinite queries ask, and they call query methods, which keep
+    // the QueryClient's retry.
+    getQueryRetry: vi.fn(() => undefined),
   } as unknown as Reactor<TestActor>
 }
 

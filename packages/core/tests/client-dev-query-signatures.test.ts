@@ -5,7 +5,7 @@ import { QueryClient } from "@tanstack/query-core"
 import { ClientManager } from "../src/client.js"
 import { Reactor } from "../src/reactor.js"
 import { uint8ArrayToHex } from "../src/utils/helper.js"
-import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
+import { installFakeReplica, type FakeReplica } from "../src/testing/index.js"
 
 const build = vi.hoisted(() => ({ dev: true }))
 

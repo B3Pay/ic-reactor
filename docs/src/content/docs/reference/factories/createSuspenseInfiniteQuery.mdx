@@ -75,17 +75,26 @@ Same options as `createInfiniteQuery`:
 
 ## Return Value
 
-| Property                   | Type                          | Description                                |
-| -------------------------- | ----------------------------- | ------------------------------------------ |
-| `fetch`                    | `() => Promise<T>`            | Fetch first page (for loaders)             |
-| `useSuspenseInfiniteQuery` | `hook`                        | Suspense-enabled React hook                |
-| `invalidate`               | `() => Promise<void>`         | Invalidate the cache (refetches if active) |
-| `getQueryKey`              | `() => QueryKey`              | Get the query key                          |
-| `getCacheData`             | `(select?) => T \| undefined` | Read from cache without fetching           |
+| Property                   | Type                                 | Description                                              |
+| -------------------------- | ------------------------------------ | -------------------------------------------------------- |
+| `fetch`                    | `() => Promise<T>`                   | Fetch first page (for loaders)                           |
+| `useSuspenseInfiniteQuery` | `hook`                               | Suspense-enabled React hook                              |
+| `invalidate`               | `() => Promise<void>`                | Invalidate the cache (refetches if active)               |
+| `getQueryKey`              | `() => QueryKey`                     | Get the query key                                        |
+| `getCacheData`             | `(select?) => T \| undefined`        | Read from cache without fetching                         |
+| `cancel`                   | `() => Promise<void>`                | Cancel the fetch in flight                               |
+| `reset`                    | `() => Promise<void>`                | Reset to initial state; the hook suspends again          |
+| `optimisticUpdate`         | `(updater) => Promise<{ rollback }>` | Cancel, write `updater(cached pages)`, return a rollback |
 
-These five keys are the whole object. To force a refetch from a component, use
+These eight keys are the whole object. To force a refetch from a component, use
 the `refetch` returned by `useSuspenseInfiniteQuery()`; outside React, call
-`invalidate()`.
+`invalidate()`, or `reset()` to show the Suspense fallback and load from the
+first page again. `optimisticUpdate` gets and returns the raw `InfiniteData`,
+`{ pages, pageParams }`.
+
+A sign-in or sign-out while `fetch()` is in flight does not reject it: the
+previous identity's first page is dropped, and `fetch()` runs again for the new
+identity and resolves with that page.
 
 ---
 
@@ -327,6 +336,23 @@ function CategoryPage({ categoryId }: { categoryId: string }) {
 }
 ```
 
+### Every List at Once
+
+The factory function has `getQueryKey()` and `invalidate()`, which cover every
+list it returns, whatever its `getArgs`, per-call `queryKey` or number of
+loaded pages:
+
+```typescript
+// Refetch every category's product list
+await getCategoryProductsQuery.invalidate()
+
+// Or after a mutation
+const addProduct = createMutation(backend, {
+  functionName: "addProduct",
+  invalidateQueries: [getCategoryProductsQuery],
+})
+```
+
 ### Factory Cache Identity (Route/Search Params)
 
 `createSuspenseInfiniteQueryFactory(...)` derives the query key from
@@ -364,6 +390,16 @@ const todoListQuery = todoListInfiniteQuery((offset: string) => [
 ---
 
 ## Notes
+
+<Aside type="caution">
+  An update method passed here runs on the canister again on every refetch
+  (mount, window focus, reconnect, invalidation), retry and uncached `fetch()`,
+  each time as a new call. Use it only for an update method that is safe to
+  repeat, and use `createMutation` for a method that changes state. With no
+  `retry` in the factory config or the hook's options, an update method retries
+  only a `SysTransient` rejection, which proves the call never ran. See [Update
+  Methods in Queries](/v3/framework/queries#update-methods-in-queries).
+</Aside>
 
 <Aside type="tip">
   Use Suspense infinite queries when you want simpler components without

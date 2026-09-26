@@ -8,6 +8,14 @@ import { Aside, Card, CardGrid, LinkCard } from "@astrojs/starlight/components"
 
 Factory functions let you create **reusable, pre-configured** query and mutation objects. Unlike hooks which are created fresh on each render, factories create stable objects you can use across loaders, components, and utilities.
 
+<Aside type="tip">
+  With the [CLI](/v3/packages/cli) or the [Vite
+  plugin](/v3/packages/vite-plugin), set `factories: true` on a canister to
+  generate a `createQuery`, `createQueryFactory` or `createMutation` object for
+  every method of its `.did`, chosen by the method's annotation. See [Query and
+  Mutation Factories](/v3/packages/codegen#query-and-mutation-factories).
+</Aside>
+
 ## Why Use Factories?
 
 <CardGrid>
@@ -121,18 +129,15 @@ export const getPostsQuery = createQueryFactory(backend, {
 // Mutation factories
 export const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  invalidateQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
+  // A query factory covers every query it returns, whatever the args
+  invalidateQueries: [getPostsQuery],
 })
 
-// Query key helpers
+// Query keys, for QueryClient calls of your own
 export const queryKeys = {
-  users: () => backend.generateQueryKey({ functionName: "getUser" }),
-  userById: (id: string) =>
-    backend.generateQueryKey({
-      functionName: "getUser",
-      args: [id],
-    }),
-  posts: () => backend.generateQueryKey({ functionName: "getPosts" }),
+  users: () => getUserQuery.getQueryKey(), // every getUser query
+  userById: (id: string) => getUserQuery([id]).getQueryKey(),
+  posts: () => getPostsQuery.getQueryKey(),
 }
 ```
 

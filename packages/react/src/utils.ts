@@ -5,8 +5,22 @@
 import { useEffect } from "react"
 import type { QueryClient, QueryKey } from "@tanstack/react-query"
 import type { CallConfig } from "@icp-sdk/core/agent"
-import type { ReactorQueryData } from "@ic-reactor/core"
+import type {
+  ClientManager,
+  FunctionName,
+  Reactor,
+  ReactorArgs,
+  ReactorQueryData,
+  TransformKey,
+} from "@ic-reactor/core"
 import { generateKey } from "@ic-reactor/core"
+import type {
+  InvalidationTarget,
+  OptimisticRollback,
+  QueryCacheControls,
+  QueryFactoryMethods,
+  QueryKeySource,
+} from "./types.js"
 
 /**
  * Keep `queryClient` mounted while the calling component is.
@@ -83,6 +97,36 @@ export function mountWhileSuspended(
 export const FACTORY_KEY_ARGS_QUERY_KEY = "__ic_reactor_factory_key_args"
 
 /**
+ * Internal query-key segment that ends the key of a query waiting on
+ * `skipToken`. Not part of the public API.
+ */
+export const SKIPPED_QUERY_KEY = "__ic_reactor_skipped"
+
+/**
+ * The key of a query whose args are `skipToken`: `prefix`, the method's key
+ * that every key its args give extends, and then a segment no call's key has.
+ *
+ * It used to be the bare prefix, which is also the key of a query of the same
+ * method made without args, as a method with no parameters is called. The
+ * skipped query then showed that query's data though its own args were not
+ * known. And TanStack Query refetches an entry with the options of whichever
+ * of its observers rendered last, so an invalidation, including the sweep a
+ * sign-in or sign-out runs, could find `skipToken` in place of the query
+ * function: the refetch failed with "Missing queryFn" and the other query
+ * kept the previous caller's answer.
+ *
+ * `kind` keeps a waiting list apart from a waiting query of the same method,
+ * since TanStack Query does not share an entry between `useQuery` and
+ * `useInfiniteQuery`.
+ */
+export function skippedQueryKey(
+  prefix: QueryKey,
+  kind: "query" | "infinite"
+): QueryKey {
+  return [...prefix, { [SKIPPED_QUERY_KEY]: kind }]
+}
+
+/**
  * The call config an infinite query's function fetches with: the caller's,
  * aimed at the canister its query key names unless the caller named one.
  *
@@ -143,6 +187,26 @@ export function pickFetchOptions<Config extends object>(
     if (value !== undefined) picked[key] = value
   }
   return picked as Partial<Pick<Config, Extract<keyof Config, FetchOptionKey>>>
+}
+
+/**
+ * The `retry` entry of a query's options: the query's own `retry` when it sets
+ * one, otherwise the reactor's default for its method, and no entry when
+ * neither is set, so the QueryClient's defaults apply.
+ *
+ * The default is `Reactor.getQueryRetry`'s: `undefined` for a query method,
+ * and for an update method a retry of only the failures that prove the
+ * canister never ran the call, since each attempt runs the update again.
+ * Spread this after the caller's options. An update method's default then also
+ * replaces a `retry: undefined` spread in from them, which would otherwise
+ * select TanStack Query's own three retries.
+ */
+export function retryOption<TRetry, TDefault>(
+  ownRetry: TRetry | undefined,
+  defaultRetry: TDefault | undefined
+): { retry?: TRetry | TDefault } {
+  const retry = ownRetry ?? defaultRetry
+  return retry === undefined ? {} : { retry }
 }
 
 /**
@@ -245,6 +309,197 @@ export function createBoundedCache<V>(limit: number = FACTORY_CACHE_LIMIT) {
     },
     get size(): number {
       return entries.size
+    },
+  }
+}
+
+const isQueryKeySource = (value: object): value is QueryKeySource =>
+  typeof (value as Partial<QueryKeySource>).getQueryKey === "function"
+
+/**
+ * Invalidate one `invalidateQueries` entry; see {@link invalidateTargets}.
+ */
+function invalidateTarget<Service, Transform extends TransformKey>(
+  reactor: Reactor<Service, Transform>,
+  target: InvalidationTarget<Service, Transform> | null,
+  canisterId: CallConfig["canisterId"]
+): Promise<void> {
+  // React Query reads `{ queryKey: undefined }` as "match everything", so an
+  // absent entry would invalidate every query in the client, the app's
+  // unrelated non-canister ones included. `null` only comes from untyped code
+  // and would do the same.
+  if (target == null) return Promise.resolve()
+  if (Array.isArray(target)) {
+    return reactor.queryClient.invalidateQueries({ queryKey: target })
+  }
+  if (isQueryKeySource(target)) {
+    // A query object or factory invalidates on its own reactor's client, which
+    // is not this reactor's when each reactor has a QueryClient of its own.
+    return target.invalidate
+      ? target.invalidate()
+      : reactor.queryClient.invalidateQueries({
+          queryKey: target.getQueryKey(),
+        })
+  }
+  // A `{ functionName, args? }` descriptor. Its key is built now rather than
+  // when the mutation was set up, so it follows a `setCanisterId`.
+  const { functionName, args } = target as {
+    functionName: FunctionName<Service>
+    args?: ReactorArgs<Service, FunctionName<Service>, Transform>
+  }
+  // `args: []`, all that a method without parameters takes, names the same
+  // queries as no args. Keyed as given, it adds an args segment that a query
+  // made without args lacks, and would match none of those.
+  const hasArgs = (args as readonly unknown[] | undefined)?.length
+  return reactor.queryClient.invalidateQueries({
+    // At the canister the mutation was sent to, whose queries it changed.
+    // Only the canister is taken from its `callConfig`: an agent or effective
+    // target segment would narrow the prefix to the queries sent the same
+    // way, while the canister's state changed for every caller.
+    queryKey: reactor.generateQueryKey(
+      { functionName, args: hasArgs ? args : undefined },
+      canisterId ? { canisterId } : undefined
+    ),
+  })
+}
+
+/**
+ * Invalidate every entry of a mutation's `invalidateQueries` in parallel, on
+ * behalf of `reactor`, the mutation's own. It resolves once every active
+ * query they matched has refetched; a refetch that fails does not reject it,
+ * so it cannot turn an update that already ran into a failure.
+ *
+ * An entry is a query key, a query object or query factory (anything with a
+ * `getQueryKey()`), or a `{ functionName, args? }` descriptor, which is keyed
+ * by `reactor.generateQueryKey` at the canister the mutation was sent to:
+ * the one its `callConfig.canisterId` names, else the reactor's. `undefined`
+ * entries are skipped.
+ */
+export async function invalidateTargets<
+  Service,
+  Transform extends TransformKey,
+>(
+  reactor: Reactor<Service, Transform>,
+  targets: readonly InvalidationTarget<Service, Transform>[] | undefined,
+  callConfig?: CallConfig
+): Promise<void> {
+  if (!targets || targets.length === 0) return
+  await Promise.all(
+    targets.map((target) =>
+      invalidateTarget(reactor, target, callConfig?.canisterId)
+    )
+  )
+}
+
+/**
+ * Give an args-late query factory function its {@link QueryFactoryMethods}.
+ *
+ * `getQueryKey` builds the prefix every query of the factory shares, and is
+ * called each time so that it follows a `setCanisterId`.
+ */
+export function withQueryFactoryMethods<Factory extends object>(
+  factory: Factory,
+  reactor: { readonly queryClient: QueryClient },
+  getQueryKey: () => QueryKey
+): Factory & QueryFactoryMethods {
+  const methods: QueryFactoryMethods = {
+    getQueryKey,
+    invalidate: () =>
+      reactor.queryClient.invalidateQueries({ queryKey: getQueryKey() }),
+  }
+  return Object.assign(factory, methods)
+}
+
+/** The rollback of an optimistic update that wrote nothing. */
+const NOTHING_TO_ROLL_BACK: OptimisticRollback = { rollback: () => {} }
+
+/** What {@link queryCacheControls} reads from a reactor. */
+interface CacheOwner {
+  readonly queryClient: QueryClient
+  readonly clientManager: Pick<ClientManager, "identity">
+}
+
+/**
+ * The principal whose answers the reactor's cache holds: the one installed on
+ * the manager's agent, `undefined` before one is.
+ *
+ * Query keys carry no principal. `ClientManager.updateAgent` sweeps the cache
+ * instead when another principal signs in, removing inactive entries and
+ * refetching active ones, so a value read from the cache is this principal's
+ * only while it stays installed.
+ */
+const cachedPrincipal = (reactor: CacheOwner): string | undefined =>
+  reactor.clientManager.identity?.getPrincipal().toText()
+
+/**
+ * The {@link QueryCacheControls} of a query object: `cancel`, `reset` and
+ * `optimisticUpdate` on its own entry of the reactor's QueryClient.
+ *
+ * They match the key exactly. A query object's key is also the prefix of
+ * other entries (a query without args prefixes every args instance of its
+ * method), and cancelling or resetting those would reach queries this object
+ * does not own. `getQueryKey` is called each time, so the controls follow a
+ * `setCanisterId`.
+ */
+export function queryCacheControls<TQueryFnData>(
+  reactor: CacheOwner,
+  getQueryKey: () => QueryKey
+): QueryCacheControls<TQueryFnData> {
+  return {
+    cancel: () =>
+      reactor.queryClient.cancelQueries({
+        queryKey: getQueryKey(),
+        exact: true,
+      }),
+
+    reset: () =>
+      reactor.queryClient.resetQueries({
+        queryKey: getQueryKey(),
+        exact: true,
+      }),
+
+    optimisticUpdate: async (updater) => {
+      const { queryClient } = reactor
+      const queryKey = getQueryKey()
+      // Nothing cached means nothing on screen to update. Cancelling the
+      // entry's first fetch would also leave it pending with no data.
+      if (queryClient.getQueryData(queryKey) === undefined) {
+        return NOTHING_TO_ROLL_BACK
+      }
+      const principal = cachedPrincipal(reactor)
+      // A fetch in flight would otherwise land after the write below with the
+      // canister's answer from before the mutation. Cancelling reverts the
+      // entry to what it held before that fetch, so it is read afterwards.
+      await queryClient.cancelQueries({ queryKey, exact: true })
+      // A sign-in or sign-out while that ran left the previous principal's
+      // value in the entry until the sweep's refetch lands. An update built
+      // on it would show that value to the principal signed in now.
+      if (cachedPrincipal(reactor) !== principal) return NOTHING_TO_ROLL_BACK
+      const snapshot = queryClient.getQueryState<TQueryFnData>(queryKey)
+      if (snapshot?.data === undefined) return NOTHING_TO_ROLL_BACK
+      const { data: previous, dataUpdatedAt, isInvalidated } = snapshot
+      queryClient.setQueryData<TQueryFnData>(queryKey, updater(previous))
+      return {
+        rollback: () => {
+          // After a switch to another principal, `previous` is the previous
+          // principal's value, which the sweep has removed or is refetching.
+          // Written back, it would be served to the one signed in now.
+          if (cachedPrincipal(reactor) !== principal) return
+          // With its own timestamp: written back as new, a value from before
+          // the mutation would look freshly fetched and skip the refetches
+          // its age calls for.
+          queryClient.setQueryData<TQueryFnData>(queryKey, previous, {
+            updatedAt: dataUpdatedAt,
+          })
+          // The write clears the invalidated mark too, and the fetch the
+          // update cancelled was often the refetch an invalidation started.
+          // Marked again, the value reads as outdated as it was, and a
+          // mounted query refetches it.
+          if (isInvalidated) {
+            void queryClient.invalidateQueries({ queryKey, exact: true })
+          }
+        },
+      }
     },
   }
 }

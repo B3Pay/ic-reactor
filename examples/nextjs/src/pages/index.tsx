@@ -1,10 +1,8 @@
 import Head from "next/head"
 import Image from "next/image"
-import dynamic from "next/dynamic"
-
-const AddTodo = dynamic(() => import("components/AddTodo"), { ssr: false })
-const Login = dynamic(() => import("components/Login"), { ssr: false })
-const Todos = dynamic(() => import("components/Todos"), { ssr: false })
+import AddTodo from "components/AddTodo"
+import Login from "components/Login"
+import Todos from "components/Todos"
 
 function HomePage() {
   return (

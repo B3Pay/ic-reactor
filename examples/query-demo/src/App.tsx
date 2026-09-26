@@ -204,9 +204,11 @@ const { data } = formattedBalance(account).useQuery({
 
           <CodeExample
             title="How it works (with auto-refetch):"
-            code={`// Define mutation
-const icpTransferMutation = createActorMutation(icpReactor, {
+            code={`// Define mutation: after a transfer, refetch every balance the
+// getIcpBalance query factory has returned, whatever the account 🔥
+const icpTransferMutation = createMutation(icpReactor, {
   functionName: "icrc1_transfer",
+  invalidateQueries: [getIcpBalance],
 })
 
 // 1. Parent protects the component and passes principal
@@ -218,17 +220,7 @@ const icpTransferMutation = createActorMutation(icpReactor, {
 
 // 2. TransferSection accepts principal as a prop
 function TransferSection({ principal }: { principal: Principal }) {
-  // Get balance query (for automatic refetching)
-  const account = useMemo(
-    () => ({ owner: principal.toText(), subaccount: null }),
-    [principal]
-  )
-  const balanceQuery = getIcpBalance([account])
-
-  // 🔥 Auto-refetch balance after successful transfer!
-  const { mutate } = icpTransferMutation.useMutation({
-    invalidateQueries: [balanceQuery.getQueryKey()], 
-  })
+  const { mutate } = icpTransferMutation.useMutation()
 
   // DisplayReactor accepts strings for amounts!
   const handleTransfer = () => {

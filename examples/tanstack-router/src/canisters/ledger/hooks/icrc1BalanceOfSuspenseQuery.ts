@@ -1,8 +1,10 @@
 /**
  * Query Factory: icrc1_balance_of
  *
- * Hand-maintained, not codegen output: current codegen writes only
- * index.generated.ts (see examples/codegen-in-action).
+ * Hand-maintained, not codegen output. Codegen's `factories: true` generates
+ * the createQuery, createQueryFactory and createMutation kinds for every
+ * method (see examples/codegen-in-action), but no suspense factories like
+ * this one.
  *
  * @example
  * // Use in components
@@ -11,8 +13,9 @@
  * // Prefetch in loaders
  * const data = await icrc1BalanceOfSuspenseQuery([{ owner }]).fetch()
  *
- * // Invalidate cache
+ * // Invalidate one account's balance, or every balance this factory made
  * icrc1BalanceOfSuspenseQuery([{ owner }]).invalidate()
+ * icrc1BalanceOfSuspenseQuery.invalidate()
  *
  * // Get query key for cache manipulation
  * const key = icrc1BalanceOfSuspenseQuery([{ owner }]).getQueryKey()

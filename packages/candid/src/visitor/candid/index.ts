@@ -133,8 +133,18 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     const canister = this.withName("[0]", () =>
       this.visitPrincipal(IDL.Principal, "canisterId")
     )
+    // The method name is part of the reference, not a `text` value of the
+    // method's own. A reference with no method names nothing to call, so it
+    // keeps the check that plain text no longer has.
     const method = this.withName("[1]", () =>
-      this.visitText(IDL.Text, "methodName")
+      this.primitive(
+        "text",
+        "methodName",
+        this.currentName(),
+        "text",
+        "",
+        z.string().min(1, "Required")
+      )
     )
 
     return {
@@ -643,6 +653,11 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
     )
   }
 
+  /**
+   * Any string, including "". Candid `text` has no required-ness, and an
+   * empty text is a value a method may take: the form used to reject it as
+   * "Required", so such a call could not be made or replayed from the form.
+   */
   public visitText(_t: IDL.TextClass, label: string): FormFieldNode {
     return this.primitive(
       "text",
@@ -650,7 +665,7 @@ export class CandidFormVisitor<A = BaseActor> extends IDL.Visitor<
       this.currentName(),
       "text",
       "",
-      z.string().min(1, "Required")
+      z.string()
     )
   }
 

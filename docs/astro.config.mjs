@@ -79,6 +79,7 @@ export default defineConfig({
             },
             { label: "Type Safety", link: "/guides/type-safety" },
             { label: "Error Handling", link: "/guides/error-handling" },
+            { label: "Testing", link: "/guides/testing" },
             { label: "AI Friendliness", link: "/guides/ai-friendliness" },
           ],
         },
@@ -103,6 +104,10 @@ export default defineConfig({
             {
               label: "MetadataDisplayReactor",
               link: "/packages/candid/metadatadisplayreactor",
+            },
+            {
+              label: "createReactorProvider",
+              link: "/reference/createreactorprovider",
             },
             {
               label: "createAuthHooks",
@@ -218,6 +223,8 @@ export default defineConfig({
               ],
             },
             { label: "Validation", link: "/reference/reactvalidation" },
+            { label: "Utilities", link: "/reference/utilities" },
+            { label: "Testing Utilities", link: "/reference/testing" },
           ],
         },
         {
@@ -319,6 +326,10 @@ export default defineConfig({
                     { label: "Overview", link: "/packages/react" },
                     { label: "React Setup", link: "/framework/react-setup" },
                     {
+                      label: "createReactorProvider",
+                      link: "/reference/createreactorprovider",
+                    },
+                    {
                       label: "createActorHooks",
                       link: "/reference/createactorhooks/overview",
                     },
@@ -350,6 +361,8 @@ export default defineConfig({
                       link: "/reference/displayreactor",
                     },
                     { label: "Validation", link: "/reference/reactvalidation" },
+                    { label: "Utilities", link: "/reference/utilities" },
+                    { label: "Testing Utilities", link: "/reference/testing" },
                   ],
                 },
                 {

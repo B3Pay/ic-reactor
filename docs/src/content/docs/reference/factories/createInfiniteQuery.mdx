@@ -74,17 +74,37 @@ getPreviousPageParam: (
 
 ## Return Value
 
-| Property           | Type                                   | Description                                |
-| ------------------ | -------------------------------------- | ------------------------------------------ |
-| `fetch`            | `() => Promise<T>`                     | Fetch first page (for loaders)             |
-| `useInfiniteQuery` | `(options?) => UseInfiniteQueryResult` | React hook                                 |
-| `invalidate`       | `() => Promise<void>`                  | Invalidate the cache (refetches if active) |
-| `getQueryKey`      | `() => QueryKey`                       | Get the query key                          |
-| `getCacheData`     | `(select?) => T \| undefined`          | Read from cache without fetching           |
+| Property           | Type                                   | Description                                              |
+| ------------------ | -------------------------------------- | -------------------------------------------------------- |
+| `fetch`            | `() => Promise<T>`                     | Fetch first page (for loaders)                           |
+| `useInfiniteQuery` | `(options?) => UseInfiniteQueryResult` | React hook                                               |
+| `invalidate`       | `() => Promise<void>`                  | Invalidate the cache (refetches if active)               |
+| `getQueryKey`      | `() => QueryKey`                       | Get the query key                                        |
+| `getCacheData`     | `(select?) => T \| undefined`          | Read from cache without fetching                         |
+| `cancel`           | `() => Promise<void>`                  | Cancel the fetch in flight                               |
+| `reset`            | `() => Promise<void>`                  | Reset to initial state; mounted hooks refetch            |
+| `optimisticUpdate` | `(updater) => Promise<{ rollback }>`   | Cancel, write `updater(cached pages)`, return a rollback |
 
-These five keys are the whole object. To force a refetch from a component, use
+These eight keys are the whole object. To force a refetch from a component, use
 the `refetch` returned by `useInfiniteQuery()`; outside React, call
-`invalidate()`.
+`invalidate()`, or `reset()` to drop the loaded pages and start again from the
+first one.
+
+`optimisticUpdate` gets and returns the raw `InfiniteData`,
+`{ pages, pageParams }`, before `select`. For example, to show a new post at
+the top of the first page while it is being created:
+
+```typescript
+const draft = await postsQuery.optimisticUpdate((data) => ({
+  ...data,
+  pages: [[newPost, ...data.pages[0]], ...data.pages.slice(1)],
+}))
+// in onError: draft.rollback()
+```
+
+A sign-in or sign-out while `fetch()` is in flight does not reject it: the
+previous identity's first page is dropped, and `fetch()` runs again for the new
+identity and resolves with that page.
 
 ---
 
@@ -420,6 +440,25 @@ function UserPosts({ userId }: { userId: string }) {
 }
 ```
 
+### Every List at Once
+
+The factory function has `getQueryKey()` and `invalidate()`, which cover every
+list it returns, whatever its `getArgs` and however many pages it loaded:
+
+```typescript
+// Refetch every loaded list
+await getPostsQuery.invalidate()
+
+// Or after a mutation
+const createPost = createMutation(backend, {
+  functionName: "createPost",
+  invalidateQueries: [getPostsQuery],
+})
+```
+
+The prefix is built from the method, the factory's `callConfig` and its config
+`queryKey`, the part of the key every instance shares.
+
 ### Factory Cache Identity (Route/Search Params)
 
 By default, `createInfiniteQueryFactory(...)` derives the query key from the
@@ -461,6 +500,16 @@ const todoListQuery = todoListInfiniteQuery((offset: string) => [
 ---
 
 ## Notes
+
+<Aside type="caution">
+  An update method passed here runs on the canister again on every refetch
+  (mount, window focus, reconnect, invalidation), retry and uncached `fetch()`,
+  each time as a new call. Use it only for an update method that is safe to
+  repeat, and use `createMutation` for a method that changes state. With no
+  `retry` in the factory config or the hook's options, an update method retries
+  only a `SysTransient` rejection, which proves the call never ran. See [Update
+  Methods in Queries](/v3/framework/queries#update-methods-in-queries).
+</Aside>
 
 <Aside type="tip">
   Return `undefined` or `null` from `getNextPageParam` to indicate there are no

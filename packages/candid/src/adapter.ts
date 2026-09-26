@@ -72,8 +72,8 @@ export class CandidAdapter {
   /** The client manager providing agent and identity access. */
   public clientManager: CandidClientManager
 
-  /** The canister ID of the didjs canister for remote Candid compilation. */
-  public didjsCanisterId: CanisterId
+  /** The didjs canister ID given to the constructor or assigned, if any. */
+  private explicitDidjsCanisterId?: CanisterId
 
   /** The optional local parser module. */
   private parserModule?: ReactorParser
@@ -84,24 +84,46 @@ export class CandidAdapter {
   /** The load of @ic-reactor/parser once started, which later callers await. */
   private parserLoad?: Promise<void>
 
-  /** Function to unsubscribe from identity updates. */
+  /**
+   * Does nothing. The adapter used to subscribe to the client manager's
+   * identity changes and this removed that subscription; it no longer
+   * subscribes, so there is nothing to remove.
+   *
+   * @deprecated A no-op kept so existing calls still work. Remove the call.
+   */
   public unsubscribe: () => void = noop
 
   /**
    * Creates a new CandidAdapter instance.
    *
+   * The adapter keeps no subscription on the client manager, so dropping it
+   * (or a reactor that created it) leaves nothing behind to clean up.
+   *
    * @param params - The adapter parameters.
    */
   constructor({ clientManager, didjsCanisterId }: CandidAdapterParameters) {
     this.clientManager = clientManager
-    this.didjsCanisterId = didjsCanisterId || this.getDefaultDidJsId()
+    // The default is not stored: `didjsCanisterId` reads it from the client
+    // manager each time. Keeping it current used to take a subscription to
+    // every identity change, which nothing removed, so each reactor built
+    // without an adapter left a callback on its ClientManager for good.
+    this.explicitDidjsCanisterId = didjsCanisterId || undefined
+  }
 
-    // Subscribe to identity changes to update didjs canister ID if needed
-    this.unsubscribe = clientManager.subscribe(() => {
-      if (!didjsCanisterId) {
-        this.didjsCanisterId = this.getDefaultDidJsId()
-      }
-    })
+  /**
+   * The canister ID of the didjs canister for remote Candid compilation.
+   *
+   * The ID given to the constructor or assigned here wins. Without one, it is
+   * the default for the client manager's network at the time of the read: the
+   * local didjs canister when `clientManager.isLocal` is true, the mainnet one
+   * otherwise.
+   */
+  get didjsCanisterId(): CanisterId {
+    return this.explicitDidjsCanisterId || this.getDefaultDidJsId()
+  }
+
+  set didjsCanisterId(canisterId: CanisterId) {
+    this.explicitDidjsCanisterId = canisterId || undefined
   }
 
   /**

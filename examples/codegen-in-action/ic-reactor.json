@@ -5,7 +5,8 @@
   "canisters": {
     "backend": {
       "name": "backend",
-      "didFile": "./backend/backend.did"
+      "didFile": "./backend/backend.did",
+      "factories": true
     }
   }
 }

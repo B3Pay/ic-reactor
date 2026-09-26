@@ -7,12 +7,15 @@
  * Pipeline steps (in order):
  *  1. Resolve paths (didFile, outDir)
  *  2. Generate declarations (JS + .d.ts + .did copy)
- *  3. Optionally generate reactor implementation (`index.generated.ts`)
+ *  3. Optionally generate reactor implementation (`index.generated.ts`), and
+ *     with `factories: true` the query and mutation factories
+ *     (`index.factories.generated.ts`)
  *  4. Optionally create or migrate the user entry (`index.ts`)
  */
 
 import fs from "node:fs"
 import path from "node:path"
+import { parseDid } from "@ic-reactor/parser"
 import type {
   CanisterConfig,
   CodegenConfig,
@@ -31,12 +34,21 @@ import {
   generateReactorFile,
 } from "./generators/reactor.js"
 import {
+  FACTORIES_FILE_NAME,
+  generateFactoriesFile,
+} from "./generators/factories.js"
+import {
   assertSafeCanisterConfig,
   CodegenConfigError,
   resolveDeclarationsBaseName,
 } from "./validate.js"
 import { getReactorName, getServiceTypeName } from "./naming.js"
-import { copyToNewFile, createFile, replaceFile } from "./write.js"
+import {
+  copyToNewFile,
+  createFile,
+  replaceFile,
+  replaceFiles,
+} from "./write.js"
 
 export interface PipelineOptions {
   /** Canister name and config */
@@ -197,12 +209,66 @@ function isManagedEntryWrapper(
   )
 }
 
+/**
+ * The methods of the service in the `.did` copy the declarations step wrote,
+ * so the factories match the declarations they are typed by even when the
+ * source `.did` changes during the run.
+ */
+function readServiceMethods(didCopyPath: string) {
+  // The copy keeps the source's bytes, byte order mark included; see
+  // generateDeclarations.
+  const source = fs.readFileSync(didCopyPath, "utf-8").replace(/^\uFEFF/, "")
+  const service = parseDid(source).service
+  if (!service) {
+    throw new Error(
+      `${didCopyPath} declares no service, so there are no methods to generate factories for.`
+    )
+  }
+  return service.methods
+}
+
+/**
+ * Remove the factories file an earlier run wrote, once the canister no longer
+ * sets `factories`.
+ *
+ * Nothing regenerates the file after that, so a method later removed from the
+ * .did would stay in it and stop it compiling. Only a regular file carrying the
+ * generator's header is removed: a link or a file of the user's own is left.
+ */
+function removeGeneratedFactoriesFile(filePath: string): void {
+  let content: string
+  try {
+    if (!fs.lstatSync(filePath).isFile()) return
+    content = fs.readFileSync(filePath, "utf-8")
+  } catch {
+    // No such file, which is the usual case.
+    return
+  }
+  // A failure to remove it fails the run, rather than leaving it behind.
+  if (content.includes(GENERATED_MARKER)) fs.rmSync(filePath)
+}
+
+/** Whether an `index.ts` re-exports, or otherwise names, the factories file. */
+function mentionsFactoriesFile(content: string): boolean {
+  return content.includes(`./${FACTORIES_FILE_NAME.replace(/\.ts$/, "")}`)
+}
+
 export interface PipelineResult {
   canisterName: string
   success: boolean
   /** All files the pipeline attempted to write */
   files: GeneratorResult[]
   error?: string
+  /**
+   * Things the run could not fix for the user, such as an `index.ts` of
+   * their own that does not re-export the factories it generated. The CLI
+   * and the Vite plugin print them. Absent when there are none.
+   *
+   * @example
+   * const result = await runCanisterPipeline(options)
+   * for (const warning of result.warnings ?? []) console.warn(warning)
+   */
+  warnings?: string[]
 }
 
 /**
@@ -241,6 +307,7 @@ export async function runCanisterPipeline(
       projectRoot,
       mode: canisterConfig.mode,
       target: canisterConfig.target ?? globalConfig.target,
+      factories: canisterConfig.factories,
     })
   } catch (err) {
     if (err instanceof CodegenConfigError) {
@@ -353,12 +420,22 @@ export async function runCanisterPipeline(
   // ── Step 2: Reactor file ───────────────────────────────────────────────────
 
   const reactorPath = path.join(canisterOutDir, "index.generated.ts")
+  const factoriesPath = path.join(canisterOutDir, FACTORIES_FILE_NAME)
   const entryPath = path.join(canisterOutDir, "index.ts")
   const reactorClass = resolveReactorClass(canisterConfig)
   const runtimeTarget = resolveRuntimeTarget(canisterConfig, globalConfig)
+  // Validated above as a boolean, and only with target "react".
+  const factories = canisterConfig.factories === true
+  const warnings: string[] = []
 
   try {
-    const templateEntryContent = generateReactorEntryFile()
+    // Both wrappers the template writes, the one that re-exports the
+    // factories and the one that does not, so a wrapper nobody edited follows
+    // the option when it is switched either way.
+    const templateEntryContents = [
+      generateReactorEntryFile({ factories: false }),
+      generateReactorEntryFile({ factories: true }),
+    ]
 
     // Formatted with the project's Prettier, as the declarations are. In the
     // template's own style, both files failed `prettier --check` in any project
@@ -379,21 +456,53 @@ export async function runCanisterPipeline(
       reactorPath,
       "typescript"
     )
-    const entryContent = await formatGenerated(
-      prettier,
-      projectRoot,
-      templateEntryContent,
-      entryPath,
-      "typescript"
+    const factoriesContent = factories
+      ? await formatGenerated(
+          prettier,
+          projectRoot,
+          generateFactoriesFile({
+            canisterName: name,
+            methods: readServiceMethods(
+              path.join(
+                canisterOutDir,
+                "declarations",
+                `${resolveDeclarationsBaseName(resolvedDidFile)}.did`
+              )
+            ),
+            reactorClass,
+          }),
+          factoriesPath,
+          "typescript"
+        )
+      : undefined
+    const formattedEntryContents = await Promise.all(
+      templateEntryContents.map((content) =>
+        formatGenerated(prettier, projectRoot, content, entryPath, "typescript")
+      )
     )
+    const entryContent = formattedEntryContents[factories ? 1 : 0]
 
     // Every write below either replaces the entry at its path or creates a new
     // one, so a symbolic link committed into the output directory cannot
     // redirect it. A replace leaves a regular file that already holds the new
     // bytes untouched. See write.ts.
     fs.mkdirSync(canisterOutDir, { recursive: true })
-    replaceFile(reactorPath, reactorContent)
+    // One call, so a failed write leaves both managed files as they were
+    // rather than factories typed against a reactor file that did not change.
+    replaceFiles(
+      factoriesContent === undefined
+        ? [[reactorPath, reactorContent]]
+        : [
+            [reactorPath, reactorContent],
+            [factoriesPath, factoriesContent],
+          ]
+    )
     files.push({ success: true, filePath: reactorPath })
+    if (factoriesContent !== undefined) {
+      files.push({ success: true, filePath: factoriesPath })
+    } else {
+      removeGeneratedFactoriesFile(factoriesPath)
+    }
 
     if (!fs.existsSync(entryPath)) {
       // A dangling link also lands here, and createFile fails on it.
@@ -404,8 +513,8 @@ export async function runCanisterPipeline(
 
       if (
         isManagedEntryWrapper(existingEntryContent, [
-          entryContent,
-          templateEntryContent,
+          ...formattedEntryContents,
+          ...templateEntryContents,
         ])
       ) {
         replaceFile(entryPath, entryContent)
@@ -419,6 +528,29 @@ export async function runCanisterPipeline(
         files.push({ success: true, filePath: entryPath })
       } else {
         files.push({ success: true, filePath: entryPath, skipped: true })
+
+        // The wrapper is the user's, so what it exports is theirs to change.
+        // Said here, since the missing export otherwise shows up as an import
+        // error in whichever module first reaches for a factory.
+        const entryName = path.relative(projectRoot, entryPath)
+        if (factories && !mentionsFactoriesFile(existingEntryContent)) {
+          warnings.push(
+            `${entryName} is not the generated wrapper, so codegen left it as it is, and it ` +
+              `does not re-export the factories. Add ` +
+              `\`export * from "./index.factories.generated"\` to it to import them from ` +
+              `the canister's entry point.`
+          )
+        } else if (
+          !factories &&
+          mentionsFactoriesFile(existingEntryContent) &&
+          !fs.existsSync(factoriesPath)
+        ) {
+          warnings.push(
+            `${entryName} imports ./index.factories.generated, which codegen writes only ` +
+              `while the canister sets factories: true. Remove that import, or set ` +
+              `factories again.`
+          )
+        }
       }
     }
   } catch (err) {
@@ -440,5 +572,6 @@ export async function runCanisterPipeline(
     canisterName: name,
     success: true,
     files,
+    ...(warnings.length > 0 ? { warnings } : {}),
   }
 }

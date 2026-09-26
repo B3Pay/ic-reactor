@@ -168,7 +168,7 @@ describe("a blob argument's query key", () => {
       }
       expect(reactor.getQueryData(other)).toBe(1n)
 
-      reactor.invalidateQueries(other)
+      await reactor.invalidateQueries(other)
       const key = keyOf(reactor, "lookup", [new Uint8Array(BYTES)])
       expect(queryClient.getQueryState(key)?.isInvalidated).toBe(true)
     })

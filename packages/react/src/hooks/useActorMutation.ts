@@ -3,7 +3,6 @@ import {
   useMutation,
   UseMutationOptions,
   UseMutationResult,
-  QueryKey,
 } from "@tanstack/react-query"
 import {
   Reactor,
@@ -19,7 +18,8 @@ import {
   TransformReturnRegistry,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { useMountQueryClient } from "../utils.js"
+import { invalidateTargets, useMountQueryClient } from "../utils.js"
+import type { InvalidationTarget } from "../types.js"
 
 export interface UseActorMutationParameters<
   Service,
@@ -39,13 +39,15 @@ export interface UseActorMutationParameters<
   functionName: Method
   callConfig?: CallConfig
   /**
-   * Queries to invalidate upon successful mutation.
+   * Queries to invalidate upon successful mutation, awaited before
+   * `onSuccess` runs.
    *
-   * `undefined` entries are skipped, so the common
-   * `[maybeQuery?.getQueryKey()]` idiom is safe when the optional query object
-   * is absent.
+   * Each entry is a query key, a query object or query factory, or a
+   * `{ functionName, args? }` method of `reactor`; see
+   * {@link InvalidationTarget}. `undefined` entries are skipped, so
+   * `[maybeQuery]` is safe when the optional query object is absent.
    */
-  invalidateQueries?: (QueryKey | undefined)[]
+  invalidateQueries?: InvalidationTarget<Service, Transform>[]
   /**
    * Callback for canister-level business logic errors.
    * Called when the canister returns a Result { Err: E } variant.
@@ -147,24 +149,13 @@ export const useActorMutation = <
         >
       >
     ) => {
-      if (invalidateQueries) {
-        // Skip undefined entries. React Query reads `{ queryKey: undefined }`
-        // as "match everything", so a single undefined — which the natural
-        // `invalidateQueries: [maybeQuery?.getQueryKey()]` idiom produces
-        // whenever the optional query object is absent — would invalidate every
-        // query in the client, including an app's unrelated non-canister ones.
-        // `createMutation.invalidateAll` already filters the same way.
-        await Promise.all(
-          invalidateQueries
-            .filter((queryKey) => queryKey !== undefined)
-            .map((queryKey) =>
-              reactor.queryClient.invalidateQueries({ queryKey })
-            )
-        )
-      }
+      // Undefined entries are skipped: React Query reads
+      // `{ queryKey: undefined }` as "match everything", and the natural
+      // `[maybeQuery]` idiom produces one whenever the query is absent.
+      await invalidateTargets(reactor, invalidateQueries, callConfig)
       await onSuccess?.(...params)
     },
-    [reactor, invalidateQueries, onSuccess]
+    [reactor, invalidateQueries, onSuccess, callConfig]
   )
 
   const handleError = useCallback(

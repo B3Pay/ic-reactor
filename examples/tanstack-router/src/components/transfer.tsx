@@ -1,15 +1,15 @@
 import { useState } from "react"
+import { isPrincipalText, parseTokenAmount } from "@ic-reactor/react"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
 import { TransferError } from "./transfer-error"
 import {
-  icrc1BalanceOfSuspenseQuery,
   icrc1DecimalsSuspenseQuery,
   useIcrc1TransferMutation,
 } from "@/canisters/ledger/hooks"
 
-export function Transfer({ owner }: { owner: string }) {
+export function Transfer() {
   const { data: decimals } = icrc1DecimalsSuspenseQuery.useSuspenseQuery()
   const [to, setTo] = useState("")
   const [amount, setAmount] = useState("")
@@ -21,9 +21,10 @@ export function Transfer({ owner }: { owner: string }) {
     error,
     reset,
   } = useIcrc1TransferMutation({
+    // The mutation factory has already refetched the balances by now: it
+    // lists icrc1BalanceOfSuspenseQuery in its invalidateQueries.
     onSuccess: (blockIndex) => {
       // blockIndex is the Ok value from the canister
-      icrc1BalanceOfSuspenseQuery([{ owner }]).invalidate()
       setResult(`Transfer successful! Block index: ${String(blockIndex)}`)
       setTo("")
       setAmount("")
@@ -41,14 +42,21 @@ export function Transfer({ owner }: { owner: string }) {
     reset() // Clear any previous errors
     if (!to || !amount) return
 
-    try {
-      const multiplier = Math.pow(10, Number(decimals))
-      const amountString = Math.floor(Number(amount) * multiplier).toString()
+    const recipient = to.trim()
+    if (!isPrincipalText(recipient)) {
+      setResult("Invalid Principal ID")
+      return
+    }
 
-      transfer([{ to: { owner: to }, amount: amountString }])
+    try {
+      // Exact decimal arithmetic: "0.29" at 8 decimals is 29000000 e8s, where
+      // Math.floor(Number("0.29") * 10 ** 8) gives 28999999. Text with more
+      // fraction digits than the token has is refused, not rounded.
+      const units = parseTokenAmount(amount, decimals)
+      // The DisplayReactor takes a nat as its decimal text.
+      transfer([{ to: { owner: recipient }, amount: units.toString() }])
     } catch (err) {
-      console.error(err)
-      setResult(`Invalid Principal ID or Amount: ${(err as Error).message}`)
+      setResult(`Invalid Amount: ${(err as Error).message}`)
     }
   }
 
@@ -73,11 +81,11 @@ export function Transfer({ owner }: { owner: string }) {
           <div>
             <label className="text-sm text-gray-400 block mb-1">Amount</label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
-              step="any"
             />
           </div>
           <Button type="submit" disabled={isPending} className="w-full">
@@ -131,11 +139,11 @@ export function TransferSkeleton() {
           <div>
             <label className="text-sm text-gray-400 block mb-1">Amount</label>
             <Input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value=""
               onChange={() => {}}
               placeholder="0.00"
-              step="any"
             />
           </div>
           <Button type="submit" disabled={true} className="w-full">

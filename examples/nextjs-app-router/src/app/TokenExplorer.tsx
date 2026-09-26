@@ -1,10 +1,14 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { useLedgerReactor } from "./ledger-provider"
+import React, { useState, useEffect, useMemo } from "react"
 import { Principal } from "@icp-sdk/core/principal"
-import { useICAuth } from "./providers"
-import { createAuthHooks } from "@ic-reactor/react"
+import {
+  formatTokenAmount,
+  isPrincipalText,
+  skipToken,
+} from "@ic-reactor/react"
+import { useLedger } from "./providers"
+import type { Account } from "../declarations/ledger"
 
 const POPULAR_TOKENS = [
   {
@@ -40,12 +44,17 @@ const POPULAR_TOKENS = [
 ]
 
 export default function TokenExplorer() {
-  const { hooks, setCanisterId, currentCanisterId } = useLedgerReactor()
-  const { useActorQuery } = hooks
-
-  const { authentication } = useICAuth()
-  const { useUserPrincipal } = createAuthHooks(authentication)
+  const { useActorQuery, useUserPrincipal } = useLedger()
   const principal = useUserPrincipal()
+
+  // Every query below goes to the selected ledger through `callConfig`. Its
+  // query key starts with that canister, so each token has cache entries of
+  // its own, and switching back to one shows what was already fetched.
+  const [currentCanisterId, setCanisterId] = useState(POPULAR_TOKENS[0].id)
+  const callConfig = useMemo(
+    () => ({ canisterId: currentCanisterId }),
+    [currentCanisterId]
+  )
 
   const [searchTarget, setSearchTarget] = useState("")
   const [activeAddress, setActiveAddress] = useState<string>("")
@@ -59,75 +68,74 @@ export default function TokenExplorer() {
   }, [principal])
 
   // Queries for token metadata directly from mainnet
-  // Pass queryKey so that the cache is partitioned by currentCanisterId and react-query knows to refetch when the selected token changes!
   const { data: name, isLoading: nameLoading } = useActorQuery({
     functionName: "icrc1_name",
-    queryKey: [currentCanisterId],
+    callConfig,
   })
   const { data: symbol, isLoading: symbolLoading } = useActorQuery({
     functionName: "icrc1_symbol",
-    queryKey: [currentCanisterId],
+    callConfig,
   })
   const { data: decimals, isLoading: decimalsLoading } = useActorQuery({
     functionName: "icrc1_decimals",
-    queryKey: [currentCanisterId],
+    callConfig,
   })
   const { data: fee, isLoading: feeLoading } = useActorQuery({
     functionName: "icrc1_fee",
-    queryKey: [currentCanisterId],
+    callConfig,
   })
   const { data: totalSupply, isLoading: supplyLoading } = useActorQuery({
     functionName: "icrc1_total_supply",
-    queryKey: [currentCanisterId],
+    callConfig,
   })
 
-  // Safely parse principal for the balance query
-  let parsedAccount: any = null
-  try {
-    if (activeAddress) {
-      parsedAccount = {
-        owner: Principal.fromText(activeAddress),
-        subaccount: [],
-      }
+  // The account whose balance to show, once the address parses
+  const account = useMemo((): Account | undefined => {
+    try {
+      return activeAddress
+        ? { owner: Principal.fromText(activeAddress), subaccount: [] }
+        : undefined
+    } catch {
+      return undefined
     }
-  } catch (e) {}
+  }, [activeAddress])
 
-  const defaultAccount = { owner: Principal.anonymous(), subaccount: [] as [] }
-
-  // Fetch live balance of the selected target principal
+  // Fetch live balance of the selected target principal. Until there is an
+  // account, skipToken keeps the query waiting: no placeholder account, no
+  // cast, no `enabled`, and the args are type-checked.
   const {
     data: balance,
     isLoading: balanceLoading,
     refetch: refetchBalance,
   } = useActorQuery({
     functionName: "icrc1_balance_of",
-    args: [parsedAccount || defaultAccount] as any,
-    enabled: !!parsedAccount,
-    queryKey: [currentCanisterId, activeAddress],
+    args: account ? [account] : skipToken,
+    callConfig,
   })
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!searchTarget.trim()) return
-    try {
-      Principal.fromText(searchTarget.trim())
-      setActiveAddress(searchTarget.trim())
-    } catch (e) {
+    const target = searchTarget.trim()
+    if (!target) return
+    if (isPrincipalText(target)) {
+      setActiveAddress(target)
+    } else {
       alert("Invalid Principal ID format. Please verify and try again.")
     }
   }
 
-  const formatAmount = (val: any, decs: any) => {
-    if (val === undefined || val === null) return "0"
-    const bigVal = BigInt(val)
-    const factor = BigInt(10) ** BigInt(decs || 8)
-    const integerPart = bigVal / factor
-    const fractionalPart = bigVal % factor
-    const fractionStr = fractionalPart
-      .toString()
-      .padStart(Number(decs || 8), "0")
-    return `${integerPart}.${fractionStr.slice(0, 4)}`
-  }
+  // Four decimal places, cut rather than rounded, exact at any size and for
+  // any decimals (ckETH has 18, ckUSDC 6).
+  const formatAmount = (
+    amount: bigint | undefined,
+    decs: number | undefined
+  ) =>
+    amount === undefined || decs === undefined
+      ? "0"
+      : formatTokenAmount(amount, decs, {
+          maxFractionDigits: 4,
+          trimTrailingZeros: false,
+        })
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md max-w-xl mx-auto mt-6">

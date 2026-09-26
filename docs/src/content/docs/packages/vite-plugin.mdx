@@ -53,10 +53,14 @@ For each canister, generation produces:
 
 - `declarations/<did-basename>.js`, `.d.ts`, and a `.did` copy
 - `index.generated.ts`: managed implementation regenerated on every run
-- `index.ts`: stable entry wrapper that re-exports from `index.generated.ts`
+- `index.factories.generated.ts`: managed query and mutation factories, only
+  for a canister that sets `factories: true`
+- `index.ts`: stable entry wrapper that re-exports from `index.generated.ts`,
+  and from `index.factories.generated.ts` when it is generated
 
 If Prettier resolves from `config.root`, the plugin formats the `.js`, `.d.ts`,
-`index.generated.ts` and the `index.ts` wrapper it writes with it and your
+`index.generated.ts`, `index.factories.generated.ts` and the `index.ts` wrapper
+it writes with it and your
 Prettier config, so a rebuild leaves formatted, committed output unchanged.
 Without Prettier the declarations hold the Candid parser's output followed by
 a newline, and a formatting error never fails the build.
@@ -67,28 +71,73 @@ plus hooks named after the canister — for a canister named `backend`:
 `useBackendSuspenseInfiniteQuery`, `useBackendMutation`, and
 `useBackendMethod`.
 
+## Query and Mutation Factories
+
+Set `factories: true` on a canister to also generate
+`index.factories.generated.ts`, with one object per method bound to the
+generated reactor: `createQuery` for a query method without arguments,
+`createQueryFactory` for one with arguments, and `createMutation` for an
+update or oneway method. Each is named after its method in camelCase with a
+`Query` or `Mutation` suffix.
+
+```ts
+icReactor({
+  canisters: [
+    { name: "backend", didFile: "./backend/backend.did", factories: true },
+  ],
+})
+```
+
+```tsx
+import { getMessageQuery, setMessageMutation } from "./declarations/backend"
+
+// In a component
+const { data } = getMessageQuery.useQuery()
+
+// Anywhere, outside React included
+await setMessageMutation.execute(["hello"])
+```
+
+The file is regenerated with the rest of the canister's bindings when its
+`.did` changes. The default `index.ts` wrapper re-exports it; if you have
+edited your `index.ts`, the plugin leaves it alone and warns in the terminal
+until it re-exports the factories. Setting `factories` back to `false`
+removes the file. It needs `target: "react"`. See
+[Query and Mutation Factories](/v3/packages/codegen#query-and-mutation-factories)
+for the naming rule for any method name and how to customize a factory.
+
 ## Plugin Options
 
-| Option              | Type                | Default                                       | Description                                                         |
-| :------------------ | :------------------ | :-------------------------------------------- | :------------------------------------------------------------------ |
-| `canisters`         | `CanisterConfig[]`  | —                                             | Canister configurations (required).                                 |
-| `outDir`            | `string`            | `"src/declarations"`                          | Base output directory for generated files.                          |
-| `clientManagerPath` | `string`            | `"../../clients"`                             | Default client manager import path (relative from generated files). |
-| `target`            | `"react" \| "core"` | `"react"`                                     | Default generated runtime target.                                   |
-| `injectEnvironment` | `boolean`           | `true`                                        | Inject `ic_env` cookie and proxy during `vite dev`.                 |
-| `failOnError`       | `boolean`           | `true` on `vite build`, `false` on `vite dev` | Abort the Vite run when a canister fails to generate.               |
+| Option              | Type                | Default                                       | Description                                                            |
+| :------------------ | :------------------ | :-------------------------------------------- | :--------------------------------------------------------------------- |
+| `canisters`         | `CanisterConfig[]`  | —                                             | Canister configurations (required).                                    |
+| `outDir`            | `string`            | `"src/declarations"`                          | Base output directory for generated files.                             |
+| `clientManagerPath` | `string`            | `"../../clients"`                             | Default client manager import path (relative from generated files).    |
+| `target`            | `"react" \| "core"` | `"react"`                                     | Default generated runtime target.                                      |
+| `injectEnvironment` | `boolean`           | `true`                                        | Inject `ic_env` cookie and proxy during `vite dev` and `vite preview`. |
+| `failOnError`       | `boolean`           | `true` on `vite build`, `false` on `vite dev` | Abort the Vite run when a canister fails to generate.                  |
 
 ### Per-canister options
 
-| Option              | Type     | Description                                                                                                              |
-| :------------------ | :------- | :----------------------------------------------------------------------------------------------------------------------- |
-| `name`              | `string` | Canister name (required).                                                                                                |
-| `didFile`           | `string` | Path to the `.did` file (required).                                                                                      |
-| `mode`              | `string` | Reactor class: `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, `MetadataDisplayReactor`. |
-| `outDir`            | `string` | Override output directory for this canister.                                                                             |
-| `clientManagerPath` | `string` | Override client manager path for this canister.                                                                          |
-| `target`            | `string` | Override runtime target for this canister.                                                                               |
-| `canisterId`        | `string` | Canister ID written into `index.generated.ts`. Needed for any build not served from a local replica; see below.          |
+| Option              | Type      | Description                                                                                                                     |
+| :------------------ | :-------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| `name`              | `string`  | Canister name (required).                                                                                                       |
+| `didFile`           | `string`  | Path to the `.did` file (required).                                                                                             |
+| `mode`              | `string`  | Reactor class: `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, `MetadataDisplayReactor`.        |
+| `outDir`            | `string`  | Override output directory for this canister.                                                                                    |
+| `clientManagerPath` | `string`  | Override client manager path for this canister.                                                                                 |
+| `target`            | `string`  | Override runtime target for this canister.                                                                                      |
+| `canisterId`        | `string`  | Canister ID written into `index.generated.ts`. Needed for any build not served from a local replica; see below.                 |
+| `factories`         | `boolean` | Also generate `index.factories.generated.ts`, a query or mutation object per method (default `false`). Needs `target: "react"`. |
+
+Each entry needs an output directory of its own. Two entries with the same
+`name` and no `outDir`, or with `outDir` values that reach one directory, would
+overwrite each other's output. The plugin generates the first of them and fails
+the later one with the error the CLI reports, which names both entries by their
+position in `canisters`. Under `vite build` that fails the build; under
+`vite dev` it goes to the terminal and the browser error overlay. To generate
+one canister twice, say as a `DisplayReactor` and as a `Reactor`, give each
+entry its own `outDir`.
 
 ## Reactor Mode
 
@@ -122,25 +171,43 @@ Set `target` to control whether generated files include React hooks:
 
 ## Local Development
 
-When `injectEnvironment` is enabled during `vite dev`, the plugin tries to read
-local network details from the `icp` CLI, then:
+When `injectEnvironment` is enabled during `vite dev` or `vite preview`, the
+plugin tries to read local network details from the `icp` CLI, then:
 
 1. resolves canister IDs (including `internet_identity`, which is added
    automatically if not already in your canister list)
-2. sets the `ic_env` cookie
+2. sets the `ic_env` cookie on each response
 3. proxies `/api` to the local replica
 
-If `icp` CLI environment detection is unavailable, the plugin still falls back
-to proxying `/api` to `http://127.0.0.1:4943`, but it skips cookie injection.
+If `icp` CLI environment detection is unavailable, the plugin falls back to
+proxying `/api` to `http://127.0.0.1:4943`, and sets no cookie. With no
+canisters configured it still sets one, naming only icp-cli's built-in Internet
+Identity at `http://id.ai.localhost:8000/authorize`.
 
-If your Vite config already sets `server.proxy["/api"]`, the plugin leaves that
-entry alone, whether detection succeeds or not.
+Detection is complete once `icp` reports the network and every configured
+canister has an ID. Until then the plugin asks `icp` again on each page load,
+and that page gets the answer, so you can start `vite dev` first and then run
+`icp network start` and `icp deploy`: reload the page, no restart needed. The
+`/api` proxy moves to the network `icp` reports, the fallback included. Once
+detection is complete, page loads run no further `icp` commands, so
+redeploying into a fresh network, with new canister IDs and a new root key,
+needs a dev server restart. The terminal warns at startup while detection is
+incomplete, and says when a later page load completes it. A configured canister
+you never deploy locally keeps detection incomplete, so every page load runs
+`icp` for it; set its `canisterId` and it counts as resolved. If you never run a
+local network, set `injectEnvironment: false` and page loads run no `icp`.
+
+If your Vite config or another plugin sets `server.proxy["/api"]`, the plugin
+leaves that entry alone, whether detection succeeds or not, and that proxy does
+not follow detection.
 
 If you provide `canisterId` in the plugin config, that fixed ID overrides the
 auto-detected development value for that canister.
 
 `ClientManager` trusts the `ic_env` cookie only on a local replica: cookies are
-not origin-isolated, so on a custom domain or mainnet the cookie is ignored.
+not origin-isolated, so on a custom domain, on mainnet, and on Codespaces or
+Gitpod (whose workspaces share a parent domain with every other user's) the
+cookie is ignored.
 There, and in Node or during SSR where there is no cookie at all, a generated
 reactor with no `canisterId` throws `canisterId is required` as soon as its
 module is imported. Set the per-canister `canisterId` to write the ID into
@@ -155,7 +222,8 @@ Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
 When a watched `.did` file changes, the plugin:
 
 1. regenerates declarations
-2. regenerates `index.generated.ts`
+2. regenerates `index.generated.ts`, and `index.factories.generated.ts` for a
+   canister that sets `factories: true`
 3. preserves custom `index.ts` files, while updating the default wrapper or
    migrating older generated entrypoints to the wrapper model
 4. triggers a full browser reload

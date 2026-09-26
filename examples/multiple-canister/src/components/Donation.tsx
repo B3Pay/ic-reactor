@@ -1,5 +1,6 @@
+import { formatTokenAmount, parseTokenAmount } from "@ic-reactor/react"
 import { Principal } from "@icp-sdk/core/principal"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import {
   icpBalanceQuery,
   icpAllowanceQuery,
@@ -12,9 +13,13 @@ interface DonationProps {
   principal: Principal
 }
 
+/** ICP counts in e8s: 1 ICP is 10^8 e8s. */
+const ICP_DECIMALS = 8
+
 const Donation: React.FC<DonationProps> = ({ principal }) => {
   const icdvCanisterId = Principal.fromText(ICDV_CANISTER_ID)
   const amountRef = useRef<HTMLInputElement>(null)
+  const [amountError, setAmountError] = useState<string | null>(null)
 
   // Balance query
   const {
@@ -55,11 +60,12 @@ const Donation: React.FC<DonationProps> = ({ principal }) => {
     data: approveResult,
     reset: resetApprove,
   } = icpApproveMutation.useMutation({
-    onSuccess: () => {
+    // Mint exactly the amount that was approved.
+    onSuccess: (_blockIndex, [{ amount }]) => {
       refetchAllowance()
       mintFromICP([
         {
-          amount: parseAmount(amountRef.current?.value),
+          amount,
           source_subaccount: [],
           target: [],
         },
@@ -67,21 +73,23 @@ const Donation: React.FC<DonationProps> = ({ principal }) => {
     },
   })
 
-  // Convert decimal ICP amount to e8s (1 ICP = 10^8 e8s)
-  const parseAmount = (value: string | undefined): bigint => {
-    if (!value) return 0n
-    const parsed = parseFloat(value)
-    if (isNaN(parsed)) return 0n
-    // Convert to e8s by multiplying by 10^8
-    return BigInt(Math.round(parsed * 1e8))
-  }
-
   const onSubmit = (event: React.FormEvent) => {
     event.preventDefault()
+    // The typed ICP amount in e8s, exactly. Text that is not an amount, or has
+    // more than 8 decimal places, is refused here instead of being sent as 0
+    // or rounded.
+    let amount: bigint
+    try {
+      amount = parseTokenAmount(amountRef.current?.value ?? "", ICP_DECIMALS)
+    } catch (error) {
+      setAmountError((error as Error).message)
+      return
+    }
+    setAmountError(null)
     approve([
       {
         spender: { owner: icdvCanisterId, subaccount: [] },
-        amount: parseAmount(amountRef.current?.value),
+        amount,
         fee: [],
         memo: [],
         created_at_time: [],
@@ -94,7 +102,7 @@ const Donation: React.FC<DonationProps> = ({ principal }) => {
 
   const formatBalance = (bal: bigint | undefined) => {
     if (bal === undefined) return "—"
-    return (Number(bal) / 1e8).toFixed(8)
+    return formatTokenAmount(bal, ICP_DECIMALS, { trimTrailingZeros: false })
   }
 
   const isProcessing = approveLoading || mintFromICPLoading
@@ -171,7 +179,18 @@ const Donation: React.FC<DonationProps> = ({ principal }) => {
       <form onSubmit={onSubmit}>
         <div className="form-group">
           <label className="form-label">Donation Amount (ICP)</label>
-          <input ref={amountRef} type="text" placeholder="0.01" required />
+          <input
+            ref={amountRef}
+            type="text"
+            inputMode="decimal"
+            placeholder="0.01"
+            required
+          />
+          {amountError && (
+            <div className="status status-error" style={{ marginTop: "8px" }}>
+              ⚠️ {amountError}
+            </div>
+          )}
         </div>
 
         <button

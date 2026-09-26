@@ -7,17 +7,21 @@ It leverages **TanStack Query** for state management and caching, and the repo u
 
 ## Package Surface
 
-- Runtime lane (`3.12.5`): `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/candid`. Internet Identity auth ships inside `@ic-reactor/react` (`packages/react/src/auth/`); there is no separate auth package.
-- Codegen lane (`0.14.0`): `@ic-reactor/codegen`, `@ic-reactor/cli`, `@ic-reactor/vite-plugin`.
-- Parser lane (`0.5.0`): `@ic-reactor/parser`.
+- Runtime lane (`3.13.0`): `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/candid`. Internet Identity auth ships inside `@ic-reactor/react` (`packages/react/src/auth/`); there is no separate auth package.
+- Codegen lane (`0.15.0`): `@ic-reactor/codegen`, `@ic-reactor/cli`, `@ic-reactor/vite-plugin`.
+- Parser lane (`0.6.0`): `@ic-reactor/parser`.
 
 ## Core Principles
 
-- **Type Safety**: usage of `Candid` types is mandatory. Avoid `any` or loose typing.
+- **Type Safety**: usage of `Candid` types is mandatory. Avoid `any` or loose typing. Derive types from a reactor with `ReactorArgsOf` / `ReactorDataOf` / `ReactorErrorOf<typeof reactor, "method">` instead of copying shapes by hand.
 - **DisplayReactor**: Prefer `DisplayReactor` over standard `Reactor` for UI components to handle BigInt serialization automatically.
-- **Setup Pattern**: Prefer `defineReactor(...)` for one-call React setup; fall back to `ClientManager`, `Reactor`, and `createActorHooks` when construction order must be explicit.
-- **Factory Pattern**: Use `createActorHooks`, `createQuery`, `createSuspenseQuery`, `createInfiniteQuery`, `createSuspenseInfiniteQuery`, and `createMutation` factories instead of manual hook implementations.
-- **SSR**: on a server (SSR/RSC) construct the reactor, `ClientManager`, and `AuthenticationManager` per request — never at module scope. A reactor owns its `QueryClient` and query keys carry no caller principal, so a module-scope reactor serves one user's caller-scoped data to the next; `AuthenticationManager` is built from a `ClientManager` and signs in on that manager's agent, so it belongs in the same request as its `ClientManager` — on the server it loads no auth client and stays signed out unless app code signs in there, and a module-scope one would then leave that identity on the agent every request signs with (the auth hooks themselves render a fixed signed-out state on the server). Build them in a `useState` initializer inside a provider — see `examples/nextjs/src/service/provider.tsx`. Module scope is fine in client-only SPAs.
+- **Setup Pattern**: Prefer `defineReactor(...)` for one-call React setup, and `defineDisplayReactor(...)` (same options) for display values; `defineReactor({ display: true })` is deprecated, so never generate it. Fall back to `ClientManager`, `Reactor`, and `createActorHooks` when construction order must be explicit.
+- **Factory Pattern**: Use `createActorHooks`, `createQuery`, `createSuspenseQuery`, `createInfiniteQuery`, `createSuspenseInfiniteQuery`, and `createMutation` factories instead of manual hook implementations. In a codegen project, `factories: true` generates one per method.
+- **Identity switches**: `query.fetch()` and `reactor.fetchQuery()` fetch again when the principal switches mid-fetch; wrap a hand-written `queryClient.fetchQuery` / `fetchInfiniteQuery` in `clientManager.fetchAcrossIdentitySwitch(() => ...)`.
+- **Many canisters**: use `reactor.forCanister(canisterId)` for another canister of the same interface, or `callConfig: { canisterId }` for one query; never retarget a shared reactor with `setCanisterId`.
+- **Token amounts**: show ledger base units with `formatTokenAmount(value, decimals)`, read typed text with `parseTokenAmount(text, decimals)`, and validate a typed principal with `isPrincipalText(text.trim())`; never `Number(x) / 10 ** decimals` or `parseFloat`.
+- **Testing**: run the real reactor against `installFakeReplica` + `createTestCanister` from `@ic-reactor/core/testing` (`@ic-reactor/react/testing` in React apps), installed before any `ClientManager` is built. Do not stub a `Reactor`.
+- **SSR**: on a server (SSR/RSC) construct the reactor, `ClientManager`, and `AuthenticationManager` per request — never at module scope. A reactor owns its `QueryClient` and query keys carry no caller principal, so a module-scope reactor serves one user's caller-scoped data to the next; `AuthenticationManager` is built from a `ClientManager` and signs in on that manager's agent, so it belongs in the same request as its `ClientManager` — on the server it loads no auth client and stays signed out unless app code signs in there, and a module-scope one would then leave that identity on the agent every request signs with (the auth hooks themselves render a fixed state on the server: signed out with `isAuthenticating: true`). Build them with `createReactorProvider(factory)`, which runs the factory once per mounted provider, disposes the `AuthenticationManager`s it built on unmount, and returns a `useReactor` hook — see `examples/nextjs/src/service/provider.tsx`. A React Server Component may import the core runtime (`Reactor`, `DisplayReactor`, `ClientManager`, ...) from `@ic-reactor/react` through its `react-server` export condition, but no hooks, factories, `defineReactor` or auth classes. Module scope is fine in client-only SPAs.
 
 ## Preferred Patterns
 
@@ -26,10 +30,12 @@ It leverages **TanStack Query** for state management and caching, and the repo u
 - Use `useActorQuery` from `createActorHooks` for component-level data fetching.
 - Use `createQuery`, `createSuspenseQuery`, or their factory variants for reusable query objects outside components.
 - Always handle `isLoading` and `error` states.
+- When args are not known yet, pass `skipToken` (from `@ic-reactor/react`) in their place: `args: userId ? [userId] : skipToken`. Never `args: [userId!]`.
 
 ### 2. Data Mutations
 
-- Use `useActorMutation` for state-changing calls.
+- Use `useActorMutation` (or `createMutation` / `useActorMethod`) for state-changing calls — never a query hook or query factory, which re-runs its method on every refetch. For retries, pass `retry: reactorUpdateRetry`, never a number.
+- In `invalidateQueries`, pass query objects, query factories or `{ functionName, args? }` descriptors, never a hand-written key. `reactor.invalidateQueries(...)` returns a `Promise`.
 - **CRITICAL**: Use the `onCanisterError` callback for handling logic errors returned by the canister (e.g., `Result.Err`).
 - Use `onSuccess` for successful `Result.Ok` unwrapped values.
 
@@ -48,7 +54,7 @@ const { mutate } = useActorMutation({
 - Use `useAgentState` to check if the agent is initialized or to get network details.
 - Create auth hooks with `createAuthHooks(authentication)` where `authentication = new AuthenticationManager({ clientManager })` — never pass a `ClientManager` directly.
 - `useIdentityAttributes` comes from `createIdentityAttributeHooks(identityAttributes)`, not from `createAuthHooks`.
-- Avoid deprecated hooks like `useAuthState`.
+- `createAuthHooks` returns exactly `useAuth`, `useAgentState` and `useUserPrincipal`. `useAuth()` reports `isAuthenticating: true` until the first session restore settles; check it before treating `isAuthenticated: false` as signed out.
 
 ## Naming Conventions
 
@@ -58,8 +64,9 @@ const { mutate } = useActorMutation({
 
 ## Documentation
 
-- Refer to `llms.txt` in the root directory for compact package/task routing.
-- Refer to `llms-full.txt` for a longer API overview and task-oriented AI guide.
+- Refer to `AGENTS.md` for which source files own a task and the minimum verification per kind of change.
+- `llms.txt` (index) and `llms-full.txt` (complete guide) are the consumer guides for apps that install the packages, published at the docs root; `packages/*/llms.txt` ship in each npm tarball, and `skill-packages/ic-reactor/` is the consumer Agent Skill apps install. Keep repo paths and contributor workflow out of all of them, and update the skill with the guides when public API guidance changes.
+- Record user-visible changes under `## Unreleased` in `CHANGELOG.md`.
 - Refer to `README.md` for the current package map, install paths, and examples.
 - Refer to `/docs` for detailed guides and examples.
 - Refer to `skill-packages/ic-reactor-packages/SKILL.md` for package ownership, exports, generated artifacts, and verification workflows.

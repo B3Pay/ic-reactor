@@ -50,9 +50,9 @@ export function PostSection({ addLog }: PostSectionProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
+  // The factory already invalidates the posts, their count and the logs.
   const { mutate: batchCreate, isPending: isCreating } =
     batchCreatePosts.useMutation({
-      invalidateQueries: [getPosts.getQueryKey(), getPostsCount.getQueryKey()],
       onSuccess: (ids) => {
         addLog("success", `Batch created ${ids.length} posts`)
         // Track new post IDs for animation

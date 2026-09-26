@@ -14,3 +14,6 @@
  */
 export * from "../packages/core/src/index.js"
 export * from "../packages/react/src/index.js"
+// The testing subpath (`@ic-reactor/core/testing`, re-exported as
+// `@ic-reactor/react/testing`). Its names clash with nothing above.
+export * from "../packages/core/src/testing/index.js"

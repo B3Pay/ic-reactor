@@ -1,10 +1,16 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import React, { Suspense } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ActorMethod } from "@icp-sdk/core/agent"
-import { Reactor } from "@ic-reactor/core"
+import { IDL } from "@icp-sdk/core/candid"
+import { ClientManager, Reactor } from "@ic-reactor/core"
 import { createQuery, createQueryFactory } from "../src/createQuery.js"
+import {
+  createTestCanister,
+  installFakeReplica,
+  type FakeReplica,
+} from "../src/testing.js"
 import { buildChainedSelect } from "../src/utils.js"
 
 // Define Actor Interface
@@ -25,87 +31,62 @@ interface TestActor {
   list_items: ActorMethod<[], string[]>
 }
 
-/**
- * The real signature of the method being mocked. See the note in
- * useActorInfiniteQuery.test.tsx: `CallMethodMock` resolves to
- * `Mock<Procedure | Constructable>`, which types every mock body as `any`.
- */
-type CallMethodMock = Mock<Reactor<TestActor>["callMethod"]>
+const idlFactory: IDL.InterfaceFactory = ({ IDL }) => {
+  const User = IDL.Record({ name: IDL.Text, age: IDL.Nat })
+  const Item = IDL.Record({ id: IDL.Text, value: IDL.Nat })
+  return IDL.Service({
+    get_user: IDL.Func([], [User], ["query"]),
+    get_item: IDL.Func([IDL.Text], [IDL.Opt(Item)], ["query"]),
+    list_items: IDL.Func([], [IDL.Vec(IDL.Text)], ["query"]),
+  })
+}
+
+const CANISTER_ID = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
 
 // Mock data
 const mockUser: User = { name: "Alice", age: 30n }
 const mockItem: Item = { id: "item-1", value: 100n }
 const mockItems = ["item-1", "item-2", "item-3"]
 
-// Mock Reactor
-const createMockReactor = (queryClient: QueryClient) => {
-  const callMethod = vi
-    .fn()
-    .mockImplementation(async ({ functionName, args }) => {
-      if (functionName === "get_user") {
-        return mockUser
-      }
-      if (functionName === "get_item") {
-        const id = args[0]
-        if (id === "item-1") return [mockItem]
-        return []
-      }
-      if (functionName === "list_items") {
-        return mockItems
-      }
-      return null
-    })
+// The canister the queries run against, on a fake replica, so the real
+// Reactor encodes, decodes and keys every call.
+let replica: FakeReplica
 
-  return {
-    queryClient,
-    callMethod,
-    canisterId: "test-canister",
-    generateQueryKey: vi
-      .fn()
-      .mockImplementation(({ functionName, args, queryKey }) => [
-        "test-canister",
-        functionName,
-        ...(args ? [JSON.stringify(args)] : []),
-        ...(queryKey ?? []),
-      ]),
-    getQueryOptions: vi
-      .fn()
-      .mockImplementation(({ functionName, args, queryKey }) => ({
-        queryKey: [
-          "test-canister",
-          functionName,
-          ...(args ? [JSON.stringify(args)] : []),
-          ...(queryKey ?? []),
-        ],
-        queryFn: async () => callMethod({ functionName, args }),
-      })),
-    fetchQuery: vi.fn().mockImplementation(async ({ functionName, args }) => {
-      return callMethod({ functionName, args })
-    }),
-    getQueryData: vi
-      .fn()
-      .mockImplementation(({ functionName, args, queryKey }) => {
-        // For simple testing, we can just return what callMethod would return
-        // or check the queryClient cache directly if desired.
-        // But for getCacheData test, it usually expects something if cached.
-        // Let's rely on queryClient.getQueryData in the real implementation,
-        // but here we are mocking Reactor directly.
-        // The `createActorQuery` now calls `reactor.getQueryData`.
-        // So we need to mock it.
-        const key = [
-          "test-canister",
-          functionName,
-          ...(args ? [JSON.stringify(args)] : []),
-          ...(queryKey ?? []),
-        ]
-        return queryClient.getQueryData(key)
+beforeEach(() => {
+  replica = installFakeReplica({
+    canisters: {
+      [CANISTER_ID]: createTestCanister<TestActor>(idlFactory, {
+        get_user: () => mockUser,
+        get_item: ([id]) => (id === "item-1" ? [mockItem] : []),
+        list_items: () => mockItems,
       }),
-  } as unknown as Reactor<TestActor>
-}
+    },
+  })
+})
+
+afterEach(() => {
+  replica.restore()
+})
+
+/** How many times the canister was asked `methodName`. */
+const callsTo = (methodName: keyof TestActor) =>
+  replica.requests.filter((request) => request.methodName === methodName).length
+
+/** A Reactor on the fake replica that caches in `queryClient`. */
+const createTestReactor = (queryClient: QueryClient) =>
+  new Reactor<TestActor>({
+    clientManager: new ClientManager({
+      queryClient,
+      agentOptions: { host: replica.host },
+    }),
+    name: "test-canister",
+    canisterId: CANISTER_ID,
+    idlFactory,
+  })
 
 describe("createQuery", () => {
   let queryClient: QueryClient
-  let mockReactor: ReturnType<typeof createMockReactor>
+  let reactor: Reactor<TestActor>
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -115,7 +96,7 @@ describe("createQuery", () => {
         },
       },
     })
-    mockReactor = createMockReactor(queryClient)
+    reactor = createTestReactor(queryClient)
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -126,7 +107,7 @@ describe("createQuery", () => {
 
   describe("basic functionality", () => {
     it("should create a query with required methods", () => {
-      const userQuery = createQuery(mockReactor, {
+      const userQuery = createQuery(reactor, {
         functionName: "get_user",
       })
 
@@ -138,30 +119,35 @@ describe("createQuery", () => {
     })
 
     it("should return correct query key", () => {
-      const userQuery = createQuery(mockReactor, {
+      const userQuery = createQuery(reactor, {
         functionName: "get_user",
       })
 
       const queryKey = userQuery.getQueryKey()
-      expect(queryKey).toContain("test-canister")
-      expect(queryKey).toContain("get_user")
+      expect(queryKey).toEqual([CANISTER_ID, "get_user"])
+      expect(queryKey).toEqual(
+        reactor.generateQueryKey({ functionName: "get_user" })
+      )
     })
 
     it("should include args in query key when provided", () => {
-      const itemQuery = createQuery(mockReactor, {
+      const itemQuery = createQuery(reactor, {
         functionName: "get_item",
         args: ["item-1"],
       })
 
-      const queryKey = itemQuery.getQueryKey()
-      // The mock generateQueryKey uses JSON.stringify for args
-      expect(queryKey).toContain(JSON.stringify(["item-1"]))
+      expect(itemQuery.getQueryKey()).toEqual(
+        reactor.generateQueryKey({ functionName: "get_item", args: ["item-1"] })
+      )
+      expect(itemQuery.getQueryKey()).not.toEqual(
+        reactor.generateQueryKey({ functionName: "get_item", args: ["item-2"] })
+      )
     })
   })
 
   describe("fetch function", () => {
     it("should fetch data correctly", async () => {
-      const userQuery = createQuery(mockReactor, {
+      const userQuery = createQuery(reactor, {
         functionName: "get_user",
       })
 
@@ -170,7 +156,7 @@ describe("createQuery", () => {
     })
 
     it("should apply select transform when fetching", async () => {
-      const userNameQuery = createQuery(mockReactor, {
+      const userNameQuery = createQuery(reactor, {
         functionName: "get_user",
         select: (user: User) => user.name,
       })
@@ -182,7 +168,7 @@ describe("createQuery", () => {
 
   describe("useQuery hook", () => {
     it("should use query hook correctly", async () => {
-      const userQuery = createQuery(mockReactor, {
+      const userQuery = createQuery(reactor, {
         functionName: "get_user",
       })
 
@@ -196,7 +182,7 @@ describe("createQuery", () => {
     })
 
     it("should apply select transform in useQuery", async () => {
-      const userNameQuery = createQuery(mockReactor, {
+      const userNameQuery = createQuery(reactor, {
         functionName: "get_user",
         select: (user: User) => user.name,
       })
@@ -211,7 +197,7 @@ describe("createQuery", () => {
     })
 
     it("should accept additional useQuery options like staleTime", async () => {
-      const userQuery = createQuery(mockReactor, {
+      const userQuery = createQuery(reactor, {
         functionName: "get_user",
       })
 
@@ -230,42 +216,23 @@ describe("createQuery", () => {
 
   describe("staleTime configuration", () => {
     it("should use default staleTime of 5 minutes", async () => {
-      const userQuery = createQuery(mockReactor, {
+      const userQuery = createQuery(reactor, {
         functionName: "get_user",
       })
 
-      // First fetch
       await userQuery.fetch()
+      const { result } = renderHook(() => userQuery.useQuery(), { wrapper })
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
 
-      // Reset mock to check if called again
-      ;(mockReactor.callMethod as CallMethodMock).mockClear()
-
-      // Get from cache (should use cached value due to staleTime default behavior if implemented?
-      // Actually default staleTime in createActorQuery might be 0 unless configured or defaulted in QueryClient?
-      // React Query default is 0.
-      // But we passed queryClient with retry: false.
-      // If we want to test staleTime default behavior, we might need to rely on QueryClient default or createActorQuery default
-      // createActorQuery doesn't enforce default staleTime unless specified.
-
-      // The original test said "should use default staleTime of 5 minutes" - maybe defined somewhere?
-      // Assuming React Query default (0) unless updated.
-      // Let's assume fetching again calls the method if staleTime is 0.
-
-      // If the original test expected it to NOT call, then createActorQuery sets a default?
-      // Let's fetch again.
-      await userQuery.fetch()
-
-      // If default is 0, it should be called again.
-      // If default is 5 mins, it should not.
-      // Inspecting createActorQuery.ts might reveal this.
-      // I'll skip assertion on call count for default behavior to be safe or check createActorQuery implementation.
-
-      // Re-reading usage in original file: "should use default staleTime of 5 minutes".
-      // This implies 5 minutes IS the default.
+      // Still fresh, so mounting the hook does not ask the canister again.
+      expect(result.current.data).toEqual(mockUser)
+      expect(callsTo("get_user")).toBe(1)
     })
 
     it("should respect custom staleTime", () => {
-      const userQuery = createQuery(mockReactor, {
+      const userQuery = createQuery(reactor, {
         functionName: "get_user",
         staleTime: 1000,
       })
@@ -279,7 +246,7 @@ describe("createQuery", () => {
 
   describe("with args", () => {
     it("should pass args to the actor method", async () => {
-      const itemQuery = createQuery(mockReactor, {
+      const itemQuery = createQuery(reactor, {
         functionName: "get_item",
         args: ["item-1"],
       })
@@ -297,7 +264,7 @@ describe("createQuery", () => {
 
 describe("createQueryFactory", () => {
   let queryClient: QueryClient
-  let mockReactor: ReturnType<typeof createMockReactor>
+  let reactor: Reactor<TestActor>
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -307,7 +274,7 @@ describe("createQueryFactory", () => {
         },
       },
     })
-    mockReactor = createMockReactor(queryClient)
+    reactor = createTestReactor(queryClient)
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -317,7 +284,7 @@ describe("createQueryFactory", () => {
   )
 
   it("should create a factory function that returns QueryResult", () => {
-    const getItem = createQueryFactory(mockReactor, {
+    const getItem = createQueryFactory(reactor, {
       functionName: "get_item",
     })
 
@@ -328,7 +295,7 @@ describe("createQueryFactory", () => {
   })
 
   it("should fetch data with dynamic args", async () => {
-    const getItem = createQueryFactory(mockReactor, {
+    const getItem = createQueryFactory(reactor, {
       functionName: "get_item",
     })
 
@@ -338,7 +305,7 @@ describe("createQueryFactory", () => {
   })
 
   it("should apply select transform with dynamic args", async () => {
-    const getItem = createQueryFactory(mockReactor, {
+    const getItem = createQueryFactory(reactor, {
       functionName: "get_item",
       select: (result: any) =>
         Array.isArray(result) && result.length > 0 ? result[0] : null,
@@ -350,7 +317,7 @@ describe("createQueryFactory", () => {
   })
 
   it("should work with useQuery hook", async () => {
-    const getItem = createQueryFactory(mockReactor, {
+    const getItem = createQueryFactory(reactor, {
       functionName: "get_item",
     })
 
@@ -368,7 +335,7 @@ describe("createQueryFactory", () => {
 
 describe("chained select - CRITICAL TESTS", () => {
   let queryClient: QueryClient
-  let mockReactor: ReturnType<typeof createMockReactor>
+  let reactor: Reactor<TestActor>
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -378,7 +345,7 @@ describe("chained select - CRITICAL TESTS", () => {
         },
       },
     })
-    mockReactor = createMockReactor(queryClient)
+    reactor = createTestReactor(queryClient)
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -397,7 +364,7 @@ describe("chained select - CRITICAL TESTS", () => {
       isAdult: data.age >= 18,
     }))
 
-    const userQuery = createQuery(mockReactor, {
+    const userQuery = createQuery(reactor, {
       functionName: "get_user",
       select: configSelectFn,
     })
@@ -432,17 +399,17 @@ describe("chained select - CRITICAL TESTS", () => {
 
 describe("createQuery - prefetch", () => {
   let queryClient: QueryClient
-  let mockReactor: ReturnType<typeof createMockReactor>
+  let reactor: Reactor<TestActor>
 
   beforeEach(() => {
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
-    mockReactor = createMockReactor(queryClient)
+    reactor = createTestReactor(queryClient)
   })
 
   it("prefetch() warms the cache without throwing", async () => {
-    const userQuery = createQuery(mockReactor, { functionName: "get_user" })
+    const userQuery = createQuery(reactor, { functionName: "get_user" })
     await expect(userQuery.prefetch()).resolves.toBeUndefined()
   })
 
@@ -451,7 +418,7 @@ describe("createQuery - prefetch", () => {
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     )
 
-    const userQuery = createQuery(mockReactor, { functionName: "get_user" })
+    const userQuery = createQuery(reactor, { functionName: "get_user" })
 
     // Prefetch outside component
     await userQuery.prefetch()
@@ -471,13 +438,13 @@ describe("createQuery - prefetch", () => {
 
 describe("createQuery - setData", () => {
   let queryClient: QueryClient
-  let mockReactor: ReturnType<typeof createMockReactor>
+  let reactor: Reactor<TestActor>
 
   beforeEach(() => {
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
-    mockReactor = createMockReactor(queryClient)
+    reactor = createTestReactor(queryClient)
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -485,7 +452,7 @@ describe("createQuery - setData", () => {
   )
 
   it("setData() writes raw data into the cache", () => {
-    const userQuery = createQuery(mockReactor, { functionName: "get_user" })
+    const userQuery = createQuery(reactor, { functionName: "get_user" })
     const optimistic: User = { name: "Bob", age: 25n }
 
     userQuery.setData(optimistic)
@@ -495,7 +462,7 @@ describe("createQuery - setData", () => {
   })
 
   it("setData() with updater function receives previous value", () => {
-    const userQuery = createQuery(mockReactor, { functionName: "get_user" })
+    const userQuery = createQuery(reactor, { functionName: "get_user" })
     const initial: User = { name: "Alice", age: 30n }
 
     userQuery.setData(initial)
@@ -506,7 +473,7 @@ describe("createQuery - setData", () => {
   })
 
   it("setData() triggers a re-render with the new data", async () => {
-    const userQuery = createQuery(mockReactor, { functionName: "get_user" })
+    const userQuery = createQuery(reactor, { functionName: "get_user" })
 
     const { result } = renderHook(() => userQuery.useQuery(), { wrapper })
 
@@ -524,13 +491,13 @@ describe("createQuery - setData", () => {
 
 describe("createQuery - select memoization", () => {
   let queryClient: QueryClient
-  let mockReactor: ReturnType<typeof createMockReactor>
+  let reactor: Reactor<TestActor>
 
   beforeEach(() => {
     queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     })
-    mockReactor = createMockReactor(queryClient)
+    reactor = createTestReactor(queryClient)
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -542,7 +509,7 @@ describe("createQuery - select memoization", () => {
     // QueryObserver's `options.select === previousSelectFn` memo never hit and
     // the select re-ran per render.
     const select = vi.fn((user: User) => user.name)
-    const query = createQuery(mockReactor, {
+    const query = createQuery(reactor, {
       functionName: "get_user",
       select,
     })
@@ -560,7 +527,7 @@ describe("createQuery - select memoization", () => {
     // A Map cannot be structurally shared by replaceEqualDeep, so an unstable
     // select handed the consumer a new reference every render — which turns any
     // useEffect([data]) that sets state into an unbounded loop.
-    const query = createQuery(mockReactor, {
+    const query = createQuery(reactor, {
       functionName: "get_user",
       select: (user: User) => new Map([["name", user.name]]),
     })
@@ -579,7 +546,7 @@ describe("createQuery - select memoization", () => {
 
   it("passes the caller's own function through when only one select is present", () => {
     const configSelect = (user: User) => user.name
-    const query = createQuery(mockReactor, {
+    const query = createQuery(reactor, {
       functionName: "get_user",
       select: configSelect,
     })

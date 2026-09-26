@@ -1,6 +1,7 @@
-import { useAuth } from "../service/provider"
+import { useTodo } from "../service/provider"
 
 const Login = () => {
+  const { useAuth } = useTodo()
   const { login, logout, identity, isAuthenticating, isAuthenticated, error } =
     useAuth()
 

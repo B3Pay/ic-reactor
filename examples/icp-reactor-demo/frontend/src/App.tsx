@@ -8,7 +8,8 @@
  *
  * Project structure:
  * - src/lib/client.ts        → Your ClientManager & auth hooks (you own this)
- * - src/canisters/backend/   → Auto-generated reactor & hooks (don't edit)
+ * - src/generated/backend/   → Generated reactor & hooks (index.generated.ts
+ *                               is rewritten on every run; index.ts is yours)
  */
 
 import { Suspense, useState } from "react"
@@ -100,7 +101,7 @@ function ZeroConfigBanner() {
         <div className="banner-item">
           <span className="banner-icon">⚡</span>
           <span className="banner-text">
-            Plugin generates <code>canisters/*</code>
+            Plugin generates <code>generated/*</code>
           </span>
         </div>
       </div>
@@ -110,7 +111,7 @@ export const clientManager = new ClientManager({ ... })
 export const authentication = new AuthenticationManager({ clientManager })
 export const { useAuth } = createAuthHooks(authentication)
 
-// src/canisters/backend/index.ts (AUTO-GENERATED)
+// src/generated/backend/index.generated.ts (GENERATED)
 import { clientManager } from "../../lib/client"
 export const { useBackendQuery, useBackendMutation } = ...`}
       </pre>
@@ -225,17 +226,14 @@ function MessageSection() {
   const [newMessage, setNewMessage] = useState("")
 
   // 🎯 Auto-generated hooks!
-  const {
-    data: message,
-    isLoading,
-    refetch,
-  } = useBackendQuery({
+  const { data: message, isLoading } = useBackendQuery({
     functionName: "get_message",
   })
 
   const { mutate: setMessage, isPending } = useBackendMutation({
     functionName: "set_message",
-    onSuccess: () => refetch(), // Manually refetch after mutation
+    // Refetch every get_message query once the update succeeds
+    invalidateQueries: [{ functionName: "get_message" }],
   })
 
   const handleSetMessage = () => {
@@ -287,7 +285,6 @@ function CounterSection() {
     data: counter,
     isLoading,
     isFetching,
-    refetch,
   } = useBackendQuery({
     functionName: "get_counter",
     refetchInterval: 3000, // Explicitly set refetch interval
@@ -295,7 +292,7 @@ function CounterSection() {
 
   const { mutate: increment, isPending } = useBackendMutation({
     functionName: "increment",
-    onSuccess: () => refetch(),
+    invalidateQueries: [{ functionName: "get_counter" }],
   })
 
   return (

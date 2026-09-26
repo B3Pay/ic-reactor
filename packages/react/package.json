@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/react",
-  "version": "3.12.5",
+  "version": "3.13.0",
   "description": "IC Reactor React library for building Internet Computer apps",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -13,8 +13,14 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "react-server": "./dist/server.js",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "default": "./dist/testing.js"
     },
     "./package.json": "./package.json"
   },
@@ -64,6 +70,7 @@
   "peerDependencies": {
     "@icp-sdk/auth": "^8.0.0 || ^10.0.0",
     "@icp-sdk/core": "^6.1.0",
+    "@noble/curves": "^2.2.0",
     "@tanstack/react-query": "^5.90.2",
     "react": ">=18.0.0",
     "react-dom": ">=18.0.0"
@@ -104,6 +111,9 @@
   ],
   "peerDependenciesMeta": {
     "@icp-sdk/auth": {
+      "optional": true
+    },
+    "@noble/curves": {
       "optional": true
     },
     "react-dom": {

@@ -65,6 +65,16 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
     description="Validation helpers for turning canister and input issues into typed UI state."
     href="/v3/reference/reactvalidation"
   />
+  <LinkCard
+    title="Utilities"
+    description="Exact token-amount formatting and parsing, and other value helpers."
+    href="/v3/reference/utilities"
+  />
+  <LinkCard
+    title="Testing Utilities"
+    description="A fake replica and typed test canisters, from the @ic-reactor/core/testing entry point."
+    href="/v3/reference/testing"
+  />
 </CardGrid>
 
 ## Quick Start
@@ -101,7 +111,7 @@ const greeting = await backend.fetchQuery({
 
 Whether a failed call is worth retrying is decided by what failed, and most
 failures are deterministic. `@ic-reactor/core` exports the classification
-(`@ic-reactor/react` re-exports both functions):
+(`@ic-reactor/react` re-exports these functions):
 
 ```typescript
 import { reactorRetry, isRetryableReactorError } from "@ic-reactor/core"
@@ -114,13 +124,18 @@ const queryClient = new QueryClient({
 
 `isRetryableReactorError(error)` returns `true` only for a `CallError` whose
 cause is an agent-level fault — a transport, protocol, or certificate failure,
-or a `SysTransient`/`SysUnknown` replica rejection. A canister `Err` variant
-(`CanisterError`), a `ValidationError`, a Candid encode failure (no request
-was ever made), and a decode failure on the reply are never retryable:
-identical input — or the identical reply — produces the identical failure.
-Within agent errors the bias is toward retrying — an unrecognized `kind`, or a
-rejection whose code cannot be read, still retries, so an unfamiliar
-transport-level fault is never silently made fatal.
+an HTTP 5xx, 408 or 429 answer, or a `SysTransient`/`SysUnknown` replica
+rejection. A canister `Err` variant (`CanisterError`), a `ValidationError`, a
+Candid encode failure (no request was ever made), and a decode failure on the
+reply are never retryable: identical input — or the identical reply —
+produces the identical failure. Neither is any other HTTP 4xx answer, such as
+the 400 for an expired delegation or a 403: it refuses the request itself,
+and the agent has already sent it `retryTimes` more times (3 by default)
+before reporting it. The status is read from the agent's `HttpErrorCode` by
+its `name` and `status`, so an error from another copy of `@icp-sdk/core`
+classifies the same way. Within agent errors the bias is toward retrying — an
+unrecognized `kind`, or a rejection whose code cannot be read, still retries,
+so an unfamiliar transport-level fault is never silently made fatal.
 
 `reactorRetry(failureCount, error)` is a ready-made TanStack Query `retry`
 predicate on top of it — up to 3 retries (4 attempts in total) for retryable
@@ -128,6 +143,16 @@ errors, none otherwise, and always `false` on the server so a failed prefetch
 keeps failing fast. `defineReactor` in `@ic-reactor/react` already installs it
 as the query default on the `QueryClient` it creates; a `QueryClient` you
 construct yourself opts in as shown above.
+
+An update call is different: each attempt is a new call that the canister
+runs, so only a failure that proves the first attempt never ran is safe to
+retry. `isRetryableUpdateError(error)` accepts just that, a `SysTransient`
+rejection, and `reactorUpdateRetry(failureCount, error)` retries it up to 3
+times in a browser. A query of an update method with no `retry` of its own
+retries this way within the QueryClient's `retry` default, as
+`Reactor.getQueryRetry(functionName, queryKey)` returns; `getQueryOptions` and
+`fetchQuery` apply it. See
+[Update Methods in Queries](/v3/framework/queries#update-methods-in-queries).
 
 ## Identity Attributes
 
@@ -167,6 +192,32 @@ await backend.callMethod({
 Use `openIdProvider: "google"`, `"apple"`, `"microsoft"`, or a provider issuer
 URL. For lower-level requests, build scoped keys with `identityAttributeKeys()`
 and pass them to `identityAttributes.request()`.
+
+## Testing
+
+`@ic-reactor/core/testing` is a separate entry point for tests. It installs a
+fake replica that answers your agent with canisters written as typed handlers,
+so `ClientManager`, `Reactor` and `DisplayReactor` run unmodified with no
+replica:
+
+```typescript
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/core/testing"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
+
+const replica = installFakeReplica({
+  canisters: {
+    [canisterId]: createTestCanister<_SERVICE>(idlFactory, {
+      greet: ([name]) => `Hello, ${name}!`,
+    }),
+  },
+})
+// Build the ClientManager afterwards, with agentOptions: { host: replica.host }.
+```
+
+The main entry never imports it. See the [Testing guide](/v3/guides/testing).
 
 ## See Also
 

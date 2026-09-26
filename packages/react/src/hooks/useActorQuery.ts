@@ -2,8 +2,10 @@ import { useMemo } from "react"
 import {
   QueryKey,
   useQuery,
+  skipToken,
   QueryObserverOptions,
   UseQueryResult,
+  type SkipToken,
 } from "@tanstack/react-query"
 import {
   FunctionName,
@@ -15,7 +17,7 @@ import {
   ReactorReturnErr,
 } from "@ic-reactor/core"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { useMountQueryClient } from "../utils.js"
+import { retryOption, skippedQueryKey, useMountQueryClient } from "../utils.js"
 
 export interface UseActorQueryParameters<
   Service,
@@ -34,7 +36,13 @@ export interface UseActorQueryParameters<
 > {
   reactor: Reactor<Service, Transform>
   functionName: Method
-  args?: ReactorArgs<Service, Method, Transform>
+  /**
+   * The method's arguments, or TanStack Query's `skipToken` while they are
+   * not known: the query then waits without fetching, in an entry of its own
+   * under its method's key, which no call's key shares, so it shows no data
+   * until the arguments arrive.
+   */
+  args?: ReactorArgs<Service, Method, Transform> | SkipToken
   callConfig?: CallConfig
   queryKey?: QueryKey
 }
@@ -73,6 +81,13 @@ export type UseActorQueryResult<
  *   args: ["user-123"],
  *   select: (user) => user.name,
  * })
+ *
+ * // Wait for the args: no fetch until userId is known
+ * const { data } = useReactorQuery({
+ *   reactor,
+ *   functionName: "getUser",
+ *   args: userId ? [userId] : skipToken,
+ * })
  */
 export const useActorQuery = <
   Service,
@@ -95,14 +110,28 @@ export const useActorQuery = <
   useMountQueryClient(reactor.queryClient)
 
   // Memoize query options to prevent unnecessary re-computations
-  const { queryKey, queryFn } = useMemo(
+  // For an update method, the options also carry its default `retry`; see
+  // `Reactor.getQueryRetry`.
+  const { queryKey, queryFn, retry } = useMemo(
     () =>
-      reactor.getQueryOptions<Method>({
-        callConfig,
-        functionName,
-        args,
-        queryKey: defaultQueryKey,
-      }),
+      args === skipToken
+        ? // Waiting for its args: an entry of its own under the method's key,
+          // with nothing to run until then; see skippedQueryKey.
+          {
+            queryKey: skippedQueryKey(
+              reactor.generateQueryKey({ functionName }, callConfig),
+              "query"
+            ),
+            // Kept as the unique symbol, which an object literal widens.
+            queryFn: skipToken as SkipToken,
+            retry: undefined,
+          }
+        : reactor.getQueryOptions<Method>({
+            callConfig,
+            functionName,
+            args,
+            queryKey: defaultQueryKey,
+          }),
     // `canisterId` is mutable reactor state that `setCanisterId` can change,
     // while `reactor` itself stays the same object — so it has to be a
     // dependency in its own right or the key stays pinned to the old canister.
@@ -121,6 +150,7 @@ export const useActorQuery = <
       queryFn,
       ...options,
       queryKey,
+      ...retryOption(options.retry, retry),
     },
     reactor.queryClient
   )

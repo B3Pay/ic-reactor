@@ -1,8 +1,9 @@
 /**
  * Query: icrc1_name
  *
- * Hand-maintained, not codegen output: current codegen writes only
- * index.generated.ts (see examples/codegen-in-action).
+ * Hand-maintained, because this example writes its reactor by hand. In a
+ * project whose reactor codegen generates, `factories: true` generates this
+ * same object under this same name (see examples/codegen-in-action).
  *
  * @example
  * // Use in components

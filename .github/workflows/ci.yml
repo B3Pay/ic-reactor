@@ -63,6 +63,13 @@ jobs:
       - name: Build packages
         run: pnpm build
 
+      # Compiles every ts/tsx fence of the AI guides, the skills and the
+      # READMEs against the declarations just built, the API an agent in a
+      # consumer project pastes them against. check:ai-context keeps their
+      # versions and links current but compiles nothing.
+      - name: Snippet check
+        run: pnpm check:snippets
+
       - name: Type check
         run: pnpm typecheck
 

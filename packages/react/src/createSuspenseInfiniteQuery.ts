@@ -46,7 +46,11 @@ import {
   InfiniteQueryObserverOptions,
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { NoInfer } from "./types.js"
+import type {
+  NoInfer,
+  QueryCacheControls,
+  QueryFactoryMethods,
+} from "./types.js"
 import {
   buildChainedSelect,
   callConfigForKey,
@@ -54,7 +58,10 @@ import {
   mountWhileSuspended,
   normalizeQueryData,
   pickFetchOptions,
+  queryCacheControls,
+  retryOption,
   useMountQueryClient,
+  withQueryFactoryMethods,
 } from "./utils.js"
 
 type SuspenseInfiniteFactoryCallOptions = {
@@ -67,7 +74,7 @@ type SuspenseInfiniteQueryFactoryFn<
   Transform extends TransformKey,
   TPageParam,
   Selected,
-> = {
+> = QueryFactoryMethods & {
   (
     getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
   ): SuspenseInfiniteQueryResult<
@@ -237,6 +244,10 @@ export interface UseSuspenseInfiniteQueryWithSelect<
 /**
  * Result from createSuspenseInfiniteQuery
  *
+ * `cancel()`, `reset()` and `optimisticUpdate()` act on the whole page set:
+ * `optimisticUpdate` gets and returns the raw `InfiniteData`, `{ pages,
+ * pageParams }`.
+ *
  * @template TPageData - The raw page data type
  * @template TPageParam - The page parameter type
  * @template Selected - The type after select transformation
@@ -247,7 +258,7 @@ export interface SuspenseInfiniteQueryResult<
   TPageParam,
   Selected = InfiniteData<TPageData, TPageParam>,
   TError = Error,
-> {
+> extends QueryCacheControls<InfiniteData<TPageData, TPageParam>> {
   /** Fetch first page in loader (uses ensureInfiniteQueryData for cache-first) */
   fetch: () => Promise<Selected>
 
@@ -363,21 +374,30 @@ const createSuspenseInfiniteQueryImpl = <
     TPageData,
     QueryKey,
     TPageParam
-  > => ({
-    // How the query function runs, shared with the hook; see pickFetchOptions.
-    ...pickFetchOptions(rest),
-    queryKey: getQueryKey(),
-    queryFn,
-    initialPageParam,
-    getNextPageParam,
-    staleTime,
-  })
+  > => {
+    const queryKey = getQueryKey()
+    return {
+      // How the query function runs, shared with the hook; see
+      // pickFetchOptions. An update method's `retry` defaults as
+      // `Reactor.getQueryRetry` says.
+      ...pickFetchOptions(rest),
+      ...retryOption(rest.retry, reactor.getQueryRetry(functionName, queryKey)),
+      queryKey,
+      queryFn,
+      initialPageParam,
+      getNextPageParam,
+      staleTime,
+    }
+  }
 
   // Fetch function for loaders (cache-first, fetches first page)
   const fetch = async (): Promise<Selected> => {
-    // Use ensureInfiniteQueryData to get cached data or fetch if stale
-    const result = await reactor.queryClient.ensureInfiniteQueryData(
-      getInfiniteQueryOptions()
+    // Use ensureInfiniteQueryData to get cached data or fetch if stale. A
+    // sign-in or sign-out while it is in flight cancels it; it then runs again
+    // for the new identity rather than rejecting with TanStack's
+    // CancelledError, as `reactor.fetchQuery` does.
+    const result = await reactor.clientManager.fetchAcrossIdentitySwitch(() =>
+      reactor.queryClient.ensureInfiniteQueryData(getInfiniteQueryOptions())
     )
 
     // Result is already InfiniteData format
@@ -400,10 +420,12 @@ const createSuspenseInfiniteQueryImpl = <
       [options?.select]
     )
 
+    const queryKey = getQueryKey()
+
     try {
       return useSuspenseInfiniteQuery(
         {
-          queryKey: getQueryKey(),
+          queryKey,
           queryFn,
           initialPageParam,
           getNextPageParam,
@@ -413,6 +435,12 @@ const createSuspenseInfiniteQueryImpl = <
           ...rest,
           ...options,
           select: chainedSelect,
+          // The hook's `retry`, else the config's, else an update method's
+          // default; see `Reactor.getQueryRetry`.
+          ...retryOption(
+            options?.retry ?? rest.retry,
+            reactor.getQueryRetry(functionName, queryKey)
+          ),
         },
         reactor.queryClient
       )
@@ -458,6 +486,7 @@ const createSuspenseInfiniteQueryImpl = <
     invalidate,
     getQueryKey,
     getCacheData,
+    ...queryCacheControls<TInfiniteData>(reactor, getQueryKey),
   }
 }
 
@@ -539,6 +568,9 @@ export function createSuspenseInfiniteQuery<
  *   (cursor) => [{ userId, cursor, limit: 10 }],
  *   { queryKey: ["v2"] }
  * )
+ *
+ * // Every list this factory made, whatever its args and pages
+ * await getPostsQuery.invalidate()
  */
 
 export function createSuspenseInfiniteQueryFactory<
@@ -566,13 +598,7 @@ export function createSuspenseInfiniteQueryFactory<
   TPageParam,
   Selected
 > {
-  const factory: SuspenseInfiniteQueryFactoryFn<
-    Service,
-    Method,
-    Transform,
-    TPageParam,
-    Selected
-  > = (
+  const factory = (
     getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>,
     options?: SuspenseInfiniteFactoryCallOptions
   ) => {
@@ -610,5 +636,16 @@ export function createSuspenseInfiniteQueryFactory<
     >)
   }
 
-  return factory
+  // What every instance's key starts with: the method, the `callConfig`
+  // segments and the config `queryKey`. A per-call `queryKey` and the args
+  // segment come after them.
+  return withQueryFactoryMethods(factory, reactor, () =>
+    reactor.generateQueryKey(
+      {
+        functionName: config.functionName as Method,
+        queryKey: config.queryKey,
+      },
+      config.callConfig
+    )
+  )
 }

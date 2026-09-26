@@ -3,9 +3,10 @@
  * their whole config to the standalone hooks, which take `callConfig` and use
  * it for the call and for the cache key. The useActorQuery reference lists
  * `callConfig` as an option. The bound types were built on `QueryConfig`, which
- * createQuery shares and which has no `callConfig`, so passing it failed to
+ * createQuery shares and which had no `callConfig`, so passing it failed to
  * compile with an excess-property error. `defineReactor` returns the same
- * hooks, so its users were blocked too.
+ * hooks, so its users were blocked too. `QueryConfig` now has it, for
+ * createQuery as well; see query-factory-call-config.test-d.ts.
  *
  * Checked by `pnpm typecheck` (tests are in the typecheck project), not by
  * vitest.

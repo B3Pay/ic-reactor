@@ -1,3 +1,4 @@
+use candid_parser::candid::{idl_hash, types::Label};
 use candid_parser::syntax::{
     Binding, Dec, IDLActorType, IDLMergedProg, IDLProg, IDLType, TypeField,
 };
@@ -53,6 +54,33 @@ const TS_GLOBALS: [&str; 9] = [
     "Int16Array",
     "Int32Array",
     "BigInt64Array",
+];
+
+/// The interface `didToTs` output declares the service as, which the generated
+/// reactor imports.
+const TS_SERVICE: &str = "_SERVICE";
+
+/// The names a type in `didToTs` output cannot have. TypeScript keeps most of
+/// them for its own types: no type or interface can be declared under one
+/// (TS2427, TS2457), and every reference to one means TypeScript's type.
+/// `infer`, `keyof`, `readonly` and `unique` start a type operator (`keyof T`),
+/// so a reference to a type with one of those names did not parse. `boolean`,
+/// `void` and `null` are kept too, but they are JavaScript keywords, which
+/// candid_parser already prints with `_` appended.
+const TS_TYPE_KEYWORDS: [&str; 13] = [
+    "any",
+    "bigint",
+    "infer",
+    "keyof",
+    "never",
+    "number",
+    "object",
+    "readonly",
+    "string",
+    "symbol",
+    "undefined",
+    "unique",
+    "unknown",
 ];
 
 /// The names candid_parser's JavaScript and TypeScript printers write with a
@@ -146,6 +174,14 @@ pub fn did_to_js(prog: String) -> Result<String, String> {
         env = TypeEnv::new();
         actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     }
+    if hash_numeric_looking_labels(&mut ast) {
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
+    if rename_ts_reserved_types(&mut ast, &env) {
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
 
     let res = candid_parser::bindings::javascript::compile(&env, &actor);
 
@@ -183,6 +219,69 @@ fn rename_keyword_actor_type(ast: &mut IDLProg, env: &TypeEnv) -> bool {
     true
 }
 
+/// Renames each type `didToTs` output cannot declare under its own name, and
+/// returns whether it renamed one: a type named like a TypeScript type keyword,
+/// such as `string`, and a type named `_SERVICE` that is not the actor's.
+///
+/// `didToTs` exports each type under its own name next to its own `export
+/// interface _SERVICE`. `export interface string` does not compile (TS2427),
+/// and every reference to `string` meant TypeScript's `string`, so a method
+/// returning the Candid record was typed as returning text. A second
+/// `_SERVICE` merged into the service interface, or clashed with it (TS2300),
+/// and the reactor was typed against the wrong interface. Such a type takes
+/// the name with `_` appended (`string_`, `_SERVICE_`), the way candid_parser
+/// renames a JavaScript keyword, or the first free name with more `_`.
+/// `didToJs` renames the same types, so both outputs use one name.
+///
+/// A `_SERVICE` the actor names (`service : _SERVICE`) is the interface the
+/// output needs, and keeps its name: see `fold_actor_into_service_type`.
+fn rename_ts_reserved_types(ast: &mut IDLProg, env: &TypeEnv) -> bool {
+    let actor = actor_type_name(ast).map(str::to_string);
+    let reserved: Vec<&String> = env
+        .0
+        .keys()
+        .filter(|name| {
+            TS_TYPE_KEYWORDS.contains(&name.as_str())
+                || (name.as_str() == TS_SERVICE && actor.as_deref() != Some(TS_SERVICE))
+        })
+        .collect();
+    for name in &reserved {
+        let renamed = unused_type_name(env, &format!("{name}_"));
+        rename_type(ast, name, &renamed);
+    }
+    !reserved.is_empty()
+}
+
+/// Returns whether the actor is the type named `_SERVICE` (`service :
+/// _SERVICE`, or `service : (…) -> _SERVICE`), and when it is, moves the
+/// actor's doc comment onto that type.
+///
+/// candid_parser prints the type's declaration, which already is the
+/// `_SERVICE` interface or an alias of it, and then the actor line `export
+/// interface _SERVICE extends _SERVICE {}`: an interface that extends itself
+/// (TS2310), or one that clashes with the alias (TS2300). `didToTs` drops that
+/// line, so the actor's docs go with the declaration instead of landing on the
+/// line after it.
+fn fold_actor_into_service_type(ast: &mut IDLProg) -> bool {
+    if actor_type_name(ast) != Some(TS_SERVICE) {
+        return false;
+    }
+    let docs = ast
+        .actor
+        .as_mut()
+        .map(|actor| std::mem::take(&mut actor.docs))
+        .unwrap_or_default();
+    for dec in &mut ast.decs {
+        if let Dec::TypD(binding) = dec {
+            if binding.id == TS_SERVICE {
+                binding.docs.extend(docs);
+                break;
+            }
+        }
+    }
+    true
+}
+
 /// `candidate`, or `candidate` followed by as many `_` as it takes to name no
 /// type in `env`.
 fn unused_type_name(env: &TypeEnv, candidate: &str) -> String {
@@ -193,53 +292,115 @@ fn unused_type_name(env: &TypeEnv, candidate: &str) -> String {
     name
 }
 
-/// Renames the type `from` to `to` in `ast`: its declaration and every
-/// reference to it. Field labels and method names are not type names and stay.
-fn rename_type(ast: &mut IDLProg, from: &str, to: &str) {
-    fn rename_in(ty: &mut IDLType, from: &str, to: &str) {
+/// Calls `visit` on every type in `ast`: each declared type, the actor's type,
+/// and every type nested in them, outer types first.
+fn visit_types<F: FnMut(&mut IDLType)>(ast: &mut IDLProg, visit: &mut F) {
+    fn visit_in<F: FnMut(&mut IDLType)>(ty: &mut IDLType, visit: &mut F) {
+        visit(ty);
         match ty {
-            IDLType::VarT(id) => {
-                if id == from {
-                    *id = to.to_string();
-                }
-            }
             IDLType::FuncT(func) => {
                 for arg in func.args.iter_mut().chain(func.rets.iter_mut()) {
-                    rename_in(&mut arg.typ, from, to);
+                    visit_in(&mut arg.typ, visit);
                 }
             }
-            IDLType::OptT(inner) | IDLType::VecT(inner) => rename_in(inner, from, to),
+            IDLType::OptT(inner) | IDLType::VecT(inner) => visit_in(inner, visit),
             IDLType::RecordT(fields) | IDLType::VariantT(fields) => {
                 for field in fields {
-                    rename_in(&mut field.typ, from, to);
+                    visit_in(&mut field.typ, visit);
                 }
             }
             IDLType::ServT(methods) => {
                 for method in methods {
-                    rename_in(&mut method.typ, from, to);
+                    visit_in(&mut method.typ, visit);
                 }
             }
             IDLType::ClassT(args, inner) => {
                 for arg in args {
-                    rename_in(&mut arg.typ, from, to);
+                    visit_in(&mut arg.typ, visit);
                 }
-                rename_in(inner, from, to);
+                visit_in(inner, visit);
             }
-            IDLType::PrimT(_) | IDLType::PrincipalT => {}
+            IDLType::VarT(_) | IDLType::PrimT(_) | IDLType::PrincipalT => {}
         }
     }
 
     for dec in &mut ast.decs {
         if let Dec::TypD(binding) = dec {
-            if binding.id == from {
-                binding.id = to.to_string();
-            }
-            rename_in(&mut binding.typ, from, to);
+            visit_in(&mut binding.typ, visit);
         }
     }
     if let Some(actor) = &mut ast.actor {
-        rename_in(&mut actor.typ, from, to);
+        visit_in(&mut actor.typ, visit);
     }
+}
+
+/// Renames the type `from` to `to` in `ast`: its declaration and every
+/// reference to it. Field labels and method names are not type names and stay.
+fn rename_type(ast: &mut IDLProg, from: &str, to: &str) {
+    for dec in &mut ast.decs {
+        if let Dec::TypD(binding) = dec {
+            if binding.id == from {
+                binding.id = to.to_string();
+            }
+        }
+    }
+    visit_types(ast, &mut |ty| {
+        if let IDLType::VarT(id) = ty {
+            if id == from {
+                *id = to.to_string();
+            }
+        }
+    });
+}
+
+/// Whether `@icp-sdk/core` reads a record field or variant tag key as a number
+/// instead of hashing it: the key is spelled `_<digits>_` or `_0x<hex>_`, and
+/// the number is below 2^32. A copy of the rule in its `idlLabelToId`.
+fn reads_as_number(name: &str) -> bool {
+    let Some(inner) = name.strip_prefix('_').and_then(|n| n.strip_suffix('_')) else {
+        return false;
+    };
+    let (digits, radix) = match inner.strip_prefix("0x") {
+        Some(hex) if !hex.is_empty() && hex.bytes().all(|b| b.is_ascii_hexdigit()) => (hex, 16),
+        _ if !inner.is_empty() && inner.bytes().all(|b| b.is_ascii_digit()) => (inner, 10),
+        _ => return false,
+    };
+    // The digits are checked above, so this only fails on overflow, and a
+    // number from 2^32 up is hashed as a name.
+    u32::from_str_radix(digits, radix).is_ok()
+}
+
+/// Rewrites each record field and variant tag whose name `@icp-sdk/core`
+/// reads as a number, such as `_0_`, as the id the name hashes to, and returns
+/// whether it rewrote one.
+///
+/// A named field's id is the hash of its name, whatever the name looks like,
+/// so a canister expects the field `_0_` as hash("_0_") = 4735054.
+/// candid_parser prints the field as the key `'_0_'`, the key it prints the
+/// field `0` as, and `@icp-sdk/core` reads a key spelled like that as the
+/// number. The call carried id 0 instead, and the canister rejected it, or read
+/// an `opt` field as none. `record { _0_ : nat; 0 : text }` printed both
+/// fields under one key, and the object literal kept only the last.
+///
+/// A rewritten field prints under its hash, `_4735054_`, the way candid_parser
+/// prints a numeric field, in both `didToJs` and `didToTs`, so the types and
+/// the IDL use the same key. Every other name prints as before, including one
+/// `@icp-sdk/core` hashes itself, such as `_4294967296_`.
+fn hash_numeric_looking_labels(ast: &mut IDLProg) -> bool {
+    let mut rewritten = false;
+    visit_types(ast, &mut |ty| {
+        if let IDLType::RecordT(fields) | IDLType::VariantT(fields) = ty {
+            for field in fields {
+                if let Label::Named(name) = &field.label {
+                    if reads_as_number(name) {
+                        field.label = Label::Id(idl_hash(name));
+                        rewritten = true;
+                    }
+                }
+            }
+        }
+    });
+    rewritten
 }
 
 /// Replaces each identifier in `code` that `names` maps, outside quoted
@@ -397,6 +558,15 @@ pub fn did_to_ts(prog: String) -> Result<String, String> {
         env = TypeEnv::new();
         actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
     }
+    if hash_numeric_looking_labels(&mut ast) {
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
+    if rename_ts_reserved_types(&mut ast, &env) {
+        env = TypeEnv::new();
+        actor = check_prog(&mut env, &ast).map_err(|e| e.to_string())?;
+    }
+    let actor_is_service_type = fold_actor_into_service_type(&mut ast);
 
     // The output exports each type under its own name, and also names the
     // imports `Principal` and `ActorMethod`, and the global `Array` and typed
@@ -447,6 +617,11 @@ pub fn did_to_ts(prog: String) -> Result<String, String> {
         for (renamed, aliased) in &imports {
             res = res.replacen(renamed, aliased, 1);
         }
+    }
+    if actor_is_service_type {
+        // The declarations each end a line, and the actor line follows them.
+        let actor_line = format!("\nexport interface {TS_SERVICE} extends {TS_SERVICE} {{}}\n");
+        res = res.replacen(&actor_line, "\n", 1);
     }
 
     Ok(hex_nul_escapes(&res))
@@ -658,10 +833,20 @@ enum CandidType {
     Future,
 }
 
+/// The key `didToJs` and `didToTs` print for a record field or variant tag:
+/// `_<id>_` for a numeric one, `_<hash>_` for one named like a numeric id (see
+/// `hash_numeric_looking_labels`), and the name for any other.
+///
+/// `parseDid` named a field `_0_` both when it was the field `0` and when it
+/// was named `_0_`, so `record { _0_ : nat; 0 : text }` listed two fields
+/// named `_0_`, and the name of the second did not match its key in the IDL.
 fn label_to_string(label: &candid_parser::candid::types::Label) -> String {
     match label {
         candid_parser::candid::types::Label::Id(id)
         | candid_parser::candid::types::Label::Unnamed(id) => format!("_{}_", id),
+        candid_parser::candid::types::Label::Named(name) if reads_as_number(name) => {
+            format!("_{}_", idl_hash(name))
+        }
         candid_parser::candid::types::Label::Named(name) => name.clone(),
     }
 }

@@ -1,54 +1,280 @@
-# @ic-reactor/react — AI Quick Guide
+# @ic-reactor/react
 
-Use this file when your app installs `@ic-reactor/react` and you need fast,
-accurate integration guidance.
+> React hooks, reusable query/mutation objects and Internet Identity sign-in
+> for Internet Computer canisters, on TanStack Query. Re-exports all of
+> `@ic-reactor/core`.
+
+Applies to `@ic-reactor/react` 3.13.0.
+
+Read this file from `node_modules/@ic-reactor/react/llms.txt` when writing
+code against the installed version. The complete guide for every package is
+https://ic-reactor.b3pay.net/llms-full.txt, and behaviour changes are in
+https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
 
 ## Install
 
 ```bash
 pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
-pnpm add @icp-sdk/auth@^10 # optional auth helpers; v10 recommended, v8 also supported
+pnpm add @icp-sdk/auth@^10 # optional: Internet Identity sign-in
 ```
 
-`@icp-sdk/auth` v10 is the first release that peers `@icp-sdk/core@^6`, which
-this package needs, so npm installs the set as published. v8 still works, but
-every v8 release peers `@icp-sdk/core@^5`, so on npm it needs
+Needs `@tanstack/react-query` 5.90.2 or later, React 18 or later and
+TypeScript 5.7 or later. Import the runtime (`ClientManager`, `Reactor`,
+`DisplayReactor`, errors, token helpers) from `@ic-reactor/react` as well; do
+not add `@ic-reactor/core` beside it. `@icp-sdk/auth` v10 is recommended and
+v8 still works; on npm, v8 needs
 `{"overrides":{"@icp-sdk/auth":{"@icp-sdk/core":"$@icp-sdk/core"}}}` in
-`package.json`. pnpm and yarn do not. v7 and v9 are not supported.
+`package.json`. v7 and v9 are not supported.
 
-## Start Here
+## Setup and Usage
 
-- Fastest setup: `defineReactor(...)`
-- Existing reactor instance: `createActorHooks(reactor)`
-- Reusable shared operations: `createQuery(...)`, `createMutation(...)`
+```tsx
+// src/reactor.tsx
+import { defineReactor, isCanisterError, skipToken } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
-## Inside React vs Outside React (critical)
+export const {
+  reactor: backend,
+  useActorQuery,
+  useActorMutation,
+  useAuth,
+} = defineReactor<_SERVICE>({ name: "backend", idlFactory, canisterId })
 
-- Inside React components/custom hooks: `useActorQuery`, `useActorMutation`,
-  `useActorMethod`, `.useQuery()`, `.useMutation()`
-- Outside React (loaders/actions/services/tests): `.fetch()`, `.prefetch()`,
-  `.invalidate()`, `.getCacheData()`, `.execute(args)`
+export function Profile({ userId }: { userId?: string }) {
+  const profile = useActorQuery({
+    functionName: "get_profile",
+    args: userId ? [userId] : skipToken, // no call until the id exists
+  })
+  const rename = useActorMutation({
+    functionName: "update_profile",
+    invalidateQueries: [{ functionName: "get_profile" }], // refetched first
+    onCanisterError: (err) => console.warn("Refused:", err.code), // Err variant
+  })
 
-Never call React hooks in loaders, actions, route modules, scripts, or tests.
+  if (!userId) return <p>Sign in first</p>
+  if (profile.isPending) return <p>Loading…</p>
+  if (profile.error) {
+    const { error } = profile
+    return <p>{isCanisterError(error) ? error.code : error.message}</p>
+  }
+  return (
+    <button
+      disabled={rename.isPending}
+      onClick={() => rename.mutate([{ name: "Ada" }])}
+    >
+      {profile.data.name}: {profile.data.likes.toString()} likes
+    </button>
+  )
+}
+```
 
-## Display vs Raw Values
+`defineReactor` builds the `QueryClient` (query retry `reactorRetry`), the
+`ClientManager`, a `Reactor` with raw Candid values (`bigint`, `Principal`),
+the six hooks of `createActorHooks`, and `useAuth`, `useAgentState`,
+`useUserPrincipal`, `useIdentityAttributes`, `authentication`,
+`identityAttributes`. `defineDisplayReactor` takes the same options and gives
+display values instead (strings for `bigint` and `Principal`, hex for blobs,
+`T | undefined` for `opt`, `{ _type: "A", A: value }` for a variant, and just
+`{ _type: "A" }` for a case without a value). `canisterId` is required except
+on a local replica whose `ic_env` cookie names it. `./declarations/backend`
+stands for your canister's declarations: `idlFactory` from the generated
+`.js`, `_SERVICE` from the `.d.ts` (with the CLI or the Vite plugin,
+`src/declarations/<name>/declarations/<did>.js` and `.d.ts`, named after the
+`.did` file), and `canisterId` your canister's id as text.
 
-- Prefer `display: true` in `defineReactor(...)` (or `DisplayReactor`) for
-  UI/form code.
-- Use raw `Reactor` when you intentionally need native `bigint`/`Principal`.
+## When to Use What
 
-## Mutation Error Handling
+| Need                                          | Use                                                                               |
+| --------------------------------------------- | --------------------------------------------------------------------------------- |
+| Client-only app, raw Candid values            | `defineReactor(...)` at module scope                                              |
+| Client-only app, values for forms and display | `defineDisplayReactor(...)` at module scope                                       |
+| A reactor you built yourself                  | `createActorHooks(reactor)`                                                       |
+| Server-rendered app (Next.js, any SSR)        | `createReactorProvider(() => defineReactor(...))` in a `"use client"` module      |
+| React Server Component, server action, route  | `ClientManager` + `Reactor` from this package, built in the request; `fetchQuery` |
+| One call used in components and loaders       | `createQuery`, `createQueryFactory` (args later), `createMutation`                |
+| Suspense                                      | `useActorSuspenseQuery`, `createSuspenseQuery`, `createSuspenseQueryFactory`      |
+| Paginated reads                               | `useActorInfiniteQuery`, `createInfiniteQuery`, `createInfiniteQueryFactory`      |
+| One hook for a query or update with `call()`  | `useActorMethod`                                                                  |
+| Another canister with the same interface      | `reactor.forCanister(canisterId)`, or `callConfig: { canisterId }` for one query  |
+| A second canister on the same sign-in         | `defineReactor({ ..., authentication: firstApp.authentication })`                 |
+| Sign-in with a manual setup                   | `createAuthHooks(new AuthenticationManager({ clientManager }))`                   |
+| Tests                                         | `installFakeReplica` + `createTestCanister` from `@ic-reactor/react/testing`      |
 
-For canister `Result.Err` variants, use `onCanisterError`. Keep `onError` for
-network/agent and unexpected errors.
+## Inside React vs Outside React
 
-## Generated Files
+- In components and custom hooks: `useActorQuery`, `useActorMutation`,
+  `useActorMethod`, `useAuth`, `.useQuery()`, `.useMutation()`,
+  `.useSuspenseQuery()`, `.useInfiniteQuery()`.
+- In loaders, actions, services, scripts and non-hook tests: query objects'
+  `.fetch()`, `.prefetch()`, `.invalidate()`, `.getCacheData()`,
+  `.setData()`, `.cancel()`, `.reset()`, `.optimisticUpdate()`; mutation
+  objects' `.execute(args)`; and the reactor's `.fetchQuery()`,
+  `.getQueryData()`, `.invalidateQueries()`, `.callMethod()`.
+- `.fetch()` and `reactor.fetchQuery()` fetch again as the new principal when a
+  sign-in or sign-out lands mid-fetch; they never reject with TanStack's
+  `CancelledError`. `.prefetch()` fetches again the same way and never
+  rejects, and a query method's `call()` / `refetch()` from `useActorMethod`
+  resolve with the new principal's answer (`undefined` if that fetch fails).
+  Wrap your own `queryClient.fetchQuery` or
+  `fetchInfiniteQuery` of a canister query in
+  `clientManager.fetchAcrossIdentitySwitch(() => ...)`.
 
-Do not hand-edit generated `index.generated.ts` files. Put app-specific code in
-`index.ts` wrappers or separate factory modules.
+```ts
+import { createMutation, createQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
-## Full References
+export const getPost = createQueryFactory(backend, { functionName: "get_post" })
+export const likePost = createMutation(backend, {
+  functionName: "like_post",
+  invalidateQueries: [getPost], // every cached post, whatever its args
+})
 
-- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
-- React package docs: https://ic-reactor.b3pay.net/v3/packages/react
-- Skill install: `npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks`
+// In a component: getPost([id]).useQuery(), likePost.useMutation()
+// In a loader:    await getPost([id]).fetch()
+// In an action:   await likePost.execute([id])
+```
+
+## Server Rendering
+
+A reactor owns its `QueryClient` and query keys carry no caller principal, so
+a module-scope reactor on a server is one cache shared by every request. In a
+server-rendered app, build reactors per mounted provider:
+
+```tsx
+"use client"
+import { createReactorProvider, defineReactor } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
+
+export const { ReactorProvider, useReactor } = createReactorProvider(() =>
+  defineReactor<_SERVICE>({ name: "backend", idlFactory, canisterId })
+)
+// layout: <ReactorProvider>{children}</ReactorProvider>
+// component: const { useActorQuery, useAuth } = useReactor()
+```
+
+- The factory runs once per mounted provider (once per request on a server).
+  It may return a record (`useReactor("ledger")`) and query/mutation objects
+  built inside it. `useReactor()` is typed as the factory's return: never write
+  `as any` hook forwarders or a hand-rolled context provider.
+- On unmount it disposes the `AuthenticationManager`s built for its value.
+  When the value holds exactly one `QueryClient` (its reactors share one
+  `ClientManager`), it renders a `QueryClientProvider` for it
+  (`{ queryClientProvider: false }` to keep your own).
+- Props other than `children` go to the factory, read once per mount; change
+  the provider's `key` to rebuild. A provider mounted by a transition needs a
+  `<Suspense>` boundary inside it around suspending components.
+- A React Server Component, server action or route handler may import
+  `Reactor`, `DisplayReactor`, `ClientManager` and the rest of the core runtime
+  from `@ic-reactor/react`: its `react-server` export condition resolves to an
+  entry without React. Hooks, `defineReactor`, `defineDisplayReactor`,
+  `createActorHooks`, `createReactorProvider`, the query/mutation factories,
+  `skipToken` and the auth classes are missing exports there.
+
+## Queries
+
+- `skipToken` in place of args waits without calling the canister:
+  `args: owner ? [account] : skipToken` in `useActorQuery`,
+  `getArgs: owner ? (page) => [...] : skipToken` in `useActorInfiniteQuery`,
+  `getBalance(owner ? [account] : skipToken).useQuery()` with
+  `createQueryFactory` (that skipped object has only `useQuery()`). The
+  suspense hooks, `createQuery` and `createSuspenseQuery` do not take it.
+- Paginated reads: `createInfiniteQuery` (or `useActorInfiniteQuery`) takes
+  `functionName`, `initialPageParam`, `getNextPageParam` and
+  `getArgs: (page) => [...] as const`. Keep `as const`: without it
+  `createInfiniteQuery` infers an array rather than the argument tuple and
+  rejects it.
+- A `Result` is unwrapped: `data` is the `Ok` payload and an `Err` arrives as a
+  `CanisterError` in `error`.
+- Query hooks and objects take TanStack's options (`select`, `staleTime`,
+  `enabled`, ...) and `callConfig` (`canisterId`, `agent`,
+  `effectiveCanisterId`).
+- Several tokens of one interface: `reactor.forCanister(canisterId)` returns a
+  memoized sibling reactor on the same `ClientManager`. Build hooks on it with
+  `useMemo(() => createActorHooks(ledger.forCanister(id)), [id])`.
+- Types: `ReactorArgsOf<typeof reactor, "method">[0]`,
+  `ReactorDataOf<typeof reactor, "method">`,
+  `ReactorErrorOf<typeof reactor, "method">`.
+
+## Mutations, Invalidation and Retries
+
+- Call state-changing update methods only through `useActorMutation`,
+  `useActorMethod` or `createMutation`. A query runs its method again on every
+  refetch, and each run of an update executes on the canister.
+- `invalidateQueries` takes query objects, query factories (every args
+  instance) and `{ functionName, args? }` methods of the mutation's reactor,
+  keyed at the canister the mutation was sent to. It is awaited before
+  `onSuccess`. Every key starts with the canister id, so a hand-written
+  `["get_posts"]` matches nothing.
+- `onCanisterError` receives the `CanisterError` of an `Err` result
+  (`err.code`, `err.err`); `onError` receives every error.
+- Mutations retry nothing unless `retry` is set, on them or as the
+  `QueryClient`'s `mutations.retry` default (which reaches `execute()` and
+  `useActorMethod` update calls too). Use `retry: reactorUpdateRetry`, which
+  retries only a `SysTransient` rejection, never a number.
+- Optimistic UI: return `query.optimisticUpdate(updater)` from `onMutate`,
+  call `update?.rollback()` in `onError`, and `invalidate()` in `onSettled`.
+  When you need the `QueryClient`, use `reactor.queryClient`:
+  `useQueryClient()` throws without a `QueryClientProvider`.
+
+## Sign-In
+
+- `useAuth()` gives `login`, `logout`, `isAuthenticated`,
+  `isAuthenticating`, `principal`, `identity` and `error`. It reports
+  `isAuthenticating: true` until the first session restore settles, and in
+  every server render: check it before redirecting on `!isAuthenticated`.
+- `createAuthHooks` takes an `AuthenticationManager`, never a `ClientManager`,
+  and returns `useAuth`, `useAgentState` and `useUserPrincipal`.
+  `useIdentityAttributes` comes from `createIdentityAttributeHooks`.
+- Pass an identity-attribute nonce as a callback (`nonce: async () => ...`),
+  not an awaited value, so the popup opens within the click.
+- `authentication.dispose()` releases the auth client the manager built,
+  without signing out.
+
+## Testing
+
+Run the real reactor and hooks against `installFakeReplica` and
+`createTestCanister` from `@ic-reactor/react/testing`. Install the fake before
+any `ClientManager` is built: for a module-scope `defineReactor`, at the top of
+the test file, then `await import(...)` the components. Generated code is
+module scope too: import `idlFactory` and `_SERVICE` from the canister's
+`declarations/` folder, key the fake by the `canisterId` the generator wrote,
+and `await import(...)` the entry after the fake. A handler returns
+`{ Err: ... }` for a `CanisterError` and throws for a `CallError`. Reset a
+shared reactor with `queryClient.clear()`, and test a signed-in user with
+`clientManager.updateAgent(identity)`.
+
+## Do Not
+
+- Call hooks outside components and custom hooks, or create hooks with
+  `createActorHooks` / `createAuthHooks` on every render.
+- Put a state-changing update method in `useActorQuery`, `createQuery` or
+  `createQueryFactory`.
+- Give an update mutation a numeric `retry`; use `reactorUpdateRetry`.
+- Hand-write query keys, or add the canister id to a `queryKey`.
+- Write `args: [userId!]`, a placeholder account, or `as any` plus `enabled`;
+  pass `skipToken`.
+- Check `"Ok" in data`; the `Result` is already unwrapped.
+- Use `Number(x) / 10 ** decimals`; use `formatTokenAmount` and
+  `parseTokenAmount`.
+- Retarget a shared reactor with `setCanisterId`; use `forCanister`.
+- Write `defineReactor({ display: true })`; use `defineDisplayReactor`.
+- Build reactors or managers at module scope in a server-rendered app, or
+  import hooks into a server component.
+- Stub a reactor with `as unknown as Reactor` in tests.
+- Edit `index.generated.ts` or `index.factories.generated.ts`.
+
+## Docs
+
+- React package: https://ic-reactor.b3pay.net/v3/packages/react.md
+- React setup: https://ic-reactor.b3pay.net/v3/framework/react-setup.md
+- Queries: https://ic-reactor.b3pay.net/v3/framework/queries.md
+- Mutations: https://ic-reactor.b3pay.net/v3/framework/mutations.md
+- Query caching: https://ic-reactor.b3pay.net/v3/framework/query-caching.md
+- Query and mutation factories: https://ic-reactor.b3pay.net/v3/reference/factories/overview.md
+- createReactorProvider: https://ic-reactor.b3pay.net/v3/reference/createReactorProvider.md
+- Authentication: https://ic-reactor.b3pay.net/v3/guides/authentication.md
+- Error handling: https://ic-reactor.b3pay.net/v3/guides/error-handling.md
+- Testing: https://ic-reactor.b3pay.net/v3/guides/testing.md
+- Index of all docs: https://ic-reactor.b3pay.net/llms.txt
+- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Agent skill for Claude Code and other agents: https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor

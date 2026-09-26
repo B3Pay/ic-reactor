@@ -41,6 +41,40 @@ export interface CanisterConfig {
    * on a deployed origin.
    */
   canisterId?: string
+  /**
+   * Also write `index.factories.generated.ts`: one query or mutation object
+   * per method of the service, bound to the generated reactor. A query or
+   * composite_query method that takes no arguments gets `createQuery`, one
+   * that takes arguments gets `createQueryFactory`, and an update or oneway
+   * method gets `createMutation`, so an update method is never generated as a
+   * query. `getFactoryExportNames` gives the export names.
+   *
+   * Needs `target: "react"`: the factories come from `@ic-reactor/react`.
+   * Default: `false`, which writes no such file and removes one that an
+   * earlier run wrote.
+   *
+   * @example
+   * { name: "backend", didFile: "./backend/backend.did", factories: true }
+   * // index.factories.generated.ts:
+   * // export const getMessageQuery = createQuery(backendReactor, { functionName: "get_message" })
+   */
+  factories?: boolean
+}
+
+/**
+ * A service method as the factories generator reads it. Each entry of
+ * `parseDid(source).service.methods` from `@ic-reactor/parser` has this shape.
+ *
+ * @example
+ * const method: FactoryMethod = { name: "get_user", mode: "query", args: [{ kind: "principal" }] }
+ */
+export interface FactoryMethod {
+  /** The method's name, exactly as the service declares it. */
+  name: string
+  /** The method's annotation: `update` stands for a method without one. */
+  mode: "query" | "composite_query" | "update" | "oneway"
+  /** The method's argument types. Only how many there are is read. */
+  args: readonly unknown[]
 }
 
 export type ReactorClassName =

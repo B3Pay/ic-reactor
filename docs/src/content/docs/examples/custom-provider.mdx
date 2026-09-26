@@ -6,13 +6,13 @@ editUrl: false
 
 import { Aside, LinkCard, CardGrid } from "@astrojs/starlight/components"
 
-This example demonstrates how to build a **Token Viewer** where the user can input _any_ Canister ID, and the app dynamically connects to it. This requires creating a custom Context Provider that instantiates a Reactor based on props.
+This example demonstrates how to build a **Token Viewer** where the user can input _any_ Canister ID, and the app dynamically connects to it. A provider built with `createReactorProvider` instantiates a Reactor from its props and hands its hooks to the components below it.
 
 ## Features Demonstrated
 
 - **Dynamic Canister IDs**: Connecting to canisters determined at runtime.
-- **Context API**: Passing the reactor instance down to children.
-- **Reusability**: Creating a generic `ICRC1Provider` that can wrap any part of the app.
+- **Props for the factory**: `createReactorProvider` passes the provider's props to the factory that builds the reactor.
+- **Reusability**: A generic `ICRC1Provider` that can wrap any part of the app, typed through `useICRC1Context()` without a hand-written context.
 
 ## Links
 
@@ -45,51 +45,46 @@ This example demonstrates how to build a **Token Viewer** where the user can inp
 
 ```tsx
 // src/ICRC1Provider.tsx
-import { PropsWithChildren, createContext, useMemo } from "react"
-import { Reactor, createActorHooks, ActorHooks } from "@ic-reactor/react"
+import {
+  Reactor,
+  createActorHooks,
+  createReactorProvider,
+} from "@ic-reactor/react"
 import { idlFactory, type ICRC1 } from "./declarations/icrc1"
 import { clientManager } from "./reactor"
 
-// `ActorHooks` takes two type parameters: the service, and the transform
-// the reactor was built with ("candid" here, "display" for a DisplayReactor).
-type ICRC1Hooks = ActorHooks<ICRC1, "candid">
-
-interface ICRC1ContextValue {
-  canisterId: string
-  hooks: ICRC1Hooks
-}
-
-const ICRC1Context = createContext<ICRC1ContextValue | null>(null)
-
-interface ICRC1ProviderProps extends PropsWithChildren {
-  canisterId: string
-}
-
-const ICRC1Provider: React.FC<ICRC1ProviderProps> = ({
-  children,
-  canisterId,
-}) => {
-  // Rebuild the reactor and its hooks whenever the canister ID changes
-  const hooks = useMemo<ICRC1Hooks>(() => {
+const { ReactorProvider, useReactor } = createReactorProvider(
+  ({ canisterId }: { canisterId: string }) => {
     const reactor = new Reactor<ICRC1>({
       name: "icrc1",
       clientManager,
       canisterId,
       idlFactory,
     })
+    return { canisterId, hooks: createActorHooks(reactor) }
+  }
+)
 
-    return createActorHooks(reactor)
-  }, [canisterId])
+export const useICRC1Context = useReactor
 
-  return (
-    <ICRC1Context.Provider value={{ canisterId, hooks }}>
-      {children}
-    </ICRC1Context.Provider>
-  )
-}
-
-export default ICRC1Provider
+export default ReactorProvider
 ```
+
+The factory runs once, when the provider mounts. `App` gives the provider a
+`key`, so a new canister ID is a new provider and the factory builds a reactor
+for it:
+
+```tsx
+// src/App.tsx
+<ICRC1Provider key={canisterId} canisterId={canisterId}>
+  <ICRC1Call functionName="icrc1_symbol" label="Symbol" />
+</ICRC1Provider>
+```
+
+Components read the hooks with `useICRC1Context()`, typed as the factory's
+return value, so `hooks.useActorQuery` checks `functionName` against the ICRC1
+service. Every reactor shares the app's `ClientManager`, so one sign-in covers
+every token, and each canister's queries are cached under its own ID.
 
 <Aside type="caution">
   `name` is required on every reactor, and `ActorHooks` has no default type

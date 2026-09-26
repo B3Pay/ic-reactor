@@ -109,6 +109,10 @@ const createMockReactor = (queryClient: QueryClient) => {
   return {
     queryClient,
     callMethod,
+    // `fetch()` runs through it; a mock reactor has no identity to switch.
+    clientManager: {
+      fetchAcrossIdentitySwitch: <T,>(fetch: () => Promise<T>) => fetch(),
+    },
     generateQueryKey: vi
       .fn()
       .mockImplementation(({ functionName, queryKey }) => [
@@ -116,6 +120,8 @@ const createMockReactor = (queryClient: QueryClient) => {
         functionName,
         ...(queryKey ?? []),
       ]),
+    // The methods are queries, which keep the QueryClient's retry.
+    getQueryRetry: vi.fn(() => undefined),
   } as unknown as Reactor<TestActor>
 }
 

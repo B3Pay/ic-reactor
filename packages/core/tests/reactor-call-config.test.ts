@@ -71,6 +71,8 @@ describe("Reactor callConfig overrides", () => {
       registerCanisterId: vi.fn(),
       initialize: vi.fn(),
       queryClient: new QueryClient(),
+      // `fetchQuery` runs through it; this mock has no identity to switch.
+      fetchAcrossIdentitySwitch: <T>(fetch: () => Promise<T>) => fetch(),
     } as unknown as ClientManager
 
     reactor = new Reactor<TestActor>({
@@ -130,6 +132,8 @@ describe("Reactor callConfig overrides", () => {
       })
     ).toBe("default-ok")
 
+    // The override's agent is part of its key too (#642), so the entry is
+    // read back with the same callConfig it was fetched with.
     expect(
       reactor.getQueryData(
         {
@@ -137,6 +141,7 @@ describe("Reactor callConfig overrides", () => {
         },
         {
           canisterId: overrideCanisterId,
+          agent: overrideAgent,
         }
       )
     ).toBe("override-ok")

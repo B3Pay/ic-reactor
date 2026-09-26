@@ -44,10 +44,15 @@ CI gate operate on exactly the same set of files.
 5. Run the remaining CI gates before opening a PR:
 
 ```bash
-pnpm check:ai-context  # llms.txt versions match every package.json
+pnpm check:ai-context  # versions, package stamps and docs links in the AI guides
+pnpm check:snippets    # compiles the ts/tsx snippets of the guides and READMEs
 pnpm lint              # ESLint over packages/*/src and packages/*/tests
 pnpm typecheck         # every package and e2e/, including their tests
 ```
+
+`pnpm check:snippets` and `pnpm lint` read the packages' built declarations,
+so run `pnpm build` first. See [Code snippets](#code-snippets) for what to do
+when a snippet fails.
 
 If you touched `packages/` or `examples/`, also type-check and build every
 example app. `tsc` never loads a bundler, so an example can type-check cleanly
@@ -81,6 +86,42 @@ It packs each publishable package, installs the tarballs into a scratch project
 outside the workspace, imports and requires every entry point in real Node, and
 runs `publint` + `attw`. Nothing else in CI can catch a broken published
 artifact, because in-repo consumers resolve through workspace symlinks.
+
+## Code snippets
+
+`pnpm check:snippets` compiles every ` ```ts `, ` ```tsx ` and
+` ```typescript ` fence of `llms.txt`, `llms-full.txt`, `packages/*/llms.txt`,
+`skill-packages/**/*.md`, `README.md` and `packages/*/README.md`, each as its
+own module, against the built packages. Agents copy these snippets into apps
+as they stand, so when one fails, fix the snippet: add the import it is
+missing, or update it to the current API.
+
+A snippet may use names its app would define without importing them: a
+canister's `./declarations/backend`, a `./reactor` module, a `clientManager`
+built earlier on the page. Those come from `scripts/check-snippets/`:
+`app/` is the app every document shares, and a directory named in
+`CONTEXTS` in `scripts/check-snippets.mjs` holds what differs for one
+document. A relative import resolves to the module of the same path there,
+and `globals.ts` lists the names a snippet may use without importing. Add a
+missing app name there, never a library export such as `createQuery`: a
+snippet that uses one must import it.
+
+The consumer guides (`llms.txt`, `llms-full.txt`, `packages/*/llms.txt` and
+`skill-packages/ic-reactor/`) get no globals, since an agent pastes them into
+an app that has none: each of their snippets imports or declares every name
+it uses. A relative import there resolves first to a snippet of the same
+guide (or skill) whose first line names that file, such as `// src/reactor.ts`
+for `./reactor`, so it is checked against the module the reader was shown.
+A snippet whose first line calls it a React Server Component, or that has a
+`"use server"` directive, is compiled against the `react-server` entry of
+`@ic-reactor/react`, where hooks and `defineReactor` do not exist.
+
+A fence that is not code to paste, such as a type signature or an interface
+restating a library type, opts out with `nocheck` after its language,
+` ```ts nocheck `, or with `// @snippet-skip` as its first line. Give a
+placeholder such as `...` a real value instead. `pnpm check:snippets --verbose`
+lists every snippet with its result, and `pnpm check:snippets --docs` also
+compiles the docs site's pages, reporting their failures without failing.
 
 ## Pre-commit hooks
 
@@ -153,6 +194,17 @@ The `environment:` key is read from the tagged revision, like the preflight, so 
 - Prefer small, focused PRs.
 - Include tests where applicable.
 - Add or update documentation for public API changes.
+- Record a change users will notice under `## Unreleased` in
+  [`CHANGELOG.md`](./CHANGELOG.md), in its package's Added, Changed,
+  Deprecated or Fixed list. A behaviour change gets a one-line migration hint.
+
+## Changelog at release time
+
+The release scripts do not edit `CHANGELOG.md`. Before tagging, move the
+entries of the packages being released from `## Unreleased` into a new section
+named after the release (for example `## core, react, candid 3.13.0`), and
+leave the other lanes' entries under `## Unreleased`. The GitHub release that
+the tag creates still generates its own notes from the merged pull requests.
 
 ## Code style
 
@@ -171,11 +223,26 @@ AI-assisted contributions are welcome, but contributors are responsible for corr
 
 Repository AI context:
 
-- `llms.txt` — high-level context for LLMs
+- `AGENTS.md` — task-to-source routing, verification by change type, and the
+  rules for the AI context files (read this first)
 - `CLAUDE.md` — Claude / Anthropic project context
-- `AGENTS.md` — OpenAI Codex agent instructions
-- `skill-packages/` — local skill packages (multi-agent compatible)
-- `B3Pay/ic-reactor-skills` — external IC Reactor skills repo (mirror)
+- `skill-packages/ic-reactor-hooks/` and `skill-packages/ic-reactor-packages/`
+  — contributor skills for work in this repository
+
+Consumer AI context (for apps that install the packages; keep repo paths,
+pnpm commands and CI notes out of these):
+
+- `llms.txt` — index of the docs in the llmstxt.org format, published at
+  `https://ic-reactor.b3pay.net/llms.txt`
+- `llms-full.txt` — the complete guide, published at
+  `https://ic-reactor.b3pay.net/llms-full.txt`
+- `packages/<name>/llms.txt` — each package's guide, shipped in its tarball
+  and opening with an `Applies to` version line; the package README points to
+  it
+- `skill-packages/ic-reactor/` — the consumer Agent Skill, which is also the
+  Claude Code plugin listed in `.claude-plugin/marketplace.json`; apps install
+  it with `/plugin install ic-reactor@ic-reactor` or
+  `npx skills add B3Pay/ic-reactor --skill ic-reactor`
 
 ## Adding a package
 

@@ -1,5 +1,10 @@
 # @ic-reactor/react
 
+> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
+> (`node_modules/@ic-reactor/react/llms.txt`) before writing code with it. It
+> is written for the installed version and lists the patterns to use and the
+> mistakes to avoid.
+
 React bindings for IC Reactor. This package re-exports everything from
 `@ic-reactor/core` and adds hook factories, auth hooks, direct reactor hooks,
 and reusable query or mutation factories built around TanStack Query.
@@ -57,6 +62,11 @@ Two options exist only on v10: `maxTimeToIdle` on `login()` and
 `disableBrowserActivity` on the client. IC Reactor forwards them to a v10 client
 and drops them on v8 with a one-time warning, since v8 has no equivalent.
 
+A v10 client also tells IC Reactor when the session changes in another tab of
+the origin. `AuthenticationManager` follows it: a sign-out in another tab signs
+this tab out, and a sign-in there as another account is adopted here, with no
+call in this tab. A v8 tab notices only when it checks the session again.
+
 One difference is security-relevant and warns unconditionally: **`targets` on
 `login()` is ignored by v10.** v8 forwards it to restrict the delegation to named
 canisters; v10 removed it and scopes a session at the identity provider instead.
@@ -64,8 +74,9 @@ A v10 client will hand you a delegation broader than a `targets` list asks for.
 Pin `@icp-sdk/auth` to `^8` if you depend on canister-scoped delegations.
 
 > **Support scope.** The real-client suite
-> (`tests/auth/internet-identity-integration.test.ts`) runs the actual
-> `AuthClient` under v10 and under v8. A fake Internet Identity answers both
+> (`tests/auth/internet-identity-integration.test.ts` and
+> `tests/auth/auth-client-lifecycle.test.ts`) runs the actual `AuthClient`
+> under v10 and under v8. A fake Internet Identity answers both
 > sign-in protocols (`icrc34_delegation` and `ii_session_delegation`). A fake
 > replica certifies v10's mint and revoke calls
 > (`app_prepare_delegation`, `app_get_delegation`, `app_revoke_session`) and
@@ -75,7 +86,8 @@ Pin `@icp-sdk/auth` to `^8` if you depend on canister-scoped delegations.
 > v10 makes those calls through an agent of its own. Off mainnet, IC Reactor
 > gives that agent the replica your app already uses and has it fetch the
 > network's root key, since certificates from a local replica or testnet cannot
-> be checked against mainnet's. The suite covers that path. What it does not
+> be checked against mainnet's. A root key you passed as `agentOptions.rootKey`
+> goes to that agent instead, as your app's own agent keeps it. The suite covers that path. What it does not
 > cover is a deployed Internet Identity canister.
 
 `@icp-sdk/auth` is an optional peer. `AuthenticationManager` reaches it through a
@@ -169,6 +181,13 @@ export function App() {
 
 ## Main APIs
 
+- `defineReactor(...)` for one-call setup: the `QueryClient`, `ClientManager`,
+  a `Reactor`, its actor hooks and the Internet Identity hooks together;
+  `defineDisplayReactor(...)` takes the same options and builds a
+  `DisplayReactor` instead
+- `createReactorProvider(factory)` for a server-rendered app: a provider that
+  builds the reactors once per mounted tree (so once per request on a server)
+  and a `useReactor()` hook that returns them fully typed
 - `createActorHooks(reactor)` for per-canister hooks like `useActorQuery` and
   `useActorMutation`
 - `createAuthHooks(authentication)` for `useAuth`, `useAgentState`, and
@@ -184,13 +203,63 @@ export function App() {
 ## Choosing the Right Pattern
 
 - Use `createActorHooks` for the simplest component-first integration.
+- Use `createReactorProvider` when the app renders on a server (Next.js, any
+  React SSR) or a part of the UI needs reactors of its own: module-scope
+  reactors are right only for a client-only app.
 - Use query and mutation factories when you also need loader, action, service,
   or test usage through `.fetch()`, `.prefetch()`, `.execute()`, `.invalidate()`,
   `.getCacheData()`, or `.setData()`.
-- Use `DisplayReactor` when you want UI-friendly values such as strings instead
-  of `bigint` or `Principal`.
+- Use `DisplayReactor` (or `defineDisplayReactor`) when you want UI-friendly
+  values such as strings instead of `bigint` or `Principal`. It adds zod to the
+  bundle; see [Bundle Size](#bundle-size).
 - Use generated hooks from `@ic-reactor/vite-plugin` or `@ic-reactor/cli` when
   you have larger canisters or frequent `.did` changes.
+- When a query's arguments are not known yet, pass `skipToken` (re-exported
+  from TanStack Query) in their place: `args: owner ? [owner] : skipToken` in
+  `useActorQuery`, `getArgs: skipToken` in `useActorInfiniteQuery`, or
+  `getBalance(owner ? [owner] : skipToken).useQuery()` on a query factory. The
+  query waits without calling the canister. Placeholder args with `enabled`,
+  or a `!`, are not needed. The suspense variants do not take it.
+- Call a method that changes state through a mutation (`useActorMutation`,
+  `useActorMethod`, `createMutation`), never a query hook or factory. A query
+  runs its method again on every refetch (mount, window focus, reconnect,
+  invalidation), and an update method executes each time. Without a `retry` of
+  its own, a query of an update method retries only a `SysTransient`
+  rejection, which proves the call never ran, so a lost response is not
+  executed twice; see
+  [Update Methods in Queries](https://ic-reactor.b3pay.net/v3/framework/queries#update-methods-in-queries).
+
+## Bundle Size
+
+What each setup path adds to a browser bundle, measured with esbuild 0.28
+(minified ESM, `@ic-reactor/core` bundled). The peers `react`,
+`@tanstack/react-query` and `@icp-sdk/*` are left out, since an app ships them
+either way; so is `@icp-sdk/auth`, which loads as its own chunk on first use.
+
+| Setup                                                            | Minified | Gzipped | zod |
+| ---------------------------------------------------------------- | -------: | ------: | :-: |
+| `createActorHooks` + `Reactor` + `ClientManager`                 |    31 kB |  9.8 kB | no  |
+| … + `AuthenticationManager` + `createAuthHooks`                  |    52 kB | 14.9 kB | no  |
+| … + `IdentityAttributesManager` + `createIdentityAttributeHooks` |    58 kB | 16.7 kB | no  |
+| `createActorHooks` + `DisplayReactor` + `ClientManager`          |   129 kB | 37.3 kB | yes |
+| `defineDisplayReactor`                                           |   158 kB | 45.4 kB | yes |
+| `defineReactor`                                                  |   158 kB | 45.4 kB | yes |
+
+`DisplayReactor` builds its codecs on zod's classic API, which does not
+tree-shake. That is about 85 kB minified (24 kB gzipped) of every row marked
+"yes"; an app that already bundles zod for its own code pays it once.
+
+`defineReactor` costs as much as `defineDisplayReactor` today, even without
+`display`: its deprecated `display: true` option can still build a
+`DisplayReactor`, so the class and zod stay in the bundle. When that option is
+removed at the next major, `defineReactor` drops to about 60 kB minified,
+17.6 kB gzipped. Until then, an app that wants the smallest bundle and has no
+use for `DisplayReactor` sets up with `createActorHooks(new Reactor(...))` and
+`createAuthHooks` (see [Internet Identity](#internet-identity)).
+
+Both `define*` functions also include the identity-attribute code (about 6 kB
+minified, 1.8 kB gzipped) whether or not the app calls `useIdentityAttributes`,
+because it is part of the object they return.
 
 ## Factory Example
 
@@ -204,6 +273,8 @@ export const getProfile = createSuspenseQueryFactory(backend, {
 
 export const updateProfile = createMutation(backend, {
   functionName: "update_profile",
+  // Every get_profile query this factory made, whatever the args
+  invalidateQueries: [getProfile],
   onCanisterError: (err) => console.error("Canister Err variant:", err.code),
 })
 ```
@@ -215,16 +286,24 @@ const profileQuery = getProfile(["alice"])
 const { data } = profileQuery.useSuspenseQuery()
 
 // Prefetch before navigating (fire-and-forget)
-profileQuery.prefetch()
+void profileQuery.prefetch()
 
-// Optimistic update
+// Write into the cache
 profileQuery.setData({ id: "alice", name: "Alice" })
 
-// Mutation with cache invalidation
+// Mutation with extra invalidation: a query object, a query factory, a
+// `{ functionName, args? }` method of the reactor, or a query key
 const mutation = updateProfile.useMutation({
-  invalidateQueries: [profileQuery.getQueryKey()],
+  invalidateQueries: [{ functionName: "list_profiles" }],
 })
 ```
+
+An `invalidateQueries` entry of `createMutation`, `useActorMutation` and
+`useActorMethod` is a query object, a query factory (every query it returns),
+a `{ functionName, args? }` method of the mutation's reactor, whose name and
+args are type-checked, or a query key. The invalidation is awaited before
+`onSuccess`. Query keys start with the canister ID, so a hand-written
+`["get_profile"]` matches nothing.
 
 ## Internet Identity
 
@@ -234,6 +313,9 @@ alongside the actor hooks:
 
 ```tsx
 // src/reactor.ts
+import { defineReactor } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
+
 export const { useActorQuery, useAuth, useIdentityAttributes, authentication } =
   defineReactor<_SERVICE>({
     name: "backend",
@@ -311,6 +393,7 @@ If your bundler cannot resolve the optional peer at all, construct the client
 yourself and inject it — IC Reactor then never imports `@icp-sdk/auth`:
 
 ```ts
+import { AuthenticationManager } from "@ic-reactor/react"
 import { AuthClient } from "@icp-sdk/auth/client"
 
 const authentication = new AuthenticationManager({
@@ -366,7 +449,11 @@ await requestOpenIdAttributes({
 
 // ❌ gesture is gone by the time the window would open
 const nonce = await backend.callMethod({ functionName: "register_begin" })
-await requestOpenIdAttributes({ nonce, openIdProvider: "google", keys })
+await requestOpenIdAttributes({
+  nonce,
+  openIdProvider: "google",
+  keys: ["email", "name"],
+})
 ```
 
 ```tsx
@@ -435,6 +522,8 @@ cached result for a caller-scoped method (`get_my_balance`, a deposit address,
 
 ```tsx
 // ❌ Shared by every request on the server
+import { defineReactor } from "@ic-reactor/react"
+
 export const app = defineReactor<_SERVICE>({
   name: "backend",
   idlFactory,
@@ -444,8 +533,9 @@ export const app = defineReactor<_SERVICE>({
 
 ```tsx
 // ✅ Per request: nothing is shared between users.
-// A server component imports from @ic-reactor/core, not @ic-reactor/react.
-import { ClientManager, Reactor } from "@ic-reactor/core"
+// In a server component this resolves to the `react-server` entry: the core
+// classes are there, the hooks are not.
+import { ClientManager, Reactor } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 
 export default async function Page() {
@@ -462,21 +552,93 @@ export default async function Page() {
 }
 ```
 
+Client components need their reactors built inside the React tree too.
+`createReactorProvider` builds them once per mounted provider, in a `useState`
+initializer, and a server render is a tree of its own, so each request gets its
+own reactors, cache and `AuthenticationManager`. `useReactor()` returns what
+the factory built with its full type, so the hooks on it keep their generic
+signatures:
+
+```tsx
+// src/reactor.tsx
+"use client"
+import { createReactorProvider, defineReactor } from "@ic-reactor/react"
+
+export const { ReactorProvider, useReactor } = createReactorProvider(() =>
+  defineReactor<_SERVICE>({ name: "backend", idlFactory, canisterId })
+)
+```
+
+```tsx
+// app/layout.tsx (a server component) renders
+// <ReactorProvider>{children}</ReactorProvider>, and a client component
+// below it takes its hooks from useReactor():
+export function Profile() {
+  const { useActorQuery } = useReactor()
+  const { data } = useActorQuery({ functionName: "get_my_profile" })
+  return <h1>{data?.name}</h1>
+}
+```
+
+The factory can return a record (`{ backend, ledger }`, read with
+`useReactor("ledger")`), reactors and managers built by hand, or query and
+mutation objects. It receives the provider's props, read once per mount; a new
+`key` builds a new value. The provider also renders a `QueryClientProvider` for
+the value's QueryClient, so `useQueryClient()`, React Query Devtools and a
+`HydrationBoundary` below it use the cache the hooks fill. Below it, that
+provider takes the place of an outer `QueryClientProvider`; pass
+`{ queryClientProvider: false }` to keep your own.
+
+A suspense hook below the provider may suspend its first render: the provider
+reuses the value that render built when React renders it again. A provider that
+a transition mounts (`startTransition`, a client-side navigation) can be built
+again on each retry, so wrap its suspending components in a `<Suspense>`
+boundary inside the provider.
+
+When the tree unmounts, the provider disposes each `AuthenticationManager`
+built for the value (in the factory, or later by a `defineReactor` result in
+it), releasing the Internet Identity client it built: a v10 client keeps
+listening to the page until it is disposed, so each remount would otherwise
+leave one behind. A manager built elsewhere and passed in, such as an app-wide
+one, is left alone. A provider you write yourself has to do the same from its
+cleanup:
+
+```tsx
+import { useEffect, useState } from "react"
+
+const [value] = useState(createReactorContext)
+useEffect(() => () => value.authentication.dispose(), [value])
+```
+
+`dispose()` only forgets the client, and the next sign-in builds a new one, so
+this is safe under StrictMode, which runs the cleanup and the effect again on
+the same managers. A client passed in as `authClient` is left alone.
+
 Two further constraints on the App Router specifically:
 
 - Hooks are client-only, like every React hook — call them from a `"use client"`
-  module. A server component cannot import from `@ic-reactor/react` at all, not
-  even `Reactor` or `ClientManager`: its entry point also loads the hooks, and
-  `next build` fails with "You're importing a module that depends on
-  `useSyncExternalStore` into a React Server Component module". Import
-  `Reactor`, `DisplayReactor` and `ClientManager` from `@ic-reactor/core` there,
-  and list it in your own `package.json`, since a transitive dependency does not
-  resolve under pnpm.
+  module. A server component, server action or route handler resolves
+  `@ic-reactor/react` to its `react-server` entry, which Next.js (Turbopack and
+  webpack) selects through the export condition of that name. That entry exports
+  everything `@ic-reactor/core` does — `Reactor`, `DisplayReactor`,
+  `ClientManager`, the error classes and utilities — plus the validation helpers
+  (`mapValidationErrors`, `getFieldError`, …), and nothing that imports React.
+  Importing a hook, `defineReactor`, `createActorHooks`, a query or mutation
+  factory, or the auth classes there fails `next build` with "Export
+  defineReactor doesn't exist in target module"; hooks belong in a
+  `"use client"` module, and server code calls the reactor itself
+  (`reactor.fetchQuery()`, `reactor.callMethod()`) where client code would use a
+  factory's `.fetch()` or `.execute()`. TypeScript does not read the condition,
+  so the editor does not flag it first. A server-component bundler that ignores
+  `react-server` loads the full entry and rejects its hooks: import from
+  `@ic-reactor/core` there, and list it in your own `package.json`, since a
+  transitive dependency does not resolve under pnpm.
 - Hooks bind to their reactor's own `QueryClient` rather than to a
   `QueryClientProvider`, so `HydrationBoundary` prefetch does not feed them
-  unless the provider's client _is_ that reactor's client. Next.js also
-  evaluates a shared module twice on the server (the RSC and SSR graphs), so a
-  module-scope reactor is two different instances there.
+  unless the provider's client _is_ that reactor's client, as it is below
+  `createReactorProvider`'s provider. Next.js also evaluates a shared module
+  twice on the server (the RSC and SSR graphs), so a module-scope reactor is
+  two different instances there.
 
 If none of that applies — a client-only SPA — module-scope reactors are exactly
 right and none of this is a concern.
@@ -486,15 +648,64 @@ right and none of this is a concern.
 Every object returned by `createQuery`, `createSuspenseQuery`, and their
 factory variants exposes:
 
-| Method                              | Description                                                                                     |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `fetch()`                           | Cache-first fetch — returns data, populates cache. Use in route loaders.                        |
-| `prefetch()`                        | Fire-and-forget cache warm-up. Use on hover or before navigation.                               |
-| `invalidate()`                      | Invalidates the cache entry (triggers refetch if query is mounted).                             |
-| `getQueryKey()`                     | Returns the TanStack Query key for this query.                                                  |
-| `getCacheData(select?)`             | Read directly from cache without fetching. Returns `undefined` if not cached.                   |
-| `setData(updater)`                  | Write raw data into the cache. Accepts a value or updater function. Use for optimistic updates. |
-| `useQuery()` / `useSuspenseQuery()` | React hook for the query.                                                                       |
+| Method                              | Description                                                                                |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| `fetch()`                           | Cache-first fetch — returns data, populates cache. Use in route loaders.                   |
+| `prefetch()`                        | Fire-and-forget cache warm-up. Use on hover or before navigation.                          |
+| `invalidate()`                      | Invalidates the cache entry (triggers refetch if query is mounted).                        |
+| `getQueryKey()`                     | Returns the TanStack Query key for this query.                                             |
+| `getCacheData(select?)`             | Read directly from cache without fetching. Returns `undefined` if not cached.              |
+| `setData(updater)`                  | Write raw data into the cache. Accepts a value or updater function.                        |
+| `optimisticUpdate(updater)`         | Cancel the fetch in flight, write `updater(cached)`, resolve with `{ rollback() }`.        |
+| `cancel()`                          | Cancel this query's fetch in flight; the entry keeps its previous value.                   |
+| `reset()`                           | Reset this entry to its initial state; a mounted hook refetches, a suspense hook suspends. |
+| `useQuery()` / `useSuspenseQuery()` | React hook for the query.                                                                  |
+
+A sign-in or sign-out while `fetch()` is in flight does not reject it: the
+previous identity's answer is dropped, and `fetch()` runs again for the new
+identity and resolves with that answer. `prefetch()` runs again too, and still
+never rejects: when that run succeeds, the cache holds the new identity's
+answer by the time it resolves. The infinite query factories' `fetch()` behaves
+the same (they have no `prefetch()`).
+
+`optimisticUpdate`, `cancel` and `reset` act on the query's own entry only, and
+the infinite query objects have them too, over their `{ pages, pageParams }`.
+An optimistic update is three lines of mutation config:
+
+```tsx
+import { createMutation, createQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const getPost = createQueryFactory(backend, { functionName: "get_post" })
+const likePost = createMutation(backend, { functionName: "like_post" })
+
+// In a component
+const { mutate } = likePost.useMutation({
+  onMutate: ([postId]) =>
+    getPost([postId]).optimisticUpdate((post) => ({
+      ...post,
+      likes: post.likes + 1n,
+    })),
+  onError: (_error, _args, update) => update?.rollback(),
+  onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
+})
+```
+
+The updater gets the raw, typed value and is not called when nothing is
+cached. Refetch once the mutation settles, as `onSettled` does here: the fetch
+`optimisticUpdate` cancels may be a refetch an invalidation or a sign-in
+started. `rollback()` does nothing after a sign-in or sign-out, because the
+value it kept was the previous principal's.
+
+Use `backend.queryClient` rather than `useQueryClient()` when you need the
+QueryClient itself: the hooks bind to the reactor's client, and
+`useQueryClient()` throws without the optional `QueryClientProvider`.
+
+The function a factory variant returns (`createQueryFactory`,
+`createSuspenseQueryFactory`, `createInfiniteQueryFactory`,
+`createSuspenseInfiniteQueryFactory`) also has `getQueryKey()`, the key prefix
+every query it returns shares, and `invalidate()`, which invalidates all of
+them whatever their args.
 
 ## Canister Error Handling
 
@@ -504,6 +715,9 @@ via `onCanisterError`. This callback is supported on both `createMutation` and
 the direct `useActorMutation` hook:
 
 ```tsx
+import { createMutation } from "@ic-reactor/react"
+import { backend, useActorMutation } from "./reactor"
+
 // Via createActorHooks
 const { mutate } = useActorMutation({
   functionName: "transfer",
@@ -527,9 +741,10 @@ const transferMutation = createMutation(backend, {
 
 ## Re-exports
 
-`@ic-reactor/react` re-exports the core runtime, so client code can import these
-from a single package (a React Server Component imports them from
-`@ic-reactor/core` instead; see [Server-Side Rendering](#server-side-rendering)):
+`@ic-reactor/react` re-exports the core runtime, so client and server code can
+import these from a single package. A React Server Component resolves the
+package's `react-server` entry, which has them but none of the hooks; see
+[Server-Side Rendering](#server-side-rendering):
 
 - `ClientManager`
 - `Reactor`
@@ -537,6 +752,77 @@ from a single package (a React Server Component imports them from
 - `CallError`
 - `CanisterError`
 - `ValidationError`
+- `formatTokenAmount` and `parseTokenAmount`, which convert a ledger's base
+  units to and from decimal text exactly (see
+  [Token Amounts](../core/README.md#token-amounts)); do not use `Number` for
+  either
+- `isPrincipalText`, which checks a principal a person typed without a `try`
+  around `Principal.fromText`
+
+The main entry also re-exports TanStack Query's `skipToken` (and its
+`SkipToken` type), the same symbol `@tanstack/react-query` exports.
+
+## Testing
+
+`@ic-reactor/react/testing` re-exports `@ic-reactor/core/testing`, so an app
+that depends on this package alone can test its components against a fake
+replica instead of a `Reactor` stub:
+
+```tsx
+import { afterEach, beforeEach, expect, it } from "vitest"
+import { renderHook, waitFor } from "@testing-library/react"
+import { ClientManager, Reactor, createActorHooks } from "@ic-reactor/react"
+import {
+  createTestCanister,
+  installFakeReplica,
+  type FakeReplica,
+} from "@ic-reactor/react/testing"
+import { QueryClient } from "@tanstack/react-query"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+let replica: FakeReplica
+
+beforeEach(() => {
+  replica = installFakeReplica({
+    canisters: {
+      [BACKEND]: createTestCanister<_SERVICE>(idlFactory, {
+        balance: () => 42n,
+      }),
+    },
+  })
+})
+// Also when the test fails, so the next test gets a fetch of its own.
+afterEach(() => replica.restore())
+
+it("reads the balance", async () => {
+  // Built after the fake is installed, and pointed at it.
+  const reactor = new Reactor<_SERVICE>({
+    clientManager: new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: replica.host },
+    }),
+    name: "backend",
+    canisterId: BACKEND,
+    idlFactory,
+  })
+  const { useActorQuery } = createActorHooks(reactor)
+
+  const { result } = renderHook(() =>
+    useActorQuery({ functionName: "balance" })
+  )
+
+  await waitFor(() => expect(result.current.data).toBe(42n))
+})
+```
+
+A reactor built at module scope, such as one from `defineReactor`, builds its
+agent when its module is imported: install the fake first, then import the
+component under test dynamically. With no `host` on either side, its
+`ClientManager` and the fake both use the page's origin in jsdom, so they
+meet. The
+[Testing guide](https://ic-reactor.b3pay.net/v3/guides/testing) shows how, and
+how to test as a signed-in user.
 
 ## See Also
 

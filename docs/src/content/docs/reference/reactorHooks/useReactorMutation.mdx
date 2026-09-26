@@ -78,6 +78,18 @@ const { mutate } = useReactorMutation({
 })
 ```
 
+### Invalidate Queries After Mutation
+
+```tsx
+const { mutate } = useReactorMutation({
+  reactor: backend,
+  functionName: "createPost",
+  // Methods of `backend`, type-checked against its service. A query object,
+  // a query factory or a query key works here too.
+  invalidateQueries: [{ functionName: "getPosts" }],
+})
+```
+
 ## See Also
 
 - [useActorMutation](/v3/reference/createactorhooks/useactormutation) — Bound version

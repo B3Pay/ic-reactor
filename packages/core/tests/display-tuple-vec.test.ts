@@ -81,5 +81,32 @@ describe("display codec — vec of 2-tuples", () => {
         ["icrc1:decimals", 8n],
       ])
     })
+
+    it("holds each key once, integer-like keys first, as documented (#633)", () => {
+      // Guards the limits the DisplayReactor reference and the core README
+      // state. A change to the display shape has to change them too.
+      const headers = didToDisplayCodec(IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)))
+      expect(
+        headers.asDisplay([
+          ["set-cookie", "a=1"],
+          ["set-cookie", "b=2"],
+          ["content-type", "text/plain"],
+        ])
+      ).toEqual({ "set-cookie": "b=2", "content-type": "text/plain" })
+
+      const display = metadata().asDisplay([
+        ["10", 1n],
+        ["2", 2n],
+        ["b", 3n],
+        ["1", 4n],
+      ])
+      expect(Object.keys(display as object)).toEqual(["1", "2", "10", "b"])
+      expect(metadata().asCandid(display as never)).toEqual([
+        ["1", 4n],
+        ["2", 2n],
+        ["10", 1n],
+        ["b", 3n],
+      ])
+    })
   })
 })

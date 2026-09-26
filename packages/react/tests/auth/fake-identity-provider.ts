@@ -28,7 +28,7 @@ import {
 import { Principal } from "@icp-sdk/core/principal"
 import { IDL } from "@icp-sdk/core/candid"
 import { LOCAL_INTERNET_IDENTITY_CANISTER_ID } from "../../src/auth/constants.js"
-import type { FakeCanister } from "./fake-replica.js"
+import type { FakeCanister } from "../../src/testing.js"
 
 interface JsonRpcRequest {
   jsonrpc: "2.0"
@@ -80,6 +80,7 @@ export interface FakeIdentityProviderOptions {
 }
 
 export interface FakeIdentityProvider {
+  /** The account sign-ins from now on are for; see `switchAccount`. */
   readonly rootIdentity: Ed25519KeyIdentity
   /** The Internet Identity canister v10 mints from; see the module comment. */
   readonly canister: FakeCanister
@@ -122,6 +123,12 @@ export interface FakeIdentityProvider {
    * release-2026-03-23 onward does once its frontend has left the canister.
    */
   setSignInPageServed(served: boolean): void
+  /**
+   * Make sign-ins from now on sign in as another account, as when the user
+   * picks another identity in the provider. Sessions already open stay with
+   * the account they were opened for.
+   */
+  switchAccount(rootIdentity: Ed25519KeyIdentity): void
   restore(): void
 }
 
@@ -184,7 +191,7 @@ const encodeOne = (type: IDL.Type, value: unknown) =>
 export function installFakeIdentityProvider(
   options: FakeIdentityProviderOptions = {}
 ): FakeIdentityProvider {
-  const rootIdentity = options.rootIdentity ?? Ed25519KeyIdentity.generate()
+  let rootIdentity = options.rootIdentity ?? Ed25519KeyIdentity.generate()
   const delegationLifetimeMs =
     options.delegationLifetimeMs ?? 8 * 60 * 60 * 1000
   const canisterId = options.canisterId ?? LOCAL_INTERNET_IDENTITY_CANISTER_ID
@@ -204,8 +211,14 @@ export function installFakeIdentityProvider(
   const attributesRequests: AttributesRequestRecord[] = []
   const revokedSessions: string[] = []
 
-  /** Live v10 sessions, by the principal their chain is rooted at. */
-  const sessions = new Map<string, { expiresAtMs: number }>()
+  /**
+   * Live v10 sessions, by the principal their chain is rooted at, with the
+   * account each was opened for.
+   */
+  const sessions = new Map<
+    string,
+    { expiresAtMs: number; account: Ed25519KeyIdentity }
+  >()
   /** `app_prepare_delegation` results not yet collected, as `key:expiration`. */
   const prepared = new Set<string>()
 
@@ -414,6 +427,7 @@ export function installFakeIdentityProvider(
         )
         sessions.set(sessionRoot.getPrincipal().toText(), {
           expiresAtMs: expiration.getTime(),
+          account: rootIdentity,
         })
 
         respond(source, {
@@ -505,7 +519,7 @@ export function installFakeIdentityProvider(
           prepared.add(`${toBase64(session_key)}:${expiration}`)
           return encodeOne(PrepareResult, {
             Ok: {
-              user_key: new Uint8Array(rootIdentity.getPublicKey().toDer()),
+              user_key: new Uint8Array(session.account.getPublicKey().toDer()),
               expiration,
             },
           })
@@ -533,7 +547,8 @@ export function installFakeIdentityProvider(
             [GetRequest],
             arg
           ) as unknown as [{ session_key: Uint8Array; expiration: bigint }]
-          if (!sessions.has(caller.toText())) {
+          const session = sessions.get(caller.toText())
+          if (!session) {
             return encodeOne(GetResult, { Err: { NoSuchSession: null } })
           }
           if (!prepared.has(`${toBase64(session_key)}:${expiration}`)) {
@@ -542,7 +557,7 @@ export function installFakeIdentityProvider(
           // Signed by the user's key, so the minted identity's principal is
           // the account's, as it is for a canister signature in production.
           const chain = await DelegationChain.create(
-            rootIdentity,
+            session.account,
             { toDer: () => session_key } as never,
             new Date(Number(expiration / 1_000_000n))
           )
@@ -574,7 +589,9 @@ export function installFakeIdentityProvider(
   }
 
   return {
-    rootIdentity,
+    get rootIdentity() {
+      return rootIdentity
+    },
     canister,
     canisterId,
     openedUrls,
@@ -614,6 +631,9 @@ export function installFakeIdentityProvider(
     },
     setSignInPageServed(served) {
       signInPageServed = served
+    },
+    switchAccount(identity) {
+      rootIdentity = identity
     },
     restore() {
       window.open = originalOpen

@@ -44,6 +44,9 @@ IC Reactor gives you a higher-level API than raw `Actor` usage while keeping typ
 | [`@ic-reactor/cli`](./packages/cli)                 | Generate declarations + typed hooks/reactors                                   |
 | [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for watch-mode hook generation                                     |
 
+What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md), including
+the changes on `main` that no release carries yet.
+
 ## Install
 
 ### React apps
@@ -96,14 +99,17 @@ export const {
   name: "backend",
   idlFactory,
   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
-  display: true,
 })
 ```
 
 One call creates the `QueryClient`, `ClientManager`, reactor, and bound hooks —
 including `useAuth`, `useAgentState`, `useUserPrincipal`, and
-`useIdentityAttributes`. Steps 1–3 below show the manual equivalent, for when you
-need explicit construction order.
+`useIdentityAttributes`. For UI-friendly values (text instead of `bigint` and
+`Principal`), `defineDisplayReactor` takes the same options and builds a
+`DisplayReactor`; it replaces `defineReactor({ display: true })`, which is
+deprecated. Steps 1–3 below show the manual equivalent, for when you need
+explicit construction order or the smallest bundle (see
+[Bundle Size](./packages/react/README.md#bundle-size)).
 
 ### 1. Create a shared client manager and reactor
 
@@ -171,14 +177,18 @@ function Greeting() {
 }
 
 function AuthButton() {
-  const { login, logout, isAuthenticated, principal } = useAuth()
+  const { login, logout, isAuthenticated, isAuthenticating, principal } =
+    useAuth()
 
+  // True until the stored session has been restored: without this check a
+  // reload shows "Login" to a user who is signed in
+  if (isAuthenticating) return <button disabled>Checking session…</button>
   return isAuthenticated ? (
-    <button onClick={() => logout()}>
+    <button onClick={() => void logout()}>
       Logout {principal?.toText().slice(0, 8)}...
     </button>
   ) : (
-    <button onClick={() => login()}>Login</button>
+    <button onClick={() => void login()}>Login</button>
   )
 }
 
@@ -188,10 +198,7 @@ function UpdateProfileButton() {
   })
 
   return (
-    <button
-      disabled={isPending}
-      onClick={() => mutate([{ name: "Alice", bio: "Hello IC" }])}
-    >
+    <button disabled={isPending} onClick={() => mutate([{ name: "Alice" }])}>
       {isPending ? "Saving..." : "Save"}
     </button>
   )
@@ -235,7 +242,7 @@ export const getProfile = createQuery(backendReactor, {
 
 export const updateProfile = createMutation(backendReactor, {
   functionName: "update_profile",
-  invalidateQueries: [getProfile.getQueryKey()],
+  invalidateQueries: [getProfile],
 })
 ```
 
@@ -244,7 +251,7 @@ Inside React:
 ```tsx
 const { data } = getProfile.useQuery()
 const { mutateAsync } = updateProfile.useMutation({
-  onSettled: () => toast.success("Profile updated!"),
+  onSuccess: () => toast.success("Profile updated!"),
 })
 ```
 
@@ -297,15 +304,19 @@ npx @ic-reactor/cli generate
 
 Each generated canister directory contains `declarations/`, a managed
 `index.generated.ts`, and a stable `index.ts` wrapper. The generated file exports
-the reactor plus typed React hooks only:
+the reactor plus typed React hooks:
 
 - `use<Canister>Query`, `use<Canister>SuspenseQuery`, `use<Canister>InfiniteQuery`,
   `use<Canister>SuspenseInfiniteQuery`, `use<Canister>Mutation`, `use<Canister>Method`
 
-Codegen does not emit `createQuery` / `createMutation` objects. For outside-React
-use, call the generated reactor directly (`.fetchQuery()`, `.callMethod()`,
-`.invalidateQueries()`), or hand-write factory objects over it in a wrapper
-module.
+Set `factories: true` on a canister (with `target: "react"`, the default) to
+also generate `index.factories.generated.ts`: a `<method>Query` per query
+method (`createQuery`, or `createQueryFactory` when it takes arguments) and a
+`<method>Mutation` (`createMutation`) per update or oneway method, used with
+`.useQuery()` / `.useMutation()` in components and `.fetch()` / `.execute()`
+outside React. The `index.ts` that codegen creates re-exports it. Without
+`factories: true`, call the generated reactor directly outside React
+(`.fetchQuery()`, `.callMethod()`, `.invalidateQueries()`).
 
 ## Dynamic Candid (Explorers and Dev Tools)
 
@@ -359,7 +370,8 @@ console.log(balance)
 
 ## Documentation
 
-- Docs site source: [`./docs`](./docs)
+- Docs site: [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/) (source: [`./docs`](./docs))
+- Changelog: [`CHANGELOG.md`](./CHANGELOG.md)
 - Package docs:
   - [`@ic-reactor/react`](./packages/react/README.md)
   - [`@ic-reactor/core`](./packages/core/README.md)
@@ -396,7 +408,7 @@ pnpm typecheck
 # Check formatting (CI gate; covers the whole repo)
 pnpm format:check
 
-# Check llms.txt versions against every package.json (CI gate)
+# Check versions, package stamps and docs links in the AI guides (CI gate)
 pnpm check:ai-context
 
 # Pack, install outside the workspace, and verify the published artifacts
@@ -416,43 +428,57 @@ This repository is intentionally structured to work well with AI coding assistan
 
 ### AI context files
 
-| File                                                                   | Purpose                                       |
-| ---------------------------------------------------------------------- | --------------------------------------------- |
-| [`llms.txt`](./llms.txt)                                               | Compact package/task routing manifest         |
-| [`llms-full.txt`](./llms-full.txt)                                     | Longer prompt-ready API and task guide        |
-| [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context            |
-| [`AGENTS.md`](./AGENTS.md)                                             | OpenAI Codex agent instructions               |
-| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                   |
-| [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                              |
-| [`skill-packages/`](./skill-packages/)                                 | Local skill packages (multi-agent compatible) |
+For apps that use IC Reactor (published with the docs, shipped in the npm packages, or installed as a skill):
 
-### Skill: `ic-reactor-hooks`
+| File                                                         | Purpose                                                                                         |
+| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| [`llms.txt`](./llms.txt)                                     | Index of the docs in the llmstxt.org format, served at `https://ic-reactor.b3pay.net/llms.txt`  |
+| [`llms-full.txt`](./llms-full.txt)                           | Complete guide with setup choices, snippets and anti-patterns, served at `/llms-full.txt`       |
+| `packages/*/llms.txt`                                        | Each package's own guide, shipped in its tarball: `node_modules/@ic-reactor/<package>/llms.txt` |
+| [`CHANGELOG.md`](./CHANGELOG.md)                             | Per-package changes with migration hints                                                        |
+| [`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) | Agent skill and Claude Code plugin; install below                                               |
 
-The `ic-reactor-hooks` skill is available in two places:
+For agents working in this repository:
 
-- **In-repo**: [`skill-packages/ic-reactor-hooks/`](./skill-packages/ic-reactor-hooks/) — used by agents working directly in this repository
-- **External**: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — standalone installable skill for use in any ICP project
+| File                                                                   | Purpose                                                                    |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [`AGENTS.md`](./AGENTS.md)                                             | Task-to-source routing, verification by change type, AI context file rules |
+| [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context                                         |
+| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                                                |
+| [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                                                           |
+| [`skill-packages/`](./skill-packages/)                                 | Contributor skills (`ic-reactor-hooks`, `ic-reactor-packages`)             |
 
-Both locations contain the same skill content with multi-agent metadata (OpenAI, Claude, Copilot).
+### Agent skill: `ic-reactor`
 
-Use it when asking an agent to:
+[`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) is an
+[Agent Skill](https://agentskills.io) for apps that use IC Reactor: setup
+choices, queries and mutations, cache invalidation, server rendering, sign-in,
+errors, token amounts, testing and the mistakes to avoid, with type-checked
+examples. It sends the agent to the installed packages' `llms.txt` first, so
+it follows the app's version.
 
-- create/refactor `createActorHooks(...)` integrations
-- build reusable `createQuery` / `createMutation` modules
-- explain inside-React vs outside-React usage (`fetch`, `execute`, `invalidate`)
-- choose between manual hooks and generated hooks (CLI / Vite plugin)
-
-Example prompt:
+In Claude Code, this repository is a plugin marketplace:
 
 ```text
-Use $ic-reactor-hooks to create a reusable query/mutation factory pair for my canister and show usage both inside a React component and in a route loader.
+/plugin marketplace add B3Pay/ic-reactor
+/plugin install ic-reactor@ic-reactor
 ```
 
-Example install (for external projects):
+For Codex, Cursor, GitHub Copilot, Gemini CLI and other agents, install it
+with the [`skills`](https://github.com/vercel-labs/skills) CLI:
 
 ```bash
-npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
+npx skills add B3Pay/ic-reactor --skill ic-reactor
 ```
+
+Then ask for it by name, or let the agent pick it up:
+
+```text
+Use the ic-reactor skill to add a transfer form for my ledger canister, with the balance refreshed after each transfer.
+```
+
+The `ic-reactor-hooks` and `ic-reactor-packages` skills in `skill-packages/`
+are for agents working on this repository.
 
 ## Contributing
 

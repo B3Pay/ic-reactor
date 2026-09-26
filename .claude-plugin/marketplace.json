@@ -1,0 +1,16 @@
+{
+  "name": "ic-reactor",
+  "description": "Claude Code plugins for apps built with IC Reactor, the type-safe TypeScript client for Internet Computer canisters.",
+  "owner": {
+    "name": "B3Pay",
+    "url": "https://github.com/B3Pay"
+  },
+  "plugins": [
+    {
+      "name": "ic-reactor",
+      "source": "./skill-packages/ic-reactor",
+      "description": "The ic-reactor skill: how to set up, call, cache, sign in, render on a server and test IC Reactor code in an app.",
+      "category": "development"
+    }
+  ]
+}

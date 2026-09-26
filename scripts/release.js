@@ -3,8 +3,14 @@ import { readFileSync, writeFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
 import { execFileSync } from "child_process"
-import { AI_CONTEXT_FILES } from "./ai-context-files.js"
-import { syncAiContextVersions } from "./sync-ai-context-versions.js"
+import {
+  AI_CONTEXT_FILES,
+  RUNTIME_PLUGIN_MANIFESTS,
+} from "./ai-context-files.js"
+import {
+  syncAiContextVersions,
+  syncPluginManifestVersions,
+} from "./sync-ai-context-versions.js"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, "..")
@@ -96,6 +102,12 @@ const syncedFiles = syncAiContextVersions(rootDir, previousVersion, version, [
 ])
 syncedFiles.forEach((f) => console.log(`✅ Synced ${f} to ${version}`))
 
+// The Claude Code plugin that installs the consumer skill carries the runtime
+// version; installed copies update only when it changes.
+syncPluginManifestVersions(rootDir, version).forEach((f) =>
+  console.log(`✅ Set ${f} to ${version}`)
+)
+
 // 4. Sync examples to literal version for the Git Commit (StackBlitz support)
 try {
   console.log("\n📦 Syncing examples to literal version for StackBlitz...")
@@ -122,6 +134,7 @@ const RELEASE_PATHS = [
   // Every file syncAiContextVersions() may rewrite; without them the bumps are
   // left unstaged and check:ai-context fails on the released commit.
   ...AI_CONTEXT_FILES,
+  ...RUNTIME_PLUGIN_MANIFESTS,
   "package.json",
   "pnpm-lock.yaml",
   "packages/core/package.json",

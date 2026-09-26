@@ -315,6 +315,76 @@ describe("generate", () => {
     }
   )
 
+  describe("factories", () => {
+    const withFactories = {
+      canisters: {
+        backend: { name: "backend", didFile: "./backend.did", factories: true },
+      },
+    }
+
+    it("writes index.factories.generated.ts for a canister that sets factories", async () => {
+      const projectRoot = createProject(withFactories)
+
+      expect(await runCli(["generate"])).toBe(0)
+
+      expect(generatedFiles(projectRoot)).toEqual(
+        [
+          ...BACKEND_OUTPUT,
+          "src/declarations/backend/index.factories.generated.ts",
+        ].sort()
+      )
+      expect(
+        fs.readFileSync(
+          path.join(
+            projectRoot,
+            "src/declarations/backend/index.factories.generated.ts"
+          ),
+          "utf-8"
+        )
+      ).toContain(
+        "export const greetQuery = /* @__PURE__ */ createQueryFactory(backendReactor, {"
+      )
+      expect(
+        fs.readFileSync(
+          path.join(projectRoot, "src/declarations/backend/index.ts"),
+          "utf-8"
+        )
+      ).toContain('export * from "./index.factories.generated"')
+    })
+
+    it("prints what the run could not fix, naming the canister", async () => {
+      const projectRoot = createProject(withFactories)
+      const entryPath = path.join(
+        projectRoot,
+        "src/declarations/backend/index.ts"
+      )
+      fs.mkdirSync(path.dirname(entryPath), { recursive: true })
+      fs.writeFileSync(entryPath, 'export * from "./index.generated"\n')
+      const output: string[] = []
+      vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+        output.push(String(chunk))
+        return true
+      })
+
+      expect(await runCli(["generate"])).toBe(0)
+
+      expect(output.join("")).toContain(
+        "backend: src/declarations/backend/index.ts is not the generated wrapper"
+      )
+    })
+
+    it("refuses factories for a core target", async () => {
+      const projectRoot = createProject({
+        target: "core",
+        ...withFactories,
+      })
+
+      expect(await runCli(["generate"])).toBe(1)
+
+      expect(generatedFiles(projectRoot)).toEqual([])
+    })
+  })
+
   describe("--clean", () => {
     /**
      * Output left behind by a canister that has since been renamed.

@@ -1,15 +1,12 @@
 "use client"
 
 import React from "react"
-import { useICAuth } from "./providers"
-import { createAuthHooks } from "@ic-reactor/react"
+import { useLedger } from "./providers"
 
 export default function AuthSection() {
-  const { authentication } = useICAuth()
-  const { useAuth, useUserPrincipal } = createAuthHooks(authentication)
-
-  const { login, logout, isAuthenticated, isAuthenticating } = useAuth()
-  const principal = useUserPrincipal()
+  const { useAuth } = useLedger()
+  const { login, logout, isAuthenticated, isAuthenticating, principal } =
+    useAuth()
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md max-w-xl mx-auto mb-6">

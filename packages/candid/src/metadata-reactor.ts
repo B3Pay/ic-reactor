@@ -68,7 +68,10 @@ export class MetadataReactor<A = BaseActor> extends CandidReactor<
   // holds its type. Shared by every instance, the cache kept every service
   // any reactor had described alive for good.
   private formVisitor = new CandidFormVisitor()
-  private resultVisitor = new ResultFieldVisitor()
+  // A func record's defaultArgs are Candid values, which this reactor's
+  // callMethod takes. Display defaults ("0" for a nat64) made
+  // `callMethod({ args: defaultArgs })` on a funcClass reactor throw.
+  private resultVisitor = new ResultFieldVisitor({ defaultArgs: "candid" })
 
   constructor(config: MetadataReactorParameters) {
     const superConfig = { ...config }

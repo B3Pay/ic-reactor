@@ -16,7 +16,11 @@ import { IDBFactory } from "fake-indexeddb"
 import { QueryClient } from "@tanstack/react-query"
 import { AuthClient } from "@icp-sdk/auth/client"
 import { IDL } from "@icp-sdk/core/candid"
-import { isDelegationValid, type DelegationChain } from "@icp-sdk/core/identity"
+import {
+  Ed25519KeyIdentity,
+  isDelegationValid,
+  type DelegationChain,
+} from "@icp-sdk/core/identity"
 import { Principal } from "@icp-sdk/core/principal"
 import { ClientManager } from "@ic-reactor/core"
 import {
@@ -31,7 +35,7 @@ import {
   fromBase64,
   type FakeIdentityProvider,
 } from "./fake-identity-provider.js"
-import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
+import { installFakeReplica, type FakeReplica } from "../../src/testing.js"
 import { installFakeWebLocks } from "./fake-web-locks.js"
 
 /** Which major this run resolved `@icp-sdk/auth` to. */
@@ -41,6 +45,12 @@ const LOCAL_HOST = "http://localhost:4943"
 
 let provider: FakeIdentityProvider
 let replica: FakeReplica
+
+/** Names of the canister methods called on `canisterId`, in order. */
+const methodsCalled = (canisterId: string) =>
+  replica.requests
+    .filter((request) => request.canisterId === canisterId)
+    .flatMap((request) => (request.methodName ? [request.methodName] : []))
 /** Every manager a test built, so the clients they made can be released. */
 const managers: AuthenticationManager[] = []
 
@@ -180,7 +190,7 @@ describe("Internet Identity sign-in (real AuthClient)", () => {
 
       await withUserGesture(() => authentication.login())
 
-      expect(replica.methodsCalled(provider.canisterId)).toEqual(
+      expect(methodsCalled(provider.canisterId)).toEqual(
         expect.arrayContaining(["app_prepare_delegation", "app_get_delegation"])
       )
       // Signed as the session the popup issued, not as the account or as
@@ -294,9 +304,9 @@ describe("Internet Identity sign-in (real AuthClient)", () => {
         expect(authentication.authState.isAuthenticated).toBe(true)
         // The next call mints a new app delegation and goes out as the user.
         const mints = () =>
-          replica
-            .methodsCalled(provider.canisterId)
-            .filter((method) => method === "app_prepare_delegation").length
+          methodsCalled(provider.canisterId).filter(
+            (method) => method === "app_prepare_delegation"
+          ).length
         const minted = mints()
         await clientManager.agent.query(provider.canisterId, {
           methodName: "http_request",
@@ -402,10 +412,12 @@ describe("Internet Identity sign-in (real AuthClient)", () => {
 describe("a session another tab ended and signed in to again (real AuthClient)", () => {
   // Every tab of an origin shares `localStorage`, IndexedDB and one Web Locks
   // manager, so a second manager over the same storage stands for a second
-  // tab. Once the session ends in tab B, tab A's manager still reports it until
-  // something makes it look again, such as a later `useAuth()` consumer
-  // mounting. Looking again has to end the session in tab A only: the user may
-  // have signed in again in tab B by then.
+  // tab. Once the session ends in tab B, a v8 tab A's manager still reports it
+  // until something makes it look again, such as a later `useAuth()` consumer
+  // mounting. A v10 tab A's manager follows its client, which hears of the
+  // change, but a check in tab A can still come first. Looking again has to
+  // end the session in tab A only: the user may have signed in again in tab B
+  // by then.
 
   let restoreWebLocks: () => void
 
@@ -443,12 +455,8 @@ describe("a session another tab ended and signed in to again (real AuthClient)",
     }
   }
 
-  /**
-   * Tabs A and B on one session, which the user then signs out of in tab B.
-   * Tab A's client hears of it and stops vouching for the session; tab A's
-   * manager is not told, and still reports the user signed in.
-   */
-  async function signOutInTabB() {
+  /** Tabs A and B on one session, signed in to in tab A. */
+  async function signInInBothTabs() {
     const tabA = createManager()
     await tabA.authentication.prepareClient()
     await withUserGesture(() => tabA.authentication.login())
@@ -456,13 +464,26 @@ describe("a session another tab ended and signed in to again (real AuthClient)",
     await tabB.authentication.prepareClient()
     await tabB.authentication.authenticate()
     expect(tabB.authentication.authState.isAuthenticated).toBe(true)
+    return { tabA, tabB }
+  }
+
+  /**
+   * Tabs A and B on one session, which the user then signs out of in tab B.
+   * Tab A's client hears of it and stops vouching for the session. A v8 tab
+   * A's manager is not told, and still reports the user signed in; a v10 one
+   * reads its client again, but has not yet when this returns.
+   */
+  async function signOutInTabB() {
+    const { tabA, tabB } = await signInInBothTabs()
 
     const before = readLocalStorage()
     await tabB.authentication.logout()
     deliverStorageEvents(before)
 
     expect(await tabA.authentication.client!.isAuthenticated()).toBe(false)
-    expect(tabA.authentication.authState.isAuthenticated).toBe(true)
+    if (!isV10) {
+      expect(tabA.authentication.authState.isAuthenticated).toBe(true)
+    }
     return { tabA, tabB }
   }
 
@@ -518,12 +539,126 @@ describe("a session another tab ended and signed in to again (real AuthClient)",
     await withUserGesture(() => tabB.authentication.login())
     const revoked = provider.revokedSessions.length
 
-    await tabA.authentication.authenticate()
+    // A v10 tab A may have followed the sign-out already, and then this check
+    // is a restore, which v10 refuses while the record names a sign-in tab A's
+    // client has not restored yet. Either way it must not end tab B's.
+    await tabA.authentication.authenticate().catch(() => undefined)
     deliverStorageEvents(before)
 
     expect(provider.revokedSessions).toHaveLength(revoked)
     expect(tabB.authentication.authState.isAuthenticated).toBe(true)
     expect(await newTabIsSignedIn()).toBe(true)
+    if (isV10) {
+      // Once it hears of the sign-in, tab A follows tab B into it.
+      await vi.waitFor(() =>
+        expect(tabA.authentication.authState.isAuthenticated).toBe(true)
+      )
+      expect(tabA.authentication.authState.error).toBeUndefined()
+    }
+  })
+
+  describe.runIf(isV10)("tab A following its client (v10)", () => {
+    // Tab A's manager used to learn of the session only through its own
+    // calls. After a sign-out in tab B it kept signing as the account the user
+    // had left, and after a sign-in there as another account it kept the old
+    // account. Once the old account's app delegation lapsed, its refused mint
+    // made tab A's client remove the record every tab reads, signing the new
+    // account out of every tab (#754).
+
+    /** A query from tab A's agent, answered with who the replica saw. */
+    async function callerOfQueryFrom({
+      clientManager,
+    }: ReturnType<typeof createManager>) {
+      await clientManager.agent.query(provider.canisterId, {
+        methodName: "http_request",
+        arg: new Uint8Array(IDL.encode([], [])),
+      })
+      const calls = replica.requests.filter(
+        (request) => request.methodName === "http_request"
+      )
+      return calls[calls.length - 1]?.caller
+    }
+
+    /** The user signs out in tab B, then signs in there as account 2. */
+    async function switchAccountInTabB() {
+      const { tabA, tabB } = await signInInBothTabs()
+      const account1 = provider.rootIdentity.getPrincipal().toText()
+      let before = readLocalStorage()
+      await tabB.authentication.logout()
+      deliverStorageEvents(before)
+      await vi.waitFor(() =>
+        expect(tabA.authentication.authState.isAuthenticated).toBe(false)
+      )
+
+      provider.switchAccount(Ed25519KeyIdentity.generate())
+      const account2 = provider.rootIdentity.getPrincipal().toText()
+      before = readLocalStorage()
+      await withUserGesture(() => tabB.authentication.login())
+      deliverStorageEvents(before)
+      return { tabA, tabB, account1, account2 }
+    }
+
+    it("signs tab A out when the user signs out in tab B, with no call in tab A", async () => {
+      const { tabA, tabB } = await signInInBothTabs()
+      const before = readLocalStorage()
+      await tabB.authentication.logout()
+      deliverStorageEvents(before)
+
+      await vi.waitFor(() =>
+        expect(tabA.authentication.authState.isAuthenticated).toBe(false)
+      )
+      await expectSignedOut(tabA)
+      expect(await callerOfQueryFrom(tabA)).toBe(Principal.anonymous().toText())
+    })
+
+    it("adopts the account tab B signs in as next", async () => {
+      const { tabA, account2 } = await switchAccountInTabB()
+
+      await vi.waitFor(() =>
+        expect(
+          tabA.authentication.authState.identity?.getPrincipal().toText()
+        ).toBe(account2)
+      )
+      expect(tabA.authentication.authState.isAuthenticated).toBe(true)
+      expect((await tabA.clientManager.getUserPrincipal()).toText()).toBe(
+        account2
+      )
+      expect(await callerOfQueryFrom(tabA)).toBe(account2)
+    })
+
+    it("keeps tab B's new session once tab A's old app delegation has lapsed", async () => {
+      const { tabA, account2 } = await switchAccountInTabB()
+      await vi.waitFor(() =>
+        expect(
+          tabA.authentication.authState.identity?.getPrincipal().toText()
+        ).toBe(account2)
+      )
+
+      vi.useFakeTimers({ toFake: ["Date"], shouldAdvanceTime: true })
+      try {
+        // Past the 30 min app delegation each tab holds, inside the session.
+        vi.setSystemTime(Date.now() + 30 * 60 * 1000 + 5_000)
+
+        expect(await callerOfQueryFrom(tabA)).toBe(account2)
+        expect(await newTabIsSignedIn()).toBe(true)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("stops following a client it let go of", async () => {
+      const { tabA, tabB } = await signInInBothTabs()
+      tabA.authentication.dispose()
+
+      const before = readLocalStorage()
+      await tabB.authentication.logout()
+      deliverStorageEvents(before)
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      // Nothing reads the disposed client, so the manager reports what it
+      // last knew.
+      expect(tabA.authentication.authState.isAuthenticated).toBe(true)
+    })
   })
 
   describe.runIf(!isV10)("after the session lapsed in every tab (v8)", () => {

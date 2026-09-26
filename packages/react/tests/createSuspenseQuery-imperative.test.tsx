@@ -41,6 +41,10 @@ const createMockReactor = (
   return {
     queryClient,
     callMethod,
+    // `prefetch()` runs through it; a mock reactor has no identity to switch.
+    clientManager: {
+      fetchAcrossIdentitySwitch: <T,>(fetch: () => Promise<T>) => fetch(),
+    },
     canisterId: "test-canister",
     generateQueryKey: vi.fn().mockImplementation(keyFor),
     getQueryOptions: vi.fn().mockImplementation((params: any) => ({

@@ -151,11 +151,42 @@ export const backend = new Reactor<_SERVICE>({
   `DFX_NETWORK` in `.env.local` does nothing in a browser bundle. IC Reactor
   reads it from `process.env`, which Vite does not inline, so it is only visible
   in Node/SSR. In the browser the host comes from `window.location.origin` when
-  the page is served from `localhost`/`127.0.0.1`, or from `agentOptions.host`
-  when you set it. Canister IDs must likewise be passed to the reactor
-  explicitly — `import.meta.env.VITE_*` is read by your code, never by IC
-  Reactor.
+  the page is served from `localhost`/`127.0.0.1` or a Codespaces or Gitpod
+  domain, or from `agentOptions.host` when you set it. Canister IDs must
+  likewise be passed to the reactor explicitly — `import.meta.env.VITE_*` is
+  read by your code, never by IC Reactor.
 </Aside>
+
+## Codespaces and Gitpod
+
+A dev server forwarded by GitHub Codespaces (`*.app.github.dev`) or Gitpod
+(`*.gitpod.io`) works like one on `localhost`: with no `agentOptions.host`, the
+agent routes through the page's own origin, `network` is `"remote"`, and the
+agent fetches the replica's root key. Your dev server has to proxy `/api` to the
+replica, as `@ic-reactor/vite-plugin` does.
+
+The `ic_env` cookie is not trusted there. Every workspace is a subdomain of a
+domain shared with every other user of the platform, so a page in a stranger's
+workspace can set the cookie for yours. Give reactors their canister IDs
+explicitly (the codegen `canisterId` option), or pass `allowEnvConfig: true`
+to `ClientManager` if you accept that risk for a development build:
+
+```typescript
+export const clientManager = new ClientManager({
+  queryClient,
+  // Codespaces/Gitpod only: trust the ic_env cookie's canister IDs, root key
+  // and Internet Identity provider despite the shared parent domain.
+  allowEnvConfig: import.meta.env.DEV,
+})
+```
+
+Internet Identity sign-in needs a provider URL the browser can reach. Off
+mainnet, `AuthenticationManager` derives a local one
+(`http://<canister>.localhost:<port>/authorize`), and the plugin's cookie
+carries the same kind of URL. Neither resolves in a browser outside the
+workspace, so pass `identityProvider` and `internetIdentityId` to
+`AuthenticationManager` for an Internet Identity your browser can open (see
+[Authentication](/v3/guides/authentication)).
 
 ## Fetching Root Key
 
@@ -163,13 +194,14 @@ When communicating with the IC mainnet, the agent uses a hardcoded public key to
 
 <Aside type="note">
   `ClientManager` has the agent fetch that key before its first request whenever
-  the agent host is local or a dev-container tunnel, unless a key was supplied
+  the agent host is local, Codespaces or Gitpod, unless a key was supplied
   (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env` cookie) or
   `agentOptions.shouldFetchRootKey` is `false`, so calls to a local replica work
   without an explicit `initialize()`. Any other host counts as mainnet and never
   fetches it. Calling `clientManager.initialize()` (as `useAuth` does) fetches
-  it up front and sets `agentState.isInitialized`, which the example below waits
-  for.
+  it up front, replacing a key from the cookie, and sets
+  `agentState.isInitialized`, which the example below waits for. A key you pass
+  as `agentOptions.rootKey` is kept instead, and `initialize()` fetches nothing.
 </Aside>
 
 ```tsx
@@ -197,11 +229,11 @@ function App() {
 
 This error usually means the agent checked a local replica's certificate
 against mainnet's root key. IC Reactor fetches the local key only when the agent
-host is a local (or dev-container) host.
+host is a local (or Codespaces/Gitpod) host.
 
 **Solution:** Make sure the agent points at the local replica: serve the page
-from `localhost`/`127.0.0.1`, or set `agentOptions.host` to the replica's local
-address.
+from `localhost`/`127.0.0.1` or a Codespaces or Gitpod domain, or set
+`agentOptions.host` to the replica's local address.
 
 ### "Can't connect to localhost:4943"
 

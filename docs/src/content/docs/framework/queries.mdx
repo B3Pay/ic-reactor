@@ -8,7 +8,7 @@ import { Aside, Code, Tabs, TabItem } from "@astrojs/starlight/components"
 
 ## Query Basics
 
-A query is a declarative dependency on an asynchronous data source from an IC canister that is tied to a unique key. A query can be used to fetch any data from your canisters using query or update methods.
+A query is a declarative dependency on an asynchronous data source from an IC canister that is tied to a unique key. A query can be used to fetch any data from your canisters using query or update methods. An update method runs on the canister again every time the query refetches, so use a query only for update methods that are safe to repeat; see [Update Methods in Queries](#update-methods-in-queries).
 
 To subscribe to a query in your components, call the `useActorQuery` hook with at least:
 
@@ -145,22 +145,54 @@ actually gives you. You do not need an `unwrap()` helper of your own.
 
 ## Conditional Queries
 
-You can use the `enabled` option to conditionally execute a query:
+When a query's arguments are not known yet, pass TanStack Query's `skipToken`
+in their place. `@ic-reactor/react` re-exports it. The query waits without
+calling the canister and fetches as soon as the arguments exist:
 
 ```tsx
+import { skipToken } from "@ic-reactor/react"
+
 function UserProfile({ userId }: { userId: string | null }) {
   const { data } = useActorQuery({
     functionName: "getUser",
-    args: [userId!],
-    // Only fetch when userId exists
-    enabled: !!userId,
+    // Type-checked as [string] once userId is there: no `!`, no placeholder
+    args: userId ? [userId] : skipToken,
   })
 }
 ```
 
+The same goes for a query factory, whose query for `skipToken` has only
+`useQuery()`, and for `useActorInfiniteQuery`, as `getArgs`:
+
+```tsx
+const getUser = createQueryFactory(backend, { functionName: "getUser" })
+
+const { data } = getUser(userId ? [userId] : skipToken).useQuery()
+```
+
+A skipped query has a cache entry of its own under its method's key, which no
+call's key shares, so it shows no data until its arguments arrive. Its
+`refetch()` has nothing to run (TanStack Query answers it with a "Missing
+queryFn" error), so offer a refresh only once the arguments exist. The
+suspense hooks and factories do not take `skipToken`, since a suspense query
+has to be able to run.
+
+When the arguments are known but the query should still wait, use the
+`enabled` option:
+
+```tsx
+const { isAuthenticated } = useAuth()
+
+const { data } = useActorQuery({
+  functionName: "getProfile",
+  args: [profileId],
+  // Only fetch when signed in
+  enabled: isAuthenticated,
+})
+```
+
 This is particularly useful when:
 
-- Waiting for other data before fetching
 - Only fetching when authenticated
 - Disabling queries in certain UI states
 
@@ -237,6 +269,66 @@ const handleRefresh = () => {
   refetch()
 }
 ```
+
+## Update Methods in Queries
+
+The query hooks and factories accept update methods as well as query methods,
+and they call the method every time TanStack Query runs the query function: on
+mount when the data is stale, on window focus, on reconnect, on invalidation,
+on each `refetchInterval` tick, and on a retry. For a query method that is a
+cheap read. An update method goes through consensus each time, and each run is
+a new call under a new request id, so the canister executes it again: the IC
+cannot tell a refetch or a retry from a second call.
+
+- **Use a query only for an update method that is safe to repeat**, such as a
+  certified read (the ckBTC minter's `get_btc_address` returns the same
+  address every time). For a method that changes state — a transfer, a vote,
+  a counter increment — use `useActorMutation`, `useActorMethod` or
+  `createMutation`, which call it only when you ask.
+- **Retries.** When the query sets no `retry` of its own, an update method
+  retries only a `SysTransient` rejection, which proves the canister never ran
+  the call. A transport failure (the connection can drop after the replica
+  accepted the call), a `SysUnknown` rejection and an HTTP error are not
+  retried, so a lost response surfaces as an error instead of a second
+  execution. A `retry` the query sets — as a hook option, in a factory's
+  config, or in the options of `Reactor.fetchQuery` — wins.
+- **Refetches still run the method again.** Limit them with `staleTime`,
+  `refetchOnWindowFocus: false` and `refetchOnReconnect: false`.
+
+```tsx
+// An update method that only reads: safe to repeat, but each run costs cycles.
+const { data: address } = useActorQuery({
+  functionName: "get_btc_address",
+  args: [{ owner: [], subaccount: [] }],
+  staleTime: Infinity,
+  refetchOnWindowFocus: false,
+  refetchOnReconnect: false,
+})
+```
+
+How often the `SysTransient` retry runs follows the QueryClient's `retry`
+default for the query, which it narrows rather than replaces:
+
+| `retry` set by                                                       | Query method                                                                                             | Update method                                       |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| The query itself (hook option, factory config, `fetchQuery` options) | used as given                                                                                            | used as given                                       |
+| `setQueryDefaults` or `defaultOptions.queries` of the QueryClient    | used as given                                                                                            | `SysTransient` only, as often as the default allows |
+| Nothing                                                              | TanStack's default: 3 retries in a browser for a hook, none for `fetch()`, `prefetch()` and `fetchQuery` | `SysTransient` only, up to 3 times in a browser     |
+
+With the QueryClient `defineReactor` creates, whose default is `reactorRetry`,
+an update method retries as `reactorUpdateRetry` does: a `SysTransient`
+rejection up to 3 times in a browser, nothing on the server. A default of
+`retry: false` retries nothing. `Reactor.getQueryRetry(functionName, queryKey)`
+returns the `retry` a query of the method falls back to.
+
+The last row has one case where an update method retries more than a query
+method: on a QueryClient with no `retry` default at all, a factory's `fetch()`
+and `prefetch()`, `Reactor.fetchQuery`, and `queryClient.fetchQuery` with the
+options from `getQueryOptions` retry a `SysTransient` rejection up to 3 times
+in a browser, where TanStack Query would not retry a query method's fetch.
+The call provably never ran, so sending it again is safe, but a loader waits
+through the backoff before it sees the error. Set `retry: false` on the
+factory to fail at once.
 
 ## Suspense Queries
 

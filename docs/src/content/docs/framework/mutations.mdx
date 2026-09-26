@@ -139,41 +139,69 @@ mutate([{ title: "New Post", content: "Hello world!" }], {
 
 ## Invalidating Queries After Mutation
 
-The most common pattern after a mutation is to invalidate related queries. Use the `invalidateQueries` option:
+The most common pattern after a mutation is to invalidate related queries. List
+them in the `invalidateQueries` option:
+
+```tsx
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  invalidateQueries: [
+    // Every getPosts query, whatever its args, infinite lists included
+    { functionName: "getPosts" },
+    // Only the getPost query for this id
+    { functionName: "getPost", args: [postId] },
+  ],
+})
+```
+
+Each entry is one of:
+
+- a method of the mutation's reactor, `{ functionName }` or
+  `{ functionName, args }`. The method name and the args are type-checked
+  against the canister, and the key is built when the mutation succeeds, for
+  the canister the mutation was sent to (its `callConfig.canisterId`, if set);
+- a query object from `createQuery`, `createSuspenseQuery`,
+  `createInfiniteQuery` or `createSuspenseInfiniteQuery`;
+- a query factory from `createQueryFactory` and the other `create*Factory`
+  functions, which covers every query it returns, whatever its args;
+- a query key, from `generateQueryKey` or `getQueryKey()`.
+
+With query objects and factories defined in a shared module, pass them as they
+are:
+
+```tsx
+import { postsQuery, getPost } from "../queries"
+
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  invalidateQueries: [postsQuery, getPost],
+})
+```
+
+The invalidation runs after the canister call succeeds and before `onSuccess`.
+The mutation stays pending until the invalidated queries that are in use have
+refetched, so `onSuccess` reads the refetched data. `undefined` entries are
+skipped, so `[maybeQuery]` is safe when a query is optional.
+
+<Aside type="caution">
+  Every query key starts with the canister ID, so a hand-written key such as
+  `["getPosts"]` matches nothing. Name the method, pass the query object, or
+  build the key with `generateQueryKey`.
+</Aside>
+
+For anything a fixed list cannot express, invalidate in `onSuccess`, and await
+it so the mutation waits for the refetch:
 
 ```tsx
 import { backend } from "../reactor"
 
 const { mutate } = useActorMutation({
   functionName: "createPost",
-  invalidateQueries: [
-    // Invalidate the posts list after creating
-    backend.generateQueryKey({ functionName: "getPosts" }),
-  ],
+  onSuccess: async (post) => {
+    await backend.invalidateQueries({ functionName: "getPosts" })
+    navigate(`/posts/${post.id}`)
+  },
 })
-```
-
-Or use `onSuccess` with the query client for more control:
-
-```tsx
-import { useQueryClient } from "@tanstack/react-query"
-import { backend } from "../reactor"
-
-function CreatePost() {
-  const queryClient = useQueryClient()
-
-  const { mutate } = useActorMutation({
-    functionName: "createPost",
-    onSuccess: () => {
-      // Invalidate
-      backend.invalidateQueries({ functionName: "getPosts" })
-      // or
-      queryClient.invalidateQueries({
-        queryKey: backend.generateQueryKey({ functionName: "getPosts" }),
-      })
-    },
-  })
-}
 ```
 
 ## Form Handling
@@ -281,56 +309,51 @@ return (
 
 ## Optimistic Updates
 
-You can perform optimistic updates using standard TanStack Query patterns:
+Show the result before the canister answers with a query object's
+`optimisticUpdate()`. Return it from `onMutate` and roll back in `onError`:
 
 ```tsx
-import { useQueryClient } from "@tanstack/react-query"
+import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "../reactor"
 
-function LikeButton({ postId }: { postId: string }) {
-  const queryClient = useQueryClient()
+// Module scope, next to the reactor
+const getPost = createQueryFactory(backend, { functionName: "getPost" })
 
+function LikeButton({ postId }: { postId: string }) {
   const { mutate } = useActorMutation({
     functionName: "likePost",
-    onMutate: async (args) => {
-      const [postId] = args
-      const queryKey = backend.generateQueryKey({
-        functionName: "getPost",
-        args: [postId],
-      })
-
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey })
-
-      // Snapshot the previous value
-      const previousPost = queryClient.getQueryData(queryKey)
-
-      // Optimistically update to the new value
-      queryClient.setQueryData(queryKey, (old: any) => ({
-        ...old,
-        likes: old.likes + 1,
-      }))
-
-      // Return a context object with the snapshotted value
-      return { previousPost, queryKey }
-    },
-    onError: (err, args, context) => {
-      // If the mutation fails, use the context to roll back
-      if (context?.previousPost) {
-        queryClient.setQueryData(context.queryKey, context.previousPost)
-      }
-    },
-    onSettled: (data, error, args, context) => {
-      // Always refetch after error or success
-      if (context?.queryKey) {
-        queryClient.invalidateQueries({ queryKey: context.queryKey })
-      }
-    },
+    // Cancels the post's fetch in flight, writes the new value, and resolves
+    // with a rollback. `post` is typed from getPost; likes is a nat (bigint).
+    onMutate: ([postId]) =>
+      getPost([postId]).optimisticUpdate((post) => ({
+        ...post,
+        likes: post.likes + 1n,
+      })),
+    // The call failed: show the post as it was
+    onError: (_error, _args, update) => update?.rollback(),
+    // Refetch either way: a call that failed in transit may still have run
+    onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
   })
 
   return <button onClick={() => mutate([postId])}>Like</button>
 }
 ```
+
+`optimisticUpdate` works on the query's raw data, before any `select`, and
+calls the updater only when a value is cached: with nothing on screen there is
+nothing to update. `rollback()` writes back the value from before the update
+with its original fetch time, and invalidates it again if it was invalidated.
+After a sign-in or sign-out it does nothing, since that value was the previous
+principal's and the sign-in has already removed or refetched it.
+
+Always refetch the query once the mutation settles: the fetch that
+`optimisticUpdate` cancels may be a refetch an invalidation or a sign-in
+started. `onSettled` above does that either way. To refetch only after a
+success, list the query in `invalidateQueries: [getPost]` instead.
+
+It works on the reactor's own QueryClient, so no `QueryClientProvider` is
+needed. `useQueryClient()` throws without one; when you need the client itself,
+use `backend.queryClient`.
 
 ## Mutation Factory
 
@@ -343,7 +366,7 @@ import { backend } from "../reactor"
 // Define mutation once
 const createPostMutation = createMutation(backend, {
   functionName: "createPost",
-  invalidateQueries: [backend.generateQueryKey({ functionName: "getPosts" })],
+  invalidateQueries: [{ functionName: "getPosts" }],
 })
 
 // Use in components
@@ -360,10 +383,9 @@ async function createPostInLoader(data: PostInput) {
 ```
 
 `execute()` behaves like the hook path at the factory level: it runs the
-factory's `invalidateQueries` and `onSuccess` on success, or its
-`onCanisterError` and `onError` on failure — then rethrows so the `await` still
-rejects. Factory-level `onMutate` and `onSettled` belong to TanStack Query's
-mutation lifecycle and only run through `useMutation()`. See
+factory's `onMutate`, then its `invalidateQueries` and `onSuccess` on success,
+or its `onCanisterError` and `onError` on failure, then its `onSettled`, and
+rethrows a failure so the `await` still rejects. See
 [createMutation](/v3/reference/factories/createmutation) for details.
 
 ## Error Handling
@@ -392,6 +414,29 @@ const { mutate } = useActorMutation({
   },
 })
 ```
+
+## Retries
+
+Mutations retry nothing by default, as in TanStack Query, and that is the safe
+default for update methods: each attempt is a new call under a new request
+id, which the canister runs, so a retry after a lost response executes the
+update twice. Set `retry` only for an update that is safe to repeat, or use
+`reactorUpdateRetry`, which retries only a `SysTransient` rejection, the one
+failure that proves the call never ran:
+
+```tsx
+import { reactorUpdateRetry } from "@ic-reactor/react"
+
+const { mutate } = useActorMutation({
+  functionName: "transfer",
+  retry: reactorUpdateRetry,
+})
+```
+
+A `mutations.retry` in the QueryClient's `defaultOptions` applies to every
+mutation: `useActorMutation`, `useActorMethod`'s update calls, and
+`createMutation` through both `useMutation()` and `execute()`. Prefer
+`reactorUpdateRetry` there over a plain number.
 
 ## Type Safety
 

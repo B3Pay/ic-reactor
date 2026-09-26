@@ -1,0 +1,442 @@
+---
+title: Testing
+description: Test code that uses IC Reactor against a fake replica, with no replica to run and no reactor to stub
+editUrl: false
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+IC Reactor ships a testing kit, `@ic-reactor/core/testing`, re-exported as
+`@ic-reactor/react/testing`. It installs a **fake replica** that answers your
+agent's requests with canisters you write as **typed handlers**. Everything
+between your test and those handlers is the real code: `ClientManager`,
+`Reactor` or `DisplayReactor`, Candid encoding, query keys and the cache,
+`Result` unwrapping into `CanisterError`, and the React hooks.
+
+You do not need a local replica, and you do not need to hand-build a
+`Reactor` stub and cast it with `as unknown as Reactor`. A stub like that has
+to re-implement query keys and error unwrapping, and a test on a stub can pass
+where the real reactor behaves differently.
+
+## Setup
+
+There is nothing extra to install. Import from the package your app already
+depends on:
+
+```typescript
+// A React app
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/react/testing"
+
+// Anything else
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/core/testing"
+```
+
+The kit is a separate entry point that neither package's main entry imports,
+so it adds nothing to your app's bundle.
+
+<Aside type="note">
+  The fake replica signs its answers with `@noble/curves`, an optional peer
+  dependency. `@icp-sdk/core` already depends on it, so npm, Yarn and pnpm with
+  its default settings find it. With a strict install (pnpm with `hoist=false`,
+  or Yarn Plug'n'Play), add it yourself: `pnpm add -D @noble/curves`.
+</Aside>
+
+The examples on this page use [Vitest](https://vitest.dev). The kit uses only
+the global `fetch`, so it works the same in any test runner that has one.
+
+## Write a Test Canister
+
+`createTestCanister` takes your canister's `idlFactory` and a handler for each
+method you want it to answer. Pass the service type, usually the `_SERVICE` your
+declarations export, and every handler is typed from it:
+
+```typescript
+import { createTestCanister } from "@ic-reactor/react/testing"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const balances = new Map<string, bigint>()
+
+export const backend = createTestCanister<_SERVICE>(idlFactory, {
+  // The arguments arrive as the tuple callMethod takes: [name].
+  greet: ([name]) => `Hello, ${name}!`,
+  // The caller is the principal the agent signed the call as.
+  balance: (_args, { caller }) => balances.get(caller.toText()) ?? 0n,
+  deposit: ([amount], { caller }) => {
+    if (amount === 0n) return { Err: { InvalidAmount: null } }
+    const next = (balances.get(caller.toText()) ?? 0n) + amount
+    balances.set(caller.toText(), next)
+    return { Ok: next }
+  },
+})
+```
+
+A handler works with the raw Candid values the canister sees: `bigint` for a
+`nat`, a `Principal`, `[] | [T]` for an `opt`. That holds even when your app
+calls through a `DisplayReactor`, which converts them on the way in and out.
+It may be `async`, which is how you keep a query loading while a test looks at
+the loading state.
+
+- Returning `{ Err: ... }` from a method that returns a `Result` makes the
+  reactor throw a `CanisterError`, as the real canister would.
+- Throwing from a handler rejects the call as a canister trap does, and the
+  reactor throws a `CallError`.
+- A method with no handler rejects every call to it, with a message that names
+  it. A handler for a method the service does not have throws when you create
+  the canister, and TypeScript flags it first.
+
+A handler can be a `vi.fn()` mock, typed with `TestCanisterHandler`. A test can
+then change one answer, or check what the canister received, without
+installing another fake:
+
+```typescript
+import { expect, vi } from "vitest"
+import {
+  createTestCanister,
+  type TestCanisterHandler,
+} from "@ic-reactor/react/testing"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const deposit = vi.fn<TestCanisterHandler<_SERVICE, "deposit">>(([amount]) => ({
+  Ok: amount,
+}))
+const backend = createTestCanister<_SERVICE>(idlFactory, { deposit })
+
+// In a test:
+deposit.mockReturnValueOnce({ Err: { InvalidAmount: null } })
+// ...and after the call:
+expect(deposit).toHaveBeenCalledWith([10n], expect.anything())
+```
+
+## Install the Fake Replica
+
+`installFakeReplica` replaces the global `fetch` with the fake. It runs the
+canisters you give it, by canister ID, and answers at `replica.host`. Unless you
+pass a `host`, that is where a `ClientManager` built with no `host` sends its
+calls: the page's origin in a browser-like environment such as Vitest's jsdom
+or happy-dom (`http://localhost:3000`), and `http://127.0.0.1:4943` in plain
+Node. Call `restore()` to put the previous `fetch` back, along with any wrapper
+your test put around the fake. It is safe to call twice, and several fakes may
+be restored in any order.
+
+```typescript
+import { afterEach, beforeEach, expect, it } from "vitest"
+import { QueryClient } from "@tanstack/query-core"
+import { ClientManager, Reactor, isCanisterError } from "@ic-reactor/core"
+import {
+  createTestCanister,
+  installFakeReplica,
+  type FakeReplica,
+} from "@ic-reactor/core/testing"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+
+let replica: FakeReplica
+let backend: Reactor<_SERVICE>
+
+beforeEach(() => {
+  replica = installFakeReplica({
+    canisters: {
+      [BACKEND]: createTestCanister<_SERVICE>(idlFactory, {
+        greet: ([name]) => `Hello, ${name}!`,
+        deposit: ([amount]) =>
+          amount === 0n ? { Err: { InvalidAmount: null } } : { Ok: amount },
+      }),
+    },
+  })
+  // Built after the fake is installed, and pointed at it.
+  backend = new Reactor<_SERVICE>({
+    clientManager: new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: replica.host },
+    }),
+    name: "backend",
+    canisterId: BACKEND,
+    idlFactory,
+  })
+})
+
+afterEach(() => {
+  replica.restore()
+})
+
+it("greets", async () => {
+  await expect(
+    backend.fetchQuery({ functionName: "greet", args: ["Ada"] })
+  ).resolves.toBe("Hello, Ada!")
+})
+
+it("refuses a zero deposit", async () => {
+  const error = await backend
+    .callMethod({ functionName: "deposit", args: [0n] })
+    .catch((error: unknown) => error)
+
+  expect(isCanisterError(error) && error.code).toBe("InvalidAmount")
+})
+```
+
+<Aside type="caution" title="Install it before the agent is built">
+  An `HttpAgent` keeps the `fetch` it found when it was built. A `ClientManager`
+  builds its agent in its constructor, so install the fake first. A reactor
+  built at module scope is built when its module is first imported: see [A
+  Reactor Built at Module Scope](#a-reactor-built-at-module-scope).
+</Aside>
+
+The fake answers the IC API on its own host only. A call that reaches the IC
+API on any other origin fails with a network error that names the fake's host,
+so a test that forgot `agentOptions.host` never reaches a real network. The
+agent retries that error, and a query hook may retry the query, so the fake
+also logs it with `console.error` the first time: look there when a test times
+out waiting for data. Every request that is not an IC API call, on any origin,
+goes to the `fetch` the fake replaced, so your app's own REST calls and a
+request mock such as MSW keep working. Install the fake after MSW's
+`server.listen()`, so that IC API calls reach the fake before MSW sees them as
+unhandled requests.
+
+## Test a React Component
+
+Render your components as usual. Build the reactor after installing the fake,
+and give it to the component the way your app does. This test renders hooks
+from `createActorHooks` directly:
+
+```tsx
+import { afterEach, beforeEach, expect, it } from "vitest"
+import { act, renderHook, waitFor } from "@testing-library/react"
+import { ClientManager, Reactor, createActorHooks } from "@ic-reactor/react"
+import {
+  createTestCanister,
+  installFakeReplica,
+  type FakeReplica,
+} from "@ic-reactor/react/testing"
+import { QueryClient } from "@tanstack/react-query"
+import { idlFactory, type _SERVICE } from "./declarations/backend"
+
+const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+let replica: FakeReplica
+let balance: bigint
+
+beforeEach(() => {
+  balance = 0n
+  replica = installFakeReplica({
+    canisters: {
+      [BACKEND]: createTestCanister<_SERVICE>(idlFactory, {
+        balance: () => balance,
+        deposit: ([amount]) => ({ Ok: (balance += amount) }),
+      }),
+    },
+  })
+})
+
+afterEach(() => {
+  replica.restore()
+})
+
+it("refreshes the balance after a deposit", async () => {
+  const reactor = new Reactor<_SERVICE>({
+    clientManager: new ClientManager({
+      queryClient: new QueryClient(),
+      agentOptions: { host: replica.host },
+    }),
+    name: "backend",
+    canisterId: BACKEND,
+    idlFactory,
+  })
+  const { useActorQuery, useActorMutation } = createActorHooks(reactor)
+
+  const { result } = renderHook(() => ({
+    balance: useActorQuery({ functionName: "balance" }),
+    deposit: useActorMutation({
+      functionName: "deposit",
+      invalidateQueries: [
+        reactor.generateQueryKey({ functionName: "balance" }),
+      ],
+    }),
+  }))
+  await waitFor(() => expect(result.current.balance.data).toBe(0n))
+
+  await act(() => result.current.deposit.mutateAsync([10n]))
+
+  await waitFor(() => expect(result.current.balance.data).toBe(10n))
+})
+```
+
+### A Reactor Built at Module Scope
+
+In a client-only app the reactor and its hooks usually live in a module, built
+when it is imported:
+
+```typescript
+// src/reactor.ts
+import { defineReactor } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
+
+export const { queryClient, useActorQuery, useActorMutation } =
+  defineReactor<_SERVICE>({ name: "backend", idlFactory, canisterId })
+```
+
+A test file's static imports run before its body, so that module would build
+its agent before the fake is installed. Install the fake at the top of the test
+file and import your components after it. With no `host` option on either
+side, your `ClientManager` and the fake both use the page's origin, so they
+meet with no configuration. If your app passes a local `agentOptions.host`,
+pass the same `host` to `installFakeReplica`. An agent on a mainnet host
+(`https://ic0.app`, `https://icp-api.io`) checks certificates against
+mainnet's root key and never fetches the fake's, so every call fails with a
+certificate verification `CallError`. Build that `ClientManager` in the test
+with `agentOptions: { host: replica.host, rootKey: replica.rootKey }`.
+
+Here `Balance` renders `Balance: {data}` from `useActorQuery({ functionName:
+"balance" })` and a Deposit button that runs the `deposit` mutation, which
+invalidates the balance.
+
+```tsx
+import { afterAll, afterEach, expect, it } from "vitest"
+import { fireEvent, render, screen } from "@testing-library/react"
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/react/testing"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
+
+let balance = 0n
+
+const replica = installFakeReplica({
+  canisters: {
+    [canisterId]: createTestCanister<_SERVICE>(idlFactory, {
+      balance: () => balance,
+      deposit: ([amount]) => ({ Ok: (balance += amount) }),
+    }),
+  },
+})
+afterAll(() => replica.restore())
+
+// Imported after the fake is installed, because they build the agent.
+const { Balance } = await import("./Balance")
+const { queryClient } = await import("./reactor")
+
+afterEach(() => {
+  // One reactor serves every test in the file, so reset its cache too.
+  queryClient.clear()
+  balance = 0n
+})
+
+it("shows the balance and deposits", async () => {
+  render(<Balance />)
+  expect(await screen.findByText("Balance: 0")).toBeTruthy()
+
+  fireEvent.click(screen.getByText("Deposit"))
+
+  expect(await screen.findByText("Balance: 10")).toBeTruthy()
+})
+```
+
+Installing the fake in a Vitest `setupFiles` module works too, since those run
+before each test file's imports.
+
+Code from the Vite plugin or the CLI is module scope as well: importing a
+canister's entry (`src/declarations/backend`) builds its reactor and imports
+your `src/clients.ts`. That entry does not export `idlFactory` or `_SERVICE`.
+Take them from the canister's `declarations/` folder, which builds nothing,
+key the fake by the `canisterId` the generator wrote into
+`index.generated.ts`, and import the entry, and anything that imports it,
+after the fake:
+
+```tsx
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/react/testing"
+import {
+  idlFactory,
+  type _SERVICE,
+} from "./declarations/backend/declarations/backend"
+
+const replica = installFakeReplica({
+  canisters: {
+    "rrkah-fqaaa-aaaaa-aaaaq-cai": createTestCanister<_SERVICE>(idlFactory, {
+      balance: () => 0n,
+    }),
+  },
+})
+
+// Balance imports its query from "./declarations/backend"
+const { Balance } = await import("./Balance")
+const { queryClient } = await import("./clients")
+```
+
+Vitest runs `vite.config.ts` unless a `vitest.config.ts` replaces it, so the
+Vite plugin generates the code again when the tests start, in mode `test`. If
+the config takes the canister's `canisterId` from `loadEnv`, set that variable
+for the test mode as well, for example
+`CANISTER_ID_BACKEND=rrkah-fqaaa-aaaaa-aaaaq-cai` in `.env.test`. Without it
+the regenerated reactor has no canister ID, and importing it throws
+`canisterId is required`.
+
+## Test as a Signed-In User
+
+A handler's `{ caller }` is the principal the request was signed as, checked
+the way a replica checks it. To call as a user, put a test identity on the
+`ClientManager`, as a sign-in would:
+
+```typescript
+import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
+
+const user = Ed25519KeyIdentity.generate()
+clientManager.updateAgent(user)
+
+// Handlers now see user.getPrincipal() as the caller.
+```
+
+`updateAgent` clears the cached queries of the previous principal, and mounted
+queries refetch as the new one, as after a real sign-in. The fake checks
+Ed25519, ECDSA P-256 and secp256k1 signatures, so `Ed25519KeyIdentity`,
+`ECDSAKeyIdentity`, `Secp256k1KeyIdentity` and a `DelegationIdentity` built
+from them all work. It refuses other kinds of key with HTTP 400, as it refuses
+a bad signature.
+
+<Aside>
+  The kit does not simulate Internet Identity. Test your own code with a test
+  identity, as above, rather than driving `login()` in a unit test.
+</Aside>
+
+## Check What Was Called
+
+`replica.requests` lists every request the fake received, in order, with its
+`endpoint` (`"query"`, `"call"`, `"read_state"` or `"status"`), `canisterId`,
+`methodName` and `caller`. A request the fake refused has a `refused` reason.
+
+```typescript
+const deposits = replica.requests.filter(
+  (request) => request.endpoint === "call" && request.methodName === "deposit"
+)
+expect(deposits).toHaveLength(1)
+```
+
+Prefer asserting on what your app shows or what the handlers received. The
+request log is for questions only it can answer, such as whether a cached
+query reached the canister again.
+
+## What the Fake Does Not Do
+
+The fake implements the endpoints an agent uses to call a canister: the root
+key, queries, update calls (answered synchronously) and the `read_state` an
+agent does before it trusts a query. It does not run canister code, cycles,
+timers, inter-canister calls, the management canister, subnet endpoints or
+HTTP asset certification, and it serves no canister metadata. For those, test
+against a replica or PocketIC. Without metadata, a `CandidReactor` under test
+needs its `candid` passed in rather than fetched.
+
+## See Also
+
+- [Testing utilities reference](/v3/reference/testing) for every option and
+  type
+- [Error Handling](/v3/guides/error-handling) for `CanisterError` and
+  `CallError`
+- [Query Caching](/v3/framework/query-caching) for the query keys the real
+  reactor builds

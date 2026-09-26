@@ -33,6 +33,7 @@ Thanks for your interest in contributing to IC Reactor! This guide covers the de
    pnpm typecheck            # runs each packages/* typecheck script, tests included
    pnpm format:check
    pnpm check:ai-context
+   pnpm check:snippets       # compiles the snippets of the AI guides and READMEs (after pnpm build)
    ```
 
 </Steps>
@@ -64,6 +65,10 @@ pnpm test-e2e
 ```
 
 If you are adding a feature, include tests and documentation where applicable.
+A test that needs a canister runs a real `Reactor` against the fake replica
+from `@ic-reactor/core/testing` (see [Testing](/v3/guides/testing)) rather
+than a hand-built object cast to `Reactor`, which has to re-implement query
+keys and error unwrapping and can drift from them.
 
 ## Before Opening a PR
 

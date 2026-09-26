@@ -220,9 +220,9 @@ function availableOptions(options: Array<{ label: string }>): string {
  *   }
  * })
  *
- * // Render fields dynamically
+ * // Render fields dynamically. A top-level argument's name is `[index]`.
  * methodMeta.args.map((field, index) => (
- *   <form.Field key={index} name={field.name}>
+ *   <form.Field key={index} name={`[${index}]`}>
  *     {(fieldApi) => <DynamicInput field={field} fieldApi={fieldApi} />}
  *   </form.Field>
  * ))
@@ -298,9 +298,13 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
     const canister = this.withName("[0]", () =>
       this.visitPrincipal(IDL.Principal, "canisterId")
     )
-    const method = this.withName("[1]", () =>
-      this.visitText(IDL.Text, "methodName")
-    )
+    // The method name is part of the reference, not a `text` value of the
+    // method's own. A reference with no method names nothing to call, so it
+    // keeps the check that plain text no longer has.
+    const method: TextField = {
+      ...this.withName("[1]", () => this.visitText(IDL.Text, "methodName")),
+      schema: z.string().min(1, "Required"),
+    }
 
     return {
       type: "tuple",
@@ -920,9 +924,16 @@ export class FieldVisitor<A = BaseActor> extends IDL.Visitor<
 
   /**
    * Generate format-specific zod schema for text fields.
+   *
+   * Plain text takes any string, including "": Candid `text` has no
+   * required-ness, and a method may take an empty one. Rejecting it as
+   * "Required" meant such a call could not be made or replayed from the form.
+   * A format read from the label keeps its own check.
    */
   private getTextSchema(format: TextFormat): z.ZodTypeAny {
     switch (format) {
+      case "plain":
+        return z.string()
       case "email":
         return z.email("Invalid email address")
       case "url":

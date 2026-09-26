@@ -53,21 +53,21 @@ function UserProfile({ userId }: { userId: string }) {
 
 ### Optional Options
 
-| Option                 | Type                 | Default     | Description                                        |
-| ---------------------- | -------------------- | ----------- | -------------------------------------------------- |
-| `args`                 | `array`              | `[]`        | Arguments to pass to the method                    |
-| `enabled`              | `boolean`            | `true`      | Whether the query should run                       |
-| `staleTime`            | `number`             | `0`         | Time in ms before data is considered stale         |
-| `gcTime`               | `number`             | `300000`    | Time in ms before unused data is garbage collected |
-| `refetchInterval`      | `number \| false`    | `false`     | Polling interval in ms                             |
-| `refetchOnWindowFocus` | `boolean`            | `true`      | Refetch when window regains focus                  |
-| `refetchOnMount`       | `boolean`            | `true`      | Refetch when component mounts                      |
-| `refetchOnReconnect`   | `boolean`            | `true`      | Refetch when network reconnects                    |
-| `retry`                | `number \| boolean`  | `3`         | Number of retry attempts                           |
-| `retryDelay`           | `number \| function` | exponential | Delay between retries                              |
-| `select`               | `function`           | -           | Transform the data before returning                |
-| `queryKey`             | `array`              | -           | Additional query key segments                      |
-| `callConfig`           | `CallConfig`         | -           | IC agent call configuration                        |
+| Option                 | Type                            | Default       | Description                                                                      |
+| ---------------------- | ------------------------------- | ------------- | -------------------------------------------------------------------------------- |
+| `args`                 | `array \| skipToken`            | `[]`          | Arguments to pass to the method, or `skipToken` while they are not known         |
+| `enabled`              | `boolean`                       | `true`        | Whether the query should run                                                     |
+| `staleTime`            | `number`                        | `0`           | Time in ms before data is considered stale                                       |
+| `gcTime`               | `number`                        | `300000`      | Time in ms before unused data is garbage collected                               |
+| `refetchInterval`      | `number \| false`               | `false`       | Polling interval in ms                                                           |
+| `refetchOnWindowFocus` | `boolean`                       | `true`        | Refetch when window regains focus                                                |
+| `refetchOnMount`       | `boolean`                       | `true`        | Refetch when component mounts                                                    |
+| `refetchOnReconnect`   | `boolean`                       | `true`        | Refetch when network reconnects                                                  |
+| `retry`                | `number \| boolean \| function` | QueryClient's | Retry policy ([update methods](/v3/framework/queries#update-methods-in-queries)) |
+| `retryDelay`           | `number \| function`            | exponential   | Delay between retries                                                            |
+| `select`               | `function`                      | -             | Transform the data before returning                                              |
+| `queryKey`             | `array`                         | -             | Additional query key segments                                                    |
+| `callConfig`           | `CallConfig`                    | -             | IC agent call configuration                                                      |
 
 ## Return Value
 
@@ -97,13 +97,43 @@ const { data, isPending, error } = useActorQuery({
 })
 ```
 
-### Conditional Query
+### Waiting for Args
+
+When the arguments are not known yet, pass TanStack Query's `skipToken`
+(re-exported by `@ic-reactor/react`) in their place. The query waits without
+calling the canister, and fetches as soon as `args` holds real arguments:
 
 ```tsx
+import { skipToken } from "@ic-reactor/react"
+
+function UserProfile({ userId }: { userId: string | undefined }) {
+  const { data } = useActorQuery({
+    functionName: "getUser",
+    // No `userId!`, no placeholder id, no `enabled`
+    args: userId ? [userId] : skipToken,
+  })
+}
+```
+
+A skipped query has a cache entry of its own under its method's key (at the
+canister `callConfig` names), which no call's key shares: it shows no data
+until its arguments arrive, not even that of a query of the method made
+without arguments. `refetch()` has nothing to run until then, and TanStack
+Query answers it with a "Missing queryFn" error, so offer a refresh only once
+the arguments exist.
+
+### Conditional Query
+
+Use `enabled` when the arguments are known but the query should still wait,
+for a reason of your own:
+
+```tsx
+const { isAuthenticated } = useAuth()
+
 const { data } = useActorQuery({
   functionName: "getUser",
   args: [userId],
-  enabled: !!userId, // Only fetch when userId exists
+  enabled: isAuthenticated, // Only fetch once signed in
 })
 ```
 
@@ -219,6 +249,8 @@ after it, never in place of the identity prefix.
 ### Dependent Queries
 
 ```tsx
+import { skipToken } from "@ic-reactor/react"
+
 function UserPosts({ userId }: { userId: string }) {
   // First query
   const { data: user } = useActorQuery({
@@ -226,11 +258,10 @@ function UserPosts({ userId }: { userId: string }) {
     args: [userId],
   })
 
-  // Dependent query - only runs when user exists
+  // Dependent query - waits until the first one has the user's id
   const { data: posts } = useActorQuery({
     functionName: "getUserPosts",
-    args: [user?.id ?? ""],
-    enabled: !!user?.id,
+    args: user ? [user.id] : skipToken,
   })
 
   return <PostList posts={posts} />
@@ -250,15 +281,33 @@ The types are automatically inferred from your actor interface, so you typically
 
 ## Notes
 
+<Aside type="caution">
+  An update method passed here runs on the canister again on every refetch
+  (mount, window focus, reconnect, invalidation) and retry, each time as a new
+  call. Use it only for an update method that is safe to repeat, and use
+  `useActorMutation` or `useActorMethod` for a method that changes state. With
+  no `retry` hook option set, an update method retries only a `SysTransient`
+  rejection, which proves the call never ran. See [Update Methods in
+  Queries](/v3/framework/queries#update-methods-in-queries).
+</Aside>
+
 <Aside type="note">
   The query key is automatically generated as `[canisterId, functionName,
   argKey, ...queryKey]`. `argKey` is the arguments serialized as one JSON
   string, with BigInt values as decimal strings and plain-object keys sorted,
   so queries with different arguments are cached separately. A `DisplayReactor`
-  adds a `{ transform: "display" }` segment after `functionName`, and an
-  `{ effectiveTarget }` segment follows when `callConfig` targets a different
-  canister or subnet. See
+  adds a `{ transform: "display" }` segment after `functionName`, an
+  `{ agent }` segment follows when `callConfig.agent` is not the
+  `ClientManager`'s own agent, and an `{ effectiveTarget }` segment follows
+  when `callConfig` targets a different canister or subnet. See
   [generateQueryKey](/v3/reference/reactor#generatequerykey) for the full shape.
+</Aside>
+
+<Aside type="note">
+  `skipToken` works in `useActorQuery` and `useActorInfiniteQuery` (as
+  `getArgs`). The suspense hooks do not take it: TanStack Query cannot suspend
+  on a query that has nothing to run. Render the suspense query in a component
+  that only mounts once the arguments exist.
 </Aside>
 
 <Aside type="tip">

@@ -1,5 +1,10 @@
 # @ic-reactor/cli
 
+> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
+> (`node_modules/@ic-reactor/cli/llms.txt`) before writing code with it. It
+> is written for the installed version and lists the patterns to use and the
+> mistakes to avoid.
+
 Command-line code generation for IC Reactor. It uses the shared
 `@ic-reactor/codegen` pipeline to generate declarations and typed reactor entry
 files from your `.did` files, with optional React hook exports.
@@ -54,7 +59,7 @@ monorepo package creates that package's own config.
 ```
 
 Each canister takes `name` and `didFile` (required), and optionally `outDir`,
-`clientManagerPath`, `target`, `mode` and `canisterId`.
+`clientManagerPath`, `target`, `mode`, `canisterId` and `factories`.
 
 Set `canisterId` for any build that is not served from a local replica. It is
 written into `index.generated.ts`. Without it the generated reactor looks its id
@@ -115,6 +120,8 @@ For each canister, the CLI writes into `<outDir>/<canister>/`:
 - `declarations/<did-basename>.d.ts` TypeScript service types
 - `declarations/<did-basename>.js` IDL factory module
 - `index.generated.ts` managed reactor implementation, with optional typed hook exports
+- `index.factories.generated.ts` managed query and mutation factories, only for
+  a canister that sets `factories: true`
 - `index.ts` user-facing entrypoint
 
 `<did-basename>` is the file name of the `.did` source without its extension —
@@ -124,17 +131,30 @@ A file whose content has not changed is not rewritten, so regenerating from an
 unchanged `.did` and config leaves every file untouched.
 
 If Prettier resolves from the directory holding `ic-reactor.json`, the CLI
-formats the `.js`, `.d.ts`, `index.generated.ts` and the `index.ts` wrapper it
-writes with it and your Prettier config, so regenerating leaves formatted,
+formats the `.js`, `.d.ts`, `index.generated.ts`, `index.factories.generated.ts`
+and the `index.ts` wrapper it writes with it and your Prettier config, so
+regenerating leaves formatted,
 committed output unchanged. Without Prettier the declarations hold the Candid
 parser's output followed by a newline.
 
 With `target: "react"`, `index.generated.ts` exports the reactor plus six hooks
 named after the canister — `use<Canister>Query`, `use<Canister>SuspenseQuery`,
 `use<Canister>InfiniteQuery`, `use<Canister>SuspenseInfiniteQuery`,
-`use<Canister>Mutation` and `use<Canister>Method`. Query and mutation _objects_
-(`createQuery` / `createMutation`) are never generated; write those by hand over
-the generated reactor when you need imperative access outside React.
+`use<Canister>Mutation` and `use<Canister>Method`.
+
+Set `"factories": true` on a canister for query and mutation _objects_ as
+well, which work in components and outside React. The CLI then writes
+`index.factories.generated.ts` with one per method, bound to the generated
+reactor: `createQuery` for a query method without arguments,
+`createQueryFactory` for one with arguments, and `createMutation` for an
+update or oneway method, named `<method>Query` or `<method>Mutation` with the
+method name in camelCase (`get_message` gives `getMessageQuery`). An update
+method is never generated as a query. The default `index.ts` wrapper
+re-exports the file; an `index.ts` you have edited is left alone, and the CLI
+prints a warning until it re-exports the factories. Switching the option off
+removes the file. It needs `target: "react"`. The naming rule for any method
+name is in the codegen docs:
+https://ic-reactor.b3pay.net/v3/packages/codegen#query-and-mutation-factories
 
 The CLI regenerates `index.generated.ts` on every run. It creates `index.ts`
 once, then preserves it unless the file is still the default wrapper or an
@@ -154,8 +174,8 @@ Set `target` to choose the generated runtime:
 - `core`: generates only the typed reactor exports with no React dependency
 
 Use `--bindgen-only` when you only want the generated declaration files. In
-that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
-leaves any existing reactor files untouched.
+that mode, the CLI skips `index.generated.ts`, `index.factories.generated.ts`
+and `index.ts` entirely and leaves any existing reactor files untouched.
 
 You can define `target` globally or per canister in `ic-reactor.json`.
 

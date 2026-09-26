@@ -1,5 +1,10 @@
 # @ic-reactor/parser
 
+> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
+> (`node_modules/@ic-reactor/parser/llms.txt`) before writing code with it. It
+> is written for the installed version and lists the patterns to use and the
+> mistakes to avoid.
+
 WASM-based Candid parser used by IC Reactor tooling and dynamic Candid
 workflows. It turns raw Candid source into JavaScript IDL factories or
 TypeScript declaration strings.
@@ -36,7 +41,9 @@ Returns TypeScript declaration source for the same Candid interface.
 ### `parseDid(candid: string): CandidSchema`
 
 Returns a structured description of the interface — the declared types and the
-service — instead of generated source.
+service — instead of generated source. Each record field and variant tag is
+named by the key `didToJs` prints for it: `_0_` for the numeric field `0`, and
+the hash key described under Notes for a field named like a numeric id.
 
 ### `validateIDL(candid: string): boolean`
 
@@ -90,6 +97,28 @@ let that package load the parser when needed.
 
 - The package is compiled from Rust to WebAssembly.
 - `didToJs` / `didToTs` return source strings rather than ready-made JS objects.
+- A record field or variant tag whose name looks like a numeric id, `_<digits>_`
+  or `_0x<hex digits>_` for a number below 2^32 (such as `_0_`), is printed
+  under the hash of its name in both `didToJs` and `didToTs`, and `parseDid`
+  names it the same way: `_0_` becomes `_4735054_`. Candid identifies a named field by that hash, but
+  `@icp-sdk/core` reads a key spelled like a number as that number, so under
+  its own name the field would be sent and read as field 0. Use the printed
+  key for the value. Every other name prints as written, and a numeric field
+  (`0 : nat`) still prints as `_0_`. A hand-written `.did` that spells a
+  Motoko numeric field as `_0_` must write it as `0`, the way Motoko prints
+  it.
+- `didToTs` exports each Candid type under its own name, next to the service
+  interface `_SERVICE`. A type TypeScript cannot declare or refer to under its
+  name is renamed with `_` appended, in `didToJs` and `didToTs` alike: a type
+  named like a TypeScript type keyword (`string`, `number`, `bigint`,
+  `symbol`, `object`, `any`, `unknown`, `never`, `undefined`) or type
+  operator (`keyof`, `readonly`, `unique`, `infer`), and a type named
+  `_SERVICE` that is not the service itself. `type string = record { … }` is
+  exported as `string_`, or as `string__` when a type already has that name,
+  the way candid_parser renames a JavaScript keyword (`class` becomes
+  `class_`). A service type named `_SERVICE` that the service uses
+  (`service : _SERVICE`) keeps its name and is declared once, as the
+  `_SERVICE` interface.
 - Candid imports cannot be resolved from a single source string. Every function
   throws for `import service "file.did"`, because the methods of the imported
   service would be missing from the result. A plain `import "file.did"` is

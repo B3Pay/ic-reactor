@@ -1,11 +1,12 @@
 import type { HttpAgentOptions, Identity } from "@icp-sdk/core/agent"
 import type { ClientManagerParameters, AgentState } from "./types/client.js"
 import type { Principal } from "@icp-sdk/core/principal"
-import type { QueryClient, QueryKey } from "@tanstack/query-core"
+import type { Query, QueryClient, QueryKey } from "@tanstack/query-core"
 
 import { HttpAgent } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { IC_HOST_NETWORK_URI } from "./utils/constants.js"
+import { CallError } from "./errors/index.js"
 import {
   getNetworkByHostname,
   getProcessEnvNetwork,
@@ -104,6 +105,28 @@ function notifyAll<T>(
 }
 
 /**
+ * How many times {@link ClientManager.fetchAcrossIdentitySwitch} runs a fetch
+ * again after a principal switch overtook it. Each run needs a switch of its
+ * own while it is in flight, so the bound is reached only when the identity
+ * keeps changing faster than the canister answers.
+ */
+const IDENTITY_SWITCH_REFETCHES = 3
+
+/**
+ * Whether `error` is the `CancelledError` a TanStack Query fetch rejects with
+ * when it is cancelled. The class cannot be imported to test against:
+ * `@tanstack/query-core` is an optional peer that core imports only for types,
+ * and the QueryClient may come from another copy of it. The class extends
+ * `Error` only in later v5 releases, but every v5 release sets its own
+ * `revert` and `silent` fields.
+ */
+const isQueryCancellation = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  "revert" in error &&
+  "silent" in error
+
+/**
  * ClientManager is a central class for managing the Internet Computer (IC) agent.
  *
  * It initializes the agent (connecting to local or mainnet) and integrates
@@ -126,9 +149,22 @@ function notifyAll<T>(
  *
  * @example
  * ```typescript
- * // Reuse the same ClientManager across multiple canisters
- * const backend = new Reactor<BackendService>({ clientManager, idlFactory: backendIdl, name: "backend" })
- * const ledger = new Reactor<LedgerService>({ clientManager, idlFactory: ledgerIdl, name: "ledger" })
+ * // Reuse the same ClientManager across multiple canisters. `canisterId` is
+ * // required in Node, where the constructor otherwise throws; a browser page
+ * // may omit it only where the ic_env cookie is trusted (a local replica, or
+ * // `allowEnvConfig: true`).
+ * const backend = new Reactor<BackendService>({
+ *   clientManager,
+ *   idlFactory: backendIdl,
+ *   name: "backend",
+ *   canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+ * })
+ * const ledger = new Reactor<LedgerService>({
+ *   clientManager,
+ *   idlFactory: ledgerIdl,
+ *   name: "ledger",
+ *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+ * })
  * ```
  */
 export class ClientManager {
@@ -136,12 +172,29 @@ export class ClientManager {
   #identitySubscribers: Array<(identity: Identity) => void> = []
   /** The identity currently installed on the agent, captured per call. */
   #identity?: Identity
+  /**
+   * The principal `#identity` had when it was installed. It is read then and
+   * kept, because an identity object may change its principal afterwards.
+   */
+  #principal?: string
+  /**
+   * Counts `updateAgent` calls that switched to another principal, so a fetch
+   * can tell that one cancelled it; see {@link fetchAcrossIdentitySwitch}.
+   */
+  #principalSwitches = 0
+  /**
+   * Stops watching the fetches the last renewal found in flight; see
+   * {@link refetchWhenFetchFails}. Every `updateAgent` call ends that watch.
+   */
+  #stopWatchingRenewal?: () => void
   /** Counts `updateAgent` calls, so a notification can tell it is stale. */
   #identityRevision = 0
   #agentStateSubscribers: Array<(state: AgentState) => void> = []
   #targetCanisterIds: Set<string> = new Set()
   /** Resolved once in the constructor; see {@link trustsEnvConfig}. */
   #trustsEnvConfig: boolean
+  /** The caller's own `agentOptions.rootKey`; see {@link explicitRootKey}. */
+  #explicitRootKey?: Uint8Array
 
   /**
    * The TanStack QueryClient used for managing cached canister data and invalidating queries on identity changes.
@@ -171,6 +224,9 @@ export class ClientManager {
     // not inherit the host, the verification setting, or a root key this one
     // took from the `ic_env` cookie under its own trust decision.
     const agentOptions: HttpAgentOptions = { ...givenAgentOptions }
+    // Read from the caller's options, before the `ic_env` cookie can fill the
+    // copy: only a key the caller chose is kept by `initializeAgent`.
+    this.#explicitRootKey = givenAgentOptions.rootKey ?? undefined
 
     this.agentState = {
       isInitialized: false,
@@ -187,6 +243,11 @@ export class ClientManager {
     // agent traffic through their serving origin. Ordinary web hosts (Vercel,
     // Cloudflare, etc.) cannot, so they retain the default IC API fallback.
     //
+    // A Codespaces or Gitpod page ("remote") is a local dev server forwarded
+    // to the browser, so it routes like a local one. It used to fall back to
+    // mainnet, so a dev app in a codespace sent its local canister IDs to
+    // ic0.app, and whatever mainnet canister had that ID answered.
+    //
     // A page with no usable origin is skipped rather than parsed: React Native
     // defines `window` without a `location`, and an opaque origin (a file://
     // page in Firefox, an about:blank or srcdoc frame) reads as the string
@@ -199,7 +260,7 @@ export class ClientManager {
     const browserHostname = hostnameOf(browserOrigin)
     if (browserOrigin && browserHostname !== undefined) {
       const browserNetwork = getNetworkByHostname(browserHostname)
-      if (browserNetwork === "local" || isMainnetHost(browserOrigin)) {
+      if (browserNetwork !== "ic" || isMainnetHost(browserOrigin)) {
         agentOptions.host = agentOptions.host ?? browserOrigin
       }
     }
@@ -251,6 +312,9 @@ export class ClientManager {
     // from an ic-domains custom domain fell through it and took its root key
     // from a cookie. allowsEnvRootKey instead accepts only hosts that are
     // unambiguously a local replica; anything else must pass allowEnvConfig.
+    // That includes the Codespaces and Gitpod domains: every workspace on
+    // them is a sibling of every stranger's, so their cookie is not the
+    // replica's. A root key the agent needs there is fetched from the replica.
     //
     // Resolved ONCE here and read back through `trustsEnvConfig`, because the
     // cookie carries three values and each was deciding for itself: the root
@@ -292,9 +356,9 @@ export class ClientManager {
     // that window failed verification — and an update call had already run on
     // the replica by the time it was reported as failed. Asking the agent to
     // fetch the key itself makes every request wait for it instead. The agent
-    // shares one fetch between its requests and `initializeAgent`, and a root
-    // key given explicitly or taken from the `ic_env` cookie is used as is
-    // until `initializeAgent` replaces it with the fetched one.
+    // shares one fetch between its requests and `initializeAgent`. A root key
+    // given explicitly is used as is and kept; one taken from the `ic_env`
+    // cookie is used until `initializeAgent` replaces it with the fetched one.
     if (hostNetwork !== "ic") {
       agentOptions.shouldFetchRootKey ??= true
     }
@@ -321,10 +385,14 @@ export class ClientManager {
   /**
    * Specifically initializes the HttpAgent.
    * On local networks, this includes fetching the root key for certificate verification.
-   * That covers every host whose network isn't `"ic"`, dev-container tunnels
-   * included. The fetched key replaces whatever key the agent holds: one passed
-   * as `agentOptions.rootKey`, one from the `ic_env` cookie, or mainnet's when
-   * `shouldFetchRootKey` is `false`.
+   * That covers every host whose network isn't `"ic"`, Codespaces and Gitpod
+   * included. The fetched key replaces the key the agent holds: one from the
+   * `ic_env` cookie, or mainnet's when `shouldFetchRootKey` is `false`.
+   *
+   * A key passed as `agentOptions.rootKey` is kept instead: nothing is
+   * fetched, so `/api/v2/status` is not requested and need not be reachable,
+   * and the agent verifies against that key before and after this call alike.
+   * On a mainnet host nothing is fetched either way.
    *
    * @returns A promise that resolves when the agent is fully initialized.
    */
@@ -384,7 +452,15 @@ export class ClientManager {
           }
         )
       }
-      if (this.isLocal) {
+      // A key the caller passed is the key they chose to verify against: a
+      // PocketIC or testnet key, or that of the network behind a local proxy.
+      // It used to be replaced here by whatever the host served, so calls made
+      // before this point checked one key and later calls another, and this
+      // failed whenever `/api/v2/status` could not be reached. A key from the
+      // `ic_env` cookie is still replaced: the replica's own is the one to
+      // trust. `shouldFetchRootKey: false` alone still fetches, as code
+      // written for older agents relies on this call for the key.
+      if (this.isLocal && !this.#explicitRootKey) {
         await this.#agent.fetchRootKey()
       }
       this.updateAgentState({ isInitialized: true, isInitializing: false })
@@ -433,8 +509,10 @@ export class ClientManager {
    * this agent's host.
    *
    * `true` when BOTH the agent host and the page origin are unambiguously a
-   * local replica, or when the caller passed `allowEnvConfig`. The page counts
-   * because the page is what decides who can write the cookie.
+   * local replica (loopback, `localhost` and its subdomains), or when the
+   * caller passed `allowEnvConfig`. The page counts because the page is what
+   * decides who can write the cookie. A Codespaces or Gitpod domain shares its
+   * parent with other users' workspaces, so it needs `allowEnvConfig`.
    * Every consumer of that cookie reads this one decision, so the root key, the
    * Internet Identity provider and a reactor's canister ID cannot disagree
    * about whether the environment is trustworthy.
@@ -444,6 +522,16 @@ export class ClientManager {
    */
   get trustsEnvConfig(): boolean {
     return this.#trustsEnvConfig
+  }
+
+  /**
+   * The root key the caller passed as `agentOptions.rootKey`, which the agent
+   * keeps: on a local host {@link initializeAgent} does not replace it with
+   * the key the host serves. `undefined` when none was passed, also when the
+   * agent took one from the `ic_env` cookie.
+   */
+  get explicitRootKey(): Uint8Array | undefined {
+    return this.#explicitRootKey
   }
 
   /**
@@ -571,18 +659,40 @@ export class ClientManager {
   }
 
   /**
-   * Replaces the current agent's identity and invalidates TanStack queries.
+   * Installs `identity` on the agent, cleans the cached queries of every
+   * registered canister when the principal changes, and notifies identity
+   * subscribers.
+   *
+   * Query keys carry no principal, so on a switch to another principal
+   * (signing in, signing out, switching users) the cache is swept: queries in
+   * flight are cancelled, inactive entries are removed, and the rest are
+   * invalidated, so mounted queries refetch as the new principal.
+   *
+   * When `identity` has the principal already installed (a renewed delegation,
+   * a sign-in while signed in, an identity attribute request), the cached
+   * answers are already that principal's and are kept: nothing is cancelled or
+   * removed, and no query that succeeded refetches. Only queries whose last
+   * fetch failed are invalidated, since the old identity may be why they
+   * failed (an expired delegation, or one not valid for that canister), and
+   * so is a query whose fetch was in flight and fails afterwards. The first
+   * call after construction always sweeps.
+   *
+   * The comparison sees only the principal. An identity that changes what a
+   * canister is told under the same principal, such as an `AttributesIdentity`
+   * adding signed `sender_info` to each request, keeps answers computed
+   * without it. After installing or removing one, invalidate the affected
+   * queries yourself, e.g. with `reactor.invalidateQueries()`.
+   *
    * @param identity - The new identity to use.
    */
   public updateAgent(identity: Identity) {
+    const principal = identity.getPrincipal().toText()
     if (isDev() && typeof window !== "undefined") {
       console.info(
         `%cic-reactor:%c Updating agent identity`,
         "color: #3b82f6; font-weight: bold",
         "color: inherit",
-        {
-          principal: identity.getPrincipal().toText(),
-        }
+        { principal }
       )
     }
     // Cancel in-flight queries for connected canisters to prevent race conditions
@@ -601,10 +711,38 @@ export class ClientManager {
       const root = queryKey[0]
       return typeof root === "string" && canisterIds.has(root)
     }
-    const sweep = canisterIds.size > 0
+
+    // The same principal again (a renewed delegation, a sign-in while signed
+    // in, an identity attribute request) keeps the cache. The sweep exists
+    // because query keys carry no principal, so it has nothing to protect
+    // when every canister still sees the same caller. It used to run anyway,
+    // and each of those dropped every inactive entry, refetched every mounted
+    // query and rejected every imperative fetch in flight. The principal is
+    // compared with the one read when the previous identity was installed,
+    // not read from that object again: an identity object that changed its
+    // principal since is a switch. The first call after construction always
+    // sweeps, as until then nothing was installed to compare with.
+    const renewal =
+      this.#identity !== undefined && principal === this.#principal
+    if (!renewal) {
+      this.#principalSwitches++
+    }
+    const sweep = !renewal && canisterIds.size > 0
     if (sweep) {
       void this.queryClient.cancelQueries({ predicate: ofConnectedCanister })
     }
+    // A later call decides for itself what the fetches in flight need.
+    this.#stopWatchingRenewal?.()
+    this.#stopWatchingRenewal = undefined
+    // Read before the failed entries below start fetches of their own: these
+    // are the fetches the previous identity signed.
+    const signedBefore =
+      renewal && canisterIds.size > 0
+        ? this.queryClient.getQueryCache().findAll({
+            predicate: ofConnectedCanister,
+            fetchStatus: "fetching",
+          })
+        : []
 
     // The agent is mutated in place, so anything holding a reference to
     // `clientManager.agent` — an SDK Actor built during app setup, a transform
@@ -613,6 +751,7 @@ export class ClientManager {
     // that submitted it is handled per call instead, in `Reactor.executeCall`.
     this.#agent.replaceIdentity(identity)
     this.#identity = identity
+    this.#principal = principal
 
     // Clean the cache BEFORE notifying, and after the agent already holds the
     // new identity. A subscriber commonly reacts by starting an imperative
@@ -640,9 +779,143 @@ export class ClientManager {
       void this.queryClient.invalidateQueries({
         predicate: ofConnectedCanister,
       })
+    } else if (renewal && canisterIds.size > 0) {
+      // The previous identity may be why a fetch failed: a delegation that
+      // had expired, or one not valid for that canister. Those entries are
+      // refetched as the new identity. An answer that arrived is still the
+      // same caller's, and stays.
+      void this.queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.state.status === "error" && ofConnectedCanister(query),
+      })
+      // A fetch the previous identity signed may fail only after this, and
+      // its failure is as likely to be that identity's doing. Nothing above
+      // sees it: it is not an error yet, and it is not cancelled so that its
+      // answer, when one arrives, is kept.
+      if (signedBefore.length > 0) {
+        this.#stopWatchingRenewal = this.refetchWhenFetchFails(
+          signedBefore,
+          identity
+        )
+      }
     }
 
     this.notifySubscribers(identity)
+  }
+
+  /**
+   * Watches `queries`, each with a fetch in flight, and invalidates one whose
+   * fetch settles with an error while `identity` is still installed, so that
+   * a mounted query refetches as that identity, as the failed entries do.
+   * A query stops being watched once its fetch settles, or when it leaves the
+   * cache, and the watch ends once none are left.
+   *
+   * @returns Ends the watch.
+   */
+  private refetchWhenFetchFails(
+    queries: ReadonlyArray<Query>,
+    identity: Identity
+  ): () => void {
+    const watched = new Set<Query>(queries)
+    const end = () => {
+      unsubscribe()
+      if (this.#stopWatchingRenewal === end) {
+        this.#stopWatchingRenewal = undefined
+      }
+    }
+    const unsubscribe = this.queryClient.getQueryCache().subscribe((event) => {
+      if (!watched.has(event.query)) return
+      if (event.type === "removed") {
+        watched.delete(event.query)
+      } else if (event.type === "updated") {
+        const { action, query } = event
+        if (action.type === "error") {
+          watched.delete(query)
+          // A cancellation is someone's choice to stop the fetch, not a
+          // failure, though older v5 releases report it as an error too.
+          if (!isQueryCancellation(action.error)) {
+            // Once TanStack has finished settling this fetch, which it is in
+            // the middle of here.
+            void Promise.resolve().then(() => {
+              if (this.#identity !== identity) return
+              void this.queryClient.invalidateQueries({
+                queryKey: query.queryKey,
+                exact: true,
+              })
+            })
+          }
+        } else if (query.state.fetchStatus === "idle") {
+          // Answered, or cancelled and put back as it was.
+          watched.delete(query)
+        }
+      }
+      if (watched.size === 0) end()
+    })
+    return end
+  }
+
+  /**
+   * Runs `fetch`, a fetch of a registered canister's query through
+   * {@link queryClient}, and runs it again when the principal switches while
+   * it runs.
+   *
+   * `updateAgent` cancels those queries when the principal changes, so an
+   * answer fetched for the previous principal never reaches the cache. A
+   * query with a mounted observer refetches afterwards. An imperative fetch
+   * has no observer: TanStack rejects its promise with a `CancelledError`,
+   * which is neither a `CallError` nor a `CanisterError`, or, when the entry
+   * held data before the fetch began, resolves it with that data, which is
+   * the previous principal's. Through this method it resolves with the
+   * answer for the identity installed now, as a mounted query would show; the
+   * previous identity's answer is still never cached.
+   *
+   * `Reactor.fetchQuery`, and with it the query factories' `fetch()`, runs
+   * through here. Wrap any other fetch of a canister query the same way.
+   *
+   * Whatever `fetch` settles with while the principal stays is passed on as
+   * is, including a cancellation from `queryClient.cancelQueries()`. After
+   * three runs again, each overtaken by another switch, it rejects with a
+   * `CallError` whose `cause` is what the last run settled with, if it
+   * rejected, so the loop always ends and never returns an answer that may
+   * be another principal's.
+   *
+   * @param fetch - Starts the fetch. It is called once per run, so it has to
+   * start a fetch each time rather than return one promise it kept.
+   * @returns What `fetch` resolved with.
+   *
+   * @example
+   * ```typescript
+   * const pages = await clientManager.fetchAcrossIdentitySwitch(() =>
+   *   clientManager.queryClient.fetchInfiniteQuery(options)
+   * )
+   * ```
+   */
+  public async fetchAcrossIdentitySwitch<T>(
+    fetch: () => Promise<T>
+  ): Promise<T> {
+    for (let refetches = 0; ; refetches++) {
+      const switches = this.#principalSwitches
+      let settled: { value: T } | { error: unknown }
+      try {
+        settled = { value: await fetch() }
+      } catch (error) {
+        settled = { error }
+      }
+      // A switch while it ran makes what it settled with the previous
+      // principal's: a cancellation, or the data a cancelled fetch of a
+      // cached entry is put back to. Only rejecting the cancellation used to
+      // leave that data to be returned to the principal signed in now.
+      if (this.#principalSwitches === switches) {
+        if ("error" in settled) throw settled.error
+        return settled.value
+      }
+      if (refetches >= IDENTITY_SWITCH_REFETCHES) {
+        throw new CallError(
+          `The principal changed while this query was fetched, ${refetches + 1} times in a row, so none of its answers is known to be the current principal's.`,
+          "error" in settled ? settled.error : undefined
+        )
+      }
+    }
   }
 
   private notifySubscribers(identity: Identity) {

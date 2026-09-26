@@ -216,6 +216,15 @@ export function validateConfig(
     }
   }
 
+  function optionalBoolean(field: string, raw: unknown): void {
+    if (raw === undefined) return
+    if (typeof raw !== "boolean") {
+      fail(
+        `${JSON.stringify(field)} must be true or false, found ${describe(raw)}.`
+      )
+    }
+  }
+
   function optionalEnum(
     field: string,
     raw: unknown,
@@ -270,6 +279,7 @@ export function validateConfig(
     optionalString(field("canisterId"), entry.canisterId)
     optionalEnum(field("mode"), entry.mode, REACTOR_CLASS_NAMES)
     optionalEnum(field("target"), entry.target, CODEGEN_TARGETS)
+    optionalBoolean(field("factories"), entry.factories)
   }
 
   return value as unknown as CodegenConfig

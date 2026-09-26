@@ -50,11 +50,25 @@ await runCanisterPipeline({
 })
 ```
 
+Set `factories: true` in `canisterConfig` to also generate
+`index.factories.generated.ts`; see
+[Query and Mutation Factories](#query-and-mutation-factories).
+`runCanisterPipeline` resolves with `{ success, files, error?, warnings? }`.
+`warnings` lists what the run could not fix for you, such as an `index.ts` of
+your own that does not re-export the factories.
+
 ## What It Exposes
 
 - `runCanisterPipeline` for full end-to-end generation.
 - Naming helpers like `toPascalCase`, `getReactorName`, and `getServiceTypeName`.
-- Lower-level generators when you need declarations, reactor files, or client files separately.
+- `findSharedOutDirs` and `sharedOutDirMessage`, which the CLI and the Vite
+  plugin run across every configured entry to refuse one that would generate
+  into the directory of an earlier entry, such as two entries with the same
+  `name` under the global `outDir`.
+- `getFactoryExportNames`, which gives the export name of each method's
+  generated factory.
+- Lower-level generators when you need declarations, reactor files, factories
+  files, or client files separately.
 
 For each canister, the pipeline writes into `<outDir>/<name>/`:
 
@@ -62,6 +76,9 @@ For each canister, the pipeline writes into `<outDir>/<name>/`:
 - `declarations/<did-basename>.d.ts`: the TypeScript service types
 - `declarations/<did-basename>.did`: a copy of the source `.did`
 - `index.generated.ts`: managed implementation, always regenerated
+- `index.factories.generated.ts`: with `factories: true`, a managed query or
+  mutation object per method, always regenerated. See
+  [Query and Mutation Factories](#query-and-mutation-factories).
 - `index.ts`: stable entry wrapper, preserved unless it still matches the
   default wrapper or an older generated scaffold that can be migrated — a
   migrated file is copied to `index.ts.bak` first, and one carrying any export
@@ -76,7 +93,8 @@ regenerating from unchanged input leaves every file untouched and wakes no file
 watcher.
 
 If Prettier resolves from the project root, the pipeline formats the `.js`,
-`.d.ts`, `index.generated.ts` and the `index.ts` wrapper it writes with it,
+`.d.ts`, `index.generated.ts`, `index.factories.generated.ts` and the
+`index.ts` wrapper it writes with it,
 using the config Prettier finds for each file's final path. Output you commit
 after running Prettier then comes out byte-identical when you regenerate.
 Without Prettier, or if formatting fails, the declarations hold the Candid
@@ -86,10 +104,177 @@ source and is never formatted.
 With `target: "react"`, `index.generated.ts` also exports the hooks bound
 to the generated reactor — `use<Pascal>Query`, `use<Pascal>SuspenseQuery`,
 `use<Pascal>InfiniteQuery`, `use<Pascal>SuspenseInfiniteQuery`,
-`use<Pascal>Mutation`, and `use<Pascal>Method`. No `createQuery` or
-`createMutation` objects are generated; for use outside React, call the
-generated reactor's `fetchQuery()` / `callMethod()` / `invalidateQueries()`
-directly.
+`use<Pascal>Mutation`, and `use<Pascal>Method`. Set `factories: true` to also
+generate a `createQuery` or `createMutation` object per method, which works
+both in components and outside React.
+
+## Query and Mutation Factories
+
+Set `factories: true` on a canister to generate `index.factories.generated.ts`
+next to `index.generated.ts`. It holds one object per method of the service,
+bound to the generated reactor and chosen by the method's annotation in the
+`.did`:
+
+| Method in the `.did`                         | Factory              | Export name        |
+| :------------------------------------------- | :------------------- | :----------------- |
+| `query` or `composite_query`, no arguments   | `createQuery`        | `<method>Query`    |
+| `query` or `composite_query`, with arguments | `createQueryFactory` | `<method>Query`    |
+| update (no annotation) or `oneway`           | `createMutation`     | `<method>Mutation` |
+
+An update method is never generated as a query, so a refetch, a window focus
+or a remount can never re-run a call that changes state.
+
+For this service:
+
+```text
+service : {
+  get_message : () -> (text) query;
+  get_user : (principal) -> (opt text) query;
+  set_message : (text) -> ();
+}
+```
+
+the generated file holds, comments aside:
+
+```typescript
+// index.factories.generated.ts (managed, do not edit)
+import {
+  createMutation,
+  createQuery,
+  createQueryFactory,
+} from "@ic-reactor/react"
+import { backendReactor } from "./index.generated"
+
+export const getMessageQuery = createQuery(backendReactor, {
+  functionName: "get_message",
+})
+
+export const getUserQuery = createQueryFactory(backendReactor, {
+  functionName: "get_user",
+})
+
+export const setMessageMutation = createMutation(backendReactor, {
+  functionName: "set_message",
+})
+```
+
+The generated `index.ts` wrapper re-exports it next to `index.generated.ts`,
+so the factories import from the canister's entry point:
+
+```tsx
+import {
+  getMessageQuery,
+  getUserQuery,
+  setMessageMutation,
+} from "./declarations/backend"
+
+function Message() {
+  const { data } = getMessageQuery.useQuery()
+  const { mutate } = setMessageMutation.useMutation({
+    invalidateQueries: [getMessageQuery.getQueryKey()],
+  })
+  // ...
+}
+
+// Outside React: loaders, actions, scripts
+await getUserQuery(["aaaaa-aa"]).fetch()
+await setMessageMutation.execute(["hello"])
+await getMessageQuery.invalidate()
+```
+
+The factories are typed by the reactor class `mode` picks, so a
+`DisplayReactor` canister reads and sends a `nat` as a string and a `Reactor`
+canister as a `bigint`. For the three `@ic-reactor/candid` classes each call
+also passes the service, the transform and the method name as type arguments,
+as `index.generated.ts` does for `createActorHooks`, so TypeScript never has to
+infer the service from a subclass of `Reactor`.
+
+Each call in the file is annotated `/* @__PURE__ */`: creating a factory has no
+side effects, and the annotation tells the bundler so. Vite, Rollup, esbuild
+and webpack then leave out every factory the app does not import, although the
+`index.ts` wrapper re-exports them all, and an app that imports only a bound
+hook from the canister's entry point bundles none of them.
+
+<Aside type="caution">
+  The factories are module-scope objects bound to the module-scope reactor in
+  `index.generated.ts`, which is right for a client-only app. On a server, a
+  module-scope reactor shares one cache across every request; see [Server-Side
+  Rendering](/v3/framework/react-setup#server-side-rendering) for building the
+  reactor, and any query objects over it, per request instead.
+</Aside>
+
+### Export names
+
+Every Candid method name, however it is spelled, gets a valid identifier that
+no other export of the canister uses:
+
+- `<method>` is the method name in camelCase, as the reactor's name is derived
+  from the canister name: `get_message` gives `getMessageQuery`,
+  `icrc1_transfer` gives `icrc1TransferMutation`, `"get-thing"` gives
+  `getThingQuery`. The suffix keeps names such as `delete` or `if` clear of
+  reserved words.
+- A name that would begin with a digit gets a leading `_`: `"2fa_status"`
+  gives `_2faStatusQuery`.
+- Methods take their names in the order Candid lists them, which is by name. A
+  name that an earlier method took, or that `index.generated.ts` already
+  exports, gets `_` appended until it is free, the way the declarations rename
+  a Candid type named like a TypeScript type. So `getThing` and `get_thing` give
+  `getThingQuery` and `getThingQuery_`, and a query method `use_backend` in
+  canister `backend` gives `useBackendQuery_`, since `useBackendQuery` is the
+  bound hook.
+
+Since names are taken in that order, a method added later can take a name an
+existing method had: adding `"get-thing"` to a service that has `getThing`
+gives the new method `getThingQuery`, because it sorts first, and moves
+`getThing` to `getThingQuery_`. If both take the same arguments, code that
+imported `getThingQuery` still compiles and now calls the new method. The doc
+comment above each generated export names the method it calls.
+
+`getFactoryExportNames(canisterName, methods)` returns the names for a list of
+methods, such as `parseDid(source).service.methods` from
+[`@ic-reactor/parser`](/v3/packages/parser).
+
+### Customizing
+
+Pass per-call options to the hooks, such as `getMessageQuery.useQuery({
+select, staleTime })` or `setMessageMutation.useMutation({ invalidateQueries,
+onSuccess })`. For a factory with its own config, such as a
+`refetchInterval` or an `invalidateQueries` that `execute()` also runs, define
+it in `index.ts`. An export `index.ts` declares itself takes precedence over
+the same name from `export *`, so it can also replace a generated one:
+
+```typescript
+// index.ts (yours)
+import { createMutation } from "@ic-reactor/react"
+import { backendReactor } from "./index.generated"
+import { getMessageQuery } from "./index.factories.generated"
+
+export * from "./index.generated"
+export * from "./index.factories.generated"
+
+export const setMessageMutation = createMutation(backendReactor, {
+  functionName: "set_message",
+  invalidateQueries: [getMessageQuery.getQueryKey()],
+})
+```
+
+### Lifecycle
+
+- The file is regenerated on every run, and left untouched when its content
+  has not changed.
+- Switching `factories` off removes the file, if it still carries codegen's
+  header, and puts back the wrapper without the re-export if nobody edited it.
+- An `index.ts` you have edited is left alone. When it does not re-export the
+  factories, or re-exports them after they were switched off, the run succeeds
+  and reports a warning, which the CLI and the Vite plugin print, and
+  `runCanisterPipeline` returns in `warnings`.
+- `generateReactor: false` (the CLI's `--bindgen-only`) leaves the file as it
+  is. The CLI's `--clean` removes it with the rest of a canister's stale
+  output directory.
+- The factories come from `@ic-reactor/react`, so `factories: true` with
+  `target: "core"` is a config error, and the run fails before it writes
+  anything. With a core target, call the reactor's `fetchQuery()` and
+  `callMethod()` instead.
 
 ## Reactor Modes
 
@@ -107,7 +292,8 @@ runtime target, so that package must be installed when you pick one. Only
 
 ## Runtime Target
 
-- `react` (default): generates the reactor plus bound React hooks
+- `react` (default): generates the reactor plus bound React hooks, and with
+  `factories: true` the query and mutation factories
 - `core`: generates only the typed reactor exports with no React dependency
 
 ## See Also

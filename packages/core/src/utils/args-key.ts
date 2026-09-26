@@ -1,4 +1,5 @@
 import { IDL } from "@icp-sdk/core/candid"
+import { hasLabel } from "./label.js"
 
 /**
  * The query key has to name the Candid value a call sends: one key for
@@ -20,11 +21,19 @@ import { IDL } from "@icp-sdk/core/candid"
  *   `_type`. An opt whose own values can be null, such as an opt of an opt,
  *   keeps the wrapper around its value, so that the value stays apart from
  *   none.
- * - In a DisplayReactor, a `vec record { text; T }` given as an object. The
- *   codec sends its entries in the object's order, but `generateKey` sorts an
- *   object's keys, so two orders of one map, which send different vectors,
- *   shared a key. The key lists the entries in order, as the pairs they are
- *   sent as.
+ * - In a DisplayReactor, a `vec record { text; T }` given as an object or a
+ *   `Map`. The codec sends its entries in the object's order, but
+ *   `generateKey` sorts an object's keys, so two orders of one map, which
+ *   send different vectors, shared a key, and the JSON of a Map is `{}`. The
+ *   key lists the entries in order, as the pairs they are sent as.
+ * - In a DisplayReactor, a record or a variant given as an object that is not
+ *   plain, such as a class instance. The codecs read its declared labels
+ *   wherever it holds them, a getter over a private field included, but JSON
+ *   writes only its own enumerable properties, in their own order. The key
+ *   reads the labels as the codecs do, into the plain object they send.
+ * - A record field defined as not enumerable, and in a DisplayReactor also a
+ *   variant's `_type` or payload. IDL.encode and the codecs send it, but JSON
+ *   leaves it out. The key copies it into a plain object that writes it.
  * - In a DisplayReactor, a float or an integer of 32 bits or fewer given as
  *   numeric text, and a `Principal` given as the object. The key writes the
  *   number the text spells and the principal's text, the forms the codecs
@@ -73,6 +82,11 @@ export interface DisplayArgShapes {
   /** Is `type` a `record { text; T }`, whose vector is also taken as an object? */
   isTextKeyedPair(type: IDL.Type): type is IDL.TupleClass<unknown[]>
   /**
+   * The pairs the codec of a `vec record { text; T }` sends for an object
+   * given for it, in the order it sends them.
+   */
+  textMapEntries(value: object): unknown[]
+  /**
    * The number the codec of a float, or of an integer of 32 bits or fewer,
    * sends for `text`. Throws for text the codec refuses.
    */
@@ -92,6 +106,10 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> => {
 
 const hasOwn = (value: object, key: string): boolean =>
   Object.prototype.hasOwnProperty.call(value, key)
+
+/** Does JSON write `key` of `value`: is it an own enumerable property? */
+const isEnumerable = (value: object, key: string): boolean =>
+  Object.prototype.propertyIsEnumerable.call(value, key)
 
 const isByte = (type: IDL.Type): boolean =>
   type instanceof IDL.FixedNatClass && type._bits === 8
@@ -207,6 +225,23 @@ function setField(
   })
 }
 
+/**
+ * The labels of `fields` that `value` holds, read as the display codecs read
+ * them (see `hasLabel`), into a plain object that has no other key.
+ */
+function readLabels(
+  value: object,
+  fields: ReadonlyArray<[string, IDL.Type]>
+): Record<string, unknown> {
+  const record: Record<string, unknown> = {}
+  for (const [label] of fields) {
+    if (hasLabel(value, label)) {
+      setField(record, label, (value as Record<string, unknown>)[label])
+    }
+  }
+  return record
+}
+
 /** `items` with `map` applied, or `items` itself when nothing changed. */
 function mapItems(
   items: unknown[],
@@ -320,7 +355,9 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
   /**
    * `value` with each of `fields` it has rewritten. With `onlyDeclared`, the
    * fields a record does not declare are left out as well: neither IDL.encode
-   * nor the record codec sends them.
+   * nor the record codec sends them. A field that is not enumerable, which
+   * both send but JSON does not write, is copied into a plain object that
+   * writes it.
    */
   private mapFields(
     value: Record<string, unknown>,
@@ -329,10 +366,16 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
   ): Record<string, unknown> {
     let copy: Record<string, unknown> | undefined
     let declared = 0
+    // IDL.encode asks `hasOwnProperty` and the record codec `hasLabel`, so
+    // both send a field defined as not enumerable. JSON leaves it out, so two
+    // records that differed only there, and sent different bytes, shared a
+    // key.
+    let hidden = false
     for (const [label, type] of fields) {
       let field: unknown
       if (hasOwn(value, label)) {
         declared++
+        if (!isEnumerable(value, label)) hidden = true
         if (!this.rewrites(type)) continue
         field = type.accept(this, value[label])
         if (Object.is(field, value[label])) continue
@@ -346,11 +389,13 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
       copy ??= { ...value }
       setField(copy, label, field)
     }
-    if (onlyDeclared && Object.keys(value).length > declared) {
-      const source = copy ?? value
+    if (hidden || (onlyDeclared && Object.keys(value).length > declared)) {
       const record: Record<string, unknown> = {}
       for (const [label] of fields) {
-        if (hasOwn(source, label)) setField(record, label, source[label])
+        // The copy is a spread, which holds only enumerable fields, so a
+        // hidden one it did not rewrite is still read from the value.
+        if (copy && hasOwn(copy, label)) setField(record, label, copy[label])
+        else if (hasOwn(value, label)) setField(record, label, value[label])
       }
       return record
     }
@@ -473,18 +518,19 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
       return hex === undefined ? value : new BlobKey(hex)
     }
     // A DisplayReactor also takes a `vec record { text; T }` as an object keyed
-    // by the text, and sends `Object.entries` of it: the pairs in the object's
-    // order. The key lists the same pairs in the same order, so it matches the
-    // vector sent, and the array of pairs, which sends the same one. The codec
-    // takes every object that is not an array so, a boxed `true` included,
-    // whose JSON is that of the `true` it refuses.
+    // by the text, or as a Map, and sends its entries: the pairs in the
+    // object's order, or the Map's. The key lists the same pairs in the same
+    // order, so it matches the vector sent, and the array of pairs, which
+    // sends the same one. The codec takes every object that is not an array
+    // so, a boxed `true` included, whose JSON is that of the `true` it
+    // refuses.
     if (
       this.display?.isTextKeyedPair(elemType) &&
       typeof value === "object" &&
       value !== null &&
       !Array.isArray(value)
     ) {
-      const pairs: unknown[] = Object.entries(value)
+      const pairs = this.display.textMapEntries(value)
       return this.rewrites(elemType)
         ? pairs.map((pair) => elemType.accept(this, pair))
         : pairs
@@ -543,7 +589,15 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
     // any other value to it as it is.
     if (typeof value !== "object") return new RefusedKey(value)
     if (value === null) return fields.length > 0 ? new RefusedKey(value) : value
-    if (!isPlainObject(value)) return value
+    if (!isPlainObject(value)) {
+      if (!this.display) return value
+      // The record codec reads each field of any object as `hasLabel` finds
+      // it, a getter a class declares over a private field included, and
+      // sends the plain record it builds. JSON writes only own enumerable
+      // properties, so two instances holding their fields so were keyed `{}`
+      // whatever they sent. The key reads the fields the same way.
+      return this.mapFields(readLabels(value, fields), fields)
+    }
     // IDL.encode calls the record's own `hasOwnProperty` for each field, which
     // an object without Object.prototype does not have. The record codec
     // reads its fields another way.
@@ -575,8 +629,8 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
     fields: Array<[string, IDL.Type]>,
     value: unknown
   ): unknown {
-    if (!isPlainObject(value)) return value
     if (!this.display) {
+      if (!isPlainObject(value)) return value
       // IDL.encode takes one own key, `undefined` or not, which names an arm,
       // and calls the value's own `hasOwnProperty`. JSON leaves out a key whose
       // value is undefined, so `{ A: 1, B: undefined }`, which it refuses, had
@@ -588,11 +642,23 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
           : undefined
       return arm ? this.mapFields(value, [arm]) : new RefusedKey(value)
     }
+    // The variant codec reads any object but an array or a Principal, a class
+    // instance included, whose `_type` and payload can be getters that JSON
+    // does not write.
+    if (
+      typeof value !== "object" ||
+      value === null ||
+      Array.isArray(value) ||
+      this.display.isPrincipal(value)
+    ) {
+      return value
+    }
+    const variant = value as Record<string, unknown>
     // The variant codec names the arm in `_type`, or else by the one key the
     // value has.
-    let tag: unknown = value._type
-    if (!("_type" in value)) {
-      const tags = Object.keys(value)
+    let tag: unknown = variant._type
+    if (!("_type" in variant)) {
+      const tags = Object.keys(variant)
       if (tags.length !== 1) return value
       tag = tags[0]
     }
@@ -602,7 +668,7 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
         : undefined
     if (!arm) return value
     const [label, type] = arm
-    const payload = hasOwn(value, label) ? value[label] : undefined
+    const payload = hasLabel(variant, label) ? variant[label] : undefined
     // What the codec sends: nothing for a null or a reserved arm, whatever the
     // payload, and nothing for a missing payload unless the arm is an opt,
     // whose none that is.
@@ -615,11 +681,16 @@ export class ArgsKeyVisitor extends IDL.Visitor<unknown, unknown> {
       : this.rewrites(type)
         ? type.accept(this, payload)
         : payload
-    // `{ _type, [label]: payload }`, as the codec returns a variant.
+    // `{ _type, [label]: payload }`, as the codec returns a variant, and as
+    // JSON writes it: a `_type` or a payload that is not enumerable is left
+    // out of the JSON, though the codec reads it.
     if (
-      value._type === label &&
+      isPlainObject(variant) &&
+      variant._type === label &&
       Object.is(payload, key) &&
-      Object.keys(value).every((name) => name === "_type" || name === label)
+      isEnumerable(variant, "_type") &&
+      (key === undefined || isEnumerable(variant, label)) &&
+      Object.keys(variant).every((name) => name === "_type" || name === label)
     ) {
       return value
     }

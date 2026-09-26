@@ -16,18 +16,6 @@ const CKBTCTransfer = () => {
     mutate([{ to: { owner }, amount }])
   }
 
-  // Helper to format result for display
-  const formatResult = (result: unknown): string => {
-    if (result === null || result === undefined) return ""
-    if (typeof result === "bigint") return result.toString()
-    if (typeof result === "object") {
-      return JSON.stringify(result, (_, v) =>
-        typeof v === "bigint" ? v.toString() : v
-      )
-    }
-    return String(result)
-  }
-
   return (
     <div className="card">
       <div className="card-header">
@@ -82,7 +70,7 @@ const CKBTCTransfer = () => {
             <div className="status status-error">⚠️ {error.message}</div>
           ) : data ? (
             <div className="status status-success">
-              ✅ Transfer successful! Block: {formatResult(data)}
+              ✅ Transfer successful! Block: {data}
               <button
                 className="btn-icon"
                 onClick={() => reset()}

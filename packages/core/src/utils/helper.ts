@@ -1,3 +1,4 @@
+import { Principal } from "@icp-sdk/core/principal"
 import { LOCAL_HOSTS, REMOTE_HOSTS } from "./constants.js"
 import { BlobKey, RefusedKey } from "./args-key.js"
 import { CanisterError } from "../errors/index.js"
@@ -200,9 +201,12 @@ const isLoopbackAddress = (hostname: string): boolean =>
  * catch, because the attacker names a real canister whose responses verify
  * against the real root key.
  *
- * Accepted: loopback, `localhost` and its subdomains, and the dev-container
- * domains that tunnel a local replica. Everything else must opt in explicitly
- * through `allowEnvConfig`.
+ * Accepted: loopback and `localhost` and its subdomains. Everything else must
+ * opt in explicitly through `allowEnvConfig`, including the Codespaces and
+ * Gitpod domains that forward a local replica (`network` `"remote"`). Every
+ * user of those platforms gets a subdomain of the same parent, which is not a
+ * public suffix, so a page in a stranger's workspace can set `ic_env` for
+ * yours. They used to be accepted.
  *
  * This answers the question for ONE host. `ClientManager` asks it of both the
  * agent host and the page origin — the page being what decides who can write
@@ -222,10 +226,7 @@ export const allowsEnvRootKey = (host?: string): boolean => {
   if (hostname === "localhost" || hostname.endsWith(".localhost")) return true
   // The whole of 127.0.0.0/8 is loopback, not just 127.0.0.1 — a replica bound
   // to 127.0.0.2 is exactly as local as one on 127.0.0.1, and so is ::1.
-  if (isLoopbackAddress(hostname)) return true
-
-  // Codespaces / Gitpod forward a local replica over a generated domain.
-  return getNetworkByHostname(hostname) === "remote"
+  return isLoopbackAddress(hostname)
 }
 
 /**
@@ -386,15 +387,118 @@ export const formatHexDisplay = (hex: string): `0x${string}` => {
   return `0x${normalized}`
 }
 
+/** The longest principal the Internet Computer accepts, in bytes. */
+const MAX_PRINCIPAL_BYTES = 29
+
 /**
- * Converts a JSON-serializable value to a string, handling BigInt values.
- * @param value - The value to convert
- * @returns A string representation of the value
+ * Whether `value` is the text of a principal: a user, canister or the
+ * anonymous principal, as a person pastes it into a form.
+ *
+ * It is `true` exactly when `value` is the canonical text of a principal of
+ * at most 29 bytes, the most the Internet Computer accepts: lowercase, grouped
+ * by dashes, with a matching checksum and no whitespace, so trim what a person
+ * typed first. `Principal.fromText` also reads the JSON form
+ * `{"__principal__":"aaaaa-aa"}`, with whitespace around it; this refuses it,
+ * so text that passes is the principal's own text, fit to show, compare or put
+ * in a URL. Use it where an input is validated, instead of a `try` around
+ * `Principal.fromText`. A `DisplayReactor` then takes the text as it is; a
+ * `Reactor` takes `Principal.fromText(text)`.
+ *
+ * It returns a `boolean`, not a type guard, so a `string` it refuses is still
+ * typed a `string` afterwards.
+ *
+ * @param value - Anything; only a string can pass.
+ * @returns `true` for the text of a principal.
+ *
+ * @example
+ * ```ts
+ * import { isPrincipalText } from "@ic-reactor/core"
+ *
+ * isPrincipalText("ryjl3-tyaaa-aaaaa-aaaba-cai") // true: a canister
+ * isPrincipalText("aaaaa-aa") // true: the management canister
+ * isPrincipalText("2vxsx-fae") // true: the anonymous principal
+ * isPrincipalText("ryjl3-tyaaa") // false: the checksum does not match
+ * isPrincipalText(" aaaaa-aa") // false: trim first
+ * isPrincipalText("RYJL3-TYAAA-AAAAA-AAABA-CAI") // false: not canonical
+ * isPrincipalText('{"__principal__":"aaaaa-aa"}') // false: JSON, not text
+ * ```
  */
-export const jsonToString = (value: any): string => {
+export const isPrincipalText = (value: unknown): boolean => {
+  if (typeof value !== "string") return false
+  try {
+    const principal = Principal.fromText(value)
+    // `fromText` checks its checksum against the text it decoded, which is
+    // the inner text when `value` is the JSON form, so compare with `value`.
+    return (
+      principal.toText() === value &&
+      principal.toUint8Array().length <= MAX_PRINCIPAL_BYTES
+    )
+  } catch {
+    return false
+  }
+}
+
+/** A principal, from this copy of `@icp-sdk/core` or another. */
+const isPrincipalValue = (value: unknown): value is { toText(): string } =>
+  typeof value === "object" &&
+  value !== null &&
+  (value as { _isPrincipal?: unknown })._isPrincipal === true &&
+  typeof (value as { toText?: unknown }).toText === "function"
+
+/**
+ * Writes a value as indented JSON text, to show or log what a canister call
+ * returned. `JSON.stringify` throws on a `bigint` and writes a principal and a
+ * blob in forms nobody reads, so the values a `Reactor` returns are written as
+ * a `DisplayReactor` shows them:
+ *
+ * - a `bigint` as its decimal digits, in quotes: `"100000000"`;
+ * - a `Principal` as its text, `"aaaaa-aa"`, where `JSON.stringify` writes
+ *   `{"__principal__":"aaaaa-aa"}`;
+ * - a `Uint8Array` (a `blob`) as lowercase hex without `0x`, `"0a0b"`, where
+ *   `JSON.stringify` writes an object keyed by index, `{"0":10,"1":11}`;
+ * - any other typed array (a `vec nat16`, `vec int64`, ...) as an array of its
+ *   numbers, a `bigint` among them as its digits.
+ *
+ * Everything else is written as `JSON.stringify(value, null, 2)` writes it. The
+ * text is for people: it does not say which strings were a `bigint`, a
+ * principal or bytes, so it does not parse back into the value.
+ *
+ * @param value - The value to write, such as a call's result.
+ * @returns The value as JSON, indented by two spaces.
+ *
+ * @example
+ * ```ts
+ * import { jsonToString } from "@ic-reactor/core"
+ * import { Principal } from "@icp-sdk/core/principal"
+ *
+ * jsonToString({
+ *   owner: Principal.fromText("aaaaa-aa"),
+ *   subaccount: [new Uint8Array([1, 2])],
+ *   amount: 5n,
+ * })
+ * // {
+ * //   "owner": "aaaaa-aa",
+ * //   "subaccount": [
+ * //     "0102"
+ * //   ],
+ * //   "amount": "5"
+ * // }
+ * ```
+ */
+export const jsonToString = (value: unknown): string => {
   return JSON.stringify(
     value,
-    (_, v) => (typeof v === "bigint" ? v.toString() : v),
+    function (this: unknown, key: string, json: unknown) {
+      // `json` has already been through `toJSON`, which a Principal defines,
+      // so read the value itself from the object holding it.
+      const raw = (this as Record<string, unknown>)[key]
+      if (isPrincipalValue(raw)) return raw.toText()
+      if (raw instanceof Uint8Array) return uint8ArrayToHex(raw)
+      if (ArrayBuffer.isView(raw) && !(raw instanceof DataView)) {
+        return Array.from(raw as unknown as ArrayLike<number | bigint>)
+      }
+      return typeof json === "bigint" ? json.toString() : json
+    },
     2
   )
 }

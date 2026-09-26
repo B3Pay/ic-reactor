@@ -26,42 +26,6 @@ import {
 // MetadataDisplayReactor
 // ============================================================================
 
-/**
- * MetadataDisplayReactor combines visitor-based metadata generation
- * for both input forms and result display.
- *
- * ## Architecture
- *
- * It extends the base Reactor and adds metadata generation capabilities.
- * Unlike DisplayReactor, it does not use a separate codec for transformation.
- * Instead, it uses the metadata visitor to resolve raw values into display-ready structures.
- *
- * ## Usage
- *
- * ```typescript
- * const reactor = new MetadataDisplayReactor({
- *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
- *   clientManager,
- *   name: "ICPLedger",
- * })
- *
- * await reactor.initialize()
- *
- * // Get form metadata
- * const argMeta = reactor.getInputMeta("icrc1_transfer")
- * console.log(argMeta.args)     // Field descriptors
- * console.log(argMeta.defaults) // Default values
- *
- * // Get result metadata
- * const resultMeta = reactor.getOutputMeta("icrc1_transfer")
- *
- * // Call with display types
- * const result = await reactor.callMethod({
- *   functionName: "icrc1_transfer",
- *   args: [{ to: { owner: "aaaaa-aa" }, amount: "1000000" }]
- * })
- * ```
- */
 declare module "@ic-reactor/core" {
   /* eslint-disable @typescript-eslint/no-unused-vars -- the type parameter is
      not referenced by this declaration, but TypeScript requires every
@@ -77,6 +41,46 @@ declare module "@ic-reactor/core" {
   /* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
+/**
+ * MetadataDisplayReactor combines visitor-based metadata generation
+ * for both input forms and result display.
+ *
+ * ## Architecture
+ *
+ * It extends {@link CandidDisplayReactor}, so its Candid can be parsed or
+ * fetched at run time and its arguments take display types, which the display
+ * codec converts. Results are not run through the display codec: the result
+ * visitor resolves each raw value into a display-ready structure with its
+ * metadata, so `callMethod()` returns a {@link MethodResult}.
+ *
+ * ## Usage
+ *
+ * ```typescript
+ * const reactor = new MetadataDisplayReactor({
+ *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+ *   clientManager,
+ *   name: "ICPLedger",
+ * })
+ *
+ * await reactor.initialize()
+ *
+ * // Get form metadata (undefined for a method the service does not have)
+ * const argMeta = reactor.getInputMeta("icrc1_transfer")
+ * if (!argMeta) throw new Error("icrc1_transfer is not in the service")
+ * console.log(argMeta.args) // Field descriptors
+ * console.log(argMeta.defaults) // Default values
+ *
+ * // Get result metadata
+ * const resultMeta = reactor.getOutputMeta("icrc1_transfer")
+ *
+ * // Call with display types; the result comes back resolved with its metadata
+ * const result = await reactor.callMethod({
+ *   functionName: "icrc1_transfer",
+ *   args: [{ to: { owner: "aaaaa-aa" }, amount: "1000000" }],
+ * })
+ * console.log(result.results) // One resolved node per return value
+ * ```
+ */
 export class MetadataDisplayReactor<A = BaseActor> extends CandidDisplayReactor<
   A,
   "metadataDisplay"

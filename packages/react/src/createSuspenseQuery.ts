@@ -34,6 +34,7 @@ import type {
   UseSuspenseQueryWithSelect,
   SuspenseQueryResult,
   SuspenseQueryFactoryConfig,
+  QueryFactoryFn,
   NoInfer,
 } from "./types.js"
 import {
@@ -41,7 +42,10 @@ import {
   createBoundedCache,
   mountWhileSuspended,
   pickFetchOptions,
+  queryCacheControls,
+  retryOption,
   useMountQueryClient,
+  withQueryFactoryMethods,
 } from "./utils.js"
 
 // ============================================================================
@@ -67,15 +71,18 @@ const createSuspenseQueryImpl = <
   const {
     functionName,
     args,
+    callConfig,
     staleTime = 5 * 60 * 1000,
     select,
     queryKey: customQueryKey,
     ...rest
   } = config
 
-  const params = { functionName, args, queryKey: customQueryKey }
+  // `callConfig` goes wherever the hooks send it: to the call and into the
+  // key, so a query of another canister or agent has an entry of its own.
+  const params = { functionName, args, queryKey: customQueryKey, callConfig }
 
-  const getQueryKey = () => reactor.generateQueryKey(params)
+  const getQueryKey = () => reactor.generateQueryKey(params, callConfig)
 
   const applySelect = (raw: TData): Selected =>
     select ? select(raw) : (raw as unknown as Selected)
@@ -95,12 +102,20 @@ const createSuspenseQueryImpl = <
   /** Fire-and-forget prefetch — warms the cache without blocking. */
   const prefetch = (): Promise<void> => {
     const baseOptions = reactor.getQueryOptions(params)
-    return reactor.queryClient.prefetchQuery({
-      ...fetchOptions,
-      queryKey: baseOptions.queryKey,
-      queryFn: baseOptions.queryFn,
-      staleTime,
-    })
+    // Runs again when a sign-in or sign-out cancels it, and never rejects;
+    // see `prefetch` in createQuery.
+    return reactor.clientManager
+      .fetchAcrossIdentitySwitch(() =>
+        reactor.queryClient.prefetchQuery({
+          ...fetchOptions,
+          // An update method's default `retry`; see `Reactor.getQueryRetry`.
+          ...retryOption(fetchOptions.retry, baseOptions.retry),
+          queryKey: baseOptions.queryKey,
+          queryFn: baseOptions.queryFn,
+          staleTime,
+        })
+      )
+      .catch(() => undefined)
   }
 
   const useSuspenseQueryHook: UseSuspenseQueryWithSelect<
@@ -125,6 +140,9 @@ const createSuspenseQueryImpl = <
           ...options,
           queryFn: baseOptions.queryFn,
           select: chainedSelect,
+          // The hook's `retry`, else the config's, else an update method's
+          // default; see `Reactor.getQueryRetry`.
+          ...retryOption(options?.retry ?? rest.retry, baseOptions.retry),
         },
         reactor.queryClient
       )
@@ -143,7 +161,7 @@ const createSuspenseQueryImpl = <
     Selected,
     TError
   >["getCacheData"] = (selectFn?: (data: Selected) => unknown): any => {
-    const raw = reactor.getQueryData(params)
+    const raw = reactor.getQueryData(params, callConfig)
     if (raw === undefined) return undefined
     const selected = applySelect(raw)
     return selectFn ? selectFn(selected) : selected
@@ -164,6 +182,7 @@ const createSuspenseQueryImpl = <
     getQueryKey,
     getCacheData,
     setData,
+    ...queryCacheControls<TData>(reactor, getQueryKey),
   }
 }
 
@@ -194,6 +213,27 @@ export function createSuspenseQuery<
 // Convenience: Create suspense query with dynamic args
 // ============================================================================
 
+/**
+ * Create a suspense query factory: a function that takes the method's args
+ * and returns the suspense query object for them, the same object for the
+ * same args.
+ *
+ * The function also has `getQueryKey()`, the key prefix every query it
+ * returns shares, and `invalidate()`, which invalidates all of them whatever
+ * their args. Pass the function itself to a mutation's `invalidateQueries` to
+ * refresh every instance after the mutation.
+ *
+ * @example
+ * const getBalance = createSuspenseQueryFactory(ledger, {
+ *   functionName: "icrc1_balance_of",
+ * })
+ *
+ * // In a component under <Suspense>
+ * const { data } = getBalance([{ owner, subaccount: [] }]).useSuspenseQuery()
+ *
+ * // Refetch every account's balance
+ * await getBalance.invalidate()
+ */
 export function createSuspenseQueryFactory<
   Service,
   Transform extends TransformKey,
@@ -207,12 +247,13 @@ export function createSuspenseQueryFactory<
     Transform,
     Selected
   >
-): (
-  args: ReactorArgs<Service, Method, Transform>
-) => SuspenseQueryResult<
-  QueryFnData<Service, Method, Transform>,
-  Selected,
-  QueryError<Service, Method, Transform>
+): QueryFactoryFn<
+  ReactorArgs<Service, Method, Transform>,
+  SuspenseQueryResult<
+    QueryFnData<Service, Method, Transform>,
+    Selected,
+    QueryError<Service, Method, Transform>
+  >
 > {
   const cache =
     createBoundedCache<
@@ -223,11 +264,11 @@ export function createSuspenseQueryFactory<
       >
     >()
 
-  return (args: ReactorArgs<Service, Method, Transform>) => {
-    const key = reactor.generateQueryKey({
-      functionName: config.functionName as Method,
-      args,
-    })
+  const factory = (args: ReactorArgs<Service, Method, Transform>) => {
+    const key = reactor.generateQueryKey(
+      { functionName: config.functionName as Method, args },
+      config.callConfig
+    )
     const cacheKey = JSON.stringify(key)
 
     const existing = cache.get(cacheKey)
@@ -250,4 +291,14 @@ export function createSuspenseQueryFactory<
     cache.set(cacheKey, result)
     return result
   }
+
+  // The method's own prefix, at the canister and agent the config's
+  // `callConfig` names. A config `queryKey` follows the args segment in every
+  // instance's key, so it cannot narrow the prefix.
+  return withQueryFactoryMethods(factory, reactor, () =>
+    reactor.generateQueryKey(
+      { functionName: config.functionName as Method },
+      config.callConfig
+    )
+  )
 }

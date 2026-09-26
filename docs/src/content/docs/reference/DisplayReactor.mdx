@@ -139,6 +139,37 @@ const backend = new DisplayReactor<_SERVICE>({
 const { useActorQuery, useActorMutation } = createActorHooks(backend)
 ```
 
+### With defineDisplayReactor
+
+`defineDisplayReactor` does the whole setup in one call — `QueryClient`,
+`ClientManager`, the `DisplayReactor`, its hooks and the Internet Identity
+hooks — and takes the same options as `defineReactor`, plus `validators`:
+
+```typescript
+import { defineDisplayReactor } from "@ic-reactor/react"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
+
+export const {
+  reactor: backend,
+  useActorQuery,
+  useAuth,
+} = defineDisplayReactor<_SERVICE>({
+  name: "backend",
+  idlFactory,
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
+})
+```
+
+It replaces `defineReactor({ display: true })`, which still works but is
+deprecated: the flag makes every `defineReactor` bundle carry `DisplayReactor`
+and zod, whether or not it is set.
+
+<Aside type="note">
+  The display codecs are built on zod, which adds about 85 kB minified (24 kB
+  gzipped) to a bundle that does not already include it. See [Bundle
+  Size](/v3/packages/react#bundle-size) for what each setup path costs.
+</Aside>
+
 ## Type Transformations
 
 <CardGrid>
@@ -149,7 +180,7 @@ const { useActorQuery, useActorMutation } = createActorHooks(backend)
     `Principal` → `string` Ready for display
   </Card>
   <Card title="Optionals" icon="approve-check">
-    `[T] | []` → `T | null` JavaScript-native nullish
+    `[T] | []` → `T | undefined` JavaScript-native nullish
   </Card>
   <Card title="Blobs" icon="document">
     `vec nat8` → hex `string`, at every size
@@ -160,17 +191,17 @@ const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
 #### Numeric Types
 
-| Candid    | TypeScript | Display  | Notes                         |
-| --------- | ---------- | -------- | ----------------------------- |
-| `nat`     | `bigint`   | `string` | Arbitrary precision preserved |
-| `int`     | `bigint`   | `string` | Arbitrary precision preserved |
-| `nat64`   | `bigint`   | `string` | 64-bit integers as strings    |
-| `int64`   | `bigint`   | `string` | 64-bit integers as strings    |
-| `nat8`    | `number`   | `number` | No change needed              |
-| `nat16`   | `number`   | `number` | No change needed              |
-| `nat32`   | `number`   | `number` | No change needed              |
-| `float32` | `number`   | `number` | No change needed              |
-| `float64` | `number`   | `number` | No change needed              |
+| Candid    | TypeScript | Display  | Notes                                                     |
+| --------- | ---------- | -------- | --------------------------------------------------------- |
+| `nat`     | `bigint`   | `string` | Arbitrary precision preserved                             |
+| `int`     | `bigint`   | `string` | Arbitrary precision preserved                             |
+| `nat64`   | `bigint`   | `string` | 64-bit integers as strings                                |
+| `int64`   | `bigint`   | `string` | 64-bit integers as strings                                |
+| `nat8`    | `number`   | `number` | No change needed                                          |
+| `nat16`   | `number`   | `number` | No change needed                                          |
+| `nat32`   | `number`   | `number` | No change needed                                          |
+| `float32` | `number`   | `number` | `NaN`, `±Infinity`, `-0` kept; [JSON loses them](#floats) |
+| `float64` | `number`   | `number` | `NaN`, `±Infinity`, `-0` kept; [JSON loses them](#floats) |
 
 #### Identity & Binary Types
 
@@ -181,12 +212,12 @@ const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
 #### Container Types
 
-| Candid           | TypeScript      | Display                | Notes                                        |
-| ---------------- | --------------- | ---------------------- | -------------------------------------------- |
-| `opt T`          | `[T] \| []`     | `T \| undefined`       | None is `undefined`; input also takes `null` |
-| `vec T`          | `T[]`           | `Display<T>[]`         | Elements are transformed                     |
-| `vec (text, T)`  | `[string, T][]` | `{ [key: string]: T }` | Key-value pairs as Object                    |
-| `record { ... }` | `{ ... }`       | `{ ... }`              | Nested fields transformed                    |
+| Candid           | TypeScript      | Display                | Notes                                              |
+| ---------------- | --------------- | ---------------------- | -------------------------------------------------- |
+| `opt T`          | `[T] \| []`     | `T \| undefined`       | None is `undefined`; input also takes `null`       |
+| `vec T`          | `T[]`           | `Display<T>[]`         | Elements are transformed                           |
+| `vec (text, T)`  | `[string, T][]` | `{ [key: string]: T }` | [One value per key](#working-with-key-value-pairs) |
+| `record { ... }` | `{ ... }`       | `{ ... }`              | Nested fields transformed                          |
 
 #### Variant Types
 
@@ -283,38 +314,44 @@ const balance = await backend.callMethod({
 // balance is string, not bigint
 ```
 
-### Dynamic Canister Switching
+### Many Canisters of One Interface
 
-Like `Reactor`, `DisplayReactor` supports dynamic canister switching via `setCanisterId`. This is particularly useful for multi-token wallets:
+Like `Reactor`, `DisplayReactor` gives a sibling for another canister of the
+same interface with [`forCanister`](/v3/reference/reactor#forcanister). This is
+the multi-token wallet pattern: one reactor per token, all on the same agent
+and cache, with the display transform and validators passed on:
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
 import { idlFactory, type _SERVICE } from "./declarations/icrc1"
 
-// Create a reusable ICRC-1 token reactor. It still needs a canister ID to
-// start from: the constructor throws without one outside a local replica,
-// before any setCanisterId call below can run.
+// The reactor the siblings are made from. It still needs a canister ID of its
+// own: the constructor throws without one outside a local replica.
 const tokenReactor = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "token",
-  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP ledger until switched
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP ledger
 })
 
 async function getTokenInfo(canisterId: string) {
-  // Switch to the target token canister
-  tokenReactor.setCanisterId(canisterId)
+  // The same reactor each time for the same canister
+  const token = tokenReactor.forCanister(canisterId)
 
-  // Queries and mutations now target the new canister
+  // Two calls for two tokens can run at once without crossing
   const [name, symbol, decimals] = await Promise.all([
-    tokenReactor.callMethod({ functionName: "icrc1_name" }),
-    tokenReactor.callMethod({ functionName: "icrc1_symbol" }),
-    tokenReactor.callMethod({ functionName: "icrc1_decimals" }),
+    token.callMethod({ functionName: "icrc1_name" }),
+    token.callMethod({ functionName: "icrc1_symbol" }),
+    token.callMethod({ functionName: "icrc1_decimals" }),
   ])
 
-  return { name, symbol, decimals } // All display types (strings)
+  // name and symbol are text; decimals, a nat8, is a number
+  return { name, symbol, decimals }
 }
 ```
+
+`setCanisterId` still retargets one reactor in place, for code that follows a
+single selection, but every call and view built on that reactor moves with it.
 
 ### With React Hooks
 
@@ -334,10 +371,15 @@ function Balance({ principal }: { principal: string }) {
     args: [principal], // string, not Principal
   })
 
-  // balance is string, ready for display
-  return <span>{balance} ICP</span>
+  // balance is the nat as text, in e8s. Format it exactly; Number(balance) / 1e8
+  // loses digits.
+  if (balance === undefined) return <span>…</span>
+  return <span>{formatTokenAmount(balance, 8)} ICP</span>
 }
 ```
+
+See [Token amounts](/v3/reference/utilities#token-amounts) for
+`formatTokenAmount` and `parseTokenAmount`.
 
 ### Handling Variants
 
@@ -376,14 +418,14 @@ const avatar = user.avatar.length > 0 ? user.avatar[0] : null
 
 // With DisplayReactor
 const description = user.bio ?? "No bio"
-const avatar = user.avatar // Already null or value
+const avatar = user.avatar // Already undefined or value
 ```
 
 ### Handling Blobs (Binary Data)
 
 Every blob (`vec nat8`) decodes to a lowercase hex string with no `0x`
-prefix, whatever its size. One Candid type, one JavaScript type — a display
-value is always JSON-safe, so persisting or serialising it never corrupts
+prefix, whatever its size. One Candid type, one JavaScript type — hex text is
+always JSON-safe, so persisting or serialising a display value never corrupts
 binary fields.
 
 <Aside type="caution" title="Changed behavior — was size-dependent">
@@ -420,6 +462,27 @@ mutate([
 ])
 ```
 
+### Floats
+
+`float32` and `float64` display as JavaScript numbers, and every value a
+canister can return, `NaN`, `Infinity`, `-Infinity` and `-0` included, is sent
+back as the same bytes. As an argument a float is also taken as the text a form
+holds, such as `"3.14"`, which must spell a finite number: `""`, `"abc"`,
+`"Infinity"` and `"NaN"` are refused, as the form schemas of `@ic-reactor/candid`
+refuse them. A finite number that `float32` cannot hold, such as `3.5e38`, is
+refused too, since Candid encoding would send it as `Infinity`.
+
+<Aside type="caution" title="JSON cannot hold every float">
+  `JSON.stringify` writes `NaN`, `Infinity` and `-Infinity` as `null`, and `-0`
+  as `0`. After a JSON round trip, such as a persisted query cache, SSR
+  hydration or a value posted to your server, an `opt float64` that held `NaN`
+  comes back as `null` and is sent as none, a required float comes back as
+  `null` and the call is refused, and `-0` is sent as `0`. Where such values can
+  occur (a rate computed as 0/0, for example), keep them out of JSON or
+  serialise them yourself. Query keys are not affected: they write each of these
+  values apart from every other.
+</Aside>
+
 ### Working with Key-Value Pairs
 
 Candid's `vec (text, T)` becomes a plain JavaScript Object:
@@ -439,6 +502,25 @@ const metadata = {
 }
 const value = metadata["key1"]
 ```
+
+As an argument, the map is also taken as the array of pairs or as a `Map`.
+Each is sent as its entries in its own order: an object's, the array's, or the
+`Map`'s insertion order. The argument's TypeScript type names only the object,
+so the other two need a cast.
+
+<Aside type="caution" title="An object holds each key once, in its own order">
+  A JavaScript object cannot hold a key twice, and it puts integer-like keys
+  (`"0"` to `"4294967294"`) first, in ascending order, before every other key.
+  So when a result's `vec record { text; T }` becomes an object, a repeated key
+  keeps only its last value (an HTTP response's second `Set-Cookie` header
+  replaces the first), and integer-like keys move to the front: `10, 2, b, 1`
+  displays as `1, 2, 10, b`. Sending that object back sends the vector it
+  holds, not the one read. Where repeated keys or their order matter, such as
+  HTTP headers, ICRC-21 consent message fields or ICRC-3 maps with numeric
+  keys, call the method through a plain [`Reactor`](/v3/reference/reactor),
+  which returns the array of pairs as received. A `DisplayReactor` argument
+  given as the array of pairs, with a cast, is sent as it is.
+</Aside>
 
 ### Form Handling
 
@@ -478,6 +560,12 @@ function TransferForm() {
 }
 ```
 
+This amount field takes base units (e8s). A field a person types a token
+amount into, such as `"1.5"`, is read with
+[`parseTokenAmount`](/v3/reference/utilities#parsetokenamount):
+`mutate([recipient, parseTokenAmount(amount, decimals).toString()])`. It throws
+on text it cannot read exactly instead of rounding it.
+
 ### Accessing the Codec
 
 For advanced use cases, access the underlying codec:
@@ -507,8 +595,18 @@ const { data } = useActorQuery({
 
 // data.balance is string (was bigint)
 // data.createdAt is string (was bigint)
-// data.bio is string | null (was [string] | [])
+// data.bio is string | null | undefined (was [string] | []); none arrives as undefined
 ```
+
+The display types come from the service type parameter
+(`new DisplayReactor<_SERVICE>(...)`). Without one, the reactor is typed by
+`BaseActor` and knows nothing about the Candid, so every method's display-side
+arguments and results are `unknown`: validators receive `unknown` args, and
+results must be narrowed before they are rendered. (An untyped `Reactor` types
+the same values as `any`, because the raw side passes `BaseActor`'s `any`
+through.) Pass the service type from your generated declarations, or cast to
+the display shape you expect where the interface is only known at run time, as
+with a [`CandidDisplayReactor`](/v3/packages/candid/candiddisplayreactor#types-with-and-without-a-service-type).
 
 ## Validation
 
@@ -579,9 +677,28 @@ const transferSchema = z.object({
 backend.registerValidator("transfer", fromZodSchema(transferSchema))
 ```
 
+The schema checks the method's first argument. zod refuses a schema with an
+async refinement or transform on its synchronous path, so pass
+`{ async: true }` for one: the validator then parses with `safeParseAsync` and
+returns a promise, and runs where async validators run (below).
+
+```typescript
+const recipientSchema = z.object({
+  to: z
+    .string()
+    .refine(async (to) => !(await isBlocked(to)), "Address is blocked"),
+})
+
+backend.registerValidator(
+  "transfer",
+  fromZodSchema(recipientSchema, { async: true })
+)
+```
+
 ### Async Validators
 
-For async validation (e.g., checking a blocklist), use `callMethodWithValidation`:
+For async validation (e.g., checking a blocklist), use `validate()` or
+`callMethodWithValidation`:
 
 ```typescript
 backend.registerValidator("transfer", async ([input]) => {
@@ -602,6 +719,35 @@ await backend.callMethodWithValidation({
 })
 ```
 
+`callMethod()` runs validators synchronously, and so do the query and mutation
+hooks and factories that call it. They refuse a call whose validator returns a
+promise, with a `CallError` that names the method, without sending anything.
+
+### When a Validator Throws
+
+A validator that throws or rejects (a blocklist lookup that fails, say) is
+reported the same way by `callMethod()`, `callMethodWithValidation()` and
+`validate()`: as a `CallError` whose `cause` is what the validator threw, and
+the canister is not called. It is not a verdict on the arguments, so it is not
+a `ValidationError`, and it is not the canister's answer, so a `CanisterError`
+the validator's own lookup threw is not passed on as one. A `ValidationError`
+the validator throws is passed on as it is.
+
+```typescript
+try {
+  await backend.callMethodWithValidation({
+    functionName: "transfer",
+    args: [formData],
+  })
+} catch (error) {
+  if (isValidationError(error)) {
+    // the validator's verdict: error.issues
+  } else if (isCallError(error)) {
+    // a failed call, or a validator that threw: error.cause
+  }
+}
+```
+
 <Aside type="tip">
   Validation is optional! If you don't register validators, DisplayReactor works
   exactly like before — just type transformations.
@@ -614,7 +760,7 @@ await backend.callMethodWithValidation({
 - Building user interfaces
 - Working with forms
 - Displaying data in components
-- Serializing data to JSON
+- Serializing data to JSON (mind [non-finite floats](#floats))
 - You want simpler type handling
 - You need client-side validation
 
@@ -639,7 +785,8 @@ await backend.callMethodWithValidation({
 
 <Aside type="caution">
   If you need to perform math with large numbers, convert back to BigInt:
-  `BigInt(balance)`
+  `BigInt(balance)`. To show a token amount or read one a person typed, use
+  `formatTokenAmount` and `parseTokenAmount`, never `Number`.
 </Aside>
 
 ## See Also
@@ -648,4 +795,5 @@ await backend.callMethodWithValidation({
 - [Type Safety](/v3/guides/type-safety) — Type system details
 - [createActorHooks](/v3/reference/createactorhooks/overview) — Create React hooks from a reactor
 - [React Validation](/v3/reference/reactvalidation) — React validation utilities
+- [Utilities](/v3/reference/utilities) — Exact token-amount formatting and parsing
 - [Error Handling](/v3/guides/error-handling) — Handle validation and canister errors

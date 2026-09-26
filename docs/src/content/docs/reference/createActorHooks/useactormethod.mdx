@@ -47,9 +47,7 @@ function Transfer() {
   const { call, isPending, data } = useActorMethod({
     functionName: "transfer",
     // Optional: refetch every icrc1_balance_of query after a successful call
-    invalidateQueries: [
-      backend.generateQueryKey({ functionName: "icrc1_balance_of" }),
-    ],
+    invalidateQueries: [{ functionName: "icrc1_balance_of" }],
     // `call` never rejects: a failed call resolves `undefined` and reports
     // its error here, so react to the outcome in the callbacks
     onSuccess: () => alert("Transfer successful!"),
@@ -68,10 +66,12 @@ function Transfer() {
 }
 ```
 
-Query keys start with the canister ID, so a hand-written key such as
-`["icrc1_balance_of"]` matches no query. Build keys with the reactor's
-`generateQueryKey`, or with `getQueryKey()` on a query object. A key built
-without `args` matches every query of that method, whatever its arguments.
+An `invalidateQueries` entry is a `{ functionName, args? }` method of the
+hook's reactor, a query object or query factory, or a query key. Without
+`args`, a method entry covers every query of that method, whatever its
+arguments. Query keys start with the canister ID, so a hand-written key such
+as `["icrc1_balance_of"]` matches no query; build one with the reactor's
+`generateQueryKey` or a query object's `getQueryKey()`.
 
 ## Options
 
@@ -87,25 +87,58 @@ without `args` matches every query of that method, whatever its arguments.
 | `queryKey`          | `QueryKey`             | Custom query key for queries.                           |
 | `onSuccess`         | `(data) => void`       | Callback when the method call succeeds.                 |
 | `onError`           | `(error) => void`      | Callback when the method call fails.                    |
-| `invalidateQueries` | `QueryKey[]`           | For mutations: keys to invalidate after success.        |
+| `invalidateQueries` | `InvalidationTarget[]` | For mutations: queries to invalidate after success.     |
+
+For an update method, the `invalidateQueries` invalidation is awaited before
+`onSuccess` runs, as in `useActorMutation` and `createMutation`. `onSuccess`
+sees the refetched data, and `call()` resolves once the invalidated queries in
+use have refetched.
 
 ### Inherited from React Query
 
 All react-query options are available:
 
-| Option                 | Type                 | Default     | Description                                              |
-| :--------------------- | :------------------- | :---------- | :------------------------------------------------------- |
-| `enabled`              | `boolean`            | `true`      | For queries: whether to auto-fetch.                      |
-| `staleTime`            | `number`             | `0`         | How long data stays fresh (ms).                          |
-| `gcTime`               | `number`             | `300000`    | Time before unused data is garbage collected (ms).       |
-| `refetchInterval`      | `number \| false`    | `false`     | Polling interval in ms.                                  |
-| `refetchOnWindowFocus` | `boolean`            | `true`      | Refetch when window regains focus.                       |
-| `refetchOnMount`       | `boolean`            | `true`      | Refetch when component mounts.                           |
-| `refetchOnReconnect`   | `boolean`            | `true`      | Refetch when network reconnects.                         |
-| `retry`                | `number \| boolean`  | `3`         | Number of retry attempts.                                |
-| `retryDelay`           | `number \| function` | exponential | Delay between retries.                                   |
-| `networkMode`          | `string`             | `"online"`  | Network mode (`"online"`, `"always"`, `"offlineFirst"`). |
-| `placeholderData`      | `TData \| function`  | -           | Placeholder data while loading.                          |
+| Option                 | Type                            | Default     | Description                                              |
+| :--------------------- | :------------------------------ | :---------- | :------------------------------------------------------- |
+| `enabled`              | `boolean`                       | `true`      | For queries: whether to auto-fetch.                      |
+| `staleTime`            | `number`                        | `0`         | How long data stays fresh (ms).                          |
+| `gcTime`               | `number`                        | `300000`    | Time before unused data is garbage collected (ms).       |
+| `refetchInterval`      | `number \| false`               | `false`     | Polling interval in ms.                                  |
+| `refetchOnWindowFocus` | `boolean`                       | `true`      | Refetch when window regains focus.                       |
+| `refetchOnMount`       | `boolean`                       | `true`      | Refetch when component mounts.                           |
+| `refetchOnReconnect`   | `boolean`                       | `true`      | Refetch when network reconnects.                         |
+| `retry`                | `number \| boolean \| function` | see below   | Number of retry attempts, or a predicate.                |
+| `retryDelay`           | `number \| function`            | exponential | Delay between retries.                                   |
+| `networkMode`          | `string`                        | `"online"`  | Network mode (`"online"`, `"always"`, `"offlineFirst"`). |
+| `placeholderData`      | `TData \| function`             | -           | Placeholder data while loading.                          |
+
+`retry`, `retryDelay`, `networkMode` and `meta` decide how a call runs, so they
+apply to both kinds of method: to a query method's fetches and `call()`, and to
+an update method's `call()`, which runs as a mutation. Unset, each follows the
+QueryClient's defaults for that kind of call:
+
+- A **query method** retries as the QueryClient's query `retry` says
+  (`reactorRetry` with `defineReactor`).
+- An **update method** retries as the QueryClient's **mutation** defaults say,
+  which retry nothing unless the app set `mutations.retry`. The query default
+  does not apply: each attempt of an update is a new call the canister runs,
+  so a retry after a lost response would execute it twice. Set `retry` here
+  only for an update that is safe to repeat, or use `reactorUpdateRetry`, which
+  retries only a `SysTransient` rejection, the one failure that proves the call
+  never ran.
+
+```tsx
+import { reactorUpdateRetry } from "@ic-reactor/react"
+
+const { call } = useActorMethod({
+  functionName: "transfer",
+  // Retry only when the canister provably never ran the call.
+  retry: reactorUpdateRetry,
+  // A local replica answers while the browser reports itself offline.
+  networkMode: "always",
+  meta: { errorMessage: "Could not send the transfer" },
+})
+```
 
 ## Return Value
 
@@ -121,9 +154,28 @@ All react-query options are available:
 | `isQuery`        | `boolean`                                                 | `true` if it's a query method, `false` otherwise.                                                                                                                                                                                                        |
 | `functionType`   | `FunctionType`                                            | `"query"` or `"update"`. Candid `composite_query` methods report `"query"`.                                                                                                                                                                              |
 | `reset`          | `() => void`                                              | Resets the state. For a query, `data` goes back to `initialData` if one was given and is cleared otherwise, and an enabled hook refetches.                                                                                                               |
-| `refetch`        | `() => Promise`                                           | For queries: manually refetches the data.                                                                                                                                                                                                                |
+| `refetch`        | `() => Promise`                                           | For queries: manually refetches the data. Resolves `undefined` when the refetch fails, whose error goes to `onError`; `data` keeps the last answer.                                                                                                      |
 | `queryResult`    | `UseQueryResult`                                          | The raw result if it's a query.                                                                                                                                                                                                                          |
 | `mutationResult` | `UseMutationResult`                                       | The raw result if it's a mutation.                                                                                                                                                                                                                       |
+
+### Across a sign-in or sign-out
+
+For a query method, `call(args)` fetches those args from the canister even
+when they are cached (or joins a fetch of them already in flight), and
+`call()` and `refetch()` refetch the hook's own args. A sign-in or sign-out
+that switches the principal while one of them is in flight cancels its fetch,
+so the previous principal's answer is never cached, and the fetch runs again
+for the principal signed in. The promise resolves with that principal's
+answer, or `undefined` when that fetch fails, never with the previous
+principal's data or TanStack's `CancelledError`, and `onSuccess` or `onError`
+hears of it once. If the principal switches again during each of the three
+runs that follow, the call reports a `CallError` to `onError` and resolves
+`undefined` rather than an answer that may be a previous principal's.
+`reactor.fetchQuery()` and the query factories' `fetch()` behave the same; see
+[fetchAcrossIdentitySwitch](/v3/reference/clientmanager#fetchacrossidentityswitch).
+
+An update method's `call()` runs as a mutation, which a sign-in or sign-out
+does not cancel.
 
 ## See Also
 

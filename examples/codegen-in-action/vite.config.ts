@@ -12,6 +12,9 @@ export default defineConfig({
           name: "backend",
           didFile: "./backend/backend.did",
           clientManagerPath: "../../lib/client",
+          // Also write index.factories.generated.ts: getQuery, incMutation
+          // and addMutation, bound to backendReactor.
+          factories: true,
         },
       ],
     }),

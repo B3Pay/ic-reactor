@@ -14,19 +14,13 @@ import {
 } from "../utils/config.js"
 import { cleanStaleOutput } from "../utils/clean.js"
 import { CliError, errorMessage } from "../utils/errors.js"
-import { realpathAllowingMissing } from "../utils/paths.js"
 import {
-  assertContainedPath,
-  assertSafeCanisterName,
   CodegenConfigError,
-  resolveContainedOutDir,
+  findSharedOutDirs,
   runCanisterPipeline,
+  sharedOutDirMessage,
 } from "@ic-reactor/codegen"
-import type {
-  CanisterConfig,
-  CodegenConfig,
-  GenerateOptions,
-} from "../types.js"
+import type { GenerateOptions } from "../types.js"
 
 export async function generateCommand(options: GenerateOptions) {
   console.log()
@@ -114,6 +108,7 @@ export async function generateCommand(options: GenerateOptions) {
   let successCount = 0
   let errorCount = 0
   const errorMessages: string[] = []
+  const warningMessages: string[] = []
 
   // Run pipeline for each canister
   for (const name of canistersToProcess) {
@@ -126,15 +121,14 @@ export async function generateCommand(options: GenerateOptions) {
     // output. It runs again before each canister because an earlier canister
     // in this run can create the directory that a later entry reaches through
     // a symlink or a path written in a different case.
-    const firstUser = findSharedOutDirs(config, projectRoot).get(name)
+    const firstUser = findSharedOutDirs(
+      Object.entries(config.canisters),
+      config.outDir,
+      projectRoot
+    ).get(name)
     if (firstUser !== undefined) {
       errorCount++
-      errorMessages.push(
-        `${name}: generates into the same output directory as canister ` +
-          `"${firstUser}". Each run replaces that directory's declarations and ` +
-          `index.generated.ts, so the two would overwrite each other. Give each ` +
-          `canister its own "outDir", or its own "name" if it uses the global outDir.`
-      )
+      errorMessages.push(sharedOutDirMessage(name, `canister "${firstUser}"`))
       continue
     }
 
@@ -145,6 +139,10 @@ export async function generateCommand(options: GenerateOptions) {
         globalConfig: config,
         generateReactor: !options.bindgenOnly,
       })
+
+      for (const warning of result.warnings ?? []) {
+        warningMessages.push(`${name}: ${warning}`)
+      }
 
       if (result.success) {
         successCount++
@@ -159,6 +157,12 @@ export async function generateCommand(options: GenerateOptions) {
   }
 
   spinner.stop(`${generationLabel} generation complete`)
+
+  // Printed whatever the outcome: each one is something the run could not fix
+  // itself, such as an index.ts of the user's own that misses the factories.
+  for (const msg of warningMessages) {
+    p.log.warn(msg)
+  }
 
   if (errorMessages.length > 0) {
     console.log()
@@ -181,79 +185,4 @@ export async function generateCommand(options: GenerateOptions) {
   }
 
   p.outro(pc.green(`✓ All ${generationSummary} generated successfully!`))
-}
-
-/**
- * Find config entries that generate into a directory an earlier entry already
- * uses. The result maps each such key to the key of the earlier entry.
- *
- * The pipeline's `.ic-reactor-owner` marker stops a second canister from
- * generating over the first one, but it records the canister name. Two entries
- * with the same `name` both resolve to `<outDir>/<name>` and pass that check.
- * Copying an entry and changing only its key produces that config, and the
- * later entry then replaced the earlier one's output on every run.
- *
- * The check compares directories by where they really are on disk, so a symlink
- * to another entry's directory, or a spelling of it that differs only in case,
- * counts as the same directory.
- */
-function findSharedOutDirs(
-  config: CodegenConfig,
-  projectRoot: string
-): Map<string, string> {
-  const firstByOutDir = new Map<string, string>()
-  const shared = new Map<string, string>()
-
-  for (const [key, canisterConfig] of Object.entries(config.canisters)) {
-    const outDir = resolveOutDir(canisterConfig, config.outDir, projectRoot)
-    // The pipeline rejects this canister's output fields and reports why.
-    if (outDir === undefined) continue
-
-    const realOutDir = realpathAllowingMissing(outDir)
-    const first = firstByOutDir.get(realOutDir)
-    if (first === undefined) {
-      firstByOutDir.set(realOutDir, key)
-    } else {
-      shared.set(key, first)
-    }
-  }
-
-  return shared
-}
-
-/**
- * The directory the pipeline generates a canister into, or `undefined` when the
- * pipeline rejects the fields that decide it.
- *
- * Only `name`, the canister's own `outDir`, the global `outDir` and the project
- * root decide the directory, so this reads nothing else and applies the checks
- * `assertSafeCanisterConfig` runs on those fields. An error in another field,
- * such as a URL in `clientManagerPath`, fails that canister's own run. Its
- * earlier output still sits in the directory, so the error must not hide the
- * directory from the overlap check.
- */
-function resolveOutDir(
-  canisterConfig: CanisterConfig,
-  globalOutDir: string,
-  projectRoot: string
-): string | undefined {
-  const { name } = canisterConfig
-
-  try {
-    assertSafeCanisterName(name)
-
-    const outDir =
-      canisterConfig.outDir != null
-        ? resolveContainedOutDir("outDir", canisterConfig.outDir, projectRoot)
-        : path.join(
-            resolveContainedOutDir("outDir", globalOutDir, projectRoot),
-            name
-          )
-
-    assertContainedPath("output directory", outDir, projectRoot)
-    return outDir
-  } catch (error) {
-    if (error instanceof CodegenConfigError) return undefined
-    throw error
-  }
 }

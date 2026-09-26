@@ -1,14 +1,17 @@
 import { Suspense, useMemo, useState } from "react"
-import { Principal } from "@icp-sdk/core/principal"
+import { isPrincipalText, type ReactorArgsOf } from "@ic-reactor/react"
 import { styles } from "../styles"
 import { BalanceCard } from "./Cards"
-import { getIcpBalance, getCkBtcBalance, getCkEthBalance } from "../reactor"
+import {
+  getIcpBalance,
+  getCkBtcBalance,
+  getCkEthBalance,
+  type icpReactor,
+} from "../reactor"
 
-// Display account type (used with DisplayReactor)
-interface DisplayAccount {
-  owner: string
-  subaccount?: null | Uint8Array
-}
+// The ledger's account in display form (the owner as principal text), read
+// off the reactor rather than written out by hand.
+type DisplayAccount = ReactorArgsOf<typeof icpReactor, "icrc1_balance_of">[0]
 
 export function BalanceLookup() {
   const [principalInput, setPrincipalInput] = useState(
@@ -18,13 +21,12 @@ export function BalanceLookup() {
   const [error, setError] = useState<string | null>(null)
 
   const handleLookup = () => {
-    try {
-      // Validate the principal format
-      Principal.fromText(principalInput)
-      // With  owner should be a string (the principal text)
-      setAccount({ owner: principalInput, subaccount: null })
+    const owner = principalInput.trim()
+    if (isPrincipalText(owner)) {
+      // A DisplayReactor takes the owner as the principal's text
+      setAccount({ owner, subaccount: null })
       setError(null)
-    } catch {
+    } else {
       setError("Invalid Principal ID")
       setAccount(null)
     }

@@ -4,7 +4,8 @@ AI agent skill for building and refactoring `@ic-reactor/react` integrations in 
 
 ## What This Skill Covers
 
-- `defineReactor(...)` — one-call `QueryClient` + `ClientManager` + reactor + hooks setup
+- `defineReactor(...)` / `defineDisplayReactor(...)` — one-call `QueryClient` + `ClientManager` + reactor + hooks setup (`Reactor` or `DisplayReactor`)
+- `createReactorProvider(...)` — per-request setup for server-rendered apps
 - `createActorHooks(...)` — typed hook suite for a canister
 - `createQuery` / `createMutation` factory patterns — reusable inside and outside React
 - `createQueryFactory` / `createSuspenseQueryFactory` — cached operation factories for dynamic args
@@ -53,22 +54,26 @@ Agents working in the `ic-reactor` repository discover this skill through:
 - `.github/copilot-instructions.md` (GitHub Copilot)
 - `.cursorrules` (Cursor)
 
-### External Install (for other ICP projects)
+### In an App (not this repository)
 
-The in-repo skill is the source of truth for this repository. A standalone skills repo, [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills), can be used for external ICP projects:
-
-```bash
-npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
-```
-
-Or install directly from this repo:
+This skill is written for work on IC Reactor itself and points at files in
+this repository. For an app that installs the packages, use the consumer
+skill, [`ic-reactor`](../ic-reactor/), instead. In Claude Code:
 
 ```text
-Install the skill from github.com/B3Pay/ic-reactor path skill-packages/ic-reactor-hooks
+/plugin marketplace add B3Pay/ic-reactor
+/plugin install ic-reactor@ic-reactor
 ```
 
-Use `/llms-full.txt` alongside this skill when the assistant needs a broader
-package map, install commands, auth guidance, or verification matrix.
+With the `skills` CLI (Codex, Cursor, Copilot and other agents):
+
+```bash
+npx skills add B3Pay/ic-reactor --skill ic-reactor
+```
+
+Use `llms-full.txt` alongside this skill for the complete consumer API guide
+(install commands, auth, errors), and `AGENTS.md` for the package map and what
+to run for each kind of change.
 
 #### Dependency note
 

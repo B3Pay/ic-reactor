@@ -98,6 +98,34 @@ describe("loadConfig", () => {
     )
   })
 
+  it("accepts factories: true on a canister", () => {
+    const withFactories = {
+      ...valid,
+      canisters: {
+        backend: { ...valid.canisters.backend, factories: true },
+      },
+    }
+    const configPath = writeConfig(JSON.stringify(withFactories))
+
+    expect(loadConfig(configPath)).toEqual(withFactories)
+  })
+
+  // A quoted "false" is truthy, so it would have switched factories on.
+  it("rejects a factories value that is not a boolean", () => {
+    const configPath = writeConfig(
+      JSON.stringify({
+        ...valid,
+        canisters: {
+          backend: { ...valid.canisters.backend, factories: "false" },
+        },
+      })
+    )
+
+    expect(() => loadConfig(configPath)).toThrow(
+      /"canisters\.backend\.factories" must be true or false, found the string "false"/
+    )
+  })
+
   it("reports invalid JSON as a parse failure naming the file", () => {
     const configPath = writeConfig(`{ "outDir": "src/declarations", }`)
 

@@ -1,7 +1,15 @@
-# @ic-reactor/core — AI Quick Guide
+# @ic-reactor/core
 
-Framework-agnostic runtime for IC apps. Use this when you are not writing
-React hooks directly.
+> Framework-agnostic runtime for calling Internet Computer canisters with
+> typed methods, TanStack Query caching, typed errors and exact token amounts.
+> No React: React apps install `@ic-reactor/react`, which re-exports all of this.
+
+Applies to `@ic-reactor/core` 3.13.0.
+
+Read this file from `node_modules/@ic-reactor/core/llms.txt` when writing code
+against the installed version. The complete guide for every package is
+https://ic-reactor.b3pay.net/llms-full.txt, and behaviour changes are in
+https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
 
 ## Install
 
@@ -9,66 +17,216 @@ React hooks directly.
 pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 ```
 
-## Core Building Blocks
+## Setup and Usage
 
-- `ClientManager` for shared agent + QueryClient state
-- `Reactor` for raw Candid values
-- `DisplayReactor` for UI-friendly transformed values
+```ts
+import {
+  ClientManager,
+  Reactor,
+  isCanisterError,
+  reactorRetry,
+} from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
-## Preferred Usage
+const clientManager = new ClientManager({
+  queryClient: new QueryClient({
+    defaultOptions: { queries: { retry: reactorRetry } },
+  }),
+  agentOptions: { host: "https://ic0.app" },
+})
+const backend = new Reactor<_SERVICE>({
+  clientManager,
+  idlFactory,
+  name: "backend",
+  canisterId,
+})
 
-- Reuse one `ClientManager` across multiple canisters
-- Use `fetchQuery` / `getQueryData` / `invalidateQueries` for cache-aware calls
-- Use `callMethod` for imperative update/query calls
+// A cached, deduplicated read
+export const getProfile = (id: string) =>
+  backend.fetchQuery({ functionName: "get_profile", args: [id] })
 
-## DisplayReactor Guidance
+// An update resolves with the Ok value and throws a CanisterError for Err
+export async function rename(name: string) {
+  try {
+    const profile = await backend.callMethod({
+      functionName: "update_profile",
+      args: [{ name }],
+    })
+    await backend.invalidateQueries({ functionName: "get_profile" })
+    return profile
+  } catch (error) {
+    if (isCanisterError(error)) return `Refused: ${error.code}` // "NotFound"
+    throw error // CallError: network, agent, certificate or trap
+  }
+}
+```
 
-- Choose `DisplayReactor` when users type/read principals and numbers in forms
-- Validation can run on display values before calls
+## When to Use What
 
-## Local Environment Root Key
+| Need                                         | Use                                                                        |
+| -------------------------------------------- | -------------------------------------------------------------------------- |
+| Raw Candid values (`bigint`, `Principal`)    | `new Reactor<_SERVICE>({ clientManager, idlFactory, name, canisterId })`   |
+| Strings for display and forms, validators    | `new DisplayReactor<_SERVICE>(...)` (adds zod)                             |
+| A cached, deduplicated read                  | `reactor.fetchQuery({ functionName, args })`                               |
+| An update, or a read that skips the cache    | `reactor.callMethod({ functionName, args })`                               |
+| Read or refresh the cache                    | `reactor.getQueryData(...)`, `await reactor.invalidateQueries(...)`        |
+| Another canister with the same interface     | `reactor.forCanister(canisterId)`                                          |
+| One agent and cache for several canisters    | one `ClientManager`, passed to every reactor                               |
+| Act as an identity                           | `clientManager.updateAgent(identity)`                                      |
+| Your own `queryClient.fetchQuery` of a query | wrap it in `clientManager.fetchAcrossIdentitySwitch(() => ...)`            |
+| Show or read token amounts                   | `formatTokenAmount`, `parseTokenAmount`                                    |
+| Validate typed principal text                | `isPrincipalText(text.trim())`                                             |
+| Tests                                        | `installFakeReplica`, `createTestCanister` from `@ic-reactor/core/testing` |
+| React                                        | `@ic-reactor/react` instead                                                |
 
-The `ic_env` cookie is trusted only for hosts that `allowsEnvRootKey(host)`
-accepts: loopback (all of 127.0.0.0/8 and `::1`), `localhost` and its subdomains,
-and the dev-container domains that tunnel a local replica. Cookies are not
-origin-isolated, so this is a positive allowlist — any other host (custom domain,
-tunnel, staging) must opt in with `allowEnvConfig: true` on
-`ClientManagerParameters`. The deprecated `allowEnvRootKey` still works but is
-scoped to what it always granted — the root key alone — so it does not make
-`trustsEnvConfig` true.
+## Reactors and Values
 
-That one decision is resolved once in the constructor and exposed as
-`clientManager.trustsEnvConfig`. It governs all three values the cookie carries:
-the root key (without it, a local agent fetches the key from the replica before
-its first request, unless `shouldFetchRootKey` is `false`), the Internet
-Identity provider, and the `PUBLIC_CANISTER_ID:<name>` entry
-a `Reactor` resolves when no `canisterId` is configured. On an untrusted host a
-reactor with no configured id throws rather than reading the cookie — a
-substituted canister id still verifies against the real mainnet root key, so
-certificate verification cannot catch it.
+- Pass the service type (`new Reactor<_SERVICE>(...)`). Without it every
+  argument and result is `any` (`unknown` on a `DisplayReactor`).
+- A `Result` is unwrapped: `callMethod` and `fetchQuery` resolve with the `Ok`
+  value and throw a `CanisterError` for an `Err`.
+- `DisplayReactor` maps `nat`/`int`/`nat64`/`int64` to `string`, `principal`
+  to text, `blob` to hex, `opt T` to `T | undefined` and a variant to
+  `{ _type: "A", A: value }` (`{ _type: "A" }` for a case without a value:
+  switch on `_type`). `fromZodSchema(schema, { async: true })` builds
+  an async validator, which runs only in `validate()` and
+  `callMethodWithValidation()`.
+- Floats display as numbers, and `NaN`, `±Infinity` and `-0` are sent back as
+  read; JSON writes `NaN`/`±Infinity` as `null` and `-0` as `0`.
+- `vec record { text; T }` displays as an object: a repeated key keeps its last
+  value. Use `Reactor` where repeated keys or their order matter.
+- `reactor.forCanister(canisterId)` returns a memoized sibling of the same
+  class on the same `ClientManager`, with the same interface and validators,
+  whose calls and keys use its own canister.
+- Types: `ReactorArgsOf<typeof r, "method">`, `ReactorDataOf<...>`,
+  `ReactorErrorOf<...>`, `ServiceOf<typeof r>`, `TransformOf<typeof r>`.
 
-On a host whose network isn't `"ic"`, `ClientManager.initialize()` fetches the
-replica's root key and replaces whatever key the agent holds: the cookie's, one
-passed as `agentOptions.rootKey`, or mainnet's under
-`shouldFetchRootKey: false`. A supplied key covers only the calls made before
-`initialize()` finishes.
+## Cache and Identity
 
-`isMainnetHost` is a boundary-node check only; it recognises three canonical
-domains and returns `false` for a mainnet dapp on a custom domain. Never use it
-as a "safe to trust local configuration" test.
+- Query keys start with the canister id and the method name; build one with
+  `reactor.generateQueryKey(...)`, never by hand.
+- `invalidateQueries` returns TanStack Query's `Promise<void>`: `await` it to
+  wait for the active matches to refetch (a failed refetch does not reject
+  it), or prefix a call you do not wait for with `void`.
+- A sign-in or sign-out (`updateAgent` with another principal) cancels the
+  fetches in flight of every canister the manager has a reactor for, removes
+  their unobserved cache entries and refetches the rest; a renewed delegation
+  for the same principal keeps the cache.
+  `fetchQuery` then fetches again as the new principal instead of rejecting,
+  and after three switches in a row rejects with a `CallError`.
 
-## Error Types
+## Token Amounts and Principals
 
-- `CanisterError`: canister `Result.Err`
-- `CallError`: transport/agent failures
-- `ValidationError`: display-validator failures
+- Ledger amounts are base units: a `bigint` from `Reactor`, integer text from
+  `DisplayReactor`. Never use `Number`, `parseFloat`, `Math.pow` or `toFixed`:
+  `Math.floor(Number("0.29") * 10 ** 8)` is 28999999.
+- `formatTokenAmount(value, decimals, options?)` takes the value and
+  `icrc1_decimals` as returned. Options: `maxFractionDigits` (truncates unless
+  `roundingMode: "halfExpand"`), `minFractionDigits`, `trimTrailingZeros`,
+  `locale`, `useGrouping`. Without `locale` it writes plain text (`"1234.5"`).
+- `parseTokenAmount(text, decimals)` returns a `bigint`; it throws a
+  `TypeError` for text that is not digits with one `.`, and a `RangeError` for
+  more fraction digits than the token has or a negative amount
+  (`{ allowNegative: true }` for an `int`). Send `amount.toString()` to a
+  `DisplayReactor`.
+- `isPrincipalText(text.trim())` accepts canonical principal text of at most
+  29 bytes and never throws. A `DisplayReactor` takes the text; a `Reactor`
+  takes `Principal.fromText(text)`.
+- `jsonToString(value)` prints a raw value: bigints as digits, principals as
+  text, blobs as hex.
 
-## Generated Files
+```ts
+import { formatTokenAmount, parseTokenAmount } from "@ic-reactor/core"
+import { ledger } from "./ledger" // a DisplayReactor of an ICRC-1 ledger
 
-If generated declarations are wrong, change source `.did` or codegen templates.
-Do not hand-edit generated output.
+export async function send(owner: string, input: string, decimals: number) {
+  const amount = parseTokenAmount(input, decimals) // "0.29", 8 -> 29000000n
+  await ledger.callMethod({
+    functionName: "icrc1_transfer",
+    args: [{ to: { owner }, amount: amount.toString() }], // display form
+  })
+}
+export const show = (balance: string, decimals: number) =>
+  formatTokenAmount(balance, decimals, { maxFractionDigits: 4 }) // "1.2345"
+```
 
-## Full References
+## Errors and Retries
 
-- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Core docs: https://ic-reactor.b3pay.net/v3/packages/core
+- `CanisterError`: the canister returned `Err`. Read the value on `.err` and
+  the variant (or API `code`) on `.code`; `.details` is the API payload's
+  `details` as decoded.
+- `CallError`: network, agent, certificate, a trap, or a validator that threw
+  (its error is the `cause`).
+- `ValidationError`: a `DisplayReactor` validator refused the arguments.
+- Use `isCanisterError`, `isCallError` and `isValidationError`; they also
+  recognise errors from another copy of the package.
+- `reactorRetry` retries transport, certificate, HTTP 5xx/408/429 and
+  `SysTransient`/`SysUnknown` failures up to 3 times, never a
+  `CanisterError`, a `ValidationError`, an encode/decode failure or another
+  HTTP 4xx. Set it as `defaultOptions.queries.retry` on a `QueryClient` you
+  create.
+- `reactorRetry` and `reactorUpdateRetry` retry only in a browser: where there
+  is no `window` (Node, server rendering, a web worker) they return `false`,
+  as TanStack Query retries nothing on a server by default. The agent still
+  resends a failed HTTP request itself. For query retries in a Node script,
+  pass the predicate:
+  `retry: (count, error) => count < 3 && isRetryableReactorError(error)`.
+- Each attempt of an update is a new call the canister runs.
+  `reactorUpdateRetry` retries only a `SysTransient` rejection, which proves
+  the call never ran; a query of an update method that sets no `retry` uses
+  that rule within the `QueryClient`'s retry default.
+
+## Network and the ic_env Cookie
+
+- In a browser with no `agentOptions.host`, the agent calls the page origin on
+  a local page (`localhost`, loopback), a Codespaces or Gitpod domain (network
+  `"remote"`) or an IC boundary domain, and mainnet otherwise.
+- `ClientManager` trusts the `ic_env` cookie (root key, Internet Identity
+  provider, `PUBLIC_CANISTER_ID:<name>`) only on loopback and `localhost`
+  hosts. Anywhere else, including Codespaces and Gitpod, pass
+  `allowEnvConfig: true` only for a host you control; without it a reactor with
+  no `canisterId` throws rather than read the id from the cookie.
+- Off mainnet, `initialize()` fetches the replica's root key, unless you pass
+  `agentOptions.rootKey`, which is kept (`clientManager.explicitRootKey`).
+- `isMainnetHost` recognises the boundary domains only; never use it as a
+  "safe to trust local configuration" test.
+
+## Testing
+
+`installFakeReplica({ canisters: { [id]: createTestCanister<_SERVICE>(idlFactory, handlers) } })`
+from `@ic-reactor/core/testing` replaces the global `fetch`. Install it before
+any `ClientManager` is built, pass `agentOptions: { host: replica.host }` (or
+no host on either side), and call `replica.restore()` in `afterEach`.
+Handlers get the decoded argument tuple and `{ caller }` and return raw Candid
+values; return `{ Err: ... }` for a `CanisterError` and throw for a
+`CallError`. `replica.requests` lists every request. The entry signs with
+`@noble/curves`, an optional peer that `@icp-sdk/core` already installs.
+
+## Do Not
+
+- Leave out the `<_SERVICE>` type argument or cast results to `any`.
+- Do token math with `Number`, `parseFloat`, `Math.pow` or `toFixed`.
+- Retarget a shared reactor with `setCanisterId`; use `forCanister`.
+- Hand-write query keys.
+- Call an update method through `fetchQuery` unless repeating it is safe.
+- Give an update call a numeric `retry`; use `reactorUpdateRetry`.
+- Build a reactor or `ClientManager` at module scope on a server that serves
+  several users: keys carry no principal, so the cache is shared.
+- Set `allowEnvConfig: true` for a host you do not control.
+- Stub a reactor with `as unknown as Reactor` in tests.
+- Edit generated declarations; regenerate them from the `.did`.
+
+## Docs
+
+- Core package: https://ic-reactor.b3pay.net/v3/packages/core.md
+- ClientManager: https://ic-reactor.b3pay.net/v3/reference/ClientManager.md
+- Reactor: https://ic-reactor.b3pay.net/v3/reference/Reactor.md
+- DisplayReactor: https://ic-reactor.b3pay.net/v3/reference/DisplayReactor.md
+- Utilities: https://ic-reactor.b3pay.net/v3/reference/Utilities.md
+- Error handling: https://ic-reactor.b3pay.net/v3/guides/error-handling.md
+- Local development: https://ic-reactor.b3pay.net/v3/getting-started/local-development.md
+- Testing kit: https://ic-reactor.b3pay.net/v3/reference/testing.md
+- Index of all docs: https://ic-reactor.b3pay.net/llms.txt
+- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Agent skill for Claude Code and other agents: https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor

@@ -211,9 +211,10 @@ const methodName = "icrc1_transfer"
 const inputMeta = reactor.getInputMeta(methodName)
 if (!inputMeta) throw new Error("Method metadata missing")
 
-// 1) initialize the form with inputMeta.defaults. They are placeholders
-//    ("" for principals, text and numbers) that fail the schema until the
-//    user fills them in. Say the user entered:
+// 1) initialize the form with inputMeta.defaults: "" for principals, text
+//    and numbers. "" is a valid text, so a text field left empty is sent
+//    as ""; principals and numbers fail the schema until the user fills
+//    them in. Say the user entered:
 const formValues = [
   {
     to: { owner: "aaaaa-aa", subaccount: null },
@@ -240,6 +241,37 @@ const rendered = result.results
 
 `MetadataDisplayReactor` takes display types in `callMethod`, so it sends the
 form values without step 3.
+
+## Calling a Func-Record Callback
+
+A record with exactly one `func` field, such as an archived block range in a
+ledger's reply, resolves as a `funcRecord` node. Its `defaultArgs` are the
+values beside the callback, arranged as the callback's arguments. On
+`MetadataReactor` they are Candid values (bigints, a `Principal`, `[]` or `[x]`
+for an `opt`), which is what its `callMethod` takes, so a reactor built from
+the node's `funcClass` can call the callback with them as they are:
+
+```ts
+// `archived` is the resolved funcRecord node, for example
+// result.results[0].fields.archived_blocks.items[0]
+console.log(archived.defaultArgs) // [{ start: 0n, length: 100n }]
+
+const archive = new MetadataReactor({
+  name: "archive",
+  canisterId: archived.canisterId,
+  clientManager,
+  funcClass: { methodName: archived.methodName, func: archived.funcClass },
+})
+
+const blocks = await archive.callMethod({
+  functionName: archived.methodName,
+  args: archived.defaultArgs,
+})
+```
+
+`MetadataDisplayReactor` gives display-typed `defaultArgs` (`"0"` for that
+`nat64`) for its own display-typed `callMethod`. Call the callback through the
+same kind of reactor that resolved the record.
 
 ## Troubleshooting
 

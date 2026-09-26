@@ -37,7 +37,7 @@ const { data } = useActorQuery({
 })
 ```
 
-Each unique combination of canister ID, function name, and arguments creates a separate cache entry. The whole `args` array is serialized into a **single** string segment, `argsJson` — arguments are never spread into separate elements. It is JSON with BigInt values written as decimal strings and the keys of every plain object sorted, so `{ b, a }` and `{ a, b }` share an entry, and a bare `JSON.stringify(args)` does not match it once a record's fields are out of alphabetical order. A blob is written as a tag followed by its lowercase hex, so a `Uint8Array`, a `number[]` and a `DisplayReactor`'s hex text holding the same bytes share an entry too. A `DisplayReactor` writes each `opt` and variant in one form, whichever it was given in, so an `opt` given bare or as `[value]`, none given as `null`, `undefined` or `[]`, and a variant given with or without `_type` share an entry. A `vec record { text; T }` given to it as an object is written as its entries in order, since the order is part of what it sends. Fields a record does not declare are left out and every value of `reserved` is written as `null`, since neither is sent, and a `DisplayReactor` writes a float or an integer of 32 bits or fewer given as text as its number, and a `Principal` as its text. An argument the reactor refuses, such as `undefined` where Candid `null` is required or a bigint where a `DisplayReactor` takes text, is written behind a tag of its own, so the call fails instead of being answered from the cache entry of an argument it takes.
+Each unique combination of canister ID, function name, and arguments creates a separate cache entry. The whole `args` array is serialized into a **single** string segment, `argsJson` — arguments are never spread into separate elements. It is JSON with BigInt values written as decimal strings and the keys of every plain object sorted, so `{ b, a }` and `{ a, b }` share an entry, and a bare `JSON.stringify(args)` does not match it once a record's fields are out of alphabetical order. A blob is written as a tag followed by its lowercase hex, so a `Uint8Array`, a `number[]` and a `DisplayReactor`'s hex text holding the same bytes share an entry too. A `DisplayReactor` writes each `opt` and variant in one form, whichever it was given in, so an `opt` given bare or as `[value]`, none given as `null`, `undefined` or `[]`, and a variant given with or without `_type` share an entry. A `vec record { text; T }` given to it as an object or a `Map` is written as its entries in order, since the order is part of what it sends. A record or variant given to it as a class instance is written as the plain object its codec sends, a field its class supplies through a getter included. Fields a record does not declare are left out and every value of `reserved` is written as `null`, since neither is sent, and a `DisplayReactor` writes a float or an integer of 32 bits or fewer given as text as its number, and a `Principal` as its text. An argument the reactor refuses, such as `undefined` where Candid `null` is required or a bigint where a `DisplayReactor` takes text, is written behind a tag of its own, so the call fails instead of being answered from the cache entry of an argument it takes.
 
 The keys above are a `Reactor`'s: `[canisterId, functionName, argsJson]`. A `DisplayReactor` adds a `{ transform: "display" }` segment after the function name — `['rrkah-fqaaa...', 'getUser', { transform: 'display' }, '["user-123"]']` — so a `Reactor` and a `DisplayReactor` over one canister never share a cache entry. Build keys with `generateQueryKey` (below) or a query object's `getQueryKey()` rather than by hand.
 
@@ -88,7 +88,28 @@ the plain `[canisterId, functionName, argsJson]` key (with the
 
 If a query uses `callConfig`, pass the same `callConfig` when generating,
 reading, or invalidating that cache key. Cache entries are partitioned by the
-resolved target canister and optional effective target.
+resolved target canister, the optional effective target, and the agent.
+
+A query sent through `callConfig.agent` (another identity, the anonymous agent,
+another network) gets an `{ agent: n }` segment after the transform segment and
+before `argsJson`, where `n` numbers that agent within the running process. So
+the same query through that agent and through the `ClientManager`'s own agent
+are two cache entries, and each is fetched from the canister. Keys without an
+override, or whose override is the manager's own agent, have no such segment.
+`invalidateQueries({ functionName })` still matches both entries, and
+`updateAgent()` still sweeps the override's entries with the rest of the
+canister's. Each process counts from a random start, so an override entry in
+a dehydrated server cache, or in a cache persisted and restored later, is not
+found by another process's agents.
+
+<Aside type="caution">
+  Query keys name the canister, not the `ClientManager`. Two `ClientManager`s on
+  the same canister (two identities, or a local replica and mainnet) whose
+  reactors share one `QueryClient` share cache entries, and one manager's
+  `updateAgent()` sweeps the other's entries. Give each `ClientManager` its own
+  `QueryClient`: `defineReactor` does that by default when it builds the
+  manager.
+</Aside>
 
 ## Stale Time
 
@@ -187,46 +208,62 @@ const { data } = useActorQuery({
 
 ## Manual Invalidation
 
-### Using QueryClient
+### Using Query Objects
 
-Invalidate queries directly with the QueryClient:
+A query object and a query factory invalidate their own queries:
 
 ```typescript
-import { useQueryClient } from "@tanstack/react-query"
+import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-function RefreshButton() {
-  const queryClient = useQueryClient()
+const getUser = createQueryFactory(backend, { functionName: "getUser" })
 
+function RefreshButton({ userId }: { userId: string }) {
   const handleRefresh = () => {
-    // Invalidate a specific query
-    queryClient.invalidateQueries({
-      queryKey: backend.generateQueryKey({
-        functionName: "getUser",
-        args: ["user-123"],
-      }),
-    })
+    // One user's query
+    void getUser([userId]).invalidate()
   }
 
-  return <button onClick={handleRefresh}>Refresh</button>
+  const handleRefreshAll = () => {
+    // Every getUser query this factory made, whatever the args
+    void getUser.invalidate()
+  }
+
+  return (
+    <>
+      <button onClick={handleRefresh}>Refresh</button>
+      <button onClick={handleRefreshAll}>Refresh all users</button>
+    </>
+  )
 }
 ```
+
+`getUser.getQueryKey()` is the key prefix those queries share, for any other
+QueryClient call. For the client itself use `backend.queryClient`: the hooks
+bind to the reactor's own client, and `useQueryClient()` throws when there is
+no `QueryClientProvider`, which is optional.
 
 ### Invalidate All Canister Queries
 
 ```typescript
 // Invalidate ALL queries for this canister
-backend.invalidateQueries()
+await backend.invalidateQueries()
 ```
+
+`invalidateQueries` returns TanStack Query's `Promise<void>`, which resolves
+once the active queries it matched have refetched; a failed refetch does not
+reject it. Await it when the next step should read the refetched data, and
+prefix a call you do not wait for with `void` if you lint with
+`no-floating-promises`.
 
 ### Invalidate by Function Name
 
 ```typescript
 // Invalidate all getUser queries (any args)
-backend.invalidateQueries({ functionName: "getUser" })
+await backend.invalidateQueries({ functionName: "getUser" })
 
 // Invalidate getUser queries for a specific overridden target canister
-backend.invalidateQueries(
+await backend.invalidateQueries(
   { functionName: "getUser" },
   { canisterId: otherCanisterId }
 )
@@ -236,7 +273,7 @@ backend.invalidateQueries(
 
 ```typescript
 // Invalidate getUser query for specific user
-backend.invalidateQueries(
+await backend.invalidateQueries(
   {
     functionName: "getUser",
     args: ["user-123"],
@@ -251,7 +288,7 @@ backend.invalidateQueries(
 
 ```typescript
 // Invalidate query with custom key
-backend.invalidateQueries({
+await backend.invalidateQueries({
   functionName: "getData",
   queryKey: ["version", "2"],
 })
@@ -264,44 +301,37 @@ backend.invalidateQueries({
 The simplest way to refetch related data after a mutation:
 
 ```typescript
-import { backend } from "./reactor"
-
 const { mutate } = useActorMutation({
   functionName: "createPost",
   invalidateQueries: [
-    backend.generateQueryKey({ functionName: "getPosts" }),
-    backend.generateQueryKey({ functionName: "getPostCount" }),
+    { functionName: "getPosts" }, // every getPosts query, whatever its args
+    { functionName: "getPostCount" },
   ],
 })
 ```
 
+An entry can also be a query object or a query factory (`[postsQuery]`,
+`[getUser]`), or a query key. The invalidation is awaited before `onSuccess`
+runs. See [Mutations](/v3/framework/mutations#invalidating-queries-after-mutation).
+
 ### Using onSuccess
 
-For more control, use `onSuccess`:
+For more control, use `onSuccess`. Here the new post goes straight into the
+cached list instead of being refetched:
 
 ```typescript
-import { useQueryClient } from "@tanstack/react-query"
+import { createQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-function CreatePost() {
-  const queryClient = useQueryClient()
+const postsQuery = createQuery(backend, { functionName: "getPosts" })
 
-  const { mutate } = useActorMutation({
-    functionName: "createPost",
-    onSuccess: (newPost) => {
-      // Invalidate posts list
-      queryClient.invalidateQueries({
-        queryKey: backend.generateQueryKey({ functionName: "getPosts" }),
-      })
-
-      // Or directly update the cache
-      queryClient.setQueryData(
-        backend.generateQueryKey({ functionName: "getPosts" }),
-        (old: Post[]) => [...old, newPost]
-      )
-    },
-  })
-}
+const { mutate } = useActorMutation({
+  functionName: "createPost",
+  onSuccess: (newPost) => {
+    // `old` is undefined when the list is not cached yet
+    postsQuery.setData((old) => (old ? [...old, newPost] : old))
+  },
+})
 ```
 
 ## Optimistic Updates
@@ -309,49 +339,46 @@ function CreatePost() {
 Update the UI immediately, then sync with the server:
 
 ```typescript
-import { useQueryClient } from "@tanstack/react-query"
+import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-function LikeButton({ postId }: { postId: string }) {
-  const queryClient = useQueryClient()
-  const queryKey = backend.generateQueryKey({
-    functionName: "getPost",
-    args: [postId],
-  })
+const getPost = createQueryFactory(backend, { functionName: "getPost" })
 
+function LikeButton({ postId }: { postId: string }) {
   const { mutate } = useActorMutation({
     functionName: "likePost",
-    onMutate: async () => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey })
-
-      // Snapshot the previous value
-      const previous = queryClient.getQueryData(queryKey)
-
-      // Optimistically update
-      queryClient.setQueryData(queryKey, (old: Post) => ({
-        ...old,
-        likes: old.likes + 1,
-      }))
-
-      // Return context with previous value
-      return { previous }
-    },
-    onError: (err, variables, context) => {
-      // Rollback on error
-      if (context?.previous) {
-        queryClient.setQueryData(queryKey, context.previous)
-      }
-    },
-    onSettled: () => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({ queryKey })
-    },
+    // Cancel the post's fetch in flight, write the new value, keep a rollback
+    onMutate: ([postId]) =>
+      getPost([postId]).optimisticUpdate((post) => ({
+        ...post,
+        likes: post.likes + 1n,
+      })),
+    // Roll back on error
+    onError: (_error, _args, update) => update?.rollback(),
+    // Always refetch after error or success
+    onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
   })
 
   return <button onClick={() => mutate([postId])}>Like</button>
 }
 ```
+
+### Query Object Cache Controls
+
+Every query object (`createQuery`, `createSuspenseQuery`, the infinite
+variants and factory instances) acts on its own cache entry:
+
+| Method                      | What it does                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------------- |
+| `optimisticUpdate(updater)` | Cancels the fetch in flight, writes `updater(cached)`, resolves with `{ rollback() }`           |
+| `cancel()`                  | Cancels the fetch in flight; the entry keeps the value it held before                           |
+| `reset()`                   | Clears the entry (or restores `initialData`); a mounted hook refetches, a suspense one suspends |
+| `setData(updater)`          | Writes a raw value, or `updater(cached)`, with no cancel and no rollback (not on infinite ones) |
+| `invalidate()`              | Marks it stale; a mounted hook refetches                                                        |
+
+`cancel()`, `reset()` and `optimisticUpdate()` match the query's key exactly,
+so other args of the same method are left alone. An infinite query's
+`optimisticUpdate` gets and returns its `{ pages, pageParams }`.
 
 ## QueryClient Configuration
 
@@ -379,9 +406,11 @@ const queryClient = new QueryClient({
 ### Smart Retry Logic
 
 Retrying helps only when the failure could change next time — a transport
-fault, a transient replica rejection. A canister `Err` variant, a validation
-failure, or a Candid encode error is deterministic, and retrying it spends
-several attempts and seconds of backoff to reach the same failure. IC Reactor
+fault, a transient replica rejection, an HTTP 5xx, 408 or 429 answer. A
+canister `Err` variant, a validation failure, a Candid encode error, or an
+HTTP 4xx refusal such as an expired delegation's is deterministic, and
+retrying it spends several attempts and seconds of backoff to reach the same
+failure. IC Reactor
 ships this classification as `reactorRetry`, which is already the query default
 in the `QueryClient` that `defineReactor` creates. Opt in on a `QueryClient`
 you construct yourself:
@@ -401,6 +430,11 @@ const queryClient = new QueryClient({
 For custom attempt counts, build your own predicate on
 `isRetryableReactorError` — see
 [Error Handling — Retry Configuration](/v3/guides/error-handling#retry-configuration).
+
+An update method run through a query is narrowed further: without a `retry` of
+its own, it retries only a `SysTransient` rejection, since any other retry
+could execute it a second time. See
+[Update Methods in Queries](/v3/framework/queries#update-methods-in-queries).
 
 ## Prefetching
 

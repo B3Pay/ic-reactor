@@ -8,29 +8,19 @@ export function TransferSection({ principal }: { principal: Principal }) {
   const [amount, setAmount] = useState("10000") // 0.0001 ICP (8 decimals)
   const [validationError, setValidationError] = useState<string | null>(null)
 
-  // 1. Get the user's account and balance query (for automatic refetching)
-  const userAccount = useMemo(
-    () => ({ owner: principal.toText(), subaccount: null }),
-    [principal]
-  )
-
-  const userBalanceQuery = useMemo(
-    () => getIcpBalance([userAccount]),
-    [userAccount]
-  )
-
-  // 2. 🔥 Auto-refetch balance after successful transfer!
+  // 1. 🔥 Auto-refetch balances after a successful transfer! The mutation
+  // factory lists the getIcpBalance query factory in its invalidateQueries,
+  // which covers this user's balance and the recipient's. A hook-level
+  // `invalidateQueries` here would add to that list.
   const {
     mutate,
     isPending,
     error,
     isSuccess,
     data: txId,
-  } = icpTransferMutation.useMutation({
-    invalidateQueries: [userBalanceQuery.getQueryKey()],
-  })
+  } = icpTransferMutation.useMutation()
 
-  // 3. Handle transfer
+  // 2. Handle transfer
   const handleTransfer = () => {
     setValidationError(null)
 

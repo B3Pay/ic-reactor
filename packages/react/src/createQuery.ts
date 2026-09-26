@@ -34,6 +34,8 @@ import { useMemo } from "react"
 import {
   QueryKey,
   useQuery,
+  skipToken,
+  type SkipToken,
   type UseQueryOptions,
   type Updater,
 } from "@tanstack/react-query"
@@ -41,16 +43,23 @@ import type {
   QueryFnData,
   QueryError,
   QueryConfig,
+  SkippableQueryConfig,
   UseQueryWithSelect,
   QueryResult,
   QueryFactoryConfig,
+  SkippableQueryFactoryFn,
+  SkippedQuery,
   NoInfer,
 } from "./types.js"
 import {
   buildChainedSelect,
   createBoundedCache,
   pickFetchOptions,
+  queryCacheControls,
+  retryOption,
+  skippedQueryKey,
   useMountQueryClient,
+  withQueryFactoryMethods,
 } from "./utils.js"
 
 // ============================================================================
@@ -64,7 +73,9 @@ const createQueryImpl = <
   Selected = QueryFnData<Service, Method, Transform>,
 >(
   reactor: Reactor<Service, Transform>,
-  config: QueryConfig<Service, Method, Transform, Selected>
+  // `args` is `skipToken` only for a factory's skipped query, which exposes
+  // nothing but `useQuery`; see createQueryFactory.
+  config: SkippableQueryConfig<Service, Method, Transform, Selected>
 ): QueryResult<
   QueryFnData<Service, Method, Transform>,
   Selected,
@@ -76,15 +87,42 @@ const createQueryImpl = <
   const {
     functionName,
     args,
+    callConfig,
     staleTime = 5 * 60 * 1000,
     select,
     queryKey: customQueryKey,
     ...rest
   } = config
 
-  const params = { functionName, args, queryKey: customQueryKey }
+  const skipped = args === skipToken
 
-  const getQueryKey = (): QueryKey => reactor.generateQueryKey(params)
+  // `callConfig` goes wherever the hooks send it: to the call and into the
+  // key, so a query of another canister or agent has an entry of its own.
+  const params = {
+    functionName,
+    args: skipped ? undefined : args,
+    queryKey: customQueryKey,
+    callConfig,
+  }
+
+  // What the hook observes: the call, or for a query still waiting for its
+  // args, an entry of its own under the method's key, with nothing to run;
+  // see skippedQueryKey.
+  const queryOptions = () =>
+    skipped
+      ? {
+          queryKey: skippedQueryKey(
+            reactor.generateQueryKey({ functionName }, callConfig),
+            "query"
+          ),
+          // Kept as the unique symbol, which an object literal widens.
+          queryFn: skipToken as SkipToken,
+          retry: undefined,
+        }
+      : reactor.getQueryOptions(params)
+
+  const getQueryKey = (): QueryKey =>
+    reactor.generateQueryKey(params, callConfig)
 
   // Apply config.select to raw data (shared by fetch, getCacheData, and the hook)
   const applySelect = (raw: TData): Selected =>
@@ -105,12 +143,24 @@ const createQueryImpl = <
   /** Fire-and-forget prefetch — warms the cache without blocking. */
   const prefetch = (): Promise<void> => {
     const baseOptions = reactor.getQueryOptions(params)
-    return reactor.queryClient.prefetchQuery({
-      ...fetchOptions,
-      queryKey: baseOptions.queryKey,
-      queryFn: baseOptions.queryFn,
-      staleTime,
-    })
+    // A sign-in or sign-out cancels a prefetch in flight, and TanStack
+    // resolves it all the same: an entry nothing observes was left empty, and
+    // one a mounted query shows still held the previous principal's data
+    // until that query's refetch landed. It now runs again for the principal
+    // signed in, as `fetch()` does. Like `prefetchQuery` it never rejects, so
+    // the CallError for a principal that keeps switching is dropped too.
+    return reactor.clientManager
+      .fetchAcrossIdentitySwitch(() =>
+        reactor.queryClient.prefetchQuery({
+          ...fetchOptions,
+          // An update method's default `retry`; see `Reactor.getQueryRetry`.
+          ...retryOption(fetchOptions.retry, baseOptions.retry),
+          queryKey: baseOptions.queryKey,
+          queryFn: baseOptions.queryFn,
+          staleTime,
+        })
+      )
+      .catch(() => undefined)
   }
 
   // The hook publicly exposes the overloaded UseQueryWithSelect signature.
@@ -123,7 +173,7 @@ const createQueryImpl = <
 
   const useQueryHook = ((options?: UseQueryHookOptions) => {
     useMountQueryClient(reactor.queryClient)
-    const baseOptions = reactor.getQueryOptions(params)
+    const baseOptions = queryOptions()
     // Memoized so the observer's select-result cache can hit; see
     // buildChainedSelect. `select` comes from the factory config and is stable.
     const chainedSelect = useMemo(
@@ -138,6 +188,9 @@ const createQueryImpl = <
         ...options,
         queryFn: baseOptions.queryFn,
         select: chainedSelect,
+        // The hook's `retry`, else the config's, else an update method's
+        // default; see `Reactor.getQueryRetry`.
+        ...retryOption(options?.retry ?? rest.retry, baseOptions.retry),
       },
       reactor.queryClient
     )
@@ -150,7 +203,7 @@ const createQueryImpl = <
   const getCacheData = ((
     selectFn?: (data: Selected) => unknown
   ): Selected | unknown => {
-    const raw = reactor.getQueryData(params)
+    const raw = reactor.getQueryData(params, callConfig)
     if (raw === undefined) return undefined
     const selected = applySelect(raw)
     return selectFn ? selectFn(selected) : selected
@@ -173,6 +226,7 @@ const createQueryImpl = <
     getQueryKey,
     getCacheData,
     setData,
+    ...queryCacheControls<TData>(reactor, getQueryKey),
   }
 }
 
@@ -203,6 +257,39 @@ export function createQuery<
 // Convenience: Create query with dynamic args
 // ============================================================================
 
+/**
+ * Create a query factory: a function that takes the method's args and returns
+ * the query object for them, the same object for the same args.
+ *
+ * The function also has `getQueryKey()`, the key prefix every query it
+ * returns shares, and `invalidate()`, which invalidates all of them whatever
+ * their args. Pass the function itself to a mutation's `invalidateQueries` to
+ * refresh every instance after the mutation.
+ *
+ * It also takes TanStack Query's `skipToken` in place of args, for a
+ * component whose args are not known yet, and returns a query with only
+ * `useQuery()`, which waits without fetching; see
+ * {@link SkippableQueryFactoryFn}.
+ *
+ * @example
+ * const getBalance = createQueryFactory(ledger, {
+ *   functionName: "icrc1_balance_of",
+ * })
+ *
+ * // In a component
+ * const { data } = getBalance([{ owner, subaccount: [] }]).useQuery()
+ *
+ * // In a component whose owner may not be known yet
+ * const { data: maybe } = getBalance(
+ *   owner ? [{ owner, subaccount: [] }] : skipToken
+ * ).useQuery()
+ *
+ * // Refetch every account's balance after a transfer
+ * const transfer = createMutation(ledger, {
+ *   functionName: "icrc1_transfer",
+ *   invalidateQueries: [getBalance],
+ * })
+ */
 export function createQueryFactory<
   Service,
   Transform extends TransformKey,
@@ -211,27 +298,49 @@ export function createQueryFactory<
 >(
   reactor: Reactor<Service, Transform>,
   config: QueryFactoryConfig<NoInfer<Service>, Method, Transform, Selected>
-): (
-  args: ReactorArgs<Service, Method, Transform>
-) => QueryResult<
-  QueryFnData<Service, Method, Transform>,
-  Selected,
-  QueryError<Service, Method, Transform>
+): SkippableQueryFactoryFn<
+  ReactorArgs<Service, Method, Transform>,
+  QueryResult<
+    QueryFnData<Service, Method, Transform>,
+    Selected,
+    QueryError<Service, Method, Transform>
+  >
 > {
-  const cache =
-    createBoundedCache<
-      QueryResult<
-        QueryFnData<Service, Method, Transform>,
-        Selected,
-        QueryError<Service, Method, Transform>
-      >
-    >()
+  type Query = QueryResult<
+    QueryFnData<Service, Method, Transform>,
+    Selected,
+    QueryError<Service, Method, Transform>
+  >
 
-  return (args: ReactorArgs<Service, Method, Transform>) => {
-    const key = reactor.generateQueryKey({
-      functionName: config.functionName as Method,
-      args,
-    })
+  const cache = createBoundedCache<Query>()
+
+  // One skipped query per factory, built on first use. Only its hook is
+  // handed out: until the args are known there is no call to make and no
+  // entry of their own to read or write.
+  let skippedQuery: SkippedQuery<Query> | undefined
+
+  function factory(args: ReactorArgs<Service, Method, Transform>): Query
+  function factory(args: SkipToken): SkippedQuery<Query>
+  function factory(
+    args: ReactorArgs<Service, Method, Transform> | SkipToken
+  ): Query | SkippedQuery<Query>
+  function factory(
+    args: ReactorArgs<Service, Method, Transform> | SkipToken
+  ): Query | SkippedQuery<Query> {
+    if (args === skipToken) {
+      skippedQuery ??= {
+        useQuery: createQueryImpl<Service, Method, Transform, Selected>(
+          reactor,
+          { ...config, args: skipToken }
+        ).useQuery,
+      }
+      return skippedQuery
+    }
+
+    const key = reactor.generateQueryKey(
+      { functionName: config.functionName as Method, args },
+      config.callConfig
+    )
     const cacheKey = JSON.stringify(key)
 
     const existing = cache.get(cacheKey)
@@ -247,4 +356,14 @@ export function createQueryFactory<
     cache.set(cacheKey, result)
     return result
   }
+
+  // The method's own prefix, at the canister and agent the config's
+  // `callConfig` names. A config `queryKey` follows the args segment in every
+  // instance's key, so it cannot narrow the prefix.
+  return withQueryFactoryMethods(factory, reactor, () =>
+    reactor.generateQueryKey(
+      { functionName: config.functionName as Method },
+      config.callConfig
+    )
+  )
 }

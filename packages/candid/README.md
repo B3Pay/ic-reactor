@@ -1,5 +1,10 @@
 # @ic-reactor/candid
 
+> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
+> (`node_modules/@ic-reactor/candid/llms.txt`) before writing code with it. It
+> is written for the installed version and lists the patterns to use and the
+> mistakes to avoid.
+
 Lightweight adapter for fetching and parsing Candid definitions from Internet Computer canisters.
 
 ## Features
@@ -120,6 +125,8 @@ const balance = await reactor.fetchQuery({
 You can also register individual methods on-the-fly, even if they contain complex type definitions natively output by AI models (such as recursive variants or records):
 
 ```typescript
+import { CandidReactor } from "@ic-reactor/candid"
+
 // Start with just a canister ID
 const reactor = new CandidReactor({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -211,6 +218,14 @@ const inputMeta = reactor.getInputMeta("icrc1_transfer")
 console.log(inputMeta?.schema) // Zod tuple for full argument validation
 ```
 
+A result record holding one callback and the values to call it with (an
+archived block range, a streaming strategy) resolves as a `funcRecord` node
+whose `defaultArgs` are those values as the callback's arguments. On
+`MetadataReactor` they are Candid values, so a `MetadataReactor` built from
+the node's `funcClass` takes them as they are:
+`callMethod({ functionName: node.methodName, args: node.defaultArgs })`.
+`MetadataDisplayReactor` gives display-typed ones for its own `callMethod`.
+
 ### CandidFormVisitor (Low-Level Form Metadata)
 
 Use `CandidFormVisitor` when you already have an `IDL.ServiceClass` and want direct visitor output.
@@ -238,7 +253,7 @@ console.log(arg0.schema) // Zod schema for this field
 
 **Features:**
 
-- **Zod Validation**: Includes method-level and field-level schemas (`schema`) for runtime validation.
+- **Zod Validation**: Includes method-level and field-level schemas (`schema`) for runtime validation. A `text` field accepts `""`, since Candid text has no required-ness; principals, numbers and a func reference's method name must be filled in.
 - **Component Hints**: Includes `component` values for renderer selection (`variant-select`, `vector-list`, `blob-upload`, etc.).
 - **Render Hints**: Includes `renderHint` for primitive/compound strategy and input type hints.
 - **Form Defaults**: Includes ready-to-use `defaults` for form initialization.
@@ -288,7 +303,7 @@ const remoteJsCode = await adapter.compileRemote(
 
 #### Constructor
 
-```typescript
+```typescript nocheck
 new CandidAdapter(params: CandidAdapterParameters)
 ```
 
@@ -298,8 +313,10 @@ new CandidAdapter(params: CandidAdapterParameters)
 | `didjsCanisterId` | `CanisterId`          | No       | Custom didjs canister ID                           |
 
 When `didjsCanisterId` is omitted it defaults to `a4gq6-oaaaa-aaaab-qaa4q-cai`
-on mainnet and `bd3sg-teaaa-aaaaa-qaaba-cai` locally, and is re-evaluated
-whenever the identity changes.
+on mainnet and `bd3sg-teaaa-aaaaa-qaaba-cai` locally, read from
+`clientManager.isLocal` each time it is needed. The adapter keeps no
+subscription on the client manager, so an adapter or candid reactor that is
+dropped needs no cleanup.
 
 #### Properties
 
@@ -336,11 +353,11 @@ whenever the identity changes.
 | `fetchFromTmpHack(canisterId)`                  | Get Candid via tmp hack method    |
 | `compileRemote(candidSource, didjsCanisterId?)` | Compile Candid via didjs canister |
 
-##### Cleanup
+##### Deprecated
 
-| Method          | Description                          |
-| --------------- | ------------------------------------ |
-| `unsubscribe()` | Cleanup identity change subscription |
+| Method          | Description                                                                  |
+| --------------- | ---------------------------------------------------------------------------- |
+| `unsubscribe()` | No-op kept for compatibility. The adapter no longer subscribes to identities |
 
 ### `CandidReactor`
 
@@ -348,7 +365,7 @@ Extends `Reactor` from `@ic-reactor/core`.
 
 #### Constructor
 
-```typescript
+```typescript nocheck
 new CandidReactor(config: CandidReactorParameters)
 ```
 
@@ -381,11 +398,16 @@ After initialization or registration, all standard `Reactor` methods work:
 - `fetchQuery()` - Fetch with TanStack Query caching
 - `getQueryOptions()` - Get query options for React hooks
 - `invalidateQueries()` - Invalidate cached queries
+- `forCanister(canisterId)` - A reactor of the same class for another
+  canister of the same interface. It starts with this reactor's interface,
+  Candid source and adapter (and its validators or metadata, for the display
+  and metadata reactors). A method registered on either one later stays on
+  that one
 - etc.
 
 ### Types
 
-```typescript
+```typescript nocheck
 interface CandidDefinition {
   idlFactory: IDL.InterfaceFactory
   init?: (args: { IDL: typeof IDL }) => IDL.Type<unknown>[]
@@ -393,7 +415,7 @@ interface CandidDefinition {
 
 interface CandidAdapterParameters {
   clientManager: CandidClientManager
-  didjsCanisterId?: string
+  didjsCanisterId?: CanisterId
 }
 
 interface CandidClientManager {
@@ -411,13 +433,17 @@ type CanisterId = string | Principal
 
 2. **Parsing Candid**: Once the raw Candid source is retrieved, it needs to be compiled to JavaScript:
    - First tries the local WASM parser (if loaded) - instant, no network
-   - Falls back to the remote didjs canister - requires network request
+   - Falls back to the remote didjs canister - requires network request. It
+     runs upstream `candid_parser` without the local parser's fixes, so a
+     record field or variant tag named like a numeric id, such as `_0_`, keeps
+     the key `_0_` there, which `@icp-sdk/core` sends as field 0 (the local
+     parser prints `_4735054_`).
 
 3. **Evaluation**: The compiled JavaScript is dynamically imported to extract the `idlFactory` and optional `init` function.
 
 4. **Dynamic Execution**: `registerMethod()` wraps the provided Candid signature in a temporary service definition, compiles it to an `idlFactory`, and merges the resulting field into the reactor's service. The call itself then goes through the core `Reactor`, which encodes arguments with `IDL.encode` and dispatches via `agent.query()` / `agent.call()` — no `Actor` is ever constructed.
 
-5. **Identity Changes**: The adapter subscribes to identity changes from the ClientManager. When the identity changes, it re-evaluates the default didjs canister ID (unless a custom one was provided).
+5. **Network and Identity**: The adapter keeps no subscription on the ClientManager. It reads `clientManager.isLocal` whenever it needs the default didjs canister ID (unless a custom one was provided or assigned), and it reads `clientManager.agent` for each request, so a sign-in or sign-out needs nothing from it, and a dropped adapter or candid reactor needs no cleanup.
 
 ## Standalone Usage
 
@@ -431,7 +457,7 @@ import { CandidAdapter } from "@ic-reactor/candid"
 const clientManager = {
   agent: await HttpAgent.create({ host: "https://ic0.app" }),
   isLocal: false,
-  subscribe: () => () => {}, // No-op subscription
+  subscribe: () => () => {}, // Part of the interface; the adapter never calls it
 }
 
 const adapter = new CandidAdapter({ clientManager })

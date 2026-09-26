@@ -61,39 +61,39 @@ describe("Reactor.invalidateQueries scope", () => {
     })
   })
 
-  it("invalidates the canister a callConfig override names", () => {
+  it("invalidates the canister a callConfig override names", async () => {
     const own = seed(TOKEN_A)
     const other = seed(TOKEN_B)
 
-    reactor.invalidateQueries(undefined, { canisterId: TOKEN_B })
+    await reactor.invalidateQueries(undefined, { canisterId: TOKEN_B })
 
     for (const key of other) expect(invalidated(key)).toBe(true)
     for (const key of own) expect(invalidated(key)).toBe(false)
   })
 
-  it("invalidates the whole canister for params without a functionName", () => {
+  it("invalidates the whole canister for params without a functionName", async () => {
     const own = seed(TOKEN_A)
 
-    reactor.invalidateQueries({})
+    await reactor.invalidateQueries({})
 
     for (const key of own) expect(invalidated(key)).toBe(true)
   })
 
-  it("does the same for an override canister", () => {
+  it("does the same for an override canister", async () => {
     const own = seed(TOKEN_A)
     const other = seed(TOKEN_B)
 
-    reactor.invalidateQueries({}, { canisterId: TOKEN_B })
+    await reactor.invalidateQueries({}, { canisterId: TOKEN_B })
 
     for (const key of other) expect(invalidated(key)).toBe(true)
     for (const key of own) expect(invalidated(key)).toBe(false)
   })
 
-  it("still scopes to one method when a functionName is given", () => {
+  it("still scopes to one method when a functionName is given", async () => {
     // Guard: the method-scoped form keeps working and stays narrow.
     const [nameKey, balanceKey] = seed(TOKEN_B)
 
-    reactor.invalidateQueries(
+    await reactor.invalidateQueries(
       { functionName: "icrc1_balance_of" as never },
       { canisterId: TOKEN_B }
     )
@@ -102,12 +102,12 @@ describe("Reactor.invalidateQueries scope", () => {
     expect(invalidated(nameKey)).toBe(false)
   })
 
-  it("still invalidates the reactor's own canister with no arguments", () => {
+  it("still invalidates the reactor's own canister with no arguments", async () => {
     // Guard: the documented no-argument form is unchanged.
     const own = seed(TOKEN_A)
     const other = seed(TOKEN_B)
 
-    reactor.invalidateQueries()
+    await reactor.invalidateQueries()
 
     for (const key of own) expect(invalidated(key)).toBe(true)
     for (const key of other) expect(invalidated(key)).toBe(false)

@@ -25,6 +25,7 @@ import {
   UseSuspenseQueryResult,
   UseMutationOptions,
   UseMutationResult,
+  SkipToken,
 } from "@tanstack/react-query"
 
 // ============================================================================
@@ -83,6 +84,25 @@ export interface BaseQueryConfig<
   functionName: Method
   /** Arguments to pass to the method (if any) */
   args?: ReactorArgs<Service, Method, Transform>
+  /**
+   * Call configuration for the method, as `Reactor.callMethod` takes it: a
+   * `canisterId` sends the query to another canister of the same interface,
+   * an `agent` sends it through another agent, `effectiveCanisterId` routes
+   * it. The query key carries what it sets, as the hooks' keys do, so the
+   * answer is cached apart from the reactor's own canister and agent, and
+   * `getQueryKey()`, `invalidate()` and the other cache controls act on that
+   * entry.
+   *
+   * @example
+   * ```typescript
+   * // The same ledger interface, another token's canister
+   * const ckbtcSymbol = createQuery(ledger, {
+   *   functionName: "icrc1_symbol",
+   *   callConfig: { canisterId: "mxzaz-hqaaa-aaaar-qaada-cai" },
+   * })
+   * ```
+   */
+  callConfig?: CallConfig
   /** The query key to use for this query */
   queryKey?: QueryKey
   /**
@@ -111,6 +131,49 @@ export type QueryConfig<
   Transform extends TransformKey = "candid",
   Selected = QueryFnData<Service, Method, Transform>,
 > = BaseQueryConfig<Service, Method, Transform, Selected>
+
+/**
+ * Configuration for the non-suspense query hook of `createActorHooks` and
+ * `defineReactor` (`useActorQuery`): a {@link QueryConfig} whose `args` may
+ * also be TanStack Query's `skipToken`, for a query whose arguments are not
+ * known yet.
+ *
+ * A skipped query does not fetch. It has an entry of its own under its
+ * method's key (at the canister and agent `callConfig` names), which no
+ * call's key shares, so it shows no data until the arguments arrive, not
+ * even that of a call made without arguments. Once `args` holds arguments,
+ * the query is keyed and fetched as usual. Its `refetch()` has nothing to
+ * run: TanStack Query answers it with a "Missing queryFn" error, so offer a
+ * refresh only once the arguments exist.
+ *
+ * The suspense hooks do not take `skipToken`: TanStack Query has no way to
+ * suspend on a query that cannot run.
+ *
+ * @example
+ * ```typescript
+ * import { skipToken } from "@ic-reactor/react"
+ *
+ * function Balance({ owner }: { owner?: string }) {
+ *   // No `!`, no placeholder account, no `enabled`
+ *   const { data } = useActorQuery({
+ *     functionName: "icrc1_balance_of",
+ *     args: owner ? [{ owner }] : skipToken,
+ *   })
+ * }
+ * ```
+ */
+export interface SkippableQueryConfig<
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  Selected = QueryFnData<Service, Method, Transform>,
+> extends Omit<QueryConfig<Service, Method, Transform, Selected>, "args"> {
+  /**
+   * Arguments to pass to the method, or `skipToken` while they are not
+   * known: the query then waits without fetching.
+   */
+  args?: ReactorArgs<Service, Method, Transform> | SkipToken
+}
 
 /**
  * Configuration for createSuspenseQuery (useSuspenseQuery).
@@ -224,6 +287,120 @@ export interface UseSuspenseQueryWithSelect<
 }
 
 // ============================================================================
+// Cache Controls
+// ============================================================================
+
+/**
+ * What `optimisticUpdate()` resolves with: the way back to the value the
+ * cache held before the update.
+ *
+ * @example
+ * ```typescript
+ * const update = await postQuery.optimisticUpdate((post) => ({
+ *   ...post,
+ *   likes: post.likes + 1n,
+ * }))
+ * // The call failed: show the post as it was
+ * update.rollback()
+ * ```
+ */
+export interface OptimisticRollback {
+  /**
+   * Write back the value the cache held before the update, with the time it
+   * was fetched, so it is as fresh or as stale as it was. A value that was
+   * invalidated is invalidated again, so a mounted query refetches it, as
+   * the refetch the update cancelled would have.
+   *
+   * It does nothing when the update wrote nothing, or when another principal
+   * has signed in or out since: the value was the previous principal's, and
+   * the sign-in has already removed or refetched it. It restores that value
+   * even if a fetch or another update has written since; invalidate the
+   * query afterwards when the canister's current value matters.
+   */
+  rollback: () => void
+}
+
+/**
+ * The operations every query object has on its own cache entry, on the
+ * reactor's QueryClient. They act on that one entry: other args of the same
+ * method, and other queries under the same key prefix, are left alone.
+ *
+ * @template TQueryFnData - The raw (pre-`select`) data the entry holds
+ */
+export interface QueryCacheControls<TQueryFnData> {
+  /**
+   * Cancel this query's fetch in flight, if there is one. The entry keeps
+   * the value it held before that fetch started, and a later refetch runs as
+   * usual.
+   *
+   * @example
+   * ```typescript
+   * // Before writing to the cache, so an older answer cannot land on top
+   * await postQuery.cancel()
+   * postQuery.setData(draft)
+   * ```
+   */
+  cancel: () => Promise<void>
+
+  /**
+   * Reset this query's entry to its initial state, as TanStack Query's
+   * `resetQueries` does: its data is cleared, or goes back to `initialData`
+   * when one was given. A mounted hook then fetches it again, and a suspense
+   * hook suspends until it has. It resolves once that fetch settles.
+   *
+   * @example
+   * ```typescript
+   * // A reload button that shows the Suspense fallback again
+   * <button onClick={() => void statsQuery.reset()}>Reload</button>
+   * ```
+   */
+  reset: () => Promise<void>
+
+  /**
+   * Replace this query's cached value for the duration of a mutation, and
+   * get back a rollback for when it fails.
+   *
+   * It cancels the query's fetch in flight, so an answer from before the
+   * mutation cannot overwrite the new value, then writes what `updater`
+   * returns for the cached value. `updater` gets and returns the raw,
+   * pre-`select` data. When nothing is cached yet it is not called, nothing
+   * is cancelled or written, and `rollback()` does nothing: there is no
+   * value on screen to update, and the query's own fetch will bring one. The
+   * same goes when another principal signs in or out while it cancels, since
+   * the cached value is then the previous principal's.
+   *
+   * The fetch it cancels may be a refetch an invalidation or a sign-in
+   * started, so refetch the query once the mutation settles, with
+   * `invalidate()` in `onSettled` or the query in `invalidateQueries`.
+   *
+   * Return it from `onMutate`, so the rollback reaches `onError`.
+   *
+   * @param updater - The new value, from the cached one. Do not mutate the
+   * cached value in place; return a new one.
+   *
+   * @example
+   * ```typescript
+   * const getPost = createQueryFactory(backend, { functionName: "getPost" })
+   * const likePost = createMutation(backend, { functionName: "likePost" })
+   *
+   * const { mutate } = likePost.useMutation({
+   *   onMutate: ([postId]) =>
+   *     getPost([postId]).optimisticUpdate((post) => ({
+   *       ...post,
+   *       likes: post.likes + 1n,
+   *     })),
+   *   onError: (_error, _args, update) => update?.rollback(),
+   *   // Refetch either way: a call that failed in transit may still have run
+   *   onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
+   * })
+   * ```
+   */
+  optimisticUpdate: (
+    updater: (old: TQueryFnData) => TQueryFnData
+  ) => Promise<OptimisticRollback>
+}
+
+// ============================================================================
 // Result Interfaces
 // ============================================================================
 
@@ -238,7 +415,7 @@ export interface BaseQueryResult<
   TQueryFnData,
   TSelected = TQueryFnData,
   _TError = Error,
-> {
+> extends QueryCacheControls<TQueryFnData> {
   /** Fetch data in loader (uses ensureQueryData for cache-first) */
   fetch: () => Promise<TSelected>
 
@@ -247,6 +424,12 @@ export interface BaseQueryResult<
    * Useful for preloading data before navigating to a route.
    *
    * Unlike `fetch()`, this returns a void promise so it can be fire-and-forget.
+   * It never rejects: after a failed fetch the cached data is left as it was.
+   *
+   * A sign-in or sign-out while it is in flight cancels the fetch, so the
+   * previous principal's answer is never cached, and it runs again for the
+   * principal signed in, as `fetch()` does. When that run succeeds, the cache
+   * holds that principal's answer by the time the promise resolves.
    *
    * @example
    * // In a route hover handler
@@ -344,6 +527,246 @@ export interface SuspenseQueryResult<
 }
 
 // ============================================================================
+// Query Factory Functions
+// ============================================================================
+
+/**
+ * The members every args-late query factory function carries
+ * (`createQueryFactory`, `createSuspenseQueryFactory`,
+ * `createInfiniteQueryFactory`, `createSuspenseInfiniteQueryFactory`).
+ *
+ * A factory makes one query per set of args, so there was no key to name all
+ * of them: invalidating a list after a mutation meant keeping the args of each
+ * instance around. These address every query the factory returns at once.
+ */
+export interface QueryFactoryMethods {
+  /**
+   * The key prefix every query of this factory shares, whatever its args: the
+   * canister (the config's `callConfig.canisterId`, else the reactor's) and
+   * the method, plus the reactor's transform segment and any agent or
+   * effective-target segment the config's `callConfig` adds, and for an
+   * infinite factory its config `queryKey`. TanStack Query matches keys by
+   * prefix, so the prefix covers every args instance and every infinite page
+   * set. Queries of the same method made elsewhere share it too.
+   *
+   * @example
+   * ```typescript
+   * const getBalance = createQueryFactory(ledger, {
+   *   functionName: "icrc1_balance_of",
+   * })
+   *
+   * // Every cached balance, whatever the account
+   * ledger.queryClient.getQueriesData({ queryKey: getBalance.getQueryKey() })
+   * ```
+   */
+  getQueryKey: () => QueryKey
+  /**
+   * Invalidate every query of this factory, whatever its args, on the
+   * reactor's QueryClient. It resolves once the active ones have refetched; a
+   * refetch that fails does not reject it.
+   *
+   * @example
+   * ```typescript
+   * // After a transfer, refresh every balance on screen
+   * await getBalance.invalidate()
+   * ```
+   */
+  invalidate: () => Promise<void>
+}
+
+/**
+ * The function `createQueryFactory` and `createSuspenseQueryFactory` return:
+ * called with args it returns the query object for them, the same object for
+ * the same args, and it also carries {@link QueryFactoryMethods}.
+ *
+ * @template TArgs - The method's arguments
+ * @template TQuery - The query object it returns
+ *
+ * @example
+ * ```typescript
+ * const getPost = createQueryFactory(backend, { functionName: "get_post" })
+ *
+ * // One post's query object
+ * const { data } = getPost([postId]).useQuery()
+ *
+ * // Every post's, whatever its args
+ * await getPost.invalidate()
+ * ```
+ */
+export interface QueryFactoryFn<TArgs, TQuery> extends QueryFactoryMethods {
+  (args: TArgs): TQuery
+}
+
+/**
+ * What a query factory returns for `skipToken`: the query's `useQuery` hook
+ * alone, which renders a query that waits without fetching.
+ *
+ * The imperative members are left out because there is no call to make or
+ * entry to read until the args are known: narrow to the args first to reach
+ * `fetch()`, `invalidate()` or the cache controls.
+ *
+ * @template TQuery - The query object the factory returns for args
+ *
+ * @example
+ * ```typescript
+ * const getBalance = createQueryFactory(ledger, {
+ *   functionName: "icrc1_balance_of",
+ * })
+ *
+ * // A SkippedQuery: only useQuery(), which does not fetch
+ * const { data } = getBalance(skipToken).useQuery()
+ * ```
+ */
+export type SkippedQuery<TQuery extends { useQuery: unknown }> = Pick<
+  TQuery,
+  "useQuery"
+>
+
+/**
+ * The function `createQueryFactory` returns: a {@link QueryFactoryFn} that
+ * also takes TanStack Query's `skipToken` in place of args, for a component
+ * whose args are not known yet. For `skipToken` it returns a
+ * {@link SkippedQuery}, whose `useQuery()` waits without fetching, in an
+ * entry of its own under the factory's `getQueryKey()` prefix. Given
+ * `args ? [args] : skipToken`, it returns either, and `useQuery()` can be
+ * called on the result directly.
+ *
+ * `createSuspenseQueryFactory` returns a plain {@link QueryFactoryFn}: a
+ * suspense query cannot wait on `skipToken`.
+ *
+ * @template TArgs - The method's arguments
+ * @template TQuery - The query object it returns for args
+ *
+ * @example
+ * ```typescript
+ * const getBalance = createQueryFactory(ledger, {
+ *   functionName: "icrc1_balance_of",
+ * })
+ *
+ * function Balance({ owner }: { owner?: string }) {
+ *   const { data } = getBalance(owner ? [{ owner }] : skipToken).useQuery()
+ * }
+ * ```
+ */
+export interface SkippableQueryFactoryFn<
+  TArgs,
+  TQuery extends { useQuery: unknown },
+> extends QueryFactoryMethods {
+  // Args first: a factory called with args must resolve to the full query
+  // object, not to the union the args-or-skipToken signature returns.
+  (args: TArgs): TQuery
+  (args: SkipToken): SkippedQuery<TQuery>
+  (args: TArgs | SkipToken): TQuery | SkippedQuery<TQuery>
+  // And args last as well: TypeScript reads an overloaded function's last
+  // signature for `ReturnType`, `Parameters` and inference, so
+  // `ReturnType<typeof getBalance>` stays the full query object, and a
+  // factory passed where a `QueryFactoryFn<A, Q>` is inferred still gives
+  // its args and query, as they did before `skipToken`. With the union
+  // signature last, all three widened to include the skipped query.
+  (args: TArgs): TQuery
+}
+
+// ============================================================================
+// Invalidation Targets
+// ============================================================================
+
+/**
+ * Anything that knows the key of its queries: a query object from
+ * `createQuery`, `createSuspenseQuery`, `createInfiniteQuery` or
+ * `createSuspenseInfiniteQuery` (factory instances included), or a query
+ * factory function, whose key covers every query it returns.
+ *
+ * @example
+ * ```typescript
+ * const postsQuery = createQuery(backend, { functionName: "get_posts" })
+ * const getPost = createQueryFactory(backend, { functionName: "get_post" })
+ *
+ * // Both are key sources, so both go straight into invalidateQueries
+ * createMutation(backend, {
+ *   functionName: "create_post",
+ *   invalidateQueries: [postsQuery, getPost],
+ * })
+ * ```
+ */
+export interface QueryKeySource {
+  /** The key, or key prefix, of the queries it names. */
+  getQueryKey: () => QueryKey
+  /**
+   * Invalidate those queries on the QueryClient they are cached in.
+   * `invalidateQueries` calls it when it is there, so a query of another
+   * reactor with a QueryClient of its own is invalidated in that client. The
+   * key goes to the mutation's reactor's QueryClient otherwise.
+   */
+  invalidate?: () => Promise<void>
+}
+
+/**
+ * A method of the mutation's own reactor, and optionally one set of its
+ * arguments: the same shape `Reactor.invalidateQueries` takes. Its key is
+ * built by the reactor's `generateQueryKey` when the mutation succeeds, so it
+ * follows a `setCanisterId` and carries the reactor's transform segment. It
+ * is rooted at the canister the mutation was sent to: the reactor's, or the
+ * one the mutation's `callConfig.canisterId` names.
+ *
+ * Without `args` it names every query of the method, whatever its args,
+ * infinite queries included. With `args` it names the queries made with those
+ * args by `createQuery`, a query factory or the hooks, and `args: []` names a
+ * method without parameters as no `args` does. An infinite query keys its
+ * page set by its first page's args in another form, which `args` does not
+ * match, and a query of another canister than the mutation's is keyed apart:
+ * name either by its query object or key instead.
+ *
+ * @example
+ * ```typescript
+ * invalidateQueries: [
+ *   { functionName: "get_posts" },
+ *   { functionName: "get_post", args: [postId] },
+ * ]
+ * ```
+ */
+export type QueryDescriptor<
+  Service = BaseActor,
+  Transform extends TransformKey = "candid",
+> = {
+  [Method in FunctionName<Service>]: {
+    /** The method whose queries to name */
+    functionName: Method
+    /** The arguments of the one query to name; omit for every query of the method */
+    args?: ReactorArgs<Service, Method, Transform>
+  }
+}[FunctionName<Service>]
+
+/**
+ * One entry of `invalidateQueries`: which queries a successful mutation
+ * invalidates.
+ *
+ * - a query key, as `generateQueryKey` or `getQueryKey()` builds it;
+ * - a query object or query factory ({@link QueryKeySource});
+ * - a method of the mutation's own reactor, with or without args
+ *   ({@link QueryDescriptor});
+ * - `undefined`, which is skipped, so `[maybeQuery]` and
+ *   `[maybeQuery?.getQueryKey()]` are safe when the query is absent.
+ *
+ * TanStack Query matches each key by prefix.
+ *
+ * @example
+ * ```typescript
+ * createMutation(backend, {
+ *   functionName: "create_post",
+ *   invalidateQueries: [
+ *     postsQuery, // a query object
+ *     getPost, // a query factory: every post, whatever its args
+ *     { functionName: "get_posts_count" }, // a method of this reactor
+ *   ],
+ * })
+ * ```
+ */
+export type InvalidationTarget<
+  Service = BaseActor,
+  Transform extends TransformKey = "candid",
+> = QueryKey | QueryKeySource | QueryDescriptor<Service, Transform> | undefined
+
+// ============================================================================
 // Actor Mutation Types
 // ============================================================================
 
@@ -372,13 +795,21 @@ export interface MutationConfig<
   /** Call configuration for the actor method */
   callConfig?: CallConfig
   /**
-   * Queries to invalidate upon successful mutation.
+   * Queries to invalidate upon successful mutation, before `onSuccess` runs.
+   * The mutation stays pending until the invalidated queries in use have
+   * refetched, so `onSuccess` reads the refetched data.
    *
-   * `undefined` entries are skipped, so the common
-   * `[maybeQuery?.getQueryKey()]` idiom is safe when the optional query object
-   * is absent.
+   * Each entry is a query key, a query object or query factory, or a
+   * `{ functionName, args? }` method of this mutation's reactor; see
+   * {@link InvalidationTarget}. `undefined` entries are skipped, so
+   * `[maybeQuery]` is safe when the optional query object is absent.
+   *
+   * @example
+   * ```typescript
+   * invalidateQueries: [getPosts, { functionName: "get_posts_count" }]
+   * ```
    */
-  invalidateQueries?: (QueryKey | undefined)[]
+  invalidateQueries?: InvalidationTarget<Service, Transform>[]
   /**
    * Callback for canister-level business logic errors.
    * Called when the canister returns a Result { Err: E } variant.
@@ -447,16 +878,19 @@ export interface MutationHookOptions<
   "mutationFn"
 > {
   /**
-   * Query keys to invalidate upon successful mutation.
-   * Use query.getQueryKey() to get the key from a query result.
+   * Queries to invalidate upon successful mutation, after the factory's own
+   * `invalidateQueries` and before `onSuccess`. Takes the same entries:
+   * a query key, a query object or query factory, or a
+   * `{ functionName, args? }` method of the mutation's reactor; see
+   * {@link InvalidationTarget}.
    *
    * @example
    * const balanceQuery = getIcpBalance([account])
    * useMutation({
-   *   invalidateQueries: [balanceQuery.getQueryKey()],
+   *   invalidateQueries: [balanceQuery],
    * })
    */
-  invalidateQueries?: (QueryKey | undefined)[]
+  invalidateQueries?: InvalidationTarget<Service, Transform>[]
   /**
    * Callback for canister-level business logic errors.
    * Called when the canister returns a Result { Err: E } variant.
@@ -490,7 +924,7 @@ export interface MutationResult<
    * @example
    * // With invalidateQueries to auto-update balance after transfer
    * const { mutate } = icpTransferMutation.useMutation({
-   *   invalidateQueries: [userBalanceQuery.getQueryKey()], // Auto-invalidate after success!
+   *   invalidateQueries: [userBalanceQuery], // Auto-invalidate after success!
    * })
    */
   useMutation: <TOnMutateResult = unknown>(
@@ -502,7 +936,12 @@ export interface MutationResult<
     TOnMutateResult
   >
 
-  /** Execute the update call directly (outside of React) */
+  /**
+   * Execute the update call outside React. It runs in the QueryClient's
+   * MutationCache with the factory's options and callbacks, as `useMutation()`
+   * does without hook options. It resolves with the method's result and
+   * rejects with the call's error.
+   */
   execute: (
     args: ReactorArgs<Service, Method, Transform>
   ) => Promise<ReactorReturnOk<Service, Method, Transform>>

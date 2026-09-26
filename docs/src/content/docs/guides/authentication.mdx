@@ -160,7 +160,9 @@ serves neither — rather than opening a popup the app cannot see into.
   `idleOptions: { disableIdle: true }` to turn it off,
   `idleOptions: { idleTimeout: 30 * 60_000 }` to lengthen it, or
   `idleOptions: { disableDefaultIdleCallback: true, onIdle: … }` to keep the
-  detection but handle the timeout yourself. v10 drops `idleOptions` with a
+  detection but handle the timeout yourself. Your `onIdle` runs once per idle
+  period, even after the manager has built another client for per-call options
+  such as `openIdProvider`. v10 drops `idleOptions` with a
   warning and leaves the idle limit to the identity provider: pass
   `maxTimeToIdle` to `login()` to set it, and `disableBrowserActivity: true` if
   only requests should count as activity.
@@ -316,7 +318,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isAuthenticating } = useAuth()
   const location = useLocation()
 
-  // Show loading while checking auth state
+  // Show loading while the session is restored, so a reload does not send a
+  // signed-in user to the login page
   if (isAuthenticating) {
     return <LoadingSpinner />
   }
@@ -334,6 +337,24 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 Sessions are automatically persisted in IndexedDB. When users return to your app, the `useAuth` hook automatically triggers session restoration. `clientManager.initialize()` only initializes the agent — outside React, call `authentication.authenticate()` to restore a session.
 
+`useAuth()` reports `isAuthenticating: true` until that restore has settled,
+from the first render on and in a server render too. So the login button in
+[useAuth](#useauth) shows "Connecting..." rather than "Login" to a user who is
+already signed in, and the [protected route](#protected-routes) waits instead of
+redirecting. A restore that fails settles it as well, and the hooks then report
+the user signed out.
+
+### Several Tabs
+
+Every tab of an origin shares the stored session. With `@icp-sdk/auth` v10 the
+`AuthenticationManager` follows it: when the user signs out in another tab,
+this tab's manager signs out too and puts the anonymous identity on the agent,
+and when they sign in there as another account, this tab adopts that account.
+Neither needs a call in this tab. The hooks re-render with the new state, and
+the queries of every connected canister are swept as on any sign-in or
+sign-out. With v8, which tells a tab nothing, a tab notices only when it checks
+the session again, as `authenticate()` or a newly mounted `useAuth()` does.
+
 ### Session Duration
 
 By default, Internet Identity sessions last 8 hours. You can customize this:
@@ -349,13 +370,49 @@ login({
   security requirements when setting session duration.
 </Aside>
 
+## Discarding a Manager
+
+An `AuthenticationManager` built once at module scope lives as long as the page
+and needs nothing more. One built per mount does not: a provider in a
+server-rendered app builds one per render tree, and a widget may build its own
+reactor stack each time it opens. The manager builds its Internet Identity
+client on first use, and a `@icp-sdk/auth` v10 client listens to the page
+(activity, focus and the session record every tab shares) until it is disposed.
+A provider from [`createReactorProvider`](/v3/reference/createreactorprovider)
+disposes every manager built for its value when its tree unmounts, and leaves
+alone one built elsewhere and passed in. A manager built per mount any other
+way is released from the cleanup of whatever built it:
+
+```tsx
+const [authentication] = useState(
+  () => new AuthenticationManager({ clientManager })
+)
+useEffect(() => () => authentication.dispose(), [authentication])
+```
+
+`dispose()` disposes the client the manager built and forgets it, so a later
+`login()`, `logout()` or `prepareClient()` builds a new one. That keeps it safe
+under StrictMode, which runs the cleanup and the effect again on the same
+manager. It leaves the auth state and the agent's identity as they are, and it
+does not sign anyone out. A client you passed in as `authClient` is never
+disposed. With v8 there is nothing to release, and the manager only drops its
+reference.
+
+A tree can unmount before the session restore its `useAuth()` started has
+finished, as a widget closed right after it opened does. That restore then
+stops without building a client, and if the same manager is mounted again, as
+`<Activity>` mounts a tree it shows again, its `useAuth()` restores the session
+from the start.
+
 ## Automatic Query Invalidation
 
-When the user's identity changes — on login, logout, and session restore — IC Reactor sweeps the cache of every **connected canister**: in-flight queries are cancelled, inactive cached entries are **removed**, and active queries are invalidated so they refetch as the new identity.
+When the user's principal changes — on login, logout, and session restore — IC Reactor sweeps the cache of every **connected canister**: in-flight queries are cancelled, inactive cached entries are **removed**, and active queries are invalidated so they refetch as the new identity.
 
 Removal matters because query keys carry no principal. An entry that was only invalidated would still be readable through `getQueryData` or `fetchQuery` under the next identity — so the previous principal's inactive data (a balance, a profile, a deposit address) is dropped outright, and only the queries a mounted component is actively watching live on through a refetch.
 
 The sweep is scoped by canister ID (every reactor query key starts with one), so sharing a `QueryClient` with the rest of your app does not cause your unrelated REST or GraphQL queries to refetch on every sign-in.
+
+A sign-in that returns the principal already signed in — signing in again to extend a session, or an identity attribute request, which signs in by default — is not an identity change: the cache is kept, and only queries whose last fetch failed refetch.
 
 ## Without Authentication
 

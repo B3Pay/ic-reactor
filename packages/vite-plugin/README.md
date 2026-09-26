@@ -1,5 +1,10 @@
 # @ic-reactor/vite-plugin
 
+> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
+> (`node_modules/@ic-reactor/vite-plugin/llms.txt`) before writing code with it. It
+> is written for the installed version and lists the patterns to use and the
+> mistakes to avoid.
+
 Vite plugin for IC Reactor code generation. It runs the shared
 `@ic-reactor/codegen` pipeline, watches `.did` files, and can inject the
 `ic_env` cookie used by `ClientManager` during local development.
@@ -43,8 +48,9 @@ export const clientManager = new ClientManager({
 No opt-in flag is needed to pick up the plugin's environment in development:
 the plugin sets the `ic_env` cookie and `ClientManager` reads it automatically
 in the browser. That trust stops at the local replica — cookies are not
-origin-isolated, so on a custom domain or mainnet the cookie is ignored and a
-reactor with no `canisterId` throws. Set the per-canister `canisterId` in the
+origin-isolated, so on a custom domain, on mainnet, and on Codespaces or Gitpod
+(whose workspaces share a parent domain with every other user's) the cookie is
+ignored and a reactor with no `canisterId` throws. Set the per-canister `canisterId` in the
 plugin config to bake it into the generated output for those builds, or pass
 `allowEnvConfig: true` to `ClientManager` if you trust every subdomain of the
 domain you serve from.
@@ -57,9 +63,40 @@ exports the reactor and six hooks named after the canister
 `use<Canister>InfiniteQuery`, `use<Canister>SuspenseInfiniteQuery`,
 `use<Canister>Mutation`, `use<Canister>Method`).
 
+Set `factories: true` on a canister to also generate
+`index.factories.generated.ts`, a query or mutation object per method bound to
+the generated reactor: `createQuery` for a query method without arguments,
+`createQueryFactory` for one with arguments, and `createMutation` for an
+update or oneway method, named `<method>Query` or `<method>Mutation` with the
+method name in camelCase. The default `index.ts` wrapper re-exports it; an
+`index.ts` you have edited is left alone, and the plugin warns in the terminal
+until it re-exports the factories. It needs `target: "react"`. See
+https://ic-reactor.b3pay.net/v3/packages/codegen#query-and-mutation-factories
+for the naming rule for any method name.
+
+```ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+
+icReactor({
+  canisters: [
+    { name: "backend", didFile: "./backend/backend.did", factories: true },
+  ],
+})
+```
+
+```tsx
+import { getMessageQuery, setMessageMutation } from "./declarations/backend"
+
+// In a component
+const { data } = getMessageQuery.useQuery()
+
+// Anywhere, outside React included
+await setMessageMutation.execute(["hello"])
+```
+
 If Prettier resolves from Vite's `config.root`, the plugin formats the
-generated `.js`, `.d.ts`, `index.generated.ts` and the `index.ts` wrapper it
-writes with it and your Prettier config, so a rebuild leaves formatted,
+generated `.js`, `.d.ts`, `index.generated.ts`, `index.factories.generated.ts`
+and the `index.ts` wrapper it writes with it and your Prettier config, so a rebuild leaves formatted,
 committed output unchanged. Without Prettier the declarations hold the Candid
 parser's output followed by a newline, and a formatting error never fails the
 build.
@@ -70,6 +107,8 @@ runtime package instead of `@ic-reactor/react`.
 ## Options
 
 ```ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+
 icReactor({
   canisters: [
     {
@@ -111,6 +150,14 @@ of a `.did` file being edited.
 - `target`
 - `mode`
 - `canisterId`
+- `factories`: also generate `index.factories.generated.ts` (default `false`)
+
+Each entry needs an output directory of its own. Two entries with the same
+`name` and no `outDir`, or with `outDir` values that reach one directory, would
+overwrite each other's output, so the plugin generates the first of them and
+fails the later one with the error the CLI reports. To generate one canister
+twice, say as a `DisplayReactor` and as a `Reactor`, give each entry its own
+`outDir`.
 
 Supported `mode` values:
 
@@ -127,12 +174,13 @@ Supported `target` values:
 
 ## Local Development Behavior
 
-When `injectEnvironment` is enabled during `vite dev`, the plugin:
+When `injectEnvironment` is enabled during `vite dev` or `vite preview`, the
+plugin:
 
 1. asks `icp` for the local network status
 2. resolves canister IDs — `internet_identity` is added automatically if not
    already in your canister list
-3. sets the `ic_env` cookie
+3. sets the `ic_env` cookie on each response
 4. proxies `/api` to the local replica
 
 If a canister has a `canisterId` set in the plugin config, that value overrides
@@ -141,19 +189,35 @@ the auto-detected ID for that canister.
 Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
 (defaults to `"local"`).
 
-If environment detection fails, the plugin still falls back to proxying `/api`
-to `http://127.0.0.1:4943`, but it will not inject canister metadata. It warns
-when that happens with canisters configured, because the failure is otherwise
-indistinguishable from success until the app breaks on an undefined canister
-id. Run with `DEBUG=ic-reactor` to see the `icp` output behind the warning.
+If environment detection fails, the plugin falls back to proxying `/api` to
+`http://127.0.0.1:4943`, and sets no cookie, or with no canisters configured one
+that names only icp-cli's built-in Internet Identity. It warns when that happens
+with canisters configured, and when a configured canister has no ID, because
+the failure is otherwise indistinguishable from success until the app breaks on
+an undefined canister id. Run with `DEBUG=ic-reactor` to see the `icp` output
+behind the warning.
 
-If your Vite config already sets `server.proxy["/api"]`, the plugin leaves that
-entry alone, whether detection succeeds or not.
+Detection is complete once `icp` reports the network and every configured
+canister has an ID. Until then the plugin asks `icp` again on each page load,
+and that page gets the answer: start `vite dev` first, then run
+`icp network start` and `icp deploy`, and reload the page. The `/api` proxy
+moves to the network `icp` reports, the fallback included. Once detection is
+complete, page loads run no further `icp` commands, so redeploying into a
+fresh network, with new canister IDs and a new root key, needs a dev server
+restart. A configured canister you never deploy locally keeps detection
+incomplete, so every page load runs `icp` for it; set its `canisterId` and it
+counts as resolved. If you never run a local network, set
+`injectEnvironment: false` and page loads run no `icp`.
+
+If your Vite config or another plugin sets `server.proxy["/api"]`, the plugin
+leaves that entry alone, whether detection succeeds or not, and that proxy does
+not follow detection.
 
 ## File Regeneration
 
 On startup and on `.did` file changes, the plugin regenerates declarations and
-the managed `index.generated.ts` implementation. The user-facing `index.ts`
+the managed `index.generated.ts` implementation, and `index.factories.generated.ts`
+for a canister that sets `factories: true`. The user-facing `index.ts`
 entry is created once, then preserved unless it still matches the default
 wrapper or a legacy generated scaffold that can be migrated automatically.
 When a watched `.did` file changes, the plugin sends a full browser reload so

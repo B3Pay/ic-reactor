@@ -1,30 +1,50 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { renderHook, waitFor } from "@testing-library/react"
 import React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ActorMethod } from "@icp-sdk/core/agent"
-import { Reactor } from "@ic-reactor/core"
+import { IDL } from "@icp-sdk/core/candid"
+import { ClientManager, Reactor } from "@ic-reactor/core"
 import { useActorMutation } from "../src/hooks/useActorMutation.js"
+import {
+  createTestCanister,
+  installFakeReplica,
+  type FakeReplica,
+} from "../src/testing.js"
 
 interface TestActor {
+  get_profile: ActorMethod<[], string>
   update_profile: ActorMethod<[{ name: string }], boolean>
 }
 
-const createMockReactor = (queryClient: QueryClient) =>
-  ({
-    queryClient,
-    callMethod: vi.fn().mockResolvedValue(true),
-    generateQueryKey: vi
-      .fn()
-      .mockImplementation(({ functionName }) => [
-        "test-canister",
-        functionName,
-      ]),
-    getQueryOptions: vi.fn().mockImplementation((params) => ({
-      queryKey: ["test-canister", params.functionName],
-      queryFn: () => Promise.resolve(true),
-    })),
-  }) as unknown as Reactor<TestActor>
+const idlFactory: IDL.InterfaceFactory = ({ IDL }) =>
+  IDL.Service({
+    get_profile: IDL.Func([], [IDL.Text], ["query"]),
+    update_profile: IDL.Func([IDL.Record({ name: IDL.Text })], [IDL.Bool], []),
+  })
+
+const CANISTER_ID = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+
+let replica: FakeReplica
+
+beforeEach(() => {
+  let profile = "old"
+  replica = installFakeReplica({
+    canisters: {
+      [CANISTER_ID]: createTestCanister<TestActor>(idlFactory, {
+        get_profile: () => profile,
+        update_profile: ([{ name }]) => {
+          profile = name
+          return true
+        },
+      }),
+    },
+  })
+})
+
+afterEach(() => {
+  replica.restore()
+})
 
 describe("useActorMutation — invalidateQueries entries", () => {
   let queryClient: QueryClient
@@ -37,7 +57,15 @@ describe("useActorMutation — invalidateQueries entries", () => {
         mutations: { retry: false },
       },
     })
-    reactor = createMockReactor(queryClient)
+    reactor = new Reactor<TestActor>({
+      clientManager: new ClientManager({
+        queryClient,
+        agentOptions: { host: replica.host },
+      }),
+      name: "test-canister",
+      canisterId: CANISTER_ID,
+      idlFactory,
+    })
   })
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -77,7 +105,8 @@ describe("useActorMutation — invalidateQueries entries", () => {
   })
 
   it("still invalidates the defined entries alongside an undefined one", async () => {
-    queryClient.setQueryData(["test-canister", "get_profile"], "old")
+    const profileKey = reactor.generateQueryKey({ functionName: "get_profile" })
+    await reactor.fetchQuery({ functionName: "get_profile" })
     queryClient.setQueryData(["unrelated", "a"], "A")
 
     const { result } = renderHook(
@@ -85,7 +114,7 @@ describe("useActorMutation — invalidateQueries entries", () => {
         useActorMutation({
           reactor,
           functionName: "update_profile",
-          invalidateQueries: [undefined, ["test-canister", "get_profile"]],
+          invalidateQueries: [undefined, profileKey],
         }),
       { wrapper }
     )
@@ -93,9 +122,7 @@ describe("useActorMutation — invalidateQueries entries", () => {
     result.current.mutate([{ name: "Alice" }])
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
-    expect(
-      queryClient.getQueryState(["test-canister", "get_profile"])?.isInvalidated
-    ).toBe(true)
+    expect(queryClient.getQueryState(profileKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(["unrelated", "a"])?.isInvalidated).toBe(
       false
     )

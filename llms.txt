@@ -1,134 +1,86 @@
-# IC Reactor LLM Manifest
+# IC Reactor
 
-Purpose: compact routing context for AI agents and retrieval systems. For a
-longer task-oriented guide, read `llms-full.txt`.
+> IC Reactor is a type-safe TypeScript library for calling Internet Computer (ICP) canisters from web apps. It wraps `@icp-sdk/core` agents with TanStack Query caching, React hooks and reusable query/mutation objects, Internet Identity sign-in, runtime Candid parsing, and code generation from `.did` files.
 
-## Project
+Install `@ic-reactor/react` in a React app and `@ic-reactor/core` anywhere else; `@ic-reactor/react` re-exports all of core. Start with `defineReactor(...)`, or `defineDisplayReactor(...)` when the UI should get strings instead of `bigint` and `Principal`. In a server-rendered app, build it per request with `createReactorProvider(...)`. Call query methods through query hooks or query objects, and state-changing update methods only through mutations. Hooks run only in React components; loaders, actions and scripts use `.fetch()`, `.execute()`, `.invalidate()` and `reactor.callMethod()`.
 
-IC Reactor v3 is a TypeScript monorepo for building Internet Computer apps with
-typed canister calls, TanStack Query caching, React hooks, optional
-authentication helpers, runtime Candid parsing, and code generation.
+This file is published from the main branch, so it can describe changes that no release carries yet. Each installed package carries a short guide for its own API at `node_modules/@ic-reactor/<package>/llms.txt`, which matches the installed version. The complete guide, with setup choices, snippets and the mistakes to avoid, is [llms-full.txt](https://ic-reactor.b3pay.net/llms-full.txt). What changed between releases is in the [changelog](https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md).
 
-Repository: `https://github.com/B3Pay/ic-reactor`
-Docs: `https://ic-reactor.b3pay.net/v3/`
+Package versions this guide describes:
 
-Release posture: the published documentation and package manifests target the
-stable `@ic-reactor/core` v3.12.5 runtime release.
+- `@ic-reactor/core`: `3.13.0`
+- `@ic-reactor/react`: `3.13.0`
+- `@ic-reactor/candid`: `3.13.0`
+- `@ic-reactor/codegen`: `0.15.0`
+- `@ic-reactor/cli`: `0.15.0`
+- `@ic-reactor/vite-plugin`: `0.15.0`
+- `@ic-reactor/parser`: `0.6.0`
 
-## Package Versions
+## Getting started
 
-Runtime lane:
+- [Installation](https://ic-reactor.b3pay.net/v3/getting-started/installation.md): packages for React and non-React apps, optional tooling, `@icp-sdk/auth`, TypeScript and bundler settings
+- [Quick Start](https://ic-reactor.b3pay.net/v3/getting-started/quick-start.md): a Vite app with generated hooks, from install to the first query and mutation
+- [React Setup](https://ic-reactor.b3pay.net/v3/framework/react-setup.md): `ClientManager` + `Reactor` + hooks, auth hooks, protected routes, several canisters, and server rendering
+- [Local Development](https://ic-reactor.b3pay.net/v3/getting-started/local-development.md): local replica, `ic_env` cookie, root key, Codespaces and Gitpod
 
-- `@ic-reactor/core`: `3.12.5`
-- `@ic-reactor/react`: `3.12.5`
-- `@ic-reactor/candid`: `3.12.5`
+## Guides
 
-Codegen lane:
+- [Queries](https://ic-reactor.b3pay.net/v3/framework/queries.md): query hooks, `skipToken` for args not known yet, suspense and infinite queries, update methods in queries
+- [Mutations](https://ic-reactor.b3pay.net/v3/framework/mutations.md): mutation hooks and objects, `invalidateQueries`, optimistic updates, retries
+- [Query Caching](https://ic-reactor.b3pay.net/v3/framework/query-caching.md): query keys, invalidation, cache reads and writes, `QueryClient` defaults
+- [Authentication](https://ic-reactor.b3pay.net/v3/guides/authentication.md): Internet Identity sign-in with `AuthenticationManager`, `useAuth`, identity attributes, `@icp-sdk/auth` v8 and v10
+- [Error Handling](https://ic-reactor.b3pay.net/v3/guides/error-handling.md): `CanisterError`, `CallError`, `ValidationError`, and which failures are retried
+- [Type Safety](https://ic-reactor.b3pay.net/v3/guides/type-safety.md): service types, display types, and `ReactorArgsOf` / `ReactorDataOf` / `ReactorErrorOf`
+- [Testing](https://ic-reactor.b3pay.net/v3/guides/testing.md): the fake replica from `@ic-reactor/react/testing` for component and imperative tests
 
-- `@ic-reactor/codegen`: `0.14.0`
-- `@ic-reactor/cli`: `0.14.0`
-- `@ic-reactor/vite-plugin`: `0.14.0`
+## API reference
 
-Parser lane:
+- [ClientManager](https://ic-reactor.b3pay.net/v3/reference/ClientManager.md): agent, identity, `QueryClient`, network detection, `fetchAcrossIdentitySwitch`
+- [Reactor](https://ic-reactor.b3pay.net/v3/reference/Reactor.md): `callMethod`, `fetchQuery`, `invalidateQueries`, query keys, `forCanister`
+- [DisplayReactor](https://ic-reactor.b3pay.net/v3/reference/DisplayReactor.md): display types, validators, Candid-to-display type table
+- [createActorHooks](https://ic-reactor.b3pay.net/v3/reference/createActorHooks/overview.md): the six hooks bound to one reactor
+- [useActorQuery](https://ic-reactor.b3pay.net/v3/reference/createActorHooks/useActorQuery.md): options, `select`, `callConfig`, `skipToken`
+- [useActorMutation](https://ic-reactor.b3pay.net/v3/reference/createActorHooks/useActorMutation.md): `onCanisterError`, `invalidateQueries`, retries
+- [useActorMethod](https://ic-reactor.b3pay.net/v3/reference/createActorHooks/useactormethod.md): one hook for query and update methods with an imperative `call()`
+- [Query and mutation factories](https://ic-reactor.b3pay.net/v3/reference/factories/overview.md): reusable objects that work inside and outside React
+- [createQuery](https://ic-reactor.b3pay.net/v3/reference/factories/createQuery.md): `createQuery`, `createQueryFactory`, `fetch()`, `invalidate()`, `optimisticUpdate()`
+- [createMutation](https://ic-reactor.b3pay.net/v3/reference/factories/createMutation.md): `useMutation()`, `execute()`, invalidation targets
+- [createInfiniteQuery](https://ic-reactor.b3pay.net/v3/reference/factories/createInfiniteQuery.md): paginated reads
+- [createReactorProvider](https://ic-reactor.b3pay.net/v3/reference/createReactorProvider.md): per-request reactors for server-rendered React apps
+- [createAuthHooks](https://ic-reactor.b3pay.net/v3/reference/createAuthHooks/overview.md): `useAuth`, `useUserPrincipal`, `useAgentState`
+- [Utilities](https://ic-reactor.b3pay.net/v3/reference/Utilities.md): `formatTokenAmount`, `parseTokenAmount`, `isPrincipalText`, `jsonToString`
+- [Validation](https://ic-reactor.b3pay.net/v3/reference/ReactValidation.md): helpers that map a `ValidationError` onto form fields
+- [Testing kit](https://ic-reactor.b3pay.net/v3/reference/testing.md): `installFakeReplica` and `createTestCanister`
 
-- `@ic-reactor/parser`: `0.5.0`
+## Packages
 
-## Canonical AI Entrypoints
+- [@ic-reactor/core](https://ic-reactor.b3pay.net/v3/packages/core.md): framework-agnostic runtime; no React
+- [@ic-reactor/react](https://ic-reactor.b3pay.net/v3/packages/react.md): hooks, factories, `defineReactor`, auth; re-exports core
+- [@ic-reactor/candid](https://ic-reactor.b3pay.net/v3/packages/candid.md): reactors for canisters whose Candid is only known at run time
+- [@ic-reactor/parser](https://ic-reactor.b3pay.net/v3/packages/parser.md): WASM Candid parser (`didToJs`, `didToTs`, `parseDid`)
+- [@ic-reactor/vite-plugin](https://ic-reactor.b3pay.net/v3/packages/vite-plugin.md): generate declarations and hooks from `.did` files in Vite, with local canister ids
+- [@ic-reactor/cli](https://ic-reactor.b3pay.net/v3/packages/cli.md): the `ic-reactor` command for non-Vite projects and CI
+- [@ic-reactor/codegen](https://ic-reactor.b3pay.net/v3/packages/codegen.md): the generation pipeline behind the CLI and the Vite plugin
 
-| File                                          | Use                                                        |
-| --------------------------------------------- | ---------------------------------------------------------- |
-| `llms.txt`                                    | Compact package/task routing manifest                      |
-| `llms-full.txt`                               | Copy-paste LLM guide with patterns, APIs, and verification |
-| `AGENTS.md`                                   | OpenAI Codex repository instructions                       |
-| `CLAUDE.md`                                   | Claude repository instructions                             |
-| `.github/copilot-instructions.md`             | GitHub Copilot repository instructions                     |
-| `.cursorrules`                                | Cursor repository rules                                    |
-| `skill-packages/ic-reactor-hooks/SKILL.md`    | React hook/factory/generation guidance                     |
-| `skill-packages/ic-reactor-packages/SKILL.md` | Package ownership, generated files, verification           |
+## Examples
 
-## Package Ownership
+- [Next.js App Router](https://ic-reactor.b3pay.net/v3/examples/nextjs-app-router.md): `createReactorProvider`, a server component, several tokens with `forCanister`
+- [TanStack Router](https://ic-reactor.b3pay.net/v3/examples/tanstack-router.md): query objects fetched in route loaders and read with `.useQuery()`
+- [Codegen in Action](https://ic-reactor.b3pay.net/v3/examples/codegen-in-action.md): CLI and Vite plugin output, including `factories: true`
+- [Multiple Canisters](https://ic-reactor.b3pay.net/v3/examples/multiple-canister.md): several reactors sharing one `ClientManager` and sign-in
+- [ckBTC Wallet](https://ic-reactor.b3pay.net/v3/examples/ckbtc-wallet.md): ICRC-1 balances and transfers, ckBTC minter calls, exact token amounts
 
-| Package                   | Owns                                                                                                               | Start here                                                                                    |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, `@tanstack/query-core` cache integration | `packages/core/src/`, `packages/core/README.md`                                               |
-| `@ic-reactor/react`       | React hook factories, query/mutation factories, `useActorMethod`, Internet Identity auth, and identity-attribute hooks | `packages/react/src/`, `packages/react/README.md`, `skill-packages/ic-reactor-hooks/SKILL.md` |
-| `@ic-reactor/candid`      | Runtime Candid fetching/parsing adapters and dynamic reactors                                                      | `packages/candid/src/`, `packages/candid/README.md`                                           |
-| `@ic-reactor/parser`      | Rust/WASM Candid parser; one `.` entrypoint with browser/node conditional exports                                 | `packages/parser/src/`, `packages/parser/README.md`                                           |
-| `@ic-reactor/codegen`     | Shared declaration/reactor/client generation pipeline used by CLI and Vite plugin                                  | `packages/codegen/src/`, `packages/codegen/README.md`                                         |
-| `@ic-reactor/cli`         | `ic-reactor` executable and config schema                                                                          | `packages/cli/src/`, `packages/cli/schema.json`                                               |
-| `@ic-reactor/vite-plugin` | Vite `.did` watching, generation, local environment-cookie injection                                               | `packages/vite-plugin/src/`, `packages/vite-plugin/README.md`                                 |
+## Optional
 
-## Task Routing
-
-| Task                                      | Preferred reference                                                                                                |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| One-call React setup (reactor + hooks)    | `defineReactor` in `packages/react/src/defineReactor.ts`, `skill-packages/ic-reactor-hooks/SKILL.md`               |
-| Build a React canister integration        | `packages/react/README.md`, `docs/src/content/docs/framework/react-setup.mdx`                                      |
-| Choose inside-React vs outside-React APIs | `skill-packages/ic-reactor-hooks/SKILL.md`, `llms-full.txt`                                                        |
-| Add reusable query/mutation factories     | `docs/src/content/docs/reference/factories/overview.mdx`, `skill-packages/ic-reactor-hooks/references/patterns.md` |
-| Add auth/login or identity attributes     | `AuthenticationManager` + `createAuthHooks`, `IdentityAttributesManager` + `createIdentityAttributeHooks` in `packages/react/src/auth/`, `docs/src/content/docs/guides/authentication.mdx` |
-| Change generated hook output              | `packages/codegen/src/`, then verify CLI/Vite consumers                                                            |
-| Configure Vite generation                 | `packages/vite-plugin/README.md`, `docs/src/content/docs/packages/vite-plugin.mdx`                                 |
-| Configure CLI generation                  | `packages/cli/README.md`, `docs/src/content/docs/packages/cli.mdx`                                                 |
-| Work with unknown/runtime Candid          | `packages/candid/README.md`, `docs/src/content/docs/packages/candid/index.mdx`                                     |
-| Parse `.did` locally                      | `packages/parser/README.md`, `docs/src/content/docs/packages/parser/index.mdx`                                     |
-
-## Generated Boundaries
-
-Do not hand-edit generated artifacts unless the source of truth is generated
-docs or publish output and the change is intentional.
-
-Generated or transient paths include `dist/`, `.dfx/`, `.icp/`, `.mops/`,
-`target/`, `.next/`, `.astro/`, `*.tsbuildinfo`, generated canister
-declarations, and generated hook files. For codegen behavior, edit
-`packages/codegen/src/` instead of generated output.
-
-## Verification By Change Type
-
-| Change                     | Minimum verification                                                                             |
-| -------------------------- | ------------------------------------------------------------------------------------------------ |
-| Docs only                  | `pnpm format:check`, `pnpm check:ai-context`, `pnpm docs:build`, `pnpm docs:check-links`                                  |
-| Skill/frontmatter/metadata | YAML/frontmatter parse check plus `pnpm format:check`                                            |
-| AI context files           | `pnpm check:ai-context`                                                                          |
-| React hooks/factories      | `pnpm --filter @ic-reactor/react test`                                                           |
-| Runtime core               | `pnpm --filter @ic-reactor/core test`                                                            |
-| React auth                 | `pnpm --filter @ic-reactor/react test`                                                           |
-| Codegen/CLI/Vite output    | `pnpm --filter @ic-reactor/codegen test` plus affected CLI/Vite checks                           |
-| Broad package change       | `pnpm typecheck`, `pnpm exec tsc -b`, `pnpm build`, `pnpm test`                                  |
-| Package exports/build output/module format | `pnpm verify:packages`                                                           |
-| Examples                   | `pnpm typecheck:examples`, `pnpm build:examples`                                                 |
-
-Notes:
-
-- `pnpm format:check` covers the whole repo. Exclusions are declared in one
-  place, `.prettierignore`, which the pre-commit hook honours too.
-- `pnpm check:ai-context` is a CI gate: it asserts that the package versions
-  listed above match each `package.json`, that every package but the parser
-  ships a `packages/<name>/llms.txt`, and that no file listed in
-  `scripts/ai-context-files.js` names a version no package is at or a docs path
-  other than `/v3/`.
-- `pnpm lint` is a CI gate. Run `pnpm build` first: the type-aware rules read
-  core's emitted `.d.ts` through the workspace symlinks, and without a build
-  they degrade to `any` and stop reporting. A new package needs a
-  `tsconfig.typecheck.json` and an entry in `TYPECHECK_PROJECTS`.
-- `pnpm typecheck` runs each package's own `typecheck` script plus `e2e/`'s, so `src` **and**
-  tests are covered. The root `tsconfig.json` is references-only, so
-  `pnpm exec tsc --noEmit` at the root checks nothing.
-- `pnpm verify:packages` packs every publishable package, installs the tarballs
-  outside the workspace, imports/requires each entry point in real Node, and
-  runs `publint` + `attw`. In-repo consumers resolve through workspace symlinks,
-  so this is the only check that sees the published artifact.
-- `pnpm build:examples` is a CI gate alongside `pnpm typecheck:examples`. `tsc`
-  never loads a bundler, so a broken Vite/Next config type-checks clean; both
-  Next.js examples were unbuildable while the type-check job stayed green.
-
-## Inside React vs Outside React
-
-React hooks (`useActorQuery`, `.useQuery()`, `.useMutation()`,
-`.useSuspenseQuery()`, `.useInfiniteQuery()`) belong only in React components or
-custom hooks.
-
-Outside React, use imperative APIs: query `.fetch()`, `.prefetch()`,
-`.invalidate()`, `.getCacheData()`, mutation `.execute(args)`, or direct reactor
-methods such as `.fetchQuery()`, `.getQueryData()`, `.invalidateQueries()`, and
-`.callMethod()`.
+- [Full guide](https://ic-reactor.b3pay.net/llms-full.txt): every rule and snippet in one file
+- [Changelog](https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md): per-package changes, with migration hints
+- [Why IC Reactor](https://ic-reactor.b3pay.net/v3/getting-started/why-ic-reactor.md): what it adds over a raw `Actor`
+- [useActorSuspenseQuery](https://ic-reactor.b3pay.net/v3/reference/createActorHooks/useActorSuspenseQuery.md): suspense variant of the query hook
+- [useActorInfiniteQuery](https://ic-reactor.b3pay.net/v3/reference/createActorHooks/useActorInfiniteQuery.md): paginated query hook
+- [CandidReactor](https://ic-reactor.b3pay.net/v3/packages/candid/candidreactor.md): dynamic calls from a Candid source fetched at run time
+- [MetadataReactor](https://ic-reactor.b3pay.net/v3/packages/candid/metadatareactor.md): form and result metadata generated from Candid
+- [Parser reference](https://ic-reactor.b3pay.net/v3/packages/parser/reference.md): parser functions and the names it renames
+- [All examples](https://ic-reactor.b3pay.net/v3/examples.md): every example app, with StackBlitz links
+- [AI Friendliness](https://ic-reactor.b3pay.net/v3/guides/ai-friendliness.md): how to point an agent at these files, install the agent skill, and a snippet for your own AGENTS.md
+- [Agent skill](https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor): the `ic-reactor` skill; in Claude Code `/plugin marketplace add B3Pay/ic-reactor` then `/plugin install ic-reactor@ic-reactor`, elsewhere `npx skills add B3Pay/ic-reactor --skill ic-reactor`
+- [Source](https://github.com/B3Pay/ic-reactor): the monorepo; contributors start at its AGENTS.md

@@ -5,7 +5,7 @@ import { IDL } from "@icp-sdk/core/candid"
 import { ClientManager } from "../src/client.js"
 import { Reactor } from "../src/reactor.js"
 import { uint8ArrayToHex } from "../src/utils/helper.js"
-import { installFakeReplica, type FakeReplica } from "./fake-replica.js"
+import { installFakeReplica, type FakeReplica } from "../src/testing/index.js"
 
 /**
  * A local replica certifies its answers with its own root key, not mainnet's.

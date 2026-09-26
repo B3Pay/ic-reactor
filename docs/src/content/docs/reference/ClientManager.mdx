@@ -84,7 +84,7 @@ const clientManager = new ClientManager({
 | ----------------- | ------------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `queryClient`     | `QueryClient`      | Required       | TanStack Query client instance                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `agentOptions`    | `HttpAgentOptions` | `{}`           | Options forwarded to the `HttpAgent` (`host`, `identity`, `rootKey`, `retryTimes`, `verifyQuerySignatures`, …)                                                                                                                                                                                                                                                                                                                                                         |
-| `allowEnvConfig`  | `boolean`          | host-dependent | Whether to trust the `ic_env` cookie: its root key, its Internet Identity provider, and the canister IDs a reactor resolves by name. Defaults to `true` only when both the agent host and the page are unambiguously a local replica (loopback, `localhost` and its subdomains, dev-container tunnel domains); anything else must opt in. Without the option, the root key alone is judged by the agent host only (see [Canister Environment](#canister-environment)). |
+| `allowEnvConfig`  | `boolean`          | host-dependent | Whether to trust the `ic_env` cookie: its root key, its Internet Identity provider, and the canister IDs a reactor resolves by name. Defaults to `true` only when both the agent host and the page are unambiguously a local replica (loopback, `localhost` and its subdomains); anything else must opt in, even on Codespaces or Gitpod. Without the option, the root key alone is judged by the agent host only (see [Canister Environment](#canister-environment)). |
 | `allowEnvRootKey` | `boolean`          | —              | **Deprecated.** The former name of `allowEnvConfig`. Still honoured, and still scoped to what it always granted: the root key alone, not the identity provider or the canister ID.                                                                                                                                                                                                                                                                                     |
 
 Network detection needs no flag — see [Network Configuration](#network-configuration).
@@ -100,6 +100,7 @@ Network detection needs no flag — see [Network Configuration](#network-configu
 | `network`         | `"ic" \| "local" \| "remote"` | Current network type                                                         |
 | `isLocal`         | `boolean`                     | Whether connected to local replica                                           |
 | `trustsEnvConfig` | `boolean`                     | Whether the `ic_env` cookie is trusted for this agent host and page (getter) |
+| `explicitRootKey` | `Uint8Array \| undefined`     | The `agentOptions.rootKey` you passed, which `initialize()` keeps (getter)   |
 
 ### AgentState Type
 
@@ -128,7 +129,9 @@ This method:
 1. Initializes the HttpAgent (fetches root key for local networks)
 2. Returns the ClientManager instance
 
-When the agent host is local or a dev-container tunnel (`network` is not `"ic"`), `initialize()` fetches the root key from the replica's `/api/v2/status` even if one was supplied (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env` cookie) or `agentOptions.shouldFetchRootKey` is `false`. The fetched key replaces the supplied one, so the agent verifies against a supplied key only until `initialize()` finishes, and `initialize()` rejects if `/api/v2/status` can't be reached. On a mainnet host it fetches nothing and a supplied key stays.
+When the agent host is local, Codespaces or Gitpod (`network` is not `"ic"`), `initialize()` fetches the root key from the replica's `/api/v2/status` and replaces the key the agent holds: `IC_ROOT_KEY` from the `ic_env` cookie, or mainnet's when `agentOptions.shouldFetchRootKey` is `false` and no key was passed. It rejects if `/api/v2/status` can't be reached.
+
+A key you pass as `agentOptions.rootKey` is kept: `initialize()` fetches nothing, so it resolves even when `/api/v2/status` is unreachable, and every call, before and after it, is verified against your key. Pass one to pin a key obtained out of band, such as a PocketIC or testnet key, or that of the network behind a local proxy. A key that does not match the replica fails every certified call. On a mainnet host nothing is fetched and a supplied key stays.
 
 Session restoration is **not** part of this call — it belongs to `AuthenticationManager.authenticate()` (or the `useAuth` hook, which calls it for you).
 
@@ -146,13 +149,31 @@ await clientManager.initializeAgent()
 
 ### updateAgent
 
-Swap the agent's identity and invalidate the queries of every registered canister:
+Swap the agent's identity and, when the principal changes, sweep the queries of every registered canister:
 
 ```typescript
 clientManager.updateAgent(newIdentity)
 ```
 
-In-flight queries for those canisters are cancelled first, so results signed by the previous identity cannot land in the cache. Queries that do not belong to a registered canister — the rest of your app's REST/GraphQL data — are left untouched.
+On a switch to another principal, in-flight queries for those canisters are cancelled first, so results signed by the previous identity cannot land in the cache (see [Automatic Query Invalidation](#automatic-query-invalidation)). Queries that do not belong to a registered canister — the rest of your app's REST/GraphQL data — are left untouched.
+
+When the new identity has the principal already installed — a renewed delegation, a sign-in while signed in, an identity attribute request — the cache is kept: nothing is cancelled or removed, and only queries whose last fetch failed are refetched. The first `updateAgent()` after construction always sweeps.
+
+---
+
+### fetchAcrossIdentitySwitch
+
+Run an imperative fetch of a registered canister's query, and run it again when the principal switches while it runs:
+
+```typescript
+const pages = await clientManager.fetchAcrossIdentitySwitch(() =>
+  clientManager.queryClient.fetchInfiniteQuery(options)
+)
+```
+
+`updateAgent()` cancels those queries when the principal changes. A query with a mounted observer refetches afterwards, but an imperative fetch has no observer. TanStack rejects its promise with a `CancelledError`, or, when the entry already held data before the fetch began (a stale entry that `fetchQuery` or `fetchInfiniteQuery` refetches), resolves it with that data, which is the previous principal's. Through this method it resolves with the answer for the identity installed now. `Reactor.fetchQuery()`, the query factories' `fetch()` and `prefetch()`, and a query method's `call()` and `refetch()` from `useActorMethod` already run through it.
+
+Whatever the fetch settles with while the principal stays is passed on as is, including a cancellation from your own `cancelQueries()`. When it has run again three times and another switch overtook each of those runs too, it rejects with a `CallError` rather than return an answer that may belong to a previous principal. `fetch` is called once per run, so it must start a new fetch each time.
 
 ---
 
@@ -253,7 +274,8 @@ export const backend = new Reactor<_SERVICE>({
 
 ```typescript
 // Browser: the host is inferred from window.location.origin when the page is
-// served from localhost/127.0.0.1 or from an IC boundary domain
+// served from localhost/127.0.0.1, a Codespaces or Gitpod domain, or an IC
+// boundary domain
 const clientManager = new ClientManager({ queryClient })
 
 // Explicit local host — non-browser environments, or a replica on a custom port
@@ -276,9 +298,10 @@ const clientManager = new ClientManager({
 
 When your app is served by the `@icp-sdk` toolchain (e.g., `icp-cli`) or by [`@ic-reactor/vite-plugin`](/v3/packages/vite-plugin), the dev server injects an `ic_env` cookie carrying the local canister IDs and root key. `ClientManager` reads that cookie **automatically** in the browser. Host detection needs no option to enable. What the cookie _carries_ is trusted only for local hosts, and `allowEnvConfig` overrides that decision for all of it:
 
-- Agent host taken from `window.location.origin` when the page is served from a local or IC boundary host. In a web worker, which has no `window`, it is taken from the worker's `location.origin`, the origin of the page that started it
+- Agent host taken from `window.location.origin` when the page is served from a local host, a Codespaces or Gitpod domain (`network` `"remote"`), or an IC boundary host. In a web worker, which has no `window`, it is taken from the worker's `location.origin`, the origin of the page that started it
 - Query signature verification disabled by default in a development build when the agent host is a local replica, whose root key the agent fetches from the replica itself. A development build pointed at mainnet verifies query signatures like a production build. An explicit `verifyQuerySignatures` wins either way
-- Root key from the cookie, accepted when the agent host is unambiguously a local replica — loopback (the whole of 127.0.0.0/8, plus `::1`), `localhost` and its subdomains, and the dev-container domains that tunnel a local replica. Cookies are not origin-isolated and the root key is what certificate verification is checked against, so any other agent host — including a custom domain — must opt in with `allowEnvConfig: true`. This check reads the agent host alone.
+- Root key from the cookie, accepted when the agent host is unambiguously a local replica — loopback (the whole of 127.0.0.0/8, plus `::1`), `localhost` and its subdomains. Cookies are not origin-isolated and the root key is what certificate verification is checked against, so any other agent host — including a custom domain — must opt in with `allowEnvConfig: true`. This check reads the agent host alone.
+- Codespaces (`*.app.github.dev`) and Gitpod (`*.gitpod.io`) are not trusted automatically. Every workspace on them is a subdomain of a parent that is not a public suffix, so a page in someone else's workspace can set `ic_env` for yours. Their agent fetches the root key from the replica instead; canister IDs come from your configuration (the codegen `canisterId`), or from the cookie once you pass `allowEnvConfig: true`.
 - Canister IDs from the cookie (`PUBLIC_CANISTER_ID:<name>`), used when a reactor is constructed without an explicit `canisterId`, and accepted only when the page is served from such a host too, not just the agent host. That is the decision the `trustsEnvConfig` getter reports, and the Internet Identity provider follows it as well. Otherwise the reactor throws, naming the option to set. A substituted canister ID is not something certificate verification can catch — the attacker names a real canister, and its responses verify against the real mainnet root key — so it fails closed rather than silently talking to someone else's canister.
 
 ### Subscribing to State Changes
@@ -358,9 +381,9 @@ console.log(clientManager.agentHost?.toString()) // The host URL
 
 ## Automatic Query Invalidation
 
-When the identity changes, `updateAgent()` sweeps the cached queries of every canister registered with this ClientManager:
+When the principal changes, `updateAgent()` sweeps the cached queries of every canister registered with this ClientManager:
 
-- **In-flight queries are cancelled**, so a response signed by the previous identity cannot land after the switch
+- **In-flight queries are cancelled**, so a response signed by the previous identity cannot land after the switch. A `fetchQuery()` or factory `fetch()` that was waiting on one runs again for the new identity and resolves with that answer, as does a query method's `call()` or `refetch()` from `useActorMethod`, and a factory `prefetch()` runs again too (see [fetchAcrossIdentitySwitch](#fetchacrossidentityswitch))
 - **Inactive entries are removed** — not just invalidated. Query keys carry no principal, so a merely-stale entry (a balance whose component has unmounted, a cached profile) would stay readable through `getQueryData` or `fetchQuery` under the new identity
 - **Active entries are invalidated**, so their mounted observers refetch as the new identity. They keep showing the previous identity's data only for the length of that refetch
 
@@ -372,6 +395,17 @@ queryClient.invalidateQueries({ queryKey: [canisterId] })
 ```
 
 Because the scope is the canister ID — the first segment of every reactor query key — non-reactor queries in a shared `QueryClient` are not refetched or removed on sign-in or sign-out.
+
+A new identity for the principal already installed is not a switch: the cached answers are already that principal's, so the sweep is skipped. Only the entries whose last fetch failed are invalidated, since the previous identity (an expired delegation, say) may be why they failed. A fetch already in flight, signed by the previous identity, is left to finish, and its answer is kept; if it fails instead, its entry is invalidated too. The first `updateAgent()` after construction always sweeps, whatever it installs.
+
+<Aside type="caution">
+  The comparison sees only the principal. An identity that changes what a
+  canister is told under the same principal, such as an `AttributesIdentity`
+  from `@icp-sdk/core/identity`, which adds signed `sender_info` to every
+  request, keeps the answers computed without it. After installing or removing
+  one, invalidate the affected queries yourself, for example with
+  `reactor.invalidateQueries()`.
+</Aside>
 
 ## Pay-as-you-go Authentication
 
@@ -389,25 +423,34 @@ npm install @icp-sdk/auth
   identity. This is the recommended pattern.
 </Aside>
 
+<Aside type="caution">
+  Give each ClientManager its own `QueryClient`. Query keys name the canister,
+  not the manager, so two managers on the same canister (two identities, or a
+  local replica and mainnet) that share a `QueryClient` share cache entries, and
+  one manager's `updateAgent()` sweeps the other's. `defineReactor` builds a
+  `QueryClient` per manager by default.
+</Aside>
+
 <Aside type="tip">
   Network detection needs no flag. In the browser the host is inferred from
-  `window.location.origin` when the page is served from `localhost`/`127.0.0.1`
-  (or an IC boundary domain), and a web worker infers it from its own
-  `location.origin` the same way. In Node/SSR, `ICP_NETWORK`/`DFX_NETWORK` is
-  read from `process.env`. Pass `agentOptions.host` to override either.
+  `window.location.origin` when the page is served from `localhost`/`127.0.0.1`,
+  a Codespaces or Gitpod domain, or an IC boundary domain, and a web worker
+  infers it from its own `location.origin` the same way. In Node/SSR,
+  `ICP_NETWORK`/`DFX_NETWORK` is read from `process.env`. Pass
+  `agentOptions.host` to override either.
 </Aside>
 
 <Aside type="note">
   Calls to a local replica do not wait for `initialize()`: when the agent host
-  is local or a dev-container tunnel (`network` is not `"ic"`), `ClientManager`
-  has the agent fetch the root key before its first request, unless a root key
-  was supplied (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env`
-  cookie) or `agentOptions.shouldFetchRootKey` is `false`. Any other host counts
-  as mainnet and never fetches it. `initialize()` fetches it up front and sets
-  `agentState.isInitialized`, for a loading screen that waits on it. It fetches
-  the key even when one was supplied, and replaces it (see
-  [initialize](#initialize)). The React auth hooks (`useAuth`) call it
-  automatically.
+  is local, Codespaces or Gitpod (`network` is not `"ic"`), `ClientManager` has
+  the agent fetch the root key before its first request, unless a root key was
+  supplied (`agentOptions.rootKey`, or `IC_ROOT_KEY` from the `ic_env` cookie)
+  or `agentOptions.shouldFetchRootKey` is `false`. Any other host counts as
+  mainnet and never fetches it. `initialize()` fetches it up front and sets
+  `agentState.isInitialized`, for a loading screen that waits on it. It replaces
+  a key from the cookie with the fetched one, and keeps a key passed as
+  `agentOptions.rootKey` without fetching (see [initialize](#initialize)). The
+  React auth hooks (`useAuth`) call it automatically.
 </Aside>
 
 ## External Authentication

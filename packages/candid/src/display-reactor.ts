@@ -14,6 +14,7 @@ import {
   didTypeFromArray,
 } from "@ic-reactor/core"
 import { IDL } from "@icp-sdk/core/candid"
+import type { Principal } from "@icp-sdk/core/principal"
 
 // ============================================================================
 // CandidDisplayReactor
@@ -30,7 +31,12 @@ import { IDL } from "@icp-sdk/core/candid"
  * - **Dynamic Candid parsing**: Initialize from Candid source or fetch from network
  * - **Dynamic method registration**: Register methods at runtime with Candid signatures
  *
- * @typeParam A - The actor service type
+ * @typeParam A - The actor service type, in Candid types. It defaults to
+ *   `BaseActor`, which knows nothing about the Candid, so every method's
+ *   display-side arguments and results are typed `unknown`: cast them to the
+ *   display shape you expect, or pass the service type when it is known at
+ *   build time. The methods the reactor can call still come from the Candid
+ *   it parses or fetches.
  *
  * @example
  * ```typescript
@@ -102,6 +108,23 @@ export class CandidDisplayReactor<
       this.adapter = new CandidAdapter({
         clientManager: this.clientManager,
       })
+    }
+  }
+
+  /**
+   * A sibling from `forCanister` also gets this reactor's Candid source and
+   * adapter, on top of the interface and validators `DisplayReactor` passes
+   * on. Its `initialize()` parses the same source, or fetches its own
+   * canister's Candid when there is none. `registerMethod` on either one
+   * afterwards reaches that one alone.
+   */
+  protected override siblingParameters(
+    canisterId: Principal
+  ): DisplayReactorParameters<A> & CandidDisplayReactorParameters<A> {
+    return {
+      ...super.siblingParameters(canisterId),
+      candid: this.candidSource,
+      adapter: this.adapter,
     }
   }
 

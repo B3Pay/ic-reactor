@@ -177,6 +177,55 @@ const { error } = useActorMutation({
 })
 ```
 
+## Types From a Reactor
+
+A form, an error view or a helper module often needs one method's argument,
+result or error type on its own. Read it off the reactor with `typeof`, so
+the service type does not have to be exported next to the reactor and the
+transform is never spelled out:
+
+```typescript
+import {
+  DisplayReactor,
+  type ReactorArgsOf,
+  type ReactorDataOf,
+  type ReactorErrorOf,
+} from "@ic-reactor/react"
+import { idlFactory, type Ledger } from "./declarations/ledger"
+
+export const ledger = new DisplayReactor<Ledger>({
+  clientManager,
+  idlFactory,
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+
+// { owner: string; subaccount?: string | Uint8Array | number[] | null }
+type Account = ReactorArgsOf<typeof ledger, "icrc1_balance_of">[0]
+// string: a DisplayReactor's nat
+type Balance = ReactorDataOf<typeof ledger, "icrc1_balance_of">
+// CanisterError<TransferError in display form> | CallError | ValidationError
+type TransferError = ReactorErrorOf<typeof ledger, "icrc1_transfer">
+```
+
+| Helper                        | Gives                                        | Same as                                    |
+| ----------------------------- | -------------------------------------------- | ------------------------------------------ |
+| `ServiceOf<typeof r>`         | The service type the reactor was built with  | `_SERVICE`                                 |
+| `TransformOf<typeof r>`       | `"candid"`, `"display"`, or a subclass's key | —                                          |
+| `ReactorArgsOf<typeof r, M>`  | The method's argument tuple                  | `ReactorArgs<_SERVICE, M, Transform>`      |
+| `ReactorDataOf<typeof r, M>`  | What the call resolves with (the `Ok` value) | `ReactorReturnOk<_SERVICE, M, Transform>`  |
+| `ReactorErrorOf<typeof r, M>` | What the call rejects with                   | `ReactorReturnErr<_SERVICE, M, Transform>` |
+
+They follow the reactor: a `DisplayReactor` gives display types, a `Reactor`
+raw Candid types, and a candid package reactor its own transform. They take
+any reactor, `Reactor`, `DisplayReactor` or a subclass, and reject a method
+the service does not have.
+
+A query hook's `data` is `ReactorDataOf<typeof r, M>`, except that a result
+that can be `undefined` is cached as `null` (TanStack Query reserves
+`undefined` for "not cached"): `ReactorQueryData<ReactorDataOf<typeof r, M>>`
+names it exactly.
+
 ## Display Types (Auto Transformations)
 
 With `DisplayReactor`, types are automatically transformed:
@@ -311,12 +360,13 @@ function UserProfile({ userId }: { userId: string }) {
 Create type-safe reusable patterns:
 
 ```typescript
-// Type-safe query factory
-function useUser(userId: string) {
+import { skipToken } from "@ic-reactor/react"
+
+// Type-safe query factory: waits while there is no userId
+function useUser(userId: string | undefined) {
   return useActorQuery({
     functionName: "getUser",
-    args: [userId],
-    enabled: !!userId,
+    args: userId ? [userId] : skipToken,
   })
 }
 

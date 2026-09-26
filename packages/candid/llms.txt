@@ -1,45 +1,129 @@
-# @ic-reactor/candid — AI Quick Guide
+# @ic-reactor/candid
 
-Use this package for runtime Candid fetching/parsing, dynamic canister
-interaction, and metadata-driven form generation.
+> Reactors for canisters whose Candid interface is only known at run time:
+> fetch and parse a canister's Candid, call its methods dynamically, and build
+> form and result metadata from it. For explorers, dev tools and generic UIs.
+
+Applies to `@ic-reactor/candid` 3.13.0.
+
+Read this file from `node_modules/@ic-reactor/candid/llms.txt` when writing
+code against the installed version. The complete guide for every package is
+https://ic-reactor.b3pay.net/llms-full.txt, and behaviour changes are in
+https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
 
 ## Install
 
 ```bash
 pnpm add @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core
-# @ic-reactor/parser comes with it: local WASM parsing, loaded on first parse
 ```
 
 `ClientManager` comes from `@ic-reactor/core` and needs a `QueryClient` from
-`@tanstack/query-core`. Both are only transitive dependencies of
-`@ic-reactor/candid`, which pnpm does not let the app import, so list them. A
-React app can import `ClientManager` from `@ic-reactor/react` and `QueryClient`
-from `@tanstack/react-query` instead.
+`@tanstack/query-core`. The first is only a transitive dependency of this
+package, which pnpm does not let the app import, and the second an optional
+peer of core, so list both. A React app imports
+`ClientManager` from `@ic-reactor/react` and `QueryClient` from
+`@tanstack/react-query` instead. `@ic-reactor/parser` comes with this package
+and loads on the first parse, as a chunk of its own.
 
-## When To Use
+## Setup and Usage
 
-- Unknown canister interfaces at runtime
-- Explorer or tooling workflows
-- Dynamic forms from Candid metadata
+```ts
+import { CandidReactor, MetadataReactor } from "@ic-reactor/candid"
+import { ClientManager } from "@ic-reactor/core"
+import { QueryClient } from "@tanstack/query-core"
 
-## Main APIs
+const clientManager = new ClientManager({
+  queryClient: new QueryClient(),
+  agentOptions: { host: "https://ic0.app" },
+})
 
-- `CandidAdapter` for fetching/parsing Candid definitions
-- `CandidReactor` for dynamic reactor behavior
-- `MetadataReactor` + `CandidFormVisitor` for form metadata
+// Any canister: fetch its Candid, then call it like a typed Reactor
+export async function symbolOf(canisterId: string) {
+  const token = new CandidReactor({ clientManager, canisterId, name: "token" })
+  await token.initialize() // fetches and parses the canister's Candid
+  console.log(token.getMethodNames())
+  return token.fetchQuery({ functionName: "icrc1_symbol" }) // cached
+}
 
-## Parser Strategy
+// One method from its signature, without fetching the whole interface
+export function nameOf(canisterId: string) {
+  const token = new CandidReactor({ clientManager, canisterId, name: "token" })
+  return token.queryDynamic({
+    functionName: "icrc1_name",
+    candid: "() -> (text) query",
+  })
+}
 
-- The local parser (`@ic-reactor/parser`) is a dependency, loaded on first parse; bundlers emit it as its own chunk
-- Fallback uses remote didjs compilation when the parser cannot be loaded at runtime
+// Form metadata: fields, defaults and a zod schema for the arguments
+export async function transferForm(canisterId: string) {
+  const ledger = new MetadataReactor({
+    clientManager,
+    canisterId,
+    name: "ledger",
+  })
+  await ledger.initialize()
+  return ledger.getInputMeta("icrc1_transfer")
+}
+```
 
-## Best Practices
+## When to Use What
 
-- Keep custom app logic in stable wrapper files, not generated files
-- For frequent `.did` changes, pair with `@ic-reactor/cli` or
-  `@ic-reactor/vite-plugin`
+| Need                                          | Use                                                                           |
+| --------------------------------------------- | ----------------------------------------------------------------------------- |
+| Fetch or parse a canister's Candid            | `CandidAdapter` (`getCandidDefinition`, `fetchCandidSource`)                  |
+| Call a canister known only at run time        | `CandidReactor` (raw values), `CandidDisplayReactor` (display values)         |
+| Call one method from its Candid signature     | `registerMethod`, or `queryDynamic` / `callDynamic` / `fetchQueryDynamic`     |
+| Build a form for a method's arguments         | `MetadataReactor` / `MetadataDisplayReactor`, `getInputMeta(method)`          |
+| Render a result generically                   | `getOutputMeta(method)`                                                       |
+| Low-level metadata from an `IDL.ServiceClass` | `CandidFormVisitor`                                                           |
+| Another canister with the same interface      | `reactor.forCanister(canisterId)`                                             |
+| The interface is known at build time          | generated declarations with `@ic-reactor/react` or `@ic-reactor/core` instead |
 
-## Full References
+## Details
 
-- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Candid docs: https://ic-reactor.b3pay.net/v3/packages/candid
+- `CandidReactor` extends the core `Reactor`: after `initialize()` or
+  `registerMethod()`, `callMethod`, `fetchQuery`, `getQueryOptions` and
+  `invalidateQueries` work as usual, and the React hooks accept it.
+- Pass `candid: "service : { ... }"` to the constructor to skip the network
+  fetch, or `idlFactory` when you already have one.
+- Without a service type parameter, a `CandidDisplayReactor`'s display-side
+  args, validator args and results are `unknown`: cast them to the display
+  shape, or pass `new CandidDisplayReactor<Service>(...)` when the interface is
+  known at build time.
+- `reactor.forCanister(canisterId)` works on all four reactors. The sibling
+  starts with this reactor's interface, Candid source and adapter (and its
+  validators or metadata), so a sibling of an initialized reactor is ready to
+  call. A method registered later stays on the reactor it was registered on.
+- Parsing uses the local WASM parser; when it cannot load, the adapter falls
+  back to compiling through the didjs canister, which keeps upstream behaviour
+  for a field named like a numeric id (`_0_`).
+- The form visitors accept `""` for a `text` field; principals, numbers,
+  formatted text fields and a func reference's method name must be filled in.
+- On `MetadataReactor`, a func record's `defaultArgs` are Candid values ready
+  for `callMethod` on a reactor built from the node's `funcClass`;
+  `MetadataDisplayReactor` gives display values.
+- `isPrincipalId` accepts canonical principal text of at most 29 bytes.
+- An adapter keeps no subscription on the `ClientManager`, so dropped reactors
+  need no cleanup; `adapter.unsubscribe` is a deprecated no-op.
+
+## Do Not
+
+- Use this package for a canister whose `.did` you have at build time;
+  generate declarations and use typed reactors.
+- Call a dynamic reactor's methods before `initialize()` or
+  `registerMethod()` has run for them.
+- Hand-build a reactor per canister of one interface; use `forCanister`.
+- Deep-import `@ic-reactor/parser/dist/...`; the adapter loads the parser.
+- Call `adapter.unsubscribe()`; it does nothing.
+
+## Docs
+
+- Candid package: https://ic-reactor.b3pay.net/v3/packages/candid.md
+- CandidAdapter: https://ic-reactor.b3pay.net/v3/packages/candid/candidadapter.md
+- CandidReactor: https://ic-reactor.b3pay.net/v3/packages/candid/candidreactor.md
+- CandidDisplayReactor: https://ic-reactor.b3pay.net/v3/packages/candid/candiddisplayreactor.md
+- MetadataReactor: https://ic-reactor.b3pay.net/v3/packages/candid/metadatareactor.md
+- MetadataDisplayReactor: https://ic-reactor.b3pay.net/v3/packages/candid/metadatadisplayreactor.md
+- Parser: https://ic-reactor.b3pay.net/v3/packages/parser.md
+- Index of all docs: https://ic-reactor.b3pay.net/llms.txt
+- Full guide: https://ic-reactor.b3pay.net/llms-full.txt

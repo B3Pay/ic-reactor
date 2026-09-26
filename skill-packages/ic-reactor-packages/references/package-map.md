@@ -7,8 +7,8 @@ or generated-file behavior matters.
 
 | Package                   | Owns                                                                                                                                                                                                                           | First files to inspect                                                                                                                                                                                          |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, query-cache integration, version exports                                                                                                             | `packages/core/src/index.ts`, `packages/core/src/client.ts`, `packages/core/src/reactor.ts`, `packages/core/tests/`                                                                                             |
-| `@ic-reactor/react`       | React hook factories, direct reactor hooks, reusable query/mutation objects, `defineReactor`, `useActorMethod`, auth managers, and auth hooks                                                                                  | `packages/react/src/index.ts`, `packages/react/src/auth/`, `packages/react/src/createActorHooks.ts`, `packages/react/src/createQuery.ts`, `packages/react/src/hooks/useActorMethod.ts`, `packages/react/tests/` |
+| `@ic-reactor/core`        | Framework-agnostic runtime: `ClientManager`, `Reactor`, `DisplayReactor`, query-cache integration, version exports, and the `@ic-reactor/core/testing` fake replica                                                            | `packages/core/src/index.ts`, `packages/core/src/client.ts`, `packages/core/src/reactor.ts`, `packages/core/src/testing/`, `packages/core/tests/`                                                               |
+| `@ic-reactor/react`       | React hook factories, direct reactor hooks, reusable query/mutation objects, `defineReactor`, `defineDisplayReactor`, `createReactorProvider`, `useActorMethod`, auth managers and hooks, the `react-server` entry             | `packages/react/src/index.ts`, `packages/react/src/auth/`, `packages/react/src/createActorHooks.ts`, `packages/react/src/createQuery.ts`, `packages/react/src/hooks/useActorMethod.ts`, `packages/react/tests/` |
 | `@ic-reactor/candid`      | Runtime Candid adapters, metadata reactors, dynamic display reactors                                                                                                                                                           | `packages/candid/src/index.ts`, `packages/candid/src/adapter.ts`, `packages/candid/src/metadata-display-reactor.ts`, `packages/candid/tests/`                                                                   |
 | `@ic-reactor/parser`      | Rust/WASM Candid parser; `wasm-pack` emits `dist/web`, `dist/nodejs`, and `dist/bundler` behind a single conditional `.` export                                                                                                | `packages/parser/src/lib.rs`, `packages/parser/tests/`, `packages/parser/package.json`                                                                                                                          |
 | `@ic-reactor/codegen`     | Shared pipeline for declarations, reactor files, stable wrappers, client manager helpers, naming helpers, and config validation (canister-name pattern, contained `outDir`, module specifiers) consumed by CLI and Vite plugin | `packages/codegen/src/index.ts`, `packages/codegen/src/pipeline.ts`, `packages/codegen/src/validate.ts`, `packages/codegen/src/generators/`, `packages/codegen/src/*.test.ts`                                   |
@@ -19,6 +19,10 @@ or generated-file behavior matters.
 
 - `core` should not import React.
 - `react` re-exports core behavior and owns React-specific APIs, auth managers, and auth hooks.
+- `react`'s `src/server.ts` (the `react-server` entry) must never import React
+  or `@tanstack/react-query` (`tests/server-entry.test.ts` enforces it), and
+  no main or `react-server` entry may import a `testing` entry
+  (`tests/testing-entry.test.*` in core and react).
 - `candid` may use `core` and optionally load `parser`.
 - `codegen` should stay UI-framework aware only through generated target options.
 - `cli` and `vite-plugin` should call `codegen` APIs instead of copying generator
@@ -60,6 +64,7 @@ pnpm format:check
 pnpm check:ai-context
 pnpm typecheck
 pnpm build
+pnpm check:snippets
 pnpm test
 pnpm build:examples
 ```
@@ -108,8 +113,9 @@ If generated files are wrong:
 - Vite plugin generation: `examples/vite-plugin-demo`
 - Vite environment cookie injection: `examples/vite-environment-variables`
 - Reusable factory patterns: `examples/all-in-one-demo/src/lib/factories.ts`
-- Current codegen output, CLI and Vite plugin side by side: `examples/codegen-in-action/`
-- TanStack Router loaders over hand-maintained query/mutation factories (not codegen output): `examples/tanstack-router/src/canisters/ledger/hooks/`
+- Current codegen output, CLI and Vite plugin side by side, including `index.factories.generated.ts` from `factories: true`: `examples/codegen-in-action/`
+- TanStack Router loaders over hand-maintained query/mutation factories (the example builds its reactor by hand; codegen does not generate its suspense factories): `examples/tanstack-router/src/canisters/ledger/hooks/`
+- Per-request provider for a server-rendered app: `examples/nextjs/src/service/provider.tsx` (`createReactorProvider`)
 - Auth and identity attributes: `examples/identity-attributes-demo`
 - Dynamic metadata/candid behavior: `examples/metadata-reactor-demo`,
   `examples/metadata-reactor-capabilities-demo`

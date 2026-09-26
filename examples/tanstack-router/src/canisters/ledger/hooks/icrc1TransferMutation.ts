@@ -1,8 +1,9 @@
 /**
  * Mutation Hook: icrc1_transfer
  *
- * Hand-maintained, not codegen output: current codegen writes only
- * index.generated.ts (see examples/codegen-in-action).
+ * Hand-maintained, because this example writes its reactor by hand. In a
+ * project whose reactor codegen generates, `factories: true` generates this
+ * same object under this same name (see examples/codegen-in-action).
  * This hook wraps the icrc1_transfer update method.
  *
  * @example
@@ -18,6 +19,7 @@
 
 import { createMutation } from "@ic-reactor/react"
 import { ledgerReactor } from "../reactor"
+import { icrc1BalanceOfSuspenseQuery } from "./icrc1BalanceOfSuspenseQuery"
 
 // ═══════════════════════════════════════════════════════════════════════════
 // MUTATION INSTANCE
@@ -35,10 +37,11 @@ export const icrc1TransferMutation = createMutation(ledgerReactor, {
   // ─────────────────────────────────────────────────────────────────────────
   // INVALIDATION
   // ─────────────────────────────────────────────────────────────────────────
-  // Uncomment and import query keys to auto-invalidate on success:
-  // invalidateQueries: [
-  //   someQuery.getQueryKey(),
-  // ],
+  // Awaited before onSuccess. The query factory covers every balance it has
+  // returned, whatever the account: a transfer changes both the sender's and
+  // the recipient's. An entry can also be a query object, a query key, or a
+  // method of the reactor such as `{ functionName: "icrc1_total_supply" }`.
+  invalidateQueries: [icrc1BalanceOfSuspenseQuery],
 
   // ─────────────────────────────────────────────────────────────────────────
   // SUCCESS HANDLER

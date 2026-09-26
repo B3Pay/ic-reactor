@@ -201,7 +201,8 @@ canister, which that harness does not yet emulate.
 v10 makes those mint calls through an agent of its own. Off mainnet, IC Reactor
 gives that agent the replica your app already uses and has it fetch the
 network's root key, since a local replica's certificates cannot be checked
-against mainnet's. That path has unit tests only, and local sign-in with v10 has
+against mainnet's. When you passed `agentOptions.rootKey` to `ClientManager`,
+that agent gets your key instead, as your app's agent keeps it. That path has unit tests only, and local sign-in with v10 has
 not been run end to end yet.
 
 </Aside>

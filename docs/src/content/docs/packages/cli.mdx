@@ -75,6 +75,8 @@ For each canister, the CLI writes into `<outDir>/<canister>/`:
 - `declarations/<did-basename>.d.ts` TypeScript service types
 - `declarations/<did-basename>.js` IDL factory module
 - `index.generated.ts` managed reactor implementation, with optional typed hook exports
+- `index.factories.generated.ts` managed query and mutation factories, only for
+  a canister that sets `factories: true`
 - `index.ts` user-facing entrypoint
 
 Declaration filenames follow the `.did` file's basename, not the canister name.
@@ -84,8 +86,8 @@ unchanged `.did` and config leaves every file untouched.
 
 If Prettier resolves from the directory holding `ic-reactor.json`, installed
 by that project or by a parent workspace, the CLI formats the `.js`, `.d.ts`,
-`index.generated.ts` and the `index.ts` wrapper it writes with it and your
-Prettier config. Regenerating then leaves formatted, committed output
+`index.generated.ts`, `index.factories.generated.ts` and the `index.ts` wrapper
+it writes with it and your Prettier config. Regenerating then leaves formatted, committed output
 unchanged. Without Prettier the declarations hold the Candid parser's output
 followed by a newline.
 
@@ -106,8 +108,47 @@ Set `target` to choose the generated runtime:
 - `core`: generates only the typed reactor exports with no React dependency
 
 Use `--bindgen-only` when you only want the generated declaration files. In
-that mode, the CLI skips `index.generated.ts` and `index.ts` entirely and
-leaves any existing reactor files untouched.
+that mode, the CLI skips `index.generated.ts`, `index.factories.generated.ts`
+and `index.ts` entirely and leaves any existing reactor files untouched.
+
+### Query and mutation factories
+
+Set `factories: true` on a canister to also generate
+`index.factories.generated.ts`, with one object per method bound to the
+generated reactor: `createQuery` for a query method without arguments,
+`createQueryFactory` for one with arguments, and `createMutation` for an
+update or oneway method. Each is named after its method in camelCase with a
+`Query` or `Mutation` suffix, so `get_message` gives `getMessageQuery`.
+
+```json
+{
+  "canisters": {
+    "backend": {
+      "name": "backend",
+      "didFile": "src/backend/backend.did",
+      "factories": true
+    }
+  }
+}
+```
+
+```tsx
+import { getMessageQuery, setMessageMutation } from "./declarations/backend"
+
+// In a component
+const { data } = getMessageQuery.useQuery()
+
+// Anywhere, outside React included
+await setMessageMutation.execute(["hello"])
+```
+
+The default `index.ts` wrapper re-exports the file. If you have edited your
+`index.ts`, the CLI leaves it alone and prints a warning until it re-exports
+the factories. Removing `factories`, or setting it to `false`, removes the file
+on the next run. It needs
+`target: "react"`. See
+[Query and Mutation Factories](/v3/packages/codegen#query-and-mutation-factories)
+for the naming rule for any method name and how to customize a factory.
 
 ## Configuration
 
@@ -148,15 +189,16 @@ cookie carries the id, such as the one the Vite plugin sets.
 
 ### Canister Config
 
-| Key                 | Type     | Description                                                                                                                                                                |
-| :------------------ | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`              | `string` | Canister name (required). It names the generated reactor, its hooks and the default output folder `<outDir>/<name>`, and it need not match the entry's key in `canisters`. |
-| `didFile`           | `string` | Path to the `.did` file (required).                                                                                                                                        |
-| `mode`              | `string` | Reactor class to generate: `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, `MetadataDisplayReactor`.                                       |
-| `outDir`            | `string` | Override output directory for this canister.                                                                                                                               |
-| `clientManagerPath` | `string` | Override client manager path.                                                                                                                                              |
-| `target`            | `string` | Override generated runtime target.                                                                                                                                         |
-| `canisterId`        | `string` | Canister ID written into `index.generated.ts`. Needed for any build not served from a local replica; see above.                                                            |
+| Key                 | Type      | Description                                                                                                                                                                |
+| :------------------ | :-------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`              | `string`  | Canister name (required). It names the generated reactor, its hooks and the default output folder `<outDir>/<name>`, and it need not match the entry's key in `canisters`. |
+| `didFile`           | `string`  | Path to the `.did` file (required).                                                                                                                                        |
+| `mode`              | `string`  | Reactor class to generate: `Reactor`, `DisplayReactor` (default), `CandidReactor`, `CandidDisplayReactor`, `MetadataDisplayReactor`.                                       |
+| `outDir`            | `string`  | Override output directory for this canister.                                                                                                                               |
+| `clientManagerPath` | `string`  | Override client manager path.                                                                                                                                              |
+| `target`            | `string`  | Override generated runtime target.                                                                                                                                         |
+| `canisterId`        | `string`  | Canister ID written into `index.generated.ts`. Needed for any build not served from a local replica; see above.                                                            |
+| `factories`         | `boolean` | Also generate `index.factories.generated.ts`, a query or mutation object per method (default `false`). Needs `target: "react"`; see above.                                 |
 
 ## Examples
 

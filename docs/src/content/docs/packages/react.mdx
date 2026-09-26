@@ -20,7 +20,10 @@ factories designed around TanStack Query.
 ## Why Use This Package
 
 - You want idiomatic React hooks for queries, mutations, suspense, and auth.
-- You want `ClientManager`, `Reactor`, and `DisplayReactor` from one package.
+- You want `ClientManager`, `Reactor`, and `DisplayReactor` from one package,
+  in client components and in React Server Components alike (a server
+  component resolves the package's hook-free `react-server` entry; see
+  [Server-Side Rendering](/v3/framework/react-setup#server-side-rendering)).
 - You want to keep your app code focused on components instead of manual query wiring.
 
 ## Installation
@@ -62,6 +65,11 @@ The package requires Node.js 18+ (declared in `engines`).
     title="React Setup"
     description="Complete app wiring with QueryClientProvider, ClientManager, and a Reactor instance."
     href="/v3/framework/react-setup"
+  />
+  <LinkCard
+    title="createReactorProvider"
+    description="Build reactors once per mounted tree, as a server-rendered app needs, with typed hooks from useReactor()."
+    href="/v3/reference/createreactorprovider"
   />
   <LinkCard
     title="createActorHooks"
@@ -113,6 +121,39 @@ const backend = new Reactor<_SERVICE>({
 
 export const { useActorQuery, useActorMutation } = createActorHooks(backend)
 ```
+
+## Bundle Size
+
+What each setup path adds to a browser bundle, measured with esbuild 0.28
+(minified ESM, `@ic-reactor/core` bundled). The peers `react`,
+`@tanstack/react-query` and `@icp-sdk/*` are left out, since an app ships them
+either way; so is `@icp-sdk/auth`, which loads as its own chunk on first use.
+
+| Setup                                                            | Minified | Gzipped | zod |
+| ---------------------------------------------------------------- | -------: | ------: | :-: |
+| `createActorHooks` + `Reactor` + `ClientManager`                 |    31 kB |  9.8 kB | no  |
+| … + `AuthenticationManager` + `createAuthHooks`                  |    52 kB | 14.9 kB | no  |
+| … + `IdentityAttributesManager` + `createIdentityAttributeHooks` |    58 kB | 16.7 kB | no  |
+| `createActorHooks` + `DisplayReactor` + `ClientManager`          |   129 kB | 37.3 kB | yes |
+| `defineDisplayReactor`                                           |   158 kB | 45.4 kB | yes |
+| `defineReactor`                                                  |   158 kB | 45.4 kB | yes |
+
+`DisplayReactor` builds its codecs on zod's classic API, which does not
+tree-shake. That is about 85 kB minified (24 kB gzipped) of every row marked
+"yes"; an app that already bundles zod for its own code pays it once.
+
+`defineReactor` costs as much as `defineDisplayReactor` today, even without
+`display`: its deprecated `display: true` option can still build a
+`DisplayReactor`, so the class and zod stay in the bundle. When that option is
+removed at the next major, `defineReactor` drops to about 60 kB minified,
+17.6 kB gzipped. Until then, an app that wants the smallest bundle and has no
+use for `DisplayReactor` sets up with `createActorHooks(new Reactor(...))` (the
+Quick Start above) and
+[`createAuthHooks`](/v3/reference/createauthhooks/overview).
+
+Both `define*` functions also include the identity-attribute code (about 6 kB
+minified, 1.8 kB gzipped) whether or not the app calls `useIdentityAttributes`,
+because it is part of the object they return.
 
 ## Identity Attributes
 
@@ -175,4 +216,6 @@ before trusting decoded values.
 - [Mutations](/v3/framework/mutations) — Update and invalidation patterns
 - [Authentication](/v3/guides/authentication) — Internet Identity and identity attributes
 - [Query Caching](/v3/framework/query-caching) — Cache behavior and invalidation
+- [Testing](/v3/guides/testing) — Component and hook tests against a fake
+  replica, with `@ic-reactor/react/testing`
 - [@ic-reactor/core](/v3/packages/core) — Runtime layer re-exported by this package

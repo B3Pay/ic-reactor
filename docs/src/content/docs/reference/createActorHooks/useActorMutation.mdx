@@ -56,17 +56,17 @@ function CreatePost() {
 
 ### Optional Options
 
-| Option              | Type                 | Default | Description                                                       |
-| ------------------- | -------------------- | ------- | ----------------------------------------------------------------- |
-| `callConfig`        | `CallConfig`         | -       | IC agent call configuration                                       |
-| `invalidateQueries` | `QueryKey[]`         | -       | Query keys to invalidate on success                               |
-| `onCanisterError`   | `function`           | -       | Called only for `Result { Err }` variants (canister logic errors) |
-| `retry`             | `number \| boolean`  | `0`     | Number of retry attempts                                          |
-| `retryDelay`        | `number \| function` | -       | Delay between retries                                             |
-| `onMutate`          | `function`           | -       | Called before mutation                                            |
-| `onSuccess`         | `function`           | -       | Called on successful mutation                                     |
-| `onError`           | `function`           | -       | Called on ALL errors (canister, network, agent)                   |
-| `onSettled`         | `function`           | -       | Called after success or error                                     |
+| Option              | Type                            | Default | Description                                                           |
+| ------------------- | ------------------------------- | ------- | --------------------------------------------------------------------- |
+| `callConfig`        | `CallConfig`                    | -       | IC agent call configuration                                           |
+| `invalidateQueries` | `InvalidationTarget[]`          | -       | Queries to invalidate on success, before `onSuccess`                  |
+| `onCanisterError`   | `function`                      | -       | Called only for `Result { Err }` variants (canister logic errors)     |
+| `retry`             | `number \| boolean \| function` | `0`     | Number of retry attempts, or a predicate such as `reactorUpdateRetry` |
+| `retryDelay`        | `number \| function`            | -       | Delay between retries                                                 |
+| `onMutate`          | `function`                      | -       | Called before mutation                                                |
+| `onSuccess`         | `function`                      | -       | Called on successful mutation                                         |
+| `onError`           | `function`                      | -       | Called on ALL errors (canister, network, agent)                       |
+| `onSettled`         | `function`                      | -       | Called after success or error                                         |
 
 ### Callback Signatures
 
@@ -138,16 +138,23 @@ const { mutate } = useActorMutation({
 ### Invalidate Queries After Mutation
 
 ```tsx
-import { backend } from "../reactor"
+import { getPost } from "../queries" // createQueryFactory(backend, ...)
 
 const { mutate } = useActorMutation({
   functionName: "createPost",
   invalidateQueries: [
-    backend.generateQueryKey({ functionName: "getPosts" }),
-    backend.generateQueryKey({ functionName: "getPostCount" }),
+    { functionName: "getPosts" }, // every getPosts query, whatever its args
+    { functionName: "getPostCount" },
+    getPost, // every query this factory returned
   ],
 })
 ```
+
+Each entry is a `{ functionName, args? }` method of the reactor, type-checked
+against the canister, a query object or query factory, or a query key. The
+invalidation is awaited before `onSuccess` runs, so the mutation stays pending
+until the invalidated queries in use have refetched. `undefined` entries are
+skipped.
 
 ### Using mutateAsync
 
@@ -222,47 +229,34 @@ function CreateUserForm() {
 ### Optimistic Updates
 
 ```tsx
-import { useQueryClient } from "@tanstack/react-query"
+import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "../reactor"
 
-function LikeButton({ postId }: { postId: string }) {
-  const queryClient = useQueryClient()
-  const queryKey = backend.generateQueryKey({
-    functionName: "getPost",
-    args: [postId],
-  })
+const getPost = createQueryFactory(backend, { functionName: "getPost" })
 
+function LikeButton({ postId }: { postId: string }) {
   const { mutate } = useActorMutation({
     functionName: "likePost",
-    onMutate: async () => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey })
-
-      // Snapshot previous value
-      const previousPost = queryClient.getQueryData(queryKey)
-
-      // Optimistically update
-      queryClient.setQueryData(queryKey, (old: Post) => ({
-        ...old,
-        likes: old.likes + 1,
+    // Cancel outgoing refetches, write the new value, keep a rollback
+    onMutate: ([postId]) =>
+      getPost([postId]).optimisticUpdate((post) => ({
+        ...post,
+        likes: post.likes + 1n,
         isLiked: true,
-      }))
-
-      return { previousPost }
-    },
-    onError: (err, vars, context) => {
-      // Rollback on error
-      queryClient.setQueryData(queryKey, context?.previousPost)
-    },
-    onSettled: () => {
-      // Refetch to ensure consistency
-      queryClient.invalidateQueries({ queryKey })
-    },
+      })),
+    // Rollback on error
+    onError: (_error, _args, update) => update?.rollback(),
+    // Refetch to ensure consistency
+    onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
   })
 
   return <button onClick={() => mutate([postId])}>❤️ Like</button>
 }
 ```
+
+The updater is typed from the query and gets its cached raw value; it is not
+called when nothing is cached. See
+[Optimistic Updates](/v3/framework/mutations#optimistic-updates).
 
 ### Canister Error Handling
 
@@ -359,9 +353,9 @@ Types are automatically inferred from your actor interface.
 ## Notes
 
 <Aside type="tip">
-  Use `invalidateQueries` for simple cases where you just need to refresh
-  related data. For more complex scenarios (optimistic updates, cache
-  manipulation), use `onSuccess` with the QueryClient.
+  Use `invalidateQueries` to refresh related data. For cache writes, such as
+  putting a created item into a cached list, use a query object's `setData()` in
+  `onSuccess`.
 </Aside>
 
 <Aside type="caution">
@@ -371,8 +365,12 @@ Types are automatically inferred from your actor interface.
 </Aside>
 
 <Aside type="note">
-  Unlike queries, mutations don't automatically retry by default. Set `retry:
-  true` or `retry: 3` if you want retry behavior.
+  Unlike queries, mutations don't automatically retry by default. A retry of an
+  update method is a new call the canister runs, so `retry: 3` can execute a
+  transfer twice when a response is lost. `retry: reactorUpdateRetry` retries
+  only a `SysTransient` rejection, which proves the call never ran. A
+  `mutations.retry` in the QueryClient's defaults applies to every mutation,
+  this hook's included.
 </Aside>
 
 ## See Also

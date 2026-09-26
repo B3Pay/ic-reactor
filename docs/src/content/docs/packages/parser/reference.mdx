@@ -84,6 +84,51 @@ const ts = didToTs("service:{}")
 // export interface _SERVICE ...
 ```
 
+#### Renamed types
+
+`didToTs` exports each Candid type under its own name, next to the `_SERVICE`
+interface. A type TypeScript cannot declare or refer to under its name is
+renamed with `_` appended, and `didToJs` uses the same name:
+
+- a type named like a TypeScript type keyword: `string`, `number`, `bigint`,
+  `symbol`, `object`, `any`, `unknown`, `never` or `undefined`;
+- a type named like a TypeScript type operator: `keyof`, `readonly`, `unique`
+  or `infer`;
+- a type named `_SERVICE` that is not the service itself;
+- a type named like a JavaScript keyword, such as `class` (candid_parser's own
+  rule).
+
+```typescript
+didToTs(`type string = record { value : text };
+service : { get : () -> (string) query }`)
+// export interface string_ { 'value' : string }
+// export interface _SERVICE { 'get' : ActorMethod<[], string_> }
+```
+
+When `string_` is taken by another type, the next free name (`string__`) is
+used. A service type named `_SERVICE` that the service uses
+(`service : _SERVICE`) keeps its name and is declared once, as the `_SERVICE`
+interface.
+
+#### Field names that look like numeric ids
+
+Candid identifies a named record field or variant tag by the hash of its name.
+`@icp-sdk/core` reads an IDL key spelled `_<digits>_` or `_0x<hex digits>_`,
+for a number below 2^32, as that number instead, the spelling it uses for
+numeric fields such as `0 : nat`. So `didToJs` and `didToTs` print a field
+_named_ like that under its hash, and it is sent and read by that hash:
+
+```typescript
+didToTs(`service : { get : () -> (record { _0_ : nat; 0 : text }) query }`)
+// … ActorMethod<[], { _0_ : string, _4735054_ : bigint }>
+```
+
+Use the printed key (`_4735054_`) for the value in calls and results.
+[`parseDid`](#parsedid) names the field by the same key. Names that do not
+match the pattern print as written. A hand-written `.did` that
+spells a Motoko numeric field as `_0_` must write it as `0`, the way Motoko
+prints it; spelled `_0_`, it is the field named `_0_`.
+
 ### `parseDid`
 
 `parseDid(candid: string): CandidSchema`
@@ -96,6 +141,10 @@ declarations plus the service declaration), including any metadata tags.
 - A `CandidSchema`: `{ types: CandidTypeDeclaration[]; service: CandidServiceDeclaration | null }`.
   Doc-comment metadata and validation tags are carried on the nodes — see
   [Candid Metadata Tags](/v3/packages/parser/metadata-tags).
+- Each record field and variant tag is named by the key `didToJs` prints for
+  it: `_0_` for the numeric field `0`, and `_4735054_` for a field named `_0_`
+  (see [Field names that look like numeric ids](#field-names-that-look-like-numeric-ids)).
+  Types keep their Candid names, including one `didToTs` renames.
 
 ```typescript
 const schema = parseDid("service:{}")

@@ -13,7 +13,7 @@ A full-featured application demonstrating IC Reactor with TanStack Router for na
 - Retargeting one reactor per route with `setCanisterId()` in a `loader`
 - Hand-maintained `createQuery` / `createSuspenseQuery` / `createSuspenseQueryFactory` / `createMutation` modules, one per method
 - Suspense-based data fetching with `<Suspense>` boundaries
-- Query invalidation after mutations with `reactor.invalidateQueries()`
+- Query invalidation after mutations: the transfer mutation lists the balance query factory in `invalidateQueries`, and a refresh button calls `reactor.invalidateQueries()`
 - Authentication with `createAuthHooks`
 - File-based routing structure
 
@@ -103,11 +103,14 @@ function TokenWallet() {
 ### Per-Method Query Modules
 
 The modules in `src/canisters/ledger/hooks/` wrap the reactor in reusable query
-objects, usable both inside components and in loaders. They are hand-maintained,
-not codegen output: `ic-reactor generate` and the Vite plugin write only
-`index.generated.ts` (the reactor plus six bound hooks, as in
-[Codegen in Action](/v3/examples/codegen-in-action)) and never emit
-`createQuery` / `createMutation` objects.
+objects, usable both inside components and in loaders. They are hand-maintained
+because this example writes its reactor by hand. In a project whose reactor
+codegen generates,
+[`factories: true`](/v3/packages/codegen#query-and-mutation-factories) generates
+the non-suspense ones, such as `icrc1NameQuery` below and
+`icrc1TransferMutation`, under the same names, as in
+[Codegen in Action](/v3/examples/codegen-in-action). It generates no suspense
+factories such as `icrc1BalanceOfSuspenseQuery`.
 
 ```typescript
 // src/canisters/ledger/hooks/icrc1NameQuery.ts
@@ -131,6 +134,7 @@ export function TokenName() {
 
 <Aside type="note">
   The same object also exposes `.fetch()`, `.invalidate()`, `.getQueryKey()`,
-  `.getCacheData()`, `.prefetch()`, and `.setData()` — use those from a router
-  loader or any other non-React code.
+  `.getCacheData()`, `.prefetch()`, `.setData()`, `.reset()`, `.cancel()` and
+  `.optimisticUpdate()` — use those from a router loader or any other non-React
+  code.
 </Aside>

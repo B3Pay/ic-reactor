@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/core",
-  "version": "3.12.5",
+  "version": "3.13.0",
   "description": "IC Reactor Core Library",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -15,6 +15,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js",
+      "default": "./dist/testing/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -64,9 +69,13 @@
   },
   "peerDependencies": {
     "@icp-sdk/core": "^6.1.0",
+    "@noble/curves": "^2.2.0",
     "@tanstack/query-core": "^5.0.0"
   },
   "peerDependenciesMeta": {
+    "@noble/curves": {
+      "optional": true
+    },
     "@tanstack/query-core": {
       "optional": true
     }

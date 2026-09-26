@@ -1,6 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
-import { AI_CONTEXT_FILES } from "./ai-context-files.js"
+import {
+  AI_CONTEXT_FILES,
+  RUNTIME_PLUGIN_MANIFESTS,
+} from "./ai-context-files.js"
 
 /**
  * Rewrite version references belonging to the packages being released.
@@ -71,5 +74,32 @@ export function syncAiContextVersions(
     }
   }
 
+  return changed
+}
+
+/**
+ * Set the `version` of each Claude Code plugin manifest that follows the
+ * runtime lane (`RUNTIME_PLUGIN_MANIFESTS`) to the released version.
+ *
+ * A manifest's `"version": "x.y.z"` line names no package, so
+ * `syncAiContextVersions` leaves it alone. The file is rewritten the way
+ * `release.js` rewrites a `package.json`: parsed, updated and written back
+ * with two-space indentation, which is also how Prettier formats it.
+ *
+ * @param {string} rootDir     repository root
+ * @param {string} newVersion  the runtime version being released
+ * @returns {string[]} relative paths that changed
+ */
+export function syncPluginManifestVersions(rootDir, newVersion) {
+  const changed = []
+  for (const relativePath of RUNTIME_PLUGIN_MANIFESTS) {
+    const fullPath = join(rootDir, relativePath)
+    const text = readFileSync(fullPath, "utf-8")
+    const manifest = JSON.parse(text)
+    if (manifest.version === newVersion) continue
+    manifest.version = newVersion
+    writeFileSync(fullPath, JSON.stringify(manifest, null, 2) + "\n", "utf-8")
+    changed.push(relativePath)
+  }
   return changed
 }

@@ -116,8 +116,11 @@ const queryOptions = ledgerReactor.getQueryOptions({
   functionName: "icrc1_name",
 })
 
-// Execute with QueryClient
-const result = await queryClient.fetchQuery(queryOptions)
+// Execute with QueryClient. The wrapper runs the fetch again when a sign-in
+// or sign-out overtakes it, instead of returning the previous principal's data
+const result = await ledgerReactor.clientManager.fetchAcrossIdentitySwitch(() =>
+  queryClient.fetchQuery(queryOptions)
+)
 
 // Or prefetch for later
 await queryClient.prefetchQuery(queryOptions)

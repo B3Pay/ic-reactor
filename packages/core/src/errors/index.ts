@@ -1,4 +1,4 @@
-import { NullishType } from "../display/types.js"
+import { isServer } from "../utils/server.js"
 
 /**
  * `value` with every BigInt that `JSON.stringify` would reach in it written as
@@ -86,12 +86,43 @@ const hasBrand = (value: unknown, symbol: symbol): boolean =>
   (value as Record<symbol, unknown>)[symbol] === true
 
 /**
- * Interface representing the generic shape of an API error.
+ * The shape of an API error record: a `code`, a `message` and `details`, such
+ * as Orbit's
+ * `record { code : text; message : opt text; details : opt vec record { text; text } }`.
+ *
+ * `message` and `details` are `unknown` unless given, because decoding
+ * decides their types: that record gives `[] | [string]` and
+ * `[] | [Array<[string, string]>]` through a `Reactor`, and
+ * `string | null | undefined` and `Record<string, string> | null | undefined`
+ * through a `DisplayReactor`. Neither is ever a `Map`. Name them for an error
+ * type you know, e.g. `ApiError<[] | [string], [] | [Array<[string, string]>]>`.
+ *
+ * @typeParam Message - The type of `message`
+ * @typeParam Details - The type of `details`
  */
-export interface ApiError {
+export interface ApiError<Message = unknown, Details = unknown> {
   code: string
-  message: NullishType<string>
-  details: NullishType<Map<string, string>>
+  message: Message
+  details: Details
+}
+
+/**
+ * The message of an API-shaped error value: its `message` when that is text,
+ * or the text in a raw `opt text`, `[string]`, which is how a `Reactor`
+ * decodes Orbit's `message : opt text`. A `DisplayReactor` unwraps the opt to
+ * the text itself, so both give the same message. Anything else, `[]`
+ * included, gives none.
+ */
+const apiErrorMessage = (message: unknown): string | undefined => {
+  if (typeof message === "string") return message
+  if (
+    Array.isArray(message) &&
+    message.length === 1 &&
+    typeof message[0] === "string"
+  ) {
+    return message[0]
+  }
+  return undefined
 }
 
 // `E` is only ever the checked type of a condition below, never inside an
@@ -188,8 +219,8 @@ export class CanisterError<E = unknown> extends Error {
       if ("code" in err && typeof err.code === "string") {
         code = err.code
         isApiShape = true
-        if ("message" in err && typeof err.message === "string") {
-          message = err.message
+        if ("message" in err) {
+          message = apiErrorMessage(err.message)
         }
         if ("details" in err) {
           details = err.details
@@ -248,6 +279,10 @@ export class CanisterError<E = unknown> extends Error {
 
   /**
    * Type guard to check if an error object follows the API error format.
+   *
+   * It checks only that `code`, `message` and `details` are present, so it
+   * narrows `message` and `details` to `unknown`: read their types from the
+   * canister's Candid type, or check them before use.
    */
   static isApiError(error: unknown): error is ApiError {
     if (typeof error !== "object" || error === null) {
@@ -437,6 +472,14 @@ const RETRYABLE_REJECT_CODES = new Set([
 ])
 
 /**
+ * HTTP client errors worth sending again: 408 Request Timeout and 429 Too
+ * Many Requests say the request came too early or too slowly, not that it was
+ * wrong. Every other 4xx refuses the request itself, and the replica or
+ * boundary node refuses an identical one the same way.
+ */
+const RETRYABLE_HTTP_CLIENT_ERRORS = new Set([408, 429])
+
+/**
  * Whether retrying a failed canister call could plausibly produce a different
  * result.
  *
@@ -449,11 +492,19 @@ const RETRYABLE_REJECT_CODES = new Set([
  *   these, including our own Candid encode/decode and transform failures, so
  *   the wrapper alone says nothing. The decision comes from the cause:
  *   - an agent error (it carries a `kind`): retried, except for a rejection
- *     whose reject code is one the replica will simply repeat;
+ *     whose reject code is one the replica will simply repeat, and an HTTP
+ *     4xx answer other than 408 and 429;
  *   - anything else: not retried, because no agent error means no request was
  *     ever made — the failure happened in encoding, decoding or transforming,
  *     and the identical input produces the identical failure.
  * - any other error: not retried, for the same reason.
+ *
+ * An HTTP 4xx answer is a refusal of the request itself: an expired or
+ * invalid delegation, a bad signature, a malformed request. The agent has
+ * already sent it `retryTimes` more times (3 by default) before it reports
+ * the error, so a query retry would only repeat those attempts, about 20
+ * seconds of them for a session whose delegation has lapsed. 408 and 429
+ * still retry, as do 5xx answers.
  *
  * Within agent errors the bias is toward retrying: an unrecognised `kind`, or a
  * rejection whose code cannot be read, still retries, so an unfamiliar
@@ -480,6 +531,11 @@ export function isRetryableReactorError(error: unknown): boolean {
   const rejectCode = readRejectCode(cause)
   if (typeof rejectCode === "number") {
     return RETRYABLE_REJECT_CODES.has(rejectCode)
+  }
+
+  const httpStatus = readHttpStatus(cause)
+  if (httpStatus !== undefined && httpStatus >= 400 && httpStatus < 500) {
+    return RETRYABLE_HTTP_CLIENT_ERRORS.has(httpStatus)
   }
 
   // Transport, protocol and certificate failures carry no reject code.
@@ -518,10 +574,78 @@ function readRejectCode(cause: unknown): number | undefined {
   return undefined
 }
 
+/**
+ * Pull the HTTP status out of a `CallError.cause` that reports an HTTP error
+ * answer.
+ *
+ * The agent reports a non-2xx answer as a `ProtocolError` whose `code` is an
+ * `HttpErrorCode` carrying the `status`. The code is recognised by its `name`
+ * and `status` rather than with `instanceof`, so an error from another copy of
+ * `@icp-sdk/core` classifies the same way.
+ */
+function readHttpStatus(cause: unknown): number | undefined {
+  const code = (cause as { code?: { name?: unknown; status?: unknown } })?.code
+  if (code?.name === "HttpErrorCode" && typeof code.status === "number") {
+    return code.status
+  }
+  return undefined
+}
+
 export function reactorRetry(failureCount: number, error: unknown): boolean {
   // TanStack defaults to zero retries on the server. Supplying a predicate
   // overrides that, so a failed prefetch or render would pick up the 1s/2s/4s
   // backoffs and add seven seconds to a request that used to fail fast.
-  if (typeof window === "undefined") return false
+  if (isServer()) return false
   return failureCount < 3 && isRetryableReactorError(error)
+}
+
+/** SysTransient: the system could not take the call in. */
+const SYS_TRANSIENT = 2
+
+/**
+ * Whether a failed update call can be sent again without the canister running
+ * it twice.
+ *
+ * Every attempt at an update call is a new call under a new request id, so the
+ * IC cannot tell a retry from a second call and runs both. A retry is safe
+ * only when the failure proves the canister never ran the first attempt, and
+ * only a SysTransient rejection (reject code 2) does: the system could not
+ * take the call in. A transport failure can come after the replica accepted
+ * the call, a SysUnknown rejection says its outcome is unknown, and an HTTP
+ * error can come from a boundary node that had already passed the call on, so
+ * none of them is retryable here, although {@link isRetryableReactorError}
+ * retries them for a query method.
+ *
+ * `Reactor.getQueryRetry` builds on it: a query of an update method that sets
+ * no `retry` of its own retries only what this accepts.
+ */
+export function isRetryableUpdateError(error: unknown): boolean {
+  if (!isCallError(error)) return false
+  return readRejectCode(error.cause) === SYS_TRANSIENT
+}
+
+/**
+ * A TanStack Query `retry` for update calls: up to 3 retries of a failure that
+ * {@link isRetryableUpdateError} accepts, none of anything else, and none on
+ * the server, like {@link reactorRetry}.
+ *
+ * On the QueryClient `defineReactor` creates, it is how a query of an update
+ * method retries when the query sets no `retry` (see `Reactor.getQueryRetry`).
+ * Mutations retry nothing by default. Give one this to retry an update only
+ * when that cannot run it twice.
+ *
+ * @example
+ * ```ts
+ * createMutation(ledger, {
+ *   functionName: "icrc1_transfer",
+ *   retry: reactorUpdateRetry,
+ * })
+ * ```
+ */
+export function reactorUpdateRetry(
+  failureCount: number,
+  error: unknown
+): boolean {
+  if (isServer()) return false
+  return failureCount < 3 && isRetryableUpdateError(error)
 }

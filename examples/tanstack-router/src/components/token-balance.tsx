@@ -1,3 +1,4 @@
+import { formatTokenAmount } from "@ic-reactor/react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -29,12 +30,14 @@ export function TokenBalance({ owner }: { owner: string }) {
     refetch,
     isFetching,
   } = icrc1BalanceOfSuspenseQuery([{ owner }]).useSuspenseQuery({
-    select: (balance) => {
-      const decimalsNum = Number(decimals)
-      // Use Number() for display precision - aware of limitation for >2^53
-      const balanceNum = Number(balance)
-      return balanceNum / Math.pow(10, decimalsNum)
-    },
+    // The balance is e8s as text. formatTokenAmount shifts the decimal point
+    // on the digits, exact at any size, and cuts to four places rather than
+    // rounding up past what the account holds.
+    select: (balance) =>
+      formatTokenAmount(balance, decimals, {
+        minFractionDigits: 4,
+        maxFractionDigits: 4,
+      }),
   })
 
   return (
@@ -56,7 +59,7 @@ export function TokenBalance({ owner }: { owner: string }) {
           <div className="text-red-400">Error: {error.message}</div>
         ) : (
           <div className="text-3xl font-bold text-transparent bg-clip-text bg-linear-to-r from-blue-400 to-purple-400">
-            {balance.toFixed(4)}
+            {balance}
           </div>
         )}
         <TokenSymbol />

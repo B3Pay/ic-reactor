@@ -1,47 +1,158 @@
-# @ic-reactor/codegen — AI Quick Guide
+# @ic-reactor/codegen
 
-Shared generation pipeline used by `@ic-reactor/cli` and
-`@ic-reactor/vite-plugin`.
+> The generation pipeline behind `@ic-reactor/cli` and
+> `@ic-reactor/vite-plugin`: from a `.did` file it writes declarations, a typed
+> reactor with bound React hooks, and optionally one query or mutation object
+> per method.
+
+Applies to `@ic-reactor/codegen` 0.15.0.
+
+Read this file from `node_modules/@ic-reactor/codegen/llms.txt` when writing
+code against the installed version. The complete guide for every package is
+https://ic-reactor.b3pay.net/llms-full.txt, and behaviour changes are in
+https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
 
 ## Install
 
-Most apps should install CLI or Vite plugin instead of this package directly.
+Apps install `@ic-reactor/vite-plugin` (Vite) or `@ic-reactor/cli`
+(anything else), which run this pipeline. Install it directly only for custom
+tooling:
 
 ```bash
 pnpm add -D @ic-reactor/codegen
 ```
 
-## Main Use Case
+## Setup and Usage
 
-Use `runCanisterPipeline(...)` when you need programmatic generation in custom
-tooling/automation.
+```ts
+// scripts/generate.ts: custom tooling around the pipeline
+import { runCanisterPipeline } from "@ic-reactor/codegen"
 
-## Generated File Model
+const result = await runCanisterPipeline({
+  canisterConfig: {
+    name: "backend",
+    didFile: "./backend/backend.did",
+    factories: true, // also write index.factories.generated.ts
+    canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai", // for builds off a local replica
+  },
+  projectRoot: process.cwd(),
+  globalConfig: {
+    outDir: "src/declarations",
+    clientManagerPath: "../../clients", // module exporting `clientManager`
+    target: "react",
+  },
+})
+if (!result.success) throw new Error(result.error)
+for (const warning of result.warnings ?? []) console.warn(warning)
+```
 
-- `index.generated.ts` is managed output
-- `index.ts` is a stable wrapper
-- app-specific logic should live in wrappers or adjacent modules
+The app then imports from the canister's entry:
 
-## Validation
+```tsx
+import {
+  getMessageQuery,
+  setMessageMutation,
+  useBackendQuery,
+} from "./declarations/backend"
 
-The pipeline validates the config before generating anything and throws
-`CodegenConfigError`. The same checks are exported for callers that want to
-validate first: `assertSafeCanisterConfig`, `assertSafeCanisterName`,
-`assertSafeModuleSpecifier`, `assertContainedPath`, `assertOneOf`,
-`resolveContainedOutDir`, and `resolveDeclarationsBaseName`, plus the constants
-`CANISTER_NAME_PATTERN`, `REACTOR_CLASS_NAMES`, and `CODEGEN_TARGETS`.
+export function Message() {
+  const { data: message } = getMessageQuery.useQuery()
+  const save = setMessageMutation.useMutation({
+    invalidateQueries: [getMessageQuery],
+  })
+  const { data: greeting } = useBackendQuery({
+    functionName: "greet",
+    args: ["Ada"],
+  })
+  return (
+    <button onClick={() => save.mutate(["hello"])}>
+      {greeting}: {message}
+    </button>
+  )
+}
+// Outside React: await getMessageQuery.fetch(), await setMessageMutation.execute(["hello"])
+```
 
-## Generation Failure Modes
+## Generated Files
 
-- `outDir` must resolve inside the project root
-- canister names must match `CANISTER_NAME_PATTERN`
-- a `.did` that compiles to a module with no `idlFactory` is rejected — there is
-  no service to generate against
-- each `outDir` carries a `.ic-reactor-owner` marker, so two canisters cannot
-  write to the same directory. Without it both runs report success while the
-  second replaces the first one's declarations.
+Per canister, under `<outDir>/<name>/`:
 
-## Full References
+| File                           | Owner                     | Content                                                                                |
+| ------------------------------ | ------------------------- | -------------------------------------------------------------------------------------- |
+| `declarations/`                | codegen, every run        | `idlFactory` (`.js`) and `_SERVICE` (`.d.ts`) named after the `.did`, and a copy of it |
+| `index.generated.ts`           | codegen, every run        | `<name>Reactor` and six hooks: `use<Name>Query`, `use<Name>Mutation`, ...              |
+| `index.factories.generated.ts` | codegen, with `factories` | `<method>Query` / `<method>Mutation` per method                                        |
+| `index.ts`                     | you, after the first run  | re-exports the managed files; put your own code here                                   |
 
-- Full AI guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Codegen docs: https://ic-reactor.b3pay.net/v3/packages/codegen
+- The reactor is a `DisplayReactor` unless `mode` names `Reactor`,
+  `CandidReactor`, `CandidDisplayReactor` or `MetadataDisplayReactor`.
+- `target: "react"` (default) adds the hooks; `target: "core"` writes only the
+  typed reactor, with no `@ic-reactor/react` import.
+- `clientManagerPath` is the import path, relative to the generated file, of a
+  module that exports `clientManager` (default `../../clients`).
+- `generateReactor: false` writes only `declarations/`.
+
+## Factories (`factories: true`)
+
+| Method                                       | Factory              | Export             |
+| -------------------------------------------- | -------------------- | ------------------ |
+| `query` or `composite_query`, no arguments   | `createQuery`        | `<method>Query`    |
+| `query` or `composite_query`, with arguments | `createQueryFactory` | `<method>Query`    |
+| update (no annotation) or `oneway`           | `createMutation`     | `<method>Mutation` |
+
+- An update method is never generated as a query.
+- `<method>` is camelCase (`get_message` gives `getMessageQuery`). A name that
+  would start with a digit gets a leading `_`; a name an earlier method (in
+  Candid's order) or a hook already took gets `_` appended.
+  `getFactoryExportNames(canisterName, methods)` returns the names.
+- Each call is `/* @__PURE__ */`, so a bundler drops the factories an app does
+  not import, even through `export *`.
+- Needs `target: "react"`; with `target: "core"` the run fails with a
+  `CodegenConfigError` before writing anything. Switching the option off
+  removes the file.
+- An `index.ts` you edited is not rewritten; until it contains
+  `export * from "./index.factories.generated"`, the run returns a warning.
+  An export of the same name in `index.ts` replaces the generated one.
+- Like the reactor, the objects are module scope: fine in a client-only app,
+  not for per-request use on a server.
+
+## Validation and Failure Modes
+
+- The config is validated before anything is written, and a violation throws
+  `CodegenConfigError`. The checks are exported: `assertSafeCanisterConfig`,
+  `assertSafeCanisterName`, `assertSafeModuleSpecifier`,
+  `assertContainedPath`, `assertOneOf`, `resolveContainedOutDir`,
+  `resolveDeclarationsBaseName`, with `CANISTER_NAME_PATTERN`,
+  `REACTOR_CLASS_NAMES` and `CODEGEN_TARGETS`.
+- `outDir` must resolve inside `projectRoot`, and names must match
+  `CANISTER_NAME_PATTERN`.
+- A `.did` that declares no service is rejected.
+- Each `outDir` carries a `.ic-reactor-owner` marker, so a second canister
+  cannot write into a directory another one owns. Two entries with the same
+  `name` and `outDir` pass the marker;
+  `findSharedOutDirs(entries, outDir, projectRoot)` finds them and
+  `sharedOutDirMessage(...)` words the error.
+- Without `canisterId`, the generated reactor reads its id from the `ic_env`
+  cookie, which only a local replica (or `allowEnvConfig: true`) trusts, so
+  importing it throws `canisterId is required` in Node, during SSR and on a
+  deployed origin.
+
+## Do Not
+
+- Edit `index.generated.ts`, `index.factories.generated.ts` or
+  `declarations/`; change the `.did` or the options and generate again.
+- Hand-write `createQuery` / `createMutation` modules that only restate method
+  names; set `factories: true` and customize in `index.ts`.
+- Point two canisters at one output directory.
+- Import the generated modules into a React Server Component: they import
+  hooks.
+- Leave `canisterId` out for a build served anywhere but a local replica.
+
+## Docs
+
+- Codegen package: https://ic-reactor.b3pay.net/v3/packages/codegen.md
+- CLI: https://ic-reactor.b3pay.net/v3/packages/cli.md
+- Vite plugin: https://ic-reactor.b3pay.net/v3/packages/vite-plugin.md
+- Codegen in action example: https://ic-reactor.b3pay.net/v3/examples/codegen-in-action.md
+- Index of all docs: https://ic-reactor.b3pay.net/llms.txt
+- Full guide: https://ic-reactor.b3pay.net/llms-full.txt

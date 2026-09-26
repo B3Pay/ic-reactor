@@ -5,7 +5,11 @@ import type {
   ReadStateOptions,
 } from "@icp-sdk/core/agent"
 import type { ClientManager } from "./client.js"
-import type { QueryKey, FetchQueryOptions } from "@tanstack/query-core"
+import type {
+  QueryKey,
+  FetchQueryOptions,
+  QueryOptions,
+} from "@tanstack/query-core"
 import type {
   ReactorParameters,
   BaseActor,
@@ -36,8 +40,15 @@ import {
   processQueryCallResponse,
   processUpdateCallResponse,
 } from "./utils/agent.js"
-import { CallError, CanisterError, ValidationError } from "./errors/index.js"
+import {
+  CallError,
+  isRetryableUpdateError,
+  isCallError,
+  isCanisterError,
+  isValidationError,
+} from "./errors/index.js"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
+import { isServer } from "./utils/server.js"
 
 /**
  * A fresh `AnonymousIdentity` when `agent` currently signs as the anonymous
@@ -54,6 +65,85 @@ async function anonymousIfAgentIs(
   } catch {
     return undefined
   }
+}
+
+/**
+ * Whether a TanStack Query `retry` value retries after `failureCount`
+ * failures, read the way TanStack Query reads it. Unset, it is TanStack
+ * Query's own default: three retries in a browser, none on a server.
+ */
+function retriesAgain(
+  retry: QueryOptions["retry"],
+  failureCount: number,
+  error: unknown
+): boolean {
+  if (retry === undefined) {
+    return !isServer() && failureCount < 3
+  }
+  if (typeof retry === "function") return retry(failureCount, error as never)
+  if (typeof retry === "number") return failureCount < retry
+  return retry
+}
+
+/**
+ * The agents calls have named through `callConfig.agent`, each with the number
+ * its query keys carry. A key has to serialise and hash, which an agent does
+ * not, so the key holds the number instead of the agent. The map is weak so a
+ * dropped agent can still be collected.
+ *
+ * A registry counts up from a random start rather than from 1. A key leaves
+ * its process when a server's cache is dehydrated into the page, or a cache
+ * is persisted and restored in a later session, and two registries counting
+ * from 1 give their first agents the same number: the entry the server fetched
+ * through its override agent answered the browser's first override agent,
+ * whoever that agent signs as. From random starts, two registries' numbers
+ * practically never meet, so such an entry is simply not found.
+ *
+ * The registry sits behind a global symbol, like the error brands, so every
+ * copy of this package in one app numbers agents from the same sequence, and
+ * two reactors on one QueryClient never share an entry between two agents.
+ * Where the global object cannot take the property (a frozen global), this
+ * copy keeps its own registry instead, from a start of its own.
+ */
+const AGENT_ORDINALS = Symbol.for("@ic-reactor/core/agentOrdinals")
+
+interface AgentOrdinals {
+  readonly byAgent: WeakMap<Agent, number>
+  next: number
+}
+
+let ownAgentOrdinals: AgentOrdinals | undefined
+
+/**
+ * Where a registry starts counting: a random integer from 1 to 2^48, which
+ * leaves the numbers exact however many agents a long-running server numbers
+ * after it.
+ */
+const firstAgentOrdinal = (): number => Math.floor(Math.random() * 2 ** 48) + 1
+
+/** The registry of {@link AGENT_ORDINALS}, created on first use. */
+function agentOrdinals(): AgentOrdinals {
+  const global = globalThis as { [AGENT_ORDINALS]?: AgentOrdinals }
+  const shared = global[AGENT_ORDINALS]
+  if (shared) return shared
+  ownAgentOrdinals ??= { byAgent: new WeakMap(), next: firstAgentOrdinal() }
+  try {
+    global[AGENT_ORDINALS] = ownAgentOrdinals
+  } catch {
+    // A frozen global: number the agents in this copy alone.
+  }
+  return ownAgentOrdinals
+}
+
+/** The number query keys carry for `agent`; see {@link AGENT_ORDINALS}. */
+function agentOrdinal(agent: Agent): number {
+  const registry = agentOrdinals()
+  let ordinal = registry.byAgent.get(agent)
+  if (ordinal === undefined) {
+    ordinal = registry.next++
+    registry.byAgent.set(agent, ordinal)
+  }
+  return ordinal
 }
 
 /**
@@ -76,6 +166,12 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public canisterId: Principal
   public service: IDL.ServiceClass
   public pollingOptions: PollingOptions
+  /**
+   * The reactors {@link forCanister} made, by canister id. A reactor and
+   * every sibling it made share one map, so each canister has one reactor
+   * across the family, whichever member was asked.
+   */
+  private siblings?: Map<string, Reactor<A, T>>
 
   constructor(config: ReactorParameters) {
     this.clientManager = config.clientManager
@@ -179,6 +275,114 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    */
   public setCanisterName(name: string): void {
     this.name = name
+  }
+
+  /**
+   * A reactor of the same class for another canister of the same interface,
+   * such as another ICRC ledger. It shares this reactor's `ClientManager`
+   * (so its agent, identity and `QueryClient`), name and polling options. It
+   * starts from the interface, transform and validators this reactor has
+   * when it is made. Only the canister differs.
+   *
+   * The same canister id always gives the same reactor, so it is safe to
+   * call during render and as a dependency of `useMemo`. The siblings of a
+   * reactor share that memo: `a.forCanister(x).forCanister(y)` is
+   * `a.forCanister(y)`. The result is a separate reactor even for this
+   * reactor's own canister, and it keeps its canister when this one's
+   * `setCanisterId` moves.
+   *
+   * Use one sibling per canister instead of retargeting a shared reactor
+   * with {@link setCanisterId}. Their query keys start with their own
+   * canister, so several tokens' queries live side by side in the cache,
+   * and no call or retry of one is sent to another. A mutation invalidates
+   * its own canister's queries. Never `setCanisterId` a sibling: ask for the
+   * other canister's instead.
+   *
+   * A subclass whose constructor takes options of its own passes them on by
+   * overriding the protected `siblingParameters(canisterId)`. Its constructor
+   * has to build the reactor for the `canisterId` it is given: one that sets
+   * a canister of its own makes this throw rather than hand out a reactor
+   * for the wrong canister.
+   *
+   * @param canisterId - The other canister, as text or a `Principal`.
+   *
+   * @example
+   * ```typescript
+   * const ledger = new DisplayReactor<Ledger>({
+   *   clientManager,
+   *   idlFactory,
+   *   name: "ledger",
+   *   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP
+   * })
+   *
+   * // ckBTC, through the same agent, cache and interface
+   * const ckbtc = ledger.forCanister("mxzaz-hqaaa-aaaar-qaada-cai")
+   * const symbol = await ckbtc.fetchQuery({ functionName: "icrc1_symbol" })
+   *
+   * // In React: one set of hooks per token, memoized by its canister
+   * const hooks = useMemo(
+   *   () => createActorHooks(ledger.forCanister(tokenId)),
+   *   [tokenId]
+   * )
+   * ```
+   */
+  public forCanister(canisterId: CanisterId): this {
+    const id = Principal.from(canisterId).toText()
+    const siblings = (this.siblings ??= new Map())
+    let sibling = siblings.get(id)
+    if (!sibling) {
+      // The class this reactor was made with, so a DisplayReactor's sibling
+      // is a DisplayReactor, and a subclass's is that subclass.
+      const Sibling = this.constructor as new (
+        config: ReactorParameters
+      ) => Reactor<A, T>
+      sibling = new Sibling(this.siblingParameters(Principal.fromText(id)))
+      // A subclass constructor that sets a canister of its own, rather than
+      // the one it is given, made a reactor for that canister, which this
+      // then handed out and remembered under `id`: every call meant for `id`
+      // silently went to the other canister.
+      if (sibling.canisterId.toText() !== id) {
+        throw new Error(
+          `[ic-reactor] forCanister("${id}") on "${this.name}" made a reactor for ` +
+            `${sibling.canisterId.toText()} instead: the ${Sibling.name} constructor ` +
+            `does not use the canisterId it is given. Make it use config.canisterId, ` +
+            `or construct the reactor for that canister yourself.`
+        )
+      }
+      sibling.siblings = siblings
+      siblings.set(id, sibling)
+    }
+    return sibling as this
+  }
+
+  /**
+   * The constructor options {@link forCanister} makes a sibling with: this
+   * reactor's `ClientManager`, name and polling options, the sibling's
+   * `canisterId`, and an `idlFactory` that gives a copy of the service this
+   * reactor has now. The copy is the sibling's own: a candid package reactor
+   * that registers a method or re-reads its interface later changes its own
+   * service, not a sibling's, which could not call the method without the
+   * codecs and metadata built for it.
+   *
+   * A subclass whose constructor takes more adds it to what this returns,
+   * as `DisplayReactor` adds its validators.
+   *
+   * @param canisterId - The sibling's canister.
+   */
+  protected siblingParameters(canisterId: Principal): ReactorParameters {
+    // A method typed by a recursive func alias is an `IDL.Rec`, which the
+    // service holds as it is, like a plain `IDL.Func`.
+    const methods = Object.fromEntries(this.service._fields) as Record<
+      string,
+      IDL.FuncClass
+    >
+    return {
+      clientManager: this.clientManager,
+      name: this.name,
+      canisterId,
+      idlFactory: () => IDL.Service(methods),
+      pollingOptions: this.pollingOptions,
+    }
   }
 
   protected verifyCanister() {
@@ -286,6 +490,18 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       queryKeys.push({ transform: this.transform })
     }
 
+    // A query sent through another agent is answered for that agent's
+    // identity or network, so it must not share an entry with the same query
+    // sent through the manager's agent. It did: whichever ran first answered
+    // both, and a `whoami` or a balance of self came back for the wrong
+    // principal (#642). Only an agent other than the manager's adds the
+    // segment, so every other key keeps its exact bytes, and it sits before
+    // the args for the same prefix-matching reason as the transform segment.
+    const agent = callConfig?.agent
+    if (agent && agent !== this.clientManager.agent) {
+      queryKeys.push({ agent: agentOrdinal(agent) })
+    }
+
     const effectiveTarget =
       callConfig?.effectiveTarget ??
       (callConfig?.effectiveCanisterId
@@ -344,6 +560,56 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   // QUERY OPTIONS
   // ══════════════════════════════════════════════════════════════════════
 
+  /**
+   * The `retry` a TanStack query of `functionName`, cached under `queryKey`,
+   * runs with when the query sets no `retry` of its own.
+   *
+   * For a query method it is `undefined`, and the QueryClient's `retry`
+   * defaults apply as usual.
+   *
+   * An update method runs on the canister again each time the query function
+   * runs, as a new call the IC cannot tell from a retry, so a retry after a
+   * lost response executed the update a second time. For one it is a function
+   * that retries only a failure proving the canister never ran the call, a
+   * SysTransient rejection (see `isRetryableUpdateError`), and only as often
+   * as the QueryClient's `retry` default for `queryKey` would: its
+   * `setQueryDefaults` or `defaultOptions.queries`, or TanStack Query's own
+   * three retries in a browser when neither sets one. With the QueryClient
+   * `defineReactor` creates, that is `reactorUpdateRetry`, and with a default
+   * of `retry: false` nothing is retried. A transport failure, a SysUnknown
+   * rejection and an HTTP error are not retried. Refetches on mount, window
+   * focus, reconnect and invalidation still run the method again.
+   *
+   * {@link getQueryOptions}, {@link fetchQuery} and the query hooks and
+   * factories of `@ic-reactor/react` apply it, and a `retry` the query sets
+   * itself wins over it.
+   *
+   * @param functionName - The method the query calls.
+   * @param queryKey - The query's key, which selects its QueryClient defaults.
+   */
+  public getQueryRetry<M extends FunctionName<A>>(
+    functionName: M,
+    queryKey: QueryKey
+  ): ((failureCount: number, error: unknown) => boolean) | undefined {
+    if (this.isQueryMethod(functionName)) return undefined
+    return (failureCount, error) => {
+      if (!isRetryableUpdateError(error)) return false
+      // Read when a retry is due, so the QueryClient's defaults of the moment
+      // decide, as they do for a query method.
+      const { queryClient } = this
+      const retry =
+        queryClient.getQueryDefaults(queryKey).retry ??
+        queryClient.getDefaultOptions().queries?.retry
+      return retriesAgain(retry, failureCount, error)
+    }
+  }
+
+  /**
+   * The key and function of a TanStack query of the method, for
+   * `queryClient.fetchQuery`, `prefetchQuery` or `useQuery`. For an update
+   * method they also hold the `retry` from {@link getQueryRetry}; spread a
+   * `retry` of your own after them to replace it.
+   */
   public getQueryOptions<M extends FunctionName<A>>(
     params: ReactorCallParams<A, M, T>
   ): FetchQueryOptions<ReactorQueryData<ReactorReturnOk<A, M, T>>> {
@@ -359,20 +625,33 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
       canisterId: params.callConfig?.canisterId || this.canisterId,
     }
 
+    const queryKey = this.generateQueryKey(params, params.callConfig)
+    const retry = this.getQueryRetry(params.functionName, queryKey)
+
     return {
-      queryKey: this.generateQueryKey(params, params.callConfig),
+      queryKey,
       queryFn: async () => {
         const result = await this.callMethod({ ...params, callConfig })
         return toReactorQueryData<ReactorReturnOk<A, M, T>>(
           result as ReactorReturnOk<A, M, T>
         )
       },
+      // Left out for a query method: even as `undefined` it would replace the
+      // QueryClient's `retry` default.
+      ...(retry ? { retry } : {}),
     }
   }
 
   /**
    * Invalidate cached queries for this canister.
    * This will mark matching queries as stale and trigger a refetch for any active queries.
+   *
+   * It returns TanStack Query's promise, which resolves once the active
+   * queries it matched have refetched. A refetch that fails does not reject
+   * it. Await it where the next step should read the refetched data, such as
+   * in a mutation's `onSuccess`; an arrow that returns it, like
+   * `onSuccess: () => reactor.invalidateQueries(...)`, keeps the mutation
+   * pending until those refetches finish.
    *
    * @param params - Optional parameters to filter the invalidation. Without a
    * `functionName`, every query of the canister is invalidated.
@@ -381,8 +660,9 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    *
    * @example
    * ```typescript
-   * // Invalidate all queries for this canister
-   * reactor.invalidateQueries()
+   * // Invalidate all queries for this canister, and wait for the active
+   * // ones to refetch
+   * await reactor.invalidateQueries()
    *
    * // Invalidate only 'getUser' queries
    * reactor.invalidateQueries({ functionName: 'getUser' })
@@ -397,7 +677,7 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
   public invalidateQueries<M extends FunctionName<A>>(
     params?: Partial<ReactorQueryParams<A, M, T>>,
     callConfig?: CallConfig
-  ) {
+  ): Promise<void> {
     // Without a method there is nothing narrower than the canister to match
     // on: a key built with an undefined functionName matches no entry at all,
     // since TanStack compares prefix segments one by one. The canister is the
@@ -418,9 +698,9 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
               : this.canisterId.toString(),
           ]
 
-    void this.queryClient.invalidateQueries({
-      queryKey,
-    })
+    // Returned rather than dropped, so a caller can wait for the refetches.
+    // It used to be `void`, and awaiting the call waited for nothing.
+    return this.queryClient.invalidateQueries({ queryKey })
   }
 
   // ══════════════════════════════════════════════════════════════════════
@@ -500,8 +780,18 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
 
       return this.transformResult(params.functionName, response)
     } catch (error) {
-      // Re-throw CanisterError as-is (business logic error from canister)
-      if (error instanceof CanisterError || error instanceof ValidationError) {
+      // Re-throw CanisterError as-is (business logic error from canister), and
+      // a ValidationError or a CallError, which are already reactor errors: a
+      // DisplayReactor reports a validator that threw as a CallError, and
+      // wrapping it again would bury what the validator threw one `cause`
+      // deeper than `validate()` and `callMethodWithValidation()` put it.
+      // The guards also know these errors from another copy of this package,
+      // such as a ValidationError a validator built against that copy throws.
+      if (
+        isCanisterError(error) ||
+        isValidationError(error) ||
+        isCallError(error)
+      ) {
         throw error
       }
 
@@ -521,13 +811,23 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
    * is none. Like TanStack Query's `ensureQueryData`, it is cache-first: a
    * cached value is returned even when it is stale or was invalidated, and a
    * `staleTime` in `options` has no effect. For a value the canister returns
-   * now, use {@link callMethod} or `queryClient.fetchQuery` with the options
-   * from {@link getQueryOptions}.
+   * now, use {@link callMethod}, or `queryClient.fetchQuery` with the options
+   * from {@link getQueryOptions} inside
+   * {@link ClientManager.fetchAcrossIdentitySwitch}, which keeps a sign-in or
+   * sign-out from resolving it with the previous principal's cached data.
+   *
+   * A sign-in or sign-out while the fetch is in flight cancels it, so the
+   * previous identity's answer is never cached. The fetch then runs again for
+   * the identity installed now and resolves with that answer, rather than
+   * rejecting with TanStack's `CancelledError`; see
+   * {@link ClientManager.fetchAcrossIdentitySwitch}.
    *
    * @param options - Further TanStack Query options for the fetch, such as
    * `retry`, `networkMode` or `meta`. The query key and function always come
    * from `params`. The query factories pass their config's options through
    * here, so a subclass that overrides this method still sees their fetches.
+   * Without a `retry` here, an update method retries as
+   * {@link getQueryRetry} says.
    */
   public async fetchQuery<M extends FunctionName<A>>(
     params: ReactorCallParams<A, M, T>,
@@ -543,15 +843,25 @@ export class Reactor<A = BaseActor, T extends TransformKey = "candid"> {
     // its whole return type mixed in option types keyed to TanStack's default
     // `Error` rather than this method's error type, which stops type-checking
     // as soon as the reactor's error classes grow a member.
-    const { queryKey, queryFn } = this.getQueryOptions(params)
-    return this.queryClient.ensureQueryData<
-      ReactorQueryData<ReactorReturnOk<A, M, T>>,
-      ReactorReturnErr<A, M, T>
-    >({
-      ...options,
-      queryKey,
-      queryFn,
-    })
+    const { queryKey, queryFn, retry } = this.getQueryOptions(params)
+    // `updateAgent` cancels a fetch in flight when the principal changes. It
+    // used to reject with TanStack's CancelledError, an error type no reactor
+    // call documents, so a route loader running during a sign-out showed its
+    // error boundary. It now runs again for the new identity.
+    return this.clientManager.fetchAcrossIdentitySwitch(() =>
+      this.queryClient.ensureQueryData<
+        ReactorQueryData<ReactorReturnOk<A, M, T>>,
+        ReactorReturnErr<A, M, T>
+      >({
+        ...options,
+        // The update method's default, unless the caller set a `retry`.
+        ...(retry !== undefined && options?.retry === undefined
+          ? { retry }
+          : {}),
+        queryKey,
+        queryFn,
+      })
+    )
   }
 
   /**

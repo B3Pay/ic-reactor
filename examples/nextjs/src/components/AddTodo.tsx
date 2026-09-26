@@ -1,8 +1,9 @@
 import React, { useState } from "react"
-import { useMutateTodo } from "service/provider"
+import { useTodo } from "service/provider"
 
 const AddTodo = () => {
-  const { mutate, error, isPending } = useMutateTodo({
+  const { useActorMutation } = useTodo()
+  const { mutate, error, isPending } = useActorMutation({
     functionName: "addTodo"
   })
 

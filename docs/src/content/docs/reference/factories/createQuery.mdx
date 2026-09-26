@@ -29,13 +29,14 @@ const userProfileQuery = createQuery(backend, {
 
 ## Configuration
 
-| Option         | Type                 | Default  | Description                     |
-| -------------- | -------------------- | -------- | ------------------------------- |
-| `functionName` | `string`             | Required | The canister method to call     |
-| `args`         | `Args`               | `[]`     | Arguments for the method        |
-| `select`       | `(data) => Selected` | -        | Transform data before returning |
-| `staleTime`    | `number`             | `300000` | Time before data is stale (ms)  |
-| `queryKey`     | `QueryKey`           | Auto     | Custom query key segments       |
+| Option         | Type                 | Default  | Description                                      |
+| -------------- | -------------------- | -------- | ------------------------------------------------ |
+| `functionName` | `string`             | Required | The canister method to call                      |
+| `args`         | `Args`               | `[]`     | Arguments for the method                         |
+| `select`       | `(data) => Selected` | -        | Transform data before returning                  |
+| `staleTime`    | `number`             | `300000` | Time before data is stale (ms)                   |
+| `queryKey`     | `QueryKey`           | Auto     | Custom query key segments                        |
+| `callConfig`   | `CallConfig`         | -        | Canister, agent or effective target for the call |
 
 The config also takes TanStack Query's query options. `networkMode`, `retry`,
 `retryDelay` and `meta` decide how the canister call runs, so they apply to
@@ -45,19 +46,39 @@ only. The config's `select` is applied by the query object itself, so
 `fetch()`, `getCacheData()` and `useQuery()` all return the selected value;
 `setData` still takes the raw value.
 
+`callConfig` goes where it goes in `useActorQuery`: to the call and into the
+query key. A `canisterId` there sends the query to another canister of the
+same interface and caches it under that canister, so one reactor can back
+query objects for several ledgers:
+
+```typescript
+const ckbtcBalance = createQueryFactory(ledger, {
+  functionName: "icrc1_balance_of",
+  callConfig: { canisterId: "mxzaz-hqaaa-aaaar-qaada-cai" },
+})
+```
+
+`getQueryKey()`, `invalidate()` and the other cache controls act on that
+entry, and a factory's own `getQueryKey()` is rooted at that canister. For a
+whole reactor per canister, with every query and mutation on it, see
+[`forCanister`](/v3/reference/reactor#forcanister).
+
 ## Return Value
 
 The factory returns an object with these utilities:
 
-| Property       | Type                           | Description                              |
-| -------------- | ------------------------------ | ---------------------------------------- |
-| `fetch`        | `() => Promise<T>`             | Cache-first fetch — use in route loaders |
-| `prefetch`     | `() => Promise<void>`          | Fire-and-forget cache warm-up            |
-| `useQuery`     | `(options?) => UseQueryResult` | React hook for components                |
-| `invalidate`   | `() => Promise<void>`          | Invalidate cache (refetches if active)   |
-| `getQueryKey`  | `() => QueryKey`               | Get the TanStack Query key               |
-| `getCacheData` | `(select?) => T`               | Read from cache without fetching         |
-| `setData`      | `(updater) => T \| undefined`  | Write raw data into cache                |
+| Property           | Type                                 | Description                                        |
+| ------------------ | ------------------------------------ | -------------------------------------------------- |
+| `fetch`            | `() => Promise<T>`                   | Cache-first fetch — use in route loaders           |
+| `prefetch`         | `() => Promise<void>`                | Fire-and-forget cache warm-up                      |
+| `useQuery`         | `(options?) => UseQueryResult`       | React hook for components                          |
+| `invalidate`       | `() => Promise<void>`                | Invalidate cache (refetches if active)             |
+| `getQueryKey`      | `() => QueryKey`                     | Get the TanStack Query key                         |
+| `getCacheData`     | `(select?) => T`                     | Read from cache without fetching                   |
+| `setData`          | `(updater) => T \| undefined`        | Write raw data into cache                          |
+| `cancel`           | `() => Promise<void>`                | Cancel this query's fetch in flight                |
+| `reset`            | `() => Promise<void>`                | Reset to initial state; mounted hooks refetch      |
+| `optimisticUpdate` | `(updater) => Promise<{ rollback }>` | Cancel, write `updater(cached)`, return a rollback |
 
 ---
 
@@ -270,12 +291,45 @@ const cachedName = userQuery.getCacheData((user) => user.name)
 // Force invalidation (refetches if query is active)
 await userQuery.invalidate()
 
-// Write directly into cache (optimistic updates)
+// Write directly into cache
 userQuery.setData(updatedUser)
 
 // Or use an updater function. `old` is undefined when nothing is cached yet.
 userQuery.setData((old) => (old ? { ...old, name: "Alice" } : old))
+
+// Cancel the fetch in flight, or reset the entry to its initial state
+await userQuery.cancel()
+await userQuery.reset()
 ```
+
+### Optimistic Updates
+
+`optimisticUpdate` cancels the query's fetch in flight, so an older answer
+cannot land on top, writes what the updater returns for the cached value, and
+resolves with a rollback. Return it from a mutation's `onMutate`:
+
+```typescript
+const renameUser = createMutation(backend, {
+  functionName: "renameUser",
+  onMutate: ([userId, name]) =>
+    getUserQuery([userId]).optimisticUpdate((user) => ({ ...user, name })),
+  onError: (_error, _args, update) => update?.rollback(),
+  invalidateQueries: [getUserQuery],
+})
+```
+
+The updater gets the raw data, before the config's `select`, and is typed
+from the method. It is not called when nothing is cached, and `rollback()`
+then does nothing. `rollback()` writes back the replaced value with its
+original fetch time, and invalidates it again if it was invalidated. After a
+sign-in or sign-out it does nothing: the value was the previous principal's.
+Refetch the query once the mutation settles, as `invalidateQueries` does
+here, since the fetch `optimisticUpdate` cancels may be one an invalidation
+started.
+
+`cancel()`, `reset()` and `optimisticUpdate()` act on this query's own entry
+only. `invalidate()` matches by key prefix, so on a query object without args
+it also reaches the same method's queries with args; these three do not.
 
 ### Prefetching on Hover
 
@@ -323,6 +377,66 @@ const { data: alice } = aliceQuery.useQuery()
 const { data: bob } = bobQuery.useQuery()
 ```
 
+### Every Instance at Once
+
+The factory function itself has `getQueryKey()` and `invalidate()`. They cover
+every query it returns, whatever the args:
+
+```typescript
+// Refetch every user on screen
+await getUserQuery.invalidate()
+
+// The key prefix those queries share, for QueryClient calls of your own
+backend.queryClient.getQueriesData({ queryKey: getUserQuery.getQueryKey() })
+
+// Or hand the factory to a mutation
+const renameUser = createMutation(backend, {
+  functionName: "renameUser",
+  invalidateQueries: [getUserQuery],
+})
+```
+
+| Property      | Type                  | Description                                       |
+| ------------- | --------------------- | ------------------------------------------------- |
+| `getQueryKey` | `() => QueryKey`      | The method's key prefix, shared by every instance |
+| `invalidate`  | `() => Promise<void>` | Invalidate every instance (active ones refetch)   |
+
+The prefix is the canister (the config's `callConfig.canisterId`, else the
+reactor's) and the method, so it also matches a query of the same method made
+elsewhere, such as with `useActorQuery`. A config `queryKey` comes after the
+args in each instance's key, so it does not narrow the prefix.
+
+### Waiting for Args
+
+The factory also takes TanStack Query's `skipToken`, re-exported by
+`@ic-reactor/react`, in place of args. It returns a query with only
+`useQuery()`, which waits without calling the canister, so a component whose
+args are not known yet needs no placeholder args and no `enabled`:
+
+```tsx
+import { createQueryFactory, skipToken } from "@ic-reactor/react"
+import type { Principal } from "@icp-sdk/core/principal"
+
+// `ledger` is a Reactor of the ICRC-1 ledger, so an account's owner is a
+// Principal (a DisplayReactor's takes the principal's text)
+const getBalance = createQueryFactory(ledger, {
+  functionName: "icrc1_balance_of",
+})
+
+function Balance({ owner }: { owner?: Principal }) {
+  const { data } = getBalance(
+    owner ? [{ owner, subaccount: [] }] : skipToken
+  ).useQuery()
+  return <span>{data?.toString() ?? "…"}</span>
+}
+```
+
+The skipped query has a cache entry of its own under the factory's
+`getQueryKey()` prefix, which no call's key shares. Its imperative members
+(`fetch()`, `invalidate()`, the cache controls) are left out, since there is
+no call or entry until the args are known: check the args before reaching for
+them. `createSuspenseQueryFactory` does not take `skipToken`.
+
 ### Factory Caching
 
 Factory instances are cached internally:
@@ -351,6 +465,16 @@ distinct argument sets.
 
 ## Notes
 
+<Aside type="caution">
+  An update method passed here runs on the canister again on every refetch
+  (mount, window focus, reconnect, invalidation), retry and uncached `fetch()`,
+  each time as a new call. Use it only for an update method that is safe to
+  repeat, and use `createMutation` for a method that changes state. With no
+  `retry` in the factory config or the hook's options, an update method retries
+  only a `SysTransient` rejection, which proves the call never ran. See [Update
+  Methods in Queries](/v3/framework/queries#update-methods-in-queries).
+</Aside>
+
 <Aside type="tip">
   Use `createQueryFactory` when args come from route params or user input. Use
   `createQuery` when args are known at definition time.
@@ -362,6 +486,15 @@ distinct argument sets.
   calls the canister only when nothing is cached. That suits loaders. For the
   canister's current value, use the reactor's `callMethod()`; see
   [Reactor](/v3/reference/reactor).
+</Aside>
+
+<Aside type="note">
+  A sign-in or sign-out while `fetch()` is in flight does not reject it. The
+  previous identity's answer is dropped, and `fetch()` runs again for the new
+  identity and resolves with that answer, so a loader never sees TanStack's
+  `CancelledError` for it. `prefetch()` runs again the same way: when that run
+  succeeds, the cache holds the new identity's answer by the time it resolves.
+  It still never rejects.
 </Aside>
 
 <Aside type="caution">

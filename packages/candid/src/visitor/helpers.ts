@@ -1,5 +1,5 @@
 import { IDL } from "@icp-sdk/core/candid"
-import { Principal } from "@icp-sdk/core/principal"
+import { isPrincipalText } from "@ic-reactor/core"
 
 export const extractAndSortArgs = <T extends Record<string, unknown>>(
   argsObject: T
@@ -175,14 +175,12 @@ export function isUuid(str: string): boolean {
   )
 }
 
+/**
+ * Whether `str` is the text of a principal. The same check as
+ * `isPrincipalText` from `@ic-reactor/core`, which it calls.
+ */
 export function isPrincipalId(str: string): boolean {
-  if (typeof str !== "string") return false
-  try {
-    Principal.fromText(str)
-    return true
-  } catch {
-    return false
-  }
+  return isPrincipalText(str)
 }
 
 export function isCanisterId(str: string): boolean {

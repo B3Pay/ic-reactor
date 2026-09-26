@@ -1,100 +1,162 @@
 ---
 title: AI Friendliness
-description: How to use IC Reactor with AI assistants and LLMs
+description: Point AI coding assistants at IC Reactor's guides so they write code that matches the installed version
 ---
 
-IC Reactor is designed to be highly compatible with AI coding assistants (like ChatGPT, Claude, and GitHub Copilot) and LLMs. This guide explains how to get the best results when using AI to build with IC Reactor.
+import { Aside } from "@astrojs/starlight/components"
 
-## llms.txt
+IC Reactor publishes guides written for AI coding assistants (Claude, ChatGPT,
+Copilot, Cursor, Codex and others). They list the APIs to reach for, the setup
+that fits each kind of app, and the mistakes agents tend to make, such as
+calling an update method through a query hook or doing token math with
+`Number`. This page shows where they are and how to make your agent read them.
 
-We provide a structured overview of the library at `/llms.txt` (located at the root of the repository). You can feed this file to any LLM to give it immediate context about:
+## Where the Guides Are
 
-- Core concepts (Reactor, ClientManager)
-- Key packages and their roles
-- Common code patterns for initialization and React hooks
-- Best practices for type safety and transformations
+| Guide                                                                        | What it holds                                                                                                                                                  |
+| ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `node_modules/@ic-reactor/<package>/llms.txt`                                | Each package's own guide, installed with it: setup snippet, when to use what, and a list of what not to do, for the version you installed                      |
+| [`/llms.txt`](https://ic-reactor.b3pay.net/llms.txt)                         | An index of these docs in the [llms.txt](https://llmstxt.org) format, with a link and a one-line note per page                                                 |
+| [`/llms-full.txt`](https://ic-reactor.b3pay.net/llms-full.txt)               | The complete guide in one file: install, setup choices, every core pattern with snippets, SSR, auth, errors, codegen, testing                                  |
+| A page's Markdown                                                            | Every docs page is also served as Markdown: use **Copy Markdown** or **Open in Claude** at the top of the page, or the `.md` URL that `/llms.txt` lists for it |
+| [`CHANGELOG.md`](https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md) | What changed in each package, with a migration hint for each behaviour change                                                                                  |
 
-You can download the context file to provide to your AI assistant:
+Prefer the copy in `node_modules`: it ships with the package, so it describes
+the version your app has installed, and it opens with that version
+(``Applies to `@ic-reactor/react` …``). A package whose `llms.txt` is missing
+or has no such line predates these guides; use the copies on this site for it.
+The copies on this site are published from the main branch, so they can
+describe changes that no release carries yet; the changelog's Unreleased
+section lists those.
 
-import { Card } from "@astrojs/starlight/components"
+## Tell Your Agent About Them
 
-<Card title="AI Context File" icon="document">
-  [Download
-  llms.txt](https://raw.githubusercontent.com/B3Pay/ic-reactor/main/llms.txt)
-</Card>
+Paste this into your app's `AGENTS.md`, `CLAUDE.md`,
+`.github/copilot-instructions.md` or Cursor rules:
+
+```markdown
+## IC Reactor
+
+This app calls Internet Computer canisters with IC Reactor (`@ic-reactor/*`).
+
+- Before writing or reviewing IC Reactor code, read
+  `node_modules/@ic-reactor/react/llms.txt`, and the `llms.txt` of any other
+  `@ic-reactor/*` package in `package.json`. They match the installed version.
+- For what they do not cover, read https://ic-reactor.b3pay.net/llms-full.txt.
+- Call update methods only through mutations, pass `skipToken` for query args
+  that are not known yet, and invalidate with query objects, never
+  hand-written query keys.
+- Do not edit `index.generated.ts` or `index.factories.generated.ts`; change
+  the `.did` file and run the generator again.
+```
+
+Keep the list of rules short: the package guides hold the rest, and they
+change with the version you install.
+
+<Aside type="tip">
+  When you ask a chat assistant without file access, give it the Markdown URL of
+  the page, such as `https://ic-reactor.b3pay.net/v3/framework/mutations.md`, or
+  paste `llms-full.txt`. The `.md` path keeps the source file's capitals
+  (`/v3/reference/ClientManager.md`), so copy it from `/llms.txt` rather than
+  guessing it from the page's URL.
+</Aside>
+
+## Give It Your Canister's Types
+
+An assistant infers method names, argument types and result types from the
+service type your declarations export (`_SERVICE`); the `idlFactory` only
+drives encoding at run time. When you ask for code against a specific
+canister, include the generated declarations (for example `backend.did.d.ts`)
+or the `.did` file, and keep the type argument on the reactor.
+
+## Display Types
+
+A `DisplayReactor` takes and returns plain JavaScript values: strings for
+`nat`, `int` and `Principal`, hex strings for blobs, `undefined` for an empty
+`opt`. Generated code then reads like ordinary TypeScript, which is also what
+most models were trained on. `defineDisplayReactor` builds one together with
+its hooks:
+
+```typescript
+import { defineDisplayReactor } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
+
+export const { reactor, useActorQuery, useActorMutation } =
+  defineDisplayReactor<_SERVICE>({ name: "backend", idlFactory, canisterId })
+```
+
+Keep the `<_SERVICE>` type argument. Without it the reactor knows nothing
+about the Candid, and every display-side argument and result is typed
+`unknown`; see
+[Types: with and without a service type](/v3/packages/candid/candiddisplayreactor#types-with-and-without-a-service-type).
+Use `defineReactor` instead when the code needs raw `bigint` and `Principal`
+values.
 
 ## Agent Skills
 
-The `ic-reactor-hooks` skill is available in two places:
+The `ic-reactor` skill packs this guidance as an
+[Agent Skill](https://agentskills.io): which setup fits the app, the rules for
+queries, mutations, invalidation, server rendering, sign-in, errors, token
+amounts and tests, the mistakes to avoid, and type-checked examples the agent
+loads only when a task needs them. It starts by sending the agent to the
+`llms.txt` of the packages you installed, so it follows your version. Agents
+load it on their own when a task matches, or when you ask for it by name.
 
-- **In-repo**: [`skill-packages/ic-reactor-hooks/`](https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor-hooks) — used by agents working directly in this repository
-- **External**: [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills) — standalone installable skill for use in any ICP project
-
-Use this skill when asking an AI agent to generate or refactor IC Reactor integrations, especially when you need:
-
-- `createActorHooks(...)` patterns
-- reusable `createQuery` / `createMutation` factory modules
-- guidance for using the same query or mutation objects inside React and outside React
-- cache invalidation wiring with `getQueryKey()` / `invalidate()`
-- guidance on when to use manual hooks vs generated hooks (CLI / Vite plugin)
-
-### Example Prompt
+In Claude Code, add the IC Reactor repository as a plugin marketplace and
+install the plugin:
 
 ```text
-Use $ic-reactor-hooks to refactor this canister integration into reusable query and mutation factories, then show usage in a React component and a loader/action.
+/plugin marketplace add B3Pay/ic-reactor
+/plugin install ic-reactor@ic-reactor
 ```
 
-### Example Install (`skills` CLI)
+The plugin's version follows `@ic-reactor/react`, and an installed copy
+changes only when that version does. Turn on auto-update for the marketplace
+in `/plugin` (**Marketplaces** tab), or run
+`claude plugin update ic-reactor@ic-reactor` after upgrading the packages.
+
+For Codex, Cursor, GitHub Copilot, Gemini CLI, OpenCode and other agents that
+read skill folders, install it from your app's root with the
+[`skills`](https://github.com/vercel-labs/skills) CLI:
 
 ```bash
-npx skills add B3Pay/ic-reactor-skills --full-depth --skill ic-reactor-hooks
+npx skills add B3Pay/ic-reactor --skill ic-reactor
 ```
 
-## End-to-End Type Safety
+It copies the skill into each agent's skills folder, such as
+`.agents/skills/ic-reactor/` or `.claude/skills/ic-reactor/`, where you can
+commit it with the app. Both installs take the skill from the repository's
+main branch, which can describe changes that no release carries yet. The
+skill's first step sends the agent to the `llms.txt` of your installed
+packages, and that guide wins where the two differ.
 
-Since IC Reactor is built with extreme type safety in mind, AI assistants can easily infer the available methods and argument types for your canisters once you've defined the IDL factory.
-
-### Tip: Provide the IDL Factory
-
-When asking an AI to write code for a specific canister, always provide the generated IDL factory (e.g., `my_canister.did.js`) or the Candid interface. The AI can then write perfectly typed `useActorQuery` or `useActorMutation` hooks.
-
-## Display Types (Auto Transformations)
-
-To make AI-generated code cleaner and less error-prone, you can use `DisplayReactor`. This allows the AI to write code using standard JavaScript types (like `string` for BigInt or Principals) instead of specialized classes, which is what most LLMs are naturally trained on.
-
-```typescript
-import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
-
-const reactor = new DisplayReactor({
-  clientManager,
-  idlFactory,
-  name: "backend",
-  canisterId: "...",
-})
-
-const { useActorQuery, useActorMutation } = createActorHooks(reactor)
-```
+The repository's other skills, `ic-reactor-hooks` and `ic-reactor-packages`,
+are written for work on IC Reactor itself, not for apps.
 
 ## Prompting Examples
 
 ### Setup
 
-"Help me set up an IC Reactor actor for a canister with ID `rrkah-fqaaa-aaaaa-aaaaq-cai` and an IDL factory imported from `./declarations/my_canister`."
+"Set up IC Reactor for the canister `rrkah-fqaaa-aaaaa-aaaaq-cai` whose
+declarations are in `./declarations/my_canister`. Read
+`node_modules/@ic-reactor/react/llms.txt` first."
 
 ### Data Fetching
 
-"Show me how to use `useActorQuery` to fetch a user's balance from a Ledger canister using IC Reactor hooks."
+"Show a user's balance from an ICRC-1 ledger with `useActorQuery`, formatted
+with `formatTokenAmount`, and wait with `skipToken` until the user has signed
+in."
 
 ### Mutations
 
-"Write a React component that uses `useActorMutation` to transfer tokens between two accounts."
+"Write a component that transfers tokens with `useActorMutation`, reads the
+amount with `parseTokenAmount`, shows the ledger's `Err` through
+`onCanisterError`, and refreshes the balance with `invalidateQueries`."
 
-## Tools and Extensions
+## Contributing to IC Reactor With an Agent
 
-If you use **Cursor**, this project includes a `.cursorrules` file that automatically configures the AI to follow the project's specific coding standards and architecture.
-
-If you use **GitHub Copilot**, the repository includes `.github/copilot-instructions.md` and skill metadata at `skill-packages/ic-reactor-hooks/agents/copilot.yaml`. You can also install the external skills from [`B3Pay/ic-reactor-skills`](https://github.com/B3Pay/ic-reactor-skills).
-
-If you use **Claude**, the repository includes a `CLAUDE.md` project context file and skill metadata at `skill-packages/ic-reactor-hooks/agents/claude.yaml`.
-
-If you use **OpenAI Codex**, the repository includes `AGENTS.md` and skill metadata at `skill-packages/ic-reactor-hooks/agents/openai.yaml`.
+The files above are for apps that use IC Reactor. The repository has its own
+instructions for agents that work on IC Reactor itself: `AGENTS.md` (which
+source files own a task, and what to run for each kind of change),
+`CLAUDE.md`, `.github/copilot-instructions.md`, `.cursorrules`, and the skills
+in `skill-packages/`. See [Contributing](/v3/contributing).

@@ -41,25 +41,36 @@ const userQuery = createSuspenseQuery(backend, {
 
 ## Configuration
 
-| Option         | Type                 | Default  | Description                     |
-| -------------- | -------------------- | -------- | ------------------------------- |
-| `functionName` | `string`             | Required | The canister method to call     |
-| `args`         | `Args`               | `[]`     | Arguments for the method        |
-| `select`       | `(data) => Selected` | -        | Transform data before returning |
-| `staleTime`    | `number`             | `300000` | Time before data is stale (ms)  |
-| `queryKey`     | `QueryKey`           | Auto     | Custom query key segments       |
+| Option         | Type                 | Default  | Description                                      |
+| -------------- | -------------------- | -------- | ------------------------------------------------ |
+| `functionName` | `string`             | Required | The canister method to call                      |
+| `args`         | `Args`               | `[]`     | Arguments for the method                         |
+| `select`       | `(data) => Selected` | -        | Transform data before returning                  |
+| `staleTime`    | `number`             | `300000` | Time before data is stale (ms)                   |
+| `queryKey`     | `QueryKey`           | Auto     | Custom query key segments                        |
+| `callConfig`   | `CallConfig`         | -        | Canister, agent or effective target for the call |
 
 ## Return Value
 
-| Property           | Type                                   | Description                              |
-| ------------------ | -------------------------------------- | ---------------------------------------- |
-| `fetch`            | `() => Promise<T>`                     | Cache-first fetch — use in route loaders |
-| `prefetch`         | `() => Promise<void>`                  | Fire-and-forget cache warm-up            |
-| `useSuspenseQuery` | `(options?) => UseSuspenseQueryResult` | Suspense hook                            |
-| `invalidate`       | `() => Promise<void>`                  | Invalidate cache (refetches if active)   |
-| `getQueryKey`      | `() => QueryKey`                       | Get the query key                        |
-| `getCacheData`     | `(select?) => T`                       | Read from cache without fetching         |
-| `setData`          | `(updater) => T \| undefined`          | Write raw data into cache                |
+| Property           | Type                                   | Description                                        |
+| ------------------ | -------------------------------------- | -------------------------------------------------- |
+| `fetch`            | `() => Promise<T>`                     | Cache-first fetch — use in route loaders           |
+| `prefetch`         | `() => Promise<void>`                  | Fire-and-forget cache warm-up                      |
+| `useSuspenseQuery` | `(options?) => UseSuspenseQueryResult` | Suspense hook                                      |
+| `invalidate`       | `() => Promise<void>`                  | Invalidate cache (refetches if active)             |
+| `getQueryKey`      | `() => QueryKey`                       | Get the query key                                  |
+| `getCacheData`     | `(select?) => T`                       | Read from cache without fetching                   |
+| `setData`          | `(updater) => T \| undefined`          | Write raw data into cache                          |
+| `cancel`           | `() => Promise<void>`                  | Cancel this query's fetch in flight                |
+| `reset`            | `() => Promise<void>`                  | Reset to initial state; mounted hooks refetch      |
+| `optimisticUpdate` | `(updater) => Promise<{ rollback }>`   | Cancel, write `updater(cached)`, return a rollback |
+
+A sign-in or sign-out while `fetch()` or `prefetch()` is in flight cancels its
+fetch, so the previous identity's answer is never cached, and it runs again
+for the new identity. `fetch()` resolves with that answer rather than
+rejecting with TanStack's `CancelledError`. `prefetch()` still never rejects,
+and when that run succeeds the cache holds the new identity's answer by the
+time it resolves.
 
 ---
 
@@ -288,6 +299,21 @@ function UserProfile({ userId }: { userId: string }) {
 }
 ```
 
+The factory function also has `getQueryKey()`, the key prefix every query it
+returns shares, and `invalidate()`, which invalidates all of them whatever the
+args. Pass the factory to a mutation's `invalidateQueries` to refresh every
+instance:
+
+```typescript
+const renameUser = createMutation(backend, {
+  functionName: "renameUser",
+  invalidateQueries: [getUserQuery],
+})
+```
+
+See [createQueryFactory](/v3/reference/factories/createquery#every-instance-at-once)
+for details.
+
 ---
 
 ## When to Use Suspense
@@ -310,14 +336,27 @@ function UserProfile({ userId }: { userId: string }) {
 
 ## Notes
 
+<Aside type="caution">
+  An update method passed here runs on the canister again on every refetch
+  (mount, window focus, reconnect, invalidation), retry and uncached `fetch()`,
+  each time as a new call. Use it only for an update method that is safe to
+  repeat, and use `createMutation` for a method that changes state. With no
+  `retry` in the factory config or the hook's options, an update method retries
+  only a `SysTransient` rejection, which proves the call never ran. See [Update
+  Methods in Queries](/v3/framework/queries#update-methods-in-queries).
+</Aside>
+
 <Aside type="tip">
   Prefetch in loaders and use Suspense in components for the best UX. Data loads
   during navigation, and components render instantly.
 </Aside>
 
 <Aside type="caution">
-  Suspense queries don't support the `enabled` option. If you need conditional
-  fetching, use [createQuery](/v3/reference/factories/createquery) instead.
+  Suspense queries don't support the `enabled` option, and
+  `createSuspenseQueryFactory` does not take `skipToken` in place of args: a
+  suspense query has to be able to run. If you need conditional fetching, use
+  [createQuery](/v3/reference/factories/createquery) instead, or mount the
+  suspense query only once its args exist.
 </Aside>
 
 <Aside type="note">

@@ -1,13 +1,18 @@
+import { formatTokenAmount } from "@ic-reactor/react"
 import { icdvStatsQuery } from "../reactor"
 import { StatBox } from "./StatBox"
 
 export const ICDVStats = () => {
   const { data: stats, isLoading, refetch } = icdvStatsQuery.useQuery()
 
+  // A statistic rather than a balance, so round to two places, and group
+  // thousands.
   const formatSupply = (supply: bigint | undefined) => {
     if (supply === undefined) return "—"
-    return (Number(supply) / 1e8).toLocaleString(undefined, {
-      maximumFractionDigits: 2,
+    return formatTokenAmount(supply, 8, {
+      maxFractionDigits: 2,
+      roundingMode: "halfExpand",
+      useGrouping: true,
     })
   }
 

@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest"
+import { Principal } from "@icp-sdk/core/principal"
+import { isPrincipalText } from "@ic-reactor/core"
 import {
   isPrincipalId,
   isCanisterId,
@@ -34,6 +36,16 @@ describe("Helpers", () => {
       expect(isPrincipalId(null as any)).toBe(false)
       expect(isPrincipalId(undefined as any)).toBe(false)
       expect(isPrincipalId({} as any)).toBe(false)
+    })
+
+    it("is core's isPrincipalText, so it refuses a principal over 29 bytes and the JSON form", () => {
+      const long = Principal.fromUint8Array(new Uint8Array(30)).toText()
+      const json = '{"__principal__":"aaaaa-aa"}'
+      for (const text of ["aaaaa-aa", "ryjl3-tyaaa", "", long, json]) {
+        expect(isPrincipalId(text)).toBe(isPrincipalText(text))
+      }
+      expect(isPrincipalId(long)).toBe(false)
+      expect(isPrincipalId(json)).toBe(false)
     })
   })
 

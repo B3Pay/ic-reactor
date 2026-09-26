@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest"
+import { skipToken as tanstackSkipToken } from "@tanstack/react-query"
 import * as reactPkg from "../src/index.js"
 
 // Smoke test for the public export surface. `export *` chains fail silently —
@@ -8,7 +9,10 @@ import * as reactPkg from "../src/index.js"
 // its typeof), not a sample: a partial list would stay green while an
 // unlisted export disappeared. Adding a new export means adding it here.
 
-const RUNTIME_EXPORTS: Record<string, "function" | "string" | "object"> = {
+const RUNTIME_EXPORTS: Record<
+  string,
+  "function" | "string" | "object" | "symbol"
+> = {
   // React hooks (raw implementations, public under useReactor* aliases)
   useReactorQuery: "function",
   useReactorMutation: "function",
@@ -22,6 +26,8 @@ const RUNTIME_EXPORTS: Record<string, "function" | "string" | "object"> = {
   createActorHooks: "function",
   createActorMethodHooks: "function",
   defineReactor: "function",
+  defineDisplayReactor: "function",
+  createReactorProvider: "function",
   createQuery: "function",
   createQueryFactory: "function",
   createSuspenseQuery: "function",
@@ -31,6 +37,9 @@ const RUNTIME_EXPORTS: Record<string, "function" | "string" | "object"> = {
   createSuspenseInfiniteQuery: "function",
   createSuspenseInfiniteQueryFactory: "function",
   createMutation: "function",
+
+  // TanStack Query's marker for a query waiting for its args
+  skipToken: "symbol",
 
   // Auth
   AuthenticationManager: "function",
@@ -71,7 +80,9 @@ const RUNTIME_EXPORTS: Record<string, "function" | "string" | "object"> = {
   isCallError: "function",
   isValidationError: "function",
   isRetryableReactorError: "function",
+  isRetryableUpdateError: "function",
   reactorRetry: "function",
+  reactorUpdateRetry: "function",
 
   // Core call/result helpers
   extractOkResult: "function",
@@ -105,6 +116,9 @@ const RUNTIME_EXPORTS: Record<string, "function" | "string" | "object"> = {
   isNullish: "function",
   nonNullish: "function",
   jsonToString: "function",
+  formatTokenAmount: "function",
+  parseTokenAmount: "function",
+  isPrincipalText: "function",
 
   // Core environment helpers
   isDev: "function",
@@ -143,6 +157,10 @@ describe("public export surface", () => {
 
   it("aliases point at the same implementation", () => {
     expect(reactPkg.useReactorMethod).toBe(reactPkg.useActorMethod)
+  })
+
+  it("skipToken is TanStack Query's own", () => {
+    expect(reactPkg.skipToken).toBe(tanstackSkipToken)
   })
 
   it("VERSION carries a semver string", () => {

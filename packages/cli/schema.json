@@ -67,6 +67,11 @@
           "canisterId": {
             "type": "string",
             "description": "Canister ID written into index.generated.ts. Set it for any build not served from a local replica: without it the generated reactor reads the id from the ic_env cookie, and importing it throws in Node, during SSR and on a deployed origin."
+          },
+          "factories": {
+            "type": "boolean",
+            "default": false,
+            "description": "Also generate index.factories.generated.ts: one object per method, bound to the generated reactor. A query method with no arguments gets createQuery (<method>Query), one with arguments createQueryFactory (<method>Query), and an update or oneway method createMutation (<method>Mutation), with the method name in camelCase. Needs target \"react\". Switching it off removes the file."
           }
         },
         "required": ["name", "didFile"]

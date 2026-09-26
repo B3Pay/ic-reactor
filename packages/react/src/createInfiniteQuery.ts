@@ -42,16 +42,24 @@ import {
   QueryFunctionContext,
   FetchInfiniteQueryOptions,
   InfiniteQueryObserverOptions,
+  SkipToken,
 } from "@tanstack/react-query"
 import { CallConfig } from "@icp-sdk/core/agent"
-import { NoInfer } from "./types.js"
+import type {
+  NoInfer,
+  QueryCacheControls,
+  QueryFactoryMethods,
+} from "./types.js"
 import {
   buildChainedSelect,
   callConfigForKey,
   mergeFactoryQueryKey,
   normalizeQueryData,
   pickFetchOptions,
+  queryCacheControls,
+  retryOption,
   useMountQueryClient,
+  withQueryFactoryMethods,
 } from "./utils.js"
 
 type InfiniteQueryFactoryFn<
@@ -60,7 +68,7 @@ type InfiniteQueryFactoryFn<
   Transform extends TransformKey,
   TPageParam,
   Selected,
-> = {
+> = QueryFactoryMethods & {
   (
     getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
   ): InfiniteQueryResult<
@@ -161,6 +169,55 @@ export interface InfiniteQueryConfig<
 }
 
 /**
+ * Configuration for the non-suspense infinite query hook of
+ * `createActorHooks` and `defineReactor` (`useActorInfiniteQuery`): an
+ * {@link InfiniteQueryConfig} whose `getArgs` may also be TanStack Query's
+ * `skipToken`, for a list whose arguments are not known yet.
+ *
+ * A skipped list does not fetch. It has an entry of its own under its method
+ * and config `queryKey` (at the canister and agent `callConfig` names), which
+ * no call's key shares, so it shows no data until the arguments arrive. Once
+ * `getArgs` is a function, the list is keyed and fetched as usual. Its
+ * `refetch()` has nothing to run: TanStack Query answers it with a "Missing
+ * queryFn" error. `useActorSuspenseInfiniteQuery` does not take `skipToken`.
+ *
+ * @example
+ * ```typescript
+ * import { skipToken } from "@ic-reactor/react"
+ *
+ * const { data } = useActorInfiniteQuery({
+ *   functionName: "get_transactions",
+ *   getArgs: account
+ *     ? (start: bigint) => [{ account, start, length: 20n }]
+ *     : skipToken,
+ *   initialPageParam: 0n,
+ *   getNextPageParam: (lastPage) => lastPage.next[0],
+ * })
+ * ```
+ */
+export interface SkippableInfiniteQueryConfig<
+  Service = BaseActor,
+  Method extends FunctionName<Service> = FunctionName<Service>,
+  Transform extends TransformKey = "candid",
+  TPageParam = unknown,
+  Selected = InfiniteData<
+    InfiniteQueryPageData<Service, Method, Transform>,
+    TPageParam
+  >,
+> extends Omit<
+  InfiniteQueryConfig<Service, Method, Transform, TPageParam, Selected>,
+  "getArgs"
+> {
+  /**
+   * Function to get args from page parameter, or `skipToken` while the args
+   * are not known: the list then waits without fetching.
+   */
+  getArgs:
+    | ((pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>)
+    | SkipToken
+}
+
+/**
  * Configuration for createInfiniteQueryFactory (without getArgs; provided at call time).
  */
 export type InfiniteQueryFactoryConfig<
@@ -235,6 +292,10 @@ export interface UseInfiniteQueryWithSelect<
 /**
  * Result from createInfiniteQuery
  *
+ * `cancel()`, `reset()` and `optimisticUpdate()` act on the whole page set:
+ * `optimisticUpdate` gets and returns the raw `InfiniteData`, `{ pages,
+ * pageParams }`.
+ *
  * @template TPageData - The raw page data type
  * @template TPageParam - The page parameter type
  * @template Selected - The type after select transformation
@@ -245,7 +306,7 @@ export interface InfiniteQueryResult<
   TPageParam,
   Selected = InfiniteData<TPageData, TPageParam>,
   TError = Error,
-> {
+> extends QueryCacheControls<InfiniteData<TPageData, TPageParam>> {
   /** Fetch first page in loader (uses ensureQueryData for cache-first) */
   fetch: () => Promise<Selected>
 
@@ -359,14 +420,20 @@ const createInfiniteQueryImpl = <
     TPageData,
     QueryKey,
     TPageParam
-  > => ({
-    // How the query function runs, shared with the hook; see pickFetchOptions.
-    ...pickFetchOptions(rest),
-    queryKey: getQueryKey(),
-    queryFn,
-    initialPageParam,
-    getNextPageParam,
-  })
+  > => {
+    const queryKey = getQueryKey()
+    return {
+      // How the query function runs, shared with the hook; see
+      // pickFetchOptions. An update method's `retry` defaults as
+      // `Reactor.getQueryRetry` says.
+      ...pickFetchOptions(rest),
+      ...retryOption(rest.retry, reactor.getQueryRetry(functionName, queryKey)),
+      queryKey,
+      queryFn,
+      initialPageParam,
+      getNextPageParam,
+    }
+  }
 
   // Fetch function for loaders (cache-first, fetches first page)
   const fetch = async (): Promise<Selected> => {
@@ -378,9 +445,11 @@ const createInfiniteQueryImpl = <
       return select ? select(cachedData) : (cachedData as Selected)
     }
 
-    // Fetch if not in cache
-    const result = await reactor.queryClient.fetchInfiniteQuery(
-      getInfiniteQueryOptions()
+    // Fetch if not in cache. A sign-in or sign-out while it is in flight
+    // cancels it; it then runs again for the new identity rather than
+    // rejecting with TanStack's CancelledError, as `reactor.fetchQuery` does.
+    const result = await reactor.clientManager.fetchAcrossIdentitySwitch(() =>
+      reactor.queryClient.fetchInfiniteQuery(getInfiniteQueryOptions())
     )
 
     // Result is already InfiniteData format
@@ -403,9 +472,11 @@ const createInfiniteQueryImpl = <
       [options?.select]
     )
 
+    const queryKey = getQueryKey()
+
     return useInfiniteQuery(
       {
-        queryKey: getQueryKey(),
+        queryKey,
         queryFn,
         initialPageParam,
         getNextPageParam,
@@ -415,6 +486,12 @@ const createInfiniteQueryImpl = <
         ...rest,
         ...options,
         select: chainedSelect,
+        // The hook's `retry`, else the config's, else an update method's
+        // default; see `Reactor.getQueryRetry`.
+        ...retryOption(
+          options?.retry ?? rest.retry,
+          reactor.getQueryRetry(functionName, queryKey)
+        ),
       } as any,
       reactor.queryClient
     )
@@ -456,6 +533,7 @@ const createInfiniteQueryImpl = <
     invalidate,
     getQueryKey,
     getCacheData,
+    ...queryCacheControls<TInfiniteData>(reactor, getQueryKey),
   }
 }
 
@@ -531,6 +609,9 @@ export function createInfiniteQuery<
  * // Create query with specific args builder
  * const userPostsQuery = getPostsQuery((cursor) => [{ userId, cursor, limit: 10 }])
  * const { data, fetchNextPage } = userPostsQuery.useInfiniteQuery()
+ *
+ * // Every list this factory made, whatever its args and pages
+ * await getPostsQuery.invalidate()
  */
 
 export function createInfiniteQueryFactory<
@@ -552,13 +633,7 @@ export function createInfiniteQueryFactory<
     Selected
   >
 ): InfiniteQueryFactoryFn<Service, Method, Transform, TPageParam, Selected> {
-  const factory: InfiniteQueryFactoryFn<
-    Service,
-    Method,
-    Transform,
-    TPageParam,
-    Selected
-  > = (
+  const factory = (
     getArgs: (pageParam: TPageParam) => ReactorArgs<Service, Method, Transform>
   ) => {
     // `getKeyArgs` and the args-derived key segment are applied by the impl,
@@ -581,5 +656,15 @@ export function createInfiniteQueryFactory<
     })
   }
 
-  return factory
+  // What every instance's key starts with: the method, the `callConfig`
+  // segments and the config `queryKey`. The args segment comes after them.
+  return withQueryFactoryMethods(factory, reactor, () =>
+    reactor.generateQueryKey(
+      {
+        functionName: config.functionName as Method,
+        queryKey: config.queryKey,
+      },
+      config.callConfig
+    )
+  )
 }

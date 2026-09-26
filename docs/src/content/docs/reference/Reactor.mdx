@@ -186,13 +186,14 @@ const queryKey = backend.generateQueryKey(
 The key is composed as:
 
 ```
-[resolvedCanisterId, functionName, { transform }?, { effectiveTarget }?, argKey?, ...queryKey]
+[resolvedCanisterId, functionName, { transform }?, { agent }?, { effectiveTarget }?, argKey?, ...queryKey]
 ```
 
 - **`resolvedCanisterId`** — `callConfig.canisterId` when supplied (normalized via `Principal.from(...).toString()`), otherwise the reactor's own canister ID.
 - **`{ transform }`** — present whenever the reactor's transform is not `"candid"`, so a `Reactor` key has none and a `DisplayReactor` key carries `{ transform: "display" }`. The two never share a cache entry.
+- **`{ agent }`** — `{ agent: n }` when `callConfig.agent` is set and is not the `ClientManager`'s own agent, where `n` numbers that agent within the running process. A query through another agent is answered for that agent's identity or network, so it never shares a cache entry with the same query through the manager's agent. Each process counts from a random start, so an override entry in a dehydrated server cache, or in a cache persisted and restored later, is not found by another process's agents.
 - **`{ effectiveTarget }`** — a wrapper object holding either `{ canisterId }` or `{ subnetId }`, built from `callConfig.effectiveTarget` or from `callConfig.effectiveCanisterId`. A `canisterId`-shaped target is **omitted** when it equals `resolvedCanisterId`, so the common case produces no such segment.
-- **`argKey`** — args are **one single string segment**: JSON with BigInt values rendered as decimal strings and the keys of every plain object sorted, so `{ b, a }` and `{ a, b }` give the same key. A bare `JSON.stringify(args)` does not match it once a record's fields are out of alphabetical order. A blob is written as a tag followed by its lowercase hex, so a `Uint8Array`, a `number[]` and a `DisplayReactor`'s hex text holding the same bytes give the same key. A `DisplayReactor` writes each `opt` and variant in one form, whichever it was given in, so an `opt` given bare or as `[value]`, none given as `null`, `undefined` or `[]`, and a variant given with or without `_type` give the same key. A `vec record { text; T }` given to it as an object is written as its entries in order, since the order is part of what it sends. Fields a record does not declare are left out and every value of `reserved` is written as `null`, since neither is sent, and a `DisplayReactor` writes a float or an integer of 32 bits or fewer given as text as its number, and a `Principal` as its text. An argument the reactor refuses, such as `undefined` where Candid `null` is required or a bigint where a `DisplayReactor` takes text, is written behind a tag of its own, so the call fails instead of being answered from the cache entry of an argument it takes. Args are not spread into separate elements, and `args: []` still produces the literal `"[]"`.
+- **`argKey`** — args are **one single string segment**: JSON with BigInt values rendered as decimal strings and the keys of every plain object sorted, so `{ b, a }` and `{ a, b }` give the same key. A bare `JSON.stringify(args)` does not match it once a record's fields are out of alphabetical order. A blob is written as a tag followed by its lowercase hex, so a `Uint8Array`, a `number[]` and a `DisplayReactor`'s hex text holding the same bytes give the same key. A `DisplayReactor` writes each `opt` and variant in one form, whichever it was given in, so an `opt` given bare or as `[value]`, none given as `null`, `undefined` or `[]`, and a variant given with or without `_type` give the same key. A `vec record { text; T }` given to it as an object or a `Map` is written as its entries in order, since the order is part of what it sends. A record or variant given to it as a class instance is written as the plain object its codec sends, a field its class supplies through a getter included. Fields a record does not declare are left out and every value of `reserved` is written as `null`, since neither is sent, and a `DisplayReactor` writes a float or an integer of 32 bits or fewer given as text as its number, and a `Principal` as its text. An argument the reactor refuses, such as `undefined` where Candid `null` is required or a bigint where a `DisplayReactor` takes text, is written behind a tag of its own, so the call fails instead of being answered from the cache entry of an argument it takes. Args are not spread into separate elements, and `args: []` still produces the literal `"[]"`.
 - **`...queryKey`** — a custom `queryKey` is spread onto the end; it never replaces the identity prefix.
 
 Use this for:
@@ -230,7 +231,37 @@ const result = useQuery(queryOptions)
 
 #### Returns
 
-Object containing `queryKey` and `queryFn` for TanStack Query.
+Object containing `queryKey` and `queryFn` for TanStack Query. For an update
+method it also holds a `retry` from [`getQueryRetry`](#getqueryretry), which
+retries only a `SysTransient` rejection; spread a `retry` of your own after
+the options to replace it. A query method's options hold no `retry`, so the
+QueryClient's default applies.
+
+---
+
+### getQueryRetry
+
+The `retry` a TanStack query of a method falls back to when the query sets
+none. Every query path applies it: `getQueryOptions`, `fetchQuery`, and the
+query hooks and factories of `@ic-reactor/react`.
+
+```typescript
+const retry = backend.getQueryRetry(
+  "get_btc_address",
+  backend.generateQueryKey({ functionName: "get_btc_address" })
+)
+```
+
+For a query method it returns `undefined`, and the QueryClient's `retry`
+defaults apply. An update method runs on the canister again each time the
+query function runs, as a new call the IC cannot tell from a retry, so for one
+it returns a function that retries only a `SysTransient` rejection (see
+`isRetryableUpdateError`), which proves the canister never ran the call. It
+retries that only as often as the QueryClient's `retry` default for the key
+allows (`setQueryDefaults`, then `defaultOptions.queries`, then TanStack
+Query's own three retries in a browser): `reactorUpdateRetry` under
+`defineReactor`'s `reactorRetry`, nothing under `retry: false`. See
+[Update Methods in Queries](/v3/framework/queries#update-methods-in-queries).
 
 ---
 
@@ -239,18 +270,32 @@ Object containing `queryKey` and `queryFn` for TanStack Query.
 Invalidate all cached queries for this canister:
 
 ```typescript
-// After a successful mutation, invalidate all queries for this canister
+// After a successful mutation, invalidate all queries for this canister and
+// wait for the ones in use to refetch
 await backend.callMethod({ functionName: "updateProfile", args: [newProfile] })
-backend.invalidateQueries()
+await backend.invalidateQueries()
 
 // Invalidate a cached query that used a per-call canister override
-backend.invalidateQueries(
+await backend.invalidateQueries(
   { functionName: "getUser", args: ["user-123"] },
   { canisterId: otherCanisterId }
 )
 ```
 
 This will mark all queries as stale and trigger a refetch for any active queries.
+
+It returns TanStack Query's `Promise<void>`, which resolves once the active
+queries it matched have refetched. A refetch that fails does not reject it.
+Await it when the next step should see the refetched data. An arrow that
+returns it, such as `onSuccess: () => backend.invalidateQueries()`, keeps the
+mutation pending until those refetches finish, as TanStack Query recommends.
+With the `no-floating-promises` lint rule, a call you do not want to wait for
+needs a `void` in front of it.
+
+In a mutation, list the queries in its `invalidateQueries` option instead. The
+same `{ functionName, args? }` shape works there, resolved against the
+mutation's reactor: `invalidateQueries: [{ functionName: "getUser" }]`. See
+[Mutations](/v3/framework/mutations#invalidating-queries-after-mutation).
 
 ---
 
@@ -267,9 +312,81 @@ Useful for introspection and codec generation.
 
 ---
 
+### forCanister
+
+Get a reactor for another canister of the same interface, such as another ICRC
+ledger. It is the same class (a `DisplayReactor` gives a `DisplayReactor`) on
+the same `ClientManager`, so it shares the agent, identity and `QueryClient`,
+and it starts with this reactor's interface, name, polling options and, for a
+`DisplayReactor`, validators. Only the canister differs.
+
+```typescript
+const ledger = new DisplayReactor<Ledger>({
+  clientManager,
+  idlFactory,
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai", // ICP
+})
+
+const ckbtc = ledger.forCanister("mxzaz-hqaaa-aaaar-qaada-cai")
+const symbol = await ckbtc.fetchQuery({ functionName: "icrc1_symbol" })
+```
+
+The same canister id always gives the same reactor, and every sibling shares
+that memo, so it is safe to call during render. Hooks, query objects and
+mutations built on a sibling key and call its canister, so several tokens can be
+on screen at once:
+
+```tsx
+import { useMemo } from "react"
+import { createActorHooks } from "@ic-reactor/react"
+
+function TokenSymbol({ canisterId }: { canisterId: string }) {
+  const { useActorQuery } = useMemo(
+    () => createActorHooks(ledger.forCanister(canisterId)),
+    [canisterId]
+  )
+  const { data } = useActorQuery({ functionName: "icrc1_symbol" })
+  return <span>{data}</span>
+}
+```
+
+#### Parameters
+
+| Option       | Type                  | Description        |
+| ------------ | --------------------- | ------------------ |
+| `canisterId` | `string \| Principal` | The other canister |
+
+#### Returns
+
+A reactor of the same type as the one it was called on.
+
+<Aside type="tip">
+  Prefer `forCanister` to `setCanisterId` whenever more than one canister of an
+  interface is in use. `setCanisterId` moves every view built on the reactor at
+  once, so two tokens cannot be shown together. A sibling keeps its canister for
+  good: never call `setCanisterId` on one, ask `forCanister` for the other
+  canister instead. It is a separate reactor even for the original's own
+  canister, and keeps that canister when the original moves.
+</Aside>
+
+<Aside type="note">
+  A sibling gets its own copy of the interface and, on a `DisplayReactor`, its
+  own validator registry, starting from what the original has when the sibling
+  is made. A validator or, on a candid package reactor, a method registered
+  later reaches only the reactor it was registered on. All four candid package
+  reactors support `forCanister` and pass on their Candid source and adapter as
+  well. A subclass of your own whose constructor takes other options overrides
+  the protected `siblingParameters(canisterId)` to return them. Its constructor
+  has to use the `canisterId` it is given: `forCanister` throws rather than hand
+  out a reactor that a constructor put on a canister of its own.
+</Aside>
+
+---
+
 ### setCanisterId
 
-Dynamically update the canister ID for this reactor. This is useful when you want to reuse a reactor instance to interact with different canisters of the same type (e.g., multiple ICRC tokens).
+Dynamically update the canister ID for this reactor. This is useful when one reactor instance should follow a single selection, and nothing else built on it needs the previous canister. For several canisters of the same type at once (e.g., multiple ICRC tokens), use [`forCanister`](#forcanister) instead.
 
 ```typescript
 // Switch to a different ledger canister
@@ -364,27 +481,27 @@ export async function loader({ params }) {
 
 ### Cache Manipulation
 
+Write through the reactor's own QueryClient, `backend.queryClient`. It is the
+client the hooks read, and unlike `useQueryClient()` it needs no
+`QueryClientProvider` and works outside React:
+
 ```typescript
-import { useQueryClient } from "@tanstack/react-query"
+function updateUserCache(userId: string, updates: Partial<User>) {
+  const queryKey = backend.generateQueryKey({
+    functionName: "getUser",
+    args: [userId],
+  })
 
-function useUpdateUserCache() {
-  const queryClient = useQueryClient()
-
-  const updateUser = (userId: string, updates: Partial<User>) => {
-    const queryKey = backend.generateQueryKey({
-      functionName: "getUser",
-      args: [userId],
-    })
-
-    queryClient.setQueryData(queryKey, (old: User) => ({
-      ...old,
-      ...updates,
-    }))
-  }
-
-  return updateUser
+  // `old` is undefined when the user is not cached
+  backend.queryClient.setQueryData<User>(queryKey, (old) =>
+    old ? { ...old, ...updates } : old
+  )
 }
 ```
+
+A query object from `createQuery` or a query factory does the same with its
+data type already known: `getUser([userId]).setData(...)`, or
+`optimisticUpdate(...)` with a rollback for a mutation.
 
 ### Multiple Canisters
 
@@ -417,7 +534,11 @@ export const ledger = new Reactor<LedgerService>({
 
 ### Dynamic Canister Switching
 
-Use `setCanisterId` to reuse a single reactor instance for multiple canisters of the same type. This is useful for multi-token wallets or canister explorers:
+For a multi-token wallet or a canister explorer, give each canister its own
+sibling with [`forCanister`](#forcanister) and build the hooks or query
+objects on it. A single reactor can instead follow one selection with
+`setCanisterId`, as this route loader does; every query object built on that
+reactor then moves with it:
 
 ```typescript
 import { createFileRoute } from "@tanstack/react-router"
@@ -471,19 +592,26 @@ value does it call the canister and cache the result. A `staleTime` passed in
 the options has no effect.
 
 To get a value the canister returns now, call `callMethod` (no cache), or use
-the query client's own `fetchQuery`, which refetches when the entry is stale:
+the query client's own `fetchQuery`, which refetches when the entry is stale.
+Wrap it in `clientManager.fetchAcrossIdentitySwitch`: when a sign-in or
+sign-out cancels a refetch of an entry that held data, TanStack resolves it with
+that data, the previous principal's, and the wrapper runs it again instead:
 
 ```typescript
-const fresh = await backend.queryClient.fetchQuery({
-  ...backend.getQueryOptions({ functionName: "getUser", args: ["user-123"] }),
-  staleTime: 0,
-})
+const fresh = await backend.clientManager.fetchAcrossIdentitySwitch(() =>
+  backend.queryClient.fetchQuery({
+    ...backend.getQueryOptions({ functionName: "getUser", args: ["user-123"] }),
+    staleTime: 0,
+  })
+)
 ```
 
 An optional second argument passes further TanStack Query options for the
 fetch, such as `retry`, `networkMode` or `meta`. The query key and function
 always come from the first argument. A query factory's `fetch()` passes its
-config's `networkMode`, `retry`, `retryDelay` and `meta` this way.
+config's `networkMode`, `retry`, `retryDelay` and `meta` this way. Without a
+`retry` there, an update method retries only a `SysTransient` rejection; see
+[getQueryRetry](#getqueryretry).
 
 ```typescript
 const result = await backend.fetchQuery(
@@ -491,6 +619,14 @@ const result = await backend.fetchQuery(
   { retry: 2 }
 )
 ```
+
+A sign-in or sign-out while the fetch is in flight cancels it, so the previous
+identity's answer is never cached (see
+[ClientManager](/v3/reference/clientmanager#automatic-query-invalidation)). The
+fetch then runs again for the identity installed now and resolves with that
+answer, rather than rejecting with TanStack's `CancelledError`. A route loader
+that awaits it during a sign-out gets the signed-out answer, not its error
+boundary. The query factories' `fetch()` does the same.
 
 ---
 
