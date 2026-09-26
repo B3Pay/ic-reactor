@@ -247,6 +247,21 @@ function slugify(text) {
     .replace(/ /g, "-")
 }
 
+/**
+ * A heading's text without inline HTML or JSX tags. The pattern runs until
+ * nothing changes, so a tag that one pass would leave behind (`<<b>b>`) goes
+ * too, and a lone "<" is dropped, as the slug drops it anyway.
+ */
+function withoutTags(text) {
+  let previous
+  let current = text
+  do {
+    previous = current
+    current = current.replace(/<[^<>]*>/g, "")
+  } while (current !== previous)
+  return current.replace(/</g, "")
+}
+
 const headingIdsCache = new Map()
 function headingIds(page) {
   if (headingIdsCache.has(page)) return headingIdsCache.get(page)
@@ -268,11 +283,9 @@ function headingIds(page) {
       /^\s*(?:(?:\d+\.|[-*+])\s+)?#{1,6}\s+(.+?)\s*#*\s*$/
     )
     if (!heading) continue
-    const text = heading[1]
-      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // [text](url) -> text
-      .replace(/<[^>]+>/g, "") // inline HTML or JSX
-      .replace(/</g, "") // a stray "<"; the slug drops it anyway
-      .replace(/[`*]/g, "")
+    const text = withoutTags(
+      heading[1].replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // [text](url) -> text
+    ).replace(/[`*]/g, "")
     const base = slugify(text)
     const count = seen.get(base) ?? 0
     seen.set(base, count + 1)
