@@ -4,7 +4,7 @@
 > React hooks, and optionally one query or mutation object per method, from
 > `.did` files. For projects without Vite, CI, and explicit generation runs.
 
-Applies to `@ic-reactor/cli` 0.14.0.
+Applies to `@ic-reactor/cli` 0.15.0.
 
 Read this file from `node_modules/@ic-reactor/cli/llms.txt` when writing code
 against the installed version. The complete guide for every package is

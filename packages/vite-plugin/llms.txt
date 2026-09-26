@@ -5,7 +5,7 @@
 > files, regenerates on change, and gives `vite dev` the local canister ids
 > and an `/api` proxy to the local replica.
 
-Applies to `@ic-reactor/vite-plugin` 0.14.0.
+Applies to `@ic-reactor/vite-plugin` 0.15.0.
 
 Read this file from `node_modules/@ic-reactor/vite-plugin/llms.txt` when
 writing code against the installed version. The complete guide for every

@@ -6,7 +6,7 @@ This directory contains AI agent skill packages for the IC Reactor v3 project. S
 
 - This branch is the stable v3 release line and should be described as IC Reactor v3.
 - Runtime packages: `@ic-reactor/core`, `@ic-reactor/react`, and `@ic-reactor/candid` (`3.12.5`).
-- Code generation packages: `@ic-reactor/codegen`, `@ic-reactor/cli`, and `@ic-reactor/vite-plugin` (`0.14.0`).
+- Code generation packages: `@ic-reactor/codegen`, `@ic-reactor/cli`, and `@ic-reactor/vite-plugin` (`0.15.0`).
 - Parser package: `@ic-reactor/parser` (`0.6.0`).
 - Consumer AI guides: [`../llms.txt`](../llms.txt) (index) and [`../llms-full.txt`](../llms-full.txt) (complete guide); contributor routing: [`../AGENTS.md`](../AGENTS.md).
 

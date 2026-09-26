@@ -5,7 +5,7 @@
 > reactor with bound React hooks, and optionally one query or mutation object
 > per method.
 
-Applies to `@ic-reactor/codegen` 0.14.0.
+Applies to `@ic-reactor/codegen` 0.15.0.
 
 Read this file from `node_modules/@ic-reactor/codegen/llms.txt` when writing
 code against the installed version. The complete guide for every package is
