@@ -126,6 +126,13 @@ jobs:
       - name: Type check examples
         run: pnpm typecheck:examples
 
+      # Compiles the ts/tsx fences of the docs site's hand-written pages. Their
+      # examples import libraries only the example apps install, which is why
+      # this runs here, where the examples are installed and the packages
+      # built, and not in the lint job that installs without them.
+      - name: Docs snippet check
+        run: pnpm check:snippets:docs
+
       # `tsc` never loads a bundler, so a broken Vite/Next config type-checks
       # clean. examples/nextjs (Turbopack workspace root) and
       # examples/nextjs-app-router (Tailwind v4 PostCSS plugin) were both

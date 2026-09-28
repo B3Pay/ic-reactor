@@ -34,16 +34,32 @@
  *   snippet's context directory, then in `app/`. The longest trailing part of
  *   the path that names one wins, so `./declarations/backend/declarations/backend`
  *   finds `declarations/backend.ts`.
+ * - An `@/` import, the alias Next.js and Vite apps give their `src/`
+ *   (`@/canisters/ledger/reactor`), resolves the same way with the `@` taken
+ *   off: to `canisters/ledger/reactor.ts` in the context directory, then in
+ *   `app/`. An alias names a path from the root, so only the whole path is
+ *   tried, never a trailing part of it: `reactor` alone would be some other
+ *   module. The fixture is the app's module at that path, shaped as the real
+ *   app's is.
  * - The names `globals.ts` exports stand for names a snippet uses without
  *   importing or declaring them, such as a `clientManager` from an earlier
  *   snippet. Each snippet imports those it does not declare itself, on a line
  *   added above its first.
- * - `ambient.d.ts` stubs the few third-party modules snippets import that no
- *   workspace package installs.
+ * - A third-party module a snippet imports is the real package when an example
+ *   app installs it (DEPENDENCY_SOURCES below links their dependencies), such
+ *   as `@tanstack/react-router`, `@tanstack/react-form`, `react-hook-form` and
+ *   `next`. `ambient.d.ts` declares each of the rest once, after the package's
+ *   own types, and only as far as the snippets reach. Two declarations of one
+ *   module would merge into overloads and hide a snippet's mistake, and an
+ *   ambient declaration wins over an installed package, so a module an app
+ *   installs is never declared there.
  *
- * Declare a missing app name there. Do not rewrite a snippet to suit the
- * checker, and never declare a library export there: a snippet that uses
- * `createQuery` must import it, or an agent pasting it cannot run it.
+ * Declare a missing app name in a fixture. Do not rewrite a snippet to suit the
+ * checker. A `globals.ts` never exports a library export (`createQuery`,
+ * `Reactor`) or a hook `createActorHooks` returns (`useActorQuery`): a snippet
+ * that uses one must import it, from the library or from the module that binds
+ * it, or an agent pasting it cannot run it. Nor is an ambient declaration bent
+ * to make a snippet pass: fix the snippet, as a reader would have to.
  *
  * ## The consumer guides
  *
@@ -67,6 +83,15 @@
  * factories and no `defineReactor`. TypeScript alone reads the `types`
  * condition and would accept them.
  *
+ * ## Hooks
+ *
+ * The compiler cannot see the rule the guides teach first: a React hook runs
+ * only inside a component or a custom hook. An agent pastes a snippet as it
+ * stands, so a snippet that calls `useActorQuery(...)` or `query.useQuery()` at
+ * the top of the module teaches code that throws. Any call of a `useXxx`
+ * function or method outside every function and class body fails the snippet;
+ * wrap it in a component, as a reader's code would be.
+ *
  * ## Opting out
  *
  * A fence that is not code to paste, such as a type signature or an interface
@@ -80,9 +105,13 @@
  *
  *   path...    check only the files whose repo-relative path contains one of
  *              these strings
- *   --docs     also check the docs site's MDX pages. Their results are
- *              reported but never fail the run: they have not been brought
- *              under the gate yet.
+ *   --docs     also check the docs site's MDX pages, gated like the rest
+ *              (`pnpm check:snippets:docs`). A page compiles against its
+ *              section's fixtures in `scripts/check-snippets/docs/<section>/`
+ *              (the page's directory under the docs content root, `root` for
+ *              a top-level page), then against the default app. Their
+ *              examples import libraries the example apps install, so it
+ *              needs `pnpm install` to have run for the examples too.
  *   --verbose  list every snippet with its result
  *   --keep     leave the temporary directory in place (debugging)
  */
@@ -227,6 +256,17 @@ const COMPILER_OPTIONS = {
  * snippet can import anything a workspace package installs, and the first
  * directory listed here that has it wins, so `react` and `@tanstack/*`
  * resolve to the copies `@ic-reactor/react` itself compiles against.
+ *
+ * The example apps come last. They install the third-party libraries the docs
+ * pages' examples import, so a snippet meets the library's real types rather
+ * than a stub of ours: `@tanstack/react-form` (and `zod`) from
+ * `tanstack-form-demo`, `react-hook-form` from `multiple-canister`,
+ * `@tanstack/react-router` and `@tanstack/react-query-devtools` from
+ * `tanstack-router`, and `next` from `nextjs`. They come after the runtime
+ * packages so that `react`, `@tanstack/react-query` and the rest keep the
+ * versions the packages themselves compile against. Only `--docs` needs them:
+ * the guides, skills and READMEs import none, and CI installs the workspace
+ * without the examples.
  */
 const DEPENDENCY_SOURCES = [
   "packages/react",
@@ -237,6 +277,10 @@ const DEPENDENCY_SOURCES = [
   "packages/codegen",
   "packages/cli",
   ".",
+  "examples/tanstack-form-demo",
+  "examples/multiple-canister",
+  "examples/tanstack-router",
+  "examples/nextjs",
 ]
 
 // ── Source files ─────────────────────────────────────────────────────────────
@@ -456,15 +500,33 @@ function declaredNames(sourceFile) {
 }
 
 /**
- * The module a relative import names in `context`: the longest trailing part
- * of its path that is a file in the context directory, then in `app/`.
+ * The `@/` alias of Next.js and Vite apps: `@/canisters/ledger/reactor` is
+ * `src/canisters/ledger/reactor`, whichever module imports it.
+ */
+const isAppAlias = (specifier) => specifier.startsWith("@/")
+
+/**
+ * The path segments of an import that name the module: a relative import's
+ * without its `.` and `..`, an `@/` import's without the alias.
+ */
+function moduleSegments(specifier) {
+  return (isAppAlias(specifier) ? specifier.slice(1) : specifier)
+    .split("/")
+    .filter((segment) => segment !== "" && segment !== "." && segment !== "..")
+}
+
+/**
+ * The module a relative or `@/` import names in `context`: the longest
+ * trailing part of its path that is a file in the context directory, then in
+ * `app/`. An `@/` import is anchored at the alias's root (`src/`), so only its
+ * whole path is tried: a trailing part of `@/canisters/ledger/reactor` such as
+ * `reactor` would name some other module.
  */
 function findFixture(project, context, specifier) {
-  const segments = specifier
-    .split("/")
-    .filter((segment) => segment !== "." && segment !== "..")
+  const segments = moduleSegments(specifier)
   const contexts = [...new Set([context, DEFAULT_CONTEXT])]
-  for (let start = 0; start < segments.length; start++) {
+  const last = isAppAlias(specifier) ? 1 : segments.length
+  for (let start = 0; start < last; start++) {
     const path = segments.slice(start).join("/")
     for (const name of contexts) {
       for (const candidate of [
@@ -495,9 +557,7 @@ function findFixture(project, context, specifier) {
  */
 function findPageModule(byModule, snippet, specifier) {
   if (!snippet.selfContained) return undefined
-  const segments = specifier
-    .split("/")
-    .filter((segment) => segment !== "." && segment !== "..")
+  const segments = moduleSegments(specifier)
   const matches = (other) =>
     other !== snippet &&
     other.group === snippet.group &&
@@ -539,6 +599,21 @@ function installedPackages(nodeModules) {
  * directory is: they point into the workspace.
  */
 function linkPackages(project) {
+  // The docs pages import libraries only an example app installs. Without
+  // them their imports fail one by one as missing modules, which hides what
+  // is wrong. CI installs the workspace without the examples, and checks only
+  // the guides, skills and READMEs, which need none of them.
+  for (const source of DEPENDENCY_SOURCES) {
+    if (
+      includeDocs &&
+      source.startsWith("examples/") &&
+      !existsSync(join(rootDir, source, "node_modules"))
+    ) {
+      throw new Error(
+        `${source} is not installed, and the docs pages import libraries it provides. Run \`pnpm install\` without \`--filter '!./examples/**'\`.`
+      )
+    }
+  }
   const links = []
   const linked = new Set()
   const link = (target, name) => {
@@ -686,7 +761,7 @@ function compile(project, byModule) {
       if (
         resolved.resolvedModule ||
         !snippet ||
-        !literal.text.startsWith(".")
+        !(literal.text.startsWith(".") || isAppAlias(literal.text))
       ) {
         return resolved
       }
@@ -751,6 +826,52 @@ function compile(project, byModule) {
   })
 }
 
+// ── Hooks outside a component ────────────────────────────────────────────────
+
+/**
+ * A call of a hook (`useXxx(...)` or `something.useXxx(...)`) outside every
+ * function and class body, reported as a diagnostic of its snippet. TypeScript
+ * accepts one, and React throws when it runs.
+ */
+function hookDiagnostics(byModule) {
+  const found = []
+  for (const snippet of byModule.values()) {
+    const extension = LANGUAGES[snippet.lang]
+    const source = ts.createSourceFile(
+      `snippet${extension}`,
+      snippet.code,
+      ts.ScriptTarget.Latest,
+      true,
+      extension === ".tsx" ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+    )
+    const visit = (node, inBody) => {
+      if (!inBody && ts.isCallExpression(node)) {
+        const callee = node.expression
+        const name = ts.isIdentifier(callee)
+          ? callee.text
+          : ts.isPropertyAccessExpression(callee)
+            ? callee.name.text
+            : ""
+        if (/^use[A-Z]/.test(name)) {
+          const { line, character } = source.getLineAndCharacterOfPosition(
+            node.getStart(source)
+          )
+          found.push({
+            snippet,
+            where: `${snippet.file}:${snippet.line + line}:${character + 1}`,
+            code: "hooks",
+            message: `\`${name}\` is a React hook, called outside a component or a custom hook. Wrap the snippet in a component.`,
+          })
+        }
+      }
+      const body = ts.isFunctionLike(node) || ts.isClassLike(node)
+      ts.forEachChild(node, (child) => visit(child, inBody || body))
+    }
+    visit(source, false)
+  }
+  return found
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 const matches = (file) =>
@@ -774,7 +895,10 @@ try {
     project,
     snippets.filter((snippet) => !snippet.skipped)
   )
-  const diagnostics = compile(project, byModule)
+  const diagnostics = [
+    ...compile(project, byModule),
+    ...hookDiagnostics(byModule),
+  ]
 
   const failed = new Set(diagnostics.map((d) => d.snippet).filter(Boolean))
   const fixtureErrors = diagnostics.filter((d) => !d.snippet)
@@ -792,8 +916,7 @@ try {
     console.log("")
   }
   for (const { snippet, where, code, message } of diagnostics) {
-    const tag = snippet?.docs ? " (docs, not gated)" : ""
-    console.log(`${where ? `${where} ` : ""}${code}${tag}: ${message}`)
+    console.log(`${where ? `${where} ` : ""}${code}: ${message}`)
   }
   if (diagnostics.length > 0) console.log("")
 
@@ -805,13 +928,13 @@ try {
     )
     return failures
   }
-  const gatedFailures = report(
+  let gatedFailures = report(
     "Guides, skills and READMEs",
     snippets.filter((s) => !s.docs)
   )
   if (includeDocs) {
-    report(
-      "Docs pages (reported, not gated)",
+    gatedFailures += report(
+      "Docs pages",
       snippets.filter((s) => s.docs)
     )
   }
@@ -822,7 +945,7 @@ try {
     )
   } else if (gatedFailures > 0) {
     console.error(
-      "✖ Fix each failing snippet in its file. Only a name the snippet's app would define belongs in scripts/check-snippets/; a deliberate fragment is marked ```ts nocheck."
+      "✖ Fix each failing snippet in its file. Only a name the snippet's app would define belongs in scripts/check-snippets/ (a docs page's in scripts/check-snippets/docs/<section>/); a deliberate fragment is marked ```ts nocheck."
     )
   } else {
     exitCode = 0
