@@ -2,7 +2,6 @@
 // declares, over the guides' canister (`declarations/backend.ts`), plus the
 // values and components of the app the guides build. Never a library export: a
 // snippet that uses one must import it.
-/// <reference path="./modules.d.ts" />
 import type { CanisterError } from "@ic-reactor/react"
 import type { ReactNode } from "react"
 

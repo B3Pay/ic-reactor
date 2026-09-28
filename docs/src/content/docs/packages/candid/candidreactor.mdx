@@ -364,8 +364,15 @@ function useDynamicQuery(
   args?: unknown[]
 ) {
   return useQuery({
-    // The reactor builds the key, which starts with the canister ID
-    queryKey: reactor.generateQueryKey({ functionName, args }),
+    // The reactor builds the key, which starts with the canister ID, so
+    // `invalidateQueries({ functionName })` matches it. The arguments join it
+    // as they are given, not as `args`: the reactor reads their types from the
+    // registered method, so a key built with `args` before the method is
+    // registered would change once it is, and the query would fetch twice.
+    queryKey: reactor.generateQueryKey({
+      functionName,
+      queryKey: [args ?? []],
+    }),
     // Registers the method if it is not registered yet, then calls it
     queryFn: () => reactor.queryDynamic({ functionName, candid, args }),
   })

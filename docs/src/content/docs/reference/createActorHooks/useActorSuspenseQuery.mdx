@@ -197,19 +197,13 @@ function App() {
 
 ```tsx
 import { Suspense } from "react"
-import { ErrorBoundary } from "react-error-boundary"
+import { ErrorBoundary, type FallbackProps } from "react-error-boundary"
 
-function ErrorFallback({
-  error,
-  resetErrorBoundary,
-}: {
-  error: Error
-  resetErrorBoundary: () => void
-}) {
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
     <div className="error">
       <p>Something went wrong:</p>
-      <pre>{error.message}</pre>
+      <pre>{error instanceof Error ? error.message : String(error)}</pre>
       <button onClick={resetErrorBoundary}>Try again</button>
     </div>
   )
@@ -231,11 +225,15 @@ function App() {
 ```tsx
 import { useActorSuspenseQuery } from "./reactor"
 
-const { data } = useActorSuspenseQuery({
-  functionName: "get_config",
-  args: [],
-  staleTime: 5 * 60 * 1000, // Fresh for 5 minutes
-})
+function Settings() {
+  const { data } = useActorSuspenseQuery({
+    functionName: "get_config",
+    args: [],
+    staleTime: 5 * 60 * 1000, // Fresh for 5 minutes
+  })
+
+  return <pre>{JSON.stringify(data)}</pre>
+}
 ```
 
 ### Sequential Suspense (Waterfall)

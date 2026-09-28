@@ -35,10 +35,12 @@ The query result returned by `useActorQuery` contains all of the information abo
 ```tsx
 import { useActorQuery } from "../reactor/hooks"
 
-const result = useActorQuery({
-  functionName: "get_user",
-  args: ["user-123"],
-})
+function UserProfile() {
+  const result = useActorQuery({
+    functionName: "get_user",
+    args: ["user-123"],
+  })
+}
 ```
 
 The `result` object contains a few very important states you'll need to be aware of to be productive. A query can only be in one of the following states at any given moment:
@@ -202,14 +204,16 @@ When the arguments are known but the query should still wait, use the
 ```tsx
 import { useActorQuery, useAuth } from "../reactor/hooks"
 
-const { isAuthenticated } = useAuth()
+function MyProfile({ profileId }: { profileId: string }) {
+  const { isAuthenticated } = useAuth()
 
-const { data } = useActorQuery({
-  functionName: "get_profile",
-  args: [profileId],
-  // Only fetch when signed in
-  enabled: isAuthenticated,
-})
+  const { data } = useActorQuery({
+    functionName: "get_profile",
+    args: [profileId],
+    // Only fetch when signed in
+    enabled: isAuthenticated,
+  })
+}
 ```
 
 This is particularly useful when:
@@ -224,13 +228,15 @@ Use the `select` option to transform or select a portion of the data:
 ```tsx
 import { useActorQuery } from "../reactor/hooks"
 
-const { data: userName } = useActorQuery({
-  functionName: "get_user",
-  args: [userId],
-  // Only return the name from the query
-  select: (user) => user.name,
-})
-// data is now just the user's name (string)
+function UserName({ userId }: { userId: string }) {
+  const { data: userName } = useActorQuery({
+    functionName: "get_user",
+    args: [userId],
+    // Only return the name from the query
+    select: (user) => user.name,
+  })
+  // data is now just the user's name (string)
+}
 ```
 
 This is useful for:
@@ -246,19 +252,21 @@ Control when data is considered stale and should be refetched:
 ```tsx
 import { useActorQuery } from "../reactor/hooks"
 
-// Data is fresh for 5 minutes
-const { data: config } = useActorQuery({
-  functionName: "get_config",
-  args: [],
-  staleTime: 1000 * 60 * 5, // 5 minutes
-})
+function AppInfo() {
+  // Data is fresh for 5 minutes
+  const { data: config } = useActorQuery({
+    functionName: "get_config",
+    args: [],
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
-// Data is never stale (static data)
-const { data: metadata } = useActorQuery({
-  functionName: "get_metadata",
-  args: [],
-  staleTime: Infinity,
-})
+  // Data is never stale (static data)
+  const { data: metadata } = useActorQuery({
+    functionName: "get_metadata",
+    args: [],
+    staleTime: Infinity,
+  })
+}
 ```
 
 ## Refetching
@@ -268,19 +276,21 @@ const { data: metadata } = useActorQuery({
 ```tsx
 import { useActorQuery } from "../reactor/hooks"
 
-// Refetch every 10 seconds
-const { data: price } = useActorQuery({
-  functionName: "get_price",
-  args: [],
-  refetchInterval: 1000 * 10,
-})
+function Feeds() {
+  // Refetch every 10 seconds
+  const { data: price } = useActorQuery({
+    functionName: "get_price",
+    args: [],
+    refetchInterval: 1000 * 10,
+  })
 
-// Refetch when window regains focus
-const { data: notifications } = useActorQuery({
-  functionName: "get_notifications",
-  args: [],
-  refetchOnWindowFocus: true,
-})
+  // Refetch when window regains focus
+  const { data: notifications } = useActorQuery({
+    functionName: "get_notifications",
+    args: [],
+    refetchOnWindowFocus: true,
+  })
+}
 ```
 
 ### Manual Refetching
@@ -288,14 +298,16 @@ const { data: notifications } = useActorQuery({
 ```tsx
 import { useActorQuery } from "../reactor/hooks"
 
-const { data, refetch } = useActorQuery({
-  functionName: "get_user",
-  args: [userId],
-})
+function RefreshUser({ userId }: { userId: string }) {
+  const { data, refetch } = useActorQuery({
+    functionName: "get_user",
+    args: [userId],
+  })
 
-// Trigger a refetch
-const handleRefresh = () => {
-  refetch()
+  // Trigger a refetch
+  const handleRefresh = () => {
+    void refetch()
+  }
 }
 ```
 
@@ -327,14 +339,16 @@ cannot tell a refetch or a retry from a second call.
 ```tsx
 import { useActorQuery } from "../reactor/hooks"
 
-// An update method that only reads: safe to repeat, but each run costs cycles.
-const { data: address } = useActorQuery({
-  functionName: "get_btc_address",
-  args: [{ owner: [], subaccount: [] }],
-  staleTime: Infinity,
-  refetchOnWindowFocus: false,
-  refetchOnReconnect: false,
-})
+function BtcAddress() {
+  // An update method that only reads: safe to repeat, but each run costs cycles.
+  const { data: address } = useActorQuery({
+    functionName: "get_btc_address",
+    args: [{ owner: [], subaccount: [] }],
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+}
 ```
 
 How often the `SysTransient` retry runs follows the QueryClient's `retry`
@@ -473,7 +487,9 @@ async function loader() {
 }
 
 // Invalidate cache
-await userQuery.invalidate()
+async function refreshUser() {
+  await userQuery.invalidate()
+}
 ```
 
 For dynamic arguments, use `createQueryFactory`:
@@ -501,21 +517,28 @@ IC Reactor provides full TypeScript support. The `functionName` prop autocomplet
 ```tsx
 import { useActorQuery } from "../reactor/hooks"
 
-// ✅ TypeScript knows this method exists and args are correct
-const { data } = useActorQuery({
-  functionName: "get_user", // autocomplete available
-  args: ["user-123"], // type checked
-})
+function UserProfile() {
+  // ✅ TypeScript knows this method exists and args are correct
+  const { data } = useActorQuery({
+    functionName: "get_user", // autocomplete available
+    args: ["user-123"], // type checked
+  })
+}
 ```
 
 Pass an argument of the wrong type and it no longer type-checks:
 
-```tsx nocheck
-// ❌ TypeScript error: wrong argument type
-const { data } = useActorQuery({
-  functionName: "get_user",
-  args: [123], // Error: Expected string
-})
+```tsx
+import { useActorQuery } from "../reactor/hooks"
+
+function UserProfile() {
+  const { data } = useActorQuery({
+    functionName: "get_user",
+    // ❌ TypeScript error: Expected string
+    // @ts-expect-error
+    args: [123],
+  })
+}
 ```
 
 ## Further Reading

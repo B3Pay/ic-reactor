@@ -138,15 +138,23 @@ QueryClient's defaults for that kind of call:
 import { reactorUpdateRetry, useReactorMethod } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-const { call } = useReactorMethod({
-  reactor: backend,
-  functionName: "icrc1_transfer",
-  // Retry only when the canister provably never ran the call.
-  retry: reactorUpdateRetry,
-  // A local replica answers while the browser reports itself offline.
-  networkMode: "always",
-  meta: { errorMessage: "Could not send the transfer" },
-})
+function SendButton() {
+  const { call } = useReactorMethod({
+    reactor: backend,
+    functionName: "icrc1_transfer",
+    // Retry only when the canister provably never ran the call.
+    retry: reactorUpdateRetry,
+    // A local replica answers while the browser reports itself offline.
+    networkMode: "always",
+    meta: { errorMessage: "Could not send the transfer" },
+  })
+
+  return (
+    <button onClick={() => call([{ to: { owner: recipient }, amount }])}>
+      Send
+    </button>
+  )
+}
 ```
 
 ## Return Value

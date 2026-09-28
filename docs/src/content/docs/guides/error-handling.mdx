@@ -91,16 +91,18 @@ import { backend } from "../reactor"
 
 const transferMutation = createMutation(backend, { functionName: "transfer" })
 
-try {
-  await transferMutation.execute([{ to: "", amount: "-100" }])
-} catch (error) {
-  if (isValidationError(error)) {
-    console.log(error.methodName) // "transfer"
-    console.log(error.issues)
-    // [
-    //   { path: ["to"], message: "Recipient is required" },
-    //   { path: ["amount"], message: "Amount must be positive" }
-    // ]
+async function submitTransfer() {
+  try {
+    await transferMutation.execute([{ to: "", amount: "-100" }])
+  } catch (error) {
+    if (isValidationError(error)) {
+      console.log(error.methodName) // "transfer"
+      console.log(error.issues)
+      // [
+      //   { path: ["to"], message: "Recipient is required" },
+      //   { path: ["amount"], message: "Amount must be positive" }
+      // ]
+    }
   }
 }
 ```
@@ -203,7 +205,11 @@ function App() {
 This keeps canister business-logic errors separate from network and agent failures:
 
 ```tsx
+import { formatTokenAmount } from "@ic-reactor/react"
 import { useActorMutation } from "../reactor/hooks"
+
+/** This token's decimals, as `icrc1_decimals` returns them. */
+const DECIMALS = 8
 
 function TransferForm() {
   const { mutate, isPending } = useActorMutation({
@@ -211,8 +217,11 @@ function TransferForm() {
     // Only fires for canister Result { Err } variants
     onCanisterError: (error) => {
       if (error.err._type === "InsufficientFunds") {
+        // A DisplayReactor gives the amounts as text in base units
         const { balance, required } = error.err.InsufficientFunds
-        toast.error(`Insufficient funds. Have: ${balance}, Need: ${required}`)
+        const have = formatTokenAmount(balance, DECIMALS)
+        const need = formatTokenAmount(required, DECIMALS)
+        toast.error(`Insufficient funds. Have: ${have}, Need: ${need}`)
       } else if (error.err._type === "InvalidRecipient") {
         toast.error("Invalid recipient address")
       } else {
@@ -235,8 +244,11 @@ function TransferForm() {
 when you need to distinguish manually:
 
 ```tsx
-import { CanisterError } from "@ic-reactor/react"
+import { CanisterError, formatTokenAmount } from "@ic-reactor/react"
 import { useActorMutation } from "../reactor/hooks"
+
+/** This token's decimals, as `icrc1_decimals` returns them. */
+const DECIMALS = 8
 
 function TransferForm() {
   const { mutate, isPending, error } = useActorMutation({
@@ -246,7 +258,9 @@ function TransferForm() {
         // Handle specific error variants
         if (error.err._type === "InsufficientFunds") {
           const { balance, required } = error.err.InsufficientFunds
-          toast.error(`Insufficient funds. Have: ${balance}, Need: ${required}`)
+          const have = formatTokenAmount(balance, DECIMALS)
+          const need = formatTokenAmount(required, DECIMALS)
+          toast.error(`Insufficient funds. Have: ${have}, Need: ${need}`)
           return
         }
         if (error.err._type === "InvalidRecipient") {
@@ -300,9 +314,16 @@ method rejects with, in the reactor's own form: a `DisplayReactor` reports each
 variant case in `_type`, and a `Reactor` reports the raw Candid variant.
 
 ```typescript
-import { isCanisterError, type ReactorErrorOf } from "@ic-reactor/react"
+import {
+  formatTokenAmount,
+  isCanisterError,
+  type ReactorErrorOf,
+} from "@ic-reactor/react"
 import { backend } from "../reactor"
 import { useActorMutation } from "../reactor/hooks"
+
+/** This token's decimals, as `icrc1_decimals` returns them. */
+const DECIMALS = 8
 
 // CanisterError<TransferError in display form> | CallError | ValidationError
 type TransferError = ReactorErrorOf<typeof backend, "transfer">
@@ -310,12 +331,22 @@ type TransferError = ReactorErrorOf<typeof backend, "transfer">
 function handleTransferError(error: TransferError): string {
   if (isCanisterError(error)) {
     switch (error.err._type) {
-      case "InsufficientFunds":
-        return `Insufficient balance: ${error.err.InsufficientFunds.balance}`
+      case "InsufficientFunds": {
+        const balance = formatTokenAmount(
+          error.err.InsufficientFunds.balance,
+          DECIMALS
+        )
+        return `Insufficient balance: ${balance}`
+      }
       case "InvalidRecipient":
         return "Invalid recipient address"
-      case "AmountTooSmall":
-        return `Minimum amount: ${error.err.AmountTooSmall.minimum}`
+      case "AmountTooSmall": {
+        const minimum = formatTokenAmount(
+          error.err.AmountTooSmall.minimum,
+          DECIMALS
+        )
+        return `Minimum amount: ${minimum}`
+      }
       case "Unauthorized":
         return "You are not authorized to perform this action"
     }
@@ -455,12 +486,14 @@ Per-query overrides still work as in plain TanStack Query:
 ```typescript
 import { useActorQuery } from "../reactor/hooks"
 
-const { data } = useActorQuery({
-  functionName: "getPrice",
-  args: [],
-  retry: 5, // Retry up to 5 times
-  retryDelay: 1000, // Wait 1 second between retries
-})
+function usePrice() {
+  return useActorQuery({
+    functionName: "getPrice",
+    args: [],
+    retry: 5, // Retry up to 5 times
+    retryDelay: 1000, // Wait 1 second between retries
+  })
+}
 ```
 
 ## Error Recovery Patterns
@@ -528,13 +561,17 @@ import { useActorQuery } from "../reactor/hooks"
 
 const DEFAULT_CONFIG = { theme: "light", language: "en" }
 
-const { data } = useActorQuery({
-  functionName: "getConfig",
-  args: [],
-})
+function Settings() {
+  const { data } = useActorQuery({
+    functionName: "getConfig",
+    args: [],
+  })
 
-// Default config while loading and after a failure
-const config = data ?? DEFAULT_CONFIG
+  // Default config while loading and after a failure
+  const config = data ?? DEFAULT_CONFIG
+
+  return <p>Theme: {config.theme}</p>
+}
 ```
 
 ## Logging and Monitoring
@@ -570,17 +607,25 @@ import * as Sentry from "@sentry/react"
 import { CanisterError } from "@ic-reactor/react"
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "transfer",
-  onError: (error) => {
-    // Report to error tracking
-    Sentry.captureException(error, {
-      tags: {
-        type: error instanceof CanisterError ? "canister" : "network",
-      },
-    })
-  },
-})
+function TransferButton() {
+  const { mutate } = useActorMutation({
+    functionName: "transfer",
+    onError: (error) => {
+      // Report to error tracking
+      Sentry.captureException(error, {
+        tags: {
+          type: error instanceof CanisterError ? "canister" : "network",
+        },
+      })
+    },
+  })
+
+  return (
+    <button onClick={() => mutate([{ to: recipient, amount }])}>
+      Transfer
+    </button>
+  )
+}
 ```
 
 ## Best Practices

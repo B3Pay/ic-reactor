@@ -59,7 +59,7 @@ import { QueryClient } from "@tanstack/query-core"
 const clientManager = new ClientManager({ queryClient: new QueryClient() })
 await clientManager.initialize()
 
-const reactor = new MetadataReactor({
+export const reactor = new MetadataReactor({
   name: "ledger",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   clientManager,
@@ -86,6 +86,8 @@ const outputMeta = reactor.getOutputMeta(method)
 `getAllInputMeta()` returns the method-to-metadata map for the full service.
 
 ```ts
+import { reactor } from "./reactor"
+
 const transferInput = reactor.getInputMeta("icrc1_transfer")
 console.log(transferInput?.defaults)
 console.log(transferInput?.schema)
@@ -102,6 +104,8 @@ console.log(transferInput?.schema)
 and that is what `resolve(...)` takes.
 
 ```ts
+import { reactor } from "./reactor"
+
 const transferOutput = reactor.getOutputMeta("icrc1_transfer")
 const result = await reactor.callMethod({
   functionName: "icrc1_transfer",
@@ -129,6 +133,8 @@ Hydration status can be:
 - `error`
 
 ```ts
+import { reactor } from "./reactor"
+
 // icrc1_balance_of's argument, { owner = "aaaaa-aa"; subaccount = null },
 // Candid-encoded
 const built = await reactor.buildForMethod("icrc1_balance_of", {
@@ -145,6 +151,8 @@ if (built.hydration.status === "hydrated") {
 You can skip hydration if payloads include unsupported placeholders:
 
 ```ts
+import { reactor } from "./reactor"
+
 const built = await reactor.buildForMethod("icrc1_transfer", {
   candidArgsHex,
   skipHydrationIfContains: "{{",
@@ -156,6 +164,8 @@ const built = await reactor.buildForMethod("icrc1_transfer", {
 Use `buildForValueType(...)` when you want field/schema metadata for one type expression.
 
 ```ts
+import { reactor } from "./reactor"
+
 const valueMeta = await reactor.buildForValueType(
   "record { owner : principal; amount : nat }"
 )
@@ -169,6 +179,8 @@ It lists the paths into the method's return value that a later step can
 reference. Arguments are not included.
 
 ```ts
+import { reactor } from "./reactor"
+
 const candidates = reactor.buildMethodVariableCandidates("icrc1_transfer")
 // e.g. "$icrc1_transfer.Ok", "$icrc1_transfer.Err.InsufficientFunds.balance"
 ```
@@ -178,6 +190,8 @@ const candidates = reactor.buildMethodVariableCandidates("icrc1_transfer")
 When methods are discovered at runtime, register them and metadata is regenerated automatically.
 
 ```ts
+import { reactor } from "./reactor"
+
 await reactor.registerMethod({
   functionName: "get_metadata",
   candid: "() -> (record { name : text; version : nat }) query",
@@ -206,6 +220,7 @@ candid-native, so the values the user submits are converted to Candid before
 ```ts
 import { didToDisplayCodec } from "@ic-reactor/core"
 import { IDL } from "@icp-sdk/core/candid"
+import { reactor } from "./reactor"
 
 const methodName = "icrc1_transfer"
 const inputMeta = reactor.getInputMeta(methodName)

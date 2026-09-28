@@ -85,13 +85,13 @@ import { QueryClient } from "@tanstack/query-core"
 import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 const queryClient = new QueryClient()
-const clientManager = new ClientManager({
+export const clientManager = new ClientManager({
   queryClient,
 })
 
 await clientManager.initialize()
 
-const backend = new Reactor<_SERVICE>({
+export const backend = new Reactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend",
@@ -166,8 +166,9 @@ import {
   IdentityAttributesManager,
   identityAttributeKeys,
 } from "@ic-reactor/react"
+// The `clientManager` and `backend` the Quick Start's module exports
+import { backend, clientManager } from "./reactor"
 
-// `clientManager` and `backend` are the ones from the Quick Start
 const authentication = new AuthenticationManager({ clientManager })
 const identityAttributes = new IdentityAttributesManager(authentication)
 

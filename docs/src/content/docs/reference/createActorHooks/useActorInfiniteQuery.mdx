@@ -180,15 +180,30 @@ getPreviousPageParam: (
 ```tsx
 import { useActorInfiniteQuery } from "./reactor"
 
-const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
-  functionName: "get_items",
-  getArgs: (offset) => [{ offset, limit: 20 }],
-  initialPageParam: 0,
-  getNextPageParam: (lastPage, allPages) => {
-    // If we got fewer items than limit, no more pages
-    return lastPage.items.length < 20 ? undefined : allPages.length * 20 // Next offset
-  },
-})
+function Items() {
+  const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
+    functionName: "get_items",
+    getArgs: (offset) => [{ offset, limit: 20 }],
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      // If we got fewer items than limit, no more pages
+      return lastPage.items.length < 20 ? undefined : allPages.length * 20 // Next offset
+    },
+  })
+
+  return (
+    <div>
+      {data?.pages.map((page, i) => (
+        <ul key={i}>
+          {page.items.map((item) => (
+            <ItemCard key={item.id} item={item} />
+          ))}
+        </ul>
+      ))}
+      {hasNextPage && <button onClick={() => fetchNextPage()}>More</button>}
+    </div>
+  )
+}
 ```
 
 ### Cursor-Based Pagination
@@ -196,12 +211,27 @@ const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
 ```tsx
 import { useActorInfiniteQuery } from "./reactor"
 
-const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
-  functionName: "get_items_after",
-  getArgs: (cursor) => [cursor ? { after: cursor } : {}],
-  initialPageParam: null as string | null,
-  getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-})
+function Items() {
+  const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
+    functionName: "get_items_after",
+    getArgs: (cursor) => [cursor ? { after: cursor } : {}],
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  })
+
+  return (
+    <div>
+      {data?.pages.map((page, i) => (
+        <ul key={i}>
+          {page.items.map((item) => (
+            <ItemCard key={item.id} item={item} />
+          ))}
+        </ul>
+      ))}
+      {hasNextPage && <button onClick={() => fetchNextPage()}>More</button>}
+    </div>
+  )
+}
 ```
 
 ### Page Number Pagination
@@ -209,14 +239,29 @@ const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
 ```tsx
 import { useActorInfiniteQuery } from "./reactor"
 
-const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
-  functionName: "get_items_by_page",
-  getArgs: (page) => [{ page, perPage: 10 }],
-  initialPageParam: 1,
-  getNextPageParam: (lastPage, allPages, lastPageParam) => {
-    return lastPage.hasMore ? lastPageParam + 1 : undefined
-  },
-})
+function Items() {
+  const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
+    functionName: "get_items_by_page",
+    getArgs: (page) => [{ page, perPage: 10 }],
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages, lastPageParam) => {
+      return lastPage.hasMore ? lastPageParam + 1 : undefined
+    },
+  })
+
+  return (
+    <div>
+      {data?.pages.map((page, i) => (
+        <ul key={i}>
+          {page.items.map((item) => (
+            <ItemCard key={item.id} item={item} />
+          ))}
+        </ul>
+      ))}
+      {hasNextPage && <button onClick={() => fetchNextPage()}>More</button>}
+    </div>
+  )
+}
 ```
 
 ### Bi-Directional Infinite List
@@ -234,7 +279,8 @@ function Timeline() {
   } = useActorInfiniteQuery({
     functionName: "get_timeline",
     getArgs: (timestamp) => [{ around: timestamp, limit: 20 }],
-    initialPageParam: Date.now(),
+    // A nat64 is text in a DisplayReactor
+    initialPageParam: String(Date.now()),
     // `Date.now()` differs on every render, so keep the cursor out of the key.
     getKeyArgs: ([{ limit }]) => [{ limit }],
     getNextPageParam: (lastPage) => lastPage.oldestTimestamp,
@@ -307,20 +353,29 @@ function InfiniteList() {
 ```tsx
 import { useActorInfiniteQuery } from "./reactor"
 
-const { data: items } = useActorInfiniteQuery({
-  functionName: "get_items",
-  getArgs: (offset) => [{ offset, limit: 20 }],
-  initialPageParam: 0,
-  getNextPageParam: (lastPage, allPages) =>
-    lastPage.items.length < 20 ? undefined : allPages.length * 20,
-  // Flatten all pages into a single array
-  select: (data) => ({
-    pages: data.pages.flatMap((page) => page.items),
-    pageParams: data.pageParams,
-  }),
-})
+function Items() {
+  const { data: items } = useActorInfiniteQuery({
+    functionName: "get_items",
+    getArgs: (offset) => [{ offset, limit: 20 }],
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.items.length < 20 ? undefined : allPages.length * 20,
+    // Flatten all pages into a single array
+    select: (data) => ({
+      pages: data.pages.flatMap((page) => page.items),
+      pageParams: data.pageParams,
+    }),
+  })
 
-// items.pages is now a flat array of all items
+  // items.pages is now a flat array of all items
+  return (
+    <ul>
+      {items?.pages.map((item) => (
+        <ItemCard key={item.id} item={item} />
+      ))}
+    </ul>
+  )
+}
 ```
 
 ### Limiting Cached Pages
@@ -328,14 +383,18 @@ const { data: items } = useActorInfiniteQuery({
 ```tsx
 import { useActorInfiniteQuery } from "./reactor"
 
-const { data } = useActorInfiniteQuery({
-  functionName: "get_items",
-  getArgs: (offset) => [{ offset, limit: 20 }],
-  initialPageParam: 0,
-  getNextPageParam: (lastPage, allPages) =>
-    lastPage.items.length < 20 ? undefined : allPages.length * 20,
-  maxPages: 3, // Only keep last 3 pages in cache
-})
+function RecentItems() {
+  const { data } = useActorInfiniteQuery({
+    functionName: "get_items",
+    getArgs: (offset) => [{ offset, limit: 20 }],
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.items.length < 20 ? undefined : allPages.length * 20,
+    maxPages: 3, // Only keep last 3 pages in cache
+  })
+
+  return <span>{data?.pages.length} pages cached</span>
+}
 ```
 
 ## Notes

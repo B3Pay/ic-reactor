@@ -94,10 +94,16 @@ icReactor({
 import { getMessageQuery, setMessageMutation } from "./declarations/backend"
 
 // In a component
-const { data } = getMessageQuery.useQuery()
+function Message() {
+  const { data } = getMessageQuery.useQuery()
+
+  return <p>{data}</p>
+}
 
 // Anywhere, outside React included
-await setMessageMutation.execute(["hello"])
+async function saveMessage() {
+  await setMessageMutation.execute(["hello"])
+}
 ```
 
 The file is regenerated with the rest of the canister's bindings when its

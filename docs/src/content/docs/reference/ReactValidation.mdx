@@ -62,14 +62,20 @@ Call `mutateAsync` here: it returns a promise that rejects with the error. `muta
 
 ```tsx
 import { useState } from "react"
-import { isValidationError, mapValidationErrors } from "@ic-reactor/react"
-import { useActorMutation } from "./reactor"
+import {
+  isValidationError,
+  mapValidationErrors,
+  type ReactorArgsOf,
+} from "@ic-reactor/react"
+import { backend, useActorMutation } from "./reactor"
 
 function useTransfer() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const { mutateAsync } = useActorMutation({ functionName: "transfer" })
 
-  const transfer = async (data: { to: string; amount: string }) => {
+  const transfer = async (
+    data: ReactorArgsOf<typeof backend, "transfer">[0]
+  ) => {
     try {
       await mutateAsync([data])
     } catch (error) {
@@ -102,6 +108,7 @@ function handleValidationError(
 import { useState } from "react"
 import { handleValidationError, useReactorMutation } from "@ic-reactor/react"
 import { backend } from "./reactor"
+// `toast` is your notification helper, such as sonner's
 
 function useTransferMutation() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})

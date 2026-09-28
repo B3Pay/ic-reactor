@@ -258,31 +258,34 @@ const reactor = new MetadataDisplayReactor({
   clientManager,
   name: "ICPLedger",
 })
-await reactor.initialize()
 
-// Raw canister response
-const rawResult = { Ok: 1000000000n } // bigint
+async function resolveTransfer() {
+  await reactor.initialize()
 
-// Get metadata (undefined for a method the service does not have)
-const meta = reactor.getOutputMeta("icrc1_transfer")
+  // Raw canister response
+  const rawResult = { Ok: 1000000000n } // bigint
 
-// Resolve to display types
-const resolved = meta?.resolve(rawResult)
-// resolved = {
-//   functionType: "update",
-//   functionName: "icrc1_transfer",
-//   results: [{
-//     type: "variant",
-//     selected: "Ok",
-//     selectedValue: {  // The resolved value of the selected option
-//       type: "number",
-//       value: "1000000000",  // String, not bigint!
-//       displayType: "string"
-//     },
-//     raw: { Ok: 1000000000n }
-//   }],
-//   raw: { Ok: 1000000000n }
-// }
+  // Get metadata (undefined for a method the service does not have)
+  const meta = reactor.getOutputMeta("icrc1_transfer")
+
+  // Resolve to display types
+  const resolved = meta?.resolve(rawResult)
+  // resolved = {
+  //   functionType: "update",
+  //   functionName: "icrc1_transfer",
+  //   results: [{
+  //     type: "variant",
+  //     selected: "Ok",
+  //     selectedValue: {  // The resolved value of the selected option
+  //       type: "number",
+  //       value: "1000000000",  // String, not bigint!
+  //       displayType: "string"
+  //     },
+  //     raw: { Ok: 1000000000n }
+  //   }],
+  //   raw: { Ok: 1000000000n }
+  // }
+}
 ```
 
 ### Func Reference Resolution
@@ -412,28 +415,31 @@ const reactor = new MetadataDisplayReactor({
   clientManager,
   name: "ICPLedger",
 })
-await reactor.initialize()
 
-// Get input metadata for a method
-const inputMeta = reactor.getInputMeta("icrc1_transfer")
-if (!inputMeta) throw new Error("icrc1_transfer is not in the service")
+async function describeTransferForm() {
+  await reactor.initialize()
 
-console.log(inputMeta.functionName) // "icrc1_transfer"
-console.log(inputMeta.functionType) // "update"
-console.log(inputMeta.argCount) // 1
-console.log(inputMeta.defaults) // [{ to: { owner: "", subaccount: null }, ... }]
+  // Get input metadata for a method
+  const inputMeta = reactor.getInputMeta("icrc1_transfer")
+  if (!inputMeta) throw new Error("icrc1_transfer is not in the service")
 
-// Iterate over args to build form
-for (const field of inputMeta.args) {
-  console.log(field.type) // "record"
-  console.log(field.displayLabel) // "Arg 0"
-  console.log(field.component) // "record-container"
+  console.log(inputMeta.functionName) // "icrc1_transfer"
+  console.log(inputMeta.functionType) // "update"
+  console.log(inputMeta.argCount) // 1
+  console.log(inputMeta.defaults) // [{ to: { owner: "", subaccount: null }, ... }]
 
-  // For records, access nested fields
-  if (field.type === "record") {
-    for (const childField of field.fields) {
-      console.log(childField.name) // "[0].to", "[0].amount", etc.
-      console.log(childField.displayLabel) // "To", "Amount", etc.
+  // Iterate over args to build form
+  for (const field of inputMeta.args) {
+    console.log(field.type) // "record"
+    console.log(field.displayLabel) // "Arg 0"
+    console.log(field.component) // "record-container"
+
+    // For records, access nested fields
+    if (field.type === "record") {
+      for (const childField of field.fields) {
+        console.log(childField.name) // "[0].to", "[0].amount", etc.
+        console.log(childField.displayLabel) // "To", "Amount", etc.
+      }
     }
   }
 }
@@ -441,8 +447,10 @@ for (const field of inputMeta.args) {
 
 ### With TanStack Form
 
-`DynamicFieldInput` is the field renderer of the next section. The form is
-created with a hook, so it lives in a component.
+`DynamicFieldInput` is the field renderer of the next section. The metadata
+exists once the reactor has initialized, so load it before the form renders, in
+a route loader or as below. The form is created with a hook, so it lives in a
+component that takes the metadata as a prop.
 
 ```tsx
 import { MetadataDisplayReactor } from "@ic-reactor/candid"
@@ -453,14 +461,21 @@ const reactor = new MetadataDisplayReactor({
   clientManager,
   name: "ICPLedger",
 })
-await reactor.initialize()
 
 // Get metadata
-const inputMeta = reactor.getInputMeta("icrc1_transfer")
-if (!inputMeta) throw new Error("icrc1_transfer is not in the service")
-const { args, defaults, schema } = inputMeta
+async function loadTransferMeta() {
+  await reactor.initialize()
 
-function DynamicForm() {
+  const inputMeta = reactor.getInputMeta("icrc1_transfer")
+  if (!inputMeta) throw new Error("icrc1_transfer is not in the service")
+  return inputMeta
+}
+
+type TransferMeta = Awaited<ReturnType<typeof loadTransferMeta>>
+
+function DynamicForm({ inputMeta }: { inputMeta: TransferMeta }) {
+  const { args, defaults, schema } = inputMeta
+
   // Create form with metadata
   const form = useForm({
     defaultValues: defaults,
@@ -686,27 +701,30 @@ const reactor = new MetadataDisplayReactor({
   clientManager,
   name: "ICPLedger",
 })
-await reactor.initialize()
 
-// Call method and get resolved result
-const result = await reactor.callMethod({
-  functionName: "icrc1_balance_of",
-  args: [{ owner: "aaaaa-aa" }],
-})
+async function showBalance() {
+  await reactor.initialize()
 
-// result is already resolved through transformResult
-console.log(result)
-// {
-//   functionType: "query",
-//   functionName: "icrc1_balance_of",
-//   results: [{ type: "number", value: "1000000000", displayType: "string", raw: 1000000000n }],
-//   raw: 1000000000n
-// }
+  // Call method and get resolved result
+  const result = await reactor.callMethod({
+    functionName: "icrc1_balance_of",
+    args: [{ owner: "aaaaa-aa" }],
+  })
 
-// The resolved result keeps the raw canister value, so you can resolve it
-// again yourself with the same metadata
-const outputMeta = reactor.getOutputMeta("icrc1_balance_of")
-const resolved = outputMeta?.resolve(result.raw)
+  // result is already resolved through transformResult
+  console.log(result)
+  // {
+  //   functionType: "query",
+  //   functionName: "icrc1_balance_of",
+  //   results: [{ type: "number", value: "1000000000", displayType: "string", raw: 1000000000n }],
+  //   raw: 1000000000n
+  // }
+
+  // The resolved result keeps the raw canister value, so you can resolve it
+  // again yourself with the same metadata
+  const outputMeta = reactor.getOutputMeta("icrc1_balance_of")
+  const resolved = outputMeta?.resolve(result.raw)
+}
 ```
 
 ### Dynamic Result Rendering
@@ -864,23 +882,26 @@ const reactor = new MetadataDisplayReactor({
   clientManager,
   name: "ICPLedger",
 })
-await reactor.initialize()
 
-// Register a method not in the original service
-await reactor.registerMethod({
-  functionName: "custom_method",
-  candid: "(record { input: text }) -> (record { output: text }) query",
-})
+async function callCustomMethod() {
+  await reactor.initialize()
 
-// Metadata is automatically regenerated
-const argMeta = reactor.getInputMeta("custom_method")
-const resultMeta = reactor.getOutputMeta("custom_method")
+  // Register a method not in the original service
+  await reactor.registerMethod({
+    functionName: "custom_method",
+    candid: "(record { input: text }) -> (record { output: text }) query",
+  })
 
-// Call the newly registered method
-const result = await reactor.callMethod({
-  functionName: "custom_method",
-  args: [{ input: "hello" }],
-})
+  // Metadata is automatically regenerated
+  const argMeta = reactor.getInputMeta("custom_method")
+  const resultMeta = reactor.getOutputMeta("custom_method")
+
+  // Call the newly registered method
+  const result = await reactor.callMethod({
+    functionName: "custom_method",
+    args: [{ input: "hello" }],
+  })
+}
 ```
 
 ### Call Dynamic with Metadata
@@ -895,16 +916,19 @@ const reactor = new MetadataDisplayReactor({
   clientManager,
   name: "ICPLedger",
 })
-await reactor.initialize()
 
-const { result, meta } = await reactor.callDynamicWithMeta({
-  functionName: "get_info",
-  candid: "() -> (record { name: text; version: nat }) query",
-  args: [],
-})
+async function callWithMeta() {
+  await reactor.initialize()
 
-// meta contains the result metadata
-// result is already resolved
+  const { result, meta } = await reactor.callDynamicWithMeta({
+    functionName: "get_info",
+    candid: "() -> (record { name: text; version: nat }) query",
+    args: [],
+  })
+
+  // meta contains the result metadata
+  // result is already resolved
+}
 ```
 
 ## Helper Functions

@@ -70,23 +70,25 @@ const candidInterface = `service : {
   icrc1_balance_of : (record { owner : principal }) -> (nat) query;
 }`
 
-// Execute a dynamic query - result is already display-friendly!
-const result = await reactor.queryDynamic({
-  functionName: "icrc1_name",
-  candid: candidInterface,
-  args: [],
-})
+async function run() {
+  // Execute a dynamic query - result is already display-friendly!
+  const result = await reactor.queryDynamic({
+    functionName: "icrc1_name",
+    candid: candidInterface,
+    args: [],
+  })
 
-console.log(result) // "Internet Computer"
+  console.log(result) // "Internet Computer"
 
-// Query balance with display types
-const balance = await reactor.queryDynamic({
-  functionName: "icrc1_balance_of",
-  candid: candidInterface,
-  args: [{ owner: "aaaaa-aa" }], // Principal as string!
-})
+  // Query balance with display types
+  const balance = await reactor.queryDynamic({
+    functionName: "icrc1_balance_of",
+    candid: candidInterface,
+    args: [{ owner: "aaaaa-aa" }], // Principal as string!
+  })
 
-console.log(balance) // "1000000" (string, not bigint!)
+  console.log(balance) // "1000000" (string, not bigint!)
+}
 ```
 
 ## Use Cases

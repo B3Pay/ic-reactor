@@ -158,6 +158,27 @@ export const { useAuth, useUserPrincipal, useAgentState } =
 
 ### Multiple Canisters
 
+Add a reactor for the second canister next to `backend`, on the same `ClientManager`:
+
+```typescript
+// src/reactor/index.ts, next to `backend`
+import { Reactor } from "@ic-reactor/react"
+import {
+  idlFactory as ledgerIdlFactory,
+  type _SERVICE as LedgerService,
+} from "../declarations/ledger"
+
+// `clientManager` is the one this file already builds above
+export const ledger = new Reactor<LedgerService>({
+  clientManager,
+  idlFactory: ledgerIdlFactory,
+  canisterId: import.meta.env.VITE_LEDGER_CANISTER_ID,
+  name: "ledger",
+})
+```
+
+Then bind hooks to each reactor in place of the `hooks.ts` above:
+
 ```typescript
 // src/reactor/hooks.ts
 import { createActorHooks } from "@ic-reactor/react"
@@ -225,23 +246,31 @@ export { queryClient, clientManager, backend }
 
 `createActorHooks` preserves full type safety:
 
-```typescript
+```tsx
 import { createActorHooks } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
 const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
-// TypeScript knows all available methods
-const { data } = useActorQuery({
-  functionName: "get_user", // ✅ Autocomplete shows valid methods
-  args: ["user-123"], // ✅ Type-checked arguments
-})
+function UserCard() {
+  // TypeScript knows all available methods
+  const { data } = useActorQuery({
+    functionName: "get_user", // ✅ Autocomplete shows valid methods
+    args: ["user-123"], // ✅ Type-checked arguments
+  })
 
-const { mutate } = useActorMutation({
-  functionName: "create_user", // ✅ Autocomplete
-})
+  const { mutate } = useActorMutation({
+    functionName: "create_user", // ✅ Autocomplete
+  })
 
-mutate([{ name: "Alice", email: "alice@example.com" }]) // ✅ Type-safe args
+  return (
+    <button
+      onClick={() => mutate([{ name: "Alice", email: "alice@example.com" }])} // ✅ Type-safe args
+    >
+      {data?.name}
+    </button>
+  )
+}
 ```
 
 ## Type Exports

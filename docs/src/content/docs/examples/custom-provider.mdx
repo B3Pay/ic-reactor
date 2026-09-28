@@ -75,9 +75,9 @@ The factory runs once, when the provider mounts. `App` gives the provider a
 for it:
 
 ```tsx
-// src/App.tsx
+// src/App.tsx (simplified: the demo's App also renders the token cards and login)
 import { useState, type FormEvent } from "react"
-import { Principal } from "@icp-sdk/core/principal"
+import { isPrincipalText } from "@ic-reactor/react"
 import ICRC1Call from "./ICRC1Call"
 import ICRC1Provider from "./ICRC1Provider"
 
@@ -85,14 +85,15 @@ export default function App() {
   const [canisterId, setCanisterId] = useState("ryjl3-tyaaa-aaaaa-aaaba-cai")
   const [draft, setDraft] = useState(canisterId)
 
-  // Only text that parses as a principal becomes the canister ID, so a
-  // half-typed value never reaches the reactor factory.
+  // Only text that is a principal becomes the canister ID, so a half-typed
+  // value never reaches the reactor factory.
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
-    try {
-      setCanisterId(Principal.fromText(draft.trim()).toText())
-    } catch (error) {
-      console.error(error)
+    const text = draft.trim()
+    if (isPrincipalText(text)) {
+      setCanisterId(text)
+    } else {
+      console.error(`Not a canister ID: ${text}`)
     }
   }
 

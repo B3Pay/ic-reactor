@@ -149,10 +149,11 @@ export default async function LedgerSnapshot() {
 ```
 
 The balance query waits for a valid account with `skipToken`, so it needs no
-placeholder account, cast or `enabled` flag:
+placeholder account, cast or `enabled` flag. The demo makes these queries inline
+in `TokenExplorer`; here they are a component of their own:
 
 ```tsx
-// src/app/TokenExplorer.tsx
+// An excerpt of TokenExplorer (src/app/TokenExplorer.tsx), as a component of its own
 import { useMemo } from "react"
 import { formatTokenAmount, skipToken } from "@ic-reactor/react"
 import { Principal } from "@icp-sdk/core/principal"

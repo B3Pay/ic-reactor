@@ -1,6 +1,7 @@
 // `src/reactor/index.ts` of the createActorHooks overview: the `Reactor`s the
 // page's `hooks.ts` builds hooks for. `backend` is the page's setup and
-// `ledger` is a second reactor of the same shape, on another canister.
+// `ledger` is the reactor its "Multiple Canisters" section adds next to it, on
+// another canister.
 import { ClientManager, Reactor } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 import {

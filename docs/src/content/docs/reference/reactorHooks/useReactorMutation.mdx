@@ -62,13 +62,19 @@ Returns a TanStack Query mutation result object, same as `useActorMutation`.
 import { useReactorMutation } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-const { mutate } = useReactorMutation({
-  reactor: backend,
-  functionName: "icrc1_transfer",
-})
+function TransferButton() {
+  const { mutate } = useReactorMutation({
+    reactor: backend,
+    functionName: "icrc1_transfer",
+  })
 
-// Arguments are supplied at call time, not in the hook config
-mutate([{ to: { owner: recipient }, amount }])
+  // Arguments are supplied at call time, not in the hook config
+  return (
+    <button onClick={() => mutate([{ to: { owner: recipient }, amount }])}>
+      Send
+    </button>
+  )
+}
 ```
 
 ### With Callbacks
@@ -77,11 +83,13 @@ mutate([{ to: { owner: recipient }, amount }])
 import { useReactorMutation } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-const { mutate } = useReactorMutation({
-  reactor: backend,
-  functionName: "create_post",
-  onSuccess: () => console.log("Post created!"),
-})
+function useCreatePost() {
+  return useReactorMutation({
+    reactor: backend,
+    functionName: "create_post",
+    onSuccess: () => console.log("Post created!"),
+  })
+}
 ```
 
 ### Invalidate Queries After Mutation
@@ -90,13 +98,15 @@ const { mutate } = useReactorMutation({
 import { useReactorMutation } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-const { mutate } = useReactorMutation({
-  reactor: backend,
-  functionName: "create_post",
-  // Methods of `backend`, type-checked against its service. A query object,
-  // a query factory or a query key works here too.
-  invalidateQueries: [{ functionName: "get_posts" }],
-})
+function useCreatePost() {
+  return useReactorMutation({
+    reactor: backend,
+    functionName: "create_post",
+    // Methods of `backend`, type-checked against its service. A query object,
+    // a query factory or a query key works here too.
+    invalidateQueries: [{ functionName: "get_posts" }],
+  })
+}
 ```
 
 ## See Also

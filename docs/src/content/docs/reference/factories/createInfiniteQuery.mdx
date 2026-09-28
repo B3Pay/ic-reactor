@@ -95,14 +95,21 @@ first one.
 the top of the first page while it is being created:
 
 ```typescript
-const draft = await postsQuery.optimisticUpdate((data) => ({
-  ...data,
-  pages: [
-    { ...data.pages[0], posts: [newPost, ...data.pages[0].posts] },
-    ...data.pages.slice(1),
-  ],
-}))
-// in onError: draft.rollback()
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const createPost = createMutation(backend, {
+  functionName: "create_post",
+  onMutate: () =>
+    postsQuery.optimisticUpdate((data) => ({
+      ...data,
+      pages: [
+        { ...data.pages[0], posts: [newPost, ...data.pages[0].posts] },
+        ...data.pages.slice(1),
+      ],
+    })),
+  onError: (_error, _args, draft) => draft?.rollback(),
+})
 ```
 
 A sign-in or sign-out while `fetch()` is in flight does not reject it: the
@@ -285,6 +292,16 @@ function ChatMessages() {
 Simple load more without infinite scroll:
 
 ```tsx
+import { createInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const productsQuery = createInfiniteQuery(backend, {
+  functionName: "list_products",
+  initialPageParam: 0,
+  getArgs: (offset) => [{ offset, limit: 24 }] as const,
+  getNextPageParam: (lastPage) => lastPage.nextOffset,
+})
+
 function ProductList() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     productsQuery.useInfiniteQuery()
@@ -459,7 +476,9 @@ const getPostsQuery = createInfiniteQueryFactory(backend, {
 })
 
 // Refetch every loaded list
-await getPostsQuery.invalidate()
+async function refreshLists() {
+  await getPostsQuery.invalidate()
+}
 
 // Or after a mutation
 const createPost = createMutation(backend, {
@@ -480,6 +499,33 @@ prevents many cache collisions automatically.
 Use `getKeyArgs` in the factory config when your first-page args include
 pagination state (like `offset`, `cursor`, or nested `paginate`) and you want
 the cache identity to include only logical filters/search params.
+
+The todo canister's `list_todos` takes a request with two optional filters and
+a `paginate` record, and returns a page with an optional `next_offset`. The
+reactor below is the `DisplayReactor` the example builds on, so a `nat` is text
+and an `opt` is `T | undefined`:
+
+```typescript
+// src/reactor.ts
+import { defineDisplayReactor } from "@ic-reactor/react"
+import {
+  canisterId,
+  idlFactory,
+  type _SERVICE as TodoService,
+} from "./declarations/todo"
+
+// list_todos : (record {
+//   completed : opt bool;
+//   search : text;
+//   sort_by : opt variant { Title; CreatedAt };
+//   paginate : record { offset : nat; limit : nat32 };
+// }) -> (record { todos : vec Todo; next_offset : opt nat }) query
+export const { reactor: todoReactor } = defineDisplayReactor<TodoService>({
+  name: "todo",
+  idlFactory,
+  canisterId,
+})
+```
 
 ```typescript
 import { createInfiniteQueryFactory } from "@ic-reactor/react"

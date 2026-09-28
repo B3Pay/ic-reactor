@@ -402,6 +402,7 @@ const balance = await reactor.fetchQueryDynamic({
 
 ```typescript
 import { CandidDisplayReactor } from "@ic-reactor/candid"
+import { formatTokenAmount } from "@ic-reactor/core"
 
 async function getTokenBalance(canisterId: string, owner: string) {
   const reactor = new CandidDisplayReactor({
@@ -414,15 +415,24 @@ async function getTokenBalance(canisterId: string, owner: string) {
     functionName: "icrc1_balance_of",
     candid: "(record { owner : principal }) -> (nat) query",
   })
+  await reactor.registerMethod({
+    functionName: "icrc1_decimals",
+    candid: "() -> (nat8) query",
+  })
 
   // Pass Principal as string, get balance as string. The untyped reactor
-  // returns `unknown`; a nat displays as a string.
-  const balance = (await reactor.callMethod({
-    functionName: "icrc1_balance_of",
-    args: [{ owner }], // owner is a string like "aaaaa-aa"
-  })) as string
+  // returns `unknown`; a nat displays as a string, a nat8 as a number.
+  const [balance, decimals] = (await Promise.all([
+    reactor.callMethod({
+      functionName: "icrc1_balance_of",
+      args: [{ owner }], // owner is a string like "aaaaa-aa"
+    }),
+    reactor.callMethod({ functionName: "icrc1_decimals" }),
+  ])) as [string, number]
 
-  return balance // "1000000" - ready for UI display!
+  // The balance is in base units ("150000000"): format it with the token's
+  // decimals, never `Number(balance) / 10 ** decimals`
+  return formatTokenAmount(balance, decimals) // "1.5"
 }
 ```
 
@@ -486,6 +496,7 @@ async function handleSubmit(formData: { to: string; amount: string }) {
 import { useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { CandidDisplayReactor } from "@ic-reactor/candid"
+import { formatTokenAmount } from "@ic-reactor/core"
 
 // Create a reusable hook for dynamic canister queries
 function useDynamicBalance(reactor: CandidDisplayReactor, owner: string) {
@@ -501,11 +512,20 @@ function useDynamicBalance(reactor: CandidDisplayReactor, owner: string) {
         functionName: "icrc1_balance_of",
         candid: "(record { owner : principal }) -> (nat) query",
       })
-      // An untyped reactor returns `unknown`; a nat displays as a string
-      return (await reactor.callMethod({
-        functionName: "icrc1_balance_of",
-        args: [{ owner }], // String input
-      })) as string
+      await reactor.registerMethod({
+        functionName: "icrc1_decimals",
+        candid: "() -> (nat8) query",
+      })
+      // An untyped reactor returns `unknown`; a nat displays as a string and a
+      // nat8 as a number
+      const [balance, decimals] = (await Promise.all([
+        reactor.callMethod({
+          functionName: "icrc1_balance_of",
+          args: [{ owner }], // String input
+        }),
+        reactor.callMethod({ functionName: "icrc1_decimals" }),
+      ])) as [string, number]
+      return { balance, decimals }
     },
   })
 }
@@ -527,12 +547,13 @@ function BalanceDisplay({
     [canisterId]
   )
 
-  const { data: balance, isLoading } = useDynamicBalance(reactor, owner)
+  const { data, isLoading } = useDynamicBalance(reactor, owner)
 
-  if (isLoading) return <div>Loading...</div>
+  if (isLoading || !data) return <div>Loading...</div>
 
-  // balance is already a string - no formatting needed!
-  return <div>Balance: {balance}</div>
+  // The balance is a string of base units, safe from bigint precision loss:
+  // show it with the token's decimals
+  return <div>Balance: {formatTokenAmount(data.balance, data.decimals)}</div>
 }
 ```
 

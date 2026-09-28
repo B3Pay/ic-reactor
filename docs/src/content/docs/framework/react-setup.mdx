@@ -195,20 +195,30 @@ Customize the login flow:
 ```tsx
 import { useAuth } from "../reactor/hooks"
 
-const { login } = useAuth()
+function LoginButton() {
+  const { login } = useAuth()
 
-// With options
-login({
-  identityProvider: "https://id.ai/authorize",
-  maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days
-  onSuccess: () => {
-    console.log("Logged in successfully!")
-    navigate("/dashboard")
-  },
-  onError: (error) => {
-    console.error("Login failed:", error)
-  },
-})
+  return (
+    <button
+      onClick={() =>
+        // With options
+        login({
+          identityProvider: "https://id.ai/authorize",
+          maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days
+          onSuccess: () => {
+            console.log("Logged in successfully!")
+            navigate("/dashboard")
+          },
+          onError: (error) => {
+            console.error("Login failed:", error)
+          },
+        })
+      }
+    >
+      Login with Internet Identity
+    </button>
+  )
+}
 ```
 
 ## Protected Routes
@@ -313,22 +323,27 @@ export const { useAuth, useUserPrincipal } = authHooks
 
 ## Auto Transformations
 
-For easier handling of Candid types, use `DisplayReactor`:
+For easier handling of Candid types, use `DisplayReactor`.
+`defineDisplayReactor` builds one together with its `QueryClient`,
+`ClientManager` and hooks, and takes the same options as `defineReactor`:
 
 ```typescript
-import { DisplayReactor } from "@ic-reactor/react"
-import { idlFactory, type _SERVICE } from "../declarations/backend"
+import { defineDisplayReactor } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "../declarations/backend"
 
-const backend = new DisplayReactor<_SERVICE>({
-  clientManager,
-  idlFactory,
-  name: "backend",
-  canisterId: "...",
-})
+export const { reactor: backend, useActorQuery } =
+  defineDisplayReactor<_SERVICE>({
+    name: "backend",
+    idlFactory,
+    canisterId,
+  })
 
 // Now BigInt values are returned as strings,
 // Principals as text, etc.
 ```
+
+To keep the explicit setup of step 1, construct a `DisplayReactor` with the same
+options in place of the `Reactor`.
 
 ## Session Persistence
 
@@ -489,8 +504,11 @@ you write yourself has to do the same, from its cleanup:
 ```tsx
 import { useEffect, useState } from "react"
 
-const [value] = useState(createReactorContext)
-useEffect(() => () => value.authentication.dispose(), [value])
+function useReactorContext() {
+  const [value] = useState(createReactorContext)
+  useEffect(() => () => value.authentication.dispose(), [value])
+  return value
+}
 ```
 
 `dispose()` only forgets the client, and the next sign-in builds a new one, so

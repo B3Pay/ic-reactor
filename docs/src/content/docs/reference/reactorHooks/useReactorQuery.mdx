@@ -59,11 +59,15 @@ Returns a TanStack Query result object, same as `useActorQuery`.
 import { useReactorQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-const { data } = useReactorQuery({
-  reactor: backend,
-  functionName: "greet",
-  args: ["World"],
-})
+function Greeting() {
+  const { data } = useReactorQuery({
+    reactor: backend,
+    functionName: "greet",
+    args: ["World"],
+  })
+
+  return <span>{data}</span>
+}
 ```
 
 ### Waiting for Args
@@ -94,11 +98,15 @@ TypeScript infers types from the passed `reactor` instance:
 import { useReactorQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-const { data } = useReactorQuery({
-  reactor: backend,
-  functionName: "get_user", // ✅ Autocompletes valid methods
-  args: ["user-123"], // ✅ Type-checked
-})
+function User() {
+  const { data } = useReactorQuery({
+    reactor: backend,
+    functionName: "get_user", // ✅ Autocompletes valid methods
+    args: ["user-123"], // ✅ Type-checked
+  })
+
+  return <span>{data?.name}</span>
+}
 ```
 
 ## Notes

@@ -50,46 +50,99 @@ reach. It works on a local IDL and sample values, so it needs no canister.
 ## Implementation
 
 ```tsx
-// src/App.tsx
+// An excerpt of src/App.tsx: the demo also has a `get_version` method and shows
+// the resolved structure as JSON
 import { ResultFieldVisitor } from "@ic-reactor/candid"
 import { IDL } from "@icp-sdk/core/candid"
 import { Principal } from "@icp-sdk/core/principal"
 import { ResultRenderer } from "./components/ResultRenderer"
 
-// A service with one method, `get_user`, that returns a record
-const testIDL: IDL.InterfaceFactory = ({ IDL }) =>
-  IDL.Service({
-    get_user: IDL.Func(
+const testIDL: IDL.InterfaceFactory = ({ IDL }) => {
+  const User = IDL.Record({
+    name: IDL.Text,
+    age: IDL.Nat,
+    is_active: IDL.Bool,
+    tags: IDL.Vec(IDL.Text),
+    role: IDL.Variant({ Admin: IDL.Null, User: IDL.Null, Guest: IDL.Null }),
+    identity: IDL.Vec(IDL.Tuple(IDL.Text, IDL.Principal)),
+  })
+
+  // A type that contains itself
+  const Category = IDL.Rec()
+  Category.fill(
+    IDL.Record({ name: IDL.Text, subcategories: IDL.Vec(Category) })
+  )
+
+  // Real-world pattern: ICRC ledger archived blocks, a record with a func
+  const GetBlocksArgs = IDL.Record({ start: IDL.Nat64, length: IDL.Nat64 })
+  const BlockRange = IDL.Record({ blocks: IDL.Vec(IDL.Nat8) })
+  const ArchivedBlocksRange = IDL.Record({
+    callback: IDL.Func([GetBlocksArgs], [BlockRange], ["query"]),
+    start: IDL.Nat64,
+    length: IDL.Nat64,
+  })
+
+  return IDL.Service({
+    get_user: IDL.Func([], [User], ["query"]),
+    get_categories: IDL.Func([], [Category], ["query"]),
+    get_archived_blocks: IDL.Func(
       [],
-      [
-        IDL.Record({
-          name: IDL.Text,
-          age: IDL.Nat,
-          identity: IDL.Vec(IDL.Tuple(IDL.Text, IDL.Principal)),
-        }),
-      ],
+      [IDL.Vec(ArchivedBlocksRange)],
       ["query"]
     ),
   })
+}
 
 function App() {
   const visitor = new ResultFieldVisitor()
   const serviceMeta = visitor.visitService(testIDL({ IDL }))
 
-  // A raw Candid value that matches the method's return type
+  // Raw Candid values that match each method's return type
   const mockUser = {
     name: "Alice",
     age: 30n,
+    is_active: true,
+    tags: ["react", "candid", "icp"],
+    role: { Admin: null },
     identity: [["Alice", Principal.fromText("aaaaa-aa")]],
   }
+  const mockCategories = {
+    name: "Electronics",
+    subcategories: [
+      {
+        name: "Computers",
+        subcategories: [{ name: "Laptops", subcategories: [] }],
+      },
+      { name: "Phones", subcategories: [] },
+    ],
+  }
+  const archive = Principal.fromText("qjdve-lqaaa-aaaaa-aaaeq-cai")
+  const mockArchivedBlocks = [
+    { callback: [archive, "get_blocks"], start: 1000n, length: 500n },
+  ]
 
-  // Metadata for one method, resolved against a raw Candid value
+  // Each method's metadata resolves a raw Candid value into display-ready nodes
   const resolved = serviceMeta["get_user"].resolve(mockUser)
+  const resolvedCategories =
+    serviceMeta["get_categories"].resolve(mockCategories)
+  const resolvedArchived =
+    serviceMeta["get_archived_blocks"].resolve(mockArchivedBlocks)
 
   // One node per return value, each carrying its display value
   return (
     <>
+      <h2>Dynamic Record Rendering</h2>
       {resolved.results.map((result, i) => (
+        <ResultRenderer key={i} result={result} />
+      ))}
+
+      <h2>Recursive Type Rendering</h2>
+      {resolvedCategories.results.map((result, i) => (
+        <ResultRenderer key={i} result={result} />
+      ))}
+
+      <h2>FuncRecord Rendering (Archived Blocks)</h2>
+      {resolvedArchived.results.map((result, i) => (
         <ResultRenderer key={i} result={result} />
       ))}
     </>

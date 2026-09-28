@@ -193,7 +193,7 @@ function UserPageWrapper() {
       fallbackRender={({ error, resetErrorBoundary }) => (
         <div className="error">
           <h2>Something went wrong</h2>
-          <pre>{error.message}</pre>
+          <pre>{error instanceof Error ? error.message : String(error)}</pre>
           <button onClick={resetErrorBoundary}>Try again</button>
         </div>
       )}

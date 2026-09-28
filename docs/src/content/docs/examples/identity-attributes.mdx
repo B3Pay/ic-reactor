@@ -45,8 +45,13 @@ hooks.
 
 ## Key Code
 
+`api` stands for your own backend client, which issues the registration nonce and
+verifies the signed attributes; the demo has no such module and shows this code
+as a text sample in its page.
+
 ```tsx
 import { useIdentityAttributes } from "./reactor"
+// Your own backend client: it issues the nonce and verifies the signed payload
 import { api } from "./api"
 
 function RegisterButton() {

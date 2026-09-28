@@ -42,7 +42,8 @@ against live ledger canisters:
 ## Key Code
 
 ```ts
-// src/reactor.ts
+// An excerpt of src/reactor.ts: the demo also sets up ckBTC and ckETH the same
+// way, and formats each token's balance with a `formatBalance` helper
 import {
   createMutation,
   createSuspenseQuery,
@@ -66,11 +67,15 @@ export const icpNameQuery = createSuspenseQuery(icpReactor, {
 // The balance is e8s as text: formatTokenAmount shifts it by the decimals
 export const getIcpBalance = createSuspenseQueryFactory(icpReactor, {
   functionName: "icrc1_balance_of",
+  refetchInterval: 5 * 1000, // 5 seconds
   select: (balance) => `${formatTokenAmount(balance, 8)} ICP`,
 })
 
 export const icpTransferMutation = createMutation(icpReactor, {
   functionName: "icrc1_transfer",
+  // Every ICP balance getIcpBalance has returned, whatever the account: a
+  // transfer changes the sender's and the recipient's
+  invalidateQueries: [getIcpBalance],
 })
 ```
 

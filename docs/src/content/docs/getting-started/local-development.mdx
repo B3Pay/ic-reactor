@@ -123,6 +123,9 @@ To point the agent somewhere else, pass the host explicitly:
 
 ```typescript
 import { ClientManager } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+
+export const queryClient = new QueryClient()
 
 export const clientManager = new ClientManager({
   queryClient,
@@ -175,6 +178,9 @@ to `ClientManager` if you accept that risk for a development build:
 
 ```typescript
 import { ClientManager } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+
+export const queryClient = new QueryClient()
 
 export const clientManager = new ClientManager({
   queryClient,
@@ -250,6 +256,9 @@ Check if your local replica is running and on which port.
 
    ```typescript
    import { ClientManager } from "@ic-reactor/react"
+   import { QueryClient } from "@tanstack/react-query"
+
+   export const queryClient = new QueryClient()
 
    export const clientManager = new ClientManager({
      queryClient,
@@ -298,11 +307,15 @@ Internet Identity canister.
    the local Internet Identity canister is deployed and the page is served from
    localhost.
 
-   ```typescript
+   ```tsx
    import { useAuth } from "./clients"
 
-   // Auto-detects based on network
-   // Local: http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize
-   // Mainnet: https://id.ai/authorize
-   const { login } = useAuth()
+   function LoginButton() {
+     // Auto-detects based on network
+     // Local: http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize
+     // Mainnet: https://id.ai/authorize
+     const { login } = useAuth()
+
+     return <button onClick={() => login()}>Login</button>
+   }
    ```

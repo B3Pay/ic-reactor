@@ -88,7 +88,10 @@ icReactor({
 import { getMessageQuery, setMessageMutation } from "./declarations/backend"
 
 // In a component
-const { data } = getMessageQuery.useQuery()
+function Message() {
+  const { data } = getMessageQuery.useQuery()
+  return <p>{data}</p>
+}
 
 // Anywhere, outside React included
 await setMessageMutation.execute(["hello"])

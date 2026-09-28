@@ -54,12 +54,22 @@ Arguments are passed to the `mutate` function as an array (matching the canister
 import { Principal } from "@icp-sdk/core/principal"
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "transfer",
-})
+function SendButton() {
+  const { mutate } = useActorMutation({
+    functionName: "transfer",
+  })
 
-// Call with arguments as array, in raw Candid types
-mutate([Principal.fromText("aaaaa-aa"), BigInt(1000000)])
+  return (
+    <button
+      onClick={() => {
+        // Call with arguments as array, in raw Candid types
+        mutate([Principal.fromText("aaaaa-aa"), BigInt(1000000)])
+      }}
+    >
+      Send
+    </button>
+  )
+}
 ```
 
 <Aside type="note">
@@ -76,28 +86,30 @@ mutate([Principal.fromText("aaaaa-aa"), BigInt(1000000)])
 ```tsx
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "create_post",
-  onMutate: (variables) => {
-    // A mutation is about to happen!
-    console.log("Creating post with:", variables)
+function useCreatePost() {
+  return useActorMutation({
+    functionName: "create_post",
+    onMutate: (variables) => {
+      // A mutation is about to happen!
+      console.log("Creating post with:", variables)
 
-    // Optionally return a context containing data to use when rolling back
-    return { id: Date.now() }
-  },
-  onError: (error, variables, context) => {
-    // An error happened!
-    console.log("Rolling back with id:", context?.id)
-  },
-  onSuccess: (data, variables, context) => {
-    // Boom baby!
-    console.log("Post created:", data)
-  },
-  onSettled: (data, error, variables, context) => {
-    // Error or success... doesn't matter!
-    console.log("Mutation finished")
-  },
-})
+      // Optionally return a context containing data to use when rolling back
+      return { id: Date.now() }
+    },
+    onError: (error, variables, context) => {
+      // An error happened!
+      console.log("Rolling back with id:", context?.id)
+    },
+    onSuccess: (data, variables, context) => {
+      // Boom baby!
+      console.log("Post created:", data)
+    },
+    onSettled: (data, error, variables, context) => {
+      // Error or success... doesn't matter!
+      console.log("Mutation finished")
+    },
+  })
+}
 ```
 
 When returning a promise in any of the callback functions, it will first be awaited before the next callback is called:
@@ -105,15 +117,17 @@ When returning a promise in any of the callback functions, it will first be awai
 ```tsx
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "create_post",
-  onSuccess: async () => {
-    console.log("I'm first!")
-  },
-  onSettled: async () => {
-    console.log("I'm second!")
-  },
-})
+function useCreatePost() {
+  return useActorMutation({
+    functionName: "create_post",
+    onSuccess: async () => {
+      console.log("I'm first!")
+    },
+    onSettled: async () => {
+      console.log("I'm second!")
+    },
+  })
+}
 ```
 
 ## Per-Mutate Callbacks
@@ -123,20 +137,29 @@ You can also provide additional callbacks to the `mutate` function itself. These
 ```tsx
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "create_post",
-  onSuccess: () => {
-    // This fires first (from hook config)
-  },
-})
+function CreatePost() {
+  const { mutate } = useActorMutation({
+    functionName: "create_post",
+    onSuccess: () => {
+      // This fires first (from hook config)
+    },
+  })
 
-// In your component
-mutate([{ title: "New Post", content: "Hello world!" }], {
-  onSuccess: () => {
-    // This fires second (from mutate call)
-    navigate("/posts")
-  },
-})
+  return (
+    <button
+      onClick={() =>
+        mutate([{ title: "New Post", content: "Hello world!" }], {
+          onSuccess: () => {
+            // This fires second (from mutate call)
+            navigate("/posts")
+          },
+        })
+      }
+    >
+      Create Post
+    </button>
+  )
+}
 ```
 
 <Aside type="caution">
@@ -152,15 +175,17 @@ them in the `invalidateQueries` option:
 ```tsx
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "create_post",
-  invalidateQueries: [
-    // Every get_posts query, whatever its args, infinite lists included
-    { functionName: "get_posts" },
-    // Only the get_post query for this id
-    { functionName: "get_post", args: [postId] },
-  ],
-})
+function useCreatePost(postId: string) {
+  return useActorMutation({
+    functionName: "create_post",
+    invalidateQueries: [
+      // Every get_posts query, whatever its args, infinite lists included
+      { functionName: "get_posts" },
+      // Only the get_post query for this id
+      { functionName: "get_post", args: [postId] },
+    ],
+  })
+}
 ```
 
 Each entry is one of:
@@ -182,10 +207,12 @@ are:
 import { useActorMutation } from "../reactor/hooks"
 import { postsQuery, getPost } from "../queries"
 
-const { mutate } = useActorMutation({
-  functionName: "create_post",
-  invalidateQueries: [postsQuery, getPost],
-})
+function useCreatePost() {
+  return useActorMutation({
+    functionName: "create_post",
+    invalidateQueries: [postsQuery, getPost],
+  })
+}
 ```
 
 The invalidation runs after the canister call succeeds and before `onSuccess`.
@@ -206,13 +233,15 @@ it so the mutation waits for the refetch:
 import { backend } from "../reactor"
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "create_post",
-  onSuccess: async (post) => {
-    await backend.invalidateQueries({ functionName: "get_posts" })
-    navigate(`/posts/${post.id}`)
-  },
-})
+function useCreatePost() {
+  return useActorMutation({
+    functionName: "create_post",
+    onSuccess: async (post) => {
+      await backend.invalidateQueries({ functionName: "get_posts" })
+      navigate(`/posts/${post.id}`)
+    },
+  })
+}
 ```
 
 ## Form Handling
@@ -280,19 +309,27 @@ If you prefer async/await syntax, use `mutateAsync`:
 ```tsx
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutateAsync, isPending } = useActorMutation({
-  functionName: "transfer",
-})
+function TransferButton() {
+  const { mutateAsync, isPending } = useActorMutation({
+    functionName: "transfer",
+  })
 
-const handleTransfer = async () => {
-  try {
-    const result = await mutateAsync([recipient, amount])
-    console.log("Transfer successful:", result)
-    toast.success("Transfer complete!")
-  } catch (error) {
-    console.error("Transfer failed:", error)
-    toast.error("Transfer failed")
+  const handleTransfer = async () => {
+    try {
+      const result = await mutateAsync([recipient, amount])
+      console.log("Transfer successful:", result)
+      toast.success("Transfer complete!")
+    } catch (error) {
+      console.error("Transfer failed:", error)
+      toast.error("Transfer failed")
+    }
   }
+
+  return (
+    <button onClick={handleTransfer} disabled={isPending}>
+      Transfer
+    </button>
+  )
 }
 ```
 
@@ -412,27 +449,34 @@ rethrows a failure so the `await` still rejects. See
 IC Reactor provides structured error types for mutations:
 
 ```tsx
-import { CanisterError, CallError } from "@ic-reactor/react"
+import { CanisterError, CallError, formatTokenAmount } from "@ic-reactor/react"
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "transfer",
-  onError: (error) => {
-    if (error instanceof CanisterError) {
-      // Business logic error from canister (e.g., InsufficientFunds)
-      if ("InsufficientFunds" in error.err) {
-        toast.error(
-          `Not enough funds. Balance: ${error.err.InsufficientFunds.balance}`
-        )
-      } else if ("InvalidRecipient" in error.err) {
-        toast.error("Invalid recipient address")
+// The token's decimals: the balance below is in base units
+const TOKEN_DECIMALS = 8
+
+function useTransfer() {
+  return useActorMutation({
+    functionName: "transfer",
+    onError: (error) => {
+      if (error instanceof CanisterError) {
+        // Business logic error from canister (e.g., InsufficientFunds)
+        if ("InsufficientFunds" in error.err) {
+          const balance = formatTokenAmount(
+            error.err.InsufficientFunds.balance,
+            TOKEN_DECIMALS
+          )
+          toast.error(`Not enough funds. Balance: ${balance}`)
+        } else if ("InvalidRecipient" in error.err) {
+          toast.error("Invalid recipient address")
+        }
+      } else if (error instanceof CallError) {
+        // Network or agent error
+        toast.error("Network error. Please try again.")
       }
-    } else if (error instanceof CallError) {
-      // Network or agent error
-      toast.error("Network error. Please try again.")
-    }
-  },
-})
+    },
+  })
+}
 ```
 
 ## Retries
@@ -448,10 +492,12 @@ failure that proves the call never ran:
 import { reactorUpdateRetry } from "@ic-reactor/react"
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "transfer",
-  retry: reactorUpdateRetry,
-})
+function useTransfer() {
+  return useActorMutation({
+    functionName: "transfer",
+    retry: reactorUpdateRetry,
+  })
+}
 ```
 
 A `mutations.retry` in the QueryClient's `defaultOptions` applies to every
@@ -467,19 +513,46 @@ Like queries, mutations are fully type-safe:
 // Canister: create_post(input: PostInput) -> Result<Post, CreatePostError>
 import { useActorMutation } from "../reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "create_post", // ✅ Autocomplete available
-})
+function CreatePost() {
+  const { mutate } = useActorMutation({
+    functionName: "create_post", // ✅ Autocomplete available
+  })
 
-// ✅ TypeScript knows the argument type
-mutate([{ title: "Hello", content: "World" }])
+  return (
+    <button
+      onClick={() => {
+        // ✅ TypeScript knows the argument type
+        mutate([{ title: "Hello", content: "World" }])
+      }}
+    >
+      Create Post
+    </button>
+  )
+}
 ```
 
 Leave out a required field and the call no longer type-checks:
 
-```tsx nocheck
-// ❌ TypeScript error: missing required field
-mutate([{ title: "Hello" }])
+```tsx
+import { useActorMutation } from "../reactor/hooks"
+
+function CreatePost() {
+  const { mutate } = useActorMutation({
+    functionName: "create_post",
+  })
+
+  return (
+    <button
+      onClick={() => {
+        // ❌ TypeScript error: property 'content' is missing
+        // @ts-expect-error
+        mutate([{ title: "Hello" }])
+      }}
+    >
+      Create Post
+    </button>
+  )
+}
 ```
 
 ## Further Reading

@@ -1,6 +1,6 @@
-// The setup the home page's "show me some code" example builds, a `Reactor`
-// over the home page's canister with the hooks bound to it. The hooks are
-// globals of the home page (`globals.ts`).
+// `./reactor` of the home page's "Best of Both Worlds" example: the setup its
+// "show me some code" example builds, a `Reactor` over the home page's canister
+// with the hooks bound to it.
 import { ClientManager, Reactor, createActorHooks } from "@ic-reactor/react"
 import { QueryClient } from "@tanstack/react-query"
 import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"

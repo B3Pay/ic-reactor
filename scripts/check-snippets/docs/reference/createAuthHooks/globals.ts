@@ -1,7 +1,6 @@
 // Names the createAuthHooks pages' snippets use without importing them: what
 // the default app declares, plus the screens and components of the app the
 // pages build. Never a library export: a snippet that uses one must import it.
-/// <reference path="./modules.d.ts" />
 import type { ReactNode } from "react"
 
 export * from "../../../app/globals"

@@ -23,6 +23,8 @@ Traditional IC development treats canister calls as one-shot operations—you ca
 
 ```tsx
 import { Reactor, useReactorQuery } from "@ic-reactor/react"
+import { clientManager } from "./clients"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 // A Reactor isn't just a connection — it's a reactive data source
 const backend = new Reactor<_SERVICE>({
@@ -287,19 +289,21 @@ Query's own three retries in a browser): `reactorUpdateRetry` under
 Invalidate all cached queries for this canister:
 
 ```typescript
-// After a successful mutation, invalidate all queries for this canister and
-// wait for the ones in use to refetch
-await backend.callMethod({
-  functionName: "updateProfile",
-  args: [{ name: "Alice" }],
-})
-await backend.invalidateQueries()
+async function saveProfile() {
+  // After a successful mutation, invalidate all queries for this canister and
+  // wait for the ones in use to refetch
+  await backend.callMethod({
+    functionName: "updateProfile",
+    args: [{ name: "Alice" }],
+  })
+  await backend.invalidateQueries()
 
-// Invalidate a cached query that used a per-call canister override
-await backend.invalidateQueries(
-  { functionName: "getUser", args: ["user-123"] },
-  { canisterId: otherCanisterId }
-)
+  // Invalidate a cached query that used a per-call canister override
+  await backend.invalidateQueries(
+    { functionName: "getUser", args: ["user-123"] },
+    { canisterId: otherCanisterId }
+  )
+}
 ```
 
 This will mark all queries as stale and trigger a refetch for any active queries.
@@ -342,6 +346,7 @@ and it starts with this reactor's interface, name, polling options and, for a
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./clients"
 import { idlFactory, type _SERVICE as Ledger } from "./declarations/ledger"
 
 const ledger = new DisplayReactor<Ledger>({
@@ -352,7 +357,10 @@ const ledger = new DisplayReactor<Ledger>({
 })
 
 const ckbtc = ledger.forCanister("mxzaz-hqaaa-aaaar-qaada-cai")
-const symbol = await ckbtc.fetchQuery({ functionName: "icrc1_symbol" })
+
+async function getSymbol() {
+  return ckbtc.fetchQuery({ functionName: "icrc1_symbol" })
+}
 ```
 
 The same canister id always gives the same reactor, and every sibling shares
@@ -434,9 +442,8 @@ ledgerReactor.setCanisterId(Principal.fromText("ryjl3-tyaaa-aaaaa-aaaba-cai"))
   data **on their next render**, while the previous canister's entries stay
   cached under their own keys (until normal `gcTime` eviction) and are reused if
   you switch back. `setCanisterId` does not itself trigger a render, so pair it
-  with something that does — a route navigation (as in the loader example below)
-  or a state update. A hook that renders before then still reads the previous
-  canister's key.
+  with something that does — a route navigation or a state update. A hook that
+  renders before then still reads the previous canister's key.
 </Aside>
 
 ---
@@ -475,17 +482,21 @@ export const backend = new Reactor<_SERVICE>({
 ### Direct Method Calls
 
 ```typescript
-// Query method
-const user = await backend.callMethod({
-  functionName: "getUser",
-  args: ["user-123"],
-})
+async function loadAndPost() {
+  // Query method
+  const user = await backend.callMethod({
+    functionName: "getUser",
+    args: ["user-123"],
+  })
 
-// Update method
-const result = await backend.callMethod({
-  functionName: "createPost",
-  args: [{ title: "Hello", content: "World" }],
-})
+  // Update method
+  const result = await backend.callMethod({
+    functionName: "createPost",
+    args: [{ title: "Hello", content: "World" }],
+  })
+
+  return { user, result }
+}
 ```
 
 ### Prefetching in Loaders
@@ -569,33 +580,32 @@ export const ledger = new Reactor<LedgerService>({
 ### Dynamic Canister Switching
 
 For a multi-token wallet or a canister explorer, give each canister its own
-sibling with [`forCanister`](#forcanister) and build the hooks or query
-objects on it. A single reactor can instead follow one selection with
-`setCanisterId`, as this route loader does; every query object built on that
-reactor then moves with it:
+sibling with [`forCanister`](#forcanister). This route loader asks the ledger
+reactor for the sibling of the canister in the URL and prefetches through it,
+so two tokens on screen never cross:
 
 ```tsx
 import { createFileRoute } from "@tanstack/react-router"
 import { ledgerReactor } from "@/canisters/ledger/reactor"
-import { icrc1NameQuery, icrc1SymbolQuery } from "@/canisters/ledger/hooks"
 
 export const Route = createFileRoute("/wallet/$canisterId")({
   component: TokenWallet,
   loader: async ({ params: { canisterId } }) => {
-    // Switch reactor to target the canister from URL
-    ledgerReactor.setCanisterId(canisterId)
+    // The same sibling reactor each time for the same canister
+    const token = ledgerReactor.forCanister(canisterId)
 
-    // Prefetch token info
-    await Promise.all([icrc1NameQuery.fetch(), icrc1SymbolQuery.fetch()])
+    // Prefetch token info, cached under this canister's own keys
+    const [name, symbol] = await Promise.all([
+      token.fetchQuery({ functionName: "icrc1_name" }),
+      token.fetchQuery({ functionName: "icrc1_symbol" }),
+    ])
 
-    return {}
+    return { name, symbol }
   },
 })
 
 function TokenWallet() {
-  // Queries automatically use the canister set by setCanisterId
-  const { data: name } = icrc1NameQuery.useQuery()
-  const { data: symbol } = icrc1SymbolQuery.useQuery()
+  const { name, symbol } = Route.useLoaderData()
 
   return (
     <div>
@@ -698,7 +708,12 @@ import {
   type ReactorReturnOk,
 } from "@ic-reactor/react"
 import type { FetchQueryOptions } from "@tanstack/react-query"
-import type { _SERVICE as BackendService } from "./declarations/backend"
+import { clientManager } from "./clients"
+import {
+  canisterId,
+  idlFactory,
+  type _SERVICE as BackendService,
+} from "./declarations/backend"
 
 // The options `fetchQuery` takes after its params
 type FetchOptions<M extends FunctionName<BackendService>> = Omit<
@@ -754,19 +769,21 @@ IC Reactor automatically unwraps Candid `Result` types (`variant { Ok: T; Err: E
 import { CanisterError } from "@ic-reactor/react"
 
 // Canister returns: Result<User, CreateUserError>
-try {
-  const user = await backend.callMethod({
-    functionName: "createUser",
-    args: [{ name: "Alice", email: "alice@example.com" }],
-  })
-  // user is User directly (not { Ok: User })
-  console.log("Created:", user.name)
-} catch (error) {
-  if (error instanceof CanisterError) {
-    // error.err is the CreateUserError variant
-    console.log("Error code:", error.code)
-    if ("EmailAlreadyExists" in error.err) {
-      console.log("Email already taken")
+async function createUser() {
+  try {
+    const user = await backend.callMethod({
+      functionName: "createUser",
+      args: [{ name: "Alice", email: "alice@example.com" }],
+    })
+    // user is User directly (not { Ok: User })
+    console.log("Created:", user.name)
+  } catch (error) {
+    if (error instanceof CanisterError) {
+      // error.err is the CreateUserError variant
+      console.log("Error code:", error.code)
+      if ("EmailAlreadyExists" in error.err) {
+        console.log("Email already taken")
+      }
     }
   }
 }
@@ -799,6 +816,8 @@ Principal/bigint), making them ideal for form validation.
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./clients"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 const reactor = new DisplayReactor<_SERVICE>({
   clientManager,

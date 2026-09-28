@@ -1,16 +1,17 @@
 // Names the factory pages' snippets use without importing them: what the
 // default app declares, plus the components and values of the app the pages
 // build. Never a library export: a snippet that uses one must import it.
-/// <reference path="./modules.d.ts" />
 import type { ReactNode } from "react"
 import {
   createInfiniteQuery,
-  createSuspenseInfiniteQuery,
   type FunctionName,
   type ReactorDataOf,
 } from "@ic-reactor/react"
 import { backend } from "./reactor"
 import type { _SERVICE } from "./declarations/backend"
+// The generated route tree of the pages' TanStack Router examples, which types
+// their routes
+import "../../routeTree.gen"
 
 export * from "../../../app/globals"
 
@@ -33,28 +34,17 @@ export declare const newPost: Data<"get_post">
 /** An analytics client. */
 export declare const analytics: { track(event: string): void }
 
-/** The infinite queries the app defines once and its components share. */
+/**
+ * The infinite query of the `createInfiniteQuery` page's "Basic Usage", which
+ * the snippets after it use as `postsQuery`.
+ */
 export const postsQuery = createInfiniteQuery(backend, {
   functionName: "list_posts",
   initialPageParam: 0,
   getArgs: (offset) => [{ offset, limit: 20 }] as const,
-  getNextPageParam: (lastPage) => lastPage.nextOffset,
+  getNextPageParam: (lastPage, allPages) =>
+    lastPage.posts.length < 20 ? undefined : allPages.length * 20,
 })
-export const productsQuery = createInfiniteQuery(backend, {
-  functionName: "list_products",
-  initialPageParam: 0,
-  getArgs: (offset) => [{ offset, limit: 24 }] as const,
-  getNextPageParam: (lastPage) => lastPage.nextOffset,
-})
-export const galleryQuery = createSuspenseInfiniteQuery(backend, {
-  functionName: "list_images",
-  initialPageParam: 0,
-  getArgs: (offset) => [{ offset, limit: 24 }] as const,
-  getNextPageParam: (lastPage) => lastPage.nextOffset,
-})
-
-/** The route tree TanStack Router's plugin generates. */
-export declare const routeTree: unknown
 
 // ── Components of the app ────────────────────────────────────────────────────
 

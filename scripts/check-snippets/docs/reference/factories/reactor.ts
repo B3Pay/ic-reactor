@@ -1,8 +1,9 @@
 // `./reactor` of the factory pages: `backend`, a DisplayReactor of the pages'
 // social canister (`declarations/backend.ts`), and the other reactors their
-// examples name: `rawBackend`, a raw `Reactor` of the same canister, `ledger`, a
-// raw `Reactor` of an ICRC-1 ledger, whose account owners are `Principal`s, and
-// `todoReactor`, a DisplayReactor of a todo canister.
+// examples import from it: `ledger`, a raw `Reactor` of an ICRC-1 ledger, whose
+// account owners are `Principal`s (the `createQuery` page builds it in a
+// snippet), and `todoReactor`, a DisplayReactor of a todo canister (the
+// infinite-query pages build it in a snippet).
 import { defineDisplayReactor, defineReactor } from "@ic-reactor/react"
 import {
   canisterId as ledgerCanisterId,
@@ -39,12 +40,6 @@ export const {
   useUserPrincipal,
   useIdentityAttributes,
 } = backendApp
-
-export const { reactor: rawBackend } = defineReactor<_SERVICE>({
-  name: "backend",
-  idlFactory,
-  canisterId,
-})
 
 export const { reactor: ledger } = defineReactor<LedgerService>({
   name: "ledger",

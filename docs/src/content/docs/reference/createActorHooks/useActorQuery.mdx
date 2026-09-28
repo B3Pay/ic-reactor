@@ -99,10 +99,16 @@ Returns a TanStack Query result object:
 ```tsx
 import { useActorQuery } from "./reactor"
 
-const { data, isPending, error } = useActorQuery({
-  functionName: "greet",
-  args: ["World"],
-})
+function Greeting() {
+  const { data, isPending, error } = useActorQuery({
+    functionName: "greet",
+    args: ["World"],
+  })
+
+  if (isPending) return <span>Loading…</span>
+  if (error) return <span>Error: {error.message}</span>
+  return <span>{data}</span>
+}
 ```
 
 ### Waiting for Args
@@ -141,13 +147,17 @@ for a reason of your own:
 ```tsx
 import { useActorQuery, useAuth } from "./reactor"
 
-const { isAuthenticated } = useAuth()
+function CurrentUser() {
+  const { isAuthenticated } = useAuth()
 
-const { data } = useActorQuery({
-  functionName: "get_user",
-  args: [userId],
-  enabled: isAuthenticated, // Only fetch once signed in
-})
+  const { data } = useActorQuery({
+    functionName: "get_user",
+    args: [userId],
+    enabled: isAuthenticated, // Only fetch once signed in
+  })
+
+  return <div>{data?.name}</div>
+}
 ```
 
 ### With Select
@@ -155,12 +165,16 @@ const { data } = useActorQuery({
 ```tsx
 import { useActorQuery } from "./reactor"
 
-// Extract only the name from the user object
-const { data: userName } = useActorQuery({
-  functionName: "get_user",
-  args: [userId],
-  select: (user) => user?.name,
-})
+function UserName() {
+  // Extract only the name from the user object
+  const { data: userName } = useActorQuery({
+    functionName: "get_user",
+    args: [userId],
+    select: (user) => user?.name,
+  })
+
+  return <span>{userName}</span>
+}
 ```
 
 ### Stale Time Configuration
@@ -168,19 +182,23 @@ const { data: userName } = useActorQuery({
 ```tsx
 import { useActorQuery } from "./reactor"
 
-// Data stays fresh for 5 minutes
-const { data } = useActorQuery({
-  functionName: "get_config",
-  args: [],
-  staleTime: 5 * 60 * 1000,
-})
+function Settings() {
+  // Data stays fresh for 5 minutes
+  const { data } = useActorQuery({
+    functionName: "get_config",
+    args: [],
+    staleTime: 5 * 60 * 1000,
+  })
 
-// Data is never stale
-const { data: metadata } = useActorQuery({
-  functionName: "get_metadata",
-  args: [],
-  staleTime: Infinity,
-})
+  // Data is never stale
+  const { data: metadata } = useActorQuery({
+    functionName: "get_metadata",
+    args: [],
+    staleTime: Infinity,
+  })
+
+  return <pre>{JSON.stringify({ data, metadata })}</pre>
+}
 ```
 
 ### Polling
@@ -188,12 +206,16 @@ const { data: metadata } = useActorQuery({
 ```tsx
 import { useActorQuery } from "./reactor"
 
-// Refetch every 10 seconds
-const { data } = useActorQuery({
-  functionName: "get_price",
-  args: [],
-  refetchInterval: 10_000,
-})
+function Price() {
+  // Refetch every 10 seconds
+  const { data } = useActorQuery({
+    functionName: "get_price",
+    args: [],
+    refetchInterval: 10_000,
+  })
+
+  return <span>{String(data)}</span>
+}
 ```
 
 ### Manual Refetch
@@ -257,12 +279,16 @@ function Balance() {
 ```tsx
 import { useActorQuery } from "./reactor"
 
-// TypeScript infers types from your canister interface
-const { data } = useActorQuery({
-  functionName: "get_user", // ✅ Autocompletes valid methods
-  args: ["user-123"], // ✅ Type-checked
-})
-// data is typed as User | undefined
+function User() {
+  // TypeScript infers types from your canister interface
+  const { data } = useActorQuery({
+    functionName: "get_user", // ✅ Autocompletes valid methods
+    args: ["user-123"], // ✅ Type-checked
+  })
+  // data is typed as User | undefined
+
+  return <span>{data?.name}</span>
+}
 ```
 
 ### With Custom Query Key
@@ -270,13 +296,17 @@ const { data } = useActorQuery({
 ```tsx
 import { useActorQuery } from "./reactor"
 
-// Add custom segments to the query key
-const { data } = useActorQuery({
-  functionName: "get_data",
-  args: [],
-  queryKey: ["version", "2"],
-})
-// Full key: [canisterId, "get_data", "[]", "version", "2"]
+function Data() {
+  // Add custom segments to the query key
+  const { data } = useActorQuery({
+    functionName: "get_data",
+    args: [],
+    queryKey: ["version", "2"],
+  })
+  // Full key: [canisterId, "get_data", "[]", "version", "2"]
+
+  return <pre>{JSON.stringify(data)}</pre>
+}
 ```
 
 The args segment is the JSON-serialized `args` array, so an empty `args: []`

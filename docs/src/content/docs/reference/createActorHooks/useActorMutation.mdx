@@ -111,12 +111,20 @@ Returns a TanStack Query mutation result object:
 ```tsx
 import { useActorMutation } from "./reactor"
 
-const { mutate, isPending, isSuccess } = useActorMutation({
-  functionName: "create_post",
-})
+function CreatePostButton() {
+  const { mutate, isPending, isSuccess } = useActorMutation({
+    functionName: "create_post",
+  })
 
-const handleCreate = () => {
-  mutate([{ title: "Hello", content: "World" }])
+  const handleCreate = () => {
+    mutate([{ title: "Hello", content: "World" }])
+  }
+
+  return (
+    <button onClick={handleCreate} disabled={isPending}>
+      {isSuccess ? "Created" : "Create post"}
+    </button>
+  )
 }
 ```
 
@@ -124,25 +132,28 @@ const handleCreate = () => {
 
 ```tsx
 import { useActorMutation } from "./reactor"
+// `toast` is your notification helper, such as sonner's
 
-const { mutate } = useActorMutation({
-  functionName: "icrc1_transfer",
-  onMutate: (args) => {
-    console.log("Starting transfer:", args)
-    return { startTime: Date.now() }
-  },
-  onSuccess: (data, args, context) => {
-    console.log("Transfer completed in", Date.now() - context.startTime, "ms")
-    toast.success("Transfer successful!")
-  },
-  onError: (error, args, context) => {
-    console.error("Transfer failed:", error)
-    toast.error("Transfer failed: " + error.message)
-  },
-  onSettled: () => {
-    console.log("Transfer finished (success or error)")
-  },
-})
+function useTransfer() {
+  return useActorMutation({
+    functionName: "icrc1_transfer",
+    onMutate: (args) => {
+      console.log("Starting transfer:", args)
+      return { startTime: Date.now() }
+    },
+    onSuccess: (data, args, context) => {
+      console.log("Transfer completed in", Date.now() - context.startTime, "ms")
+      toast.success("Transfer successful!")
+    },
+    onError: (error, args, context) => {
+      console.error("Transfer failed:", error)
+      toast.error("Transfer failed: " + error.message)
+    },
+    onSettled: () => {
+      console.log("Transfer finished (success or error)")
+    },
+  })
+}
 ```
 
 ### Invalidate Queries After Mutation
@@ -151,14 +162,16 @@ const { mutate } = useActorMutation({
 import { useActorMutation } from "./reactor"
 import { getPost } from "../queries" // createQueryFactory(backend, ...)
 
-const { mutate } = useActorMutation({
-  functionName: "create_post",
-  invalidateQueries: [
-    { functionName: "get_posts" }, // every get_posts query, whatever its args
-    { functionName: "get_posts_count" },
-    getPost, // every query this factory returned
-  ],
-})
+function useCreatePost() {
+  return useActorMutation({
+    functionName: "create_post",
+    invalidateQueries: [
+      { functionName: "get_posts" }, // every get_posts query, whatever its args
+      { functionName: "get_posts_count" },
+      getPost, // every query this factory returned
+    ],
+  })
+}
 ```
 
 Each entry is a `{ functionName, args? }` method of the reactor, type-checked
@@ -172,18 +185,30 @@ skipped.
 ```tsx
 import { useActorMutation } from "./reactor"
 
-const { mutateAsync, isPending } = useActorMutation({
-  functionName: "icrc1_transfer",
-})
+// `toast` is your notification helper, such as sonner's
 
-const handleTransfer = async () => {
-  try {
-    const blockIndex = await mutateAsync([{ to: { owner: recipient }, amount }])
-    toast.success(`Transferred in block ${blockIndex}!`)
-    navigate("/transactions")
-  } catch (error) {
-    toast.error("Transfer failed")
+function TransferButton() {
+  const { mutateAsync, isPending } = useActorMutation({
+    functionName: "icrc1_transfer",
+  })
+
+  const handleTransfer = async () => {
+    try {
+      const blockIndex = await mutateAsync([
+        { to: { owner: recipient }, amount },
+      ])
+      toast.success(`Transferred in block ${blockIndex}!`)
+      navigate("/transactions")
+    } catch (error) {
+      toast.error("Transfer failed")
+    }
   }
+
+  return (
+    <button onClick={handleTransfer} disabled={isPending}>
+      Send
+    </button>
+  )
 }
 ```
 
@@ -283,25 +308,28 @@ or agent errors. This is cleaner than checking `isCanisterError(error)` inside
 
 ```tsx
 import { useActorMutation } from "./reactor"
+// `toast` is your notification helper, such as sonner's
 
-const { mutate } = useActorMutation({
-  functionName: "icrc1_transfer",
-  // Only fires for canister Result { Err } variants
-  onCanisterError: (error) => {
-    // A DisplayReactor gives a variant a `_type`; switch on it
-    if (error.err._type === "InsufficientFunds") {
-      toast.error("Not enough balance")
-    } else if (error.err._type === "BadFee") {
-      toast.error("Wrong transfer fee")
-    } else {
-      toast.error("Transaction failed: " + error.code)
-    }
-  },
-  // Fires for ALL errors: canister Err, network failures, agent errors
-  onError: (error) => {
-    console.error("Unexpected error", error)
-  },
-})
+function useTransfer() {
+  return useActorMutation({
+    functionName: "icrc1_transfer",
+    // Only fires for canister Result { Err } variants
+    onCanisterError: (error) => {
+      // A DisplayReactor gives a variant a `_type`; switch on it
+      if (error.err._type === "InsufficientFunds") {
+        toast.error("Not enough balance")
+      } else if (error.err._type === "BadFee") {
+        toast.error("Wrong transfer fee")
+      } else {
+        toast.error("Transaction failed: " + error.code)
+      }
+    },
+    // Fires for ALL errors: canister Err, network failures, agent errors
+    onError: (error) => {
+      console.error("Unexpected error", error)
+    },
+  })
+}
 ```
 
 `onCanisterError` also receives the mutation variables as its second argument:
@@ -309,12 +337,16 @@ const { mutate } = useActorMutation({
 ```tsx
 import { useActorMutation } from "./reactor"
 
-const { mutate } = useActorMutation({
-  functionName: "icrc1_transfer",
-  onCanisterError: (error, [{ to, amount }]) => {
-    console.error(`Transfer of ${amount} to ${to.owner} failed: ${error.code}`)
-  },
-})
+function useTransfer() {
+  return useActorMutation({
+    functionName: "icrc1_transfer",
+    onCanisterError: (error, [{ to, amount }]) => {
+      console.error(
+        `Transfer of ${amount} to ${to.owner} failed: ${error.code}`
+      )
+    },
+  })
+}
 ```
 
 ### Per-Mutation Callbacks
@@ -322,21 +354,26 @@ const { mutate } = useActorMutation({
 ```tsx
 import { useActorMutation } from "./reactor"
 
-const { mutate } = useActorMutation({
-  functionName: "create_post",
-  onSuccess: () => {
-    // This runs first (from hook config)
-    console.log("Post created!")
-  },
-})
+function PublishButton() {
+  const { mutate } = useActorMutation({
+    functionName: "create_post",
+    onSuccess: () => {
+      // This runs first (from hook config)
+      console.log("Post created!")
+    },
+  })
 
-// Later, in an event handler:
-mutate([postData], {
-  onSuccess: (post) => {
-    // This runs second (from mutate call)
-    navigate(`/posts/${post.id}`)
-  },
-})
+  // In an event handler:
+  const handlePublish = () =>
+    mutate([postData], {
+      onSuccess: (post) => {
+        // This runs second (from mutate call)
+        navigate(`/posts/${post.id}`)
+      },
+    })
+
+  return <button onClick={handlePublish}>Publish</button>
+}
 ```
 
 ### With Loading State

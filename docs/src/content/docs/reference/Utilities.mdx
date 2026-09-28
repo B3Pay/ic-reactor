@@ -214,33 +214,62 @@ running app.
 ### On the server
 
 Both are plain functions, so a React Server Component can format an amount it
-fetched itself. `examples/nextjs-app-router/src/app/LedgerSnapshot.tsx`:
+fetched itself. This is `examples/nextjs-app-router/src/app/LedgerSnapshot.tsx`
+without its Tailwind classes:
 
 ```tsx
 // A React Server Component
-import { ClientManager, Reactor, formatTokenAmount } from "@ic-reactor/react"
+import { connection } from "next/server"
 import { QueryClient } from "@tanstack/react-query"
+import { ClientManager, Reactor, formatTokenAmount } from "@ic-reactor/react"
 import { canisterId, idlFactory, type _SERVICE } from "./declarations/ledger"
 
 export default async function LedgerSnapshot() {
-  // A Reactor built inside the request
+  // Render per request rather than at build time, so `next build` never calls
+  // mainnet.
+  await connection()
+
+  // Everything is built inside the request: a module-scope reactor on a server
+  // would share one cache across every visitor.
+  const clientManager = new ClientManager({
+    queryClient: new QueryClient(),
+    agentOptions: { host: "https://ic0.app" },
+  })
   const ledger = new Reactor<_SERVICE>({
     name: "ledger",
-    clientManager: new ClientManager({ queryClient: new QueryClient() }),
+    clientManager,
     idlFactory,
     canisterId,
   })
 
-  const [decimals, totalSupply] = await Promise.all([
-    ledger.fetchQuery({ functionName: "icrc1_decimals" }),
-    ledger.fetchQuery({ functionName: "icrc1_total_supply" }),
-  ])
-  const supply = formatTokenAmount(totalSupply, decimals, {
-    maxFractionDigits: 0,
-    locale: "en-US",
-  }) // whole tokens, grouped, such as "513,084,297"
+  try {
+    const [symbol, decimals, totalSupply] = await Promise.all([
+      ledger.fetchQuery({ functionName: "icrc1_symbol" }),
+      ledger.fetchQuery({ functionName: "icrc1_decimals" }),
+      ledger.fetchQuery({ functionName: "icrc1_total_supply" }),
+    ])
 
-  return <p>Total supply: {supply}</p>
+    return (
+      <p>
+        Rendered on the server:{" "}
+        {/* Whole tokens only: the fraction does not matter at total-supply
+            scale. formatTokenAmount is React-free, so the react-server entry
+            exports it too. */}
+        {formatTokenAmount(totalSupply, decimals, {
+          maxFractionDigits: 0,
+          locale: "en-US",
+        })}{" "}
+        {symbol} in circulation.
+      </p>
+    )
+  } catch (error) {
+    return (
+      <p>
+        The server could not read the ledger:{" "}
+        {error instanceof Error ? error.message : String(error)}
+      </p>
+    )
+  }
 }
 ```
 

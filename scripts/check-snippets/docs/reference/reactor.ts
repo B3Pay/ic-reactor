@@ -1,8 +1,12 @@
 // `./reactor` of the reference pages: `backend`, a DisplayReactor of the
 // pages' canister (`declarations/backend.ts`), with the hooks bound to it. The
-// pages of `Reactor` show a raw `Reactor` in their setup; the two answer every
-// call the pages make the same way, so one `backend` serves them all. It also
-// holds the `src/reactor.tsx` of the `createReactorProvider` page.
+// pages of `Reactor` build a raw `Reactor` in their setup, and this `backend`
+// is not one: a nat is text here, an opt is `T | undefined`, a variant has a
+// `_type`. The call shapes those pages make (a function name and its
+// arguments) hold for both, and none reads a value off `backend`. A snippet of
+// theirs that does must build its own raw `Reactor` in the snippet, not lean
+// on this one. It also holds the `src/reactor.tsx` of the
+// `createReactorProvider` page.
 import {
   createReactorProvider,
   defineDisplayReactor,

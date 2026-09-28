@@ -1,7 +1,6 @@
 // Names the createActorHooks pages' snippets use without importing them: what
 // the default app declares, plus the components and values of the app the pages
 // build. Never a library export: a snippet that uses one must import it.
-/// <reference path="./modules.d.ts" />
 import type { ReactNode } from "react"
 import type { FunctionName, ReactorDataOf } from "@ic-reactor/react"
 import type { backend } from "./reactor"

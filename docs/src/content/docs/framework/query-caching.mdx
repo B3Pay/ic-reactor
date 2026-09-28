@@ -26,17 +26,19 @@ Cache keys are automatically generated from your query parameters:
 ```typescript
 import { useActorQuery } from "./reactor/hooks"
 
-// Query key: ['rrkah-fqaaa...', 'get_user', '["user-123"]']
-const { data: user123 } = useActorQuery({
-  functionName: "get_user",
-  args: ["user-123"],
-})
+function Users() {
+  // Query key: ['rrkah-fqaaa...', 'get_user', '["user-123"]']
+  const { data: user123 } = useActorQuery({
+    functionName: "get_user",
+    args: ["user-123"],
+  })
 
-// Query key: ['rrkah-fqaaa...', 'get_user', '["user-456"]']
-const { data: user456 } = useActorQuery({
-  functionName: "get_user",
-  args: ["user-456"],
-})
+  // Query key: ['rrkah-fqaaa...', 'get_user', '["user-456"]']
+  const { data: user456 } = useActorQuery({
+    functionName: "get_user",
+    args: ["user-456"],
+  })
+}
 ```
 
 Each unique combination of canister ID, function name, and arguments creates a separate cache entry. The whole `args` array is serialized into a **single** string segment, `argsJson` — arguments are never spread into separate elements. It is JSON with BigInt values written as decimal strings and the keys of every plain object sorted, so `{ b, a }` and `{ a, b }` share an entry, and a bare `JSON.stringify(args)` does not match it once a record's fields are out of alphabetical order. A blob is written as a tag followed by its lowercase hex, so a `Uint8Array`, a `number[]` and a `DisplayReactor`'s hex text holding the same bytes share an entry too. A `DisplayReactor` writes each `opt` and variant in one form, whichever it was given in, so an `opt` given bare or as `[value]`, none given as `null`, `undefined` or `[]`, and a variant given with or without `_type` share an entry. A `vec record { text; T }` given to it as an object or a `Map` is written as its entries in order, since the order is part of what it sends. A record or variant given to it as a class instance is written as the plain object its codec sends, a field its class supplies through a getter included. Fields a record does not declare are left out and every value of `reserved` is written as `null`, since neither is sent, and a `DisplayReactor` writes a float or an integer of 32 bits or fewer given as text as its number, and a `Principal` as its text. An argument the reactor refuses, such as `undefined` where Candid `null` is required or a bigint where a `DisplayReactor` takes text, is written behind a tag of its own, so the call fails instead of being answered from the cache entry of an argument it takes.
@@ -50,12 +52,14 @@ You can add custom keys for more granular cache control:
 ```typescript
 import { useActorQuery } from "./reactor/hooks"
 
-const { data } = useActorQuery({
-  functionName: "get_data",
-  args: [],
-  queryKey: ["version", "2"], // Spread onto the end of the auto-generated key
-})
-// Full key: ['rrkah-fqaaa...', 'get_data', '[]', 'version', '2']
+function VersionedData() {
+  const { data } = useActorQuery({
+    functionName: "get_data",
+    args: [],
+    queryKey: ["version", "2"], // Spread onto the end of the auto-generated key
+  })
+  // Full key: ['rrkah-fqaaa...', 'get_data', '[]', 'version', '2']
+}
 ```
 
 <Aside type="note">
@@ -123,26 +127,28 @@ found by another process's agents.
 ```typescript
 import { useActorQuery } from "./reactor/hooks"
 
-// Data is fresh for 5 minutes
-const { data: config } = useActorQuery({
-  functionName: "get_config",
-  args: [],
-  staleTime: 1000 * 60 * 5, // 5 minutes
-})
+function AppInfo() {
+  // Data is fresh for 5 minutes
+  const { data: config } = useActorQuery({
+    functionName: "get_config",
+    args: [],
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
 
-// Data is never stale (static data that never changes)
-const { data: metadata } = useActorQuery({
-  functionName: "get_metadata",
-  args: [],
-  staleTime: Infinity,
-})
+  // Data is never stale (static data that never changes)
+  const { data: metadata } = useActorQuery({
+    functionName: "get_metadata",
+    args: [],
+    staleTime: Infinity,
+  })
 
-// Data is immediately stale (default behavior)
-const { data: price } = useActorQuery({
-  functionName: "get_price",
-  args: [],
-  staleTime: 0, // Refetch on every mount
-})
+  // Data is immediately stale (default behavior)
+  const { data: price } = useActorQuery({
+    functionName: "get_price",
+    args: [],
+    staleTime: 0, // Refetch on every mount
+  })
+}
 ```
 
 <Aside type="tip">
@@ -157,19 +163,21 @@ const { data: price } = useActorQuery({
 ```typescript
 import { useActorQuery } from "./reactor/hooks"
 
-// Keep unused data for 10 minutes (default is 5 minutes)
-const { data: user } = useActorQuery({
-  functionName: "get_user",
-  args: [userId],
-  gcTime: 1000 * 60 * 10,
-})
+function Cached({ userId }: { userId: string }) {
+  // Keep unused data for 10 minutes (default is 5 minutes)
+  const { data: user } = useActorQuery({
+    functionName: "get_user",
+    args: [userId],
+    gcTime: 1000 * 60 * 10,
+  })
 
-// Keep data forever
-const { data: config } = useActorQuery({
-  functionName: "get_config",
-  args: [],
-  gcTime: Infinity,
-})
+  // Keep data forever
+  const { data: config } = useActorQuery({
+    functionName: "get_config",
+    args: [],
+    gcTime: Infinity,
+  })
+}
 ```
 
 The difference between `staleTime` and `gcTime`:
@@ -186,20 +194,22 @@ Automatically refetch data at a set interval:
 ```typescript
 import { useActorQuery } from "./reactor/hooks"
 
-// Refetch every 10 seconds
-const { data: price } = useActorQuery({
-  functionName: "get_price",
-  args: [],
-  refetchInterval: 1000 * 10,
-})
+function Prices() {
+  // Refetch every 10 seconds
+  const { data: price } = useActorQuery({
+    functionName: "get_price",
+    args: [],
+    refetchInterval: 1000 * 10,
+  })
 
-// Only refetch when window is focused
-const { data: focusedPrice } = useActorQuery({
-  functionName: "get_price",
-  args: [],
-  refetchInterval: 1000 * 10,
-  refetchIntervalInBackground: false,
-})
+  // Only refetch when window is focused
+  const { data: focusedPrice } = useActorQuery({
+    functionName: "get_price",
+    args: [],
+    refetchInterval: 1000 * 10,
+    refetchIntervalInBackground: false,
+  })
+}
 ```
 
 ### Refetch Triggers
@@ -207,16 +217,18 @@ const { data: focusedPrice } = useActorQuery({
 ```typescript
 import { useActorQuery } from "./reactor/hooks"
 
-const { data } = useActorQuery({
-  functionName: "get_notifications",
-  args: [],
-  // Refetch when window regains focus (default: true)
-  refetchOnWindowFocus: true,
-  // Refetch when component mounts (default: true)
-  refetchOnMount: true,
-  // Refetch when reconnecting to network (default: true)
-  refetchOnReconnect: true,
-})
+function Notifications() {
+  const { data } = useActorQuery({
+    functionName: "get_notifications",
+    args: [],
+    // Refetch when window regains focus (default: true)
+    refetchOnWindowFocus: true,
+    // Refetch when component mounts (default: true)
+    refetchOnMount: true,
+    // Refetch when reconnecting to network (default: true)
+    refetchOnReconnect: true,
+  })
+}
 ```
 
 ## Manual Invalidation
@@ -261,8 +273,10 @@ no `QueryClientProvider`, which is optional.
 ```typescript
 import { backend } from "./reactor"
 
-// Invalidate ALL queries for this canister
-await backend.invalidateQueries()
+async function refreshEverything() {
+  // Invalidate ALL queries for this canister
+  await backend.invalidateQueries()
+}
 ```
 
 `invalidateQueries` returns TanStack Query's `Promise<void>`, which resolves
@@ -276,14 +290,16 @@ prefix a call you do not wait for with `void` if you lint with
 ```typescript
 import { backend } from "./reactor"
 
-// Invalidate all get_user queries (any args)
-await backend.invalidateQueries({ functionName: "get_user" })
+async function refreshUsers() {
+  // Invalidate all get_user queries (any args)
+  await backend.invalidateQueries({ functionName: "get_user" })
 
-// Invalidate get_user queries for a specific overridden target canister
-await backend.invalidateQueries(
-  { functionName: "get_user" },
-  { canisterId: otherCanisterId }
-)
+  // Invalidate get_user queries for a specific overridden target canister
+  await backend.invalidateQueries(
+    { functionName: "get_user" },
+    { canisterId: otherCanisterId }
+  )
+}
 ```
 
 ### Invalidate Specific Query
@@ -291,16 +307,18 @@ await backend.invalidateQueries(
 ```typescript
 import { backend } from "./reactor"
 
-// Invalidate get_user query for specific user
-await backend.invalidateQueries(
-  {
-    functionName: "get_user",
-    args: ["user-123"],
-  },
-  {
-    canisterId: otherCanisterId,
-  }
-)
+async function refreshUser() {
+  // Invalidate get_user query for specific user
+  await backend.invalidateQueries(
+    {
+      functionName: "get_user",
+      args: ["user-123"],
+    },
+    {
+      canisterId: otherCanisterId,
+    }
+  )
+}
 ```
 
 ### Invalidate by Custom Query Key
@@ -308,11 +326,13 @@ await backend.invalidateQueries(
 ```typescript
 import { backend } from "./reactor"
 
-// Invalidate query with custom key
-await backend.invalidateQueries({
-  functionName: "get_data",
-  queryKey: ["version", "2"],
-})
+async function refreshVersionedData() {
+  // Invalidate query with custom key
+  await backend.invalidateQueries({
+    functionName: "get_data",
+    queryKey: ["version", "2"],
+  })
+}
 ```
 
 ## Refetch After Mutation
@@ -324,13 +344,15 @@ The simplest way to refetch related data after a mutation:
 ```typescript
 import { useActorMutation } from "./reactor/hooks"
 
-const { mutate } = useActorMutation({
-  functionName: "create_post",
-  invalidateQueries: [
-    { functionName: "get_posts" }, // every get_posts query, whatever its args
-    { functionName: "get_post_count" },
-  ],
-})
+function useCreatePost() {
+  return useActorMutation({
+    functionName: "create_post",
+    invalidateQueries: [
+      { functionName: "get_posts" }, // every get_posts query, whatever its args
+      { functionName: "get_post_count" },
+    ],
+  })
+}
 ```
 
 An entry can also be a query object or a query factory (`[postsQuery]`,
@@ -349,13 +371,15 @@ import { useActorMutation } from "./reactor/hooks"
 
 const postsQuery = createQuery(backend, { functionName: "get_posts" })
 
-const { mutate } = useActorMutation({
-  functionName: "create_post",
-  onSuccess: (newPost) => {
-    // `old` is undefined when the list is not cached yet
-    postsQuery.setData((old) => (old ? [...old, newPost] : old))
-  },
-})
+function useCreatePost() {
+  return useActorMutation({
+    functionName: "create_post",
+    onSuccess: (newPost) => {
+      // `old` is undefined when the list is not cached yet
+      postsQuery.setData((old) => (old ? [...old, newPost] : old))
+    },
+  })
+}
 ```
 
 ## Optimistic Updates
@@ -468,34 +492,46 @@ Prefetch data before it's needed:
 
 ```tsx
 import { Link } from "react-router-dom"
+import { createQuery, createQueryFactory } from "@ic-reactor/react"
 import { backend } from "./reactor"
+
+const postsQuery = createQuery(backend, { functionName: "get_posts" })
+const getPost = createQueryFactory(backend, { functionName: "get_post" })
 
 // In a route loader
 async function postsLoader() {
-  await backend.queryClient.prefetchQuery(
-    backend.getQueryOptions({
-      functionName: "get_posts",
-      args: [],
-    })
-  )
+  await postsQuery.prefetch()
   return null
 }
 
 // Or on hover
 function PostLink({ postId }: { postId: string }) {
   const handleMouseEnter = () => {
-    backend.queryClient.prefetchQuery(
-      backend.getQueryOptions({
-        functionName: "get_post",
-        args: [postId],
-      })
-    )
+    void getPost([postId]).prefetch()
   }
 
   return (
     <Link to={`/posts/${postId}`} onMouseEnter={handleMouseEnter}>
       View Post
     </Link>
+  )
+}
+```
+
+`prefetch()` never rejects, and it fetches again for the new principal when a
+sign-in or sign-out cancels it mid-flight, as `fetch()` does. A prefetch you
+write against the reactor's `QueryClient` yourself gets no such second chance:
+wrap it in `clientManager.fetchAcrossIdentitySwitch`, or the entry can end up
+holding the previous principal's data.
+
+```ts
+import { backend } from "./reactor"
+
+async function prefetchPosts() {
+  await backend.clientManager.fetchAcrossIdentitySwitch(() =>
+    backend.queryClient.prefetchQuery(
+      backend.getQueryOptions({ functionName: "get_posts", args: [] })
+    )
   )
 }
 ```
@@ -507,16 +543,18 @@ Provide initial data while fresh data loads:
 ```typescript
 import { useActorQuery } from "./reactor/hooks"
 
-const { data } = useActorQuery({
-  functionName: "get_settings",
-  args: [],
-  initialData: {
-    theme: "light",
-    notifications: true,
-  },
-  // Don't count initial data as fresh
-  initialDataUpdatedAt: 0,
-})
+function Settings() {
+  const { data } = useActorQuery({
+    functionName: "get_settings",
+    args: [],
+    initialData: {
+      theme: "light",
+      notifications: true,
+    },
+    // Don't count initial data as fresh
+    initialDataUpdatedAt: 0,
+  })
+}
 ```
 
 ## Placeholder Data
@@ -526,16 +564,18 @@ Show placeholder data that doesn't get cached:
 ```typescript
 import { useActorQuery } from "./reactor/hooks"
 
-const { data } = useActorQuery({
-  functionName: "get_post",
-  args: [postId],
-  placeholderData: {
-    id: postId,
-    title: "Loading...",
-    content: "",
-    likes: 0n,
-  },
-})
+function PostPreview({ postId }: { postId: string }) {
+  const { data } = useActorQuery({
+    functionName: "get_post",
+    args: [postId],
+    placeholderData: {
+      id: postId,
+      title: "Loading...",
+      content: "",
+      likes: 0n,
+    },
+  })
+}
 ```
 
 ## Debug Caching

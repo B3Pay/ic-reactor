@@ -66,22 +66,40 @@ IC Reactor takes all of this and adds the **Internet Computer layer**:
 ### The Best of Both Worlds
 
 ```tsx
-// useActorQuery and useActorMutation come from createActorHooks(backend),
-// shown in the example below
+// `./reactor` exports the hooks `createActorHooks(backend)` returns, built as in
+// the example below, here for a canister with `getBalance` and `transfer`
+import { formatTokenAmount } from "@ic-reactor/react"
+import type { Principal } from "@icp-sdk/core/principal"
+import { useActorMutation, useActorQuery } from "./reactor"
 
-// IC Reactor gives you TanStack Query powers for IC canisters
-const { data, isPending, refetch } = useActorQuery({
-  functionName: "getBalance",
-  args: [principal],
-  staleTime: 30_000, // TanStack Query option
-  refetchInterval: 60_000, // TanStack Query option
-})
+function Balance({ principal, to }: { principal: Principal; to: Principal }) {
+  // IC Reactor gives you TanStack Query powers for IC canisters
+  const { data, isPending, refetch } = useActorQuery({
+    functionName: "getBalance",
+    args: [principal],
+    staleTime: 30_000, // TanStack Query option
+    refetchInterval: 60_000, // TanStack Query option
+  })
 
-// Invalidate after mutations — just like TanStack Query
-const { mutate } = useActorMutation({
-  functionName: "transfer",
-  invalidateQueries: [{ functionName: "getBalance" }],
-})
+  // Invalidate after mutations — just like TanStack Query
+  const { mutate } = useActorMutation({
+    functionName: "transfer",
+    invalidateQueries: [{ functionName: "getBalance" }],
+  })
+
+  if (isPending) return "Loading..."
+  return (
+    <div>
+      {/* The balance is in base units; 8 decimals place the point */}
+      <button onClick={() => refetch()}>
+        Balance: {data === undefined ? "—" : formatTokenAmount(data, 8)}
+      </button>
+      <button onClick={() => mutate([{ to, amount: 100_000_000n }])}>
+        Send 1
+      </button>
+    </div>
+  )
+}
 ```
 
 <Aside type="note">

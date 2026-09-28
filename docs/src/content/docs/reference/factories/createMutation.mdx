@@ -149,7 +149,7 @@ Update UI immediately before the canister responds. The value `onMutate`
 returns reaches the `onError` defined at the same level, so the snapshot and
 the rollback stay together. This example keeps both in `useMutation()`:
 
-```typescript
+```tsx
 import { createMutation, createQueryFactory } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
@@ -161,21 +161,25 @@ const likePostMutation = createMutation(backend, {
 const getPostQuery = createQueryFactory(backend, { functionName: "get_post" })
 
 // In your component
-const { mutate } = likePostMutation.useMutation({
-  // Cancel outgoing refetches, write the new value, and return the rollback.
-  // `post` is typed from the query; likes is a nat, which a DisplayReactor
-  // shows as a string.
-  onMutate: ([postId]) =>
-    getPostQuery([postId]).optimisticUpdate((post) => ({
-      ...post,
-      likes: String(BigInt(post.likes) + 1n),
-      isLiked: true,
-    })),
-  // Rollback on error
-  onError: (_error, _args, update) => update?.rollback(),
-  // Refetch to ensure consistency: a failed call may still have run
-  onSettled: (_data, _error, [postId]) => getPostQuery([postId]).invalidate(),
-})
+function LikeButton({ postId }: { postId: string }) {
+  const { mutate } = likePostMutation.useMutation({
+    // Cancel outgoing refetches, write the new value, and return the rollback.
+    // `post` is typed from the query; likes is a nat, which a DisplayReactor
+    // shows as a string.
+    onMutate: ([postId]) =>
+      getPostQuery([postId]).optimisticUpdate((post) => ({
+        ...post,
+        likes: String(BigInt(post.likes) + 1n),
+        isLiked: true,
+      })),
+    // Rollback on error
+    onError: (_error, _args, update) => update?.rollback(),
+    // Refetch to ensure consistency: a failed call may still have run
+    onSettled: (_data, _error, [postId]) => getPostQuery([postId]).invalidate(),
+  })
+
+  return <button onClick={() => mutate([postId])}>Like</button>
+}
 ```
 
 `optimisticUpdate` skips the update when nothing is cached for the query, and
@@ -385,7 +389,7 @@ all of them: `onSuccess`, `onError`, `onCanisterError`, `onMutate`, and
 teardown, telemetry, or logging cannot silently vanish because a call site
 passed its own handler:
 
-```typescript
+```tsx
 import { createMutation } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
@@ -398,11 +402,16 @@ const updateProfileMutation = createMutation(backend, {
 })
 
 // Hook level - runs second
-const { mutate } = updateProfileMutation.useMutation({
-  onSuccess: () => {
-    toast.success("Profile updated!")
-  },
-})
+function SaveProfileButton() {
+  const { mutate } = updateProfileMutation.useMutation({
+    onSuccess: () => {
+      // `toast` is your notification helper, such as sonner's
+      toast.success("Profile updated!")
+    },
+  })
+
+  return <button onClick={() => mutate([{ name: "Alice" }])}>Save</button>
+}
 ```
 
 Each level's callbacks receive the return value of that level's own `onMutate`.

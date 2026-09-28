@@ -49,7 +49,25 @@ only. The config's `select` is applied by the query object itself, so
 `callConfig` goes where it goes in `useActorQuery`: to the call and into the
 query key. A `canisterId` there sends the query to another canister of the
 same interface and caches it under that canister, so one reactor can back
-query objects for several ledgers:
+query objects for several ledgers. The examples below use a `Reactor` of an
+ICRC-1 ledger, built next to `backend`; being a raw `Reactor`, it takes an
+account's owner as a `Principal`:
+
+```typescript
+// src/reactor.ts
+import { defineReactor } from "@ic-reactor/react"
+import {
+  canisterId,
+  idlFactory,
+  type _SERVICE as LedgerService,
+} from "./declarations/ledger"
+
+export const { reactor: ledger } = defineReactor<LedgerService>({
+  name: "ledger",
+  idlFactory,
+  canisterId,
+})
+```
 
 ```typescript
 import { createQueryFactory } from "@ic-reactor/react"
@@ -145,27 +163,33 @@ function UserPage() {
 Pass the reactor via router context for better organization:
 
 ```tsx
-// router.tsx
-import {
-  createRouter,
-  createRootRouteWithContext,
-} from "@tanstack/react-router"
-import { backend } from "./reactor"
+// routes/__root.tsx
+import { createRootRouteWithContext } from "@tanstack/react-router"
+import type { backend } from "../reactor"
 
 interface RouterContext {
   backend: typeof backend
 }
 
-const rootRoute = createRootRouteWithContext<RouterContext>()({
+export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootLayout,
 })
+```
+
+```tsx
+// router.tsx
+import { createRouter } from "@tanstack/react-router"
+import { backend } from "./reactor"
+import { routeTree } from "./routeTree.gen"
 
 export const router = createRouter({
   routeTree,
   context: { backend },
   defaultPreloadStaleTime: 0, // Let TanStack Query handle caching
 })
+```
 
+```tsx
 // routes/posts.tsx
 import { createFileRoute } from "@tanstack/react-router"
 import { createQuery } from "@ic-reactor/react"
@@ -230,7 +254,7 @@ function UserPage() {
 
 Transform data at the factory level:
 
-```typescript
+```tsx
 import { createQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
@@ -241,15 +265,19 @@ const userNameQuery = createQuery(backend, {
   select: (user) => user.name, // Only extract name
 })
 
-// In component - data is just the name string
-const { data: userName } = userNameQuery.useQuery()
+function UserName() {
+  // data is just the name string
+  const { data: userName } = userNameQuery.useQuery()
+
+  return <span>{userName}</span>
+}
 ```
 
 ### Chained Select in Hook
 
 Chain additional transformations in the hook:
 
-```typescript
+```tsx
 import { createQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
@@ -259,10 +287,14 @@ const userQuery = createQuery(backend, {
   select: (user) => user.profile, // First transformation
 })
 
-// Further transform in component
-const { data: avatarUrl } = userQuery.useQuery({
-  select: (profile) => profile.avatarUrl, // Chained transformation
-})
+function Avatar() {
+  // Further transform in the component
+  const { data: avatarUrl } = userQuery.useQuery({
+    select: (profile) => profile.avatarUrl, // Chained transformation
+  })
+
+  return <img src={avatarUrl} alt="" />
+}
 ```
 
 ### Conditional Fetching
@@ -302,24 +334,26 @@ const userQuery = createQuery(backend, {
   args: [userId],
 })
 
-// Read from cache (returns undefined if not cached)
-const cachedUser = userQuery.getCacheData()
+async function manageCache() {
+  // Read from cache (returns undefined if not cached)
+  const cachedUser = userQuery.getCacheData()
 
-// Read with transformation
-const cachedName = userQuery.getCacheData((user) => user.name)
+  // Read with transformation
+  const cachedName = userQuery.getCacheData((user) => user.name)
 
-// Force invalidation (refetches if query is active)
-await userQuery.invalidate()
+  // Force invalidation (refetches if query is active)
+  await userQuery.invalidate()
 
-// Write directly into cache
-userQuery.setData(updatedUser)
+  // Write directly into cache
+  userQuery.setData(updatedUser)
 
-// Or use an updater function. `old` is undefined when nothing is cached yet.
-userQuery.setData((old) => (old ? { ...old, name: "Alice" } : old))
+  // Or use an updater function. `old` is undefined when nothing is cached yet.
+  userQuery.setData((old) => (old ? { ...old, name: "Alice" } : old))
 
-// Cancel the fetch in flight, or reset the entry to its initial state
-await userQuery.cancel()
-await userQuery.reset()
+  // Cancel the fetch in flight, or reset the entry to its initial state
+  await userQuery.cancel()
+  await userQuery.reset()
+}
 ```
 
 ### Optimistic Updates
@@ -384,7 +418,7 @@ function UserLink({ userId }: { userId: string }) {
 
 For dynamic arguments (like route params), use the factory variant:
 
-```typescript
+```tsx
 import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
@@ -398,8 +432,17 @@ const aliceQuery = getUserQuery(["alice"])
 const bobQuery = getUserQuery(["bob"])
 
 // Use in components
-const { data: alice } = aliceQuery.useQuery()
-const { data: bob } = bobQuery.useQuery()
+function Friends() {
+  const { data: alice } = aliceQuery.useQuery()
+  const { data: bob } = bobQuery.useQuery()
+
+  return (
+    <ul>
+      <li>{alice?.name}</li>
+      <li>{bob?.name}</li>
+    </ul>
+  )
+}
 ```
 
 ### Every Instance at Once
@@ -412,11 +455,15 @@ import { createMutation } from "@ic-reactor/react"
 import { backend } from "./reactor"
 import { getUserQuery } from "./queries"
 
-// Refetch every user on screen
-await getUserQuery.invalidate()
+async function refreshUsers() {
+  // Refetch every user on screen
+  await getUserQuery.invalidate()
 
-// The key prefix those queries share, for QueryClient calls of your own
-backend.queryClient.getQueriesData({ queryKey: getUserQuery.getQueryKey() })
+  // The key prefix those queries share, for QueryClient calls of your own
+  return backend.queryClient.getQueriesData({
+    queryKey: getUserQuery.getQueryKey(),
+  })
+}
 
 // Or hand the factory to a mutation
 const renameUser = createMutation(backend, {

@@ -126,10 +126,8 @@ This tutorial walks you through creating your first IC Reactor integration with 
 
      const { mutate, isPending } = useBackendMutation({
        functionName: "increment",
-       onSuccess: () => {
-         // The generated reactor provides helper to invalidate queries
-         // ... custom invalidation logic here
-       },
+       // Refetch the count once the canister has run `increment`
+       invalidateQueries: [{ functionName: "get_count" }],
      })
 
      return (

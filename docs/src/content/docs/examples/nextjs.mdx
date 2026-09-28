@@ -47,6 +47,10 @@ npm run dev
 
 ## Key Integration
 
+The snippets import with relative paths. The demo's own files import the same
+modules bare (`declarations/todo`, `service/provider`), which its `tsconfig.json`
+resolves through `paths: { "*": ["./src/*"] }`.
+
 ```tsx
 // src/service/provider.tsx
 import { createReactorProvider, defineReactor } from "@ic-reactor/react"

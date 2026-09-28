@@ -2,7 +2,6 @@
 // default app declares, over the pages' canister (`declarations/backend.ts`),
 // plus the values the pages build earlier. Never a library export: a snippet
 // that uses one must import it.
-/// <reference path="./modules.d.ts" />
 import type { Identity } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { ReactorArgsOf } from "@ic-reactor/react"
@@ -10,6 +9,9 @@ import type { FetchInfiniteQueryOptions, QueryKey } from "@tanstack/query-core"
 import type { ReactNode } from "react"
 import type { PostPage } from "./declarations/backend"
 import type { backend } from "./reactor"
+// The generated route tree of the pages' TanStack Router examples, which types
+// their routes
+import "../routeTree.gen"
 
 export * from "../../app/globals"
 export { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"

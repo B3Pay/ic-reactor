@@ -70,8 +70,8 @@ export interface TimelineItem {
 }
 export interface Timeline {
   items: Array<TimelineItem>
-  oldestTimestamp: [] | [number]
-  newestTimestamp: [] | [number]
+  oldestTimestamp: [] | [bigint]
+  newestTimestamp: [] | [bigint]
 }
 
 export type BalanceError =
@@ -113,7 +113,7 @@ export interface _SERVICE extends LedgerService {
     PagedItems
   >
   get_products: ActorMethod<[{ page: number; perPage: number }], ProductsPage>
-  get_timeline: ActorMethod<[{ around: number; limit: number }], Timeline>
+  get_timeline: ActorMethod<[{ around: bigint; limit: number }], Timeline>
   get_balance: ActorMethod<[Principal], BalanceResult>
   get_notifications: ActorMethod<[], Array<Notification>>
   get_config: ActorMethod<[], Config>

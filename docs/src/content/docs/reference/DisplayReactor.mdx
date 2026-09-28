@@ -23,6 +23,8 @@ Candid (the IC's interface description language) has its own type system that do
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./clients"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 // DisplayReactor: the bridge between Candid and your UI
 const backend = new DisplayReactor<_SERVICE>({
@@ -34,11 +36,13 @@ const backend = new DisplayReactor<_SERVICE>({
 
 // Input: JavaScript strings (easy to get from forms)
 // Output: Display-friendly types (easy to render)
-const account = await backend.callMethod({
-  functionName: "getAccount",
-  args: ["aaaaa-aa"], // Principal as string ✓
-})
-console.log(account.balance) // "1000000" (string, not bigint) ✓
+async function showAccount() {
+  const account = await backend.callMethod({
+    functionName: "getAccount",
+    args: ["aaaaa-aa"], // Principal as string ✓
+  })
+  console.log(account.balance) // "1000000" (string, not bigint) ✓
+}
 ```
 
 This is one of IC Reactor's most unique and powerful features — it eliminates the need for manual type conversions between the IC and your frontend.
@@ -258,15 +262,17 @@ DisplayReactor transforms data in **both directions**:
 2. **Results (Candid → Display)**: When the canister responds, Candid data is converted to display format
 
 ```typescript
-// You provide display-friendly input
-const account = await backend.callMethod({
-  functionName: "getAccount",
-  args: ["aaaaa-aa"], // Principal as string ✓
-})
+async function showAccount() {
+  // You provide display-friendly input
+  const account = await backend.callMethod({
+    functionName: "getAccount",
+    args: ["aaaaa-aa"], // Principal as string ✓
+  })
 
-// You receive display-friendly output
-console.log(account.balance) // "1000000" (string, not bigint)
-console.log(account.createdAt) // "1703500800000000000" (string)
+  // You receive display-friendly output
+  console.log(account.balance) // "1000000" (string, not bigint)
+  console.log(account.createdAt) // "1703500800000000000" (string)
+}
 ```
 
 If an argument cannot be converted — a malformed principal string, a
@@ -294,18 +300,22 @@ import { CanisterError } from "@ic-reactor/core"
 // { Ok: User } | { Err: CreateUserError }
 
 // With IC Reactor - automatic unwrapping:
-try {
-  const user = await backend.callMethod({
-    functionName: "createUser",
-    args: [{ name: "Alice", email: "alice@example.com" }],
-  })
-  // user is directly the User object (not { Ok: User })
-  console.log(user.name) // "Alice"
-} catch (error) {
-  if (error instanceof CanisterError) {
-    // error.err contains the CreateUserError
-    if ("EmailAlreadyExists" in error.err) {
-      console.log("Email taken!")
+async function createUser() {
+  try {
+    const user = await backend.callMethod({
+      functionName: "createUser",
+      args: [{ name: "Alice", email: "alice@example.com" }],
+    })
+    // user is directly the User object (not { Ok: User })
+    console.log(user.name) // "Alice"
+  } catch (error) {
+    if (error instanceof CanisterError) {
+      // error.err is the CreateUserError in display form: a variant carries
+      // a `_type`, so `{ EmailAlreadyExists: null }` arrives as
+      // `{ _type: "EmailAlreadyExists" }`
+      if (error.err._type === "EmailAlreadyExists") {
+        console.log("Email taken!")
+      }
     }
   }
 }
@@ -324,6 +334,8 @@ This means you never have to manually check for `Ok` or `Err` variants — IC Re
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./clients"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
@@ -332,12 +344,15 @@ const backend = new DisplayReactor<_SERVICE>({
   canisterId,
 })
 
-// All returned values use display types
-const balance = await backend.callMethod({
-  functionName: "getBalance",
-  args: ["aaaaa-aa"], // Principal as string
-})
-// balance is string, not bigint
+async function getBalance() {
+  // All returned values use display types
+  const balance = await backend.callMethod({
+    functionName: "getBalance",
+    args: ["aaaaa-aa"], // Principal as string
+  })
+  // balance is string, not bigint
+  return balance
+}
 ```
 
 ### Many Canisters of One Interface
@@ -349,6 +364,7 @@ and cache, with the display transform and validators passed on:
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./clients"
 import { idlFactory, type _SERVICE } from "./declarations/icrc1"
 
 // The reactor the siblings are made from. It still needs a canister ID of its
@@ -387,6 +403,8 @@ import {
   createActorHooks,
   formatTokenAmount,
 } from "@ic-reactor/react"
+import { clientManager } from "./clients"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 // Create DisplayReactor and hooks
 const backend = new DisplayReactor<_SERVICE>({
@@ -684,6 +702,8 @@ making them perfect for form validation.
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./clients"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
@@ -785,10 +805,12 @@ backend.registerValidator("transfer", async ([input]) => {
 })
 
 // Use callMethodWithValidation for async validators
-await backend.callMethodWithValidation({
-  functionName: "transfer",
-  args: [formData],
-})
+async function submit() {
+  await backend.callMethodWithValidation({
+    functionName: "transfer",
+    args: [formData],
+  })
+}
 ```
 
 `callMethod()` runs validators synchronously, and so do the query and mutation
@@ -808,16 +830,18 @@ the validator throws is passed on as it is.
 ```typescript
 import { isCallError, isValidationError } from "@ic-reactor/core"
 
-try {
-  await backend.callMethodWithValidation({
-    functionName: "transfer",
-    args: [formData],
-  })
-} catch (error) {
-  if (isValidationError(error)) {
-    // the validator's verdict: error.issues
-  } else if (isCallError(error)) {
-    // a failed call, or a validator that threw: error.cause
+async function submit() {
+  try {
+    await backend.callMethodWithValidation({
+      functionName: "transfer",
+      args: [formData],
+    })
+  } catch (error) {
+    if (isValidationError(error)) {
+      // the validator's verdict: error.issues
+    } else if (isCallError(error)) {
+      // a failed call, or a validator that threw: error.cause
+    }
   }
 }
 ```

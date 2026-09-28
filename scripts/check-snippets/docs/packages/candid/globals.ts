@@ -1,22 +1,22 @@
 // Names the pages of the candid package docs share: the adapter and the
 // reactor their first examples build, and the values later fragments use.
-// `reactor` is one name for the four reactors of the pages, so it holds the
-// raw family: the CandidReactor page and the index only use what a
-// MetadataReactor inherits. The display pages build their own reactor in the
-// snippet, as their first example does.
+// `reactor` is one name for the reactors of the pages, so it holds the base
+// class, the `CandidReactor` of the CandidReactor page and the index: a call
+// only a subclass has does not compile there. The MetadataReactor page imports
+// its own from `./reactor`, and the display pages build theirs in the snippet,
+// as their first example does.
 import type {
   CandidAdapter,
+  CandidReactor,
   FieldNode,
   FormArgumentsMeta,
   FuncRecordNode,
-  MetadataReactor,
 } from "@ic-reactor/candid"
 import type { ActorSubclass } from "@icp-sdk/core/agent"
 import type { IDL } from "@icp-sdk/core/candid"
 import type { Principal } from "@icp-sdk/core/principal"
 import type { AnyFieldApi, AnyFormApi } from "@tanstack/react-form"
 import type { ReactNode } from "react"
-import "./react-form-stub"
 import type { _SERVICE as LedgerService } from "../../../app/declarations/ledger"
 
 export * from "../../../app/globals"
@@ -27,8 +27,8 @@ export declare const adapter: CandidAdapter
 /** A canister's Candid source, such as `adapter.fetchCandidSource` returns. */
 export declare const candidSource: string
 
-/** The reactor of the raw pages' first example, over an ICRC-1 ledger. */
-export declare const reactor: MetadataReactor
+/** The reactor of the CandidReactor page's first example, over an ICRC-1 ledger. */
+export declare const reactor: CandidReactor
 
 /** The account owner an ICRC-1 call is made for, and a recipient. */
 export declare const owner: Principal
