@@ -164,6 +164,23 @@ function moduleGroup(file) {
 /** The default app, `scripts/check-snippets/app/`. */
 const DEFAULT_CONTEXT = "app"
 
+const DOCS_ROOT = "docs/src/content/docs/"
+
+/**
+ * The context of a docs page: `docs/<section>` when
+ * `scripts/check-snippets/docs/<section>/` exists, where the section is the
+ * page's directory under the docs content root (`reference/factories`,
+ * `framework`) or `root` for a page at the top. A section's directory holds
+ * only what its pages assume beyond the default app; without one, the page
+ * gets the default app.
+ */
+function docsContext(file) {
+  if (!file.startsWith(DOCS_ROOT)) return undefined
+  const dir = dirname(file.slice(DOCS_ROOT.length))
+  const context = `docs/${dir === "." ? "root" : dir}`
+  return existsSync(join(fixturesDir, context)) ? context : undefined
+}
+
 /**
  * Documents whose snippets assume an app other than the default one, by
  * repo-relative path, and the directory under `scripts/check-snippets/` that
@@ -333,7 +350,7 @@ function collectSnippets(files, docs) {
         line: fence.line,
         lang: fence.lang,
         code: fence.code,
-        context: CONTEXTS[file] ?? DEFAULT_CONTEXT,
+        context: CONTEXTS[file] ?? docsContext(file) ?? DEFAULT_CONTEXT,
         group: moduleGroup(file),
         defines: defines ? defines[1].split("/") : undefined,
         selfContained: isConsumerGuide(file),
