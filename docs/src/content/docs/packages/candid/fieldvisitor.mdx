@@ -35,7 +35,7 @@ console.log(methodMeta?.defaults) // default form values
 
 ## Method Metadata
 
-```ts
+```ts nocheck
 type FormArgumentsMeta = {
   candidType: string
   functionType: "query" | "update" | "value"
@@ -106,18 +106,24 @@ import { useForm } from "@tanstack/react-form"
 const { argTypes } = service.fieldsAsObject()["icrc1_transfer"]
 const argsCodec = didToDisplayCodec(IDL.Tuple(...argTypes))
 
-const form = useForm({
-  defaultValues: methodMeta.defaults,
-  validators: { onBlur: methodMeta.schema },
-  onSubmit: async ({ value }) => {
-    // Principal, bigint, [] or [x] for an opt, { Tag: payload } for a variant.
-    // An untyped codec returns `unknown`, so name the tuple the actor takes.
-    const args = argsCodec.asCandid(value) as Parameters<
-      typeof actor.icrc1_transfer
-    >
-    await actor.icrc1_transfer(...args)
-  },
-})
+// The schema validates `unknown`, so the form's values are typed `unknown` too
+const defaultValues: unknown = methodMeta.defaults
+
+// A hook: call it from a component
+function useTransferForm() {
+  return useForm({
+    defaultValues,
+    validators: { onBlur: methodMeta.schema },
+    onSubmit: async ({ value }) => {
+      // Principal, bigint, [] or [x] for an opt, { Tag: payload } for a variant.
+      // An untyped codec returns `unknown`, so name the tuple the actor takes.
+      const args = argsCodec.asCandid(value) as Parameters<
+        typeof actor.icrc1_transfer
+      >
+      await actor.icrc1_transfer(...args)
+    },
+  })
+}
 ```
 
 ## When to Use `MetadataReactor` Instead

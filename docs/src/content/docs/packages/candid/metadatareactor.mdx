@@ -252,6 +252,8 @@ for an `opt`), which is what its `callMethod` takes, so a reactor built from
 the node's `funcClass` can call the callback with them as they are:
 
 ```ts
+import { MetadataReactor } from "@ic-reactor/candid"
+
 // `archived` is the resolved funcRecord node, for example
 // result.results[0].fields.archived_blocks.items[0]
 console.log(archived.defaultArgs) // [{ start: 0n, length: 100n }]

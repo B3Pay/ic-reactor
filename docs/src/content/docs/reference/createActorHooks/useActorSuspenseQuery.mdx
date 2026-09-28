@@ -12,6 +12,7 @@ import { Aside } from "@astrojs/starlight/components"
 
 ```typescript
 import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
 const { useActorSuspenseQuery } = createActorHooks(backend)
 ```
@@ -20,6 +21,9 @@ const { useActorSuspenseQuery } = createActorHooks(backend)
   It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
 
 ```typescript
+import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const { useActorSuspenseQuery: useBackendSuspenseQuery } =
   createActorHooks(backend)
 ```
@@ -30,11 +34,12 @@ const { useActorSuspenseQuery: useBackendSuspenseQuery } =
 
 ```tsx
 import { Suspense } from "react"
+import { useActorSuspenseQuery } from "./reactor"
 
 function UserProfile({ userId }: { userId: string }) {
   // This hook suspends until data is loaded
   const { data } = useActorSuspenseQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 
@@ -92,6 +97,9 @@ Returns a TanStack Query suspense result. The key difference from `useActorQuery
 ### Basic Suspense Query
 
 ```tsx
+import { Suspense } from "react"
+import { useActorSuspenseQuery } from "./reactor"
+
 function Greeting() {
   const { data } = useActorSuspenseQuery({
     functionName: "greet",
@@ -119,6 +127,9 @@ returned. Give each query its own component under one boundary and they start
 together:
 
 ```tsx
+import { Suspense } from "react"
+import { useActorSuspenseQuery } from "./reactor"
+
 function Dashboard({ userId }: { userId: string }) {
   // Sibling components suspend separately, so both calls start at once
   return (
@@ -131,7 +142,7 @@ function Dashboard({ userId }: { userId: string }) {
 
 function Welcome({ userId }: { userId: string }) {
   const { data: user } = useActorSuspenseQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
   return <h1>Welcome, {user.name}</h1>
@@ -139,7 +150,7 @@ function Welcome({ userId }: { userId: string }) {
 
 function UserStats({ userId }: { userId: string }) {
   const { data: stats } = useActorSuspenseQuery({
-    functionName: "getUserStats",
+    functionName: "get_user_stats",
     args: [userId],
   })
   return <Stats data={stats} />
@@ -149,18 +160,24 @@ function UserStats({ userId }: { userId: string }) {
 ### With Select
 
 ```tsx
-const { data: userName } = useActorSuspenseQuery({
-  functionName: "getUser",
-  args: [userId],
-  select: (user) => user.name, // data is just the name string
-})
+import { useActorSuspenseQuery } from "./reactor"
 
-return <h1>Hello, {userName}</h1>
+function Hello({ userId }: { userId: string }) {
+  const { data: userName } = useActorSuspenseQuery({
+    functionName: "get_user",
+    args: [userId],
+    select: (user) => user.name, // data is just the name string
+  })
+
+  return <h1>Hello, {userName}</h1>
+}
 ```
 
 ### Nested Suspense Boundaries
 
 ```tsx
+import { Suspense } from "react"
+
 function App() {
   return (
     <Suspense fallback={<PageSkeleton />}>
@@ -179,9 +196,16 @@ function App() {
 ### Error Handling with Error Boundaries
 
 ```tsx
+import { Suspense } from "react"
 import { ErrorBoundary } from "react-error-boundary"
 
-function ErrorFallback({ error, resetErrorBoundary }) {
+function ErrorFallback({
+  error,
+  resetErrorBoundary,
+}: {
+  error: Error
+  resetErrorBoundary: () => void
+}) {
   return (
     <div className="error">
       <p>Something went wrong:</p>
@@ -205,8 +229,10 @@ function App() {
 ### With Stale Time
 
 ```tsx
+import { useActorSuspenseQuery } from "./reactor"
+
 const { data } = useActorSuspenseQuery({
-  functionName: "getConfig",
+  functionName: "get_config",
   args: [],
   staleTime: 5 * 60 * 1000, // Fresh for 5 minutes
 })
@@ -215,16 +241,18 @@ const { data } = useActorSuspenseQuery({
 ### Sequential Suspense (Waterfall)
 
 ```tsx
+import { useActorSuspenseQuery } from "./reactor"
+
 function UserPosts({ userId }: { userId: string }) {
   // This query runs first
   const { data: user } = useActorSuspenseQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 
   // This query runs after user is loaded
   const { data: posts } = useActorSuspenseQuery({
-    functionName: "getUserPosts",
+    functionName: "get_user_posts",
     args: [user.id], // Uses data from first query
   })
 

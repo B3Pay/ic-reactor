@@ -17,7 +17,7 @@ import { useActorMutation } from "../reactor/hooks"
 
 function CreatePost() {
   const { mutate, isPending, isSuccess, isError, error } = useActorMutation({
-    functionName: "createPost",
+    functionName: "create_post",
   })
 
   return (
@@ -52,6 +52,7 @@ Arguments are passed to the `mutate` function as an array (matching the canister
 ```tsx
 // Canister method: transfer(to: Principal, amount: nat64) -> Result<TransferReceipt, TransferError>
 import { Principal } from "@icp-sdk/core/principal"
+import { useActorMutation } from "../reactor/hooks"
 
 const { mutate } = useActorMutation({
   functionName: "transfer",
@@ -73,8 +74,10 @@ mutate([Principal.fromText("aaaaa-aa"), BigInt(1000000)])
 `useActorMutation` comes with helper options that allow quick and easy side-effects at any stage during the mutation lifecycle:
 
 ```tsx
+import { useActorMutation } from "../reactor/hooks"
+
 const { mutate } = useActorMutation({
-  functionName: "createPost",
+  functionName: "create_post",
   onMutate: (variables) => {
     // A mutation is about to happen!
     console.log("Creating post with:", variables)
@@ -100,8 +103,10 @@ const { mutate } = useActorMutation({
 When returning a promise in any of the callback functions, it will first be awaited before the next callback is called:
 
 ```tsx
+import { useActorMutation } from "../reactor/hooks"
+
 const { mutate } = useActorMutation({
-  functionName: "createPost",
+  functionName: "create_post",
   onSuccess: async () => {
     console.log("I'm first!")
   },
@@ -116,8 +121,10 @@ const { mutate } = useActorMutation({
 You can also provide additional callbacks to the `mutate` function itself. These are useful for component-specific side effects:
 
 ```tsx
+import { useActorMutation } from "../reactor/hooks"
+
 const { mutate } = useActorMutation({
-  functionName: "createPost",
+  functionName: "create_post",
   onSuccess: () => {
     // This fires first (from hook config)
   },
@@ -143,13 +150,15 @@ The most common pattern after a mutation is to invalidate related queries. List
 them in the `invalidateQueries` option:
 
 ```tsx
+import { useActorMutation } from "../reactor/hooks"
+
 const { mutate } = useActorMutation({
-  functionName: "createPost",
+  functionName: "create_post",
   invalidateQueries: [
-    // Every getPosts query, whatever its args, infinite lists included
-    { functionName: "getPosts" },
-    // Only the getPost query for this id
-    { functionName: "getPost", args: [postId] },
+    // Every get_posts query, whatever its args, infinite lists included
+    { functionName: "get_posts" },
+    // Only the get_post query for this id
+    { functionName: "get_post", args: [postId] },
   ],
 })
 ```
@@ -170,10 +179,11 @@ With query objects and factories defined in a shared module, pass them as they
 are:
 
 ```tsx
+import { useActorMutation } from "../reactor/hooks"
 import { postsQuery, getPost } from "../queries"
 
 const { mutate } = useActorMutation({
-  functionName: "createPost",
+  functionName: "create_post",
   invalidateQueries: [postsQuery, getPost],
 })
 ```
@@ -185,7 +195,7 @@ skipped, so `[maybeQuery]` is safe when a query is optional.
 
 <Aside type="caution">
   Every query key starts with the canister ID, so a hand-written key such as
-  `["getPosts"]` matches nothing. Name the method, pass the query object, or
+  `["get_posts"]` matches nothing. Name the method, pass the query object, or
   build the key with `generateQueryKey`.
 </Aside>
 
@@ -194,11 +204,12 @@ it so the mutation waits for the refetch:
 
 ```tsx
 import { backend } from "../reactor"
+import { useActorMutation } from "../reactor/hooks"
 
 const { mutate } = useActorMutation({
-  functionName: "createPost",
+  functionName: "create_post",
   onSuccess: async (post) => {
-    await backend.invalidateQueries({ functionName: "getPosts" })
+    await backend.invalidateQueries({ functionName: "get_posts" })
     navigate(`/posts/${post.id}`)
   },
 })
@@ -217,7 +228,7 @@ function CreatePost() {
   const [content, setContent] = useState("")
 
   const { mutate, isPending, isError, error, reset } = useActorMutation({
-    functionName: "createPost",
+    functionName: "create_post",
     onSuccess: () => {
       // Clear form on success
       setTitle("")
@@ -267,6 +278,8 @@ function CreatePost() {
 If you prefer async/await syntax, use `mutateAsync`:
 
 ```tsx
+import { useActorMutation } from "../reactor/hooks"
+
 const { mutateAsync, isPending } = useActorMutation({
   functionName: "transfer",
 })
@@ -288,23 +301,27 @@ const handleTransfer = async () => {
 Use the `reset` function to clear the mutation state:
 
 ```tsx
-const { mutate, isError, error, reset } = useActorMutation({
-  functionName: "createPost",
-})
+import { useActorMutation } from "../reactor/hooks"
 
-return (
-  <div>
-    {isError && (
-      <div>
-        <p>Error: {error.message}</p>
-        <button onClick={reset}>Clear error</button>
-      </div>
-    )}
-    <button onClick={() => mutate([{ title: "Test", content: "Test post" }])}>
-      Create Post
-    </button>
-  </div>
-)
+function CreatePost() {
+  const { mutate, isError, error, reset } = useActorMutation({
+    functionName: "create_post",
+  })
+
+  return (
+    <div>
+      {isError && (
+        <div>
+          <p>Error: {error.message}</p>
+          <button onClick={reset}>Clear error</button>
+        </div>
+      )}
+      <button onClick={() => mutate([{ title: "Test", content: "Test post" }])}>
+        Create Post
+      </button>
+    </div>
+  )
+}
 ```
 
 ## Optimistic Updates
@@ -315,13 +332,14 @@ Show the result before the canister answers with a query object's
 ```tsx
 import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "../reactor"
+import { useActorMutation } from "../reactor/hooks"
 
 // Module scope, next to the reactor
-const getPost = createQueryFactory(backend, { functionName: "getPost" })
+const getPost = createQueryFactory(backend, { functionName: "get_post" })
 
 function LikeButton({ postId }: { postId: string }) {
   const { mutate } = useActorMutation({
-    functionName: "likePost",
+    functionName: "like_post",
     // Cancels the post's fetch in flight, writes the new value, and resolves
     // with a rollback. `post` is typed from getPost; likes is a nat (bigint).
     onMutate: ([postId]) =>
@@ -362,11 +380,12 @@ For reusable mutation configurations, use `createMutation`:
 ```tsx
 import { createMutation } from "@ic-reactor/react"
 import { backend } from "../reactor"
+import type { PostInput } from "../declarations/backend"
 
 // Define mutation once
 const createPostMutation = createMutation(backend, {
-  functionName: "createPost",
-  invalidateQueries: [{ functionName: "getPosts" }],
+  functionName: "create_post",
+  invalidateQueries: [{ functionName: "get_posts" }],
 })
 
 // Use in components
@@ -394,6 +413,7 @@ IC Reactor provides structured error types for mutations:
 
 ```tsx
 import { CanisterError, CallError } from "@ic-reactor/react"
+import { useActorMutation } from "../reactor/hooks"
 
 const { mutate } = useActorMutation({
   functionName: "transfer",
@@ -426,6 +446,7 @@ failure that proves the call never ran:
 
 ```tsx
 import { reactorUpdateRetry } from "@ic-reactor/react"
+import { useActorMutation } from "../reactor/hooks"
 
 const { mutate } = useActorMutation({
   functionName: "transfer",
@@ -443,15 +464,20 @@ mutation: `useActorMutation`, `useActorMethod`'s update calls, and
 Like queries, mutations are fully type-safe:
 
 ```tsx
-// Canister: createPost(input: PostInput) -> Result<Post, CreatePostError>
+// Canister: create_post(input: PostInput) -> Result<Post, CreatePostError>
+import { useActorMutation } from "../reactor/hooks"
 
 const { mutate } = useActorMutation({
-  functionName: "createPost", // ✅ Autocomplete available
+  functionName: "create_post", // ✅ Autocomplete available
 })
 
 // ✅ TypeScript knows the argument type
 mutate([{ title: "Hello", content: "World" }])
+```
 
+Leave out a required field and the call no longer type-checks:
+
+```tsx nocheck
 // ❌ TypeScript error: missing required field
 mutate([{ title: "Hello" }])
 ```

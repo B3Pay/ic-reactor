@@ -55,6 +55,8 @@ The generated JavaScript module exports:
 - `init`: A function that returns initialization arguments.
 
 ```typescript
+import { didToJs } from "@ic-reactor/parser"
+
 const js = didToJs("service:{}")
 // export const idlFactory ...
 ```
@@ -80,6 +82,8 @@ Compiles a Candid interface string into a TypeScript declaration string.
 - `idlFactory` and `init` type declarations.
 
 ```typescript
+import { didToTs } from "@ic-reactor/parser"
+
 const ts = didToTs("service:{}")
 // export interface _SERVICE ...
 ```
@@ -99,6 +103,8 @@ renamed with `_` appended, and `didToJs` uses the same name:
   rule).
 
 ```typescript
+import { didToTs } from "@ic-reactor/parser"
+
 didToTs(`type string = record { value : text };
 service : { get : () -> (string) query }`)
 // export interface string_ { 'value' : string }
@@ -119,6 +125,8 @@ numeric fields such as `0 : nat`. So `didToJs` and `didToTs` print a field
 _named_ like that under its hash, and it is sent and read by that hash:
 
 ```typescript
+import { didToTs } from "@ic-reactor/parser"
+
 didToTs(`service : { get : () -> (record { _0_ : nat; 0 : text }) query }`)
 // … ActorMethod<[], { _0_ : string, _4735054_ : bigint }>
 ```
@@ -147,6 +155,8 @@ declarations plus the service declaration), including any metadata tags.
   Types keep their Candid names, including one `didToTs` renames.
 
 ```typescript
+import { parseDid } from "@ic-reactor/parser"
+
 const schema = parseDid("service:{}")
 // { types: [...], service: { ... } | null }
 ```
@@ -163,6 +173,8 @@ error, or a type error such as `Unbound type identifier T`), so call it inside
 backs, catches that and returns `false`.
 
 ```typescript
+import { validateIDL } from "@ic-reactor/parser"
+
 try {
   validateIDL("service : { greet : (text) -> (text) query }") // true
 } catch (message) {
@@ -181,6 +193,15 @@ is not. Use it to guard canister upgrades against breaking interface changes.
 Throws when either source does not parse or type-check, or declares no service.
 
 ```typescript
+import { verifyCompatibility } from "@ic-reactor/parser"
+
+const oldDid = "service : { greet : (text) -> (text) query }"
+// Adding a method keeps every client of the old interface working
+const newDid = `service : {
+  greet : (text) -> (text) query;
+  farewell : (text) -> (text) query;
+}`
+
 if (!verifyCompatibility(oldDid, newDid)) {
   throw new Error("The new interface breaks existing clients")
 }

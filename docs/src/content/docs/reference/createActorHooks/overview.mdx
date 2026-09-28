@@ -36,6 +36,9 @@ const {
   It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
 
 ```typescript
+import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const { useActorQuery: useBackendQuery } = createActorHooks(backend)
 ```
 
@@ -73,7 +76,7 @@ const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend",
-  canisterId: "...",
+  canisterId: import.meta.env.VITE_BACKEND_CANISTER_ID,
 })
 
 // Hooks will use display types (string instead of bigint, etc.)
@@ -82,7 +85,7 @@ const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
 ## Parameters
 
-```typescript
+```typescript nocheck
 createActorHooks(reactor: Reactor<A, T>)
 ```
 
@@ -230,12 +233,12 @@ const { useActorQuery, useActorMutation } = createActorHooks(backend)
 
 // TypeScript knows all available methods
 const { data } = useActorQuery({
-  functionName: "getUser", // ✅ Autocomplete shows valid methods
+  functionName: "get_user", // ✅ Autocomplete shows valid methods
   args: ["user-123"], // ✅ Type-checked arguments
 })
 
 const { mutate } = useActorMutation({
-  functionName: "createUser", // ✅ Autocomplete
+  functionName: "create_user", // ✅ Autocomplete
 })
 
 mutate([{ name: "Alice", email: "alice@example.com" }]) // ✅ Type-safe args

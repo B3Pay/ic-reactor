@@ -177,16 +177,20 @@ When you build your own data layer, you're signing up for:
 ### Code That AI Can Reason About
 
 ```typescript
+import { useActorQuery } from "./reactor"
+
 // IC Reactor: AI understands this instantly ✅
 const { data, isPending, error } = useActorQuery({
-  functionName: "getBalance",
+  functionName: "get_balance",
   args: [principal],
 })
+```
 
+```typescript nocheck
 // DIY approach: AI struggles with custom abstractions ❌
 const balance = useCustomHook({
   actor: myActor,
-  method: "getBalance",
+  method: "get_balance",
   params: [principal],
   cache: true,
   retryOnError: 3,
@@ -208,6 +212,8 @@ One of IC Reactor's most elegant features:
   <TabItem label="With IC Reactor">
 
 ```typescript
+import { useActorMutation } from "./reactor"
+
 // Your Candid method returns: variant { Ok: nat; Err: text }
 
 const { mutate } = useActorMutation({

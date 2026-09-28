@@ -50,8 +50,8 @@ npm run dev
 ```tsx
 // src/service/provider.tsx
 import { createReactorProvider, defineReactor } from "@ic-reactor/react"
-import { canisterId, idlFactory } from "declarations/todo"
-import type { _SERVICE } from "declarations/todo/todo.did"
+import { canisterId, idlFactory } from "../declarations/todo"
+import type { _SERVICE } from "../declarations/todo/todo.did"
 
 export const { ReactorProvider: ICReactorProvider, useReactor: useTodo } =
   createReactorProvider(() =>
@@ -74,7 +74,7 @@ typed as `defineReactor`'s result, so `useActorQuery` keeps its own signature:
 
 ```tsx
 // src/components/Todos.tsx
-import { useTodo } from "service/provider"
+import { useTodo } from "../service/provider"
 
 const Todos = () => {
   const { useActorQuery } = useTodo()
@@ -92,6 +92,10 @@ The provider also renders a `QueryClientProvider` for the reactor's
 
 ```tsx
 // src/pages/_app.tsx
+import type { AppProps } from "next/app"
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
+import { ICReactorProvider } from "../service/provider"
+
 const App: React.FC<AppProps> = ({ Component, pageProps }) => (
   <ICReactorProvider>
     <Component {...pageProps} />

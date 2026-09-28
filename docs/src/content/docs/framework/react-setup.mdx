@@ -193,6 +193,8 @@ function AuthSection() {
 Customize the login flow:
 
 ```tsx
+import { useAuth } from "../reactor/hooks"
+
 const { login } = useAuth()
 
 // With options
@@ -215,7 +217,7 @@ Create a wrapper for protected routes:
 
 ```tsx
 import { useAuth } from "../reactor/hooks"
-import { Navigate, useLocation } from "react-router-dom"
+import { Navigate, Route, useLocation } from "react-router-dom"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isAuthenticating } = useAuth()
@@ -485,6 +487,8 @@ it is disposed, so each remount would otherwise leave one behind. A provider
 you write yourself has to do the same, from its cleanup:
 
 ```tsx
+import { useEffect, useState } from "react"
+
 const [value] = useState(createReactorContext)
 useEffect(() => () => value.authentication.dispose(), [value])
 ```

@@ -24,7 +24,7 @@ import { createSuspenseInfiniteQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
 const postsQuery = createSuspenseInfiniteQuery(backend, {
-  functionName: "getPosts",
+  functionName: "list_posts",
   initialPageParam: 0,
   getArgs: (offset) => [{ offset, limit: 20 }] as const,
   getNextPageParam: (lastPage) =>
@@ -43,7 +43,18 @@ is an `opt` or a `vec`. For a method that takes `(opt text, nat, nat)`,
 `[] | [string]`. Annotate the return type for those methods instead:
 
 ```typescript
-getArgs: (cursor): [[] | [string], bigint, bigint] => [[], cursor, 10n],
+import { createSuspenseInfiniteQuery } from "@ic-reactor/react"
+import { rawBackend } from "./reactor"
+
+// `rawBackend` is a `Reactor`, so an `opt` is `[] | [string]` and a `nat` is a
+// bigint
+const searchQuery = createSuspenseInfiniteQuery(rawBackend, {
+  functionName: "search_posts",
+  initialPageParam: 0n,
+  getArgs: (cursor): [[] | [string], bigint, bigint] => [[], cursor, 10n],
+  getNextPageParam: (lastPage, allPages) =>
+    lastPage.hasMore ? BigInt(allPages.length) * 10n : undefined,
+})
 ```
 
 The function returned by `createSuspenseInfiniteQueryFactory` already knows the
@@ -104,7 +115,7 @@ identity and resolves with that page.
 
 Prefetch and stream content:
 
-```typescript
+```tsx
 // routes/feed.tsx
 import { createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
@@ -112,7 +123,7 @@ import { createSuspenseInfiniteQuery } from "@ic-reactor/react"
 import { backend } from "../reactor"
 
 const feedQuery = createSuspenseInfiniteQuery(backend, {
-  functionName: "getFeed",
+  functionName: "get_feed",
   initialPageParam: null as string | null,
   getArgs: (cursor) => [{ cursor, limit: 20 }] as const,
   getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -144,10 +155,7 @@ function Feed() {
       ))}
 
       {hasNextPage && (
-        <button
-          onClick={() => fetchNextPage()}
-          disabled={isFetchingNextPage}
-        >
+        <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
           {isFetchingNextPage ? "Loading..." : "Load More"}
         </button>
       )}
@@ -160,8 +168,17 @@ function Feed() {
 
 Handle canister errors gracefully:
 
-```typescript
+```tsx
+import { Suspense } from "react"
 import { ErrorBoundary } from "react-error-boundary"
+import { createSuspenseInfiniteQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const getCommentsQuery = createSuspenseInfiniteQueryFactory(backend, {
+  functionName: "list_comments",
+  initialPageParam: null as string | null,
+  getNextPageParam: (lastPage) => lastPage.nextCursor,
+})
 
 function CommentsSection({ postId }: { postId: string }) {
   return (
@@ -181,21 +198,24 @@ function CommentsSection({ postId }: { postId: string }) {
 }
 
 function CommentsList({ postId }: { postId: string }) {
-  const commentsQuery = getCommentsQuery(postId)
+  const commentsQuery = getCommentsQuery((cursor) => [
+    { postId, cursor, limit: 20 },
+  ])
 
   // data is always defined
-  const { data, fetchNextPage, hasNextPage } = commentsQuery.useSuspenseInfiniteQuery()
+  const { data, fetchNextPage, hasNextPage } =
+    commentsQuery.useSuspenseInfiniteQuery()
 
   return (
     <div>
-      {data.pages.flatMap((p) => p.comments).map((comment) => (
-        <Comment key={comment.id} comment={comment} />
-      ))}
+      {data.pages
+        .flatMap((p) => p.comments)
+        .map((comment) => (
+          <Comment key={comment.id} comment={comment} />
+        ))}
 
       {hasNextPage && (
-        <button onClick={() => fetchNextPage()}>
-          Load more comments
-        </button>
+        <button onClick={() => fetchNextPage()}>Load more comments</button>
       )}
     </div>
   )
@@ -206,16 +226,14 @@ function CommentsList({ postId }: { postId: string }) {
 
 Combined with IntersectionObserver:
 
-```typescript
+```tsx
+import { Suspense, useEffect, useRef } from "react"
+
 function InfiniteGallery() {
   const sentinelRef = useRef<HTMLDivElement>(null)
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = galleryQuery.useSuspenseInfiniteQuery()
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    galleryQuery.useSuspenseInfiniteQuery()
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -263,9 +281,12 @@ function GalleryPage() {
 
 Flatten pages at factory level:
 
-```typescript
+```tsx
+import { createSuspenseInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const productListQuery = createSuspenseInfiniteQuery(backend, {
-  functionName: "getProducts",
+  functionName: "list_products",
   initialPageParam: 0,
   getArgs: (offset) => [{ offset, limit: 24 }] as const,
   getNextPageParam: (lastPage) => lastPage.nextOffset,
@@ -301,9 +322,13 @@ function ProductGrid() {
 
 For dynamic args generation:
 
-```typescript
+```tsx
+import { Suspense } from "react"
+import { createSuspenseInfiniteQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const getCategoryProductsQuery = createSuspenseInfiniteQueryFactory(backend, {
-  functionName: "getProductsByCategory",
+  functionName: "list_products_by_category",
   initialPageParam: 0,
   // Optional: derive logical identity from first-page args
   getKeyArgs: (args) => {
@@ -317,7 +342,7 @@ const getCategoryProductsQuery = createSuspenseInfiniteQueryFactory(backend, {
 function CategoryProducts({ categoryId }: { categoryId: string }) {
   const query = getCategoryProductsQuery((offset) => [
     categoryId,
-    { offset, limit: 20 }
+    { offset, limit: 20 },
   ])
 
   const { data } = query.useSuspenseInfiniteQuery()
@@ -343,12 +368,24 @@ list it returns, whatever its `getArgs`, per-call `queryKey` or number of
 loaded pages:
 
 ```typescript
+import {
+  createMutation,
+  createSuspenseInfiniteQueryFactory,
+} from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const getCategoryProductsQuery = createSuspenseInfiniteQueryFactory(backend, {
+  functionName: "list_products_by_category",
+  initialPageParam: 0,
+  getNextPageParam: (lastPage) => lastPage.nextOffset,
+})
+
 // Refetch every category's product list
 await getCategoryProductsQuery.invalidate()
 
 // Or after a mutation
 const addProduct = createMutation(backend, {
-  functionName: "addProduct",
+  functionName: "add_product",
   invalidateQueries: [getCategoryProductsQuery],
 })
 ```
@@ -361,6 +398,9 @@ exclude pagination state and keep only the logical identity (filters/search
 params).
 
 ```typescript
+import { createSuspenseInfiniteQueryFactory } from "@ic-reactor/react"
+import { todoReactor } from "./reactor"
+
 const todoListInfiniteQuery = createSuspenseInfiniteQueryFactory(todoReactor, {
   functionName: "list_todos",
   initialPageParam: "0",

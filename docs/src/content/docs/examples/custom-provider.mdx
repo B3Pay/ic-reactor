@@ -76,9 +76,41 @@ for it:
 
 ```tsx
 // src/App.tsx
-<ICRC1Provider key={canisterId} canisterId={canisterId}>
-  <ICRC1Call functionName="icrc1_symbol" label="Symbol" />
-</ICRC1Provider>
+import { useState, type FormEvent } from "react"
+import { Principal } from "@icp-sdk/core/principal"
+import ICRC1Call from "./ICRC1Call"
+import ICRC1Provider from "./ICRC1Provider"
+
+export default function App() {
+  const [canisterId, setCanisterId] = useState("ryjl3-tyaaa-aaaaa-aaaba-cai")
+  const [draft, setDraft] = useState(canisterId)
+
+  // Only text that parses as a principal becomes the canister ID, so a
+  // half-typed value never reaches the reactor factory.
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    try {
+      setCanisterId(Principal.fromText(draft.trim()).toText())
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
+  return (
+    <>
+      <form onSubmit={onSubmit}>
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+        />
+        <button type="submit">Fetch Token</button>
+      </form>
+      <ICRC1Provider key={canisterId} canisterId={canisterId}>
+        <ICRC1Call functionName="icrc1_symbol" label="Symbol" />
+      </ICRC1Provider>
+    </>
+  )
+}
 ```
 
 Components read the hooks with `useICRC1Context()`, typed as the factory's

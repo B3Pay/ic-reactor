@@ -66,6 +66,9 @@ IC Reactor takes all of this and adds the **Internet Computer layer**:
 ### The Best of Both Worlds
 
 ```tsx
+// useActorQuery and useActorMutation come from createActorHooks(backend),
+// shown in the example below
+
 // IC Reactor gives you TanStack Query powers for IC canisters
 const { data, isPending, refetch } = useActorQuery({
   functionName: "getBalance",

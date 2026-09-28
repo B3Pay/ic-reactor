@@ -59,6 +59,7 @@ Demonstrates the automatic type transformation system comparing `DisplayReactor`
 ```typescript
 // src/main.ts
 import { Reactor, DisplayReactor } from "@ic-reactor/react"
+import { idlFactory, type Ledger } from "./declarations/ledger"
 
 // Regular Reactor - raw Candid types
 const rawReactor = new Reactor<Ledger>({

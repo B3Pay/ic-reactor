@@ -97,11 +97,13 @@ console.log(name) // "Internet Computer"
 For quick one-off calls, use the convenience methods:
 
 ```typescript
+import { Principal } from "@icp-sdk/core/principal"
+
 // Query with inline Candid signature
 const balance = await reactor.queryDynamic({
   functionName: "icrc1_balance_of",
   candid: "(record { owner : principal }) -> (nat) query",
-  args: [{ owner: Principal.fromText("...") }],
+  args: [{ owner: Principal.fromText("aaaaa-aa") }],
 })
 
 // With TanStack Query caching

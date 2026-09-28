@@ -53,10 +53,14 @@ and `addMutation`. The app reads the counter and increments it through them:
 ```tsx
 import { getQuery, incMutation } from "./canisters-vite/backend"
 
-const { data: counter } = getQuery.useQuery()
-const { mutate: inc } = incMutation.useMutation({
-  invalidateQueries: [getQuery.getQueryKey()],
-})
+function Counter() {
+  const { data: counter } = getQuery.useQuery()
+  const { mutate: inc } = incMutation.useMutation({
+    invalidateQueries: [getQuery],
+  })
+
+  return <button onClick={() => inc([])}>Count: {counter}</button>
+}
 ```
 
 See

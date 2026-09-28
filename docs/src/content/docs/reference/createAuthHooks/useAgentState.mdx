@@ -40,9 +40,10 @@ function AgentStatus() {
 ### Initial Loading Screen
 
 ```tsx
+import type { ReactNode } from "react"
 import { useAgentState } from "./reactor/hooks"
 
-function App({ children }) {
+function App({ children }: { children: ReactNode }) {
   const { isInitializing, error } = useAgentState()
 
   if (isInitializing) {

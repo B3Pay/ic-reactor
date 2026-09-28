@@ -42,13 +42,31 @@ against live ledger canisters:
 ## Key Code
 
 ```ts
+// src/reactor.ts
+import {
+  createMutation,
+  createSuspenseQuery,
+  createSuspenseQueryFactory,
+  defineDisplayReactor,
+  formatTokenAmount,
+} from "@ic-reactor/react"
+import { ledgerIdlFactory, type Ledger } from "./declarations/ledger"
+
+export const { reactor: icpReactor } = defineDisplayReactor<Ledger>({
+  name: "icp",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  idlFactory: ledgerIdlFactory,
+  agentOptions: { host: "https://ic0.app" },
+})
+
 export const icpNameQuery = createSuspenseQuery(icpReactor, {
   functionName: "icrc1_name",
 })
 
+// The balance is e8s as text: formatTokenAmount shifts it by the decimals
 export const getIcpBalance = createSuspenseQueryFactory(icpReactor, {
   functionName: "icrc1_balance_of",
-  select: (balance) => formatBalance(balance, "ICP"),
+  select: (balance) => `${formatTokenAmount(balance, 8)} ICP`,
 })
 
 export const icpTransferMutation = createMutation(icpReactor, {

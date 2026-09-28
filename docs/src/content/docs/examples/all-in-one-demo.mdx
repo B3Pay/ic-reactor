@@ -69,22 +69,31 @@ export const likeHeart = createMutation(backendReactor, {
 fires for every error and is the one that receives the `onMutate` context:
 
 ```typescript
-// src/lib/useHeart.ts
-const { mutateAsync: likeMutate } = likeHeart.useMutation({
-  // Canister returned { Ok }
-  onSuccess: () => {
-    addLog("success", "Like confirmed by canister")
-  },
-  // Canister returned { Err } — business logic errors only
-  onCanisterError: (error, variables) => {
-    addLog("error", `Canister rejected like: ${error.message}`)
-  },
-  // Every error, including network and agent failures
-  onError: (error, variables, context) => {
-    console.error("Like mutation error:", error)
-  },
-  onSettled: () => getLikes.invalidate(),
-})
+// src/lib/useHeart.ts (an excerpt: the mutation callbacks)
+import type { FrontendLog } from "./types"
+import { getLikes, likeHeart } from "./factories"
+
+export function useHeart(
+  addLog: (type: FrontendLog["type"], message: string) => void
+) {
+  const { mutateAsync: likeMutate } = likeHeart.useMutation({
+    // Canister returned { Ok }
+    onSuccess: () => {
+      addLog("success", "Like confirmed by canister")
+    },
+    // Canister returned { Err } — business logic errors only
+    onCanisterError: (error, variables) => {
+      addLog("error", `Canister rejected like: ${error.message}`)
+    },
+    // Every error, including network and agent failures
+    onError: (error, variables, context) => {
+      console.error("Like mutation error:", error)
+    },
+    onSettled: () => getLikes.invalidate(),
+  })
+
+  return { likeMutate }
+}
 ```
 
 <Aside type="caution">
@@ -95,17 +104,27 @@ const { mutateAsync: likeMutate } = likeHeart.useMutation({
 
 ### Optimistic Updates
 
-The demo uses React's `useOptimistic` rather than writing into the query cache,
-so the optimistic state unwinds by itself when the transition settles:
+The demo's `useHeart` uses React's `useOptimistic` rather than writing into the
+query cache, so the optimistic state unwinds by itself when the transition
+settles. Here is that part on its own, as a hook of its own (an excerpt: the
+demo keeps it inside `useHeart`, next to the two mutations and the debounce):
 
 ```tsx
-const { data: likes = [] } = getLikes.useQuery()
+// An excerpt of useHeart (src/lib/useHeart.ts), as a hook of its own
+import { useOptimistic } from "react"
+import { getLikes } from "./factories"
 
-const [optimisticLikes, addOptimisticLike] = useOptimistic(
-  likes,
-  (state, newLike: { type: "add" | "remove"; principal: string }) =>
-    newLike.type === "add"
-      ? [...state, newLike.principal]
-      : state.filter((p) => p !== newLike.principal)
-)
+export function useOptimisticLikes() {
+  const { data: likes = [] } = getLikes.useQuery()
+
+  const [optimisticLikes, addOptimisticLike] = useOptimistic(
+    likes,
+    (state, newLike: { type: "add" | "remove"; principal: string }) =>
+      newLike.type === "add"
+        ? [...state, newLike.principal]
+        : state.filter((p) => p !== newLike.principal)
+  )
+
+  return { likesCount: optimisticLikes.length, addOptimisticLike }
+}
 ```

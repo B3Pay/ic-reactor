@@ -25,6 +25,7 @@ validation with the reactor's `validate()` or `callMethodWithValidation()`.
 import {
   mapValidationErrors,
   getFieldError,
+  extractValidationErrors,
   handleValidationError,
   isValidationError,
 } from "@ic-reactor/react"
@@ -36,12 +37,22 @@ import {
 
 Maps a `ValidationError` to a simple object where keys are field names and values are error messages.
 
-```typescript
+```ts nocheck
+function mapValidationErrors(
+  error: ValidationError,
+  options?: { multiple?: false }
+): Record<string, string>
+function mapValidationErrors(
+  error: ValidationError,
+  options: { multiple: true }
+): Record<string, string[]>
 function mapValidationErrors(
   error: ValidationError,
   options?: { multiple?: boolean }
-): Record<string, string | string[]>
+): Record<string, string> | Record<string, string[]>
 ```
+
+By default each field maps to its first message; pass `{ multiple: true }` to get every message for each field as an array.
 
 An issue about the whole argument rather than one field (an empty `path`, as zod reports for an object-level `.refine()`) is filed under the key `""`.
 
@@ -50,14 +61,27 @@ An issue about the whole argument rather than one field (an empty `path`, as zod
 Call `mutateAsync` here: it returns a promise that rejects with the error. `mutate` returns nothing and reports errors only through `onError`, so a `catch` around it never runs.
 
 ```tsx
-try {
-  await mutateAsync([data])
-} catch (error) {
-  if (isValidationError(error)) {
-    const errors = mapValidationErrors(error)
-    console.log(errors) // { to: "Required", amount: "Must be positive" }
-    setFormErrors(errors)
+import { useState } from "react"
+import { isValidationError, mapValidationErrors } from "@ic-reactor/react"
+import { useActorMutation } from "./reactor"
+
+function useTransfer() {
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const { mutateAsync } = useActorMutation({ functionName: "transfer" })
+
+  const transfer = async (data: { to: string; amount: string }) => {
+    try {
+      await mutateAsync([data])
+    } catch (error) {
+      if (isValidationError(error)) {
+        const errors = mapValidationErrors(error)
+        console.log(errors) // { to: "Required", amount: "Must be positive" }
+        setFormErrors(errors)
+      }
+    }
   }
+
+  return { transfer, formErrors }
 }
 ```
 
@@ -65,7 +89,7 @@ try {
 
 Creates an error handler callback that automatically checks for `ValidationError` and extracts field errors. Perfect for `onError` callbacks.
 
-```typescript
+```ts nocheck
 function handleValidationError(
   setFieldErrors: (errors: Record<string, string>) => void,
   onOtherError?: (error: Error) => void
@@ -75,21 +99,31 @@ function handleValidationError(
 **Usage:**
 
 ```tsx
-const { mutate } = useReactorMutation({
-  reactor: backend,
-  functionName: "transfer",
-  onError: handleValidationError(
-    (errors) => setFormErrors(errors), // Called if validation error
-    (error) => toast.error(error.message) // Called for other errors
-  ),
-})
+import { useState } from "react"
+import { handleValidationError, useReactorMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function useTransferMutation() {
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+
+  const { mutate } = useReactorMutation({
+    reactor: backend,
+    functionName: "transfer",
+    onError: handleValidationError(
+      (errors) => setFormErrors(errors), // Called if validation error
+      (error) => toast.error(error.message) // Called for other errors
+    ),
+  })
+
+  return { mutate, formErrors }
+}
 ```
 
 ### getFieldError
 
 Extracts the first error message for a specific field. Pass `""` for an issue about the whole argument.
 
-```typescript
+```ts nocheck
 function getFieldError(
   error: ValidationError,
   field: string
@@ -100,7 +134,7 @@ function getFieldError(
 
 A type-safe helper that returns the mapped errors if the error is a `ValidationError`, or `null` otherwise.
 
-```typescript
+```ts nocheck
 function extractValidationErrors(error: unknown): Record<string, string> | null
 ```
 
@@ -131,9 +165,9 @@ function TransferForm() {
     },
   })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const formData = new FormData(e.target)
+    const formData = new FormData(e.currentTarget)
     mutate([
       {
         to: formData.get("to") as string,
@@ -169,11 +203,16 @@ import {
   useReactorMutation,
   mapValidationErrors,
   isValidationError,
+  type ReactorArgsOf,
 } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
+type TransferFields = ReactorArgsOf<typeof backend, "transfer">[0]
+
 function TransferForm() {
-  const { register, handleSubmit, setError } = useForm()
+  const { register, handleSubmit, setError } = useForm<TransferFields>({
+    defaultValues: { to: "", amount: "" },
+  })
 
   const { mutate } = useReactorMutation({
     reactor: backend,
@@ -182,15 +221,21 @@ function TransferForm() {
       if (isValidationError(error)) {
         const fieldErrors = mapValidationErrors(error)
         Object.entries(fieldErrors).forEach(([field, message]) => {
-          setError(field, { type: "server", message })
+          setError(field as keyof TransferFields, { type: "server", message })
         })
       }
     },
   })
 
-  const onSubmit = (data) => mutate([data])
+  const onSubmit = (data: TransferFields) => mutate([data])
 
-  return <form onSubmit={handleSubmit(onSubmit)}>{/* Inputs... */}</form>
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <input placeholder="To" {...register("to")} />
+      <input placeholder="Amount" {...register("amount")} />
+      <button>Submit</button>
+    </form>
+  )
 }
 ```
 

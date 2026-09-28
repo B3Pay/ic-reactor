@@ -12,6 +12,7 @@ import { Aside } from "@astrojs/starlight/components"
 
 ```typescript
 import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
 const { useActorMutation } = createActorHooks(backend)
 ```
@@ -20,6 +21,9 @@ const { useActorMutation } = createActorHooks(backend)
   It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
 
 ```typescript
+import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const { useActorMutation: useBackendMutation } = createActorHooks(backend)
 ```
 
@@ -28,9 +32,11 @@ const { useActorMutation: useBackendMutation } = createActorHooks(backend)
 ## Usage
 
 ```tsx
+import { useActorMutation } from "./reactor"
+
 function CreatePost() {
   const { mutate, isPending } = useActorMutation({
-    functionName: "createPost",
+    functionName: "create_post",
   })
 
   return (
@@ -70,7 +76,7 @@ function CreatePost() {
 
 ### Callback Signatures
 
-```typescript
+```typescript nocheck
 onMutate: (variables: Args) => Promise<Context> | Context
 
 onSuccess: (data: Data, variables: Args, context: Context) => Promise<void> | void
@@ -103,8 +109,10 @@ Returns a TanStack Query mutation result object:
 ### Basic Mutation
 
 ```tsx
+import { useActorMutation } from "./reactor"
+
 const { mutate, isPending, isSuccess } = useActorMutation({
-  functionName: "createPost",
+  functionName: "create_post",
 })
 
 const handleCreate = () => {
@@ -115,8 +123,10 @@ const handleCreate = () => {
 ### With Callbacks
 
 ```tsx
+import { useActorMutation } from "./reactor"
+
 const { mutate } = useActorMutation({
-  functionName: "transfer",
+  functionName: "icrc1_transfer",
   onMutate: (args) => {
     console.log("Starting transfer:", args)
     return { startTime: Date.now() }
@@ -138,13 +148,14 @@ const { mutate } = useActorMutation({
 ### Invalidate Queries After Mutation
 
 ```tsx
+import { useActorMutation } from "./reactor"
 import { getPost } from "../queries" // createQueryFactory(backend, ...)
 
 const { mutate } = useActorMutation({
-  functionName: "createPost",
+  functionName: "create_post",
   invalidateQueries: [
-    { functionName: "getPosts" }, // every getPosts query, whatever its args
-    { functionName: "getPostCount" },
+    { functionName: "get_posts" }, // every get_posts query, whatever its args
+    { functionName: "get_posts_count" },
     getPost, // every query this factory returned
   ],
 })
@@ -159,14 +170,16 @@ skipped.
 ### Using mutateAsync
 
 ```tsx
+import { useActorMutation } from "./reactor"
+
 const { mutateAsync, isPending } = useActorMutation({
-  functionName: "transfer",
+  functionName: "icrc1_transfer",
 })
 
 const handleTransfer = async () => {
   try {
-    const result = await mutateAsync([recipient, amount])
-    toast.success(`Transferred ${result.amount} successfully!`)
+    const blockIndex = await mutateAsync([{ to: { owner: recipient }, amount }])
+    toast.success(`Transferred in block ${blockIndex}!`)
     navigate("/transactions")
   } catch (error) {
     toast.error("Transfer failed")
@@ -177,12 +190,15 @@ const handleTransfer = async () => {
 ### Form Integration
 
 ```tsx
+import { useState } from "react"
+import { useActorMutation } from "./reactor"
+
 function CreateUserForm() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
 
   const { mutate, isPending, isError, error, reset } = useActorMutation({
-    functionName: "createUser",
+    functionName: "create_user",
     onSuccess: () => {
       setName("")
       setEmail("")
@@ -230,18 +246,19 @@ function CreateUserForm() {
 
 ```tsx
 import { createQueryFactory } from "@ic-reactor/react"
-import { backend } from "../reactor"
+import { backend, useActorMutation } from "../reactor"
 
-const getPost = createQueryFactory(backend, { functionName: "getPost" })
+const getPost = createQueryFactory(backend, { functionName: "get_post" })
 
 function LikeButton({ postId }: { postId: string }) {
   const { mutate } = useActorMutation({
-    functionName: "likePost",
+    functionName: "like_post",
     // Cancel outgoing refetches, write the new value, keep a rollback
     onMutate: ([postId]) =>
       getPost([postId]).optimisticUpdate((post) => ({
         ...post,
-        likes: post.likes + 1n,
+        // A DisplayReactor caches a `nat` as text
+        likes: (BigInt(post.likes) + 1n).toString(),
         isLiked: true,
       })),
     // Rollback on error
@@ -254,25 +271,28 @@ function LikeButton({ postId }: { postId: string }) {
 }
 ```
 
-The updater is typed from the query and gets its cached raw value; it is not
-called when nothing is cached. See
+The updater is typed from the query and gets the value in the cache (before any
+`select`); it is not called when nothing is cached. See
 [Optimistic Updates](/v3/framework/mutations#optimistic-updates).
 
 ### Canister Error Handling
 
 Use `onCanisterError` to handle `Result { Err }` variants separately from network
-or agent errors. This is cleaner than checking `error instanceof CanisterError`
-inside `onError`:
+or agent errors. This is cleaner than checking `isCanisterError(error)` inside
+`onError`:
 
 ```tsx
+import { useActorMutation } from "./reactor"
+
 const { mutate } = useActorMutation({
-  functionName: "transfer",
+  functionName: "icrc1_transfer",
   // Only fires for canister Result { Err } variants
   onCanisterError: (error) => {
-    if ("InsufficientFunds" in error.err) {
+    // A DisplayReactor gives a variant a `_type`; switch on it
+    if (error.err._type === "InsufficientFunds") {
       toast.error("Not enough balance")
-    } else if ("InvalidRecipient" in error.err) {
-      toast.error("Invalid recipient address")
+    } else if (error.err._type === "BadFee") {
+      toast.error("Wrong transfer fee")
     } else {
       toast.error("Transaction failed: " + error.code)
     }
@@ -287,10 +307,12 @@ const { mutate } = useActorMutation({
 `onCanisterError` also receives the mutation variables as its second argument:
 
 ```tsx
+import { useActorMutation } from "./reactor"
+
 const { mutate } = useActorMutation({
-  functionName: "transfer",
-  onCanisterError: (error, [recipient, amount]) => {
-    console.error(`Transfer of ${amount} to ${recipient} failed: ${error.code}`)
+  functionName: "icrc1_transfer",
+  onCanisterError: (error, [{ to, amount }]) => {
+    console.error(`Transfer of ${amount} to ${to.owner} failed: ${error.code}`)
   },
 })
 ```
@@ -298,8 +320,10 @@ const { mutate } = useActorMutation({
 ### Per-Mutation Callbacks
 
 ```tsx
+import { useActorMutation } from "./reactor"
+
 const { mutate } = useActorMutation({
-  functionName: "createPost",
+  functionName: "create_post",
   onSuccess: () => {
     // This runs first (from hook config)
     console.log("Post created!")
@@ -308,9 +332,9 @@ const { mutate } = useActorMutation({
 
 // Later, in an event handler:
 mutate([postData], {
-  onSuccess: () => {
+  onSuccess: (post) => {
     // This runs second (from mutate call)
-    navigate(`/posts/${postData.id}`)
+    navigate(`/posts/${post.id}`)
   },
 })
 ```
@@ -318,9 +342,12 @@ mutate([postData], {
 ### With Loading State
 
 ```tsx
+import { useEffect } from "react"
+import { useActorMutation } from "./reactor"
+
 function TransferButton() {
   const { mutate, isPending, isSuccess, reset } = useActorMutation({
-    functionName: "transfer",
+    functionName: "icrc1_transfer",
   })
 
   useEffect(() => {
@@ -331,7 +358,10 @@ function TransferButton() {
   }, [isSuccess, reset])
 
   return (
-    <button onClick={() => mutate([recipient, amount])} disabled={isPending}>
+    <button
+      onClick={() => mutate([{ to: { owner: recipient }, amount }])}
+      disabled={isPending}
+    >
       {isPending && "Transferring..."}
       {isSuccess && "✓ Done!"}
       {!isPending && !isSuccess && "Transfer"}
@@ -342,7 +372,7 @@ function TransferButton() {
 
 ## Type Parameters
 
-```typescript
+```typescript nocheck
 useActorMutation<M extends FunctionName<A>>(
   options: UseActorMutationParameters<A, M, T>
 )

@@ -21,7 +21,9 @@ Traditional IC development treats canister calls as one-shot operations—you ca
 
 `Reactor` wraps a canister connection with **TanStack Query integration**, transforming static canister calls into reactive data streams that your UI components can subscribe to.
 
-```typescript
+```tsx
+import { Reactor, useReactorQuery } from "@ic-reactor/react"
+
 // A Reactor isn't just a connection — it's a reactive data source
 const backend = new Reactor<_SERVICE>({
   clientManager,
@@ -31,11 +33,17 @@ const backend = new Reactor<_SERVICE>({
 })
 
 // Data flows reactively: cache → components → automatic updates
-const { data, isLoading, refetch } = useReactorQuery({
-  reactor: backend,
-  functionName: "getUser",
-  args: [userId],
-})
+function UserName({ userId }: { userId: string }) {
+  const { data, isLoading, refetch } = useReactorQuery({
+    reactor: backend,
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  return (
+    <button onClick={() => refetch()}>{isLoading ? "…" : data?.name}</button>
+  )
+}
 ```
 
 ## Why Reactor Instead of Actor?
@@ -71,11 +79,15 @@ If you're familiar with the standard `Actor` class from `@icp-sdk/core/agent`, y
 
 ## Import
 
-```typescript
-// React users - import from @ic-reactor/react
-import { Reactor } from "@ic-reactor/react"
+React users import from `@ic-reactor/react`:
 
-// Non-React users
+```typescript
+import { Reactor } from "@ic-reactor/react"
+```
+
+Non-React users import from `@ic-reactor/core`:
+
+```typescript
 import { Reactor } from "@ic-reactor/core"
 ```
 
@@ -176,7 +188,7 @@ const queryKey = backend.generateQueryKey(
   },
   {
     canisterId: otherCanisterId,
-    effectiveCanisterId: managementCanisterId,
+    effectiveTarget: { canisterId: managementCanisterId },
   }
 )
 // Returns:
@@ -213,6 +225,8 @@ React query wrappers.
 Get TanStack Query options for a method call:
 
 ```typescript
+import { useQuery } from "@tanstack/react-query"
+
 const queryOptions = backend.getQueryOptions({
   functionName: "getUser",
   args: ["user-123"],
@@ -225,8 +239,8 @@ const loader = async () => {
   return null
 }
 
-// Or with useQuery directly
-const result = useQuery(queryOptions)
+// Or with useQuery directly, in a component or a custom hook
+const useUser = () => useQuery(queryOptions)
 ```
 
 #### Returns
@@ -247,8 +261,11 @@ query hooks and factories of `@ic-reactor/react`.
 
 ```typescript
 const retry = backend.getQueryRetry(
-  "get_btc_address",
-  backend.generateQueryKey({ functionName: "get_btc_address" })
+  "createPost",
+  backend.generateQueryKey({
+    functionName: "createPost",
+    args: [{ title: "Hello", content: "World" }],
+  })
 )
 ```
 
@@ -272,7 +289,10 @@ Invalidate all cached queries for this canister:
 ```typescript
 // After a successful mutation, invalidate all queries for this canister and
 // wait for the ones in use to refetch
-await backend.callMethod({ functionName: "updateProfile", args: [newProfile] })
+await backend.callMethod({
+  functionName: "updateProfile",
+  args: [{ name: "Alice" }],
+})
 await backend.invalidateQueries()
 
 // Invalidate a cached query that used a per-call canister override
@@ -321,6 +341,9 @@ and it starts with this reactor's interface, name, polling options and, for a
 `DisplayReactor`, validators. Only the canister differs.
 
 ```typescript
+import { DisplayReactor } from "@ic-reactor/core"
+import { idlFactory, type _SERVICE as Ledger } from "./declarations/ledger"
+
 const ledger = new DisplayReactor<Ledger>({
   clientManager,
   idlFactory,
@@ -389,6 +412,8 @@ A reactor of the same type as the one it was called on.
 Dynamically update the canister ID for this reactor. This is useful when one reactor instance should follow a single selection, and nothing else built on it needs the previous canister. For several canisters of the same type at once (e.g., multiple ICRC tokens), use [`forCanister`](#forcanister) instead.
 
 ```typescript
+import { Principal } from "@icp-sdk/core/principal"
+
 // Switch to a different ledger canister
 ledgerReactor.setCanisterId("ryjl3-tyaaa-aaaaa-aaaba-cai")
 
@@ -467,10 +492,17 @@ const result = await backend.callMethod({
 
 ```typescript
 // React Router loader
-export async function loader({ params }) {
+export async function loader({
+  params,
+}: {
+  params: Readonly<Record<string, string | undefined>>
+}) {
+  const { userId } = params
+  if (!userId) throw new Response("Not found", { status: 404 })
+
   const queryOptions = backend.getQueryOptions({
     functionName: "getUser",
-    args: [params.userId],
+    args: [userId],
   })
 
   await queryClient.prefetchQuery(queryOptions)
@@ -486,6 +518,8 @@ client the hooks read, and unlike `useQueryClient()` it needs no
 `QueryClientProvider` and works outside React:
 
 ```typescript
+import type { User } from "./declarations/backend"
+
 function updateUserCache(userId: string, updates: Partial<User>) {
   const queryKey = backend.generateQueryKey({
     functionName: "getUser",
@@ -540,7 +574,7 @@ objects on it. A single reactor can instead follow one selection with
 `setCanisterId`, as this route loader does; every query object built on that
 reactor then moves with it:
 
-```typescript
+```tsx
 import { createFileRoute } from "@tanstack/react-router"
 import { ledgerReactor } from "@/canisters/ledger/reactor"
 import { icrc1NameQuery, icrc1SymbolQuery } from "@/canisters/ledger/hooks"
@@ -655,9 +689,31 @@ if (user) {
 You can extend the `Reactor` class to add custom functionality, logging, or middleware. The `callMethod` is now a class method, allowing you to override it easily.
 
 ```typescript
+import {
+  Reactor,
+  type FunctionName,
+  type ReactorCallParams,
+  type ReactorQueryData,
+  type ReactorReturnErr,
+  type ReactorReturnOk,
+} from "@ic-reactor/react"
+import type { FetchQueryOptions } from "@tanstack/react-query"
+import type { _SERVICE as BackendService } from "./declarations/backend"
+
+// The options `fetchQuery` takes after its params
+type FetchOptions<M extends FunctionName<BackendService>> = Omit<
+  FetchQueryOptions<
+    ReactorQueryData<ReactorReturnOk<BackendService, M>>,
+    ReactorReturnErr<BackendService, M>
+  >,
+  "queryKey" | "queryFn"
+>
+
 class LoggingReactor extends Reactor<BackendService> {
   // Override callMethod to add logging
-  async callMethod(params) {
+  async callMethod<M extends FunctionName<BackendService>>(
+    params: Omit<ReactorCallParams<BackendService, M>, "queryKey">
+  ): Promise<ReactorReturnOk<BackendService, M>> {
     console.log("Calling method:", params.functionName)
     const result = await super.callMethod(params)
     console.log("Method result:", result)
@@ -665,7 +721,10 @@ class LoggingReactor extends Reactor<BackendService> {
   }
 
   // Override fetchQuery to add custom logic (e.g. auth checks)
-  async fetchQuery(params, options) {
+  async fetchQuery<M extends FunctionName<BackendService>>(
+    params: ReactorCallParams<BackendService, M>,
+    options?: FetchOptions<M>
+  ) {
     const principal = await this.clientManager.getUserPrincipal()
     if (principal.isAnonymous()) {
       console.warn("User not authenticated")

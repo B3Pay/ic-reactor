@@ -23,7 +23,7 @@ import { backend } from "./reactor"
 function CreatePost() {
   const { mutate, isPending } = useReactorMutation({
     reactor: backend, // 👈 Required
-    functionName: "createPost",
+    functionName: "create_post",
   })
 
   return (
@@ -59,21 +59,27 @@ Returns a TanStack Query mutation result object, same as `useActorMutation`.
 ### Basic Mutation
 
 ```tsx
+import { useReactorMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const { mutate } = useReactorMutation({
   reactor: backend,
-  functionName: "transfer",
+  functionName: "icrc1_transfer",
 })
 
 // Arguments are supplied at call time, not in the hook config
-mutate([recipient, amount])
+mutate([{ to: { owner: recipient }, amount }])
 ```
 
 ### With Callbacks
 
 ```tsx
+import { useReactorMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const { mutate } = useReactorMutation({
   reactor: backend,
-  functionName: "createPost",
+  functionName: "create_post",
   onSuccess: () => console.log("Post created!"),
 })
 ```
@@ -81,12 +87,15 @@ const { mutate } = useReactorMutation({
 ### Invalidate Queries After Mutation
 
 ```tsx
+import { useReactorMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const { mutate } = useReactorMutation({
   reactor: backend,
-  functionName: "createPost",
+  functionName: "create_post",
   // Methods of `backend`, type-checked against its service. A query object,
   // a query factory or a query key works here too.
-  invalidateQueries: [{ functionName: "getPosts" }],
+  invalidateQueries: [{ functionName: "get_posts" }],
 })
 ```
 

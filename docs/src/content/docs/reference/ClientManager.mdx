@@ -37,6 +37,19 @@ Without ClientManager, connecting to the IC typically involves:
 **ClientManager solves this by providing a unified interface** where all these concerns are managed together. When the identity changes, the agent is updated, the affected queries invalidate, and your reactors seamlessly use the new identity.
 
 ```typescript
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import { AuthenticationManager } from "@ic-reactor/react"
+import {
+  canisterId,
+  idlFactory,
+  type _SERVICE as BackendService,
+} from "./declarations/backend"
+import {
+  canisterId as ledgerCanisterId,
+  idlFactory as ledgerIdlFactory,
+  type _SERVICE as LedgerService,
+} from "./declarations/ledger"
+
 // One ClientManager, shared by all your reactors
 const clientManager = new ClientManager({ queryClient })
 
@@ -49,9 +62,9 @@ const backend = new Reactor<BackendService>({
 })
 const ledger = new Reactor<LedgerService>({
   clientManager,
-  idlFactory: ledgerIdl,
+  idlFactory: ledgerIdlFactory,
   name: "ledger",
-  canisterId: ledgerId,
+  canisterId: ledgerCanisterId,
 })
 
 // Sign in once - all reactors automatically use the new identity
@@ -273,19 +286,21 @@ export const backend = new Reactor<_SERVICE>({
 ### Network Configuration
 
 ```typescript
+import { ClientManager } from "@ic-reactor/core"
+
 // Browser: the host is inferred from window.location.origin when the page is
 // served from localhost/127.0.0.1, a Codespaces or Gitpod domain, or an IC
 // boundary domain
-const clientManager = new ClientManager({ queryClient })
+const browserManager = new ClientManager({ queryClient })
 
 // Explicit local host — non-browser environments, or a replica on a custom port
-const clientManager = new ClientManager({
+const localManager = new ClientManager({
   queryClient,
   agentOptions: { host: "http://127.0.0.1:8080" },
 })
 
 // Custom agent options
-const clientManager = new ClientManager({
+const mainnetManager = new ClientManager({
   queryClient,
   agentOptions: {
     host: "https://icp-api.io",
@@ -307,23 +322,27 @@ When your app is served by the `@icp-sdk` toolchain (e.g., `icp-cli`) or by [`@i
 ### Subscribing to State Changes
 
 ```typescript
+import { useEffect } from "react"
+
 // In React with useEffect
-useEffect(() => {
-  const unsubIdentity = clientManager.subscribe((identity) => {
-    console.log("New identity:", identity.getPrincipal().toText())
-  })
+export function useClientManagerLogging() {
+  useEffect(() => {
+    const unsubIdentity = clientManager.subscribe((identity) => {
+      console.log("New identity:", identity.getPrincipal().toText())
+    })
 
-  const unsubAgent = clientManager.subscribeAgentState((state) => {
-    if (state.isInitialized) {
-      console.log("Agent ready, network:", state.network)
+    const unsubAgent = clientManager.subscribeAgentState((state) => {
+      if (state.isInitialized) {
+        console.log("Agent ready, network:", state.network)
+      }
+    })
+
+    return () => {
+      unsubIdentity()
+      unsubAgent()
     }
-  })
-
-  return () => {
-    unsubIdentity()
-    unsubAgent()
-  }
-}, [])
+  }, [])
+}
 ```
 
 ### Authentication Flow
@@ -371,6 +390,8 @@ async function handleLogout() {
 ### Network Detection
 
 ```typescript
+import { ClientManager } from "@ic-reactor/core"
+
 const clientManager = new ClientManager({ queryClient })
 
 // Check current network
@@ -491,6 +512,8 @@ We're exploring first-class support for popular authentication standards:
 Here's how SIWE integration works with [ic-siwe-js](https://github.com/kristoferlund/ic-siwe):
 
 ```tsx
+import { useEffect } from "react"
+
 // 1. Wrap your app with SiweIdentityProvider
 import { SiweIdentityProvider } from "ic-siwe-js/react"
 

@@ -12,6 +12,7 @@ import { Aside } from "@astrojs/starlight/components"
 
 ```typescript
 import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
 const { useActorInfiniteQuery } = createActorHooks(backend)
 ```
@@ -20,6 +21,9 @@ const { useActorInfiniteQuery } = createActorHooks(backend)
   It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
 
 ```typescript
+import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const { useActorInfiniteQuery: useBackendInfiniteQuery } =
   createActorHooks(backend)
 ```
@@ -29,10 +33,12 @@ const { useActorInfiniteQuery: useBackendInfiniteQuery } =
 ## Usage
 
 ```tsx
+import { useActorInfiniteQuery } from "./reactor"
+
 function ItemList() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useActorInfiniteQuery({
-      functionName: "getItems",
+      functionName: "get_items",
       getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }] as const,
       initialPageParam: 0,
       getNextPageParam: (lastPage) => lastPage.nextOffset ?? undefined,
@@ -104,22 +110,32 @@ without calling the canister, in a cache entry of its own under its method and
 
 ```tsx
 import { skipToken } from "@ic-reactor/react"
+import { useActorInfiniteQuery } from "./reactor"
 
-const { data } = useActorInfiniteQuery({
-  functionName: "getPosts",
-  getArgs: authorId
-    ? (offset: number) => [{ authorId, offset, limit: 10 }]
-    : skipToken,
-  initialPageParam: 0,
-  getNextPageParam: (lastPage) => lastPage.nextOffset,
-})
+function AuthorPosts({ authorId }: { authorId: string | undefined }) {
+  const { data } = useActorInfiniteQuery({
+    functionName: "list_posts",
+    getArgs: authorId
+      ? (offset: number) => [{ authorId, offset, limit: 10 }]
+      : skipToken,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
+  })
+
+  return (
+    <PostList
+      posts={data?.pages.flatMap((page) => page.posts)}
+      author={authorId}
+    />
+  )
+}
 ```
 
 `useActorSuspenseInfiniteQuery` does not take `skipToken`.
 
 ### Callback Signatures
 
-```typescript
+```typescript nocheck
 getArgs: (pageParam: TPageParam) => Args
 
 getNextPageParam: (
@@ -162,8 +178,10 @@ getPreviousPageParam: (
 ### Offset-Based Pagination
 
 ```tsx
+import { useActorInfiniteQuery } from "./reactor"
+
 const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
-  functionName: "getItems",
+  functionName: "get_items",
   getArgs: (offset) => [{ offset, limit: 20 }],
   initialPageParam: 0,
   getNextPageParam: (lastPage, allPages) => {
@@ -176,8 +194,10 @@ const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
 ### Cursor-Based Pagination
 
 ```tsx
+import { useActorInfiniteQuery } from "./reactor"
+
 const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
-  functionName: "getItems",
+  functionName: "get_items_after",
   getArgs: (cursor) => [cursor ? { after: cursor } : {}],
   initialPageParam: null as string | null,
   getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -187,8 +207,10 @@ const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
 ### Page Number Pagination
 
 ```tsx
+import { useActorInfiniteQuery } from "./reactor"
+
 const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
-  functionName: "getItemsByPage",
+  functionName: "get_items_by_page",
   getArgs: (page) => [{ page, perPage: 10 }],
   initialPageParam: 1,
   getNextPageParam: (lastPage, allPages, lastPageParam) => {
@@ -200,9 +222,17 @@ const { data, fetchNextPage, hasNextPage } = useActorInfiniteQuery({
 ### Bi-Directional Infinite List
 
 ```tsx
-const { data, fetchNextPage, fetchPreviousPage, hasNextPage, hasPreviousPage } =
-  useActorInfiniteQuery({
-    functionName: "getTimeline",
+import { useActorInfiniteQuery } from "./reactor"
+
+function Timeline() {
+  const {
+    data,
+    fetchNextPage,
+    fetchPreviousPage,
+    hasNextPage,
+    hasPreviousPage,
+  } = useActorInfiniteQuery({
+    functionName: "get_timeline",
     getArgs: (timestamp) => [{ around: timestamp, limit: 20 }],
     initialPageParam: Date.now(),
     // `Date.now()` differs on every render, so keep the cursor out of the key.
@@ -211,21 +241,22 @@ const { data, fetchNextPage, fetchPreviousPage, hasNextPage, hasPreviousPage } =
     getPreviousPageParam: (firstPage) => firstPage.newestTimestamp,
   })
 
-return (
-  <div>
-    <button onClick={() => fetchPreviousPage()} disabled={!hasPreviousPage}>
-      Load newer
-    </button>
+  return (
+    <div>
+      <button onClick={() => fetchPreviousPage()} disabled={!hasPreviousPage}>
+        Load newer
+      </button>
 
-    {data?.pages.map((page, i) => (
-      <TimelineItems key={i} items={page.items} />
-    ))}
+      {data?.pages.map((page, i) => (
+        <TimelineItems key={i} items={page.items} />
+      ))}
 
-    <button onClick={() => fetchNextPage()} disabled={!hasNextPage}>
-      Load older
-    </button>
-  </div>
-)
+      <button onClick={() => fetchNextPage()} disabled={!hasNextPage}>
+        Load older
+      </button>
+    </div>
+  )
+}
 ```
 
 ### Infinite Scroll
@@ -233,13 +264,14 @@ return (
 ```tsx
 import { useInView } from "react-intersection-observer"
 import { useEffect } from "react"
+import { useActorInfiniteQuery } from "./reactor"
 
 function InfiniteList() {
   const { ref, inView } = useInView()
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useActorInfiniteQuery({
-      functionName: "getItems",
+      functionName: "get_items",
       getArgs: (offset) => [{ offset, limit: 20 }],
       initialPageParam: 0,
       getNextPageParam: (lastPage, allPages) =>
@@ -273,8 +305,10 @@ function InfiniteList() {
 ### With Select for Flattened Data
 
 ```tsx
+import { useActorInfiniteQuery } from "./reactor"
+
 const { data: items } = useActorInfiniteQuery({
-  functionName: "getItems",
+  functionName: "get_items",
   getArgs: (offset) => [{ offset, limit: 20 }],
   initialPageParam: 0,
   getNextPageParam: (lastPage, allPages) =>
@@ -292,8 +326,10 @@ const { data: items } = useActorInfiniteQuery({
 ### Limiting Cached Pages
 
 ```tsx
+import { useActorInfiniteQuery } from "./reactor"
+
 const { data } = useActorInfiniteQuery({
-  functionName: "getItems",
+  functionName: "get_items",
   getArgs: (offset) => [{ offset, limit: 20 }],
   initialPageParam: 0,
   getNextPageParam: (lastPage, allPages) =>

@@ -21,7 +21,7 @@ import { createQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
 const userProfileQuery = createQuery(backend, {
-  functionName: "getProfile",
+  functionName: "get_profile",
   args: [currentUserId],
   staleTime: 5 * 60 * 1000, // 5 minutes
 })
@@ -52,6 +52,9 @@ same interface and caches it under that canister, so one reactor can back
 query objects for several ledgers:
 
 ```typescript
+import { createQueryFactory } from "@ic-reactor/react"
+import { ledger } from "./reactor"
+
 const ckbtcBalance = createQueryFactory(ledger, {
   functionName: "icrc1_balance_of",
   callConfig: { canisterId: "mxzaz-hqaaa-aaaar-qaada-cai" },
@@ -88,7 +91,7 @@ The factory returns an object with these utilities:
 
 Use factories with TanStack Router's file-based routing and loaders:
 
-```typescript
+```tsx
 // routes/users/$userId.tsx
 import { createFileRoute } from "@tanstack/react-router"
 import { createQueryFactory } from "@ic-reactor/react"
@@ -97,8 +100,8 @@ import { redirect } from "@tanstack/react-router"
 
 // Create factory (can be in a separate file)
 const getUserQuery = createQueryFactory(backend, {
-  functionName: "getUser",
-  select: (result) => result.user,
+  functionName: "get_user",
+  select: (user) => user.profile,
   staleTime: 5 * 60 * 1000,
 })
 
@@ -141,7 +144,7 @@ function UserPage() {
 
 Pass the reactor via router context for better organization:
 
-```typescript
+```tsx
 // router.tsx
 import {
   createRouter,
@@ -170,7 +173,7 @@ import { createQuery } from "@ic-reactor/react"
 export const Route = createFileRoute("/posts")({
   loader: async ({ context }) => {
     const postsQuery = createQuery(context.backend, {
-      functionName: "getPosts",
+      functionName: "get_posts",
     })
     return { posts: await postsQuery.fetch() }
   },
@@ -180,37 +183,42 @@ export const Route = createFileRoute("/posts")({
 
 ### React Router 6/7 Integration
 
-```typescript
+```tsx
 // routes.tsx
-import { createBrowserRouter, json } from "react-router-dom"
+import { createBrowserRouter, type LoaderFunctionArgs } from "react-router-dom"
 import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
 const getUserQuery = createQueryFactory(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
 })
+
+async function loader({ params }: LoaderFunctionArgs) {
+  if (!params.userId) throw new Response("Not Found", { status: 404 })
+  return { user: await getUserQuery([params.userId]).fetch() }
+}
 
 export const router = createBrowserRouter([
   {
     path: "/users/:userId",
-    loader: async ({ params }) => {
-      const user = await getUserQuery([params.userId!]).fetch()
-      return json({ user })
-    },
+    loader,
     Component: UserPage,
   },
 ])
 
 // UserPage.tsx
+import { skipToken } from "@ic-reactor/react"
 import { useLoaderData, useParams } from "react-router-dom"
 
 function UserPage() {
   // Initial data from loader
-  const { user: initialUser } = useLoaderData() as { user: User }
+  const { user: initialUser } = useLoaderData() as Awaited<
+    ReturnType<typeof loader>
+  >
   const { userId } = useParams()
 
   // Subscribe to updates
-  const { data: user } = getUserQuery([userId!]).useQuery({
+  const { data: user } = getUserQuery(userId ? [userId] : skipToken).useQuery({
     initialData: initialUser,
   })
 
@@ -223,9 +231,12 @@ function UserPage() {
 Transform data at the factory level:
 
 ```typescript
+import { createQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 // Only get what you need
 const userNameQuery = createQuery(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
   args: [userId],
   select: (user) => user.name, // Only extract name
 })
@@ -239,8 +250,11 @@ const { data: userName } = userNameQuery.useQuery()
 Chain additional transformations in the hook:
 
 ```typescript
+import { createQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const userQuery = createQuery(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
   args: [userId],
   select: (user) => user.profile, // First transformation
 })
@@ -255,20 +269,23 @@ const { data: avatarUrl } = userQuery.useQuery({
 
 Use `enabled` option for conditional queries:
 
-```typescript
-const sensitiveDataQuery = createQuery(backend, {
-  functionName: "getSensitiveData",
+```tsx
+import { createQuery } from "@ic-reactor/react"
+import { backend, useAuth } from "./reactor"
+
+const myProfileQuery = createQuery(backend, {
+  functionName: "get_my_profile",
   args: [],
 })
 
 function ProtectedComponent() {
   const { isAuthenticated } = useAuth()
 
-  const { data } = sensitiveDataQuery.useQuery({
+  const { data } = myProfileQuery.useQuery({
     enabled: isAuthenticated, // Only fetch when authenticated
   })
 
-  return isAuthenticated ? <Data data={data} /> : <LoginPrompt />
+  return isAuthenticated ? <ProfileCard profile={data} /> : <LoginPrompt />
 }
 ```
 
@@ -277,8 +294,11 @@ function ProtectedComponent() {
 Read and manipulate cache outside React:
 
 ```typescript
+import { createQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const userQuery = createQuery(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
   args: [userId],
 })
 
@@ -309,8 +329,12 @@ cannot land on top, writes what the updater returns for the cached value, and
 resolves with a rollback. Return it from a mutation's `onMutate`:
 
 ```typescript
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+import { getUserQuery } from "./queries"
+
 const renameUser = createMutation(backend, {
-  functionName: "renameUser",
+  functionName: "rename_user",
   onMutate: ([userId, name]) =>
     getUserQuery([userId]).optimisticUpdate((user) => ({ ...user, name })),
   onError: (_error, _args, update) => update?.rollback(),
@@ -336,7 +360,10 @@ it also reaches the same method's queries with args; these three do not.
 Prefetch data when the user hovers over a link. Use `prefetch()` (fire-and-forget)
 rather than `fetch()` here — you don't need to `await` a result, just warm the cache:
 
-```typescript
+```tsx
+import { Link } from "@tanstack/react-router"
+import { getUserQuery } from "./queries"
+
 function UserLink({ userId }: { userId: string }) {
   const handleMouseEnter = () => {
     // Fire-and-forget cache warm-up
@@ -344,10 +371,7 @@ function UserLink({ userId }: { userId: string }) {
   }
 
   return (
-    <Link
-      to={`/users/${userId}`}
-      onMouseEnter={handleMouseEnter}
-    >
+    <Link to={`/users/${userId}`} onMouseEnter={handleMouseEnter}>
       View User
     </Link>
   )
@@ -362,9 +386,10 @@ For dynamic arguments (like route params), use the factory variant:
 
 ```typescript
 import { createQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
 const getUserQuery = createQueryFactory(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
   staleTime: 5 * 60 * 1000,
 })
 
@@ -383,6 +408,10 @@ The factory function itself has `getQueryKey()` and `invalidate()`. They cover
 every query it returns, whatever the args:
 
 ```typescript
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+import { getUserQuery } from "./queries"
+
 // Refetch every user on screen
 await getUserQuery.invalidate()
 
@@ -391,7 +420,7 @@ backend.queryClient.getQueriesData({ queryKey: getUserQuery.getQueryKey() })
 
 // Or hand the factory to a mutation
 const renameUser = createMutation(backend, {
-  functionName: "renameUser",
+  functionName: "rename_user",
   invalidateQueries: [getUserQuery],
 })
 ```
@@ -416,6 +445,7 @@ args are not known yet needs no placeholder args and no `enabled`:
 ```tsx
 import { createQueryFactory, skipToken } from "@ic-reactor/react"
 import type { Principal } from "@icp-sdk/core/principal"
+import { ledger } from "./reactor"
 
 // `ledger` is a Reactor of the ICRC-1 ledger, so an account's owner is a
 // Principal (a DisplayReactor's takes the principal's text)
@@ -442,6 +472,8 @@ them. `createSuspenseQueryFactory` does not take `skipToken`.
 Factory instances are cached internally:
 
 ```typescript
+import { getUserQuery } from "./queries"
+
 // These return the SAME object instance
 const query1 = getUserQuery(["alice"])
 const query2 = getUserQuery(["alice"])

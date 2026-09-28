@@ -24,7 +24,7 @@ import { createSuspenseQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
 const userQuery = createSuspenseQuery(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
   args: [userId],
 })
 ```
@@ -80,7 +80,7 @@ time it resolves.
 
 Combine loaders with Suspense for optimal UX:
 
-```typescript
+```tsx
 // routes/users/$userId.tsx
 import { createFileRoute } from "@tanstack/react-router"
 import { Suspense } from "react"
@@ -88,7 +88,7 @@ import { createSuspenseQueryFactory } from "@ic-reactor/react"
 import { backend } from "../../reactor"
 
 const getUserQuery = createSuspenseQueryFactory(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
 })
 
 export const Route = createFileRoute("/users/$userId")({
@@ -128,7 +128,21 @@ function UserPage() {
 
 Use multiple Suspense boundaries for granular loading states:
 
-```typescript
+```tsx
+import { Suspense } from "react"
+import { createSuspenseQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const userProfileQuery = createSuspenseQuery(backend, {
+  functionName: "get_my_profile",
+})
+const dashboardStatsQuery = createSuspenseQuery(backend, {
+  functionName: "get_dashboard_stats",
+})
+const recentActivityQuery = createSuspenseQuery(backend, {
+  functionName: "get_recent_activity",
+})
+
 function Dashboard() {
   return (
     <div className="dashboard">
@@ -169,7 +183,8 @@ function RecentActivity() {
 
 Handle errors with React Error Boundaries:
 
-```typescript
+```tsx
+import { Suspense } from "react"
 import { ErrorBoundary } from "react-error-boundary"
 
 function UserPageWrapper() {
@@ -197,7 +212,21 @@ Suspense queries in the same component run one after the other: the first one
 suspends the component before the next is reached, a waterfall. Give each query
 its own component and they start together, under one boundary:
 
-```typescript
+```tsx
+import { Suspense } from "react"
+import { createSuspenseQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const getUserProfileQuery = createSuspenseQueryFactory(backend, {
+  functionName: "get_profile",
+})
+const getUserPostsQuery = createSuspenseQueryFactory(backend, {
+  functionName: "get_user_posts",
+})
+const getUserFollowersQuery = createSuspenseQueryFactory(backend, {
+  functionName: "get_user_followers",
+})
+
 function UserDashboard({ userId }: { userId: string }) {
   // Sibling components suspend separately, so all three calls start at once
   return (
@@ -239,8 +268,14 @@ function UserDashboardPage() {
 Prefetch data during route transitions. Use `prefetch()` (fire-and-forget) so you
 don't need to `await` before navigating:
 
-```typescript
+```tsx
 import { Link, useNavigate } from "@tanstack/react-router"
+import { createSuspenseQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const getUserQuery = createSuspenseQueryFactory(backend, {
+  functionName: "get_user",
+})
 
 function UserCard({ userId }: { userId: string }) {
   const navigate = useNavigate()
@@ -262,9 +297,12 @@ function UserCard({ userId }: { userId: string }) {
 
 ### With Select Transformation
 
-```typescript
+```tsx
+import { createSuspenseQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const userAvatarQuery = createSuspenseQuery(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
   args: [userId],
   select: (user) => ({
     url: user.avatarUrl,
@@ -286,9 +324,12 @@ function Avatar() {
 
 For dynamic arguments:
 
-```typescript
+```tsx
+import { createSuspenseQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const getUserQuery = createSuspenseQueryFactory(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
 })
 
 function UserProfile({ userId }: { userId: string }) {
@@ -305,8 +346,15 @@ args. Pass the factory to a mutation's `invalidateQueries` to refresh every
 instance:
 
 ```typescript
+import { createMutation, createSuspenseQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const getUserQuery = createSuspenseQueryFactory(backend, {
+  functionName: "get_user",
+})
+
 const renameUser = createMutation(backend, {
-  functionName: "renameUser",
+  functionName: "rename_user",
   invalidateQueries: [getUserQuery],
 })
 ```

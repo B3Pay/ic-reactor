@@ -72,11 +72,12 @@ await reactor.initialize()
 const methods = reactor.getMethodNames()
 
 // For the selected method
+const methodName = methods[0]
 const argMeta = reactor.getInputMeta(methodName)
 const resultMeta = reactor.getOutputMeta(methodName)
 
 // The result comes back resolved through the output metadata
-const result = await reactor.callMethod({ functionName: methodName as any })
+const result = await reactor.callMethod({ functionName: methodName })
 ```
 
 See [MetadataDisplayReactor](/v3/packages/candid/metadatadisplayreactor) for the

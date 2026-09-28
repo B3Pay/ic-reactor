@@ -71,25 +71,37 @@ function AuthButton() {
 Customize the login flow with options:
 
 ```tsx
-const { login } = useAuth()
+import { useAuth } from "../reactor/hooks"
 
-login({
-  // Identity provider URL (auto-detected based on network)
-  identityProvider: "https://id.ai/authorize",
+function LoginButton() {
+  const { login } = useAuth()
 
-  // Session duration (default: 8 hours)
-  maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days
+  return (
+    <button
+      onClick={() =>
+        login({
+          // Identity provider URL (auto-detected based on network)
+          identityProvider: "https://id.ai/authorize",
 
-  // Callbacks — onError receives an optional error string
-  onSuccess: () => {
-    console.log("Logged in!")
-    navigate("/dashboard")
-  },
-  onError: (error) => {
-    console.error("Login failed:", error)
-    toast.error("Authentication failed")
-  },
-})
+          // Session duration (default: 8 hours)
+          maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days
+
+          // Callbacks — onError receives an optional error string
+          onSuccess: () => {
+            console.log("Logged in!")
+            navigate("/dashboard")
+          },
+          onError: (error) => {
+            console.error("Login failed:", error)
+            toast.error("Authentication failed")
+          },
+        })
+      }
+    >
+      Login
+    </button>
+  )
+}
 ```
 
 ### Client Options
@@ -194,6 +206,8 @@ canister for verification.
 
 ```tsx
 import { useEffect } from "react"
+import { hexToUint8Array } from "@ic-reactor/react"
+import { backend } from "../reactor"
 import { authentication, useIdentityAttributes } from "../reactor/hooks"
 
 function RegisterWithOpenIdProvider() {
@@ -213,7 +227,11 @@ function RegisterWithOpenIdProvider() {
   async function handleRegister() {
     const result = await requestOpenIdAttributes({
       // Pass the nonce as a callback — see the caution below
-      nonce: () => backend.callMethod({ functionName: "register_begin" }),
+      // A DisplayReactor returns a blob as hex, and the nonce is bytes
+      nonce: async () =>
+        hexToUint8Array(
+          await backend.callMethod({ functionName: "register_begin" })
+        ),
       openIdProvider: "microsoft",
       keys: ["email", "name"],
     })
@@ -291,7 +309,7 @@ Access the IC agent's initialization state. This is useful for showing a global 
 ```tsx
 import { useAgentState } from "../reactor/hooks"
 
-function AppRoot({ children }) {
+function AppRoot({ children }: { children: React.ReactNode }) {
   const { isInitializing, error } = useAgentState()
 
   if (isInitializing) {
@@ -360,9 +378,23 @@ the session again, as `authenticate()` or a newly mounted `useAuth()` does.
 By default, Internet Identity sessions last 8 hours. You can customize this:
 
 ```tsx
-login({
-  maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days in nanoseconds
-})
+import { useAuth } from "../reactor/hooks"
+
+function LoginButton() {
+  const { login } = useAuth()
+
+  return (
+    <button
+      onClick={() =>
+        login({
+          maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1_000_000_000), // 7 days in nanoseconds
+        })
+      }
+    >
+      Login
+    </button>
+  )
+}
 ```
 
 <Aside type="caution">
@@ -384,10 +416,16 @@ alone one built elsewhere and passed in. A manager built per mount any other
 way is released from the cleanup of whatever built it:
 
 ```tsx
-const [authentication] = useState(
-  () => new AuthenticationManager({ clientManager })
-)
-useEffect(() => () => authentication.dispose(), [authentication])
+import { useEffect, useState } from "react"
+import { AuthenticationManager } from "@ic-reactor/react"
+
+function Widget() {
+  const [authentication] = useState(
+    () => new AuthenticationManager({ clientManager })
+  )
+  useEffect(() => () => authentication.dispose(), [authentication])
+  // ...
+}
 ```
 
 `dispose()` disposes the client the manager built and forgets it, so a later

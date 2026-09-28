@@ -36,13 +36,19 @@ import { CanisterError } from "@ic-reactor/react"
 // Your canister method returns Result<User, GetUserError>
 // On Err, IC Reactor throws CanisterError with the error value
 
-if (error instanceof CanisterError) {
-  console.log("Canister error:", error.err)
-  console.log("Error code:", error.code) // Extracted from variant key
-  // error.err contains the Err variant, e.g.:
-  // { NotFound: null }
-  // { Unauthorized: { reason: "Not owner" } }
-  // { InsufficientFunds: { balance: 100n, required: 500n } }
+function logError(error: unknown) {
+  if (error instanceof CanisterError) {
+    console.log("Canister error:", error.err)
+    console.log("Error code:", error.code) // Extracted from variant key
+    // error.err contains the Err variant. From a Reactor, e.g.:
+    // { NotFound: null }
+    // { Unauthorized: { reason: "Not owner" } }
+    // { InsufficientFunds: { balance: 100n, required: 500n } }
+    // From a DisplayReactor, a variant carries its case in `_type`:
+    // { _type: "NotFound" }
+    // { _type: "Unauthorized", Unauthorized: { reason: "Not owner" } }
+    // { _type: "InsufficientFunds", InsufficientFunds: { balance: "100", required: "500" } }
+  }
 }
 ```
 
@@ -65,9 +71,11 @@ Thrown for network, agent, or canister trap errors:
 ```typescript
 import { CallError } from "@ic-reactor/react"
 
-if (error instanceof CallError) {
-  console.log("Call error:", error.message)
-  // Network timeout, canister trapped, etc.
+function logError(error: unknown) {
+  if (error instanceof CallError) {
+    console.log("Call error:", error.message)
+    // Network timeout, canister trapped, etc.
+  }
 }
 ```
 
@@ -78,7 +86,10 @@ before anything is sent to the canister. It carries the failing method name and
 one issue per invalid field:
 
 ```typescript
-import { isValidationError } from "@ic-reactor/react"
+import { createMutation, isValidationError } from "@ic-reactor/react"
+import { backend } from "../reactor"
+
+const transferMutation = createMutation(backend, { functionName: "transfer" })
 
 try {
   await transferMutation.execute([{ to: "", amount: "-100" }])
@@ -114,7 +125,7 @@ import { useActorQuery } from "../reactor/hooks"
 
 function UserProfile({ userId }: { userId: string }) {
   const { data, error, isError, isPending, refetch } = useActorQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 
@@ -124,11 +135,13 @@ function UserProfile({ userId }: { userId: string }) {
 
   if (isError) {
     if (error instanceof CanisterError) {
-      // Handle specific business logic errors
-      if ("NotFound" in error.err) {
+      // Handle specific business logic errors. A DisplayReactor reports a
+      // variant with its case in `_type`, and a case with no value, such as
+      // NotFound, has no key of its own: `"NotFound" in error.err` is false.
+      if (error.err._type === "NotFound") {
         return <UserNotFound userId={userId} />
       }
-      if ("Unauthorized" in error.err) {
+      if (error.err._type === "Unauthorized") {
         return <Unauthorized message={error.err.Unauthorized.reason} />
       }
       return (
@@ -160,13 +173,14 @@ pnpm add react-error-boundary
 ```
 
 ```tsx
-import { ErrorBoundary } from "react-error-boundary"
+import { ErrorBoundary, type FallbackProps } from "react-error-boundary"
 
-function ErrorFallback({ error, resetErrorBoundary }) {
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
     <div className="error-fallback">
       <h2>Something went wrong</h2>
-      <pre>{error.message}</pre>
+      {/* A boundary catches whatever was thrown, so `error` is not always an Error */}
+      <pre>{error instanceof Error ? error.message : String(error)}</pre>
       <button onClick={resetErrorBoundary}>Try again</button>
     </div>
   )
@@ -189,15 +203,17 @@ function App() {
 This keeps canister business-logic errors separate from network and agent failures:
 
 ```tsx
+import { useActorMutation } from "../reactor/hooks"
+
 function TransferForm() {
   const { mutate, isPending } = useActorMutation({
     functionName: "transfer",
     // Only fires for canister Result { Err } variants
     onCanisterError: (error) => {
-      if ("InsufficientFunds" in error.err) {
+      if (error.err._type === "InsufficientFunds") {
         const { balance, required } = error.err.InsufficientFunds
         toast.error(`Insufficient funds. Have: ${balance}, Need: ${required}`)
-      } else if ("InvalidRecipient" in error.err) {
+      } else if (error.err._type === "InvalidRecipient") {
         toast.error("Invalid recipient address")
       } else {
         toast.error("Transaction failed: " + error.code)
@@ -220,6 +236,7 @@ when you need to distinguish manually:
 
 ```tsx
 import { CanisterError } from "@ic-reactor/react"
+import { useActorMutation } from "../reactor/hooks"
 
 function TransferForm() {
   const { mutate, isPending, error } = useActorMutation({
@@ -227,12 +244,12 @@ function TransferForm() {
     onError: (error) => {
       if (error instanceof CanisterError) {
         // Handle specific error variants
-        if ("InsufficientFunds" in error.err) {
+        if (error.err._type === "InsufficientFunds") {
           const { balance, required } = error.err.InsufficientFunds
           toast.error(`Insufficient funds. Have: ${balance}, Need: ${required}`)
           return
         }
-        if ("InvalidRecipient" in error.err) {
+        if (error.err._type === "InvalidRecipient") {
           toast.error("Invalid recipient address")
           return
         }
@@ -250,56 +267,68 @@ function TransferForm() {
 ### Using try/catch with mutateAsync
 
 ```tsx
-const { mutateAsync } = useActorMutation({
-  functionName: "transfer",
-})
+import { CanisterError } from "@ic-reactor/react"
+import { useActorMutation } from "../reactor/hooks"
 
-const handleTransfer = async () => {
-  try {
-    const result = await mutateAsync([recipient, amount])
-    toast.success("Transfer successful!")
-  } catch (error) {
-    if (error instanceof CanisterError) {
-      handleCanisterError(error)
-    } else {
-      toast.error("Network error. Please try again.")
+function TransferButton() {
+  const { mutateAsync } = useActorMutation({
+    functionName: "transfer",
+  })
+
+  const handleTransfer = async () => {
+    try {
+      const result = await mutateAsync([{ to: recipient, amount }])
+      toast.success("Transfer successful!")
+    } catch (error) {
+      if (error instanceof CanisterError) {
+        handleCanisterError(error)
+      } else {
+        toast.error("Network error. Please try again.")
+      }
     }
   }
+
+  return <button onClick={handleTransfer}>Transfer</button>
 }
 ```
 
 ## Typed Error Handling
 
-For type-safe error handling, define your error types:
+For type-safe error handling, read the error type off the reactor instead of
+copying it from your Candid file. `ReactorErrorOf` gives what a call of a
+method rejects with, in the reactor's own form: a `DisplayReactor` reports each
+variant case in `_type`, and a `Reactor` reports the raw Candid variant.
 
 ```typescript
-// Define error type matching your canister's Candid
-type TransferError =
-  | { InsufficientFunds: { balance: bigint; required: bigint } }
-  | { InvalidRecipient: null }
-  | { AmountTooSmall: { minimum: bigint } }
-  | { Unauthorized: null }
+import { isCanisterError, type ReactorErrorOf } from "@ic-reactor/react"
+import { backend } from "../reactor"
+import { useActorMutation } from "../reactor/hooks"
+
+// CanisterError<TransferError in display form> | CallError | ValidationError
+type TransferError = ReactorErrorOf<typeof backend, "transfer">
 
 function handleTransferError(error: TransferError): string {
-  if ("InsufficientFunds" in error) {
-    return `Insufficient balance: ${error.InsufficientFunds.balance}`
+  if (isCanisterError(error)) {
+    switch (error.err._type) {
+      case "InsufficientFunds":
+        return `Insufficient balance: ${error.err.InsufficientFunds.balance}`
+      case "InvalidRecipient":
+        return "Invalid recipient address"
+      case "AmountTooSmall":
+        return `Minimum amount: ${error.err.AmountTooSmall.minimum}`
+      case "Unauthorized":
+        return "You are not authorized to perform this action"
+    }
   }
-  if ("InvalidRecipient" in error) {
-    return "Invalid recipient address"
-  }
-  if ("AmountTooSmall" in error) {
-    return `Minimum amount: ${error.AmountTooSmall.minimum}`
-  }
-  if ("Unauthorized" in error) {
-    return "You are not authorized to perform this action"
-  }
-  return "Unknown error"
+  return error.message
 }
 
-// Usage
-if (error instanceof CanisterError) {
-  const message = handleTransferError(error.err as TransferError)
-  toast.error(message)
+// Usage: a mutation's `error` is already a TransferError
+function useTransfer() {
+  return useActorMutation({
+    functionName: "transfer",
+    onError: (error) => toast.error(handleTransferError(error)),
+  })
 }
 ```
 
@@ -381,6 +410,7 @@ twice:
 
 ```typescript
 import { createMutation, reactorUpdateRetry } from "@ic-reactor/react"
+import { ledger } from "../reactor/ledger"
 
 const transfer = createMutation(ledger, {
   functionName: "icrc1_transfer",
@@ -423,6 +453,8 @@ const queryClient = new QueryClient({
 Per-query overrides still work as in plain TanStack Query:
 
 ```typescript
+import { useActorQuery } from "../reactor/hooks"
+
 const { data } = useActorQuery({
   functionName: "getPrice",
   args: [],
@@ -436,6 +468,8 @@ const { data } = useActorQuery({
 ### Retry Button
 
 ```tsx
+import { useActorQuery } from "../reactor/hooks"
+
 function DataView() {
   const { data, error, refetch, isError, isFetching } = useActorQuery({
     functionName: "getData",
@@ -460,6 +494,8 @@ function DataView() {
 ### Reset Mutation State
 
 ```tsx
+import { useActorMutation } from "../reactor/hooks"
+
 function CreateForm() {
   const { mutate, error, isError, reset } = useActorMutation({
     functionName: "create",
@@ -488,6 +524,8 @@ shown only while the query is pending, and `data` is `undefined` again once the
 query fails. Fall back explicitly instead:
 
 ```tsx
+import { useActorQuery } from "../reactor/hooks"
+
 const DEFAULT_CONFIG = { theme: "light", language: "en" }
 
 const { data } = useActorQuery({
@@ -504,6 +542,7 @@ const config = data ?? DEFAULT_CONFIG
 ### Log Errors for Debugging
 
 ```typescript
+import { QueryClient } from "@tanstack/react-query"
 import { isRetryableReactorError, reactorRetry } from "@ic-reactor/react"
 
 const queryClient = new QueryClient({
@@ -528,6 +567,8 @@ const queryClient = new QueryClient({
 
 ```tsx
 import * as Sentry from "@sentry/react"
+import { CanisterError } from "@ic-reactor/react"
+import { useActorMutation } from "../reactor/hooks"
 
 const { mutate } = useActorMutation({
   functionName: "transfer",
@@ -553,20 +594,32 @@ const { mutate } = useActorMutation({
 7. **Use type guards** — Create helper functions for typed error checking
 
 ```typescript
+import { CanisterError, type ReactorErrorOf } from "@ic-reactor/react"
+import { backend } from "../reactor"
+
+// The `Err` value of `transfer`, and the case the guard below checks for
+type TransferFailure = Extract<
+  ReactorErrorOf<typeof backend, "transfer">,
+  CanisterError
+>["err"]
+type InsufficientFunds = Extract<
+  TransferFailure,
+  { _type: "InsufficientFunds" }
+>
+
 // Helper for checking specific error variants
-function isInsufficientFunds(error: unknown): error is CanisterError & {
-  err: { InsufficientFunds: { balance: bigint } }
-} {
-  return (
-    error instanceof CanisterError &&
-    "InsufficientFunds" in (error.err as object)
-  )
+function isInsufficientFunds(
+  error: unknown
+): error is CanisterError<InsufficientFunds> {
+  return error instanceof CanisterError && error.code === "InsufficientFunds"
 }
 
 // Usage
-if (isInsufficientFunds(error)) {
-  const balance = error.err.InsufficientFunds.balance
-  // TypeScript knows the type is correct
+function report(error: unknown) {
+  if (isInsufficientFunds(error)) {
+    const balance = error.err.InsufficientFunds.balance
+    // TypeScript knows the type is correct
+  }
 }
 ```
 

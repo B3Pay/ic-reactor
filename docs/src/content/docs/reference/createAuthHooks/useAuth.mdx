@@ -44,7 +44,7 @@ function AuthButton() {
 
 Triggers the Internet Identity login flow:
 
-```typescript
+```typescript nocheck
 login({
   // Identity provider URL (auto-detected based on network)
   identityProvider?: string,
@@ -65,6 +65,8 @@ login({
 Logs out and clears the session:
 
 ```typescript
+import { useAuth } from "./reactor/hooks"
+
 const { logout } = useAuth()
 logout() // Clears session and updates state
 ```
@@ -79,6 +81,8 @@ peer is not installed, or when it finds that a signed-in session has expired
 and ends it:
 
 ```typescript
+import { useAuth } from "./reactor/hooks"
+
 const { authenticate } = useAuth()
 const identity = await authenticate()
 const signedIn =

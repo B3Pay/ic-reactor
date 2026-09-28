@@ -105,7 +105,7 @@ console.log("Transfer block index:", blockIndex)
 // Mark every cached query for this canister stale after a write: mounted
 // queries refetch, but the entries stay, and fetchQuery (cache-first) still
 // returns them until they are refetched
-ledgerReactor.invalidateQueries()
+await ledgerReactor.invalidateQueries()
 ```
 
 ### Using QueryClient Directly

@@ -81,6 +81,8 @@ update or oneway method. Each is named after its method in camelCase with a
 `Query` or `Mutation` suffix.
 
 ```ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+
 icReactor({
   canisters: [
     { name: "backend", didFile: "./backend/backend.did", factories: true },
@@ -144,6 +146,8 @@ entry its own `outDir`.
 Set `mode` per canister to choose the generated reactor class:
 
 ```ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+
 icReactor({
   canisters: [
     { name: "backend", didFile: "./backend/backend.did" },

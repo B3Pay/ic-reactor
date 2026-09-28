@@ -122,7 +122,7 @@ This tutorial walks you through creating your first IC Reactor integration with 
    import { useBackendQuery, useBackendMutation } from "../declarations/backend"
 
    function Counter() {
-     const { data: count } = useBackendQuery({ functionName: "getCount" })
+     const { data: count } = useBackendQuery({ functionName: "get_count" })
 
      const { mutate, isPending } = useBackendMutation({
        functionName: "increment",
@@ -164,6 +164,8 @@ generated reactor then emits it directly and no cookie or environment variable
 is involved:
 
 ```typescript
+import { icReactor } from "@ic-reactor/vite-plugin"
+
 icReactor({
   canisters: [
     {

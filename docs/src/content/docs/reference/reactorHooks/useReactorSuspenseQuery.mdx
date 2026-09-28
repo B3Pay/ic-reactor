@@ -21,10 +21,10 @@ import { Suspense } from "react"
 import { useReactorSuspenseQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-function UserProfile({ userId }) {
+function UserProfile({ userId }: { userId: string }) {
   const { data } = useReactorSuspenseQuery({
     reactor: backend, // 👈 Required
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 

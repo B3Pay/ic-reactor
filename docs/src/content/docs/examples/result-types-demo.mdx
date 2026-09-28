@@ -53,17 +53,48 @@ reach. It works on a local IDL and sample values, so it needs no canister.
 // src/App.tsx
 import { ResultFieldVisitor } from "@ic-reactor/candid"
 import { IDL } from "@icp-sdk/core/candid"
+import { Principal } from "@icp-sdk/core/principal"
+import { ResultRenderer } from "./components/ResultRenderer"
 
-const visitor = new ResultFieldVisitor()
-const serviceMeta = visitor.visitService(testIDL({ IDL }))
+// A service with one method, `get_user`, that returns a record
+const testIDL: IDL.InterfaceFactory = ({ IDL }) =>
+  IDL.Service({
+    get_user: IDL.Func(
+      [],
+      [
+        IDL.Record({
+          name: IDL.Text,
+          age: IDL.Nat,
+          identity: IDL.Vec(IDL.Tuple(IDL.Text, IDL.Principal)),
+        }),
+      ],
+      ["query"]
+    ),
+  })
 
-// Metadata for one method, resolved against a raw Candid value
-const resolved = serviceMeta["get_user"].resolve(mockUser)
+function App() {
+  const visitor = new ResultFieldVisitor()
+  const serviceMeta = visitor.visitService(testIDL({ IDL }))
 
-// One node per return value, each carrying its display value
-return resolved.results.map((result, i) => (
-  <ResultRenderer key={i} result={result} />
-))
+  // A raw Candid value that matches the method's return type
+  const mockUser = {
+    name: "Alice",
+    age: 30n,
+    identity: [["Alice", Principal.fromText("aaaaa-aa")]],
+  }
+
+  // Metadata for one method, resolved against a raw Candid value
+  const resolved = serviceMeta["get_user"].resolve(mockUser)
+
+  // One node per return value, each carrying its display value
+  return (
+    <>
+      {resolved.results.map((result, i) => (
+        <ResultRenderer key={i} result={result} />
+      ))}
+    </>
+  )
+}
 ```
 
 <Aside type="note">

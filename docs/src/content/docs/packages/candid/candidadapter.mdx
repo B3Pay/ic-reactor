@@ -47,7 +47,7 @@ import { CandidAdapter } from "@ic-reactor/candid"
 
 ## Constructor
 
-```typescript
+```typescript nocheck
 new CandidAdapter(config: CandidAdapterParameters)
 ```
 
@@ -78,6 +78,8 @@ reactor that created one, needs no cleanup when it is dropped. The deprecated
 Fetch and parse Candid for a canister in one call.
 
 ```typescript
+import { IDL } from "@icp-sdk/core/candid"
+
 const { idlFactory, init } = await adapter.getCandidDefinition(
   "ryjl3-tyaaa-aaaaa-aaaba-cai"
 )
@@ -89,7 +91,7 @@ console.log(service._fields) // Method definitions
 
 #### Returns
 
-```typescript
+```typescript nocheck
 interface CandidDefinition {
   idlFactory: IDL.InterfaceFactory
   init?: (args: { IDL: typeof IDL }) => IDL.Type<unknown>[]
@@ -289,6 +291,8 @@ try {
 For dynamic calls, you can parse individual method signatures:
 
 ```typescript
+import { IDL } from "@icp-sdk/core/candid"
+
 // Parse a method signature wrapped in a service
 const methodSignature = "(record { owner : principal }) -> (nat) query"
 const serviceSource = `service : { my_method : ${methodSignature}; }`

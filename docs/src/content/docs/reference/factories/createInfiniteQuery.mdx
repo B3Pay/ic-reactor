@@ -24,7 +24,7 @@ import { createInfiniteQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
 const postsQuery = createInfiniteQuery(backend, {
-  functionName: "getPosts",
+  functionName: "list_posts",
   initialPageParam: 0,
   getArgs: (offset) => [{ offset, limit: 20 }] as const, // Type inference
   getNextPageParam: (lastPage, allPages) =>
@@ -54,7 +54,7 @@ IC Reactor-specific options below. `networkMode`, `retry`, `retryDelay` and
 
 ### Pagination Functions
 
-```typescript
+```ts nocheck
 // getNextPageParam signature
 getNextPageParam: (
   lastPage: PageData, // Last fetched page
@@ -97,7 +97,10 @@ the top of the first page while it is being created:
 ```typescript
 const draft = await postsQuery.optimisticUpdate((data) => ({
   ...data,
-  pages: [[newPost, ...data.pages[0]], ...data.pages.slice(1)],
+  pages: [
+    { ...data.pages[0], posts: [newPost, ...data.pages[0].posts] },
+    ...data.pages.slice(1),
+  ],
 }))
 // in onError: draft.rollback()
 ```
@@ -114,7 +117,7 @@ identity and resolves with that page.
 
 Combine with TanStack Virtual for performant infinite scroll:
 
-```typescript
+```tsx
 // routes/posts.tsx
 import { createFileRoute } from "@tanstack/react-router"
 import { useVirtualizer } from "@tanstack/react-virtual"
@@ -123,7 +126,7 @@ import { backend } from "../reactor"
 import { useEffect, useRef } from "react"
 
 const postsQuery = createInfiniteQuery(backend, {
-  functionName: "getPosts",
+  functionName: "list_posts",
   initialPageParam: 0,
   getArgs: (offset) => [{ offset, limit: 20 }] as const,
   getNextPageParam: (lastPage, allPages) =>
@@ -141,12 +144,8 @@ export const Route = createFileRoute("/posts")({
 function PostsPage() {
   const parentRef = useRef<HTMLDivElement>(null)
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = postsQuery.useInfiniteQuery()
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    postsQuery.useInfiniteQuery()
 
   // Flatten all pages
   const allPosts = data?.pages.flatMap((page) => page.posts) ?? []
@@ -202,16 +201,14 @@ function PostsPage() {
 Use cursors instead of offsets:
 
 ```typescript
-interface PostsResponse {
-  posts: Post[]
-  nextCursor: string | null
-}
+import { createInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
 const postsQuery = createInfiniteQuery(backend, {
-  functionName: "getPosts",
+  functionName: "list_posts_by_cursor",
   initialPageParam: null as string | null,
   getArgs: (cursor) => [{ cursor, limit: 20 }] as const,
-  getNextPageParam: (lastPage: PostsResponse) => lastPage.nextCursor,
+  getNextPageParam: (lastPage) => lastPage.nextCursor,
 })
 ```
 
@@ -219,27 +216,30 @@ const postsQuery = createInfiniteQuery(backend, {
 
 Load pages in both directions (like a chat):
 
-```typescript
-const messagesQuery = createInfiniteQuery(backend, {
-  functionName: "getMessages",
-  initialPageParam: { timestamp: Date.now() },
+```tsx
+import { createInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
-  getArgs: (param) => [{
-    before: param.timestamp,
-    limit: 50
-  }] as const,
+const messagesQuery = createInfiniteQuery(backend, {
+  functionName: "get_messages",
+  // A nat64 is text in a DisplayReactor
+  initialPageParam: { timestamp: String(Date.now()) },
+
+  getArgs: (param) =>
+    [
+      {
+        before: param.timestamp,
+        limit: 50,
+      },
+    ] as const,
 
   // Load newer messages
   getNextPageParam: (lastPage) =>
-    lastPage.hasNewer
-      ? { timestamp: lastPage.newestTimestamp }
-      : undefined,
+    lastPage.hasNewer ? { timestamp: lastPage.newestTimestamp } : undefined,
 
   // Load older messages
   getPreviousPageParam: (firstPage) =>
-    firstPage.hasOlder
-      ? { timestamp: firstPage.oldestTimestamp }
-      : undefined,
+    firstPage.hasOlder ? { timestamp: firstPage.oldestTimestamp } : undefined,
 })
 
 function ChatMessages() {
@@ -264,15 +264,14 @@ function ChatMessages() {
         </button>
       )}
 
-      {data?.pages.flatMap((page) => page.messages).map((msg) => (
-        <Message key={msg.id} message={msg} />
-      ))}
+      {data?.pages
+        .flatMap((page) => page.messages)
+        .map((msg) => (
+          <Message key={msg.id} message={msg} />
+        ))}
 
       {hasNextPage && (
-        <button
-          onClick={() => fetchNextPage()}
-          disabled={isFetchingNextPage}
-        >
+        <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
           Load newer messages
         </button>
       )}
@@ -285,16 +284,12 @@ function ChatMessages() {
 
 Simple load more without infinite scroll:
 
-```typescript
+```tsx
 function ProductList() {
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = productsQuery.useInfiniteQuery()
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    productsQuery.useInfiniteQuery()
 
-  const products = data?.pages.flatMap((page) => page.items) ?? []
+  const products = data?.pages.flatMap((page) => page.products) ?? []
 
   return (
     <div>
@@ -311,7 +306,9 @@ function ProductList() {
           className="load-more"
         >
           {isFetchingNextPage ? (
-            <><Spinner /> Loading...</>
+            <>
+              <Spinner /> Loading...
+            </>
           ) : (
             `Load More (${products.length} items)`
           )}
@@ -330,9 +327,12 @@ function ProductList() {
 
 Flatten pages automatically:
 
-```typescript
+```tsx
+import { createInfiniteQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const postsQuery = createInfiniteQuery(backend, {
-  functionName: "getPosts",
+  functionName: "list_posts",
   initialPageParam: 0,
   getArgs: (offset) => [{ offset, limit: 20 }] as const,
   getNextPageParam: (lastPage) => lastPage.nextOffset,
@@ -365,16 +365,14 @@ function PostList() {
 
 Use IntersectionObserver for automatic loading:
 
-```typescript
+```tsx
+import { useEffect, useRef } from "react"
+
 function InfiniteList() {
   const loadMoreRef = useRef<HTMLDivElement>(null)
 
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = postsQuery.useInfiniteQuery()
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    postsQuery.useInfiniteQuery()
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -395,9 +393,11 @@ function InfiniteList() {
 
   return (
     <div>
-      {data?.pages.flatMap((page) => page.items).map((item) => (
-        <ItemCard key={item.id} item={item} />
-      ))}
+      {data?.pages
+        .flatMap((page) => page.posts)
+        .map((post) => (
+          <PostCard key={post.id} post={post} />
+        ))}
 
       <div ref={loadMoreRef} style={{ height: 20 }}>
         {isFetchingNextPage && <Spinner />}
@@ -414,8 +414,11 @@ function InfiniteList() {
 For dynamic `getArgs` functions:
 
 ```typescript
+import { createInfiniteQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const getPostsQuery = createInfiniteQueryFactory(backend, {
-  functionName: "getPosts",
+  functionName: "list_posts",
   initialPageParam: 0,
   // Optional: derive logical identity from first-page args (exclude cursor/page state)
   getKeyArgs: (args) => {
@@ -446,12 +449,21 @@ The factory function has `getQueryKey()` and `invalidate()`, which cover every
 list it returns, whatever its `getArgs` and however many pages it loaded:
 
 ```typescript
+import { createInfiniteQueryFactory, createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const getPostsQuery = createInfiniteQueryFactory(backend, {
+  functionName: "list_posts",
+  initialPageParam: 0,
+  getNextPageParam: (lastPage) => lastPage.nextOffset,
+})
+
 // Refetch every loaded list
 await getPostsQuery.invalidate()
 
 // Or after a mutation
 const createPost = createMutation(backend, {
-  functionName: "createPost",
+  functionName: "create_post",
   invalidateQueries: [getPostsQuery],
 })
 ```
@@ -470,6 +482,9 @@ pagination state (like `offset`, `cursor`, or nested `paginate`) and you want
 the cache identity to include only logical filters/search params.
 
 ```typescript
+import { createInfiniteQueryFactory } from "@ic-reactor/react"
+import { todoReactor } from "./reactor"
+
 const todoListInfiniteQuery = createInfiniteQueryFactory(todoReactor, {
   functionName: "list_todos",
   initialPageParam: "0",

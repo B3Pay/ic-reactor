@@ -18,6 +18,8 @@ This class is ideal for building UIs that interact with dynamic canisters:
 - **All standard Reactor methods**: `callMethod()`, `fetchQuery()`, `invalidateQueries()`, `setCanisterId()`
 
 ```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
 const reactor = new CandidDisplayReactor({
   name: "my-dynamic-actor",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -43,7 +45,7 @@ import { CandidDisplayReactor } from "@ic-reactor/candid"
 
 ## Constructor
 
-```typescript
+```typescript nocheck
 new CandidDisplayReactor<A = BaseActor, T extends TransformKey = "display">(
   config: CandidDisplayReactorParameters
 )
@@ -68,6 +70,8 @@ new CandidDisplayReactor<A = BaseActor, T extends TransformKey = "display">(
 <Tabs>
   <TabItem label="Fetch from Network">
     ```typescript
+    import { CandidDisplayReactor } from "@ic-reactor/candid"
+    
     const reactor = new CandidDisplayReactor({
       name: "dynamic-actor",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -87,6 +91,8 @@ new CandidDisplayReactor<A = BaseActor, T extends TransformKey = "display">(
   </TabItem>
   <TabItem label="Provide Candid String">
     ```typescript
+    import { CandidDisplayReactor } from "@ic-reactor/candid"
+    
     const reactor = new CandidDisplayReactor({
       name: "ledger",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -192,6 +198,14 @@ come from the Candid it parses or fetches, so keep the two in step.
 Fetch or parse Candid and update the service definition with display codecs.
 
 ```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
+const reactor = new CandidDisplayReactor({
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
 await reactor.initialize()
 ```
 
@@ -204,6 +218,14 @@ If `candid` was provided in the constructor, it parses that. Otherwise, fetches 
 Register a single method by its Candid signature, with display codec generation.
 
 ```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
+const reactor = new CandidDisplayReactor({
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
 await reactor.registerMethod({
   functionName: "icrc1_balance_of",
   candid: "(record { owner : principal }) -> (nat) query",
@@ -224,6 +246,14 @@ const balance = await reactor.callMethod({
 Register multiple methods at once.
 
 ```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
+const reactor = new CandidDisplayReactor({
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
 await reactor.registerMethods([
   { functionName: "icrc1_name", candid: "() -> (text) query" },
   { functionName: "icrc1_symbol", candid: "() -> (text) query" },
@@ -244,6 +274,14 @@ you expect (or pass a service type; see
 [Types: with and without a service type](#types-with-and-without-a-service-type)):
 
 ```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
+const reactor = new CandidDisplayReactor({
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
 // Register a validator
 reactor.registerValidator("transfer", (args) => {
   const [input] = args as [{ to: string; amount: string }]
@@ -294,6 +332,14 @@ For quick calls without explicit registration:
 Perform a dynamic query with display transformations.
 
 ```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
+const reactor = new CandidDisplayReactor({
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
 const balance = await reactor.queryDynamic<string>({
   functionName: "icrc1_balance_of",
   candid: "(record { owner : principal }) -> (nat) query",
@@ -309,6 +355,14 @@ const balance = await reactor.queryDynamic<string>({
 Perform a dynamic update call with display transformations.
 
 ```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
+const reactor = new CandidDisplayReactor({
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
 const result = await reactor.callDynamic({
   functionName: "transfer",
   candid:
@@ -324,6 +378,14 @@ const result = await reactor.callDynamic({
 Dynamic query with TanStack Query caching.
 
 ```typescript
+import { CandidDisplayReactor } from "@ic-reactor/candid"
+
+const reactor = new CandidDisplayReactor({
+  name: "ledger",
+  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  clientManager,
+})
+
 const balance = await reactor.fetchQueryDynamic({
   functionName: "icrc1_balance_of",
   candid: "(record { owner : principal }) -> (nat) query",
@@ -428,7 +490,12 @@ import { CandidDisplayReactor } from "@ic-reactor/candid"
 // Create a reusable hook for dynamic canister queries
 function useDynamicBalance(reactor: CandidDisplayReactor, owner: string) {
   return useQuery({
-    queryKey: [reactor.canisterId.toString(), "icrc1_balance_of", owner],
+    // The reactor builds the key: it starts with the canister ID and carries
+    // the reactor's display transform, so `invalidateQueries` matches it
+    queryKey: reactor.generateQueryKey({
+      functionName: "icrc1_balance_of",
+      args: [{ owner }],
+    }),
     queryFn: async () => {
       await reactor.registerMethod({
         functionName: "icrc1_balance_of",

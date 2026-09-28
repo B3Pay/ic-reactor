@@ -15,7 +15,11 @@ loader and a Node script import them the same way.
 
 ```typescript
 import { formatTokenAmount, parseTokenAmount } from "@ic-reactor/react"
-// or, without React
+```
+
+Or, without React:
+
+```typescript
 import { formatTokenAmount, parseTokenAmount } from "@ic-reactor/core"
 ```
 
@@ -27,6 +31,8 @@ as integer text such as `"150000000"`. Turning that into what a person reads,
 and what a person types back into base units, is where apps lose money:
 
 ```typescript
+const balance = 12_345_678_901_234_567n // more than 2^53 base units
+
 // ❌ Number math is binary floating point
 Math.floor(Number("0.29") * Math.pow(10, 8)) // 28999999: sends 0.28999999
 BigInt(Math.floor(Number("1.1") * 10 ** 18)) // 1100000000000000128n
@@ -41,7 +47,7 @@ at any number of decimals.
 
 Shows an amount of base units as decimal text.
 
-```typescript
+```ts nocheck
 function formatTokenAmount(
   value: bigint | string | number,
   decimals: number | bigint | string,
@@ -56,6 +62,8 @@ function formatTokenAmount(
   `icrc1_decimals` or `icrc1_metadata` returned them.
 
 ```typescript
+import { formatTokenAmount } from "@ic-reactor/react"
+
 formatTokenAmount(150_000_000n, 8) // "1.5"
 formatTokenAmount("100000000", 8) // "1"
 formatTokenAmount(1n, 8) // "0.00000001"
@@ -75,6 +83,8 @@ formatTokenAmount(10n ** 30n + 1n, 18) // "1000000000000.000000000000000001"
 | `useGrouping`       | `boolean`                     | `false`, or the locale's | Group thousands: `,` every three digits without a locale, the locale's own grouping with one.            |
 
 ```typescript
+import { formatTokenAmount } from "@ic-reactor/react"
+
 formatTokenAmount(123_456_789n, 8, { maxFractionDigits: 4 }) // "1.2345"
 formatTokenAmount(123_456_789n, 8, {
   maxFractionDigits: 4,
@@ -108,7 +118,7 @@ two digits is `"0"`, not `"-0"`.
 
 Reads decimal text, as a person types it, into base units.
 
-```typescript
+```ts nocheck
 function parseTokenAmount(
   text: string,
   decimals: number | bigint | string,
@@ -117,6 +127,8 @@ function parseTokenAmount(
 ```
 
 ```typescript
+import { parseTokenAmount } from "@ic-reactor/react"
+
 parseTokenAmount("1.5", 8) // 150000000n
 parseTokenAmount("0.29", 8) // 29000000n
 parseTokenAmount("1.1", 18) // 1100000000000000000n
@@ -205,17 +217,31 @@ Both are plain functions, so a React Server Component can format an amount it
 fetched itself. `examples/nextjs-app-router/src/app/LedgerSnapshot.tsx`:
 
 ```tsx
-import { formatTokenAmount } from "@ic-reactor/react"
+// A React Server Component
+import { ClientManager, Reactor, formatTokenAmount } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/ledger"
 
-// `ledger` is a Reactor built inside the request
-const [decimals, totalSupply] = await Promise.all([
-  ledger.fetchQuery({ functionName: "icrc1_decimals" }),
-  ledger.fetchQuery({ functionName: "icrc1_total_supply" }),
-])
-formatTokenAmount(totalSupply, decimals, {
-  maxFractionDigits: 0,
-  locale: "en-US",
-}) // whole tokens, grouped, such as "513,084,297"
+export default async function LedgerSnapshot() {
+  // A Reactor built inside the request
+  const ledger = new Reactor<_SERVICE>({
+    name: "ledger",
+    clientManager: new ClientManager({ queryClient: new QueryClient() }),
+    idlFactory,
+    canisterId,
+  })
+
+  const [decimals, totalSupply] = await Promise.all([
+    ledger.fetchQuery({ functionName: "icrc1_decimals" }),
+    ledger.fetchQuery({ functionName: "icrc1_total_supply" }),
+  ])
+  const supply = formatTokenAmount(totalSupply, decimals, {
+    maxFractionDigits: 0,
+    locale: "en-US",
+  }) // whole tokens, grouped, such as "513,084,297"
+
+  return <p>Total supply: {supply}</p>
+}
 ```
 
 ## Principal text
@@ -225,7 +251,7 @@ formatTokenAmount(totalSupply, decimals, {
 Whether a value is the text of a principal: a user, a canister, the management
 canister `aaaaa-aa` or the anonymous principal `2vxsx-fae`.
 
-```typescript
+```ts nocheck
 function isPrincipalText(value: unknown): boolean
 ```
 
@@ -238,6 +264,8 @@ passes is the principal's own text, safe to show, compare or put in a URL. It
 never throws, and anything other than a string is `false`.
 
 ```typescript
+import { isPrincipalText } from "@ic-reactor/react"
+
 isPrincipalText("ryjl3-tyaaa-aaaaa-aaaba-cai") // true
 isPrincipalText("ryjl3-tyaaa") // false: the checksum does not match
 isPrincipalText(" aaaaa-aa") // false: trim first
@@ -249,10 +277,28 @@ Use it where an input is validated, instead of a `try` around
 `Principal.fromText`:
 
 ```tsx
-const handleLookup = () => {
-  const owner = input.trim()
-  if (!isPrincipalText(owner)) return setError("Invalid principal ID")
-  setAccount({ owner }) // a DisplayReactor takes the text as it is
+import { useState } from "react"
+import { isPrincipalText } from "@ic-reactor/react"
+
+function Lookup() {
+  const [input, setInput] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [account, setAccount] = useState<{ owner: string }>()
+
+  const handleLookup = () => {
+    const owner = input.trim()
+    if (!isPrincipalText(owner)) return setError("Invalid principal ID")
+    setAccount({ owner }) // a DisplayReactor takes the text as it is
+  }
+
+  return (
+    <div>
+      <input value={input} onChange={(e) => setInput(e.target.value)} />
+      <button onClick={handleLookup}>Look up</button>
+      {error && <p role="alert">{error}</p>}
+      {account && <p>{account.owner}</p>}
+    </div>
+  )
 }
 ```
 
@@ -270,7 +316,7 @@ narrow it to `never`.
 Writes a value as JSON indented by two spaces, for a `<pre>`, a toast or a log
 line.
 
-```typescript
+```ts nocheck
 function jsonToString(value: unknown): string
 ```
 

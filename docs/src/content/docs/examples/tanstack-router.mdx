@@ -10,7 +10,7 @@ A full-featured application demonstrating IC Reactor with TanStack Router for na
 
 ## Features Demonstrated
 
-- Retargeting one reactor per route with `setCanisterId()` in a `loader`
+- One shared reactor that a route `loader` points at the route's canister with `setCanisterId()`, and the `forCanister()` / `callConfig` alternative for new code
 - Hand-maintained `createQuery` / `createSuspenseQuery` / `createSuspenseQueryFactory` / `createMutation` modules, one per method
 - Suspense-based data fetching with `<Suspense>` boundaries
 - Query invalidation after mutations: the transfer mutation lists the balance query factory in `invalidateQueries`, and a refresh button calls `reactor.invalidateQueries()`
@@ -46,8 +46,8 @@ A full-featured application demonstrating IC Reactor with TanStack Router for na
 
 ### One Shared Reactor
 
-A single `DisplayReactor` is defined once and retargeted per route, so every
-query object built on it keeps working when the user switches tokens:
+A single `DisplayReactor` is defined once, and every query object below is built
+on it. The demo's route loader points it at the token the route names:
 
 ```typescript
 // src/canisters/ledger/reactor.ts
@@ -77,9 +77,9 @@ export const { useActorQuery, useActorMutation, useActorSuspenseQuery } =
 
 ### Route Loader
 
-The loader points the shared reactor at the canister for this route. Query keys
-are rooted at the reactor's canister ID, so every cached entry is scoped
-automatically:
+The demo's loader points the shared reactor at the canister for this route.
+Query keys are rooted at the reactor's canister ID, so every cached entry is
+scoped automatically:
 
 ```tsx
 // src/routes/wallet/$canisterId.tsx
@@ -96,7 +96,35 @@ export const Route = createFileRoute("/wallet/$canisterId")({
 function TokenWallet() {
   // Refresh every query for the active canister
   const handleRefreshAll = () => ledgerReactor.invalidateQueries()
-  // ...
+
+  return <button onClick={handleRefreshAll}>↻ Refresh</button>
+}
+```
+
+<Aside type="caution">
+  `setCanisterId` moves one shared reactor, so every query object built on it
+  follows at once: two tokens cannot be on screen together. To address several
+  canisters of one interface, ask the reactor for a sibling with
+  `ledgerReactor.forCanister(canisterId)` (memoized, on the same
+  `ClientManager`), or give one query a `callConfig` with the `canisterId`.
+  Their query keys start with their own canister, so several tokens' entries
+  live side by side in the cache. Prefer either in new code; the demo keeps the
+  single-reactor form.
+</Aside>
+
+The same token name, read with a canister of its own instead of a retargeted
+reactor:
+
+```tsx
+// src/components/token-name.tsx
+import { useActorQuery } from "@/canisters/ledger/reactor"
+
+export function TokenName({ canisterId }: { canisterId: string }) {
+  const { data: name } = useActorQuery({
+    functionName: "icrc1_name",
+    callConfig: { canisterId },
+  })
+  return <span>{name ?? "Token"}</span>
 }
 ```
 

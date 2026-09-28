@@ -12,6 +12,7 @@ import { Aside } from "@astrojs/starlight/components"
 
 ```typescript
 import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
 const { useActorSuspenseInfiniteQuery } = createActorHooks(backend)
 ```
@@ -20,6 +21,9 @@ const { useActorSuspenseInfiniteQuery } = createActorHooks(backend)
   It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
 
 ```typescript
+import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const { useActorSuspenseInfiniteQuery: useBackendSuspenseInfiniteQuery } =
   createActorHooks(backend)
 ```
@@ -30,11 +34,12 @@ const { useActorSuspenseInfiniteQuery: useBackendSuspenseInfiniteQuery } =
 
 ```tsx
 import { Suspense } from "react"
+import { useActorSuspenseInfiniteQuery } from "./reactor"
 
 function ItemList() {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useActorSuspenseInfiniteQuery({
-      functionName: "getItems",
+      functionName: "get_items",
       getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }],
       initialPageParam: 0,
       getNextPageParam: (lastPage, allPages) =>
@@ -119,9 +124,12 @@ Returns a TanStack Query suspense infinite result. Key difference from `useActor
 ### Basic Usage
 
 ```tsx
+import { Suspense } from "react"
+import { useActorSuspenseInfiniteQuery } from "./reactor"
+
 function ProductList() {
   const { data, fetchNextPage, hasNextPage } = useActorSuspenseInfiniteQuery({
-    functionName: "getProducts",
+    functionName: "get_products",
     getArgs: (page) => [{ page, perPage: 20 }],
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages, lastPageParam) =>
@@ -156,9 +164,16 @@ function App() {
 ### With Error Boundary
 
 ```tsx
+import { Suspense } from "react"
 import { ErrorBoundary } from "react-error-boundary"
 
-function ErrorFallback({ error, resetErrorBoundary }) {
+function ErrorFallback({
+  error,
+  resetErrorBoundary,
+}: {
+  error: Error
+  resetErrorBoundary: () => void
+}) {
   return (
     <div className="error">
       <p>Failed to load items</p>
@@ -184,13 +199,14 @@ function App() {
 ```tsx
 import { useInView } from "react-intersection-observer"
 import { useEffect, Suspense } from "react"
+import { useActorSuspenseInfiniteQuery } from "./reactor"
 
 function InfiniteList() {
   const { ref, inView } = useInView()
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useActorSuspenseInfiniteQuery({
-      functionName: "getItems",
+      functionName: "get_items",
       getArgs: (offset) => [{ offset, limit: 20 }],
       initialPageParam: 0,
       getNextPageParam: (lastPage, allPages) =>
@@ -228,23 +244,27 @@ function App() {
 ### Flattened Data with Select
 
 ```tsx
-const { data: items } = useActorSuspenseInfiniteQuery({
-  functionName: "getItems",
-  getArgs: (offset) => [{ offset, limit: 20 }],
-  initialPageParam: 0,
-  getNextPageParam: (lastPage, allPages) =>
-    lastPage.items.length < 20 ? undefined : allPages.length * 20,
-  select: (data) => data.pages.flatMap((page) => page.items),
-})
+import { useActorSuspenseInfiniteQuery } from "./reactor"
 
-// items is a flat array of all items across all pages
-return (
-  <ul>
-    {items.map((item) => (
-      <li key={item.id}>{item.name}</li>
-    ))}
-  </ul>
-)
+function ItemNames() {
+  const { data: items } = useActorSuspenseInfiniteQuery({
+    functionName: "get_items",
+    getArgs: (offset) => [{ offset, limit: 20 }],
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) =>
+      lastPage.items.length < 20 ? undefined : allPages.length * 20,
+    select: (data) => data.pages.flatMap((page) => page.items),
+  })
+
+  // items is a flat array of all items across all pages
+  return (
+    <ul>
+      {items.map((item) => (
+        <li key={item.id}>{item.name}</li>
+      ))}
+    </ul>
+  )
+}
 ```
 
 ## When to Use

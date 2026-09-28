@@ -21,16 +21,18 @@ where the real reactor behaves differently.
 ## Setup
 
 There is nothing extra to install. Import from the package your app already
-depends on:
+depends on. In a React app, that is `@ic-reactor/react/testing`:
 
 ```typescript
-// A React app
 import {
   createTestCanister,
   installFakeReplica,
 } from "@ic-reactor/react/testing"
+```
 
-// Anything else
+Anywhere else, it is `@ic-reactor/core/testing`:
+
+```typescript
 import {
   createTestCanister,
   installFakeReplica,
@@ -253,9 +255,7 @@ it("refreshes the balance after a deposit", async () => {
     balance: useActorQuery({ functionName: "balance" }),
     deposit: useActorMutation({
       functionName: "deposit",
-      invalidateQueries: [
-        reactor.generateQueryKey({ functionName: "balance" }),
-      ],
+      invalidateQueries: [{ functionName: "balance" }],
     }),
   }))
   await waitFor(() => expect(result.current.balance.data).toBe(0n))
@@ -411,11 +411,42 @@ a bad signature.
 `endpoint` (`"query"`, `"call"`, `"read_state"` or `"status"`), `canisterId`,
 `methodName` and `caller`. A request the fake refused has a `refused` reason.
 
-```typescript
-const deposits = replica.requests.filter(
-  (request) => request.endpoint === "call" && request.methodName === "deposit"
-)
-expect(deposits).toHaveLength(1)
+```tsx
+import { afterAll, expect, it } from "vitest"
+import { fireEvent, render, screen } from "@testing-library/react"
+import {
+  createTestCanister,
+  installFakeReplica,
+} from "@ic-reactor/react/testing"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
+
+let balance = 0n
+
+const replica = installFakeReplica({
+  canisters: {
+    [canisterId]: createTestCanister<_SERVICE>(idlFactory, {
+      balance: () => balance,
+      deposit: ([amount]) => ({ Ok: (balance += amount) }),
+    }),
+  },
+})
+afterAll(() => replica.restore())
+
+// Imported after the fake is installed, because it builds the agent.
+const { Balance } = await import("./Balance")
+
+it("deposits once", async () => {
+  render(<Balance />)
+  await screen.findByText("Balance: 0")
+
+  fireEvent.click(screen.getByText("Deposit"))
+  await screen.findByText("Balance: 10")
+
+  const deposits = replica.requests.filter(
+    (request) => request.endpoint === "call" && request.methodName === "deposit"
+  )
+  expect(deposits).toHaveLength(1)
+})
 ```
 
 Prefer asserting on what your app shows or what the handlers received. The

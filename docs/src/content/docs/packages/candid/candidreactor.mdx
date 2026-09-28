@@ -18,6 +18,8 @@ The key insight is that `CandidReactor` **injects methods into the service** at 
 - `invalidateQueries()` — Cache invalidation
 
 ```typescript
+import { CandidReactor } from "@ic-reactor/candid"
+
 const reactor = new CandidReactor({
   name: "dynamic-candid-actor",
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -38,7 +40,7 @@ import { CandidReactor } from "@ic-reactor/candid"
 
 ## Constructor
 
-```typescript
+```typescript nocheck
 new CandidReactor(config: CandidReactorParameters)
 ```
 
@@ -59,6 +61,8 @@ new CandidReactor(config: CandidReactorParameters)
 <Tabs>
   <TabItem label="Fetch from Network">
     ```typescript
+    import { CandidReactor } from "@ic-reactor/candid"
+    
     const reactor = new CandidReactor({
       name: "my-actor",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -71,6 +75,8 @@ new CandidReactor(config: CandidReactorParameters)
   </TabItem>
   <TabItem label="Provide Candid String">
     ```typescript
+    import { CandidReactor } from "@ic-reactor/candid"
+    
     const reactor = new CandidReactor({
       name: "ledger-actor",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -87,6 +93,8 @@ new CandidReactor(config: CandidReactorParameters)
   </TabItem>
   <TabItem label="Register Individual Methods">
     ```typescript
+    import { CandidReactor } from "@ic-reactor/candid"
+    
     const reactor = new CandidReactor({
       name: "ledger-actor",
       canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -207,10 +215,12 @@ For quick calls without explicit registration, use these convenience methods. Th
 Perform a dynamic query call.
 
 ```typescript
+import { Principal } from "@icp-sdk/core/principal"
+
 const balance = await reactor.queryDynamic<bigint>({
   functionName: "icrc1_balance_of",
   candid: "(record { owner : principal }) -> (nat) query",
-  args: [{ owner: Principal.fromText("...") }],
+  args: [{ owner: Principal.fromText("aaaaa-aa") }],
 })
 ```
 
@@ -294,6 +304,8 @@ All inherited Reactor properties are also available (`canisterId`, `agent`, `que
 ### Canister Explorer
 
 ```typescript
+import { CandidReactor } from "@ic-reactor/candid"
+
 async function exploreCanister(canisterId: string) {
   const reactor = new CandidReactor({
     name: "explorer",
@@ -315,6 +327,9 @@ async function exploreCanister(canisterId: string) {
 ### Dynamic Token Balance Checker
 
 ```typescript
+import { CandidReactor } from "@ic-reactor/candid"
+import type { Principal } from "@icp-sdk/core/principal"
+
 async function getTokenBalance(canisterId: string, owner: Principal) {
   const reactor = new CandidReactor({
     name: "balance-fetcher",
@@ -330,7 +345,7 @@ async function getTokenBalance(canisterId: string, owner: Principal) {
 
   // Use fetchQuery for caching
   return reactor.fetchQuery({
-    functionName: "icrc1_balance_of" as any,
+    functionName: "icrc1_balance_of",
     args: [{ owner }],
   })
 }
@@ -339,6 +354,7 @@ async function getTokenBalance(canisterId: string, owner: Principal) {
 ### React Hook Integration
 
 ```typescript
+import type { CandidReactor } from "@ic-reactor/candid"
 import { useQuery } from "@tanstack/react-query"
 
 function useDynamicQuery(
@@ -348,11 +364,10 @@ function useDynamicQuery(
   args?: unknown[]
 ) {
   return useQuery({
-    queryKey: [reactor.canisterId.toString(), functionName, args],
-    queryFn: async () => {
-      await reactor.registerMethod({ functionName, candid })
-      return reactor.callMethod({ functionName: functionName as any, args })
-    },
+    // The reactor builds the key, which starts with the canister ID
+    queryKey: reactor.generateQueryKey({ functionName, args }),
+    // Registers the method if it is not registered yet, then calls it
+    queryFn: () => reactor.queryDynamic({ functionName, candid, args }),
   })
 }
 ```
