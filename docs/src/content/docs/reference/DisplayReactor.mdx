@@ -22,6 +22,10 @@ Candid (the IC's interface description language) has its own type system that do
 **DisplayReactor handles all these transformations automatically**, in both directions. You work with clean, JavaScript-native types in your UI, and DisplayReactor converts them to Candid when calling the canister and back to display format when receiving results.
 
 ```typescript
+import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./clients"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
+
 // DisplayReactor: the bridge between Candid and your UI
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
@@ -32,11 +36,13 @@ const backend = new DisplayReactor<_SERVICE>({
 
 // Input: JavaScript strings (easy to get from forms)
 // Output: Display-friendly types (easy to render)
-const user = await backend.callMethod({
-  functionName: "getUser",
-  args: ["aaaaa-aa"], // Principal as string ✓
-})
-console.log(user.balance) // "1000000" (string, not bigint) ✓
+async function showAccount() {
+  const account = await backend.callMethod({
+    functionName: "getAccount",
+    args: ["aaaaa-aa"], // Principal as string ✓
+  })
+  console.log(account.balance) // "1000000" (string, not bigint) ✓
+}
 ```
 
 This is one of IC Reactor's most unique and powerful features — it eliminates the need for manual type conversions between the IC and your frontend.
@@ -45,7 +51,7 @@ This is one of IC Reactor's most unique and powerful features — it eliminates 
 
 Candid types don't always map directly to JavaScript types that are easy to work with in UIs:
 
-```typescript
+```ts nocheck
 // What the canister returns (Candid types)
 {
   balance: 1000000000n,              // bigint - can't display directly
@@ -61,18 +67,26 @@ Candid types don't always map directly to JavaScript types that are easy to work
 You'd normally need to write conversion logic everywhere in your app:
 
 ```tsx
+import type { Account } from "./declarations/backend"
+
 // Without DisplayReactor - tedious and error-prone
-<span>Balance: {balance.toString()}</span>
-<span>Owner: {owner.toText()}</span>
-<span>Status: {Object.keys(status)[0]}</span>
-<span>Description: {description[0] ?? "No description"}</span>
+function AccountRow({ balance, owner, status, description }: Account) {
+  return (
+    <>
+      <span>Balance: {balance.toString()}</span>
+      <span>Owner: {owner.toText()}</span>
+      <span>Status: {Object.keys(status)[0]}</span>
+      <span>Description: {description[0] ?? "No description"}</span>
+    </>
+  )
+}
 ```
 
 ## The Solution
 
 `DisplayReactor` automatically transforms these types to UI-friendly formats:
 
-```typescript
+```ts nocheck
 // What DisplayReactor gives you
 {
   balance: "1000000000",                // string - easy to display
@@ -88,11 +102,25 @@ You'd normally need to write conversion logic everywhere in your app:
 Now your components are simple:
 
 ```tsx
+import type { ReactorDataOf } from "@ic-reactor/react"
+import type { backend } from "./reactor"
+
 // With DisplayReactor - clean and straightforward
-<span>Balance: {balance}</span>
-<span>Owner: {owner}</span>
-<span>Status: {status._type}</span>
-<span>Description: {description ?? "No description"}</span>
+function AccountRow({
+  balance,
+  owner,
+  status,
+  description,
+}: ReactorDataOf<typeof backend, "getAccount">) {
+  return (
+    <>
+      <span>Balance: {balance}</span>
+      <span>Owner: {owner}</span>
+      <span>Status: {status._type}</span>
+      <span>Description: {description ?? "No description"}</span>
+    </>
+  )
+}
 ```
 
 ## Import
@@ -107,7 +135,7 @@ import { DisplayReactor } from "@ic-reactor/core"
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
-import { clientManager } from "./client"
+import { clientManager } from "./clients"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
 const backend = new DisplayReactor<_SERVICE>({
@@ -124,7 +152,7 @@ Pass a `DisplayReactor` instance to `createActorHooks` to get hooks with automat
 
 ```typescript
 import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
-import { clientManager } from "./client"
+import { clientManager } from "./clients"
 import { idlFactory, type _SERVICE } from "../declarations/backend"
 
 // Create a DisplayReactor
@@ -234,15 +262,17 @@ DisplayReactor transforms data in **both directions**:
 2. **Results (Candid → Display)**: When the canister responds, Candid data is converted to display format
 
 ```typescript
-// You provide display-friendly input
-const user = await backend.callMethod({
-  functionName: "getUser",
-  args: ["aaaaa-aa"], // Principal as string ✓
-})
+async function showAccount() {
+  // You provide display-friendly input
+  const account = await backend.callMethod({
+    functionName: "getAccount",
+    args: ["aaaaa-aa"], // Principal as string ✓
+  })
 
-// You receive display-friendly output
-console.log(user.balance) // "1000000" (string, not bigint)
-console.log(user.createdAt) // "1703500800000000000" (string)
+  // You receive display-friendly output
+  console.log(account.balance) // "1000000" (string, not bigint)
+  console.log(account.createdAt) // "1703500800000000000" (string)
+}
 ```
 
 If an argument cannot be converted — a malformed principal string, a
@@ -261,6 +291,8 @@ IC Reactor automatically unwraps Candid `Result` types (`variant { Ok: T; Err: E
 - **On `Err`**: Throws a `CanisterError` containing the error value
 
 ```typescript
+import { CanisterError } from "@ic-reactor/core"
+
 // Canister method signature:
 // createUser : (CreateUserInput) -> (Result<User, CreateUserError>)
 
@@ -268,18 +300,22 @@ IC Reactor automatically unwraps Candid `Result` types (`variant { Ok: T; Err: E
 // { Ok: User } | { Err: CreateUserError }
 
 // With IC Reactor - automatic unwrapping:
-try {
-  const user = await backend.callMethod({
-    functionName: "createUser",
-    args: [{ name: "Alice", email: "alice@example.com" }],
-  })
-  // user is directly the User object (not { Ok: User })
-  console.log(user.name) // "Alice"
-} catch (error) {
-  if (error instanceof CanisterError) {
-    // error.err contains the CreateUserError
-    if ("EmailAlreadyExists" in error.err) {
-      console.log("Email taken!")
+async function createUser() {
+  try {
+    const user = await backend.callMethod({
+      functionName: "createUser",
+      args: [{ name: "Alice", email: "alice@example.com" }],
+    })
+    // user is directly the User object (not { Ok: User })
+    console.log(user.name) // "Alice"
+  } catch (error) {
+    if (error instanceof CanisterError) {
+      // error.err is the CreateUserError in display form: a variant carries
+      // a `_type`, so `{ EmailAlreadyExists: null }` arrives as
+      // `{ _type: "EmailAlreadyExists" }`
+      if (error.err._type === "EmailAlreadyExists") {
+        console.log("Email taken!")
+      }
     }
   }
 }
@@ -298,20 +334,25 @@ This means you never have to manually check for `Ok` or `Err` variants — IC Re
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./clients"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend",
-  canisterId: "...",
+  canisterId,
 })
 
-// All returned values use display types
-const balance = await backend.callMethod({
-  functionName: "getBalance",
-  args: ["aaaaa-aa"], // Principal as string
-})
-// balance is string, not bigint
+async function getBalance() {
+  // All returned values use display types
+  const balance = await backend.callMethod({
+    functionName: "getBalance",
+    args: ["aaaaa-aa"], // Principal as string
+  })
+  // balance is string, not bigint
+  return balance
+}
 ```
 
 ### Many Canisters of One Interface
@@ -323,6 +364,7 @@ and cache, with the display transform and validators passed on:
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./clients"
 import { idlFactory, type _SERVICE } from "./declarations/icrc1"
 
 // The reactor the siblings are made from. It still needs a canister ID of its
@@ -355,7 +397,15 @@ single selection, but every call and view built on that reactor moves with it.
 
 ### With React Hooks
 
-```typescript
+```tsx
+import {
+  DisplayReactor,
+  createActorHooks,
+  formatTokenAmount,
+} from "@ic-reactor/react"
+import { clientManager } from "./clients"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
+
 // Create DisplayReactor and hooks
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
@@ -385,7 +435,7 @@ See [Token amounts](/v3/reference/utilities#token-amounts) for
 
 Candid variants are normalized for easier pattern matching:
 
-```typescript
+```tsx
 // Candid variant: variant { Pending; Active; Completed: nat }
 // Raw TS: { Pending: null } | { Active: null } | { Completed: bigint }
 
@@ -412,13 +462,23 @@ function StatusBadge({ status }: { status: DisplayStatus }) {
 No more array-based optional checking:
 
 ```typescript
+import type { ReactorDataOf } from "@ic-reactor/react"
+import type { User } from "./declarations/backend"
+import type { backend } from "./reactor"
+
 // Without DisplayReactor
-const description = user.bio[0] ?? "No bio"
-const avatar = user.avatar.length > 0 ? user.avatar[0] : null
+function readRawUser(user: User) {
+  const description = user.bio[0] ?? "No bio"
+  const avatar = user.avatar.length > 0 ? user.avatar[0] : null
+  return { description, avatar }
+}
 
 // With DisplayReactor
-const description = user.bio ?? "No bio"
-const avatar = user.avatar // Already undefined or value
+function readUser(user: ReactorDataOf<typeof backend, "getUser">) {
+  const description = user.bio ?? "No bio"
+  const avatar = user.avatar // Already undefined or value
+  return { description, avatar }
+}
 ```
 
 ### Handling Blobs (Binary Data)
@@ -440,26 +500,38 @@ binary fields.
 </Aside>
 
 ```typescript
+import { hexToUint8Array } from "@ic-reactor/core"
+import type { ReactorDataOf } from "@ic-reactor/react"
+import { useActorMutation, type backend } from "./reactor"
+
 // Candid: blob (vec nat8)
+export function useBlobs(
+  account: ReactorDataOf<typeof backend, "getAccount">,
+  tx: ReactorDataOf<typeof backend, "getTransaction">
+) {
+  // Every blob is a hex string (hash, signature, icon, image — any size)
+  const hash = tx.hash // "2cf24dba5fb0a30e..."
+  const signature = tx.signature // "3045022100ab..."
+  const imageData = account.avatar // "89504e470d0a1a0a..." (hex too)
 
-// Every blob is a hex string (hash, signature, icon, image — any size)
-const hash = user.passwordHash // "2cf24dba5fb0a30e..."
-const signature = tx.signature // "3045022100ab..."
-const imageData = user.avatar // "89504e470d0a1a0a..." (hex too)
+  // Need the bytes back? hexToUint8Array is exported from the package.
+  const bytes = hexToUint8Array(imageData)
 
-// Need the bytes back? hexToUint8Array is exported from the package.
-// const bytes = hexToUint8Array(imageData)
+  // When sending blobs back, you can use either format:
+  const { mutate } = useActorMutation({ functionName: "saveDocument" })
+  const save = () =>
+    mutate([
+      {
+        // Hex string input (DisplayReactor converts to Uint8Array)
+        hash: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c",
 
-// When sending blobs back, you can use either format:
-mutate([
-  {
-    // Hex string input (DisplayReactor converts to Uint8Array)
-    hash: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c",
+        // Or Uint8Array directly
+        data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
+      },
+    ])
 
-    // Or Uint8Array directly
-    data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-  },
-])
+  return { hash, signature, bytes, save }
+}
 ```
 
 ### Floats
@@ -489,11 +561,11 @@ Candid's `vec (text, T)` becomes a plain JavaScript Object:
 
 ```typescript
 // Without DisplayReactor
-const metadata: Array<[string, string]> = [
+const rawMetadata: Array<[string, string]> = [
   ["key1", "val1"],
   ["key2", "val2"],
 ]
-const value = metadata.find(([k]) => k === "key1")?.[1]
+const rawValue = rawMetadata.find(([k]) => k === "key1")?.[1]
 
 // With DisplayReactor
 const metadata = {
@@ -527,6 +599,9 @@ so the other two need a cast.
 Display types work seamlessly with form inputs:
 
 ```tsx
+import { useState } from "react"
+import { useActorMutation } from "./reactor"
+
 function TransferForm() {
   const [recipient, setRecipient] = useState("")
   const [amount, setAmount] = useState("")
@@ -538,7 +613,7 @@ function TransferForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     // Strings work directly - no BigInt conversion needed!
-    mutate([recipient, amount])
+    mutate([{ to: recipient, amount }])
   }
 
   return (
@@ -563,7 +638,7 @@ function TransferForm() {
 This amount field takes base units (e8s). A field a person types a token
 amount into, such as `"1.5"`, is read with
 [`parseTokenAmount`](/v3/reference/utilities#parsetokenamount):
-`mutate([recipient, parseTokenAmount(amount, decimals).toString()])`. It throws
+`mutate([{ to: recipient, amount: parseTokenAmount(amount, decimals).toString() }])`. It throws
 on text it cannot read exactly instead of rounding it.
 
 ### Accessing the Codec
@@ -571,14 +646,19 @@ on text it cannot read exactly instead of rounding it.
 For advanced use cases, access the underlying codec:
 
 ```typescript
-const codec = backend.getCodec("getUser")
+import type { Account } from "./declarations/backend"
 
-if (codec) {
-  // Transform display → candid manually
-  const candidArgs = codec.args.asCandid(displayArgs)
+function convertManually(displayArg: string, candidResult: Account) {
+  const codec = backend.getCodec("getAccount")
 
-  // Transform candid → display manually
-  const displayResult = codec.result.asDisplay(candidResult)
+  if (codec) {
+    // Transform display → candid manually. A method with one argument takes
+    // that argument itself, one with several a tuple, and one with none `null`
+    const candidArg = codec.args.asCandid(displayArg)
+
+    // Transform candid → display manually
+    const displayResult = codec.result.asDisplay(candidResult)
+  }
 }
 ```
 
@@ -586,16 +666,21 @@ if (codec) {
 
 DisplayReactor maintains full type safety. TypeScript knows the transformed types:
 
-```typescript
-// TypeScript infers the correct display types
-const { data } = useActorQuery({
-  functionName: "getUser",
-  args: [userId], // string (was Principal)
-})
+```tsx
+import { useActorQuery } from "./reactor"
 
-// data.balance is string (was bigint)
-// data.createdAt is string (was bigint)
-// data.bio is string | null | undefined (was [string] | []); none arrives as undefined
+function AccountBalance({ owner }: { owner: string }) {
+  // TypeScript infers the correct display types
+  const { data } = useActorQuery({
+    functionName: "getAccount",
+    args: [owner], // string (was Principal)
+  })
+
+  // data.balance is string (was bigint)
+  // data.createdAt is string (was bigint)
+  // data.description is string | null | undefined (was [string] | []); none arrives as undefined
+  return <span>{data?.balance}</span>
+}
 ```
 
 The display types come from the service type parameter
@@ -617,6 +702,8 @@ making them perfect for form validation.
 
 ```typescript
 import { DisplayReactor } from "@ic-reactor/core"
+import { clientManager } from "./clients"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
 
 const backend = new DisplayReactor<_SERVICE>({
   clientManager,
@@ -648,17 +735,19 @@ backend.registerValidator("transfer", ([input]) => {
 Use `validate()` to check before calling the canister:
 
 ```typescript
-const result = await backend.validate("transfer", [formData])
+async function submit() {
+  const result = await backend.validate("transfer", [formData])
 
-if (!result.success) {
-  result.issues.forEach((issue) => {
-    form.setError(issue.path[0], issue.message)
-  })
-  return
+  if (!result.success) {
+    result.issues.forEach((issue) => {
+      form.setError(issue.path[0], issue.message)
+    })
+    return
+  }
+
+  // Validation passed, make the call
+  await backend.callMethod({ functionName: "transfer", args: [formData] })
 }
-
-// Validation passed, make the call
-await backend.callMethod({ functionName: "transfer", args: [formData] })
 ```
 
 ### Zod Integration
@@ -683,6 +772,9 @@ async refinement or transform on its synchronous path, so pass
 returns a promise, and runs where async validators run (below).
 
 ```typescript
+import { z } from "zod"
+import { fromZodSchema } from "@ic-reactor/core"
+
 const recipientSchema = z.object({
   to: z
     .string()
@@ -713,10 +805,12 @@ backend.registerValidator("transfer", async ([input]) => {
 })
 
 // Use callMethodWithValidation for async validators
-await backend.callMethodWithValidation({
-  functionName: "transfer",
-  args: [formData],
-})
+async function submit() {
+  await backend.callMethodWithValidation({
+    functionName: "transfer",
+    args: [formData],
+  })
+}
 ```
 
 `callMethod()` runs validators synchronously, and so do the query and mutation
@@ -734,16 +828,20 @@ the validator's own lookup threw is not passed on as one. A `ValidationError`
 the validator throws is passed on as it is.
 
 ```typescript
-try {
-  await backend.callMethodWithValidation({
-    functionName: "transfer",
-    args: [formData],
-  })
-} catch (error) {
-  if (isValidationError(error)) {
-    // the validator's verdict: error.issues
-  } else if (isCallError(error)) {
-    // a failed call, or a validator that threw: error.cause
+import { isCallError, isValidationError } from "@ic-reactor/core"
+
+async function submit() {
+  try {
+    await backend.callMethodWithValidation({
+      functionName: "transfer",
+      args: [formData],
+    })
+  } catch (error) {
+    if (isValidationError(error)) {
+      // the validator's verdict: error.issues
+    } else if (isCallError(error)) {
+      // a failed call, or a validator that threw: error.cause
+    }
   }
 }
 ```

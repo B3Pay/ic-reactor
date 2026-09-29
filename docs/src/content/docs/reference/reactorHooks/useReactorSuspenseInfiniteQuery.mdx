@@ -24,7 +24,7 @@ import { backend } from "./reactor"
 function Feed() {
   const { data, fetchNextPage } = useReactorSuspenseInfiniteQuery({
     reactor: backend, // 👈 Required
-    functionName: "getPosts",
+    functionName: "list_feed",
     getArgs: (pageParam) => [{ cursor: pageParam, limit: 20 }] as const,
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
@@ -33,7 +33,9 @@ function Feed() {
   // data is always defined
   return (
     <div>
-      {data.pages.map(page => /* ... */)}
+      {data.pages.flatMap((page) =>
+        page.posts.map((post) => <p key={post.id}>{post.title}</p>)
+      )}
       <button onClick={() => fetchNextPage()}>Load More</button>
     </div>
   )

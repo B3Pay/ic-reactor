@@ -20,7 +20,7 @@ import { useActorQuery } from "../reactor/hooks"
 
 function App() {
   const info = useActorQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: ["user-123"],
   })
 }
@@ -33,10 +33,14 @@ The unique key is automatically generated based on your canister ID, function na
 The query result returned by `useActorQuery` contains all of the information about the query that you'll need for templating and any other usage of the data:
 
 ```tsx
-const result = useActorQuery({
-  functionName: "getUser",
-  args: ["user-123"],
-})
+import { useActorQuery } from "../reactor/hooks"
+
+function UserProfile() {
+  const result = useActorQuery({
+    functionName: "get_user",
+    args: ["user-123"],
+  })
+}
 ```
 
 The `result` object contains a few very important states you'll need to be aware of to be productive. A query can only be in one of the following states at any given moment:
@@ -54,9 +58,11 @@ Beyond those primary states, more information is available depending on the stat
 For most queries, it's usually sufficient to check for the `isPending` state, then the `isError` state, then finally, assume that the data is available and render the successful state:
 
 ```tsx
+import { useActorQuery } from "../reactor/hooks"
+
 function UserProfile({ userId }: { userId: string }) {
   const { isPending, isError, data, error } = useActorQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 
@@ -81,9 +87,11 @@ function UserProfile({ userId }: { userId: string }) {
 If booleans aren't your thing, you can always use the `status` state as well:
 
 ```tsx
+import { useActorQuery } from "../reactor/hooks"
+
 function UserProfile({ userId }: { userId: string }) {
   const { status, data, error } = useActorQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 
@@ -120,11 +128,18 @@ Both Rust (`Ok`/`Err`) and Motoko (`ok`/`err`) casings are recognised. A return
 value that is not a result variant passes through untouched.
 
 ```tsx
-// Candid: claim : (blob) -> (variant { Ok : nat; Err : ClaimError })
-const { data, error } = useActorQuery({ functionName: "claim", args: [id] })
+import { useActorQuery } from "../reactor/hooks"
 
-// data  -> bigint | undefined      (the Ok payload, already unwrapped)
-// error -> CanisterError | null    (.err is the Err payload)
+function Claim({ id }: { id: Uint8Array }) {
+  // Candid: get_claim : (blob) -> (variant { Ok : nat; Err : ClaimError }) query
+  const { data, error } = useActorQuery({
+    functionName: "get_claim",
+    args: [id],
+  })
+
+  // data  -> bigint | undefined      (the Ok payload, already unwrapped)
+  // error -> CanisterError | null    (.err is the Err payload)
+}
 ```
 
 This happens at the **candid-decoded layer**, after the call has succeeded at
@@ -151,10 +166,11 @@ calling the canister and fetches as soon as the arguments exist:
 
 ```tsx
 import { skipToken } from "@ic-reactor/react"
+import { useActorQuery } from "../reactor/hooks"
 
 function UserProfile({ userId }: { userId: string | null }) {
   const { data } = useActorQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     // Type-checked as [string] once userId is there: no `!`, no placeholder
     args: userId ? [userId] : skipToken,
   })
@@ -165,9 +181,14 @@ The same goes for a query factory, whose query for `skipToken` has only
 `useQuery()`, and for `useActorInfiniteQuery`, as `getArgs`:
 
 ```tsx
-const getUser = createQueryFactory(backend, { functionName: "getUser" })
+import { createQueryFactory, skipToken } from "@ic-reactor/react"
+import { backend } from "../reactor"
 
-const { data } = getUser(userId ? [userId] : skipToken).useQuery()
+const getUser = createQueryFactory(backend, { functionName: "get_user" })
+
+function UserName({ userId }: { userId: string | null }) {
+  const { data } = getUser(userId ? [userId] : skipToken).useQuery()
+}
 ```
 
 A skipped query has a cache entry of its own under its method's key, which no
@@ -181,14 +202,18 @@ When the arguments are known but the query should still wait, use the
 `enabled` option:
 
 ```tsx
-const { isAuthenticated } = useAuth()
+import { useActorQuery, useAuth } from "../reactor/hooks"
 
-const { data } = useActorQuery({
-  functionName: "getProfile",
-  args: [profileId],
-  // Only fetch when signed in
-  enabled: isAuthenticated,
-})
+function MyProfile({ profileId }: { profileId: string }) {
+  const { isAuthenticated } = useAuth()
+
+  const { data } = useActorQuery({
+    functionName: "get_profile",
+    args: [profileId],
+    // Only fetch when signed in
+    enabled: isAuthenticated,
+  })
+}
 ```
 
 This is particularly useful when:
@@ -201,13 +226,17 @@ This is particularly useful when:
 Use the `select` option to transform or select a portion of the data:
 
 ```tsx
-const { data: userName } = useActorQuery({
-  functionName: "getUser",
-  args: [userId],
-  // Only return the name from the query
-  select: (user) => user.name,
-})
-// data is now just the user's name (string)
+import { useActorQuery } from "../reactor/hooks"
+
+function UserName({ userId }: { userId: string }) {
+  const { data: userName } = useActorQuery({
+    functionName: "get_user",
+    args: [userId],
+    // Only return the name from the query
+    select: (user) => user.name,
+  })
+  // data is now just the user's name (string)
+}
 ```
 
 This is useful for:
@@ -221,19 +250,23 @@ This is useful for:
 Control when data is considered stale and should be refetched:
 
 ```tsx
-// Data is fresh for 5 minutes
-const { data } = useActorQuery({
-  functionName: "getConfig",
-  args: [],
-  staleTime: 1000 * 60 * 5, // 5 minutes
-})
+import { useActorQuery } from "../reactor/hooks"
 
-// Data is never stale (static data)
-const { data: metadata } = useActorQuery({
-  functionName: "getMetadata",
-  args: [],
-  staleTime: Infinity,
-})
+function AppInfo() {
+  // Data is fresh for 5 minutes
+  const { data: config } = useActorQuery({
+    functionName: "get_config",
+    args: [],
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+
+  // Data is never stale (static data)
+  const { data: metadata } = useActorQuery({
+    functionName: "get_metadata",
+    args: [],
+    staleTime: Infinity,
+  })
+}
 ```
 
 ## Refetching
@@ -241,32 +274,40 @@ const { data: metadata } = useActorQuery({
 ### Automatic Refetching
 
 ```tsx
-// Refetch every 10 seconds
-const { data } = useActorQuery({
-  functionName: "getPrice",
-  args: [],
-  refetchInterval: 1000 * 10,
-})
+import { useActorQuery } from "../reactor/hooks"
 
-// Refetch when window regains focus
-const { data } = useActorQuery({
-  functionName: "getNotifications",
-  args: [],
-  refetchOnWindowFocus: true,
-})
+function Feeds() {
+  // Refetch every 10 seconds
+  const { data: price } = useActorQuery({
+    functionName: "get_price",
+    args: [],
+    refetchInterval: 1000 * 10,
+  })
+
+  // Refetch when window regains focus
+  const { data: notifications } = useActorQuery({
+    functionName: "get_notifications",
+    args: [],
+    refetchOnWindowFocus: true,
+  })
+}
 ```
 
 ### Manual Refetching
 
 ```tsx
-const { data, refetch } = useActorQuery({
-  functionName: "getUser",
-  args: [userId],
-})
+import { useActorQuery } from "../reactor/hooks"
 
-// Trigger a refetch
-const handleRefresh = () => {
-  refetch()
+function RefreshUser({ userId }: { userId: string }) {
+  const { data, refetch } = useActorQuery({
+    functionName: "get_user",
+    args: [userId],
+  })
+
+  // Trigger a refetch
+  const handleRefresh = () => {
+    void refetch()
+  }
 }
 ```
 
@@ -296,14 +337,18 @@ cannot tell a refetch or a retry from a second call.
   `refetchOnWindowFocus: false` and `refetchOnReconnect: false`.
 
 ```tsx
-// An update method that only reads: safe to repeat, but each run costs cycles.
-const { data: address } = useActorQuery({
-  functionName: "get_btc_address",
-  args: [{ owner: [], subaccount: [] }],
-  staleTime: Infinity,
-  refetchOnWindowFocus: false,
-  refetchOnReconnect: false,
-})
+import { useActorQuery } from "../reactor/hooks"
+
+function BtcAddress() {
+  // An update method that only reads: safe to repeat, but each run costs cycles.
+  const { data: address } = useActorQuery({
+    functionName: "get_btc_address",
+    args: [{ owner: [], subaccount: [] }],
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+}
 ```
 
 How often the `SysTransient` retry runs follows the QueryClient's `retry`
@@ -341,7 +386,7 @@ import { useActorSuspenseQuery } from "../reactor/hooks"
 function UserProfile({ userId }: { userId: string }) {
   // This hook suspends until data is loaded
   const { data } = useActorSuspenseQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 
@@ -374,39 +419,44 @@ function App() {
 For paginated data, use `useActorInfiniteQuery`:
 
 ```tsx
-const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
-  useActorInfiniteQuery({
-    functionName: "getItems",
-    getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }],
-    initialPageParam: 0,
-    getNextPageParam: (lastPage) => lastPage.nextOffset ?? undefined,
-  })
+import { useActorInfiniteQuery } from "../reactor/hooks"
 
-return status === "pending" ? (
-  <p>Loading...</p>
-) : status === "error" ? (
-  <p>Error loading data</p>
-) : (
-  <>
-    {data.pages.map((group, i) => (
-      <div key={i}>
-        {group.items.map((item) => (
-          <p key={item.id}>{item.name}</p>
-        ))}
-      </div>
-    ))}
-    <button
-      onClick={() => fetchNextPage()}
-      disabled={!hasNextPage || isFetchingNextPage}
-    >
-      {isFetchingNextPage
-        ? "Loading more..."
-        : hasNextPage
-          ? "Load More"
-          : "Nothing more to load"}
-    </button>
-  </>
-)
+function Items() {
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
+    useActorInfiniteQuery({
+      functionName: "get_items",
+      getArgs: (pageParam) => [{ offset: pageParam, limit: 10 }],
+      initialPageParam: 0,
+      // nextOffset is a Candid opt: [] on the last page, [offset] otherwise
+      getNextPageParam: (lastPage) => lastPage.nextOffset[0],
+    })
+
+  return status === "pending" ? (
+    <p>Loading...</p>
+  ) : status === "error" ? (
+    <p>Error loading data</p>
+  ) : (
+    <>
+      {data.pages.map((group, i) => (
+        <div key={i}>
+          {group.items.map((item) => (
+            <p key={item.id}>{item.name}</p>
+          ))}
+        </div>
+      ))}
+      <button
+        onClick={() => fetchNextPage()}
+        disabled={!hasNextPage || isFetchingNextPage}
+      >
+        {isFetchingNextPage
+          ? "Loading more..."
+          : hasNextPage
+            ? "Load More"
+            : "Nothing more to load"}
+      </button>
+    </>
+  )
+}
 ```
 
 ## Query Factories
@@ -419,7 +469,7 @@ import { backend } from "../reactor"
 
 // Define query once
 const userQuery = createQuery(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
   args: ["user-123"],
   staleTime: 5 * 60 * 1000,
 })
@@ -437,7 +487,9 @@ async function loader() {
 }
 
 // Invalidate cache
-await userQuery.invalidate()
+async function refreshUser() {
+  await userQuery.invalidate()
+}
 ```
 
 For dynamic arguments, use `createQueryFactory`:
@@ -447,7 +499,7 @@ import { createQueryFactory } from "@ic-reactor/react"
 import { backend } from "../reactor"
 
 const getUserQuery = createQueryFactory(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
 })
 
 // Create query with specific args
@@ -463,17 +515,30 @@ function UserProfile({ userId }: { userId: string }) {
 IC Reactor provides full TypeScript support. The `functionName` prop autocompletes to valid canister methods, and `args` are type-checked:
 
 ```tsx
-// ✅ TypeScript knows this method exists and args are correct
-const { data } = useActorQuery({
-  functionName: "getUser", // autocomplete available
-  args: ["user-123"], // type checked
-})
+import { useActorQuery } from "../reactor/hooks"
 
-// ❌ TypeScript error: wrong argument type
-const { data } = useActorQuery({
-  functionName: "getUser",
-  args: [123], // Error: Expected string
-})
+function UserProfile() {
+  // ✅ TypeScript knows this method exists and args are correct
+  const { data } = useActorQuery({
+    functionName: "get_user", // autocomplete available
+    args: ["user-123"], // type checked
+  })
+}
+```
+
+Pass an argument of the wrong type and it no longer type-checks:
+
+```tsx
+import { useActorQuery } from "../reactor/hooks"
+
+function UserProfile() {
+  const { data } = useActorQuery({
+    functionName: "get_user",
+    // ❌ TypeScript error: Expected string
+    // @ts-expect-error
+    args: [123],
+  })
+}
 ```
 
 ## Further Reading

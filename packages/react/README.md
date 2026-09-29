@@ -282,20 +282,23 @@ export const updateProfile = createMutation(backend, {
 ```tsx
 const profileQuery = getProfile(["alice"])
 
-// React component
-const { data } = profileQuery.useSuspenseQuery()
-
 // Prefetch before navigating (fire-and-forget)
 void profileQuery.prefetch()
 
 // Write into the cache
 profileQuery.setData({ id: "alice", name: "Alice" })
 
-// Mutation with extra invalidation: a query object, a query factory, a
-// `{ functionName, args? }` method of the reactor, or a query key
-const mutation = updateProfile.useMutation({
-  invalidateQueries: [{ functionName: "list_profiles" }],
-})
+// React component
+function Profile() {
+  const { data } = profileQuery.useSuspenseQuery()
+
+  // Mutation with extra invalidation: a query object, a query factory, a
+  // `{ functionName, args? }` method of the reactor, or a query key
+  const mutation = updateProfile.useMutation({
+    invalidateQueries: [{ functionName: "list_profiles" }],
+  })
+  // ...
+}
 ```
 
 An `invalidateQueries` entry of `createMutation`, `useActorMutation` and
@@ -606,8 +609,12 @@ cleanup:
 ```tsx
 import { useEffect, useState } from "react"
 
-const [value] = useState(createReactorContext)
-useEffect(() => () => value.authentication.dispose(), [value])
+function ReactorProvider() {
+  const [value] = useState(createReactorContext)
+  useEffect(() => () => value.authentication.dispose(), [value])
+  // ...provide `value` to the tree
+  return null
+}
 ```
 
 `dispose()` only forgets the client, and the next sign-in builds a new one, so
@@ -680,15 +687,18 @@ const getPost = createQueryFactory(backend, { functionName: "get_post" })
 const likePost = createMutation(backend, { functionName: "like_post" })
 
 // In a component
-const { mutate } = likePost.useMutation({
-  onMutate: ([postId]) =>
-    getPost([postId]).optimisticUpdate((post) => ({
-      ...post,
-      likes: post.likes + 1n,
-    })),
-  onError: (_error, _args, update) => update?.rollback(),
-  onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
-})
+function LikeButton() {
+  const { mutate } = likePost.useMutation({
+    onMutate: ([postId]) =>
+      getPost([postId]).optimisticUpdate((post) => ({
+        ...post,
+        likes: post.likes + 1n,
+      })),
+    onError: (_error, _args, update) => update?.rollback(),
+    onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
+  })
+  // ...
+}
 ```
 
 The updater gets the raw, typed value and is not called when nothing is
@@ -719,18 +729,21 @@ import { createMutation } from "@ic-reactor/react"
 import { backend, useActorMutation } from "./reactor"
 
 // Via createActorHooks
-const { mutate } = useActorMutation({
-  functionName: "transfer",
-  onCanisterError: (err, vars) => {
-    // err.code — the Err variant key (e.g. "InsufficientFunds")
-    // err.err  — the typed Err value
-    console.error(`Transfer failed: ${err.code}`, vars)
-  },
-  onError: (err) => {
-    // Fires for ALL errors: canister Err variants, network failures, etc.
-    console.error("Unexpected error", err)
-  },
-})
+function Transfer() {
+  const { mutate } = useActorMutation({
+    functionName: "transfer",
+    onCanisterError: (err, vars) => {
+      // err.code — the Err variant key (e.g. "InsufficientFunds")
+      // err.err  — the typed Err value
+      console.error(`Transfer failed: ${err.code}`, vars)
+    },
+    onError: (err) => {
+      // Fires for ALL errors: canister Err variants, network failures, etc.
+      console.error("Unexpected error", err)
+    },
+  })
+  // ...
+}
 
 // Via createMutation factory
 const transferMutation = createMutation(backend, {

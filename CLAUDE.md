@@ -171,6 +171,7 @@ pnpm format             # Format the whole repo with Prettier
 pnpm format:check       # Verify formatting without writing (CI gate, whole repo)
 pnpm check:ai-context   # AI guides: versions, package stamps, docs links (CI gate)
 pnpm check:snippets     # Compile the ts/tsx snippets of the AI guides, skills and READMEs (CI gate; build first)
+pnpm check:snippets:docs # The same plus the docs site's pages (CI gate; build first, needs the examples installed)
 pnpm size               # size-limit gate for core/react/candid/parser (CI gate)
 pnpm verify:packages    # Pack + publint + attw + real-Node import of published artifacts
 pnpm verify:peer-floors # Typecheck + test core/react at the lowest peer versions they accept, and compile the built declarations with the oldest supported TypeScript (CI gate; build first)

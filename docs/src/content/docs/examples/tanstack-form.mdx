@@ -52,6 +52,14 @@ import { FieldVisitor } from "@ic-reactor/candid"
 import { IDL } from "@icp-sdk/core/candid"
 import { useForm } from "@tanstack/react-form"
 
+const UserProfile = IDL.Record({
+  username: IDL.Text,
+  age: IDL.Nat,
+  email: IDL.Text,
+  bio: IDL.Opt(IDL.Text),
+  tags: IDL.Vec(IDL.Text),
+})
+
 const visitor = new FieldVisitor()
 const meta = visitor.visitFunc(IDL.Func([UserProfile], [], []), "updateProfile")
 
@@ -79,6 +87,9 @@ function CandidForm() {
   )
 }
 ```
+
+`DynamicField` is the demo's own component (in `src/App.tsx`): it renders one
+`FieldNode` with the input its `component` names.
 
 To send the values to a canister, convert them from display types to Candid
 first; see [CandidFormVisitor](/v3/packages/candid/fieldvisitor).

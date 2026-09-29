@@ -50,6 +50,40 @@ Instead of generic queries, this example wraps them in domain-specific hooks for
 
 ```typescript
 // src/reactor.ts
+import {
+  ClientManager,
+  DisplayReactor,
+  createActorHooks,
+  createMutation,
+  createQueryFactory,
+} from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+import {
+  idlFactory as ckbtcIdlFactory,
+  type _SERVICE as CkbtcLedger,
+} from "./declarations/ckbtc"
+import {
+  idlFactory as minterIdlFactory,
+  type _SERVICE as CkbtcMinter,
+} from "./declarations/minter"
+
+export const queryClient = new QueryClient()
+export const clientManager = new ClientManager({ queryClient })
+
+export const ckbtcLedger = new DisplayReactor<CkbtcLedger>({
+  clientManager,
+  name: "ckbtcLedger",
+  canisterId: "mc6ru-gyaaa-aaaar-qaaaq-cai",
+  idlFactory: ckbtcIdlFactory,
+})
+
+export const ckbtcMinter = new DisplayReactor<CkbtcMinter>({
+  clientManager,
+  name: "ckbtcMinter",
+  canisterId: "ml52i-qqaaa-aaaar-qaaba-cai",
+  idlFactory: minterIdlFactory,
+})
+
 // Ledger hooks, bound to the ckBTC ledger DisplayReactor
 export const { useActorQuery: useCkbtcLedgerQuery } =
   createActorHooks(ckbtcLedger)
@@ -62,14 +96,47 @@ export const balanceQuery = createQueryFactory(ckbtcLedger, {
 export const updateBalanceMutation = createMutation(ckbtcMinter, {
   functionName: "update_balance",
 })
+```
 
+Components then read the ledger through those hooks and objects:
+
+```tsx
 // src/App.tsx
-const { data: name } = useCkbtcLedgerQuery({
-  functionName: "icrc1_name",
-})
+import { useCkbtcLedgerQuery } from "./reactor"
 
+export default function App() {
+  const { data: name } = useCkbtcLedgerQuery({
+    functionName: "icrc1_name",
+  })
+
+  return <h1>{name ?? "ckBTC"} Wallet</h1>
+}
+```
+
+```tsx
 // src/MinterRetrieveBtc.tsx — `owner` is a plain string under DisplayReactor
-const { data: balance, refetch: refetchBalance } = balanceQuery([
-  { owner: userPrincipal },
-]).useQuery()
+import { formatTokenAmount } from "@ic-reactor/react"
+import { balanceQuery } from "./reactor"
+
+/** ckBTC counts in satoshis: 1 ckBTC is 10^8. */
+const CKBTC_DECIMALS = 8
+
+export default function MinterRetrieveBtc({
+  userPrincipal,
+}: {
+  userPrincipal: string
+}) {
+  // Under a DisplayReactor the balance is the satoshis as text
+  const { data: balance, refetch: refetchBalance } = balanceQuery([
+    { owner: userPrincipal },
+  ]).useQuery()
+
+  return (
+    <button onClick={() => refetchBalance()}>
+      {balance === undefined
+        ? "—"
+        : `${formatTokenAmount(balance, CKBTC_DECIMALS)} ckBTC`}
+    </button>
+  )
+}
 ```

@@ -75,10 +75,43 @@ The factory runs once, when the provider mounts. `App` gives the provider a
 for it:
 
 ```tsx
-// src/App.tsx
-<ICRC1Provider key={canisterId} canisterId={canisterId}>
-  <ICRC1Call functionName="icrc1_symbol" label="Symbol" />
-</ICRC1Provider>
+// src/App.tsx (simplified: the demo's App also renders the token cards and login)
+import { useState, type FormEvent } from "react"
+import { isPrincipalText } from "@ic-reactor/react"
+import ICRC1Call from "./ICRC1Call"
+import ICRC1Provider from "./ICRC1Provider"
+
+export default function App() {
+  const [canisterId, setCanisterId] = useState("ryjl3-tyaaa-aaaaa-aaaba-cai")
+  const [draft, setDraft] = useState(canisterId)
+
+  // Only text that is a principal becomes the canister ID, so a half-typed
+  // value never reaches the reactor factory.
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    const text = draft.trim()
+    if (isPrincipalText(text)) {
+      setCanisterId(text)
+    } else {
+      console.error(`Not a canister ID: ${text}`)
+    }
+  }
+
+  return (
+    <>
+      <form onSubmit={onSubmit}>
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+        />
+        <button type="submit">Fetch Token</button>
+      </form>
+      <ICRC1Provider key={canisterId} canisterId={canisterId}>
+        <ICRC1Call functionName="icrc1_symbol" label="Symbol" />
+      </ICRC1Provider>
+    </>
+  )
+}
 ```
 
 Components read the hooks with `useICRC1Context()`, typed as the factory's

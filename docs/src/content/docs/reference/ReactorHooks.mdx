@@ -46,7 +46,7 @@ Same as `useActorQuery`, but requires a `reactor` property.
 import { useReactorQuery } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
-function UserProfile({ userId }) {
+function UserProfile({ userId }: { userId: string }) {
   const { data } = useReactorQuery({
     reactor: backend, // 👈 Required!
     functionName: "getUser",
@@ -72,7 +72,7 @@ function TransferForm() {
     onSuccess: () => console.log("Success!"),
   })
 
-  return <button onClick={() => mutate([data])}>Send</button>
+  return <button onClick={() => mutate([formData])}>Send</button>
 }
 ```
 
@@ -92,11 +92,16 @@ function TransferForm() {
 Reactor hooks provide the same type safety as bound hooks. TypeScript infers types from the passed `reactor` instance.
 
 ```typescript
-const { data } = useReactorQuery({
-  reactor: backend,
-  functionName: "getUser", // ✅ Check against backend methods
-  args: ["123"], // ✅ Checked against method signature
-})
+import { useReactorQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function useUser() {
+  return useReactorQuery({
+    reactor: backend,
+    functionName: "getUser", // ✅ Check against backend methods
+    args: ["123"], // ✅ Checked against method signature
+  })
+}
 ```
 
 ## Type Exports

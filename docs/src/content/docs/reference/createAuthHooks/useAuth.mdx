@@ -44,29 +44,49 @@ function AuthButton() {
 
 Triggers the Internet Identity login flow:
 
-```typescript
-login({
-  // Identity provider URL (auto-detected based on network)
-  identityProvider?: string,
+```tsx
+import { useAuth } from "./reactor/hooks"
 
-  // Session duration in nanoseconds
-  maxTimeToLive?: bigint,
+function LoginButton() {
+  const { login } = useAuth()
 
-  // Callback on successful login
-  onSuccess?: () => void,
+  return (
+    <button
+      onClick={() =>
+        login({
+          // Identity provider URL (auto-detected based on network)
+          identityProvider: "https://id.ai/authorize",
 
-  // Callback on login error
-  onError?: (error?: string) => void,
-})
+          // Session duration in nanoseconds
+          maxTimeToLive: 8n * 60n * 60n * 1_000_000_000n,
+
+          // Callback on successful login
+          onSuccess: () => console.log("signed in"),
+
+          // Callback on login error
+          onError: (error) => console.error(error),
+        })
+      }
+    >
+      Login
+    </button>
+  )
+}
 ```
 
 ### logout()
 
 Logs out and clears the session:
 
-```typescript
-const { logout } = useAuth()
-logout() // Clears session and updates state
+```tsx
+import { useAuth } from "./reactor/hooks"
+
+function LogoutButton() {
+  const { logout } = useAuth()
+
+  // Clears session and updates state
+  return <button onClick={() => logout()}>Logout</button>
+}
 ```
 
 ### authenticate()
@@ -78,11 +98,21 @@ the return value. It resolves `undefined` when the optional `@icp-sdk/auth`
 peer is not installed, or when it finds that a signed-in session has expired
 and ends it:
 
-```typescript
-const { authenticate } = useAuth()
-const identity = await authenticate()
-const signedIn =
-  identity !== undefined && !identity.getPrincipal().isAnonymous()
+```tsx
+import { useAuth } from "./reactor/hooks"
+
+function RestoreSessionButton() {
+  const { authenticate } = useAuth()
+
+  async function restore() {
+    const identity = await authenticate()
+    const signedIn =
+      identity !== undefined && !identity.getPrincipal().isAnonymous()
+    console.log(signedIn ? "Session restored" : "Signed out")
+  }
+
+  return <button onClick={restore}>Restore session</button>
+}
 ```
 
 ## Return Value

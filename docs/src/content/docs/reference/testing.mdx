@@ -26,8 +26,11 @@ import {
   installFakeReplica,
   type FakeReplica,
 } from "@ic-reactor/core/testing"
+```
 
-// The same bindings, for an app that depends on @ic-reactor/react alone
+The same bindings, for an app that depends on `@ic-reactor/react` alone:
+
+```typescript
 import {
   createTestCanister,
   installFakeReplica,
@@ -42,7 +45,7 @@ import {
 
 ## installFakeReplica
 
-```typescript
+```ts nocheck
 function installFakeReplica(options?: FakeReplicaOptions): FakeReplica
 ```
 
@@ -101,7 +104,7 @@ passes the IC API on any other origin to the earlier one.
 
 ## createTestCanister
 
-```typescript
+```ts nocheck
 function createTestCanister<A = BaseActor>(
   idlFactory: ReactorParameters["idlFactory"], // what a Reactor takes
   handlers: TestCanisterHandlers<A>
@@ -138,7 +141,7 @@ const replica = installFakeReplica({
 `TestCanisterHandlers<A>` maps each method name of the service `A` to an
 optional handler:
 
-```typescript
+```ts nocheck
 type TestCanisterHandler<A, M extends FunctionName<A>> = (
   args: ActorMethodParameters<A[M]>,
   context: FakeCallContext
@@ -172,7 +175,7 @@ The values are the raw Candid ones (`bigint`, `Principal`, `[] | [T]` for an
 `installFakeReplica` runs any object of this shape. Implement it directly to
 answer with bytes the service's types would not produce.
 
-```typescript
+```ts nocheck
 interface FakeCanister {
   query?(
     method: string,

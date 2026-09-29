@@ -12,6 +12,7 @@ import { Aside } from "@astrojs/starlight/components"
 
 ```typescript
 import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
 const { useActorQuery } = createActorHooks(backend)
 ```
@@ -20,6 +21,9 @@ const { useActorQuery } = createActorHooks(backend)
   It is recommended to rename the hooks to reflect the canister name, especially when working with multiple canisters:
 
 ```typescript
+import { createActorHooks } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const { useActorQuery: useBackendQuery } = createActorHooks(backend)
 ```
 
@@ -28,9 +32,11 @@ const { useActorQuery: useBackendQuery } = createActorHooks(backend)
 ## Usage
 
 ```tsx
+import { useActorQuery } from "./reactor"
+
 function UserProfile({ userId }: { userId: string }) {
   const { data, isPending, error } = useActorQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 
@@ -91,10 +97,18 @@ Returns a TanStack Query result object:
 ### Basic Query
 
 ```tsx
-const { data, isPending, error } = useActorQuery({
-  functionName: "greet",
-  args: ["World"],
-})
+import { useActorQuery } from "./reactor"
+
+function Greeting() {
+  const { data, isPending, error } = useActorQuery({
+    functionName: "greet",
+    args: ["World"],
+  })
+
+  if (isPending) return <span>Loading…</span>
+  if (error) return <span>Error: {error.message}</span>
+  return <span>{data}</span>
+}
 ```
 
 ### Waiting for Args
@@ -105,13 +119,16 @@ calling the canister, and fetches as soon as `args` holds real arguments:
 
 ```tsx
 import { skipToken } from "@ic-reactor/react"
+import { useActorQuery } from "./reactor"
 
 function UserProfile({ userId }: { userId: string | undefined }) {
   const { data } = useActorQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     // No `userId!`, no placeholder id, no `enabled`
     args: userId ? [userId] : skipToken,
   })
+
+  return <div>{data?.name}</div>
 }
 ```
 
@@ -128,118 +145,168 @@ Use `enabled` when the arguments are known but the query should still wait,
 for a reason of your own:
 
 ```tsx
-const { isAuthenticated } = useAuth()
+import { useActorQuery, useAuth } from "./reactor"
 
-const { data } = useActorQuery({
-  functionName: "getUser",
-  args: [userId],
-  enabled: isAuthenticated, // Only fetch once signed in
-})
+function CurrentUser() {
+  const { isAuthenticated } = useAuth()
+
+  const { data } = useActorQuery({
+    functionName: "get_user",
+    args: [userId],
+    enabled: isAuthenticated, // Only fetch once signed in
+  })
+
+  return <div>{data?.name}</div>
+}
 ```
 
 ### With Select
 
 ```tsx
-// Extract only the name from the user object
-const { data: userName } = useActorQuery({
-  functionName: "getUser",
-  args: [userId],
-  select: (user) => user?.name,
-})
+import { useActorQuery } from "./reactor"
+
+function UserName() {
+  // Extract only the name from the user object
+  const { data: userName } = useActorQuery({
+    functionName: "get_user",
+    args: [userId],
+    select: (user) => user?.name,
+  })
+
+  return <span>{userName}</span>
+}
 ```
 
 ### Stale Time Configuration
 
 ```tsx
-// Data stays fresh for 5 minutes
-const { data } = useActorQuery({
-  functionName: "getConfig",
-  args: [],
-  staleTime: 5 * 60 * 1000,
-})
+import { useActorQuery } from "./reactor"
 
-// Data is never stale
-const { data } = useActorQuery({
-  functionName: "getMetadata",
-  args: [],
-  staleTime: Infinity,
-})
+function Settings() {
+  // Data stays fresh for 5 minutes
+  const { data } = useActorQuery({
+    functionName: "get_config",
+    args: [],
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Data is never stale
+  const { data: metadata } = useActorQuery({
+    functionName: "get_metadata",
+    args: [],
+    staleTime: Infinity,
+  })
+
+  return <pre>{JSON.stringify({ data, metadata })}</pre>
+}
 ```
 
 ### Polling
 
 ```tsx
-// Refetch every 10 seconds
-const { data } = useActorQuery({
-  functionName: "getPrice",
-  args: [],
-  refetchInterval: 10_000,
-})
+import { useActorQuery } from "./reactor"
+
+function Price() {
+  // Refetch every 10 seconds
+  const { data } = useActorQuery({
+    functionName: "get_price",
+    args: [],
+    refetchInterval: 10_000,
+  })
+
+  return <span>{String(data)}</span>
+}
 ```
 
 ### Manual Refetch
 
 ```tsx
-const { data, refetch, isFetching } = useActorQuery({
-  functionName: "getNotifications",
-  args: [],
-})
+import { useActorQuery } from "./reactor"
 
-return (
-  <div>
-    <NotificationList data={data} />
-    <button onClick={() => refetch()} disabled={isFetching}>
-      Refresh
-    </button>
-  </div>
-)
+function Notifications() {
+  const { data, refetch, isFetching } = useActorQuery({
+    functionName: "get_notifications",
+    args: [],
+  })
+
+  return (
+    <div>
+      <NotificationList data={data} />
+      <button onClick={() => refetch()} disabled={isFetching}>
+        Refresh
+      </button>
+    </div>
+  )
+}
 ```
 
 ### Error Handling
 
+A method that returns a `Result` resolves with its `Ok` value. Its `Err` arm is
+thrown as a `CanisterError`, which `isCanisterError` narrows, so a business
+logic failure is told apart from a network one:
+
 ```tsx
-import { CanisterError, CallError } from "@ic-reactor/react"
+import { isCanisterError } from "@ic-reactor/react"
+import { useActorQuery } from "./reactor"
 
-const { data, error, isError } = useActorQuery({
-  functionName: "getBalance",
-  args: [principal],
-})
+function Balance() {
+  // `get_balance` returns `{ Ok: nat } | { Err: BalanceError }`
+  const { data, error, isError } = useActorQuery({
+    functionName: "get_balance",
+    args: [principal.toText()],
+  })
 
-if (isError) {
-  if (error instanceof CanisterError) {
-    // Business logic error from canister
-    return (
-      <div>
-        Canister error [{error.code}]: {JSON.stringify(error.err)}
-      </div>
-    )
+  if (isError) {
+    if (isCanisterError(error)) {
+      // Business logic error from canister
+      return (
+        <div>
+          Canister error [{error.code}]: {JSON.stringify(error.err)}
+        </div>
+      )
+    }
+    // Network or other error
+    return <div>Error: {error.message}</div>
   }
-  // Network or other error
-  return <div>Error: {error.message}</div>
+
+  return <div>Balance: {data}</div>
 }
 ```
 
 ### Type-Safe Queries
 
 ```tsx
-// TypeScript infers types from your canister interface
-const { data } = useActorQuery({
-  functionName: "getUser", // ✅ Autocompletes valid methods
-  args: ["user-123"], // ✅ Type-checked
-})
-// data is typed as User | undefined
+import { useActorQuery } from "./reactor"
+
+function User() {
+  // TypeScript infers types from your canister interface
+  const { data } = useActorQuery({
+    functionName: "get_user", // ✅ Autocompletes valid methods
+    args: ["user-123"], // ✅ Type-checked
+  })
+  // data is typed as User | undefined
+
+  return <span>{data?.name}</span>
+}
 ```
 
 ### With Custom Query Key
 
 ```tsx
-// Add custom segments to the query key
-const { data } = useActorQuery({
-  functionName: "getData",
-  args: [],
-  queryKey: ["version", "2"],
-})
-// Full key: [canisterId, "getData", "[]", "version", "2"]
+import { useActorQuery } from "./reactor"
+
+function Data() {
+  // Add custom segments to the query key
+  const { data } = useActorQuery({
+    functionName: "get_data",
+    args: [],
+    queryKey: ["version", "2"],
+  })
+  // Full key: [canisterId, "get_data", "[]", "version", "2"]
+
+  return <pre>{JSON.stringify(data)}</pre>
+}
 ```
 
 The args segment is the JSON-serialized `args` array, so an empty `args: []`
@@ -250,17 +317,18 @@ after it, never in place of the identity prefix.
 
 ```tsx
 import { skipToken } from "@ic-reactor/react"
+import { useActorQuery } from "./reactor"
 
 function UserPosts({ userId }: { userId: string }) {
   // First query
   const { data: user } = useActorQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 
   // Dependent query - waits until the first one has the user's id
   const { data: posts } = useActorQuery({
-    functionName: "getUserPosts",
+    functionName: "get_user_posts",
     args: user ? [user.id] : skipToken,
   })
 
@@ -270,7 +338,7 @@ function UserPosts({ userId }: { userId: string }) {
 
 ## Type Parameters
 
-```typescript
+```typescript nocheck
 useActorQuery<
   M extends FunctionName<A>,  // Method name
   TSelected = ReturnType       // Type after select

@@ -118,24 +118,24 @@ import { backend } from "../reactor"
 
 // Query factories
 export const getUserQuery = createQueryFactory(backend, {
-  functionName: "getUser",
+  functionName: "get_user",
   staleTime: 5 * 60 * 1000,
 })
 
 export const getPostsQuery = createQueryFactory(backend, {
-  functionName: "getPosts",
+  functionName: "get_posts",
 })
 
 // Mutation factories
 export const createPostMutation = createMutation(backend, {
-  functionName: "createPost",
+  functionName: "create_post",
   // A query factory covers every query it returns, whatever the args
   invalidateQueries: [getPostsQuery],
 })
 
 // Query keys, for QueryClient calls of your own
 export const queryKeys = {
-  users: () => getUserQuery.getQueryKey(), // every getUser query
+  users: () => getUserQuery.getQueryKey(), // every get_user query
   userById: (id: string) => getUserQuery([id]).getQueryKey(),
   posts: () => getPostsQuery.getQueryKey(),
 }
@@ -145,7 +145,7 @@ export const queryKeys = {
 
 ### TanStack Router
 
-```typescript
+```tsx
 import { createFileRoute } from "@tanstack/react-router"
 import { getUserQuery } from "../queries"
 
@@ -167,17 +167,17 @@ function UserPage() {
 
 ### React Router
 
-```typescript
-import { json, useLoaderData } from "react-router-dom"
+```tsx
+import { useLoaderData, type LoaderFunctionArgs } from "react-router-dom"
 import { getUserQuery } from "../queries"
 
-export async function loader({ params }) {
-  const user = await getUserQuery([params.userId]).fetch()
-  return json({ user })
+export async function loader({ params }: LoaderFunctionArgs) {
+  if (!params.userId) throw new Response("Not Found", { status: 404 })
+  return { user: await getUserQuery([params.userId]).fetch() }
 }
 
 export function UserPage() {
-  const { user } = useLoaderData()
+  const { user } = useLoaderData() as Awaited<ReturnType<typeof loader>>
   return <Profile user={user} />
 }
 ```

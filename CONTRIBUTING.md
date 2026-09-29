@@ -46,12 +46,13 @@ CI gate operate on exactly the same set of files.
 ```bash
 pnpm check:ai-context  # versions, package stamps and docs links in the AI guides
 pnpm check:snippets    # compiles the ts/tsx snippets of the guides and READMEs
+pnpm check:snippets:docs  # the same, plus the docs site's pages (needs the examples installed)
 pnpm lint              # ESLint over packages/*/src and packages/*/tests
 pnpm typecheck         # every package and e2e/, including their tests
 ```
 
-`pnpm check:snippets` and `pnpm lint` read the packages' built declarations,
-so run `pnpm build` first. See [Code snippets](#code-snippets) for what to do
+`pnpm check:snippets`, `pnpm check:snippets:docs` and `pnpm lint` read the
+packages' built declarations, so run `pnpm build` first. See [Code snippets](#code-snippets) for what to do
 when a snippet fails.
 
 If you touched `packages/` or `examples/`, also type-check and build every
@@ -120,8 +121,26 @@ A fence that is not code to paste, such as a type signature or an interface
 restating a library type, opts out with `nocheck` after its language,
 ` ```ts nocheck `, or with `// @snippet-skip` as its first line. Give a
 placeholder such as `...` a real value instead. `pnpm check:snippets --verbose`
-lists every snippet with its result, and `pnpm check:snippets --docs` also
-compiles the docs site's pages, reporting their failures without failing.
+lists every snippet with its result.
+
+The docs site's hand-written pages (`docs/src/content/docs`, without the
+TypeDoc output in `libs/`) are gated too, by `pnpm check:snippets:docs`, which
+CI runs in the job that installs the examples. Unlike the guides, a docs page
+may assume the app it is about, so a page compiles against
+`scripts/check-snippets/docs/<section>/` (its directory under the docs content
+root, `root` for a page at the top), then against the default app. Put a name
+the page assumes there, such as the canister its examples call or a component
+the page only mentions. A fence that uses a library export still imports it,
+and a fixture never re-exports one. Libraries the examples install
+(`@tanstack/react-router`, `react-hook-form`, `@tanstack/react-form`, `next`)
+are the real packages; the few installed nowhere are declared once, faithfully,
+in `scripts/check-snippets/ambient.d.ts`. An `@/` import resolves to a fixture
+at that path. The checker type-checks, and it fails a snippet that calls a hook
+(`useXxx(...)` or `query.useXxx()`) outside a component or a custom hook: at
+the top of the module, in a class, or in a function that is not capitalised or
+named `useXxx`. Wrap it in a component. A call that must fail to compile is shown with
+`// @ts-expect-error`. Rules it cannot see (no hand-written query keys, update
+methods only through mutations) are yours to keep when you write an example.
 
 ## Pre-commit hooks
 

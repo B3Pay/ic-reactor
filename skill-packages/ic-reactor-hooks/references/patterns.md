@@ -160,10 +160,13 @@ export const likeHeart = createMutation(backendReactor, {
 Use in components/custom hooks:
 
 ```tsx
-const { data: likes = [] } = getLikes.useQuery()
-const { mutateAsync } = likeHeart.useMutation({
-  invalidateQueries: [getLikes],
-})
+function Likes() {
+  const { data: likes = [] } = getLikes.useQuery()
+  const { mutateAsync } = likeHeart.useMutation({
+    invalidateQueries: [getLikes],
+  })
+  // ...
+}
 ```
 
 `invalidateQueries` takes a query object (`[getLikes]`), a query factory (every
@@ -173,15 +176,18 @@ is awaited before `onSuccess`.
 Optimistic update, with a rollback and a refetch once the mutation settles:
 
 ```tsx
-const { mutate } = likePost.useMutation({
-  onMutate: ([postId]) =>
-    getPost([postId]).optimisticUpdate((post) => ({
-      ...post,
-      likes: post.likes + 1n,
-    })),
-  onError: (_error, _args, update) => update?.rollback(),
-  onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
-})
+function LikeButton() {
+  const { mutate } = likePost.useMutation({
+    onMutate: ([postId]) =>
+      getPost([postId]).optimisticUpdate((post) => ({
+        ...post,
+        likes: post.likes + 1n,
+      })),
+    onError: (_error, _args, update) => update?.rollback(),
+    onSettled: (_data, _error, [postId]) => getPost([postId]).invalidate(),
+  })
+  // ...
+}
 ```
 
 Here `getPost` is a `createQueryFactory` and `likePost` a `createMutation`.
@@ -196,13 +202,15 @@ update's `call()` too, so pass `retry` only for query methods or pass
 ```tsx
 import { useActorMethod } from "@ic-reactor/react"
 
-const method = useActorMethod({
-  reactor: backendReactor,
-  functionName: "get_user",
-  args: ["user-1"],
-})
+function UserLoader() {
+  const method = useActorMethod({
+    reactor: backendReactor,
+    functionName: "get_user",
+    args: ["user-1"],
+  })
 
-await method.call()
+  return <button onClick={() => method.call()}>Load</button>
+}
 ```
 
 Source: `packages/react/src/hooks/useActorMethod.ts`

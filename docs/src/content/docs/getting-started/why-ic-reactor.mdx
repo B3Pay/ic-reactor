@@ -177,16 +177,22 @@ When you build your own data layer, you're signing up for:
 ### Code That AI Can Reason About
 
 ```typescript
-// IC Reactor: AI understands this instantly ✅
-const { data, isPending, error } = useActorQuery({
-  functionName: "getBalance",
-  args: [principal],
-})
+import { useActorQuery } from "./reactor"
 
+function Balance() {
+  // IC Reactor: AI understands this instantly ✅
+  const { data, isPending, error } = useActorQuery({
+    functionName: "get_balance",
+    args: [principal],
+  })
+}
+```
+
+```typescript nocheck
 // DIY approach: AI struggles with custom abstractions ❌
 const balance = useCustomHook({
   actor: myActor,
-  method: "getBalance",
+  method: "get_balance",
   params: [principal],
   cache: true,
   retryOnError: 3,
@@ -208,19 +214,23 @@ One of IC Reactor's most elegant features:
   <TabItem label="With IC Reactor">
 
 ```typescript
+import { useActorMutation } from "./reactor"
+
 // Your Candid method returns: variant { Ok: nat; Err: text }
 
-const { mutate } = useActorMutation({
-  functionName: "transfer",
-  onSuccess: (balance) => {
-    // balance is typed as `bigint` - Err case throws automatically!
-    console.log(`New balance: ${balance}`)
-  },
-  onCanisterError: (error) => {
-    // error.err is typed as `string`
-    console.error(`Transfer failed: ${error.err}`)
-  },
-})
+function useTransfer() {
+  return useActorMutation({
+    functionName: "transfer",
+    onSuccess: (balance) => {
+      // balance is typed as `bigint` - Err case throws automatically!
+      console.log(`New balance: ${balance}`)
+    },
+    onCanisterError: (error) => {
+      // error.err is typed as `string`
+      console.error(`Transfer failed: ${error.err}`)
+    },
+  })
+}
 ```
 
   </TabItem>
@@ -228,15 +238,17 @@ const { mutate } = useActorMutation({
 
 ```typescript
 // Manual approach - tedious and error-prone
-const result = await actor.transfer({ to: recipient, amount })
+async function transfer() {
+  const result = await actor.transfer({ to: recipient, amount })
 
-if ("Ok" in result) {
-  console.log(`New balance: ${result.Ok}`)
-} else if ("Err" in result) {
-  console.error(`Transfer failed: ${result.Err}`)
-} else {
-  // What if it's lowercase? What if the shape changes?
-  throw new Error("Unexpected result shape")
+  if ("Ok" in result) {
+    console.log(`New balance: ${result.Ok}`)
+  } else if ("Err" in result) {
+    console.error(`Transfer failed: ${result.Err}`)
+  } else {
+    // What if it's lowercase? What if the shape changes?
+    throw new Error("Unexpected result shape")
+  }
 }
 ```
 

@@ -37,6 +37,22 @@ Without ClientManager, connecting to the IC typically involves:
 **ClientManager solves this by providing a unified interface** where all these concerns are managed together. When the identity changes, the agent is updated, the affected queries invalidate, and your reactors seamlessly use the new identity.
 
 ```typescript
+import { ClientManager, Reactor } from "@ic-reactor/core"
+import { AuthenticationManager } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/query-core"
+import {
+  canisterId,
+  idlFactory,
+  type _SERVICE as BackendService,
+} from "./declarations/backend"
+import {
+  canisterId as ledgerCanisterId,
+  idlFactory as ledgerIdlFactory,
+  type _SERVICE as LedgerService,
+} from "./declarations/ledger"
+
+const queryClient = new QueryClient()
+
 // One ClientManager, shared by all your reactors
 const clientManager = new ClientManager({ queryClient })
 
@@ -49,14 +65,17 @@ const backend = new Reactor<BackendService>({
 })
 const ledger = new Reactor<LedgerService>({
   clientManager,
-  idlFactory: ledgerIdl,
+  idlFactory: ledgerIdlFactory,
   name: "ledger",
-  canisterId: ledgerId,
+  canisterId: ledgerCanisterId,
 })
 
-// Sign in once - all reactors automatically use the new identity
 const authentication = new AuthenticationManager({ clientManager })
-await authentication.login()
+
+// Sign in once - all reactors automatically use the new identity
+async function handleLogin() {
+  await authentication.login()
+}
 ```
 
 ## Import
@@ -273,19 +292,21 @@ export const backend = new Reactor<_SERVICE>({
 ### Network Configuration
 
 ```typescript
+import { ClientManager } from "@ic-reactor/core"
+
 // Browser: the host is inferred from window.location.origin when the page is
 // served from localhost/127.0.0.1, a Codespaces or Gitpod domain, or an IC
 // boundary domain
-const clientManager = new ClientManager({ queryClient })
+const browserManager = new ClientManager({ queryClient })
 
 // Explicit local host — non-browser environments, or a replica on a custom port
-const clientManager = new ClientManager({
+const localManager = new ClientManager({
   queryClient,
   agentOptions: { host: "http://127.0.0.1:8080" },
 })
 
 // Custom agent options
-const clientManager = new ClientManager({
+const mainnetManager = new ClientManager({
   queryClient,
   agentOptions: {
     host: "https://icp-api.io",
@@ -307,23 +328,27 @@ When your app is served by the `@icp-sdk` toolchain (e.g., `icp-cli`) or by [`@i
 ### Subscribing to State Changes
 
 ```typescript
+import { useEffect } from "react"
+
 // In React with useEffect
-useEffect(() => {
-  const unsubIdentity = clientManager.subscribe((identity) => {
-    console.log("New identity:", identity.getPrincipal().toText())
-  })
+export function useClientManagerLogging() {
+  useEffect(() => {
+    const unsubIdentity = clientManager.subscribe((identity) => {
+      console.log("New identity:", identity.getPrincipal().toText())
+    })
 
-  const unsubAgent = clientManager.subscribeAgentState((state) => {
-    if (state.isInitialized) {
-      console.log("Agent ready, network:", state.network)
+    const unsubAgent = clientManager.subscribeAgentState((state) => {
+      if (state.isInitialized) {
+        console.log("Agent ready, network:", state.network)
+      }
+    })
+
+    return () => {
+      unsubIdentity()
+      unsubAgent()
     }
-  })
-
-  return () => {
-    unsubIdentity()
-    unsubAgent()
-  }
-}, [])
+  }, [])
+}
 ```
 
 ### Authentication Flow
@@ -335,17 +360,19 @@ import { AuthenticationManager } from "@ic-reactor/react"
 
 const authentication = new AuthenticationManager({ clientManager })
 
-// Initialize the agent on app start
-await clientManager.initialize()
+async function start() {
+  // Initialize the agent on app start
+  await clientManager.initialize()
 
-// Restore a previous session, if any
-await authentication.authenticate()
+  // Restore a previous session, if any
+  await authentication.authenticate()
 
-if (authentication.authState.isAuthenticated) {
-  console.log(
-    "Welcome back!",
-    (await clientManager.getUserPrincipal()).toText()
-  )
+  if (authentication.authState.isAuthenticated) {
+    console.log(
+      "Welcome back!",
+      (await clientManager.getUserPrincipal()).toText()
+    )
+  }
 }
 
 // Login handler
@@ -371,6 +398,8 @@ async function handleLogout() {
 ### Network Detection
 
 ```typescript
+import { ClientManager } from "@ic-reactor/core"
+
 const clientManager = new ClientManager({ queryClient })
 
 // Check current network
@@ -462,11 +491,13 @@ While `AuthenticationManager` covers Internet Identity, ClientManager itself is 
 When using external authentication (wallets, SIWE, NFID, etc.), update the agent after authenticating:
 
 ```typescript
-// Authenticate with your external provider
-const identity = await externalAuthProvider.getIdentity()
+async function signInWithProvider() {
+  // Authenticate with your external provider
+  const identity = await externalAuthProvider.getIdentity()
 
-// Update ClientManager - all reactors automatically use the new identity
-clientManager.updateAgent(identity)
+  // Update ClientManager - all reactors automatically use the new identity
+  clientManager.updateAgent(identity)
+}
 ```
 
 This pattern works with any provider that produces a valid `Identity` object.
@@ -490,7 +521,13 @@ We're exploring first-class support for popular authentication standards:
 
 Here's how SIWE integration works with [ic-siwe-js](https://github.com/kristoferlund/ic-siwe):
 
+`ic-siwe-js` builds on `@dfinity/identity`, and TypeScript treats that package's `DelegationIdentity` and `Principal` as different types from the ones in `@icp-sdk/core`: each declares private fields, so `clientManager.updateAgent(identity)` does not compile with the identity it returns. `toIdentity` below forwards the two methods an `Identity` needs, `getPrincipal` and `transformRequest`, and converts the principal, so `ClientManager` signs with the SIWE delegation. The cast in `transformRequest` only crosses the two packages' copies of the same request type.
+
 ```tsx
+import { useEffect } from "react"
+import type { Identity } from "@icp-sdk/core/agent"
+import { Principal } from "@icp-sdk/core/principal"
+
 // 1. Wrap your app with SiweIdentityProvider
 import { SiweIdentityProvider } from "ic-siwe-js/react"
 
@@ -505,13 +542,25 @@ function App() {
 // 2. Use the useSiwe hook to login and get identity
 import { useSiwe } from "ic-siwe-js/react"
 
+type SiweIdentity = NonNullable<ReturnType<typeof useSiwe>["identity"]>
+type SiweRequest = Parameters<SiweIdentity["transformRequest"]>[0]
+
+function toIdentity(siweIdentity: SiweIdentity): Identity {
+  return {
+    getPrincipal: () =>
+      Principal.fromText(siweIdentity.getPrincipal().toText()),
+    transformRequest: (request) =>
+      siweIdentity.transformRequest(request as unknown as SiweRequest),
+  }
+}
+
 function LoginButton() {
   const { login, identity, isLoggingIn } = useSiwe()
 
   // After login, update ClientManager with the SIWE identity
   useEffect(() => {
     if (identity) {
-      clientManager.updateAgent(identity)
+      clientManager.updateAgent(toIdentity(identity))
     }
   }, [identity])
 

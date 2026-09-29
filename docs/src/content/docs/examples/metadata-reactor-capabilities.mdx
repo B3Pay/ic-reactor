@@ -45,12 +45,26 @@ IDL service definition, so it can run without a live canister.
 ## Key Code
 
 ```ts
-const inputMeta = reactor.getInputMeta(methodName)
-const outputMeta = reactor.getOutputMeta(methodName)
-const variableCandidates = reactor.buildMethodVariableCandidates(methodName)
+import type { MetadataReactor } from "@ic-reactor/candid"
+import { IDL } from "@icp-sdk/core/candid"
 
-const candidArgsHex = toHex(IDL.encode(argTypes, args))
-const hydrated = await reactor.buildForMethod(methodName, { candidArgsHex })
+const toHex = (bytes: Uint8Array): string =>
+  Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
 
-const resolved = outputMeta?.resolve(sampleOutputs[methodName])
+async function inspectMethod(
+  reactor: MetadataReactor,
+  methodName: string,
+  argTypes: IDL.Type[],
+  args: unknown[],
+  sampleOutputs: Record<string, unknown>
+) {
+  const inputMeta = reactor.getInputMeta(methodName)
+  const outputMeta = reactor.getOutputMeta(methodName)
+  const variableCandidates = reactor.buildMethodVariableCandidates(methodName)
+
+  const candidArgsHex = toHex(IDL.encode(argTypes, args))
+  const hydrated = await reactor.buildForMethod(methodName, { candidArgsHex })
+
+  const resolved = outputMeta?.resolve(sampleOutputs[methodName])
+}
 ```

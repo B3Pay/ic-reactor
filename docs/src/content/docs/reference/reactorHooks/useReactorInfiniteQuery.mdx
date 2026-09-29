@@ -23,7 +23,7 @@ import { backend } from "./reactor"
 function Feed() {
   const { data, fetchNextPage, hasNextPage } = useReactorInfiniteQuery({
     reactor: backend, // 👈 Required
-    functionName: "getPosts",
+    functionName: "list_feed",
     getArgs: (pageParam) => [{ cursor: pageParam, limit: 20 }] as const,
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage, allPages) => lastPage.nextCursor,
@@ -31,9 +31,13 @@ function Feed() {
 
   return (
     <div>
-      {data?.pages.map((page) => (
+      {data?.pages.map((page, i) => (
         // Render posts
-        <div key={page.id}>{/*...*/}</div>
+        <div key={i}>
+          {page.posts.map((post) => (
+            <p key={post.id}>{post.title}</p>
+          ))}
+        </div>
       ))}
       <button onClick={() => fetchNextPage()} disabled={!hasNextPage}>
         Load More

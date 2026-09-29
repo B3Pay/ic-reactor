@@ -122,6 +122,11 @@ export const clientManager = new ClientManager({ queryClient })
 To point the agent somewhere else, pass the host explicitly:
 
 ```typescript
+import { ClientManager } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+
+export const queryClient = new QueryClient()
+
 export const clientManager = new ClientManager({
   queryClient,
   agentOptions: { host: "http://127.0.0.1:4943" },
@@ -172,6 +177,11 @@ explicitly (the codegen `canisterId` option), or pass `allowEnvConfig: true`
 to `ClientManager` if you accept that risk for a development build:
 
 ```typescript
+import { ClientManager } from "@ic-reactor/react"
+import { QueryClient } from "@tanstack/react-query"
+
+export const queryClient = new QueryClient()
+
 export const clientManager = new ClientManager({
   queryClient,
   // Codespaces/Gitpod only: trust the ic_env cookie's canister IDs, root key
@@ -245,6 +255,11 @@ Check if your local replica is running and on which port.
    `agentOptions.host`:
 
    ```typescript
+   import { ClientManager } from "@ic-reactor/react"
+   import { QueryClient } from "@tanstack/react-query"
+
+   export const queryClient = new QueryClient()
+
    export const clientManager = new ClientManager({
      queryClient,
      agentOptions: { host: "http://127.0.0.1:8000" },
@@ -292,9 +307,15 @@ Internet Identity canister.
    the local Internet Identity canister is deployed and the page is served from
    localhost.
 
-   ```typescript
-   // Auto-detects based on network
-   // Local: http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize
-   // Mainnet: https://id.ai/authorize
-   const { login } = useAuth()
+   ```tsx
+   import { useAuth } from "./clients"
+
+   function LoginButton() {
+     // Auto-detects based on network
+     // Local: http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943/authorize
+     // Mainnet: https://id.ai/authorize
+     const { login } = useAuth()
+
+     return <button onClick={() => login()}>Login</button>
+   }
    ```

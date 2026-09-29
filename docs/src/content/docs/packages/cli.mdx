@@ -136,10 +136,16 @@ update or oneway method. Each is named after its method in camelCase with a
 import { getMessageQuery, setMessageMutation } from "./declarations/backend"
 
 // In a component
-const { data } = getMessageQuery.useQuery()
+function Message() {
+  const { data } = getMessageQuery.useQuery()
+
+  return <p>{data}</p>
+}
 
 // Anywhere, outside React included
-await setMessageMutation.execute(["hello"])
+async function saveMessage() {
+  await setMessageMutation.execute(["hello"])
+}
 ```
 
 The default `index.ts` wrapper re-exports the file. If you have edited your

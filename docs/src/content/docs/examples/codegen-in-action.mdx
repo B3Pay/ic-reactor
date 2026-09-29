@@ -48,15 +48,20 @@ The example is a single Vite app with one Candid file, `backend/backend.did`, ge
 Both configs set `factories: true`, so each directory also holds
 `index.factories.generated.ts`. The `.did` has one query method, `get`, and
 two update methods, `inc` and `add`, which generate `getQuery`, `incMutation`
-and `addMutation`. The app reads the counter and increments it through them:
+and `addMutation`. Reading the counter and incrementing it through them looks
+like this; the mutation names the query it changes, so the count refetches:
 
 ```tsx
 import { getQuery, incMutation } from "./canisters-vite/backend"
 
-const { data: counter } = getQuery.useQuery()
-const { mutate: inc } = incMutation.useMutation({
-  invalidateQueries: [getQuery.getQueryKey()],
-})
+function Counter() {
+  const { data: counter } = getQuery.useQuery()
+  const { mutate: inc } = incMutation.useMutation({
+    invalidateQueries: [getQuery],
+  })
+
+  return <button onClick={() => inc([])}>Count: {counter}</button>
+}
 ```
 
 See

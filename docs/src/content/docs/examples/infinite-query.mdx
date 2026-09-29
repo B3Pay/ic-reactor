@@ -43,8 +43,8 @@ Shows how to implement infinite scrolling with IC Reactor using TanStack Query's
 
 ## Key Code
 
-The canister method is `get_posts : (opt text, nat64, nat64) -> (PostsResponse)`,
-where `PostsResponse` is `{ posts : vec Post; next_cursor : opt nat64 }`. Three
+The canister method is `get_posts : (opt text, nat, nat) -> (PostsResponse)`,
+where `PostsResponse` is `{ posts : vec Post; next_cursor : opt nat }`. Three
 options are required on every infinite query: `getArgs` turns the page parameter
 into the call arguments, `initialPageParam` seeds the first page, and
 `getNextPageParam` reads the cursor off the last page.
@@ -141,6 +141,8 @@ export const getPostsQuery = createSuspenseInfiniteQueryFactory(
 
 ```tsx
 // src/App.tsx
+import { getPostsQuery } from "./store"
+
 function Feed({ category }: { category: string }) {
   const postsQuery = getPostsQuery(
     (cursor) => [category === "All" ? [] : [category], cursor, 10n],

@@ -23,7 +23,7 @@ import { backend } from "./reactor"
 function UserProfile({ userId }: { userId: string }) {
   const { data, isPending, error } = useReactorQuery({
     reactor: backend, // 👈 Required
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 
@@ -56,11 +56,18 @@ Returns a TanStack Query result object, same as `useActorQuery`.
 ### Basic Query
 
 ```tsx
-const { data } = useReactorQuery({
-  reactor: backend,
-  functionName: "greet",
-  args: ["World"],
-})
+import { useReactorQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function Greeting() {
+  const { data } = useReactorQuery({
+    reactor: backend,
+    functionName: "greet",
+    args: ["World"],
+  })
+
+  return <span>{data}</span>
+}
 ```
 
 ### Waiting for Args
@@ -70,12 +77,17 @@ see [useActorQuery](/v3/reference/createactorhooks/useactorquery#waiting-for-arg
 
 ```tsx
 import { skipToken, useReactorQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
-const { data } = useReactorQuery({
-  reactor: backend,
-  functionName: "getUser",
-  args: userId ? [userId] : skipToken,
-})
+function UserName({ userId }: { userId: string | undefined }) {
+  const { data } = useReactorQuery({
+    reactor: backend,
+    functionName: "get_user",
+    args: userId ? [userId] : skipToken,
+  })
+
+  return <span>{data?.name}</span>
+}
 ```
 
 ### Type-Safe Queries
@@ -83,11 +95,18 @@ const { data } = useReactorQuery({
 TypeScript infers types from the passed `reactor` instance:
 
 ```tsx
-const { data } = useReactorQuery({
-  reactor: backend,
-  functionName: "getUser", // ✅ Autocompletes valid methods
-  args: ["user-123"], // ✅ Type-checked
-})
+import { useReactorQuery } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function User() {
+  const { data } = useReactorQuery({
+    reactor: backend,
+    functionName: "get_user", // ✅ Autocompletes valid methods
+    args: ["user-123"], // ✅ Type-checked
+  })
+
+  return <span>{data?.name}</span>
+}
 ```
 
 ## Notes

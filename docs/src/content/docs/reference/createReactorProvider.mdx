@@ -113,8 +113,13 @@ hand, or query and mutation objects from `createQuery` and `createMutation`.
 Rename them when you destructure, to read well at the call site:
 
 ```typescript
+import { createReactorProvider, defineReactor } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/todo"
+
 export const { ReactorProvider: TodoProvider, useReactor: useTodo } =
-  createReactorProvider(() => defineReactor<_SERVICE>({ ... }))
+  createReactorProvider(() =>
+    defineReactor<_SERVICE>({ name: "todo", idlFactory, canisterId })
+  )
 ```
 
 ## Options
@@ -141,6 +146,23 @@ Return a record. Reactors that share an `AuthenticationManager` share its
 `ClientManager`, so one sign-in covers all of them:
 
 ```tsx
+import {
+  createQuery,
+  createReactorProvider,
+  defineDisplayReactor,
+  defineReactor,
+} from "@ic-reactor/react"
+import {
+  canisterId as backendId,
+  idlFactory as backendIdl,
+  type _SERVICE as Backend,
+} from "./declarations/backend"
+import {
+  canisterId as ledgerId,
+  idlFactory as ledgerIdl,
+  type _SERVICE as Ledger,
+} from "./declarations/ledger"
+
 export const { ReactorProvider, useReactor } = createReactorProvider(() => {
   const backend = defineReactor<Backend>({
     name: "backend",
@@ -153,7 +175,9 @@ export const { ReactorProvider, useReactor } = createReactorProvider(() => {
     canisterId: ledgerId,
     authentication: backend.authentication,
   })
-  const profile = createQuery(backend.reactor, { functionName: "get_profile" })
+  const profile = createQuery(backend.reactor, {
+    functionName: "get_my_profile",
+  })
 
   return { backend, ledger, profile }
 })
@@ -191,6 +215,9 @@ a new value, give the provider a new `key`: React unmounts the old tree, which
 releases the old value, and mounts a new one.
 
 ```tsx
+import { createReactorProvider, defineDisplayReactor } from "@ic-reactor/react"
+import { idlFactory, type _SERVICE as Ledger } from "./declarations/ledger"
+
 export const { ReactorProvider: LedgerProvider, useReactor: useLedger } =
   createReactorProvider(({ canisterId }: { canisterId: string }) =>
     defineDisplayReactor<Ledger>({ name: "ledger", idlFactory, canisterId })
@@ -251,11 +278,18 @@ that canister.
   it, so the provider commits once:
 
 ```tsx
-<ReactorProvider>
-  <Suspense fallback={<Spinner />}>
-    <Dashboard />
-  </Suspense>
-</ReactorProvider>
+import { Suspense } from "react"
+import { ReactorProvider } from "../reactor"
+
+function App() {
+  return (
+    <ReactorProvider>
+      <Suspense fallback={<Spinner />}>
+        <Dashboard />
+      </Suspense>
+    </ReactorProvider>
+  )
+}
 ```
 
 </Aside>
@@ -274,7 +308,7 @@ Before `createReactorProvider`, an SSR app built its context by hand and then
 forwarded each hook out of it. A hook that is generic over the method name has
 no parameter tuple a typed wrapper can name, so those forwarders needed casts:
 
-```tsx
+```tsx nocheck
 // ❌ No longer needed
 const [value] = useState(createReactorContext)
 useEffect(() => () => value.authentication.dispose(), [value])
@@ -284,12 +318,18 @@ export const useQueryTodo: TodoHooks["useActorQuery"] = (...args: any[]) =>
 ```
 
 ```tsx
+import { createReactorProvider, defineReactor } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/todo"
+
 // ✅
 export const { ReactorProvider, useReactor } = createReactorProvider(() =>
   defineReactor<_SERVICE>({ name: "todo", idlFactory, canisterId })
 )
 
-const { useActorQuery } = useReactor()
+function useTodos() {
+  const { useActorQuery } = useReactor()
+  return useActorQuery({ functionName: "getAllTodos" })
+}
 ```
 
 ## Notes

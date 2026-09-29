@@ -59,6 +59,7 @@ Demonstrates the automatic type transformation system comparing `DisplayReactor`
 ```typescript
 // src/main.ts
 import { Reactor, DisplayReactor } from "@ic-reactor/react"
+import { idlFactory, type Ledger } from "./declarations/ledger"
 
 // Regular Reactor - raw Candid types
 const rawReactor = new Reactor<Ledger>({
@@ -76,15 +77,17 @@ const displayReactor = new DisplayReactor<Ledger>({
   canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
 })
 
-// Raw: rawSupply is bigint — 123456789000000000n
-const rawSupply = await rawReactor.callMethod({
-  functionName: "icrc1_total_supply",
-})
+async function readSupply() {
+  // Raw: rawSupply is bigint — 123456789000000000n
+  const rawSupply = await rawReactor.callMethod({
+    functionName: "icrc1_total_supply",
+  })
 
-// Display: displaySupply is string — "123456789000000000"
-const displaySupply = await displayReactor.callMethod({
-  functionName: "icrc1_total_supply",
-})
+  // Display: displaySupply is string — "123456789000000000"
+  const displaySupply = await displayReactor.callMethod({
+    functionName: "icrc1_total_supply",
+  })
+}
 ```
 
 <Aside type="caution">

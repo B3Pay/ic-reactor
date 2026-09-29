@@ -27,6 +27,7 @@ to `src/declarations/<canister_name>/`:
 
 ```typescript
 // src/declarations/backend/backend.did.d.ts
+import type { ActorMethod } from "@icp-sdk/core/agent"
 import type { Principal } from "@icp-sdk/core/principal"
 
 export interface User {
@@ -46,40 +47,59 @@ export type CreateUserError =
 
 export type Result = { Ok: User } | { Err: CreateUserError }
 
+export type GetUserError =
+  { NotFound: null } | { Unauthorized: { reason: string } }
+
 export interface _SERVICE {
-  getUser: (id: string) => Promise<[] | [User]>
-  createUser: (input: CreateUserInput) => Promise<Result>
-  listUsers: (page: bigint, limit: bigint) => Promise<User[]>
+  getUser: ActorMethod<[string], [] | [User]>
+  get_user: ActorMethod<[string], { Ok: User } | { Err: GetUserError }>
+  createUser: ActorMethod<[CreateUserInput], Result>
+  listUsers: ActorMethod<[bigint, bigint], User[]>
+  getBalance: ActorMethod<[Principal], bigint>
 }
 ```
 
 ## Reactor Setup
 
-Pass the `_SERVICE` type to your Reactor for full type inference:
+Pass the `_SERVICE` type to `defineDisplayReactor` for full type inference. It
+builds the reactor and the hooks bound to it in one call:
 
 ```typescript
-import { Reactor } from "@ic-reactor/core"
-import { idlFactory, type _SERVICE } from "./declarations/backend"
+// src/reactor/hooks.ts
+import { defineDisplayReactor } from "@ic-reactor/react"
+import { idlFactory, type _SERVICE } from "../declarations/backend"
 
 // TypeScript knows the exact shape of _SERVICE
-const backend = new Reactor<_SERVICE>({
-  clientManager,
-  idlFactory,
-  name: "backend",
-  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
-})
+export const { useActorQuery, useActorMutation } =
+  defineDisplayReactor<_SERVICE>({
+    name: "backend",
+    idlFactory,
+    canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  })
 ```
+
+The hook examples below import these hooks from `../reactor/hooks`. They read
+display values, because this is a `DisplayReactor` (see
+[Display Types](#display-types-auto-transformations)); `defineReactor` takes the
+same options and gives raw Candid values instead, such as `[] | [User]` for an
+`opt`.
 
 ## Query Type Inference
 
 The `useActorQuery` hook infers types automatically:
 
 ```tsx
-const { data } = useActorQuery({
-  functionName: "getUser", // ✅ Autocomplete shows valid methods
-  args: ["user-123"], // ✅ Type checked as [string]
-})
-// data is typed as User | undefined (from [] | [User])
+import { useActorQuery } from "../reactor/hooks"
+
+function UserName() {
+  const { data } = useActorQuery({
+    functionName: "getUser", // ✅ Autocomplete shows valid methods
+    args: ["user-123"], // ✅ Type checked as [string]
+  })
+  // data is typed as User | null | undefined (from [] | [User])
+
+  return <span>{data?.name}</span>
+}
 ```
 
 ### Autocomplete
@@ -92,26 +112,35 @@ Your IDE will show:
 
 ### Compile-Time Safety
 
-TypeScript catches errors before runtime:
+TypeScript catches errors before runtime. Each `// @ts-expect-error` below marks
+a line the compiler rejects; remove it and your editor shows the error:
 
 ```tsx
-// ❌ TypeScript error: 'invalidMethod' does not exist on _SERVICE
-useActorQuery({
-  functionName: "invalidMethod",
-  args: [],
-})
+import { useActorQuery } from "../reactor/hooks"
 
-// ❌ TypeScript error: Argument of type 'number' is not assignable to 'string'
-useActorQuery({
-  functionName: "getUser",
-  args: [123], // Wrong type!
-})
+function Examples() {
+  useActorQuery({
+    // ❌ 'invalidMethod' does not exist on _SERVICE
+    // @ts-expect-error
+    functionName: "invalidMethod",
+    args: [],
+  })
 
-// ✅ Correct
-useActorQuery({
-  functionName: "getUser",
-  args: ["user-123"],
-})
+  useActorQuery({
+    functionName: "getUser",
+    // ❌ Type 'number' is not assignable to type 'string'
+    // @ts-expect-error
+    args: [123], // Wrong type!
+  })
+
+  // ✅ Correct
+  useActorQuery({
+    functionName: "getUser",
+    args: ["user-123"],
+  })
+
+  return null
+}
 ```
 
 ## Mutation Type Inference
@@ -119,15 +148,36 @@ useActorQuery({
 Mutations are equally type-safe:
 
 ```tsx
-const { mutate } = useActorMutation({
-  functionName: "createUser", // ✅ Autocomplete
-})
+import { useActorMutation } from "../reactor/hooks"
 
-// ✅ Type-safe arguments
-mutate([{ name: "Alice", email: "alice@example.com" }])
+function SignUpButton() {
+  const { mutate } = useActorMutation({
+    functionName: "createUser", // ✅ Autocomplete
+  })
 
-// ❌ TypeScript error: missing 'email' field
-mutate([{ name: "Alice" }])
+  // ✅ Type-safe arguments
+  const signUp = () => mutate([{ name: "Alice", email: "alice@example.com" }])
+
+  return <button onClick={signUp}>Sign up</button>
+}
+```
+
+TypeScript rejects a call that leaves a field out:
+
+```tsx
+import { useActorMutation } from "../reactor/hooks"
+
+function IncompleteSignUpButton() {
+  const { mutate } = useActorMutation({ functionName: "createUser" })
+
+  const signUp = () => {
+    // ❌ Property 'email' is missing
+    // @ts-expect-error
+    mutate([{ name: "Alice" }])
+  }
+
+  return <button onClick={signUp}>Sign up</button>
+}
 ```
 
 ## Select Transformations
@@ -135,18 +185,28 @@ mutate([{ name: "Alice" }])
 The `select` option maintains type safety:
 
 ```tsx
-// data is User | undefined
-const { data } = useActorQuery({
-  functionName: "getUser",
-  args: [userId],
-})
+import { useActorQuery } from "../reactor/hooks"
 
-// data is string | undefined (just the name)
-const { data } = useActorQuery({
-  functionName: "getUser",
-  args: [userId],
-  select: (user) => user?.name, // ✅ user is typed as User | undefined
-})
+function UserSummary({ userId }: { userId: string }) {
+  // data is User | null | undefined
+  const { data } = useActorQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+
+  // name is string | undefined (just the name)
+  const { data: name } = useActorQuery({
+    functionName: "getUser",
+    args: [userId],
+    select: (user) => user?.name, // ✅ user is typed as User | null
+  })
+
+  return (
+    <p>
+      {name} {data?.email}
+    </p>
+  )
+}
 ```
 
 ## Error Types
@@ -154,27 +214,41 @@ const { data } = useActorQuery({
 Error types are also inferred:
 
 ```tsx
-const { error } = useActorQuery({
-  functionName: "getUser",
-  args: [userId],
-})
-// error is typed as CanisterError | CallError | unknown
+import { useActorQuery } from "../reactor/hooks"
+
+// `get_user` returns a Result<User, GetUserError>
+function UserLoadError({ userId }: { userId: string }) {
+  const { error } = useActorQuery({
+    functionName: "get_user",
+    args: [userId],
+  })
+  // error is typed as CanisterError<GetUserError in display form> | CallError | ValidationError | null
+
+  return error ? <p>{error.message}</p> : null
+}
 ```
 
 For mutations with specific error types:
 
 ```tsx
-const { error } = useActorMutation({
-  functionName: "createUser",
-  onError: (error) => {
-    if (error instanceof CanisterError) {
-      // error.err is typed as CreateUserError
-      if ("EmailAlreadyExists" in error.err) {
-        toast.error("Email already in use")
+import { CanisterError } from "@ic-reactor/react"
+import { useActorMutation } from "../reactor/hooks"
+
+function SignUpError() {
+  const { error } = useActorMutation({
+    functionName: "createUser",
+    onError: (error) => {
+      if (error instanceof CanisterError) {
+        // error.err is CreateUserError in display form: every case has a `_type`
+        if (error.err._type === "EmailAlreadyExists") {
+          toast.error("Email already in use")
+        }
       }
-    }
-  },
-})
+    },
+  })
+
+  return error ? <p>{error.message}</p> : null
+}
 ```
 
 ## Types From a Reactor
@@ -191,7 +265,7 @@ import {
   type ReactorDataOf,
   type ReactorErrorOf,
 } from "@ic-reactor/react"
-import { idlFactory, type Ledger } from "./declarations/ledger"
+import { idlFactory, type _SERVICE as Ledger } from "./declarations/ledger"
 
 export const ledger = new DisplayReactor<Ledger>({
   clientManager,
@@ -250,26 +324,34 @@ With `DisplayReactor`, types are automatically transformed:
 
 ### Using DisplayReactor
 
-```typescript
-import { DisplayReactor, createActorHooks } from "@ic-reactor/react"
+```tsx
+import {
+  DisplayReactor,
+  createActorHooks,
+  formatTokenAmount,
+} from "@ic-reactor/react"
 
 // Create a DisplayReactor directly
 const reactor = new DisplayReactor<_SERVICE>({
   clientManager,
   idlFactory,
   name: "backend",
-  canisterId: "...",
+  canisterId: "rrkah-fqaaa-aaaaa-aaaaq-cai",
 })
 
 // Pass it to createActorHooks - types are automatically inferred as "display"
 const { useActorQuery } = createActorHooks(reactor)
 
 // Inputs and outputs use display types
-const { data } = useActorQuery({
-  functionName: "getBalance",
-  args: ["aaaaa-aa"], // Principal as string
-})
-// data is string instead of bigint
+function Balance() {
+  const { data } = useActorQuery({
+    functionName: "getBalance",
+    args: ["aaaaa-aa"], // Principal as string
+  })
+  // data is string instead of bigint: the amount in base units
+
+  return <span>{data === undefined ? "…" : formatTokenAmount(data, 8)}</span>
+}
 ```
 
 ### Type Assertions
@@ -277,13 +359,23 @@ const { data } = useActorQuery({
 With display types, TypeScript knows the transformed shapes:
 
 ```tsx
-const { data: balance } = useActorQuery({
-  functionName: "getBalance",
-  args: [principalString],
-})
-// balance is string, not bigint - can be used directly in UI!
+import { formatTokenAmount } from "@ic-reactor/react"
+import { useActorQuery } from "../reactor/hooks"
 
-return <span>Balance: {balance}</span>
+function Balance({ principalString }: { principalString: string }) {
+  const { data: balance } = useActorQuery({
+    functionName: "getBalance",
+    args: [principalString],
+  })
+  // balance is a string of base units, not a bigint: it never needs a
+  // BigInt() call, and formatTokenAmount places the decimal point
+
+  return (
+    <span>
+      Balance: {balance === undefined ? "…" : formatTokenAmount(balance, 8)}
+    </span>
+  )
+}
 ```
 
 ## Result Unwrapping
@@ -291,43 +383,64 @@ return <span>Balance: {balance}</span>
 IC Reactor automatically unwraps `Result` types:
 
 ```typescript
+import { useActorMutation } from "../reactor/hooks"
+
 // Canister method: createUser(input) -> Result<User, CreateUserError>
 
 // IC Reactor:
 // - On Ok: returns the User value
 // - On Err: throws CanisterError with the error variant
 
-const { data } = useActorQuery({
-  functionName: "createUser",
-  args: [input],
-})
-// data is User (not Result<User, Error>)
+function useSignUp() {
+  const { mutateAsync } = useActorMutation({
+    functionName: "createUser",
+  })
+
+  return async () => {
+    const user = await mutateAsync([
+      { name: "Alice", email: "alice@example.com" },
+    ])
+    // user is User (not Result<User, CreateUserError>)
+    return user
+  }
+}
 ```
 
 The error type is available in the `error` property:
 
 ```tsx
-const { data, error } = useActorQuery({
-  functionName: "createUser",
-  args: [input],
-})
-// data: User | undefined
-// error: CanisterError<CreateUserError> | CallError | undefined
+import { useActorMutation } from "../reactor/hooks"
+
+function SignUpStatus() {
+  const { data, error } = useActorMutation({
+    functionName: "createUser",
+  })
+  // data: User | undefined
+  // error: CanisterError<CreateUserError in display form> | CallError | ValidationError | null
+
+  return <p>{error ? error.message : data?.name}</p>
+}
 ```
 
 ## Optional Unwrapping
 
 Optional types (`opt T`) are transformed too:
 
-```typescript
+```tsx
+import { useActorQuery } from "../reactor/hooks"
+
 // Candid: getUser(id) -> opt User (returns [] | [User])
 
-// With display types:
-const { data } = useActorQuery({
-  functionName: "getUser",
-  args: [userId],
-})
-// data is User | null (easier to work with than [] | [User])
+function UserEmail({ userId }: { userId: string }) {
+  // With display types:
+  const { data } = useActorQuery({
+    functionName: "getUser",
+    args: [userId],
+  })
+  // data is User | null once loaded (easier to work with than [] | [User])
+
+  return <p>{data ? data.email : "No such user"}</p>
+}
 ```
 
 ## Type Narrowing
@@ -335,15 +448,17 @@ const { data } = useActorQuery({
 Use type narrowing for safer access:
 
 ```tsx
+import { useActorQuery } from "../reactor/hooks"
+
 function UserProfile({ userId }: { userId: string }) {
   const { data, isPending, isError, error } = useActorQuery({
-    functionName: "getUser",
+    functionName: "get_user",
     args: [userId],
   })
 
   if (isPending) return <Loading />
 
-  if (isError) return <Error error={error} />
+  if (isError) return <ErrorMessage error={error} />
 
   // TypeScript knows data is defined here
   return (
@@ -361,6 +476,7 @@ Create type-safe reusable patterns:
 
 ```typescript
 import { skipToken } from "@ic-reactor/react"
+import { useActorMutation, useActorQuery } from "../reactor/hooks"
 
 // Type-safe query factory: waits while there is no userId
 function useUser(userId: string | undefined) {
@@ -378,13 +494,16 @@ function useCreateUser() {
 }
 
 // Usage
-const { data: user } = useUser(userId) // user: User | undefined
-const { mutate } = useCreateUser() // mutate expects CreateUserInput
+function Users({ userId }: { userId: string | undefined }) {
+  const { data: user } = useUser(userId) // user: User | null | undefined
+  const { mutate } = useCreateUser() // mutate expects CreateUserInput
+  // ...
+}
 ```
 
 ## Best Practices
 
-1. **Always use the generated `_SERVICE` type** — Pass it to `Reactor<_SERVICE>`
+1. **Always use the generated `_SERVICE` type** — Pass it to `defineDisplayReactor<_SERVICE>` (or `defineReactor<_SERVICE>`, `new Reactor<_SERVICE>`)
 2. **Enable strict TypeScript** — Use `strict: true` in tsconfig.json
 3. **Trust the types** — If it compiles, the call is structurally valid
 4. **Regenerate declarations after Candid changes** — Keep types in sync

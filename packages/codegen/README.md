@@ -87,10 +87,14 @@ an app does not import, although the wrapper re-exports them all. Like the
 reactor they are bound to, they are module-scope objects: fine for a
 client-only app, while a server-rendered one builds its reactor per request.
 
-```typescript
+```tsx
 import { getMessageQuery, setMessageMutation } from "./declarations/backend"
 
-const { data } = getMessageQuery.useQuery() // in a component
+function Message() {
+  const { data } = getMessageQuery.useQuery()
+  return <p>{data}</p>
+}
+
 await setMessageMutation.execute(["hello"]) // anywhere
 ```
 

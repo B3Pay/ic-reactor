@@ -23,7 +23,7 @@ import { backend } from "./reactor"
 function CreatePost() {
   const { mutate, isPending } = useReactorMutation({
     reactor: backend, // 👈 Required
-    functionName: "createPost",
+    functionName: "create_post",
   })
 
   return (
@@ -59,35 +59,54 @@ Returns a TanStack Query mutation result object, same as `useActorMutation`.
 ### Basic Mutation
 
 ```tsx
-const { mutate } = useReactorMutation({
-  reactor: backend,
-  functionName: "transfer",
-})
+import { useReactorMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
-// Arguments are supplied at call time, not in the hook config
-mutate([recipient, amount])
+function TransferButton() {
+  const { mutate } = useReactorMutation({
+    reactor: backend,
+    functionName: "icrc1_transfer",
+  })
+
+  // Arguments are supplied at call time, not in the hook config
+  return (
+    <button onClick={() => mutate([{ to: { owner: recipient }, amount }])}>
+      Send
+    </button>
+  )
+}
 ```
 
 ### With Callbacks
 
 ```tsx
-const { mutate } = useReactorMutation({
-  reactor: backend,
-  functionName: "createPost",
-  onSuccess: () => console.log("Post created!"),
-})
+import { useReactorMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function useCreatePost() {
+  return useReactorMutation({
+    reactor: backend,
+    functionName: "create_post",
+    onSuccess: () => console.log("Post created!"),
+  })
+}
 ```
 
 ### Invalidate Queries After Mutation
 
 ```tsx
-const { mutate } = useReactorMutation({
-  reactor: backend,
-  functionName: "createPost",
-  // Methods of `backend`, type-checked against its service. A query object,
-  // a query factory or a query key works here too.
-  invalidateQueries: [{ functionName: "getPosts" }],
-})
+import { useReactorMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+function useCreatePost() {
+  return useReactorMutation({
+    reactor: backend,
+    functionName: "create_post",
+    // Methods of `backend`, type-checked against its service. A query object,
+    // a query factory or a query key works here too.
+    invalidateQueries: [{ functionName: "get_posts" }],
+  })
+}
 ```
 
 ## See Also

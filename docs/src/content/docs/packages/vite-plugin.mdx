@@ -81,6 +81,8 @@ update or oneway method. Each is named after its method in camelCase with a
 `Query` or `Mutation` suffix.
 
 ```ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+
 icReactor({
   canisters: [
     { name: "backend", didFile: "./backend/backend.did", factories: true },
@@ -92,10 +94,16 @@ icReactor({
 import { getMessageQuery, setMessageMutation } from "./declarations/backend"
 
 // In a component
-const { data } = getMessageQuery.useQuery()
+function Message() {
+  const { data } = getMessageQuery.useQuery()
+
+  return <p>{data}</p>
+}
 
 // Anywhere, outside React included
-await setMessageMutation.execute(["hello"])
+async function saveMessage() {
+  await setMessageMutation.execute(["hello"])
+}
 ```
 
 The file is regenerated with the rest of the canister's bindings when its
@@ -144,6 +152,8 @@ entry its own `outDir`.
 Set `mode` per canister to choose the generated reactor class:
 
 ```ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+
 icReactor({
   canisters: [
     { name: "backend", didFile: "./backend/backend.did" },

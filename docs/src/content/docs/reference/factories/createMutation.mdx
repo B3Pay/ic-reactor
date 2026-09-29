@@ -21,23 +21,23 @@ import { createMutation } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
 const createPostMutation = createMutation(backend, {
-  functionName: "createPost",
-  invalidateQueries: [{ functionName: "getPosts" }],
+  functionName: "create_post",
+  invalidateQueries: [{ functionName: "get_posts" }],
 })
 ```
 
 ## Configuration
 
-| Option              | Type                                        | Description                                 |
-| ------------------- | ------------------------------------------- | ------------------------------------------- |
-| `functionName`      | `string`                                    | The canister method to call (Required)      |
-| `callConfig`        | `CallConfig`                                | IC call configuration                       |
-| `invalidateQueries` | `InvalidationTarget[]`                      | Queries to invalidate on success            |
-| `onSuccess`         | `(data, variables, context) => void`        | Called on success                           |
-| `onError`           | `(error, variables, context) => void`       | Called on any error (network or canister)   |
-| `onCanisterError`   | `(error, variables) => void`                | Called specifically on canister logic error |
-| `onSettled`         | `(data, error, variables, context) => void` | Called after mutation                       |
-| `onMutate`          | `(variables) => Promise<context>`           | Called before mutation (optimistic updates) |
+| Option              | Type                                                       | Description                                 |
+| ------------------- | ---------------------------------------------------------- | ------------------------------------------- |
+| `functionName`      | `string`                                                   | The canister method to call (Required)      |
+| `callConfig`        | `CallConfig`                                               | IC call configuration                       |
+| `invalidateQueries` | `InvalidationTarget[]`                                     | Queries to invalidate on success            |
+| `onSuccess`         | `(data, variables, onMutateResult) => void`                | Called on success                           |
+| `onError`           | `(error, variables, onMutateResult) => void`               | Called on any error (network or canister)   |
+| `onCanisterError`   | `(error, variables) => void`                               | Called specifically on canister logic error |
+| `onSettled`         | `(data, error, variables, onMutateResult) => void`         | Called after mutation                       |
+| `onMutate`          | `(variables) => onMutateResult \| Promise<onMutateResult>` | Called before mutation (optimistic updates) |
 
 ## Handling Canister Errors
 
@@ -49,6 +49,9 @@ The `onCanisterError` callback is designed to handle business logic errors retur
 - **Typed Errors**: The error object passed to this callback is a typed `CanisterError`, making it easier to check specific error variants.
 
 ```typescript
+import { CanisterError, createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const transferMutation = createMutation(backend, {
   functionName: "transfer",
   onCanisterError: (error, args) => {
@@ -88,15 +91,15 @@ const transferMutation = createMutation(backend, {
 
 Combine mutations with TanStack Router's action handlers:
 
-```typescript
+```tsx
 // routes/posts/new.tsx
 import { createFileRoute } from "@tanstack/react-router"
 import { createMutation } from "@ic-reactor/react"
 import { backend } from "../../reactor"
 
 const createPostMutation = createMutation(backend, {
-  functionName: "createPost",
-  invalidateQueries: [{ functionName: "getPosts" }],
+  functionName: "create_post",
+  invalidateQueries: [{ functionName: "get_posts" }],
 })
 
 export const Route = createFileRoute("/posts/new")({
@@ -117,10 +120,12 @@ function NewPostPage() {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
 
-    mutate([{
-      title: formData.get("title") as string,
-      content: formData.get("content") as string,
-    }])
+    mutate([
+      {
+        title: formData.get("title") as string,
+        content: formData.get("content") as string,
+      },
+    ])
   }
 
   return (
@@ -144,32 +149,37 @@ Update UI immediately before the canister responds. The value `onMutate`
 returns reaches the `onError` defined at the same level, so the snapshot and
 the rollback stay together. This example keeps both in `useMutation()`:
 
-```typescript
+```tsx
 import { createMutation, createQueryFactory } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
 const likePostMutation = createMutation(backend, {
-  functionName: "likePost",
+  functionName: "like_post",
 })
 
 // A query factory takes the args tuple, as in `getPostQuery([postId])`
-const getPostQuery = createQueryFactory(backend, { functionName: "getPost" })
+const getPostQuery = createQueryFactory(backend, { functionName: "get_post" })
 
 // In your component
-const { mutate } = likePostMutation.useMutation({
-  // Cancel outgoing refetches, write the new value, and return the rollback.
-  // `post` is typed from the query; likes is a nat (bigint).
-  onMutate: ([postId]) =>
-    getPostQuery([postId]).optimisticUpdate((post) => ({
-      ...post,
-      likes: post.likes + 1n,
-      isLiked: true,
-    })),
-  // Rollback on error
-  onError: (_error, _args, update) => update?.rollback(),
-  // Refetch to ensure consistency: a failed call may still have run
-  onSettled: (_data, _error, [postId]) => getPostQuery([postId]).invalidate(),
-})
+function LikeButton({ postId }: { postId: string }) {
+  const { mutate } = likePostMutation.useMutation({
+    // Cancel outgoing refetches, write the new value, and return the rollback.
+    // `post` is typed from the query; likes is a nat, which a DisplayReactor
+    // shows as a string.
+    onMutate: ([postId]) =>
+      getPostQuery([postId]).optimisticUpdate((post) => ({
+        ...post,
+        likes: String(BigInt(post.likes) + 1n),
+        isLiked: true,
+      })),
+    // Rollback on error
+    onError: (_error, _args, update) => update?.rollback(),
+    // Refetch to ensure consistency: a failed call may still have run
+    onSettled: (_data, _error, [postId]) => getPostQuery([postId]).invalidate(),
+  })
+
+  return <button onClick={() => mutate([postId])}>Like</button>
+}
 ```
 
 `optimisticUpdate` skips the update when nothing is cached for the query, and
@@ -180,8 +190,10 @@ factory-level `onMutate` works the same way, and `execute()` runs it too.
 
 Integrate with React Hook Form:
 
-```typescript
+```tsx
 import { useForm } from "react-hook-form"
+import { createMutation, parseTokenAmount } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
 interface TransferForm {
   recipient: string
@@ -190,7 +202,7 @@ interface TransferForm {
 
 const transferMutation = createMutation(backend, {
   functionName: "transfer",
-  invalidateQueries: [{ functionName: "getBalance" }],
+  invalidateQueries: [{ functionName: "get_balance" }],
 })
 
 function TransferPage() {
@@ -207,12 +219,16 @@ function TransferPage() {
   })
 
   const onSubmit = (data: TransferForm) => {
-    mutate([data.recipient, data.amount])
+    // A DisplayReactor takes the nat as text, in base units
+    mutate([data.recipient, parseTokenAmount(data.amount, 8).toString()])
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      <input {...register("recipient", { required: true })} placeholder="Recipient" />
+      <input
+        {...register("recipient", { required: true })}
+        placeholder="Recipient"
+      />
       <input {...register("amount", { required: true })} placeholder="Amount" />
 
       <button type="submit" disabled={isPending}>
@@ -227,13 +243,16 @@ function TransferPage() {
 
 Execute mutations from utilities or event handlers:
 
-```typescript
+```tsx
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const withdrawMutation = createMutation(backend, {
   functionName: "withdraw",
 })
 
 // In an event handler or utility function
-async function handleWithdraw(amount: bigint) {
+async function handleWithdraw(amount: string) {
   try {
     const result = await withdrawMutation.execute([amount])
     console.log("Withdrawal successful:", result)
@@ -245,9 +264,9 @@ async function handleWithdraw(amount: bigint) {
 }
 
 // Use in onClick
-<button onClick={() => handleWithdraw(BigInt(100))}>
-  Withdraw
-</button>
+function WithdrawButton() {
+  return <button onClick={() => handleWithdraw("100")}>Withdraw</button>
+}
 ```
 
 `execute()` runs the mutation in the QueryClient's `MutationCache`, as
@@ -304,11 +323,14 @@ is invalidated in its own reactor's QueryClient.
 #### Option 1: Fixed Queries (known up front)
 
 ```typescript
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 const createCommentMutation = createMutation(backend, {
-  functionName: "createComment",
+  functionName: "create_comment",
   invalidateQueries: [
-    { functionName: "getUserActivity" },
-    { functionName: "getComments" }, // every post's comments
+    { functionName: "get_user_activity" },
+    { functionName: "get_comments" }, // every post's comments
   ],
 })
 ```
@@ -318,15 +340,16 @@ const createCommentMutation = createMutation(backend, {
 When the queries depend on props, pass the query objects to `useMutation()`:
 
 ```typescript
-import { createQueryFactory } from "@ic-reactor/react"
+import { createMutation, createQueryFactory } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
-const getPost = createQueryFactory(backend, { functionName: "getPost" })
+const getPost = createQueryFactory(backend, { functionName: "get_post" })
 const getComments = createQueryFactory(backend, {
-  functionName: "getComments",
+  functionName: "get_comments",
 })
 
 const createCommentMutation = createMutation(backend, {
-  functionName: "createComment",
+  functionName: "create_comment",
 })
 
 // In your component
@@ -349,11 +372,11 @@ import { createQuery, createMutation } from "@ic-reactor/react"
 import { backend } from "./reactor"
 
 const postsQuery = createQuery(backend, {
-  functionName: "getPosts",
+  functionName: "get_posts",
 })
 
 const createPostMutation = createMutation(backend, {
-  functionName: "createPost",
+  functionName: "create_post",
   invalidateQueries: [postsQuery],
 })
 ```
@@ -366,21 +389,29 @@ all of them: `onSuccess`, `onError`, `onCanisterError`, `onMutate`, and
 teardown, telemetry, or logging cannot silently vanish because a call site
 passed its own handler:
 
-```typescript
+```tsx
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 // Factory level - runs first
 const updateProfileMutation = createMutation(backend, {
-  functionName: "updateProfile",
+  functionName: "update_profile",
   onSuccess: () => {
     analytics.track("profile_updated")
   },
 })
 
 // Hook level - runs second
-const { mutate } = updateProfileMutation.useMutation({
-  onSuccess: () => {
-    toast.success("Profile updated!")
-  },
-})
+function SaveProfileButton() {
+  const { mutate } = updateProfileMutation.useMutation({
+    onSuccess: () => {
+      // `toast` is your notification helper, such as sonner's
+      toast.success("Profile updated!")
+    },
+  })
+
+  return <button onClick={() => mutate([{ name: "Alice" }])}>Save</button>
+}
 ```
 
 Each level's callbacks receive the return value of that level's own `onMutate`.
@@ -400,15 +431,17 @@ when `onMutate` throws.
 
 Build comprehensive loading states:
 
-```typescript
+```tsx
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const deletePostMutation = createMutation(backend, {
+  functionName: "delete_post",
+})
+
 function DeleteButton({ postId }: { postId: string }) {
-  const {
-    mutate,
-    isPending,
-    isSuccess,
-    error,
-    reset
-  } = deletePostMutation.useMutation()
+  const { mutate, isPending, isSuccess, error, reset } =
+    deletePostMutation.useMutation()
 
   if (isSuccess) {
     return <span className="success">Deleted!</span>
@@ -444,24 +477,27 @@ function DeleteButton({ postId }: { postId: string }) {
 Always specify which queries should be invalidated:
 
 ```typescript
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
 // ✅ Good - explicitly invalidate related data
 const mutation = createMutation(backend, {
-  functionName: "createPost",
+  functionName: "create_post",
   invalidateQueries: [
-    { functionName: "getPosts" },
-    { functionName: "getPostCount" },
+    { functionName: "get_posts" },
+    { functionName: "get_posts_count" },
   ],
 })
 
 // ❌ Bad - keys start with the canister ID, so this matches nothing
-const mutation = createMutation(backend, {
-  functionName: "createPost",
-  invalidateQueries: [["getPosts"]],
+const matchesNothing = createMutation(backend, {
+  functionName: "create_post",
+  invalidateQueries: [["get_posts"]],
 })
 
 // ❌ Bad - no invalidation, cache becomes stale
-const mutation = createMutation(backend, {
-  functionName: "createPost",
+const goesStale = createMutation(backend, {
+  functionName: "create_post",
 })
 ```
 
@@ -469,22 +505,38 @@ const mutation = createMutation(backend, {
 
 Always provide user feedback on errors:
 
-```typescript
-const { mutate, error } = mutation.useMutation({
-  onError: (error) => toast.error(error.message),
-})
+```tsx
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
 
-{error && <ErrorMessage error={error} />}
+const mutation = createMutation(backend, { functionName: "create_post" })
+
+function CreatePostError() {
+  const { mutate, error } = mutation.useMutation({
+    onError: (error) => toast.error(error.message),
+  })
+
+  return error && <ErrorMessage error={error} />
+}
 ```
 
 ### 3. Use Pending State
 
 Disable buttons and show loading indicators:
 
-```typescript
-<button disabled={isPending}>
-  {isPending ? <Spinner /> : "Submit"}
-</button>
+```tsx
+import { createMutation } from "@ic-reactor/react"
+import { backend } from "./reactor"
+
+const mutation = createMutation(backend, { functionName: "create_post" })
+
+function SubmitButton() {
+  const { isPending } = mutation.useMutation()
+
+  return (
+    <button disabled={isPending}>{isPending ? <Spinner /> : "Submit"}</button>
+  )
+}
 ```
 
 ---

@@ -20,6 +20,7 @@
     "build:examples": "node scripts/build-examples.js",
     "check:ai-context": "node scripts/check-ai-context.js",
     "check:snippets": "node scripts/check-snippets.mjs",
+    "check:snippets:docs": "node scripts/check-snippets.mjs --docs",
     "verify:test-fails": "node scripts/verify-test-fails.js",
     "release": "node scripts/release.js",
     "release:tools": "node scripts/release-tools.js",

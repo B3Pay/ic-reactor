@@ -249,10 +249,13 @@ export const updateProfile = createMutation(backendReactor, {
 Inside React:
 
 ```tsx
-const { data } = getProfile.useQuery()
-const { mutateAsync } = updateProfile.useMutation({
-  onSuccess: () => toast.success("Profile updated!"),
-})
+function ProfileEditor() {
+  const { data } = getProfile.useQuery()
+  const { mutateAsync } = updateProfile.useMutation({
+    onSuccess: () => toast.success("Profile updated!"),
+  })
+  // ...
+}
 ```
 
 Outside React:
