@@ -136,8 +136,9 @@ and a fixture never re-exports one. Libraries the examples install
 are the real packages; the few installed nowhere are declared once, faithfully,
 in `scripts/check-snippets/ambient.d.ts`. An `@/` import resolves to a fixture
 at that path. The checker type-checks, and it fails a snippet that calls a hook
-(`useXxx(...)` or `query.useXxx()`) outside every function: wrap it in a
-component. A call that must fail to compile is shown with
+(`useXxx(...)` or `query.useXxx()`) outside a component or a custom hook: at
+the top of the module, in a class, or in a function that is not capitalised or
+named `useXxx`. Wrap it in a component. A call that must fail to compile is shown with
 `// @ts-expect-error`. Rules it cannot see (no hand-written query keys, update
 methods only through mutations) are yours to keep when you write an example.
 

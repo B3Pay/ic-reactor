@@ -88,9 +88,12 @@
  * The compiler cannot see the rule the guides teach first: a React hook runs
  * only inside a component or a custom hook. An agent pastes a snippet as it
  * stands, so a snippet that calls `useActorQuery(...)` or `query.useQuery()` at
- * the top of the module teaches code that throws. Any call of a `useXxx`
- * function or method outside every function and class body fails the snippet;
- * wrap it in a component, as a reader's code would be.
+ * the top of the module teaches code that throws. A call of a `useXxx`
+ * function or method fails the snippet when it is outside every function, in a
+ * class, or in a function that is neither a component (a capitalised name) nor
+ * a custom hook (`useXxx`); an anonymous callback such as `renderHook(() =>
+ * useX())` is let through, since it can be either. Wrap it in a component, as a
+ * reader's code would be.
  *
  * ## Opting out
  *
@@ -828,10 +831,47 @@ function compile(project, byModule) {
 
 // ── Hooks outside a component ────────────────────────────────────────────────
 
+/** The name a function is declared or assigned under, if it has one. */
+function functionName(node) {
+  if (node.name && ts.isIdentifier(node.name)) return node.name.text
+  const parent = node.parent
+  if (
+    parent &&
+    ts.isVariableDeclaration(parent) &&
+    ts.isIdentifier(parent.name)
+  )
+    return parent.name.text
+  if (parent && ts.isPropertyAssignment(parent) && ts.isIdentifier(parent.name))
+    return parent.name.text
+  return undefined
+}
+
 /**
- * A call of a hook (`useXxx(...)` or `something.useXxx(...)`) outside every
- * function and class body, reported as a diagnostic of its snippet. TypeScript
- * accepts one, and React throws when it runs.
+ * What surrounds a hook call: `"ok"` inside a component (a function named with
+ * a capital) or a custom hook (`useXxx`), or inside an anonymous callback of
+ * some call (`renderHook(() => useX())`, `memo(() => ...)`), which can be
+ * either; `"outside"` with no function at all; `"helper"` in a class or in a
+ * function named otherwise (`handleClick`, `load`), where React throws.
+ */
+function hookContext(call) {
+  let anonymousCallback = false
+  for (let node = call.parent; node; node = node.parent) {
+    if (ts.isClassLike(node)) return "helper"
+    if (!ts.isFunctionLike(node)) continue
+    const name = functionName(node)
+    if (name !== undefined) {
+      return /^[A-Z]/.test(name) || /^use[A-Z]/.test(name) ? "ok" : "helper"
+    }
+    if (node.parent && ts.isCallExpression(node.parent))
+      anonymousCallback = true
+  }
+  return anonymousCallback ? "ok" : "outside"
+}
+
+/**
+ * A call of a hook (`useXxx(...)` or `something.useXxx(...)`) outside a
+ * component or a custom hook, reported as a diagnostic of its snippet.
+ * TypeScript accepts one, and React throws when it runs.
  */
 function hookDiagnostics(byModule) {
   const found = []
@@ -844,8 +884,8 @@ function hookDiagnostics(byModule) {
       true,
       extension === ".tsx" ? ts.ScriptKind.TSX : ts.ScriptKind.TS
     )
-    const visit = (node, inBody) => {
-      if (!inBody && ts.isCallExpression(node)) {
+    const visit = (node) => {
+      if (ts.isCallExpression(node)) {
         const callee = node.expression
         const name = ts.isIdentifier(callee)
           ? callee.text
@@ -853,21 +893,23 @@ function hookDiagnostics(byModule) {
             ? callee.name.text
             : ""
         if (/^use[A-Z]/.test(name)) {
-          const { line, character } = source.getLineAndCharacterOfPosition(
-            node.getStart(source)
-          )
-          found.push({
-            snippet,
-            where: `${snippet.file}:${snippet.line + line}:${character + 1}`,
-            code: "hooks",
-            message: `\`${name}\` is a React hook, called outside a component or a custom hook. Wrap the snippet in a component.`,
-          })
+          const context = hookContext(node)
+          if (context !== "ok") {
+            const { line, character } = source.getLineAndCharacterOfPosition(
+              node.getStart(source)
+            )
+            found.push({
+              snippet,
+              where: `${snippet.file}:${snippet.line + line}:${character + 1}`,
+              code: "hooks",
+              message: `\`${name}\` is a React hook, called ${context === "outside" ? "outside any function" : "in a helper or a class, which is neither a component (capitalised) nor a custom hook (useXxx)"}. Call it from a component or a custom hook.`,
+            })
+          }
         }
       }
-      const body = ts.isFunctionLike(node) || ts.isClassLike(node)
-      ts.forEachChild(node, (child) => visit(child, inBody || body))
+      ts.forEachChild(node, visit)
     }
-    visit(source, false)
+    visit(source)
   }
   return found
 }
