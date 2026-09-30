@@ -57,8 +57,32 @@ const docsLinkFiles = [
  */
 const aiContextFiles = AI_CONTEXT_FILES
 
-/** The docs site is served under this base; see docs/astro.config.mjs. */
-const DOCS_BASE = "/v3/"
+/**
+ * The base the docs site in this tree is served under, read from
+ * docs/astro.config.mjs so the check follows the branch: `/v3/` on the 3.x
+ * line (main), `/v4/` on the v4 line. Links under it are resolved against
+ * this tree's pages.
+ */
+const DOCS_BASE = (() => {
+  const config = readFileSync(join(rootDir, "docs", "astro.config.mjs"), "utf8")
+  const base = config.match(/^\s*base:\s*["'](.+?)["']/m)?.[1]
+  if (!base) {
+    console.error(
+      "check-ai-context: could not read `base` from docs/astro.config.mjs"
+    )
+    process.exit(1)
+  }
+  return `/${base.replace(/^\/|\/$/g, "")}/`
+})()
+
+/**
+ * Every versioned base the site publishes (.github/workflows/docs.yml): the
+ * static 2.x docs, the 3.x line built from main and the 4.x line built from
+ * the v4 branch. A link to a base outside this set 404s. A link under a base
+ * other than DOCS_BASE is served from another line's tree, so only its base
+ * is checked here.
+ */
+const PUBLISHED_DOCS_BASES = new Set(["/v2/", "/v3/", "/v4/"])
 
 /**
  * Versions that legitimately appear in the AI-context files without belonging to
@@ -173,12 +197,11 @@ for (const relPath of aiContextFiles) {
       )
     }
 
-    // 4. Doc links must use the served base. /v4/ was never published and the
-    //    docs workflow deletes it on every deploy, so such links 404.
+    // 4. Doc links must use a base the site publishes.
     for (const seg of line.match(VERSIONED_DOC_PATH) ?? []) {
-      if (seg !== DOCS_BASE) {
+      if (!PUBLISHED_DOCS_BASES.has(seg)) {
         failures.push(
-          `${relPath}:${i + 1} references ${seg} but the docs site is served under ${DOCS_BASE}`
+          `${relPath}:${i + 1} references ${seg} but the docs site publishes only ${[...PUBLISHED_DOCS_BASES].join(", ")}`
         )
       }
     }
@@ -310,8 +333,12 @@ for (const relPath of docsLinkFiles) {
         const where = `${relPath}:${i + 1}`
 
         if (SITE_ROOT_FILES.has(path)) continue
-        const base = DOCS_BASE.replace(/^\/|\/$/g, "") // "v3"
+        const base = DOCS_BASE.replace(/^\/|\/$/g, "") // "v4"
         if (path !== base && !path.startsWith(`${base}/`)) {
+          // Served from another line's tree (DOCS_BASE's doc comment); a base
+          // the site does not publish is reported by check 4 above.
+          const other = path.match(/^(v\d+)(\/|$)/)?.[1]
+          if (other && PUBLISHED_DOCS_BASES.has(`/${other}/`)) continue
           failures.push(
             `${where} links ${url}, which is neither under ${DOCS_BASE} nor one of the files published at the site root`
           )

@@ -5,7 +5,7 @@ name: Dependency Review
 # which is also why this cannot live in ci.yml, which runs on both.
 on:
   pull_request:
-    branches: [main]
+    branches: [main, v4]
 
 permissions:
   contents: read

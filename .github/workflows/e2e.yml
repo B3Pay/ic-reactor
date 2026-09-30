@@ -1,10 +1,11 @@
 name: E2E Tests
 
 on:
+  # main is the 3.x line and v4 the 4.x development line; see ci.yml.
   push:
-    branches: [main]
+    branches: [main, v4]
   pull_request:
-    branches: [main]
+    branches: [main, v4]
   workflow_dispatch:
 
 concurrency:
@@ -52,7 +53,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
-      - name: Setup Rust for the parser wasm build
+      # icp deploy builds the Rust hello_actor canister (e2e/icp.yaml).
+      - name: Setup Rust for the hello_actor canister build
         uses: ./.github/actions/setup-rust-wasm
 
       - name: Install icp-cli and ic-wasm
