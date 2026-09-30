@@ -1,0 +1,12 @@
+{
+  "condition": "v3",
+  "bug": "Gives the transfer mutation `retry: 3`, so every thrown failure (Err, trap, lost reply) is re-sent as a new call.",
+  "expectFail": [
+    "canister_err_not_resent",
+    "reject_code_4_not_resent",
+    "reject_code_5_not_resent",
+    "lost_reply_not_resent",
+    "lost_reply_is_unknown",
+    "lost_reply_rereads_balance"
+  ]
+}

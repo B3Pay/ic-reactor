@@ -1,0 +1,291 @@
+# @ic-reactor/v4-proto
+
+> Typed, mode-gated handles for Internet Computer canister methods that
+> produce TanStack Query options. Each method of a service becomes one handle:
+> a read handle gives `queryOptions`, a write handle gives `mutationOptions`,
+> and every handle can also be called directly. Built on a module generated
+> from the canister's `.did` by `candid-core-cli gen` and on `@icp-sdk/core`'s
+> `HttpAgent`. No React dependency: pass the options to `@tanstack/react-query`
+> hooks, or to a `QueryClient` anywhere.
+
+This is a prototype. Everything it exports is listed in this file.
+
+## Imports
+
+```ts
+import {
+  createClient,     // one per app (or per mounted component tree)
+  principal,        // checked, branded principal text
+  isPrincipalText,  // type guard; never throws
+  isReactorError,   // type guard for the one error type handles throw
+  type ReactorError,
+  type PrincipalText,
+} from "@ic-reactor/v4-proto"
+import { LedgerService } from "./generated/icrc1.service" // the service descriptor
+```
+
+The service descriptor (`LedgerService` here) is generated next to the
+candid-core module (`src/generated/icrc1.ts`). It carries every method's
+argument types, result types and mode (`query`, `composite_query`, `update`).
+Do not edit either file.
+
+## Setup
+
+```ts
+const client = createClient({ network, identity })   // a fixed identity
+const client = createClient({ network, auth })       // a sign-in source
+const ledger = client.canister(LedgerService, { id: "ryjl3-tyaaa-aaaaa-aaaba-cai" })
+```
+
+`network` is one of:
+
+- `"ic"` — mainnet (`https://icp-api.io`).
+- `"local"` — a replica at `http://127.0.0.1:4943`; its root key is fetched.
+- `{ host, rootKey?, name? }` — any replica. A given `rootKey` is used and
+  never replaced; without one, the root key is fetched from the replica only
+  when the host is local (`localhost`, `127.0.0.1`, `[::1]`), and never from
+  any other host. `name` is the network's name in query keys and defaults to
+  `host`.
+
+Give either `identity` or `auth`, not both:
+
+- `identity` — an `@icp-sdk/core` `Identity`, fixed for the client's life
+  (scripts, servers, tests). Absent means anonymous.
+- `auth` — anything with `getIdentity(): Identity` (the anonymous identity
+  while signed out), `isAuthenticated(): boolean` and
+  `subscribe(listener): () => void` (called on every sign-in, sign-out and
+  principal switch). The client reads it on every call, so it always acts as
+  whoever is signed in at that moment.
+
+The client:
+
+| Member                     | What it is                                                                    |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| `client.caller()`          | the current caller's `PrincipalText` (`"2vxsx-fae"`, anonymous, when signed out) |
+| `client.isAuthenticated()` | whether a write would be sent now: signed in and not anonymous                |
+| `client.subscribe(fn)`     | called when the caller changes; returns an unsubscribe                        |
+| `client.network`           | the network's name as it appears in keys                                      |
+| `client.canister(svc, { id })` | the handles of one canister                                               |
+
+There is one agent per principal, built on first use and never mutated. A
+call made as Alice always goes out through Alice's agent, however the sign-in
+state changes while it is in flight.
+
+In React, re-render on caller changes with `useSyncExternalStore`:
+
+```tsx
+const caller = useSyncExternalStore(client.subscribe, client.caller)
+const signedIn = client.isAuthenticated()
+```
+
+Build the client and the handles once (module scope, or `useState` /
+`useMemo` in the component that owns them), not on every render.
+
+## Values
+
+Handles take and return the generated module's types with one change:
+principals are `PrincipalText` — a `string` brand — in both directions.
+
+| Candid                       | Handle value                                        |
+| ---------------------------- | --------------------------------------------------- |
+| `nat`, `int`, `nat64`, `int64` | `bigint` (never `number`)                         |
+| `nat8`..`nat32`, `int8`..`int32`, floats | `number`                                |
+| `text`                       | `string`                                            |
+| `bool`                       | `boolean`                                           |
+| `principal`                  | `PrincipalText`                                     |
+| `blob` / `vec nat8`          | `Uint8Array`                                        |
+| `opt T`                      | `T \| null` (the property is always present)        |
+| `vec T`                      | `T[]`                                               |
+| `record { a : T }`           | `{ a: T }` — every field present                    |
+| `variant { A : T; B }`       | `{ tag: "A"; value: T } \| { tag: "B" }`            |
+
+Make `PrincipalText` from user input with `principal(text)` (throws a
+`TypeError` for invalid text) or narrow with `isPrincipalText(text)`. Values
+the library returns — `client.caller()`, principals in replies — already are
+`PrincipalText`.
+
+Arguments are always the method's argument tuple, even for one argument:
+`handle([arg])`, `handle.queryOptions([arg])`, `mutate([arg])`. A method with
+no arguments takes `[]`.
+
+### Results
+
+A method whose single result is a variant with exactly two arms, `Ok`/`Err`
+(or `ok`/`err`), is unwrapped: the handle resolves with the `Ok` payload and
+throws a `ReactorError` of kind `"canister_err"` whose `.err` is the typed
+`Err` payload. Any other result — including a variant with a third arm — is
+returned whole.
+
+```ts
+// icrc1_transfer : (TransferArg) -> (variant { Ok : nat; Err : TransferError })
+const blockIndex: bigint = await ledger.icrc1_transfer([arg])
+```
+
+## Reads
+
+Handles of `query` and `composite_query` methods:
+
+```ts
+ledger.icrc1_balance_of.queryOptions([account])     // options for useQuery / fetchQuery
+ledger.icrc1_balance_of.queryOptions(skipToken)     // no call until you have args
+ledger.icrc1_balance_of.queryKey([account])         // the key of those options
+ledger.icrc1_balance_of.queryKey()                  // this method's key prefix (current caller)
+await ledger.icrc1_balance_of([account])            // call now, no cache
+await ledger.icrc1_balance_of.certified([account])  // plain `query` only: as a certified update call
+```
+
+```tsx
+import { skipToken, useQuery } from "@tanstack/react-query"
+
+const profile = useQuery(backend.get_profile.queryOptions(userId ? [userId] : skipToken))
+// profile.data: the Ok payload, typed; profile.error: ReactorError<Err> | null
+```
+
+`skipToken` is TanStack Query's (`@tanstack/react-query` or
+`@tanstack/query-core`); pass it instead of args that do not exist yet.
+
+The key is
+`["ic-reactor", network, callerPrincipal, canisterId, method, "query", hex(candid-encoded args)]`.
+Because the caller is in the key, one principal's cached answer is never
+served to another: after a sign-in, sign-out or switch, the new caller's key
+has no data until it loads, and `data` is `undefined` meanwhile. Keep it that
+way: options that carry data from one key to the next (`placeholderData:
+keepPreviousData`, `initialData` from another key) would show the previous
+principal's data.
+
+Reads retry only failures of kind `"not_delivered"`, at most 3 times. You may
+add ordinary TanStack options by spreading:
+`useQuery({ ...handle.queryOptions(args), staleTime: 30_000, select })`.
+
+`queryOptions` throws `ReactorError` `"invalid_args"` synchronously when the
+args cannot be encoded (for example principal text that is not canonical).
+
+## Writes
+
+Handles of `update` methods:
+
+```ts
+const transfer = useMutation(
+  ledger.icrc1_transfer.mutationOptions({
+    invalidates: [ledger.icrc1_balance_of],     // read handles only
+    onSuccess: (blockIndex, [arg]) => {},       // optional
+    onError: (error, [arg]) => {},              // optional; error: ReactorError<TransferError>
+    onSettled: (data, error, [arg]) => {},      // optional
+  })
+)
+transfer.mutate([arg])
+
+await ledger.icrc1_transfer([arg])              // direct call, outside React
+```
+
+- `invalidates` lists the reads this write can change. They are invalidated
+  (for every caller) after a success, and also after a failure whose
+  `mayHaveExecuted` is `true`, because the write may have happened. Nothing
+  else is needed to show fresh data after an unknown outcome.
+- There is no `retry` option. A write is retried only after a
+  `"not_delivered"` failure, which proves the canister never received it; any
+  other failure is final. Do not override this: spreading the options and
+  adding `retry` re-sends writes that may already have executed.
+- A write is sent as whoever is signed in when it runs. If nobody is (or the
+  identity is anonymous) it is refused before anything is sent, with kind
+  `"unauthenticated"`.
+- `mutationOptions()` belongs only to update handles and `queryOptions()` only
+  to read handles; the other combination does not type-check.
+
+## Errors
+
+Every failure is one type, `ReactorError<E>`, where `E` is the method's `Err`
+payload type (`never` when the result is not an `Ok`/`Err` variant).
+
+| `kind`            | Meaning                                                                    | `mayHaveExecuted` |
+| ----------------- | -------------------------------------------------------------------------- | ----------------- |
+| `invalid_args`    | the arguments could not be encoded; nothing was sent                       | `false`           |
+| `unauthenticated` | a write while not signed in; nothing was sent                              | `false`           |
+| `not_delivered`   | the request certainly did not reach the canister (an HTTP 4xx refusal, or reject code 2) | `false` |
+| `outcome_unknown` | a write went out and no trustworthy answer came back (network drop, timeout, 5xx) | `true`     |
+| `rejected`        | the IC or the canister rejected the call; `.rejectCode` is the IC reject code | `false` for codes 1 and 3 (the IC refused it before any canister code ran); `true` for a write rejected by the canister's own code (4: explicit reject, 5: trap), which may have committed state first |
+| `invalid_reply`   | a reply arrived but did not decode as the result type                      | `true` for a write |
+| `canister_err`    | the canister returned `Err`; `.err` is typed                               | `false`           |
+| `cancelled`       | the caller abandoned the request (an aborted query)                        | `false`           |
+
+Every `ReactorError` also has `message`, `method`, `canisterId` and `cause`
+(the underlying agent error, if any).
+
+```ts
+try {
+  await ledger.icrc1_transfer([arg])
+} catch (error) {
+  if (!isReactorError(error)) throw error
+  if (error.kind === "canister_err") {
+    // error.err: TransferError, e.g. { tag: "InsufficientFunds", value: { balance } }
+  } else if (error.mayHaveExecuted) {
+    // tell the user the outcome is unknown; re-read state before trying again
+  }
+}
+```
+
+In a component, `mutation.error` is `ReactorError<E> | null`; switch on
+`error.kind`, and use `error.mayHaveExecuted` to tell "failed" from "unknown".
+
+## Outside React
+
+```ts
+import { QueryClient } from "@tanstack/query-core"
+
+const queryClient = new QueryClient()
+const balance = await queryClient.fetchQuery(ledger.icrc1_balance_of.queryOptions([account]))
+await queryClient.invalidateQueries({ queryKey: ledger.icrc1_balance_of.queryKey() })
+const fresh = await ledger.icrc1_balance_of([account])   // no cache at all
+```
+
+Direct calls (`await handle(args)`) never touch a cache; use them in scripts
+and services that must always see current state.
+
+## Example
+
+```tsx
+import { useMemo, useState, useSyncExternalStore } from "react"
+import { QueryClient, QueryClientProvider, skipToken, useMutation, useQuery } from "@tanstack/react-query"
+import { createClient, isReactorError, type Client } from "@ic-reactor/v4-proto"
+import { BackendService } from "./generated/backend.service"
+
+export function App({ auth }: { auth: AuthLike }) {
+  const [queryClient] = useState(() => new QueryClient())
+  const client = useMemo(() => createClient({ network: "ic", auth }), [auth])
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Profile client={client} />
+    </QueryClientProvider>
+  )
+}
+
+function Profile({ client }: { client: Client }) {
+  const backend = useMemo(() => client.canister(BackendService, { id: BACKEND_ID }), [client])
+  const me = useSyncExternalStore(client.subscribe, client.caller)
+  const signedIn = client.isAuthenticated()
+  const profile = useQuery(backend.get_profile.queryOptions(signedIn ? [me] : skipToken))
+  const rename = useMutation(backend.set_name.mutationOptions({ invalidates: [backend.get_profile] }))
+
+  if (!signedIn) return <p>Sign in</p>
+  if (profile.data === undefined) return <p>Loading…</p>
+  return (
+    <>
+      <p>{profile.data.name}</p>
+      <button disabled={rename.isPending} onClick={() => rename.mutate([me, "Ada"])}>Rename</button>
+      {rename.error && <p>{rename.error.mayHaveExecuted ? "Unknown outcome" : rename.error.message}</p>}
+    </>
+  )
+}
+```
+
+## Do not
+
+- Pass a single argument without its tuple: `handle(arg)` → `handle([arg])`.
+- Convert `bigint` values to `number`, or build `PrincipalText` with a cast;
+  use `principal()` / `isPrincipalText()`.
+- Add `retry` to a write, or call a write from `useQuery`: TanStack Query may
+  run a query's function again whenever it refetches, and every run of an
+  update executes again.
+- Carry data across keys (`keepPreviousData`, cross-key `initialData`).
+- Build the client or handles inside render without `useMemo`/`useState`.
+- Treat every failed write as "not executed": check `mayHaveExecuted`.

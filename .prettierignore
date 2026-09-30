@@ -53,3 +53,12 @@ examples/tanstack-router/src/routeTree.gen.ts
 
 # pnpm rewrites the lockfile on every install.
 pnpm-lock.yaml
+
+# evals/: inputs kept byte-identical to what produced them (evals/setup.mjs
+# regenerates them) — candid-core-cli output, the docs copied from the published
+# @candid-core and @ic-reactor packages, the vendored fake replica — plus
+# agent-run results.
+evals/conditions/*/starter/src/generated/icrc1.ts
+evals/conditions/*/docs/
+evals/harness/public/support/fake-replica.js
+evals/runs/

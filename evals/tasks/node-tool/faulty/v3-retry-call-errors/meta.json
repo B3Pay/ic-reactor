@@ -1,0 +1,11 @@
+{
+  "condition": "v3",
+  "bug": "Retries the transfer up to 3 times on any CallError (\"resilience\"), which re-sends a new call after a trap and after a lost reply.",
+  "expectFail": [
+    "reject_code_4_not_resent",
+    "reject_code_5_not_resent",
+    "lost_reply_not_resent",
+    "lost_reply_classified",
+    "lost_reply_balance_reread"
+  ]
+}
