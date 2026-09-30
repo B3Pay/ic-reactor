@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/vite-plugin",
-  "version": "0.15.1",
+  "version": "4.0.0-alpha.0",
   "description": "Vite plugin that injects the local IC environment (ic_env cookie and /api proxy) in development",
   "type": "module",
   "main": "./dist/index.cjs",

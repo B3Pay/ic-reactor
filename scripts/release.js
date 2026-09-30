@@ -20,13 +20,24 @@ const version = process.argv[2]
 
 if (!version) {
   console.error(
-    "Please provide a version: node scripts/release.js 3.0.0-beta.3"
+    "Please provide a version: node scripts/release.js 4.0.0-alpha.1"
   )
   process.exit(1)
 }
 
 if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
   console.error(`Invalid version: ${version}`)
+  process.exit(1)
+}
+
+// The v4 branch releases prereleases only. A version without a prerelease tag
+// would be published under `latest` and replace 3.x for every plain install;
+// 4.0 goes to `latest` from main after the GA flip (DECISIONS Q15), with that
+// line's own release script.
+if (!version.includes("-")) {
+  console.error(
+    `Refusing ${version}: the v4 branch publishes prereleases only (such as 4.0.0-beta.1), never under \`latest\`.`
+  )
   process.exit(1)
 }
 
@@ -66,9 +77,9 @@ function updatePackageJson(filePath, newVersion) {
   }
 }
 
-// The runtime version being replaced. Captured before any file is rewritten so
-// the AI-context sync below can target exactly that string and leave the
-// independently-versioned tooling (codegen, cli, vite-plugin, parser) alone.
+// The version being replaced. Captured before any file is rewritten so the
+// AI-context sync below can target exactly that string. core, react and
+// vite-plugin release in lockstep on this line.
 const previousVersion = JSON.parse(
   readFileSync(join(rootDir, "packages/core/package.json"), "utf-8")
 ).version
@@ -79,7 +90,7 @@ console.log(`\n🚀 Starting release process for v${version}...\n`)
 updatePackageJson("package.json", version)
 updatePackageJson("packages/core/package.json", version)
 updatePackageJson("packages/react/package.json", version)
-updatePackageJson("packages/candid/package.json", version)
+updatePackageJson("packages/vite-plugin/package.json", version)
 
 // 2. Regenerate packages/core/src/version.ts from the bumped package.json.
 //    `version:sync` normally runs only as part of core's `build`, which a
@@ -98,7 +109,7 @@ console.log("\n🧠 Syncing AI-context versions...")
 const syncedFiles = syncAiContextVersions(rootDir, previousVersion, version, [
   "@ic-reactor/core",
   "@ic-reactor/react",
-  "@ic-reactor/candid",
+  "@ic-reactor/vite-plugin",
 ])
 syncedFiles.forEach((f) => console.log(`✅ Synced ${f} to ${version}`))
 
@@ -139,7 +150,7 @@ const RELEASE_PATHS = [
   "pnpm-lock.yaml",
   "packages/core/package.json",
   "packages/react/package.json",
-  "packages/candid/package.json",
+  "packages/vite-plugin/package.json",
   // Regenerated from package.json by core's `version:sync` at build time. It is
   // committed, so without staging it here the repo keeps reporting the previous
   // release's VERSION even though the published artifact is correct.
@@ -152,7 +163,7 @@ console.log("\n📂 Creating release commit and tag...")
 try {
   // `-u` stages modifications to already-tracked files only, so no untracked
   // scratch file can be swept in -- `git add .` would have committed, tagged and
-  // published one, since core/react/candid ship "src". It also keeps `examples`
+  // published one, since core/react/vite-plugin ship "src". It also keeps `examples`
   // safe to pass as a directory: sync-example-versions.js only rewrites
   // package.json files under it, at either workspace depth, but an untracked file
   // sitting there must never ride along.
@@ -176,22 +187,23 @@ const dryRun = process.argv.includes("--dry-run")
 if (shouldPublish || dryRun) {
   console.log(`\n📤 Publishing to npm${dryRun ? " (DRY RUN)" : ""}...`)
   try {
-    // Publish runtime libraries together; parser, docs, e2e, and tooling use separate workflows.
+    // core, react and vite-plugin publish together (one lockstep lane).
     const publishArgs = [
       "--filter",
       "@ic-reactor/core",
       "--filter",
       "@ic-reactor/react",
       "--filter",
-      "@ic-reactor/candid",
+      "@ic-reactor/vite-plugin",
       "publish",
       "--no-git-checks",
       "--access",
       "public",
     ]
-    // A hyphen means a prerelease (3.8.0-beta.1). Publishing that to `latest` would
-    // hand it to every plain `npm install`.
-    if (version.includes("-")) publishArgs.push("--tag", "beta")
+    // Every version on this branch is a prerelease (checked above), and it goes
+    // to `beta`: publishing it to `latest` would hand it to every plain
+    // `npm install`.
+    publishArgs.push("--tag", "beta")
     if (dryRun) publishArgs.push("--dry-run")
     console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)
     run("pnpm", publishArgs)
@@ -210,4 +222,4 @@ if (shouldPublish || dryRun) {
 }
 
 console.log(`\nGit commands:`)
-console.log(`  git push origin main --tags`)
+console.log(`  git push origin v4 --tags`)

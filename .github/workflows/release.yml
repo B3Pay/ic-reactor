@@ -1,9 +1,13 @@
 name: Release
 
+# The v4 line's release lane: @ic-reactor/core, @ic-reactor/react and
+# @ic-reactor/vite-plugin in lockstep, prereleases only, from the v4 branch.
+# A tag push runs the workflow file of the tagged commit, so 3.x tags on main
+# keep main's lane.
 on:
   push:
     tags:
-      - "v[1-9]*"
+      - "v4.*"
 
 permissions:
   contents: read
@@ -11,13 +15,7 @@ permissions:
 concurrency:
   # Keyed per tag, NOT per lane. A shared group serialises publishes, but GitHub
   # keeps only ONE run pending per group: when a third run arrives, the run that
-  # was already waiting is cancelled outright. Pushing parser-v*, tools-v* and v*
-  # back to back therefore silently dropped the middle release.
-  #
-  # Ordering across lanes is enforced where it actually matters instead -- the
-  # release-tools matrix publishes parser before its dependents with
-  # max-parallel: 1 and fail-fast: true, and codegen's pinned parser version is
-  # asserted to exist on npm before it publishes.
+  # was already waiting is cancelled outright, silently dropping a release.
   group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
@@ -45,12 +43,23 @@ jobs:
           corepack enable
           corepack prepare pnpm@10.30.3 --activate
 
-      - name: Tag must be an ancestor of main
+      - name: Tag must be an ancestor of v4
         run: |
           set -euo pipefail
-          git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::$GITHUB_SHA is not an ancestor of origin/main. Refusing to publish."
+          git fetch --no-tags origin v4
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/v4; then
+            echo "::error::$GITHUB_SHA is not an ancestor of origin/v4. Refusing to publish."
+            exit 1
+          fi
+
+      # Until 4.0 GA the v4 line never publishes under `latest`, which would
+      # replace 3.x for every plain install (DECISIONS Q15).
+      - name: Tag must be a prerelease
+        run: |
+          set -euo pipefail
+          REF="${GITHUB_REF##*/}"
+          if [[ "$REF" != *-* ]]; then
+            echo "::error::$REF is not a prerelease. The v4 branch publishes prereleases only, never under latest."
             exit 1
           fi
 
@@ -60,7 +69,7 @@ jobs:
           REF="${GITHUB_REF##*/}"
           EXPECTED="${REF#v}"
           echo "Tag version: $EXPECTED"
-          for pkg in packages/core packages/react packages/candid; do
+          for pkg in packages/core packages/react packages/vite-plugin; do
             ACTUAL="$(node -p "require('./$pkg/package.json').version")"
             if [ "$ACTUAL" != "$EXPECTED" ]; then
               echo "::error::$pkg is at $ACTUAL but the tag says $EXPECTED."
@@ -68,25 +77,8 @@ jobs:
             fi
           done
 
-      # @ic-reactor/candid depends on @ic-reactor/parser at `workspace:^`, which
-      # pnpm pack rewrites to a caret on the parser's *local* version. A parser
-      # bumped in the tree but not yet published as parser-v* would leave the
-      # published candid unresolvable for every consumer.
-      - name: Candid's parser dependency must exist on npm
-        run: |
-          set -euo pipefail
-          PARSER="$(node -p "require('./packages/parser/package.json').version")"
-          if ! npm view "@ic-reactor/parser@${PARSER}" version >/dev/null 2>&1; then
-            echo "::error::@ic-reactor/candid depends on @ic-reactor/parser@^${PARSER}, which is not on npm. Publish parser-v${PARSER} first."
-            exit 1
-          fi
-          echo "@ic-reactor/parser@${PARSER} is on npm"
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --filter '!./examples/**'
-
-      - name: Setup Rust for the parser wasm build
-        uses: ./.github/actions/setup-rust-wasm
 
       - name: Build, type check and test
         run: |
@@ -135,7 +127,7 @@ jobs:
         workspace:
           - packages/core
           - packages/react
-          - packages/candid
+          - packages/vite-plugin
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -170,18 +162,9 @@ jobs:
         run: npm i -g npm@^11.5.1 && npm --version
 
       - name: Install dependencies
-        # Install only this v3 package and its dependency graph, keeping any
-        # unreleased workspaces out of v3 tags.
+        # Install only this package and its dependency graph, keeping any
+        # other workspace out of the release.
         run: pnpm install --frozen-lockfile --filter "{./${{ matrix.workspace }}}..."
-
-      # Only the candid leg reaches the parser: `{./packages/candid}...` expands
-      # to core + candid + parser, so that leg runs the wasm-pack build and needs
-      # the toolchain and the cargo cache. The core and react legs expand to
-      # core and core + react, so they skip this entirely. (The comment this
-      # replaces claimed the parser was never built here, which was false.)
-      - name: Setup Rust for the parser wasm build
-        if: matrix.workspace == 'packages/candid'
-        uses: ./.github/actions/setup-rust-wasm
 
       # Build this publishable package and the workspace packages it depends on.
       - name: Build package dependency graph
@@ -192,14 +175,16 @@ jobs:
 
       - name: Determine publish tag
         run: |
-          # Determine publish tag based on the git tag name.
-          # Default to 'latest' for stable tags (e.g., v3.0.0). If tag contains a hyphen (e.g., v3.0.0-beta.1), use 'beta'.
+          # Prereleases go to `beta`. The v4 line has no `latest` until GA;
+          # preflight already refused a tag without a hyphen, and this refuses
+          # it again rather than fall back to `latest`.
           REF=${GITHUB_REF##*/}
           echo "Detected tag: $REF"
           if [[ "$REF" == *-* ]]; then
             echo "TAG=beta" >> $GITHUB_ENV
           else
-            echo "TAG=latest" >> $GITHUB_ENV
+            echo "::error::$REF is not a prerelease; refusing to publish under latest."
+            exit 1
           fi
 
       - name: Publish to npm (uses npm CLI for OIDC)

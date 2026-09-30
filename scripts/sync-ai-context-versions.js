@@ -8,19 +8,16 @@ import {
 /**
  * Rewrite version references belonging to the packages being released.
  *
- * The lanes version independently — runtime is 3.x, tooling 0.12.x, parser
- * 0.4.x — so a blind textual replacement of the outgoing version is unsafe: if
- * two lanes ever share a version string, releasing one would silently rewrite
- * the other's documented version, and `check-ai-context.js` would not catch it
- * because it accepts any version belonging to any @ic-reactor package.
+ * The v4 line has one lockstep lane (core, react, vite-plugin), but a blind
+ * textual replacement of the outgoing version is still unsafe: a version
+ * string that happens to equal another package's (a peer, a TypeScript floor)
+ * would be rewritten too, and `check-ai-context.js` would not catch it.
  *
  * So a replacement happens only on a line that also names one of the packages
- * being released. Every real occurrence is of that shape — the package tables
- * in AGENTS.md/CLAUDE.md, the lane lines in .cursorrules and
- * skill-packages/README.md, the version table in llms.txt. A version mention
- * that names no package is left alone, which surfaces as a loud
- * `check:ai-context` failure on the release commit rather than as a silent
- * cross-lane rewrite.
+ * being released, such as a package table in AGENTS.md/CLAUDE.md or the
+ * version stamp of a package's llms.txt. A version mention that names no
+ * package is left alone, which surfaces as a loud `check:ai-context` failure
+ * on the release commit rather than as a silent rewrite.
  *
  * @param {string} rootDir       repository root
  * @param {string} oldVersion    version being replaced
