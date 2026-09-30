@@ -222,9 +222,6 @@ const CONTEXTS = {
   "README.md": "readme",
   "packages/react/README.md": "react-readme",
   "packages/core/README.md": "core",
-  // Its `./ledger` is a DisplayReactor (core/ledger.ts), not the guides' own
-  "packages/core/llms.txt": "core",
-  "packages/candid/README.md": "candid",
   "skill-packages/ic-reactor-hooks/SKILL.md": "hooks-skill",
   "skill-packages/ic-reactor-hooks/references/patterns.md": "hooks-skill",
 }
@@ -260,35 +257,25 @@ const COMPILER_OPTIONS = {
  * directory listed here that has it wins, so `react` and `@tanstack/*`
  * resolve to the copies `@ic-reactor/react` itself compiles against.
  *
- * The example apps come last. They install the third-party libraries the docs
- * pages' examples import, so a snippet meets the library's real types rather
- * than a stub of ours: `@tanstack/react-form` (and `zod`) from
- * `tanstack-form-demo`, `react-hook-form` from `multiple-canister`,
- * `@tanstack/react-router` and `@tanstack/react-query-devtools` from
- * `tanstack-router`, and `next` from `nextjs`. They come after the runtime
- * packages so that `react`, `@tanstack/react-query` and the rest keep the
- * versions the packages themselves compile against. Only `--docs` needs them:
- * the guides, skills and READMEs import none, and CI installs the workspace
- * without the examples.
+ * A docs page whose examples import a library no package installs (a router,
+ * a form library, `next`) needs an example app that installs it listed after
+ * the runtime packages, so that `react`, `@tanstack/react-query` and the rest
+ * keep the versions the packages themselves compile against. The v4 line has
+ * no example apps yet (the DX1 slice adds them); add each here as it lands.
  */
 const DEPENDENCY_SOURCES = [
   "packages/react",
   "packages/core",
-  "packages/candid",
-  "packages/parser",
   "packages/vite-plugin",
-  "packages/codegen",
-  "packages/cli",
   ".",
-  "examples/tanstack-form-demo",
-  "examples/multiple-canister",
-  "examples/tanstack-router",
-  "examples/nextjs",
 ]
 
 // ── Source files ─────────────────────────────────────────────────────────────
 
 function walk(dir, predicate, out = []) {
+  // A tree that does not exist, such as skill-packages/ before a skill lands,
+  // holds no files.
+  if (!existsSync(dir)) return out
   for (const entry of readdirSync(dir).sort()) {
     const path = join(dir, entry)
     if (statSync(path).isDirectory()) {

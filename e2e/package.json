@@ -10,10 +10,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
   },
   "dependencies": {
-    "@ic-reactor/candid": "workspace:*",
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/react": "workspace:*",
-    "@ic-reactor/vite-plugin": "workspace:*",
     "@icp-sdk/auth": "^8.0.3",
     "@icp-sdk/core": "^6.1.0"
   },

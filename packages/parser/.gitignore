@@ -1,5 +1,0 @@
-/target
-**/*.rs.bk
-bin/
-dist/
-wasm-pack.log

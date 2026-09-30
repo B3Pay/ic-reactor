@@ -32,18 +32,12 @@ const cliVersion = process.argv[2]
 const packages = [
   "@ic-reactor/core",
   "@ic-reactor/react",
-  "@ic-reactor/candid",
-  "@ic-reactor/cli",
-  "@ic-reactor/codegen",
-  "@ic-reactor/parser",
   "@ic-reactor/vite-plugin",
 ]
 
-const runtimePackages = new Set([
-  "@ic-reactor/core",
-  "@ic-reactor/react",
-  "@ic-reactor/candid",
-])
+// On the v4 line the three packages release in lockstep, so a CLI-supplied
+// version applies to each of them.
+const runtimePackages = new Set(packages)
 
 const packageVersions = new Map(
   readdirSync(join(rootDir, "packages"))
@@ -63,8 +57,6 @@ const packageVersions = new Map(
 const targetVersionFor = (pkgName) => {
   if (cliVersion === "workspace") return "workspace:*"
 
-  // A runtime release must not assign its major version to independently
-  // versioned parser/tooling packages.
   const v =
     cliVersion && runtimePackages.has(pkgName)
       ? cliVersion
@@ -79,6 +71,8 @@ console.log(`\n📦 Syncing @ic-reactor/* example dependencies\n`)
 function findExamplePackageJsonFiles(dir) {
   const ignored = new Set(["node_modules", "dist", ".next", "out"])
   const packageJsonFiles = []
+  // The v4 line has no examples/ until the DX1 slice adds them.
+  if (!existsSync(dir)) return packageJsonFiles
 
   for (const entry of readdirSync(dir)) {
     if (ignored.has(entry)) continue
@@ -119,14 +113,6 @@ for (const pkgPath of packageJsonFiles) {
     let modified = false
 
     for (const pkgName of packages) {
-      // Every @ic-reactor dependency is synced, including the independently
-      // versioned tooling lane. targetVersionFor() already keeps the lanes
-      // apart -- it only applies the CLI-supplied version to runtime packages
-      // and reads every other package's version from its own manifest. Skipping
-      // non-runtime packages here as well meant nothing ever synced the tooling
-      // lane into the examples: release-tools.js does not run this script at
-      // all, so examples stayed pinned to the previous tools release and
-      // external sandboxes (StackBlitz/CodeSandbox) installed stale plugins.
       const targetVersion = targetVersionFor(pkgName)
 
       // Check dependencies

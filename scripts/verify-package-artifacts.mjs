@@ -33,15 +33,7 @@ const KEEP = process.argv.includes("--keep")
 const SKIP_ATTW = process.argv.includes("--skip-attw")
 
 // Publishable workspace packages, in dependency order.
-const PACKAGES = [
-  "packages/parser",
-  "packages/core",
-  "packages/react",
-  "packages/candid",
-  "packages/codegen",
-  "packages/vite-plugin",
-  "packages/cli",
-]
+const PACKAGES = ["packages/core", "packages/react", "packages/vite-plugin"]
 
 // Peers a consumer would install alongside them. Pinned loosely on purpose: this
 // checks resolvability of our artifacts, not of the peer tree.

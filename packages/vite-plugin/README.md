@@ -1,179 +1,37 @@
 # @ic-reactor/vite-plugin
 
-> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
-> (`node_modules/@ic-reactor/vite-plugin/llms.txt`) before writing code with it. It
-> is written for the installed version and lists the patterns to use and the
-> mistakes to avoid.
+> **ic-reactor 4 is in development on the `v4` branch.** This package is at a
+> `4.0.0-alpha` version that is not published. The released 3.x plugin, which
+> also generates bindings, is documented at
+> https://ic-reactor.b3pay.net/v3/packages/vite-plugin.
 
-Vite plugin for IC Reactor code generation. It runs the shared
-`@ic-reactor/codegen` pipeline, watches `.did` files, and can inject the
-`ic_env` cookie used by `ClientManager` during local development.
-
-## Install
-
-```bash
-pnpm add -D @ic-reactor/vite-plugin
-pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
-```
+On the `v4` branch the plugin is the environment half of the 3.x plugin: under
+`vite dev` and `vite preview` it sets the `ic_env` cookie and proxies `/api` to
+the local IC network. Binding generation returns as a `candid-core-cli gen`
+child process in a later change.
 
 ## Quick Start
 
 ```ts
 // vite.config.ts
 import { defineConfig } from "vite"
-import react from "@vitejs/plugin-react"
 import { icReactor } from "@ic-reactor/vite-plugin"
 
 export default defineConfig({
   plugins: [
-    react(),
     icReactor({
-      canisters: [{ name: "backend", didFile: "./backend/backend.did" }],
+      canisters: [{ name: "backend" }],
     }),
   ],
 })
 ```
 
-```ts
-// src/clients.ts
-import { ClientManager } from "@ic-reactor/react"
-import { QueryClient } from "@tanstack/react-query"
-
-export const queryClient = new QueryClient()
-export const clientManager = new ClientManager({
-  queryClient,
-})
-```
-
-No opt-in flag is needed to pick up the plugin's environment in development:
-the plugin sets the `ic_env` cookie and `ClientManager` reads it automatically
-in the browser. That trust stops at the local replica — cookies are not
-origin-isolated, so on a custom domain, on mainnet, and on Codespaces or Gitpod
-(whose workspaces share a parent domain with every other user's) the cookie is
-ignored and a reactor with no `canisterId` throws. Set the per-canister `canisterId` in the
-plugin config to bake it into the generated output for those builds, or pass
-`allowEnvConfig: true` to `ClientManager` if you trust every subdomain of the
-domain you serve from.
-
-The plugin generates files under `src/declarations/<canister>/` by default —
-`declarations/<did-basename>.{js,d.ts,did}` plus a managed `index.generated.ts`
-and a stable `index.ts` wrapper. With `target: "react"`, `index.generated.ts`
-exports the reactor and six hooks named after the canister
-(`use<Canister>Query`, `use<Canister>SuspenseQuery`,
-`use<Canister>InfiniteQuery`, `use<Canister>SuspenseInfiniteQuery`,
-`use<Canister>Mutation`, `use<Canister>Method`).
-
-Set `factories: true` on a canister to also generate
-`index.factories.generated.ts`, a query or mutation object per method bound to
-the generated reactor: `createQuery` for a query method without arguments,
-`createQueryFactory` for one with arguments, and `createMutation` for an
-update or oneway method, named `<method>Query` or `<method>Mutation` with the
-method name in camelCase. The default `index.ts` wrapper re-exports it; an
-`index.ts` you have edited is left alone, and the plugin warns in the terminal
-until it re-exports the factories. It needs `target: "react"`. See
-https://ic-reactor.b3pay.net/v3/packages/codegen#query-and-mutation-factories
-for the naming rule for any method name.
-
-```ts
-import { icReactor } from "@ic-reactor/vite-plugin"
-
-icReactor({
-  canisters: [
-    { name: "backend", didFile: "./backend/backend.did", factories: true },
-  ],
-})
-```
-
-```tsx
-import { getMessageQuery, setMessageMutation } from "./declarations/backend"
-
-// In a component
-function Message() {
-  const { data } = getMessageQuery.useQuery()
-  return <p>{data}</p>
-}
-
-// Anywhere, outside React included
-await setMessageMutation.execute(["hello"])
-```
-
-If Prettier resolves from Vite's `config.root`, the plugin formats the
-generated `.js`, `.d.ts`, `index.generated.ts`, `index.factories.generated.ts`
-and the `index.ts` wrapper it writes with it and your Prettier config, so a rebuild leaves formatted,
-committed output unchanged. Without Prettier the declarations hold the Candid
-parser's output followed by a newline, and a formatting error never fails the
-build.
-
-If you want non-React output, set `target: "core"` and install the matching
-runtime package instead of `@ic-reactor/react`.
-
 ## Options
 
-```ts
-import { icReactor } from "@ic-reactor/vite-plugin"
-
-icReactor({
-  canisters: [
-    {
-      name: "backend",
-      didFile: "./backend/backend.did",
-      mode: "DisplayReactor",
-    },
-  ],
-  outDir: "src/declarations",
-  clientManagerPath: "../../clients",
-  target: "react",
-  injectEnvironment: true,
-  failOnError: true,
-})
-```
-
-Relative paths — `didFile`, `outDir` — resolve against Vite's resolved
-`config.root`, not the directory vite was started from. If you set
-`root: "frontend"`, write the paths as the project itself sees them.
-
-Note `--config` alone does **not** change the root: `vite build --config
-apps/web/vite.config.ts` still leaves `root` at the directory vite was started
-from, so app-relative paths resolve against the monorepo root. Set `root` in the
-config file, or pass it positionally (`vite build apps/web --config …`), for
-those paths to mean what the app expects.
-
-`failOnError` decides what a failed canister does to the run. It defaults to
-`true` under `vite build` and `false` under `vite dev`: a build that quietly
-ships the bindings left over from the last successful run is worse than no
-build at all, while a dev server has to survive the broken intermediate states
-of a `.did` file being edited.
-
-### Per-canister options
-
-- `name`
-- `didFile`
-- `outDir`
-- `clientManagerPath`
-- `target`
-- `mode`
-- `canisterId`
-- `factories`: also generate `index.factories.generated.ts` (default `false`)
-
-Each entry needs an output directory of its own. Two entries with the same
-`name` and no `outDir`, or with `outDir` values that reach one directory, would
-overwrite each other's output, so the plugin generates the first of them and
-fails the later one with the error the CLI reports. To generate one canister
-twice, say as a `DisplayReactor` and as a `Reactor`, give each entry its own
-`outDir`.
-
-Supported `mode` values:
-
-- `Reactor`
-- `DisplayReactor`
-- `CandidReactor`
-- `CandidDisplayReactor`
-- `MetadataDisplayReactor`
-
-Supported `target` values:
-
-- `react` (default): generates the reactor plus bound React hooks
-- `core`: generates only the typed reactor exports with no React dependency
+| Option              | Default | Meaning                                                                                                 |
+| ------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
+| `canisters`         | —       | `{ name, canisterId? }` for each canister whose ID the cookie carries; a `canisterId` wins over `icp`'s |
+| `injectEnvironment` | `true`  | Set the cookie and the `/api` proxy under `vite dev` and `vite preview`                                 |
 
 ## Local Development Behavior
 
@@ -215,39 +73,3 @@ counts as resolved. If you never run a local network, set
 If your Vite config or another plugin sets `server.proxy["/api"]`, the plugin
 leaves that entry alone, whether detection succeeds or not, and that proxy does
 not follow detection.
-
-## File Regeneration
-
-On startup and on `.did` file changes, the plugin regenerates declarations and
-the managed `index.generated.ts` implementation, and `index.factories.generated.ts`
-for a canister that sets `factories: true`. The user-facing `index.ts`
-entry is created once, then preserved unless it still matches the default
-wrapper or a legacy generated scaffold that can be migrated automatically.
-When a watched `.did` file changes, the plugin sends a full browser reload so
-the new declarations are picked up.
-
-The plugin follows the dev server's file watcher itself, so a `.did` file that
-appears after the server started, or that a build tool deletes and writes
-again, is generated too, and saves regenerate even with `server.hmr: false`.
-
-Regeneration is serialized per canister — saves that land while a run is in
-flight collapse into a single rerun — so two rapid saves cannot interleave
-inside the pipeline's delete-then-write sequence.
-A regeneration that fails is reported to the terminal and to the browser error
-overlay rather than leaving the page on stale bindings.
-
-`vite build --watch` watches the configured `.did` files as well. Saving one
-starts a rebuild that regenerates that canister's bindings. A rebuild that any
-other file starts leaves the generated files alone.
-
-## When To Use It
-
-- Vite apps with active `.did` iteration
-- teams that want zero extra codegen commands during development
-- projects that want the same output format as the CLI without manual steps
-
-## See Also
-
-- Docs: https://ic-reactor.b3pay.net/v3/packages/vite-plugin
-- `@ic-reactor/codegen`: ../codegen/README.md
-- `@ic-reactor/cli`: ../cli/README.md

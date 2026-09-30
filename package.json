@@ -14,7 +14,7 @@
     "docs:check-examples": "cd docs && pnpm check:examples",
     "docs:preview": "cd docs && pnpm preview",
     "size": "pnpm -r --filter \"./packages/**\" run size",
-    "prepublish:check": "pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid build && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid test && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/candid size",
+    "prepublish:check": "pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/vite-plugin build && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/vite-plugin test && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/vite-plugin size",
     "sync:examples": "node scripts/sync-example-versions.js",
     "typecheck:examples": "node scripts/typecheck-examples.js",
     "build:examples": "node scripts/build-examples.js",
@@ -23,7 +23,6 @@
     "check:snippets:docs": "node scripts/check-snippets.mjs --docs",
     "verify:test-fails": "node scripts/verify-test-fails.js",
     "release": "node scripts/release.js",
-    "release:tools": "node scripts/release-tools.js",
     "clean": "node scripts/clean-node-modules.js",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -83,9 +82,6 @@
       "undici": "^7.29.0",
       "linkinator>undici": "^8.0.0",
       "ws": "^8.21.0"
-    },
-    "ignoredBuiltDependencies": [
-      "wasm-pack"
-    ]
+    }
   }
 }

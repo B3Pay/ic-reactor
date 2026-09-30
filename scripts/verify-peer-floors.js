@@ -17,12 +17,11 @@
  * uncommitted changes are not part of the run.
  *
  * TypeScript has a floor too, and this runs its check first:
- * verify-typescript-floor.js compiles the declarations of core, react, candid
- * and parser with the oldest TypeScript the docs name. That check reads the
- * declarations `pnpm build` wrote to this checkout, not a worktree of HEAD: a
- * worktree would have to build all four packages again, the parser through Rust
- * and wasm-pack, and CI has just built them here. Locally, run `pnpm build`
- * first.
+ * verify-typescript-floor.js compiles the declarations of core and react with
+ * the oldest TypeScript the docs name. That check reads the declarations
+ * `pnpm build` wrote to this checkout, not a worktree of HEAD: a worktree would
+ * have to build the packages again, and CI has just built them here. Locally,
+ * run `pnpm build` first.
  *
  * Usage
  *   node scripts/verify-peer-floors.js [--keep]
