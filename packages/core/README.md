@@ -1,9 +1,9 @@
 # @ic-reactor/core
 
-> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
-> (`node_modules/@ic-reactor/core/llms.txt`) before writing code with it. It
-> is written for the installed version and lists the patterns to use and the
-> mistakes to avoid.
+> **ic-reactor 4 is in development on the `v4` branch.** This package is at a
+> `4.0.0-alpha` version that is not published, and until its rewrite lands it
+> still carries the 3.x API described below. The released 3.x package is
+> documented at https://ic-reactor.b3pay.net/v3/packages/core.
 
 <div align="center">
   <strong>The Core Library for Internet Computer Applications</strong>

@@ -84,6 +84,25 @@ function getMdxFiles() {
     .sort()
 }
 
+// The v4 line has neither examples/ nor example pages until DX1 and DX2 add
+// them. With one and not the other, the checks below report what is missing.
+if (!fs.existsSync(examplesDir) && !fs.existsSync(docsExamplesDir)) {
+  console.log("No examples/ and no example docs pages: nothing to check.")
+  process.exit(0)
+}
+if (!fs.existsSync(examplesDir)) {
+  console.error(
+    `- docs pages in ${docsExamplesDir} document examples, but examples/ does not exist`
+  )
+  process.exit(1)
+}
+if (!fs.existsSync(docsExamplesDir)) {
+  console.error(
+    `- examples/ exists, but no docs page in ${docsExamplesDir} documents it`
+  )
+  process.exit(1)
+}
+
 const pages = getMdxFiles().filter((file) => file !== "index.mdx")
 const documentedExamples = new Set()
 // A Set, because each page points at the same sandbox twice, once in the

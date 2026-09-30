@@ -24,8 +24,7 @@
     "src",
     "!src/**/*.test.ts",
     "!src/**/__snapshots__",
-    "README.md",
-    "llms.txt"
+    "README.md"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean --tsconfig tsconfig.json",

@@ -2,6 +2,18 @@
 
 Thanks for your interest in contributing! This project uses pnpm workspaces. Below are the common workflows and expected standards.
 
+## Branches
+
+- **`v4`** is the development line of ic-reactor 4. Open pull requests for
+  new work against `v4`. It releases prereleases only (`4.0.0-alpha.N`,
+  `4.0.0-beta.N`), never under npm's `latest`.
+- **`main`** is the 3.x line and takes security fixes only until 4.0 GA. At
+  GA, `v3` is cut from `main`, `v4` becomes `main`, and 3.x security releases
+  are tagged from `v3`.
+
+CI, e2e, CodeQL and dependency review run on pull requests to either branch,
+each with the workflow files of its own line.
+
 ## Quickstart
 
 1. Fork the repository and clone it:
@@ -91,9 +103,9 @@ artifact, because in-repo consumers resolve through workspace symlinks.
 ## Code snippets
 
 `pnpm check:snippets` compiles every ` ```ts `, ` ```tsx ` and
-` ```typescript ` fence of `llms.txt`, `llms-full.txt`, `packages/*/llms.txt`,
-`skill-packages/**/*.md`, `README.md` and `packages/*/README.md`, each as its
-own module, against the built packages. Agents copy these snippets into apps
+` ```typescript ` fence of `packages/*/llms.txt`, `skill-packages/**/*.md`
+(when a skill exists), `README.md` and `packages/*/README.md`, each as its own
+module, against the built packages. Agents copy these snippets into apps
 as they stand, so when one fails, fix the snippet: add the import it is
 missing, or update it to the current API.
 
@@ -107,8 +119,8 @@ and `globals.ts` lists the names a snippet may use without importing. Add a
 missing app name there, never a library export such as `createQuery`: a
 snippet that uses one must import it.
 
-The consumer guides (`llms.txt`, `llms-full.txt`, `packages/*/llms.txt` and
-`skill-packages/ic-reactor/`) get no globals, since an agent pastes them into
+The consumer guides (`packages/*/llms.txt` and `skill-packages/ic-reactor/`)
+get no globals, since an agent pastes them into
 an app that has none: each of their snippets imports or declares every name
 it uses. A relative import there resolves first to a snippet of the same
 guide (or skill) whose first line names that file, such as `// src/reactor.ts`
@@ -125,16 +137,18 @@ lists every snippet with its result.
 
 The docs site's hand-written pages (`docs/src/content/docs`, without the
 TypeDoc output in `libs/`) are gated too, by `pnpm check:snippets:docs`, which
-CI runs in the job that installs the examples. Unlike the guides, a docs page
+CI runs in the job that installs the examples. On the `v4` branch the site is
+a placeholder until DX2, so the gate has no pages to compile yet. Unlike the
+guides, a docs page
 may assume the app it is about, so a page compiles against
 `scripts/check-snippets/docs/<section>/` (its directory under the docs content
 root, `root` for a page at the top), then against the default app. Put a name
 the page assumes there, such as the canister its examples call or a component
 the page only mentions. A fence that uses a library export still imports it,
-and a fixture never re-exports one. Libraries the examples install
-(`@tanstack/react-router`, `react-hook-form`, `@tanstack/react-form`, `next`)
-are the real packages; the few installed nowhere are declared once, faithfully,
-in `scripts/check-snippets/ambient.d.ts`. An `@/` import resolves to a fixture
+and a fixture never re-exports one. A library an example app installs is the
+real package once that example is listed in `DEPENDENCY_SOURCES`; the few
+installed nowhere are declared once, faithfully, in
+`scripts/check-snippets/ambient.d.ts`. An `@/` import resolves to a fixture
 at that path. The checker type-checks, and it fails a snippet that calls a hook
 (`useXxx(...)` or `query.useXxx()`) outside a component or a custom hook: at
 the top of the module, in a class, or in a function that is not capitalised or
@@ -194,11 +208,11 @@ This repository enforces **OIDC Trusted Publishing** for releases (no long-lived
 
 If your CI needs to install private dependencies, create a **read-only** granular token on npmjs.com and store it as `NPM_READ_TOKEN` (the install step will use this token when present).
 
-The release workflow also auto-selects a publish tag from the git tag name: prerelease tags containing a hyphen (e.g., `v3.0.0-beta.1`) are published with the `beta` tag; stable tags publish to `latest`.
+On the `v4` branch the release lane publishes `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` in lockstep from `v4.*` tags, and only prereleases: `scripts/release.js` refuses a version without a prerelease tag, and `release.yml` refuses a tag without a hyphen, requires the tagged commit to be on `v4`, and publishes under the `beta` dist-tag. Nothing on `v4` publishes to `latest` before GA.
 
 ### Approving a release
 
-Pushing a release tag no longer publishes unattended. Both release workflows (`release.yml` for `v*`, `release-tools.yml` for `tools-v*` and `parser-v*`) run an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against `main`, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
+Pushing a release tag no longer publishes unattended. The release workflow (`release.yml`; on `main` there is also `release-tools.yml` for the 3.x tooling lane) runs an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against its branch, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
 
 The environment lives in repository settings (Settings → Environments → `npm-publish`) and carries:
 
@@ -221,8 +235,7 @@ The `environment:` key is read from the tagged revision, like the preflight, so 
 
 The release scripts do not edit `CHANGELOG.md`. Before tagging, move the
 entries of the packages being released from `## Unreleased` into a new section
-named after the release (for example `## core, react, candid 3.13.0`), and
-leave the other lanes' entries under `## Unreleased`. The GitHub release that
+named after the release (for example `## core, react, vite-plugin 4.0.0-beta.1`). The GitHub release that
 the tag creates still generates its own notes from the merged pull requests.
 
 ## Code style
@@ -236,32 +249,20 @@ AI-assisted contributions are welcome, but contributors are responsible for corr
 - Prefer existing IC Reactor patterns over introducing new abstractions.
 - For React integrations, prefer `createActorHooks(...)` or query/mutation factories (`createQuery`, `createMutation`, etc.) instead of ad hoc wrappers.
 - If code must be used outside React, do not call hooks; use factory imperative methods like `.fetch()`, `.execute()`, `.invalidate()`, and `.getCacheData()`.
-- For larger canisters or repeated boilerplate, prefer generated hooks via `@ic-reactor/cli` or `@ic-reactor/vite-plugin`.
 - Validate generated or AI-written code with tests/examples whenever possible.
 - Update docs/examples when public API usage changes.
 
 Repository AI context:
 
-- `AGENTS.md` — task-to-source routing, verification by change type, and the
-  rules for the AI context files (read this first)
+- `AGENTS.md` — task-to-source routing and verification commands (read this
+  first)
 - `CLAUDE.md` — Claude / Anthropic project context
-- `skill-packages/ic-reactor-hooks/` and `skill-packages/ic-reactor-packages/`
-  — contributor skills for work in this repository
 
 Consumer AI context (for apps that install the packages; keep repo paths,
-pnpm commands and CI notes out of these):
-
-- `llms.txt` — index of the docs in the llmstxt.org format, published at
-  `https://ic-reactor.b3pay.net/llms.txt`
-- `llms-full.txt` — the complete guide, published at
-  `https://ic-reactor.b3pay.net/llms-full.txt`
-- `packages/<name>/llms.txt` — each package's guide, shipped in its tarball
-  and opening with an `Applies to` version line; the package README points to
-  it
-- `skill-packages/ic-reactor/` — the consumer Agent Skill, which is also the
-  Claude Code plugin listed in `.claude-plugin/marketplace.json`; apps install
-  it with `/plugin install ic-reactor@ic-reactor` or
-  `npx skills add B3Pay/ic-reactor --skill ic-reactor`
+pnpm commands and CI notes out of it): `packages/core/llms.txt`, shipped in
+core's tarball and opening with an `Applies to` version line. On the `v4`
+branch it is a placeholder until DX3 writes the guide and the one consumer
+skill.
 
 ## Adding a package
 

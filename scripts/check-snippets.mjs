@@ -222,8 +222,6 @@ const CONTEXTS = {
   "README.md": "readme",
   "packages/react/README.md": "react-readme",
   "packages/core/README.md": "core",
-  "skill-packages/ic-reactor-hooks/SKILL.md": "hooks-skill",
-  "skill-packages/ic-reactor-hooks/references/patterns.md": "hooks-skill",
 }
 
 /**
