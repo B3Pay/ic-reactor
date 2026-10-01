@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync } from "fs"
+import { existsSync, readFileSync, writeFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
 import { execFileSync } from "child_process"
@@ -155,7 +155,10 @@ const RELEASE_PATHS = [
   // committed, so without staging it here the repo keeps reporting the previous
   // release's VERSION even though the published artifact is correct.
   "packages/core/src/version.ts",
-  "examples",
+  // The v4 line has no examples until DX1 recreates them, and `git add -u`
+  // refuses a pathspec that matches no tracked file, which would stop the
+  // release before its commit and tag.
+  ...(existsSync(join(rootDir, "examples")) ? ["examples"] : []),
 ]
 
 // 6. Git Commit and Tag
