@@ -117,8 +117,8 @@ document shares, and a directory named in `CONTEXTS` in
 import resolves to the module of the same path there, and `globals.ts` lists the
 names a snippet may use without importing. Add a missing app name there, never
 a library export: a snippet that uses one must import it. On the `v4` branch
-`app/` holds only a few generic names, and the generated-module fixtures arrive
-with the guide (DX3).
+`app/` holds a few generic names and the generated modules the guide imports
+(`app/generated/icrc1.ts`, `app/generated/backend.ts`).
 
 The consumer guides (`packages/*/llms.txt` and `skill-packages/ic-reactor/`)
 get no globals, since an agent pastes them into
@@ -257,9 +257,8 @@ Repository AI context:
 
 Consumer AI context (for apps that install the packages; keep repo paths,
 pnpm commands and CI notes out of it): `packages/core/llms.txt`, shipped in
-core's tarball and opening with an `Applies to` version line. On the `v4`
-branch it is a placeholder until DX3 writes the guide and the one consumer
-skill.
+core's tarball and opening with an `Applies to` version line, and the one
+consumer skill, `skill-packages/ic-reactor/SKILL.md`, which points at it.
 
 ## Adding a package
 
