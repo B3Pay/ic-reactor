@@ -655,6 +655,55 @@ function warnEnvOffPage(network: Network): void {
 }
 
 // ---------------------------------------------------------------------------
+// What @ic-reactor/react reads of a client
+// ---------------------------------------------------------------------------
+
+/*
+ * An internal contract between this module and `@ic-reactor/react`'s
+ * `ReactorProvider`, not public API: no type names these keys and no entry
+ * exports them. Changing a key or what it means breaks the provider.
+ *
+ * - `ic-reactor.clients.created`, on `globalThis`: how many clients
+ *   `createClient` has made in this realm.
+ * - `ic-reactor.client.serial`, on each client: that count once the client
+ *   was made, so the first client's is 1.
+ * - `ic-reactor.client.disposed`, on each client: a getter, `true` once
+ *   `dispose()` has run.
+ *
+ * The provider reads the count, calls its `client` factory, and compares the
+ * serial of the client it gets: a higher serial means the factory created the
+ * client, and the provider disposes it when it unmounts; a client made before
+ * (one at module scope) is borrowed, and the provider never disposes it. The
+ * disposal flag lets it say so loudly when it is handed a borrowed client that
+ * its owner already disposed.
+ *
+ * `Symbol.for` keys and a count kept on `globalThis`, so that two copies of
+ * this package in one bundle count together, and the provider reads them
+ * without importing anything of this package at run time. All three are
+ * non-enumerable, so spreading or logging a client does not show them.
+ */
+const CLIENTS_CREATED = Symbol.for("ic-reactor.clients.created")
+const CLIENT_SERIAL = Symbol.for("ic-reactor.client.serial")
+const CLIENT_DISPOSED = Symbol.for("ic-reactor.client.disposed")
+
+/** Counts one more client in this realm, and returns the count. */
+function nextSerial(): number {
+  const count = (globalThis as { [CLIENTS_CREATED]?: unknown })[CLIENTS_CREATED]
+  const serial = (typeof count === "number" ? count : 0) + 1
+  try {
+    Object.defineProperty(globalThis, CLIENTS_CREATED, {
+      value: serial,
+      writable: true,
+      configurable: true,
+    })
+  } catch {
+    // A frozen global (an SES lockdown) keeps no count. The provider then
+    // reads 0 before every factory call and owns every client it is given.
+  }
+  return serial
+}
+
+// ---------------------------------------------------------------------------
 // createClient
 // ---------------------------------------------------------------------------
 
@@ -968,7 +1017,7 @@ export function createClient(options: ClientOptions): Client {
     agentFor,
   })
 
-  const client: Client = Object.freeze({
+  const members: Client = {
     ...createBuilders(internals, () => client),
     network: network.keySegment,
     queryClient,
@@ -1012,7 +1061,15 @@ export function createClient(options: ClientOptions): Client {
       unsubscribe?.()
       source?.dispose?.()
     },
-  })
+  }
+  // The stamps `ReactorProvider` reads (see `CLIENTS_CREATED`), defined
+  // before the freeze: a frozen object takes no new property.
+  const client: Client = Object.freeze(
+    Object.defineProperties(members, {
+      [CLIENT_SERIAL]: { value: nextSerial() },
+      [CLIENT_DISPOSED]: { get: () => disposed },
+    })
+  )
 
   INTERNALS.set(client, internals)
   return client

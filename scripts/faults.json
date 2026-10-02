@@ -40,6 +40,337 @@
     "replace": "false"
   },
   {
+    "id": "ir6-dispose-in-the-cleanup",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "survives React's development double-mount and keeps working",
+    "why": "the client disposed in the cleanup itself, so React's development unmount kills a client in use",
+    "file": "src/index.tsx",
+    "search": "      pendingDispose.current = setTimeout(() => {\n        pendingDispose.current = undefined\n        disposedClients.add(client)\n        client.dispose()\n      }, 0)",
+    "replace": "      disposedClients.add(client)\n      client.dispose()"
+  },
+  {
+    "id": "ir6-remount-keeps-the-disposal",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "survives React's development double-mount and keeps working",
+    "why": "the mount that follows an unmount no longer cancels the scheduled disposal, so it still runs",
+    "file": "src/index.tsx",
+    "search": "    clearTimeout(pendingDispose.current)\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6-client-never-disposed",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "disposes the client exactly once when it unmounts outside StrictMode too",
+    "why": "an unmounted provider leaves its client running: its auth subscription and cache live on",
+    "file": "src/index.tsx",
+    "search": "        client.dispose()\n      }, 0)",
+    "replace": "        void client\n      }, 0)"
+  },
+  {
+    "id": "ir6-disposed-client-kept-after-reveal",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "replaces a client that was disposed while its subtree was hidden",
+    "why": "a subtree shown again after its client was disposed keeps the dead client",
+    "file": "src/index.tsx",
+    "search": "    if (disposedClients.has(client)) {",
+    "replace": "    if (false) {"
+  },
+  {
+    "id": "ir6-reveal-builds-a-client-per-effect-run",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "builds one replacement, not two, when StrictMode shows a hidden subtree again",
+    "why": "each run of the reveal effect builds its own client, so React's development double-run builds one that is dropped",
+    "file": "src/index.tsx",
+    "search": "      if (replacement.current?.of !== client) {\n",
+    "replace": "      if (true) {\n"
+  },
+  {
+    "id": "ir6-factory-runs-every-render",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "keeps the client and the factory it was given when the parent renders again",
+    "why": "the factory called on every render instead of once per mounted provider",
+    "file": "src/index.tsx",
+    "search": "  const [held, setHeld] = useState(() => hold(build))\n",
+    "replace": "  const [, setHeld] = useState(() => hold(build))\n  const held = hold(build)\n"
+  },
+  {
+    "id": "ir6-module-client-disposed-on-unmount",
+    "package": "react",
+    "test": "tests/ownership.test.tsx",
+    "testName": "stays usable through three renders and unmounts in a row",
+    "why": "every client treated as the provider's own, so an unmount disposes a module-scope client and the next provider gets it back already disposed (#780)",
+    "file": "src/index.tsx",
+    "search": "typeof serial === \"number\" ? serial > before : clientsCreated() > before",
+    "replace": "true"
+  },
+  {
+    "id": "ir6-module-client-disposed-after-strict-mode",
+    "package": "react",
+    "test": "tests/ownership.test.tsx",
+    "testName": "is never disposed under StrictMode's double mount, nor by the unmount after it",
+    "why": "every client treated as the provider's own, so the unmount after StrictMode's double mount disposes a module-scope client",
+    "file": "src/index.tsx",
+    "search": "typeof serial === \"number\" ? serial > before : clientsCreated() > before",
+    "replace": "true"
+  },
+  {
+    "id": "ir6-shared-client-disposed-by-one-provider",
+    "package": "react",
+    "test": "tests/ownership.test.tsx",
+    "testName": "keeps working for one provider when another that shares it unmounts",
+    "why": "every client treated as the provider's own, so one provider's unmount disposes the client another provider still renders",
+    "file": "src/index.tsx",
+    "search": "typeof serial === \"number\" ? serial > before : clientsCreated() > before",
+    "replace": "true"
+  },
+  {
+    "id": "ir6-factory-client-borrowed",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "disposes the client exactly once when it unmounts outside StrictMode too",
+    "why": "every client treated as borrowed, so a client the factory created is never disposed and its auth subscription and cache outlive the provider",
+    "file": "src/index.tsx",
+    "search": "typeof serial === \"number\" ? serial > before : clientsCreated() > before",
+    "replace": "false"
+  },
+  {
+    "id": "ir6-abandoned-client-never-registered",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "disposes, with its auth, each client of a first render that a Suspense boundary above the provider threw away",
+    "why": "an owned client is never registered for disposal at collection, so the client of a render React threw away keeps its auth and listeners for good",
+    "file": "src/index.tsx",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  if (!owned && unclaimed?.unregister(client)) reportLazilyShared()\n"
+  },
+  {
+    "id": "ir6-committed-client-left-registered",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "is registered while it renders and unregistered once committed",
+    "why": "a committed client stays registered, so the registry and not the provider's unmount decides when a client in use ends",
+    "file": "src/index.tsx",
+    "search": "    unclaimed?.unregister(client)\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6-borrowed-client-registered",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "is never registered, even when renders are thrown away",
+    "why": "a client the app created is registered too, so a collection after a thrown-away render disposes a client its owner still uses",
+    "file": "src/index.tsx",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  unclaimed?.register(held, client, client)\n"
+  },
+  {
+    "id": "ir6-lazy-shared-client-left-registered",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "keeps running once mounted, though the render that created it was thrown away",
+    "why": "only an owned commit unregisters, as before the fix: the render that created a lazily shared client registered it and was thrown away, the retry got it back as borrowed and mounted it without unregistering, and the next collection disposed it under the mounted tree. The effect's unregister alone is masked by hold()'s, which always runs first for a borrowed client, so both go back",
+    "edits": [
+      {
+        "file": "src/index.tsx",
+        "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+        "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
+      },
+      {
+        "file": "src/index.tsx",
+        "search": "    unclaimed?.unregister(client)\n    if (!owned) {\n      // Borrowed: never disposed here, so there is nothing to schedule, to\n      // cancel or to replace.\n      reportDisposed(client)\n      return undefined\n    }\n",
+        "replace": "    if (!owned) {\n      // Borrowed: never disposed here, so there is nothing to schedule, to\n      // cancel or to replace.\n      reportDisposed(client)\n      return undefined\n    }\n    unclaimed?.unregister(client)\n"
+      }
+    ]
+  },
+  {
+    "id": "ir6-borrowed-render-keeps-registration",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "is let go by the registry as soon as a later render gets it back",
+    "why": "a factory call that hands back a client a dropped render registered leaves the registration standing until a commit, so a collection while the fallback still shows disposes the lazily shared client the retry is about to mount",
+    "file": "src/index.tsx",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
+  },
+  {
+    "id": "ir6-lazily-shared-factory-silent",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "warns once, before anything commits, when a render gets back the client of a render React threw away",
+    "why": "a factory that hands back a client a render which never committed created, as a lazily shared one does, is taken off the registry without a word, so the pattern shows only later, as cancelled calls after its first provider unmounts or a collection disposes it",
+    "file": "src/index.tsx",
+    "search": "  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else unclaimed?.unregister(client)\n"
+  },
+  {
+    "id": "ir6-every-borrowed-client-warned",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "says nothing about a client the factory creates on each call",
+    "why": "every borrowed client is reported as lazily shared, so the module-scope client the docs recommend warns on every render that gets it",
+    "file": "src/index.tsx",
+    "search": "  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else {\n    unclaimed?.unregister(client)\n    reportLazilyShared()\n  }\n"
+  },
+  {
+    "id": "ir6-server-client-registered",
+    "package": "react",
+    "test": "tests/provider.server.test.tsx",
+    "testName": "registers no client for disposal at collection",
+    "why": "a server registers its client too, so a collection during a streaming render disposes a client the rest of the request still uses",
+    "file": "src/index.tsx",
+    "search": "  typeof window !== \"undefined\" &&\n  !(\"Deno\" in globalThis)\n",
+    "replace": "  true\n"
+  },
+  {
+    "id": "ir6-registry-assumed",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "still mounts, follows the auth and disposes a committed client once",
+    "why": "the bindings construct a FinalizationRegistry without checking for one, so they fail to load in a runtime that has none",
+    "file": "src/index.tsx",
+    "search": "  typeof FinalizationRegistry === \"function\" &&\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6-disposed-borrowed-client-silent",
+    "package": "react",
+    "test": "tests/ownership.test.tsx",
+    "testName": "says once, in development, that the client it was given is already disposed",
+    "why": "a provider handed a client its owner already disposed says nothing, so every call is cancelled with no hint why",
+    "file": "src/index.tsx",
+    "search": "      reportDisposed(client)\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6-client-count-per-module-copy",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "counts the clients of two copies of the package together",
+    "why": "the count of clients kept in the module instead of on globalThis, so two copies of core number their clients apart and a provider misreads which client its factory created",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "function nextSerial(): number {\n",
+        "replace": "let localCount = 0\nfunction nextSerial(): number {\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "  const count = (globalThis as { [CLIENTS_CREATED]?: unknown })[CLIENTS_CREATED]\n",
+        "replace": "  const count = localCount\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "    Object.defineProperty(globalThis, CLIENTS_CREATED, {",
+        "replace": "    localCount = serial\n    Object.defineProperty({}, CLIENTS_CREATED, {"
+      }
+    ]
+  },
+  {
+    "id": "ir6-client-shared-across-requests",
+    "package": "react",
+    "test": "tests/provider.server.test.tsx",
+    "testName": "builds a separate client and QueryClient for each request and mounts nothing",
+    "why": "the first request's client kept in module scope, so every later request reads its cache and caller",
+    "edits": [
+      {
+        "file": "src/index.tsx",
+        "search": "const disposedClients = new WeakSet<Client>()\n",
+        "replace": "const disposedClients = new WeakSet<Client>()\nlet sharedHeld: Held | undefined\n"
+      },
+      {
+        "file": "src/index.tsx",
+        "search": "  const [held, setHeld] = useState(() => hold(build))\n",
+        "replace": "  const [held, setHeld] = useState(() => (sharedHeld ??= hold(build)))\n"
+      }
+    ]
+  },
+  {
+    "id": "ir6-server-snapshot-is-the-browsers",
+    "package": "react",
+    "test": "tests/hydration.test.tsx",
+    "why": "the server snapshot read from the client instead of the constant, so a signed-in browser's first render no longer matches the server's HTML",
+    "file": "src/index.tsx",
+    "search": "    client.authState,\n    serverState\n",
+    "replace": "    client.authState,\n    client.authState\n"
+  },
+  {
+    "id": "ir6-server-html-depends-on-the-session",
+    "package": "react",
+    "test": "tests/hydration.test.tsx",
+    "testName": "is rendered as the same HTML by a client that holds a session and one that does not",
+    "why": "the server snapshot read from the client, so a render with a session writes different HTML from a server's",
+    "file": "src/index.tsx",
+    "search": "    client.authState,\n    serverState\n",
+    "replace": "    client.authState,\n    client.authState\n"
+  },
+  {
+    "id": "ir6-snapshot-is-a-fresh-object",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "renders again once for each sign-in, switch of account and sign-out",
+    "why": "getSnapshot returns a new object on every read, which useSyncExternalStore treats as a change on every render",
+    "file": "src/index.tsx",
+    "search": "    client.authState,\n    serverState\n",
+    "replace": "    () => ({ ...client.authState() }),\n    serverState\n"
+  },
+  {
+    "id": "ir6-auth-object-not-memoized",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "returns the same object until the state changes",
+    "why": "useAuth returns a new object on every render, so a memoized consumer or a dependency array sees a change each time",
+    "file": "src/index.tsx",
+    "search": "    [client, state]\n",
+    "replace": "    [Object.create(null)]\n"
+  },
+  {
+    "id": "ir6-no-query-client-provider",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "returns the client of the provider, and TanStack reads the same cache",
+    "why": "the provider does not render TanStack's QueryClientProvider, so TanStack's hooks find no client",
+    "file": "src/index.tsx",
+    "search": "      <QueryClientProvider client={client.queryClient}>\n        {children}\n      </QueryClientProvider>",
+    "replace": "      {children}"
+  },
+  {
+    "id": "ir6-use-client-outside-provider-is-silent",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "throws outside a provider, naming it",
+    "why": "useClient returns undefined outside a provider instead of throwing the error that names the fix",
+    "file": "src/index.tsx",
+    "search": "  if (client === undefined) {\n    throw new Error(",
+    "replace": "  if (client === undefined && false) {\n    throw new Error("
+  },
+  {
+    "id": "ir6-entry-reexports-core",
+    "package": "react",
+    "test": "tests/entry.test.ts",
+    "testName": "exports exactly ReactorProvider, useClient and useAuth at runtime",
+    "why": "the entry re-exports a name of @ic-reactor/core, a second import path for it (D35)",
+    "file": "src/index.tsx",
+    "search": "import type { AuthState, Client } from \"@ic-reactor/core\"\n",
+    "replace": "import type { AuthState, Client } from \"@ic-reactor/core\"\nexport { createClient } from \"@ic-reactor/core\"\n"
+  },
+  {
+    "id": "ir6-use-client-directive-dropped",
+    "package": "react",
+    "test": "tests/entry.test.ts",
+    "testName": "starts its emitted module with the 'use client' directive",
+    "why": "the directive removed from the entry, which turns the hooks into server modules for an RSC bundler",
+    "file": "src/index.tsx",
+    "search": "\"use client\"\n\n/**\n * `@ic-reactor/react` 4",
+    "replace": "/**\n * `@ic-reactor/react` 4"
+  },
+  {
     "id": "ir2t-update-resent-after-reject-4",
     "package": "core",
     "test": "tests/canister.test.ts",
