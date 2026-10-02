@@ -8,17 +8,21 @@ import { HttpErrorCode, ProtocolError } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {
   MutationObserver,
+  QueryClient,
   QueryObserver,
   focusManager,
   onlineManager,
   skipToken,
+  type MutationObserverOptions,
   type QueryKey,
 } from "@tanstack/query-core"
-import { classifyError } from "../src/errors.js"
+import { classifyError, type ReactorError } from "../src/errors.js"
 import type { Client } from "../src/index.js"
-import { createTestAuth } from "../src/testing/index.js"
+import type { CanisterMutationOptions } from "../src/types.js"
+import { createTestAuth } from "../src/testing/test-auth.js"
 import {
   ANONYMOUS,
+  ARCHIVE,
   FEE,
   LEDGER,
   SHAPES,
@@ -35,6 +39,7 @@ import {
 import { withIdentity } from "./client-helpers.js"
 import * as icrc1 from "./fixtures/icrc1.js"
 import * as shapes from "./fixtures/shapes.js"
+import { icEnvCookie, stubPage } from "./network-helpers.js"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -45,6 +50,15 @@ afterEach(() => {
 const alice = Ed25519KeyIdentity.generate()
 const ALICE = principal(alice.getPrincipal().toText())
 const BOB = principal(Ed25519KeyIdentity.generate().getPrincipal().toText())
+
+/** The canister a local redeploy moves a `{ name }` to, in the tests that redeploy. */
+const REDEPLOYED = ARCHIVE
+
+/**
+ * Another canister of the shapes interface, reached by its id, in the test
+ * that writes to one canister and lists a `{ name }` in `invalidates`.
+ */
+const BY_ID = "r7inp-6aaaa-aaaaa-aaabq-cai"
 
 /** A shapes canister whose `who` answers with the caller, held back for a caller while a gate is set. */
 function whoCanister(holds: Map<string, Promise<void>>) {
@@ -278,6 +292,34 @@ describe("queryOptions", () => {
       } as unknown as { update: "idempotent" })
     ).toThrow(TypeError)
     expect(() => client.queryOptions(canister, "composite", 1n)).not.toThrow()
+  })
+
+  it("throws a TypeError for a method without results, which leaves a read nothing to cache, and its direct call still resolves", async () => {
+    const replica = replicaWith({
+      [SHAPES]: serve<shapes.Actor>(shapes.actor, {
+        nothing: () => undefined,
+      }),
+    })
+    const client = clientAs(replica, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    // Its call resolves undefined, which TanStack Query reports as a failed
+    // read with nothing cached: refused when the options are built instead.
+    expect(() => client.queryOptions(canister, "nothing")).toThrow(TypeError)
+    expect(() => client.queryOptions(canister, "nothing", skipToken)).toThrow(
+      /nothing has no results, and a method without results has nothing to cache\. Call it directly\./
+    )
+    // An update without results, opted in as a read, has nothing to cache
+    // either.
+    expect(() =>
+      client.queryOptions(canister, "note", "x", { update: "idempotent" })
+    ).toThrow(
+      /note has no results.*Call it directly, or through mutationOptions/
+    )
+    expect(canisterRequests(replica)).toEqual([])
+    await expect(canister.nothing()).resolves.toBeUndefined()
+    expect(requestsFor(replica, "nothing")).toMatchObject([
+      { endpoint: "query" },
+    ])
   })
 })
 
@@ -635,6 +677,194 @@ describe("mutationOptions", () => {
     }
   })
 
+  /**
+   * A client on a local page, where the ic_env cookie is trusted, and a
+   * `{ name: "backend" }` canister of it. The cookie is read afresh every
+   * time, and `redeploy()` moves the name from SHAPES to REDEPLOYED, as a
+   * local redeploy rewrites the cookie. `bump` waits for `hold` at SHAPES
+   * and at BY_ID, a shapes canister the name never points to.
+   */
+  function redeployable(hold?: Promise<void>) {
+    let deployed = SHAPES
+    stubPage("http://localhost:5173")
+    vi.stubGlobal("document", {
+      get cookie() {
+        return icEnvCookie({ "PUBLIC_CANISTER_ID:backend": deployed })
+      },
+    })
+    const backendAt = (wait?: Promise<void>) =>
+      serve<shapes.Actor>(shapes.actor, {
+        one: ([n]) => n + 1n,
+        bump: async ([n]) => {
+          await wait
+          return { tag: "ok", value: n + 1n }
+        },
+      })
+    const replica = replicaWith({
+      [SHAPES]: backendAt(hold),
+      [REDEPLOYED]: backendAt(),
+      [BY_ID]: backendAt(hold),
+    })
+    const client = clientAs(replica, alice)
+    const backend = client.canister<shapes.Actor>(shapes.actor, {
+      name: "backend",
+    })
+    const redeploy = () => {
+      deployed = REDEPLOYED
+    }
+    return { replica, client, backend, redeploy }
+  }
+
+  type BumpOptions = CanisterMutationOptions<bigint, bigint, string>
+
+  /** What an app hands `useMutation` or a `MutationObserver` for `bump`, with an onMutate of its own or not. */
+  type AppBumpOptions = MutationObserverOptions<
+    bigint,
+    ReactorError<string>,
+    bigint,
+    unknown
+  >
+
+  /**
+   * Writes `bump` to the `{ name }` canister with the options `compose`
+   * returns, and moves the name to another canister while the update is in
+   * flight. The write must reach the first canister, whose cached reads it
+   * invalidates, and leave the reads of the new one alone.
+   */
+  async function writeAcrossRedeploy(
+    compose: (options: BumpOptions) => AppBumpOptions
+  ) {
+    const held = deferred()
+    const { replica, client, backend, redeploy } = redeployable(held.promise)
+    const before = client.queryOptions(backend, "one", 1n)
+    expect(before.queryKey[3]).toBe(SHAPES)
+    await client.queryClient.fetchQuery(before)
+
+    const write = new MutationObserver(
+      client.queryClient,
+      compose(client.mutationOptions(backend, "bump"))
+    ).mutate(1n)
+    await vi.waitFor(() => expect(requestsFor(replica, "bump")).toHaveLength(1))
+    // The update is in flight at the first canister; a redeploy gives the
+    // name another one, and a read made now goes there.
+    redeploy()
+    const after = client.queryOptions(backend, "one", 1n)
+    expect(after.queryKey[3]).toBe(REDEPLOYED)
+    await client.queryClient.fetchQuery(after)
+    held.resolve()
+    await expect(write).resolves.toBe(2n)
+
+    expect(requestsFor(replica, "bump")).toMatchObject([{ canisterId: SHAPES }])
+    // The reads of the canister written to are stale; the other's are not.
+    expect(
+      client.queryClient.getQueryState(before.queryKey)?.isInvalidated
+    ).toBe(true)
+    expect(
+      client.queryClient.getQueryState(after.queryKey)?.isInvalidated
+    ).toBe(false)
+  }
+
+  it.each([
+    ["as given", (options: BumpOptions) => options],
+    [
+      "under an onMutate of the app's that spreads the given one's result into its own",
+      (options: BumpOptions) => ({
+        ...options,
+        onMutate: (vars: bigint, context?: unknown) => ({
+          ...options.onMutate(vars, context),
+          previous: "the app's own context",
+        }),
+      }),
+    ],
+  ])(
+    "invalidates the canister a { name } write went to when the cookie moves the name before the write settles, with the options %s",
+    (_label, compose) => writeAcrossRedeploy(compose)
+  )
+
+  it("keeps a { name } write and its invalidation on one canister when an onMutate of the app's replaces the given one", async ({
+    skip,
+  }) => {
+    if (!(await sharesRunContext())) {
+      skip(
+        "this TanStack Query does not pass mutationFn and onSettled the run's context, so each resolves the canister when it runs"
+      )
+    }
+    // TanStack's optimistic-update recipe, spread over the options: the
+    // app's onMutate returns its own context and never calls the given one.
+    await writeAcrossRedeploy((options) => ({
+      ...options,
+      onMutate: () => ({ previous: "the app's own context" }),
+    }))
+  })
+
+  it("invalidates the canister a { name } in invalidates named when the write started, though the cookie moves the name before the write settles", async () => {
+    const held = deferred()
+    const { replica, client, backend, redeploy } = redeployable(held.promise)
+    const writer = client.canister<shapes.Actor>(shapes.actor, { id: BY_ID })
+    const before = client.queryOptions(backend, "one", 1n)
+    expect(before.queryKey[3]).toBe(SHAPES)
+    await client.queryClient.fetchQuery(before)
+
+    // The write goes to a canister reached by its id, and names the reads it
+    // changes through the { name }, the only target that a redeploy moves.
+    const write = new MutationObserver(
+      client.queryClient,
+      client.mutationOptions(writer, "bump", { invalidates: [backend] })
+    ).mutate(1n)
+    await vi.waitFor(() => expect(requestsFor(replica, "bump")).toHaveLength(1))
+    redeploy()
+    const after = client.queryOptions(backend, "one", 1n)
+    expect(after.queryKey[3]).toBe(REDEPLOYED)
+    await client.queryClient.fetchQuery(after)
+    held.resolve()
+    await expect(write).resolves.toBe(2n)
+
+    expect(requestsFor(replica, "bump")).toMatchObject([{ canisterId: BY_ID }])
+    // The listed name pointed at SHAPES when the write started: its reads
+    // there are stale, and the reads of where it points now are not.
+    expect(
+      client.queryClient.getQueryState(before.queryKey)?.isInvalidated
+    ).toBe(true)
+    expect(
+      client.queryClient.getQueryState(after.queryKey)?.isInvalidated
+    ).toBe(false)
+  })
+
+  it("sends a { name } write that waited offline to the canister resolved when it started, whose reads it invalidates", async ({
+    skip,
+  }) => {
+    if (!(await sharesRunContext())) {
+      skip(
+        "this TanStack Query does not pass mutationFn the run's context, so mutationFn resolves the canister when it starts"
+      )
+    }
+    const { replica, client, backend, redeploy } = redeployable()
+    const read = client.queryOptions(backend, "one", 1n)
+    await client.queryClient.fetchQuery(read)
+
+    // Offline, the write is paused after onMutate ran and before mutationFn
+    // does; the name moves to another canister in between.
+    onlineManager.setOnline(false)
+    const observer = new MutationObserver(
+      client.queryClient,
+      client.mutationOptions(backend, "bump")
+    )
+    const write = observer.mutate(1n)
+    await vi.waitFor(() => {
+      expect(observer.getCurrentResult().isPaused).toBe(true)
+      expect(observer.getCurrentResult().context).toBeDefined()
+    })
+    redeploy()
+    onlineManager.setOnline(true)
+    void client.queryClient.resumePausedMutations()
+    await expect(write).resolves.toBe(2n)
+
+    expect(requestsFor(replica, "bump")).toMatchObject([{ canisterId: SHAPES }])
+    expect(client.queryClient.getQueryState(read.queryKey)?.isInvalidated).toBe(
+      true
+    )
+  })
+
   it("throws a TypeError for an unknown third argument or a canister of another client", () => {
     const client = clientAs(replicaWith({}), alice)
     const other = clientAs(replicaWith({}), alice)
@@ -657,6 +887,40 @@ describe("mutationOptions", () => {
     ).toThrow(/has no method "nope"/)
   })
 })
+
+/**
+ * Whether the installed TanStack Query hands `onMutate`, `mutationFn` and
+ * `onSettled` the same function context for one run (5.89 and later), through
+ * which `mutationFn` finds the canister `onMutate` resolved, and `onSettled`
+ * the one `mutationFn` wrote to. The peer-floor check runs these tests on an
+ * older release, which passes `mutationFn` and `onSettled` none.
+ */
+async function sharesRunContext(): Promise<boolean> {
+  const seen: unknown[] = []
+  await new MutationObserver(new QueryClient(), {
+    onMutate: (_vars: void, context?: unknown) => {
+      seen.push(context)
+    },
+    mutationFn: (_vars: void, context?: unknown) => {
+      seen.push(context)
+      return Promise.resolve()
+    },
+    onSettled: (
+      _data: unknown,
+      _error: unknown,
+      _vars: void,
+      _onMutateResult: unknown,
+      context?: unknown
+    ) => {
+      seen.push(context)
+    },
+  }).mutate()
+  return (
+    seen.length === 3 &&
+    seen[0] !== undefined &&
+    seen.every((context) => context === seen[0])
+  )
+}
 
 /** A client in a page, on `replica`, with nobody signed in. */
 function createClientSignedOut(replica: ReturnType<typeof replicaWith>) {

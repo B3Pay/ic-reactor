@@ -7,17 +7,24 @@
  * process-wide focus and online managers, no client disposed.
  */
 import { QueryClient, useQueryClient } from "@tanstack/react-query"
-import { createTestAuth } from "@ic-reactor/core/testing"
 import type { Client } from "@ic-reactor/core"
 import { renderToString } from "react-dom/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ReactorProvider, useAuth, useClient } from "../src/index.js"
-import { anonymousClient, clientWithAuth, trackedFactory } from "./helpers.js"
+import {
+  anonymousClient,
+  bindingsWith,
+  clientWithAuth,
+  fakeFinalizationRegistry,
+  testAuth,
+  trackedFactory,
+} from "./helpers.js"
 
 const storage = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   if (storage === undefined) {
     Reflect.deleteProperty(globalThis, "localStorage")
   } else {
@@ -36,7 +43,7 @@ describe("ReactorProvider on a server", () => {
       },
     })
     expect(typeof window).toBe("undefined")
-    const buildAuth = vi.fn(() => createTestAuth({ seed: 1 }))
+    const buildAuth = vi.fn(() => testAuth({ identity: 1 }))
 
     function Page() {
       const { status, principal } = useAuth()
@@ -58,7 +65,7 @@ describe("ReactorProvider on a server", () => {
 
   it("builds a separate client and QueryClient for each request and mounts nothing", () => {
     const mount = vi.spyOn(QueryClient.prototype, "mount")
-    const buildAuth = vi.fn(() => createTestAuth({ seed: 1 }))
+    const buildAuth = vi.fn(() => testAuth({ identity: 1 }))
     const { factory, made } = trackedFactory(() => clientWithAuth(buildAuth))
     const seen: Array<{ client: Client; queryClient: QueryClient }> = []
 
@@ -101,7 +108,7 @@ describe("ReactorProvider on a server", () => {
     // that element would reach every later request, and with it the first
     // request's cache and caller.
     const { factory, made } = trackedFactory(() =>
-      clientWithAuth(() => createTestAuth({ seed: 1 }))
+      clientWithAuth(() => testAuth({ identity: 1 }))
     )
     const seen: Client[] = []
     function Page() {
@@ -121,6 +128,34 @@ describe("ReactorProvider on a server", () => {
     expect(seen).toHaveLength(2)
     expect(seen[0]).not.toBe(seen[1])
     expect(made).toHaveLength(2)
+  })
+
+  it("registers no client for disposal at collection, since the rest of the request still uses it", async () => {
+    // A server keeps no state once a component has rendered, while the
+    // children it renders later in the same request still call through the
+    // client. A registration against that state could dispose the client in
+    // the middle of the request, at whatever moment a collection runs.
+    const registry = fakeFinalizationRegistry()
+    const fresh = await bindingsWith(registry.Registry)
+    const { factory, made, disposals } = trackedFactory(() =>
+      clientWithAuth(() => testAuth({ identity: 1 }))
+    )
+    function Page() {
+      return <p>{fresh.useAuth().status}</p>
+    }
+
+    const html = renderToString(
+      <fresh.ReactorProvider client={factory}>
+        <Page />
+      </fresh.ReactorProvider>
+    )
+    registry.collectAll()
+
+    expect(html).toBe("<p>anonymous</p>")
+    expect(made).toHaveLength(1)
+    expect(registry.cleanups).toHaveLength(0)
+    expect(registry.registered).toEqual([])
+    expect(disposals()).toBe(0)
   })
 
   it("names the provider when a component reads the client outside one", () => {

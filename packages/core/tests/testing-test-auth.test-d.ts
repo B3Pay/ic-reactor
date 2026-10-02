@@ -5,7 +5,8 @@
  */
 import type { Identity } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
-import { createFakeReplica, createTestAuth } from "../src/testing/index.js"
+import { createFakeReplica } from "../src/testing/fake-replica.js"
+import { createTestAuth } from "../src/testing/test-auth.js"
 
 /**
  * The interface `createClient`'s `auth` option takes (IR1, #779), written as
