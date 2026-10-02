@@ -233,10 +233,11 @@ export interface MutationTargets {
  * its data and `E` its `Err` payload.
  *
  * The canister a run writes to and the reads it invalidates are resolved
- * once, when the run starts (`onMutate`), so a `{ name }` whose `ic_env`
- * cookie entry changes while the update is in flight (a local redeploy)
- * still has the reads of the canister it wrote to invalidated, and not those
- * of the one the cookie names now.
+ * once, when the run starts (`onMutate`; or, from TanStack Query 5.89,
+ * `mutationFn` when an `onMutate` of the app's replaced this one), so a
+ * `{ name }` whose `ic_env` cookie entry changes while the update is in
+ * flight (a local redeploy) still has the reads of the canister it wrote to
+ * invalidated, and not those of the one the cookie names now.
  */
 export interface CanisterMutationOptions<V, D, E> {
   /** `['ic-reactor', network, canisterId, method]`. */
@@ -247,10 +248,13 @@ export interface CanisterMutationOptions<V, D, E> {
    * what it returns to `onSettled`.
    *
    * `context` is the function context TanStack Query 5.89 and later passes
-   * to `onMutate` and `mutationFn` alike, through which `mutationFn` finds
-   * this run. To add an `onMutate` of your own, call this one from it with
-   * both arguments, and return its result or spread it into yours:
-   * `{ ...options.onMutate(variables, context), previous }`.
+   * to `onMutate`, `mutationFn` and `onSettled` alike, through which
+   * `mutationFn` finds this run. To add an `onMutate` of your own, call this
+   * one from it with both arguments, and return its result or spread it
+   * into yours: `{ ...options.onMutate(variables, context), previous }`.
+   * One that replaces this one instead (TanStack's optimistic-update recipe
+   * as written) leaves the resolving to `mutationFn`, which keeps the write
+   * and its invalidation together only from 5.89 on.
    */
   readonly onMutate: (variables: V, context?: unknown) => MutationTargets
   /**
@@ -258,30 +262,36 @@ export interface CanisterMutationOptions<V, D, E> {
    * `onMutate` resolved for this run.
    *
    * It finds that run through `context`, which TanStack Query passes from
-   * 5.89 on. Without it (TanStack Query before 5.89, an `onMutate` of the
-   * app's that replaced this one, a direct call) it resolves the canister
-   * when it starts. Before 5.89 that leaves a gap: a `{ name }` whose cookie
-   * entry is rewritten between `onMutate` and `mutationFn` is written to at
-   * the new canister while `onSettled` invalidates the old one's reads.
-   * TanStack runs the two back to back, with no other task in between,
-   * unless the mutation is paused (offline) or waits for its `scope`.
+   * 5.89 on. When `onMutate` resolved nothing for that context (an
+   * `onMutate` of the app's replaced this one), it resolves the run when it
+   * starts and keeps it for `onSettled`, which gets the same context.
+   * Without a context (TanStack Query before 5.89, a direct call) it
+   * resolves the canister when it starts. Before 5.89 that leaves a gap: a
+   * `{ name }` whose cookie entry is rewritten between `onMutate` and
+   * `mutationFn` is written to at the new canister while `onSettled`
+   * invalidates the old one's reads. TanStack runs the two back to back,
+   * with no other task in between, unless the mutation is paused (offline)
+   * or waits for its `scope`.
    */
   readonly mutationFn: (variables: V, context?: unknown) => Promise<D>
   /** A mutation is never retried by TanStack: an update re-sent after an unknown outcome can run twice. */
   readonly retry: false
   /**
    * Invalidates the reads the write may have changed, unless the failure
-   * proves it changed nothing: the reads `onMutate` resolved for this run,
-   * read from `context`, what `onMutate` returned. When `context` carries no
-   * run (an `onMutate` of the app's replaced this one and returned something
-   * else, or `onSettled` was called by hand), it resolves them when it runs.
-   * To add an `onSettled` of your own, call this one from it with all four
-   * arguments.
+   * proves it changed nothing: the reads resolved for this run. It finds
+   * them through `context`, the run's function context (TanStack Query 5.89
+   * and later), which holds what `mutationFn` wrote with, or else in
+   * `onMutateResult`, what `onMutate` returned. When neither carries the run
+   * (before 5.89, an `onMutate` of the app's that replaced this one and
+   * returned something else; or a call by hand), it resolves them when it
+   * runs. To add an `onSettled` of your own, call this one from it with
+   * every argument it gets.
    */
   readonly onSettled: (
     data: D | undefined,
     error: ReactorError<E> | null,
     variables: V,
+    onMutateResult?: unknown,
     context?: unknown
   ) => Promise<void>
 }

@@ -125,10 +125,18 @@ interface MutationRun {
 const RUN = Symbol("ic-reactor.mutationRun")
 
 /** The run carried by what `onMutate` returned, if it carries one. */
-const runIn = (context: unknown): MutationRun | undefined =>
-  typeof context === "object" && context !== null
-    ? (context as { readonly [RUN]?: MutationRun })[RUN]
+const runIn = (onMutateResult: unknown): MutationRun | undefined =>
+  typeof onMutateResult === "object" && onMutateResult !== null
+    ? (onMutateResult as { readonly [RUN]?: MutationRun })[RUN]
     : undefined
+
+/**
+ * The function context TanStack Query (5.89 and later) creates for one run of
+ * a mutation and passes to `onMutate`, `mutationFn` and `onSettled` alike, if
+ * one was passed: the key a run is kept under in `runsByContext`.
+ */
+const runKey = (context: unknown): object | undefined =>
+  typeof context === "object" && context !== null ? context : undefined
 
 /**
  * The builders of one client. `owner` returns the client, which is built
@@ -141,11 +149,19 @@ export function createBuilders(
   const network = internals.network.keySegment
 
   /**
-   * What `onMutate` resolved for each run of a mutation, by the function
-   * context TanStack Query (5.89 and later) creates for the run and passes to
-   * `onMutate` and to `mutationFn` alike: how `mutationFn` finds it.
+   * What was resolved for each run of a mutation, by the function context
+   * TanStack Query (5.89 and later) creates for the run and passes to
+   * `onMutate`, `mutationFn` and `onSettled` alike: how `mutationFn` finds
+   * what `onMutate` resolved, and `onSettled` what `mutationFn` wrote to,
+   * even when an `onMutate` of the app's replaced ours.
    */
   const runsByContext = new WeakMap<object, MutationRun>()
+
+  /** The run kept for a run's function context, if TanStack passed one and a run was kept for it. */
+  const keptRun = (context: unknown): MutationRun | undefined => {
+    const key = runKey(context)
+    return key === undefined ? undefined : runsByContext.get(key)
+  }
 
   /** A read's key, cut short where `method` or `args` are left out. */
   const readKey = (
@@ -349,23 +365,27 @@ export function createBuilders(
       // returns to onSettled.
       onMutate: (_vars: unknown, context?: unknown): object => {
         const run = resolveRun()
-        if (typeof context === "object" && context !== null) {
-          runsByContext.set(context, run)
-        }
+        const key = runKey(context)
+        if (key !== undefined) runsByContext.set(key, run)
         return { [RUN]: run }
       },
-      // The caller is read when the mutation runs; the target is the one
-      // onMutate resolved for this run, where TanStack passes the run's
+      // The caller is read when the mutation runs. The target is the one
+      // onMutate resolved for this run where TanStack passes the run's
       // context (5.89 and later), and is resolved now otherwise.
       mutationFn: (vars: unknown, context?: unknown) => {
-        const run =
-          typeof context === "object" && context !== null
-            ? runsByContext.get(context)
-            : undefined
         // TanStack hands a pending mutation the options of a later render
         // only when their mutationKey is the same (another key detaches the
         // observer instead), so a run found here was made by options for the
         // same canister and method.
+        let run = keptRun(context)
+        const key = runKey(context)
+        if (run === undefined && key !== undefined) {
+          // An onMutate of the app's replaced ours, so nothing is resolved
+          // for this run yet: resolve it now, and keep it for onSettled,
+          // which TanStack hands the same context.
+          run = resolveRun()
+          runsByContext.set(key, run)
+        }
         return invoke(internals, {
           method: prepared,
           target: run?.target ?? record.resolve(),
@@ -380,12 +400,16 @@ export function createBuilders(
         _data: unknown,
         error: unknown,
         _vars: unknown,
+        onMutateResult?: unknown,
         context?: unknown
       ): Promise<void> => {
         if (!mayHaveChanged(error)) return
-        // The reads onMutate resolved when the run started, or, when an
-        // onMutate of the app's replaced it, the reads resolved now.
-        const targets = (runIn(context) ?? resolveRun()).invalidates
+        // The reads of the run mutationFn wrote with, found by the run's
+        // context (5.89 and later); else those onMutate returned (before
+        // 5.89); else, when an onMutate of the app's replaced ours before
+        // 5.89 or onSettled is called by hand, the reads resolved now.
+        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()
+        const targets = run.invalidates
         if (targets.length === 0) return
         // Every caller's reads, certified or not: a write changes what the
         // canister answers to everyone.

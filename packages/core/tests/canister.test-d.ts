@@ -151,6 +151,19 @@ expectTypeOf(
   optimistic.getCurrentResult().error
 ).toEqualTypeOf<ReactorError<icrc1.TransferError> | null>()
 
+// TanStack's optimistic-update recipe as written, an onMutate that replaces
+// the given one, compiles as well: onSettled takes whatever an onMutate of
+// the app's returns, and finds the run through the run's context instead.
+const replaced = new MutationObserver(client.queryClient, {
+  ...transferOptions,
+  onMutate: () => ({
+    previous: client.queryClient.getQueryData(balance.queryKey),
+  }),
+})
+expectTypeOf(replaced.getCurrentResult().context?.previous).toEqualTypeOf<
+  bigint | undefined
+>()
+
 // Reads of any canister of the client, or of one of their methods.
 client.mutationOptions(ledger, "icrc1_transfer", {
   invalidates: [

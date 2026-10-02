@@ -372,11 +372,15 @@ export interface Client {
    * and whose result it hands to `onSettled`: a write whose `ic_env` cookie
    * entry changes before it settles (a local redeploy) invalidates the reads
    * of the canister it wrote to. To add your own `onSettled`, call this one
-   * from it with all four arguments; to add your own `onMutate`, call this
-   * one from it with both and return its result, or spread it into yours.
-   * An `onMutate` that replaces this one leaves `mutationFn` and `onSettled`
-   * each to resolve the targets when it runs, so a cookie rewritten between
-   * the two can split the write from its invalidation.
+   * from it with every argument it gets; to add your own `onMutate`, call
+   * this one from it with both and spread its result into yours:
+   * `{ ...options.onMutate(variables, context), previous }`. An `onMutate`
+   * that replaces this one keeps the write and its invalidation together
+   * from TanStack Query 5.89 on, which hands `mutationFn` and `onSettled` the
+   * same run context: `mutationFn` resolves the targets when it starts, and
+   * `onSettled` reads them from there. Before 5.89 it leaves `mutationFn` and
+   * `onSettled` each to resolve the targets when it runs, so a cookie
+   * rewritten between the two can split the write from its invalidation.
    *
    * @throws TypeError for a canister of another client, a method a service
    * does not have, or a third argument other than `{ invalidates }`.

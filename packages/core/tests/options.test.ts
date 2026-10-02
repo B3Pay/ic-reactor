@@ -13,9 +13,10 @@ import {
   focusManager,
   onlineManager,
   skipToken,
+  type MutationObserverOptions,
   type QueryKey,
 } from "@tanstack/query-core"
-import { classifyError } from "../src/errors.js"
+import { classifyError, type ReactorError } from "../src/errors.js"
 import type { Client } from "../src/index.js"
 import type { CanisterMutationOptions } from "../src/types.js"
 import { createTestAuth } from "../src/testing/index.js"
@@ -716,6 +717,53 @@ describe("mutationOptions", () => {
 
   type BumpOptions = CanisterMutationOptions<bigint, bigint, string>
 
+  /** What an app hands `useMutation` or a `MutationObserver` for `bump`, with an onMutate of its own or not. */
+  type AppBumpOptions = MutationObserverOptions<
+    bigint,
+    ReactorError<string>,
+    bigint,
+    unknown
+  >
+
+  /**
+   * Writes `bump` to the `{ name }` canister with the options `compose`
+   * returns, and moves the name to another canister while the update is in
+   * flight. The write must reach the first canister, whose cached reads it
+   * invalidates, and leave the reads of the new one alone.
+   */
+  async function writeAcrossRedeploy(
+    compose: (options: BumpOptions) => AppBumpOptions
+  ) {
+    const held = deferred()
+    const { replica, client, backend, redeploy } = redeployable(held.promise)
+    const before = client.queryOptions(backend, "one", 1n)
+    expect(before.queryKey[3]).toBe(SHAPES)
+    await client.queryClient.fetchQuery(before)
+
+    const write = new MutationObserver(
+      client.queryClient,
+      compose(client.mutationOptions(backend, "bump"))
+    ).mutate(1n)
+    await vi.waitFor(() => expect(requestsFor(replica, "bump")).toHaveLength(1))
+    // The update is in flight at the first canister; a redeploy gives the
+    // name another one, and a read made now goes there.
+    redeploy()
+    const after = client.queryOptions(backend, "one", 1n)
+    expect(after.queryKey[3]).toBe(REDEPLOYED)
+    await client.queryClient.fetchQuery(after)
+    held.resolve()
+    await expect(write).resolves.toBe(2n)
+
+    expect(requestsFor(replica, "bump")).toMatchObject([{ canisterId: SHAPES }])
+    // The reads of the canister written to are stale; the other's are not.
+    expect(
+      client.queryClient.getQueryState(before.queryKey)?.isInvalidated
+    ).toBe(true)
+    expect(
+      client.queryClient.getQueryState(after.queryKey)?.isInvalidated
+    ).toBe(false)
+  }
+
   it.each([
     ["as given", (options: BumpOptions) => options],
     [
@@ -730,41 +778,24 @@ describe("mutationOptions", () => {
     ],
   ])(
     "invalidates the canister a { name } write went to when the cookie moves the name before the write settles, with the options %s",
-    async (_label, compose) => {
-      const held = deferred()
-      const { replica, client, backend, redeploy } = redeployable(held.promise)
-      const before = client.queryOptions(backend, "one", 1n)
-      expect(before.queryKey[3]).toBe(SHAPES)
-      await client.queryClient.fetchQuery(before)
-
-      const write = new MutationObserver(
-        client.queryClient,
-        compose(client.mutationOptions(backend, "bump"))
-      ).mutate(1n)
-      await vi.waitFor(() =>
-        expect(requestsFor(replica, "bump")).toHaveLength(1)
-      )
-      // The update is in flight at the first canister; a redeploy gives the
-      // name another one, and a read made now goes there.
-      redeploy()
-      const after = client.queryOptions(backend, "one", 1n)
-      expect(after.queryKey[3]).toBe(REDEPLOYED)
-      await client.queryClient.fetchQuery(after)
-      held.resolve()
-      await expect(write).resolves.toBe(2n)
-
-      expect(requestsFor(replica, "bump")).toMatchObject([
-        { canisterId: SHAPES },
-      ])
-      // The reads of the canister written to are stale; the other's are not.
-      expect(
-        client.queryClient.getQueryState(before.queryKey)?.isInvalidated
-      ).toBe(true)
-      expect(
-        client.queryClient.getQueryState(after.queryKey)?.isInvalidated
-      ).toBe(false)
-    }
+    (_label, compose) => writeAcrossRedeploy(compose)
   )
+
+  it("keeps a { name } write and its invalidation on one canister when an onMutate of the app's replaces the given one", async ({
+    skip,
+  }) => {
+    if (!(await sharesRunContext())) {
+      skip(
+        "this TanStack Query does not pass mutationFn and onSettled the run's context, so each resolves the canister when it runs"
+      )
+    }
+    // TanStack's optimistic-update recipe, spread over the options: the
+    // app's onMutate returns its own context and never calls the given one.
+    await writeAcrossRedeploy((options) => ({
+      ...options,
+      onMutate: () => ({ previous: "the app's own context" }),
+    }))
+  })
 
   it("invalidates the canister a { name } in invalidates named when the write started, though the cookie moves the name before the write settles", async () => {
     const held = deferred()
@@ -858,20 +889,37 @@ describe("mutationOptions", () => {
 })
 
 /**
- * Whether the installed TanStack Query hands `onMutate` and `mutationFn` the
- * same function context for one run (5.89 and later), through which
- * `mutationFn` finds the canister `onMutate` resolved. The peer-floor check
- * runs these tests on an older release, which passes `mutationFn` nothing.
+ * Whether the installed TanStack Query hands `onMutate`, `mutationFn` and
+ * `onSettled` the same function context for one run (5.89 and later), through
+ * which `mutationFn` finds the canister `onMutate` resolved, and `onSettled`
+ * the one `mutationFn` wrote to. The peer-floor check runs these tests on an
+ * older release, which passes `mutationFn` and `onSettled` none.
  */
 async function sharesRunContext(): Promise<boolean> {
-  let atMutate: unknown
-  return new MutationObserver(new QueryClient(), {
+  const seen: unknown[] = []
+  await new MutationObserver(new QueryClient(), {
     onMutate: (_vars: void, context?: unknown) => {
-      atMutate = context
+      seen.push(context)
     },
-    mutationFn: (_vars: void, context?: unknown) =>
-      Promise.resolve(context !== undefined && context === atMutate),
+    mutationFn: (_vars: void, context?: unknown) => {
+      seen.push(context)
+      return Promise.resolve()
+    },
+    onSettled: (
+      _data: unknown,
+      _error: unknown,
+      _vars: void,
+      _onMutateResult: unknown,
+      context?: unknown
+    ) => {
+      seen.push(context)
+    },
   }).mutate()
+  return (
+    seen.length === 3 &&
+    seen[0] !== undefined &&
+    seen.every((context) => context === seen[0])
+  )
 }
 
 /** A client in a page, on `replica`, with nobody signed in. */

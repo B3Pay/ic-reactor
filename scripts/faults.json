@@ -196,8 +196,18 @@
     "testName": "invalidates the canister a { name } write went to when the cookie moves the name before the write settles",
     "why": "onSettled resolves a { name } from the ic_env cookie again when the write settles, so after a local redeploy mid-write it invalidates the canister the cookie names now and leaves the reads of the one written to stale",
     "file": "src/options.ts",
-    "search": "        const targets = (runIn(context) ?? resolveRun()).invalidates",
-    "replace": "        const targets = resolveRun().invalidates"
+    "search": "        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()",
+    "replace": "        const run = resolveRun()"
+  },
+  {
+    "id": "ir2t-name-write-under-app-onmutate-settles-elsewhere",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "keeps a { name } write and its invalidation on one canister when an onMutate of the app's replaces the given one",
+    "why": "onSettled looks for the run only in what onMutate returned, not by the run's function context, so under an onMutate of the app's that replaces the given one (TanStack's optimistic-update recipe) it resolves a { name } again at settlement, and a local redeploy mid-write leaves the reads of the canister written to stale",
+    "file": "src/options.ts",
+    "search": "        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()",
+    "replace": "        const run = runIn(onMutateResult) ?? resolveRun()"
   },
   {
     "id": "ir2t-name-write-sent-where-resolved-late",
