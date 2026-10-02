@@ -440,6 +440,63 @@ function quoteNames(names: string[]): string {
 }
 
 /**
+ * Whether the filesystem that holds `dir` takes `A.ts` and `a.ts` for one
+ * file, `undefined` when that cannot be told.
+ *
+ * It looks a name up in a spelling with its case swapped and asks whether that
+ * finds the same entry. The name is one inside `dir`, or inside the nearest
+ * directory above it that exists (`dir` may be made by the generator), or that
+ * directory's own, so that the lookup is made where the modules will be. Only
+ * ASCII letters are swapped: other scripts fold by rules a probe cannot know.
+ */
+export function foldsCase(dir: string): boolean | undefined {
+  const swapCase = (name: string) =>
+    name.replace(/[a-z]/gi, (letter) =>
+      letter === letter.toLowerCase()
+        ? letter.toUpperCase()
+        : letter.toLowerCase()
+    )
+  const probe = (entry: string): boolean | undefined => {
+    const swapped = path.join(
+      path.dirname(entry),
+      swapCase(path.basename(entry))
+    )
+    if (swapped === entry) return undefined
+    try {
+      const found = fs.lstatSync(entry, { bigint: true })
+      // A filesystem that reports no file index cannot say that two names
+      // are one file.
+      if (found.ino === 0n) return undefined
+      try {
+        const other = fs.lstatSync(swapped, { bigint: true })
+        return other.dev === found.dev && other.ino === found.ino
+      } catch (error) {
+        return (error as NodeJS.ErrnoException).code === "ENOENT"
+          ? false
+          : undefined
+      }
+    } catch {
+      return undefined
+    }
+  }
+
+  for (let at = dir; ; at = path.dirname(at)) {
+    let names: string[] = []
+    try {
+      names = fs.readdirSync(at)
+    } catch {
+      // Not made yet, or not a directory.
+    }
+    const named = names.find((name) => swapCase(name) !== name)
+    const verdict =
+      (named === undefined ? undefined : probe(path.join(at, named))) ??
+      probe(at)
+    if (verdict !== undefined) return verdict
+    if (path.dirname(at) === at) return undefined
+  }
+}
+
+/**
  * Generate `canisters` with the CLI at `cli`: one process for each output
  * directory, run side by side. Never rejects. Aborting `signal` kills the
  * processes that are running, and their canisters fail as stopped.
@@ -452,16 +509,37 @@ function quoteNames(names: string[]): string {
  * Different `.did` files that would write the same module (the CLI names an
  * output after its `.did`, so `a/ledger.did` and `b/ledger.did` in one
  * `outDir` collide) are refused here, naming both. The CLI would otherwise
- * refuse the whole run with a usage error.
+ * refuse the whole run with a usage error. Whether `A.did` and `a.did` collide
+ * depends on the filesystem of the `outDir`: they do where it ignores case
+ * (macOS and Windows by default) and write two modules where it does not.
  */
 export async function generate(
-  request: Context & { canisters: GenerateCanister[] }
+  request: Context & {
+    canisters: GenerateCanister[]
+    /**
+     * Whether the filesystem that holds an `outDir` ignores case, `undefined`
+     * when unknown, which is taken as a filesystem that does not. For tests,
+     * which cannot rely on the filesystem of the machine they run on.
+     */
+    foldsCase?: (outDir: string) => boolean | undefined
+  }
 ): Promise<GenerateResult> {
   const { root } = request
   // Each pair of .did and outDir once, and the module each would write.
   const units = new Map<string, Unit>()
   const claimed = new Map<string, Unit>()
   const refused = new Map<Unit, Unit>()
+
+  // The probe runs once for each outDir.
+  const folding = new Map<string, boolean>()
+  const targetOf = (unit: Unit): string => {
+    let folds = folding.get(unit.outDir)
+    if (folds === undefined) {
+      folds = (request.foldsCase ?? foldsCase)(unit.outDir) ?? false
+      folding.set(unit.outDir, folds)
+    }
+    return folds ? moduleOf(unit).toLowerCase() : moduleOf(unit)
+  }
 
   for (const canister of request.canisters) {
     const key = JSON.stringify([canister.didFile, canister.outDir])
@@ -476,7 +554,7 @@ export async function generate(
       outDir: canister.outDir,
     }
     units.set(key, unit)
-    const target = moduleOf(unit).toLowerCase()
+    const target = targetOf(unit)
     const owner = claimed.get(target)
     if (owner) refused.set(unit, owner)
     else claimed.set(target, unit)
@@ -487,7 +565,10 @@ export async function generate(
     status: "failed",
     omitted: [],
     failure:
-      `would write ${path.relative(root, moduleOf(unit))}, which ${quoteNames(owner.names)} already writes. ` +
+      `would write ${path.relative(root, moduleOf(unit))}, which ${quoteNames(owner.names)} already writes` +
+      (moduleOf(unit) === moduleOf(owner)
+        ? ". "
+        : ` as ${path.relative(root, moduleOf(owner))}: the filesystem does not tell the two names apart. `) +
       `The generator names a module after its .did file: rename one file or give one canister its own outDir`,
   }))
 

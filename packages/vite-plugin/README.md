@@ -98,7 +98,10 @@ and a save of the file regenerates it once. (Naming a canister without a
 `didFile` is the same thing when only the cookie is wanted.) Different `.did`
 files that name the same module cannot share an `outDir`: `a/ledger.did` and
 `b/ledger.did` both mean `ledger.ts`, and the second is refused with a message
-naming both. Give one an `outDir` of its own.
+naming both. Give one an `outDir` of its own. Names that differ only in case
+(`Ledger.did` and `ledger.did`) collide only where the filesystem of the
+`outDir` ignores case, as macOS and Windows do by default: the plugin checks
+the filesystem and does not refuse them where it tells them apart.
 
 ## Generation
 
