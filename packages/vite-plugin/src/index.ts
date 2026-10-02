@@ -409,7 +409,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   /**
    * Put the unfixed failures in the error overlay: of the browser that just
    * connected when the WebSocket hands it over (`ws.on("connection")` does),
-   * and of every browser otherwise.
+   * and of every browser otherwise. Vite's client clears the overlay on every
+   * hot update it applies, and nothing here sends it again, so the overlay can
+   * go while a canister is still broken. The terminal log keeps the error, and
+   * the replay on connection shows it after the next full reload.
    */
   const showOverlay = (client?: { send?: (data: string) => void }): void => {
     if (unfixed.size === 0) return

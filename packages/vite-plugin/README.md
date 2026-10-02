@@ -144,7 +144,10 @@ A failed canister costs that canister, and nothing else:
 - Under `vite dev` the failure is logged and shown in the browser's error
   overlay, and the server keeps serving. The overlay lists the canisters that
   are still broken: fixing one of several updates it, and fixing the last
-  clears it.
+  clears it. Vite's client clears an error overlay whenever it applies a hot
+  update, as it does for Vite's own errors, so a canister that is still broken
+  can drop out of the browser's overlay after you save some other file. Its
+  error stays in the terminal log, and a full reload shows the overlay again.
 - `failOnError` overrides either default.
 
 ### In CI
