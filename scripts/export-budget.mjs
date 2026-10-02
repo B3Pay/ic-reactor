@@ -14,6 +14,12 @@
  * line here. React's fifth slot is free on purpose (it was `useCanister`,
  * dropped): filling it means appending a name to `planned`.
  *
+ * The entries below are also the list of every importable subpath: a package
+ * of `packages/` that publishes may map nothing in its `exports` that has no
+ * entry here (`./package.json` aside), and a new publishable package needs its
+ * entries before it ships. A subpath nobody budgeted would otherwise export
+ * names no gate ever read.
+ *
  * Alongside the count, no name may be exported twice. D35: one import path
  * per name across every ic-reactor package, `@candid-core/schema` and
  * TanStack Query. A reader who has seen `principal` or `skipToken` from one

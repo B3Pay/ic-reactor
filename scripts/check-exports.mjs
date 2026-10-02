@@ -9,6 +9,12 @@
  * it re-exports it), looking the file up in the package's `exports` map as a
  * consumer's TypeScript does, and fails when:
  *
+ * - a package under `packages/` maps a subpath of its `exports` that the budget
+ *   has no entry for, has no `exports` map at all, or is publishable with no
+ *   entry (a subpath is public surface whatever it is called: `./internal`
+ *   would hand out every name the entries do not);
+ * - the declarations behind two conditions of one entry (`import` and
+ *   `require`, say) do not export the same names;
  * - an entry exports a name its budget does not plan;
  * - an entry exports more names than its cap;
  * - a name is exported by two entries (D35);
@@ -28,8 +34,8 @@
  * Usage: node scripts/check-exports.mjs
  */
 import { createRequire } from "node:module"
-import { existsSync, readFileSync, realpathSync } from "node:fs"
-import { dirname, join, resolve } from "node:path"
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs"
+import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { EXPORT_BUDGET } from "./export-budget.mjs"
 
@@ -40,18 +46,45 @@ const ts = createRequire(import.meta.url)("typescript")
 /** The conditions of an `exports` entry that lead to declarations, in order. */
 const TYPE_CONDITIONS = ["types", "import", "default"]
 
+const DECLARATION = /\.d\.[cm]?ts$/
+
+/** The declaration file TypeScript looks for beside a JavaScript target. */
+const IMPLICIT_DECLARATION = [
+  [/\.js$/, ".d.ts"],
+  [/\.cjs$/, ".d.cts"],
+  [/\.mjs$/, ".d.mts"],
+]
+
+const readJson = (path) => JSON.parse(readFileSync(path, "utf8"))
+
+/**
+ * A manifest's `exports` as a map of subpath to target. The sugar forms (a
+ * string, an array, or conditions with no subpath keys) are the root subpath;
+ * a manifest without `exports` has none, and is read through `types`.
+ */
+export function exportsMapOf(manifest) {
+  const { exports } = manifest
+  if (exports === undefined || exports === null) return undefined
+  if (
+    typeof exports === "string" ||
+    Array.isArray(exports) ||
+    !Object.keys(exports).some((key) => key.startsWith("."))
+  ) {
+    return { ".": exports }
+  }
+  return exports
+}
+
 /**
  * The declaration file `subpath` of a package resolves to, as the `exports`
  * map says, or undefined. A package without an `exports` map is read through
  * `types`/`typings` for its root.
  */
 export function typesFileOf(packageDir, subpath) {
-  const manifest = JSON.parse(
-    readFileSync(join(packageDir, "package.json"), "utf8")
-  )
+  const manifest = readJson(join(packageDir, "package.json"))
   const find = (target) => {
     if (typeof target === "string") {
-      return /\.d\.[cm]?ts$/.test(target) ? target : undefined
+      return DECLARATION.test(target) ? target : undefined
     }
     if (target === null || typeof target !== "object") return undefined
     for (const condition of TYPE_CONDITIONS) {
@@ -62,13 +95,63 @@ export function typesFileOf(packageDir, subpath) {
     }
     return undefined
   }
+  const map = exportsMapOf(manifest)
   const target =
-    manifest.exports === undefined
+    map === undefined
       ? subpath === "."
         ? (manifest.types ?? manifest.typings)
         : undefined
-      : find(manifest.exports[subpath])
+      : find(map[subpath])
   return target === undefined ? undefined : resolve(packageDir, target)
+}
+
+/**
+ * Every declaration file `subpath` can resolve to, through any condition of
+ * its `exports` target: `import` and `require` branches, and the `.d.ts`
+ * TypeScript finds beside a JavaScript target that names no `types`. A package
+ * can declare different names for the two module systems, and
+ * `typesFileOf` reads only one of them.
+ *
+ * @returns {{ file: string, via: string }[]} `via` is the condition path that
+ *   leads to the file, such as `require.types`.
+ */
+export function declarationFilesOf(packageDir, subpath) {
+  const manifest = readJson(join(packageDir, "package.json"))
+  const map = exportsMapOf(manifest)
+  const found = []
+  const add = (path, via) => {
+    const file = resolve(packageDir, path)
+    if (!found.some((known) => known.file === file)) {
+      found.push({ file, via: via.length > 0 ? via.join(".") : subpath })
+    }
+  }
+  const walk = (node, via, typed) => {
+    if (typeof node === "string") {
+      if (DECLARATION.test(node)) return add(node, via)
+      if (typed) return
+      const implicit = IMPLICIT_DECLARATION.find(([js]) => js.test(node))
+      if (implicit === undefined) return
+      const path = node.replace(implicit[0], implicit[1])
+      if (existsSync(resolve(packageDir, path))) add(path, via)
+      return
+    }
+    if (Array.isArray(node)) {
+      for (const item of node) walk(item, via, typed)
+      return
+    }
+    if (node === null || typeof node !== "object") return
+    const declared = typed || "types" in node
+    for (const [condition, value] of Object.entries(node)) {
+      walk(value, [...via, condition], declared)
+    }
+  }
+  if (map === undefined) {
+    const types = subpath === "." ? (manifest.types ?? manifest.typings) : null
+    if (typeof types === "string") add(types, ["types"])
+  } else {
+    walk(map[subpath], [], false)
+  }
+  return found
 }
 
 /** What kind of thing an exported symbol is, for messages. */
@@ -281,8 +364,6 @@ function findInstalled(from, name) {
   }
 }
 
-const readJson = (path) => JSON.parse(readFileSync(path, "utf8"))
-
 /**
  * Reads what every entry of the budget exports and what the foreign packages
  * export, from the built and installed files under `rootDir`.
@@ -307,12 +388,25 @@ export function collect({ rootDir, budget = EXPORT_BUDGET }) {
         `${entry.id}: ${file} does not exist. Run \`pnpm build\` first.`
       )
     } else {
+      // The other conditions of the same entry (`require` beside `import`)
+      // must declare the same names as the one every other check reads.
+      const alternates = []
+      for (const other of declarationFilesOf(packageDir, entry.subpath)) {
+        if (other.file === file) continue
+        if (existsSync(other.file)) alternates.push(other)
+        else {
+          failures.push(
+            `${entry.id}: the "${other.via}" condition declares ${other.file}, which does not exist. Run \`pnpm build\` first.`
+          )
+        }
+      }
       entryFiles.push({
         entry,
         file,
+        alternates,
         version: readJson(join(packageDir, "package.json")).version,
       })
-      files.push(file)
+      files.push(file, ...alternates.map((other) => other.file))
     }
   }
 
@@ -359,20 +453,132 @@ export function collect({ rootDir, budget = EXPORT_BUDGET }) {
     version,
     names: read.get(file),
   }))
+  for (const { entry, file, alternates } of entryFiles) {
+    const primary = read.get(file)
+    for (const other of alternates) {
+      const names = read.get(other.file)
+      const onlyHere = [...primary.keys()].filter((name) => !names.has(name))
+      const onlyThere = [...names.keys()].filter((name) => !primary.has(name))
+      if (onlyHere.length === 0 && onlyThere.length === 0) continue
+      failures.push(
+        `${entry.id}: the "${other.via}" condition (${relative(rootDir, other.file)}) does not export the names of ${relative(rootDir, file)}` +
+          `${onlyHere.length > 0 ? `; missing there: ${onlyHere.join(", ")}` : ""}` +
+          `${onlyThere.length > 0 ? `; only there: ${onlyThere.join(", ")}` : ""}. ` +
+          `An entry has one public surface: every condition must declare the same names, or the budget reads only one of them.`
+      )
+    }
+  }
   return { exported, foreign, failures }
+}
+
+// ── Reading the packages ─────────────────────────────────────────────────────
+
+/** The directory the publishable packages live in, below the repository root. */
+const PACKAGES_DIR = "packages"
+
+/** The package directories (`packages/<name>`) that hold a manifest. */
+function packageDirsOf(rootDir, packagesDir = PACKAGES_DIR) {
+  const base = join(rootDir, packagesDir)
+  if (!existsSync(base)) return []
+  return readdirSync(base, { withFileTypes: true })
+    .filter(
+      (dirent) =>
+        dirent.isDirectory() &&
+        existsSync(join(base, dirent.name, "package.json"))
+    )
+    .map((dirent) => `${packagesDir}/${dirent.name}`)
+    .sort()
+}
+
+/**
+ * Checks that the budget covers every way a package can be imported from: a
+ * package of `packages/` that publishes, with the subpaths of its `exports`.
+ * `collect` reads only the entries the budget lists, so without this a new
+ * subpath (`"./internal": ...`) or a new package would ship names no budget
+ * ever looked at.
+ *
+ * Private packages are skipped, and so is `./package.json`. A subpath mapped
+ * to `null` is blocked, not exposed.
+ *
+ * @returns {string[]} The failures.
+ */
+export function checkPackages({ rootDir, budget = EXPORT_BUDGET }) {
+  const failures = []
+  const budgeted = new Map() // package dir -> subpaths with an entry
+  for (const entry of budget.entries) {
+    budgeted.set(entry.package, [
+      ...(budgeted.get(entry.package) ?? []),
+      entry.subpath,
+    ])
+  }
+  for (const dir of packageDirsOf(rootDir, budget.packagesDir)) {
+    const manifest = readJson(join(rootDir, dir, "package.json"))
+    if (manifest.private === true) continue
+    const name = manifest.name ?? dir
+    const subpaths = budgeted.get(dir)
+    if (subpaths === undefined) {
+      failures.push(
+        `${dir} (${name}) is publishable but has no entry in the export budget, so nothing limits what it exports. ` +
+          `Add its entry points to scripts/export-budget.mjs, or mark the package private.`
+      )
+      continue
+    }
+    const map = exportsMapOf(manifest)
+    if (map === undefined) {
+      failures.push(
+        `${dir}/package.json has no \`exports\` map, so every file of ${name} is importable and the budget reads only the entry. ` +
+          `Map the entries in \`exports\`.`
+      )
+      continue
+    }
+    for (const [subpath, target] of Object.entries(map)) {
+      if (subpath === "./package.json" || target === null) continue
+      if (!subpaths.includes(subpath)) {
+        failures.push(
+          `${dir}/package.json maps the subpath "${subpath}", which the export budget has no entry for. ` +
+            `Every importable subpath is public surface: budget it in scripts/export-budget.mjs, or remove it from \`exports\`.`
+        )
+      }
+    }
+  }
+  return failures
 }
 
 // ── The command ──────────────────────────────────────────────────────────────
 
-function main() {
-  const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
-  const { exported, foreign, failures: unreadable } = collect({ rootDir })
+/**
+ * Everything the gate checks, against the files under `rootDir`.
+ *
+ * @returns {{ exported: object[], pending: Map<string, string[]>, transitional: Map<string, string[]>, failures: string[] }}
+ */
+export function checkRepository({ rootDir, budget = EXPORT_BUDGET }) {
+  const {
+    exported,
+    foreign,
+    failures: unreadable,
+  } = collect({ rootDir, budget })
+  const unbudgeted = checkPackages({ rootDir, budget })
   const { failures, pending, transitional } = evaluate({
-    entries: EXPORT_BUDGET.entries,
+    entries: budget.entries,
     exported,
     foreign,
   })
-  const all = [...unreadable, ...failures]
+  return {
+    exported,
+    pending,
+    transitional,
+    failures: [...unreadable, ...unbudgeted, ...failures],
+  }
+}
+
+function main() {
+  const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
+  const {
+    exported,
+    pending,
+    transitional,
+    failures: all,
+  } = checkRepository({ rootDir })
 
   for (const entry of exported) {
     const budget = EXPORT_BUDGET.entries.find(

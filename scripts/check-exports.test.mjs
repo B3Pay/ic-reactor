@@ -11,8 +11,12 @@ import { dirname, join } from "node:path"
 import { after, describe, it } from "node:test"
 import { fileURLToPath } from "node:url"
 import {
+  checkPackages,
+  checkRepository,
   collect,
+  declarationFilesOf,
   evaluate,
+  exportsMapOf,
   isAlpha,
   readExportNames,
   typesFileOf,
@@ -489,5 +493,315 @@ describe("reading declaration files", () => {
       /ghost\.d\.ts does not exist\. Run `pnpm build` first/
     )
     assert.match(failures[1], /has no declarations for "\.\/nowhere"/)
+  })
+})
+
+// ── Every way in is budgeted ─────────────────────────────────────────────────
+
+const repos = []
+after(() => {
+  for (const root of repos) rmSync(root, { recursive: true, force: true })
+})
+
+/** A repository of the given files, in a temporary directory. */
+function makeRepo(files) {
+  const root = mkdtempSync(join(tmpdir(), "check-exports-repo-"))
+  repos.push(root)
+  for (const [path, text] of Object.entries(files)) {
+    mkdirSync(dirname(join(root, path)), { recursive: true })
+    writeFileSync(join(root, path), text)
+  }
+  return root
+}
+
+const manifest = (name, fields) =>
+  JSON.stringify({ name, version: "4.0.0-alpha.0", ...fields })
+
+describe("a subpath of `exports` that the budget has no entry for", () => {
+  const rootDir = (extraCore = {}, extraReact = {}) =>
+    makeRepo({
+      "packages/core/package.json": manifest("@ic-reactor/core", {
+        exports: {
+          ".": { types: "./dist/index.d.ts" },
+          "./testing": { types: "./dist/testing/index.d.ts" },
+          "./package.json": "./package.json",
+          ...extraCore,
+        },
+      }),
+      "packages/react/package.json": manifest("@ic-reactor/react", {
+        exports: { ".": { types: "./dist/index.d.ts" }, ...extraReact },
+      }),
+      "packages/vite-plugin/package.json": manifest("@ic-reactor/vite-plugin", {
+        exports: {
+          ".": {
+            import: { types: "./dist/index.d.ts" },
+            require: { types: "./dist/index.d.cts" },
+          },
+        },
+      }),
+    })
+  const budget = { entries: ENTRIES, foreign: [] }
+  const check = (root) => checkPackages({ rootDir: root, budget })
+
+  it("passes when every subpath has an entry, and `./package.json` is exempt", () => {
+    assert.deepEqual(check(rootDir()), [])
+  })
+
+  it("fails on a new core subpath, which would export what the entries do not", () => {
+    const failures = check(
+      rootDir({ "./internal": { types: "./dist/errors.d.ts" } })
+    )
+    assert.equal(failures.length, 1, failures.join("\n"))
+    assert.match(
+      failures[0],
+      /packages\/core\/package\.json maps the subpath "\.\/internal", which the export budget has no entry for/
+    )
+  })
+
+  it("fails on a react `./server` entry", () => {
+    const failures = check(
+      rootDir({}, { "./server": { types: "./dist/server.d.ts" } })
+    )
+    assert.equal(failures.length, 1, failures.join("\n"))
+    assert.match(
+      failures[0],
+      /packages\/react\/package\.json maps.*"\.\/server"/
+    )
+  })
+
+  it("fails on a wildcard subpath, which exposes every file it matches", () => {
+    const failures = check(rootDir({ "./dist/*": "./dist/*.js" }))
+    assert.equal(failures.length, 1)
+    assert.match(failures[0], /"\.\/dist\/\*"/)
+  })
+
+  it("does not count a subpath mapped to null, which blocks it", () => {
+    assert.deepEqual(check(rootDir({ "./internal": null })), [])
+  })
+
+  it("fails on a publishable package with no entry at all", () => {
+    const root = makeRepo({
+      "packages/core/package.json": manifest("@ic-reactor/core", {
+        exports: { ".": "./dist/index.js" },
+      }),
+      "packages/cli/package.json": manifest("@ic-reactor/cli", {
+        exports: { ".": "./dist/index.js" },
+      }),
+    })
+    const failures = checkPackages({
+      rootDir: root,
+      budget: { entries: [ENTRIES[0]], foreign: [] },
+    })
+    assert.equal(failures.length, 1, failures.join("\n"))
+    assert.match(
+      failures[0],
+      /packages\/cli \(@ic-reactor\/cli\) is publishable but has no entry in the export budget/
+    )
+  })
+
+  it("skips a private package", () => {
+    const root = makeRepo({
+      "packages/core/package.json": manifest("@ic-reactor/core", {
+        exports: { ".": "./dist/index.js" },
+      }),
+      "packages/tools/package.json": manifest("tools", {
+        private: true,
+        exports: { ".": "./index.js", "./anything": "./anything.js" },
+      }),
+    })
+    assert.deepEqual(
+      checkPackages({
+        rootDir: root,
+        budget: { entries: [ENTRIES[0]], foreign: [] },
+      }),
+      []
+    )
+  })
+
+  it("fails on a package with no `exports` map, where every file is importable", () => {
+    const root = makeRepo({
+      "packages/core/package.json": manifest("@ic-reactor/core", {
+        types: "./dist/index.d.ts",
+      }),
+    })
+    const failures = checkPackages({
+      rootDir: root,
+      budget: { entries: [ENTRIES[0]], foreign: [] },
+    })
+    assert.equal(failures.length, 1)
+    assert.match(failures[0], /has no `exports` map/)
+  })
+
+  it("holds for the real packages", () => {
+    assert.deepEqual(checkPackages({ rootDir: repoRoot }), [])
+  })
+})
+
+describe("reading an `exports` map", () => {
+  it("takes the sugar forms as the root subpath", () => {
+    assert.deepEqual(exportsMapOf({ exports: "./index.js" }), {
+      ".": "./index.js",
+    })
+    assert.deepEqual(
+      exportsMapOf({ exports: { import: "./a.js", default: "./b.js" } }),
+      { ".": { import: "./a.js", default: "./b.js" } }
+    )
+    assert.deepEqual(
+      exportsMapOf({ exports: { ".": "./a.js", "./b": null } }),
+      {
+        ".": "./a.js",
+        "./b": null,
+      }
+    )
+    assert.equal(exportsMapOf({}), undefined)
+  })
+})
+
+describe("the conditions of one entry", () => {
+  const plugin = (declarations) => ({
+    "packages/plugin/package.json": manifest("@ic-reactor/plugin", {
+      exports: {
+        ".": {
+          import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+          require: { types: "./dist/index.d.cts", default: "./dist/index.cjs" },
+        },
+      },
+    }),
+    "packages/plugin/dist/index.d.ts": `export declare const icReactor: () => void\nexport interface Options { a: string }\n`,
+    ...declarations,
+  })
+  const budget = {
+    entries: [
+      {
+        id: "@ic-reactor/plugin",
+        package: "packages/plugin",
+        subpath: ".",
+        cap: 2,
+        planned: ["icReactor", "Options"],
+      },
+    ],
+    foreign: [],
+  }
+  const check = (files) => checkRepository({ rootDir: makeRepo(files), budget })
+
+  it("passes when `require` declares the names `import` does", () => {
+    const result = check(
+      plugin({
+        "packages/plugin/dist/index.d.cts": `export declare const icReactor: () => void\nexport interface Options { a: string }\n`,
+      })
+    )
+    assert.deepEqual(result.failures, [])
+  })
+
+  it("fails when `require` declares a name `import` does not", () => {
+    const result = check(
+      plugin({
+        "packages/plugin/dist/index.d.cts": `export declare const icReactor: () => void\nexport interface Options { a: string }\nexport declare const leak: () => void\n`,
+      })
+    )
+    assert.equal(result.failures.length, 1, result.failures.join("\n"))
+    assert.match(
+      result.failures[0],
+      /the "require\.types" condition \(packages\/plugin\/dist\/index\.d\.cts\).*only there: leak/
+    )
+  })
+
+  it("fails when `require` lacks a name `import` declares", () => {
+    const result = check(
+      plugin({
+        "packages/plugin/dist/index.d.cts": `export declare const icReactor: () => void\n`,
+      })
+    )
+    assert.equal(result.failures.length, 1, result.failures.join("\n"))
+    assert.match(result.failures[0], /missing there: Options/)
+  })
+
+  it("fails when a declared branch was never built", () => {
+    const result = check(plugin({}))
+    assert.equal(result.failures.length, 1, result.failures.join("\n"))
+    assert.match(
+      result.failures[0],
+      /the "require\.types" condition declares .*index\.d\.cts, which does not exist/
+    )
+  })
+
+  it("is part of the gate, together with the unbudgeted subpaths", () => {
+    const files = plugin({
+      "packages/plugin/dist/index.d.cts": `export declare const icReactor: () => void\nexport declare const leak: () => void\n`,
+    })
+    files["packages/plugin/package.json"] = manifest("@ic-reactor/plugin", {
+      exports: {
+        ".": {
+          import: { types: "./dist/index.d.ts" },
+          require: { types: "./dist/index.d.cts" },
+        },
+        "./internal": { types: "./dist/index.d.ts" },
+      },
+    })
+    const result = check(files)
+    assert.equal(
+      result.failures.filter((failure) => failure.includes("./internal"))
+        .length,
+      1,
+      result.failures.join("\n")
+    )
+    assert.equal(
+      result.failures.filter((failure) => failure.includes("only there: leak"))
+        .length,
+      1
+    )
+  })
+
+  describe("declarationFilesOf", () => {
+    const filesOf = (exportsMap, extra = {}) => {
+      const root = makeRepo({
+        "packages/p/package.json": manifest("p", { exports: exportsMap }),
+        ...extra,
+      })
+      return declarationFilesOf(join(root, "packages/p"), ".").map(
+        ({ file, via }) => [file.slice(file.indexOf("packages/p/") + 11), via]
+      )
+    }
+
+    it("lists every declaration the conditions lead to, with the condition path", () => {
+      assert.deepEqual(
+        filesOf({
+          ".": {
+            import: { types: "./dist/index.d.ts", default: "./dist/index.js" },
+            require: { types: "./dist/index.d.cts" },
+          },
+        }),
+        [
+          ["dist/index.d.ts", "import.types"],
+          ["dist/index.d.cts", "require.types"],
+        ]
+      )
+    })
+
+    it("reads the declaration beside a JavaScript target that names no `types`", () => {
+      assert.deepEqual(
+        filesOf(
+          { ".": { import: "./dist/index.js", require: "./dist/index.cjs" } },
+          {
+            "packages/p/dist/index.d.ts": "export {}\n",
+            "packages/p/dist/index.d.cts": "export {}\n",
+          }
+        ),
+        [
+          ["dist/index.d.ts", "import"],
+          ["dist/index.d.cts", "require"],
+        ]
+      )
+    })
+
+    it("reads no sibling where `types` is named, as TypeScript never gets past it", () => {
+      assert.deepEqual(
+        filesOf(
+          { ".": { types: "./dist/types.d.ts", import: "./dist/index.js" } },
+          { "packages/p/dist/index.d.ts": "export {}\n" }
+        ),
+        [["dist/types.d.ts", "types"]]
+      )
+    })
   })
 })
