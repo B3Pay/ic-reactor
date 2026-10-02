@@ -1,0 +1,5 @@
+{
+  "file": "src/units.ts",
+  "search": "options?: { maxFractionDigits?: number; minFractionDigits?: number }",
+  "replace": "options?: {\n    maxFractionDigits?: number\n    minFractionDigits?: number\n    [option: string]: unknown\n  }"
+}

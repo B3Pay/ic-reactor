@@ -2,11 +2,12 @@
 /**
  * Type-checks the TypeScript code fences that readers and AI agents copy.
  *
- * The root and package `llms.txt` guides, the skills and the READMEs are where
- * an agent in a consumer project learns the API, and it pastes their snippets
- * as they stand. `check:ai-context` keeps their versions and links current but
- * never compiles a line of code, so a renamed export or a changed signature
- * left a snippet that no longer compiles with every gate green.
+ * The root and package `llms.txt` guides, the skills, the READMEs and the
+ * other AI-context files are where an agent in a consumer project learns the
+ * API, and it pastes their snippets as they stand. `check:ai-context` keeps
+ * their versions and links current but never compiles a line of code, so a
+ * renamed export or a changed signature left a snippet that no longer
+ * compiles with every gate green.
  *
  * This extracts every ```ts, ```tsx and ```typescript fence from those files,
  * writes each one to its own module in a temporary directory, and compiles them
@@ -129,6 +130,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import { AI_CONTEXT_FILES } from "./ai-context-files.js"
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
 const fixturesDir = join(rootDir, "scripts", "check-snippets")
@@ -274,19 +276,29 @@ const packageDirs = readdirSync(join(rootDir, "packages"))
   .filter((dir) => existsSync(join(rootDir, "packages", dir, "package.json")))
   .sort()
 
-/** The files agents and npm readers are pointed at. */
+/**
+ * The files agents and npm readers are pointed at: the READMEs and guides, the
+ * skills, and every file of `scripts/ai-context-files.js`. The last is what
+ * ties this gate to `check:ai-context`: a file that script checks for stale
+ * versions and removed names, this one compiles the snippets of, so a guide
+ * (the DX3 `packages/core/llms.txt`, a skill, a pointer) is gated from the
+ * commit that adds it, with no second list to forget.
+ */
 function gatedFiles() {
   return [
-    "llms.txt",
-    "llms-full.txt",
-    "README.md",
-    ...packageDirs.flatMap((dir) => [
-      `packages/${dir}/llms.txt`,
-      `packages/${dir}/README.md`,
+    ...new Set([
+      "llms.txt",
+      "llms-full.txt",
+      "README.md",
+      ...packageDirs.flatMap((dir) => [
+        `packages/${dir}/llms.txt`,
+        `packages/${dir}/README.md`,
+      ]),
+      ...walk(join(rootDir, "skill-packages"), (path) =>
+        path.endsWith(".md")
+      ).map((path) => toPosix(relative(rootDir, path))),
+      ...AI_CONTEXT_FILES,
     ]),
-    ...walk(join(rootDir, "skill-packages"), (path) =>
-      path.endsWith(".md")
-    ).map((path) => toPosix(relative(rootDir, path))),
   ].filter((file) => existsSync(join(rootDir, file)))
 }
 

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "ir3-management-reject-2-not-executed",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "reject 2 from the management canister",
+    "why": "reject 2 from aaaaa-aa classified as proof that nothing ran, as it is from every other canister",
+    "file": "src/errors.ts",
+    "search": "const noCodeRan = canisterId !== MANAGEMENT_CANISTER",
+    "replace": "const noCodeRan = true"
+  },
+  {
+    "id": "ir1c-codespaces-host-is-local",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "requests nothing on a Codespaces page",
+    "why": "a *.github.dev host treated as a local replica, so its root key is fetched",
+    "file": "src/network.ts",
+    "search": "    hostname.endsWith(\".localhost\") ||",
+    "replace": "    hostname.endsWith(\".localhost\") ||\n    hostname.endsWith(\".github.dev\") ||"
+  },
+  {
+    "id": "ir5-excess-fraction-digits-truncated",
+    "package": "core",
+    "test": "tests/units.test.ts",
+    "testName": "refuses more significant fraction digits than the token has",
+    "why": "excess fraction digits cut off instead of refused with a RangeError",
+    "file": "src/units.ts",
+    "search": "const significant = withoutTrailingZeros(fraction)",
+    "replace": "const significant = withoutTrailingZeros(fraction).slice(0, scale)"
+  },
+  {
+    "id": "ir4a-fake-replica-sender-unchecked",
+    "package": "core",
+    "test": "tests/testing-fake-replica.test.ts",
+    "testName": "refuses a forged sender",
+    "why": "the fake replica no longer checks that the sender is the principal of sender_pubkey",
+    "file": "src/testing/fake-replica.ts",
+    "search": "Principal.selfAuthenticating(sender_pubkey).toText() !== sender.toText()",
+    "replace": "false"
+  }
+]
