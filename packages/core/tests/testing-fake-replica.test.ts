@@ -668,6 +668,63 @@ describe("a canister call the fake replica rejects", () => {
         .filter((request) => request.methodName)
         .map((request) => request.canisterId)
     ).toEqual([CANISTER, CANISTER])
+    // The log keeps the effective canister id too, so a test can tell which
+    // one a client chose.
+    expect(
+      replica.requests
+        .filter((request) => request.methodName)
+        .map((request) => request.effectiveCanisterId)
+    ).toEqual([OTHER_CANISTER, OTHER_CANISTER])
+  })
+
+  it("logs the canister a request is addressed to as its effective canister id by default", async () => {
+    const replica = createFakeReplica({
+      canisters: { [CANISTER]: { update: answerWithCaller } },
+    })
+    const agent = agentOn(replica)
+
+    await update(agent)
+    await agent.readState(
+      { canisterId: Principal.fromText(CANISTER) },
+      { paths: [[new TextEncoder().encode("time")]] }
+    )
+
+    const requests = replica.requests.filter(
+      (request) => request.endpoint !== "status"
+    )
+    expect(requests.map((request) => request.endpoint)).toContain("call")
+    expect(requests.map((request) => request.endpoint)).toContain("read_state")
+    for (const request of requests) {
+      expect(request).toMatchObject({
+        canisterId: CANISTER,
+        effectiveCanisterId: CANISTER,
+      })
+    }
+  })
+
+  it("tells a management canister call from the canister it is routed by", async () => {
+    // A call to `aaaaa-aa` is routed by a canister its arguments name, which
+    // the client picks: the log has to show that choice, or a test cannot
+    // tell a right pick from a wrong one.
+    const management = "aaaaa-aa"
+    const replica = createFakeReplica({
+      canisters: { [management]: { update: answerWithText("managed") } },
+    })
+    const agent = agentOn(replica)
+
+    const reply = await agent.update(management, {
+      methodName: "canister_status",
+      arg: EMPTY_ARG,
+      effectiveCanisterId: Principal.fromText(CANISTER),
+    })
+
+    expect(decodeText(reply.reply)).toBe("managed")
+    const call = replica.requests.find((request) => request.endpoint === "call")
+    expect(call).toMatchObject({
+      canisterId: management,
+      effectiveCanisterId: CANISTER,
+      methodName: "canister_status",
+    })
   })
 
   it("rejects the calls a canister without a handler for them receives", async () => {
@@ -940,6 +997,7 @@ describe("the fault hooks", () => {
           {
             endpoint: "call",
             canisterId: CANISTER,
+            effectiveCanisterId: CANISTER,
             methodName: "whoami",
             refused: `refuseNext(${status}) answered the request with HTTP ${status}`,
           },

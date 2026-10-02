@@ -101,6 +101,15 @@ export interface FakeReplicaRequest {
   readonly endpoint: "status" | "query" | "call" | "read_state"
   /** The canister the request was addressed to, as text. */
   readonly canisterId?: string
+  /**
+   * The effective canister id the agent put in the request path
+   * (`/api/v3/canister/<id>/call`), as text. It is the canister the request is
+   * routed by, and it differs from {@link FakeReplicaRequest.canisterId} when
+   * a call goes to the management canister (`aaaaa-aa`), where the client
+   * chooses it from the call's arguments. Set on `query`, `call` and
+   * `read_state` requests.
+   */
+  readonly effectiveCanisterId?: string
   /** The canister method a query or call named. */
   readonly methodName?: string
   /** The principal the request came from, as text, once it was checked. */
@@ -681,6 +690,7 @@ function buildFakeReplica(
 
   async function handleQuery(
     canisterId: string,
+    effectiveCanisterId: string,
     envelope: Envelope,
     caller: Principal
   ) {
@@ -688,6 +698,7 @@ function buildFakeReplica(
     requests.push({
       endpoint: "query",
       canisterId,
+      effectiveCanisterId,
       methodName: method_name,
       caller: caller.toText(),
     })
@@ -723,6 +734,7 @@ function buildFakeReplica(
 
   async function handleCall(
     canisterId: string,
+    effectiveCanisterId: string,
     envelope: Envelope,
     caller: Principal
   ) {
@@ -741,6 +753,7 @@ function buildFakeReplica(
     requests.push({
       endpoint: "call",
       canisterId,
+      effectiveCanisterId,
       methodName: method_name,
       caller: caller.toText(),
       ...(lose ? { dropped: true as const } : {}),
@@ -790,7 +803,11 @@ function buildFakeReplica(
     )
 
   async function handleReadState(canisterId: string) {
-    requests.push({ endpoint: "read_state", canisterId })
+    requests.push({
+      endpoint: "read_state",
+      canisterId,
+      effectiveCanisterId: canisterId,
+    })
     // The subnet holds the installed canisters and the one asked about, so a
     // query to a canister that is not installed reaches the canister lookup
     // and is rejected there, rather than failing the agent's range check.
@@ -896,6 +913,7 @@ function buildFakeReplica(
         requests.push({
           endpoint,
           canisterId,
+          effectiveCanisterId,
           methodName: envelope.content.method_name,
           refused,
         })
@@ -907,6 +925,7 @@ function buildFakeReplica(
         requests.push({
           endpoint,
           canisterId,
+          effectiveCanisterId,
           methodName: envelope.content.method_name,
           refused: caller,
         })
@@ -914,15 +933,26 @@ function buildFakeReplica(
       }
 
       if (endpoint === "query") {
-        return await handleQuery(canisterId, envelope, caller)
+        return await handleQuery(
+          canisterId,
+          effectiveCanisterId,
+          envelope,
+          caller
+        )
       }
       if (endpoint === "call") {
-        return await handleCall(canisterId, envelope, caller)
+        return await handleCall(
+          canisterId,
+          effectiveCanisterId,
+          envelope,
+          caller
+        )
       }
       if (readsLostRequest(envelope)) {
         requests.push({
           endpoint,
           canisterId: effectiveCanisterId,
+          effectiveCanisterId,
           dropped: true,
         })
         throw lostReply()
