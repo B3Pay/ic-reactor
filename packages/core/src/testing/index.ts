@@ -1,11 +1,6 @@
 /**
  * `@ic-reactor/core/testing`: run the code under test against a fake replica
- * instead of a real one, or instead of a hand-built stub of `Reactor`.
- *
- * {@link installFakeReplica} answers an `HttpAgent`'s requests with the
- * canisters {@link createTestCanister} builds, so `ClientManager`, `Reactor`,
- * `DisplayReactor`, their query keys, error unwrapping and the React hooks all
- * run as they do in production.
+ * instead of a real one.
  *
  * This entry is separate from the main one, which never imports it, so none
  * of it reaches an app bundle. It signs with `@noble/curves`, an optional peer
@@ -22,8 +17,3 @@ export {
   type FakeReplicaOptions,
   type FakeReplicaRequest,
 } from "./fake-replica.js"
-export {
-  createTestCanister,
-  type TestCanisterHandler,
-  type TestCanisterHandlers,
-} from "./test-canister.js"

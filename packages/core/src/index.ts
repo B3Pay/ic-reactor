@@ -1,8 +1,9 @@
-export * from "./reactor.js"
-export * from "./client.js"
-export * from "./utils/index.js"
-export * from "./display/index.js"
-export * from "./display-reactor.js"
-export * from "./types/index.js"
-export * from "./errors/index.js"
-export * from "./version.js"
+/**
+ * `@ic-reactor/core` 4: the thin layer over a `candid-core-cli gen` module.
+ *
+ * The public surface is added slice by slice (milestone 1, #790): the error
+ * union, network resolution, units, the client and its canister builders.
+ *
+ * @packageDocumentation
+ */
+export {}
