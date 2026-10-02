@@ -20,6 +20,16 @@ import { dirname, join } from "node:path"
 import { after, describe, it } from "node:test"
 import { parseTraps, verifyTraps } from "./verify-traps.mjs"
 
+/**
+ * `value` as a JavaScript literal to write into a generated module: JSON, with
+ * the characters that could end a string or a script escaped as well.
+ */
+const jsLiteral = (value) =>
+  JSON.stringify(value).replace(
+    /[<>/\u2028\u2029]/g,
+    (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`
+  )
+
 const SUITE = {
   package: "packages/demo",
   file: "tests/traps.test-d.ts",
@@ -379,7 +389,7 @@ describe("verifyTraps", () => {
 
   it("applies a fault written as a module", async () => {
     const root = repo({
-      "scripts/traps/double-refuses-text.mjs": `export default ({ applyEdits }) => applyEdits(${JSON.stringify(doubleEdits)})\n`,
+      "scripts/traps/double-refuses-text.mjs": `export default ({ applyEdits }) => applyEdits(${jsLiteral(doubleEdits)})\n`,
       ...fixture("label-refuses-a-number", labelFault),
     })
     const result = await verify(root)
