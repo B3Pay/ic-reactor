@@ -1,0 +1,5 @@
+{
+  "file": "src/types.ts",
+  "search": "export type ArgsOf<F> = F extends (...args: infer P) => Promise<unknown>\n  ? P\n  : never",
+  "replace": "export type ArgsOf<F> = F extends (...args: infer P) => Promise<unknown>\n  ? { [I in keyof P]: unknown }\n  : never"
+}

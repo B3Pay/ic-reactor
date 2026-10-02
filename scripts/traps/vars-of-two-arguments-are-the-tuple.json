@@ -1,0 +1,5 @@
+{
+  "file": "src/types.ts",
+  "search": "  : P extends readonly [infer One]\n    ? One\n    : P",
+  "replace": "  : P extends readonly [infer One]\n    ? One\n    : P | P[0]"
+}
