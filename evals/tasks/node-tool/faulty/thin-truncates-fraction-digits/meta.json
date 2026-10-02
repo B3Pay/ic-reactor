@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Truncates an amount with more than 8 fraction digits to 8 and sends it, instead of refusing it.",
+  "expectFail": ["refuses_excess_fraction_digits", "refusal_not_executed"]
+}

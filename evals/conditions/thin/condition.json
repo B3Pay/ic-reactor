@@ -1,0 +1,8 @@
+{
+  "name": "thin",
+  "library": "Available library: `@candid-core/schema` 0.2.0, with the module `candid-core-cli gen` generated from the ledger's `.did` in `src/generated/icrc1.ts`; use it with `@icp-sdk/core`, `@icp-sdk/auth` and TanStack Query (`@tanstack/react-query`, `@tanstack/query-core`) directly — no other framework. Its documentation is in `docs/`; read it before you start.",
+  "docs": [
+    "docs/candid-core-schema.README.md",
+    "docs/candid-core-cli.README.md"
+  ]
+}

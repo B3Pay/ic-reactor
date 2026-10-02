@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Formats the balance through Number(): exact below 2^53, wrong above it.",
+  "expectFail": ["balance_exact_bigint"]
+}

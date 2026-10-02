@@ -1,0 +1,9 @@
+{
+  "condition": "thin",
+  "bug": "Maps reject codes 1 and 2 to 'may have executed' and code 4 to 'not executed' (only 3 and 5 right).",
+  "expectFail": [
+    "reject_code_1_classified",
+    "reject_code_2_classified",
+    "reject_code_4_classified"
+  ]
+}

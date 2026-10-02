@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Fetches the root key from any host that is not a mainnet host, instead of only from a local one.",
+  "expectFail": ["root_key_not_fetched_off_local"]
+}
