@@ -45,10 +45,19 @@ const MANAGEMENT = "aaaaa-aa"
 const METHOD = "icrc1_transfer"
 const REQUEST_ID = new Uint8Array(32).fill(7) as RequestId
 
+// An update says whether the request may already be in the IC; unless a test
+// is about that, it is not.
 const context = (
   mode: CallMode,
-  extra: Partial<ErrorContext> = {}
-): ErrorContext => ({ method: METHOD, canisterId: LEDGER, mode, ...extra })
+  {
+    canisterId = LEDGER,
+    accepted,
+    signal,
+  }: { canisterId?: string; accepted?: boolean; signal?: AbortSignal } = {}
+): ErrorContext =>
+  mode === "update"
+    ? { method: METHOD, canisterId, mode, accepted: accepted ?? false, signal }
+    : { method: METHOD, canisterId, mode, accepted, signal }
 
 // ---------------------------------------------------------------------------
 // Two copies of every agent error. `real` is built with the SDK's own classes.
@@ -536,10 +545,14 @@ describe("classifyError", () => {
     })
   })
 
-  describe("an update the replica has already accepted", () => {
+  describe("an update the replica may already have accepted", () => {
     // The agent polls `read_state` after a 202. An HTTP error from that poll,
     // or a refused ingress expiry, says nothing about the update itself,
-    // which is in the IC by then.
+    // which is in the IC by then. The same holds when the agent re-sent the
+    // request on its own: it reports only the last attempt's status, so a 429
+    // at the end of a sequence that began with a lost connection proves
+    // nothing about the first attempt. The client passes `accepted: true` for
+    // both.
     it.each([
       ["HTTP 429", http(429)],
       ["HTTP 400", http(400)],
@@ -554,6 +567,24 @@ describe("classifyError", () => {
         expect(error.kind).toBe("outcome_unknown")
         expect(error.mayHaveExecuted).toBe(true)
         expect(retryUpdate(error, 0)).toBe(false)
+      }
+    })
+
+    it("reads a context that leaves `accepted` out as accepted", () => {
+      // The type requires it; a caller that gets round the type, or is not
+      // TypeScript, must get the answer that cannot cause a double send.
+      const unspecified = {
+        method: METHOD,
+        canisterId: LEDGER,
+        mode: "update",
+      } as unknown as ErrorContext
+      for (const built of [http(429), http(400), ingressExpiry]) {
+        for (const build of [built.real, built.copy]) {
+          const error = classifyError(build(), unspecified)
+          expect(error.kind).toBe("outcome_unknown")
+          expect(error.mayHaveExecuted).toBe(true)
+          expect(retryUpdate(error, 0)).toBe(false)
+        }
       }
     })
 

@@ -293,28 +293,58 @@ export function invalidReplyError(
 // an error from another copy of the agent classifies the same way.
 // ---------------------------------------------------------------------------
 
-/** What the classifier needs to know about the call that failed. */
-export interface ErrorContext {
+interface ErrorContextBase {
   readonly method: string
   /** The target canister, as text. `aaaaa-aa` is the management canister. */
   readonly canisterId: string
-  readonly mode: CallMode
-  /**
-   * An update only: the replica has already accepted the request. Pass `true`
-   * once the agent's `onPollingStarted` has fired. From then on an HTTP error
-   * (a 429 from a rate-limited `read_state`, an expired delegation) says
-   * nothing about the update, which is already in the IC, so it classifies as
-   * `outcome_unknown` instead of `not_delivered`. Without this, a 429 while
-   * polling would read as "not delivered, safe to re-send" and run the call
-   * twice.
-   */
-  readonly accepted?: boolean
   /**
    * The signal the call ran under. If it has aborted, the caller is gone and
    * the failure is `cancelled`, whatever the agent reported.
    */
   readonly signal?: AbortSignal
 }
+
+/**
+ * What the classifier needs to know about the call that failed.
+ *
+ * An update must say whether the replica may already have accepted the request
+ * (`accepted`). It is required there, not defaulted, because the unsafe
+ * reading is the one a caller gets by forgetting it: an HTTP refusal that
+ * arrives after the update is in the IC would read as "never delivered, safe
+ * to re-send", and the call would run twice.
+ */
+export type ErrorContext = ErrorContextBase &
+  (
+    | {
+        readonly mode: "query"
+        /** Ignored: a query has no accepted state. */
+        readonly accepted?: boolean
+      }
+    | {
+        readonly mode: "update"
+        /**
+         * Whether the request may already be in the IC. Pass `false` only when
+         * you know it is not: no attempt of this call got past the replica's
+         * front door. Pass `true`:
+         *
+         * - once the agent's `onPollingStarted` has fired (the replica answered
+         *   202). From then on an HTTP error, such as a 429 from a rate-limited
+         *   `read_state` or an expired delegation, says nothing about the
+         *   update, so it classifies as `outcome_unknown`, not as `not_delivered`.
+         * - when the agent has re-sent this request itself after a failure that
+         *   could have followed a delivery, a fetch exception or a 5xx. The
+         *   agent keeps only the status of its last attempt, so a 429 that ends
+         *   such a sequence proves nothing about the first one. The simplest way
+         *   to keep the history out of the picture is to build the agent that
+         *   sends updates with `retryTimes: 0` and let {@link retryUpdate} do
+         *   the re-sending, which it only does when it is safe.
+         *
+         * Anything other than an explicit `false` is read as `true`, so an
+         * untyped caller that leaves it out gets the safe answer.
+         */
+        readonly accepted: boolean
+      }
+  )
 
 // Which reject codes prove that an update call changed nothing.
 //
@@ -488,8 +518,10 @@ const withDetail = (lead: string, detail: string): string =>
  *
  * For a query nothing that matters executes, so every doubt is `not_delivered`
  * and `mayHaveExecuted` is `false`. The HTTP rows, and `IngressExpiryInvalid`,
- * assume the failure came before the replica accepted the request; see
- * {@link ErrorContext.accepted}.
+ * hold for an update only when `context.accepted` is `false`. Once the request
+ * may be in the IC (see {@link ErrorContext}), they all read as
+ * `outcome_unknown` with `mayHaveExecuted: true`, because a refusal that comes
+ * later says nothing about the call.
  *
  * An abort during an update is `cancelled` with `mayHaveExecuted: true`: the
  * request may already have been delivered. Use
@@ -511,6 +543,8 @@ export function classifyError(
   if (isReactorError(error)) return error as unknown as ReactorError
   const { method, canisterId } = context
   const update = context.mode === "update"
+  // Fail closed: only an explicit `false` says the request never got in.
+  const mayBeAccepted = update && context.accepted !== false
   const shape = readShape(error)
   const { rejectCode, httpStatus } = shape
 
@@ -584,7 +618,7 @@ export function classifyError(
       "the replica refused the request's ingress expiry",
       shape.detail
     )
-    return update && context.accepted
+    return mayBeAccepted
       ? make("outcome_unknown", true, reason)
       : make("not_delivered", false, reason)
   }
@@ -601,7 +635,7 @@ export function classifyError(
     // canister): the canister never saw it. 408 is the exception, a timeout
     // after the request may have been passed on. 5xx may follow a delivery.
     const refused = httpStatus >= 400 && httpStatus < 500 && httpStatus !== 408
-    if (!refused || (update && context.accepted)) return doubt(reason)
+    if (!refused || mayBeAccepted) return doubt(reason)
     return make("not_delivered", false, reason, httpStatus === 429)
   }
 
@@ -638,6 +672,13 @@ export const UPDATE_RESEND_DELAYS_MS: readonly [300, 600] = [300, 600]
  * accepted, and only two do: a SysTransient reject (code 2, from anything but
  * the management canister) and an HTTP 429. Any other failure, a network
  * error included, may have come after the replica accepted the call.
+ *
+ * The 429 proof holds for one attempt. The agent can re-send a request on its
+ * own (`retryTimes`, three by default), and it reports only the status of the
+ * last attempt, so a 429 that follows a fetch failure or a 5xx may hide an
+ * earlier delivery. The client must therefore either build the agent that sends
+ * updates with `retryTimes: 0`, or classify with `accepted: true` when an
+ * earlier attempt may have been delivered; see {@link ErrorContext}.
  *
  * `resendsSoFar` is how many times this call has been re-sent already; the
  * answer is `false` once it reaches the length of

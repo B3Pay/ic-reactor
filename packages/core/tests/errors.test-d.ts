@@ -5,6 +5,7 @@ import {
   type ReactorErrorKind,
 } from "../src/index.js"
 import * as entry from "../src/index.js"
+import type { CallMode, ErrorContext } from "../src/errors.js"
 
 // An `Err` arm shaped like the ICRC-1 ledger's.
 type TransferError =
@@ -106,6 +107,30 @@ describe("isReactorError", () => {
       }
     }
     expectTypeOf(catches).toBeFunction()
+  })
+})
+
+describe("ErrorContext", () => {
+  type Call = { method: string; canisterId: string }
+
+  it("makes an update say whether the request may already be in the IC", () => {
+    // Forgetting `accepted` would read a late HTTP refusal as "never
+    // delivered" and re-send an update that is already running.
+    expectTypeOf<Call & { mode: "update" }>().not.toExtend<ErrorContext>()
+    expectTypeOf<
+      Call & { mode: "update"; accepted: boolean }
+    >().toExtend<ErrorContext>()
+  })
+
+  it("asks nothing more of a query", () => {
+    expectTypeOf<Call & { mode: "query" }>().toExtend<ErrorContext>()
+  })
+
+  it("accepts a call whose mode is only known at run time, once it says `accepted`", () => {
+    expectTypeOf<
+      Call & { mode: CallMode; accepted: boolean }
+    >().toExtend<ErrorContext>()
+    expectTypeOf<Call & { mode: CallMode }>().not.toExtend<ErrorContext>()
   })
 })
 
