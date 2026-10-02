@@ -218,9 +218,10 @@ function Accounts({ sandbox }: { sandbox: Sandbox }) {
 interface Attempt {
   readonly arg: TransferArg
   /**
-   * Who sent it: the caller when it was sent, whom the client signed it as.
-   * ICRC-1 deduplicates a transfer per sender account, so only this
-   * principal can send the same argument again without paying twice.
+   * Who sent it: the principal the client signs as, read from the client
+   * when it was sent (see `send`). ICRC-1 deduplicates a transfer per sender
+   * account, so only this principal can send the same argument again without
+   * paying twice.
    */
   readonly from: string
   /** The sender's balance when it was sent, to compare with the re-read. */
@@ -262,10 +263,17 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
   const [attempt, setAttempt] = useState<Attempt>()
 
   const send = (arg: TransferArg, armed: Fault | "none") => {
+    // The client signs as whoever is signed in when the mutation runs (what
+    // `client.caller()` says then), not as this render's `caller`. After a
+    // switch this render has not caught up with, the two differ: nothing is
+    // sent then, and the render that follows shows the new caller. So `from`
+    // is the principal the transfer is signed by, and `before` its balance.
+    const from = client.caller()
+    if (from !== caller) return
     setFailure(null)
     setAttempt({
       arg,
-      from: caller,
+      from,
       before: mine.data,
       firstRequest: sandbox.requests.length,
     })
@@ -374,7 +382,10 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
           failure={failure}
           caller={caller}
           balance={mine.data}
-          onResend={() => send(attempt.arg, "none")}
+          onResend={() => {
+            // Deduplicated only when its sender sends it again (see `from`).
+            if (client.caller() === attempt.from) send(attempt.arg, "none")
+          }}
         />
       )}
     </section>

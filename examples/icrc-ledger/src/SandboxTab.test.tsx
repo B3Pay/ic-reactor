@@ -2,6 +2,7 @@
 // The Sandbox tab as a person uses it: rendered, clicked, and read back from
 // the page, over the same in-memory replica the browser runs.
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -169,6 +170,67 @@ describe("the Sandbox tab", () => {
     // Seed 1 paid once (1.5 ICP and the fee), seed 2 was paid once.
     expect(screen.getByText("8.4999 ICP")).toBeTruthy()
     expect(screen.getByText("4 ICP")).toBeTruthy()
+    sandbox.client.dispose()
+  })
+
+  it("sends a transfer only as the caller the page shows, and its retry only as its sender", async () => {
+    const sandbox = createSandbox({ latencyMs: 0 })
+    render(
+      <StrictMode>
+        <SandboxTab sandbox={sandbox} />
+      </StrictMode>
+    )
+    await screen.findByText("10 ICP", {}, patiently)
+    /** Who signed each transfer that reached the ledger. */
+    const senders = () =>
+      sandbox.requests
+        .filter(
+          (r) =>
+            r.endpoint === "call" &&
+            r.methodName === "icrc1_transfer" &&
+            r.refused === undefined
+        )
+        .map((r) => r.caller)
+    const settled = () =>
+      waitFor(() => {
+        expect(sandbox.client.queryClient.isFetching()).toBe(0)
+        expect(sandbox.client.queryClient.isMutating()).toBe(0)
+      }, patiently)
+    const again = { name: "Send the same transfer again" }
+
+    // A switch and a press of Send in one batch: the press runs on the render
+    // from before the switch, which still says seed 1, while the client would
+    // sign as seed 2. (A change to the form's fault select would make React
+    // render the switch before the press, so the press is the only event.)
+    const sendButton = screen.getByRole("button", { name: "Send as seed 1" })
+    act(() => {
+      sandbox.auth.switchTo(2)
+      fireEvent.click(sendButton)
+    })
+    await screen.findByRole("button", { name: "Send as seed 2" }, patiently)
+    await settled()
+    expect(senders()).toEqual([])
+    expect(screen.queryByText(/^Sent: block/)).toBeNull()
+
+    // Back to seed 1, a transfer whose reply is lost, and its retry pressed
+    // in the same batch as a switch to seed 2: as seed 2, the same argument
+    // would be a second, real transfer.
+    fireEvent.click(screen.getByRole("button", { name: "Sign in as seed 1" }))
+    await screen.findByRole("button", { name: "Send as seed 1" }, patiently)
+    send("lost-reply")
+    const retry = await screen.findByRole("button", again, patiently)
+    expect(senders()).toEqual([SEED_1])
+    act(() => {
+      sandbox.auth.switchTo(2)
+      fireEvent.click(retry)
+    })
+    await settled()
+    expect(senders()).toEqual([SEED_1])
+    await screen.findByText(
+      /^Sent as seed 1, and the caller is now seed 2, so it is not offered again/,
+      {},
+      patiently
+    )
     sandbox.client.dispose()
   })
 
