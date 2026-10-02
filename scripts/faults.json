@@ -110,6 +110,26 @@
     "replace": "    waits(...args)"
   },
   {
+    "id": "ir2t-cancelled-read-waits-to-repoll",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "ends the wait to poll again after a failed poll as soon as the read's signal aborts",
+    "why": "the wait before polling again after a transient read_state failure ignores the read's signal, so a read whose observer went away sits out the whole delay and only then notices",
+    "file": "src/call.ts",
+    "search": "      await untilAborted(sleep(REPOLL_DELAYS_MS[failures]), signal)",
+    "replace": "      await sleep(REPOLL_DELAYS_MS[failures])"
+  },
+  {
+    "id": "ir2t-cancelled-read-polls-anyway",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "sends no poll for a read whose signal aborted while its call was on the way",
+    "why": "no check of the read's signal before polling, so a read whose observer went away while its call was being sent still polls read_state and resolves for nobody",
+    "file": "src/call.ts",
+    "search": "    if (signal?.aborted === true) throw abortReason(signal)",
+    "replace": ""
+  },
+  {
     "id": "ir2t-unresolved-name-sent",
     "package": "core",
     "test": "tests/canister.test.ts",
