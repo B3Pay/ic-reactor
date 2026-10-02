@@ -178,6 +178,24 @@ describe("D35: one import path per name", () => {
     )
   })
 
+  it("fails a planned name that a library exports, once it is exported too", () => {
+    // The plan cannot excuse it: D35 does not read the plan.
+    const planned = [...CORE.planned.slice(0, 12), "principal"]
+    const entries = ENTRIES.map((budget) =>
+      budget === CORE ? { ...CORE, planned } : budget
+    )
+    const result = evaluate({
+      entries,
+      exported: [exporting(CORE, planned), ...complete().slice(1)],
+      foreign,
+    })
+    assert.equal(result.failures.length, 1, result.failures.join("\n"))
+    assert.match(
+      result.failures[0],
+      /exports "principal", which @candid-core\/schema also exports/
+    )
+  })
+
   it("fails when the plan itself names something a library exports", () => {
     const entries = ENTRIES.map((budget) =>
       budget === VITE

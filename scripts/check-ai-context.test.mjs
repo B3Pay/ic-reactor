@@ -343,6 +343,20 @@ describe("version stamps", () => {
     )
   })
 
+  it("fails a react pointer guide that has no stamp", () => {
+    const run = check(
+      repo({
+        "packages/react/llms.txt":
+          "# @ic-reactor/react\n\nRead core's guide.\n",
+      })
+    )
+    assert.equal(run.status, 1)
+    assert.match(
+      run.output,
+      /packages\/react\/llms\.txt has no version stamp\. Expected line: Applies to `@ic-reactor\/react` 4\.0\.0-alpha\.0\./
+    )
+  })
+
   it("requires the core guide, AGENTS.md and CLAUDE.md", () => {
     assert.match(
       check(repo({ "packages/core/llms.txt": null })).output,

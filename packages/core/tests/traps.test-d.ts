@@ -29,16 +29,23 @@
  *
  * 2. Write `scripts/traps/<id>.json`, the fault that makes the line compile:
  *
- *        { "file": "src/units.ts", "search": "value: bigint,", "replace": "value: bigint | number," }
+ *        {
+ *          "file": "src/units.ts",
+ *          "search": "export function formatUnits(\n  value: bigint,",
+ *          "replace": "export function formatUnits(\n  value: bigint | number,"
+ *        }
  *
  *    `file` is relative to this package, and `search` must occur exactly once
  *    in it. For several edits write `{ "edits": [ { "file", "search",
  *    "replace" }, ... ] }`; for more than text replacement, write
  *    `scripts/traps/<id>.mjs` exporting a default function that takes
- *    `{ dir, applyEdits }`. The fault is the *natural* regression: widening the
- *    type, dropping the check, exporting the internal. It must change nothing
- *    else: no other diagnostic may appear, so repair what the fault breaks in
- *    the same fixture.
+ *    `{ dir, applyEdits }`, where `dir` is the copy of this package and
+ *    `applyEdits(edits)` applies a list of the same edits.
+ *
+ *    The fault is the *natural* regression: widening the type, dropping the
+ *    check, exporting the internal. It must change nothing else: no other
+ *    diagnostic may appear, so repair what the fault breaks in the same
+ *    fixture.
  *
  * 3. Run `pnpm verify:traps`, then check by hand that the fault is one a
  *    refactor could really commit.

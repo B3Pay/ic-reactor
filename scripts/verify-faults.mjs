@@ -298,8 +298,9 @@ export async function verifyFaults({
       if (after.failed.length === 0) {
         return {
           failure:
-            `${entry.id}: ${where(entry)} PASSES under its fault. ` +
-            `${after.passed.length} test${after.passed.length === 1 ? "" : "s"} ran green with ${entry.why ?? "the fault"} applied, ` +
+            `${entry.id}: ${where(entry)} PASSES under its fault` +
+            `${entry.why === undefined ? "" : ` (${entry.why})`}: ` +
+            `${after.passed.length} test${after.passed.length === 1 ? "" : "s"} ran green with the fault applied, ` +
             `so none of them guards against it. Strengthen the test, or fix the fault if it no longer describes the regression.`,
         }
       }
