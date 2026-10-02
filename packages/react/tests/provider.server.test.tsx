@@ -95,10 +95,11 @@ describe("ReactorProvider on a server", () => {
   })
 
   it("builds a separate client for each request that renders the same element", () => {
-    // A browser keeps the client its uncommitted render built, for the render
-    // React retries after a suspend. A server commits nothing, so a client it
-    // kept for an element built once at module scope would reach every later
-    // request, and with it that request's cache and caller.
+    // The same element is rendered by two requests, as an element built once
+    // at module scope is. A server commits nothing and reaches no effect, so
+    // the provider has no place to keep a client for later: a client kept for
+    // that element would reach every later request, and with it the first
+    // request's cache and caller.
     const { factory, made } = trackedFactory(() =>
       clientWithAuth(() => createTestAuth({ seed: 1 }))
     )
