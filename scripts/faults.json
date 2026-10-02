@@ -199,6 +199,26 @@
     "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
   },
   {
+    "id": "ir6-lazily-shared-factory-silent",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "warns once, before anything commits, when a render gets back the client of a render React threw away",
+    "why": "a factory that hands back a client a render which never committed created, as a lazily shared one does, is taken off the registry without a word, so the pattern shows only later, as cancelled calls after its first provider unmounts or a collection disposes it",
+    "file": "src/index.tsx",
+    "search": "  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else unclaimed?.unregister(client)\n"
+  },
+  {
+    "id": "ir6-every-borrowed-client-warned",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "says nothing about a client the factory creates on each call",
+    "why": "every borrowed client is reported as lazily shared, so the module-scope client the docs recommend warns on every render that gets it",
+    "file": "src/index.tsx",
+    "search": "  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else {\n    unclaimed?.unregister(client)\n    reportLazilyShared()\n  }\n"
+  },
+  {
     "id": "ir6-server-client-registered",
     "package": "react",
     "test": "tests/provider.server.test.tsx",
