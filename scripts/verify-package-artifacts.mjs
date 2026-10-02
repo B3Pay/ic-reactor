@@ -39,7 +39,6 @@ const PACKAGES = ["packages/core", "packages/react", "packages/vite-plugin"]
 // checks resolvability of our artifacts, not of the peer tree.
 const PEERS = [
   "@icp-sdk/core@^6.0.0",
-  "@icp-sdk/auth@^8.0.0",
   "@tanstack/query-core@^5",
   "@tanstack/react-query@^5",
   "react@^19",
@@ -55,6 +54,27 @@ const PEERS = [
  */
 const isBinOnly = (m) =>
   Boolean(m.bin) && !m.exports && !m.main && !m.module && !m.types && !m.typings
+
+/**
+ * The packages whose root entry may export nothing for now. On the v4 line the
+ * 3.x runtime is removed and the 4 API arrives slice by slice (#790), so core
+ * and react publish an empty entry until their first slice lands. Drop a
+ * package from this set in the change that gives its entry its first export
+ * (core: the first of the errors, network and units slices; react: IR6): from
+ * then on an empty entry is a broken artifact again, which is what this check
+ * exists to catch. The import check below warns when a listed package already
+ * exports something, so a stale line does not go unnoticed.
+ */
+const MAY_EXPORT_NOTHING = new Set(["@ic-reactor/core", "@ic-reactor/react"])
+
+/**
+ * Whether a package's ROOT entry may export nothing: only the
+ * packages listed above, and only while the line is an alpha prerelease. From
+ * the first beta the allowance ends for them too.
+ */
+const mayExportNothing = (manifest) =>
+  MAY_EXPORT_NOTHING.has(manifest.name) &&
+  /-alpha\./.test(manifest.version ?? "")
 
 const failures = []
 function fail(pkg, what, detail) {
@@ -113,16 +133,12 @@ try {
     `\ninstalling ${tarballs.length} tarballs + peers into scratch project...`
   )
   try {
-    // --legacy-peer-deps: @icp-sdk/auth@8 still declares a peer of @icp-sdk/core@^5,
-    // which npm refuses to resolve against the v6 we use. That is an upstream
-    // manifest bug and is not what this script is checking.
     run(
       "npm",
       [
         "install",
         "--no-audit",
         "--no-fund",
-        "--legacy-peer-deps",
         "--loglevel",
         "error",
         ...tarballs.map((t) => `./${t.file}`),
@@ -194,13 +210,22 @@ try {
             "-e",
             `import(${JSON.stringify(spec)}).then(m=>{
              const n=Object.keys(m).length;
-             if(n===0) { console.error("no exports"); process.exit(1) }
+             if(n===0 && ${!(sub === "." && mayExportNothing(manifest))}) { console.error("no exports"); process.exit(1) }
              console.log("exports:"+n)
            }).catch(e=>{ console.error(e.code||"", e.message); process.exit(1) })`,
           ],
           { cwd: scratch }
         )
         ok(`import ${spec} (${out.trim()})`)
+        if (
+          sub === "." &&
+          MAY_EXPORT_NOTHING.has(name) &&
+          out.trim() !== "exports:0"
+        ) {
+          console.warn(
+            `  ! ${name} exports something now: remove it from MAY_EXPORT_NOTHING so an empty entry fails again`
+          )
+        }
       } catch (e) {
         fail(name, `import ${spec}`, e.stderr || e.stdout || e.message)
       }

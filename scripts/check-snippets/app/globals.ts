@@ -1,12 +1,13 @@
 // Names a snippet of the default app may use without importing them: the
-// canister's declarations and the objects an app builds once. Never a library
-// export: a snippet that uses one must import it. The consumer guides
-// (llms.txt, llms-full.txt, the package guides, skill-packages/ic-reactor)
-// get none of these: their snippets import every name they use.
+// objects an app builds once and the values a page has at hand. Never a
+// library export: a snippet that uses one must import it. The consumer guides
+// (`llms.txt`, the package guides, skill-packages/ic-reactor) get none of
+// these: their snippets import every name they use.
+//
+// The 3.x fixtures (a `clientManager`, a `./reactor` of `defineReactor`, the
+// canister's declarations in `idlFactory` form) went with the 3.x runtime.
+// The generated-module fixtures arrive with the guide (DX3).
 import type { Principal } from "@icp-sdk/core/principal"
-
-export { canisterId, idlFactory, type _SERVICE } from "./declarations/backend"
-export { authentication, clientManager, queryClient } from "./reactor"
 
 /** A toast helper such as sonner's. */
 export declare const toast: {

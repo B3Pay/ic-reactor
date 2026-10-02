@@ -13,8 +13,8 @@ against unpublished candid-core shapes until the 0.3 beta of
 
 ### Packages
 
-- `@ic-reactor/core` (`packages/core`, `4.0.0-alpha.0`) — still the 3.x source until its rewrite slices replace it.
-- `@ic-reactor/react` (`packages/react`, `4.0.0-alpha.0`) — still the 3.x source until its rewrite slice replaces it.
+- `@ic-reactor/core` (`packages/core`, `4.0.0-alpha.0`) — the 3.x runtime is removed (IR0): the entry exports nothing, and the milestone 1 slices add the 4 API. `src/testing/` keeps the fake replica.
+- `@ic-reactor/react` (`packages/react`, `4.0.0-alpha.0`) — the 3.x hooks are removed (IR0): the entry exports nothing until IR6 adds the provider and `useAuth`.
 - `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-alpha.0`) — the `ic_env` cookie and `/api` proxy; binding generation returns in IR7.
 
 `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli` and

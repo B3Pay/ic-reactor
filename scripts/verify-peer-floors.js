@@ -12,9 +12,11 @@
  * worktree of HEAD, pins the package's peers to the lowest version each range
  * accepts (through pnpm overrides, so every copy in the graph follows), installs,
  * and runs the package's typecheck and tests there. A range that joins majors,
- * like `@icp-sdk/auth ^8.0.0 || ^10.0.0`, is tested at each major's floor. The
- * worktree is removed afterwards, so your checkout is never touched;
- * uncommitted changes are not part of the run.
+ * like `^8.0.0 || ^10.0.0`, cannot be pinned to one floor: it has to be listed
+ * in PER_MAJOR below, which installs and tests each major's floor, and a range
+ * that joins majors without an entry there fails the check. The worktree is
+ * removed afterwards, so your checkout is never touched; uncommitted changes
+ * are not part of the run.
  *
  * TypeScript has a floor too, and this runs its check first:
  * verify-typescript-floor.js compiles the declarations of core and react with
@@ -39,19 +41,21 @@ const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
 const keep = process.argv.includes("--keep")
 
 /**
- * Peers whose range joins majors that behave differently, per package. Each
- * major's floor is installed under the devDependency named here, and the
- * package's tests run every copy: react's `react` vitest project resolves
- * `@icp-sdk/auth` and its `auth-v8` project aliases it to `@icp-sdk/auth-v8`.
- * These are pinned through devDependencies only, because an override keyed by
- * the package name would move both copies to one version. A major the range
- * accepts but no devDependency installs fails the check.
+ * Peers whose range joins majors that behave differently, per package, as
+ * `{ <package>: { <peer>: { <major>: <devDependency that installs it> } } }`.
+ * Each major's floor is installed under the devDependency named here, and the
+ * package's tests run every copy. These are pinned through devDependencies
+ * only, because an override keyed by the peer's name would move both copies
+ * to one version. A major the range accepts but no devDependency installs
+ * fails the check, and so does a peer range that joins majors but has no entry
+ * here: pinning it to its lowest floor would test one major and say nothing
+ * about the others.
+ *
+ * Empty on the v4 line: react's `@icp-sdk/auth ^8 || ^10` peer, the one entry
+ * 3.x had, went with the 3.x auth hooks. Add an entry before declaring a peer
+ * range that joins majors.
  */
-const PER_MAJOR = {
-  react: {
-    "@icp-sdk/auth": { 8: "@icp-sdk/auth-v8", 10: "@icp-sdk/auth" },
-  },
-}
+const PER_MAJOR = {}
 
 /**
  * The packages checked, in the order they run. `follows` pins a dependency of a
@@ -139,6 +143,14 @@ function pinsFor(check) {
 
   for (const [name, range] of Object.entries(manifest.peerDependencies ?? {})) {
     if (!(name in perMajor)) {
+      const majors = [
+        ...new Set(alternativeFloors(range).map((v) => parseVersion(v)[0])),
+      ]
+      if (majors.length > 1) {
+        throw new Error(
+          `${check.pkg} accepts ${name} "${range}", which joins majors ${majors.join(", ")}, but PER_MAJOR in ${fileURLToPath(import.meta.url)} has no entry for it, so only its lowest floor would be tested`
+        )
+      }
       overrides[name] = lowestVersion(range)
       continue
     }

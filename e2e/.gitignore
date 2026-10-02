@@ -10,10 +10,10 @@
 # dfx temporary files
 .dfx/
 
-# generated files. src/declarations/ is deliberately NOT ignored: src/index.ts
-# imports it, so `tsc` cannot resolve the project without it, and CI never runs
-# the generator before type-checking. It regenerates byte-identically from the
-# tracked src/actor/hello_actor.did, with no replica.
+# generated files. src/declarations/ is deliberately NOT ignored: the e2e cases
+# import it, so `tsc` cannot resolve the project without it, and CI never runs
+# a generator before type-checking. It is committed and updated by hand when
+# src/actor/hello_actor.did changes (see README.md).
 src/*.generated.ts
 
 # rust

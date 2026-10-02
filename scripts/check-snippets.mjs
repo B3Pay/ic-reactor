@@ -21,10 +21,12 @@
  *
  * A snippet takes an app for granted: a canister's generated
  * `./declarations/backend`, a `./reactor` module holding the setup, a
- * `clientManager` built earlier on the page. `scripts/check-snippets/` holds
- * that app, and each document gets its own, because documents disagree: the
- * guides' `./reactor` builds a `DisplayReactor`, while the React README's
- * builds a raw `Reactor` over a canister with other methods.
+ * name built earlier on the page. `scripts/check-snippets/` holds that app,
+ * and a document whose snippets assume another one gets its own, because
+ * documents can disagree. On the `v4` line the app holds only what no
+ * library export provides (`app/globals.ts`) and the third-party
+ * declarations (`ambient.d.ts`): the 3.x fixtures went with the 3.x runtime,
+ * and the generated-module fixtures arrive with the guide (DX3).
  *
  * - `scripts/check-snippets/app/` is the app of every document not listed in
  *   CONTEXTS below. A context directory holds only what differs for its
@@ -55,10 +57,9 @@
  *   installs is never declared there.
  *
  * Declare a missing app name in a fixture. Do not rewrite a snippet to suit the
- * checker. A `globals.ts` never exports a library export (`createQuery`,
- * `Reactor`) or a hook `createActorHooks` returns (`useActorQuery`): a snippet
- * that uses one must import it, from the library or from the module that binds
- * it, or an agent pasting it cannot run it. Nor is an ambient declaration bent
+ * checker. A `globals.ts` never exports a library export, or a hook that one
+ * returns: a snippet that uses one must import it, from the library or from the
+ * module that binds it, or an agent pasting it cannot run it. Nor is an ambient declaration bent
  * to make a snippet pass: fix the snippet, as a reader would have to.
  *
  * ## The consumer guides
@@ -74,14 +75,6 @@
  *   of the same document (or of the same skill) whose first line names its
  *   file, such as `// src/reactor.ts` for `./reactor`. Only a module the guide
  *   never shows, such as the canister's declarations, comes from a fixture.
- *
- * ## Server code
- *
- * A snippet whose first line calls it a React Server Component, or that holds
- * a `"use server"` directive, imports `@ic-reactor/react` as Next.js resolves
- * it there: the `react-server` entry, which exports no hooks, no hook
- * factories and no `defineReactor`. TypeScript alone reads the `types`
- * condition and would accept them.
  *
  * ## Hooks
  *
@@ -161,13 +154,6 @@ const SKIP_COMMENT = /^\s*\/\/\s*@snippet-skip\b/
 const MODULE_HEADER = /^\s*\/\/\s*((?:[\w.-]+\/)*[\w-]+)\.tsx?\b/
 
 /**
- * A snippet of server code: a first line calling it a React Server
- * Component, or a `"use server"` directive (a server action).
- */
-const SERVER_HEADER = /\bReact Server Component\b/i
-const USE_SERVER = /^\s*["']use server["']/m
-
-/**
  * The guides an agent in a consumer project reads: the docs site's
  * `llms.txt` and `llms-full.txt`, each package's `llms.txt` (shipped in its
  * tarball) and the consumer skill. The agent pastes their snippets into an app
@@ -218,11 +204,7 @@ function docsContext(file) {
  * repo-relative path, and the directory under `scripts/check-snippets/` that
  * holds what differs.
  */
-const CONTEXTS = {
-  "README.md": "readme",
-  "packages/react/README.md": "react-readme",
-  "packages/core/README.md": "core",
-}
+const CONTEXTS = {}
 
 /**
  * The compiler options of Vite's React + TypeScript template, the setup most
@@ -386,9 +368,6 @@ function collectSnippets(files, docs) {
         group: moduleGroup(file),
         defines: defines ? defines[1].split("/") : undefined,
         selfContained: isConsumerGuide(file),
-        server:
-          (firstLine !== undefined && SERVER_HEADER.test(firstLine)) ||
-          USE_SERVER.test(fence.code),
         skipped,
         docs,
       })
@@ -696,9 +675,6 @@ function compile(project, byModule) {
       ts.flattenDiagnosticMessageText(errors[0].messageText, "\n")
     )
   }
-  const reactServerTypes = realpathSync(
-    join(rootDir, "packages", "react", "dist", "server.d.ts")
-  )
   const host = ts.createCompilerHost(options)
   // `types` and the other lookups a program without a tsconfig makes start
   // from the current directory; make that the project, wherever this runs.
@@ -720,19 +696,6 @@ function compile(project, byModule) {
   ) =>
     literals.map((literal) => {
       const snippet = byModule.get(containingFile)
-      // TypeScript reads the `types` condition before `react-server`, so it
-      // types a server component's import with the main entry, hooks and all.
-      // Next.js resolves the `react-server` entry, where a hook is a missing
-      // export; type a server snippet's import with that entry too.
-      if (snippet?.server && literal.text === "@ic-reactor/react") {
-        return {
-          resolvedModule: {
-            resolvedFileName: reactServerTypes,
-            extension: ts.Extension.Dts,
-            isExternalLibraryImport: true,
-          },
-        }
-      }
       const resolved = ts.resolveModuleName(
         literal.text,
         containingFile,

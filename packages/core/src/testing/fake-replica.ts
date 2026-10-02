@@ -37,7 +37,22 @@ import {
 } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { Principal } from "@icp-sdk/core/principal"
-import { getNetworkByHostname } from "../utils/helper.js"
+
+/**
+ * Whether a page on this hostname talks to a replica it serves itself: a
+ * local host (`localhost`, its subdomains, all of 127.0.0.0/8, `::1`) or a
+ * Codespaces/Gitpod forward. Kept from v3's `getNetworkByHostname` so the
+ * fake routes a page's same-origin requests as it always did.
+ */
+const isNonMainnetPageHost = (hostname: string): boolean =>
+  hostname === "localhost" ||
+  hostname.endsWith(".localhost") ||
+  hostname.endsWith("127.0.0.1") ||
+  /^127\.(?:\d{1,3}\.){2}\d{1,3}$/.test(hostname) ||
+  hostname === "::1" ||
+  hostname === "[::1]" ||
+  hostname.endsWith(".github.dev") ||
+  hostname.endsWith(".gitpod.io")
 
 /** Who sent a call, as the fake replica reports it to a canister. */
 export interface FakeCallContext {
@@ -165,7 +180,7 @@ function localPageOrigin(): string | undefined {
     if (!origin) return undefined
     const { protocol, hostname } = new URL(origin)
     return (protocol === "http:" || protocol === "https:") &&
-      getNetworkByHostname(hostname) !== "ic"
+      isNonMainnetPageHost(hostname)
       ? origin
       : undefined
   } catch {

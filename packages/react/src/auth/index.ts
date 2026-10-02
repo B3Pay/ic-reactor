@@ -1,7 +1,0 @@
-export * from "./authentication-manager.js"
-export * from "./identity-attributes-manager.js"
-export * from "./identity-attributes.js"
-export * from "./constants.js"
-export * from "./types.js"
-export * from "../hooks/createAuthHooks.js"
-export * from "./createIdentityAttributeHooks.js"
