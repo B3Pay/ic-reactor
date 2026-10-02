@@ -2,13 +2,33 @@
 
 > **ic-reactor 4 is in development on the `v4` branch.** This package is at a
 > `4.0.0-alpha` version that is not published. The released 3.x plugin, which
-> also generates bindings, is documented at
+> generates reactor bindings with `@ic-reactor/codegen`, is documented at
 > https://ic-reactor.b3pay.net/v3/packages/vite-plugin.
 
-On the `v4` branch the plugin is the environment half of the 3.x plugin: under
-`vite dev` and `vite preview` it sets the `ic_env` cookie and proxies `/api` to
-the local IC network. Binding generation returns as a `candid-core-cli gen`
-child process in a later change.
+A Vite plugin for an app built on a module that `candid-core-cli gen` generates
+from a `.did` file. It does two things, and exports only `icReactor` and the
+type `IcReactorPluginOptions`:
+
+- **Generation.** It runs `candid-core-cli gen` on each configured `.did` file
+  when a build or the dev server starts, and again when that file changes. The
+  generated module is candid-core's, as the generator wrote it: the plugin
+  adds no wrapper files, hooks or reactors.
+- **Environment.** Under `vite dev` and `vite preview` it sets the `ic_env`
+  cookie and proxies `/api` to the local IC network, so the app finds its
+  canister IDs and the replica's root key without configuration.
+
+## Install
+
+The plugin runs the `@candid-core/cli` your app installs, and that CLI has to
+pair with the `@candid-core/schema` runtime the generated modules import. Both
+are pinned to one exact release while they are betas, and so is the plugin's
+peer on the CLI:
+
+```sh
+npm install --save-exact @candid-core/schema@0.3.0-beta.1
+npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
+npm install --save-dev @ic-reactor/vite-plugin
+```
 
 ## Quick Start
 
@@ -20,18 +40,86 @@ import { icReactor } from "@ic-reactor/vite-plugin"
 export default defineConfig({
   plugins: [
     icReactor({
-      canisters: [{ name: "backend" }],
+      canisters: {
+        ledger: { didFile: "../backend/ledger.did" },
+      },
     }),
   ],
 })
 ```
 
+On `vite dev` and `vite build` this writes `src/canisters/ledger.ts`, the
+generated module (it exports `actor` and the type `Actor`), and
+`src/canisters/ledger.envelope.json` next to it. The generator names its output
+after the `.did` file, not after the key in `canisters`.
+
+The first line the plugin logs says where an agent reads how to use the
+library: `ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt`.
+
 ## Options
 
-| Option              | Default | Meaning                                                                                                 |
-| ------------------- | ------- | ------------------------------------------------------------------------------------------------------- |
-| `canisters`         | —       | `{ name, canisterId? }` for each canister whose ID the cookie carries; a `canisterId` wins over `icp`'s |
-| `injectEnvironment` | `true`  | Set the cookie and the `/api` proxy under `vite dev` and `vite preview`                                 |
+| Option              | Default                   | Meaning                                                                           |
+| ------------------- | ------------------------- | --------------------------------------------------------------------------------- |
+| `canisters`         | `{}`                      | The app's canisters, by their name in the `icp` project; see below                |
+| `injectEnvironment` | `true`                    | Set the cookie and the `/api` proxy under `vite dev` and `vite preview`           |
+| `failOnError`       | build `true`, dev `false` | Abort the Vite run when a canister fails to generate; see "When generation fails" |
+
+Each entry of `canisters` takes:
+
+| Field        | Default           | Meaning                                                                                |
+| ------------ | ----------------- | -------------------------------------------------------------------------------------- |
+| `didFile`    | none              | The canister's Candid file, relative to the Vite root. Without it nothing is generated |
+| `outDir`     | `"src/canisters"` | Where the generator writes, relative to the Vite root                                  |
+| `canisterId` | none              | A fixed ID for the cookie, which wins over the one `icp` reports                       |
+
+Two canisters cannot write the same file: `a/ledger.did` and `b/ledger.did` in
+one `outDir` both mean `ledger.ts`, and the second is refused with a message
+naming both. Give one an `outDir` of its own.
+
+## Generation
+
+The generator is WebAssembly, so the plugin does not load it: it runs the bin
+script of the `@candid-core/cli` installed for your app (resolved from the Vite
+root, so a monorepo's hoisted copy is found) with the running Node binary, in a
+child process and not through a shell. A trap, a crash or a runaway loop on a
+bad `.did` ends that process and the plugin reports it. The dev server is not
+affected.
+
+- Canisters that write into one `outDir` share one process, and each `outDir`
+  has its own. A process that dies without a report is retried one canister at
+  a time, so the failure lands on the canister that caused it.
+- A process that runs longer than 60 seconds is killed.
+- A declaration the generator cannot represent is left out of the module, and
+  the plugin logs each one as a warning, for example
+  `ic-reactor: ledger: omitted declaration Bad (reserved_field_name)`.
+- Editing a `.did` regenerates only that canister. Saves that arrive while it
+  runs collapse into one more run. `vite build --watch` regenerates a canister
+  only when its `.did` text changed.
+
+### When generation fails
+
+A failed canister costs that canister, and nothing else:
+
+- Under `vite build` the build fails, with the generator's diagnostics (or its
+  stderr, if it crashed) in the error message. A build that exits 0 would ship
+  the bindings left over from the last good run.
+- Under `vite dev` the failure is logged and shown in the browser's error
+  overlay, and the server keeps serving. Fixing the file clears it.
+- `failOnError` overrides either default.
+
+### In CI
+
+`candid-core-cli gen --check` compares the generated files with the ones on
+disk, writes nothing, and exits 1 on any difference. Run it with the same
+arguments the plugin uses to fail a pipeline when committed output is stale:
+
+```json
+{
+  "scripts": {
+    "gen:check": "candid-core-cli gen ../backend/ledger.did -o src/canisters --check"
+  }
+}
+```
 
 ## Local Development Behavior
 
@@ -39,8 +127,8 @@ When `injectEnvironment` is enabled during `vite dev` or `vite preview`, the
 plugin:
 
 1. asks `icp` for the local network status
-2. resolves canister IDs — `internet_identity` is added automatically if not
-   already in your canister list
+2. resolves canister IDs: the keys of `canisters`, and `internet_identity`,
+   which is added automatically if not already listed
 3. sets the `ic_env` cookie on each response
 4. proxies `/api` to the local replica
 
@@ -73,3 +161,9 @@ counts as resolved. If you never run a local network, set
 If your Vite config or another plugin sets `server.proxy["/api"]`, the plugin
 leaves that entry alone, whether detection succeeds or not, and that proxy does
 not follow detection.
+
+## Tests
+
+Vitest runs the plugin in mode `test`. There the plugin injects no environment
+and never runs `icp`, whatever `injectEnvironment` says. Generation is not an
+environment concern and still runs, so the modules a test imports exist.

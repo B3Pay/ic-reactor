@@ -1,33 +1,70 @@
 /**
  * @ic-reactor/vite-plugin
  *
- * Vite plugin that injects the `ic_env` cookie and proxies `/api` to the local
- * IC network under `vite dev` and `vite preview`.
+ * Vite plugin for an app built on a candid-core generated module.
  *
- * On the v4 line this is the environment half of the 3.x plugin. The 3.x
- * binding generation ran `@ic-reactor/codegen`, which is deleted on this
- * branch; generation returns as a `candid-core-cli gen` child process in the
- * slim-plugin slice (IR7).
+ * - Generation: at the start of a build or dev server, and when a `.did` file
+ *   changes, it runs `candid-core-cli gen` in a child process (see
+ *   generate.ts) and leaves candid-core's module as the generator wrote it. No
+ *   wrapper files, hooks or reactors are generated.
+ * - Environment: under `vite dev` and `vite preview` it sets the `ic_env`
+ *   cookie and proxies `/api` to the local IC network (see dev-environment.ts).
  */
 
-import type { Plugin, ProxyOptions, UserConfig } from "vite"
+import fs from "node:fs"
 import path from "node:path"
+import type {
+  Logger,
+  Plugin,
+  ProxyOptions,
+  ResolvedConfig,
+  UserConfig,
+  ViteDevServer,
+} from "vite"
 import {
   createLocalEnvironment,
   icEnvMiddleware,
   type LocalEnvironment,
   type LocalEnvironmentState,
 } from "./dev-environment.js"
+import { GENERATE_TIMEOUT_MS, generate, resolveCliBin } from "./generate.js"
 
 const PLUGIN_NAME = "ic-reactor-plugin"
 
+/** Where a canister's module goes when it sets no `outDir`. */
+const DEFAULT_OUT_DIR = "src/canisters"
+
+/** The first line the plugin logs: where an agent reads how to use the library. */
+const GUIDE_LINE =
+  "ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt"
+
 export interface IcReactorPluginOptions {
   /**
-   * The canisters whose IDs the `ic_env` cookie carries: each one's name in
-   * the `icp` project, and optionally a fixed ID, which wins over the ID
-   * `icp` reports.
+   * The app's canisters, by name: the canister's name in the `icp` project,
+   * which is also the name the `ic_env` cookie carries its ID under.
+   *
+   * - `didFile`: the canister's Candid interface, relative to the Vite root.
+   *   The plugin runs `candid-core-cli gen` on it at the start of a build or
+   *   dev server and again each time the file changes, regenerating only the
+   *   canister whose file changed. The generator names its output after the
+   *   file, so `didFile: "../backend/ledger.did"` writes `ledger.ts` (the
+   *   module: it exports `actor` and the type `Actor`) and
+   *   `ledger.envelope.json` into `outDir`. Two canisters cannot write the
+   *   same file: give one an `outDir` of its own. A canister without a
+   *   `didFile` generates nothing and is only named in the cookie.
+   * - `outDir`: where the generator writes, relative to the Vite root.
+   *   Default: `"src/canisters"`.
+   * - `canisterId`: a fixed ID for the cookie, which wins over the ID `icp`
+   *   reports for the canister.
+   *
+   * The generator is the `@candid-core/cli` the app has installed, run as a
+   * child process so that a failure on one `.did` stops that process and not
+   * the dev server.
    */
-  canisters: { name: string; canisterId?: string }[]
+  canisters?: Record<
+    string,
+    { didFile?: string; outDir?: string; canisterId?: string }
+  >
   /**
    * Inject the local IC environment under `vite dev` and `vite preview`: set
    * the `ic_env` cookie on each response and proxy `/api` to the network the
@@ -40,19 +77,78 @@ export interface IcReactorPluginOptions {
    * network needs a restart. An `/api` proxy that the Vite config or another
    * plugin sets is left alone.
    *
+   * Never injected in mode `"test"` (Vitest's), where `icp` is not run at all.
+   *
    * Default: true
    */
   injectEnvironment?: boolean
+  /**
+   * Abort the Vite run when a canister fails to generate.
+   *
+   * Default: `true` under `vite build`, `false` under `vite dev`. A build that
+   * silently ships the bindings left over from the last successful run is
+   * worse than no build at all, while a dev server has to survive the broken
+   * intermediate states of a `.did` file being edited: there the failure is
+   * logged and shown in the browser's error overlay, and the server keeps
+   * serving.
+   */
+  failOnError?: boolean
 }
 
-export function icReactor(options: IcReactorPluginOptions): Plugin {
-  const { canisters, injectEnvironment = true } = options
+/** A canister with a `.did` to generate from. */
+interface Generated {
+  name: string
+  didFile: string
+  outDir: string
+}
+
+/** A canister that did not generate, and why. */
+interface Failure {
+  canister: Generated
+  message: string
+}
+
+type PluginLog = Pick<Logger, "info" | "warn" | "error">
+
+/** What the hooks log through before Vite hands over its logger. */
+const consoleLog: PluginLog = {
+  info: (message) => console.log(message),
+  warn: (message) => console.warn(message),
+  error: (message) => console.error(message),
+}
+
+export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
+  const { canisters = {}, injectEnvironment = true, failOnError } = options
+  const names = Object.keys(canisters)
 
   const configuredCanisterIds = Object.fromEntries(
-    canisters
-      .filter((canister) => !!canister.canisterId)
-      .map((canister) => [canister.name, canister.canisterId as string])
+    names.flatMap((name) => {
+      const { canisterId } = canisters[name]
+      return canisterId ? [[name, canisterId]] : []
+    })
   )
+
+  /** The canisters that have a `.did` to generate from. */
+  const generated: Generated[] = names.flatMap((name) => {
+    const { didFile, outDir = DEFAULT_OUT_DIR } = canisters[name]
+    return didFile === undefined ? [] : [{ name, didFile, outDir }]
+  })
+
+  // Vite resolves relative project paths against the resolved `config.root`,
+  // which only equals the process cwd when vite happens to be started from the
+  // project directory, not for `root: "frontend"` and not when the root is
+  // passed positionally (`vite build apps/web`). `configResolved` overwrites
+  // this before any hook that resolves a path runs; the cwd is only Vite's own
+  // default root.
+  let projectRoot = process.cwd()
+
+  // `vite build` and `vite dev` want opposite failure behaviour, so remember
+  // which one we are in. Build is the safer default for the case where neither
+  // `config` nor `configResolved` has run.
+  let command: ResolvedConfig["command"] = "build"
+
+  let log: PluginLog = consoleLog
+  let announced = false
 
   /**
    * The local IC environment `vite dev` and `vite preview` inject. The
@@ -63,12 +159,226 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
   /** The options of the plugin's `/api` proxy, as Vite hands them over. */
   const apiProxyOptions = new Set<ProxyOptions>()
 
+  // Set once the dev server exists. In dev, `configureServer` runs before Vite
+  // calls `buildStart`, so a startup failure can reach the overlay too.
+  let devServer: ViteDevServer | null = null
+
+  // ── Generation ──────────────────────────────────────────────────────────
+
+  const didPath = (canister: Generated) =>
+    path.resolve(projectRoot, canister.didFile)
+  const relativeToRoot = (file: string) =>
+    path.relative(projectRoot, file) || "."
+
+  /**
+   * The `.did` text each canister last generated from. A rebuild that finds
+   * the text unchanged skips the canister, which is every rebuild of
+   * `vite build --watch` that was not caused by a `.did`, and the second
+   * `buildStart` Vite 6 and later run for another environment.
+   */
+  const generatedFrom = new Map<string, string>()
+
+  /**
+   * The failures not yet fixed, by canister name. Vite awaits `buildStart`
+   * before the HTTP server listens, so a failure at startup is sent to no
+   * browser at all; each browser that connects later is handed these.
+   */
+  const unfixed = new Map<string, Failure>()
+
+  // Generation runs one job after another. Two `buildStart`s (one per Vite 6+
+  // environment) or a save during a run would otherwise start two generator
+  // processes that write the same files.
+  let tail: Promise<unknown> = Promise.resolve()
+  const serially = <T>(job: () => Promise<T>): Promise<T> => {
+    const result = tail.then(job)
+    tail = result.catch(() => undefined)
+    return result
+  }
+
+  /** The canisters waiting for a run that has not started. See `onDidSaved`. */
+  const queued = new Set<string>()
+
+  const readDid = (canister: Generated): string | undefined => {
+    try {
+      return fs.readFileSync(didPath(canister), "utf-8")
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * Generate `wanted`, in one generator process for each output directory, and
+   * report what the generator said. Never rejects: an unexpected error fails
+   * the canisters, since a rejection from a watcher callback could end the dev
+   * server.
+   *
+   * @param force - Generate even a canister whose `.did` text is unchanged.
+   */
+  const generateNow = async (
+    wanted: Generated[],
+    force: boolean
+  ): Promise<Failure[]> => {
+    try {
+      const sources = new Map(
+        wanted.map((canister) => [canister.name, readDid(canister)])
+      )
+      const stale = wanted.filter(
+        ({ name }) =>
+          force ||
+          sources.get(name) === undefined ||
+          generatedFrom.get(name) !== sources.get(name)
+      )
+      if (stale.length === 0) return []
+
+      let cli: string
+      try {
+        cli = resolveCliBin(projectRoot)
+      } catch (error) {
+        return stale.map((canister) => ({ canister, message: describe(error) }))
+      }
+
+      const result = await generate({
+        cli,
+        root: projectRoot,
+        timeoutMs: GENERATE_TIMEOUT_MS,
+        canisters: stale.map((canister) => ({
+          name: canister.name,
+          didFile: didPath(canister),
+          outDir: path.resolve(projectRoot, canister.outDir),
+        })),
+      })
+
+      if (result.stderr.trim()) {
+        log.warn(
+          `ic-reactor: candid-core-cli wrote to stderr: ${result.stderr.trim()}`
+        )
+      }
+
+      const failures: Failure[] = []
+      for (const outcome of result.canisters) {
+        const { name } = outcome
+        const canister = stale.find((candidate) => candidate.name === name)
+        if (!canister) continue
+        if (outcome.status === "failed") {
+          generatedFrom.delete(name)
+          failures.push({ canister, message: outcome.failure ?? "" })
+          continue
+        }
+        const source = sources.get(name)
+        if (source !== undefined) generatedFrom.set(name, source)
+        if (outcome.status === "written" && outcome.module) {
+          log.info(
+            `ic-reactor: generated ${name} into ${relativeToRoot(outcome.module)}`
+          )
+        }
+        for (const { kind, name: what, reason, via } of outcome.omitted) {
+          log.warn(
+            `ic-reactor: ${name}: omitted ${kind} ${what} (${reason}${via ? ` via ${via}` : ""})`
+          )
+        }
+      }
+      return failures
+    } catch (error) {
+      return wanted.map((canister) => ({ canister, message: describe(error) }))
+    }
+  }
+
+  /**
+   * The error text for failed canisters. Canisters that failed for the same
+   * reason (no CLI installed, one crash) are listed under it once.
+   */
+  const describeFailures = (failures: Failure[]): string => {
+    const byMessage = new Map<string, string[]>()
+    for (const { canister, message } of failures) {
+      const label = `${canister.name} (${relativeToRoot(didPath(canister))})`
+      byMessage.set(message, [...(byMessage.get(message) ?? []), label])
+    }
+    return (
+      `ic-reactor: could not generate ${failures.length} of ${generated.length} canisters:\n` +
+      [...byMessage]
+        .map(
+          ([message, labels]) =>
+            `  - ${labels.join(", ")}: ${message.replace(/\n/g, "\n    ")}`
+        )
+        .join("\n")
+    )
+  }
+
+  /**
+   * Report the outcome of a run that does not end the Vite run (a save, or a
+   * build with `failOnError` off): log a failure and put every unfixed one in
+   * the browser's error overlay, or clear the overlay once the last is fixed.
+   */
+  const publish = (attempted: Generated[], failures: Failure[]): void => {
+    const wasFailing = attempted.some(({ name }) => unfixed.delete(name))
+    for (const failure of failures) unfixed.set(failure.canister.name, failure)
+    if (failures.length > 0) {
+      log.error(describeFailures(failures))
+      showOverlay()
+    } else if (wasFailing && unfixed.size === 0) {
+      // Nothing may have changed on disk when a canister is fixed back to what
+      // it generated before, so the page has nothing else to reload it.
+      devServer?.ws.send({ type: "full-reload" })
+    }
+  }
+
+  const showOverlay = (): void => {
+    if (unfixed.size === 0) return
+    devServer?.ws.send({
+      type: "error",
+      err: {
+        message: describeFailures([...unfixed.values()]),
+        stack: "",
+        plugin: PLUGIN_NAME,
+      },
+    })
+  }
+
+  /**
+   * A `.did` file was saved: regenerate its canister, and only that one. Saves
+   * that arrive while it runs collapse into one run after it, so the last
+   * saved file wins without runs piling up.
+   */
+  const onDidSaved = (file: string): void => {
+    for (const canister of generated) {
+      if (didPath(canister) !== path.normalize(file)) continue
+      if (queued.has(canister.name)) continue
+      queued.add(canister.name)
+      log.info(
+        `ic-reactor: ${relativeToRoot(didPath(canister))} changed, regenerating ${canister.name}`
+      )
+      void serially(async () => {
+        queued.delete(canister.name)
+        publish([canister], await generateNow([canister], true))
+      })
+    }
+  }
+
+  /** Log the guide line once, before anything else the plugin says. */
+  const announceGuide = (userConfig: UserConfig): void => {
+    if (announced) return
+    announced = true
+    if (userConfig.customLogger) {
+      userConfig.customLogger.info(GUIDE_LINE)
+    } else if (
+      !["silent", "error", "warn"].includes(userConfig.logLevel ?? "")
+    ) {
+      console.log(GUIDE_LINE)
+    }
+  }
+
   const plugin: Plugin = {
     name: PLUGIN_NAME,
     enforce: "pre", // Run before other plugins
 
-    async config(userConfig, { command: viteCommand }) {
-      if (viteCommand !== "serve" || !injectEnvironment) {
+    async config(userConfig, { command: viteCommand, mode }) {
+      announceGuide(userConfig)
+      command = viteCommand
+
+      // Vitest runs the plugin with the `serve` command and mode `test`, and
+      // a test run has no use for a cookie or a proxy, or for asking `icp`
+      // about a network.
+      if (viteCommand !== "serve" || mode === "test" || !injectEnvironment) {
         return {}
       }
 
@@ -78,9 +388,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       const ownsApiProxy = !userConfig.server?.proxy?.["/api"]
 
       const environment = createLocalEnvironment({
-        canisterNames: canisters
-          .map((canister) => canister.name)
-          .filter((name): name is string => !!name),
+        canisterNames: names,
         configuredCanisterIds,
         // `configResolved` has not run yet, so resolve the root the way Vite
         // will. icp finds the project from the directory it starts in, and
@@ -100,7 +408,7 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       localEnvironment = environment
 
       const state = await environment.detect()
-      warnAboutIncompleteDetection(state, canisters.length > 0, ownsApiProxy)
+      warnAboutIncompleteDetection(state, names.length > 0, ownsApiProxy)
 
       return {
         server: {
@@ -128,12 +436,40 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
       }
     },
 
+    configResolved(config) {
+      // Everything the plugin resolves, `didFile` and `outDir`, is documented
+      // as relative to the project root, so it has to be Vite's resolved root
+      // and not wherever the process started.
+      projectRoot = config.root
+      command = config.command
+      log = config.logger
+    },
+
     configureServer(server) {
+      devServer = server
+
       // Added here rather than returned as a post hook, so it runs before
       // Vite's own middlewares, which serve the page.
       if (localEnvironment) {
         server.middlewares.use(icEnvMiddleware(localEnvironment))
       }
+
+      if (generated.length === 0) return
+
+      // Hand each browser that connects the failures not yet fixed. Guarded:
+      // the peer range spans several Vite majors and `ws.on` is not present on
+      // every one of them. Losing the replay is acceptable; throwing out of
+      // configureServer is not.
+      server.ws.on?.("connection", showOverlay)
+
+      // `.did` files are not in the module graph, so the watcher is told about
+      // them. Regenerate from its own events and not from `handleHotUpdate`,
+      // which Vite calls only for a file changed in place and only while HMR
+      // is on: a `.did` created after startup, or written again by a build
+      // tool or `git checkout`, arrives as an `add` event.
+      server.watcher.add(generated.map(didPath))
+      server.watcher.on("change", onDidSaved)
+      server.watcher.on("add", onDidSaved)
     },
 
     // `vite preview` resolves the config with the `serve` command too, and
@@ -143,9 +479,31 @@ export function icReactor(options: IcReactorPluginOptions): Plugin {
         server.middlewares.use(icEnvMiddleware(localEnvironment))
       }
     },
+
+    async buildStart() {
+      if (generated.length === 0) return
+
+      // `vite build --watch` rebuilds when a file it watches changes, and a
+      // `.did` file is never part of the module graph. Registered here, a save
+      // starts a rebuild, and the rebuild's buildStart regenerates.
+      for (const canister of generated) this.addWatchFile(didPath(canister))
+
+      const failures = await serially(() => generateNow(generated, false))
+      if (failures.length > 0 && (failOnError ?? command === "build")) {
+        // A build that exits 0 would ship whatever stale bindings are still on
+        // disk, which no longer match the canister.
+        this.error(describeFailures(failures))
+      }
+      publish(generated, failures)
+    },
   }
 
   return plugin
+}
+
+/** One readable line for whatever was thrown. */
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
 
 /**

@@ -158,7 +158,7 @@ describe.skipIf(process.platform === "win32")(
       return { replicaUrl, setState, icpCalls }
     }
 
-    const plugin = () => icReactor({ canisters: [{ name: "backend" }] })
+    const plugin = () => icReactor({ canisters: { backend: {} } })
 
     /**
      * Start `vite dev` and serve its middlewares on a port. `laterPlugins` run
