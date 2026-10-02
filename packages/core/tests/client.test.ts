@@ -369,7 +369,7 @@ describe("a client following its auth in a browser", () => {
       state = "signed-in"
       return Promise.resolve()
     })
-    const signOut = vi.fn(() => {
+    const signOut = vi.fn((_options?: unknown) => {
       state = "signed-out"
       return Promise.resolve()
     })
@@ -391,8 +391,11 @@ describe("a client following its auth in a browser", () => {
     expect(listener).toHaveBeenCalledTimes(1)
     expect(client.caller()).toBe(identity.getPrincipal().toText())
 
-    await client.signOut()
+    await client.signOut({ returnTo: "https://app.example/bye" })
     expect(signOut).toHaveBeenCalledTimes(1)
+    expect(signOut).toHaveBeenCalledWith({
+      returnTo: "https://app.example/bye",
+    })
     expect(listener).toHaveBeenCalledTimes(2)
     expect(client.caller()).toBe(ANONYMOUS)
   })

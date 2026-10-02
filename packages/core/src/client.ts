@@ -201,8 +201,11 @@ export interface Client {
    * sign-in, and an `Error` on a server or after {@link Client.dispose}.
    */
   signIn(options?: unknown): Promise<void>
-  /** Signs out through the client's auth. Rejects like {@link Client.signIn}. */
-  signOut(): Promise<void>
+  /**
+   * Signs out through the client's auth, passing `options` on (such as
+   * `AuthClient`'s `{ returnTo }`). Rejects like {@link Client.signIn}.
+   */
+  signOut(options?: unknown): Promise<void>
   /**
    * Releases everything the client holds: it stops listening to its auth and
    * disposes it, clears the `QueryClient`, and drops its agents. Calls made
@@ -775,10 +778,10 @@ export function createClient(options: ClientOptions): Client {
         onAuthChange()
       }
     },
-    async signOut(): Promise<void> {
+    async signOut(signOutOptions?: unknown): Promise<void> {
       const source = authFor("signOut")
       try {
-        await source.signOut()
+        await source.signOut(signOutOptions)
       } finally {
         onAuthChange()
       }
