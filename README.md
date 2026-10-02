@@ -37,11 +37,11 @@ for a canister:
 
 ## Package Overview
 
-| Package                                             | Purpose                                                |
-| --------------------------------------------------- | ------------------------------------------------------ |
-| [`@ic-reactor/core`](./packages/core)               | The client, errors, network and units (in development) |
-| [`@ic-reactor/react`](./packages/react)             | `'use client'` bindings over core (in development)     |
-| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Local `ic_env` cookie and `/api` proxy for `vite dev`  |
+| Package                                             | Purpose                                                                                                                                            |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@ic-reactor/core`](./packages/core)               | The client, errors, network and units (in development)                                                                                             |
+| [`@ic-reactor/react`](./packages/react)             | `'use client'` bindings over core (in development)                                                                                                 |
+| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Generates the candid-core module with `candid-core-cli gen` in a child process, and sets the local `ic_env` cookie and `/api` proxy for `vite dev` |
 
 `@ic-reactor/parser`, `@ic-reactor/codegen` and `@ic-reactor/cli` are not part
 of ic-reactor 4: `candid-core-cli gen` generates the canister module instead.
