@@ -120,6 +120,16 @@
     "replace": "  if (!net.trustsEnv && false) {"
   },
   {
+    "id": "ir2t-zero-arg-query-key-is-prefix",
+    "package": "core",
+    "test": "tests/keys.test.ts",
+    "testName": "is the read's whole key for a method without arguments",
+    "why": "queryKey(c, method) for a method without arguments gives the method prefix, so getQueryData misses what queryOptions(c, method) cached and setQueryData makes a second entry",
+    "file": "src/options.ts",
+    "search": "    if (rest.length < 2 && prepared.args.length > 0) {",
+    "replace": "    if (rest.length < 2) {"
+  },
+  {
     "id": "ir2t-read-sent-as-current-caller",
     "package": "core",
     "test": "tests/options.test.ts",

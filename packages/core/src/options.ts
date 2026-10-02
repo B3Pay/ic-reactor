@@ -136,9 +136,13 @@ export function createBuilders(
     const [method, vars] = rest
     if (method === undefined) return readKey(record, caller, target)
     const prepared = methodOf(record, method, call)
-    // Two arguments give the method's prefix; three, even `undefined` for a
-    // method without arguments, give one read's key.
-    if (rest.length < 2) return readKey(record, caller, target, prepared.name)
+    // Two arguments give the method's prefix, and three one read's key. A
+    // method without arguments has one read, so two arguments give its key:
+    // the one `queryOptions(c, method)` gives, which `getQueryData` and
+    // `setQueryData` must be handed whole.
+    if (rest.length < 2 && prepared.args.length > 0) {
+      return readKey(record, caller, target, prepared.name)
+    }
     if (vars === skipToken) {
       return readKey(record, caller, target, prepared.name, [SKIP])
     }
