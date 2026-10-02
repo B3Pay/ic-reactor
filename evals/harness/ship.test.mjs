@@ -6,13 +6,16 @@ import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs"
+import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, before, describe, it } from "node:test"
@@ -27,6 +30,7 @@ import { checkDocs } from "./check-docs.mjs"
 import {
   V4_PACKAGES,
   V4_PACKAGE_ENTRIES,
+  V4_SHARED_WITH_WORLD,
   hiddenTestNames,
   namedInCode,
   v4ShipFindings,
@@ -145,12 +149,51 @@ describe("the shipped v4 condition", () => {
     assert.deepEqual(checkDocs([join(docs, "llms.txt")]).hits, [])
   })
   it("scores against the same install it ships", () => {
+    // A package shared with the world is a link in the scorer's copy (next
+    // test), so only its entry is listed there, not its files.
     const list = (root) =>
       readdirSync(root, { recursive: true })
         .map(String)
         .filter((f) => !f.startsWith(".vite") && !f.startsWith(".cache"))
+        .filter((f) => !V4_SHARED_WITH_WORLD.some((n) => f.startsWith(`${n}/`)))
         .sort()
     assert.deepEqual(list(scored), list(ship))
+  })
+  it("scores with the world's own instance of @icp-sdk/core", () => {
+    // Where each side resolves it from: the world from evals/harness; the
+    // solution and the hidden tests from the scoring directory, whose
+    // node_modules links to conditions/v4/node_modules; the v4 packages
+    // from their own directories there.
+    const resolved = (from) =>
+      realpathSync(createRequire(from).resolve("@icp-sdk/core/agent"))
+    const world = resolved(join(EVALS, "harness", "world.ts"))
+    for (const from of [
+      join(EVALS, "conditions", "v4", "solution.ts"),
+      ...V4_PACKAGES.map((n) => join(scored, ...n.split("/"), "package.json")),
+      join(scored, "@icp-sdk", "auth", "package.json"),
+    ]) {
+      assert.equal(resolved(from), world, from)
+    }
+    for (const name of V4_SHARED_WITH_WORLD) {
+      const link = join(scored, ...name.split("/"))
+      assert.ok(lstatSync(link).isSymbolicLink(), `${name} is a link`)
+      const version = (root) =>
+        JSON.parse(
+          readFileSync(join(root, ...name.split("/"), "package.json"), "utf8")
+        ).version
+      assert.equal(
+        version(scored),
+        version(ship),
+        `${name}: the version shipped`
+      )
+    }
+    // No second copy nested anywhere in the scorer's install.
+    const copies = readdirSync(scored, { recursive: true })
+      .map(String)
+      .filter((f) =>
+        V4_SHARED_WITH_WORLD.some((n) => f.endsWith(`node_modules/${n}`))
+      )
+    assert.deepEqual(copies, [])
   })
   it("assembles a starter with the CLI module, the guide and the installed versions", () => {
     const dest = mkdtempSync(join(tmpdir(), "ic-reactor-evals-ship-test-"))

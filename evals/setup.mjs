@@ -23,8 +23,10 @@
 // `pnpm pack` (as a release would publish them), installs the tarballs
 // (never workspace links) into .ship/v4, copies the core tarball's llms.txt
 // into conditions/v4/docs, and gives the scorer the same install as
-// conditions/v4/node_modules. Its starter module comes from the published
-// @candid-core/cli beta that pairs with @candid-core/schema 0.3.0-beta.1.
+// conditions/v4/node_modules (except @icp-sdk/core, linked to evals' own so
+// the hidden tests' world shares it: step 8). Its starter module comes from
+// the published @candid-core/cli beta that pairs with @candid-core/schema
+// 0.3.0-beta.1.
 import { execFileSync, spawnSync } from "node:child_process"
 import {
   copyFileSync,
@@ -35,14 +37,16 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join, relative } from "node:path"
 import { EVALS } from "./harness/assemble.mjs"
 import {
   V4_PACKAGES,
   V4_PACKAGE_ENTRIES,
+  V4_SHARED_WITH_WORLD,
   v4ShipFindings,
 } from "./harness/ship.mjs"
 
@@ -402,7 +406,18 @@ step("built .ship/<condition>/node_modules (npm, flat; checked for repo paths)")
 
 // 8. The scorer's install of v4 is the shipped one: the v4 packages exist
 //    only as tarballs, so conditions/v4 is not a member of evals' pnpm
-//    workspace, and the hidden tests run against exactly what agents get.
+//    workspace, and the hidden tests run against what agents get. One
+//    package is evals' own instead: @icp-sdk/core, which the hidden tests'
+//    world (harness/world.ts, fake-auth.ts, and the fake replica of
+//    @ic-reactor/core 3.13.0) imports from evals' install. In every other
+//    condition the condition's node_modules belongs to evals' workspace, so
+//    the world, the solution and the hidden tests load one instance of it,
+//    as an agent's own tests do in its run directory (one install there
+//    too). A second instance only in v4's scoring would fail a class check
+//    across the two (fake-auth's signed-out `AnonymousIdentity`, a
+//    `Principal` given to the agent) in scoring and nowhere else. So the
+//    copy's @icp-sdk/core becomes a link to evals' own, which must be the
+//    version the condition pins and ships.
 {
   const target = join(EVALS, "conditions", "v4", "node_modules")
   rmSync(target, { recursive: true, force: true })
@@ -410,6 +425,33 @@ step("built .ship/<condition>/node_modules (npm, flat; checked for repo paths)")
     recursive: true,
     verbatimSymlinks: true,
   })
+  const pinned = JSON.parse(
+    readFileSync(join(EVALS, "conditions", "v4", "package.json"), "utf8")
+  ).dependencies
+  for (const name of V4_SHARED_WITH_WORLD) {
+    const version = (root) =>
+      JSON.parse(
+        readFileSync(join(root, ...name.split("/"), "package.json"), "utf8")
+      ).version
+    const [own, shipped] = [version(nm), version(target)]
+    if (own !== pinned[name] || shipped !== pinned[name]) {
+      rmSync(target, { recursive: true, force: true })
+      throw new Error(
+        `setup: v4 pins ${name} ${pinned[name]}, evals has ${own}, the ship has ${shipped}: ` +
+          "the scorer can share evals' copy only when all three agree"
+      )
+    }
+    const link = join(target, ...name.split("/"))
+    rmSync(link, { recursive: true, force: true })
+    symlinkSync(
+      relative(dirname(link), join(nm, ...name.split("/"))),
+      link,
+      "dir"
+    )
+  }
   rmSync(v4Tarballs, { recursive: true, force: true })
-  step("copied .ship/v4/node_modules to conditions/v4/node_modules (scoring)")
+  step(
+    "copied .ship/v4/node_modules to conditions/v4/node_modules (scoring), " +
+      `linking ${V4_SHARED_WITH_WORLD.join(", ")} to evals' own`
+  )
 }

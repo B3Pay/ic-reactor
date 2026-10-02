@@ -69,7 +69,8 @@ evals/
     docs/              the documentation that condition's agent is given (added to the base's docs)
   conditions/v4-proto/lib/   the prototype (src/, dist/, test/, SHIM-NOTES.md)
   conditions/v4/      ic-reactor 4 packed from this repository (README.md, PORTING.md);
-                      its node_modules (setup, untracked) is a copy of .ship/v4's
+                      its node_modules (setup, untracked) is a copy of .ship/v4's,
+                      with @icp-sdk/core linked to evals' own (one instance for the world)
   .ship/<condition>/node_modules   (setup) flat npm installs shipped to agents; gitignored
 ```
 
@@ -418,7 +419,10 @@ the core tarball's `llms.txt` or the packages' code gives a hidden test away,
 copies that `llms.txt` into `conditions/v4/docs/` (the only doc the agent
 gets), cuts both packages to `package.json` + `dist/`, and copies the result
 to `conditions/v4/node_modules` for the scorer, so the hidden tests run
-against exactly what agents get. The starter's `src/generated/icrc1.ts` is
+against what agents get. In the scorer's copy `@icp-sdk/core` (6.1.0 in
+evals, the ship and the pin alike) links to evals' own, so the world and
+the solution load one instance of it, as in every other condition
+(`conditions/v4/README.md`). The starter's `src/generated/icrc1.ts` is
 the output of the published `@candid-core/cli@0.2.0-beta.1`.
 
 Status: plumbing only. The guide is a placeholder until DX3 (#785); no

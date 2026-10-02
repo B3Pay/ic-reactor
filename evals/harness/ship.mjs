@@ -14,6 +14,14 @@ export const V4_PACKAGES = ["@ic-reactor/core", "@ic-reactor/react"]
 export const V4_PACKAGE_ENTRIES = ["dist", "package.json"]
 
 /**
+ * The packages whose classes cross between the hidden tests' world (which
+ * imports them from evals' own install) and a v4 solution: in the scorer's
+ * install (conditions/v4/node_modules) each is a link to evals' copy, so
+ * both sides load one instance of it, as they do in every other condition.
+ */
+export const V4_SHARED_WITH_WORLD = ["@icp-sdk/core"]
+
+/**
  * Every hidden-test name (harness/check-docs.mjs), as written and with
  * spaces for underscores, lower-cased. Only names: the distinctive literals
  * check-docs also looks for in a guide (amounts, `HTTP 429`, runs of zeros)

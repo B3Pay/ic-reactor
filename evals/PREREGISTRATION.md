@@ -365,7 +365,10 @@ dated addendum and the owner's approval, as Addendum 2 did.
 - The world still installs the fake replica that `@ic-reactor/core` 3.13.0
   publishes as a global `fetch` stub before the solution loads; a v4 client
   builds its agents after that and binds the stub like any `HttpAgent`
-  (issue #786).
+  (issue #786). The scorer's `v4` install is the ship's except
+  `@icp-sdk/core`, a link to evals' own copy of the same version, so the
+  world and the solution load one instance of it, as in every other
+  condition (`conditions/v4/README.md`; `harness/ship.test.mjs` checks it).
 - The react-wallet starter's `WalletAuth` is not an `AuthLike`; the agent
   writes the adapter the guide shows (Q14). How well the guide teaches it,
   and that an explicit `AnonymousIdentity` is sent while

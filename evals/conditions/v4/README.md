@@ -15,7 +15,7 @@ the pilots.
 | `package.json`                   | what an agent may import. `workspace:*` marks a package packed from this repository's `packages/`; everything else is pinned as in the other conditions |
 | `starter/src/generated/icrc1.ts` | the CLI's output, unedited (setup.mjs regenerates it)                                                                                                   |
 | `docs/llms.txt`                  | `packages/core/llms.txt` as packed into the core tarball (setup.mjs copies it). Until DX3 (#785) lands it is the placeholder guide                      |
-| `node_modules/` (not tracked)    | the scorer's install: a copy of `.ship/v4/node_modules`, so the hidden tests run against exactly what agents get                                        |
+| `node_modules/` (not tracked)    | the scorer's install: a copy of `.ship/v4/node_modules`, with `@icp-sdk/core` linked to evals' own (step 6 below)                                       |
 | `PORTING.md`                     | the work list for porting the v4-proto references and faulty solutions to this condition                                                                |
 
 The starter module is generated with:
@@ -48,11 +48,22 @@ picked up), keeping `<dir>/icrc1.ts` only; the CLI's `icrc1.envelope.json`
    path or hidden-test path anywhere in the shipped `node_modules`).
 6. Copies `.ship/v4/node_modules` to `conditions/v4/node_modules` for the
    scorer. `conditions/v4` is not a member of evals' pnpm workspace: its
-   ic-reactor packages exist only as tarballs that setup makes.
+   ic-reactor packages exist only as tarballs that setup makes. In that
+   copy `@icp-sdk/core` is a link to evals' own `node_modules/@icp-sdk/core`
+   (`V4_SHARED_WITH_WORLD` in `harness/ship.mjs`), after setup checks that
+   evals', the ship's and the pin's versions agree (6.1.0). The hidden
+   tests' world (`harness/world.ts`, `fake-auth.ts`, and `installFakeReplica`
+   from `@ic-reactor/core` 3.13.0) imports `@icp-sdk/core` from evals'
+   install; a plain copy would give the solution and the hidden tests a
+   second instance, and every class check across the two would fail in
+   scoring only. With the copy, fake-auth's signed-out `AnonymousIdentity`
+   was not an `instanceof AnonymousIdentity` for the solution; with the
+   link it is, as in the four other conditions (one pnpm store) and in an
+   agent's own run (one npm install).
 
 `harness/ship.test.mjs` checks the result (the cut packages, no repository
-path, the single guide, the scorer's copy, the assembled starter) and the
-refusal on seeded files.
+path, the single guide, the scorer's copy and its one `@icp-sdk/core`, the
+assembled starter) and the refusal on seeded files.
 
 ## Status
 

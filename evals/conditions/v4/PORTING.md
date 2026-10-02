@@ -9,6 +9,18 @@ and this file changes in the same PR as the port.
 
 ## Rules for the port
 
+- **Check the scorer first.** Before scoring the first port, run
+  `node setup.mjs` and `node --test harness/ship.test.mjs`, which checks
+  that the scorer loads one instance of `@icp-sdk/core`. The world
+  (`world.ts`, `fake-auth.ts`, the 3.13.0 fake replica) imports it from
+  evals' install; the solution, the hidden tests and the v4 packages import
+  it from `conditions/v4/node_modules`, where setup makes it a link to
+  evals' copy (`conditions/v4/README.md`, step 6). A reference failure that
+  looks like a class or identity mismatch (fake-auth's signed-out
+  `AnonymousIdentity` not seen as anonymous, a `Principal` not recognised)
+  points at that link before the library. Nothing else crosses: the 3.13.0
+  fake replica only answers `fetch`, and v4's error classification reads
+  names and codes, never `instanceof` (`packages/core/src/errors.ts`).
 - **Same product, new library.** Each port keeps the reference's behaviour
   line for line (the same refusals, the same `data-state` rule, the same
   module-scope or per-tree lifetime) and changes only what ic-reactor 4 now
