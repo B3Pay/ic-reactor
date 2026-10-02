@@ -1,0 +1,5 @@
+{
+  "file": "src/units.ts",
+  "search": "options?: { signed?: boolean }",
+  "replace": "options?: { signed?: boolean; [option: string]: unknown }"
+}

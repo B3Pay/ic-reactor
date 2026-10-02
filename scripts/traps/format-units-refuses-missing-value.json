@@ -1,0 +1,5 @@
+{
+  "file": "src/units.ts",
+  "search": "export function formatUnits(\n  value: bigint,",
+  "replace": "export function formatUnits(\n  value: bigint | undefined,"
+}

@@ -1,0 +1,5 @@
+{
+  "file": "src/errors.ts",
+  "search": "readonly kind: ReactorErrorKind\n      readonly err?: undefined",
+  "replace": "readonly kind: ReactorErrorKind\n      readonly err?: any"
+}

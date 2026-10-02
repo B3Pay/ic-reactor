@@ -1,0 +1,9 @@
+{
+  "edits": [
+    {
+      "file": "src/index.ts",
+      "search": "export type { Network } from \"./network.js\"",
+      "replace": "export type { Network } from \"./network.js\"\nexport { resolveNetwork } from \"./network.js\"\nexport { classifyError } from \"./errors.js\""
+    }
+  ]
+}
