@@ -32,6 +32,7 @@ import {
   serve,
   sleep,
 } from "./canister-helpers.js"
+import { withIdentity } from "./client-helpers.js"
 import * as icrc1 from "./fixtures/icrc1.js"
 import * as shapes from "./fixtures/shapes.js"
 
@@ -543,6 +544,46 @@ describe("mutationOptions", () => {
     expect(reader.queryClient.getQueryState(key)?.isInvalidated).toBe(false)
     expect(reads(replica)).toBe(1)
     unsubscribe()
+  })
+
+  it("does not invalidate after a write cancelled before it was sent", async () => {
+    const replica = replicaWith({ [SHAPES]: whoCanister(new Map()) })
+    const auth = createTestAuth({ seed: 1 })
+    // The identity of the write's caller arrives only after they signed out.
+    const asked = deferred()
+    const gate = deferred()
+    let slow = false
+    const slowAuth = withIdentity(auth, async () => {
+      const identity = await auth.getIdentity()
+      if (slow) {
+        asked.resolve()
+        await gate.promise
+      }
+      return identity
+    })
+    const client = clientWithAuth(replica, slowAuth)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const read = client.queryOptions(canister, "one", 1n)
+    await client.queryClient.fetchQuery(read)
+
+    slow = true
+    const write = new MutationObserver(
+      client.queryClient,
+      client.mutationOptions(canister, "address")
+    ).mutate("x")
+    await asked.promise
+    await auth.signOut()
+    gate.resolve()
+    await expect(write).rejects.toMatchObject({
+      kind: "cancelled",
+      code: "caller_changed",
+      mayHaveExecuted: false,
+    })
+    expect(requestsFor(replica, "address")).toEqual([])
+    expect(client.queryClient.getQueryState(read.queryKey)?.isInvalidated).toBe(
+      false
+    )
+    expect(requestsFor(replica, "one")).toHaveLength(1)
   })
 
   it("invalidates only what invalidates lists, and nothing for []", async () => {
