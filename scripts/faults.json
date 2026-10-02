@@ -150,6 +150,16 @@
     "replace": "  error.kind === \"canister_err\""
   },
   {
+    "id": "ir2t-cancelled-write-invalidates",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "does not invalidate after a write cancelled before it was sent",
+    "why": "a write cancelled before anything was sent (its caller signed out) invalidates the canister's reads as if it may have run",
+    "file": "src/options.ts",
+    "search": "  error.kind === \"canister_err\" ||",
+    "replace": "  error.kind === \"canister_err\" ||\n  error.kind === \"cancelled\" ||"
+  },
+  {
     "id": "ir2t-no-default-invalidation",
     "package": "core",
     "test": "tests/options.test.ts",
