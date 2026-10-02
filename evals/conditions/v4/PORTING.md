@@ -25,9 +25,11 @@ and this file changes in the same PR as the port.
   `meta.json` `bug` and in the README's faulty-solution table: the hidden
   tests, the world and the scoring do not change (issue #786, "Not in
   scope").
-- **The gate.** `node gate.mjs` must then report 45 + 4 + 6 = 55 of 55 and no
-  skipped cell (`skip node-tool/v4` and `skip react-wallet/v4` disappear once
-  the references exist).
+- **The gate.** `node gate.mjs --require v4` must then report 45 + 4 + 6 =
+  55 of 55. `--require v4` fails the gate before scoring while either task's
+  `v4` cell has no reference, and a ported faulty solution in a task whose
+  `v4` references are missing fails it even without the flag, so a port
+  left half done cannot pass.
 - **Imports.** `@ic-reactor/core` (`createClient`, `isReactorError`,
   `parseUnits`, `formatUnits`, types `AuthLike`, `Client`, `ReactorError`);
   `@ic-reactor/react` (`ReactorProvider`, `useClient`, `useAuth`);

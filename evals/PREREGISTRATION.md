@@ -284,7 +284,7 @@ checks it for every condition, `v4` included).
 
   ```bash
   node setup.mjs
-  node gate.mjs                 # must pass first: pass rule 2
+  node gate.mjs --require v4    # must pass first: pass rule 2
   node drive.mjs --preflight --model claude-sonnet-5-5 --effort medium \
     --oauth-token-file <file>
   node drive.mjs --pilot --prompt minimal \
@@ -314,8 +314,12 @@ checks it for every condition, `v4` included).
    `v4-proto-refuses-nat64-max`, `v4-proto-retry-spread`,
    `v4-proto-keep-previous-data`, `v4-proto-every-reject-unknown` and
    `v4-proto-status-not-idle`), each fail exactly the tests in their
-   `meta.json`: 55 of 55, no cell skipped. It is run before the batch; if
-   it fails, the batch does not start.
+   `meta.json`: 55 of 55, no cell skipped. `--require v4` makes the gate
+   fail, before scoring anything, when a `v4` cell has no reference
+   solution, so "no cell skipped" is the gate's exit status and not a
+   reading of its output (an empty cell of the pilots' four conditions, or
+   one whose task holds faulty solutions of its condition, fails it too).
+   It is run before the batch; if it fails, the batch does not start.
 
 `thin-guide` does not enter the rule. Its result is reported beside `v4`'s;
 if it is below 5 of 5 on a task, the report says so, because the pilots'
@@ -371,8 +375,8 @@ dated addendum and the owner's approval, as Addendum 2 did.
 **Freezing.** This addendum is frozen, by replacing its status line with the
 date and recording the owner's approval below, when all of these hold:
 the `v4` references and the six ported faulty solutions are in the tree and
-`node gate.mjs` passes 55 of 55; `conditions/v4/docs/llms.txt` is DX3's
-guide as packed and passes `node harness/check-docs.mjs`; the commit under
-test is named above.
+`node gate.mjs --require v4` passes 55 of 55; `conditions/v4/docs/llms.txt`
+is DX3's guide as packed and passes `node harness/check-docs.mjs`; the
+commit under test is named above.
 
 Approved by owner: not yet (draft).

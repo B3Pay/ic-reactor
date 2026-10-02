@@ -51,7 +51,8 @@ evals/
     judge.mjs         per-test results → requirements, safe, met, under one prompt variant
     probes/           per-input amount diagnostic for stored solutions (not scored)
     check-docs.mjs    checks docs/scaffold/prompts for hidden-test names and literals
-    *.test.mjs        unit tests: sandbox, leak audit, aggregation, driver, prompt parity
+    gate-plan.mjs     what gate.mjs scores, and which empty cells it may skip
+    *.test.mjs        unit tests: sandbox, leak audit, aggregation, driver, prompt parity, v4 ship, gate plan
   tasks/<task>/
     prompt.md          the task prompt (`explicit` variant); {{LIBRARY}} is the only
                        condition-specific line, {{RUN}} the only run-mode-specific one
@@ -92,6 +93,7 @@ node setup.mjs          # inputs, prototype build, public scaffold, .ship/ (netw
 
 node score.mjs --task node-tool    --condition thin --solution tasks/node-tool/solutions/thin/reference
 node gate.mjs [--task react-wallet] [--jobs 4]       # all references + all faulty solutions
+node gate.mjs --require v4                           # … and fail if a v4 cell has no reference (Addendum 3)
 node drive.mjs --n 20 --dry-run                      # the matrix plan
 node drive.mjs --pilot --dry-run                     # the 5-runs-per-cell pilot plan
 node drive.mjs --pilot --prompt minimal --dry-run    # the same with the minimal prompt
@@ -101,7 +103,7 @@ node drive.mjs --aggregate runs/<dir> --rescan       # … re-auditing each tran
 node drive.mjs --aggregate runs/<dir> --rescore      # … re-scoring each stored solution with today's tests
 node drive.mjs --pilot --prompt minimal --condition v4 --condition thin-guide --dry-run   # Addendum 3's plan
 
-node --test harness/*.test.mjs                       # sandbox, leak audit, aggregation, driver, prompts, v4 ship
+node --test harness/*.test.mjs                       # sandbox, leak audit, aggregation, driver, prompts, v4 ship, gate plan
 node harness/check-docs.mjs [files…]                 # docs vs hidden tests (exit 1 on a hit)
 
 # the prototype's own checks
@@ -298,6 +300,12 @@ in `meta.json` is checked too. Last run: **45/45**. A condition with no
 reference solution yet (`v4`, until its port: `conditions/v4/PORTING.md`) is
 skipped and named (`skip <task>/v4: no reference solutions yet`); with the
 v4 references and the six ported faulty solutions the gate is 55 solutions.
+An empty cell fails the gate before anything is scored, instead of being
+skipped, when its condition is one of the pilots' four, when its task holds
+faulty solutions of that condition (a port left half done), or when
+`--require <condition>` names it: Addendum 3 runs `node gate.mjs --require
+v4`, so its "no cell skipped" is checked by the gate and not by reading the
+output (`harness/gate-plan.mjs`).
 
 | Faulty solution                               | Bug                                                        | Caught by                                                                                                       |
 | --------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |

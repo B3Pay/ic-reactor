@@ -57,6 +57,7 @@ refusal on seeded files.
 ## Status
 
 No reference or faulty solution exists yet: `gate.mjs` reports
-`skip <task>/v4: no reference solutions yet` for both tasks. They wait for
+`skip <task>/v4: no reference solutions yet` for both tasks, and
+`gate.mjs --require v4` (what Addendum 3 runs) fails on them. They wait for
 the client and its builders (IR2t #782), the React bindings (IR6 #780) and
 the guide (DX3 #785); `PORTING.md` lists the work.

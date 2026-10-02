@@ -7,20 +7,19 @@
 // accordingly under that variant (harness/judge.mjs: tests task.json marks
 // not applicable under a variant count toward nothing there).
 //
-//   node evals/gate.mjs [--task <task>] [--jobs <n>]
+//   node evals/gate.mjs [--task <task>] [--jobs <n>] [--require <condition>]…
+//
+// A cell (task × condition) with no reference solution is skipped and named.
+// It fails the gate instead, before anything is scored, when its condition is
+// pre-registered, is named by `--require` (Addendum 3 runs
+// `--require v4`), or has faulty solutions in that task (harness/gate-plan.mjs).
 //
 // Prints one line per solution and a summary; exits 1 if any expectation is
-// not met, 2 on a harness error.
+// not met or a cell may not be skipped, 2 on a harness error.
 import { spawn } from "node:child_process"
-import { existsSync, readdirSync } from "node:fs"
 import { join } from "node:path"
-import {
-  EVALS,
-  CONDITIONS,
-  TASKS,
-  readJson,
-  taskSpec,
-} from "./harness/assemble.mjs"
+import { EVALS, TASKS, taskSpec } from "./harness/assemble.mjs"
+import { gatePlan } from "./harness/gate-plan.mjs"
 import { judge } from "./harness/judge.mjs"
 
 const argv = process.argv.slice(2)
@@ -28,45 +27,19 @@ const opt = (name, fallback) => {
   const i = argv.indexOf(`--${name}`)
   return i >= 0 ? argv[i + 1] : fallback
 }
+const opts = (name) =>
+  argv.flatMap((arg, i) => (arg === `--${name}` ? [argv[i + 1]] : []))
 const tasks = opt("task") ? [opt("task")] : TASKS
 const jobs = Number(opt("jobs", "3"))
 
-const cases = []
-const skipped = []
-for (const task of tasks) {
-  for (const condition of CONDITIONS) {
-    // Every reference-like solution: `reference`, `reference-module-scope`, …
-    const root = join(EVALS, "tasks", task, "solutions", condition)
-    const references = existsSync(root)
-      ? readdirSync(root).filter((name) => name.startsWith("reference"))
-      : []
-    // A condition can exist before its solutions do (v4 until its references
-    // are ported): it is skipped, and said so, rather than failing the gate.
-    if (references.length === 0) skipped.push(`${task}/${condition}`)
-    for (const name of references.sort()) {
-      cases.push({
-        task,
-        condition,
-        name,
-        dir: join(root, name),
-        expectFail: [],
-      })
-    }
-  }
-  const faulty = join(EVALS, "tasks", task, "faulty")
-  for (const name of existsSync(faulty) ? readdirSync(faulty).sort() : []) {
-    const meta = readJson(join(faulty, name, "meta.json"))
-    cases.push({
-      task,
-      condition: meta.condition,
-      name,
-      dir: join(faulty, name),
-      expectFail: meta.expectFail,
-      expectSafe: meta.safe ?? {},
-      bug: meta.bug,
-    })
-  }
+let plan
+try {
+  plan = gatePlan({ tasks, require: opts("require") })
+} catch (error) {
+  process.stderr.write(`gate: ${error.message}\n`)
+  process.exit(2)
 }
+const { cases, skipped, blocked } = plan
 
 function score(c) {
   return new Promise((resolve) => {
@@ -91,8 +64,19 @@ function score(c) {
   })
 }
 
-for (const cell of skipped) {
-  process.stdout.write(`skip ${cell}: no reference solutions yet\n`)
+for (const { cell, reasons } of skipped) {
+  process.stdout.write(
+    reasons.length === 0
+      ? `skip ${cell}: no reference solutions yet\n`
+      : `FAIL ${cell}: no reference solutions, and it may not be skipped: ${reasons.join("; ")}\n`
+  )
+}
+if (blocked.length > 0) {
+  process.stdout.write(
+    `\ngate: failed before scoring: ${blocked.length} cell(s) without reference solutions may not be skipped: ` +
+      `${blocked.map((s) => s.cell).join(", ")}\n`
+  )
+  process.exit(1)
 }
 
 const results = []
@@ -156,7 +140,7 @@ process.stdout.write(
     ` (${results.filter((r) => r.name.startsWith("reference")).length} references, ` +
     `${results.filter((r) => !r.name.startsWith("reference")).length} faulty)` +
     (skipped.length > 0
-      ? `; skipped, no reference solutions yet: ${skipped.join(", ")}`
+      ? `; skipped, no reference solutions yet: ${skipped.map((s) => s.cell).join(", ")}`
       : "") +
     "\n"
 )
