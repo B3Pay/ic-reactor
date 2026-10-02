@@ -1,5 +1,6 @@
 /**
- * `createTestAuth` from `@ic-reactor/core/testing`: a sign-in a test
+ * `createTestAuth`, the sign-in behind `createTestClient`'s `auth` (internal:
+ * the testing entry exports only `createTestClient`): a sign-in a test
  * controls, shaped like `@icp-sdk/auth` 10's `AuthClient`.
  *
  * What a client built over it relies on is that it is synchronous and
@@ -15,7 +16,7 @@ import {
   createTestAuth,
   type TestAuth,
   type TestAuthStatus,
-} from "../src/testing/index.js"
+} from "../src/testing/test-auth.js"
 
 /** Seed 1's principal: it must be the same one in every run, on every machine. */
 const SEED_1 = "psith-oknjz-x73tv-7x3p4-a2sji-7o6lo-g2754-yfgfl-3vlqe-irrrt-4ae"

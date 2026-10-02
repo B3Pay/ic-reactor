@@ -17,7 +17,7 @@ import {
   type ClientOptions,
 } from "../src/index.js"
 import { internalsOf } from "../src/client.js"
-import { createTestAuth } from "../src/testing/index.js"
+import { createTestAuth } from "../src/testing/test-auth.js"
 
 const identity = Ed25519KeyIdentity.generate()
 

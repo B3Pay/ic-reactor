@@ -1,0 +1,5 @@
+{
+  "file": "src/testing/test-client.ts",
+  "search": "    ? (...args: [...P, ctx: { readonly caller: Principal }]) => R | Promise<R>",
+  "replace": "    ? (...args: [...P, ctx: { readonly caller: Principal }]) => R | Promise<R> | unknown"
+}

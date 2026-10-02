@@ -4,10 +4,34 @@
  * fake replica with one call to send through them.
  */
 import { createClient, type AuthLike, type Client } from "@ic-reactor/core"
-import { createFakeReplica, type FakeReplica } from "@ic-reactor/core/testing"
+import { createTestClient } from "@ic-reactor/core/testing"
+import { c } from "@candid-core/schema"
 import { createRequire } from "node:module"
 import { pathToFileURL } from "node:url"
 import { vi, type Mock } from "vitest"
+
+/** The controllable sign-in of a test client: `signIn`, `switchTo`, `expire` and the rest. */
+export type TestAuth = ReturnType<typeof createTestClient>["auth"]
+
+/**
+ * A sign-in a test controls, for the tests that build a client around it
+ * themselves (to count how often the client builds its auth, or to wrap it).
+ * It is the `auth` of a test client, the only place the testing entry hands
+ * one out; the fake replica next to it is never called, since no test here
+ * calls a canister. `identity` is a seed.
+ *
+ * The test client is disposed at once. A client builds its auth on first use
+ * and this one is never used, so it never took the auth over and disposing it
+ * leaves the auth alone: whichever client the test hands the auth to owns it
+ * from then on, as every client owns the auth it builds.
+ */
+export const testAuth = (
+  options?: Parameters<typeof createTestClient>[0]
+): TestAuth => {
+  const { client, auth } = createTestClient(options)
+  client.dispose()
+  return auth
+}
 
 /** A client on the IC whose caller is whatever `auth` says. Sends nothing. */
 export const clientWithAuth = (auth: () => AuthLike): Client =>
@@ -146,32 +170,32 @@ const CANISTER = "rdmx6-jaaaa-aaaaa-aaadq-cai"
 /** Candid's empty argument and reply, `()`. */
 const EMPTY = new Uint8Array([0x44, 0x49, 0x44, 0x4c, 0, 0])
 
-/** A fake replica, and the callers its canister saw. */
-export function replicaWithCanister(): {
-  readonly replica: FakeReplica
+/** The service of that canister: one query that takes and returns nothing. */
+const PING = c.service({ ping: c.func([], [], "query") })
+
+/**
+ * A test client over a fake replica whose canister records who called it, and
+ * the sign-in the client calls as. `identity` is a seed, as for
+ * {@link testAuth}. The client is created when this is called, so a provider
+ * whose factory returns it borrows it, as one at module scope is.
+ */
+export function clientWithCanister(
+  options?: Parameters<typeof createTestClient>[0]
+): {
+  readonly client: Client
+  readonly auth: TestAuth
+  /** The callers the canister saw, as principal text, in order. */
   readonly callers: string[]
 } {
   const callers: string[] = []
-  const replica = createFakeReplica({
-    canisters: {
-      [CANISTER]: {
-        query: (_method, _arg, { caller }) => {
-          callers.push(caller.toText())
-          return EMPTY
-        },
-      },
+  const test = createTestClient(options)
+  test.mock<{ ping: () => Promise<void> }>(PING, CANISTER, {
+    ping: ({ caller }) => {
+      callers.push(caller)
     },
   })
-  return { replica, callers }
+  return { client: test.client, auth: test.auth, callers }
 }
-
-/** A client of `replica` whose caller is whatever `auth` says. */
-export const clientOn = (replica: FakeReplica, auth: () => AuthLike): Client =>
-  createClient({
-    network: { host: replica.host, rootKey: replica.rootKey },
-    fetch: replica.fetch,
-    auth,
-  })
 
 /** What {@link callThrough} uses of core's internal `internalsOf`. */
 interface CallPath {

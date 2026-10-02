@@ -24,7 +24,7 @@ import {
   type FakeCanister,
   type FakeReplica,
   type FakeReplicaRequest,
-} from "../src/testing/index.js"
+} from "../src/testing/fake-replica.js"
 import * as icrc1 from "./fixtures/icrc1.js"
 
 export { ANONYMOUS, deferred, networkOf, onPage } from "./client-helpers.js"

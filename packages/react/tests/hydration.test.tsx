@@ -11,14 +11,19 @@
  * is anonymous, as a real server's is, so that a server snapshot that read the
  * browser's state instead would produce different HTML on the two sides.
  */
-import { createTestAuth, type TestAuth } from "@ic-reactor/core/testing"
 import { act } from "@testing-library/react"
 import { Suspense, lazy, type ComponentType, type ReactElement } from "react"
 import { hydrateRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ReactorProvider, useAuth } from "../src/index.js"
-import { anonymousClient, clientWithAuth, macrotask } from "./helpers.js"
+import {
+  anonymousClient,
+  clientWithAuth,
+  macrotask,
+  type TestAuth,
+  testAuth,
+} from "./helpers.js"
 
 let root: Root | undefined
 let container: HTMLElement
@@ -82,7 +87,7 @@ describe("hydrating the server's HTML", () => {
     // anonymous client. A server's real client holds no session either, so the
     // two renders have to agree: the server snapshot does not read the auth.
     headerStatuses = []
-    const auth = createTestAuth({ seed: 7 })
+    const auth = testAuth({ identity: 7 })
     const buildAuth = vi.fn(() => auth)
     const anonymous = renderToString(page(Profile))
 
@@ -103,7 +108,7 @@ describe("hydrating the server's HTML", () => {
 
   it("starts anonymous while the browser is signed in, then shows the session", async () => {
     headerStatuses = []
-    const auth = createTestAuth({ seed: 7 })
+    const auth = testAuth({ identity: 7 })
     const principal = auth.getPrincipal()?.toText()
     container.innerHTML = renderToString(page(Profile))
     expect(container.textContent).toBe("anonymous:2vxsx-faeanonymous")
@@ -123,7 +128,7 @@ describe("hydrating the server's HTML", () => {
 
   it("hydrates a boundary that arrives after the session was shown", async () => {
     headerStatuses = []
-    const auth = createTestAuth({ seed: 7 })
+    const auth = testAuth({ identity: 7 })
     container.innerHTML = renderToString(page(Profile))
 
     let deliver!: () => void
@@ -150,7 +155,7 @@ describe("hydrating the server's HTML", () => {
 
   it("stays anonymous when the browser holds no session", async () => {
     headerStatuses = []
-    const auth = createTestAuth({ seed: 7, signedIn: false })
+    const auth = testAuth({ identity: 7, signedIn: false })
     container.innerHTML = renderToString(page(Profile))
 
     const { recoverable, logged } = await hydrate(page(Profile, auth))

@@ -324,7 +324,7 @@ export function evaluate({ entries, exported, foreign }) {
       if (lenient) transitional.set(id, leftover)
       else {
         failures.push(
-          `${id} (${version}) still exports the transitional ${leftover.join(", ")}. IR4b (#783) replaces them with ${entry.planned.join(" and ")} and deletes the allowance; it must land before the first beta.`
+          `${id} (${version}) still exports the transitional ${leftover.join(", ")}. The budget allows them only while the version is an alpha: they must be gone, and the allowance deleted, before the first beta.`
         )
       }
     }

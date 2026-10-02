@@ -1,0 +1,5 @@
+{
+  "file": "src/testing/test-client.ts",
+  "search": "(...args: [...P, ctx: { readonly caller: Principal }])",
+  "replace": "(...args: P extends unknown ? never[] : never)"
+}

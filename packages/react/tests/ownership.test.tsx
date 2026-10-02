@@ -9,7 +9,6 @@
  * auth read anonymous, with no error anywhere. Such a client is borrowed, and
  * whoever created it decides when it ends.
  */
-import { createTestAuth } from "@ic-reactor/core/testing"
 import type { Client } from "@ic-reactor/core"
 import { act, render } from "@testing-library/react"
 import { StrictMode, useState } from "react"
@@ -18,10 +17,10 @@ import { ReactorProvider, useAuth } from "../src/index.js"
 import {
   anonymousClient,
   callThrough,
-  clientOn,
   clientWithAuth,
+  clientWithCanister,
   macrotask,
-  replicaWithCanister,
+  testAuth,
   trackedFactory,
   withDisposeSpy,
 } from "./helpers.js"
@@ -40,9 +39,11 @@ function Status({ id = "status" }: { id?: string }) {
  * on a fake replica, with a spy on its `dispose`.
  */
 function moduleScopeClient() {
-  const { replica, callers } = replicaWithCanister()
-  const auth = createTestAuth({ seed: 7, signedIn: false })
-  const real = clientOn(replica, () => auth)
+  const {
+    client: real,
+    auth,
+    callers,
+  } = clientWithCanister({ identity: 7, signedIn: false })
   const { client, dispose } = withDisposeSpy(real)
   return { real, client, dispose, auth, callers }
 }
@@ -204,7 +205,7 @@ describe("a client the provider's factory created", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {})
     let shared: Client | undefined
     const tracked = trackedFactory(() =>
-      clientWithAuth(() => createTestAuth({ seed: 8 }))
+      clientWithAuth(() => testAuth({ identity: 8 }))
     )
     // A getter that creates the shared client on its first call: the first
     // provider's factory call created it.

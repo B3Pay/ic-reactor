@@ -1,0 +1,5 @@
+{
+  "file": "src/testing/test-client.ts",
+  "search": "export type TestHandlers<A> = {",
+  "replace": "export type TestHandlers<A> = { [name: string]: unknown } & {"
+}

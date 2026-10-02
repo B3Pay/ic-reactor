@@ -57,8 +57,9 @@ const ANONYMOUS = SdkPrincipal.anonymous().toText()
 // ---------------------------------------------------------------------------
 
 /**
- * A sign-in the client can own: what `@icp-sdk/auth` 10's `AuthClient` and
- * `createTestAuth()` from `@ic-reactor/core/testing` both are, with no adapter.
+ * A sign-in the client can own: what `@icp-sdk/auth` 10's `AuthClient` and the
+ * `auth` of `createTestClient()` from `@ic-reactor/core/testing` both are, with
+ * no adapter.
  *
  * The client reads `getStatus()` and `getPrincipal()` synchronously to decide
  * who calls, asks `getIdentity()` for the identity to sign with only when it
@@ -664,7 +665,9 @@ function warnEnvOffPage(network: Network): void {
  * exports them. Changing a key or what it means breaks the provider.
  *
  * - `ic-reactor.clients.created`, on `globalThis`: how many clients
- *   `createClient` has made in this realm.
+ *   `createClient` has made in this realm, the client of each
+ *   `createTestClient()` among them: both are built by
+ *   {@link createClientWith}, which stamps every client it builds.
  * - `ic-reactor.client.serial`, on each client: that count once the client
  *   was made, so the first client's is 1.
  * - `ic-reactor.client.disposed`, on each client: a getter, `true` once
@@ -771,6 +774,35 @@ function stateOf(auth: AuthLike): AuthState {
  * ```
  */
 export function createClient(options: ClientOptions): Client {
+  return createClientWith(options, {})
+}
+
+/**
+ * What the test client (`@ic-reactor/core/testing`) changes about how a client
+ * runs, which no app may. Not part of {@link ClientOptions}, which is public,
+ * and not exported from the package entry: {@link createClientWith} is the
+ * only way in.
+ */
+export interface ClientSeams {
+  /**
+   * Builds the auth factory on a server too. {@link createClient} builds it
+   * only in a browser, so that one `createClient({ auth })` line is anonymous
+   * in a server render and signed in in the browser. A test client lives in
+   * Node, where a test signs users in and out and expects the calls to follow:
+   * with the auth never built there, `auth.switchTo(2)` would change nothing a
+   * call can see.
+   */
+  readonly authOnServer?: boolean
+}
+
+/**
+ * {@link createClient} with the {@link ClientSeams} a test client needs.
+ * Internal: not exported from the package entry.
+ */
+export function createClientWith(
+  options: ClientOptions,
+  seams: ClientSeams
+): Client {
   checkOptions(options)
   const network = resolveNetwork(options.network, {
     allowEnvConfig: options.allowEnvConfig,
@@ -845,15 +877,16 @@ export function createClient(options: ClientOptions): Client {
   let notified: AuthState = snapshot
 
   /**
-   * The auth, built on first use: never in `identity` mode, never on a server,
-   * never after {@link Client.dispose}.
+   * The auth, built on first use: never in `identity` mode, never on a server
+   * (unless the test client's seam says so), never after
+   * {@link Client.dispose}.
    */
   const ensureAuth = (): AuthLike | undefined => {
     if (
       auth !== undefined ||
       authFactory === undefined ||
       disposed ||
-      isServer()
+      (seams.authOnServer !== true && isServer())
     ) {
       return auth
     }

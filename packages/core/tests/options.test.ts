@@ -19,7 +19,7 @@ import {
 import { classifyError, type ReactorError } from "../src/errors.js"
 import type { Client } from "../src/index.js"
 import type { CanisterMutationOptions } from "../src/types.js"
-import { createTestAuth } from "../src/testing/index.js"
+import { createTestAuth } from "../src/testing/test-auth.js"
 import {
   ANONYMOUS,
   ARCHIVE,

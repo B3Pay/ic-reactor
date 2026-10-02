@@ -65,7 +65,8 @@ import {
 } from "@tanstack/query-core"
 import { createClient, formatUnits, parseUnits } from "../src/index.js"
 import type { Network, ReactorError } from "../src/index.js"
-import { createTestAuth } from "../src/testing/index.js"
+import type { TestHandlers } from "../src/testing/index.js"
+import { createTestAuth } from "../src/testing/test-auth.js"
 import * as icrc1 from "./fixtures/icrc1.js"
 import * as shapes from "./fixtures/shapes.js"
 
@@ -194,6 +195,24 @@ void ledger.icrc1_balance_of({ owner: "aaaaa-aa", subaccount: null })
 // trap: vars-of-two-arguments-are-the-tuple
 // @ts-expect-error pair takes two arguments: pass them as the tuple [left, right]
 client.queryOptions(shapesCanister, "pair", 1n)
+
+// ---------------------------------------------------------------------------
+// The test client: handlers answer in the generated Actor's domain values
+// ---------------------------------------------------------------------------
+
+type LedgerHandlers = TestHandlers<icrc1.Actor>
+
+// trap: test-handler-nat-is-bigint
+// @ts-expect-error icrc1_fee replies a nat, which is a bigint: 10_000 is a number, write 10_000n
+export const feeAsNumber: LedgerHandlers = { icrc1_fee: () => 10_000 }
+
+// trap: test-handler-method-unknown
+// @ts-expect-error icrc1_balance is not a method of the ICRC-1 ledger; it is icrc1_balance_of
+export const balanceTypo: LedgerHandlers = { icrc1_balance: () => 1n }
+
+// trap: test-handler-takes-the-domain-value
+// @ts-expect-error icrc1_balance_of takes an Account, not text: ({ owner }) => ...
+export const ofText: LedgerHandlers = { icrc1_balance_of: (_o: string) => 1n }
 
 // ---------------------------------------------------------------------------
 // Known holes (D36): these COMPILE on purpose

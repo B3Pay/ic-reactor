@@ -63,6 +63,7 @@
     "react": ">=18.0.0"
   },
   "devDependencies": {
+    "@candid-core/schema": "0.3.0-beta.1",
     "@ic-reactor/core": "workspace:*",
     "@size-limit/preset-small-lib": "^13.0.3",
     "@tanstack/react-query": "^5.102.8",
