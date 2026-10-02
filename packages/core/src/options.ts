@@ -171,6 +171,16 @@ export function createBuilders(
         `[ic-reactor] ${call}: ${prepared.name} is a oneway method; it has no reply to cache. Call it directly, or through mutationOptions().`
       )
     }
+    // A call of a method without results resolves `undefined`, and TanStack
+    // Query takes a query function that resolves `undefined` for a failed
+    // read: it reports an error and caches nothing, although the call
+    // succeeded. Refused here, at build time, like a oneway.
+    if (prepared.results.length === 0) {
+      throw new TypeError(
+        `[ic-reactor] ${call}: ${prepared.name} has no results, and a method without results has nothing to cache. ` +
+          `Call it directly${isWrite(prepared.mode) ? ", or through mutationOptions()" : ""}.`
+      )
+    }
     if (isWrite(prepared.mode) && !idempotent) {
       throw new TypeError(
         `[ic-reactor] ${call}: ${prepared.name} is an update method, and a query refetches: every refetch would run the update again. ` +

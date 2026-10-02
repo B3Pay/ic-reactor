@@ -279,6 +279,34 @@ describe("queryOptions", () => {
     ).toThrow(TypeError)
     expect(() => client.queryOptions(canister, "composite", 1n)).not.toThrow()
   })
+
+  it("throws a TypeError for a method without results, which leaves a read nothing to cache, and its direct call still resolves", async () => {
+    const replica = replicaWith({
+      [SHAPES]: serve<shapes.Actor>(shapes.actor, {
+        nothing: () => undefined,
+      }),
+    })
+    const client = clientAs(replica, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    // Its call resolves undefined, which TanStack Query reports as a failed
+    // read with nothing cached: refused when the options are built instead.
+    expect(() => client.queryOptions(canister, "nothing")).toThrow(TypeError)
+    expect(() => client.queryOptions(canister, "nothing", skipToken)).toThrow(
+      /nothing has no results, and a method without results has nothing to cache\. Call it directly\./
+    )
+    // An update without results, opted in as a read, has nothing to cache
+    // either.
+    expect(() =>
+      client.queryOptions(canister, "note", "x", { update: "idempotent" })
+    ).toThrow(
+      /note has no results.*Call it directly, or through mutationOptions/
+    )
+    expect(canisterRequests(replica)).toEqual([])
+    await expect(canister.nothing()).resolves.toBeUndefined()
+    expect(requestsFor(replica, "nothing")).toMatchObject([
+      { endpoint: "query" },
+    ])
+  })
 })
 
 describe("an update read as a query, with { update: 'idempotent' }", () => {

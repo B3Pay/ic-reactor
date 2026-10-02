@@ -325,10 +325,15 @@ export interface Client {
    * keep it cached across writes, name the reads a write changes in
    * `invalidates`.
    *
+   * A method without results (`() -> () query`) has nothing to cache: its
+   * call resolves `undefined`, which TanStack Query takes for a failed read.
+   * This throws a `TypeError` for it too; call it directly, as
+   * `await canister.method()`.
+   *
    * @throws TypeError for an update or oneway method without the opt-in, a
-   * composite query of a certified canister, a canister of another client, a
-   * method the service does not have, or a fourth argument other than
-   * `{ update: "idempotent" }`.
+   * method without results, a composite query of a certified canister, a
+   * canister of another client, a method the service does not have, or a
+   * fourth argument other than `{ update: "idempotent" }`.
    */
   queryOptions<A, M extends keyof A & string>(
     canister: Canister<A>,

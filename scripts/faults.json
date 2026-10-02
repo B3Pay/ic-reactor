@@ -200,6 +200,16 @@
     "replace": "    if (prepared.mode === \"oneway\" && !idempotent) {"
   },
   {
+    "id": "ir2t-query-options-accepts-method-without-results",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "throws a TypeError for a method without results",
+    "why": "queryOptions builds a read of a method without results, whose query function resolves undefined: TanStack Query reports the successful call as a failed read and caches nothing",
+    "file": "src/options.ts",
+    "search": "    if (prepared.results.length === 0) {",
+    "replace": "    if (false && prepared.results.length === 0) {"
+  },
+  {
     "id": "ir2t-idempotent-read-refetched",
     "package": "core",
     "test": "tests/options.test.ts",
