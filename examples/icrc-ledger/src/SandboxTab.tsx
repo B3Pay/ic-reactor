@@ -1,5 +1,5 @@
 import { principal } from "@candid-core/schema"
-import { formatUnits, type ReactorError } from "@ic-reactor/core"
+import { formatUnits, type Client, type ReactorError } from "@ic-reactor/core"
 import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
 import { useEffect, useState, type FormEvent } from "react"
@@ -39,28 +39,58 @@ function nameOf(text: string): string {
 }
 
 /**
- * The Sandbox tab: a test client running in this page. The sandbox is made
- * once per mount; the provider owns its client (and disposes it on unmount),
- * and the components get the rest of it (the auth, the faults, the request
- * log) as a prop.
+ * The sandbox each client belongs to, so that the page finds the rest of its
+ * sandbox (the auth, the faults, the request log) from the provider's client.
+ *
+ * Kept by client because the provider keeps one client of the ones its
+ * factory made: `StrictMode` calls the factory twice and keeps one result, so
+ * a sandbox remembered anywhere else (a ref the factory writes) can be the one
+ * React threw away, while the provider runs on the other.
+ */
+const sandboxes = new WeakMap<Client, Sandbox>()
+
+/**
+ * The Sandbox tab: a test client running in this page.
+ *
+ * Without a `sandbox` prop, the tab makes its sandbox in the provider's
+ * factory, so the provider owns the client and disposes it, auth and cache
+ * with it, when the tab unmounts. A client made before the factory runs is
+ * borrowed and never disposed (see `ReactorProvider`): made there, every
+ * unmount, hot reload or render that `StrictMode` drops would leave one alive.
+ * A sandbox passed in is borrowed that way on purpose, and stays the caller's
+ * to dispose.
  */
 export default function SandboxTab(props: {
   /** How long the mocked ledger takes over a read or a transfer. */
   latencyMs?: number
-  /** A sandbox to show, for a test that reads its requests; one is made otherwise. */
+  /**
+   * A sandbox to show, for a test that reads its requests; one is made
+   * otherwise. The tab never disposes a sandbox it is given.
+   */
   sandbox?: Sandbox
 }) {
-  const [sandbox] = useState(
-    () => props.sandbox ?? createSandbox({ latencyMs: props.latencyMs ?? 400 })
-  )
+  const { sandbox: given, latencyMs = 400 } = props
   return (
-    <ReactorProvider client={() => sandbox.client}>
-      <SandboxView sandbox={sandbox} />
+    <ReactorProvider
+      client={() => {
+        // Only in-memory work, as a provider's factory should do: React may
+        // call it twice in development and keep one result.
+        const sandbox = given ?? createSandbox({ latencyMs })
+        sandboxes.set(sandbox.client, sandbox)
+        return sandbox.client
+      }}
+    >
+      <SandboxView />
     </ReactorProvider>
   )
 }
 
-function SandboxView({ sandbox }: { sandbox: Sandbox }) {
+function SandboxView() {
+  const client = useClient()
+  const sandbox = sandboxes.get(client)
+  if (sandbox === undefined) {
+    throw new Error("SandboxView renders under SandboxTab's provider only.")
+  }
   return (
     <>
       <section className="intro">

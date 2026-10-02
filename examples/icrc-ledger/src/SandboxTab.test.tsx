@@ -10,11 +10,36 @@ import {
   within,
 } from "@testing-library/react"
 import { StrictMode } from "react"
-import { afterEach, describe, expect, it } from "vitest"
-import { SEED_1, createSandbox, sandboxBtcAddress } from "./sandbox.ts"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import {
+  SEED_1,
+  createSandbox,
+  sandboxBtcAddress,
+  type Sandbox,
+} from "./sandbox.ts"
 import SandboxTab from "./SandboxTab.tsx"
 
-afterEach(() => cleanup())
+/** Every sandbox `createSandbox()` made, the tab's own ones included. */
+const made = vi.hoisted((): Sandbox[] => [])
+
+// The real `createSandbox`, which also keeps what it makes, so that a test can
+// reach the sandbox a tab made for itself.
+vi.mock("./sandbox.ts", async (importOriginal) => {
+  const original = await importOriginal<typeof import("./sandbox.ts")>()
+  return {
+    ...original,
+    createSandbox: (...args: Parameters<typeof original.createSandbox>) => {
+      const sandbox = original.createSandbox(...args)
+      made.push(sandbox)
+      return sandbox
+    },
+  }
+})
+
+afterEach(() => {
+  cleanup()
+  made.length = 0
+})
 
 const patiently = { timeout: 5_000 }
 
@@ -122,6 +147,8 @@ describe("the Sandbox tab", () => {
       {},
       patiently
     )
+    // The tab never disposes a sandbox it is given.
+    sandbox.client.dispose()
   })
 
   it("reads the ledger as the new caller after a sign-out", async () => {
@@ -138,5 +165,52 @@ describe("the Sandbox tab", () => {
         "icrc1_total_supply",
       ])
     }, patiently)
+  })
+})
+
+describe("the Sandbox tab's sandbox", () => {
+  /** Past the provider's cleanup, which disposes on the next macrotask. */
+  const nextTask = () => new Promise<void>((resolve) => setTimeout(resolve))
+
+  it("ends the sandbox it made for itself when it unmounts", async () => {
+    const { unmount } = render(
+      <StrictMode>
+        <SandboxTab latencyMs={0} />
+      </StrictMode>
+    )
+    await screen.findByText("10 ICP", {}, patiently)
+    // StrictMode calls the provider's factory twice and keeps one client: the
+    // page runs on the sandbox whose replica got the reads.
+    const used = made.filter((sandbox) => sandbox.requests.length > 0)
+    expect(used).toHaveLength(1)
+    const [sandbox] = used as [Sandbox]
+    // StrictMode's unmount and second mount leave it alive.
+    await nextTask()
+    expect(sandbox.auth.disposed).toBe(false)
+
+    unmount()
+
+    await waitFor(() => expect(sandbox.auth.disposed).toBe(true))
+    expect(sandbox.auth.listenerCount).toBe(0)
+    await expect(sandbox.client.signIn()).rejects.toThrow(/disposed client/)
+  })
+
+  it("leaves a sandbox it was given to whoever made it", async () => {
+    const sandbox = createSandbox({ latencyMs: 0 })
+    const { unmount } = render(
+      <StrictMode>
+        <SandboxTab sandbox={sandbox} />
+      </StrictMode>
+    )
+    await screen.findByText("10 ICP", {}, patiently)
+
+    unmount()
+    await nextTask()
+
+    expect(sandbox.auth.disposed).toBe(false)
+    await expect(
+      sandbox.ledger.icrc1_balance_of({ owner: SEED_1, subaccount: null })
+    ).resolves.toBe(1_000_000_000n)
+    sandbox.client.dispose()
   })
 })
