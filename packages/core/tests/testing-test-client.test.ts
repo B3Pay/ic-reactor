@@ -103,9 +103,12 @@ describe("who a handler is told called", () => {
     // The request carries its sender, and the fake verifies it. A handler that
     // were told whoever is signed in when it runs would see the account that
     // was switched to after the call went out. The switch is made after 0, 1,
-    // 2 ... microtasks of a call that is already on its way, so one of them
-    // lands between the signing and the handler, whatever the number of
-    // microtasks that takes.
+    // 2 ... microtasks of a call that is already on its way, until it has
+    // landed between the signing and the handler a few times, whatever the
+    // number of microtasks that takes: past that window the handler has
+    // already run, and each call is a full signed and certified one, so a
+    // longer sweep would only cost time that grows with the load on the
+    // machine.
     const told: string[] = []
     const live: string[] = []
     const { canister, auth, client, requests } = withShapes({
@@ -121,12 +124,21 @@ describe("who a handler is told called", () => {
       },
     })
 
+    const SWEEP_LIMIT = 40
+    const LANDINGS_WANTED = 3
+    const landings: number[] = []
     for (const send of [
       () => canister.who(),
       () => canister.address("x"),
     ] as const) {
-      for (let microtasks = 0; microtasks < 40; microtasks += 1) {
+      let landed = 0
+      for (
+        let microtasks = 0;
+        microtasks < SWEEP_LIMIT && landed < LANDINGS_WANTED;
+        microtasks += 1
+      ) {
         auth.switchTo(1)
+        const before = live.length
         const call = send()
         for (let tick = 0; tick < microtasks; tick += 1) {
           await Promise.resolve()
@@ -135,7 +147,12 @@ describe("who a handler is told called", () => {
         // A call whose caller changed before it went out is cancelled: it
         // sent nothing, so it told no handler anything.
         await call.catch(() => undefined)
+        // The handler ran, and by then the client was on the other account.
+        if (live.length > before && live[live.length - 1] === SEED_2) {
+          landed += 1
+        }
       }
+      landings.push(landed)
     }
 
     // Every call went out as the account it was made as, and the handler was
@@ -143,8 +160,10 @@ describe("who a handler is told called", () => {
     expect(told).toEqual(canisterRequests({ requests }).map((r) => r.caller))
     expect(told.length).toBeGreaterThan(0)
     expect(told.every((caller) => caller === SEED_1)).toBe(true)
-    // The sweep reached the moment the test is about: a call signed by one
-    // principal, run after the client had moved on to the other.
+    // The sweep reached the moment the test is about, for the query and for
+    // the update: a call signed by one principal, run after the client had
+    // moved on to the other.
+    expect(landings).toEqual([LANDINGS_WANTED, LANDINGS_WANTED])
     expect(live).toContain(SEED_2)
   })
 
