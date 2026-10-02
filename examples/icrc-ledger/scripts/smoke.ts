@@ -62,9 +62,7 @@ const page = await client.queryClient.fetchQuery(
 )
 const archived = await Promise.all(
   page.archived_blocks.map((range) =>
-    client.queryClient.fetchQuery(
-      archivedRangeOptions(client, blocks, genesis, range)
-    )
+    client.queryClient.fetchQuery(archivedRangeOptions(client, genesis, range))
   )
 )
 const rows = blockRows(page, archived)

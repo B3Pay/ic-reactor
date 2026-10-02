@@ -2,7 +2,7 @@
 // blocks; a `query_blocks` reply names an archive canister and method for each
 // older range (a Candid func reference), and `client.func()` calls it. Plain
 // TypeScript, so the Mainnet tab, scripts/smoke.ts and blocks.test.ts share it.
-import type { Canister, Client, ReactorError } from "@ic-reactor/core"
+import type { Client, ReactorError } from "@ic-reactor/core"
 import { queryOptions } from "@tanstack/react-query"
 import {
   actor,
@@ -17,10 +17,11 @@ import {
 } from "./canisters/icp_ledger.ts"
 import { ICP_LEDGER } from "./ledger.ts"
 
-/** The ICP ledger, typed with its block-reading interface (icp_ledger.did). */
-export type BlocksLedger = Canister<Actor>
-
-/** The ICP ledger's blocks on `client`; `certified` certifies `query_blocks`. */
+/**
+ * The ICP ledger's blocks on `client`. `certified` certifies `query_blocks`
+ * and nothing else: an archived range is read through `client.func()`, which
+ * has no certified path (see {@link archivedRangeOptions}).
+ */
 export const blocksLedgerOn = (client: Client, certified = false) =>
   client.canister<Actor>(actor, { id: ICP_LEDGER, certified })
 
@@ -37,28 +38,32 @@ export type ReadArchive = (arg: GetBlocksArgs) => Promise<BlockRange>
  * `client.func()` turns the range's callback into a call to its archive
  * canister, and the result is cached like any read.
  *
- * There is no options builder for a func reference, so the key is the key of
- * the `query_blocks` read that named the range (`client.queryKey()`, which
- * holds the network, the caller and the ledger), plus the range. Keyed so, it
- * stays under its ledger: an invalidation of the ledger's reads covers it. The
- * call is made as the caller current when it runs, as a direct call is, and
- * the default `retry` of `client.queryClient` applies to it. TanStack's
- * `queryOptions()` tags the key with the data and the error, so `useQuery`
- * types `error` as a `ReactorError` whose `err` is a `QueryArchiveError`.
+ * The archive is always read with a plain query, never certified, even when
+ * the `query_blocks` read that named the range was: `client.func()` has no
+ * certified path. So the key never says otherwise. There is no options
+ * builder for a func reference, so the key is the key of the plain
+ * `query_blocks` read with the same `args` (`client.queryKey()`, which holds
+ * the network, the caller and the ledger, and no `'certified'` segment), plus
+ * the range. Keyed so, it stays under its ledger: an invalidation of the
+ * ledger's reads covers it, and a certified page and a plain one share the
+ * archive's answer. The call is made as the caller current when it runs, as a
+ * direct call is, and the default `retry` of `client.queryClient` applies to
+ * it. TanStack's `queryOptions()` tags the key with the data and the error, so
+ * `useQuery` types `error` as a `ReactorError` whose `err` is a
+ * `QueryArchiveError`.
  *
  * @param args - The arguments of the `query_blocks` read whose reply carried
- * `range`.
+ * `range`, certified or not.
  */
 export function archivedRangeOptions(
   client: Client,
-  ledger: BlocksLedger,
   args: GetBlocksArgs,
   range: ArchivedBlocksRange
 ) {
   const read = client.func<ReadArchive>(QueryArchiveFn, range.callback)
   return queryOptions<BlockRange, ReactorError<QueryArchiveError>>({
     queryKey: [
-      ...client.queryKey(ledger, "query_blocks", args),
+      ...client.queryKey(blocksLedgerOn(client), "query_blocks", args),
       "archived",
       range.callback.principal,
       range.callback.method,

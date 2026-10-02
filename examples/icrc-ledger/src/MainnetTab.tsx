@@ -89,8 +89,11 @@ function Explorer() {
         )}
         {certified && (
           <p className="muted">
-            Each query goes through consensus as a replicated call, so its reply
-            is certified: slower, and cached under keys of its own.
+            Each query of the ledger goes through consensus as a replicated
+            call, so its reply is certified: slower, and cached under keys of
+            its own. Archived blocks are the exception: they are read through{" "}
+            <code>client.func()</code>, which has no certified path, so the
+            archive answers a plain query.
           </p>
         )}
       </section>
@@ -285,7 +288,8 @@ const blockIndex = (text: string): bigint | undefined =>
 /**
  * The ICP ledger's blocks. `query_blocks` answers with the blocks the ledger
  * still holds and, for each older range, a func reference to the archive
- * canister that holds it; `client.func()` calls each one.
+ * canister that holds it; `client.func()` calls each one. `certified`
+ * certifies `query_blocks` only: `client.func()` has no certified path.
  */
 function Blocks({ certified }: { certified: boolean }) {
   const client = useClient()
@@ -307,7 +311,7 @@ function Blocks({ certified }: { certified: boolean }) {
     queries:
       args && reply.data
         ? reply.data.archived_blocks.map((range) =>
-            archivedRangeOptions(client, ledger, args, range)
+            archivedRangeOptions(client, args, range)
           )
         : [],
   })
@@ -328,6 +332,8 @@ function Blocks({ certified }: { certified: boolean }) {
         time. The ledger keeps only its newest blocks: for older ones its reply
         carries a callback, an archive canister and a method, which{" "}
         <code>client.func(QueryArchiveFn, range.callback)</code> calls.
+        {certified &&
+          " Only query_blocks is certified here: the archive's rows come from a plain query."}
       </p>
       <label htmlFor="block-start">First block</label>
       <input

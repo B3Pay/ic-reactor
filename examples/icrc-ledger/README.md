@@ -14,6 +14,9 @@ tabs:
   older ranges its reply carries a callback (an archive canister and a
   method) that `client.func(QueryArchiveFn, range.callback)` calls
   (`src/blocks.ts`). "Genesis" reads the 2021 mints from the first archive.
+  `client.func()` has no certified path, so archived blocks come from a plain
+  query even with "Certified reads" on, and are cached without the
+  `'certified'` key segment.
 - **Sandbox** runs `createTestClient()` from `@ic-reactor/core/testing` in the
   page: a real client (it signs, sends and checks certificates) over the
   in-memory replica, with a mocked ICRC-1 ledger (`src/sandbox.ts`) that keeps

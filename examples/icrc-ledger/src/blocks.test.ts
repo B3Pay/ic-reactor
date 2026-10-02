@@ -135,9 +135,7 @@ describe("reading the ICP ledger's blocks across its archive", () => {
     ])
     const archived = await Promise.all(
       reply.archived_blocks.map((r) =>
-        client.queryClient.fetchQuery(
-          archivedRangeOptions(client, ledger, args, r)
-        )
+        client.queryClient.fetchQuery(archivedRangeOptions(client, args, r))
       )
     )
 
@@ -181,7 +179,7 @@ describe("reading the ICP ledger's blocks across its archive", () => {
     let failure: ReactorError<unknown> | undefined
     try {
       await client.queryClient.fetchQuery(
-        archivedRangeOptions(client, ledger, args, only!)
+        archivedRangeOptions(client, args, only!)
       )
     } catch (error) {
       if (!isReactorError(error)) throw error
@@ -202,7 +200,6 @@ describe("reading the ICP ledger's blocks across its archive", () => {
     const reply = await ledger.query_blocks(args)
     const options = archivedRangeOptions(
       client,
-      ledger,
       args,
       reply.archived_blocks[0]!
     )
@@ -217,5 +214,34 @@ describe("reading the ICP ledger's blocks across its archive", () => {
     expect(
       client.queryClient.getQueryState(options.queryKey)?.isInvalidated
     ).toBe(true)
+  })
+
+  it("reads the archive with a plain query under a certified ledger, and keeps 'certified' out of its key", async () => {
+    const { client, ledger, requests } = setup()
+    const certified = blocksLedgerOn(client, true)
+    const args = { start: 0n, length: 2n }
+    const reply = await client.queryClient.fetchQuery(
+      client.queryOptions(certified, "query_blocks", args)
+    )
+    const options = archivedRangeOptions(
+      client,
+      args,
+      reply.archived_blocks[0]!
+    )
+
+    const range = await client.queryClient.fetchQuery(options)
+
+    expect(range.blocks).toHaveLength(2)
+    // The ledger's page went through consensus; the archive's did not.
+    const sent = (id: string) =>
+      requests.filter((r) => r.canisterId === id).map((r) => r.endpoint)
+    expect(sent(ICP_LEDGER)).toContain("call")
+    expect(sent(ARCHIVE)).toContain("query")
+    expect(sent(ARCHIVE)).not.toContain("call")
+    // So the key is the plain page's, and a plain page finds it cached.
+    expect(options.queryKey).not.toContain("certified")
+    expect(options.queryKey.slice(0, -5)).toEqual(
+      client.queryKey(ledger, "query_blocks", args)
+    )
   })
 })
