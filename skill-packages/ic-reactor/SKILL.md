@@ -50,13 +50,20 @@ This skill describes these versions:
 
    export default defineConfig({
      plugins: [
-       icReactor({ canisters: { ledger: { didFile: "did/icrc1.did" } } }),
+       icReactor({
+         canisters: {
+           ledger: { didFile: "did/icrc1.did", outDir: "src/generated" },
+         },
+       }),
      ],
    })
    ```
 
-   Never edit the generated file; take method names and value shapes from its
-   `type Actor`, and never guess them. In CI, `candid-core-cli gen ... --check`
+   The module is named after the `.did` file: for `icrc1.did` both write
+   `src/generated/icrc1.ts`, which the guide imports as `./generated/icrc1`.
+   Without `outDir` the plugin writes to `src/canisters/`, and the imports
+   must follow. Never edit the generated file; take method names and value
+   shapes from its `type Actor`, and never guess them. In CI, `candid-core-cli gen ... --check`
    fails on a stale module.
 
 4. **Create one client** with `createClient({ network, identity | auth })`:
