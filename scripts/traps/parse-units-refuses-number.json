@@ -1,0 +1,5 @@
+{
+  "file": "src/units.ts",
+  "search": "export function parseUnits(\n  text: string,",
+  "replace": "export function parseUnits(\n  text: string | number,"
+}
