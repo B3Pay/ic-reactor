@@ -102,6 +102,43 @@ const mayHaveChanged = (error: unknown): boolean =>
   error.mayHaveExecuted
 
 /**
+ * What one run of a mutation resolved, in one synchronous step when it
+ * started: the canister it writes to, and the canisterId segments (and
+ * method) of every read it invalidates. A `{ name }` is resolved from the
+ * `ic_env` cookie, which a local redeploy can rewrite while an update is in
+ * flight; resolving once keeps the write and its invalidation on the same
+ * canister.
+ */
+interface MutationRun {
+  readonly target: ResolvedTarget
+  readonly invalidates: readonly {
+    readonly slots: readonly string[]
+    readonly method?: string
+  }[]
+}
+
+/**
+ * The property a run is kept under in what `onMutate` returns. A symbol, so
+ * it cannot collide with a context of the app's, and `{ ...context }` copies
+ * it when an app's own `onMutate` spreads this one's result into its own.
+ */
+const RUN = Symbol("ic-reactor.mutationRun")
+
+/** The run carried by what `onMutate` returned, if it carries one. */
+const runIn = (onMutateResult: unknown): MutationRun | undefined =>
+  typeof onMutateResult === "object" && onMutateResult !== null
+    ? (onMutateResult as { readonly [RUN]?: MutationRun })[RUN]
+    : undefined
+
+/**
+ * The function context TanStack Query (5.89 and later) creates for one run of
+ * a mutation and passes to `onMutate`, `mutationFn` and `onSettled` alike, if
+ * one was passed: the key a run is kept under in `runsByContext`.
+ */
+const runKey = (context: unknown): object | undefined =>
+  typeof context === "object" && context !== null ? context : undefined
+
+/**
  * The builders of one client. `owner` returns the client, which is built
  * after its builders.
  */
@@ -110,6 +147,21 @@ export function createBuilders(
   owner: () => Client
 ): Builders {
   const network = internals.network.keySegment
+
+  /**
+   * What was resolved for each run of a mutation, by the function context
+   * TanStack Query (5.89 and later) creates for the run and passes to
+   * `onMutate`, `mutationFn` and `onSettled` alike: how `mutationFn` finds
+   * what `onMutate` resolved, and `onSettled` what `mutationFn` wrote to,
+   * even when an `onMutate` of the app's replaced ours.
+   */
+  const runsByContext = new WeakMap<object, MutationRun>()
+
+  /** The run kept for a run's function context, if TanStack passed one and a run was kept for it. */
+  const keptRun = (context: unknown): MutationRun | undefined => {
+    const key = runKey(context)
+    return key === undefined ? undefined : runsByContext.get(key)
+  }
 
   /** A read's key, cut short where `method` or `args` are left out. */
   const readKey = (
@@ -169,6 +221,16 @@ export function createBuilders(
     if (prepared.mode === "oneway") {
       throw new TypeError(
         `[ic-reactor] ${call}: ${prepared.name} is a oneway method; it has no reply to cache. Call it directly, or through mutationOptions().`
+      )
+    }
+    // A call of a method without results resolves `undefined`, and TanStack
+    // Query takes a query function that resolves `undefined` for a failed
+    // read: it reports an error and caches nothing, although the call
+    // succeeded. Refused here, at build time, like a oneway.
+    if (prepared.results.length === 0) {
+      throw new TypeError(
+        `[ic-reactor] ${call}: ${prepared.name} has no results, and a method without results has nothing to cache. ` +
+          `Call it directly${isWrite(prepared.mode) ? ", or through mutationOptions()" : ""}.`
       )
     }
     if (isWrite(prepared.mode) && !idempotent) {
@@ -282,6 +344,16 @@ export function createBuilders(
     const record = recordOf(canister, internals, call)
     const prepared = methodOf(record, method, call)
     const invalidates = readInvalidates(canister, options)
+    // One synchronous step, so that every `{ name }` here (the canister
+    // written to, and any listed in `invalidates`) is read from the same
+    // cookie.
+    const resolveRun = (): MutationRun => ({
+      target: record.resolve(),
+      invalidates: invalidates.map(({ record: listed, method: only }) => ({
+        slots: listed.slots(),
+        method: only,
+      })),
+    })
     return {
       mutationKey: [
         KEY_ROOT,
@@ -289,25 +361,58 @@ export function createBuilders(
         slotOf(record.resolve()),
         prepared.name,
       ] as const,
-      // The caller and the target are read when the mutation runs.
-      mutationFn: (vars: unknown) =>
-        invoke(internals, {
+      // TanStack runs this first, before mutationFn, and hands what it
+      // returns to onSettled.
+      onMutate: (_vars: unknown, context?: unknown): object => {
+        const run = resolveRun()
+        const key = runKey(context)
+        if (key !== undefined) runsByContext.set(key, run)
+        return { [RUN]: run }
+      },
+      // The caller is read when the mutation runs. The target is the one
+      // onMutate resolved for this run where TanStack passes the run's
+      // context (5.89 and later), and is resolved now otherwise.
+      mutationFn: (vars: unknown, context?: unknown) => {
+        // TanStack hands a pending mutation the options of a later render
+        // only when their mutationKey is the same (another key detaches the
+        // observer instead), so a run found here was made by options for the
+        // same canister and method.
+        let run = keptRun(context)
+        const key = runKey(context)
+        if (run === undefined && key !== undefined) {
+          // An onMutate of the app's replaced ours, so nothing is resolved
+          // for this run yet: resolve it now, and keep it for onSettled,
+          // which TanStack hands the same context.
+          run = resolveRun()
+          runsByContext.set(key, run)
+        }
+        return invoke(internals, {
           method: prepared,
-          target: record.resolve(),
+          target: run?.target ?? record.resolve(),
           certified: record.certified,
           caller: internals.current(),
           values: valuesOf(prepared, vars),
           resend: true,
-        }),
+        })
+      },
       retry: false as const,
-      onSettled: async (_data: unknown, error: unknown): Promise<void> => {
-        if (invalidates.length === 0 || !mayHaveChanged(error)) return
+      onSettled: async (
+        _data: unknown,
+        error: unknown,
+        _vars: unknown,
+        onMutateResult?: unknown,
+        context?: unknown
+      ): Promise<void> => {
+        if (!mayHaveChanged(error)) return
+        // The reads of the run mutationFn wrote with, found by the run's
+        // context (5.89 and later); else those onMutate returned (before
+        // 5.89); else, when an onMutate of the app's replaced ours before
+        // 5.89 or onSettled is called by hand, the reads resolved now.
+        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()
+        const targets = run.invalidates
+        if (targets.length === 0) return
         // Every caller's reads, certified or not: a write changes what the
         // canister answers to everyone.
-        const targets = invalidates.map(({ record: listed, method: only }) => ({
-          slots: listed.slots(),
-          method: only,
-        }))
         await owner().queryClient.invalidateQueries({
           predicate: ({ queryKey: key }) =>
             key[0] === KEY_ROOT &&
