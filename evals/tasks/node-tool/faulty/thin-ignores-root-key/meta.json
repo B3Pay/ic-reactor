@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Ignores config.rootKey and fetches the root key from the local replica instead.",
+  "expectFail": ["root_key_used"]
+}

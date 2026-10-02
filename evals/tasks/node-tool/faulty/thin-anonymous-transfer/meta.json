@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Checks only that an identity was given, not that it is non-anonymous, so an AnonymousIdentity sends the transfer.",
+  "expectFail": ["no_anonymous_update"]
+}

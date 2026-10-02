@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Does not refuse invalid recipient text: it falls back to the anonymous principal and sends.",
+  "expectFail": ["refuses_invalid_recipient"]
+}

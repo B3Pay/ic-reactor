@@ -1,0 +1,5 @@
+{
+  "condition": "v4-proto",
+  "bug": "Shows every `rejected` error as unknown, including the system rejects (codes 1 and 3) that prove nothing ran.",
+  "expectFail": ["reject_code_1_is_error", "reject_code_3_is_error"]
+}

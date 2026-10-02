@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Renders both the signin and the signout button whatever the sign-in state.",
+  "expectFail": ["auth_buttons"]
+}

@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Does not check sign-in before sending; the form is always shown, so a signed-out click sends as the anonymous principal.",
+  "expectFail": ["no_anonymous_update"]
+}
