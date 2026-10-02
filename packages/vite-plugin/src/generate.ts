@@ -74,12 +74,6 @@ export interface Outcome {
 
 export interface GenerateResult {
   outcomes: Outcome[]
-  /**
-   * What the processes that produced a report wrote to stderr. The generator
-   * prints nothing there with `--json`, so any text is worth showing. The
-   * stderr of a process that produced none is part of its canisters' `failure`.
-   */
-  stderr: string
 }
 
 /**
@@ -143,7 +137,8 @@ function runProcess(
   args: string[],
   cwd: string,
   timeoutMs: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  onStderrLine?: (line: string) => void
 ): Promise<ProcessResult> {
   return new Promise((resolve) => {
     let stdout = ""
@@ -162,14 +157,24 @@ function runProcess(
       return
     }
 
+    // A line is passed on when it is complete, not when its first bytes
+    // arrive, and what follows the last newline is passed on at the end.
+    let unfinished = ""
+    const pass = (text: string) => {
+      if (text.trim()) onStderrLine?.(text.trimEnd())
+    }
+
     const settle = (result: Omit<ProcessResult, "stdout" | "stderr">) => {
       if (settled) return
       settled = true
+      pass(unfinished)
       clearTimeout(timer)
       signal?.removeEventListener("abort", stop)
       resolve({ stdout, stderr, ...result })
     }
     const stop = () => {
+      // Nothing of a run that was stopped is passed on, not even a last line.
+      unfinished = ""
       child.kill("SIGKILL")
       settle(stopped)
     }
@@ -190,7 +195,13 @@ function runProcess(
     child.stdout.setEncoding("utf-8")
     child.stderr.setEncoding("utf-8")
     child.stdout.on("data", (chunk: string) => (stdout = keep(stdout, chunk)))
-    child.stderr.on("data", (chunk: string) => (stderr = keep(stderr, chunk)))
+    child.stderr.on("data", (chunk: string) => {
+      stderr = keep(stderr, chunk)
+      if (settled || !onStderrLine) return
+      const lines = (unfinished + chunk).split(/\r?\n/)
+      unfinished = lines.pop() ?? ""
+      lines.forEach(pass)
+    })
     child.on("error", (error) =>
       settle({
         code: null,
@@ -287,6 +298,13 @@ interface Context {
   root: string
   timeoutMs: number
   signal?: AbortSignal
+  /**
+   * Called with each line a generator process writes to stderr, as it writes
+   * it, and the `.did` files that process is generating. The generator prints
+   * nothing there with `--json` when all is well, so a line is worth showing.
+   * What a process that failed wrote is also part of its failure message.
+   */
+  onStderr?: (line: string, didFiles: string[]) => void
 }
 
 /** One `.did` to write into one output directory, for each canister that names the pair. */
@@ -314,7 +332,12 @@ async function runGroup(
     ["gen", ...units.map((unit) => unit.didFile), "-o", outDir, "--json"],
     context.root,
     context.timeoutMs,
-    context.signal
+    context.signal,
+    (line) =>
+      context.onStderr?.(
+        line,
+        units.map((unit) => unit.didFile)
+      )
   )
 
   let entries: ReportEntry[] | undefined
@@ -334,10 +357,7 @@ async function runGroup(
       const results = await Promise.all(
         units.map((unit) => runGroup(context, outDir, [unit]))
       )
-      return {
-        outcomes: results.flatMap((result) => result.outcomes),
-        stderr: results.map((result) => result.stderr).join(""),
-      }
+      return { outcomes: results.flatMap((result) => result.outcomes) }
     }
     const failure = describeProcess(run, reason)
     return {
@@ -347,7 +367,6 @@ async function runGroup(
         omitted: [],
         failure,
       })),
-      stderr: "",
     }
   }
 
@@ -371,7 +390,6 @@ async function runGroup(
         omitted: entry.omitted,
       }
     }),
-    stderr: run.stderr,
   }
 }
 
@@ -442,7 +460,6 @@ export async function generate(
   )
   return {
     outcomes: [...outcomes, ...results.flatMap((result) => result.outcomes)],
-    stderr: results.map((result) => result.stderr).join(""),
   }
 }
 

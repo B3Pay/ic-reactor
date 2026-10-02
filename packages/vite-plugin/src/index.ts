@@ -303,6 +303,14 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         root: projectRoot,
         timeoutMs: GENERATE_TIMEOUT_MS,
         signal,
+        // Shown as it arrives: a run that takes long, or is killed at the
+        // timeout, would otherwise say nothing until it is over.
+        onStderr: (line, didFiles) => {
+          if (signal.aborted) return
+          log.warn(
+            `ic-reactor: candid-core-cli (${didFiles.map((file) => relativeToRoot(file)).join(", ")}): ${line}`
+          )
+        },
         canisters: stale.map((canister) => ({
           name: canister.name,
           didFile: didPath(canister),
@@ -311,12 +319,6 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       })
 
       if (signal.aborted) return undefined
-
-      if (result.stderr.trim()) {
-        log.warn(
-          `ic-reactor: candid-core-cli wrote to stderr: ${result.stderr.trim()}`
-        )
-      }
 
       const failures: Failure[] = []
       for (const outcome of result.outcomes) {

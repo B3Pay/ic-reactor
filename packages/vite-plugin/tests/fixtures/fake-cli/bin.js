@@ -4,7 +4,10 @@
 //   TRAP  writes a trap message to stderr and exits 101 (a crash in the generator)
 //   HANG  never exits, after appending its pid to hang.pids beside this file
 //   SLOW  reports as below, after 300 ms
-//   NOISY reports as below, after writing a warning to stderr
+//   NOISY reports as below, after writing two warnings to stderr, the second
+//         with no newline at its end
+//   PROGRESS writes a line to stderr in two pieces, and reports as below after
+//         600 ms
 //   NEWER reports as below, with a schemaVersion no plugin knows
 //   other reports each entry as written, in the --json shape of the real CLI
 // Every run appends its arguments to runs.log beside this file.
@@ -28,7 +31,12 @@ if (sources.some((source) => source.includes("TRAP"))) {
   const stem = (entry) => path.basename(entry, path.extname(entry))
   const newer = sources.some((source) => source.includes("NEWER"))
   if (sources.some((source) => source.includes("NOISY"))) {
-    process.stderr.write("warning: this is on stderr (fake)\n")
+    process.stderr.write("warning: first (fake)\nwarning: second (fake)")
+  }
+  const progress = sources.some((source) => source.includes("PROGRESS"))
+  if (progress) {
+    process.stderr.write("progress: ste")
+    setTimeout(() => process.stderr.write("p 1 (fake)\n"), 150)
   }
   const report = () =>
     process.stdout.write(
@@ -47,7 +55,9 @@ if (sources.some((source) => source.includes("TRAP"))) {
         drift: [],
       })
     )
-  if (sources.some((source) => source.includes("SLOW"))) {
+  if (progress) {
+    setTimeout(report, 600)
+  } else if (sources.some((source) => source.includes("SLOW"))) {
     setTimeout(report, 300)
   } else {
     report()

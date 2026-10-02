@@ -139,6 +139,14 @@ describe("generation under vite dev", () => {
     expect(lines).toContainEqual(
       expect.stringContaining("generated good into src/canisters/good.ts")
     )
+    // What the crashed process wrote is also logged as it wrote it: by the
+    // process for both, and by the one for the canister that crashed it.
+    expect(lines).toContain(
+      "warn: ic-reactor: candid-core-cli (did/good.did, did/trap.did): RuntimeError: unreachable executed (fake trap)"
+    )
+    expect(lines).toContain(
+      "warn: ic-reactor: candid-core-cli (did/trap.did): RuntimeError: unreachable executed (fake trap)"
+    )
     // One process for both, which crashed, then one for each.
     expect(generatorRuns().map((dids) => dids.length)).toEqual([2, 1, 1])
   })
@@ -611,16 +619,41 @@ describe("generation under vite build", () => {
     )
   })
 
-  it("logs what a generator that succeeded wrote to stderr", async () => {
+  it("logs what a generator that succeeded wrote to stderr, a line at a time", async () => {
     const app = newApp({ "did/a.did": "NOISY\n" }, "fake")
     const { result, lines } = buildApp(app.root, {
       canisters: { a: { didFile: "did/a.did" } },
     })
 
     await result
+    // The second line has no newline: it is passed on when the process ends.
     expect(lines).toContain(
-      "warn: ic-reactor: candid-core-cli wrote to stderr: warning: this is on stderr (fake)"
+      "warn: ic-reactor: candid-core-cli (did/a.did): warning: first (fake)"
     )
+    expect(lines).toContain(
+      "warn: ic-reactor: candid-core-cli (did/a.did): warning: second (fake)"
+    )
+  })
+
+  // A run that is slow says what it has to say while it runs, not when it is
+  // over.
+  it("logs stderr while the generator is still running", async () => {
+    const app = newApp({ "did/a.did": "PROGRESS\n" }, "fake")
+    const { result, lines } = buildApp(app.root, {
+      canisters: { a: { didFile: "did/a.did" } },
+    })
+    let finished = false
+    void result.then(() => (finished = true))
+
+    await vi.waitFor(() =>
+      expect(lines).toContain(
+        "warn: ic-reactor: candid-core-cli (did/a.did): progress: step 1 (fake)"
+      )
+    )
+    expect(finished).toBe(false)
+    await result
+    // The line was passed on whole, not in the two pieces it was written in.
+    expect(lines.filter((line) => line.includes("progress:"))).toHaveLength(1)
   })
 
   it("only logs the failure when failOnError is off", async () => {

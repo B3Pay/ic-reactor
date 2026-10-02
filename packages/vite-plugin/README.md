@@ -109,6 +109,11 @@ affected.
   died: when it was generating several canisters, each is run again alone and
   only the one that hangs fails. A hang therefore costs up to two timeouts
   (120 seconds) before the others are generated.
+- What the generator writes to stderr is logged as a warning, a line at a time
+  and as it arrives, naming the `.did` files its process is generating. With
+  `--json` the generator reports in its JSON document, so what shows up here
+  is a crash's output or a warning from the runtime. When a process fails, its
+  stderr is also in the error message, so that text appears twice.
 - Closing the dev server (or restarting it, as a `vite.config` edit does) kills
   a generator that is still running and drops the runs still waiting, so none
   outlives the server it belonged to or runs beside the next one.
@@ -116,8 +121,8 @@ affected.
   the plugin logs each one as a warning, for example
   `ic-reactor: ledger: omitted declaration Bad (reserved_field_name)`.
 - Editing a `.did` regenerates only the canisters that name it. Saves that
-  arrive while it runs collapse into one more run. `vite build --watch` regenerates a canister
-  only when its `.did` text changed.
+  arrive while it runs collapse into one more run. `vite build --watch`
+  regenerates a canister only when its `.did` text changed.
 
 ### When generation fails
 
