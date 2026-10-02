@@ -218,12 +218,14 @@ function Balance({ ledger }: { ledger: Ledger }) {
       {!isPrincipal(ownerText) && (
         <p className="error">{principalProblem(ownerText)}</p>
       )}
-      <label htmlFor="subaccount">Subaccount (hex, optional)</label>
+      <label htmlFor="subaccount">
+        Subaccount (hex, up to 64 digits, optional)
+      </label>
       <input
         id="subaccount"
         value={subaccountText}
         onChange={(e) => setSubaccountText(e.target.value)}
-        placeholder="empty is the default account"
+        placeholder="empty is the default account; 1 is subaccount 1"
         spellCheck={false}
         autoComplete="off"
         aria-invalid={!subaccount.ok}

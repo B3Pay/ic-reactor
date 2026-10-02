@@ -17,19 +17,33 @@ export const toHex = (bytes: Uint8Array): string =>
 export type SubaccountInput =
   { ok: true; bytes: Uint8Array | null } | { ok: false; reason: string }
 
-/** Hex text as subaccount bytes; empty is `null`, the default account. */
+/** An ICRC-1 subaccount is exactly this many bytes; a ledger traps on others. */
+export const SUBACCOUNT_BYTES = 32
+
+/**
+ * Hex text as subaccount bytes; empty is `null`, the default account.
+ *
+ * A subaccount is 32 bytes, and a ledger traps on any other length, so the
+ * text is refused here rather than sent. Fewer than 64 digits are read as a
+ * number and padded with zeros on the left, as wallets show subaccounts
+ * (`1` is subaccount 1): the bytes are always 32 long.
+ */
 export function parseSubaccount(text: string): SubaccountInput {
   const hex = text.trim().replace(/^0x/i, "")
   if (hex === "") return { ok: true, bytes: null }
   if (!/^[0-9a-f]*$/i.test(hex)) {
     return { ok: false, reason: "A subaccount is hex digits only." }
   }
-  if (hex.length % 2 !== 0) {
-    return { ok: false, reason: "Hex needs an even number of digits." }
+  if (hex.length > SUBACCOUNT_BYTES * 2) {
+    return {
+      ok: false,
+      reason: `A subaccount is ${SUBACCOUNT_BYTES} bytes: at most ${SUBACCOUNT_BYTES * 2} hex digits.`,
+    }
   }
-  const bytes = new Uint8Array(hex.length / 2)
+  const padded = hex.padStart(SUBACCOUNT_BYTES * 2, "0")
+  const bytes = new Uint8Array(SUBACCOUNT_BYTES)
   for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16)
+    bytes[i] = parseInt(padded.slice(i * 2, i * 2 + 2), 16)
   }
   return { ok: true, bytes }
 }
