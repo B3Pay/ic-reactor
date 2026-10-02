@@ -12,3 +12,4 @@ export {
   type ReactorError,
   type ReactorErrorKind,
 } from "./errors.js"
+export { formatUnits, parseUnits } from "./units.js"
