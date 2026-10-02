@@ -110,14 +110,15 @@ as they stand, so when one fails, fix the snippet: add the import it is
 missing, or update it to the current API.
 
 A snippet may use names its app would define without importing them: a
-canister's `./declarations/backend`, a `./reactor` module, a `clientManager`
-built earlier on the page. Those come from `scripts/check-snippets/`:
-`app/` is the app every document shares, and a directory named in
-`CONTEXTS` in `scripts/check-snippets.mjs` holds what differs for one
-document. A relative import resolves to the module of the same path there,
-and `globals.ts` lists the names a snippet may use without importing. Add a
-missing app name there, never a library export such as `createQuery`: a
-snippet that uses one must import it.
+canister's `./declarations/backend`, a `./reactor` module, a name built earlier
+on the page. Those come from `scripts/check-snippets/`: `app/` is the app every
+document shares, and a directory named in `CONTEXTS` in
+`scripts/check-snippets.mjs` holds what differs for one document. A relative
+import resolves to the module of the same path there, and `globals.ts` lists the
+names a snippet may use without importing. Add a missing app name there, never
+a library export: a snippet that uses one must import it. On the `v4` branch
+`app/` holds only a few generic names, and the generated-module fixtures arrive
+with the guide (DX3).
 
 The consumer guides (`packages/*/llms.txt` and `skill-packages/ic-reactor/`)
 get no globals, since an agent pastes them into
@@ -125,9 +126,6 @@ an app that has none: each of their snippets imports or declares every name
 it uses. A relative import there resolves first to a snippet of the same
 guide (or skill) whose first line names that file, such as `// src/reactor.ts`
 for `./reactor`, so it is checked against the module the reader was shown.
-A snippet whose first line calls it a React Server Component, or that has a
-`"use server"` directive, is compiled against the `react-server` entry of
-`@ic-reactor/react`, where hooks and `defineReactor` do not exist.
 
 A fence that is not code to paste, such as a type signature or an interface
 restating a library type, opts out with `nocheck` after its language,
@@ -247,8 +245,7 @@ the tag creates still generates its own notes from the merged pull requests.
 AI-assisted contributions are welcome, but contributors are responsible for correctness before opening a PR.
 
 - Prefer existing IC Reactor patterns over introducing new abstractions.
-- For React integrations, prefer `createActorHooks(...)` or query/mutation factories (`createQuery`, `createMutation`, etc.) instead of ad hoc wrappers.
-- If code must be used outside React, do not call hooks; use factory imperative methods like `.fetch()`, `.execute()`, `.invalidate()`, and `.getCacheData()`.
+- The 3.x runtime is removed on `v4` and the 4 API arrives slice by slice (milestone 1, #790). Do not copy 3.x patterns (`ClientManager`, `Reactor`, hook factories) from `main`; follow the guide in `packages/core/llms.txt` once it lands.
 - Validate generated or AI-written code with tests/examples whenever possible.
 - Update docs/examples when public API usage changes.
 

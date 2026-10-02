@@ -1,9 +1,11 @@
 # End-to-End Test Workspace
 
-This directory contains a small `hello_actor` canister and a suite of `vitest`
-based tests that run `@ic-reactor/core` and `@ic-reactor/react` against it on a
-local replica. On the `v4` branch these are still the 3.x cases; the v4 rewrite
-replaces them (IR9b).
+This directory contains a small `hello_actor` canister and the `vitest` setup
+that will run `@ic-reactor/core` and `@ic-reactor/react` against it on a local
+replica. On the `v4` branch there are no cases yet: the 3.x cases were removed
+with the 3.x runtime, and the v4 cases are written on a real replica in the beta
+phase (IR9b, #787). Until then the E2E job proves only that the canister builds,
+deploys and answers a call, and `vitest run` passes with no test files.
 
 ## The canister
 
@@ -34,8 +36,9 @@ parallel, so a test can only assert that the counter grows, not its value.
 - `pnpm start` or `pnpm test` _(both now identical)_ will:
   1. start a local `icp` network
   2. deploy the `hello_actor` canister
-  3. run tests using canister IDs resolved via `ic_env` (seeded by `setup.ts`)
-  4. execute `vitest run` against `src/test`
+  3. call `greet` once to verify the deployment
+  4. execute `vitest run` over `src/**/*.test.*` (no cases at present), with
+     canister IDs resolved via `ic_env` (seeded by `setup.ts`)
   5. stop the replica
 
 The `test` script used to invoke `vitest` directly which caused a confusing

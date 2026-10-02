@@ -14,6 +14,8 @@
  */
 export * from "../packages/core/src/index.js"
 export * from "../packages/react/src/index.js"
-// The testing subpath (`@ic-reactor/core/testing`, re-exported as
-// `@ic-reactor/react/testing`). Its names clash with nothing above.
-export * from "../packages/core/src/testing/index.js"
+// The testing subpath (`@ic-reactor/core/testing`) is left out until IR4a
+// replaces the fake replica's documentation. Its JSDoc still links to
+// `createTestCanister`, which IR0 deleted, and TypeDoc fails the build on a link
+// that resolves to nothing. Restore the line below with that slice:
+// export * from "../packages/core/src/testing/index.js"
