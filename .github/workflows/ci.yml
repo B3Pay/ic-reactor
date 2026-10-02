@@ -142,6 +142,14 @@ jobs:
       - name: Type check examples
         run: pnpm typecheck:examples
 
+      # Runs each example's own `test` script against the packages built
+      # above. The test job installs without the examples and its `pnpm test`
+      # covers packages/** only, so this is the one job that can run them.
+      # The filter selects examples/* and examples/*/* and nothing else, and
+      # --if-present skips an example that has no tests.
+      - name: Test examples
+        run: pnpm -r --filter './examples/**' run --if-present test
+
       # Compiles the ts/tsx fences of the docs site's hand-written pages. Their
       # examples import libraries only the example apps install, which is why
       # this runs here, where the examples are installed and the packages
