@@ -625,6 +625,72 @@ describe("dispose", () => {
   })
 })
 
+describe("the stamps ReactorProvider reads", () => {
+  // An internal contract with @ic-reactor/react (see `CLIENTS_CREATED` in
+  // src/client.ts): the provider owns a client only if its serial is above
+  // the count it read before calling its factory.
+  const CREATED = Symbol.for("ic-reactor.clients.created")
+  const SERIAL = Symbol.for("ic-reactor.client.serial")
+  const DISPOSED = Symbol.for("ic-reactor.client.disposed")
+  const created = (): unknown =>
+    (globalThis as { [CREATED]?: unknown })[CREATED]
+  const stamp = (client: Client, key: symbol): unknown =>
+    (client as unknown as Record<symbol, unknown>)[key]
+  const anonymous = () => createClient({ network: "ic", identity: "anonymous" })
+
+  it("numbers each client one above the realm's count, and keeps the count on globalThis", () => {
+    const first = anonymous()
+    const second = anonymous()
+    const third = createClient({ network: "ic", auth: () => createTestAuth() })
+
+    expect(typeof stamp(first, SERIAL)).toBe("number")
+    expect(stamp(second, SERIAL)).toBe((stamp(first, SERIAL) as number) + 1)
+    expect(stamp(third, SERIAL)).toBe((stamp(first, SERIAL) as number) + 2)
+    expect(created()).toBe(stamp(third, SERIAL))
+  })
+
+  it("counts the clients of two copies of the package together", async () => {
+    const before = anonymous()
+    vi.resetModules()
+    const { createClient: createFromCopy } = await import("../src/client.js")
+    expect(createFromCopy).not.toBe(createClient)
+
+    const fromCopy = createFromCopy({ network: "ic", identity: "anonymous" })
+    const after = anonymous()
+
+    expect(stamp(fromCopy, SERIAL)).toBe((stamp(before, SERIAL) as number) + 1)
+    expect(stamp(after, SERIAL)).toBe((stamp(before, SERIAL) as number) + 2)
+  })
+
+  it("keeps the stamps out of sight: not enumerable, not writable, not copied by a spread", () => {
+    const client = anonymous()
+
+    expect(Object.getOwnPropertyDescriptor(client, SERIAL)).toMatchObject({
+      enumerable: false,
+      writable: false,
+      configurable: false,
+    })
+    expect(Object.getOwnPropertyDescriptor(client, DISPOSED)).toMatchObject({
+      enumerable: false,
+      configurable: false,
+    })
+    expect(Object.keys(client)).not.toContain(SERIAL)
+    expect(Object.getOwnPropertySymbols({ ...client })).toEqual([])
+    expect(
+      Object.getOwnPropertyDescriptor(globalThis, CREATED)?.enumerable
+    ).toBe(false)
+  })
+
+  it("says whether the client was disposed", () => {
+    const client = anonymous()
+    expect(stamp(client, DISPOSED)).toBe(false)
+
+    client.dispose()
+
+    expect(stamp(client, DISPOSED)).toBe(true)
+  })
+})
+
 describe('network: "env" outside a browser page', () => {
   /** A fresh copy of the module, so its once-per-process warning is unspent. */
   async function freshCreateClient() {
