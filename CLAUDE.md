@@ -35,10 +35,14 @@ apps are on `main`; the v4 examples come with DX1.
 
 ## AI context
 
-- `packages/core/llms.txt` is the one consumer guide. It is a placeholder
-  until DX3 writes it; it must not describe an API that is not built yet.
-- There is no root `llms.txt`, `llms-full.txt`, per-package guide or skill on
-  this branch. The site root's `llms.txt` stays the 3.x line's until GA.
+- `packages/core/llms.txt` is the one consumer guide, shipped in core's
+  tarball; it must not describe an API that is not built yet.
+  `packages/react/llms.txt` points at it, and
+  `skill-packages/ic-reactor/SKILL.md`, the one consumer skill, adds only
+  workflow. `node evals/harness/check-docs.mjs "$PWD/packages/core/llms.txt"`
+  must find no hidden-test name or literal in the guide.
+- There is no root `llms.txt` or `llms-full.txt` on this branch. The site
+  root's `llms.txt` stays the 3.x line's until GA.
 - `pnpm check:ai-context` checks the version stamps and docs links of
   `scripts/ai-context-files.js`, and that none of the 34 removed 3.x names
   (`scripts/removed-v3-names.js`) appears outside a "Removed in 4.0" section.

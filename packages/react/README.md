@@ -19,7 +19,8 @@ made by [`@ic-reactor/core`](../core/README.md).
 There is no hook that wraps `useQuery` or `useMutation`: read and write
 canisters with TanStack Query's own hooks and the options the client builds.
 The package never re-exports `@ic-reactor/core`, so every name has one import
-path.
+path. The guide for both packages ships in core:
+`node_modules/@ic-reactor/core/llms.txt`.
 
 ## Install
 
