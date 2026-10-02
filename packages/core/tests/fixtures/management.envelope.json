@@ -1,0 +1,4455 @@
+{
+  "contract": {
+    "actor": {
+      "kind": "service",
+      "service": 0
+    },
+    "canonicalization_profile": "candid-core-canon-1",
+    "declarations": [
+      {
+        "name": "bitcoin_address",
+        "type": 3
+      },
+      {
+        "name": "bitcoin_block_hash",
+        "type": 9
+      },
+      {
+        "name": "bitcoin_block_header",
+        "type": 9
+      },
+      {
+        "name": "bitcoin_block_height",
+        "type": 70
+      },
+      {
+        "name": "bitcoin_get_balance_args",
+        "type": 67
+      },
+      {
+        "name": "bitcoin_get_balance_result",
+        "type": 7
+      },
+      {
+        "name": "bitcoin_get_block_headers_args",
+        "type": 118
+      },
+      {
+        "name": "bitcoin_get_block_headers_result",
+        "type": 119
+      },
+      {
+        "name": "bitcoin_get_current_fee_percentiles_args",
+        "type": 165
+      },
+      {
+        "name": "bitcoin_get_current_fee_percentiles_result",
+        "type": 166
+      },
+      {
+        "name": "bitcoin_get_utxos_args",
+        "type": 88
+      },
+      {
+        "name": "bitcoin_get_utxos_result",
+        "type": 91
+      },
+      {
+        "name": "bitcoin_network",
+        "type": 68
+      },
+      {
+        "name": "bitcoin_send_transaction_args",
+        "type": 86
+      },
+      {
+        "name": "canister_id",
+        "type": 23
+      },
+      {
+        "name": "canister_id_range",
+        "type": 123
+      },
+      {
+        "name": "canister_info_args",
+        "type": 148
+      },
+      {
+        "name": "canister_info_result",
+        "type": 149
+      },
+      {
+        "name": "canister_install_mode",
+        "type": 126
+      },
+      {
+        "name": "canister_log_record",
+        "type": 57
+      },
+      {
+        "name": "canister_metadata_args",
+        "type": 48
+      },
+      {
+        "name": "canister_metadata_result",
+        "type": 49
+      },
+      {
+        "name": "canister_metrics_args",
+        "type": 22
+      },
+      {
+        "name": "canister_metrics_result",
+        "type": 171
+      },
+      {
+        "name": "canister_settings",
+        "type": 97
+      },
+      {
+        "name": "canister_status_args",
+        "type": 22
+      },
+      {
+        "name": "canister_status_result",
+        "type": 78
+      },
+      {
+        "name": "change",
+        "type": 151
+      },
+      {
+        "name": "change_details",
+        "type": 155
+      },
+      {
+        "name": "change_origin",
+        "type": 152
+      },
+      {
+        "name": "chunk_hash",
+        "type": 46
+      },
+      {
+        "name": "clear_chunk_store_args",
+        "type": 22
+      },
+      {
+        "name": "create_canister_args",
+        "type": 174
+      },
+      {
+        "name": "create_canister_result",
+        "type": 22
+      },
+      {
+        "name": "cycles_consumed",
+        "type": 172
+      },
+      {
+        "name": "definite_canister_settings",
+        "type": 81
+      },
+      {
+        "name": "delete_canister_args",
+        "type": 22
+      },
+      {
+        "name": "delete_canister_snapshot_args",
+        "type": 31
+      },
+      {
+        "name": "deposit_cycles_args",
+        "type": 22
+      },
+      {
+        "name": "ecdsa_curve",
+        "type": 27
+      },
+      {
+        "name": "ecdsa_public_key_args",
+        "type": 103
+      },
+      {
+        "name": "ecdsa_public_key_result",
+        "type": 105
+      },
+      {
+        "name": "environment_variable",
+        "type": 18
+      },
+      {
+        "name": "fetch_canister_logs_args",
+        "type": 22
+      },
+      {
+        "name": "fetch_canister_logs_result",
+        "type": 55
+      },
+      {
+        "name": "http_header",
+        "type": 18
+      },
+      {
+        "name": "http_request_args",
+        "type": 2
+      },
+      {
+        "name": "http_request_result",
+        "type": 15
+      },
+      {
+        "name": "install_chunked_code_args",
+        "type": 132
+      },
+      {
+        "name": "install_code_args",
+        "type": 125
+      },
+      {
+        "name": "list_canister_snapshots_args",
+        "type": 22
+      },
+      {
+        "name": "list_canister_snapshots_result",
+        "type": 64
+      },
+      {
+        "name": "list_canisters_result",
+        "type": 121
+      },
+      {
+        "name": "load_canister_snapshot_args",
+        "type": 184
+      },
+      {
+        "name": "log_visibility",
+        "type": 83
+      },
+      {
+        "name": "millisatoshi_per_byte",
+        "type": 7
+      },
+      {
+        "name": "node_metrics",
+        "type": 143
+      },
+      {
+        "name": "node_metrics_history_args",
+        "type": 139
+      },
+      {
+        "name": "node_metrics_history_result",
+        "type": 140
+      },
+      {
+        "name": "outpoint",
+        "type": 94
+      },
+      {
+        "name": "provisional_create_canister_with_cycles_args",
+        "type": 145
+      },
+      {
+        "name": "provisional_create_canister_with_cycles_result",
+        "type": 22
+      },
+      {
+        "name": "provisional_top_up_canister_args",
+        "type": 72
+      },
+      {
+        "name": "raw_rand_result",
+        "type": 9
+      },
+      {
+        "name": "read_canister_snapshot_data_args",
+        "type": 107
+      },
+      {
+        "name": "read_canister_snapshot_data_response",
+        "type": 110
+      },
+      {
+        "name": "read_canister_snapshot_metadata_args",
+        "type": 31
+      },
+      {
+        "name": "read_canister_snapshot_metadata_response",
+        "type": 32
+      },
+      {
+        "name": "satoshi",
+        "type": 7
+      },
+      {
+        "name": "schnorr_algorithm",
+        "type": 116
+      },
+      {
+        "name": "schnorr_aux",
+        "type": 178
+      },
+      {
+        "name": "schnorr_public_key_args",
+        "type": 114
+      },
+      {
+        "name": "schnorr_public_key_result",
+        "type": 105
+      },
+      {
+        "name": "sign_with_ecdsa_args",
+        "type": 25
+      },
+      {
+        "name": "sign_with_ecdsa_result",
+        "type": 29
+      },
+      {
+        "name": "sign_with_schnorr_args",
+        "type": 176
+      },
+      {
+        "name": "sign_with_schnorr_result",
+        "type": 29
+      },
+      {
+        "name": "snapshot",
+        "type": 65
+      },
+      {
+        "name": "snapshot_id",
+        "type": 9
+      },
+      {
+        "name": "snapshot_visibility",
+        "type": 83
+      },
+      {
+        "name": "start_canister_args",
+        "type": 22
+      },
+      {
+        "name": "stop_canister_args",
+        "type": 22
+      },
+      {
+        "name": "stored_chunks_args",
+        "type": 22
+      },
+      {
+        "name": "stored_chunks_result",
+        "type": 45
+      },
+      {
+        "name": "subnet_info_args",
+        "type": 168
+      },
+      {
+        "name": "subnet_info_result",
+        "type": 169
+      },
+      {
+        "name": "take_canister_snapshot_args",
+        "type": 74
+      },
+      {
+        "name": "take_canister_snapshot_result",
+        "type": 65
+      },
+      {
+        "name": "uninstall_code_args",
+        "type": 112
+      },
+      {
+        "name": "update_settings_args",
+        "type": 96
+      },
+      {
+        "name": "upload_canister_snapshot_data_args",
+        "type": 51
+      },
+      {
+        "name": "upload_canister_snapshot_metadata_args",
+        "type": 59
+      },
+      {
+        "name": "upload_canister_snapshot_metadata_response",
+        "type": 60
+      },
+      {
+        "name": "upload_chunk_args",
+        "type": 62
+      },
+      {
+        "name": "upload_chunk_result",
+        "type": 46
+      },
+      {
+        "name": "utxo",
+        "type": 93
+      },
+      {
+        "name": "vetkd_curve",
+        "type": 136
+      },
+      {
+        "name": "vetkd_derive_key_args",
+        "type": 181
+      },
+      {
+        "name": "vetkd_derive_key_result",
+        "type": 182
+      },
+      {
+        "name": "vetkd_public_key_args",
+        "type": 134
+      },
+      {
+        "name": "vetkd_public_key_result",
+        "type": 137
+      },
+      {
+        "name": "wasm_module",
+        "type": 9
+      }
+    ],
+    "format": "candid-core",
+    "format_version": 1,
+    "identities": {
+      "contract": "candid-core:contract:v1:sha256:6e15a4bc595af89a73c3bb07713b36283860ed219b6632b7eb78a3cc07013dbd",
+      "interface": "candid-core:interface:v1:sha256:dafc9c7ec32b02e9c5957babd4f4451d6ddded4357aa1de2b8440f0e5cf1b179"
+    },
+    "producer": {
+      "candid_parser_version": "0.4.0",
+      "candid_version": "0.10.30",
+      "name": "candid-core",
+      "version": "0.1.0-beta.3"
+    },
+    "semantics_profile": "candid-1",
+    "types": [
+      {
+        "kind": "service",
+        "methods": [
+          {
+            "function": 1,
+            "id": 69639256,
+            "name": "http_request"
+          },
+          {
+            "function": 21,
+            "id": 94738756,
+            "name": "stop_canister"
+          },
+          {
+            "function": 24,
+            "id": 95378973,
+            "name": "sign_with_ecdsa"
+          },
+          {
+            "function": 30,
+            "id": 299766331,
+            "name": "read_canister_snapshot_metadata"
+          },
+          {
+            "function": 47,
+            "id": 462372807,
+            "name": "canister_metadata"
+          },
+          {
+            "function": 50,
+            "id": 578167211,
+            "name": "upload_canister_snapshot_data"
+          },
+          {
+            "function": 54,
+            "id": 756883906,
+            "name": "fetch_canister_logs"
+          },
+          {
+            "function": 58,
+            "id": 798951280,
+            "name": "upload_canister_snapshot_metadata"
+          },
+          {
+            "function": 61,
+            "id": 806145647,
+            "name": "upload_chunk"
+          },
+          {
+            "function": 63,
+            "id": 907440856,
+            "name": "list_canister_snapshots"
+          },
+          {
+            "function": 66,
+            "id": 1385355538,
+            "name": "bitcoin_get_balance"
+          },
+          {
+            "function": 71,
+            "id": 1577351778,
+            "name": "provisional_top_up_canister"
+          },
+          {
+            "function": 73,
+            "id": 1608805220,
+            "name": "take_canister_snapshot"
+          },
+          {
+            "function": 21,
+            "id": 1641187556,
+            "name": "start_canister"
+          },
+          {
+            "function": 75,
+            "id": 1709497346,
+            "name": "stored_chunks"
+          },
+          {
+            "function": 76,
+            "id": 2038053960,
+            "name": "delete_canister_snapshot"
+          },
+          {
+            "function": 77,
+            "id": 2097543562,
+            "name": "canister_status"
+          },
+          {
+            "function": 85,
+            "id": 2104501480,
+            "name": "bitcoin_send_transaction"
+          },
+          {
+            "function": 87,
+            "id": 2128953619,
+            "name": "bitcoin_get_utxos"
+          },
+          {
+            "function": 21,
+            "id": 2131488861,
+            "name": "clear_chunk_store"
+          },
+          {
+            "function": 95,
+            "id": 2156619033,
+            "name": "update_settings"
+          },
+          {
+            "function": 21,
+            "id": 2231106555,
+            "name": "delete_canister"
+          },
+          {
+            "function": 102,
+            "id": 2232852756,
+            "name": "ecdsa_public_key"
+          },
+          {
+            "function": 106,
+            "id": 2314152694,
+            "name": "read_canister_snapshot_data"
+          },
+          {
+            "function": 111,
+            "id": 2590416362,
+            "name": "uninstall_code"
+          },
+          {
+            "function": 113,
+            "id": 2651708783,
+            "name": "schnorr_public_key"
+          },
+          {
+            "function": 117,
+            "id": 2652524170,
+            "name": "bitcoin_get_block_headers"
+          },
+          {
+            "function": 120,
+            "id": 2746563083,
+            "name": "list_canisters"
+          },
+          {
+            "function": 124,
+            "id": 2826540561,
+            "name": "install_code"
+          },
+          {
+            "function": 131,
+            "id": 2834609764,
+            "name": "install_chunked_code"
+          },
+          {
+            "function": 133,
+            "id": 2874158698,
+            "name": "vetkd_public_key"
+          },
+          {
+            "function": 138,
+            "id": 2893651099,
+            "name": "node_metrics_history"
+          },
+          {
+            "function": 144,
+            "id": 2978966898,
+            "name": "provisional_create_canister_with_cycles"
+          },
+          {
+            "function": 147,
+            "id": 3285681350,
+            "name": "canister_info"
+          },
+          {
+            "function": 163,
+            "id": 3443927708,
+            "name": "raw_rand"
+          },
+          {
+            "function": 164,
+            "id": 3481012813,
+            "name": "bitcoin_get_current_fee_percentiles"
+          },
+          {
+            "function": 167,
+            "id": 3694410832,
+            "name": "subnet_info"
+          },
+          {
+            "function": 170,
+            "id": 3734674667,
+            "name": "canister_metrics"
+          },
+          {
+            "function": 173,
+            "id": 3817632522,
+            "name": "create_canister"
+          },
+          {
+            "function": 175,
+            "id": 3881607714,
+            "name": "sign_with_schnorr"
+          },
+          {
+            "function": 180,
+            "id": 3901986664,
+            "name": "vetkd_derive_key"
+          },
+          {
+            "function": 183,
+            "id": 4023791875,
+            "name": "load_canister_snapshot"
+          },
+          {
+            "function": 21,
+            "id": 4147417870,
+            "name": "deposit_cycles"
+          }
+        ]
+      },
+      {
+        "args": [
+          2
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          15
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 5843823,
+            "type": 3
+          },
+          {
+            "id": 156956385,
+            "type": 4
+          },
+          {
+            "id": 309734248,
+            "type": 6
+          },
+          {
+            "id": 1092319906,
+            "type": 8
+          },
+          {
+            "id": 1167273324,
+            "type": 11
+          },
+          {
+            "id": 1661489734,
+            "type": 17
+          },
+          {
+            "id": 2677914640,
+            "type": 19
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "text"
+      },
+      {
+        "fields": [
+          {
+            "id": 5144726,
+            "type": 5
+          },
+          {
+            "id": 5595855,
+            "type": 5
+          },
+          {
+            "id": 1158359328,
+            "type": 5
+          },
+          {
+            "id": 1247577184,
+            "type": 5
+          },
+          {
+            "id": 1792589867,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "null"
+      },
+      {
+        "inner": 7,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat64"
+      },
+      {
+        "inner": 9,
+        "kind": "opt"
+      },
+      {
+        "inner": 10,
+        "kind": "vec"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat8"
+      },
+      {
+        "inner": 12,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 340962072,
+            "type": 13
+          },
+          {
+            "id": 427267567,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          14
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          15
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 427267567,
+            "type": 9
+          },
+          {
+            "id": 2718740097,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 100394802,
+            "type": 16
+          },
+          {
+            "id": 1092319906,
+            "type": 9
+          },
+          {
+            "id": 1661489734,
+            "type": 17
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat"
+      },
+      {
+        "inner": 18,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 834174833,
+            "type": 3
+          },
+          {
+            "id": 1224700491,
+            "type": 3
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 20,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "bool"
+      },
+      {
+        "args": [
+          22
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": []
+      },
+      {
+        "fields": [
+          {
+            "id": 1313628723,
+            "type": 23
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "principal"
+      },
+      {
+        "args": [
+          25
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          29
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1072395707,
+            "type": 26
+          },
+          {
+            "id": 1445762093,
+            "type": 28
+          },
+          {
+            "id": 3146564742,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1224700491,
+            "type": 3
+          },
+          {
+            "id": 1314409647,
+            "type": 27
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 492384026,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 9,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 359375608,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          31
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          32
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 4045790262,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 339281328,
+            "type": 33
+          },
+          {
+            "id": 783802816,
+            "type": 7
+          },
+          {
+            "id": 842117339,
+            "type": 39
+          },
+          {
+            "id": 864574658,
+            "type": 9
+          },
+          {
+            "id": 903275689,
+            "type": 41
+          },
+          {
+            "id": 1282538240,
+            "type": 43
+          },
+          {
+            "id": 1299009433,
+            "type": 7
+          },
+          {
+            "id": 1710030651,
+            "type": 7
+          },
+          {
+            "id": 1767008372,
+            "type": 45
+          },
+          {
+            "id": 3569147778,
+            "type": 7
+          },
+          {
+            "id": 3598099748,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 34,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 5083781,
+            "type": 35
+          },
+          {
+            "id": 5084452,
+            "type": 36
+          },
+          {
+            "id": 5232968,
+            "type": 37
+          },
+          {
+            "id": 5233639,
+            "type": 38
+          },
+          {
+            "id": 1311016833,
+            "type": 16
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "float32"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "float64"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "int32"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "int64"
+      },
+      {
+        "fields": [
+          {
+            "id": 833703953,
+            "type": 40
+          },
+          {
+            "id": 2359638948,
+            "type": 40
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "reserved"
+      },
+      {
+        "inner": 42,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 373703110,
+            "type": 7
+          },
+          {
+            "id": 1781536619,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 44,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 1043953570,
+            "type": 5
+          },
+          {
+            "id": 3210470543,
+            "type": 5
+          },
+          {
+            "id": 3870990435,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 46,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 1158164430,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          48
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          49
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1224700491,
+            "type": 3
+          },
+          {
+            "id": 1313628723,
+            "type": 23
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 834174833,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          51
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": []
+      },
+      {
+        "fields": [
+          {
+            "id": 1170392685,
+            "type": 9
+          },
+          {
+            "id": 1191829844,
+            "type": 52
+          },
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 4045790262,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 265441191,
+            "type": 53
+          },
+          {
+            "id": 1405019644,
+            "type": 53
+          },
+          {
+            "id": 2465514309,
+            "type": 53
+          },
+          {
+            "id": 4161627090,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1614780307,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          22
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          55
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1754302831,
+            "type": 56
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 57,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 5243965,
+            "type": 7
+          },
+          {
+            "id": 268680022,
+            "type": 7
+          },
+          {
+            "id": 427265337,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          59
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          60
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 339281328,
+            "type": 33
+          },
+          {
+            "id": 435757295,
+            "type": 8
+          },
+          {
+            "id": 864574658,
+            "type": 9
+          },
+          {
+            "id": 903275689,
+            "type": 41
+          },
+          {
+            "id": 1282538240,
+            "type": 43
+          },
+          {
+            "id": 1299009433,
+            "type": 7
+          },
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 1710030651,
+            "type": 7
+          },
+          {
+            "id": 3598099748,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 4045790262,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          62
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          46
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1170392685,
+            "type": 9
+          },
+          {
+            "id": 1313628723,
+            "type": 23
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          22
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          64
+        ]
+      },
+      {
+        "inner": 65,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 23515,
+            "type": 9
+          },
+          {
+            "id": 1926775388,
+            "type": 7
+          },
+          {
+            "id": 3569147778,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          67
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          7
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1505543342,
+            "type": 68
+          },
+          {
+            "id": 2634772916,
+            "type": 3
+          },
+          {
+            "id": 3131344497,
+            "type": 69
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 996000196,
+            "type": 5
+          },
+          {
+            "id": 3185215307,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 70,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat32"
+      },
+      {
+        "args": [
+          72
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": []
+      },
+      {
+        "fields": [
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 3573748184,
+            "type": 16
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          74
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          65
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 435757295,
+            "type": 8
+          },
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 2590416362,
+            "type": 19
+          },
+          {
+            "id": 3599109322,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          22
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          45
+        ]
+      },
+      {
+        "args": [
+          31
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": []
+      },
+      {
+        "args": [
+          22
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          78
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 58798021,
+            "type": 79
+          },
+          {
+            "id": 100394802,
+            "type": 80
+          },
+          {
+            "id": 1054895615,
+            "type": 16
+          },
+          {
+            "id": 1614520508,
+            "type": 20
+          },
+          {
+            "id": 2096228120,
+            "type": 7
+          },
+          {
+            "id": 2190693645,
+            "type": 16
+          },
+          {
+            "id": 2336062691,
+            "type": 81
+          },
+          {
+            "id": 2642624104,
+            "type": 84
+          },
+          {
+            "id": 2733945392,
+            "type": 16
+          },
+          {
+            "id": 2928387969,
+            "type": 8
+          },
+          {
+            "id": 4090107140,
+            "type": 16
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 4264996,
+            "type": 16
+          },
+          {
+            "id": 197078956,
+            "type": 16
+          },
+          {
+            "id": 1646009124,
+            "type": 16
+          },
+          {
+            "id": 1710030651,
+            "type": 16
+          },
+          {
+            "id": 1777917585,
+            "type": 16
+          },
+          {
+            "id": 3598099748,
+            "type": 16
+          },
+          {
+            "id": 3776075235,
+            "type": 16
+          },
+          {
+            "id": 4108871332,
+            "type": 16
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1130484237,
+            "type": 5
+          },
+          {
+            "id": 2990082932,
+            "type": 5
+          },
+          {
+            "id": 3949555199,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 238856128,
+            "type": 16
+          },
+          {
+            "id": 241629288,
+            "type": 16
+          },
+          {
+            "id": 356749323,
+            "type": 17
+          },
+          {
+            "id": 570880087,
+            "type": 82
+          },
+          {
+            "id": 1095112320,
+            "type": 16
+          },
+          {
+            "id": 2033331437,
+            "type": 83
+          },
+          {
+            "id": 2709750061,
+            "type": 83
+          },
+          {
+            "id": 3380736376,
+            "type": 16
+          },
+          {
+            "id": 3844961758,
+            "type": 16
+          },
+          {
+            "id": 4174053672,
+            "type": 16
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 23,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 570880087,
+            "type": 5
+          },
+          {
+            "id": 1727234217,
+            "type": 5
+          },
+          {
+            "id": 2235716810,
+            "type": 82
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 813120577,
+            "type": 16
+          },
+          {
+            "id": 1563534595,
+            "type": 16
+          },
+          {
+            "id": 2783848481,
+            "type": 16
+          },
+          {
+            "id": 4195608591,
+            "type": 16
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          86
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": []
+      },
+      {
+        "fields": [
+          {
+            "id": 1266835934,
+            "type": 9
+          },
+          {
+            "id": 1505543342,
+            "type": 68
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          88
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          91
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1505543342,
+            "type": 68
+          },
+          {
+            "id": 2234851256,
+            "type": 89
+          },
+          {
+            "id": 2634772916,
+            "type": 3
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 90,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 1246878287,
+            "type": 9
+          },
+          {
+            "id": 3131344497,
+            "type": 70
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 293249115,
+            "type": 8
+          },
+          {
+            "id": 496462219,
+            "type": 70
+          },
+          {
+            "id": 2769715940,
+            "type": 9
+          },
+          {
+            "id": 2867465885,
+            "type": 92
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 93,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 38537191,
+            "type": 70
+          },
+          {
+            "id": 834174833,
+            "type": 7
+          },
+          {
+            "id": 4129575170,
+            "type": 94
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1292380767,
+            "type": 9
+          },
+          {
+            "id": 1314115032,
+            "type": 70
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          96
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": []
+      },
+      {
+        "fields": [
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 2336062691,
+            "type": 97
+          },
+          {
+            "id": 3599109322,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 238856128,
+            "type": 98
+          },
+          {
+            "id": 241629288,
+            "type": 98
+          },
+          {
+            "id": 356749323,
+            "type": 99
+          },
+          {
+            "id": 570880087,
+            "type": 100
+          },
+          {
+            "id": 1095112320,
+            "type": 98
+          },
+          {
+            "id": 2033331437,
+            "type": 101
+          },
+          {
+            "id": 2709750061,
+            "type": 101
+          },
+          {
+            "id": 3380736376,
+            "type": 98
+          },
+          {
+            "id": 3844961758,
+            "type": 98
+          },
+          {
+            "id": 4174053672,
+            "type": 98
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 16,
+        "kind": "opt"
+      },
+      {
+        "inner": 17,
+        "kind": "opt"
+      },
+      {
+        "inner": 82,
+        "kind": "opt"
+      },
+      {
+        "inner": 83,
+        "kind": "opt"
+      },
+      {
+        "args": [
+          103
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          105
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1072395707,
+            "type": 26
+          },
+          {
+            "id": 1313628723,
+            "type": 104
+          },
+          {
+            "id": 1445762093,
+            "type": 28
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 23,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 881350601,
+            "type": 9
+          },
+          {
+            "id": 3110171755,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          107
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          110
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1191829844,
+            "type": 108
+          },
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 4045790262,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 265441191,
+            "type": 109
+          },
+          {
+            "id": 1405019644,
+            "type": 109
+          },
+          {
+            "id": 2465514309,
+            "type": 109
+          },
+          {
+            "id": 4161627090,
+            "type": 46
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1280549057,
+            "type": 7
+          },
+          {
+            "id": 1614780307,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1170392685,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          112
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": []
+      },
+      {
+        "fields": [
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 3599109322,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          114
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          105
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1072395707,
+            "type": 115
+          },
+          {
+            "id": 1313628723,
+            "type": 104
+          },
+          {
+            "id": 1445762093,
+            "type": 28
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 351186031,
+            "type": 116
+          },
+          {
+            "id": 1224700491,
+            "type": 3
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1356964283,
+            "type": 5
+          },
+          {
+            "id": 3611396884,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "args": [
+          118
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          119
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 354276708,
+            "type": 70
+          },
+          {
+            "id": 1234441995,
+            "type": 69
+          },
+          {
+            "id": 1505543342,
+            "type": 68
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 496462219,
+            "type": 70
+          },
+          {
+            "id": 1968616980,
+            "type": 28
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          121
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 2637774956,
+            "type": 122
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 123,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 5047259,
+            "type": 23
+          },
+          {
+            "id": 2215343202,
+            "type": 23
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          125
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": []
+      },
+      {
+        "fields": [
+          {
+            "id": 4849238,
+            "type": 9
+          },
+          {
+            "id": 265441191,
+            "type": 9
+          },
+          {
+            "id": 1214305123,
+            "type": 126
+          },
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 3599109322,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 235052488,
+            "type": 5
+          },
+          {
+            "id": 1664201884,
+            "type": 127
+          },
+          {
+            "id": 2375734555,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 128,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 793490780,
+            "type": 129
+          },
+          {
+            "id": 1539756096,
+            "type": 19
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 130,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 1191628933,
+            "type": 5
+          },
+          {
+            "id": 2871543860,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "args": [
+          132
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": []
+      },
+      {
+        "fields": [
+          {
+            "id": 4849238,
+            "type": 9
+          },
+          {
+            "id": 1176624806,
+            "type": 9
+          },
+          {
+            "id": 1214305123,
+            "type": 126
+          },
+          {
+            "id": 1847393007,
+            "type": 45
+          },
+          {
+            "id": 2807510037,
+            "type": 23
+          },
+          {
+            "id": 3052241285,
+            "type": 104
+          },
+          {
+            "id": 3599109322,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          134
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          137
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 427267567,
+            "type": 9
+          },
+          {
+            "id": 1072395707,
+            "type": 135
+          },
+          {
+            "id": 1313628723,
+            "type": 104
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1224700491,
+            "type": 3
+          },
+          {
+            "id": 1314409647,
+            "type": 136
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 2825341939,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 881350601,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          139
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          140
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 84557255,
+            "type": 7
+          },
+          {
+            "id": 1097286461,
+            "type": 23
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 141,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 268680022,
+            "type": 7
+          },
+          {
+            "id": 3717453766,
+            "type": 142
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 143,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 243340409,
+            "type": 7
+          },
+          {
+            "id": 385029432,
+            "type": 23
+          },
+          {
+            "id": 2883926027,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          145
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          22
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 2336062691,
+            "type": 146
+          },
+          {
+            "id": 3348853450,
+            "type": 104
+          },
+          {
+            "id": 3573748184,
+            "type": 98
+          },
+          {
+            "id": 3599109322,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 97,
+        "kind": "opt"
+      },
+      {
+        "args": [
+          148
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          149
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 2098503289,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 570880087,
+            "type": 82
+          },
+          {
+            "id": 2928387969,
+            "type": 8
+          },
+          {
+            "id": 3067116063,
+            "type": 150
+          },
+          {
+            "id": 3862312591,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 151,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 268680022,
+            "type": 7
+          },
+          {
+            "id": 783802816,
+            "type": 7
+          },
+          {
+            "id": 1258363366,
+            "type": 152
+          },
+          {
+            "id": 2874596546,
+            "type": 155
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 572139648,
+            "type": 153
+          },
+          {
+            "id": 3061905116,
+            "type": 154
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1869947023,
+            "type": 23
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 783802816,
+            "type": 6
+          },
+          {
+            "id": 1313628723,
+            "type": 23
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 737642527,
+            "type": 156
+          },
+          {
+            "id": 1168034903,
+            "type": 157
+          },
+          {
+            "id": 1239220413,
+            "type": 159
+          },
+          {
+            "id": 2838302280,
+            "type": 160
+          },
+          {
+            "id": 2881846168,
+            "type": 162
+          },
+          {
+            "id": 4081328912,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 570880087,
+            "type": 82
+          },
+          {
+            "id": 3117986754,
+            "type": 8
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1214305123,
+            "type": 158
+          },
+          {
+            "id": 2928387969,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 235052488,
+            "type": 5
+          },
+          {
+            "id": 1664201884,
+            "type": 5
+          },
+          {
+            "id": 2375734555,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 783802816,
+            "type": 7
+          },
+          {
+            "id": 842117339,
+            "type": 39
+          },
+          {
+            "id": 2242915486,
+            "type": 104
+          },
+          {
+            "id": 3569147778,
+            "type": 7
+          },
+          {
+            "id": 4045790262,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 754389724,
+            "type": 161
+          },
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 1920899912,
+            "type": 23
+          },
+          {
+            "id": 3862312591,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 2096228120,
+            "type": 7
+          },
+          {
+            "id": 3862312591,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 570880087,
+            "type": 82
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          9
+        ]
+      },
+      {
+        "args": [
+          165
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          166
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1505543342,
+            "type": 68
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 7,
+        "kind": "vec"
+      },
+      {
+        "args": [
+          168
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          169
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1097286461,
+            "type": 23
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1133613777,
+            "type": 3
+          },
+          {
+            "id": 1679652694,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          22
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          171
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 2122851290,
+            "type": 172
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 79678209,
+            "type": 16
+          },
+          {
+            "id": 124575863,
+            "type": 16
+          },
+          {
+            "id": 1161155070,
+            "type": 16
+          },
+          {
+            "id": 1586739614,
+            "type": 16
+          },
+          {
+            "id": 1832883877,
+            "type": 16
+          },
+          {
+            "id": 2308758498,
+            "type": 16
+          },
+          {
+            "id": 2836959799,
+            "type": 16
+          },
+          {
+            "id": 3334448650,
+            "type": 16
+          },
+          {
+            "id": 4174053672,
+            "type": 16
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          174
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          22
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 2336062691,
+            "type": 146
+          },
+          {
+            "id": 3599109322,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          176
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          29
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 4849924,
+            "type": 177
+          },
+          {
+            "id": 1072395707,
+            "type": 115
+          },
+          {
+            "id": 1445762093,
+            "type": 28
+          },
+          {
+            "id": 2584819143,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 178,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 3996846919,
+            "type": 179
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 2101218390,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          181
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          182
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 427267567,
+            "type": 9
+          },
+          {
+            "id": 1072395707,
+            "type": 135
+          },
+          {
+            "id": 3189621770,
+            "type": 9
+          },
+          {
+            "id": 3581318111,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 58727076,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          184
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": []
+      },
+      {
+        "fields": [
+          {
+            "id": 1313628723,
+            "type": 23
+          },
+          {
+            "id": 3599109322,
+            "type": 6
+          },
+          {
+            "id": 4045790262,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      }
+    ]
+  },
+  "extensions": {
+    "org.candid-core.field-names/v1": [
+      [
+        2,
+        5843823,
+        "url"
+      ],
+      [
+        2,
+        156956385,
+        "method"
+      ],
+      [
+        2,
+        309734248,
+        "max_response_bytes"
+      ],
+      [
+        2,
+        1092319906,
+        "body"
+      ],
+      [
+        2,
+        1167273324,
+        "transform"
+      ],
+      [
+        2,
+        1661489734,
+        "headers"
+      ],
+      [
+        2,
+        2677914640,
+        "is_replicated"
+      ],
+      [
+        4,
+        5144726,
+        "get"
+      ],
+      [
+        4,
+        5595855,
+        "put"
+      ],
+      [
+        4,
+        1158359328,
+        "head"
+      ],
+      [
+        4,
+        1247577184,
+        "post"
+      ],
+      [
+        4,
+        1792589867,
+        "delete"
+      ],
+      [
+        12,
+        340962072,
+        "function"
+      ],
+      [
+        12,
+        427267567,
+        "context"
+      ],
+      [
+        14,
+        427267567,
+        "context"
+      ],
+      [
+        14,
+        2718740097,
+        "response"
+      ],
+      [
+        15,
+        100394802,
+        "status"
+      ],
+      [
+        15,
+        1092319906,
+        "body"
+      ],
+      [
+        15,
+        1661489734,
+        "headers"
+      ],
+      [
+        18,
+        834174833,
+        "value"
+      ],
+      [
+        18,
+        1224700491,
+        "name"
+      ],
+      [
+        22,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        25,
+        1072395707,
+        "key_id"
+      ],
+      [
+        25,
+        1445762093,
+        "derivation_path"
+      ],
+      [
+        25,
+        3146564742,
+        "message_hash"
+      ],
+      [
+        26,
+        1224700491,
+        "name"
+      ],
+      [
+        26,
+        1314409647,
+        "curve"
+      ],
+      [
+        27,
+        492384026,
+        "secp256k1"
+      ],
+      [
+        29,
+        359375608,
+        "signature"
+      ],
+      [
+        31,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        31,
+        4045790262,
+        "snapshot_id"
+      ],
+      [
+        32,
+        339281328,
+        "globals"
+      ],
+      [
+        32,
+        783802816,
+        "canister_version"
+      ],
+      [
+        32,
+        842117339,
+        "source"
+      ],
+      [
+        32,
+        864574658,
+        "certified_data"
+      ],
+      [
+        32,
+        903275689,
+        "global_timer"
+      ],
+      [
+        32,
+        1282538240,
+        "on_low_wasm_memory_hook_status"
+      ],
+      [
+        32,
+        1299009433,
+        "wasm_module_size"
+      ],
+      [
+        32,
+        1710030651,
+        "stable_memory_size"
+      ],
+      [
+        32,
+        1767008372,
+        "wasm_chunk_store"
+      ],
+      [
+        32,
+        3569147778,
+        "taken_at_timestamp"
+      ],
+      [
+        32,
+        3598099748,
+        "wasm_memory_size"
+      ],
+      [
+        34,
+        5083781,
+        "f32"
+      ],
+      [
+        34,
+        5084452,
+        "f64"
+      ],
+      [
+        34,
+        5232968,
+        "i32"
+      ],
+      [
+        34,
+        5233639,
+        "i64"
+      ],
+      [
+        34,
+        1311016833,
+        "v128"
+      ],
+      [
+        39,
+        833703953,
+        "metadata_upload"
+      ],
+      [
+        39,
+        2359638948,
+        "taken_from_canister"
+      ],
+      [
+        42,
+        373703110,
+        "active"
+      ],
+      [
+        42,
+        1781536619,
+        "inactive"
+      ],
+      [
+        44,
+        1043953570,
+        "condition_not_satisfied"
+      ],
+      [
+        44,
+        3210470543,
+        "executed"
+      ],
+      [
+        44,
+        3870990435,
+        "ready"
+      ],
+      [
+        46,
+        1158164430,
+        "hash"
+      ],
+      [
+        48,
+        1224700491,
+        "name"
+      ],
+      [
+        48,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        49,
+        834174833,
+        "value"
+      ],
+      [
+        51,
+        1170392685,
+        "chunk"
+      ],
+      [
+        51,
+        1191829844,
+        "kind"
+      ],
+      [
+        51,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        51,
+        4045790262,
+        "snapshot_id"
+      ],
+      [
+        52,
+        265441191,
+        "wasm_module"
+      ],
+      [
+        52,
+        1405019644,
+        "wasm_memory"
+      ],
+      [
+        52,
+        2465514309,
+        "stable_memory"
+      ],
+      [
+        52,
+        4161627090,
+        "wasm_chunk"
+      ],
+      [
+        53,
+        1614780307,
+        "offset"
+      ],
+      [
+        55,
+        1754302831,
+        "canister_log_records"
+      ],
+      [
+        57,
+        5243965,
+        "idx"
+      ],
+      [
+        57,
+        268680022,
+        "timestamp_nanos"
+      ],
+      [
+        57,
+        427265337,
+        "content"
+      ],
+      [
+        59,
+        339281328,
+        "globals"
+      ],
+      [
+        59,
+        435757295,
+        "replace_snapshot"
+      ],
+      [
+        59,
+        864574658,
+        "certified_data"
+      ],
+      [
+        59,
+        903275689,
+        "global_timer"
+      ],
+      [
+        59,
+        1282538240,
+        "on_low_wasm_memory_hook_status"
+      ],
+      [
+        59,
+        1299009433,
+        "wasm_module_size"
+      ],
+      [
+        59,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        59,
+        1710030651,
+        "stable_memory_size"
+      ],
+      [
+        59,
+        3598099748,
+        "wasm_memory_size"
+      ],
+      [
+        60,
+        4045790262,
+        "snapshot_id"
+      ],
+      [
+        62,
+        1170392685,
+        "chunk"
+      ],
+      [
+        62,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        65,
+        23515,
+        "id"
+      ],
+      [
+        65,
+        1926775388,
+        "total_size"
+      ],
+      [
+        65,
+        3569147778,
+        "taken_at_timestamp"
+      ],
+      [
+        67,
+        1505543342,
+        "network"
+      ],
+      [
+        67,
+        2634772916,
+        "address"
+      ],
+      [
+        67,
+        3131344497,
+        "min_confirmations"
+      ],
+      [
+        68,
+        996000196,
+        "mainnet"
+      ],
+      [
+        68,
+        3185215307,
+        "testnet"
+      ],
+      [
+        72,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        72,
+        3573748184,
+        "amount"
+      ],
+      [
+        74,
+        435757295,
+        "replace_snapshot"
+      ],
+      [
+        74,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        74,
+        2590416362,
+        "uninstall_code"
+      ],
+      [
+        74,
+        3599109322,
+        "sender_canister_version"
+      ],
+      [
+        78,
+        58798021,
+        "memory_metrics"
+      ],
+      [
+        78,
+        100394802,
+        "status"
+      ],
+      [
+        78,
+        1054895615,
+        "memory_size"
+      ],
+      [
+        78,
+        1614520508,
+        "ready_for_migration"
+      ],
+      [
+        78,
+        2096228120,
+        "version"
+      ],
+      [
+        78,
+        2190693645,
+        "cycles"
+      ],
+      [
+        78,
+        2336062691,
+        "settings"
+      ],
+      [
+        78,
+        2642624104,
+        "query_stats"
+      ],
+      [
+        78,
+        2733945392,
+        "idle_cycles_burned_per_day"
+      ],
+      [
+        78,
+        2928387969,
+        "module_hash"
+      ],
+      [
+        78,
+        4090107140,
+        "reserved_cycles"
+      ],
+      [
+        79,
+        4264996,
+        "wasm_binary_size"
+      ],
+      [
+        79,
+        197078956,
+        "wasm_chunk_store_size"
+      ],
+      [
+        79,
+        1646009124,
+        "canister_history_size"
+      ],
+      [
+        79,
+        1710030651,
+        "stable_memory_size"
+      ],
+      [
+        79,
+        1777917585,
+        "snapshots_size"
+      ],
+      [
+        79,
+        3598099748,
+        "wasm_memory_size"
+      ],
+      [
+        79,
+        3776075235,
+        "global_memory_size"
+      ],
+      [
+        79,
+        4108871332,
+        "custom_sections_size"
+      ],
+      [
+        80,
+        1130484237,
+        "stopped"
+      ],
+      [
+        80,
+        2990082932,
+        "stopping"
+      ],
+      [
+        80,
+        3949555199,
+        "running"
+      ],
+      [
+        81,
+        238856128,
+        "freezing_threshold"
+      ],
+      [
+        81,
+        241629288,
+        "wasm_memory_threshold"
+      ],
+      [
+        81,
+        356749323,
+        "environment_variables"
+      ],
+      [
+        81,
+        570880087,
+        "controllers"
+      ],
+      [
+        81,
+        1095112320,
+        "reserved_cycles_limit"
+      ],
+      [
+        81,
+        2033331437,
+        "log_visibility"
+      ],
+      [
+        81,
+        2709750061,
+        "snapshot_visibility"
+      ],
+      [
+        81,
+        3380736376,
+        "wasm_memory_limit"
+      ],
+      [
+        81,
+        3844961758,
+        "memory_allocation"
+      ],
+      [
+        81,
+        4174053672,
+        "compute_allocation"
+      ],
+      [
+        83,
+        570880087,
+        "controllers"
+      ],
+      [
+        83,
+        1727234217,
+        "public"
+      ],
+      [
+        83,
+        2235716810,
+        "allowed_viewers"
+      ],
+      [
+        84,
+        813120577,
+        "response_payload_bytes_total"
+      ],
+      [
+        84,
+        1563534595,
+        "num_instructions_total"
+      ],
+      [
+        84,
+        2783848481,
+        "num_calls_total"
+      ],
+      [
+        84,
+        4195608591,
+        "request_payload_bytes_total"
+      ],
+      [
+        86,
+        1266835934,
+        "transaction"
+      ],
+      [
+        86,
+        1505543342,
+        "network"
+      ],
+      [
+        88,
+        1505543342,
+        "network"
+      ],
+      [
+        88,
+        2234851256,
+        "filter"
+      ],
+      [
+        88,
+        2634772916,
+        "address"
+      ],
+      [
+        90,
+        1246878287,
+        "page"
+      ],
+      [
+        90,
+        3131344497,
+        "min_confirmations"
+      ],
+      [
+        91,
+        293249115,
+        "next_page"
+      ],
+      [
+        91,
+        496462219,
+        "tip_height"
+      ],
+      [
+        91,
+        2769715940,
+        "tip_block_hash"
+      ],
+      [
+        91,
+        2867465885,
+        "utxos"
+      ],
+      [
+        93,
+        38537191,
+        "height"
+      ],
+      [
+        93,
+        834174833,
+        "value"
+      ],
+      [
+        93,
+        4129575170,
+        "outpoint"
+      ],
+      [
+        94,
+        1292380767,
+        "txid"
+      ],
+      [
+        94,
+        1314115032,
+        "vout"
+      ],
+      [
+        96,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        96,
+        2336062691,
+        "settings"
+      ],
+      [
+        96,
+        3599109322,
+        "sender_canister_version"
+      ],
+      [
+        97,
+        238856128,
+        "freezing_threshold"
+      ],
+      [
+        97,
+        241629288,
+        "wasm_memory_threshold"
+      ],
+      [
+        97,
+        356749323,
+        "environment_variables"
+      ],
+      [
+        97,
+        570880087,
+        "controllers"
+      ],
+      [
+        97,
+        1095112320,
+        "reserved_cycles_limit"
+      ],
+      [
+        97,
+        2033331437,
+        "log_visibility"
+      ],
+      [
+        97,
+        2709750061,
+        "snapshot_visibility"
+      ],
+      [
+        97,
+        3380736376,
+        "wasm_memory_limit"
+      ],
+      [
+        97,
+        3844961758,
+        "memory_allocation"
+      ],
+      [
+        97,
+        4174053672,
+        "compute_allocation"
+      ],
+      [
+        103,
+        1072395707,
+        "key_id"
+      ],
+      [
+        103,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        103,
+        1445762093,
+        "derivation_path"
+      ],
+      [
+        105,
+        881350601,
+        "public_key"
+      ],
+      [
+        105,
+        3110171755,
+        "chain_code"
+      ],
+      [
+        107,
+        1191829844,
+        "kind"
+      ],
+      [
+        107,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        107,
+        4045790262,
+        "snapshot_id"
+      ],
+      [
+        108,
+        265441191,
+        "wasm_module"
+      ],
+      [
+        108,
+        1405019644,
+        "wasm_memory"
+      ],
+      [
+        108,
+        2465514309,
+        "stable_memory"
+      ],
+      [
+        108,
+        4161627090,
+        "wasm_chunk"
+      ],
+      [
+        109,
+        1280549057,
+        "size"
+      ],
+      [
+        109,
+        1614780307,
+        "offset"
+      ],
+      [
+        110,
+        1170392685,
+        "chunk"
+      ],
+      [
+        112,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        112,
+        3599109322,
+        "sender_canister_version"
+      ],
+      [
+        114,
+        1072395707,
+        "key_id"
+      ],
+      [
+        114,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        114,
+        1445762093,
+        "derivation_path"
+      ],
+      [
+        115,
+        351186031,
+        "algorithm"
+      ],
+      [
+        115,
+        1224700491,
+        "name"
+      ],
+      [
+        116,
+        1356964283,
+        "ed25519"
+      ],
+      [
+        116,
+        3611396884,
+        "bip340secp256k1"
+      ],
+      [
+        118,
+        354276708,
+        "start_height"
+      ],
+      [
+        118,
+        1234441995,
+        "end_height"
+      ],
+      [
+        118,
+        1505543342,
+        "network"
+      ],
+      [
+        119,
+        496462219,
+        "tip_height"
+      ],
+      [
+        119,
+        1968616980,
+        "block_headers"
+      ],
+      [
+        121,
+        2637774956,
+        "canisters"
+      ],
+      [
+        123,
+        5047259,
+        "end"
+      ],
+      [
+        123,
+        2215343202,
+        "start"
+      ],
+      [
+        125,
+        4849238,
+        "arg"
+      ],
+      [
+        125,
+        265441191,
+        "wasm_module"
+      ],
+      [
+        125,
+        1214305123,
+        "mode"
+      ],
+      [
+        125,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        125,
+        3599109322,
+        "sender_canister_version"
+      ],
+      [
+        126,
+        235052488,
+        "reinstall"
+      ],
+      [
+        126,
+        1664201884,
+        "upgrade"
+      ],
+      [
+        126,
+        2375734555,
+        "install"
+      ],
+      [
+        128,
+        793490780,
+        "wasm_memory_persistence"
+      ],
+      [
+        128,
+        1539756096,
+        "skip_pre_upgrade"
+      ],
+      [
+        130,
+        1191628933,
+        "keep"
+      ],
+      [
+        130,
+        2871543860,
+        "replace"
+      ],
+      [
+        132,
+        4849238,
+        "arg"
+      ],
+      [
+        132,
+        1176624806,
+        "wasm_module_hash"
+      ],
+      [
+        132,
+        1214305123,
+        "mode"
+      ],
+      [
+        132,
+        1847393007,
+        "chunk_hashes_list"
+      ],
+      [
+        132,
+        2807510037,
+        "target_canister"
+      ],
+      [
+        132,
+        3052241285,
+        "store_canister"
+      ],
+      [
+        132,
+        3599109322,
+        "sender_canister_version"
+      ],
+      [
+        134,
+        427267567,
+        "context"
+      ],
+      [
+        134,
+        1072395707,
+        "key_id"
+      ],
+      [
+        134,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        135,
+        1224700491,
+        "name"
+      ],
+      [
+        135,
+        1314409647,
+        "curve"
+      ],
+      [
+        136,
+        2825341939,
+        "bls12_381_g2"
+      ],
+      [
+        137,
+        881350601,
+        "public_key"
+      ],
+      [
+        139,
+        84557255,
+        "start_at_timestamp_nanos"
+      ],
+      [
+        139,
+        1097286461,
+        "subnet_id"
+      ],
+      [
+        141,
+        268680022,
+        "timestamp_nanos"
+      ],
+      [
+        141,
+        3717453766,
+        "node_metrics"
+      ],
+      [
+        143,
+        243340409,
+        "num_block_failures_total"
+      ],
+      [
+        143,
+        385029432,
+        "node_id"
+      ],
+      [
+        143,
+        2883926027,
+        "num_blocks_proposed_total"
+      ],
+      [
+        145,
+        2336062691,
+        "settings"
+      ],
+      [
+        145,
+        3348853450,
+        "specified_id"
+      ],
+      [
+        145,
+        3573748184,
+        "amount"
+      ],
+      [
+        145,
+        3599109322,
+        "sender_canister_version"
+      ],
+      [
+        148,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        148,
+        2098503289,
+        "num_requested_changes"
+      ],
+      [
+        149,
+        570880087,
+        "controllers"
+      ],
+      [
+        149,
+        2928387969,
+        "module_hash"
+      ],
+      [
+        149,
+        3067116063,
+        "recent_changes"
+      ],
+      [
+        149,
+        3862312591,
+        "total_num_changes"
+      ],
+      [
+        151,
+        268680022,
+        "timestamp_nanos"
+      ],
+      [
+        151,
+        783802816,
+        "canister_version"
+      ],
+      [
+        151,
+        1258363366,
+        "origin"
+      ],
+      [
+        151,
+        2874596546,
+        "details"
+      ],
+      [
+        152,
+        572139648,
+        "from_user"
+      ],
+      [
+        152,
+        3061905116,
+        "from_canister"
+      ],
+      [
+        153,
+        1869947023,
+        "user_id"
+      ],
+      [
+        154,
+        783802816,
+        "canister_version"
+      ],
+      [
+        154,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        155,
+        737642527,
+        "creation"
+      ],
+      [
+        155,
+        1168034903,
+        "code_deployment"
+      ],
+      [
+        155,
+        1239220413,
+        "load_snapshot"
+      ],
+      [
+        155,
+        2838302280,
+        "rename_canister"
+      ],
+      [
+        155,
+        2881846168,
+        "controllers_change"
+      ],
+      [
+        155,
+        4081328912,
+        "code_uninstall"
+      ],
+      [
+        156,
+        570880087,
+        "controllers"
+      ],
+      [
+        156,
+        3117986754,
+        "environment_variables_hash"
+      ],
+      [
+        157,
+        1214305123,
+        "mode"
+      ],
+      [
+        157,
+        2928387969,
+        "module_hash"
+      ],
+      [
+        158,
+        235052488,
+        "reinstall"
+      ],
+      [
+        158,
+        1664201884,
+        "upgrade"
+      ],
+      [
+        158,
+        2375734555,
+        "install"
+      ],
+      [
+        159,
+        783802816,
+        "canister_version"
+      ],
+      [
+        159,
+        842117339,
+        "source"
+      ],
+      [
+        159,
+        2242915486,
+        "from_canister_id"
+      ],
+      [
+        159,
+        3569147778,
+        "taken_at_timestamp"
+      ],
+      [
+        159,
+        4045790262,
+        "snapshot_id"
+      ],
+      [
+        160,
+        754389724,
+        "rename_to"
+      ],
+      [
+        160,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        160,
+        1920899912,
+        "requested_by"
+      ],
+      [
+        160,
+        3862312591,
+        "total_num_changes"
+      ],
+      [
+        161,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        161,
+        2096228120,
+        "version"
+      ],
+      [
+        161,
+        3862312591,
+        "total_num_changes"
+      ],
+      [
+        162,
+        570880087,
+        "controllers"
+      ],
+      [
+        165,
+        1505543342,
+        "network"
+      ],
+      [
+        168,
+        1097286461,
+        "subnet_id"
+      ],
+      [
+        169,
+        1133613777,
+        "replica_version"
+      ],
+      [
+        169,
+        1679652694,
+        "registry_version"
+      ],
+      [
+        171,
+        2122851290,
+        "cycles_consumed"
+      ],
+      [
+        172,
+        79678209,
+        "memory"
+      ],
+      [
+        172,
+        124575863,
+        "canister_creation"
+      ],
+      [
+        172,
+        1161155070,
+        "burned_cycles"
+      ],
+      [
+        172,
+        1586739614,
+        "http_outcalls"
+      ],
+      [
+        172,
+        1832883877,
+        "instructions"
+      ],
+      [
+        172,
+        2308758498,
+        "uninstall"
+      ],
+      [
+        172,
+        2836959799,
+        "ingress_induction"
+      ],
+      [
+        172,
+        3334448650,
+        "request_and_response_transmission"
+      ],
+      [
+        172,
+        4174053672,
+        "compute_allocation"
+      ],
+      [
+        174,
+        2336062691,
+        "settings"
+      ],
+      [
+        174,
+        3599109322,
+        "sender_canister_version"
+      ],
+      [
+        176,
+        4849924,
+        "aux"
+      ],
+      [
+        176,
+        1072395707,
+        "key_id"
+      ],
+      [
+        176,
+        1445762093,
+        "derivation_path"
+      ],
+      [
+        176,
+        2584819143,
+        "message"
+      ],
+      [
+        178,
+        3996846919,
+        "bip341"
+      ],
+      [
+        179,
+        2101218390,
+        "merkle_root_hash"
+      ],
+      [
+        181,
+        427267567,
+        "context"
+      ],
+      [
+        181,
+        1072395707,
+        "key_id"
+      ],
+      [
+        181,
+        3189621770,
+        "input"
+      ],
+      [
+        181,
+        3581318111,
+        "transport_public_key"
+      ],
+      [
+        182,
+        58727076,
+        "encrypted_key"
+      ],
+      [
+        184,
+        1313628723,
+        "canister_id"
+      ],
+      [
+        184,
+        3599109322,
+        "sender_canister_version"
+      ],
+      [
+        184,
+        4045790262,
+        "snapshot_id"
+      ]
+    ]
+  }
+}

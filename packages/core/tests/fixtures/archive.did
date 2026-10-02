@@ -1,0 +1,31 @@
+type GetBlocksArgs = record { start : nat; length : nat };
+
+type Block = record { index : nat; memo : blob };
+
+type BlockRange = record { blocks : vec Block };
+
+// How an archive canister is read: its principal and method arrive in the
+// ledger's reply.
+type QueryArchiveFn = func (GetBlocksArgs) -> (BlockRange) query;
+
+type ArchivedRange = record {
+  start : nat;
+  length : nat;
+  callback : QueryArchiveFn;
+};
+
+type GetBlocksResponse = record {
+  first_index : nat;
+  blocks : vec Block;
+  archived_blocks : vec ArchivedRange;
+};
+
+// A callback that writes.
+type NotifyFn = func (text) -> (nat);
+
+// A ledger whose old blocks live in archive canisters, as ICRC-3 and the ICP
+// ledger keep them: a reply carries a func reference per archived range.
+service : {
+  get_blocks : (GetBlocksArgs) -> (GetBlocksResponse) query;
+  notify_hook : () -> (NotifyFn) query;
+}
