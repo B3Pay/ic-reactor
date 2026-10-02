@@ -12,7 +12,7 @@ import type { Client } from "@ic-reactor/core"
 import { renderToString } from "react-dom/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ReactorProvider, useAuth, useClient } from "../src/index.js"
-import { clientWithAuth, trackedFactory } from "./helpers.js"
+import { anonymousClient, clientWithAuth, trackedFactory } from "./helpers.js"
 
 const storage = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
 
@@ -50,6 +50,10 @@ describe("ReactorProvider on a server", () => {
 
     expect(html).toBe("<p>anonymous:2vxsx-fae</p>")
     expect(buildAuth).not.toHaveBeenCalled()
+    // The snapshot is a constant of this package: it must say what core's
+    // client reports for a caller nobody signed.
+    const { status, principal } = anonymousClient().authState()
+    expect(html).toBe(`<p>${status}:${principal}</p>`)
   })
 
   it("builds a separate client and QueryClient for each request and mounts nothing", () => {
