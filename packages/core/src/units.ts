@@ -165,8 +165,13 @@ export function parseUnits(
  * JavaScript `Number`, so an 18-decimal balance of any size shows as it is.
  * The text is only `-`, the digits 0-9 and `.`, the same on the server and in
  * every browser, and the form {@link parseUnits} reads back. For a locale's
- * separators or grouping, format that text yourself: `Intl.NumberFormat`
- * accepts a decimal string and keeps every digit of it.
+ * separators or grouping, format that text yourself. `Intl.NumberFormat` reads
+ * a decimal string exactly (an engine without Intl.NumberFormat v3 turns it
+ * into a `Number` first), but it rounds to 3 fraction digits unless told
+ * otherwise, so `"0.99999999"` would show as `"1"`: the overstatement
+ * `maxFractionDigits` below prevents. Give it a `maximumFractionDigits` of at
+ * least the digits the text has (`decimals` does, up to the 100 Intl allows),
+ * and a `minimumFractionDigits` to keep zeros `minFractionDigits` padded.
  *
  * By default every significant fraction digit is shown and zeros at the end
  * are dropped, so one ICP (100000000n at 8 decimals) is `"1"`.
@@ -208,9 +213,13 @@ export function parseUnits(
  * formatUnits(100_000_000n, 8, { minFractionDigits: 2 }) // "1.00"
  * formatUnits(-1n, 8) // "-0.00000001"
  *
- * // A locale's separators are the app's to add, over the plain text
- * new Intl.NumberFormat("de-DE", { maximumFractionDigits: 20 }).format(
- *   formatUnits(123_456_789_000n, 8)
+ * // A locale's separators are the app's to add, over the plain text.
+ * // maximumFractionDigits stops Intl rounding to its default 3 digits.
+ * // The cast is for lib ES2023 or later (es2023.intl): before it, the Intl
+ * // types accept a number or bigint only, and a number loses digits.
+ * const text = formatUnits(123_456_789_000n, 8) // "1234.56789"
+ * new Intl.NumberFormat("de-DE", { maximumFractionDigits: 8 }).format(
+ *   text as Intl.StringNumericLiteral
  * ) // "1.234,56789"
  * ```
  */
