@@ -22,16 +22,23 @@ import { isServer } from "./runtime.js"
  *   id could not be resolved. Nothing was sent.
  * - `unauthenticated`: an update was attempted while not signed in. Nothing was
  *   sent.
- * - `not_delivered`: the request certainly did not reach the canister (the
- *   replica or a boundary node refused it, or the system could not take it in).
+ * - `not_delivered`: nothing that matters ran. Either the request was refused
+ *   or never taken in (the replica or a boundary node turned it away, or the
+ *   system could not take it in), or it was a query, which changes nothing, and
+ *   no answer came back. A failed query may well have reached the canister,
+ *   so `mayHaveExecuted` carries the guarantee: it is `false` on every
+ *   `not_delivered`, because a refused update never ran and a query changes
+ *   nothing.
  * - `outcome_unknown`: an update went out and no trustworthy answer came back,
  *   so the canister may or may not have run it.
  * - `rejected`: the IC or the canister rejected the call; `rejectCode` says which.
  * - `invalid_reply`: a reply arrived but did not decode as the method's result.
  * - `canister_err`: the canister replied with the `Err` arm of its result; `err`
  *   is typed.
- * - `cancelled`: the caller abandoned the call (an aborted query, or a key
- *   whose principal is no longer current).
+ * - `cancelled`: the caller abandoned the call (an aborted query, a key whose
+ *   principal is no longer current, or an update aborted in flight).
+ *   `mayHaveExecuted` is `false` when nothing was sent, and `true` for an
+ *   update aborted after its request may already have been delivered.
  */
 export type ReactorErrorKind =
   | "invalid_args"
