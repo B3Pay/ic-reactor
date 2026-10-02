@@ -70,3 +70,8 @@ evals/results/
 # `candid-core-cli gen`, kept byte for byte (see the README there).
 packages/core/tests/fixtures/*.ts
 packages/core/tests/fixtures/*.envelope.json
+
+# scripts/check-snippets/app/generated/: the modules `candid-core-cli gen` writes
+# for the `.did` files next to them, kept byte for byte. They are what a guide
+# snippet's `./generated/<name>` import resolves to.
+scripts/check-snippets/app/generated/*.ts
