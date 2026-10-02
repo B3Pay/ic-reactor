@@ -15,7 +15,7 @@ against unpublished candid-core shapes until the 0.3 beta of
 
 - `@ic-reactor/core` (`packages/core`, `4.0.0-alpha.0`) — the 3.x runtime is removed (IR0): the entry exports nothing, and the milestone 1 slices add the 4 API. `src/testing/` keeps the fake replica.
 - `@ic-reactor/react` (`packages/react`, `4.0.0-alpha.0`) — the 3.x hooks are removed (IR0): the entry exports nothing until IR6 adds the provider and `useAuth`.
-- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-alpha.0`) — the `ic_env` cookie and `/api` proxy; binding generation returns in IR7.
+- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-alpha.0`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
 
 `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli` and
 `@ic-reactor/candid` are not in this tree (the last stays at 3.x on `main`).
@@ -26,6 +26,7 @@ against unpublished candid-core shapes until the 0.3 beta of
 | ----------------------------- | --------------------------------------------------------------------------- |
 | Core runtime                  | `packages/core/src/`, `packages/core/tests/`                                |
 | React bindings                | `packages/react/src/`, `packages/react/tests/`                              |
+| Vite plugin generation        | `packages/vite-plugin/src/generate.ts`, `src/index.ts`                      |
 | `ic_env` cookie and dev proxy | `packages/vite-plugin/src/dev-environment.ts`, `src/env.ts`, `src/index.ts` |
 | Fake replica (testing)        | `packages/core/src/testing/`                                                |
 | Real-replica e2e              | `e2e/` (Rust `hello_actor` canister, `e2e/test.sh`)                         |
