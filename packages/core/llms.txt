@@ -1,9 +1,323 @@
 # @ic-reactor/core
 
-> ic-reactor 4 is in development on the v4 branch; the guide lands with DX3.
+> How to call Internet Computer canisters with a module `candid-core-cli gen`
+> generated from a `.did`, a client from `@ic-reactor/core`, and TanStack
+> Query. The client applies the rules a hand-written integration must get
+> right; this guide names the call for each.
 
 Applies to `@ic-reactor/core` 4.0.0-alpha.0.
 
-This version is not released, and this file describes no API yet. For the
-released 3.x packages, read the `llms.txt` shipped in their npm tarballs and
-https://ic-reactor.b3pay.net/llms-full.txt.
+## Imports
+
+```ts
+import { createClient, formatUnits, isReactorError, parseUnits } from "@ic-reactor/core"
+import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
+import { isPrincipal, principal, type Principal } from "@candid-core/schema"
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+```
+
+One import path per name: Candid values only from `@candid-core/schema`,
+`skipToken` and the hooks only from TanStack Query.
+
+The generated module (from `candid-core-cli gen` or `@ic-reactor/vite-plugin`;
+do not edit it) exports a type and a schema per Candid type, the service
+schema `actor`, and `type Actor`, its methods' signatures.
+
+## Setup
+
+```ts
+// src/ledger.ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/icrc1"
+
+export const client = createClient({ network: "ic", identity: "anonymous" })
+export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaaba-cai" })
+```
+
+`client.canister()` returns the same object each time, so it can run in
+render.
+
+`network` and the root key:
+
+- `"ic"`: mainnet (`https://icp-api.io`) and its built-in root key.
+- `"local"`: `http://127.0.0.1:4943`; its root key is fetched.
+- `{ host, rootKey }`: any other replica. A given `rootKey` is used, never
+  fetched; without one, it is fetched only from a local `host` (`localhost`,
+  `127.0.0.1`, `[::1]`). Never fetch one from any other host.
+- `"env"`: the page's network. Canisters can be named, `{ name: "backend" }`,
+  from the `ic_env` cookie, believed only on a local replica or with
+  `allowEnvConfig: true`. A server has no cookie: use `{ id }` there.
+
+Who calls (exactly one):
+
+- `identity`: a fixed `Identity` (scripts, servers, tests), or `"anonymous"`,
+  read-only: every update is refused before sending. A
+  `new AnonymousIdentity()` signs writes, so map one you are handed:
+  `identity: id && !id.getPrincipal().isAnonymous() ? id : "anonymous"`.
+- `auth: () => new AuthClient()` (`@icp-sdk/auth/client`): users sign in and
+  out. The factory runs once, in a browser only.
+
+Who is calling, and may they write:
+
+| Question               | Answer                                                                    |
+| ---------------------- | ------------------------------------------------------------------------- |
+| the caller's principal | `useAuth().principal`, `client.caller()` (`"2vxsx-fae"` unless signed in) |
+| may a write be sent    | `useAuth().status === "signed-in"`; the client refuses the rest itself    |
+| when did it change     | `useAuth()` re-renders; `client.subscribe(fn)`                            |
+
+The client keeps one agent per principal: a call goes out as the principal
+current when it was made, or not at all.
+
+One client per browser tab, or per request on a server. In React,
+`<ReactorProvider client={() => createClient(...)}>` builds it once per
+mounted tree and disposes it on unmount; a module-scope client passed as
+`client={() => client}` is borrowed, never disposed. Inside, `useClient()` returns it and
+`useAuth()` returns `{ status, principal, signIn, signOut }`, `"anonymous"`
+on a server and in a hydrating page's first render.
+
+Any other sign-in source becomes an `AuthLike`:
+
+```ts
+// src/auth-like.ts
+import type { AuthLike } from "@ic-reactor/core"
+import type { Identity } from "@icp-sdk/core/agent"
+
+export interface SignInSource {
+  getIdentity(): Identity // anonymous while signed out
+  isAuthenticated(): boolean
+  login(): Promise<void>
+  logout(): Promise<void>
+  subscribe(listener: () => void): () => void
+}
+
+export function toAuthLike(source: SignInSource): AuthLike {
+  const signedIn = () =>
+    source.isAuthenticated() && !source.getIdentity().getPrincipal().isAnonymous()
+  return {
+    getPrincipal: () => (signedIn() ? source.getIdentity().getPrincipal() : undefined),
+    getStatus: () => ({ state: signedIn() ? "signed-in" : "signed-out" }),
+    getIdentity: async () => source.getIdentity(),
+    subscribe: (listener) => source.subscribe(listener),
+    signIn: () => source.login(),
+    signOut: () => source.logout(),
+  }
+}
+```
+
+## Values
+
+Methods take and return the generated types:
+
+| Candid                                   | Value                                          |
+| ---------------------------------------- | ---------------------------------------------- |
+| `nat`, `int`, `nat64`, `int64`           | `bigint` (never `number`)                      |
+| `nat8`..`nat32`, `int8`..`int32`, floats | `number`                                       |
+| `text`, `bool`                           | `string`, `boolean`                            |
+| `principal`                              | `Principal`: branded principal text            |
+| `blob` / `vec nat8`                      | `Uint8Array`                                   |
+| `opt T`                                  | `T \| null` (the property is always present)   |
+| `opt opt T`, `opt null`                  | `{ some: T } \| null`                          |
+| `vec T`                                  | `T[]`                                          |
+| `record { a : T }`                       | `{ a: T }`, every field present                |
+| `variant { A : T; B }`                   | `{ tag: "A"; value: T } \| { tag: "B" }`       |
+
+Make principals from user input with `principal(text)`, which throws a
+`TypeError` for invalid text: catch it and refuse the input. In render, test with `isPrincipal(text)` first.
+
+Direct calls take the parameters `type Actor` lists; the builders below take
+them as one value: nothing for none, the value for one, a tuple `[a, b]` for
+more.
+
+Token amounts are base units:
+
+```ts
+/// <reference lib="es2023.intl" />
+import { formatUnits, parseUnits } from "@ic-reactor/core"
+
+const units = parseUnits("1.5", 8) // 150000000n
+const text = formatUnits(units, 8, { minFractionDigits: 8 }) // "1.50000000"
+const local = new Intl.NumberFormat(undefined, { maximumFractionDigits: 8 }).format(
+  text as Intl.StringNumericLiteral // the cast needs lib ES2023
+)
+```
+
+`parseUnits` throws for text that is not a plain decimal (`"1e3"`, `"1,5"`),
+a negative, or excess fraction digits: refuse that input. A cap is the Candid
+type's: a `nat64` field refuses 2^64 at encoding (`invalid_args`); an ICRC-1
+`amount` is a `nat`, with none.
+
+### Results
+
+A method whose result is `variant { Ok : T; Err : E }` resolves with the `Ok`
+value; `Err` rejects as kind `"canister_err"`, with the `Err` value in `err`
+(typed on a query's or mutation's `error`).
+
+## Reads
+
+```tsx
+import type { Principal } from "@candid-core/schema"
+import { formatUnits } from "@ic-reactor/core"
+import { useClient } from "@ic-reactor/react"
+import { skipToken, useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function Balance({ owner }: { owner: Principal | undefined }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaaba-cai" })
+  const balance = useQuery(
+    client.queryOptions(ledger, "icrc1_balance_of", owner ? { owner, subaccount: null } : skipToken)
+  )
+  return <p>{balance.data === undefined ? "…" : formatUnits(balance.data, 8)}</p>
+}
+```
+
+`skipToken` stands in for arguments not known yet;
+arguments that do not encode make the read reject `invalid_args`.
+
+Keys are `["ic-reactor", network, caller, canisterId, method, args]`, so one
+principal's cached answer is never served to another: after a sign-in,
+sign-out or switch, the new caller's key is empty (`data` is `undefined`)
+until it loads, and a read made for the previous caller never lands in it.
+Keep it so: build the options in render, and add nothing that carries data
+across keys (`placeholderData: keepPreviousData`, cross-key `initialData`).
+`client.queryKey(ledger, method?, args?)` gives keys for the cache.
+
+Reads retry transient failures (never on a server). Spread to add options:
+`{ ...client.queryOptions(...), staleTime }`.
+
+`queryOptions` throws for an update method; one that answers the same however
+often it runs (ckBTC's `get_btc_address`) opts in with a fourth argument,
+`{ update: "idempotent" }`. The target `{ id, certified: true }` certifies
+`query` replies.
+
+## Writes
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+export function Send({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaaba-cai" })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  return <button disabled={transfer.isPending} onClick={() => transfer.mutate(arg)}>Send</button>
+}
+```
+
+- The mutation invalidates the canister's reads, for every caller, after a
+  success, a `canister_err` and a failure that may have executed. Nothing
+  else is needed after an unknown outcome.
+  A third argument, `{ invalidates: [canister, [canister, "method"]] }`,
+  names other reads; `[]`, none. To add an `onSettled`, call the client's
+  from yours.
+- Do not retry a write. `retry` is `false`; keep it. The client itself
+  re-sends an update, at most twice, only after a failure proving the canister
+  never got it (reject code 2, status 429); any other failure is final.
+- A write is sent as whoever is signed in when it runs. If nobody is, the
+  client refuses it (`unauthenticated`) before calling anything.
+- Call update methods only from `useMutation` or directly, never from
+  `useQuery`; call query methods from `useQuery` or directly.
+
+## Errors
+
+Every rejection is a `ReactorError`: test with `isReactorError(error)`, then
+read `kind` and `mayHaveExecuted`. A failed write either certainly had no
+effect, or may have executed:
+
+| What happened                                                                   | `kind`                            | May have executed |
+| ------------------------------------------------------------------------------- | --------------------------------- | ----------------- |
+| refused before sending: arguments that do not encode, a write while signed out  | `invalid_args`, `unauthenticated` | no                |
+| HTTP 4xx except 408 (429 included): the replica or a boundary node refused it    | `not_delivered`                   | no                |
+| reject code 1, 2 (transient) or 3: rejected before any canister code ran         | `rejected` (2: `not_delivered`)   | no                |
+| reject code 4 or 5: the canister rejected or trapped, maybe after changing state | `rejected`                        | yes (a write)     |
+| a sent write got no trustworthy answer: network drop, timeout, 5xx, 408          | `outcome_unknown`                 | yes               |
+| a reply that did not decode                                                      | `invalid_reply`                   | yes (a write)     |
+| the canister returned `Err`                                                      | `canister_err`                    | no                |
+| the caller changed, or the call was aborted                                      | `cancelled`                       | no (an aborted write: yes) |
+
+On the management canister (`aaaaa-aa`), codes 1 to 3 prove nothing: a write
+there may have executed. A query changes nothing, so a failed read never "may
+have executed".
+
+## Outside React
+
+```ts
+import { principal } from "@candid-core/schema"
+import { isReactorError, parseUnits } from "@ic-reactor/core"
+import { client, ledger } from "./ledger"
+
+const account = { owner: principal("aaaaa-aa"), subaccount: null }
+
+const cached = await client.queryClient.fetchQuery(client.queryOptions(ledger, "icrc1_balance_of", account))
+await client.queryClient.invalidateQueries({ queryKey: client.queryKey(ledger) })
+const fresh = await ledger.icrc1_balance_of(account)
+
+try {
+  const arg = { to: account, amount: parseUnits("1.5", 8), fee: null, memo: null, from_subaccount: null, created_at_time: null }
+  await ledger.icrc1_transfer(arg) // refused unless `client` was built with an Identity
+} catch (error) {
+  if (!isReactorError(error)) throw error
+  console.error(error.mayHaveExecuted ? "unknown outcome: re-read first" : error.kind)
+}
+```
+
+Direct calls never touch a cache. To test, `createTestClient()` from
+`@ic-reactor/core/testing` gives a real client over an in-memory replica with
+a sign-in you control.
+
+## Example
+
+```tsx
+import { principal } from "@candid-core/schema"
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
+import { toAuthLike, type SignInSource } from "./auth-like"
+import { actor, type Actor } from "./generated/backend"
+
+export function App({ auth }: { auth: SignInSource }) {
+  return (
+    <ReactorProvider client={() => createClient({ network: "ic", auth: () => toAuthLike(auth) })}>
+      <Profile />
+    </ReactorProvider>
+  )
+}
+
+function Profile() {
+  const client = useClient()
+  const { status, principal: caller, signIn } = useAuth()
+  const backend = client.canister<Actor>(actor, { id: "rrkah-fqaaa-aaaaa-aaaaq-cai" })
+  const me = principal(caller)
+  const signedIn = status === "signed-in"
+  const profile = useQuery(client.queryOptions(backend, "get_profile", signedIn ? me : skipToken))
+  const rename = useMutation(client.mutationOptions(backend, "set_name"))
+
+  if (!signedIn) return <button onClick={() => void signIn()}>Sign in</button>
+  if (profile.data === undefined) return <p>Loading…</p>
+  return (
+    <>
+      <p>{profile.data.name}</p>
+      <button disabled={rename.isPending} onClick={() => rename.mutate([me, "Ada"])}>Rename</button>
+      {rename.error && <p>{rename.error.mayHaveExecuted ? "Unknown outcome" : rename.error.message}</p>}
+    </>
+  )
+}
+```
+
+## Do not
+
+- Cast text to `Principal`: use `principal(text)`.
+- Convert `bigint` values to `number`: use `parseUnits` and `formatUnits`.
+- Add `retry` to a write (`{ ...client.mutationOptions(...), retry: 3 }`
+  compiles), or call a write from `useQuery`: TanStack Query may run a query's
+  function again whenever it refetches, and every run of an update executes
+  again.
+- Write a query key by hand (it leaves the caller out), or carry data across
+  keys (`keepPreviousData`, cross-key `initialData`).
+- Build agents yourself, a client per render, or one client for every user of
+  a server.
+- Send a write as the anonymous identity: pass `identity: "anonymous"`, never
+  an `AnonymousIdentity` you were handed.
+- Treat every failed write as "not executed": read `mayHaveExecuted`.

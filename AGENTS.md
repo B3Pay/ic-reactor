@@ -13,7 +13,7 @@ against unpublished candid-core shapes until the 0.3 beta of
 
 ### Packages
 
-- `@ic-reactor/core` (`packages/core`, `4.0.0-alpha.0`) — the 3.x runtime is removed (IR0): the entry exports nothing, and the milestone 1 slices add the 4 API. `src/testing/` keeps the fake replica.
+- `@ic-reactor/core` (`packages/core`, `4.0.0-alpha.0`) — the 3.x runtime is removed (IR0): the entry exports nothing, and the milestone 1 slices add the 4 API. `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
 - `@ic-reactor/react` (`packages/react`, `4.0.0-alpha.0`) — the 3.x hooks are removed (IR0): the entry exports nothing until IR6 adds the provider and `useAuth`.
 - `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-alpha.0`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
 
@@ -28,10 +28,10 @@ against unpublished candid-core shapes until the 0.3 beta of
 | React bindings                | `packages/react/src/`, `packages/react/tests/`                              |
 | Vite plugin generation        | `packages/vite-plugin/src/generate.ts`, `src/index.ts`                      |
 | `ic_env` cookie and dev proxy | `packages/vite-plugin/src/dev-environment.ts`, `src/env.ts`, `src/index.ts` |
-| Fake replica (testing)        | `packages/core/src/testing/`                                                |
+| Test client, fake replica     | `packages/core/src/testing/` (`test-client.ts` is the entry's only export)  |
 | Real-replica e2e              | `e2e/` (Rust `hello_actor` canister, `e2e/test.sh`)                         |
 | Docs site (`/v4/`)            | `docs/`, `.github/workflows/docs.yml`                                       |
-| Consumer guide                | `packages/core/llms.txt` (placeholder until DX3)                            |
+| Consumer guide and skill      | `packages/core/llms.txt`, `skill-packages/ic-reactor/SKILL.md`              |
 | Release lane                  | `scripts/release.js`, `.github/workflows/release.yml`                       |
 | CI gates and their tests      | `scripts/` (`check-exports.mjs`, `verify-traps.mjs`, `verify-faults.mjs`)   |
 
@@ -62,12 +62,14 @@ edited by hand when `e2e/src/actor/hello_actor.did` changes.
 ## AI context files
 
 `scripts/ai-context-files.js` lists them: `packages/core/llms.txt`, this file
-and `CLAUDE.md`, plus `packages/react/llms.txt` and the consumer skill
-`skill-packages/ic-reactor/` once they exist. The consumer guide is
+and `CLAUDE.md`, plus `packages/react/llms.txt` (a pointer to the guide) and
+the consumer skill `skill-packages/ic-reactor/`. The consumer guide is
 `packages/core/llms.txt`, shipped in core's tarball; it opens with an
-`Applies to` line naming core's version, and until DX3 writes it, it states
-only that ic-reactor 4 is in development. Keep repo paths and contributor
-workflow out of it. The skill and any other guide land with DX3.
+`Applies to` line naming core's version. Keep repo paths and contributor
+workflow out of it, and keep it free of the eval's hidden-test names and
+literals (`node evals/harness/check-docs.mjs "$PWD/packages/core/llms.txt"`).
+Its snippets import the generated modules in
+`scripts/check-snippets/app/generated/`.
 
 `check:ai-context` also fails on any of the 34 removed 3.x names
 (`scripts/removed-v3-names.js`) outside a section headed "Removed in 4.0", and

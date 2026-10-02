@@ -273,25 +273,49 @@ describe("planned names that are not exported yet", () => {
 })
 
 describe("the transitional allowance", () => {
-  it("lists what IR4a added and names IR4b as the slice that removes it", () => {
-    assert.ok(TESTING.transitional.includes("createFakeReplica"))
-    assert.ok(TESTING.transitional.includes("createTestAuth"))
-    assert.ok(TESTING.transitional.includes("installFakeReplica"))
+  // The budget has none: IR4b (#783) replaced the names it excused, so the
+  // testing entry is exactly its planned names. The gate keeps the means, for
+  // a rename that lands in two steps, and these tests give it one of its own.
+  const ALLOWED = ["createFakeReplica", "installFakeReplica"]
+  const entries = ENTRIES.map((candidate) =>
+    candidate === TESTING ? { ...TESTING, transitional: ALLOWED } : candidate
+  )
+  const runWithAllowance = (exported) =>
+    evaluate({ entries, exported, foreign: NO_FOREIGN })
+
+  it("is empty in the budget: the testing entry has nothing outside its cap", () => {
+    assert.equal(TESTING.transitional, undefined)
+    assert.deepEqual(TESTING.planned, ["createTestClient", "TestHandlers"])
+  })
+
+  it("fails an unplanned name in the testing entry while the version is an alpha", () => {
+    const result = run([
+      exporting(CORE, CORE.planned),
+      exporting(TESTING, [...TESTING.planned, "createFakeReplica"]),
+      exporting(REACT, REACT.planned),
+      exporting(VITE, VITE.planned),
+    ])
+    assert.equal(
+      failuresAbout(result, '"createFakeReplica"').length,
+      1,
+      result.failures.join("\n")
+    )
+    assert.equal(result.transitional.size, 0)
   })
 
   it("is allowed, and outside the cap, while the version is an alpha", () => {
-    const result = run([
+    const result = runWithAllowance([
       exporting(CORE, CORE.planned),
-      exporting(TESTING, [...TESTING.planned, ...TESTING.transitional]),
+      exporting(TESTING, [...TESTING.planned, ...ALLOWED]),
       exporting(REACT, REACT.planned),
       exporting(VITE, VITE.planned),
     ])
     assert.deepEqual(result.failures, [])
-    assert.deepEqual(result.transitional.get(TESTING.id), TESTING.transitional)
+    assert.deepEqual(result.transitional.get(TESTING.id), ALLOWED)
   })
 
-  it("fails from the first beta, naming IR4b", () => {
-    const result = run([
+  it("fails from the first beta", () => {
+    const result = runWithAllowance([
       exporting(CORE, CORE.planned, "4.0.0-beta.1"),
       exporting(
         TESTING,
@@ -304,11 +328,11 @@ describe("the transitional allowance", () => {
     const about = failuresAbout(result, "transitional")
     assert.equal(about.length, 1, result.failures.join("\n"))
     assert.match(about[0], /createFakeReplica/)
-    assert.match(about[0], /IR4b \(#783\)/)
+    assert.match(about[0], /before the first beta/)
   })
 
   it("does not excuse a name it does not list", () => {
-    const result = run([
+    const result = runWithAllowance([
       ...complete().slice(0, 1),
       exporting(TESTING, [...TESTING.planned, "createSomethingElse"]),
       ...complete().slice(2),

@@ -1,0 +1,7 @@
+type Profile = record { name : text };
+
+// The backend of the guide's example app: a profile per principal.
+service : {
+  get_profile : (principal) -> (Profile) query;
+  set_name : (principal, text) -> ();
+}

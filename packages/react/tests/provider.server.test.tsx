@@ -7,7 +7,6 @@
  * process-wide focus and online managers, no client disposed.
  */
 import { QueryClient, useQueryClient } from "@tanstack/react-query"
-import { createTestAuth } from "@ic-reactor/core/testing"
 import type { Client } from "@ic-reactor/core"
 import { renderToString } from "react-dom/server"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -17,6 +16,7 @@ import {
   bindingsWith,
   clientWithAuth,
   fakeFinalizationRegistry,
+  testAuth,
   trackedFactory,
 } from "./helpers.js"
 
@@ -43,7 +43,7 @@ describe("ReactorProvider on a server", () => {
       },
     })
     expect(typeof window).toBe("undefined")
-    const buildAuth = vi.fn(() => createTestAuth({ seed: 1 }))
+    const buildAuth = vi.fn(() => testAuth({ identity: 1 }))
 
     function Page() {
       const { status, principal } = useAuth()
@@ -65,7 +65,7 @@ describe("ReactorProvider on a server", () => {
 
   it("builds a separate client and QueryClient for each request and mounts nothing", () => {
     const mount = vi.spyOn(QueryClient.prototype, "mount")
-    const buildAuth = vi.fn(() => createTestAuth({ seed: 1 }))
+    const buildAuth = vi.fn(() => testAuth({ identity: 1 }))
     const { factory, made } = trackedFactory(() => clientWithAuth(buildAuth))
     const seen: Array<{ client: Client; queryClient: QueryClient }> = []
 
@@ -108,7 +108,7 @@ describe("ReactorProvider on a server", () => {
     // that element would reach every later request, and with it the first
     // request's cache and caller.
     const { factory, made } = trackedFactory(() =>
-      clientWithAuth(() => createTestAuth({ seed: 1 }))
+      clientWithAuth(() => testAuth({ identity: 1 }))
     )
     const seen: Client[] = []
     function Page() {
@@ -138,7 +138,7 @@ describe("ReactorProvider on a server", () => {
     const registry = fakeFinalizationRegistry()
     const fresh = await bindingsWith(registry.Registry)
     const { factory, made, disposals } = trackedFactory(() =>
-      clientWithAuth(() => createTestAuth({ seed: 1 }))
+      clientWithAuth(() => testAuth({ identity: 1 }))
     )
     function Page() {
       return <p>{fresh.useAuth().status}</p>

@@ -25,9 +25,10 @@
  * name built earlier on the page. `scripts/check-snippets/` holds that app,
  * and a document whose snippets assume another one gets its own, because
  * documents can disagree. On the `v4` line the app holds only what no
- * library export provides (`app/globals.ts`) and the third-party
- * declarations (`ambient.d.ts`): the 3.x fixtures went with the 3.x runtime,
- * and the generated-module fixtures arrive with the guide (DX3).
+ * library export provides (`app/globals.ts`), the modules
+ * `candid-core-cli gen` writes (`app/generated/`, for the guide's
+ * `./generated/icrc1` and `./generated/backend`) and the third-party
+ * declarations (`ambient.d.ts`). The 3.x fixtures went with the 3.x runtime.
  *
  * - `scripts/check-snippets/app/` is the app of every document not listed in
  *   CONTEXTS below. A context directory holds only what differs for its

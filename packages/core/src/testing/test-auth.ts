@@ -15,6 +15,8 @@ import type { Principal } from "@icp-sdk/core/principal"
  * - `signed-in-elsewhere`: `principal` is signed in on this domain, but this
  *   origin holds no credential for it, so it cannot act yet.
  * - `signed-out`: nobody is signed in.
+ *
+ * @inline
  */
 export type TestAuthStatus =
   | { state: "signed-in"; principal: Principal; expiresAtMs: number }
@@ -56,19 +58,27 @@ export type TestAuthOptions = (
   signedIn?: boolean
 }
 
-/** A sign-in made by {@link createTestAuth}. */
+/**
+ * A sign-in made by {@link createTestAuth}.
+ *
+ * @inline
+ */
 export interface TestAuth {
   /**
    * The principal calls are accepted as, or `undefined` unless the status is
    * `signed-in`: an expired or elsewhere session names a principal in
-   * {@link TestAuth.getStatus} but cannot act. Synchronous, and derived from
+   * `getStatus()` but cannot act. Synchronous, and derived from
    * the same state as `getStatus()`, so the two never disagree.
    */
   getPrincipal(): Principal | undefined
   /**
-   * Who is signed in. Synchronous. The object it returns is the same one
-   * until the status changes, so it is safe to read from
-   * `useSyncExternalStore`.
+   * Who is signed in, as `AuthClient.getStatus()` reports it: its `state` is
+   * `signed-in` (calls as `principal` are accepted), `expired` (the session of
+   * `principal` has ended), `signed-in-elsewhere` (`principal` is signed in on
+   * this domain, but this origin holds no credential for it, so it cannot act
+   * yet) or `signed-out` (nobody is, and there is no `principal`).
+   * Synchronous. The object it returns is the same one until the status
+   * changes, so it is safe to read from `useSyncExternalStore`.
    */
   getStatus(): TestAuthStatus
   /**
@@ -107,7 +117,7 @@ export interface TestAuth {
    *
    * @returns The identity now signed in.
    * @throws {TypeError} When `identityOrSeed` is neither a seed nor an
-   * identity: unlike {@link TestAuth.signIn}, switching has no account to fall
+   * identity: unlike `signIn()`, switching has no account to fall
    * back to.
    */
   switchTo(identityOrSeed: Identity | number): Identity
@@ -128,7 +138,7 @@ export interface TestAuth {
    * `subscribe()` listens to nothing.
    */
   dispose(): void
-  /** Whether {@link TestAuth.dispose} has been called. */
+  /** Whether `dispose()` has been called. */
   readonly disposed: boolean
   /** How many listeners are subscribed. */
   readonly listenerCount: number

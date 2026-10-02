@@ -20,7 +20,7 @@ import {
   isReactorError,
   retryQuery,
 } from "../src/errors.js"
-import { createTestAuth, type TestAuth } from "../src/testing/index.js"
+import { createTestAuth, type TestAuth } from "../src/testing/test-auth.js"
 import {
   ANONYMOUS,
   CALL,

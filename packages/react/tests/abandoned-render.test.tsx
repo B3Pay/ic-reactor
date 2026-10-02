@@ -20,7 +20,6 @@
  * (`fakeFinalizationRegistry`), and one runs a real collection where the
  * runtime exposes `gc()`.
  */
-import { createTestAuth, type TestAuth } from "@ic-reactor/core/testing"
 import type { Client } from "@ic-reactor/core"
 import { act, render } from "@testing-library/react"
 import { StrictMode, Suspense, useEffect, type ReactNode } from "react"
@@ -30,8 +29,10 @@ import {
   clientWithAuth,
   fakeFinalizationRegistry,
   macrotask,
+  testAuth,
   trackedFactory,
   withDisposeSpy,
+  type TestAuth,
   type TrackedClient,
 } from "./helpers.js"
 
@@ -57,7 +58,7 @@ function setup(bindings: Awaited<ReturnType<typeof bindingsWith>>) {
   const { useAuth, useClient } = bindings
   const auths: TestAuth[] = []
   const tracked = trackedFactory(() => {
-    const auth = createTestAuth({ seed: 5, signedIn: false })
+    const auth = testAuth({ identity: 5, signedIn: false })
     auths.push(auth)
     return clientWithAuth(() => auth)
   })
@@ -111,7 +112,7 @@ function suspendUntilOpened() {
  * borrows it.
  */
 function lazilySharedFactory() {
-  const auth = createTestAuth({ seed: 7, signedIn: false })
+  const auth = testAuth({ identity: 7, signedIn: false })
   let made: TrackedClient | undefined
   const factory = vi.fn(
     (): Client => (made ??= withDisposeSpy(clientWithAuth(() => auth))).client
@@ -255,7 +256,7 @@ describe("a client the app created before the provider's factory ran", () => {
   it("is never registered, even when renders are thrown away", async () => {
     const registry = fakeFinalizationRegistry()
     const { ReactorProvider, useAuth } = await bindingsWith(registry.Registry)
-    const auth = createTestAuth({ seed: 6, signedIn: false })
+    const auth = testAuth({ identity: 6, signedIn: false })
     const { client, dispose } = withDisposeSpy(clientWithAuth(() => auth))
     const { Gate, open } = suspendUntilOpened()
     function Status() {
@@ -535,7 +536,7 @@ describe("the development warning about a factory that shares a client lazily", 
     const { ReactorProvider, useAuth } = bindings
     const fresh = setup(bindings)
     const borrowed = withDisposeSpy(
-      clientWithAuth(() => createTestAuth({ seed: 9, signedIn: false }))
+      clientWithAuth(() => testAuth({ identity: 9, signedIn: false }))
     )
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
     const { Gate, open } = suspendUntilOpened()
