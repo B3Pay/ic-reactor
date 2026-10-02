@@ -66,6 +66,80 @@ export function trackedFactory(build: () => Client) {
 export const macrotask = (): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, 5))
 
+/** One `register()` call that no `unregister()` has removed. */
+export interface Registration {
+  readonly target: object
+  readonly held: Client
+  readonly token: object
+}
+
+/**
+ * A `FinalizationRegistry` whose collections the test decides. A real one runs
+ * its cleanup at some garbage collection after a target became unreachable,
+ * which no test can wait for. This one records every call and runs the cleanup
+ * of every registration still standing when {@link collectAll} is called.
+ *
+ * Install it with {@link bindingsWith}: the provider makes its registry when
+ * its module is evaluated.
+ */
+export function fakeFinalizationRegistry() {
+  /** Registrations still standing. */
+  const live: Registration[] = []
+  /** The held value of every `register()` call, in order. */
+  const registered: Client[] = []
+  /** The token of every `unregister()` call, in order. */
+  const unregistered: object[] = []
+  const cleanups: Array<(held: Client) => void> = []
+
+  class Registry {
+    constructor(cleanup: (held: Client) => void) {
+      cleanups.push(cleanup)
+    }
+    register(target: object, held: Client, token: object): void {
+      live.push({ target, held, token })
+      registered.push(held)
+    }
+    unregister(token: object): boolean {
+      unregistered.push(token)
+      const before = live.length
+      live.splice(
+        0,
+        live.length,
+        ...live.filter((registration) => registration.token !== token)
+      )
+      return live.length < before
+    }
+  }
+
+  /**
+   * Runs the cleanup of every registration still standing, once, as a
+   * collection does once their targets are unreachable. A committed
+   * provider's state stays reachable, so a real collection would not reach
+   * it; a registration left standing for it is still the defect a test looks
+   * for, because the provider's unmount, not the registry, owns that client.
+   */
+  const collectAll = (): void => {
+    for (const { held } of live.splice(0)) {
+      for (const cleanup of cleanups) cleanup(held)
+    }
+  }
+
+  return { Registry, live, registered, unregistered, cleanups, collectAll }
+}
+
+/**
+ * A fresh copy of the bindings, evaluated with `registry` as the global
+ * `FinalizationRegistry`, or with none when it is `undefined`. Undo it with
+ * `vi.unstubAllGlobals()`.
+ */
+export async function bindingsWith(
+  registry: unknown
+): Promise<typeof import("../src/index.js")> {
+  vi.stubGlobal("FinalizationRegistry", registry)
+  vi.resetModules()
+  return import("../src/index.js")
+}
+
 /** The canister {@link callThrough} calls. */
 const CANISTER = "rdmx6-jaaaa-aaaaa-aaadq-cai"
 

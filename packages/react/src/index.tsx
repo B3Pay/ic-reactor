@@ -72,6 +72,50 @@ interface Held {
 }
 
 /**
+ * The part of ES2021's `FinalizationRegistry` used here. Declared in this
+ * module because the package compiles against ES2020's lib, and as possibly
+ * absent because an older runtime has none.
+ */
+declare const FinalizationRegistry:
+  | (new <T>(cleanup: (held: T) => void) => {
+      register(target: object, held: T, unregisterToken: object): void
+      unregister(unregisterToken: object): boolean
+    })
+  | undefined
+
+/*
+ * Disposes an owned client whose render React threw away before committing it.
+ *
+ * React gives a discarded render no cleanup. When a Suspense boundary above
+ * the provider suspends during the provider's first render, or `StrictMode`
+ * calls the `useState` initializer twice in development and keeps one result,
+ * the client built for the render React drops never reaches the effect that
+ * disposes it. By then a child's `useAuth()` may have built its auth (an
+ * `AuthClient`) and subscribed to it, so every abandoned render leaked an auth
+ * and its listeners.
+ *
+ * So an owned client is registered here against its `Held`, the provider's
+ * state, which nothing outside the provider references. If React drops that
+ * state, the registry disposes the client after a garbage collection finds the
+ * state unreachable. That is a backstop, not a lifecycle: no code chooses the
+ * moment, and the language does not even promise it comes, but engines run it
+ * after the next collections, and `dispose()` is idempotent. A committed
+ * client is unregistered by its effect, so from then on only the provider's
+ * unmount disposes it.
+ *
+ * Not on a server: a server keeps no state after a component renders, while
+ * the rest of the request still uses the client, so a collection there would
+ * end a client in use. A server's client builds no auth and mounts no
+ * `QueryClient`, so it holds nothing to release anyway.
+ */
+const unclaimed =
+  typeof FinalizationRegistry === "function" &&
+  typeof window !== "undefined" &&
+  !("Deno" in globalThis)
+    ? new FinalizationRegistry<Client>((client) => client.dispose())
+    : undefined
+
+/**
  * Calls a provider's factory and decides whether the provider owns what it
  * returns.
  *
@@ -86,6 +130,9 @@ interface Held {
  *
  * A client without a serial, such as a test's spread copy of one, is owned
  * when some client was made during the call: the one it copies, then.
+ *
+ * An owned client is registered with {@link unclaimed} until the provider
+ * commits it; a borrowed one never is, since its owner decides when it ends.
  */
 function hold(build: () => Client): Held {
   const before = clientsCreated()
@@ -93,7 +140,9 @@ function hold(build: () => Client): Held {
   const serial = (client as Stamped)[CLIENT_SERIAL]
   const owned =
     typeof serial === "number" ? serial > before : clientsCreated() > before
-  return { client, owned }
+  const held = { client, owned }
+  if (owned) unclaimed?.register(held, client, client)
+  return held
 }
 
 /**
@@ -191,6 +240,17 @@ export interface ReactorProviderProps {
  * it, so a client in use is never disposed. An unmount that is not followed
  * by a mount disposes an owned client exactly once.
  *
+ * React runs no cleanup for a render it throws away before committing it: the
+ * first render of a provider below a Suspense boundary that suspends, or the
+ * `useState` initializer call that `StrictMode` drops in development. An owned
+ * client built for such a render, whose auth a child's {@link useAuth} may
+ * already have built, is disposed once that render's state is garbage
+ * collected, through a `FinalizationRegistry`. That is later than an unmount
+ * would dispose it, at a moment no code chooses, but it is disposed, auth and
+ * listeners with it. A runtime without `FinalizationRegistry` never disposes
+ * such a client, and a server never registers one: it builds no auth there,
+ * and the rest of the request still uses it.
+ *
  * React also runs the effects of a subtree again when it shows a hidden
  * `Activity` once more, and that can be long after they were cleaned up. If an
  * owned client was disposed meanwhile, the provider builds another from the
@@ -269,6 +329,8 @@ export function ReactorProvider({
       reportDisposed(client)
       return undefined
     }
+    // Committed: from here on the cleanup below disposes it, not the registry.
+    unclaimed?.unregister(client)
     if (disposedClients.has(client)) {
       // A hidden subtree was shown again after its client was disposed. React
       // runs this effect twice in development before the state below commits;

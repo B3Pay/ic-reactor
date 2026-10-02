@@ -150,6 +150,13 @@ component at once) does not dispose a client in use, because the disposal is
 scheduled for the next macrotask and the second mount cancels it. A client the
 app owns is never disposed by a provider.
 
+React runs no cleanup for a render it throws away before committing it, such
+as a provider's first render below a Suspense boundary that suspends. A client
+the factory built for such a render, whose auth a `useAuth()` below may
+already have built, is disposed once that render's state is garbage collected
+(through a `FinalizationRegistry`, in a browser): later than an unmount would,
+but its auth and listeners do not outlive it.
+
 Only the factory of the first render is used: passing another function on a
 later render does not rebuild the client. To replace the client, give the
 provider another `key`.

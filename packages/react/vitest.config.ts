@@ -17,6 +17,10 @@ export default defineConfig({
         test: {
           name: "browser",
           environment: "jsdom",
+          // Exposes `gc()`, so that the one test that needs a real garbage
+          // collection (a thrown-away render's client is disposed once its
+          // state is collected) runs here instead of being skipped.
+          execArgv: ["--expose-gc"],
           include: ["tests/**/*.test.{ts,tsx}"],
           exclude: ["tests/**/*.server.test.{ts,tsx}", "dist", "node_modules"],
         },
