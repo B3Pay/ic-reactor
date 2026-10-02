@@ -18,10 +18,11 @@
  * safe, and made, are in `update-resent-when-never-delivered.test.ts`.
  */
 import { MutationObserver } from "@tanstack/query-core"
-import { afterAll, describe, expect, it } from "vitest"
+import { afterAll, describe, expect, it, vi } from "vitest"
 import {
   ALICE,
   FEE,
+  SIGNED_CALLS_TIMEOUT_MS,
   disposeAll,
   pastResendDelays,
   rejection,
@@ -29,6 +30,7 @@ import {
   transferArg,
 } from "./ledger.js"
 
+vi.setConfig({ testTimeout: SIGNED_CALLS_TIMEOUT_MS })
 afterAll(disposeAll)
 
 // One flat suite, so that the waits of its tests overlap: each sits out the

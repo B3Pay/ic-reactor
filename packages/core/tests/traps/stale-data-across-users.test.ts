@@ -24,16 +24,18 @@
  */
 import { principal } from "@candid-core/schema"
 import { QueryObserver } from "@tanstack/query-core"
-import { afterAll, expect, it } from "vitest"
+import { afterAll, expect, it, vi } from "vitest"
 import {
   ALICE,
   ANONYMOUS,
   BOB,
+  SIGNED_CALLS_TIMEOUT_MS,
   disposeAll,
   eventually,
   setupLedger,
 } from "./ledger.js"
 
+vi.setConfig({ testTimeout: SIGNED_CALLS_TIMEOUT_MS })
 afterAll(disposeAll)
 
 it("never shows the balance of one principal to another through a sign-in, a switch with a slow read, and a sign-out", async () => {

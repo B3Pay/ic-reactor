@@ -24,12 +24,13 @@
  * agent errors in `errors.test.ts`.
  */
 import { c } from "@candid-core/schema"
-import { afterAll, describe, expect, it } from "vitest"
+import { afterAll, describe, expect, it, vi } from "vitest"
 import { isReactorError, type ReactorErrorKind } from "../../src/index.js"
 import * as icrc1 from "../fixtures/icrc1.js"
 import {
   ALICE,
   LEDGER,
+  SIGNED_CALLS_TIMEOUT_MS,
   disposeAll,
   rejection,
   setupLedger,
@@ -37,6 +38,7 @@ import {
   type Ledger,
 } from "./ledger.js"
 
+vi.setConfig({ testTimeout: SIGNED_CALLS_TIMEOUT_MS })
 afterAll(disposeAll)
 
 /** The ways a call fails, as an app meets them. */

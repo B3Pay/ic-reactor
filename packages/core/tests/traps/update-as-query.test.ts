@@ -21,10 +21,11 @@ import {
   focusManager,
   onlineManager,
 } from "@tanstack/query-core"
-import { afterAll, afterEach, describe, expect, it } from "vitest"
+import { afterAll, afterEach, describe, expect, it, vi } from "vitest"
 import * as shapes from "../fixtures/shapes.js"
 import {
   ALICE,
+  SIGNED_CALLS_TIMEOUT_MS,
   disposeAll,
   eventually,
   setupLedger,
@@ -33,6 +34,7 @@ import {
   type Ledger,
 } from "./ledger.js"
 
+vi.setConfig({ testTimeout: SIGNED_CALLS_TIMEOUT_MS })
 afterAll(disposeAll)
 afterEach(() => {
   focusManager.setFocused(undefined)

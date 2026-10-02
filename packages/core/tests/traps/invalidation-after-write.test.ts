@@ -20,10 +20,11 @@
  * `err-arm.test.ts`.
  */
 import { MutationObserver, QueryObserver } from "@tanstack/query-core"
-import { afterAll, describe, expect, it } from "vitest"
+import { afterAll, describe, expect, it, vi } from "vitest"
 import {
   ALICE,
   FEE,
+  SIGNED_CALLS_TIMEOUT_MS,
   disposeAll,
   eventually,
   setupLedger,
@@ -31,6 +32,7 @@ import {
   type Ledger,
 } from "./ledger.js"
 
+vi.setConfig({ testTimeout: SIGNED_CALLS_TIMEOUT_MS })
 afterAll(disposeAll)
 
 /** A component showing Alice's balance, and how many times the ledger was asked for it. */

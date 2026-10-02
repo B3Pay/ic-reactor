@@ -17,11 +17,17 @@ import type { Canister, Client } from "../../src/index.js"
 import { createTestClient } from "../../src/testing/index.js"
 import * as icrc1 from "../fixtures/icrc1.js"
 
-// The traps wait out real delays and run their tests side by side, and every
-// call is signed and certified: on a machine that is busy with other test
-// files a test can take many times what it takes alone. A timeout is for a
-// call that never arrives, not for a slow one.
-vi.setConfig({ testTimeout: 30_000 })
+/**
+ * The test timeout of a trap file that signs and certifies calls, in
+ * milliseconds. A file sets it for itself, at the top, with
+ * `vi.setConfig({ testTimeout: SIGNED_CALLS_TIMEOUT_MS })`.
+ *
+ * Such a file waits out real delays and runs its tests side by side, and every
+ * call it makes is signed and certified: on a machine that is busy with other
+ * test files a test can take many times what it takes alone. A timeout is for
+ * a call that never arrives, not for a slow one.
+ */
+export const SIGNED_CALLS_TIMEOUT_MS = 30_000
 
 /** The canister id the traps run their ledger at. */
 export const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"

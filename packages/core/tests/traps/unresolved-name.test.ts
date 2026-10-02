@@ -25,6 +25,7 @@ import * as icrc1 from "../fixtures/icrc1.js"
 import {
   ALICE,
   LEDGER,
+  SIGNED_CALLS_TIMEOUT_MS,
   disposeAll,
   rejection,
   setupLedger,
@@ -32,6 +33,7 @@ import {
   type TestClientOptions,
 } from "./ledger.js"
 
+vi.setConfig({ testTimeout: SIGNED_CALLS_TIMEOUT_MS })
 afterAll(disposeAll)
 afterEach(() => vi.unstubAllGlobals())
 

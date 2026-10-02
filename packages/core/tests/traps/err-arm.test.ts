@@ -22,11 +22,12 @@
  * is one read.
  */
 import { MutationObserver, QueryObserver } from "@tanstack/query-core"
-import { afterAll, describe, expect, it } from "vitest"
+import { afterAll, describe, expect, it, vi } from "vitest"
 import { isReactorError } from "../../src/index.js"
 import {
   ALICE,
   FEE,
+  SIGNED_CALLS_TIMEOUT_MS,
   disposeAll,
   eventually,
   pastResendDelays,
@@ -35,6 +36,7 @@ import {
   transferArg,
 } from "./ledger.js"
 
+vi.setConfig({ testTimeout: SIGNED_CALLS_TIMEOUT_MS })
 afterAll(disposeAll)
 
 describe("the Ok and Err arms of a transfer", () => {

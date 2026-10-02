@@ -21,13 +21,14 @@
  */
 import { principal } from "@candid-core/schema"
 import { MutationObserver } from "@tanstack/query-core"
-import { afterAll, describe, expect, it } from "vitest"
+import { afterAll, describe, expect, it, vi } from "vitest"
 import * as management from "../fixtures/management.js"
 import {
   ALICE,
   BOB,
   FEE,
   SHOP,
+  SIGNED_CALLS_TIMEOUT_MS,
   disposeAll,
   eventually,
   pastResendDelays,
@@ -36,6 +37,7 @@ import {
   transferArg,
 } from "./ledger.js"
 
+vi.setConfig({ testTimeout: SIGNED_CALLS_TIMEOUT_MS })
 afterAll(disposeAll)
 
 // One flat suite, so that the waits of its tests overlap.
