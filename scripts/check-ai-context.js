@@ -7,6 +7,7 @@ import {
   CLAUDE_MARKETPLACE,
   RUNTIME_PLUGIN_MANIFESTS,
 } from "./ai-context-files.js"
+import { REMOVED_V3_NAMES } from "./removed-v3-names.js"
 
 const rootDir = process.cwd()
 
@@ -18,8 +19,18 @@ const versionChecks = [
 
 // The one consumer guide of the v4 line: core ships `packages/core/llms.txt`
 // in its npm tarball, and it must open with an "Applies to
-// `@ic-reactor/core` <version>." line. No other package ships a guide.
+// `@ic-reactor/core` <version>." line. A pointer guide in another package
+// (react's, once DX3 adds it) is stamped the same way, so a `llms.txt` that
+// ships names the release it was written for.
 const requiredPackageLlms = ["core"]
+const optionalPackageLlms = versionChecks
+  .map(({ packageDir }) => packageDir)
+  .filter(
+    (packageDir) =>
+      !requiredPackageLlms.includes(packageDir) &&
+      existsSync(join(rootDir, "packages", packageDir, "llms.txt"))
+  )
+const packageGuides = [...requiredPackageLlms, ...optionalPackageLlms]
 
 /**
  * Files whose `https://ic-reactor.b3pay.net/...` links must resolve: the
@@ -103,7 +114,7 @@ const validVersions = new Set(currentVersions.values())
 // which release the guide describes. The generic version check below accepts
 // any version some package is at, so it would not notice a stamp naming
 // another lane's version; this compares against the package's own.
-for (const packageDir of requiredPackageLlms) {
+for (const packageDir of packageGuides) {
   const relPath = `packages/${packageDir}/llms.txt`
   const packageLlmsPath = join(rootDir, relPath)
   if (!existsSync(packageLlmsPath)) {
@@ -680,6 +691,112 @@ for (const skillDir of consumerSkillDirs) {
   }
 }
 
+// ── 9. No removed 3.x name outside a "Removed in 4.0" section ────────────────
+// The guides, the contributor files and the skill are what an agent reads to
+// learn the 4 API. A 3.x name left in one (`ClientManager` in a snippet, a
+// `createQuery` in a sentence about caching) teaches an API that is gone,
+// and the agent writes it. The 34 names of the migration table
+// (scripts/removed-v3-names.js) may appear only under a heading that begins
+// "Removed in 4.0", which is where the guide says what replaced them; the
+// section runs to the next heading of the same or a higher level. Headings are
+// read outside code fences only, so a `# Removed in 4.0` comment in a snippet
+// opens nothing.
+//
+// What counts as a mention: the name as a whole word, in prose, a code span
+// or a snippet alike. Two names get a narrower rule, stated in
+// removed-v3-names.js: the product name "IC Reactor" is not `Reactor`, and
+// `skipToken` is stale only when imported from, or named beside, an
+// `@ic-reactor/*` package, since `@tanstack/react-query` still exports it.
+const REMOVED_NAME = new RegExp(
+  `(?<![\\w$])(${[...REMOVED_V3_NAMES]
+    .sort((a, b) => b.name.length - a.name.length)
+    .map(({ name }) => name)
+    .join("|")})(?![\\w$])`,
+  "g"
+)
+const removedByName = new Map(
+  REMOVED_V3_NAMES.map((entry) => [entry.name, entry])
+)
+const REMOVED_HEADING = /^removed in 4\.0\b/i
+const PRODUCT_NAME = /\bIC Reactor\b/g
+const IC_REACTOR_IMPORT =
+  /\bimport\s+(?:type\s+)?\{[^}]*\}\s*from\s*["']@ic-reactor\/[^"']*["']/g
+
+/**
+ * Every mention of a removed name outside a "Removed in 4.0" section.
+ *
+ * @returns {{ line: number, name: string }[]} `line` is 1-based
+ */
+function staleNameMentions(text) {
+  const lines = text.split("\n")
+  const starts = []
+  let offset = 0
+  for (const line of lines) {
+    starts.push(offset)
+    offset += line.length + 1
+  }
+  // An import's braces may span lines, so its extent is found in the whole text.
+  const icImports = [...text.matchAll(IC_REACTOR_IMPORT)].map((m) => [
+    m.index,
+    m.index + m[0].length,
+  ])
+  const found = []
+  let fence = null
+  let exemptLevel = null
+  lines.forEach((line, i) => {
+    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/)
+    if (fenceMatch) {
+      if (fence === null) fence = fenceMatch[1]
+      else if (
+        fenceMatch[1][0] === fence[0] &&
+        fenceMatch[1].length >= fence.length &&
+        line.trim() === fenceMatch[1]
+      ) {
+        fence = null
+      }
+    } else if (fence === null) {
+      const heading = line.match(/^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/)
+      if (heading) {
+        const level = heading[1].length
+        const title = heading[2].replace(/[`*_]/g, "")
+        if (REMOVED_HEADING.test(title)) exemptLevel = level
+        else if (exemptLevel !== null && level <= exemptLevel)
+          exemptLevel = null
+      }
+    }
+    if (exemptLevel !== null) return
+    const prose = line.replace(PRODUCT_NAME, (m) => " ".repeat(m.length))
+    for (const match of prose.matchAll(REMOVED_NAME)) {
+      const { name, fromTanStack } = removedByName.get(match[1])
+      if (
+        fromTanStack &&
+        !line.includes("@ic-reactor/") &&
+        !icImports.some(
+          ([from, to]) =>
+            starts[i] + match.index >= from && starts[i] + match.index < to
+        )
+      ) {
+        continue
+      }
+      found.push({ line: i + 1, name })
+    }
+  })
+  return found
+}
+
+for (const relPath of aiContextFiles) {
+  const absPath = join(rootDir, relPath)
+  if (!existsSync(absPath)) continue // reported above
+  for (const { line, name } of staleNameMentions(
+    readFileSync(absPath, "utf8")
+  )) {
+    failures.push(
+      `${relPath}:${line} mentions ${name}, which 4.0 removed (use ${removedByName.get(name).use}). ` +
+        `Remove it, or move the mention under a heading that begins "Removed in 4.0".`
+    )
+  }
+}
+
 if (failures.length > 0) {
   console.error("AI context check failed:\n")
   for (const failure of failures) {
@@ -689,7 +806,7 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `AI context check passed (${aiContextFiles.length} files, ${requiredPackageLlms.length} package guides, ` +
+  `AI context check passed (${aiContextFiles.length} files, ${packageGuides.length} package guides, ` +
     `${checkedSkills.size} skills, ${consumerSkillDirs.length} plugin skill(s), ` +
     `docs links in ${docsLinkFiles.length} files, versions: ${[...validVersions].join(", ")}).`
 )
