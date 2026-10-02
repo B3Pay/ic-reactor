@@ -326,10 +326,15 @@ export interface Client {
    * keep it cached across writes, name the reads a write changes in
    * `invalidates`.
    *
+   * A method without results (`() -> () query`) has nothing to cache: its
+   * call resolves `undefined`, which TanStack Query takes for a failed read.
+   * This throws a `TypeError` for it too; call it directly, as
+   * `await canister.method()`.
+   *
    * @throws TypeError for an update or oneway method without the opt-in, a
-   * composite query of a certified canister, a canister of another client, a
-   * method the service does not have, or a fourth argument other than
-   * `{ update: "idempotent" }`.
+   * method without results, a composite query of a certified canister, a
+   * canister of another client, a method the service does not have, or a
+   * fourth argument other than `{ update: "idempotent" }`.
    */
   queryOptions<A, M extends keyof A & string>(
     canister: Canister<A>,
@@ -361,8 +366,22 @@ export interface Client {
    * "Every read" includes an update read with `{ update: "idempotent" }`
    * (such as a ckBTC minter's `get_btc_address` after `update_balance`),
    * whose re-read is one more replicated call; list the reads in
-   * `invalidates` to leave it cached. To add your own `onSettled`, call this
-   * one from it.
+   * `invalidates` to leave it cached.
+   *
+   * A `{ name }` (the canister written to, or one in `invalidates`) is
+   * resolved once per run, in `onMutate`, which TanStack Query runs first
+   * and whose result it hands to `onSettled`: a write whose `ic_env` cookie
+   * entry changes before it settles (a local redeploy) invalidates the reads
+   * of the canister it wrote to. To add your own `onSettled`, call this one
+   * from it with every argument it gets; to add your own `onMutate`, call
+   * this one from it with both and spread its result into yours:
+   * `{ ...options.onMutate(variables, context), previous }`. An `onMutate`
+   * that replaces this one keeps the write and its invalidation together
+   * from TanStack Query 5.89 on, which hands `mutationFn` and `onSettled` the
+   * same run context: `mutationFn` resolves the targets when it starts, and
+   * `onSettled` reads them from there. Before 5.89 it leaves `mutationFn` and
+   * `onSettled` each to resolve the targets when it runs, so a cookie
+   * rewritten between the two can split the write from its invalidation.
    *
    * @throws TypeError for a canister of another client, a method a service
    * does not have, or a third argument other than `{ invalidates }`.
@@ -634,6 +653,57 @@ function warnEnvOffPage(network: Network): void {
       "so every call to a { name } canister rejects invalid_args (canister_id_unresolved). " +
       "Call canisters by { id } from a server render, a route handler or a script. (Logged once, in development.)"
   )
+}
+
+// ---------------------------------------------------------------------------
+// What @ic-reactor/react reads of a client
+// ---------------------------------------------------------------------------
+
+/*
+ * An internal contract between this module and `@ic-reactor/react`'s
+ * `ReactorProvider`, not public API: no type names these keys and no entry
+ * exports them. Changing a key or what it means breaks the provider.
+ *
+ * - `ic-reactor.clients.created`, on `globalThis`: how many clients
+ *   `createClient` has made in this realm, the client of each
+ *   `createTestClient()` among them: both are built by
+ *   {@link createClientWith}, which stamps every client it builds.
+ * - `ic-reactor.client.serial`, on each client: that count once the client
+ *   was made, so the first client's is 1.
+ * - `ic-reactor.client.disposed`, on each client: a getter, `true` once
+ *   `dispose()` has run.
+ *
+ * The provider reads the count, calls its `client` factory, and compares the
+ * serial of the client it gets: a higher serial means the factory created the
+ * client, and the provider disposes it when it unmounts; a client made before
+ * (one at module scope) is borrowed, and the provider never disposes it. The
+ * disposal flag lets it say so loudly when it is handed a borrowed client that
+ * its owner already disposed.
+ *
+ * `Symbol.for` keys and a count kept on `globalThis`, so that two copies of
+ * this package in one bundle count together, and the provider reads them
+ * without importing anything of this package at run time. All three are
+ * non-enumerable, so spreading or logging a client does not show them.
+ */
+const CLIENTS_CREATED = Symbol.for("ic-reactor.clients.created")
+const CLIENT_SERIAL = Symbol.for("ic-reactor.client.serial")
+const CLIENT_DISPOSED = Symbol.for("ic-reactor.client.disposed")
+
+/** Counts one more client in this realm, and returns the count. */
+function nextSerial(): number {
+  const count = (globalThis as { [CLIENTS_CREATED]?: unknown })[CLIENTS_CREATED]
+  const serial = (typeof count === "number" ? count : 0) + 1
+  try {
+    Object.defineProperty(globalThis, CLIENTS_CREATED, {
+      value: serial,
+      writable: true,
+      configurable: true,
+    })
+  } catch {
+    // A frozen global (an SES lockdown) keeps no count. The provider then
+    // reads 0 before every factory call and owns every client it is given.
+  }
+  return serial
 }
 
 // ---------------------------------------------------------------------------
@@ -980,7 +1050,7 @@ export function createClientWith(
     agentFor,
   })
 
-  const client: Client = Object.freeze({
+  const members: Client = {
     ...createBuilders(internals, () => client),
     network: network.keySegment,
     queryClient,
@@ -1024,7 +1094,15 @@ export function createClientWith(
       unsubscribe?.()
       source?.dispose?.()
     },
-  })
+  }
+  // The stamps `ReactorProvider` reads (see `CLIENTS_CREATED`), defined
+  // before the freeze: a frozen object takes no new property.
+  const client: Client = Object.freeze(
+    Object.defineProperties(members, {
+      [CLIENT_SERIAL]: { value: nextSerial() },
+      [CLIENT_DISPOSED]: { get: () => disposed },
+    })
+  )
 
   INTERNALS.set(client, internals)
   return client
