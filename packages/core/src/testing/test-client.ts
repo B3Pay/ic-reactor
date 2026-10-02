@@ -405,6 +405,22 @@ export function createTestClient(
     )
   }
   const { identity, signedIn, network, allowEnvConfig, maxDepth } = options
+  // `typeof null` is "object": without this, `identity: null` from untyped
+  // code would reach the test auth as no identity and sign in as seed 1.
+  if (
+    identity !== undefined &&
+    typeof identity !== "number" &&
+    (typeof identity !== "object" ||
+      identity === null ||
+      typeof (identity as { getPrincipal?: unknown }).getPrincipal !==
+        "function")
+  ) {
+    throw new TypeError(
+      `[ic-reactor] createTestClient(): identity is an Identity or a seed (a number), got ${
+        identity === null ? "null" : typeof identity
+      }.`
+    )
+  }
 
   const authOptions: TestAuthOptions =
     typeof identity === "object"
