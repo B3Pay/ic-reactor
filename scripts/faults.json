@@ -796,6 +796,16 @@
     "replace": "      ...(idempotent ? {} : {}),"
   },
   {
+    "id": "ir9-idempotent-read-sent-as-current-caller",
+    "package": "core",
+    "test": "tests/traps/update-as-query.test.ts",
+    "testName": "once for each caller",
+    "why": "an update read with the idempotent opt-in that asks who is signed in when it runs instead of using the caller captured with its key: after a switch, Alice's read is sent as Bob and Bob's answer is cached under Alice's key",
+    "file": "src/options.ts",
+    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
+    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+  },
+  {
     "id": "ir9-root-key-fetched-from-any-host",
     "package": "core",
     "test": "tests/traps/root-key-off-local.test.ts",

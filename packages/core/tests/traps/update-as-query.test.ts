@@ -25,6 +25,7 @@ import { afterAll, afterEach, describe, expect, it, vi } from "vitest"
 import * as shapes from "../fixtures/shapes.js"
 import {
   ALICE,
+  BOB,
   SIGNED_CALLS_TIMEOUT_MS,
   disposeAll,
   eventually,
@@ -54,6 +55,20 @@ function withAddressBook(options?: Parameters<typeof setupLedger>[0]) {
     ...l,
     book: l.client.canister<shapes.Actor>(shapes.actor, { id: BOOK }),
   }
+}
+
+/**
+ * Waits until the client has nothing in flight: a refetch that a trigger made
+ * has been signed, sent, answered and certified, or has failed, however long
+ * that took. A fixed pause cannot say that: on a loaded machine a refetch that
+ * is sent can arrive after it, and the test would pass without the policy it
+ * checks. A refetch that focus or reconnect makes begins on a later turn of
+ * the event loop than the trigger, so the short pause lets it begin before
+ * the look at what is in flight.
+ */
+async function untilIdle(l: Ledger): Promise<void> {
+  await sleep(20)
+  await eventually(() => expect(l.client.queryClient.isFetching()).toBe(0))
 }
 
 /**
@@ -135,19 +150,70 @@ describe("an update read with { update: 'idempotent' }", () => {
       expect(observer.getCurrentResult().data).toBe(`home:${ALICE}`)
     )
 
-    // Time enough for a refetch to be sent, if one is going to be.
+    // Each trigger is followed by the wait for whatever it sent to be over.
     await triggerRefetches(
       l,
       () =>
         new QueryObserver(l.client.queryClient, options()).subscribe(
           () => undefined
         ),
-      () => sleep(150)
+      () => untilIdle(l)
     )
     stop()
 
     // One call, as Alice; not one per trigger.
     expect(l.calls()).toMatchObject([{ methodName: "address", caller: ALICE }])
+  })
+
+  it("is read once for each caller, and never as the new caller under the old key", async () => {
+    const l = withAddressBook()
+    const { queryClient } = l.client
+    queryClient.mount()
+    const options = () =>
+      l.client.queryOptions(l.book, "address", "home", {
+        update: "idempotent",
+      })
+    const aliceOptions = options()
+    const aliceObserver = new QueryObserver(queryClient, aliceOptions)
+    const stopAlice = aliceObserver.subscribe(() => undefined)
+    await eventually(() =>
+      expect(aliceObserver.getCurrentResult().data).toBe(`home:${ALICE}`)
+    )
+
+    // Bob signs in. The read an app builds from now on is Bob's: it has his
+    // own key, and runs once, as him, however often it is triggered.
+    l.auth.switchTo(2)
+    const bobOptions = options()
+    expect(bobOptions.queryKey).not.toEqual(aliceOptions.queryKey)
+    const bobObserver = new QueryObserver(queryClient, bobOptions)
+    const stopBob = bobObserver.subscribe(() => undefined)
+    await eventually(() =>
+      expect(bobObserver.getCurrentResult().data).toBe(`home:${BOB}`)
+    )
+    await triggerRefetches(
+      l,
+      () =>
+        new QueryObserver(queryClient, bobOptions).subscribe(() => undefined),
+      () => untilIdle(l)
+    )
+
+    // Alice's read, built before the switch, is fetched again now. It is made
+    // for Alice and is never sent as Bob, whose answer would sit under her key.
+    await queryClient
+      .fetchQuery({ ...aliceOptions, staleTime: 0, retry: false })
+      .catch((error: unknown) => error)
+    await untilIdle(l)
+    stopAlice()
+    stopBob()
+
+    expect(l.calls()).toMatchObject([
+      { methodName: "address", caller: ALICE },
+      { methodName: "address", caller: BOB },
+    ])
+    expect(queryClient.getQueryData(aliceOptions.queryKey)).toBe(
+      `home:${ALICE}`
+    )
+    expect(queryClient.getQueryData(bobOptions.queryKey)).toBe(`home:${BOB}`)
   })
 
   it("is refused for a caller who is not signed in, like any update", async () => {
