@@ -458,6 +458,42 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     })
   }
 
+  /**
+   * A `.did` file was deleted: fail the canisters that name it, in the log and
+   * the overlay, until it comes back (an `add` regenerates them). The module
+   * generated from it is still on disk and would otherwise go on looking
+   * current. No generator runs, since there is nothing to read.
+   *
+   * It waits behind the run in flight, so that run cannot report the file as
+   * generated after this has reported it gone.
+   */
+  const onDidRemoved = (file: string): void => {
+    const removed = path.normalize(file)
+    const affected = generated.filter(
+      (canister) => didPath(canister) === removed
+    )
+    if (affected.length === 0) return
+    const { signal } = stopper
+    void serially(async () => {
+      try {
+        // Back already, and the run its `add` queued regenerates it.
+        if (signal.aborted || fs.existsSync(removed)) return
+        for (const { name } of affected) generatedFrom.delete(name)
+        publish(
+          affected,
+          affected.map((canister) => ({
+            canister,
+            message:
+              "the .did file was deleted; its module is not regenerated until the file comes back",
+          }))
+        )
+      } catch (error) {
+        // A listener must not throw into the watcher.
+        log.error(`ic-reactor: ${describe(error)}`)
+      }
+    })
+  }
+
   /** Log the guide line once, before anything else the plugin says. */
   const announceGuide = (userConfig: UserConfig): void => {
     if (announced) return
@@ -570,10 +606,12 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       // them. Regenerate from its own events and not from `handleHotUpdate`,
       // which Vite calls only for a file changed in place and only while HMR
       // is on: a `.did` created after startup, or written again by a build
-      // tool or `git checkout`, arrives as an `add` event.
+      // tool or `git checkout`, arrives as an `add` event, and a deleted one
+      // as `unlink`.
       server.watcher.add(generated.map(didPath))
       server.watcher.on("change", onDidSaved)
       server.watcher.on("add", onDidSaved)
+      server.watcher.on("unlink", onDidRemoved)
     },
 
     // `vite preview` resolves the config with the `serve` command too, and

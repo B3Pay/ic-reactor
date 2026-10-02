@@ -488,6 +488,78 @@ describe("generation under vite dev", () => {
       )
     })
 
+    // The module a deleted `.did` generated stays on disk and keeps working,
+    // so nothing would say that it is no longer kept up to date.
+    it("reports a configured .did that is deleted, and is cleared when it comes back", async () => {
+      const app = newApp(
+        { "did/a.did": PING_DID, "did/other.did": PING_DID },
+        "real"
+      )
+      const { connections, plugin } = spyOnConnections()
+      const { server, lines } = await serve(
+        app.root,
+        { canisters: { a: { didFile: "did/a.did" } } },
+        { before: [plugin] }
+      )
+      const send = vi.spyOn(server.ws, "send")
+      const errors = () => lines.filter((line) => line.startsWith("error:"))
+      expect(errors()).toEqual([])
+
+      // A file that is not configured is not the plugin's concern.
+      server.watcher.emit("unlink", path.join(app.root, "did/other.did"))
+
+      const a = path.join(app.root, "did/a.did")
+      fs.rmSync(a)
+      server.watcher.emit("unlink", a)
+
+      await vi.waitFor(() => expect(errors()).toHaveLength(1))
+      expect(errors()[0]).toMatch(
+        /could not generate 1 of 1 canisters:\n {2}- a \(did\/a\.did\): the \.did file was deleted/
+      )
+      expect(send).toHaveBeenCalledWith(
+        errorPayload("the .did file was deleted")
+      )
+      // The module is left as it was, and no generator ran for the report.
+      expect(exists(app, "src/canisters/a.ts")).toBe(true)
+      expect(generatorRuns()).toHaveLength(1)
+      // A browser that connects now is handed it.
+      const client = { send: vi.fn() }
+      connections[0](client)
+      expect(JSON.parse(client.send.mock.calls[0][0])).toEqual(
+        errorPayload("the .did file was deleted")
+      )
+
+      // The file comes back, as `git checkout` puts it back: an add.
+      send.mockClear()
+      fs.writeFileSync(a, PING_DID)
+      server.watcher.emit("add", a)
+      await vi.waitFor(() =>
+        expect(send).toHaveBeenCalledWith({ type: "full-reload" })
+      )
+      expect(generatorRuns()).toHaveLength(2)
+      expect(errors()).toHaveLength(1)
+      client.send.mockClear()
+      connections[0](client)
+      expect(client.send).not.toHaveBeenCalled()
+    })
+
+    // A delete that is followed by the file being put back before the plugin
+    // gets to it is the add's to handle.
+    it("leaves a deleted .did that is back already to the run its add starts", async () => {
+      const app = newApp({ "did/a.did": PING_DID }, "real")
+      const { server, lines } = await serve(app.root, {
+        canisters: { a: { didFile: "did/a.did" } },
+      })
+
+      const a = path.join(app.root, "did/a.did")
+      server.watcher.emit("unlink", a)
+      server.watcher.emit("add", a)
+      await vi.waitFor(() => expect(generatorRuns()).toHaveLength(2))
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      expect(lines.filter((line) => line.startsWith("error:"))).toEqual([])
+    })
+
     // One save regenerates every canister that names the file, so fixing the
     // file has to clear all of them from the overlay, not the first one.
     it("is cleared when a .did that two canisters share is fixed", async () => {

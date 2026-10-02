@@ -133,6 +133,9 @@ affected.
 - Editing a `.did` regenerates only the canisters that name it. Saves that
   arrive while it runs collapse into one more run. `vite build --watch`
   regenerates a canister only when its `.did` text changed.
+- Deleting a `.did` under `vite dev` fails the canisters that name it at once,
+  in the log and the overlay: the module it generated is still on disk, and
+  would otherwise look current. Putting the file back regenerates them.
 
 ### When generation fails
 
