@@ -61,13 +61,18 @@ const PER_MAJOR = {}
  * The packages checked, in the order they run. `follows` pins a dependency of a
  * peer to the peer's floor: @tanstack/react-query depends on the query-core of
  * the same version, and core (a workspace devDependency at the newest release)
- * has to resolve that same copy, as it would in an application.
+ * has to resolve that same copy, as it would in an application. react-dom is
+ * not a peer of the bindings (the library never imports it), but its tests
+ * render with it, and it is released with react: it follows react's floor.
  */
 const CHECKS = [
   { pkg: "core" },
   {
     pkg: "react",
-    follows: { "@tanstack/query-core": "@tanstack/react-query" },
+    follows: {
+      "@tanstack/query-core": "@tanstack/react-query",
+      "react-dom": "react",
+    },
     typesFor: ["react", "react-dom"],
     // react imports core through core's built dist.
     buildFirst: ["core"],
@@ -147,6 +152,10 @@ function pinsFor(check) {
   const devDependencies = {}
 
   for (const [name, range] of Object.entries(manifest.peerDependencies ?? {})) {
+    // A sibling of the lockstep lane (`@ic-reactor/core` as a peer of react),
+    // written `workspace:*` and published as this version exactly: it has no
+    // floor below it, and the worktree installs it from the workspace.
+    if (range.startsWith("workspace:")) continue
     if (!(name in perMajor)) {
       const majors = [
         ...new Set(alternativeFloors(range).map((v) => parseVersion(v)[0])),
