@@ -39,7 +39,6 @@ const PACKAGES = ["packages/core", "packages/react", "packages/vite-plugin"]
 // checks resolvability of our artifacts, not of the peer tree.
 const PEERS = [
   "@icp-sdk/core@^6.0.0",
-  "@icp-sdk/auth@^8.0.0",
   "@tanstack/query-core@^5",
   "@tanstack/react-query@^5",
   "react@^19",
@@ -55,6 +54,15 @@ const PEERS = [
  */
 const isBinOnly = (m) =>
   Boolean(m.bin) && !m.exports && !m.main && !m.module && !m.types && !m.typings
+
+/**
+ * Whether a package may publish an entry that exports nothing. On the v4 line
+ * the 3.x runtime is removed and the 4 API arrives slice by slice (#790), so
+ * core and react are empty until their first slice lands. That holds for an
+ * alpha prerelease only: from the first beta an empty entry is a broken
+ * artifact again, and the check below fails it as it always did.
+ */
+const mayExportNothing = (manifest) => /-alpha\./.test(manifest.version ?? "")
 
 const failures = []
 function fail(pkg, what, detail) {
@@ -113,16 +121,12 @@ try {
     `\ninstalling ${tarballs.length} tarballs + peers into scratch project...`
   )
   try {
-    // --legacy-peer-deps: @icp-sdk/auth@8 still declares a peer of @icp-sdk/core@^5,
-    // which npm refuses to resolve against the v6 we use. That is an upstream
-    // manifest bug and is not what this script is checking.
     run(
       "npm",
       [
         "install",
         "--no-audit",
         "--no-fund",
-        "--legacy-peer-deps",
         "--loglevel",
         "error",
         ...tarballs.map((t) => `./${t.file}`),
@@ -194,7 +198,7 @@ try {
             "-e",
             `import(${JSON.stringify(spec)}).then(m=>{
              const n=Object.keys(m).length;
-             if(n===0) { console.error("no exports"); process.exit(1) }
+             if(n===0 && ${!mayExportNothing(manifest)}) { console.error("no exports"); process.exit(1) }
              console.log("exports:"+n)
            }).catch(e=>{ console.error(e.code||"", e.message); process.exit(1) })`,
           ],

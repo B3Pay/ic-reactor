@@ -12,7 +12,7 @@
  * worktree of HEAD, pins the package's peers to the lowest version each range
  * accepts (through pnpm overrides, so every copy in the graph follows), installs,
  * and runs the package's typecheck and tests there. A range that joins majors,
- * like `@icp-sdk/auth ^8.0.0 || ^10.0.0`, is tested at each major's floor. The
+ * like `^8.0.0 || ^10.0.0`, is tested at each major's floor. The
  * worktree is removed afterwards, so your checkout is never touched;
  * uncommitted changes are not part of the run.
  *
@@ -39,19 +39,18 @@ const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
 const keep = process.argv.includes("--keep")
 
 /**
- * Peers whose range joins majors that behave differently, per package. Each
- * major's floor is installed under the devDependency named here, and the
- * package's tests run every copy: react's `react` vitest project resolves
- * `@icp-sdk/auth` and its `auth-v8` project aliases it to `@icp-sdk/auth-v8`.
- * These are pinned through devDependencies only, because an override keyed by
- * the package name would move both copies to one version. A major the range
- * accepts but no devDependency installs fails the check.
+ * Peers whose range joins majors that behave differently, per package, as
+ * `{ <package>: { <peer>: { <major>: <devDependency that installs it> } } }`.
+ * Each major's floor is installed under the devDependency named here, and the
+ * package's tests run every copy. These are pinned through devDependencies
+ * only, because an override keyed by the peer's name would move both copies
+ * to one version. A major the range accepts but no devDependency installs
+ * fails the check.
+ *
+ * Empty on the v4 line: react's `@icp-sdk/auth ^8 || ^10` peer, the one entry
+ * 3.x had, went with the 3.x auth hooks.
  */
-const PER_MAJOR = {
-  react: {
-    "@icp-sdk/auth": { 8: "@icp-sdk/auth-v8", 10: "@icp-sdk/auth" },
-  },
-}
+const PER_MAJOR = {}
 
 /**
  * The packages checked, in the order they run. `follows` pins a dependency of a
