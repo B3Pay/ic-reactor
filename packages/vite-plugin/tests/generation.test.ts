@@ -714,6 +714,30 @@ describe("generation under vite build", () => {
     )
   })
 
+  // The line being assembled is bounded too, not only the lines logged: a
+  // process that writes without a newline would grow it until it exited.
+  it("cuts the line of a process that prints without a newline", async () => {
+    const app = newApp({ "did/a.did": "NOLINE\n" }, "fake")
+    const { result, lines } = buildApp(app.root, {
+      canisters: { a: { didFile: "did/a.did" } },
+    })
+
+    await result
+    const prefix = "warn: ic-reactor: candid-core-cli (did/a.did): "
+    const logged = lines.filter((line) => line.startsWith(prefix))
+    // 6 MiB went to stderr in one line, and one line of 4096 characters is
+    // all that is kept of it. Compared by size, so that a failure does not
+    // print megabytes.
+    expect(logged).toHaveLength(1)
+    expect(logged[0].length).toBeLessThan(prefix.length + 4096 + 64)
+    expect(logged[0]).toBe(
+      `${prefix}${"x".repeat(4096)} [line cut at 4096 characters]`
+    )
+    expect(lines).toContain(
+      "info: ic-reactor: generated a into src/canisters/a.ts"
+    )
+  })
+
   it("only logs the failure when failOnError is off", async () => {
     const app = newApp({ "did/bad.did": BROKEN_DID }, "real")
     const { result, lines } = buildApp(app.root, {

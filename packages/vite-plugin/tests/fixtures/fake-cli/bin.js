@@ -7,6 +7,7 @@
 //   NOISY reports as below, after writing two warnings to stderr, the second
 //         with no newline at its end
 //   FLOOD reports as below, after writing 250 lines to stderr
+//   NOLINE reports as below, after writing 6 MiB to stderr with no newline
 //   PROGRESS writes a line to stderr in two pieces, and reports as below after
 //         600 ms
 //   NEWER reports as below, with a schemaVersion no plugin knows
@@ -37,6 +38,12 @@ if (sources.some((source) => source.includes("TRAP"))) {
   if (sources.some((source) => source.includes("FLOOD"))) {
     for (let line = 1; line <= 250; line++) {
       process.stderr.write(`line ${line} (fake)\n`)
+    }
+  }
+  if (sources.some((source) => source.includes("NOLINE"))) {
+    const piece = "x".repeat(64 * 1024)
+    for (let written = 0; written < 6 * 1024 * 1024; written += piece.length) {
+      process.stderr.write(piece)
     }
   }
   const progress = sources.some((source) => source.includes("PROGRESS"))

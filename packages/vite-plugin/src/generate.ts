@@ -39,6 +39,15 @@ export const GENERATE_TIMEOUT_MS = 60_000
 const MAX_STREAMED_LINES = 200
 
 /**
+ * The most characters kept of one stderr line. A longer line is logged cut at
+ * this length, with a note, and the rest of it is dropped as it arrives. It
+ * bounds the line being assembled, which the cap on the whole stream does not:
+ * a process that writes without a newline would otherwise grow that line
+ * until it exited or was killed at the timeout.
+ */
+const MAX_LINE_CHARS = 4096
+
+/**
  * The most output kept from one stream of the generator. A report is a few
  * lines per canister; the cap only stops a runaway process from filling memory
  * before the timeout kills it.
@@ -165,8 +174,11 @@ function runProcess(
     }
 
     // A line is passed on when it is complete, not when its first bytes
-    // arrive, and what follows the last newline is passed on at the end.
+    // arrive, and what follows the last newline is passed on at the end. The
+    // line being assembled keeps at most MAX_LINE_CHARS characters: `cut` says
+    // that it had more.
     let unfinished = ""
+    let cut = false
     let passed = 0
     const pass = (text: string) => {
       if (!text.trim() || passed > MAX_STREAMED_LINES) return
@@ -177,11 +189,20 @@ function runProcess(
           : text.trimEnd()
       )
     }
+    const passUnfinished = () => {
+      pass(
+        cut
+          ? `${unfinished} [line cut at ${MAX_LINE_CHARS} characters]`
+          : unfinished
+      )
+      unfinished = ""
+      cut = false
+    }
 
     const settle = (result: Omit<ProcessResult, "stdout" | "stderr">) => {
       if (settled) return
       settled = true
-      pass(unfinished)
+      passUnfinished()
       clearTimeout(timer)
       signal?.removeEventListener("abort", stop)
       resolve({ stdout, stderr, ...result })
@@ -189,6 +210,7 @@ function runProcess(
     const stop = () => {
       // Nothing of a run that was stopped is passed on, not even a last line.
       unfinished = ""
+      cut = false
       child.kill("SIGKILL")
       settle(stopped)
     }
@@ -211,10 +233,15 @@ function runProcess(
     child.stdout.on("data", (chunk: string) => (stdout = keep(stdout, chunk)))
     child.stderr.on("data", (chunk: string) => {
       stderr = keep(stderr, chunk)
-      if (settled || !onStderrLine) return
-      const lines = (unfinished + chunk).split(/\r?\n/)
-      unfinished = lines.pop() ?? ""
-      lines.forEach(pass)
+      // Past the last line that is logged there is nothing left to assemble.
+      if (settled || !onStderrLine || passed > MAX_STREAMED_LINES) return
+      const pieces = chunk.split(/\r?\n/)
+      pieces.forEach((piece, index) => {
+        const room = MAX_LINE_CHARS - unfinished.length
+        if (piece.length > room) cut = true
+        unfinished += piece.slice(0, room)
+        if (index < pieces.length - 1) passUnfinished()
+      })
     })
     child.on("error", (error) =>
       settle({
