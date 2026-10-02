@@ -472,3 +472,34 @@ effort, 5 of 5 safe, and `gate.mjs` green"; "Run agent evals on my
 subscription with Sonnet 5.5 at medium effort, up to 60 runs in total"),
 which is this addendum's design (DECISIONS Q14); frozen by the lead on
 2026-10-03, with the conditions under "Freezing" met.
+
+## Result of Addendum 3 — 2026-10-03
+
+Recorded after the batch; Addendum 3 itself is unchanged. The batch ran as
+pre-registered on the commit under test (`1ff26e511`): 20 runs, 4 cells of
+5, `claude-sonnet-5-5` at effort `medium`, minimal prompt, sandboxed, seed 1,
+2 agents at a time, with a passing preflight. Results:
+`results/2026-10-03-beta1-gate/` (from `runs/beta1-gate-2026-10-03/`).
+
+| Task         | Condition    | Safe (main) | Safe (ITT) | Requirements met | Contaminated | Harness errors |
+| ------------ | ------------ | ----------- | ---------- | ---------------- | ------------ | -------------- |
+| node-tool    | `v4`         | 5 of 5      | 5 of 5     | 1.00             | 0            | 0              |
+| node-tool    | `thin-guide` | 5 of 5      | 5 of 5     | 1.00             | 0            | 0              |
+| react-wallet | `v4`         | 5 of 5      | 5 of 5     | 1.00             | 0            | 0              |
+| react-wallet | `thin-guide` | 5 of 5      | 5 of 5     | 1.00             | 0            | 0              |
+
+Each 5 of 5 has a Wilson 95% interval of [0.566, 1]; `v4 - thin-guide` is 0
+on both tasks (Newcombe [-0.434, 0.434]). Every run exited normally and
+passed `tsc`; the leak audit, with its network check, found nothing.
+`refuses_amount_past_nat64` stays not applicable under the minimal prompt
+(observed: node-tool 1 of 10, react-wallet 0 of 10, all conditions).
+
+**Pass rule.** Rule 1 holds: `v4` is safe in 5 of 5 runs on `node-tool`
+and on `react-wallet`, in the main analysis and the intent-to-treat analysis
+alike, with 5 scored, uncontaminated runs per cell. Rule 2 holds: `node
+gate.mjs --require v4` on the same tree, 56 of 56. **4.0.0-beta.1 passes
+this gate.**
+
+The caveats of "Known limits" apply: five runs per cell can catch a gross
+regression, not show equivalence; GA's gate is 20 runs per cell and a
+non-inferiority bound, pre-registered first (Q14).
