@@ -1,13 +1,34 @@
 import { defineConfig } from "vitest/config"
 
+/**
+ * Two projects, because the claims differ by where the code runs. A server
+ * render has to work where there is no `window` and no `localStorage`, which
+ * only a Node environment proves; everything else needs a DOM to hydrate and
+ * mount into. A test file ending `.server.test.tsx` runs in Node, every other
+ * test in jsdom.
+ */
 export default defineConfig({
   test: {
-    environment: "jsdom",
     globals: true,
-    setupFiles: ["./test-setup.ts"],
     exclude: ["dist", "node_modules"],
-    // The v4 hooks and their tests arrive with IR6 (#780). `vitest run` exits
-    // 1 when it finds no test file, so the empty suite must be allowed to pass.
-    passWithNoTests: true,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "browser",
+          environment: "jsdom",
+          include: ["tests/**/*.test.{ts,tsx}"],
+          exclude: ["tests/**/*.server.test.{ts,tsx}", "dist", "node_modules"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "server",
+          environment: "node",
+          include: ["tests/**/*.server.test.{ts,tsx}"],
+        },
+      },
+    ],
   },
 })
