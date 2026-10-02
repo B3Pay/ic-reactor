@@ -38,6 +38,11 @@ const DEFAULT_OUT_DIR = "src/canisters"
 const GUIDE_LINE =
   "ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt"
 
+/**
+ * The options of {@link icReactor}. Every one is optional: with none, the
+ * plugin generates nothing and, under `vite dev`, only injects the local IC
+ * environment, for no canister of the app's.
+ */
 export interface IcReactorPluginOptions {
   /**
    * The app's canisters, by name: the canister's name in the `icp` project,
@@ -119,6 +124,46 @@ const consoleLog: PluginLog = {
   error: (message) => console.error(message),
 }
 
+/**
+ * The Vite plugin for an app built on a candid-core generated module.
+ *
+ * It does two things:
+ *
+ * - **Generates the module.** When a build or the dev server starts, and
+ *   when a configured `.did` changes, it runs the app's `candid-core-cli gen`
+ *   on each `didFile` and leaves the module as the generator wrote it: no
+ *   wrapper files, hooks or reactors. The generator is WebAssembly, so it runs
+ *   in a child process (the running Node binary on the CLI's bin script, never
+ *   through a shell, killed after 60 seconds). A trap, a crash or a hang on a
+ *   bad `.did` then ends that process and not the dev server: under
+ *   `vite build` it fails the build with the CLI's own message, and under
+ *   `vite dev` it is logged and shown in the error overlay while the server
+ *   keeps serving. See {@link IcReactorPluginOptions.failOnError}.
+ * - **Injects the local IC environment.** Under `vite dev` and `vite preview`
+ *   it sets the `ic_env` cookie, which carries the replica's root key and the
+ *   canister IDs, and proxies `/api` to the local replica, so the app needs no
+ *   configuration to find them. It asks the `icp` CLI for both, and is off in
+ *   mode `"test"` (Vitest's), where `icp` is never run.
+ *
+ * The first thing it logs names where an agent reads how to use the library:
+ * `ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt`.
+ *
+ * The plugin needs `@candid-core/cli`, at the exact release that pairs with
+ * the `@candid-core/schema` the generated modules import, installed in the
+ * app. It imports neither, and no `@ic-reactor` runtime package.
+ *
+ * @example
+ * ```ts
+ * // vite.config.ts
+ * export default defineConfig({
+ *   plugins: [
+ *     icReactor({
+ *       canisters: { ledger: { didFile: "../backend/ledger.did" } },
+ *     }),
+ *   ],
+ * })
+ * ```
+ */
 export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   const { canisters = {}, injectEnvironment = true, failOnError } = options
   const names = Object.keys(canisters)
