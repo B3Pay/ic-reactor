@@ -21,8 +21,8 @@ One import path per name: Candid values only from `@candid-core/schema`,
 `skipToken` and the hooks only from TanStack Query.
 
 The generated module (from `candid-core-cli gen` or `@ic-reactor/vite-plugin`;
-do not edit it) exports a type and a schema per Candid type, the service
-schema `actor`, and `type Actor`, its methods' signatures.
+do not edit it) exports a type and schema per Candid type, the service schema
+`actor`, and `type Actor`.
 
 ## Setup
 
@@ -35,8 +35,7 @@ export const client = createClient({ network: "ic", identity: "anonymous" })
 export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaaba-cai" })
 ```
 
-`client.canister()` returns the same object each time, so it can run in
-render.
+`client.canister()` returns the same object each time: safe in render.
 
 `network` and the root key:
 
@@ -107,7 +106,7 @@ export function toAuthLike(source: SignInSource): AuthLike {
 
 ## Values
 
-Methods take and return the generated types:
+Methods use the generated types:
 
 | Candid                                   | Value                                          |
 | ---------------------------------------- | ---------------------------------------------- |
@@ -117,7 +116,7 @@ Methods take and return the generated types:
 | `principal`                              | `Principal`: branded principal text            |
 | `blob` / `vec nat8`                      | `Uint8Array`                                   |
 | `opt T`                                  | `T \| null` (the property is always present)   |
-| `opt opt T`, `opt null`                  | `{ some: T } \| null`                          |
+| `opt opt T`, `opt null`                  | `{ some: T \| null } \| null`, `{ some: null } \| null` |
 | `vec T`                                  | `T[]`                                          |
 | `record { a : T }`                       | `{ a: T }`, every field present                |
 | `variant { A : T; B }`                   | `{ tag: "A"; value: T } \| { tag: "B" }`       |
