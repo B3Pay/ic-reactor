@@ -122,11 +122,11 @@ describe("a client built with a fixed identity", () => {
     await expect(
       rejection(ledger.icrc1_transfer(transferArg(500n)))
     ).resolves.toMatchObject(unauthenticated)
-    expect(spy.paths).toEqual([])
+    expect(spy.calls()).toEqual([])
 
     // The spy does see a read, so "nothing" above is not a blind spot.
     await rejection(ledger.icrc1_fee())
-    expect(spy.paths).toEqual([
+    expect(spy.calls()).toEqual([
       expect.stringMatching(new RegExp(`/canister/${LEDGER}/query$`)),
     ])
   })
@@ -138,7 +138,7 @@ describe("a client built with a fixed identity", () => {
     await expect(
       rejection(ledger.icrc1_transfer(transferArg(500n)))
     ).resolves.toMatchObject({ kind: "not_delivered", httpStatus: 400 })
-    expect(spy.paths).toEqual([
+    expect(spy.calls()).toEqual([
       expect.stringMatching(new RegExp(`/canister/${LEDGER}/call$`)),
     ])
   })

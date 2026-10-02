@@ -38,7 +38,7 @@ async function pathsAskedFor(network: Network): Promise<string[]> {
   // The spy refuses everything, so the read fails: only what was asked of it
   // is of interest.
   await rejection(ledger.icrc1_fee())
-  return spy.paths
+  return spy.calls()
 }
 
 const STATUS = "/api/v2/status"

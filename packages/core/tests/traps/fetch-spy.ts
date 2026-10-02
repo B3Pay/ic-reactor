@@ -14,6 +14,14 @@ export interface FetchSpy {
   readonly fetch: typeof globalThis.fetch
   /** The path of every request, in order, such as `/api/v2/status`. */
   readonly paths: string[]
+  /**
+   * {@link FetchSpy.paths} without `read_state`. With every query the agent
+   * also reads the subnet's node keys (`read_state`), concurrently, to verify
+   * the query's signature; whether that read has gone out when a test looks
+   * depends on timing. It executes nothing and is not a root-key request, so
+   * a trap that asserts what was sent compares this list.
+   */
+  readonly calls: () => string[]
 }
 
 /** Creates a {@link FetchSpy}. */
@@ -21,6 +29,7 @@ export function fetchSpy(status = 400): FetchSpy {
   const paths: string[] = []
   return {
     paths,
+    calls: () => paths.filter((path) => !path.endsWith("/read_state")),
     fetch: (input) => {
       const url = input instanceof Request ? input.url : String(input)
       paths.push(new URL(url).pathname)
