@@ -16,11 +16,10 @@
 
 > **This is the `v4` branch, where ic-reactor 4 is in development.** Nothing
 > from it is released: its packages are at `4.0.0-alpha.0`. ic-reactor 4 is a
-> thin layer over a candid-core generated module, with a guide that lands with
-> DX3. The 3.x runtime was removed from `@ic-reactor/core` and
-> `@ic-reactor/react` (IR0, [#794](https://github.com/B3Pay/ic-reactor/issues/794)),
-> so both export nothing until the 4 slices of milestone 1
-> ([#790](https://github.com/B3Pay/ic-reactor/issues/790)) land. The released
+> thin layer over a candid-core generated module, with a guide shipped in
+> `@ic-reactor/core` (`packages/core/llms.txt`). Milestone 1
+> ([#790](https://github.com/B3Pay/ic-reactor/issues/790)) replaced the 3.x
+> runtime of `@ic-reactor/core` and `@ic-reactor/react` with the 4 API. The released
 > 3.x line lives on `main` (security fixes only until 4.0 GA) and is documented
 > at [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
 
@@ -118,10 +117,10 @@ pnpm docs:build
 
 ## AI and Agent Integration
 
-ic-reactor 4 will ship one consumer guide, `llms.txt` in `@ic-reactor/core`'s
-package (`node_modules/@ic-reactor/core/llms.txt`), and one consumer skill.
-On this branch the guide is a placeholder until DX3 writes it, and the skill
-comes with it. The 3.x guides and skills are on `main`.
+ic-reactor 4 ships one consumer guide, `llms.txt` in `@ic-reactor/core`'s
+package (`node_modules/@ic-reactor/core/llms.txt`), and one consumer skill,
+[`skill-packages/ic-reactor`](./skill-packages/ic-reactor/SKILL.md), which
+points at it. The 3.x guides and skills are on `main`.
 
 For agents working in this repository: [`AGENTS.md`](./AGENTS.md) and
 [`CLAUDE.md`](./CLAUDE.md).
