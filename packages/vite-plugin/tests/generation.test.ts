@@ -656,6 +656,25 @@ describe("generation under vite build", () => {
     expect(lines.filter((line) => line.includes("progress:"))).toHaveLength(1)
   })
 
+  // The generator prints nothing on stderr when all is well, so a process
+  // that prints without end is a runaway one, which the logger is spared.
+  it("stops logging the stderr of a process that prints without end", async () => {
+    const app = newApp({ "did/a.did": "FLOOD\n" }, "fake")
+    const { result, lines } = buildApp(app.root, {
+      canisters: { a: { didFile: "did/a.did" } },
+    })
+
+    await result
+    const logged = lines.filter((line) =>
+      line.startsWith("warn: ic-reactor: candid-core-cli (did/a.did): ")
+    )
+    expect(logged).toHaveLength(201)
+    expect(logged[199]).toContain("line 200 (fake)")
+    expect(logged[200]).toContain(
+      "more than 200 lines on stderr: the rest is not logged"
+    )
+  })
+
   it("only logs the failure when failOnError is off", async () => {
     const app = newApp({ "did/bad.did": BROKEN_DID }, "real")
     const { result, lines } = buildApp(app.root, {

@@ -32,6 +32,13 @@ const REPORT_SCHEMA_VERSION = 1
 export const GENERATE_TIMEOUT_MS = 60_000
 
 /**
+ * The most stderr lines of one process passed on to the logger. The generator
+ * prints nothing there when all is well, so more than this is a runaway
+ * process, which would flood the terminal for as long as its timeout.
+ */
+const MAX_STREAMED_LINES = 200
+
+/**
  * The most output kept from one stream of the generator. A report is a few
  * lines per canister; the cap only stops a runaway process from filling memory
  * before the timeout kills it.
@@ -116,7 +123,7 @@ interface ProcessResult {
   stderr: string
   code: number | null
   signal: NodeJS.Signals | null
-  /** Set when the process never ran to its end: it did not start, or was killed at the timeout. */
+  /** Set when the process never ran to its end: it did not start, or was killed at the timeout or by the caller. */
   problem?: string
   /** Whether Node could not start the process at all, so another try would fail the same way. */
   unstartable?: boolean
@@ -160,8 +167,15 @@ function runProcess(
     // A line is passed on when it is complete, not when its first bytes
     // arrive, and what follows the last newline is passed on at the end.
     let unfinished = ""
+    let passed = 0
     const pass = (text: string) => {
-      if (text.trim()) onStderrLine?.(text.trimEnd())
+      if (!text.trim() || passed > MAX_STREAMED_LINES) return
+      passed++
+      onStderrLine?.(
+        passed > MAX_STREAMED_LINES
+          ? `more than ${MAX_STREAMED_LINES} lines on stderr: the rest is not logged`
+          : text.trimEnd()
+      )
     }
 
     const settle = (result: Omit<ProcessResult, "stdout" | "stderr">) => {

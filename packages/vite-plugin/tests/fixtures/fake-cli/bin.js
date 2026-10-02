@@ -6,6 +6,7 @@
 //   SLOW  reports as below, after 300 ms
 //   NOISY reports as below, after writing two warnings to stderr, the second
 //         with no newline at its end
+//   FLOOD reports as below, after writing 250 lines to stderr
 //   PROGRESS writes a line to stderr in two pieces, and reports as below after
 //         600 ms
 //   NEWER reports as below, with a schemaVersion no plugin knows
@@ -32,6 +33,11 @@ if (sources.some((source) => source.includes("TRAP"))) {
   const newer = sources.some((source) => source.includes("NEWER"))
   if (sources.some((source) => source.includes("NOISY"))) {
     process.stderr.write("warning: first (fake)\nwarning: second (fake)")
+  }
+  if (sources.some((source) => source.includes("FLOOD"))) {
+    for (let line = 1; line <= 250; line++) {
+      process.stderr.write(`line ${line} (fake)\n`)
+    }
   }
   const progress = sources.some((source) => source.includes("PROGRESS"))
   if (progress) {

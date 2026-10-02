@@ -121,7 +121,9 @@ affected.
   and as it arrives, naming the `.did` files its process is generating. With
   `--json` the generator reports in its JSON document, so what shows up here
   is a crash's output or a warning from the runtime. When a process fails, its
-  stderr is also in the error message, so that text appears twice.
+  stderr is also in the error message, so that text appears twice. Past 200
+  lines from one process the rest is not logged, so a runaway generator does
+  not flood the terminal.
 - Closing the dev server (or restarting it, as a `vite.config` edit does) kills
   a generator that is still running and drops the runs still waiting, so none
   outlives the server it belonged to or runs beside the next one.
