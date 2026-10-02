@@ -1,0 +1,5 @@
+{
+  "file": "src/client.ts",
+  "search": "  queryOptions<A, M extends keyof A & string>(\n    canister: Canister<A>,\n    method: M,\n    ...args: QueryArgs<A, M>\n  ): CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>>",
+  "replace": "  queryOptions<A, M extends string>(\n    canister: Canister<A>,\n    method: M,\n    ...args: M extends keyof A\n      ? QueryArgs<A, M>\n      : [vars?: unknown, options?: import(\"./types.js\").QueryOptionsOptions]\n  ): M extends keyof A\n    ? CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>>\n    : CanisterQueryOptions<unknown, unknown>"
+}

@@ -21,11 +21,8 @@ import { createTestAuth } from "../src/testing/index.js"
 
 const identity = Ed25519KeyIdentity.generate()
 
-// Who calls is said exactly once.
-// @ts-expect-error neither identity nor auth: who calls is not written down
-createClient({ network: "ic" })
-// @ts-expect-error identity and auth together: who calls is written twice
-createClient({ network: "ic", identity, auth: () => createTestAuth() })
+// Who calls is said exactly once: the two ways to get it wrong are traps, in
+// traps.test-d.ts.
 createClient({ network: "ic", identity })
 createClient({ network: "ic", identity: "anonymous" })
 createClient({ network: "ic", identity: new AnonymousIdentity() })
