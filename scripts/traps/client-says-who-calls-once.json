@@ -1,0 +1,5 @@
+{
+  "file": "src/client.ts",
+  "search": "      readonly identity: Identity | \"anonymous\"\n      readonly auth?: never",
+  "replace": "      readonly identity: Identity | \"anonymous\"\n      readonly auth?: () => AuthLike"
+}

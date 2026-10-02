@@ -65,9 +65,10 @@
   "author": "Behrad Deylami",
   "license": "MIT",
   "peerDependencies": {
+    "@candid-core/schema": "0.3.0-beta.1",
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
-    "@tanstack/query-core": "^5.49.0"
+    "@tanstack/query-core": "^5.62.0"
   },
   "peerDependenciesMeta": {
     "@noble/curves": {
@@ -75,6 +76,7 @@
     }
   },
   "devDependencies": {
+    "@candid-core/schema": "0.3.0-beta.1",
     "@icp-sdk/auth": "^10.0.1",
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",

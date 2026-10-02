@@ -699,7 +699,13 @@ export function classifyError(
 // Retry
 // ---------------------------------------------------------------------------
 
-const isRetryable = (error: unknown): boolean =>
+/**
+ * Whether the classifier marked `error` as safe to send again: a
+ * `not_delivered` that another attempt can change. {@link retryQuery} and
+ * {@link retryUpdate} add their own limits; a direct read re-sends on this
+ * alone, at most twice.
+ */
+export const isRetryable = (error: unknown): boolean =>
   isReactorError(error) &&
   error.kind === "not_delivered" &&
   (error as unknown as Record<symbol, unknown>)[RETRYABLE] === true

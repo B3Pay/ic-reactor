@@ -1,0 +1,33 @@
+type Pair = record { left : nat; right : text };
+
+// A result spelled in lower case.
+type Outcome = variant { ok : nat64; err : text };
+
+// A result whose ok arm carries nothing.
+type Flag = variant { ok; err : text };
+
+// Ok, Err and a third arm: not a result, so it is never unwrapped.
+type Three = variant { Ok : nat; Err : text; Pending };
+
+// One method per shape the call path handles: 0, 1 and n results, a void
+// update, a oneway, a composite query, and the values whose JavaScript form
+// differs (nat8 as number, a collapsing opt, a blob, a principal).
+service : {
+  nothing : () -> () query;
+  one : (nat) -> (nat) query;
+  many : () -> (nat, text, bool) query;
+  small : (nat8) -> (nat8) query;
+  pair : (nat, text) -> (Pair) query;
+  maybe : (opt opt nat) -> (opt opt nat) query;
+  bytes : (blob) -> (blob) query;
+  who : () -> (principal) query;
+  lookup : (principal) -> (opt text) query;
+  outcome : (nat64) -> (Outcome) query;
+  composite : (nat) -> (nat) composite_query;
+  bump : (nat) -> (Outcome);
+  flag : (bool) -> (Flag);
+  three : () -> (Three);
+  note : (text) -> ();
+  fire : (text) -> () oneway;
+  address : (text) -> (text);
+}

@@ -6,8 +6,8 @@
  *
  * Public: {@link createClient}, {@link Client}, {@link ClientOptions},
  * {@link AuthLike} and {@link AuthState}. {@link internalsOf} and the types it
- * returns are for the canister builders of this package and are not exported
- * from the package entry.
+ * returns are for the canister builders of this package (`canister.ts`,
+ * `options.ts`, `call.ts`) and are not exported from the package entry.
  *
  * Who calls is decided in one place, {@link ClientInternals.agentFor}, and by
  * one rule: a call goes out signed by the principal it was made for, or not at
@@ -18,13 +18,15 @@
  *
  * @module
  */
+import type { FuncValue, Principal, Schema } from "@candid-core/schema"
+import { DEFAULT_MAX_DEPTH } from "@candid-core/schema/codec"
 import {
   AnonymousIdentity,
   HttpAgent,
   type Identity,
 } from "@icp-sdk/core/agent"
-import { Principal } from "@icp-sdk/core/principal"
-import { QueryClient } from "@tanstack/query-core"
+import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
+import { QueryClient, type QueryKey } from "@tanstack/query-core"
 import { createReactorError, retryQuery } from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import {
@@ -33,17 +35,22 @@ import {
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
+import { createBuilders } from "./options.js"
 import { isServer } from "./runtime.js"
+import type {
+  Canister,
+  CanisterMutationOptions,
+  CanisterQueryOptions,
+  CanisterTarget,
+  DataOf,
+  ErrorOf,
+  MutationOptionsOptions,
+  QueryArgs,
+  VarsOf,
+} from "./types.js"
 
 /** The anonymous principal, `2vxsx-fae`: the caller of every call nobody signed. */
-const ANONYMOUS = Principal.anonymous().toText()
-
-/**
- * candid-core's `DEFAULT_MAX_DEPTH`: how deep a reply may nest before decoding
- * refuses it. Written out here because candid-core is not a dependency of
- * this module.
- */
-const DEFAULT_MAX_DEPTH = 256
+const ANONYMOUS = SdkPrincipal.anonymous().toText()
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -213,6 +220,184 @@ export interface Client {
    * does nothing.
    */
   dispose(): void
+
+  /**
+   * A canister to call: a frozen object with one plain async method per
+   * Candid method of `service`, typed from the generated `Actor` you name.
+   *
+   * ```ts
+   * import { actor, type Actor } from "./canisters/icrc1"
+   * const ledger = client.canister<Actor>(actor, { id: LEDGER_ID })
+   * const balance = await ledger.icrc1_balance_of({ owner, subaccount: null })
+   * ```
+   *
+   * `service` is the `actor` export of a module `candid-core-cli gen` wrote,
+   * or the `actor` of `schemaFromContract()`: both make the same calls and the
+   * same keys. `<A>` is not checked against `service`; pass the `Actor` of
+   * the same module.
+   *
+   * A method sends its call as the caller signed in at the moment it is
+   * called, decodes the reply, and resolves with it as the `Actor` types it,
+   * except that a method whose one result is an `Ok`/`Err` variant resolves
+   * with the `Ok` payload and rejects `canister_err` with the `Err` one. An
+   * update or a oneway by a caller who is not signed in rejects
+   * `unauthenticated` and sends nothing. Every failure is a `ReactorError`;
+   * see {@link Canister} for what is re-sent.
+   *
+   * The same service object and the same target give the same canister
+   * object on every call, so it can be made during render. See
+   * {@link CanisterTarget} for `{ id }`, `{ name }` and `certified`.
+   *
+   * @throws TypeError for a `service` that is not a service schema, or a
+   * target that is not one of the allowed shapes or whose `id` is not
+   * principal text.
+   */
+  canister<A>(service: Schema<Principal>, target: CanisterTarget): Canister<A>
+
+  /**
+   * The query key of a read, or the prefix of a group of reads, for
+   * `queryClient.invalidateQueries`, `getQueryData` and filters:
+   *
+   * - `queryKey(c)`: every read of the canister by the current caller.
+   * - `queryKey(c, method)`: every read of that method by the current caller,
+   *   whatever its arguments. For a method without arguments, which has one
+   *   read, this is that read's key, the same as `queryKey(c, method,
+   *   undefined)`, so `queryClient.getQueryData(client.queryKey(ledger,
+   *   "icrc1_fee"))` finds what `queryOptions(ledger, "icrc1_fee")` cached.
+   * - `queryKey(c, method, vars)`: the key `queryOptions(c, method, vars)`
+   *   gives, as built now.
+   *
+   * `getQueryData` and `setQueryData` match a key exactly: hand them a read's
+   * whole key, never a prefix (a method's with arguments, or a canister's).
+   *
+   * Keys are `['ic-reactor', network, caller, canisterId, method, args]` plus
+   * `'certified'` for a certified canister (DECISIONS Q5). Build them with
+   * this method, never by hand: a key typed out as an array literal is a
+   * `QueryKey` like any other, and matches nothing the client invalidates.
+   * It never throws for `vars` that do not encode: the key then holds
+   * `'$invalid'` and a text of the value.
+   *
+   * @throws TypeError for a canister of another client, or a method the
+   * service does not have.
+   */
+  queryKey<A, M extends keyof A & string>(
+    canister: Canister<A>,
+    method?: M,
+    vars?: VarsOf<A, M>
+  ): QueryKey
+
+  /**
+   * TanStack Query options for a read: `useQuery(client.queryOptions(ledger,
+   * "icrc1_balance_of", account))`, `queryClient.fetchQuery(...)`, a
+   * `QueryObserver`.
+   *
+   * The variables after `method` follow one rule (DECISIONS Q3): nothing for
+   * a method without arguments, the value for one argument, the tuple for two
+   * or more. Pass `skipToken` (from `@tanstack/query-core` or
+   * `@tanstack/react-query`) in their place while they are not known yet.
+   *
+   * The read is made as the caller current when the options are built: the
+   * key holds their principal, and the query function refuses to run
+   * (`cancelled`, nothing sent) once someone else is signed in. Build the
+   * options again when the caller changes, as a component does on every
+   * render, and the read moves to the new caller's key: one principal's data
+   * is never shown under another's.
+   *
+   * Arguments that do not encode give a key tagged `'$invalid'` and a query
+   * function that rejects `invalid_args` with the codec's issues, so a render
+   * never throws on half-typed input.
+   *
+   * `retry` retries only a failure that proves the call was not delivered, at
+   * most 3 times, and never on a server.
+   *
+   * No type says whether a method is a query or an update, so this checks at
+   * run time and throws a `TypeError` for an update or a oneway method: a
+   * query refetches, and every refetch would run the update again. Use
+   * {@link Client.mutationOptions} for a write. An update that returns the
+   * same answer however often it runs (ckBTC's `get_btc_address`) can be read
+   * with `{ update: "idempotent" }` as the fourth argument: it is fetched once
+   * per key and caller (`staleTime: Infinity`, no refetch on mount, focus or
+   * reconnect), needs a signed-in caller like any update, and is retried only
+   * after a failure that proves it never got in (DECISIONS Q2). It is still a
+   * read of its canister, so a write to that canister through
+   * {@link Client.mutationOptions} invalidates it by default and it runs once
+   * more, as a replicated call: safe for an idempotent method, but a cost. To
+   * keep it cached across writes, name the reads a write changes in
+   * `invalidates`.
+   *
+   * @throws TypeError for an update or oneway method without the opt-in, a
+   * composite query of a certified canister, a canister of another client, a
+   * method the service does not have, or a fourth argument other than
+   * `{ update: "idempotent" }`.
+   */
+  queryOptions<A, M extends keyof A & string>(
+    canister: Canister<A>,
+    method: M,
+    ...args: QueryArgs<A, M>
+  ): CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>>
+
+  /**
+   * TanStack Query options for a write: `useMutation(client.mutationOptions(
+   * ledger, "icrc1_transfer"))`, then `mutate(arg)` with the same argument
+   * convention as {@link Client.queryOptions}.
+   *
+   * The mutation function calls the method as the caller current when it
+   * runs, and an update by a caller who is not signed in rejects
+   * `unauthenticated` before anything is sent. `retry` is `false`: an update
+   * re-sends itself only when the failure proves the first attempt never got
+   * in (see {@link Canister}), and a TanStack retry would re-send after
+   * failures that do not prove it, running the write twice.
+   *
+   * `onSettled` invalidates the reads the write may have changed, on this
+   * client's `queryClient`, for every caller, certified or not, and waits for
+   * the active ones to refetch: after a success, a `canister_err`, and any
+   * failure whose `mayHaveExecuted` is `true` (a lost reply: the re-read shows
+   * whether it happened). Not after a failure that proves nothing ran
+   * (`invalid_args`, `unauthenticated`, `not_delivered`, a reject 1 or 3, a
+   * `cancelled` before sending). The reads are every read of the canister
+   * written to (DECISIONS Q10), or those listed in `invalidates`: canisters
+   * and `[canister, method]` pairs of this client; `[]` invalidates nothing.
+   * "Every read" includes an update read with `{ update: "idempotent" }`
+   * (such as a ckBTC minter's `get_btc_address` after `update_balance`),
+   * whose re-read is one more replicated call; list the reads in
+   * `invalidates` to leave it cached. To add your own `onSettled`, call this
+   * one from it.
+   *
+   * @throws TypeError for a canister of another client, a method a service
+   * does not have, or a third argument other than `{ invalidates }`.
+   */
+  mutationOptions<A, M extends keyof A & string>(
+    canister: Canister<A>,
+    method: M,
+    options?: MutationOptionsOptions
+  ): CanisterMutationOptions<VarsOf<A, M>, DataOf<A, M>, ErrorOf<A, M>>
+
+  /**
+   * An async function for a func reference a reply carried, such as an ICRC
+   * ledger's archive callback:
+   *
+   * ```ts
+   * import { QueryArchiveFn, type GetBlocksArgs, type BlockRange } from "./canisters/ledger"
+   * for (const range of reply.archived_blocks) {
+   *   const read = client.func<(arg: GetBlocksArgs) => Promise<BlockRange>>(QueryArchiveFn, range.callback)
+   *   const { blocks } = await read({ start: range.start, length: range.length })
+   * }
+   * ```
+   *
+   * The call goes to `ref.principal` and `ref.method`, with the arguments,
+   * results and mode of `funcSchema` (the generated schema of the func type),
+   * through the same path as a canister's methods: the same errors, the same
+   * caller rules, the same unwrapping. `F` is not checked against
+   * `funcSchema`: a generated func type carries no signature, so write the
+   * one its `.did` gives, with the `Ok` payload as the reply of a result.
+   *
+   * @throws TypeError for a schema that is not a func schema, or a `ref`
+   * whose principal is not principal text or whose method is not a name.
+   */
+  func<F extends (...args: never[]) => Promise<unknown>>(
+    funcSchema: Schema<FuncValue>,
+    ref: FuncValue
+  ): F
 }
 
 // ---------------------------------------------------------------------------
@@ -272,8 +457,8 @@ export interface ClientInternals {
    * decides every re-send from the classified failure.
    *
    * `retryTimes` also governs the agent's other requests, and setting it to 0
-   * costs two recoveries the call path (the canister calls, #782) has to make
-   * up for itself, as read in `@icp-sdk/core` 6.1:
+   * costs two recoveries the call path (`call.ts`) has to make up for
+   * itself, as read in `@icp-sdk/core` 6.1:
    *
    * - Update polling. An update the replica answers 202, or with a v4 reply
    *   whose certificate has no status for the request, falls back to polling
@@ -757,7 +942,15 @@ export function createClient(options: ClientOptions): Client {
     return source
   }
 
+  const internals: ClientInternals = Object.freeze({
+    network,
+    maxDepth,
+    current,
+    agentFor,
+  })
+
   const client: Client = Object.freeze({
+    ...createBuilders(internals, () => client),
     network: network.keySegment,
     queryClient,
     caller: () => current().principal,
@@ -802,6 +995,6 @@ export function createClient(options: ClientOptions): Client {
     },
   })
 
-  INTERNALS.set(client, Object.freeze({ network, maxDepth, current, agentFor }))
+  INTERNALS.set(client, internals)
   return client
 }
