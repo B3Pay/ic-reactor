@@ -3,13 +3,17 @@
  * component renders once for each change of who calls, and for nothing else.
  */
 import { useQueryClient } from "@tanstack/react-query"
-import { createTestAuth, type TestAuth } from "@ic-reactor/core/testing"
 import type { Client } from "@ic-reactor/core"
 import { act, fireEvent, render } from "@testing-library/react"
 import { memo, useState } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ReactorProvider, useAuth, useClient } from "../src/index.js"
-import { anonymousClient, clientWithAuth } from "./helpers.js"
+import {
+  anonymousClient,
+  clientWithAuth,
+  testAuth,
+  type TestAuth,
+} from "./helpers.js"
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -56,7 +60,7 @@ function setup(auth: TestAuth) {
 
 describe("useAuth", () => {
   it("renders again once for each sign-in, switch of account and sign-out", async () => {
-    const auth = createTestAuth({ seed: 1, signedIn: false })
+    const auth = testAuth({ identity: 1, signedIn: false })
     const { renders, text } = setup(auth)
     expect(renders.probe).toBe(1)
     expect(text()).toBe("anonymous:2vxsx-fae")
@@ -81,7 +85,7 @@ describe("useAuth", () => {
   })
 
   it("follows a session that ends or sits on another origin", () => {
-    const auth = createTestAuth({ seed: 1 })
+    const auth = testAuth({ identity: 1 })
     const { renders, text } = setup(auth)
     expect(text()).toMatch(/^signed-in:/)
 
@@ -93,7 +97,7 @@ describe("useAuth", () => {
   })
 
   it("does not render again when the parent does", () => {
-    const { renders, rerenderParent } = setup(createTestAuth({ seed: 1 }))
+    const { renders, rerenderParent } = setup(testAuth({ identity: 1 }))
     expect(renders).toEqual({ probe: 1, parent: 1 })
 
     rerenderParent()
@@ -105,7 +109,7 @@ describe("useAuth", () => {
   })
 
   it("does not render again for a renewal that changes neither status nor principal", async () => {
-    const auth = createTestAuth({ seed: 1 })
+    const auth = testAuth({ identity: 1 })
     const { renders } = setup(auth)
 
     await act(async () => {
@@ -119,7 +123,7 @@ describe("useAuth", () => {
   })
 
   it("returns the same object until the state changes", () => {
-    const auth = createTestAuth({ seed: 1 })
+    const auth = testAuth({ identity: 1 })
     const { seen, rerenderParent } = setup(auth)
     rerenderParent()
     rerenderParent()
@@ -139,7 +143,7 @@ describe("useAuth", () => {
   })
 
   it("forwards signIn and signOut to the client, with the options it was given", async () => {
-    const real = createTestAuth({ seed: 1, signedIn: false })
+    const real = testAuth({ identity: 1, signedIn: false })
     const signIn = vi.fn((options?: unknown) => real.signIn(options as never))
     const signOut = vi.fn((_options?: unknown) => real.signOut())
     const auth = { ...real, signIn, signOut }

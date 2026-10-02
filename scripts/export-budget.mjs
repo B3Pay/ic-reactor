@@ -64,28 +64,6 @@ export const ENTRIES = [
     subpath: "./testing",
     cap: 2,
     planned: ["createTestClient", "TestHandlers"],
-    /**
-     * TRANSITIONAL: names that IR4a (#778) added to this entry and that IR4b
-     * (#783) replaces with `createTestClient` and `TestHandlers`. They sit
-     * outside the cap while the version is an `-alpha.` prerelease, and
-     * `check-exports.mjs` fails if any is still exported once it is a beta.
-     * IR4b removes this list together with the names.
-     */
-    transitional: [
-      "createFakeReplica",
-      "installFakeReplica",
-      "createTestAuth",
-      "FakeCallContext",
-      "FakeCanister",
-      "FakeRejectCode",
-      "FakeReplica",
-      "FakeReplicaOptions",
-      "FakeReplicaRequest",
-      "InstalledFakeReplica",
-      "TestAuth",
-      "TestAuthOptions",
-      "TestAuthStatus",
-    ],
   },
   {
     id: "@ic-reactor/react",

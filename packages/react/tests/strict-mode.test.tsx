@@ -3,14 +3,19 @@
  * (`StrictMode` mounts, unmounts and mounts again at once) must not kill a
  * client that is in use, and a real unmount must dispose it exactly once.
  */
-import { createTestAuth, type TestAuth } from "@ic-reactor/core/testing"
 import type { Client } from "@ic-reactor/core"
 import { act, render } from "@testing-library/react"
 import * as React from "react"
 import { StrictMode, type ComponentType, type ReactNode } from "react"
 import { describe, expect, it } from "vitest"
 import { ReactorProvider, useAuth, useClient } from "../src/index.js"
-import { clientWithAuth, macrotask, trackedFactory } from "./helpers.js"
+import {
+  clientWithAuth,
+  macrotask,
+  type TestAuth,
+  testAuth,
+  trackedFactory,
+} from "./helpers.js"
 
 /** `React.Activity` exists from React 19.2; the peer range starts at 18. */
 const Activity = (
@@ -28,7 +33,7 @@ function setup() {
   const auths: TestAuth[] = []
   const tracked = trackedFactory(() =>
     clientWithAuth(() => {
-      const auth = createTestAuth({ seed: 3, signedIn: false })
+      const auth = testAuth({ identity: 3, signedIn: false })
       auths.push(auth)
       return auth
     })

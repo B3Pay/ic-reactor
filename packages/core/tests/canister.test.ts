@@ -12,7 +12,8 @@ import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { skipToken, type QueryFunctionContext } from "@tanstack/query-core"
 import { isReactorError } from "../src/index.js"
 import { toHex } from "../src/keys.js"
-import { createTestAuth, type FakeReplica } from "../src/testing/index.js"
+import { type FakeReplica } from "../src/testing/fake-replica.js"
+import { createTestAuth } from "../src/testing/test-auth.js"
 import {
   ANONYMOUS,
   FEE,

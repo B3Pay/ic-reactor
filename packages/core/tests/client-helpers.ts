@@ -18,7 +18,7 @@ import {
   createFakeReplica,
   type FakeCanister,
   type FakeReplica,
-} from "../src/testing/index.js"
+} from "../src/testing/fake-replica.js"
 
 /** The anonymous principal, as text. */
 export const ANONYMOUS = "2vxsx-fae"

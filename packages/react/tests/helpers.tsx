@@ -4,7 +4,21 @@
  * provider builds.
  */
 import { createClient, type AuthLike, type Client } from "@ic-reactor/core"
+import { createTestClient } from "@ic-reactor/core/testing"
 import { vi, type Mock } from "vitest"
+
+/** The controllable sign-in of a test client: `signIn`, `switchTo`, `expire` and the rest. */
+export type TestAuth = ReturnType<typeof createTestClient>["auth"]
+
+/**
+ * A sign-in a test controls, for the tests that build a client around it
+ * themselves (to count how often the client builds its auth, or to wrap it).
+ * It is the `auth` of a test client; the fake replica next to it is never
+ * called, since no test here calls a canister. `identity` is a seed.
+ */
+export const testAuth = (
+  options?: Parameters<typeof createTestClient>[0]
+): TestAuth => createTestClient(options).auth
 
 /** A client on the IC whose caller is whatever `auth` says. Sends nothing. */
 export const clientWithAuth = (auth: () => AuthLike): Client =>
