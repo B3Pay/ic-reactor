@@ -68,7 +68,7 @@ const isBinOnly = (m) =>
 const MAY_EXPORT_NOTHING = new Set(["@ic-reactor/core", "@ic-reactor/react"])
 
 /**
- * Whether a package may publish an entry that exports nothing: only the
+ * Whether a package's ROOT entry may export nothing: only the
  * packages listed above, and only while the line is an alpha prerelease. From
  * the first beta the allowance ends for them too.
  */
@@ -210,7 +210,7 @@ try {
             "-e",
             `import(${JSON.stringify(spec)}).then(m=>{
              const n=Object.keys(m).length;
-             if(n===0 && ${!mayExportNothing(manifest)}) { console.error("no exports"); process.exit(1) }
+             if(n===0 && ${!(sub === "." && mayExportNothing(manifest))}) { console.error("no exports"); process.exit(1) }
              console.log("exports:"+n)
            }).catch(e=>{ console.error(e.code||"", e.message); process.exit(1) })`,
           ],
