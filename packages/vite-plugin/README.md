@@ -77,11 +77,19 @@ ledger both on `icrc1.did` are two entries, so that the `ic_env` cookie carries
 each ID, and one generated module:
 
 ```ts
-icReactor({
-  canisters: {
-    icp_ledger: { didFile: "did/icrc1.did" },
-    ckbtc_ledger: { didFile: "did/icrc1.did" },
-  },
+// vite.config.ts
+import { defineConfig } from "vite"
+import { icReactor } from "@ic-reactor/vite-plugin"
+
+export default defineConfig({
+  plugins: [
+    icReactor({
+      canisters: {
+        icp_ledger: { didFile: "did/icrc1.did" },
+        ckbtc_ledger: { didFile: "did/icrc1.did" },
+      },
+    }),
+  ],
 })
 ```
 
