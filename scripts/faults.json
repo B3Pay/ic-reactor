@@ -38,5 +38,143 @@
     "file": "src/testing/fake-replica.ts",
     "search": "Principal.selfAuthenticating(sender_pubkey).toText() !== sender.toText()",
     "replace": "false"
+  },
+  {
+    "id": "ir6-dispose-in-the-cleanup",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "survives React's development double-mount and keeps working",
+    "why": "the client disposed in the cleanup itself, so React's development unmount kills a client in use",
+    "file": "src/index.tsx",
+    "search": "      pendingDispose.current = setTimeout(() => {\n        pendingDispose.current = undefined\n        disposedClients.add(client)\n        client.dispose()\n      }, 0)",
+    "replace": "      disposedClients.add(client)\n      client.dispose()"
+  },
+  {
+    "id": "ir6-remount-keeps-the-disposal",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "survives React's development double-mount and keeps working",
+    "why": "the mount that follows an unmount no longer cancels the scheduled disposal, so it still runs",
+    "file": "src/index.tsx",
+    "search": "    clearTimeout(pendingDispose.current)\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6-client-never-disposed",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "disposes the client exactly once when it unmounts outside StrictMode too",
+    "why": "an unmounted provider leaves its client running: its auth subscription and cache live on",
+    "file": "src/index.tsx",
+    "search": "        client.dispose()\n      }, 0)",
+    "replace": "        void client\n      }, 0)"
+  },
+  {
+    "id": "ir6-disposed-client-kept-after-reveal",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "replaces a client that was disposed while its subtree was hidden",
+    "why": "a subtree shown again after its client was disposed keeps the dead client",
+    "file": "src/index.tsx",
+    "search": "    if (disposedClients.has(client)) {",
+    "replace": "    if (false) {"
+  },
+  {
+    "id": "ir6-factory-runs-every-render",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "keeps the client and the factory it was given when the parent renders again",
+    "why": "the factory called on every render instead of once per mounted provider",
+    "file": "src/index.tsx",
+    "search": "  const [client, setClient] = useState(build)\n",
+    "replace": "  const [, setClient] = useState(build)\n  const client = build()\n"
+  },
+  {
+    "id": "ir6-client-shared-across-requests",
+    "package": "react",
+    "test": "tests/provider.server.test.tsx",
+    "testName": "builds a separate client and QueryClient for each request and mounts nothing",
+    "why": "the first request's client kept in module scope, so every later request reads its cache and caller",
+    "edits": [
+      {
+        "file": "src/index.tsx",
+        "search": "const disposedClients = new WeakSet<Client>()\n",
+        "replace": "const disposedClients = new WeakSet<Client>()\nlet sharedClient: Client | undefined\n"
+      },
+      {
+        "file": "src/index.tsx",
+        "search": "  const [client, setClient] = useState(build)\n",
+        "replace": "  const [client, setClient] = useState(() => (sharedClient ??= build()))\n"
+      }
+    ]
+  },
+  {
+    "id": "ir6-server-snapshot-is-the-browsers",
+    "package": "react",
+    "test": "tests/hydration.test.tsx",
+    "why": "the server snapshot read from the client instead of the constant, so a signed-in browser's first render no longer matches the server's HTML",
+    "file": "src/index.tsx",
+    "search": "    client.authState,\n    serverState\n",
+    "replace": "    client.authState,\n    client.authState\n"
+  },
+  {
+    "id": "ir6-snapshot-is-a-fresh-object",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "renders again once for each sign-in, switch of account and sign-out",
+    "why": "getSnapshot returns a new object on every read, which useSyncExternalStore treats as a change on every render",
+    "file": "src/index.tsx",
+    "search": "    client.authState,\n    serverState\n",
+    "replace": "    () => ({ ...client.authState() }),\n    serverState\n"
+  },
+  {
+    "id": "ir6-auth-object-not-memoized",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "returns the same object until the state changes",
+    "why": "useAuth returns a new object on every render, so a memoized consumer or a dependency array sees a change each time",
+    "file": "src/index.tsx",
+    "search": "    [client, state]\n",
+    "replace": "    [Object.create(null)]\n"
+  },
+  {
+    "id": "ir6-no-query-client-provider",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "returns the client of the provider, and TanStack reads the same cache",
+    "why": "the provider does not render TanStack's QueryClientProvider, so TanStack's hooks find no client",
+    "file": "src/index.tsx",
+    "search": "      <QueryClientProvider client={client.queryClient}>\n        {children}\n      </QueryClientProvider>",
+    "replace": "      {children}"
+  },
+  {
+    "id": "ir6-use-client-outside-provider-is-silent",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "throws outside a provider, naming it",
+    "why": "useClient returns undefined outside a provider instead of throwing the error that names the fix",
+    "file": "src/index.tsx",
+    "search": "  if (client === undefined) {\n    throw new Error(",
+    "replace": "  if (client === undefined && false) {\n    throw new Error("
+  },
+  {
+    "id": "ir6-entry-reexports-core",
+    "package": "react",
+    "test": "tests/entry.test.ts",
+    "testName": "exports exactly ReactorProvider, useClient and useAuth at runtime",
+    "why": "the entry re-exports a name of @ic-reactor/core, a second import path for it (D35)",
+    "file": "src/index.tsx",
+    "search": "import type { AuthState, Client } from \"@ic-reactor/core\"\n",
+    "replace": "import type { AuthState, Client } from \"@ic-reactor/core\"\nexport { createClient } from \"@ic-reactor/core\"\n"
+  },
+  {
+    "id": "ir6-use-client-directive-dropped",
+    "package": "react",
+    "test": "tests/entry.test.ts",
+    "testName": "starts its emitted module with the 'use client' directive",
+    "why": "the directive removed from the entry, which turns the hooks into server modules for an RSC bundler",
+    "file": "src/index.tsx",
+    "search": "\"use client\"\n\n/**\n * `@ic-reactor/react` 4",
+    "replace": "/**\n * `@ic-reactor/react` 4"
   }
 ]

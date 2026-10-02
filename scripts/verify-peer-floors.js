@@ -142,6 +142,10 @@ function pinsFor(check) {
   const devDependencies = {}
 
   for (const [name, range] of Object.entries(manifest.peerDependencies ?? {})) {
+    // A sibling of the lockstep lane (`@ic-reactor/core` as a peer of react),
+    // written `workspace:*` and published as this version exactly: it has no
+    // floor below it, and the worktree installs it from the workspace.
+    if (range.startsWith("workspace:")) continue
     if (!(name in perMajor)) {
       const majors = [
         ...new Set(alternativeFloors(range).map((v) => parseVersion(v)[0])),
