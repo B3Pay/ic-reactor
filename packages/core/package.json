@@ -67,17 +67,15 @@
   "peerDependencies": {
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
-    "@tanstack/query-core": "^5.0.0"
+    "@tanstack/query-core": "^5.49.0"
   },
   "peerDependenciesMeta": {
     "@noble/curves": {
       "optional": true
-    },
-    "@tanstack/query-core": {
-      "optional": true
     }
   },
   "devDependencies": {
+    "@icp-sdk/auth": "^10.0.1",
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
     "@size-limit/preset-small-lib": "^13.0.3",

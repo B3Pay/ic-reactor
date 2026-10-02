@@ -8,6 +8,13 @@
  */
 export type { Network } from "./network.js"
 export {
+  createClient,
+  type AuthLike,
+  type AuthState,
+  type Client,
+  type ClientOptions,
+} from "./client.js"
+export {
   isReactorError,
   type ReactorError,
   type ReactorErrorKind,
