@@ -471,7 +471,8 @@ Agents could read the hidden tests by absolute path, so:
   `$HOME`) and resolved from the shell's cwd (which `cd` moves); `$TMPDIR`,
   `$TMP`, `$TEMP`, `$OLDPWD`, unknown variables in a path and path-building
   command substitutions (`$(pwd)/..`, `$(dirname $PWD)`, `$(printf …)`) are
-  flagged as unresolvable; network tools are flagged. Shell commands are
+  flagged as unresolvable; the WebFetch and WebSearch tools are flagged, and
+  so is network use from the shell (next item). Shell commands are
   lexed (quotes, operators, redirections, heredocs, here-strings) and each
   word judged by its position: a grep/rg/sed/awk/jq pattern, `node -e` /
   `python -c` program text and a heredoc fed to an interpreter are not paths
@@ -480,11 +481,37 @@ Agents could read the hidden tests by absolute path, so:
   `$(…)` are scanned as commands. Each violation is judged on its own: one
   whose call failed, or whose output reports a permission refusal naming it,
   is an **attempt**; one that succeeded makes the run **contaminated**.
-  `harness/leak-scan.test.mjs` (53 tests) covers each form, clean look-alikes
+  `harness/leak-scan.test.mjs` (84 tests) covers each form, clean look-alikes
   (the first pilot's two false positives among them), evasions, and blocked
   vs successful. `drive.mjs --aggregate <dir> --rescan` re-audits stored
   transcripts with the current scanner and writes `summary.rescanned.json`
   beside the original.
+- **Network from the shell** (in the transcript audit, the only line there).
+  The sandbox leaves the network open: the agent CLI runs inside it and needs
+  its API, and a profile cannot allow one host and deny the rest (`remote ip`
+  takes only `*` or `localhost`). So `node`, which sandboxed agents may run,
+  reaches any host (from inside the profile, `node -e` fetching a public URL
+  succeeds). The audit flags: a network command (curl, wget, nc, ssh, …,
+  also behind `env`, in `bash -c`, `xargs` or `$(…)`); a package manager or
+  git command that reaches a registry or remote (`npm view`, `pnpm add`,
+  `npx` of a package other than `tsc` and `vitest`, `pip install`,
+  `git clone`, …); a URL of a non-local host given to an interpreter; and
+  interpreter code that calls the network (`fetch(`, `http(s).get/request`,
+  `net`/`tls`, WebSocket, `urllib`, `requests`, …) towards a non-local host
+  or a host it does not name, or that runs a network command through
+  `child_process` / `subprocess`. Interpreter code is `node -e` or
+  `python -c`, a heredoc or pipe fed to an interpreter, and a script the run
+  wrote (Write, Edit, a heredoc or `echo` into a file) and then runs with
+  one. String literals are data: an edit script whose text holds `fetch(` or
+  a URL is not network use, nor is code that names only local hosts
+  (`localhost`, `127.*`, `[::1]`), nor source written to a file and not run.
+  Not followed, so not seen: a test file run by vitest that fetches a URL
+  (the public scaffold's fake replica answers IC API requests to any host,
+  so the agent's own tests name mainnet hosts without reaching them, but
+  other URLs pass through to the network), and a host reached through a
+  library (an `HttpAgent` built with a mainnet host). Added after the
+  pilots; re-auditing their 80 transcripts with it changes no record
+  (`PREREGISTRATION.md`, Addendum 3).
 - **Scoring after the batch.** The driver scores only after every agent run
   has ended, in `score.mjs`'s own 0700 directory.
 - **Aggregation.** Contaminated runs are excluded from the main result and kept
@@ -601,9 +628,10 @@ expiry); certified-query paths; the `not_delivered` retry path's _value_
   real developer could do. In tsc-only mode that asymmetry returns.
 - **Sandbox limits.** macOS only; Docker path absent. File metadata (names,
   existence) outside the run stays visible; network is open (the agent needs
-  its API). The profile has been tested with node, tsc and vitest, not yet
-  with the real agent CLI, which may need extra read-only paths
-  (`--sandbox-allow`).
+  its API), so network use from the shell is caught only by the transcript
+  audit, and not when a test file run by vitest fetches. The profile has
+  been tested with node, tsc and vitest, not yet with the real agent CLI,
+  which may need extra read-only paths (`--sandbox-allow`).
 - **Shipped vs scored packages.** Agents get a flat npm install; scoring uses
   the pnpm install. Direct dependencies are pinned to the same versions;
   transitive versions may differ.

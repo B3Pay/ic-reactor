@@ -266,9 +266,10 @@ addendum when it is frozen and into `results/README.md` with the results.
 **Fixed from the earlier addenda, unchanged.** The two tasks (`node-tool`,
 `react-wallet`), their hidden tests, the world, `task.json` (including
 `notApplicable.minimal`: `refuses_amount_past_nat64`), `score.mjs`,
-`harness/judge.mjs` and the leak audit as of Addendum 2. The prompts differ
-across conditions only in the `{{LIBRARY}}` line (`harness/assemble.test.mjs`
-checks it for every condition, `v4` included).
+`harness/judge.mjs`, and the leak audit as of Addendum 2 plus its network
+check (next paragraph), which leaves every path judgement as it was. The
+prompts differ across conditions only in the `{{LIBRARY}}` line
+(`harness/assemble.test.mjs` checks it for every condition, `v4` included).
 
 **Harness changes since Addendum 2.** The harness came to this branch
 unchanged from the one the pilots ran on (`spike/v4-thesis` at 2bc1c17f7).
@@ -282,6 +283,22 @@ world, `task.json`, `score.mjs` or `harness/judge.mjs`:
 - `drive.mjs` refuses to start a new batch in an `--out` directory that
   already holds files. It would have taken the runs recorded there for its
   own: an `agent.json` as run, a `score.json` as scored.
+- The leak audit flags network use from the shell, not only the WebFetch
+  and WebSearch tools. The sandbox leaves the network open (the agent CLI
+  inside it needs its API, and a profile cannot allow one host), and
+  sandboxed agents may run `node`, so `node -e "fetch(…)"` could read, for
+  example, the published ic-reactor 3 guide and still count in the main
+  analysis. It now flags network commands (curl, wget, …), package-manager
+  and git commands that reach a registry or remote, a non-local URL given
+  to an interpreter, and interpreter code (`node -e`, a heredoc or pipe
+  into `node`, a script the run wrote and then runs) that calls the network
+  towards a non-local host or one it does not name (`README.md`, "Leak
+  audit and sandbox"). Such a call that ran makes the run contaminated, as
+  an outside read does; one the CLI refused or that failed is an attempt.
+  A test file run by vitest that fetches is still not seen. Re-audited with
+  it, all 80 pilot transcripts keep their audit record exactly (no network
+  use found; 0 of 40 contaminated in each pilot, as reported in Addendum 1
+  and Addendum 2).
 
 **Design.**
 

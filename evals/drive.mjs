@@ -37,8 +37,9 @@
 //      timeout; the only host values passed are PATH and exactly one
 //      credential (harness/auth.mjs), which is how the agent authenticates;
 //   3. audits the transcript (harness/leak-scan.mjs, a second line behind the
-//      sandbox): a successful tool call reaching outside the run marks the run
-//      contaminated;
+//      sandbox, and the only one for the network, which the sandbox leaves
+//      open): a successful tool call reaching outside the run or using the
+//      network marks the run contaminated;
 //   4. records the agent's exit (normal / max_turns / timeout / error /
 //      no_result), turns, tokens and cost from the transcript, and copies
 //      work/ (minus node_modules) to the results directory.
