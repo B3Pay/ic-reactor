@@ -69,6 +69,7 @@ import {
   lookupResultToBuffer,
   pollForResponse,
   type HttpAgent,
+  type PollStrategy,
   type ReplicaRejectCode,
   type RequestId,
   type SubmitResponse,
@@ -167,7 +168,10 @@ export interface CallRequest {
   readonly values: readonly unknown[]
   /** Their encoding, when the builder already made it for the key. */
   readonly encoded?: EncodeResult
-  /** The signal of a query function. */
+  /**
+   * The signal of a query function. Once it aborts, the call is not sent, or
+   * stops polling for its answer, and rejects `cancelled`.
+   */
   readonly signal?: AbortSignal
   /**
    * Whether this call re-sends itself after a failure that allows it: `true`
@@ -499,8 +503,47 @@ function isTransientPollFailure(error: unknown): boolean {
 }
 
 /**
+ * `promise`, or a rejection with the signal's reason as soon as `signal`
+ * aborts, whichever comes first. What `promise` was waiting for goes on, but
+ * nobody waits for it.
+ */
+function untilAborted<T>(
+  promise: Promise<T>,
+  signal: AbortSignal | undefined
+): Promise<T> {
+  if (signal === undefined) return promise
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(abortReason(signal))
+    if (signal.aborted) {
+      abort()
+      return
+    }
+    signal.addEventListener("abort", abort, { once: true })
+    promise.then(
+      (value) => {
+        signal.removeEventListener("abort", abort)
+        resolve(value)
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", abort)
+        reject(error)
+      }
+    )
+  })
+}
+
+/** What an aborted signal is thrown as. The classifier reads the signal, so any value does. */
+const abortReason = (signal: AbortSignal): unknown =>
+  signal.reason ?? new Error("the call was cancelled")
+
+/**
  * Polls `read_state` for the request's reply, asking again after a transient
  * failure, at most {@link REPOLL_DELAYS_MS} times.
+ *
+ * It stops, and rejects, as soon as `signal` aborts: before each poll and
+ * during every wait between two. A read whose observer went away (TanStack
+ * aborts the signal it gave the query function) would otherwise keep asking
+ * for up to the strategy's five minutes, for an answer nobody reads.
  */
 async function poll(
   agent: HttpAgent,
@@ -509,8 +552,11 @@ async function poll(
   signal: AbortSignal | undefined
 ): Promise<Uint8Array> {
   // One strategy for every poll, so its five-minute bound covers them all.
-  const strategy = defaultStrategy()
+  const waits = defaultStrategy()
+  const strategy: PollStrategy = (...args) =>
+    untilAborted(waits(...args), signal)
   for (let failures = 0; ; failures += 1) {
+    if (signal?.aborted === true) throw abortReason(signal)
     try {
       const { reply } = await pollForResponse(
         agent,
@@ -522,12 +568,12 @@ async function poll(
     } catch (error) {
       if (
         failures >= REPOLL_DELAYS_MS.length ||
-        signal?.aborted === true ||
         !isTransientPollFailure(error)
       ) {
         throw error
       }
-      await sleep(REPOLL_DELAYS_MS[failures])
+      // An abort ends the wait at once, and the check above ends the loop.
+      await untilAborted(sleep(REPOLL_DELAYS_MS[failures]), signal)
     }
   }
 }

@@ -100,6 +100,16 @@
     "replace": "  if (status === undefined) throw new Error(\"no status for the request\")"
   },
   {
+    "id": "ir2t-cancelled-read-keeps-polling",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "stops polling for a read once its signal aborts",
+    "why": "the wait between two polls ignores the read's signal, so a read whose observer went away keeps polling read_state for up to five minutes",
+    "file": "src/call.ts",
+    "search": "    untilAborted(waits(...args), signal)",
+    "replace": "    waits(...args)"
+  },
+  {
     "id": "ir2t-unresolved-name-sent",
     "package": "core",
     "test": "tests/canister.test.ts",
