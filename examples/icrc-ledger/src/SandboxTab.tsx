@@ -38,16 +38,8 @@ function nameOf(text: string): string {
   return shortPrincipal(text)
 }
 
-/**
- * The sandbox each client belongs to, so that the page finds the rest of its
- * sandbox (the auth, the faults, the request log) from the provider's client.
- *
- * Kept by client because the provider keeps one client of the ones its
- * factory made: `StrictMode` calls the factory twice and keeps one result, so
- * a sandbox remembered anywhere else (a ref the factory writes) can be the one
- * React threw away, while the provider runs on the other.
- */
-const sandboxes = new WeakMap<Client, Sandbox>()
+/** Which sandbox each client the tab's factory made belongs to. */
+type Sandboxes = WeakMap<Client, Sandbox>
 
 /**
  * The Sandbox tab: a test client running in this page.
@@ -59,6 +51,12 @@ const sandboxes = new WeakMap<Client, Sandbox>()
  * unmount, hot reload or render that `StrictMode` drops would leave one alive.
  * A sandbox passed in is borrowed that way on purpose, and stays the caller's
  * to dispose.
+ *
+ * A provider that rebuilds its client calls the same factory, so it starts a
+ * new sandbox: a fresh ledger (10 and 2.5 ICP again) and an empty request log.
+ * It does that when a hidden `Activity` around it is shown again after its
+ * client was disposed. This app hides a tab with `hidden` instead, which keeps
+ * the sandbox.
  */
 export default function SandboxTab(props: {
   /** How long the mocked ledger takes over a read or a transfer. */
@@ -70,6 +68,16 @@ export default function SandboxTab(props: {
   sandbox?: Sandbox
 }) {
   const { sandbox: given, latencyMs = 400 } = props
+  // The view finds the rest of its sandbox (the auth, the faults, the request
+  // log) from the provider's client, through this map. Keyed by client
+  // because `StrictMode` calls the factory twice and the provider keeps one
+  // result: a sandbox the factory wrote anywhere else, such as a ref, can be
+  // the one React threw away. And held in this component's state, not at
+  // module scope, so that it lives as long as the provider below it: a hot
+  // reload of this file runs the module again but keeps the state of both,
+  // and a module's map would come back empty while the provider kept its
+  // client.
+  const [sandboxes] = useState<Sandboxes>(() => new WeakMap())
   return (
     <ReactorProvider
       client={() => {
@@ -80,16 +88,18 @@ export default function SandboxTab(props: {
         return sandbox.client
       }}
     >
-      <SandboxView />
+      <SandboxView sandboxes={sandboxes} />
     </ReactorProvider>
   )
 }
 
-function SandboxView() {
+function SandboxView({ sandboxes }: { sandboxes: Sandboxes }) {
   const client = useClient()
   const sandbox = sandboxes.get(client)
   if (sandbox === undefined) {
-    throw new Error("SandboxView renders under SandboxTab's provider only.")
+    // The provider's client always comes from the factory above, which
+    // records each one it makes in this same map.
+    throw new Error("The Sandbox tab's client has no sandbox.")
   }
   return (
     <>
