@@ -66,8 +66,9 @@ jobs:
       # The public surface is the plan in scripts/export-budget.mjs and no
       # more: it reads the declarations just built and fails on a name the
       # plan does not list, on more names than an entry's cap, on a name two
-      # entries export, and on a name @candid-core/schema or TanStack Query
-      # already exports (D35: one import path per name).
+      # entries export, on a name @candid-core/schema or TanStack Query
+      # already exports (D35: one import path per name), and on an `exports`
+      # subpath or a publishable package the plan has no entry for.
       - name: Export budget
         run: pnpm check:exports
 
