@@ -805,3 +805,81 @@ describe("the conditions of one entry", () => {
     })
   })
 })
+
+describe("the version of the schema that packages declare", () => {
+  const schema = {
+    "node_modules/@candid-core/schema/package.json": JSON.stringify({
+      name: "@candid-core/schema",
+      version: "9.0.0",
+      exports: { ".": { types: "./schema.d.ts" } },
+    }),
+    "node_modules/@candid-core/schema/schema.d.ts": `export type Principal = string\n`,
+  }
+  const budget = {
+    entries: [],
+    foreign: [
+      {
+        package: "@candid-core/schema",
+        from: ".",
+        pin: "9.0.0",
+        subpaths: ["."],
+      },
+    ],
+  }
+  const check = (manifests) => {
+    const files = { ...schema }
+    for (const [path, fields] of Object.entries(manifests)) {
+      files[path] = manifest("some-package", fields)
+    }
+    return collect({ rootDir: makeRepo(files), budget }).failures
+  }
+
+  it("passes when every manifest declares the pinned version", () => {
+    assert.deepEqual(
+      check({
+        "package.json": { devDependencies: { "@candid-core/schema": "9.0.0" } },
+        "packages/core/package.json": {
+          dependencies: { "@candid-core/schema": "9.0.0" },
+        },
+      }),
+      []
+    )
+  })
+
+  it("fails when a package declares another version than the root installs", () => {
+    // The install the check reads is the root's, which is still at the pin:
+    // without this check core could move on and nothing would notice.
+    const failures = check({
+      "package.json": { devDependencies: { "@candid-core/schema": "9.0.0" } },
+      "packages/core/package.json": {
+        dependencies: { "@candid-core/schema": "9.0.1" },
+      },
+    })
+    assert.equal(failures.length, 1, failures.join("\n"))
+    assert.match(
+      failures[0],
+      /packages\/core\/package\.json declares @candid-core\/schema "9\.0\.1" in dependencies, but the export budget is written against exactly 9\.0\.0/
+    )
+  })
+
+  it("fails on a range, in any dependency field of any package", () => {
+    const failures = check({
+      "packages/react/package.json": {
+        peerDependencies: { "@candid-core/schema": "^9.0.0" },
+      },
+    })
+    assert.equal(failures.length, 1, failures.join("\n"))
+    assert.match(
+      failures[0],
+      /packages\/react\/package\.json declares @candid-core\/schema "\^9\.0\.0" in peerDependencies/
+    )
+  })
+
+  it("is satisfied by the real manifests", () => {
+    const { failures } = collect({
+      rootDir: repoRoot,
+      budget: { entries: [], foreign: EXPORT_BUDGET.foreign },
+    })
+    assert.deepEqual(failures, [])
+  })
+})

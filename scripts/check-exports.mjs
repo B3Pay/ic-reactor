@@ -21,7 +21,8 @@
  * - a name is also exported by `@candid-core/schema` (any of its four entries)
  *   or by TanStack Query (D35: `principal`, `skipToken` and `queryOptions` have
  *   one import path each, and it is never ours);
- * - the installed `@candid-core/schema` is not the pinned version, since its
+ * - the installed `@candid-core/schema` is not the pinned version, or any
+ *   manifest of the repository declares it at another version, since its
  *   export list is the reference;
  * - a planned name is not exported, once the version is a beta (while it is an
  *   `-alpha.` prerelease it is reported as pending: the slices that add the
@@ -426,6 +427,23 @@ export function collect({ rootDir, budget = EXPORT_BUDGET }) {
           `Update \`pin\` in scripts/export-budget.mjs together with the dependency, after reading the new export list.`
       )
     }
+    if (source.pin !== undefined) {
+      // The list a name is checked against is the one the packages install,
+      // and the install read above is the root's. A package that declares
+      // another version would install another list.
+      for (const { manifestPath, field, range } of declaredVersions(
+        rootDir,
+        source.package,
+        budget.packagesDir
+      )) {
+        if (range !== source.pin) {
+          failures.push(
+            `${manifestPath} declares ${source.package} "${range}" in ${field}, but the export budget is written against exactly ${source.pin}. ` +
+              `The schema is pinned exactly (D24): declare ${source.pin}, or update \`pin\` in scripts/export-budget.mjs with every declaration, after reading the new export list.`
+          )
+        }
+      }
+    }
     for (const subpath of source.subpaths) {
       const file = typesFileOf(installed, subpath)
       const where =
@@ -476,6 +494,14 @@ export function collect({ rootDir, budget = EXPORT_BUDGET }) {
 /** The directory the publishable packages live in, below the repository root. */
 const PACKAGES_DIR = "packages"
 
+/** The manifest fields that declare a dependency. */
+const DEPENDENCY_FIELDS = [
+  "dependencies",
+  "devDependencies",
+  "peerDependencies",
+  "optionalDependencies",
+]
+
 /** The package directories (`packages/<name>`) that hold a manifest. */
 function packageDirsOf(rootDir, packagesDir = PACKAGES_DIR) {
   const base = join(rootDir, packagesDir)
@@ -488,6 +514,28 @@ function packageDirsOf(rootDir, packagesDir = PACKAGES_DIR) {
     )
     .map((dirent) => `${packagesDir}/${dirent.name}`)
     .sort()
+}
+
+/**
+ * Every place a manifest of the repository (the root's and each package's)
+ * declares a dependency on `name`.
+ */
+function declaredVersions(rootDir, name, packagesDir) {
+  const found = []
+  const manifests = [
+    "package.json",
+    ...packageDirsOf(rootDir, packagesDir).map((dir) => `${dir}/package.json`),
+  ]
+  for (const manifestPath of manifests) {
+    const path = join(rootDir, manifestPath)
+    if (!existsSync(path)) continue
+    const manifest = readJson(path)
+    for (const field of DEPENDENCY_FIELDS) {
+      const range = manifest[field]?.[name]
+      if (range !== undefined) found.push({ manifestPath, field, range })
+    }
+  }
+  return found
 }
 
 /**

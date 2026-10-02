@@ -115,8 +115,14 @@ export const ENTRIES = [
  *
  * `pin` is the exact version whose export list is the reference. The schema
  * is 0.x and pinned exactly through GA (D24), so the list a name is checked
- * against is the one core installs; a different version installed fails the
+ * against is the one core installs; a different version installed, or declared
+ * by any manifest of the repository (the root's and each package's), fails the
  * check instead of quietly comparing against another list.
+ *
+ * TODO(IR2t, #782): IR2t adds `@candid-core/schema` to `packages/core`. The
+ * declaration check already covers it, but the list is still read from the
+ * root's install; switch `from` to "packages/core" then, so the reference is
+ * literally the copy core resolves.
  */
 export const FOREIGN = [
   {
