@@ -3,7 +3,7 @@
 > The React bindings of ic-reactor 4: `ReactorProvider`, `useClient` and
 > `useAuth`. Their guide is the one `@ic-reactor/core` ships.
 
-Applies to `@ic-reactor/react` 4.0.0-alpha.0.
+Applies to `@ic-reactor/react` 4.0.0-beta.1.
 
 Read `node_modules/@ic-reactor/core/llms.txt`. It is the one guide for both
 packages: setup, the provider and `useAuth`, reads, writes, errors, values,

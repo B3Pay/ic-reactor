@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/react",
-  "version": "4.0.0-alpha.0",
+  "version": "4.0.0-beta.1",
   "description": "ic-reactor 4 React bindings: a provider that owns one client per tree, useClient and useAuth",
   "main": "dist/index.js",
   "module": "dist/index.js",
