@@ -725,6 +725,48 @@ describe("the conditions of one entry", () => {
     )
   })
 
+  it("fails on a JavaScript-only condition placed before `types` that declares more", () => {
+    // A bundler or `customConditions` project that sets `development` loads
+    // dist/dev.js, and TypeScript types that import from dist/dev.d.ts.
+    const files = plugin({
+      "packages/plugin/dist/dev.d.ts": `export declare const icReactor: () => void\nexport interface Options { a: string }\nexport declare const leak: () => void\n`,
+    })
+    // `types` is a sibling of `development` here, as in a flat map: an object
+    // that names `types` is no reason to skip the conditions ahead of it.
+    files["packages/plugin/package.json"] = manifest("@ic-reactor/plugin", {
+      exports: {
+        ".": {
+          development: "./dist/dev.js",
+          types: "./dist/index.d.ts",
+          import: "./dist/index.js",
+          default: "./dist/index.js",
+        },
+      },
+    })
+    const result = check(files)
+    assert.equal(result.failures.length, 1, result.failures.join("\n"))
+    assert.match(
+      result.failures[0],
+      /the "development" condition \(packages\/plugin\/dist\/dev\.d\.ts\).*only there: leak/
+    )
+  })
+
+  it("passes a JavaScript-only condition before `types` that declares the same names", () => {
+    const files = plugin({
+      "packages/plugin/dist/dev.d.ts": `export declare const icReactor: () => void\nexport interface Options { a: string }\n`,
+    })
+    files["packages/plugin/package.json"] = manifest("@ic-reactor/plugin", {
+      exports: {
+        ".": {
+          development: "./dist/dev.js",
+          types: "./dist/index.d.ts",
+          import: "./dist/index.js",
+        },
+      },
+    })
+    assert.deepEqual(check(files).failures, [])
+  })
+
   it("is part of the gate, together with the unbudgeted subpaths", () => {
     const files = plugin({
       "packages/plugin/dist/index.d.cts": `export declare const icReactor: () => void\nexport declare const leak: () => void\n`,
@@ -778,7 +820,7 @@ describe("the conditions of one entry", () => {
       )
     })
 
-    it("reads the declaration beside a JavaScript target that names no `types`", () => {
+    it("reads the declaration beside a JavaScript target that no `types` precedes", () => {
       assert.deepEqual(
         filesOf(
           { ".": { import: "./dist/index.js", require: "./dist/index.cjs" } },
@@ -794,11 +836,93 @@ describe("the conditions of one entry", () => {
       )
     })
 
-    it("reads no sibling where `types` is named, as TypeScript never gets past it", () => {
+    it("reads no sibling past a `types` that comes first, as TypeScript never gets past it", () => {
       assert.deepEqual(
         filesOf(
           { ".": { types: "./dist/types.d.ts", import: "./dist/index.js" } },
           { "packages/p/dist/index.d.ts": "export {}\n" }
+        ),
+        [["dist/types.d.ts", "types"]]
+      )
+    })
+
+    it("reads no sibling inside an object that comes after `types`", () => {
+      assert.deepEqual(
+        filesOf(
+          {
+            ".": {
+              types: "./dist/types.d.ts",
+              node: { import: "./dist/index.js" },
+            },
+          },
+          { "packages/p/dist/index.d.ts": "export {}\n" }
+        ),
+        [["dist/types.d.ts", "types"]]
+      )
+    })
+
+    // Conditions are tried in key order, so a JavaScript-only condition ahead
+    // of `types` wins for a project that sets it (`customConditions`, or a
+    // bundler's `development` and `react-server`), and loads that file.
+    it("reads the sibling of a JavaScript condition placed before `types`", () => {
+      assert.deepEqual(
+        filesOf(
+          {
+            ".": {
+              development: "./dist/dev.js",
+              types: "./dist/types.d.ts",
+              import: "./dist/index.js",
+            },
+          },
+          {
+            "packages/p/dist/dev.d.ts": "export {}\n",
+            "packages/p/dist/index.d.ts": "export {}\n",
+          }
+        ),
+        [
+          ["dist/dev.d.ts", "development"],
+          ["dist/types.d.ts", "types"],
+        ]
+      )
+    })
+
+    it("reads the sibling of a JavaScript condition before `types` in a nested object", () => {
+      assert.deepEqual(
+        filesOf(
+          {
+            ".": {
+              import: {
+                "react-server": "./dist/server.js",
+                types: "./dist/types.d.ts",
+                default: "./dist/index.js",
+              },
+            },
+          },
+          {
+            "packages/p/dist/server.d.ts": "export {}\n",
+            "packages/p/dist/index.d.ts": "export {}\n",
+          }
+        ),
+        [
+          ["dist/server.d.ts", "import.react-server"],
+          ["dist/types.d.ts", "import.types"],
+        ]
+      )
+    })
+
+    it("keeps the sibling out when `types` comes first and a JavaScript condition after it", () => {
+      // The v3 shape of `@ic-reactor/react`: `types` first, then the
+      // `react-server` build, whose declaration TypeScript never reads.
+      assert.deepEqual(
+        filesOf(
+          {
+            ".": {
+              types: "./dist/types.d.ts",
+              "react-server": "./dist/server.js",
+              import: "./dist/index.js",
+            },
+          },
+          { "packages/p/dist/server.d.ts": "export {}\n" }
         ),
         [["dist/types.d.ts", "types"]]
       )

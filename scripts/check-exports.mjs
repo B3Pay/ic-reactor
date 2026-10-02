@@ -109,9 +109,17 @@ export function typesFileOf(packageDir, subpath) {
 /**
  * Every declaration file `subpath` can resolve to, through any condition of
  * its `exports` target: `import` and `require` branches, and the `.d.ts`
- * TypeScript finds beside a JavaScript target that names no `types`. A package
- * can declare different names for the two module systems, and
+ * TypeScript finds beside a JavaScript target that no `types` key precedes. A
+ * package can declare different names for the two module systems, and
  * `typesFileOf` reads only one of them.
+ *
+ * TypeScript tries the conditions of an object in key order and takes the
+ * first that resolves, so a JavaScript target is read for its sibling unless a
+ * `types` key came earlier in the same object or in an object around it. A
+ * condition placed before `types` (`development`, `react-server`, or one a
+ * project names in `customConditions`) still wins for a consumer that sets it,
+ * so its sibling is part of the surface; a condition after `types` is never
+ * reached.
  *
  * @returns {{ file: string, via: string }[]} `via` is the condition path that
  *   leads to the file, such as `require.types`.
@@ -141,9 +149,12 @@ export function declarationFilesOf(packageDir, subpath) {
       return
     }
     if (node === null || typeof node !== "object") return
-    const declared = typed || "types" in node
+    // `types` closes the siblings after it, and whatever they contain, not the
+    // ones before it: those are tried first.
+    let declared = typed
     for (const [condition, value] of Object.entries(node)) {
       walk(value, [...via, condition], declared)
+      if (condition === "types") declared = true
     }
   }
   if (map === undefined) {
