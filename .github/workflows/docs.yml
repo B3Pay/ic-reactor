@@ -99,7 +99,7 @@ jobs:
             shopt -s dotglob
             for item in final-docs/*; do
               case "$(basename "$item")" in
-                v2|v3|llms.txt|llms-full.txt|CNAME|.nojekyll) continue;;
+                v2|v3|v4|llms.txt|llms-full.txt|CNAME|.nojekyll) continue;;
               esac
               mv "$item" final-docs/v2/
             done
@@ -111,8 +111,10 @@ jobs:
           mkdir -p final-docs/v3
           cp -r docs/dist/* final-docs/v3/
 
-          # v4 is not released. Remove any stale preview documentation.
-          rm -rf final-docs/v4
+          # /v4/ is the in-development line's preview, published by the v4
+          # branch's copy of this workflow. A deploy from main keeps whatever
+          # that branch last published; removing it here would drop the preview
+          # until the next v4 deploy.
 
           # Keep canonical llms files available at the site root.
           cp llms.txt final-docs/llms.txt
@@ -123,8 +125,15 @@ jobs:
           const fs = require("node:fs")
           const path = require("node:path")
 
+          // Offer v4 only while the v4 branch has a preview published, so the
+          // selector never points at a path this deploy does not carry.
+          const v4Option = fs.existsSync("final-docs/v4")
+            ? `<option value="v4">v4 (in development)</option>
+                  `
+            : ""
+
           const selectorHtml = `<select id="version-select" onchange="handleVersionChange(event)" aria-label="Select version">
-                  <option value="v3">v3</option>
+                  ${v4Option}<option value="v3">v3</option>
                   <option value="v2">v2</option>
                 </select>`
 
@@ -132,14 +141,14 @@ jobs:
                 (function () {
                   var select = document.getElementById("version-select");
                   if (!select) return;
-                  var match = window.location.pathname.match(/^\\/(v2|v3)(\\/|$)/);
+                  var match = window.location.pathname.match(/^\\/(v2|v3|v4)(\\/|$)/);
                   var currentVersion = match ? match[1] : "v3";
                   select.value = currentVersion;
                   select.addEventListener("change", function (event) {
                     var version = event.target.value;
                     var path = window.location.pathname || "/";
-                    var nextPath = /^\\/v[23](\\/|$)/.test(path)
-                      ? path.replace(/^\\/v[23](?=\\/|$)/, "/" + version)
+                    var nextPath = /^\\/v[234](\\/|$)/.test(path)
+                      ? path.replace(/^\\/v[234](?=\\/|$)/, "/" + version)
                       : "/" + version + "/";
                     window.location.href = nextPath + window.location.search + window.location.hash;
                   });
@@ -235,6 +244,10 @@ jobs:
                     window.location.replace("/v3/");
                     return;
                   }
+                  if (path.startsWith("/v4")) {
+                    window.location.replace("__V4_MISS_TARGET__");
+                    return;
+                  }
                   window.location.replace("/v3" + path);
                 })();
               </script>
@@ -244,6 +257,20 @@ jobs:
             </body>
           </html>
           EOF
+
+          # A /v4... miss goes to the preview's root only while this deploy
+          # carries one. Without it, /v4/ is itself a miss served by this page,
+          # and redirecting there would reload forever; send it to /v3/.
+          if [ -d "final-docs/v4" ]; then
+            v4_miss_target="/v4/"
+          else
+            v4_miss_target="/v3/"
+          fi
+          sed -i "s#__V4_MISS_TARGET__#${v4_miss_target}#" final-docs/404.html
+          if grep -q "__V4_MISS_TARGET__" final-docs/404.html; then
+            echo "::error::the 404 page still carries its placeholder."
+            exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
