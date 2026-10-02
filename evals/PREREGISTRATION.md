@@ -302,6 +302,12 @@ world, `task.json`, `score.mjs` or `harness/judge.mjs`:
   it, all 80 pilot transcripts keep their audit record exactly (no network
   use found; 0 of 40 contaminated in each pilot, as reported in Addendum 1
   and Addendum 2).
+- `gate.mjs --root <dir>` reads the solutions from another tree's
+  `tasks/`, for the harness's own test that `--require` fails the gate
+  before scoring anything when a required cell is empty
+  (`harness/gate-plan.test.mjs` runs the gate on a seeded tree; with the
+  `v4` references in this tree, that path could no longer be run here). The
+  gate this addendum runs takes no `--root`.
 - The `v4` cells of the gate are filled: a `reference` and a
   `reference-module-scope` for each task, written against the packed
   packages, and the six v4-proto faulty solutions ported to them

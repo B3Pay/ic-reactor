@@ -4,13 +4,7 @@
 //   node --test harness/gate-plan.test.mjs
 import { strict as assert } from "node:assert"
 import { spawn } from "node:child_process"
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, beforeEach, describe, it } from "node:test"
@@ -181,22 +175,38 @@ describe("gate.mjs", () => {
         resolve({ status, stdout, stderr })
       })
     })
-  const v4Ported = existsSync(join(EVALS, "tasks", TASK, "solutions", "v4"))
+
+  /**
+   * A tree in which every pre-registered cell of node-tool has its two
+   * references (empty directories: the gate must not get as far as scoring
+   * them) and the v4 cell has none, as before the v4 port.
+   */
+  const root = mkdtempSync(join(tmpdir(), "ic-reactor-evals-gate-run-"))
+  for (const condition of DEFAULT_CONDITIONS) {
+    for (const name of ["reference", "reference-module-scope"]) {
+      mkdirSync(join(root, "tasks", TASK, "solutions", condition, name), {
+        recursive: true,
+      })
+    }
+  }
+  after(() => rmSync(root, { recursive: true, force: true }))
 
   it("exits 2 on a --require that names no condition", async () => {
     const r = await gate("--require", "v5")
     assert.equal(r.status, 2)
     assert.match(r.stderr, /not a condition/)
   })
-  it(
-    "fails before scoring anything when a required cell is empty",
-    { skip: v4Ported && "the v4 references exist" },
-    async () => {
-      const r = await gate("--task", TASK, "--require", "v4")
-      assert.equal(r.status, 1, r.stdout + r.stderr)
-      assert.match(r.stdout, /^FAIL node-tool\/v4: .*required by --require$/m)
-      assert.match(r.stdout, /gate: failed before scoring/)
-      assert.doesNotMatch(r.stdout, /^ok {2}/m)
-    }
-  )
+  it("exits 2 on a --root with no tasks directory", async () => {
+    const r = await gate("--root", join(root, "tasks", TASK))
+    assert.equal(r.status, 2)
+    assert.match(r.stderr, /has no tasks\/ directory/)
+  })
+  it("fails before scoring anything when a required cell is empty", async () => {
+    const r = await gate("--root", root, "--task", TASK, "--require", "v4")
+    assert.equal(r.status, 1, r.stdout + r.stderr)
+    assert.match(r.stdout, /^FAIL node-tool\/v4: .*required by --require$/m)
+    assert.match(r.stdout, /gate: failed before scoring/)
+    assert.doesNotMatch(r.stdout, /^(ok {2}|FAIL) node-tool\/[\w-]+\/[\w-]+: /m)
+    assert.doesNotMatch(r.stdout, /solutions behaved as expected/)
+  })
 })
