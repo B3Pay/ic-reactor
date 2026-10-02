@@ -90,6 +90,16 @@
     "replace": "export const REPOLL_DELAYS_MS: readonly number[] = []"
   },
   {
+    "id": "ir2t-status-less-certificate-fails-update",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "polls for an update whose synchronous answer holds no status for it",
+    "why": "a synchronous answer whose certificate holds no status for the request fails the update instead of polling for it: the v3 fix (icp-js-core#1330) DECISIONS Q8 keeps a regression test for",
+    "file": "src/call.ts",
+    "search": "  if (status === undefined) return undefined",
+    "replace": "  if (status === undefined) throw new Error(\"no status for the request\")"
+  },
+  {
     "id": "ir2t-unresolved-name-sent",
     "package": "core",
     "test": "tests/canister.test.ts",

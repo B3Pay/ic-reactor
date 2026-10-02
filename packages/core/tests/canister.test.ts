@@ -10,7 +10,8 @@ import { encodeArgs } from "@candid-core/schema/codec"
 import { AnonymousIdentity, Cbor } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { isReactorError } from "../src/index.js"
-import { createTestAuth } from "../src/testing/index.js"
+import { toHex } from "../src/keys.js"
+import { createTestAuth, type FakeReplica } from "../src/testing/index.js"
 import {
   ANONYMOUS,
   FEE,
@@ -492,82 +493,230 @@ describe("what is sent again", () => {
   })
 })
 
-describe("an update the replica answers later", () => {
-  const STATUS = new TextEncoder().encode("request_status")
-  const same = (a: Uint8Array, b: Uint8Array) =>
-    a.length === b.length && a.every((byte, i) => byte === b[i])
+// ---------------------------------------------------------------------------
+// Answers a replica gives that the fake does not: a 202, a certificate without
+// the request's status, an uncertified reject of the call itself, a failed
+// poll. Each wraps the fake's `fetch`; the fake still runs (or never sees) the
+// call, so its log says what executed.
+// ---------------------------------------------------------------------------
 
-  /**
-   * Wraps the replica's `fetch` so that a call is answered 202 (accepted, the
-   * answer to be polled for), and the first `failures` polls of its status
-   * fail as a lost connection before the certificate the replica made is
-   * handed out.
-   */
-  function answerLater(
-    fetch: typeof globalThis.fetch,
-    failures: number
-  ): { fetch: typeof globalThis.fetch; polls: () => number } {
-    let certificate: Uint8Array | undefined
-    let polls = 0
-    const wrapped = async (
-      input: RequestInfo | URL,
-      init?: RequestInit
-    ): Promise<Response> => {
-      const url = String(input instanceof Request ? input.url : input)
-      if (url.endsWith("/call")) {
-        const response = await fetch(input, init)
-        const body = Cbor.decode(new Uint8Array(await response.arrayBuffer()))
-        certificate = (body as { certificate: Uint8Array }).certificate
-        return new Response(null, { status: 202 })
-      }
-      if (url.endsWith("/read_state") && certificate !== undefined) {
-        const envelope = Cbor.decode(
-          new Uint8Array(
-            await new Response(init?.body as BodyInit).arrayBuffer()
-          )
-        ) as { content: { paths: Uint8Array[][] } }
-        if (envelope.content.paths.some(([label]) => same(label, STATUS))) {
-          polls += 1
-          if (polls <= failures) {
+const STATUS = new TextEncoder().encode("request_status")
+const same = (a: Uint8Array, b: Uint8Array) =>
+  a.length === b.length && a.every((byte, i) => byte === b[i])
+const urlOf = (input: RequestInfo | URL) =>
+  String(input instanceof Request ? input.url : input)
+const cborOf = async (body: BodyInit | null | undefined): Promise<unknown> =>
+  Cbor.decode(new Uint8Array(await new Response(body).arrayBuffer()))
+const cborResponse = (body: unknown) =>
+  new Response(Cbor.encode(body) as BodyInit, {
+    status: 200,
+    headers: { "content-type": "application/cbor" },
+  })
+
+/** The request ids, as hex, whose status a `read_state` request asks for. */
+async function statusesAskedFor(init?: RequestInit): Promise<string[]> {
+  const envelope = (await cborOf(init?.body)) as {
+    content: { paths: Uint8Array[][] }
+  }
+  return envelope.content.paths
+    .filter(([label]) => same(label, STATUS))
+    .map(([, id]) => toHex(id))
+}
+
+/**
+ * A certificate the replica signed for another call: it verifies, and it holds
+ * no status for any request made after it.
+ */
+async function certificateOfAnotherCall(
+  replica: FakeReplica
+): Promise<Uint8Array> {
+  let certificate: Uint8Array | undefined
+  const spy = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const response = await replica.fetch(input, init)
+    if (urlOf(input).endsWith("/call")) {
+      const body = await cborOf(await response.clone().arrayBuffer())
+      certificate = (body as { certificate: Uint8Array }).certificate
+    }
+    return response
+  }
+  await clientAs({ ...replica, fetch: spy }, alice)
+    .canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    .note("earlier")
+  if (certificate === undefined) throw new Error("the replica answered no call")
+  return certificate
+}
+
+/**
+ * Wraps the replica's `fetch` so that a call is run but answered the way a
+ * busy replica can answer it: by default 202 (accepted, the answer to be
+ * polled for), or with `answer`, a certificate in the synchronous answer's
+ * place. The certificate the replica made is handed out only to a poll of
+ * the request's status, once the first `failures` polls have failed with
+ * `failWith` (a lost connection, or an HTTP status). With `pending`, every
+ * poll is answered with that certificate instead, so the call never settles.
+ */
+function answerLater(
+  fetch: typeof globalThis.fetch,
+  {
+    answer,
+    failures = 0,
+    failWith = "connection",
+    pending,
+  }: {
+    answer?: Uint8Array
+    failures?: number
+    failWith?: "connection" | number
+    pending?: Uint8Array
+  } = {}
+): {
+  fetch: typeof globalThis.fetch
+  /** How many times the request's status was asked for. */
+  polls: () => number
+  /** The request id each poll asked about, as hex. */
+  polled: () => string[]
+} {
+  let certificate: Uint8Array | undefined
+  const polled: string[] = []
+  const wrapped = async (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): Promise<Response> => {
+    const url = urlOf(input)
+    if (url.endsWith("/call")) {
+      const response = await fetch(input, init)
+      const body = await cborOf(await response.arrayBuffer())
+      certificate = (body as { certificate: Uint8Array }).certificate
+      return answer === undefined
+        ? new Response(null, { status: 202 })
+        : cborResponse({ status: "replied", certificate: answer })
+    }
+    if (url.endsWith("/read_state") && certificate !== undefined) {
+      const asked = await statusesAskedFor(init)
+      if (asked.length > 0) {
+        polled.push(...asked)
+        if (pending !== undefined) return cborResponse({ certificate: pending })
+        if (polled.length <= failures) {
+          if (failWith === "connection") {
             throw new TypeError("the connection was lost")
           }
-          return new Response(Cbor.encode({ certificate }) as BodyInit, {
-            status: 200,
-            headers: { "content-type": "application/cbor" },
-          })
+          return new Response("busy", { status: failWith })
         }
+        return cborResponse({ certificate })
       }
-      return fetch(input, init)
     }
-    return { fetch: wrapped, polls: () => polls }
+    return fetch(input, init)
   }
+  return {
+    fetch: wrapped,
+    polls: () => polled.length,
+    polled: () => [...polled],
+  }
+}
+
+/**
+ * Wraps the replica's `fetch` so that its first calls are refused the way a
+ * replica refuses a call before it runs (a canister's `inspect_message`
+ * saying no, or a full queue): HTTP 200 and an uncertified reject body, one
+ * call per code in `codes`. The replica never sees those; later calls reach it.
+ */
+function refuseCalls(
+  fetch: typeof globalThis.fetch,
+  codes: readonly number[]
+): { fetch: typeof globalThis.fetch; calls: () => number } {
+  let calls = 0
+  const wrapped = async (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): Promise<Response> => {
+    if (!urlOf(input).endsWith("/call")) return fetch(input, init)
+    calls += 1
+    const code = codes[calls - 1]
+    if (code === undefined) return fetch(input, init)
+    return cborResponse({
+      status: "non_replicated_rejection",
+      reject_code: code,
+      reject_message: `refused with code ${code} before it ran`,
+    })
+  }
+  return { fetch: wrapped, calls: () => calls }
+}
+
+describe("an update the replica answers later", () => {
+  /** A client on `replica` whose requests go through `fetch`, calling the shapes canister. */
+  const shapesThrough = (
+    replica: FakeReplica,
+    fetch: typeof globalThis.fetch
+  ) =>
+    clientAs({ ...replica, fetch }, alice).canister<shapes.Actor>(
+      shapes.actor,
+      { id: SHAPES }
+    )
 
   it("polls the same request again after a lost poll, and resolves with the reply", async () => {
     const replica = replicaWith({ [SHAPES]: shapesCanister() })
-    const later = answerLater(replica.fetch, 1)
-    const canister = clientAs(
-      { ...replica, fetch: later.fetch },
-      alice
-    ).canister<shapes.Actor>(shapes.actor, { id: SHAPES })
-    await expect(canister.bump(4n)).resolves.toBe(5n)
+    const later = answerLater(replica.fetch, { failures: 1 })
+    await expect(shapesThrough(replica, later.fetch).bump(4n)).resolves.toBe(5n)
     expect(later.polls()).toBe(2)
+    expect(requestsFor(replica, "bump")).toHaveLength(1)
+  })
+
+  it("polls the same request again after a poll answered HTTP 503, and resolves with the reply", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const later = answerLater(replica.fetch, { failures: 1, failWith: 503 })
+    await expect(shapesThrough(replica, later.fetch).bump(4n)).resolves.toBe(5n)
+    const polled = later.polled()
+    expect(polled).toHaveLength(2)
+    expect(polled[1]).toBe(polled[0])
     expect(requestsFor(replica, "bump")).toHaveLength(1)
   })
 
   it("gives up as outcome_unknown when polls keep failing, without sending the update again", async () => {
     const replica = replicaWith({ [SHAPES]: shapesCanister() })
-    const later = answerLater(replica.fetch, Infinity)
-    const canister = clientAs(
-      { ...replica, fetch: later.fetch },
-      alice
-    ).canister<shapes.Actor>(shapes.actor, { id: SHAPES })
-    await expect(canister.bump(4n)).rejects.toMatchObject({
+    const later = answerLater(replica.fetch, { failures: Infinity })
+    await expect(
+      shapesThrough(replica, later.fetch).bump(4n)
+    ).rejects.toMatchObject({
       kind: "outcome_unknown",
       mayHaveExecuted: true,
     })
     expect(later.polls()).toBe(4)
     expect(requestsFor(replica, "bump")).toHaveLength(1)
   }, 10_000)
+
+  // The regression test DECISIONS Q8 keeps from v3 (icp-js-core#1330): a
+  // synchronous answer whose certificate has no status for the request yet is
+  // polled for, not failed.
+  it("polls for an update whose synchronous answer holds no status for it, and resolves with the reply", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const earlier = await certificateOfAnotherCall(replica)
+    const later = answerLater(replica.fetch, { answer: earlier })
+    await expect(shapesThrough(replica, later.fetch).bump(4n)).resolves.toBe(5n)
+    expect(later.polls()).toBe(1)
+    expect(requestsFor(replica, "bump")).toHaveLength(1)
+  })
+
+  it("rejects an update the replica refused, uncertified, before it ran, and does not send it again", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const refusing = refuseCalls(replica.fetch, [4])
+    const error = await shapesThrough(replica, refusing.fetch)
+      .bump(1n)
+      .catch((e: unknown) => e)
+    expect(error).toMatchObject({ kind: "rejected", rejectCode: 4 })
+    expect((error as Error).message).toContain("before it ran")
+    await sleep(300 + 600 + 200)
+    expect(refusing.calls()).toBe(1)
+    expect(requestsFor(replica, "bump")).toEqual([])
+  })
+
+  it("re-sends an update the replica refused, uncertified, with a SysTransient reject, and resolves", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const refusing = refuseCalls(replica.fetch, [2])
+    await expect(shapesThrough(replica, refusing.fetch).bump(1n)).resolves.toBe(
+      2n
+    )
+    expect(refusing.calls()).toBe(2)
+    expect(requestsFor(replica, "bump")).toHaveLength(1)
+  })
 })
 
 describe("the target", () => {
