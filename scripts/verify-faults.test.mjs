@@ -10,6 +10,8 @@
 import assert from "node:assert/strict"
 import { createHash } from "node:crypto"
 import {
+  existsSync,
+  lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -25,6 +27,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { after, describe, it } from "node:test"
 import { fileURLToPath } from "node:url"
+import { createWorkspaceCopy } from "./lib/fault-workspace.mjs"
 import { loadManifest, verifyFaults } from "./verify-faults.mjs"
 
 const realCore = realpathSync(
@@ -142,7 +145,88 @@ function snapshot(dir) {
   return found
 }
 
+/**
+ * What the installs `demo` borrows hold of the tool state a run writes beside
+ * them: every file of `.vite` (vitest's cache) and `.vite-temp` (the config it
+ * bundles), with its size and time, or null where there is none.
+ */
+function toolState() {
+  const state = {}
+  for (const name of [".vite", ".vite-temp"]) {
+    const base = join(realCore, "node_modules", name)
+    const files = []
+    const walk = (current) => {
+      for (const entry of readdirSync(current)) {
+        const path = join(current, entry)
+        const info = statSync(path)
+        if (info.isDirectory()) walk(path)
+        else files.push(`${path}:${info.size}:${info.mtimeMs}`)
+      }
+    }
+    if (existsSync(base)) walk(base)
+    state[name] = existsSync(base) ? files.sort() : null
+  }
+  return state
+}
+
+describe("the workspace copy", () => {
+  it("mirrors the installs entry by entry, so a tool's cache lands in the copy", () => {
+    const root = repo()
+    const copy = createWorkspaceCopy({
+      repoRoot: root,
+      packageDir: "packages/demo",
+    })
+    try {
+      const installs = join(copy.dir, "node_modules")
+      assert.equal(lstatSync(installs).isSymbolicLink(), false)
+      assert.equal(lstatSync(join(installs, "vitest")).isSymbolicLink(), true)
+      assert.ok(existsSync(join(installs, "vitest", "vitest.mjs")))
+      // What a tool writes there stays in the copy.
+      mkdirSync(join(installs, ".vite-temp"))
+      writeFileSync(join(installs, ".vite-temp", "config.mjs"), "")
+      assert.equal(
+        existsSync(join(realCore, "node_modules", ".vite-temp", "config.mjs")),
+        false
+      )
+    } finally {
+      copy.cleanup()
+    }
+    // Cleaning up unlinks; it never reaches into what the links point at.
+    assert.ok(existsSync(join(realCore, "node_modules", "vitest")))
+    assert.equal(existsSync(copy.root), false)
+  })
+
+  it("does not link what a tool writes beside the installs", () => {
+    const root = repo()
+    const copy = createWorkspaceCopy({
+      repoRoot: root,
+      packageDir: "packages/demo",
+    })
+    try {
+      const names = readdirSync(join(copy.dir, "node_modules"))
+      assert.ok(names.includes("vitest"))
+      assert.deepEqual(
+        names.filter((name) => /^\.(?:vite|vitest|cache)/.test(name)),
+        []
+      )
+    } finally {
+      copy.cleanup()
+    }
+  })
+})
+
 describe("verifyFaults", () => {
+  it("writes no vitest cache into the installs it borrows", async () => {
+    const root = repo()
+    const before = toolState()
+    const result = await verify(root, [
+      entry({ id: "one" }),
+      entry({ id: "two", testName: "adds" }),
+    ])
+    assert.deepEqual(result.failures, [])
+    assert.deepEqual(toolState(), before)
+  })
+
   it("passes when each listed test fails under its fault, and leaves the tree as it was", async () => {
     const root = repo()
     const manifest = manifestFor(root, [

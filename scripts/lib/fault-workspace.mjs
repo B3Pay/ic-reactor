@@ -12,8 +12,10 @@ import {
   cpSync,
   existsSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -119,11 +121,41 @@ export function applyEdits(root, edits, label) {
 const SKIPPED = new Set(["node_modules", "dist", ".vitest", "coverage"])
 
 /**
+ * What a tool writes into a `node_modules` it runs next to: Vite's cache
+ * (`.vite`, where vitest keeps its results), the bundled config it loads
+ * (`.vite-temp`), and the like. They are not linked into a copy's installs,
+ * so the tool creates them in the copy.
+ */
+const TOOL_STATE = /^\.(?:vite|vitest|cache)/
+
+/**
+ * A `node_modules` in `target` that holds everything the installs at `source`
+ * hold, entry by entry, except what a tool writes there. Linking the whole
+ * directory would let vitest write its cache and its bundled config into the
+ * repository's installs, up to eight runs at once, from a script that promises
+ * to leave the working tree alone.
+ *
+ * @param {string} source The installs to mirror.
+ * @param {string} target Where the mirror goes; created here.
+ * @param {(target: string, path: string) => void} link Makes (and records)
+ *   one symlink, so `cleanup` can unlink it before anything is deleted.
+ */
+function linkInstalls(source, target, link) {
+  const real = realpathSync(source)
+  mkdirSync(target)
+  for (const name of readdirSync(real)) {
+    if (!TOOL_STATE.test(name)) link(join(real, name), join(target, name))
+  }
+}
+
+/**
  * A copy of `packageDir` (relative to `repoRoot`, such as `packages/core`)
  * in a fresh temporary directory laid out like the repository: the package at
  * the same relative path and the root's `tsconfig.base.json` above it, so the
- * package's `extends` still resolves. Its `node_modules` is linked, not
- * copied, so imports resolve exactly as in the repository.
+ * package's `extends` still resolves. Its `node_modules` (and the root's) is
+ * linked entry by entry, not copied, so imports resolve exactly as in the
+ * repository while whatever a tool writes beside them (vitest's cache) lands
+ * in the copy.
  *
  * @returns {{ root: string, dir: string, cleanup: () => void }} `dir` is the
  * copy of the package; call `cleanup` when done.
@@ -147,11 +179,13 @@ export function createWorkspaceCopy({ repoRoot, packageDir }) {
         !SKIPPED.has(basename(source)) && !source.endsWith(".tsbuildinfo"),
     })
     const modules = join(repoRoot, packageDir, "node_modules")
-    if (existsSync(modules))
-      link(realpathSync(modules), join(dir, "node_modules"))
+    if (existsSync(modules)) {
+      linkInstalls(modules, join(dir, "node_modules"), link)
+    }
     const rootModules = join(repoRoot, "node_modules")
-    if (existsSync(rootModules))
-      link(realpathSync(rootModules), join(root, "node_modules"))
+    if (existsSync(rootModules)) {
+      linkInstalls(rootModules, join(root, "node_modules"), link)
+    }
     return {
       root,
       dir,
