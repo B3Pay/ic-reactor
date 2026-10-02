@@ -1,7 +1,7 @@
 {
   "name": "@ic-reactor/vite-plugin",
   "version": "4.0.0-alpha.0",
-  "description": "Vite plugin that injects the local IC environment (ic_env cookie and /api proxy) in development",
+  "description": "Vite plugin that generates candid-core modules from .did files with candid-core-cli and injects the local IC environment (ic_env cookie and /api proxy) in development",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -55,9 +55,11 @@
   },
   "homepage": "https://ic-reactor.b3pay.net/v3/packages/vite-plugin",
   "peerDependencies": {
+    "@candid-core/cli": "0.2.0-beta.1",
     "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
   },
   "devDependencies": {
+    "@candid-core/cli": "0.2.0-beta.1",
     "@types/node": "^26.5.1",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",

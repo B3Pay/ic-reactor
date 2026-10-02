@@ -1,0 +1,8 @@
+{
+  "name": "@candid-core/cli",
+  "version": "0.0.0-fake",
+  "description": "A stand-in for candid-core-cli that the plugin tests install into a temporary app. It crashes or hangs on a .did that says so, and otherwise reports every entry as written.",
+  "bin": {
+    "candid-core-cli": "./bin.js"
+  }
+}
