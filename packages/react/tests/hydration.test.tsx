@@ -77,6 +77,30 @@ async function hydrate(element: ReactElement) {
 }
 
 describe("hydrating the server's HTML", () => {
+  it("is rendered as the same HTML by a client that holds a session and one that does not", () => {
+    // The HTML below is the one the hydration tests start from, written by an
+    // anonymous client. A server's real client holds no session either, so the
+    // two renders have to agree: the server snapshot does not read the auth.
+    headerStatuses = []
+    const auth = createTestAuth({ seed: 7 })
+    const buildAuth = vi.fn(() => auth)
+    const anonymous = renderToString(page(Profile))
+
+    const withSession = renderToString(
+      <ReactorProvider client={() => clientWithAuth(buildAuth)}>
+        <Header />
+        <Suspense fallback={<p>loading</p>}>
+          <Profile />
+        </Suspense>
+      </ReactorProvider>
+    )
+
+    expect(withSession).toBe(anonymous)
+    expect(withSession).not.toContain("signed-in")
+    // The session was not even read, though jsdom has a `window` to read it in.
+    expect(buildAuth).not.toHaveBeenCalled()
+  })
+
   it("starts anonymous while the browser is signed in, then shows the session", async () => {
     headerStatuses = []
     const auth = createTestAuth({ seed: 7 })
