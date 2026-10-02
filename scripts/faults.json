@@ -210,6 +210,16 @@
     "replace": "          target: record.resolve(),"
   },
   {
+    "id": "ir2t-name-in-invalidates-resolved-at-settlement",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the canister a { name } in invalidates named when the write started",
+    "why": "the run keeps the canister it writes to but reads the slots of the canisters listed in invalidates lazily, when the write settles, so a { name } listed there that a local redeploy moves mid-write has the new canister's reads invalidated and the old one's left stale",
+    "file": "src/options.ts",
+    "search": "        slots: listed.slots(),",
+    "replace": "        get slots() { return listed.slots() },"
+  },
+  {
     "id": "ir2t-query-options-accepts-update",
     "package": "core",
     "test": "tests/options.test.ts",

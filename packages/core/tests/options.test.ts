@@ -53,6 +53,12 @@ const BOB = principal(Ed25519KeyIdentity.generate().getPrincipal().toText())
 /** The canister a local redeploy moves a `{ name }` to, in the tests that redeploy. */
 const REDEPLOYED = ARCHIVE
 
+/**
+ * Another canister of the shapes interface, reached by its id, in the test
+ * that writes to one canister and lists a `{ name }` in `invalidates`.
+ */
+const BY_ID = "r7inp-6aaaa-aaaaa-aaabq-cai"
+
 /** A shapes canister whose `who` answers with the caller, held back for a caller while a gate is set. */
 function whoCanister(holds: Map<string, Promise<void>>) {
   return serve<shapes.Actor>(shapes.actor, {
@@ -674,7 +680,8 @@ describe("mutationOptions", () => {
    * A client on a local page, where the ic_env cookie is trusted, and a
    * `{ name: "backend" }` canister of it. The cookie is read afresh every
    * time, and `redeploy()` moves the name from SHAPES to REDEPLOYED, as a
-   * local redeploy rewrites the cookie. `bump` at SHAPES waits for `hold`.
+   * local redeploy rewrites the cookie. `bump` waits for `hold` at SHAPES
+   * and at BY_ID, a shapes canister the name never points to.
    */
   function redeployable(hold?: Promise<void>) {
     let deployed = SHAPES
@@ -695,6 +702,7 @@ describe("mutationOptions", () => {
     const replica = replicaWith({
       [SHAPES]: backendAt(hold),
       [REDEPLOYED]: backendAt(),
+      [BY_ID]: backendAt(hold),
     })
     const client = clientAs(replica, alice)
     const backend = client.canister<shapes.Actor>(shapes.actor, {
@@ -757,6 +765,39 @@ describe("mutationOptions", () => {
       ).toBe(false)
     }
   )
+
+  it("invalidates the canister a { name } in invalidates named when the write started, though the cookie moves the name before the write settles", async () => {
+    const held = deferred()
+    const { replica, client, backend, redeploy } = redeployable(held.promise)
+    const writer = client.canister<shapes.Actor>(shapes.actor, { id: BY_ID })
+    const before = client.queryOptions(backend, "one", 1n)
+    expect(before.queryKey[3]).toBe(SHAPES)
+    await client.queryClient.fetchQuery(before)
+
+    // The write goes to a canister reached by its id, and names the reads it
+    // changes through the { name }, the only target that a redeploy moves.
+    const write = new MutationObserver(
+      client.queryClient,
+      client.mutationOptions(writer, "bump", { invalidates: [backend] })
+    ).mutate(1n)
+    await vi.waitFor(() => expect(requestsFor(replica, "bump")).toHaveLength(1))
+    redeploy()
+    const after = client.queryOptions(backend, "one", 1n)
+    expect(after.queryKey[3]).toBe(REDEPLOYED)
+    await client.queryClient.fetchQuery(after)
+    held.resolve()
+    await expect(write).resolves.toBe(2n)
+
+    expect(requestsFor(replica, "bump")).toMatchObject([{ canisterId: BY_ID }])
+    // The listed name pointed at SHAPES when the write started: its reads
+    // there are stale, and the reads of where it points now are not.
+    expect(
+      client.queryClient.getQueryState(before.queryKey)?.isInvalidated
+    ).toBe(true)
+    expect(
+      client.queryClient.getQueryState(after.queryKey)?.isInvalidated
+    ).toBe(false)
+  })
 
   it("sends a { name } write that waited offline to the canister resolved when it started, whose reads it invalidates", async ({
     skip,
