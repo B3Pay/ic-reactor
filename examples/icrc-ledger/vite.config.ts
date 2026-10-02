@@ -14,6 +14,8 @@ export default defineConfig({
         icrc1: { didFile: "icrc1.did", outDir: "src/canisters" },
         // The ICP ledger's own block reads, with their archive callbacks.
         icp_ledger: { didFile: "icp_ledger.did", outDir: "src/canisters" },
+        // The ckBTC minter's get_btc_address, an update read as a query.
+        ckbtc_minter: { didFile: "ckbtc_minter.did", outDir: "src/canisters" },
       },
       // Both tabs talk to a replica of their own (mainnet, or the fake one in
       // the page), so there is no local network to ask `icp` about.

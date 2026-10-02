@@ -3,7 +3,7 @@
 import { principal, type Principal } from "@candid-core/schema"
 import { isReactorError, type ReactorError } from "@ic-reactor/core"
 import { MutationObserver, QueryObserver } from "@tanstack/react-query"
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import type { TransferArg } from "./canisters/icrc1.ts"
 import {
   FEE,
@@ -11,6 +11,7 @@ import {
   SEED_2,
   START_BALANCES,
   createSandbox,
+  sandboxBtcAddress,
   type Fault,
   type Sandbox,
 } from "./sandbox.ts"
@@ -297,5 +298,108 @@ describe("the faults the page arms, as the client reports them", () => {
     }
     expect(transferCalls(sandbox, seen)).toHaveLength(0)
     await expect(balanceOf(sandbox, SEED_1)).resolves.toBe(START_1)
+  })
+})
+
+describe("the ckBTC deposit address, an update read with { update: 'idempotent' }", () => {
+  /** The `get_btc_address` calls that reached the minter, and their callers. */
+  const minterCalls = (sandbox: Sandbox) =>
+    sandbox.requests.filter(
+      (r) =>
+        r.endpoint === "call" &&
+        r.methodName === "get_btc_address" &&
+        r.refused === undefined
+    )
+
+  const ownAddress = { owner: null, subaccount: null }
+
+  /** The page's read of the caller's address, as an active observer. */
+  function observeAddress(sandbox: Sandbox) {
+    const { client, minter } = sandbox
+    const observer = new QueryObserver(
+      client.queryClient,
+      client.queryOptions(minter, "get_btc_address", ownAddress, {
+        update: "idempotent",
+      })
+    )
+    const stop = observer.subscribe(() => {})
+    /** The address once the read has settled. */
+    const settled = () =>
+      vi.waitFor(() => {
+        const result = observer.getCurrentResult()
+        if (result.status === "pending") throw new Error("still pending")
+        return result.data
+      })
+    return { stop, settled }
+  }
+
+  it("is refused by queryOptions without the opt-in, since a refetch would run the update again", () => {
+    const { client, minter } = setup()
+    expect(() =>
+      client.queryOptions(minter, "get_btc_address", ownAddress)
+    ).toThrow(TypeError)
+  })
+
+  it("runs once per caller: a second mount, a ledger transfer and a cache-wide refetch do not run it again", async () => {
+    const sandbox = setup()
+    const first = observeAddress(sandbox)
+    await expect(first.settled()).resolves.toBe(
+      sandboxBtcAddress(account(SEED_1))
+    )
+
+    // Mounted again, as when the page shows the address again.
+    const second = observeAddress(sandbox)
+    await expect(second.settled()).resolves.toBe(
+      sandboxBtcAddress(account(SEED_1))
+    )
+    // A transfer invalidates the ledger's reads, not the minter's.
+    await transferAsThePageDoes(sandbox, transferArg())
+    // Every stale read refetched: this one is never stale.
+    await sandbox.client.queryClient.refetchQueries({ stale: true })
+
+    expect(minterCalls(sandbox)).toHaveLength(1)
+    expect(minterCalls(sandbox)[0]?.caller).toBe(SEED_1)
+    first.stop()
+    second.stop()
+  })
+
+  it("is sent as an update, signed by the caller, and gives each caller its own address under its own key", async () => {
+    const sandbox = setup()
+    const { client, minter, auth } = sandbox
+    const read = () =>
+      client.queryClient.fetchQuery(
+        client.queryOptions(minter, "get_btc_address", ownAddress, {
+          update: "idempotent",
+        })
+      )
+
+    const one = await read()
+    auth.switchTo(2)
+    const two = await read()
+    auth.switchTo(1)
+    const oneAgain = await read()
+
+    expect(one).toBe(sandboxBtcAddress(account(SEED_1)))
+    expect(two).toBe(sandboxBtcAddress(account(SEED_2)))
+    expect(oneAgain).toBe(one)
+    // Back to seed 1, its address is still cached: two calls in all.
+    expect(minterCalls(sandbox).map((r) => r.caller)).toEqual([SEED_1, SEED_2])
+  })
+
+  it("is refused while signed out, before anything is sent", async () => {
+    const sandbox = setup()
+    await sandbox.auth.signOut()
+    const { client, minter } = sandbox
+
+    const error = await rejection(
+      client.queryClient.fetchQuery(
+        client.queryOptions(minter, "get_btc_address", ownAddress, {
+          update: "idempotent",
+        })
+      )
+    )
+
+    expect(error.kind).toBe("unauthenticated")
+    expect(minterCalls(sandbox)).toHaveLength(0)
   })
 })

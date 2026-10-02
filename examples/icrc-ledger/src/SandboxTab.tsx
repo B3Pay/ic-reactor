@@ -47,9 +47,11 @@ function nameOf(text: string): string {
 export default function SandboxTab(props: {
   /** How long the mocked ledger takes over a read or a transfer. */
   latencyMs?: number
+  /** A sandbox to show, for a test that reads its requests; one is made otherwise. */
+  sandbox?: Sandbox
 }) {
-  const [sandbox] = useState(() =>
-    createSandbox({ latencyMs: props.latencyMs ?? 400 })
+  const [sandbox] = useState(
+    () => props.sandbox ?? createSandbox({ latencyMs: props.latencyMs ?? 400 })
   )
   return (
     <ReactorProvider client={() => sandbox.client}>
@@ -67,12 +69,14 @@ function SandboxView({ sandbox }: { sandbox: Sandbox }) {
           from <code>@ic-reactor/core/testing</code> makes a real client: it
           signs each call as whoever is signed in, sends it, and checks the
           certified reply. Only the replica is fake, in memory, running a mocked
-          ICRC-1 ledger. Arm a fault below to see what the client makes of it.
+          ICRC-1 ledger and ckBTC minter. Arm a fault below to see what the
+          client makes of it.
         </p>
       </section>
       <Session sandbox={sandbox} />
       <Accounts sandbox={sandbox} />
       <Transfer sandbox={sandbox} />
+      <DepositAddress sandbox={sandbox} />
       <RequestLog sandbox={sandbox} />
     </>
   )
@@ -457,6 +461,90 @@ function Outcome(props: {
           <span className="muted">
             Same <code>created_at_time</code>: if the first one went through,
             the ledger answers <code>Duplicate</code> instead of paying twice.
+          </span>
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** The call the deposit address is read with, as the page shows it. */
+const IDEMPOTENT_READ = `client.queryOptions(minter, "get_btc_address", arg, {
+  update: "idempotent",
+})`
+
+/**
+ * The signed-in caller's ckBTC deposit address. `get_btc_address` is an
+ * update, which `client.queryOptions()` refuses unless told it is idempotent:
+ * then it is fetched once per caller and kept (no refetch on mount, focus or
+ * reconnect, and a ledger transfer does not invalidate the minter's reads).
+ */
+function DepositAddress({ sandbox }: { sandbox: Sandbox }) {
+  const [shown, setShown] = useState(true)
+  const count = useRequestCount(sandbox)
+  const runs = sandbox.requests
+    .slice(0, count)
+    .filter(
+      (r) =>
+        r.endpoint === "call" &&
+        r.methodName === "get_btc_address" &&
+        r.refused === undefined
+    ).length
+  return (
+    <section>
+      <h2>ckBTC deposit address</h2>
+      <p className="muted">
+        <code>get_btc_address</code> of a mocked ckBTC minter is an update
+        method, read as a query because it answers the same however often it
+        runs:
+      </p>
+      <pre>{IDEMPOTENT_READ}</pre>
+      {shown && <Address sandbox={sandbox} />}
+      <p className="note">
+        The minter has run it <strong>{runs}</strong>{" "}
+        {runs === 1 ? "time" : "times"}. Hide and show the address, or send a
+        transfer, and the count stays: the answer is kept for good, and a ledger
+        write does not touch the minter&apos;s reads. A new caller asks once.
+        (Under <code>vite dev</code>, React&apos;s StrictMode mounts everything
+        twice, and the first read is cancelled and sent again.)
+      </p>
+      <div className="row">
+        <button type="button" onClick={() => setShown(!shown)}>
+          {shown ? "Hide" : "Show"} the address
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function Address({ sandbox }: { sandbox: Sandbox }) {
+  const client = useClient()
+  const { status, principal: caller } = useAuth()
+  const signedIn = status === "signed-in"
+  // `owner: null` is the caller's own account; the key holds the caller, so
+  // each principal gets an address of its own, cached apart.
+  const address = useQuery(
+    client.queryOptions(
+      sandbox.minter,
+      "get_btc_address",
+      signedIn ? { owner: null, subaccount: null } : skipToken,
+      { update: "idempotent" }
+    )
+  )
+  if (!signedIn) {
+    return <p className="muted">Sign in: an update needs a signed caller.</p>
+  }
+  return (
+    <div className="result">
+      {address.error ? (
+        <ErrorPanel error={address.error} />
+      ) : address.data === undefined ? (
+        <p className="muted">asking the minter…</p>
+      ) : (
+        <p>
+          <code>{address.data}</code>{" "}
+          <span className="muted">
+            for {nameOf(caller)}, made up by the sandbox
           </span>
         </p>
       )}

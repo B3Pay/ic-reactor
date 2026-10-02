@@ -11,6 +11,7 @@ import {
 } from "@testing-library/react"
 import { StrictMode } from "react"
 import { afterEach, describe, expect, it } from "vitest"
+import { SEED_1, createSandbox, sandboxBtcAddress } from "./sandbox.ts"
 import SandboxTab from "./SandboxTab.tsx"
 
 afterEach(() => cleanup())
@@ -78,6 +79,47 @@ describe("the Sandbox tab", () => {
               cells[2] === "icrc1_transfer" && cells[4] === "the reply was lost"
           )
         ).toBe(true),
+      patiently
+    )
+  })
+
+  it("keeps the deposit address through a transfer and a hide and show, without asking the minter again", async () => {
+    const sandbox = createSandbox({ latencyMs: 0 })
+    render(
+      <StrictMode>
+        <SandboxTab sandbox={sandbox} />
+      </StrictMode>
+    )
+    const address = sandboxBtcAddress({ owner: SEED_1, subaccount: null })
+    const minterCalls = () =>
+      sandbox.requests.filter(
+        (r) => r.endpoint === "call" && r.methodName === "get_btc_address"
+      ).length
+    await screen.findByText(address, {}, patiently)
+    // StrictMode's second mount cancels the first read in flight and sends it
+    // again, so the count is taken once the address is in.
+    const asked = minterCalls()
+
+    send("none")
+    await screen.findByText(/^Sent: block 0\./, {}, patiently)
+    fireEvent.click(screen.getByRole("button", { name: "Hide the address" }))
+    fireEvent.click(screen.getByRole("button", { name: "Show the address" }))
+
+    expect(screen.getByText(address)).toBeTruthy()
+    // A read the mount started is fetching from here on: let it end first.
+    await waitFor(
+      () => expect(sandbox.client.queryClient.isFetching()).toBe(0),
+      patiently
+    )
+    expect(minterCalls()).toBe(asked)
+    // The page says so, once its log has caught up.
+    await screen.findByText(
+      (_, node) =>
+        node?.tagName === "P" &&
+        (node.textContent ?? "").startsWith(
+          `The minter has run it ${asked} time`
+        ),
+      {},
       patiently
     )
   })

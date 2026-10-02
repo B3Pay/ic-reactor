@@ -26,8 +26,9 @@ export function App() {
     <main>
       <h1>ICRC-1 ledger on ic-reactor 4</h1>
       <p className="lede">
-        One generated module (<code>src/canisters/icrc1.ts</code>), one client
-        per tab, and TanStack Query&apos;s own hooks.
+        Modules generated from the <code>.did</code> files (
+        <code>src/canisters/</code>), one client per tab, and TanStack
+        Query&apos;s own hooks.
       </p>
       <div className="tabs" role="tablist">
         {TABS.map(({ id, label }) => (

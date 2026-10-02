@@ -1,10 +1,15 @@
 // The Sandbox tab's world: a real client from `createTestClient()`, over the
 // in-memory replica of `@ic-reactor/core/testing`, with a mocked ICRC-1 ledger
-// on it. It runs in the page (nothing leaves it) and in the Node tests
-// (sandbox.test.ts), which is why it is plain TypeScript with no React.
+// and a mocked ckBTC minter on it. It runs in the page (nothing leaves it) and
+// in the Node tests (sandbox.test.ts), which is why it is plain TypeScript
+// with no React.
 import { principal, type Principal } from "@candid-core/schema"
 import type { Canister, Client } from "@ic-reactor/core"
 import { createTestClient, type TestHandlers } from "@ic-reactor/core/testing"
+import {
+  actor as minterActor,
+  type Actor as MinterActor,
+} from "./canisters/ckbtc_minter.ts"
 import {
   actor,
   type Account,
@@ -14,6 +19,7 @@ import {
   type TransferResult,
 } from "./canisters/icrc1.ts"
 import { ICP_LEDGER, ledgerOn } from "./ledger.ts"
+import { CKBTC_MINTER, minterOn, type Minter } from "./minter.ts"
 
 /** The mocked ledger answers at the ICP ledger's id: the code is the same. */
 export const SANDBOX_LEDGER = ICP_LEDGER
@@ -31,6 +37,9 @@ export const SEED_1 = principal(
 export const SEED_2 = principal(
   "xledz-fktfc-4ywwn-gai5u-ieqce-5x4qc-7lpel-o4ubn-ucngz-7lrzo-5ae"
 )
+
+/** The anonymous principal, as text. */
+export const ANONYMOUS = principal("2vxsx-fae")
 
 /** Who mints: NNS governance, as on mainnet. A transfer to it is a burn. */
 export const MINTING_ACCOUNT: Account = {
@@ -72,6 +81,13 @@ export interface Sandbox {
   /** Every request the in-memory replica received, in order. */
   readonly requests: TestClient["requests"]
   readonly ledger: Canister<Actor>
+  /**
+   * A mocked ckBTC minter. Its `get_btc_address` is an update method that
+   * gives the same address however often it runs, so the page reads it with
+   * `client.queryOptions(minter, "get_btc_address", arg, { update:
+   * "idempotent" })`.
+   */
+  readonly minter: Minter
   /** Makes the next transfer meet `fault`. */
   arm(fault: Fault): void
 }
@@ -90,6 +106,24 @@ const accountKey = ({ owner, subaccount }: Account) =>
     ? owner
     : `${owner}.${hex(subaccount)}`
 
+/**
+ * A made-up deposit address for an account: the same text for the same
+ * account, every time (FNV-1a over the account key). The `-sandbox-` in it
+ * keeps anyone from mistaking it for a Bitcoin address.
+ */
+export function sandboxBtcAddress(account: Account): string {
+  let hash = 0xcbf29ce484222325n
+  let text = ""
+  for (const round of [1, 2]) {
+    for (const char of `${round}:${accountKey(account)}`) {
+      hash ^= BigInt(char.charCodeAt(0))
+      hash = (hash * 0x100000001b3n) & 0xffffffffffffffffn
+    }
+    text += hash.toString(16).padStart(16, "0")
+  }
+  return `bc1q-sandbox-${text}`
+}
+
 /** ICRC-1's deduplication window, and the clock drift it allows, in ns. */
 const TX_WINDOW = 24n * 60n * 60n * 1_000_000_000n
 const PERMITTED_DRIFT = 2n * 60n * 1_000_000_000n
@@ -98,10 +132,13 @@ const PERMITTED_DRIFT = 2n * 60n * 1_000_000_000n
  * Creates a sandbox: a test client signed in as seed 1, and a mocked ICRC-1
  * ledger that keeps a balance per account, charges and burns the fee, and
  * answers `icrc1_transfer` with the standard's `Err` arms (`BadFee`,
- * `InsufficientFunds`, `TooOld`, `CreatedInFuture`, `Duplicate`, `BadBurn`).
+ * `InsufficientFunds`, `TooOld`, `CreatedInFuture`, `Duplicate`, `BadBurn`),
+ * and a mocked ckBTC minter whose `get_btc_address` gives each account a
+ * made-up address of its own ({@link sandboxBtcAddress}).
  *
  * @param options.latencyMs - How long the ledger takes over a balance read or
- * a transfer, so that a page can show the phases. Tests leave it at 0.
+ * a transfer, and the minter over an address, so that a page can show the
+ * phases. Tests leave it at 0.
  */
 export function createSandbox(options: { latencyMs?: number } = {}): Sandbox {
   const latencyMs = options.latencyMs ?? 0
@@ -201,6 +238,20 @@ export function createSandbox(options: { latencyMs?: number } = {}): Sandbox {
   }
   mock<Actor>(actor, SANDBOX_LEDGER, handlers)
 
+  // As the real minter: a null owner is the caller, and the anonymous
+  // principal has no deposit address (the call traps).
+  const minterHandlers: TestHandlers<MinterActor> = {
+    get_btc_address: async ({ owner, subaccount }, { caller }) => {
+      await pause()
+      const resolved = owner ?? caller
+      if (resolved === ANONYMOUS) {
+        throw new Error("the owner must be non-anonymous")
+      }
+      return sandboxBtcAddress({ owner: resolved, subaccount })
+    },
+  }
+  mock<MinterActor>(minterActor, CKBTC_MINTER, minterHandlers)
+
   return {
     client,
     auth,
@@ -208,6 +259,7 @@ export function createSandbox(options: { latencyMs?: number } = {}): Sandbox {
       return test.requests
     },
     ledger: ledgerOn(client, SANDBOX_LEDGER),
+    minter: minterOn(client),
     arm(fault) {
       if (fault === "reject-4") armedReject = 4
       else if (fault === "reject-2") armedReject = 2

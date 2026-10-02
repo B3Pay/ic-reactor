@@ -32,6 +32,13 @@ tabs:
 | status 429 three times | gives up after two re-sends: `not_delivered`, certainly not executed                                    |
 | (signed out)           | `unauthenticated`, refused before anything is sent                                                      |
 
+The Sandbox also has a mocked ckBTC minter. `get_btc_address` is an update
+method, which `client.queryOptions` refuses unless told it is idempotent:
+`client.queryOptions(minter, "get_btc_address", arg, { update: "idempotent" })`
+fetches each caller's deposit address once and keeps it (hide and show it, or
+send a transfer: no new call reaches the minter). The smoke script asks
+the real minter on mainnet the same way, signing with a throwaway key.
+
 ## Run it
 
 From the repository root, after `pnpm install` and `pnpm build`:
@@ -39,14 +46,14 @@ From the repository root, after `pnpm install` and `pnpm build`:
 ```sh
 pnpm --filter icrc-ledger dev        # http://localhost:5173
 pnpm --filter icrc-ledger test       # the sandbox ledger, the form, the Sandbox page
-pnpm --filter icrc-ledger smoke      # src/ledger.ts and src/blocks.ts against mainnet, Node 22.18+
+pnpm --filter icrc-ledger smoke      # ledger, blocks and ckBTC minter on mainnet, Node 22.18+
 pnpm --filter icrc-ledger gen:check  # fails if src/canisters/ is stale
 ```
 
-`src/canisters/` is generated from the `.did` files (`icrc1.did`, and the ICP
-ledger's block reads in `icp_ledger.did`) by `@ic-reactor/vite-plugin` on every
-`vite dev` and `vite build` (`pnpm gen` runs `candid-core-cli gen` by hand). It
-is committed, and never edited.
+`src/canisters/` is generated from the `.did` files (`icrc1.did`; the ICP
+ledger's block reads, `icp_ledger.did`; the minter's `ckbtc_minter.did`) by
+`@ic-reactor/vite-plugin` on every `vite dev` and `vite build` (`pnpm gen` runs
+`candid-core-cli gen` by hand). It is committed, and never edited.
 
 ## Before and after
 
@@ -66,7 +73,8 @@ keys, retries, invalidation and `ReactorError` coming from the client.
 - `src/blocks.ts`: `query_blocks` and its archive callbacks
   (`icp_ledger.did`), tested over a mocked ledger and archive by
   `src/blocks.test.ts`.
-- `src/sandbox.ts`: the test client and the mocked ledger, tested in Node by
-  `src/sandbox.test.ts`; `src/SandboxTab.tsx` is its page, rendered in jsdom by
-  `src/SandboxTab.test.tsx`.
+- `src/minter.ts`: the ckBTC minter's id and canister.
+- `src/sandbox.ts`: the test client, the mocked ledger and minter, tested in
+  Node by `src/sandbox.test.ts`; `src/SandboxTab.tsx` is its page, rendered in
+  jsdom by `src/SandboxTab.test.tsx`.
 - `src/transfer-form.ts`: typed text to an `icrc1_transfer` argument, or a refusal.

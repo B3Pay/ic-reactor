@@ -2,7 +2,8 @@
 // uses. Node strips the types itself (22.18 or newer): no bundler, no loader.
 import assert from "node:assert/strict"
 import { principal } from "@candid-core/schema"
-import { formatUnits, isReactorError } from "@ic-reactor/core"
+import { createClient, formatUnits, isReactorError } from "@ic-reactor/core"
+import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {
   archivedRangeOptions,
   blockRows,
@@ -11,6 +12,7 @@ import {
   operationOf,
 } from "../src/blocks.ts"
 import { ICP_LEDGER, ledgerOn, mainnetClient } from "../src/ledger.ts"
+import { minterOn } from "../src/minter.ts"
 
 const NNS_GOVERNANCE = principal("rrkah-fqaaa-aaaaa-aaaaq-cai")
 // The cycles minting canister holds some ICP.
@@ -82,6 +84,29 @@ for (const row of [...rows, ...blockRows(latest, [])]) {
     row.from === ICP_LEDGER ? "(the ledger)" : `(archive ${row.from})`
   )
 }
+
+// get_btc_address is an update, so the anonymous client would refuse it. Any
+// caller that signs may ask the minter for anyone's address: a throwaway key.
+const signer = createClient({
+  network: "ic",
+  identity: Ed25519KeyIdentity.generate(),
+})
+const deposit = signer.queryOptions(
+  minterOn(signer),
+  "get_btc_address",
+  { owner: CYCLES_MINTING, subaccount: null },
+  { update: "idempotent" }
+)
+const btcAddress = await signer.queryClient.fetchQuery(deposit)
+// Kept for good (staleTime: Infinity): a second fetch is the cached answer.
+const updates = () =>
+  signer.queryClient.getQueryState(deposit.queryKey)?.dataUpdateCount
+const fetchedOnce = updates()
+assert.equal(await signer.queryClient.fetchQuery(deposit), btcAddress)
+assert.equal(updates(), fetchedOnce)
+assert.match(btcAddress, /^bc1q[02-9ac-hj-np-z]{38}$/)
+console.log("ckBTC address ", btcAddress, "(the CMC's deposit address)")
+signer.dispose()
 
 // The client is anonymous: it refuses a transfer before sending anything.
 try {
