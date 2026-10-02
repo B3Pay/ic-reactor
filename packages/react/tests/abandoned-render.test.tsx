@@ -9,6 +9,11 @@
  * registers each client it owns with a `FinalizationRegistry` until it
  * commits it, so the registry disposes the ones React dropped.
  *
+ * A client that a dropped render created can still be in use: a factory that
+ * creates a shared client on its first call hands the same one to the retry.
+ * The registry must let go of it as soon as a factory returns it again, and
+ * whenever a provider commits it.
+ *
  * Garbage collection decides when a real registry runs its cleanup, so most
  * tests here install a fake whose collections the test triggers
  * (`fakeFinalizationRegistry`), and one runs a real collection where the
@@ -26,6 +31,7 @@ import {
   macrotask,
   trackedFactory,
   withDisposeSpy,
+  type TrackedClient,
 } from "./helpers.js"
 
 /** The runtime's own registry, captured before any test stubs it. */
@@ -93,6 +99,26 @@ function suspendUntilOpened() {
     await act(macrotask)
   }
   return { Gate, open }
+}
+
+/**
+ * A factory that creates one client on its first call and returns that same
+ * client on every later call, as `() => (client ??= createClient(...))` does.
+ * The provider that makes the first call owns the client; every later one
+ * borrows it.
+ */
+function lazilySharedFactory() {
+  const auth = createTestAuth({ seed: 7, signedIn: false })
+  let made: TrackedClient | undefined
+  const factory = vi.fn(
+    (): Client => (made ??= withDisposeSpy(clientWithAuth(() => auth))).client
+  )
+  /** The one client the factory created. */
+  const shared = (): TrackedClient => {
+    if (made === undefined) throw new Error("the factory was never called")
+    return made
+  }
+  return { factory, auth, shared }
 }
 
 describe("a client the provider owns, and the registry that backs its disposal", () => {
@@ -259,6 +285,126 @@ describe("a client the app created before the provider's factory ran", () => {
   })
 })
 
+describe("a shared client that the factory creates on its first call", () => {
+  it("keeps running once mounted, though the render that created it was thrown away", async () => {
+    const registry = fakeFinalizationRegistry()
+    const { ReactorProvider, useAuth } = await bindingsWith(registry.Registry)
+    const { factory, auth, shared } = lazilySharedFactory()
+    const { Gate, open } = suspendUntilOpened()
+    function Status() {
+      return <p data-testid="status">{useAuth().status}</p>
+    }
+
+    const view = render(
+      <Suspense fallback={<p>loading</p>}>
+        <ReactorProvider client={factory}>
+          <Status />
+          <Gate />
+        </ReactorProvider>
+      </Suspense>
+    )
+    await act(macrotask)
+    await open()
+    const { client, dispose } = shared()
+
+    // The render that created it owned it, so it registered it, and React
+    // threw that render away; a later one got it back and mounted.
+    expect(registry.registered).toHaveLength(1)
+    expect(registry.registered[0]).toBe(client)
+    expect(factory.mock.calls.length).toBeGreaterThan(1)
+    expect(view.getByTestId("status").textContent).toBe("anonymous")
+
+    // The tree runs on it, so no collection may dispose it.
+    expect(registry.live).toEqual([])
+    registry.collectAll()
+    expect(dispose).not.toHaveBeenCalled()
+    await act(() => auth.signIn())
+    expect(view.getByTestId("status").textContent).toBe("signed-in")
+    expect(client.authState().status).toBe("signed-in")
+
+    // The provider that mounted it borrowed it, so its unmount leaves it too.
+    view.unmount()
+    await act(macrotask)
+    registry.collectAll()
+    expect(dispose).not.toHaveBeenCalled()
+  })
+
+  it("is let go by the registry as soon as a later render gets it back, before anything commits", async () => {
+    const registry = fakeFinalizationRegistry()
+    const { ReactorProvider, useAuth } = await bindingsWith(registry.Registry)
+    const { factory, auth, shared } = lazilySharedFactory()
+    const first = suspendUntilOpened()
+    const second = suspendUntilOpened()
+    function Status() {
+      return <p data-testid="status">{useAuth().status}</p>
+    }
+
+    const view = render(
+      <Suspense fallback={<p>loading</p>}>
+        <ReactorProvider client={factory}>
+          <Status />
+          <first.Gate />
+          <second.Gate />
+        </ReactorProvider>
+      </Suspense>
+    )
+    await act(macrotask)
+    await first.open()
+    const { client, dispose } = shared()
+
+    // The retry got the client back from the factory and suspended again, so
+    // nothing has committed yet: no effect can have let go of it.
+    expect(view.container.textContent).toBe("loading")
+    expect(factory.mock.calls.length).toBeGreaterThan(1)
+    expect(registry.registered).toHaveLength(1)
+    expect(registry.registered[0]).toBe(client)
+    // A collection while the fallback still shows leaves it for the tree.
+    expect(registry.live).toEqual([])
+    registry.collectAll()
+    expect(dispose).not.toHaveBeenCalled()
+
+    await second.open()
+    expect(view.getByTestId("status").textContent).toBe("anonymous")
+    await act(() => auth.signIn())
+    expect(view.getByTestId("status").textContent).toBe("signed-in")
+    view.unmount()
+    await act(macrotask)
+  })
+
+  it("keeps running once mounted under StrictMode, which calls the factory twice and keeps one result", async () => {
+    // React 19 keeps the first call's result, the client's owner; React 18
+    // keeps the second, which borrowed it, and drops the owner that
+    // registered it.
+    const registry = fakeFinalizationRegistry()
+    const { ReactorProvider, useAuth } = await bindingsWith(registry.Registry)
+    const { factory, auth, shared } = lazilySharedFactory()
+    function Status() {
+      return <p data-testid="status">{useAuth().status}</p>
+    }
+
+    const view = render(
+      <StrictMode>
+        <ReactorProvider client={factory}>
+          <Status />
+        </ReactorProvider>
+      </StrictMode>
+    )
+    await act(macrotask)
+    const { client, dispose } = shared()
+
+    expect(factory.mock.calls.length).toBeGreaterThan(1)
+    expect(registry.registered).toHaveLength(1)
+    expect(registry.registered[0]).toBe(client)
+    expect(registry.live).toEqual([])
+    registry.collectAll()
+    expect(dispose).not.toHaveBeenCalled()
+    await act(() => auth.signIn())
+    expect(view.getByTestId("status").textContent).toBe("signed-in")
+    view.unmount()
+    await act(macrotask)
+  })
+})
+
 describe("a runtime without FinalizationRegistry", () => {
   it("still mounts, follows the auth and disposes a committed client once", async () => {
     const bindings = await bindingsWith(undefined)
@@ -342,6 +488,64 @@ describe("a real garbage collection", () => {
       view.unmount()
       await act(macrotask)
       expect(trackOf(used).dispose).toHaveBeenCalledTimes(1)
+    }
+  )
+
+  it.skipIf(
+    typeof collectGarbage !== "function" || typeof RealRegistry !== "function"
+  )(
+    "leaves a shared client created in a thrown-away render to the tree that mounted it",
+    async () => {
+      const gc = collectGarbage as () => void
+      const bindings = await bindingsWith(RealRegistry)
+      const { ReactorProvider, useAuth } = bindings
+      const { factory, auth, shared } = lazilySharedFactory()
+      // A provider beside it whose factory builds a client per render: once
+      // the clients of its dropped renders are disposed, the registry has run
+      // the cleanups of the render that dropped them both.
+      const fresh = setup(bindings)
+      const { Gate, open } = suspendUntilOpened()
+      function Status() {
+        return <p data-testid="shared">{useAuth().status}</p>
+      }
+
+      const view = render(
+        <Suspense fallback={<p>loading</p>}>
+          <ReactorProvider client={factory}>
+            <Status />
+            <Gate />
+          </ReactorProvider>
+          <ReactorProvider client={fresh.factory}>
+            <fresh.Probe />
+          </ReactorProvider>
+        </Suspense>
+      )
+      await act(macrotask)
+      await open()
+
+      const [used] = [...fresh.committed] as [Client]
+      const dropped = fresh.made.filter((entry) => entry.client !== used)
+      expect(dropped.length).toBeGreaterThan(0)
+      for (
+        let round = 0;
+        round < 20 &&
+        dropped.some((entry) => entry.dispose.mock.calls.length === 0);
+        round++
+      ) {
+        gc()
+        await macrotask()
+      }
+      for (const entry of dropped) {
+        expect(entry.dispose).toHaveBeenCalledTimes(1)
+      }
+
+      const { client, dispose } = shared()
+      expect(dispose).not.toHaveBeenCalled()
+      await act(() => auth.signIn())
+      expect(view.getByTestId("shared").textContent).toBe("signed-in")
+      expect(client.authState().status).toBe("signed-in")
+      view.unmount()
+      await act(macrotask)
     }
   )
 })

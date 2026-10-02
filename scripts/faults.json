@@ -146,8 +146,8 @@
     "testName": "disposes, with its auth, each client of a first render that a Suspense boundary above the provider threw away",
     "why": "an owned client is never registered for disposal at collection, so the client of a render React threw away keeps its auth and listeners for good",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n",
-    "replace": ""
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else unclaimed?.unregister(client)\n",
+    "replace": "  if (!owned) unclaimed?.unregister(client)\n"
   },
   {
     "id": "ir6-committed-client-left-registered",
@@ -166,7 +166,7 @@
     "testName": "is never registered, even when renders are thrown away",
     "why": "a client the app created is registered too, so a collection after a thrown-away render disposes a client its owner still uses",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else unclaimed?.unregister(client)\n",
     "replace": "  unclaimed?.register(held, client, client)\n"
   },
   {

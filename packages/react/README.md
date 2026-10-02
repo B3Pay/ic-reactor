@@ -98,7 +98,12 @@ export function Providers({ children }: { children: ReactNode }) {
 Who owns a client follows from when it was created, not from where the factory
 is written. A getter that creates the shared client on its first call
 (`client ??= createClient(...)`) makes the first provider that calls it the
-owner, and that provider disposes it when it unmounts: create a shared client
+owner, and that provider disposes it when it unmounts. It can lose the client
+even before that: when React throws away the render that created it (a
+Suspense boundary above the provider that suspends), the client stays queued
+for disposal at garbage collection until the next render gets it back, so a
+collection while the fallback shows disposes the client the page then mounts
+(see [Life of the client](#life-of-the-client)). Create a shared client
 eagerly, as above. In development, a provider that is given a client which is
 already disposed logs an error that names the fix.
 
@@ -155,7 +160,9 @@ as a provider's first render below a Suspense boundary that suspends. A client
 the factory built for such a render, whose auth a `useAuth()` below may
 already have built, is disposed once that render's state is garbage collected
 (through a `FinalizationRegistry`, in a browser): later than an unmount would,
-but its auth and listeners do not outlive it.
+but its auth and listeners do not outlive it. A client the factory returns
+again, or that a mounted provider runs on, is never disposed this way, whoever
+created it.
 
 Only the factory of the first render is used: passing another function on a
 later render does not rebuild the client. To replace the client, give the
