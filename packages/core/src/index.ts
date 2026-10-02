@@ -7,4 +7,9 @@
  * @packageDocumentation
  */
 export type { Network } from "./network.js"
+export {
+  isReactorError,
+  type ReactorError,
+  type ReactorErrorKind,
+} from "./errors.js"
 export { formatUnits, parseUnits } from "./units.js"
