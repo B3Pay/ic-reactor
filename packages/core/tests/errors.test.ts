@@ -8,8 +8,16 @@ import {
   vi,
 } from "vitest"
 import {
+  CborEncodeErrorCode,
   CertificateOutdatedErrorCode,
   CertifiedRejectErrorCode,
+  CreateHttpAgentErrorCode,
+  DerEncodeErrorCode,
+  ExternalError,
+  IdentityInvalidErrorCode,
+  InvalidReadStateRequestErrorCode,
+  MissingCanisterIdErrorCode,
+  MissingFetchErrorCode,
   HttpErrorCode,
   HttpFetchErrorCode,
   IngressExpiryInvalidErrorCode,
@@ -162,6 +170,63 @@ const ingressExpiry: Built = {
       message: "ingress_expiry is in the past",
     }),
 }
+
+/** Errors the agent throws while it builds, encodes or signs a request. */
+const preSend: [string, Built][] = [
+  [
+    "a request that cannot be CBOR-encoded",
+    {
+      real: () =>
+        InputError.fromCode(new CborEncodeErrorCode(new Error("bad"), "x")),
+      copy: () => foreign("Input", { name: "CborEncodeErrorCode" }),
+    },
+  ],
+  [
+    "a public key that cannot be DER-encoded",
+    {
+      real: () => InputError.fromCode(new DerEncodeErrorCode("too long")),
+      copy: () => foreign("Input", { name: "DerEncodeErrorCode" }),
+    },
+  ],
+  [
+    "an identity that can no longer sign",
+    {
+      real: () => ExternalError.fromCode(new IdentityInvalidErrorCode()),
+      copy: () => foreign("External", { name: "IdentityInvalidErrorCode" }),
+    },
+  ],
+  [
+    "no fetch to send with",
+    {
+      real: () => InputError.fromCode(new MissingFetchErrorCode()),
+      copy: () => foreign("Input", { name: "MissingFetchErrorCode" }),
+    },
+  ],
+  [
+    "an agent that could not be built",
+    {
+      real: () => InputError.fromCode(new CreateHttpAgentErrorCode()),
+      copy: () => foreign("Input", { name: "CreateHttpAgentErrorCode" }),
+    },
+  ],
+  [
+    "no canister id",
+    {
+      real: () =>
+        InputError.fromCode(new MissingCanisterIdErrorCode(undefined)),
+      copy: () => foreign("Input", { name: "MissingCanisterIdErrorCode" }),
+    },
+  ],
+  [
+    "a read_state request that could not be built",
+    {
+      real: () =>
+        InputError.fromCode(new InvalidReadStateRequestErrorCode(undefined)),
+      copy: () =>
+        foreign("Input", { name: "InvalidReadStateRequestErrorCode" }),
+    },
+  ],
+]
 
 const unexpected: Built = {
   real: () => UnknownError.fromCode(new UnexpectedErrorCode("odd")),
@@ -329,6 +394,14 @@ const rows: Row[] = [
     update: settled("not_delivered", false),
     query: settled("not_delivered", false),
   },
+  // The agent failed before it sent anything: never delivered, and the same
+  // input fails the same way again, so never retried.
+  ...preSend.map(([name, built]): Row => ({
+    name,
+    built,
+    update: settled("not_delivered", false),
+    query: settled("not_delivered", false),
+  })),
   // No answer, or one that cannot be trusted.
   { name: "a network failure", built: transport(), ...doubtful },
   { name: "a polling timeout", built: pollingTimeout, ...doubtful },
@@ -558,6 +631,7 @@ describe("classifyError", () => {
       ["HTTP 400", http(400)],
       ["HTTP 403", http(403)],
       ["IngressExpiryInvalid", ingressExpiry],
+      ...preSend,
     ])("%s is outcome_unknown, and is not re-sent", (_name, built) => {
       for (const build of [built.real, built.copy]) {
         const error = classifyError(

@@ -33,8 +33,9 @@ import { isServer } from "./runtime.js"
  *   so the canister may or may not have run it.
  * - `rejected`: the IC or the canister rejected the call; `rejectCode` says which.
  * - `invalid_reply`: a reply arrived but did not decode as the method's result.
- * - `canister_err`: the canister replied with the `Err` arm of its result; `err`
- *   is typed.
+ * - `canister_err`: the canister ran the call and replied with the `Err` arm of
+ *   its result; `err` is typed. The outcome is that answer, so
+ *   `mayHaveExecuted` is `false`: re-sending is a new decision, not a retry.
  * - `cancelled`: the caller abandoned the call (an aborted query, a key whose
  *   principal is no longer current, or an update aborted in flight).
  *   `mayHaveExecuted` is `false` when nothing was sent, and `true` for an
@@ -53,9 +54,14 @@ export type ReactorErrorKind =
 type ReactorErrorBase = Error & {
   readonly name: "ReactorError"
   /**
-   * Whether the canister may have run the call despite this failure. `true`
-   * is a warning, not a verdict: re-sending could run the call twice, so read
-   * the state back before trying again.
+   * Whether the call may have taken effect although the caller cannot tell
+   * what it did. `true` is a warning, not a verdict: the IC or the network
+   * left the outcome open, so re-sending could run the call twice; read the
+   * state back before trying again. `false` means the outcome is known: the
+   * call was refused before it ran, or, for `canister_err`, the canister ran
+   * it and answered with its decision in `err` (a mutation still invalidates
+   * its reads after one, since a canister may change state before returning
+   * an `Err`).
    */
   readonly mayHaveExecuted: boolean
   /** The Candid method that was called. */
@@ -399,6 +405,23 @@ const REJECT_NAMES: Readonly<Record<number, string>> = {
   6: "SYS_UNKNOWN",
 }
 
+/**
+ * Agent error codes thrown while the agent builds, encodes or signs a request,
+ * before it calls `fetch` (read in `@icp-sdk/core` 6.1: `cbor.js`, `der.js`,
+ * `agent/http/index.js`, `polling/index.js`, `actor.js`). Nothing of that
+ * request left the process, and the same input fails the same way again, so
+ * none of them is worth a retry.
+ */
+const PRE_SEND_CODES: ReadonlySet<string> = new Set([
+  "CborEncodeErrorCode",
+  "DerEncodeErrorCode",
+  "IdentityInvalidErrorCode",
+  "MissingFetchErrorCode",
+  "CreateHttpAgentErrorCode",
+  "MissingCanisterIdErrorCode",
+  "InvalidReadStateRequestErrorCode",
+])
+
 /** The longest detail text a ReactorError's `message` carries. */
 const MAX_DETAIL = 160
 
@@ -522,10 +545,12 @@ const withDetail = (lead: string, detail: string): string =>
  * | reject 6, an unknown code, HTTP 408 or 5xx, a network failure, a polling timeout, a `Trust` failure | `outcome_unknown` / `not_delivered`, retryable for a query | true / false |
  * | HTTP 429 | `not_delivered`, retryable | false / false |
  * | any other HTTP 4xx, `IngressExpiryInvalid` | `not_delivered` | false / false |
+ * | a request that could not be built or signed (CBOR or DER encoding, an invalid identity, no `fetch`, no canister id) | `not_delivered` | false / false |
  *
  * For a query nothing that matters executes, so every doubt is `not_delivered`
  * and `mayHaveExecuted` is `false`. The HTTP rows, and `IngressExpiryInvalid`,
- * hold for an update only when `context.accepted` is `false`. Once the request
+ * hold for an update only when `context.accepted` is `false`, and so does the
+ * row of a request that could not be built. Once the request
  * may be in the IC (see {@link ErrorContext}), they all read as
  * `outcome_unknown` with `mayHaveExecuted: true`, because a refusal that comes
  * later says nothing about the call.
@@ -618,6 +643,19 @@ export function classifyError(
     }
     // 6, a code outside 1 to 6, or a rejection whose code cannot be read.
     return doubt(reason)
+  }
+
+  if (shape.codeName !== undefined && PRE_SEND_CODES.has(shape.codeName)) {
+    const reason = withDetail(
+      "the request could not be built or signed, so it was not sent",
+      shape.detail
+    )
+    // A request that could not be built says nothing about one sent before
+    // it: for an update the replica may already hold (a poll that could not
+    // be encoded), the call's outcome is still unknown.
+    return mayBeAccepted
+      ? make("outcome_unknown", true, reason)
+      : make("not_delivered", false, reason)
   }
 
   if (shape.codeName === "IngressExpiryInvalidErrorCode") {
