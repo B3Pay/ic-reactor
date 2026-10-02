@@ -1,0 +1,9 @@
+{
+  "condition": "v4",
+  "bug": "Reports every failed transfer as certainly not executed, ignoring the error's mayHaveExecuted (wrong for a lost reply and for a trap).",
+  "expectFail": [
+    "reject_code_4_classified",
+    "reject_code_5_classified",
+    "lost_reply_classified"
+  ]
+}

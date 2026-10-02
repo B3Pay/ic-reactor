@@ -235,8 +235,11 @@ Approved by owner: yes, on 2026-09-30 ("stop here, ship the thin layer").
 
 ## Addendum 3 — the 4.0.0-beta.1 gate (draft)
 
-**Status: Draft, to be frozen when the v4 references land.** Drafted on
-2026-10-02, before any agent run of the `v4` condition. The text above,
+**Status: Draft, to be frozen when the conditions under "Freezing" hold.**
+Drafted on 2026-10-02, before any agent run of the `v4` condition. The `v4`
+references and the six ported faulty solutions landed the same day
+(`node gate.mjs --require v4`: 55 of 55); DX3's guide and the commit under
+test are still to come. The text above,
 including Addenda 1 and 2 and the Decision, is unchanged. Until it is frozen
 this addendum may still be edited; once frozen it changes only through a
 further dated addendum, and no `v4` agent run starts before it is frozen.
@@ -299,6 +302,15 @@ world, `task.json`, `score.mjs` or `harness/judge.mjs`:
   it, all 80 pilot transcripts keep their audit record exactly (no network
   use found; 0 of 40 contaminated in each pilot, as reported in Addendum 1
   and Addendum 2).
+- The `v4` cells of the gate are filled: a `reference` and a
+  `reference-module-scope` for each task, written against the packed
+  packages, and the six v4-proto faulty solutions ported to them
+  (`tasks/*/faulty/v4-*`). Each port fails exactly the tests its v4-proto
+  original fails, so no `expectFail` list changed and none was dropped
+  (`conditions/v4/PORTING.md`). `harness/gate-plan.test.mjs` now checks on
+  this tree that the gate skips no cell, with `--require v4` and without,
+  that it plans those four references and six ports, and that each port
+  expects what its original expects.
 
 **Design.**
 
@@ -327,6 +339,15 @@ world, `task.json`, `score.mjs` or `harness/judge.mjs`:
   `--mode sandboxed`, `--timeout-min 30`, `--max-turns 60`, `--retries 2`
   and the rate-limit settings. `--margin 0.1` only sizes the GA run (the
   runs per cell for a 0.10 difference); it decides nothing here.
+
+- Rehearsed on 2026-10-02 with `--dry-run` (the batch command above without
+  `--jobs`, `--margin` and the token file; nothing launched): 4 cells, 20
+  runs, 5 per cell, in a shuffle seeded 1 that begins
+  `react-wallet/thin-guide#1`, `node-tool/thin-guide#1`, `node-tool/v4#1`,
+  `react-wallet/v4#1`, `node-tool/thin-guide#2`, `node-tool/v4#2`,
+  `react-wallet/v4#2`, `react-wallet/thin-guide#2`; each `v4` cell's
+  `docs/` is `llms.txt` only, and each `thin-guide` cell's is the two
+  candid-core READMEs and `llms.txt`, as in the pilots.
 
 **Pass rule.** 4.0.0-beta.1 passes this gate only if both hold:
 
@@ -403,7 +424,11 @@ dated addendum and the owner's approval, as Addendum 2 did.
   writes the adapter the guide shows (Q14). How well the guide teaches it,
   and that an explicit `AnonymousIdentity` is sent while
   `identity: "anonymous"` is not (`conditions/v4/PORTING.md`), is part of
-  what the batch measures.
+  what the batch measures. So is a third trap the port found: a client kept
+  at module scope and handed to `ReactorProvider` type-checks, and is
+  disposed when the first tree unmounts, after which every call of every
+  later tree is cancelled (in the hidden tests, 30 of 32 fail;
+  `conditions/v4/PORTING.md`, react-wallet module-scope variant).
 
 **Freezing.** This addendum is frozen, by replacing its status line with the
 date and recording the owner's approval below, when all of these hold:

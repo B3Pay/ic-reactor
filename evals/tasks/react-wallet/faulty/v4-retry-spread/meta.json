@@ -1,0 +1,12 @@
+{
+  "condition": "v4",
+  "bug": "Spreads mutationOptions() and overrides its `retry: false` with `retry: 3` (type-checks: mutationOptions takes no retry option, and the later key of a spread wins), so TanStack re-sends thrown failures.",
+  "expectFail": [
+    "canister_err_not_resent",
+    "reject_code_4_not_resent",
+    "reject_code_5_not_resent",
+    "lost_reply_not_resent",
+    "lost_reply_is_unknown",
+    "lost_reply_rereads_balance"
+  ]
+}

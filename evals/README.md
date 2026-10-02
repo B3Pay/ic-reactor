@@ -20,7 +20,7 @@ separable (`thin-guide − thin` vs `v4-proto − thin-guide`).
 
 `v4` was added after the Decision (`PREREGISTRATION.md`): it is the gate for
 releasing ic-reactor 4.0.0-beta.1, run against a same-day `thin-guide`
-control (Addendum 3, a draft until the v4 references land). It runs only
+control (Addendum 3, a draft until it is frozen before the batch). It runs only
 when named (`--condition v4`); a batch with no `--condition` runs the four
 conditions of the pilots. See "The v4 condition" below and
 `conditions/v4/README.md`.
@@ -307,14 +307,18 @@ re-send on refetch/remount/focus and stale balance across identities.
 
 ## Evidence the gate discriminates
 
-`node gate.mjs`: 16 references (a `reference` and a `reference-module-scope`
+`node gate.mjs`: 20 references (a `reference` and a `reference-module-scope`
 per task × condition; thin-guide's are thin's) must pass every test with clean
-tsc, and 29 faulty solutions (each its reference with one change) must type-check
+tsc, and 35 faulty solutions (each its reference with one change) must type-check
 and fail exactly the tests in their `meta.json`; a `safe: { <variant>: bool }`
-in `meta.json` is checked too. Last run: **45/45**. A condition with no
-reference solution yet (`v4`, until its port: `conditions/v4/PORTING.md`) is
-skipped and named (`skip <task>/v4: no reference solutions yet`); with the
-v4 references and the six ported faulty solutions the gate is 55 solutions.
+in `meta.json` is checked too. The pilots' four conditions account for 16
+references and 29 faulty solutions (45/45 before `v4`); `v4` adds 4
+references and the six v4-proto faulty solutions ported to it
+(`conditions/v4/PORTING.md`). Last run, `node gate.mjs --require v4` on
+2026-10-02: **55/55**, no cell skipped, in 15 min 27 s at the default
+`--jobs 3`. A condition with no reference solution yet is skipped and named
+(`skip <task>/<condition>: no reference solutions yet`), unless one of the
+rules below forbids it.
 An empty cell fails the gate before anything is scored, instead of being
 skipped, when its condition is one of the pilots' four, when its task holds
 faulty solutions of that condition (a port left half done), or when
@@ -322,34 +326,44 @@ faulty solutions of that condition (a port left half done), or when
 v4`, so its "no cell skipped" is checked by the gate and not by reading the
 output (`harness/gate-plan.mjs`).
 
-| Faulty solution                               | Bug                                                        | Caught by                                                                                                       |
-| --------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| node `thin-anonymous-transfer`                | checks an identity exists, not that it is non-anonymous    | `no_anonymous_update`                                                                                           |
-| node `thin-number-amount`                     | parses the amount with `Number()`                          | `refuses_malformed_amount`, `refuses_excess_fraction_digits`, `accepts_nat64_max`, `refusal_not_executed`       |
-| node / react `thin-accepts-exponent`          | reads `1e3` as 1000 tokens                                 | `refuses_malformed_amount`                                                                                      |
-| node / react `thin-truncates-fraction-digits` | drops fraction digits past 8                               | `refuses_excess_fraction_digits` (node also `refusal_not_executed`)                                             |
-| node / react `thin-no-nat64-cap`              | no nat64 cap                                               | `refuses_amount_past_nat64`; unsafe under explicit, safe under minimal                                          |
-| node `thin-every-reject-may-have-executed`    | every reject "may have executed"                           | `reject_code_{1,2,3}_classified`                                                                                |
-| node `thin-misclassifies-reject-codes`        | codes 1, 2 → may have; 4 → not (the reviewer's 1.0 mutant) | `reject_code_{1,2,4}_classified`                                                                                |
-| node `thin-fetches-root-key-off-local`        | fetches the root key from any non-mainnet host             | `root_key_not_fetched_off_local`                                                                                |
-| node `thin-ignores-root-key`                  | ignores `config.rootKey`, fetches instead                  | `root_key_used`                                                                                                 |
-| node `thin-unvalidated-recipient`             | invalid recipient falls back to the anonymous principal    | `refuses_invalid_recipient`                                                                                     |
-| node `v3-retry-call-errors`                   | retries on any `CallError`                                 | `reject_code_{4,5}_not_resent`, `lost_reply_{not_resent,classified,balance_reread}`                             |
-| node `v4-proto-never-may-have-executed`       | ignores `mayHaveExecuted`                                  | `reject_code_{4,5}_classified`, `lost_reply_classified`                                                         |
-| node `v4-proto-refuses-nat64-max`             | `<` instead of `<=`                                        | `accepts_nat64_max`                                                                                             |
-| react `thin-anonymous-transfer`               | no sign-in check                                           | `no_anonymous_update`                                                                                           |
-| react `thin-number-balance`                   | balance through `Number()`                                 | `balance_exact_bigint`                                                                                          |
-| react `thin-transfer-as-query`                | transfer as a `useQuery`                                   | `update_not_resent_on_refetch`                                                                                  |
-| react `thin-constant-balance-key`             | balance key without the principal                          | `no_stale_balance_after_identity_switch`, `no_stale_balance_inflight_switch`                                    |
-| react `thin-unguarded-balance-effect`         | balance read in a `useEffect` with no cancellation         | `no_stale_balance_inflight_switch`                                                                              |
-| react `thin-both-auth-buttons`                | both buttons always rendered                               | `auth_buttons`                                                                                                  |
-| react `v3-mutation-retry-3`                   | `retry: 3`                                                 | `canister_err_not_resent`, `reject_code_{4,5}_not_resent`, `lost_reply_{not_resent,is_unknown,rereads_balance}` |
-| react `v3-unknown-as-error`                   | every failure `error`, no re-read                          | `reject_code_{4,5}_is_unknown`, `reject_code_5_rereads_balance`, `lost_reply_{is_unknown,rereads_balance}`      |
-| react `v3-http-4xx-unknown`                   | a 4xx refusal shown as unknown                             | `http_429_is_error`                                                                                             |
-| react `v4-proto-retry-spread`                 | `{ ...mutationOptions(), retry: 3 }` (type-checks)         | as `v3-mutation-retry-3`                                                                                        |
-| react `v4-proto-keep-previous-data`           | `{ ...queryOptions(), placeholderData: keepPreviousData }` | `no_stale_balance_after_identity_switch`                                                                        |
-| react `v4-proto-every-reject-unknown`         | every `rejected` shown as unknown                          | `reject_code_{1,3}_is_error`                                                                                    |
-| react `v4-proto-status-not-idle`              | no `idle` before the first transfer                        | `status_starts_idle`                                                                                            |
+| Faulty solution                               | Bug                                                               | Caught by                                                                                                       |
+| --------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| node `thin-anonymous-transfer`                | checks an identity exists, not that it is non-anonymous           | `no_anonymous_update`                                                                                           |
+| node `thin-number-amount`                     | parses the amount with `Number()`                                 | `refuses_malformed_amount`, `refuses_excess_fraction_digits`, `accepts_nat64_max`, `refusal_not_executed`       |
+| node / react `thin-accepts-exponent`          | reads `1e3` as 1000 tokens                                        | `refuses_malformed_amount`                                                                                      |
+| node / react `thin-truncates-fraction-digits` | drops fraction digits past 8                                      | `refuses_excess_fraction_digits` (node also `refusal_not_executed`)                                             |
+| node / react `thin-no-nat64-cap`              | no nat64 cap                                                      | `refuses_amount_past_nat64`; unsafe under explicit, safe under minimal                                          |
+| node `thin-every-reject-may-have-executed`    | every reject "may have executed"                                  | `reject_code_{1,2,3}_classified`                                                                                |
+| node `thin-misclassifies-reject-codes`        | codes 1, 2 → may have; 4 → not (the reviewer's 1.0 mutant)        | `reject_code_{1,2,4}_classified`                                                                                |
+| node `thin-fetches-root-key-off-local`        | fetches the root key from any non-mainnet host                    | `root_key_not_fetched_off_local`                                                                                |
+| node `thin-ignores-root-key`                  | ignores `config.rootKey`, fetches instead                         | `root_key_used`                                                                                                 |
+| node `thin-unvalidated-recipient`             | invalid recipient falls back to the anonymous principal           | `refuses_invalid_recipient`                                                                                     |
+| node `v3-retry-call-errors`                   | retries on any `CallError`                                        | `reject_code_{4,5}_not_resent`, `lost_reply_{not_resent,classified,balance_reread}`                             |
+| node `v4-proto-never-may-have-executed`       | ignores `mayHaveExecuted`                                         | `reject_code_{4,5}_classified`, `lost_reply_classified`                                                         |
+| node `v4-proto-refuses-nat64-max`             | `<` instead of `<=`                                               | `accepts_nat64_max`                                                                                             |
+| node `v4-never-may-have-executed`             | ignores `mayHaveExecuted`                                         | `reject_code_{4,5}_classified`, `lost_reply_classified`                                                         |
+| node `v4-refuses-nat64-max`                   | `<` instead of `<=`                                               | `accepts_nat64_max`                                                                                             |
+| react `thin-anonymous-transfer`               | no sign-in check                                                  | `no_anonymous_update`                                                                                           |
+| react `thin-number-balance`                   | balance through `Number()`                                        | `balance_exact_bigint`                                                                                          |
+| react `thin-transfer-as-query`                | transfer as a `useQuery`                                          | `update_not_resent_on_refetch`                                                                                  |
+| react `thin-constant-balance-key`             | balance key without the principal                                 | `no_stale_balance_after_identity_switch`, `no_stale_balance_inflight_switch`                                    |
+| react `thin-unguarded-balance-effect`         | balance read in a `useEffect` with no cancellation                | `no_stale_balance_inflight_switch`                                                                              |
+| react `thin-both-auth-buttons`                | both buttons always rendered                                      | `auth_buttons`                                                                                                  |
+| react `v3-mutation-retry-3`                   | `retry: 3`                                                        | `canister_err_not_resent`, `reject_code_{4,5}_not_resent`, `lost_reply_{not_resent,is_unknown,rereads_balance}` |
+| react `v3-unknown-as-error`                   | every failure `error`, no re-read                                 | `reject_code_{4,5}_is_unknown`, `reject_code_5_rereads_balance`, `lost_reply_{is_unknown,rereads_balance}`      |
+| react `v3-http-4xx-unknown`                   | a 4xx refusal shown as unknown                                    | `http_429_is_error`                                                                                             |
+| react `v4-proto-retry-spread`                 | `{ ...mutationOptions(), retry: 3 }` (type-checks)                | as `v3-mutation-retry-3`                                                                                        |
+| react `v4-proto-keep-previous-data`           | `{ ...queryOptions(), placeholderData: keepPreviousData }`        | `no_stale_balance_after_identity_switch`                                                                        |
+| react `v4-proto-every-reject-unknown`         | every `rejected` shown as unknown                                 | `reject_code_{1,3}_is_error`                                                                                    |
+| react `v4-proto-status-not-idle`              | no `idle` before the first transfer                               | `status_starts_idle`                                                                                            |
+| react `v4-retry-spread`                       | `{ ...client.mutationOptions(), retry: 3 }` (type-checks)         | as `v3-mutation-retry-3`                                                                                        |
+| react `v4-keep-previous-data`                 | `{ ...client.queryOptions(), placeholderData: keepPreviousData }` | `no_stale_balance_after_identity_switch`                                                                        |
+| react `v4-every-reject-unknown`               | every `rejected` shown as unknown                                 | `reject_code_{1,3}_is_error`                                                                                    |
+| react `v4-status-not-idle`                    | no `idle` before the first transfer                               | `status_starts_idle`                                                                                            |
+
+The six `v4-` rows are the `v4-proto-` faulty solutions ported to
+ic-reactor 4 (`conditions/v4/PORTING.md`): each fails exactly the tests its
+original fails.
 
 Some bugs fail more than one test because they break more than one stated
 behaviour (a retry after a lost reply that succeeds also reports success and
@@ -439,10 +453,12 @@ the solution load one instance of it, as in every other condition
 (`conditions/v4/README.md`). The starter's `src/generated/icrc1.ts` is
 the output of the published `@candid-core/cli@0.2.0-beta.1`.
 
-Status: plumbing only. The guide is a placeholder until DX3 (#785); no
-reference or faulty solution exists until the client's builders (IR2t,
-#782) and the React bindings (IR6, #780) land; `conditions/v4/PORTING.md` is
-the port's work list. No `v4` agent run happens before Addendum 3 is frozen.
+Status: the four references and the six ported faulty solutions are in the
+tree, written against the client, its builders and the React bindings as
+built (IR2t #782, IR6 #780), and `node gate.mjs --require v4` passes 55 of
+55; `conditions/v4/PORTING.md` records the port and where it differs from the
+plan. The guide is a placeholder until DX3 (#785). No `v4` agent run happens
+before Addendum 3 is frozen.
 
 ## Leak audit and sandbox
 
