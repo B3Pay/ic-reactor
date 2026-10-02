@@ -21,9 +21,10 @@ closed none of the six traps the prototype left open
 its original's). It opened two the prototype did not. An explicit
 `AnonymousIdentity` is sent (below), which
 `node-tool/faulty/v4-anonymous-identity-sent` carries as a gate cell. A
-module-scope client handed to `ReactorProvider` is disposed under later
-trees (react-wallet's module-scope variant, below), which is recorded as a
-question for the lead rather than as a gate cell.
+module-scope client handed to `ReactorProvider` was disposed under later
+trees (react-wallet's module-scope variant, below); #805 since makes the
+provider dispose only a client its own factory call created, so it is not a
+gate cell.
 
 ## Rules for the port
 
@@ -304,6 +305,16 @@ call `shared.signIn()` and `shared.signOut()`. All of these are the public
 `Client` API. This is the one place a v4 React app that keeps v3's
 module-scope idiom cannot use `useClient`/`useAuth`; the guide should say so
 if it shows a module-scope client at all.
+
+_Update (#805, IR6):_ `ReactorProvider` now disposes only a client its own
+factory call created. A client created before the factory runs, such as
+`const shared = createClient(...)` at module scope passed as
+`client={() => shared}`, is borrowed and never disposed by the provider, so
+that idiom can use `useClient`/`useAuth`. The lazy form measured above,
+`client={() => (shared ??= createClient(...))}`, still creates the client
+during the first provider's factory call, so that provider owns and disposes
+it; the provider logs a development error when a later factory hands it back.
+The variant keeps its provider-free shape, which is still correct.
 
 This is a library behaviour, not a port decision, so it went to the lead as
 an open question (#780 for the provider, DX3 #785 for the guide); no
