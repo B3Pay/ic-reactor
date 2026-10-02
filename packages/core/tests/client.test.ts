@@ -14,13 +14,19 @@ import {
   type Client,
   type ClientOptions,
 } from "../src/client.js"
-import { isReactorError } from "../src/errors.js"
+import {
+  classifyError,
+  createReactorError,
+  isReactorError,
+  retryQuery,
+} from "../src/errors.js"
 import { createTestAuth, type TestAuth } from "../src/testing/index.js"
 import {
   ANONYMOUS,
   CALL,
   networkOf,
   onPage,
+  readAs,
   replicaWithWhoami,
 } from "./client-helpers.js"
 
@@ -451,6 +457,94 @@ describe("two clients", () => {
     await expect(internalsOf(second).agentFor(principal, CALL)).resolves.toBe(
       secondAgent
     )
+  })
+})
+
+// A query built by hand on `client.queryClient` (a `useQuery` with its own
+// query function) sets no `retry`, so the client's default decides. The
+// default must never be TanStack's own: three retries in a browser, of any
+// failure, a canister's Err included.
+describe("the QueryClient's default retry", () => {
+  /** A client whose reads go to a fake replica, and a query function for it. */
+  function anonymousReader() {
+    const replica = replicaWithWhoami()
+    const client = createClient({
+      network: networkOf(replica),
+      fetch: replica.fetch,
+      identity: "anonymous",
+    })
+    // As a read's query function does it: the failure is classified as a query's.
+    const queryFn = vi.fn(async () => {
+      try {
+        return await readAs(client, ANONYMOUS)
+      } catch (error) {
+        throw classifyError(error, { ...CALL, mode: "query" })
+      }
+    })
+    const queries = (): number =>
+      replica.requests.filter((request) => request.endpoint === "query").length
+    return { replica, client, queryFn, queries }
+  }
+
+  it("is the client's retry predicate", () => {
+    const { client } = anonymousReader()
+
+    expect(client.queryClient.getDefaultOptions().queries?.retry).toBe(
+      retryQuery
+    )
+  })
+
+  it("tries a read again in a browser page when the replica refused it for now", async () => {
+    onPage()
+    const { replica, client, queryFn, queries } = anonymousReader()
+    replica.refuseNext(503)
+
+    await expect(
+      client.queryClient.fetchQuery({
+        queryKey: ["whoami"],
+        queryFn,
+        retryDelay: 0,
+      })
+    ).resolves.toBe(ANONYMOUS)
+    expect(queryFn).toHaveBeenCalledTimes(2)
+    expect(queries()).toBe(2)
+  })
+
+  it("never tries again a read whose canister answered with an Err", async () => {
+    onPage()
+    const { client } = anonymousReader()
+    const queryFn = vi.fn(() =>
+      Promise.reject(
+        createReactorError("canister_err", {
+          ...CALL,
+          err: { InsufficientFunds: null },
+        })
+      )
+    )
+
+    await expect(
+      client.queryClient.fetchQuery({
+        queryKey: ["balance"],
+        queryFn,
+        retryDelay: 0,
+      })
+    ).rejects.toMatchObject({ kind: "canister_err" })
+    expect(queryFn).toHaveBeenCalledTimes(1)
+  })
+
+  it("never tries a read again on a server, where it fails fast", async () => {
+    const { replica, client, queryFn, queries } = anonymousReader()
+    replica.refuseNext(503)
+
+    await expect(
+      client.queryClient.fetchQuery({
+        queryKey: ["whoami"],
+        queryFn,
+        retryDelay: 0,
+      })
+    ).rejects.toMatchObject({ kind: "not_delivered", httpStatus: 503 })
+    expect(queryFn).toHaveBeenCalledTimes(1)
+    expect(queries()).toBe(1)
   })
 })
 
