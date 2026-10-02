@@ -788,6 +788,18 @@ describe("the root key an agent really uses", () => {
       expect(mainnetKey(used.agentKey)).toBe(true)
     })
 
+    it("uses the cookie's key on a Codespaces page when the caller opts in", async () => {
+      // The `Network` docs name this as the way out of the Codespaces failure
+      // above, so it is pinned against a real agent and not only the resolver.
+      stubPage(CODESPACE)
+
+      const used = await drive(resolveNetwork("env", { allowEnvConfig: true }))
+
+      expect(used.sentTheCall).toBe(true)
+      expect(used.statusRequests).toBe(0)
+      expect(sameBytes(used.agentKey, COOKIE_ROOT_KEY)).toBe(true)
+    })
+
     it("requests nothing on a mainnet page, and ignores the cookie there", async () => {
       stubPage(`https://${CANISTER}.icp0.io`)
 
