@@ -232,3 +232,147 @@ cell, one model, one effort level, and guides and tests written by one author.
 It is carried as a product lesson, not as a measured claim.
 
 Approved by owner: yes, on 2026-09-30 ("stop here, ship the thin layer").
+
+## Addendum 3 — the 4.0.0-beta.1 gate (draft)
+
+**Status: Draft, to be frozen when the v4 references land.** Drafted on
+2026-10-02, before any agent run of the `v4` condition. The text above,
+including Addenda 1 and 2 and the Decision, is unchanged. Until it is frozen
+this addendum may still be edited; once frozen it changes only through a
+further dated addendum, and no `v4` agent run starts before it is frozen.
+
+**What it decides.** Not whether to build anything (the Decision above
+settled that), but whether ic-reactor 4 as packed may be released as
+4.0.0-beta.1: DECISIONS Q14 in issue #790, settled by the owner on
+2026-09-30. The question is whether the real packages keep the second
+pilot's `thin-guide` result: every run safe on both tasks under the minimal
+prompt.
+
+**Conditions.**
+
+- `v4`: `@ic-reactor/core` and `@ic-reactor/react` built and packed from the
+  `v4` branch at the commit under test, `@candid-core/schema` 0.3.0-beta.1,
+  the module `@candid-core/cli` 0.2.0-beta.1 generates, and the core
+  tarball's `llms.txt` (DX3's guide, issue #785) as the only documentation
+  (`conditions/v4/README.md`). `node setup.mjs` builds it from that commit.
+- `thin-guide`: unchanged since the pilots (starter, dependencies, docs),
+  re-run in the same batch as a same-day control: same model, effort, prompt
+  and harness.
+
+The commit under test, and the versions in
+`.ship/v4/node_modules/@ic-reactor/*/package.json`, are written into this
+addendum when it is frozen and into `results/README.md` with the results.
+
+**Fixed from the earlier addenda, unchanged.** The two tasks (`node-tool`,
+`react-wallet`), their hidden tests, the world, `task.json` (including
+`notApplicable.minimal`: `refuses_amount_past_nat64`), `score.mjs`,
+`harness/judge.mjs` and the leak audit as of Addendum 2. The prompts differ
+across conditions only in the `{{LIBRARY}}` line (`harness/assemble.test.mjs`
+checks it for every condition, `v4` included).
+
+**Design.**
+
+- Prompt: `minimal` (`tasks/<task>/prompt.minimal.md`); run mode
+  `sandboxed`.
+- Cells: 2 tasks × 2 conditions = 4 cells, 5 runs per cell, 20 runs, in one
+  batch, ordered round-robin in a shuffle seeded 1 (so the two conditions
+  interleave in time).
+- Model `claude-sonnet-5-5` at effort `medium`, as in both pilots. `drive.mjs`
+  passes them to the agent CLI as `--model claude-sonnet-5-5 --effort medium`
+  (`DEFAULT_AGENT_CMD`) and records both in `plan.json` and every run record.
+- Commands, from `evals/` on the commit under test:
+
+  ```bash
+  node setup.mjs
+  node gate.mjs                 # must pass first: pass rule 2
+  node drive.mjs --preflight --model claude-sonnet-5-5 --effort medium \
+    --oauth-token-file <file>
+  node drive.mjs --pilot --prompt minimal \
+    --condition v4 --condition thin-guide \
+    --model claude-sonnet-5-5 --effort medium --seed 1 --jobs 2 \
+    --margin 0.1 --oauth-token-file <file>
+  ```
+
+  `--pilot` sets 5 runs per cell. Defaults that stay as in the pilots:
+  `--mode sandboxed`, `--timeout-min 30`, `--max-turns 60`, `--retries 2`
+  and the rate-limit settings. `--margin 0.1` only sizes the GA run (the
+  runs per cell for a 0.10 difference); it decides nothing here.
+
+**Pass rule.** 4.0.0-beta.1 passes this gate only if both hold:
+
+1. **`v4` is safe in 5 of 5 runs on `node-tool` and in 5 of 5 on
+   `react-wallet`**, in the main analysis and in the intent-to-treat
+   analysis alike. "Safe" is as `score.mjs` and `harness/judge.mjs` compute
+   it under the minimal prompt (no applicable safety requirement failed).
+   Each `v4` cell must hold 5 scored runs, none contaminated: a cell with a
+   contaminated run, or with fewer than 5 scored runs once `drive.mjs` has
+   exhausted its retries, does not meet the rule.
+2. **`node gate.mjs` passes on the commit under test, with `v4` in it**: the
+   `v4` `reference` and `reference-module-scope` of both tasks pass every
+   hidden test with a clean `tsc`, and the six v4-proto faulty solutions,
+   ported (`conditions/v4/PORTING.md`: from `v4-proto-never-may-have-executed`,
+   `v4-proto-refuses-nat64-max`, `v4-proto-retry-spread`,
+   `v4-proto-keep-previous-data`, `v4-proto-every-reject-unknown` and
+   `v4-proto-status-not-idle`), each fail exactly the tests in their
+   `meta.json`: 55 of 55, no cell skipped. It is run before the batch; if
+   it fails, the batch does not start.
+
+`thin-guide` does not enter the rule. Its result is reported beside `v4`'s;
+if it is below 5 of 5 on a task, the report says so, because the pilots'
+baseline then did not reproduce on that day.
+
+**Analyses**, as the Definitions and Addenda 1 and 2 define them:
+
+- Main: contaminated runs excluded. Intent-to-treat: contaminated runs kept.
+  Both from the same `summary.json` (`main`, `intentToTreat`), with
+  contamination as the leak audit judged it at run time. A later re-audit
+  (`--rescan`) is reported beside it and does not change the outcome
+  without a further addendum.
+- Harness errors are retried by the driver, then excluded and counted, never
+  scored as 0. Completing a planned run that ended in a harness error
+  (`drive.mjs --resume <dir>`) completes the batch; a scored run is never
+  replaced.
+- Reported for each cell: the safe-run rate with its Wilson 95% interval,
+  per-requirement pass rates, mean requirements met, `tsc`-clean rate, the
+  not-applicable `refuses_amount_past_nat64` results, minutes, turns and
+  tokens. Reported for each task: `v4 - thin-guide` in the safe-run rate
+  with its Newcombe 95% interval (`harness/aggregate.mjs` computes this
+  comparison first). None of these decides the gate; rule 1 does.
+
+**If it fails.** If rule 1 or rule 2 is not met, 4.0.0-beta.1 is not
+released on this batch. The batch, or any cell of it, is not run again to
+look for a pass. The failing runs and requirements are reported, and the
+owner decides what follows: for example a change to the library or its
+guide, followed by a new batch pre-registered in a further dated addendum,
+or a release that states the result. Any change to the hidden tests, the
+world, the scoring, the prompts or this rule after the batch starts needs a
+dated addendum and the owner's approval, as Addendum 2 did.
+
+**Known limits.**
+
+- Five runs per cell: 5 of 5 has a Wilson 95% interval of [0.566, 1]. The
+  gate can catch a gross regression; it cannot show equivalence. GA uses
+  20 runs per cell and non-inferiority, `v4 - thin-guide >= -0.10` on the
+  Newcombe lower bound, pre-registered in a further addendum before that
+  run (Q14).
+- One model at one effort level; the pilots' caveats hold (one author wrote
+  the tasks, tests, guides and references; the separation from `thin` is
+  exploratory).
+- The world still installs the fake replica that `@ic-reactor/core` 3.13.0
+  publishes as a global `fetch` stub before the solution loads; a v4 client
+  builds its agents after that and binds the stub like any `HttpAgent`
+  (issue #786).
+- The react-wallet starter's `WalletAuth` is not an `AuthLike`; the agent
+  writes the adapter the guide shows (Q14). How well the guide teaches it,
+  and that an explicit `AnonymousIdentity` is sent while
+  `identity: "anonymous"` is not (`conditions/v4/PORTING.md`), is part of
+  what the batch measures.
+
+**Freezing.** This addendum is frozen, by replacing its status line with the
+date and recording the owner's approval below, when all of these hold:
+the `v4` references and the six ported faulty solutions are in the tree and
+`node gate.mjs` passes 55 of 55; `conditions/v4/docs/llms.txt` is DX3's
+guide as packed and passes `node harness/check-docs.mjs`; the commit under
+test is named above.
+
+Approved by owner: not yet (draft).
