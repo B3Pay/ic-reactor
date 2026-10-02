@@ -10,11 +10,18 @@
  *
  * The guarantee: every failure a ledger call can end with is a `ReactorError`
  * whose `kind` and `mayHaveExecuted` follow one table, for an update and, with
- * the differences a read has, for a query. This file drives every row of the
- * table through the whole stack against a mocked ledger, and checks the one
- * property the table exists for: when the ledger's books changed, the error
- * says `mayHaveExecuted: true`. (The same table as pure functions of agent
- * errors is `errors.test.ts`; this is the table as an app sees it.)
+ * the differences a read has, for a query. This file drives every row an app
+ * can provoke through a mocked ledger (reject codes 1 to 6, HTTP 400, 408, 429
+ * and 503, a lost reply, a reply that does not decode, an `Err` arm) through
+ * the whole stack, and checks the one property the table exists for: when the
+ * ledger's books changed, the error says `mayHaveExecuted: true`.
+ *
+ * Rows it leaves out: the management canister's rejects and a re-send
+ * cancelled by an account switch are in
+ * `update-resent-when-never-delivered.test.ts`; failures only the agent itself
+ * produces (a polling timeout, a `Trust` failure, `IngressExpiryInvalid`, a
+ * request that cannot be built or signed) are covered as pure functions of
+ * agent errors in `errors.test.ts`.
  */
 import { c } from "@candid-core/schema"
 import { afterAll, describe, expect, it } from "vitest"

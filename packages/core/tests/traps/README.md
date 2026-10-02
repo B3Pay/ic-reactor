@@ -14,18 +14,18 @@ applies to a copy of the package and requires a test of the file to fail under.
 A trap with no fault proves nothing; a green build cannot tell a test that
 guards a regression from one that never did.
 
-| File                                         | The mistake                                                                      |
-| -------------------------------------------- | -------------------------------------------------------------------------------- |
-| `anonymous-write.test.ts`                    | an update sent as the anonymous principal while nobody is signed in              |
-| `update-not-resent.test.ts`                  | an update sent again after a failure that does not say it never ran              |
-| `update-resent-when-never-delivered.test.ts` | the opposite: giving up on an update the replica proved it never took in         |
-| `classification-table.test.ts`               | a failed write reported as one thing that means another (every row of the table) |
-| `stale-data-across-users.test.ts`            | one user's cached answer shown to the next user of the page                      |
-| `update-as-query.test.ts`                    | an update method read through a query that refetches                             |
-| `root-key-off-local.test.ts`                 | a root key fetched from a replica nobody vouches for                             |
-| `unresolved-name.test.ts`                    | a canister id taken from a cookie the page cannot trust                          |
-| `invalidation-after-write.test.ts`           | a screen that keeps showing money that has already moved                         |
-| `err-arm.test.ts`                            | an `Err` reply that resolves as a success                                        |
+| File                                         | The mistake                                                                              |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `anonymous-write.test.ts`                    | an update sent as the anonymous principal while nobody is signed in                      |
+| `update-not-resent.test.ts`                  | an update sent again after a failure that does not say it never ran                      |
+| `update-resent-when-never-delivered.test.ts` | the opposite: giving up on an update the replica proved it never took in                 |
+| `classification-table.test.ts`               | a failed write reported as one thing that means another (every row a ledger can provoke) |
+| `stale-data-across-users.test.ts`            | one user's cached answer shown to the next user of the page                              |
+| `update-as-query.test.ts`                    | an update method read through a query that refetches                                     |
+| `root-key-off-local.test.ts`                 | a root key fetched from a replica nobody vouches for                                     |
+| `unresolved-name.test.ts`                    | a canister id taken from a cookie the page cannot trust                                  |
+| `invalidation-after-write.test.ts`           | a screen that keeps showing money that has already moved                                 |
+| `err-arm.test.ts`                            | an `Err` reply that resolves as a success                                                |
 
 `ledger.ts` is the ledger they share, and `fetch-spy.ts` a `fetch` that records
 what a client asks a replica for. Neither is a test.
