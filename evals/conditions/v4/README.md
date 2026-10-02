@@ -67,8 +67,14 @@ assembled starter) and the refusal on seeded files.
 
 ## Status
 
-No reference or faulty solution exists yet: `gate.mjs` reports
-`skip <task>/v4: no reference solutions yet` for both tasks, and
-`gate.mjs --require v4` (what Addendum 3 runs) fails on them. They wait for
-the client and its builders (IR2t #782), the React bindings (IR6 #780) and
-the guide (DX3 #785); `PORTING.md` lists the work.
+The references and faulty solutions are ported (`PORTING.md` records how):
+`tasks/<task>/solutions/v4/reference` and `reference-module-scope` for both
+tasks, the six faulty solutions ported from v4-proto
+(`tasks/*/faulty/v4-*`), each failing exactly the tests its v4-proto
+original fails, and one of v4's own,
+`node-tool/faulty/v4-anonymous-identity-sent`, for a trap the real library
+opens (an explicit `AnonymousIdentity` is sent). `node gate.mjs --require
+v4` (what Addendum 3 runs) reports 56 of 56 with no cell skipped. The guide
+is still the placeholder until DX3 (#785) packs its own into the core
+tarball; `node setup.mjs` and the gate run again on that commit before
+Addendum 3 is frozen.

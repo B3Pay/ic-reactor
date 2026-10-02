@@ -1,0 +1,5 @@
+{
+  "condition": "v4",
+  "bug": "Passes the configured identity through (identity: config.identity ?? \"anonymous\"), so an AnonymousIdentity is signed and sends the transfer: only the \"anonymous\" string makes the client refuse an update before sending it.",
+  "expectFail": ["no_anonymous_update"]
+}

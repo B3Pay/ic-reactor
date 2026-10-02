@@ -1,0 +1,5 @@
+{
+  "condition": "v4",
+  "bug": "Refuses the largest nat64 amount (off by one: < instead of <=).",
+  "expectFail": ["accepts_nat64_max"]
+}
