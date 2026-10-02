@@ -207,6 +207,12 @@ function Accounts({ sandbox }: { sandbox: Sandbox }) {
 /** One press of Send: what was sent, and what was known before it went. */
 interface Attempt {
   readonly arg: TransferArg
+  /**
+   * Who sent it: the caller when it was sent, whom the client signed it as.
+   * ICRC-1 deduplicates a transfer per sender account, so only this
+   * principal can send the same argument again without paying twice.
+   */
+  readonly from: string
   /** The sender's balance when it was sent, to compare with the re-read. */
   readonly before: bigint | undefined
   /** How many requests the replica had seen before it. */
@@ -249,6 +255,7 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
     setFailure(null)
     setAttempt({
       arg,
+      from: caller,
       before: mine.data,
       firstRequest: sandbox.requests.length,
     })
@@ -355,7 +362,8 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
           attempt={attempt}
           transfer={transfer}
           failure={failure}
-          after={mine.data}
+          caller={caller}
+          balance={mine.data}
           onResend={() => send(attempt.arg, "none")}
         />
       )}
@@ -394,10 +402,18 @@ function Outcome(props: {
     error: ReactorError<TransferError> | null
   }
   failure: ReactorError<TransferError> | null
-  after: bigint | undefined
+  /** Who calls now, which may no longer be who sent the attempt. */
+  caller: string
+  /** The balance of `caller`, as last read. */
+  balance: bigint | undefined
   onResend: () => void
 }) {
-  const { sandbox, attempt, transfer, failure, after, onResend } = props
+  const { sandbox, attempt, transfer, failure, caller, onResend } = props
+  // The balance read is the current caller's: it tells something about the
+  // attempt only while that is still its sender. And the same argument
+  // signed by anyone else is a new transfer, not one the ledger deduplicates.
+  const sameSender = caller === attempt.from
+  const after = sameSender ? props.balance : undefined
   const sends = sandbox.requests
     .slice(attempt.firstRequest)
     .filter((r) => r.endpoint === "call" && r.methodName === "icrc1_transfer")
@@ -468,7 +484,9 @@ function Outcome(props: {
     <div className="outcome" data-phase="error">
       <p className={error.mayHaveExecuted ? "warn" : "plain"}>
         {error.mayHaveExecuted
-          ? "May have executed. The client re-read the ledger:"
+          ? sameSender
+            ? "May have executed. The client re-read the ledger:"
+            : "May have executed."
           : error.kind === "canister_err"
             ? "Not executed: the ledger ran it and refused."
             : "Certainly not executed."}
@@ -483,17 +501,28 @@ function Outcome(props: {
         }
       />
       {resent}
-      {error.mayHaveExecuted && (
-        <p>
-          <button type="button" onClick={onResend}>
-            Send the same transfer again
-          </button>{" "}
-          <span className="muted">
-            Same <code>created_at_time</code>: if the first one went through,
-            the ledger answers <code>Duplicate</code> instead of paying twice.
-          </span>
-        </p>
-      )}
+      {error.mayHaveExecuted &&
+        (sameSender ? (
+          <p>
+            <button type="button" onClick={onResend}>
+              Send the same transfer again
+            </button>{" "}
+            <span className="muted">
+              Same sender, same <code>created_at_time</code>: if the first one
+              went through, the ledger answers <code>Duplicate</code> instead of
+              paying twice.
+            </span>
+          </p>
+        ) : (
+          <p className="note">
+            Sent as {nameOf(attempt.from)}, and the caller is now{" "}
+            {nameOf(caller)}, so it is not offered again: the ledger
+            deduplicates per sender account, and the same transfer sent by
+            another caller is a new transfer, out of that caller&apos;s account.
+            Go back to {nameOf(attempt.from)} to see the re-read and to send it
+            again.
+          </p>
+        ))}
     </div>
   )
 }

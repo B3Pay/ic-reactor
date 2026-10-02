@@ -35,6 +35,11 @@ tabs:
 | status 429 three times | gives up after two re-sends: `not_delivered`, certainly not executed                                    |
 | (signed out)           | `unauthenticated`, refused before anything is sent                                                      |
 
+When a transfer may have executed, "Send the same transfer again" is offered
+only while its sender is the caller. ICRC-1 deduplicates per sender account,
+so the same argument signed by another account (after a switch to seed 2) is
+a new transfer, paid in full.
+
 The Sandbox also has a mocked ckBTC minter. `get_btc_address` is an update
 method, which `client.queryOptions` refuses unless told it is idempotent:
 `client.queryOptions(minter, "get_btc_address", arg, { update: "idempotent" })`

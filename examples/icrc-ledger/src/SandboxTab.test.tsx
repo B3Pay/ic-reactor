@@ -13,6 +13,7 @@ import { StrictMode } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   SEED_1,
+  SEED_2,
   createSandbox,
   sandboxBtcAddress,
   type Sandbox,
@@ -106,6 +107,69 @@ describe("the Sandbox tab", () => {
         ).toBe(true),
       patiently
     )
+  })
+
+  it("offers a transfer of unknown outcome again only to the account that sent it", async () => {
+    const sandbox = createSandbox({ latencyMs: 0 })
+    render(
+      <StrictMode>
+        <SandboxTab sandbox={sandbox} />
+      </StrictMode>
+    )
+    await screen.findByText("10 ICP", {}, patiently)
+    /** Who signed each transfer that reached the ledger. */
+    const senders = () =>
+      sandbox.requests
+        .filter(
+          (r) =>
+            r.endpoint === "call" &&
+            r.methodName === "icrc1_transfer" &&
+            r.refused === undefined
+        )
+        .map((r) => r.caller)
+    const again = { name: "Send the same transfer again" }
+
+    send("lost-reply")
+    await screen.findByRole("button", again, patiently)
+    expect(senders()).toEqual([SEED_1])
+
+    // Signed by seed 2, the same argument would be a second, real transfer:
+    // the ledger deduplicates per sender account.
+    fireEvent.click(screen.getByRole("button", { name: "Switch to seed 2" }))
+    // Once the page has read the balances again, as seed 2.
+    await waitFor(() => {
+      expect(
+        sandbox.requests.some(
+          (r) => r.methodName === "icrc1_balance_of" && r.caller === SEED_2
+        )
+      ).toBe(true)
+      expect(sandbox.client.queryClient.isFetching()).toBe(0)
+    }, patiently)
+    expect(screen.queryByRole("button", again)).toBeNull()
+    expect(
+      screen.getByText(
+        /^Sent as seed 1, and the caller is now seed 2, so it is not offered again/
+      )
+    ).toBeTruthy()
+    // Nor does the page read seed 2's balance as the outcome of seed 1's transfer.
+    expect(screen.queryByText(/^The (re-read shows|balance moved)/)).toBeNull()
+    expect(senders()).toEqual([SEED_1])
+
+    // Back as seed 1, the re-read and the offer are back, and the ledger
+    // knows the transfer.
+    fireEvent.click(screen.getByRole("button", { name: "Sign in as seed 1" }))
+    await screen.findByText(
+      "The re-read shows the debit (10 ICP → 8.4999 ICP): the transfer happened.",
+      {},
+      patiently
+    )
+    fireEvent.click(screen.getByRole("button", again))
+    await screen.findByText(/^Duplicate of block 0:/, {}, patiently)
+    expect(senders()).toEqual([SEED_1, SEED_1])
+    // Seed 1 paid once (1.5 ICP and the fee), seed 2 was paid once.
+    expect(screen.getByText("8.4999 ICP")).toBeTruthy()
+    expect(screen.getByText("4 ICP")).toBeTruthy()
+    sandbox.client.dispose()
   })
 
   it("keeps the deposit address through a transfer and a hide and show, without asking the minter again", async () => {
