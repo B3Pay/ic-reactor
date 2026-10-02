@@ -878,6 +878,60 @@ describe("a certified canister", () => {
     await sleep(2_500)
     expect(later.polls()).toBe(1)
   }, 10_000)
+
+  it("ends the wait to poll again after a failed poll as soon as the read's signal aborts, and rejects cancelled", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    // The first poll is answered HTTP 503, a failure worth asking again
+    // after; the second would get the reply.
+    const later = answerLater(replica.fetch, { failures: 1, failWith: 503 })
+    const client = clientAs({ ...replica, fetch: later.fetch }, alice)
+    const certified = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      certified: true,
+    })
+    const { queryFn } = client.queryOptions(certified, "one", 1n)
+    if (queryFn === skipToken) throw new Error("the read is not skipped")
+    const controller = new AbortController()
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext)
+    await vi.waitFor(() => expect(later.polls()).toBe(1))
+    controller.abort()
+    // The call path waits REPOLL_DELAYS_MS[0], 500 ms, before polling again:
+    // the abort must end that wait, not the next loop turn after it.
+    await expect(
+      Promise.race([read, sleep(250).then(() => "still waiting")])
+    ).rejects.toMatchObject({ kind: "cancelled", mayHaveExecuted: false })
+    await sleep(750)
+    expect(later.polls()).toBe(1)
+  }, 10_000)
+
+  it("sends no poll for a read whose signal aborted while its call was on the way, and rejects cancelled", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    // The replica answers the call 202, so its reply must be polled for.
+    const later = answerLater(replica.fetch)
+    const controller = new AbortController()
+    // The read's last observer goes away while the replica takes the call.
+    const fetch = (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      if (urlOf(input).endsWith("/call")) controller.abort()
+      return later.fetch(input, init)
+    }
+    const client = clientAs({ ...replica, fetch }, alice)
+    const certified = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      certified: true,
+    })
+    const { queryFn } = client.queryOptions(certified, "one", 1n)
+    if (queryFn === skipToken) throw new Error("the read is not skipped")
+    await expect(
+      queryFn({ signal: controller.signal } as QueryFunctionContext)
+    ).rejects.toMatchObject({ kind: "cancelled", mayHaveExecuted: false })
+    expect(requestsFor(replica, "one")).toHaveLength(1)
+    expect(later.polls()).toBe(0)
+  })
 })
 
 describe("a call made as a caller who signs out before it is sent", () => {
