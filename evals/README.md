@@ -20,7 +20,7 @@ separable (`thin-guide − thin` vs `v4-proto − thin-guide`).
 
 `v4` was added after the Decision (`PREREGISTRATION.md`): it is the gate for
 releasing ic-reactor 4.0.0-beta.1, run against a same-day `thin-guide`
-control (Addendum 3, a draft until it is frozen before the batch). It runs only
+control (Addendum 3, frozen on 2026-10-03 before the batch). It runs only
 when named (`--condition v4`); a batch with no `--condition` runs the four
 conditions of the pilots. See "The v4 condition" below and
 `conditions/v4/README.md`.
