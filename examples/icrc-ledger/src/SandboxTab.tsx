@@ -2,7 +2,7 @@ import { principal } from "@candid-core/schema"
 import { formatUnits, type Client, type ReactorError } from "@ic-reactor/core"
 import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
 import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
-import { useEffect, useState, type FormEvent } from "react"
+import { Fragment, useEffect, useRef, useState, type FormEvent } from "react"
 import type { TransferArg, TransferError } from "./canisters/icrc1.ts"
 import { ErrorPanel } from "./ErrorPanel.tsx"
 import { shortPrincipal } from "./format.ts"
@@ -38,8 +38,15 @@ function nameOf(text: string): string {
   return shortPrincipal(text)
 }
 
+/** A sandbox the tab's factory made, and a number that tells it apart. */
+interface Made {
+  readonly sandbox: Sandbox
+  /** The view's key: a new sandbox mounts the view again (see `SandboxTab`). */
+  readonly id: number
+}
+
 /** Which sandbox each client the tab's factory made belongs to. */
-type Sandboxes = WeakMap<Client, Sandbox>
+type Sandboxes = WeakMap<Client, Made>
 
 /**
  * The Sandbox tab: a test client running in this page.
@@ -55,8 +62,11 @@ type Sandboxes = WeakMap<Client, Sandbox>
  * A provider that rebuilds its client calls the same factory, so it starts a
  * new sandbox: a fresh ledger (10 and 2.5 ICP again) and an empty request log.
  * It does that when a hidden `Activity` around it is shown again after its
- * client was disposed. This app hides a tab with `hidden` instead, which keeps
- * the sandbox.
+ * client was disposed. The view is keyed by the sandbox, so it mounts again
+ * with the new one: the form, the last transfer's outcome and the deposit
+ * address start over too, instead of describing a transfer the new ledger
+ * never saw. This app hides a tab with `hidden` instead, which keeps the
+ * sandbox and the page as they were.
  */
 export default function SandboxTab(props: {
   /** How long the mocked ledger takes over a read or a transfer. */
@@ -78,13 +88,20 @@ export default function SandboxTab(props: {
   // and a module's map would come back empty while the provider kept its
   // client.
   const [sandboxes] = useState<Sandboxes>(() => new WeakMap())
+  // Numbers the sandboxes this tab's factory makes, for the view's key.
+  const count = useRef(0)
   return (
     <ReactorProvider
       client={() => {
         // Only in-memory work, as a provider's factory should do: React may
         // call it twice in development and keep one result.
         const sandbox = given ?? createSandbox({ latencyMs })
-        sandboxes.set(sandbox.client, sandbox)
+        // A sandbox passed in comes back from every call: it keeps the number
+        // it got first, so the view never mounts again for it.
+        if (!sandboxes.has(sandbox.client)) {
+          count.current += 1
+          sandboxes.set(sandbox.client, { sandbox, id: count.current })
+        }
         return sandbox.client
       }}
     >
@@ -95,14 +112,18 @@ export default function SandboxTab(props: {
 
 function SandboxView({ sandboxes }: { sandboxes: Sandboxes }) {
   const client = useClient()
-  const sandbox = sandboxes.get(client)
-  if (sandbox === undefined) {
+  const made = sandboxes.get(client)
+  if (made === undefined) {
     // The provider's client always comes from the factory above, which
     // records each one it makes in this same map.
     throw new Error("The Sandbox tab's client has no sandbox.")
   }
+  const { sandbox, id } = made
+  // Keyed by the sandbox: what the components below keep in their own state
+  // (the last attempt and its place in the request log, the form) belongs to
+  // one ledger, and a rebuilt provider shows a new one.
   return (
-    <>
+    <Fragment key={id}>
       <section className="intro">
         <p>
           Everything here runs in this page. <code>createTestClient()</code>{" "}
@@ -118,7 +139,7 @@ function SandboxView({ sandboxes }: { sandboxes: Sandboxes }) {
       <Transfer sandbox={sandbox} />
       <DepositAddress sandbox={sandbox} />
       <RequestLog sandbox={sandbox} />
-    </>
+    </Fragment>
   )
 }
 

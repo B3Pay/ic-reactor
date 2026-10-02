@@ -10,7 +10,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react"
-import { StrictMode } from "react"
+import { Activity, StrictMode } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   SEED_1,
@@ -319,6 +319,43 @@ describe("the Sandbox tab's sandbox", () => {
     await waitFor(() => expect(sandbox.auth.disposed).toBe(true))
     expect(sandbox.auth.listenerCount).toBe(0)
     await expect(sandbox.client.signIn()).rejects.toThrow(/disposed client/)
+  })
+
+  it("starts the page over on the new sandbox when a hidden Activity is shown again", async () => {
+    const tab = (mode: "visible" | "hidden") => (
+      <StrictMode>
+        <Activity mode={mode}>
+          <SandboxTab latencyMs={0} />
+        </Activity>
+      </StrictMode>
+    )
+    const { rerender } = render(tab("visible"))
+    await screen.findByText("10 ICP", {}, patiently)
+    send("none")
+    await screen.findByText(/^Sent: block 0\./, {}, patiently)
+    const used = () => made.filter((sandbox) => sandbox.requests.length > 0)
+    expect(used()).toHaveLength(1)
+    const [first] = used() as [Sandbox]
+
+    // Hidden, the provider's client is disposed with its sandbox; shown
+    // again, the provider builds a new one from the same factory.
+    rerender(tab("hidden"))
+    await waitFor(() => expect(first.auth.disposed).toBe(true))
+    rerender(tab("visible"))
+    await waitFor(() => expect(used()).toHaveLength(2), patiently)
+    const [, second] = used() as [Sandbox, Sandbox]
+
+    // The new ledger has seen no transfer, and the page says none was made:
+    // no outcome of the old one, read against the new ledger's balances.
+    await waitFor(() => {
+      expect(screen.getByText("10 ICP")).toBeTruthy()
+      expect(screen.getByText("2.5 ICP")).toBeTruthy()
+    }, patiently)
+    expect(screen.queryByText(/^Sent: block/)).toBeNull()
+    expect(screen.queryByText(/Your balance went from/)).toBeNull()
+    expect(second.requests.some((r) => r.methodName === "icrc1_transfer")).toBe(
+      false
+    )
   })
 
   it("leaves a sandbox it was given to whoever made it", async () => {
