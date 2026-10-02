@@ -128,6 +128,16 @@
     "replace": "    client.authState,\n    client.authState\n"
   },
   {
+    "id": "ir6-server-html-depends-on-the-session",
+    "package": "react",
+    "test": "tests/hydration.test.tsx",
+    "testName": "is rendered as the same HTML by a client that holds a session and one that does not",
+    "why": "the server snapshot read from the client, so a render with a session writes different HTML from a server's",
+    "file": "src/index.tsx",
+    "search": "    client.authState,\n    serverState\n",
+    "replace": "    client.authState,\n    client.authState\n"
+  },
+  {
     "id": "ir6-snapshot-is-a-fresh-object",
     "package": "react",
     "test": "tests/auth.test.tsx",
