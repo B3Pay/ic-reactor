@@ -302,7 +302,11 @@ export function createTestClient(
    * The sign-in the client calls as: `signIn`, `signOut`, `switchTo` another
    * identity or seed, `expire` the session, or make it `elsewhere`. The status
    * changes at once, and the client's next call is signed by whoever is
-   * signed in then. The client owns it and disposes it with itself.
+   * signed in then. The client owns it once it has used it (a call,
+   * `caller()`, `authState()`, `subscribe()`, `signIn()` or `signOut()`) and
+   * disposes it with itself then; a client disposed before any of those never
+   * touched `auth` and leaves it alone, so a test can borrow `auth` from a
+   * client it never used and hand it to another one.
    */
   readonly auth: TestAuth
   /**

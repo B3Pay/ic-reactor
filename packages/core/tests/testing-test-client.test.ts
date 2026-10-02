@@ -693,6 +693,20 @@ describe("what it leaves alone", () => {
     expect(canisterRequests(second)).toMatchObject([{ caller: SEED_2 }])
   })
 
+  it("disposes its auth with the client once the client has used it, and leaves one it never built", async () => {
+    // The client builds its auth on first use, and owns only what it built.
+    // A test can therefore borrow `auth` from a client it never used and hand
+    // it to another one.
+    const unused = setup()
+    unused.client.dispose()
+    expect(unused.auth.disposed).toBe(false)
+
+    const used = setup()
+    expect(used.client.caller()).toBe(SEED_1)
+    used.client.dispose()
+    expect(used.auth.disposed).toBe(true)
+  })
+
   it("holds the fake's own root key, so no root key is ever fetched", async () => {
     const { canister, requests } = withShapes({ one: (n) => n })
 

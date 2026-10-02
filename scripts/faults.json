@@ -550,5 +550,25 @@
     "file": "src/call.ts",
     "search": "          ? !management && retryUpdate(error, resends)",
     "replace": "          ? !management && resends < UPDATE_RESEND_DELAYS_MS.length"
+  },
+  {
+    "id": "ir4b-client-disposes-an-auth-it-never-built",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "disposes its auth with the client once the client has used it, and leaves one it never built",
+    "why": "a client that builds its auth only to dispose it: a test that borrows the auth from a client it never used (the react tests' helper does) is handed one that is already disposed",
+    "file": "src/client.ts",
+    "search": "      const source = auth\n",
+    "replace": "      const source = auth ?? authFactory?.()\n"
+  },
+  {
+    "id": "ir4b-client-keeps-the-auth-it-built",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "disposes its auth with the client once the client has used it, and leaves one it never built",
+    "why": "a client that does not dispose the auth it built: its listener and any timer the auth holds outlive the test",
+    "file": "src/client.ts",
+    "search": "      source?.dispose?.()\n",
+    "replace": "      void source\n"
   }
 ]
