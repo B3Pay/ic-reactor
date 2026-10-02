@@ -283,6 +283,20 @@ call `shared.signIn()` and `shared.signOut()`. All of these are the public
 module-scope idiom cannot use `useClient`/`useAuth`; the guide should say so
 if it shows a module-scope client at all.
 
+This is a library behaviour, not a port decision, so it went to the lead as
+an open question (#780 for the provider, DX3 #785 for the guide); no
+`packages/**` change was made here. Two paths lead to it, both in
+`ReactorProvider` (`packages/react/src/index.tsx`). A later tree's provider
+cannot cancel the earlier tree's pending disposal, which is held per
+provider instance, so the earlier tree's timer disposes the shared client
+under the later tree. And once the client is disposed, a provider that
+mounts with it takes the path meant for a re-shown `Activity`: it calls the
+factory again, gets the same disposed client back, and keeps it, without an
+error or a warning. Whether the provider should throw or warn when its factory
+returns a client it has disposed, or refuse a client it did not build, is
+the lead's call; until then the guide must not show a module-scope client
+handed to `ReactorProvider`.
+
 ### `faulty/v4-retry-spread` (from `v4-proto-retry-spread`)
 
 `useMutation({ ...client.mutationOptions(ledger, "icrc1_transfer"), retry: 3 })`.
