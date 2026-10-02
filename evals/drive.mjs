@@ -58,7 +58,9 @@
 //
 // --resume <dir> continues a batch: runs with agent.json are not re-run, runs
 // without score.json are scored. A run excluded as a harness error has no
-// agent.json, so it is run again and scored.
+// agent.json, so it is run again and scored. A new batch refuses an --out
+// directory that already holds files: it would take that directory's records
+// for its own runs.
 //
 // ASSUMED AGENT CLI (override with --agent-cmd): Claude Code headless,
 //   claude -p "$(cat {prompt})" --output-format stream-json --verbose
@@ -76,6 +78,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs"
 import { join, resolve } from "node:path"
@@ -901,6 +904,27 @@ export async function preflight(args) {
 }
 
 // ---------------------------------------------------------------- main
+/**
+ * A new batch starts in a new or empty directory. In one that already holds
+ * files, plan.json would be overwritten while the run directories stayed: a
+ * run with an agent.json would count as run, one with a score.json as scored,
+ * and the summary would aggregate another batch's records with this one's.
+ * Only --resume continues a batch in place.
+ */
+function refuseUsedOutDir(outDir) {
+  if (!existsSync(outDir)) return
+  if (!statSync(outDir).isDirectory()) {
+    throw new Error(`--out ${outDir} exists and is not a directory`)
+  }
+  if (readdirSync(outDir).length > 0) {
+    throw new Error(
+      `--out ${outDir} already holds files: a new batch needs a new or empty directory, ` +
+        "or it would count the runs recorded there as its own. " +
+        `Continue that batch with --resume ${outDir}, or pick another --out.`
+    )
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   if (args.preflight && !args.dryRun) {
@@ -945,6 +969,7 @@ async function main() {
       args.out ??
         join(EVALS, "runs", new Date().toISOString().replace(/[:.]/g, "-"))
     )
+    refuseUsedOutDir(outDir)
   }
   const cells = args.tasks.length * args.conditions.length
 

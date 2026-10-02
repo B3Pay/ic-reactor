@@ -112,6 +112,12 @@ node harness/check-docs.mjs [files…]                 # docs vs hidden tests (e
 (cd conditions/v4-proto && node node_modules/vitest/vitest.mjs run --config lib/test/vitest.config.mjs)
 ```
 
+A batch writes to `runs/<timestamp>/`, or to `--out <dir>`, which must be new
+or empty: in a directory that already holds files the driver would take the
+runs recorded there for its own (an `agent.json` as run, a `score.json` as
+scored, both in the summary), so it refuses and names `--resume <dir>`, the
+only way to continue a batch in place.
+
 `score.mjs` never reads stdin and exits 0 whenever it produced a score, however
 bad the solution; exit 2 means the harness failed. It prints one JSON object:
 

@@ -270,6 +270,19 @@ addendum when it is frozen and into `results/README.md` with the results.
 across conditions only in the `{{LIBRARY}}` line (`harness/assemble.test.mjs`
 checks it for every condition, `v4` included).
 
+**Harness changes since Addendum 2.** The harness came to this branch
+unchanged from the one the pilots ran on (`spike/v4-thesis` at 2bc1c17f7).
+Besides adding the `v4` condition (above) and `gate.mjs --require` (pass
+rule 2, below), these changed since, none of them in the hidden tests, the
+world, `task.json`, `score.mjs` or `harness/judge.mjs`:
+
+- `drive.mjs --resume` scores a run it runs again after a harness error.
+  Before, the run kept its harness-error record and the new attempt was
+  never scored.
+- `drive.mjs` refuses to start a new batch in an `--out` directory that
+  already holds files. It would have taken the runs recorded there for its
+  own: an `agent.json` as run, a `score.json` as scored.
+
 **Design.**
 
 - Prompt: `minimal` (`tasks/<task>/prompt.minimal.md`); run mode

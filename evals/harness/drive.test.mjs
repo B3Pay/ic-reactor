@@ -3,8 +3,17 @@
 //   node --test harness/drive.test.mjs
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
-import { describe, it } from "node:test"
+import { after, before, describe, it } from "node:test"
 import { agentOutcome, plan } from "../drive.mjs"
 import { EVALS } from "./assemble.mjs"
 
@@ -50,6 +59,96 @@ describe("conditions of a batch", () => {
       out,
       /^ {2}react-wallet × v4: 5 runs; docs\/: llms\.txt; minimal prompt/m
     )
+  })
+})
+
+describe("a new batch's --out directory", () => {
+  let used
+  let empty
+  /** Every file under `dir`, with its contents. */
+  const tree = (dir) =>
+    readdirSync(dir, { withFileTypes: true, recursive: true })
+      .filter((e) => e.isFile())
+      .map((e) => join(e.parentPath, e.name))
+      .sort()
+      .map((p) => [p, readFileSync(p, "utf8")])
+  /** A real (not dry) batch with a stub agent; no credential is needed. */
+  const batch = (out, extra = []) =>
+    spawnSync(
+      process.execPath,
+      [
+        join(EVALS, "drive.mjs"),
+        "--task",
+        "node-tool",
+        "--condition",
+        "thin",
+        "--n",
+        "1",
+        "--model",
+        "stub",
+        "--mode",
+        "tsc-only",
+        "--agent-cmd",
+        "true",
+        "--out",
+        out,
+        ...extra,
+      ],
+      {
+        cwd: EVALS,
+        env: { PATH: process.env.PATH, HOME: process.env.HOME },
+        encoding: "utf8",
+        timeout: 120_000,
+      }
+    )
+  before(() => {
+    // An earlier batch's records: its plan, and the run this batch would
+    // plan (node-tool/thin#1), already run and scored.
+    used = mkdtempSync(join(tmpdir(), "drive-out-used-"))
+    const run = join(used, "node-tool", "thin", "001")
+    mkdirSync(run, { recursive: true })
+    writeFileSync(join(used, "plan.json"), '{"batch":"earlier"}\n')
+    writeFileSync(join(run, "agent.json"), '{"model":"earlier"}\n')
+    writeFileSync(
+      join(run, "score.json"),
+      JSON.stringify({
+        task: "node-tool",
+        condition: "thin",
+        run: 1,
+        model: "earlier",
+        harnessError: "an earlier batch's record",
+        harnessKind: "harness",
+      }) + "\n"
+    )
+    empty = mkdtempSync(join(tmpdir(), "drive-out-empty-"))
+  })
+  after(() => {
+    rmSync(used, { recursive: true, force: true })
+    rmSync(empty, { recursive: true, force: true })
+  })
+
+  it("is refused when it already holds files, and nothing in it changes", () => {
+    const before = tree(used)
+    const r = batch(used)
+    assert.equal(r.status, 2, r.stdout + r.stderr)
+    assert.match(
+      r.stderr,
+      /already holds files: a new batch needs a new or empty directory/
+    )
+    assert.match(r.stderr, new RegExp(`--resume ${used}`))
+    assert.deepEqual(tree(used), before)
+  })
+
+  it("is refused by a dry run as well", () => {
+    const r = batch(used, ["--dry-run"])
+    assert.equal(r.status, 2)
+    assert.match(r.stderr, /already holds files/)
+  })
+
+  it("may be an empty directory", () => {
+    const r = batch(empty, ["--dry-run"])
+    assert.equal(r.status, 0, r.stderr)
+    assert.match(r.stdout, new RegExp(`^results: ${empty}/`, "m"))
   })
 })
 
