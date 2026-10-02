@@ -46,6 +46,7 @@ export default defineConfig({
       ],
       sidebar: [
         { label: "Overview", link: "/" },
+        { label: "Examples", link: "/examples" },
         {
           label: "API Reference",
           collapsed: true,
