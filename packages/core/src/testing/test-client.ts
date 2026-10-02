@@ -278,8 +278,12 @@ export function createTestClient(
      */
     network?: Network
     /**
-     * Whether the `ic_env` cookie is believed, as for `createClient`. Only a
-     * test that resolves `{ name }` canisters from a cookie it set up needs it.
+     * Whether the `ic_env` cookie is believed, as for `createClient`. It
+     * matters only to a test that resolves `{ name }` canisters from a cookie
+     * it set up, and a `{ name }` canister resolves only on a page (in jsdom
+     * or happy-dom), never in Node, which is where a test client runs by
+     * default: a Node test names its canisters with `{ id }`. The root key is
+     * never taken from the cookie: it is the fake's own.
      */
     allowEnvConfig?: boolean
     /** How deep a decoded value may nest, for the client and for the mocks. Defaults to 256. */
