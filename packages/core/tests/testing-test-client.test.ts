@@ -707,6 +707,27 @@ describe("what it leaves alone", () => {
     expect(used.auth.disposed).toBe(true)
   })
 
+  it("owns its auth once a key, query options or a mutation run read the caller", async () => {
+    // `queryKey()` and `queryOptions()` read the caller without calling or
+    // subscribing, and a mutation from `mutationOptions()` reads it when it
+    // runs: each makes the client build the auth, so it disposes it, as the
+    // documentation says.
+    const keyed = withShapes({ one: (n) => n })
+    keyed.client.queryKey(keyed.canister)
+    keyed.client.dispose()
+    expect(keyed.auth.disposed).toBe(true)
+
+    const read = withShapes({ one: (n) => n })
+    read.client.queryOptions(read.canister, "one", 1n)
+    read.client.dispose()
+    expect(read.auth.disposed).toBe(true)
+
+    const written = withShapes({ one: (n) => n })
+    await written.client.mutationOptions(written.canister, "one").mutationFn(1n)
+    written.client.dispose()
+    expect(written.auth.disposed).toBe(true)
+  })
+
   it("holds the fake's own root key, so no root key is ever fetched", async () => {
     const { canister, requests } = withShapes({ one: (n) => n })
 
