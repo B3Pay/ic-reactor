@@ -252,11 +252,11 @@ const account = { owner: principal("aaaaa-aa"), subaccount: null }
 
 const cached = await client.queryClient.fetchQuery(client.queryOptions(ledger, "icrc1_balance_of", account))
 await client.queryClient.invalidateQueries({ queryKey: client.queryKey(ledger) })
-const fresh = await ledger.icrc1_balance_of(account) // no cache at all
+const fresh = await ledger.icrc1_balance_of(account)
 
 try {
   const arg = { to: account, amount: parseUnits("1.5", 8), fee: null, memo: null, from_subaccount: null, created_at_time: null }
-  await ledger.icrc1_transfer(arg)
+  await ledger.icrc1_transfer(arg) // refused unless `client` was built with an Identity
 } catch (error) {
   if (!isReactorError(error)) throw error
   console.error(error.mayHaveExecuted ? "unknown outcome: re-read first" : error.kind)
