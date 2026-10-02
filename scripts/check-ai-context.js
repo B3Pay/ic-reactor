@@ -802,11 +802,13 @@ if (failures.length > 0) {
   for (const failure of failures) {
     console.error(`- ${failure}`)
   }
-  process.exit(1)
+  // Not process.exit(): on a pipe it can cut off output still being written,
+  // and a long list of failures is the output most worth reading in full.
+  process.exitCode = 1
+} else {
+  console.log(
+    `AI context check passed (${aiContextFiles.length} files, ${packageGuides.length} package guides, ` +
+      `${checkedSkills.size} skills, ${consumerSkillDirs.length} plugin skill(s), ` +
+      `docs links in ${docsLinkFiles.length} files, versions: ${[...validVersions].join(", ")}).`
+  )
 }
-
-console.log(
-  `AI context check passed (${aiContextFiles.length} files, ${packageGuides.length} package guides, ` +
-    `${checkedSkills.size} skills, ${consumerSkillDirs.length} plugin skill(s), ` +
-    `docs links in ${docsLinkFiles.length} files, versions: ${[...validVersions].join(", ")}).`
-)
