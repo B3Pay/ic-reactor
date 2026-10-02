@@ -47,8 +47,8 @@ export function Probe() {
   auth.status = "signed-in"
   // @ts-expect-error there is no status the client does not report
   const unknown: typeof auth.status = "pending"
-  // @ts-expect-error sign-out takes no options
-  void auth.signOut({ everywhere: true })
+  // sign-out passes its options on, such as AuthClient's { returnTo }
+  void auth.signOut({ returnTo: "https://app.example/bye" })
 
   return [
     read,

@@ -141,7 +141,7 @@ describe("useAuth", () => {
   it("forwards signIn and signOut to the client, with the options it was given", async () => {
     const real = createTestAuth({ seed: 1, signedIn: false })
     const signIn = vi.fn((options?: unknown) => real.signIn(options as never))
-    const signOut = vi.fn(() => real.signOut())
+    const signOut = vi.fn((_options?: unknown) => real.signOut())
     const auth = { ...real, signIn, signOut }
     let current!: Auth
     function Probe() {
@@ -161,9 +161,12 @@ describe("useAuth", () => {
     expect(current.status).toBe("signed-in")
 
     await act(async () => {
-      await current.signOut()
+      await current.signOut({ returnTo: "https://app.example/bye" })
     })
     expect(signOut).toHaveBeenCalledTimes(1)
+    expect(signOut).toHaveBeenCalledWith({
+      returnTo: "https://app.example/bye",
+    })
     expect(current.status).toBe("anonymous")
   })
 
