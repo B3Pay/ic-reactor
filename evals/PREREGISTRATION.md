@@ -237,9 +237,9 @@ Approved by owner: yes, on 2026-09-30 ("stop here, ship the thin layer").
 
 **Status: Draft, to be frozen when the conditions under "Freezing" hold.**
 Drafted on 2026-10-02, before any agent run of the `v4` condition. The `v4`
-references and the six ported faulty solutions landed the same day
-(`node gate.mjs --require v4`: 55 of 55); DX3's guide and the commit under
-test are still to come. The text above,
+references, the six ported faulty solutions and one faulty solution of
+`v4`'s own landed the same day (`node gate.mjs --require v4`: 56 of 56);
+DX3's guide and the commit under test are still to come. The text above,
 including Addenda 1 and 2 and the Decision, is unchanged. Until it is frozen
 this addendum may still be edited; once frozen it changes only through a
 further dated addendum, and no `v4` agent run starts before it is frozen.
@@ -313,9 +313,14 @@ world, `task.json`, `score.mjs` or `harness/judge.mjs`:
   packages, and the six v4-proto faulty solutions ported to them
   (`tasks/*/faulty/v4-*`). Each port fails exactly the tests its v4-proto
   original fails, so no `expectFail` list changed and none was dropped
-  (`conditions/v4/PORTING.md`). `harness/gate-plan.test.mjs` now checks on
-  this tree that the gate skips no cell, with `--require v4` and without,
-  that it plans those four references and six ports, and that each port
+  (`conditions/v4/PORTING.md`). One faulty solution has no original:
+  `node-tool/faulty/v4-anonymous-identity-sent` passes the configured
+  identity through (`identity: config.identity ?? "anonymous"`), so an
+  explicit `AnonymousIdentity` is signed and sent, a trap the real library
+  opens where v4-proto did not; it fails exactly `no_anonymous_update`.
+  `harness/gate-plan.test.mjs` now checks on this tree that the gate skips
+  no cell, with `--require v4` and without, that it plans those four
+  references, six ports and the one `v4`-only solution, and that each port
   expects what its original expects.
 
 **Design.**
@@ -366,13 +371,14 @@ world, `task.json`, `score.mjs` or `harness/judge.mjs`:
    exhausted its retries, does not meet the rule.
 2. **`node gate.mjs` passes on the commit under test, with `v4` in it**: the
    `v4` `reference` and `reference-module-scope` of both tasks pass every
-   hidden test with a clean `tsc`, and the six v4-proto faulty solutions,
+   hidden test with a clean `tsc`; the six v4-proto faulty solutions,
    ported (`conditions/v4/PORTING.md`: from `v4-proto-never-may-have-executed`,
    `v4-proto-refuses-nat64-max`, `v4-proto-retry-spread`,
    `v4-proto-keep-previous-data`, `v4-proto-every-reject-unknown` and
-   `v4-proto-status-not-idle`), each fail exactly the tests in their
-   `meta.json`: 55 of 55, no cell skipped. `--require v4` makes the gate
-   fail, before scoring anything, when a `v4` cell has no reference
+   `v4-proto-status-not-idle`), and `v4`'s own
+   `node-tool/faulty/v4-anonymous-identity-sent` each fail exactly the tests
+   in their `meta.json`: 56 of 56, no cell skipped. `--require v4` makes the
+   gate fail, before scoring anything, when a `v4` cell has no reference
    solution, so "no cell skipped" is the gate's exit status and not a
    reading of its output (an empty cell of the pilots' four conditions, or
    one whose task holds faulty solutions of its condition, fails it too).
@@ -429,7 +435,8 @@ dated addendum and the owner's approval, as Addendum 2 did.
 - The react-wallet starter's `WalletAuth` is not an `AuthLike`; the agent
   writes the adapter the guide shows (Q14). How well the guide teaches it,
   and that an explicit `AnonymousIdentity` is sent while
-  `identity: "anonymous"` is not (`conditions/v4/PORTING.md`), is part of
+  `identity: "anonymous"` is not (`conditions/v4/PORTING.md`; the gate's
+  `v4-anonymous-identity-sent` shows the hidden tests catch it), is part of
   what the batch measures. So is a third trap the port found: a client kept
   at module scope and handed to `ReactorProvider` type-checks, and is
   disposed when the first tree unmounts, after which every call of every
@@ -438,8 +445,9 @@ dated addendum and the owner's approval, as Addendum 2 did.
 
 **Freezing.** This addendum is frozen, by replacing its status line with the
 date and recording the owner's approval below, when all of these hold:
-the `v4` references and the six ported faulty solutions are in the tree and
-`node gate.mjs --require v4` passes 55 of 55; `conditions/v4/docs/llms.txt`
+the `v4` references, the six ported faulty solutions and
+`v4-anonymous-identity-sent` are in the tree and
+`node gate.mjs --require v4` passes 56 of 56; `conditions/v4/docs/llms.txt`
 is DX3's guide as packed and passes `node harness/check-docs.mjs`; the
 commit under test is named above.
 

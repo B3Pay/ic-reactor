@@ -88,6 +88,14 @@ describe("the gate's plan on a seeded tree", () => {
 })
 
 describe("the gate's plan on this tree", () => {
+  /**
+   * The v4 faulty solutions that are not ports: each catches a trap the real
+   * library leaves open where v4-proto did not, so it has no v4-proto
+   * original (conditions/v4/PORTING.md).
+   */
+  const V4_ONLY = ["node-tool/v4-anonymous-identity-sent"]
+  const isPort = (c) => !V4_ONLY.includes(`${c.task}/${c.name}`)
+
   it("skips no cell and blocks nothing, with --require v4 too", () => {
     for (const require of [[], ["v4"]]) {
       const p = gatePlan({ require })
@@ -95,7 +103,7 @@ describe("the gate's plan on this tree", () => {
       assert.deepEqual(p.blocked, [], `--require ${require}`)
     }
   })
-  it("scores both v4 references of each task and the six ported faulty solutions", () => {
+  it("scores both v4 references of each task, the six ported faulty solutions and the v4-only one", () => {
     const v4 = gatePlan({ require: ["v4"] }).cases.filter(
       (c) => c.condition === "v4"
     )
@@ -117,6 +125,7 @@ describe("the gate's plan on this tree", () => {
         .map((c) => `${c.task}/${c.name}`)
         .sort(),
       [
+        "node-tool/v4-anonymous-identity-sent",
         "node-tool/v4-never-may-have-executed",
         "node-tool/v4-refuses-nat64-max",
         "react-wallet/v4-every-reject-unknown",
@@ -129,9 +138,10 @@ describe("the gate's plan on this tree", () => {
   it("expects each ported faulty solution to fail what its v4-proto original fails", () => {
     const cases = gatePlan().cases
     const ported = cases.filter(
-      (c) => c.condition === "v4" && !c.name.startsWith("reference")
+      (c) =>
+        c.condition === "v4" && !c.name.startsWith("reference") && isPort(c)
     )
-    assert.ok(ported.length > 0)
+    assert.equal(ported.length, 6)
     for (const port of ported) {
       const original = cases.find(
         (c) =>
@@ -144,6 +154,27 @@ describe("the gate's plan on this tree", () => {
         [...port.expectFail].sort(),
         [...original.expectFail].sort(),
         `${port.task}/${port.name}`
+      )
+    }
+  })
+  it("has no v4-proto original for a v4-only faulty solution", () => {
+    const cases = gatePlan().cases
+    for (const id of V4_ONLY) {
+      const [task, name] = id.split("/")
+      assert.ok(
+        cases.some(
+          (c) => c.task === task && c.condition === "v4" && c.name === name
+        ),
+        `${id} is not in the plan`
+      )
+      assert.ok(
+        !cases.some(
+          (c) =>
+            c.task === task &&
+            c.condition === "v4-proto" &&
+            c.name === name.replace(/^v4-/, "v4-proto-")
+        ),
+        `${id} has a v4-proto original: it is a port`
       )
     }
   })
