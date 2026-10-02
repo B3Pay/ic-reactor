@@ -2,7 +2,8 @@
 
 What DX5's second phase (issue #786) ported: the two tasks' v4-proto
 reference solutions and the six v4-proto faulty solutions, rewritten against
-ic-reactor 4. The work list was written on 2026-10-02 against the
+ic-reactor 4, plus one faulty solution of v4's own for a trap the port
+found. The work list was written on 2026-10-02 against the
 **planned** API (SCOPE item 1, DECISIONS Q1 to Q14, and the slices that build
 it: IR1 #779, IR6 #780, IR2t #782, IR5 #777, IR3 #775). The port was made the
 same day against the API **as built** (`packages/core/src`,
@@ -10,13 +11,19 @@ same day against the API **as built** (`packages/core/src`,
 it: where the port differs from the plan, the section says so under "As
 ported".
 
-**Result.** All four references and all six faulty solutions are in the
-tree. `node gate.mjs --require v4` reports 55 of 55 (45 + 4 references + 6
-faulty), no cell skipped. Each ported faulty solution fails exactly the
-tests its v4-proto original fails: no fault had to be dropped or changed, so
-the real library closed none of the six traps the prototype left open, and
-opened no new one in their place (`harness/gate-plan.test.mjs` checks that
-each port's `expectFail` equals its original's).
+**Result.** All four references, all six ported faulty solutions and one
+v4-only faulty solution are in the tree. `node gate.mjs --require v4`
+reports 56 of 56 (45 + 4 references + 6 ports + 1 v4-only), no cell
+skipped. Each ported faulty solution fails exactly the tests its v4-proto
+original fails: no fault had to be dropped or changed, so the real library
+closed none of the six traps the prototype left open
+(`harness/gate-plan.test.mjs` checks that each port's `expectFail` equals
+its original's). It opened two the prototype did not. An explicit
+`AnonymousIdentity` is sent (below), which
+`node-tool/faulty/v4-anonymous-identity-sent` carries as a gate cell. A
+module-scope client handed to `ReactorProvider` is disposed under later
+trees (react-wallet's module-scope variant, below), which is recorded as a
+question for the lead rather than as a gate cell.
 
 ## Rules for the port
 
@@ -51,7 +58,8 @@ each port's `expectFail` equals its original's).
   tests, the world and the scoring do not change (issue #786, "Not in
   scope"). _As ported:_ no set changed.
 - **The gate.** `node gate.mjs --require v4` must then report 45 + 4 + 6 =
-  55 of 55. `--require v4` fails the gate before scoring while either task's
+  55 of 55 (56 of 56 with the v4-only faulty solution added after the
+  port). `--require v4` fails the gate before scoring while either task's
   `v4` cell has no reference, and a ported faulty solution in a task whose
   `v4` references are missing fails it even without the flag, so a port
   left half done cannot pass.
@@ -112,9 +120,11 @@ anonymous; `identity: config.identity ?? "anonymous"` would send the transfer.
 DX3's guide has to teach this mapping (it is the same trap for an agent).
 _As ported:_ confirmed. With that one line in place of the mapping, the
 reference fails `no_anonymous_update`, and only it: the `AnonymousIdentity`
-tool's transfer reaches the ledger. It is not one of the six faulty
-solutions (Addendum 3 counts those), so the gate does not carry it; it is a
-known way to fail the batch.
+tool's transfer reaches the ledger. v4-proto had no such trap (its
+client refused every update whose caller principal was anonymous, however
+the identity was given: `conditions/v4-proto/lib/src/client.ts`), so no
+port carries it; `faulty/v4-anonymous-identity-sent` (below) is the
+reference with that one line, and the gate carries it like the ports.
 
 ### The `AuthLike` adapter (react-wallet, Q14)
 
@@ -201,6 +211,18 @@ The v4 `reference` with `mayHaveExecuted: error.mayHaveExecuted` replaced by
 The v4 `reference` with the cap written `units < NAT64_MAX` instead of
 `units <= NAT64_MAX`. Bug text unchanged. Expected failure:
 `accepts_nat64_max`. _As ported:_ fails exactly this.
+
+### `faulty/v4-anonymous-identity-sent` (v4 only, no original)
+
+The v4 `reference` with `identity: writerOf(config.identity)` replaced by
+`identity: config.identity ?? "anonymous"` (and the then unused `writerOf`
+and `Identity` import removed): the line an agent writes when it reads
+"absent: anonymous" and stops there. Expected failure:
+`no_anonymous_update`, the same test `thin-anonymous-transfer` fails in the
+thin condition. Added after review, so that the gate shows the hidden tests
+catch this trap of the real library. _Measured:_ fails exactly this
+(tsc clean); with the mapping put back, the gate reports the cell `FAIL`
+with nothing failed.
 
 ## react-wallet
 
@@ -339,9 +361,9 @@ _As ported:_ fails exactly this.
 
 ## After the port
 
-- README: the gate line is 55/55 and the faulty-solution table has the six
-  `v4-` rows. The conditions table's `v4` word count stays the placeholder's
-  until DX3's guide is packed.
+- README: the gate line is 56/56 and the faulty-solution table has the
+  seven `v4-` rows. The conditions table's `v4` word count stays the
+  placeholder's until DX3's guide is packed.
 - `node harness/check-docs.mjs` (its default list includes
   `conditions/v4/docs/llms.txt`) and `node setup.mjs` must pass again with
   DX3's guide in the packed core tarball, and `node gate.mjs --require v4`

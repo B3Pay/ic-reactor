@@ -309,13 +309,13 @@ re-send on refetch/remount/focus and stale balance across identities.
 
 `node gate.mjs`: 20 references (a `reference` and a `reference-module-scope`
 per task × condition; thin-guide's are thin's) must pass every test with clean
-tsc, and 35 faulty solutions (each its reference with one change) must type-check
+tsc, and 36 faulty solutions (each its reference with one change) must type-check
 and fail exactly the tests in their `meta.json`; a `safe: { <variant>: bool }`
 in `meta.json` is checked too. The pilots' four conditions account for 16
 references and 29 faulty solutions (45/45 before `v4`); `v4` adds 4
-references and the six v4-proto faulty solutions ported to it
-(`conditions/v4/PORTING.md`). Last run, `node gate.mjs --require v4` on
-2026-10-02: **55/55**, no cell skipped, in 15 min 27 s at the default
+references, the six v4-proto faulty solutions ported to it and one of its
+own (`conditions/v4/PORTING.md`). Last run, `node gate.mjs --require v4` on
+2026-10-02: **56/56**, no cell skipped, in 15 min 29 s at the default
 `--jobs 3`. A condition with no reference solution yet is skipped and named
 (`skip <task>/<condition>: no reference solutions yet`), unless one of the
 rules below forbids it.
@@ -343,6 +343,7 @@ output (`harness/gate-plan.mjs`).
 | node `v4-proto-refuses-nat64-max`             | `<` instead of `<=`                                               | `accepts_nat64_max`                                                                                             |
 | node `v4-never-may-have-executed`             | ignores `mayHaveExecuted`                                         | `reject_code_{4,5}_classified`, `lost_reply_classified`                                                         |
 | node `v4-refuses-nat64-max`                   | `<` instead of `<=`                                               | `accepts_nat64_max`                                                                                             |
+| node `v4-anonymous-identity-sent`             | `identity: config.identity ?? "anonymous"`                        | `no_anonymous_update`                                                                                           |
 | react `thin-anonymous-transfer`               | no sign-in check                                                  | `no_anonymous_update`                                                                                           |
 | react `thin-number-balance`                   | balance through `Number()`                                        | `balance_exact_bigint`                                                                                          |
 | react `thin-transfer-as-query`                | transfer as a `useQuery`                                          | `update_not_resent_on_refetch`                                                                                  |
@@ -361,9 +362,11 @@ output (`harness/gate-plan.mjs`).
 | react `v4-every-reject-unknown`               | every `rejected` shown as unknown                                 | `reject_code_{1,3}_is_error`                                                                                    |
 | react `v4-status-not-idle`                    | no `idle` before the first transfer                               | `status_starts_idle`                                                                                            |
 
-The six `v4-` rows are the `v4-proto-` faulty solutions ported to
+Six of the seven `v4-` rows are the `v4-proto-` faulty solutions ported to
 ic-reactor 4 (`conditions/v4/PORTING.md`): each fails exactly the tests its
-original fails.
+original fails. `v4-anonymous-identity-sent` has no original: it is a trap
+the real library opens where the prototype did not (only `"anonymous"`
+refuses an update; an explicit `AnonymousIdentity` is signed and sent).
 
 Some bugs fail more than one test because they break more than one stated
 behaviour (a retry after a lost reply that succeeds also reports success and
@@ -453,11 +456,11 @@ the solution load one instance of it, as in every other condition
 (`conditions/v4/README.md`). The starter's `src/generated/icrc1.ts` is
 the output of the published `@candid-core/cli@0.2.0-beta.1`.
 
-Status: the four references and the six ported faulty solutions are in the
-tree, written against the client, its builders and the React bindings as
-built (IR2t #782, IR6 #780), and `node gate.mjs --require v4` passes 55 of
-55; `conditions/v4/PORTING.md` records the port and where it differs from the
-plan. The guide is a placeholder until DX3 (#785). No `v4` agent run happens
+Status: the four references, the six ported faulty solutions and the
+v4-only `v4-anonymous-identity-sent` are in the tree, written against the
+client, its builders and the React bindings as built (IR2t #782, IR6 #780),
+and `node gate.mjs --require v4` passes 56 of 56; `conditions/v4/PORTING.md`
+records the port and where it differs from the plan. The guide is a placeholder until DX3 (#785). No `v4` agent run happens
 before Addendum 3 is frozen.
 
 ## Leak audit and sandbox
