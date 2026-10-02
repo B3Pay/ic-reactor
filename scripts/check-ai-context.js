@@ -173,8 +173,9 @@ for (const relPath of aiContextFiles) {
       )
     }
 
-    // 4. Doc links must use the served base. /v4/ was never published and the
-    //    docs workflow deletes it on every deploy, so such links 404.
+    // 4. Doc links must use the served base. /v4/ is the in-development line's
+    //    preview, published from the v4 branch; the 3.x context must not send
+    //    readers there.
     for (const seg of line.match(VERSIONED_DOC_PATH) ?? []) {
       if (seg !== DOCS_BASE) {
         failures.push(
