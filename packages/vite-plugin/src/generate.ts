@@ -124,6 +124,8 @@ interface ProcessResult {
   signal: NodeJS.Signals | null
   /** Set when the process never ran to its end: it did not start, or was killed at the timeout. */
   problem?: string
+  /** Whether Node could not start the process at all, so another try would fail the same way. */
+  unstartable?: boolean
 }
 
 const keep = (text: string, chunk: string) =>
@@ -170,6 +172,7 @@ function runProcess(
         code: null,
         signal: null,
         problem: `could not start: ${error.message}`,
+        unstartable: true,
       })
     )
     child.on("close", (code, signal) =>
@@ -263,9 +266,11 @@ interface Unit {
 
 /**
  * One generator process for `units`, which all write into `outDir`. The report
- * names each unit's fate. A process that ends without a usable report fails
- * every unit it was given, unless there is more than one: it could have been
- * any of them, so each is run alone to find out.
+ * names each unit's fate. A process that ends without a usable report (it
+ * crashed, or was killed at the timeout) fails every unit it was given, unless
+ * there is more than one: it could have been any of them, so each is run alone
+ * to find out, side by side. A unit that is the cause fails alone, and the
+ * others are generated. A hang costs one more wait for that unit, and no more.
  */
 async function runGroup(
   cli: string,
@@ -294,13 +299,10 @@ async function runGroup(
   }
 
   if (!entries) {
-    // A timeout is not retried: it would cost the whole wait again for each
-    // unit.
-    if (units.length > 1 && !run.problem) {
-      const results: GenerateResult[] = []
-      for (const unit of units) {
-        results.push(await runGroup(cli, root, outDir, [unit], timeoutMs))
-      }
+    if (units.length > 1 && !run.unstartable) {
+      const results = await Promise.all(
+        units.map((unit) => runGroup(cli, root, outDir, [unit], timeoutMs))
+      )
       return {
         outcomes: results.flatMap((result) => result.outcomes),
         stderr: results.map((result) => result.stderr).join(""),

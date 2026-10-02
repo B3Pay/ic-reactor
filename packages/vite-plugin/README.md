@@ -102,9 +102,13 @@ bad `.did` ends that process and the plugin reports it. The dev server is not
 affected.
 
 - Canisters that write into one `outDir` share one process, and each `outDir`
-  has its own. A process that dies without a report is retried one canister at
-  a time, so the failure lands on the canister that caused it.
-- A process that runs longer than 60 seconds is killed.
+  has its own. A process that dies without a report is run again, one
+  canister at a time and side by side, so the failure lands on the canister
+  that caused it.
+- A process that runs longer than 60 seconds is killed, and counts as one that
+  died: when it was generating several canisters, each is run again alone and
+  only the one that hangs fails. A hang therefore costs up to two timeouts
+  (120 seconds) before the others are generated.
 - A declaration the generator cannot represent is left out of the module, and
   the plugin logs each one as a warning, for example
   `ic-reactor: ledger: omitted declaration Bad (reserved_field_name)`.

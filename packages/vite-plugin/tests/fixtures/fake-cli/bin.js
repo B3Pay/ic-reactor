@@ -2,7 +2,7 @@
 // A stand-in for candid-core-cli. `gen <did>... -o <dir> --json` reads each
 // entry and, by what it says:
 //   TRAP  writes a trap message to stderr and exits 101 (a crash in the generator)
-//   HANG  never exits, after writing its pid to hang.pid beside this file
+//   HANG  never exits, after appending its pid to hang.pids beside this file
 //   SLOW  reports as below, after 300 ms
 //   NOISY reports as below, after writing a warning to stderr
 //   NEWER reports as below, with a schemaVersion no plugin knows
@@ -22,7 +22,7 @@ if (sources.some((source) => source.includes("TRAP"))) {
   process.stderr.write("RuntimeError: unreachable executed (fake trap)\n")
   process.exit(101)
 } else if (sources.some((source) => source.includes("HANG"))) {
-  fs.writeFileSync(path.join(__dirname, "hang.pid"), String(process.pid))
+  fs.appendFileSync(path.join(__dirname, "hang.pids"), process.pid + "\n")
   setInterval(() => {}, 1000)
 } else {
   const stem = (entry) => path.basename(entry, path.extname(entry))
