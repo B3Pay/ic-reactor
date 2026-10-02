@@ -6,7 +6,8 @@
 //
 // The 3.x fixtures (a `clientManager`, a `./reactor` of `defineReactor`, the
 // canister's declarations in `idlFactory` form) went with the 3.x runtime.
-// The generated-module fixtures arrive with the guide (DX3).
+// The generated modules a snippet imports as `./generated/<name>` are in
+// `generated/`, as `candid-core-cli gen` wrote them for the `.did` files there.
 import type { Principal } from "@icp-sdk/core/principal"
 
 /** A toast helper such as sonner's. */
