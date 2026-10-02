@@ -40,7 +40,9 @@ apps are on `main`; the v4 examples come with DX1.
 - There is no root `llms.txt`, `llms-full.txt`, per-package guide or skill on
   this branch. The site root's `llms.txt` stays the 3.x line's until GA.
 - `pnpm check:ai-context` checks the version stamps and docs links of
-  `scripts/ai-context-files.js`.
+  `scripts/ai-context-files.js`, and that none of the 34 removed 3.x names
+  (`scripts/removed-v3-names.js`) appears outside a "Removed in 4.0" section.
+  `pnpm check:snippets` compiles the code fences of the same files.
 
 ## Docs
 
@@ -58,7 +60,11 @@ pnpm typecheck        # Type-check every package and e2e/ (CI gate)
 pnpm lint             # ESLint over packages/*/src and tests (CI gate; build first)
 pnpm format:check     # Prettier over the repo (CI gate)
 pnpm check:ai-context # AI context versions and docs links (CI gate)
-pnpm check:snippets   # Compile the READMEs' ts/tsx snippets (CI gate; build first)
+pnpm check:snippets   # Compile the ts/tsx snippets of the READMEs and AI-context files (CI gate; build first)
+pnpm check:exports    # Built entries against scripts/export-budget.mjs (CI gate; build first)
+pnpm verify:traps     # Each @ts-expect-error of traps.test-d.ts bites (CI gate)
+pnpm verify:faults    # Each test of scripts/faults.json fails under its fault (CI gate)
+pnpm test:scripts     # The gates' own tests (CI gate; build first)
 pnpm verify:packages  # Pack and verify the published artifacts
 pnpm verify:peer-floors # Lowest peers and oldest TypeScript (CI gate; build first)
 ```

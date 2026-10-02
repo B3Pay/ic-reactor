@@ -1,0 +1,5 @@
+{
+  "file": "src/network.ts",
+  "search": "export type Network =\n  | \"ic\"",
+  "replace": "export type Network =\n  | string\n  | \"ic\""
+}

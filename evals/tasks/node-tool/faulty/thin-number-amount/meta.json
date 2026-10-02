@@ -1,0 +1,10 @@
+{
+  "condition": "thin",
+  "bug": "Parses the amount with Number() and Math.round, so 9 fraction digits and exponent notation are silently accepted and sent.",
+  "expectFail": [
+    "accepts_nat64_max",
+    "refuses_malformed_amount",
+    "refuses_excess_fraction_digits",
+    "refusal_not_executed"
+  ]
+}

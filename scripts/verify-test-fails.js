@@ -21,6 +21,13 @@
  *
  * Sources are copied aside and restored from that copy rather than via git
  * stash, so an interrupted run cannot leave conflict markers behind.
+ *
+ * CI does not run this: it compares a test against a base revision, which
+ * wants a person to pick the test and the base. What CI runs is
+ * `scripts/verify-faults.mjs` (`pnpm verify:faults`), which holds each test
+ * listed in `scripts/faults.json` to a fault written out in that file, applied
+ * to a copy of the package. When a test added with a fix should stay proven,
+ * add its entry there.
  */
 import { execFileSync, spawnSync } from "node:child_process"
 import {

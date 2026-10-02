@@ -1,0 +1,11 @@
+{
+  "condition": "v3",
+  "bug": "Treats every failed transfer as `error` (a trap included) and does not re-read the balance after one.",
+  "expectFail": [
+    "reject_code_4_is_unknown",
+    "reject_code_5_is_unknown",
+    "reject_code_5_rereads_balance",
+    "lost_reply_is_unknown",
+    "lost_reply_rereads_balance"
+  ]
+}

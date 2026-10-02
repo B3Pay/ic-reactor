@@ -1,0 +1,12 @@
+# evals/ is its own pnpm workspace root, so installing here never touches the
+# repository's root lockfile or the resolution of anything under packages/.
+# Each condition gets its own node_modules holding only what an agent in that
+# condition is allowed to import (plus the test runner the scorer needs).
+# conditions/v4 is deliberately not a member: its ic-reactor packages exist
+# only as tarballs that setup.mjs packs from this repository, so setup.mjs
+# installs that condition itself (npm, from the tarballs).
+packages:
+  - "conditions/v3"
+  - "conditions/thin"
+  - "conditions/v4-proto"
+  - "conditions/v4-proto/lib"

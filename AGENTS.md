@@ -33,6 +33,7 @@ against unpublished candid-core shapes until the 0.3 beta of
 | Docs site (`/v4/`)            | `docs/`, `.github/workflows/docs.yml`                                       |
 | Consumer guide                | `packages/core/llms.txt` (placeholder until DX3)                            |
 | Release lane                  | `scripts/release.js`, `.github/workflows/release.yml`                       |
+| CI gates and their tests      | `scripts/` (`check-exports.mjs`, `verify-traps.mjs`, `verify-faults.mjs`)   |
 
 ## Verification commands
 
@@ -45,7 +46,11 @@ against unpublished candid-core shapes until the 0.3 beta of
 - Published artifacts: `pnpm verify:packages`
 - Peer and TypeScript floors (CI gate; build first): `pnpm verify:peer-floors`
 - Docs: `pnpm docs:build`, `pnpm docs:check-links`
-- A bug fix: `pnpm verify:test-fails <test file> --package <pkg>` on the new test
+- Export budget (CI gate; build first): `pnpm check:exports` — the built declarations of core, `core/testing`, react and the Vite plugin against the plan in `scripts/export-budget.mjs`: no unplanned name, no more than the cap, no name exported twice or also exported by `@candid-core/schema` or TanStack Query (D35), no `exports` subpath or publishable package the file does not list, and the schema declared only at the pinned version. Adding a public name or subpath means adding it to that file in the same change.
+- Trap types (CI gate): `pnpm verify:traps` — every `@ts-expect-error` of `packages/core/tests/traps.test-d.ts` must be reported as unused (TS2578) once its fault fixture in `scripts/traps/` removes it. How to add a trap is in that file's header.
+- Fault-proof runtime tests (CI gate): `pnpm verify:faults` — every test listed in `scripts/faults.json` must fail with its fault applied to a copy of its package. A test that guards a regression somebody could reintroduce gets an entry.
+- Script tests (CI gate; build first): `pnpm test:scripts` — the gates above, `check:ai-context` and `check:snippets`, each run against repositories built for the purpose.
+- A bug fix: `pnpm verify:test-fails <test file> --package <pkg>` on the new test, and a `scripts/faults.json` entry if it should stay proven
 
 ## Generated files
 
@@ -57,8 +62,14 @@ edited by hand when `e2e/src/actor/hello_actor.did` changes.
 ## AI context files
 
 `scripts/ai-context-files.js` lists them: `packages/core/llms.txt`, this file
-and `CLAUDE.md`. The consumer guide is `packages/core/llms.txt`, shipped in
-core's tarball; it opens with an `Applies to` line naming core's version, and
-until DX3 writes it, it states only that ic-reactor 4 is in development. Keep
-repo paths and contributor workflow out of it. The skill and any other guide
-land with DX3.
+and `CLAUDE.md`, plus `packages/react/llms.txt` and the consumer skill
+`skill-packages/ic-reactor/` once they exist. The consumer guide is
+`packages/core/llms.txt`, shipped in core's tarball; it opens with an
+`Applies to` line naming core's version, and until DX3 writes it, it states
+only that ic-reactor 4 is in development. Keep repo paths and contributor
+workflow out of it. The skill and any other guide land with DX3.
+
+`check:ai-context` also fails on any of the 34 removed 3.x names
+(`scripts/removed-v3-names.js`) outside a section headed "Removed in 4.0", and
+`check:snippets` compiles every `ts`/`tsx` fence of these files against the
+built packages.

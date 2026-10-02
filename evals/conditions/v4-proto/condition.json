@@ -1,0 +1,6 @@
+{
+  "name": "v4-proto",
+  "localVersion": "0.1.0",
+  "library": "Available library: `@ic-reactor/v4-proto` \u2014 typed per-method handles that produce TanStack Query options \u2014 over the module generated from the ledger's `.did` in `src/generated/` (use `LedgerService` from `src/generated/icrc1.service.ts`), with `@icp-sdk/core`, `@icp-sdk/auth` and TanStack Query (`@tanstack/react-query`, `@tanstack/query-core`). Its documentation is in `docs/`; read it before you start.",
+  "docs": ["docs/llms.txt"]
+}

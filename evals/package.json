@@ -1,0 +1,26 @@
+{
+  "name": "ic-reactor-evals",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Harness measuring whether coding agents write more correct IC apps with a v3, thin, or v4-proto library surface. Throwaway spike; not published.",
+  "scripts": {
+    "setup": "node setup.mjs",
+    "score": "node score.mjs",
+    "gate": "node gate.mjs",
+    "drive": "node drive.mjs"
+  },
+  "dependencies": {
+    "@candid-core/cli": "0.1.0",
+    "@candid-core/schema": "0.2.0",
+    "@ic-reactor/core": "3.13.0",
+    "@icp-sdk/core": "6.1.0",
+    "@noble/curves": "2.4.0",
+    "@tanstack/query-core": "5.104.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.3",
+    "typescript": "6.0.3"
+  },
+  "packageManager": "pnpm@10.30.3"
+}

@@ -1,0 +1,14 @@
+{
+  "edits": [
+    {
+      "file": "src/errors.ts",
+      "search": "readonly kind: Exclude<ReactorErrorKind, \"canister_err\">\n            readonly err?: undefined",
+      "replace": "readonly kind: Exclude<ReactorErrorKind, \"canister_err\">\n            readonly err: E"
+    },
+    {
+      "file": "src/errors.ts",
+      "search": "): ReactorError<unknown> {\n  const { mode, err, reason, ...rest } = fields",
+      "replace": "): any {\n  const { mode, err, reason, ...rest } = fields"
+    }
+  ]
+}

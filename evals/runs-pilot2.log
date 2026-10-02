@@ -1,0 +1,150 @@
+auth: Claude subscription token from --oauth-token-file; effort medium; prompt minimal; 2 agents at a time
+preflight ok (Claude subscription token from --oauth-token-file; model claude-sonnet-5-5; effort medium)
+node-tool/thin-guide#1: agent normal (0.672 min)
+node-tool/thin#1: agent normal (1.041 min)
+react-wallet/thin-guide#1: agent normal (0.79 min)
+react-wallet/v4-proto#1: agent normal (0.8 min)
+node-tool/v4-proto#1: agent normal (0.663 min)
+react-wallet/v3#1: agent normal (1.192 min)
+node-tool/v3#1: agent normal (1.102 min)
+react-wallet/thin#1: agent normal (1.385 min)
+node-tool/v4-proto#2: agent normal (0.801 min)
+node-tool/v3#2: agent normal (1.021 min)
+react-wallet/v3#2: agent normal (1.911 min)
+node-tool/thin#2: agent normal (1.172 min)
+react-wallet/thin-guide#2: agent normal (0.777 min)
+node-tool/thin-guide#2: agent normal (0.631 min)
+react-wallet/v4-proto#2: agent normal (0.74 min)
+node-tool/v4-proto#3: agent normal (0.64 min)
+react-wallet/thin#2: agent normal (1.083 min)
+react-wallet/v3#3: agent normal (1.57 min)
+react-wallet/thin#3: agent normal (1.664 min)
+react-wallet/thin-guide#3: agent normal (0.747 min)
+node-tool/thin-guide#3: agent normal (0.853 min)
+node-tool/v3#3: agent normal (1.178 min)
+react-wallet/v4-proto#3: agent normal (0.743 min)
+node-tool/thin#3: agent normal (0.993 min)
+react-wallet/v4-proto#4: agent normal (0.703 min)
+react-wallet/thin-guide#4: agent normal (0.853 min)
+react-wallet/v3#4: agent normal (1.473 min)
+node-tool/v4-proto#4: agent normal (0.7 min)
+react-wallet/thin#4: agent normal (1.234 min)
+node-tool/thin-guide#4: agent normal (0.71 min)
+node-tool/thin#4: agent normal (0.993 min)
+node-tool/v3#4: agent normal (1.069 min)
+react-wallet/thin-guide#5: agent normal (0.782 min)
+react-wallet/v4-proto#5: agent normal (1.076 min)
+node-tool/thin-guide#5: agent normal (0.772 min)
+node-tool/thin#5: agent normal (1.07 min)
+node-tool/v3#5: agent normal (1.094 min)
+react-wallet/v3#5: agent normal (1.419 min)
+node-tool/v4-proto#5: agent normal (0.55 min)
+react-wallet/thin#5: agent normal (1.911 min)
+node-tool/thin#1: safe false, met 0.7143
+node-tool/thin-guide#1: safe false, met 0.8571
+react-wallet/thin-guide#1: safe false, met 0.875
+react-wallet/v4-proto#1: safe false, met 0.875
+react-wallet/v3#1: safe false, met 0.75
+node-tool/v4-proto#1: safe false, met 0.8571
+node-tool/v3#1: safe false, met 0.7143
+react-wallet/thin#1: safe false, met 0.75
+node-tool/v4-proto#2: safe false, met 0.8571
+react-wallet/v3#2: safe false, met 0.75
+node-tool/v3#2: safe false, met 0.7143
+node-tool/thin#2: safe false, met 0.7143
+react-wallet/thin-guide#2: safe false, met 0.875
+node-tool/thin-guide#2: safe false, met 0.8571
+react-wallet/v4-proto#2: safe false, met 0.875
+react-wallet/thin#2: safe false, met 0.75
+node-tool/v4-proto#3: safe false, met 0.8571
+react-wallet/v3#3: safe false, met 0.75
+react-wallet/thin#3: safe false, met 0.75
+react-wallet/thin-guide#3: safe false, met 0.875
+node-tool/v3#3: safe false, met 0.7143
+node-tool/thin-guide#3: safe false, met 0.8571
+react-wallet/v4-proto#3: safe false, met 0.875
+node-tool/thin#3: safe false, met 0.8571
+react-wallet/v3#4: safe false, met 0.75
+react-wallet/v4-proto#4: safe false, met 0.875
+react-wallet/thin-guide#4: safe false, met 0.875
+node-tool/v4-proto#4: safe false, met 0.8571
+node-tool/thin-guide#4: safe false, met 0.8571
+react-wallet/thin#4: safe false, met 0.75
+node-tool/v3#4: safe false, met 0.7143
+node-tool/thin#4: safe false, met 0.7143
+react-wallet/thin-guide#5: safe false, met 0.875
+react-wallet/v4-proto#5: safe false, met 0.875
+node-tool/thin#5: safe false, met 0.7143
+node-tool/thin-guide#5: safe false, met 0.8571
+node-tool/v3#5: safe false, met 0.7143
+react-wallet/v3#5: safe false, met 0.75
+node-tool/v4-proto#5: safe false, met 0.8571
+react-wallet/thin#5: safe false, met 0.75
+runs 40; auth {"oauth":40}; effort {"medium":40}; prompt {"minimal":40}; harness errors excluded 0 {}; contaminated 0 (excluded from main, kept in intent-to-treat)
+
+== main
+node-tool/claude-sonnet-5-5/medium/minimal/thin: n=5 safe 0 [0, 0.434] met 0.743 [0.714, 0.8] tsc 1 full 0 contaminated 0 harness-errors 0
+node-tool/claude-sonnet-5-5/medium/minimal/thin-guide: n=5 safe 0 [0, 0.434] met 0.857 [0.857, 0.857] tsc 1 full 0 contaminated 0 harness-errors 0
+node-tool/claude-sonnet-5-5/medium/minimal/v3: n=5 safe 0 [0, 0.434] met 0.714 [0.714, 0.714] tsc 1 full 0 contaminated 0 harness-errors 0
+node-tool/claude-sonnet-5-5/medium/minimal/v4-proto: n=5 safe 0 [0, 0.434] met 0.857 [0.857, 0.857] tsc 1 full 0 contaminated 0 harness-errors 0
+react-wallet/claude-sonnet-5-5/medium/minimal/thin: n=5 safe 0 [0, 0.434] met 0.75 [0.75, 0.75] tsc 1 full 0 contaminated 0 harness-errors 0
+react-wallet/claude-sonnet-5-5/medium/minimal/thin-guide: n=5 safe 0 [0, 0.434] met 0.875 [0.875, 0.875] tsc 1 full 0 contaminated 0 harness-errors 0
+react-wallet/claude-sonnet-5-5/medium/minimal/v3: n=5 safe 0 [0, 0.434] met 0.75 [0.75, 0.75] tsc 1 full 0 contaminated 0 harness-errors 0
+react-wallet/claude-sonnet-5-5/medium/minimal/v4-proto: n=5 safe 0 [0, 0.434] met 0.875 [0.875, 0.875] tsc 1 full 0 contaminated 0 harness-errors 0
+node-tool/claude-sonnet-5-5/medium/minimal: v4-proto - thin-guide: safe 0 [-0.434, 0.434] met 0 [0, 0]
+node-tool/claude-sonnet-5-5/medium/minimal: thin-guide - thin: safe 0 [-0.434, 0.434] met 0.114 [0.057, 0.143]
+node-tool/claude-sonnet-5-5/medium/minimal: v4-proto - thin: safe 0 [-0.434, 0.434] met 0.114 [0.057, 0.143]
+node-tool/claude-sonnet-5-5/medium/minimal: v4-proto - v3: safe 0 [-0.434, 0.434] met 0.143 [0.143, 0.143]
+node-tool/claude-sonnet-5-5/medium/minimal: thin-guide - v3: safe 0 [-0.434, 0.434] met 0.143 [0.143, 0.143]
+node-tool/claude-sonnet-5-5/medium/minimal: thin - v3: safe 0 [-0.434, 0.434] met 0.029 [0, 0.086]
+react-wallet/claude-sonnet-5-5/medium/minimal: v4-proto - thin-guide: safe 0 [-0.434, 0.434] met 0 [0, 0]
+react-wallet/claude-sonnet-5-5/medium/minimal: thin-guide - thin: safe 0 [-0.434, 0.434] met 0.125 [0.125, 0.125]
+react-wallet/claude-sonnet-5-5/medium/minimal: v4-proto - thin: safe 0 [-0.434, 0.434] met 0.125 [0.125, 0.125]
+react-wallet/claude-sonnet-5-5/medium/minimal: v4-proto - v3: safe 0 [-0.434, 0.434] met 0.125 [0.125, 0.125]
+react-wallet/claude-sonnet-5-5/medium/minimal: thin-guide - v3: safe 0 [-0.434, 0.434] met 0.125 [0.125, 0.125]
+react-wallet/claude-sonnet-5-5/medium/minimal: thin - v3: safe 0 [-0.434, 0.434] met 0 [0, 0]
+
+== intent-to-treat
+node-tool/claude-sonnet-5-5/medium/minimal/thin: n=5 safe 0 [0, 0.434] met 0.743 [0.714, 0.8] tsc 1 full 0 contaminated 0 harness-errors 0
+node-tool/claude-sonnet-5-5/medium/minimal/thin-guide: n=5 safe 0 [0, 0.434] met 0.857 [0.857, 0.857] tsc 1 full 0 contaminated 0 harness-errors 0
+node-tool/claude-sonnet-5-5/medium/minimal/v3: n=5 safe 0 [0, 0.434] met 0.714 [0.714, 0.714] tsc 1 full 0 contaminated 0 harness-errors 0
+node-tool/claude-sonnet-5-5/medium/minimal/v4-proto: n=5 safe 0 [0, 0.434] met 0.857 [0.857, 0.857] tsc 1 full 0 contaminated 0 harness-errors 0
+react-wallet/claude-sonnet-5-5/medium/minimal/thin: n=5 safe 0 [0, 0.434] met 0.75 [0.75, 0.75] tsc 1 full 0 contaminated 0 harness-errors 0
+react-wallet/claude-sonnet-5-5/medium/minimal/thin-guide: n=5 safe 0 [0, 0.434] met 0.875 [0.875, 0.875] tsc 1 full 0 contaminated 0 harness-errors 0
+react-wallet/claude-sonnet-5-5/medium/minimal/v3: n=5 safe 0 [0, 0.434] met 0.75 [0.75, 0.75] tsc 1 full 0 contaminated 0 harness-errors 0
+react-wallet/claude-sonnet-5-5/medium/minimal/v4-proto: n=5 safe 0 [0, 0.434] met 0.875 [0.875, 0.875] tsc 1 full 0 contaminated 0 harness-errors 0
+node-tool/claude-sonnet-5-5/medium/minimal: v4-proto - thin-guide: safe 0 [-0.434, 0.434] met 0 [0, 0]
+node-tool/claude-sonnet-5-5/medium/minimal: thin-guide - thin: safe 0 [-0.434, 0.434] met 0.114 [0.057, 0.143]
+node-tool/claude-sonnet-5-5/medium/minimal: v4-proto - thin: safe 0 [-0.434, 0.434] met 0.114 [0.057, 0.143]
+node-tool/claude-sonnet-5-5/medium/minimal: v4-proto - v3: safe 0 [-0.434, 0.434] met 0.143 [0.143, 0.143]
+node-tool/claude-sonnet-5-5/medium/minimal: thin-guide - v3: safe 0 [-0.434, 0.434] met 0.143 [0.143, 0.143]
+node-tool/claude-sonnet-5-5/medium/minimal: thin - v3: safe 0 [-0.434, 0.434] met 0.029 [0, 0.086]
+react-wallet/claude-sonnet-5-5/medium/minimal: v4-proto - thin-guide: safe 0 [-0.434, 0.434] met 0 [0, 0]
+react-wallet/claude-sonnet-5-5/medium/minimal: thin-guide - thin: safe 0 [-0.434, 0.434] met 0.125 [0.125, 0.125]
+react-wallet/claude-sonnet-5-5/medium/minimal: v4-proto - thin: safe 0 [-0.434, 0.434] met 0.125 [0.125, 0.125]
+react-wallet/claude-sonnet-5-5/medium/minimal: v4-proto - v3: safe 0 [-0.434, 0.434] met 0.125 [0.125, 0.125]
+react-wallet/claude-sonnet-5-5/medium/minimal: thin-guide - v3: safe 0 [-0.434, 0.434] met 0.125 [0.125, 0.125]
+react-wallet/claude-sonnet-5-5/medium/minimal: thin - v3: safe 0 [-0.434, 0.434] met 0 [0, 0]
+
+pilot: margin 0.15, power 0.8, α 0.05 two-sided
+node-tool/claude-sonnet-5-5/medium/minimal/thin: n=5 safe 0 (var 0) met 0.743 (var 0.004) minutes 1.054/1.041 turns 14.8/14 tokens 7597 cost $0.287 exits {"normal":5} WARN: floor: the task may be too hard for this model
+node-tool/claude-sonnet-5-5/medium/minimal/thin-guide: n=5 safe 0 (var 0) met 0.857 (var 0) minutes 0.728/0.71 turns 8/8 tokens 5252 cost $0.167 exits {"normal":5} WARN: floor: the task may be too hard for this model
+node-tool/claude-sonnet-5-5/medium/minimal/v3: n=5 safe 0 (var 0) met 0.714 (var 0) minutes 1.093/1.094 turns 14.8/15 tokens 7062.8 cost $0.266 exits {"normal":5} WARN: floor: the task may be too hard for this model
+node-tool/claude-sonnet-5-5/medium/minimal/v4-proto: n=5 safe 0 (var 0) met 0.857 (var 0) minutes 0.671/0.663 turns 8.4/8 tokens 4652.2 cost $0.167 exits {"normal":5} WARN: floor: the task may be too hard for this model
+react-wallet/claude-sonnet-5-5/medium/minimal/thin: n=5 safe 0 (var 0) met 0.75 (var 0) minutes 1.455/1.385 turns 13.6/13 tokens 10999.2 cost $0.335 exits {"normal":5} WARN: floor: the task may be too hard for this model
+react-wallet/claude-sonnet-5-5/medium/minimal/thin-guide: n=5 safe 0 (var 0) met 0.875 (var 0) minutes 0.79/0.782 turns 6/6 tokens 6925.8 cost $0.18 exits {"normal":5} WARN: floor: the task may be too hard for this model
+react-wallet/claude-sonnet-5-5/medium/minimal/v3: n=5 safe 0 (var 0) met 0.75 (var 0) minutes 1.513/1.473 turns 16.6/15 tokens 11152.4 cost $0.373 exits {"normal":5} WARN: floor: the task may be too hard for this model
+react-wallet/claude-sonnet-5-5/medium/minimal/v4-proto: n=5 safe 0 (var 0) met 0.875 (var 0) minutes 0.812/0.743 turns 8/7 tokens 5900.4 cost $0.18 exits {"normal":5} WARN: floor: the task may be too hard for this model
+node-tool/claude-sonnet-5-5/medium/minimal: v4-proto - thin-guide: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+node-tool/claude-sonnet-5-5/medium/minimal: thin-guide - thin: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+node-tool/claude-sonnet-5-5/medium/minimal: v4-proto - thin: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+node-tool/claude-sonnet-5-5/medium/minimal: v4-proto - v3: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+node-tool/claude-sonnet-5-5/medium/minimal: thin-guide - v3: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+node-tool/claude-sonnet-5-5/medium/minimal: thin - v3: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+react-wallet/claude-sonnet-5-5/medium/minimal: v4-proto - thin-guide: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+react-wallet/claude-sonnet-5-5/medium/minimal: thin-guide - thin: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+react-wallet/claude-sonnet-5-5/medium/minimal: v4-proto - thin: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+react-wallet/claude-sonnet-5-5/medium/minimal: v4-proto - v3: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+react-wallet/claude-sonnet-5-5/medium/minimal: thin-guide - v3: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+react-wallet/claude-sonnet-5-5/medium/minimal: thin - v3: 41 runs/cell for safe-rate margin 0.15; 2 for requirements-met margin 0.15
+exit 0

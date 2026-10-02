@@ -1,0 +1,9 @@
+{
+  "name": "v3",
+  "library": "Available library: IC Reactor 3.13.0 as published — `@ic-reactor/core`, and `@ic-reactor/react` for React (it re-exports core) — on `@icp-sdk/core`, `@icp-sdk/auth` and TanStack Query. The ledger's Candid declarations (`idlFactory`, `_SERVICE`) are in `src/declarations/`. Its documentation is in `docs/`; read it before you start.",
+  "docs": [
+    "docs/llms-full.txt",
+    "docs/ic-reactor-core.llms.txt",
+    "docs/ic-reactor-react.llms.txt"
+  ]
+}
