@@ -245,7 +245,7 @@ jobs:
                     return;
                   }
                   if (path.startsWith("/v4")) {
-                    window.location.replace("/v4/");
+                    window.location.replace("__V4_MISS_TARGET__");
                     return;
                   }
                   window.location.replace("/v3" + path);
@@ -257,6 +257,20 @@ jobs:
             </body>
           </html>
           EOF
+
+          # A /v4... miss goes to the preview's root only while this deploy
+          # carries one. Without it, /v4/ is itself a miss served by this page,
+          # and redirecting there would reload forever; send it to /v3/.
+          if [ -d "final-docs/v4" ]; then
+            v4_miss_target="/v4/"
+          else
+            v4_miss_target="/v3/"
+          fi
+          sed -i "s#__V4_MISS_TARGET__#${v4_miss_target}#" final-docs/404.html
+          if grep -q "__V4_MISS_TARGET__" final-docs/404.html; then
+            echo "::error::the 404 page still carries its placeholder."
+            exit 1
+          fi
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
