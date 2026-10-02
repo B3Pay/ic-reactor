@@ -63,15 +63,33 @@ jobs:
       - name: Build packages
         run: pnpm build
 
+      # The public surface is the plan in scripts/export-budget.mjs and no
+      # more: it reads the declarations just built and fails on a name the
+      # plan does not list, on more names than an entry's cap, on a name two
+      # entries export, and on a name @candid-core/schema or TanStack Query
+      # already exports (D35: one import path per name).
+      - name: Export budget
+        run: pnpm check:exports
+
       # Compiles every ts/tsx fence of the AI guides, the skills and the
       # READMEs against the declarations just built, the API an agent in a
       # consumer project pastes them against. check:ai-context keeps their
-      # versions and links current but compiles nothing.
+      # versions and links current but compiles nothing. Every file of
+      # scripts/ai-context-files.js is in its set, so a guide is compiled the
+      # commit it lands.
       - name: Snippet check
         run: pnpm check:snippets
 
       - name: Type check
         run: pnpm typecheck
+
+      # Every `@ts-expect-error` of packages/core/tests/traps.test-d.ts is a
+      # guarantee of the types. A directive goes unused when a refactor widens
+      # the type, and nothing in a green typecheck says so, so each trap is
+      # removed on purpose in a copy of the package and tsc must report
+      # exactly that directive as unused (TS2578).
+      - name: Trap types
+        run: pnpm verify:traps
 
       # Type-aware rules read @ic-reactor/core's emitted .d.ts through the
       # workspace symlinks, so this must run after `pnpm build` -- without a
@@ -176,6 +194,19 @@ jobs:
 
       - name: Run tests
         run: pnpm test
+
+      # The gates' own tests: the export budget, the trap verifier, the fault
+      # verifier, check:ai-context and check:snippets each run against
+      # repositories built for the purpose and must fail where they should.
+      # They compile against the packages built above.
+      - name: Test the gates
+        run: pnpm test:scripts
+
+      # A test that stays green with its bug put back guards nothing. Each
+      # test listed in scripts/faults.json is run against a copy of its
+      # package with the named fault applied and must fail.
+      - name: Fault-proof runtime tests
+        run: pnpm verify:faults
 
       # Everything above runs against the lockfile, which holds the newest
       # release of each peer. This pins core's and react's peers to the lowest
