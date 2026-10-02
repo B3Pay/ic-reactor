@@ -377,7 +377,9 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   /**
    * Report the outcome of a run that does not end the Vite run (a save, or a
    * build with `failOnError` off): log a failure and put every unfixed one in
-   * the browser's error overlay, or clear the overlay once the last is fixed.
+   * the browser's error overlay. When a canister is fixed, the overlay is
+   * replaced by one that lists only the canisters still failing, or cleared
+   * once there are none.
    */
   const publish = (attempted: Generated[], failures: Failure[]): void => {
     const wasFailing = attempted.some(({ name }) => unfixed.delete(name))
@@ -385,23 +387,41 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     if (failures.length > 0) {
       log.error(describeFailures(failures))
       showOverlay()
-    } else if (wasFailing && unfixed.size === 0) {
+    } else if (wasFailing && unfixed.size > 0) {
+      // The open overlay still lists the canister that was just fixed.
+      showOverlay()
+    } else if (wasFailing) {
       // Nothing may have changed on disk when a canister is fixed back to what
       // it generated before, so the page has nothing else to reload it.
       devServer?.ws.send({ type: "full-reload" })
     }
   }
 
-  const showOverlay = (): void => {
+  /**
+   * Put the unfixed failures in the error overlay: of the browser that just
+   * connected when the WebSocket hands it over (`ws.on("connection")` does),
+   * and of every browser otherwise.
+   */
+  const showOverlay = (client?: { send?: (data: string) => void }): void => {
     if (unfixed.size === 0) return
-    devServer?.ws.send({
-      type: "error",
+    const payload = {
+      type: "error" as const,
       err: {
         message: describeFailures([...unfixed.values()]),
         stack: "",
         plugin: PLUGIN_NAME,
       },
-    })
+    }
+    if (typeof client?.send === "function") {
+      try {
+        client.send(JSON.stringify(payload))
+      } catch {
+        // A browser that is already gone has no use for the overlay, and a
+        // listener must not throw into the WebSocket server.
+      }
+      return
+    }
+    devServer?.ws.send(payload)
   }
 
   /**

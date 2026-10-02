@@ -323,16 +323,19 @@ describe("generation under vite dev", () => {
   })
 
   describe("the error overlay", () => {
-    /** Capture what the plugin registers on the WebSocket server. */
+    /**
+     * Capture what the plugin registers on the WebSocket server. A listener is
+     * handed the connecting client as Vite hands it: a socket with `send`.
+     */
     function spyOnConnections() {
-      const connections: Array<() => void> = []
+      const connections: Array<(client?: unknown) => void> = []
       const plugin: Plugin = {
         name: "spy-on-connections",
         enforce: "pre",
         configureServer(server) {
           vi.spyOn(server.ws, "on").mockImplementation(((
             event: string,
-            callback: () => void
+            callback: (client?: unknown) => void
           ) => {
             if (event === "connection") connections.push(callback)
           }) as never)
@@ -340,6 +343,13 @@ describe("generation under vite dev", () => {
       }
       return { connections, plugin }
     }
+
+    const errorPayload = (message: string) => ({
+      type: "error",
+      err: expect.objectContaining({
+        message: expect.stringContaining(message),
+      }),
+    })
 
     it("is handed a failure to a browser that connects after it, and cleared when the .did is fixed", async () => {
       const app = newApp({ "did/bad.did": BROKEN_DID }, "real")
@@ -352,19 +362,19 @@ describe("generation under vite dev", () => {
       const send = vi.spyOn(server.ws, "send")
 
       // Startup finished before any browser could connect, so the failure was
-      // sent to nobody. A browser that connects now is handed it.
+      // sent to nobody. A browser that connects now is handed it, and only
+      // that one: the others have it, or are handed it when they connect.
       expect(connections).toHaveLength(1)
-      connections[0]()
-      expect(send).toHaveBeenCalledWith({
-        type: "error",
-        err: expect.objectContaining({
-          message: expect.stringContaining("did_parse_error"),
-        }),
-      })
+      const client = { send: vi.fn() }
+      connections[0](client)
+      expect(client.send).toHaveBeenCalledTimes(1)
+      expect(JSON.parse(client.send.mock.calls[0][0])).toEqual(
+        errorPayload("did_parse_error")
+      )
+      expect(send).not.toHaveBeenCalled()
 
       // Fixing the file clears the overlay: nothing else would reload the
       // page, since the broken run wrote no file.
-      send.mockClear()
       const bad = path.join(app.root, "did/bad.did")
       fs.writeFileSync(bad, PING_DID)
       server.watcher.emit("change", bad)
@@ -372,11 +382,65 @@ describe("generation under vite dev", () => {
         expect(send).toHaveBeenCalledWith({ type: "full-reload" })
       )
       send.mockClear()
-      connections[0]()
+      client.send.mockClear()
+      connections[0](client)
+      expect(client.send).not.toHaveBeenCalled()
       expect(send).not.toHaveBeenCalled()
     })
 
-    it("keeps showing a canister that is still broken when another one is fixed", async () => {
+    // The real WebSocket server, and real browsers' sockets: a browser that
+    // connects is handed the failure, and the ones already connected are not
+    // handed it again.
+    it("reaches the browser that connects, and no other", async () => {
+      const app = newApp({ "did/bad.did": BROKEN_DID }, "real")
+      const { port } = await serve(app.root, {
+        canisters: { bad: { didFile: "did/bad.did" } },
+      })
+
+      const browsers: WebSocket[] = []
+      const connect = async () => {
+        const messages: Array<{ type: string }> = []
+        const socket = new WebSocket(`ws://127.0.0.1:${port}/`, "vite-hmr")
+        browsers.push(socket)
+        socket.addEventListener("message", (event) =>
+          messages.push(JSON.parse(String(event.data)))
+        )
+        await vi.waitFor(() =>
+          expect(messages.map(({ type }) => type)).toContain("error")
+        )
+        return messages
+      }
+      try {
+        const first = await connect()
+        const seen = first.length
+
+        const second = await connect()
+        await new Promise((resolve) => setTimeout(resolve, 200))
+
+        expect(second.map(({ type }) => type)).toContain("error")
+        expect(first).toHaveLength(seen)
+      } finally {
+        for (const browser of browsers) browser.close()
+      }
+    })
+
+    // A WebSocket that does not hand over the client is the fallback.
+    it("is sent to every browser when the connection listener is handed no client", async () => {
+      const app = newApp({ "did/bad.did": BROKEN_DID }, "real")
+      const { connections, plugin } = spyOnConnections()
+      const { server } = await serve(
+        app.root,
+        { canisters: { bad: { didFile: "did/bad.did" } } },
+        { before: [plugin] }
+      )
+      const send = vi.spyOn(server.ws, "send")
+
+      connections[0]()
+
+      expect(send).toHaveBeenCalledWith(errorPayload("did_parse_error"))
+    })
+
+    it("lists only the canisters still broken when another one is fixed", async () => {
       const app = newApp(
         { "did/a.did": BROKEN_DID, "did/b.did": BROKEN_DID },
         "real"
@@ -392,10 +456,28 @@ describe("generation under vite dev", () => {
       const a = path.join(app.root, "did/a.did")
       fs.writeFileSync(a, PING_DID)
       server.watcher.emit("change", a)
-      await vi.waitFor(() => expect(generatorRuns()).toHaveLength(2))
-      await new Promise((resolve) => setTimeout(resolve, 200))
 
+      // The overlay that listed both is replaced by one that lists b alone.
+      await vi.waitFor(() =>
+        expect(send).toHaveBeenCalledWith(
+          errorPayload("could not generate 1 of 2 canisters")
+        )
+      )
+      const [{ err }] = send.mock.calls[
+        send.mock.calls.length - 1
+      ] as unknown as [{ err: { message: string } }]
+      const { message } = err
+      expect(message).toContain("b (did/b.did)")
+      expect(message).not.toContain("a (did/a.did)")
       expect(send).not.toHaveBeenCalledWith({ type: "full-reload" })
+
+      // Fixing the last one reloads the page.
+      const b = path.join(app.root, "did/b.did")
+      fs.writeFileSync(b, PING_DID)
+      server.watcher.emit("change", b)
+      await vi.waitFor(() =>
+        expect(send).toHaveBeenCalledWith({ type: "full-reload" })
+      )
     })
   })
 

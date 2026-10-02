@@ -127,7 +127,9 @@ A failed canister costs that canister, and nothing else:
   stderr, if it crashed) in the error message. A build that exits 0 would ship
   the bindings left over from the last good run.
 - Under `vite dev` the failure is logged and shown in the browser's error
-  overlay, and the server keeps serving. Fixing the file clears it.
+  overlay, and the server keeps serving. The overlay lists the canisters that
+  are still broken: fixing one of several updates it, and fixing the last
+  clears it.
 - `failOnError` overrides either default.
 
 ### In CI
