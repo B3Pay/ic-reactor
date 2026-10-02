@@ -345,6 +345,33 @@ describe("an update read as a query, with { update: 'idempotent' }", () => {
     expect(requestsFor(replica, "one").length).toBeGreaterThanOrEqual(3)
   })
 
+  it("is read again after a write to its canister, unless invalidates leaves it out", async () => {
+    const { replica, client, canister } = mounted()
+    const observer = new QueryObserver(
+      client.queryClient,
+      client.queryOptions(canister, "address", "x", { update: "idempotent" })
+    )
+    const unsubscribe = observer.subscribe(() => {})
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().data).toBe(`x:${client.caller()}`)
+    )
+    // Q10's default: every read of the canister written to, this one too.
+    await new MutationObserver(
+      client.queryClient,
+      client.mutationOptions(canister, "bump")
+    ).mutate(1n)
+    expect(requestsFor(replica, "address")).toHaveLength(2)
+    await new MutationObserver(
+      client.queryClient,
+      client.mutationOptions(canister, "bump", {
+        invalidates: [[canister, "one"]],
+      })
+    ).mutate(1n)
+    expect(requestsFor(replica, "address")).toHaveLength(2)
+    unsubscribe()
+    client.queryClient.unmount()
+  })
+
   it("is refused before sending for a caller who is not signed in", async () => {
     const replica = replicaWith({ [SHAPES]: whoCanister(new Map()) })
     const client = clientAs(replica, "anonymous")

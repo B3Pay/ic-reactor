@@ -318,7 +318,12 @@ export interface Client {
    * with `{ update: "idempotent" }` as the fourth argument: it is fetched once
    * per key and caller (`staleTime: Infinity`, no refetch on mount, focus or
    * reconnect), needs a signed-in caller like any update, and is retried only
-   * after a failure that proves it never got in (DECISIONS Q2).
+   * after a failure that proves it never got in (DECISIONS Q2). It is still a
+   * read of its canister, so a write to that canister through
+   * {@link Client.mutationOptions} invalidates it by default and it runs once
+   * more, as a replicated call: safe for an idempotent method, but a cost. To
+   * keep it cached across writes, name the reads a write changes in
+   * `invalidates`.
    *
    * @throws TypeError for an update or oneway method without the opt-in, a
    * composite query of a certified canister, a canister of another client, a
@@ -352,7 +357,11 @@ export interface Client {
    * `cancelled` before sending). The reads are every read of the canister
    * written to (DECISIONS Q10), or those listed in `invalidates`: canisters
    * and `[canister, method]` pairs of this client; `[]` invalidates nothing.
-   * To add your own `onSettled`, call this one from it.
+   * "Every read" includes an update read with `{ update: "idempotent" }`
+   * (such as a ckBTC minter's `get_btc_address` after `update_balance`),
+   * whose re-read is one more replicated call; list the reads in
+   * `invalidates` to leave it cached. To add your own `onSettled`, call this
+   * one from it.
    *
    * @throws TypeError for a canister of another client, a method a service
    * does not have, or a third argument other than `{ invalidates }`.

@@ -257,8 +257,9 @@ export type InvalidationTarget =
 export interface MutationOptionsOptions {
   /**
    * The reads to invalidate after the write settles, for every caller,
-   * certified or not. Defaults to every read of the canister written to; `[]`
-   * invalidates nothing.
+   * certified or not. Defaults to every read of the canister written to, an
+   * update read with `{ update: "idempotent" }` included (it runs again);
+   * `[]` invalidates nothing.
    */
   readonly invalidates?: readonly InvalidationTarget[]
 }
