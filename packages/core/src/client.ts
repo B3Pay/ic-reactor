@@ -267,6 +267,30 @@ export interface ClientInternals {
    * the old one, which is never handed out again. Every agent is built with
    * `retryTimes: 0`, so it never re-sends a request on its own: the call path
    * decides every re-send from the classified failure.
+   *
+   * `retryTimes` also governs the agent's other requests, and setting it to 0
+   * costs two recoveries the call path (the canister calls, #782) has to make
+   * up for itself, as read in `@icp-sdk/core` 6.1:
+   *
+   * - Update polling. An update the replica answers 202, or with a v4 reply
+   *   whose certificate has no status for the request, falls back to polling
+   *   `read_state`. One fetch failure or 5xx during that polling now ends the
+   *   call, and it classifies as `outcome_unknown` with
+   *   `mayHaveExecuted: true`: safe, but it gives up on a call the IC may
+   *   still answer. `read_state` executes nothing, so the call path can send
+   *   the update with `agent.call` and poll its request id with
+   *   `pollForResponse`, polling the same request id again after a transient
+   *   polling failure. That never runs the update twice, and keeps
+   *   `retryTimes: 0` for the `call` and `query` requests themselves, which
+   *   is what the setting is for.
+   * - A stale query signature. A query reply signed longer ago than the
+   *   ingress expiry window no longer makes the agent sync its clock and ask
+   *   again: it fails as a `Trust` error (`CertificateOutdatedErrorCode`),
+   *   which a read classifies as a retryable `not_delivered`, so a browser
+   *   read is asked again through `retryQuery` without a clock sync.
+   *
+   * Recovery from a refused ingress expiry (the agent syncs its clock once
+   * and sends again) does not depend on `retryTimes` and still happens.
    */
   agentFor(principal: string, context: AgentContext): Promise<HttpAgent>
 }
@@ -701,7 +725,9 @@ export function createClient(options: ClientOptions): Client {
       // non-2xx status and reports only the last status, so a 429 after a
       // lost first attempt would read as "never delivered" and be re-sent
       // again. With none of its own, every re-send is the call path's,
-      // decided from what this attempt proves (see `retryUpdate`).
+      // decided from what this attempt proves (see `retryUpdate`). It also
+      // ends update polling at the first failed `read_state`; see
+      // `ClientInternals.agentFor` for how the call path recovers from that.
       retryTimes: 0,
     })
     agents.set(principal, { identity, agent, asked })
