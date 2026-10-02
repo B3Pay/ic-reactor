@@ -189,11 +189,13 @@ export interface FakeReplica {
    * changes, but the agent sees a network failure instead of the answer, so
    * it cannot know the call happened.
    *
-   * The request is remembered, and every send of it fails the same way
-   * without running the canister again, as a replica de-duplicates a request
-   * id it already holds. The agent's own retries, which re-send the same
-   * request, therefore cannot recover the reply and cannot run the call twice,
-   * and a `read_state` for that request fails too.
+   * The request is remembered, and every send of it, and every `read_state`
+   * of its status, fails as a lost connection without running the canister
+   * again. The agent's own retries, which re-send the same request, therefore
+   * cannot recover the reply and cannot run the call twice, and the agent
+   * cannot learn the outcome by polling. A real replica would still answer a
+   * `read_state` for a request id it holds: the fake models a network
+   * partition for that one request id, so the call stays outcome-unknown.
    */
   dropNextReply(): void
   /**
@@ -726,8 +728,10 @@ function buildFakeReplica(
   ) {
     const { method_name = "", arg = new Uint8Array() } = envelope.content
     const requestId = toHex(requestIdOf(envelope.content))
-    // A replica holds on to a request id it has seen, so a re-send of a call
-    // whose reply was lost is neither run nor answered again.
+    // A request id whose reply was lost stays lost: a re-send is neither run
+    // nor answered again, and its status cannot be read (see
+    // `readsLostRequest`). That models a partition for that one request id,
+    // not what a replica does, which would still answer a `read_state`.
     const resent = lostRequests.has(requestId)
     const lose = resent || repliesToLose > 0
     if (lose && !resent) {

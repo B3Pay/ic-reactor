@@ -844,8 +844,8 @@ describe("the fault hooks", () => {
     })
 
     it("runs the update once however often the agent re-sends it", async () => {
-      // The re-sends carry the same request id, which a replica already
-      // holds: they fail the same way and run nothing.
+      // The re-sends carry the same request id, which the fake remembers as
+      // lost: they fail the same way and run nothing.
       const { replica, runs } = countingReplica()
       const agent = agentOn(replica, retriesAtOnce(3))
       replica.dropNextReply()
@@ -860,6 +860,8 @@ describe("the fault hooks", () => {
     })
 
     it("fails a read of the lost call's status the same way", async () => {
+      // A real replica would still answer it; the fake keeps the call
+      // outcome-unknown, as a partition for that request id does.
       const { replica } = countingReplica()
       const agent = agentOn(replica)
       replica.dropNextReply()
