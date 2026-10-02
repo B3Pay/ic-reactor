@@ -339,6 +339,50 @@ describe("a test auth's states", () => {
     expect(auth.getPrincipal()?.toText()).toBe(SEED_2)
   })
 
+  it("signs in as the account it remembers when signIn() gets options that are no identity", async () => {
+    // `createClient` may forward an `AuthClient`-style options object, such as
+    // `{ maxTimeToLive }`, which a real client reads and this one has no use
+    // for. It must sign in as the account it has, not store the object.
+    const auth = createTestAuth({ seed: 1, signedIn: false })
+    const listener = vi.fn()
+    auth.subscribe(listener)
+
+    const signedIn = await auth.signIn({} as never)
+
+    expect(signedIn.getPrincipal().toText()).toBe(SEED_1)
+    expect(auth.getPrincipal()?.toText()).toBe(SEED_1)
+    expect(listener).toHaveBeenCalledTimes(1)
+
+    auth.switchTo(2)
+    await auth.signOut()
+    await auth.signIn({ maxTimeToLive: 1n } as never)
+    expect(auth.getPrincipal()?.toText()).toBe(SEED_2)
+    expect((await auth.getIdentity()).getPrincipal().toText()).toBe(SEED_2)
+    auth.expire()
+    expect(principalOf(auth.getStatus())).toBe(SEED_2)
+  })
+
+  it("refuses to switch to something that is neither an identity nor a seed, and changes nothing", async () => {
+    const auth = createTestAuth({ seed: 1 })
+    const listener = vi.fn()
+    auth.subscribe(listener)
+    const before = auth.getStatus()
+
+    expect(() => auth.switchTo({} as never)).toThrow(
+      /expected an identity or a seed/
+    )
+    expect(() => auth.switchTo(undefined as never)).toThrow(TypeError)
+    expect(() => auth.switchTo(null as never)).toThrow(TypeError)
+
+    expect(listener).not.toHaveBeenCalled()
+    expect(auth.getStatus()).toBe(before)
+    expect(auth.getPrincipal()?.toText()).toBe(SEED_1)
+    // The account it remembers is untouched too: it still signs in as it.
+    await auth.signOut()
+    await auth.signIn()
+    expect(auth.getPrincipal()?.toText()).toBe(SEED_1)
+  })
+
   it("returns the identity it signed in, from signIn() and switchTo()", async () => {
     const identity = Ed25519KeyIdentity.generate()
     const auth = createTestAuth()

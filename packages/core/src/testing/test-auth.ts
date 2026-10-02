@@ -88,6 +88,11 @@ export interface TestAuth {
    * Signs in as `identityOrSeed`, or as the identity the auth last signed in
    * as when it is left out. The status changes before the promise is
    * returned, so a test need not await it, and listeners are told once.
+   *
+   * An argument that is neither a seed nor an identity, such as the options
+   * object an `AuthClient` takes (`{ maxTimeToLive }`), is ignored: the auth
+   * signs in as the identity it last signed in as, so a client that forwards
+   * its own options does not change who signs in.
    */
   signIn(identityOrSeed?: Identity | number): Promise<Identity>
   /**
@@ -101,6 +106,9 @@ export interface TestAuth {
    * account in the identity provider.
    *
    * @returns The identity now signed in.
+   * @throws {TypeError} When `identityOrSeed` is neither a seed nor an
+   * identity: unlike {@link TestAuth.signIn}, switching has no account to fall
+   * back to.
    */
   switchTo(identityOrSeed: Identity | number): Identity
   /**
@@ -139,10 +147,34 @@ function seedBytes(seed: number): Uint8Array {
   return bytes
 }
 
-const identityOf = (identityOrSeed: Identity | number): Identity =>
-  typeof identityOrSeed === "number"
-    ? Ed25519KeyIdentity.generate(seedBytes(identityOrSeed))
-    : identityOrSeed
+/**
+ * The identity a seed or an identity stands for, or `undefined` for anything
+ * else: a seed is a number, and an identity is an object that has a
+ * `getPrincipal()`, which is all a caller of the auth reads from it.
+ */
+function identityOf(value: unknown): Identity | undefined {
+  if (typeof value === "number") {
+    return Ed25519KeyIdentity.generate(seedBytes(value))
+  }
+  return typeof value === "object" &&
+    value !== null &&
+    typeof (value as { getPrincipal?: unknown }).getPrincipal === "function"
+    ? (value as Identity)
+    : undefined
+}
+
+/** {@link identityOf}, or a `TypeError` naming the call that got no identity. */
+function requireIdentity(call: string, value: unknown): Identity {
+  const identity = identityOf(value)
+  if (identity === undefined) {
+    throw new TypeError(
+      `${call}: expected an identity or a seed (a number), got ${
+        value === null ? "null" : typeof value
+      }`
+    )
+  }
+  return identity
+}
 
 /** How long a test sign-in lasts: `AuthClient`'s default of eight hours. */
 const SESSION_MS = 8 * 60 * 60 * 1000
@@ -194,7 +226,10 @@ export function createTestAuth(options: TestAuthOptions = {}): TestAuth {
 
   // The account the auth last signed in as, which every state but
   // `signed-out` names and `signIn()` returns to.
-  let account: Identity = identityOf(options.identity ?? options.seed ?? 1)
+  let account: Identity = requireIdentity(
+    "createTestAuth",
+    options.identity ?? options.seed ?? 1
+  )
   let status: TestAuthStatus =
     options.signedIn === false ? { state: "signed-out" } : signedInAs(account)
 
@@ -221,7 +256,9 @@ export function createTestAuth(options: TestAuthOptions = {}): TestAuth {
       }
     },
     signIn(identityOrSeed) {
-      if (identityOrSeed !== undefined) account = identityOf(identityOrSeed)
+      // Anything but a seed or an identity is options meant for a real
+      // sign-in, so the auth signs in as the account it already has.
+      account = identityOf(identityOrSeed) ?? account
       set(signedInAs(account))
       return Promise.resolve(account)
     },
@@ -230,7 +267,7 @@ export function createTestAuth(options: TestAuthOptions = {}): TestAuth {
       return Promise.resolve()
     },
     switchTo(identityOrSeed) {
-      account = identityOf(identityOrSeed)
+      account = requireIdentity("switchTo", identityOrSeed)
       set(signedInAs(account))
       return account
     },
