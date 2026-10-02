@@ -80,6 +80,16 @@
     "replace": "    if (false) {"
   },
   {
+    "id": "ir6-reveal-builds-a-client-per-effect-run",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "builds one replacement, not two, when StrictMode shows a hidden subtree again",
+    "why": "each run of the reveal effect builds its own client, so React's development double-run builds one that is dropped",
+    "file": "src/index.tsx",
+    "search": "      if (replacement.current?.of !== client) {\n",
+    "replace": "      if (true) {\n"
+  },
+  {
     "id": "ir6-factory-runs-every-render",
     "package": "react",
     "test": "tests/strict-mode.test.tsx",
