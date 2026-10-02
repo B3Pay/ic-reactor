@@ -14,6 +14,9 @@ export type { LedgerTool, LedgerToolConfig, TransferResult } from "./contract"
 const NAT64_MAX = 18_446_744_073_709_551_615n
 
 function parseAmount(text: string): bigint | undefined {
+  // The task refuses more than 8 fraction digits as written; parseUnits
+  // ignores trailing zeros past the decimals ("1.123456780"), so count them.
+  if ((text.split(".")[1]?.length ?? 0) > 8) return undefined
   let units: bigint
   try {
     units = parseUnits(text, 8)
