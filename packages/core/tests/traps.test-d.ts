@@ -50,16 +50,24 @@
  * 3. Run `pnpm verify:traps`, then check by hand that the fault is one a
  *    refactor could really commit.
  *
- * Other slices add their traps here as their API lands (the client's
- * `identity | auth` choice, an unknown method name, wrong variables, ...);
- * a trap about another package belongs in a `traps.test-d.ts` of its own,
+ * A trap about another package belongs in a `traps.test-d.ts` of its own,
  * registered in `SUITES` of `scripts/verify-traps.mjs`.
  *
  * Checked by `pnpm typecheck` (this file is in the typecheck project), not run
  * by vitest.
  */
-import { formatUnits, parseUnits } from "../src/index.js"
+import type { Principal } from "@candid-core/schema"
+import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
+import {
+  MutationObserver,
+  QueryObserver,
+  keepPreviousData,
+} from "@tanstack/query-core"
+import { createClient, formatUnits, parseUnits } from "../src/index.js"
 import type { Network, ReactorError } from "../src/index.js"
+import { createTestAuth } from "../src/testing/index.js"
+import * as icrc1 from "./fixtures/icrc1.js"
+import * as shapes from "./fixtures/shapes.js"
 
 // What a generated module's `Err` arm looks like for ICRC-1 `icrc1_transfer`.
 type TransferError =
@@ -139,39 +147,90 @@ import { resolveNetwork } from "../src/index.js"
 export const internals = { classifyError, resolveNetwork }
 
 // ---------------------------------------------------------------------------
+// The client: who calls is written down exactly once
+// ---------------------------------------------------------------------------
+
+const someone = Ed25519KeyIdentity.generate()
+
+// trap: client-says-who-calls
+// @ts-expect-error neither identity nor auth: who calls is not written down; pass identity: "anonymous" for a read-only client
+createClient({ network: "ic" })
+
+// trap: client-says-who-calls-once
+// @ts-expect-error identity and auth together: who calls is written twice; identity fixes the caller, auth signs users in
+createClient({ network: "ic", identity: someone, auth: () => createTestAuth() })
+
+// ---------------------------------------------------------------------------
+// Canisters: methods, variables and principals come from the generated Actor
+// ---------------------------------------------------------------------------
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+const ledger = client.canister<icrc1.Actor>(icrc1.actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+const shapesCanister = client.canister<shapes.Actor>(shapes.actor, {
+  id: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+})
+declare const owner: Principal
+const account: icrc1.Account = { owner, subaccount: null }
+declare const transferArg: icrc1.TransferArg
+
+// trap: canister-method-unknown
+// @ts-expect-error icrc1_balance is not a method of the ICRC-1 ledger; it is icrc1_balance_of
+void ledger.icrc1_balance(account)
+
+// trap: options-method-unknown
+// @ts-expect-error a typo in the method name: the builders take the generated Actor's method names only
+client.queryOptions(ledger, "icrc1_balance", account)
+
+// trap: options-vars-wrong-type
+// @ts-expect-error icrc1_balance_of takes an Account, not its owner: { owner, subaccount: null }
+client.queryOptions(ledger, "icrc1_balance_of", owner)
+
+// trap: principal-is-not-plain-text
+// @ts-expect-error a principal is checked text: principal("aaaaa-aa") from @candid-core/schema, not a string literal
+void ledger.icrc1_balance_of({ owner: "aaaaa-aa", subaccount: null })
+
+// trap: vars-of-two-arguments-are-the-tuple
+// @ts-expect-error pair takes two arguments: pass them as the tuple [left, right]
+client.queryOptions(shapesCanister, "pair", 1n)
+
+// ---------------------------------------------------------------------------
 // Known holes (D36): these COMPILE on purpose
 // ---------------------------------------------------------------------------
 //
 // D36 records what the types do not stop, and decides against an ESLint plugin
 // to stop it: each is a mistake the eval scores, a runtime refusal where there
-// is one, and a line in the guide's "Do not" list. They are written here, as
-// comments, so that nobody adds a `@ts-expect-error` for one and so that the
-// day a type does start refusing it shows up as a decision rather than a
-// surprise.
-//
-// TODO(IR2t, #782): `client.mutationOptions` and `client.queryOptions` do not
-// exist yet. When they land, turn each block below into real code that
-// compiles (no directive, no trap tag), next to a comment naming D36.
-//
-//   // Spreading `retry: 3` into the options of a write: a mutation does not
-//   // retry (an update re-sent after an unknown outcome runs twice), and the
-//   // option object is plain TanStack options, so nothing refuses the spread.
-//   const write = { ...client.mutationOptions(ledger, "icrc1_transfer"), retry: 3 }
-//
-//   // `placeholderData: keepPreviousData` on a read: the previous key's data
-//   // is shown for the new key, which for a caller-scoped key can be another
-//   // principal's balance. It is a TanStack option; the type cannot tell.
-//   const read = {
-//     ...client.queryOptions(ledger, "icrc1_balance_of", account),
-//     placeholderData: keepPreviousData,
-//   }
-//
-//   // A hand-built `useQuery` around a write: `queryFn: () => ledger.icrc1_transfer(args)`
-//   // is any function to TanStack. It runs the update on every refetch and
-//   // reads the caller at that moment, not the key's.
-//   useQuery({ queryKey: ["transfer", args], queryFn: () => ledger.icrc1_transfer(args) })
-//
-//   // An array-literal key: `queryKey: ["ic-reactor", "ic", ...]` typed by hand
-//   // is a `QueryKey` like any other, so it compiles and then matches nothing
-//   // the client invalidates. `client.queryKey(...)` is the only builder.
-//   useQuery({ queryKey: ["balance", owner], queryFn: () => ledger.icrc1_balance_of(account) })
+// is one, and a line in the guide's "Do not" list. They are written here as
+// code that compiles, with no directive and no trap tag, so that nobody adds a
+// `@ts-expect-error` for one, and so that the day a type does start refusing
+// one shows up as a failing build here: a decision, not a surprise.
+
+// D36: spreading `retry: 3` into the options of a write. A mutation is never
+// retried (an update re-sent after an unknown outcome can run twice), but the
+// options are plain TanStack options, so nothing refuses the spread.
+export const retriedWrite = new MutationObserver(client.queryClient, {
+  ...client.mutationOptions(ledger, "icrc1_transfer"),
+  retry: 3,
+})
+
+// D36: `placeholderData: keepPreviousData` on a read. The previous key's data
+// is shown for the new key, which for a caller-scoped key can be another
+// principal's balance. It is a TanStack option; the type cannot tell.
+export const previousBalance = new QueryObserver(client.queryClient, {
+  ...client.queryOptions(ledger, "icrc1_balance_of", account),
+  placeholderData: keepPreviousData,
+})
+
+// D36: an array-literal key. Typed by hand it is a `QueryKey` like any other,
+// so it compiles, and then matches nothing the client builds: keys start with
+// "ic-reactor" and hold the caller. `client.queryKey(...)` is the only builder.
+void client.queryClient.invalidateQueries({ queryKey: ["balance", owner] })
+
+// D36: a hand-built query function calling an update. To TanStack any
+// function is a query function: this runs the transfer again on every
+// refetch, as whoever is signed in at that moment, not the key's caller.
+export const transferAsRead = new QueryObserver(client.queryClient, {
+  queryKey: ["transfer", owner],
+  queryFn: () => ledger.icrc1_transfer(transferArg),
+})

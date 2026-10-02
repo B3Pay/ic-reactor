@@ -369,5 +369,235 @@
     "file": "src/index.tsx",
     "search": "\"use client\"\n\n/**\n * `@ic-reactor/react` 4",
     "replace": "/**\n * `@ic-reactor/react` 4"
+  },
+  {
+    "id": "ir2t-update-resent-after-reject-4",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "never re-sends an update rejected with code 4",
+    "why": "an update re-sent after any failure, as v3's call retries did: a reject 4 means the canister ran it, and the re-send runs it twice",
+    "file": "src/call.ts",
+    "search": "          ? !management && retryUpdate(error, resends)",
+    "replace": "          ? !management && resends < UPDATE_RESEND_DELAYS_MS.length"
+  },
+  {
+    "id": "ir2t-aaaaa-aa-update-resent",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "never re-sends an update to aaaaa-aa after HTTP 429",
+    "why": "a management call re-sent like any other update, although its outcomes prove nothing about what ran",
+    "file": "src/call.ts",
+    "search": "          ? !management && retryUpdate(error, resends)",
+    "replace": "          ? retryUpdate(error, resends)"
+  },
+  {
+    "id": "ir2t-anonymous-update-sent",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "refuses an update while nobody is signed in",
+    "why": "an update sent for a caller who is not signed in, instead of refused as unauthenticated before anything is sent",
+    "file": "src/call.ts",
+    "search": "  if (write && !caller.authenticated) {",
+    "replace": "  if (false && write && !caller.authenticated) {"
+  },
+  {
+    "id": "ir2t-err-not-unwrapped",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "unwraps a lower-case result and rejects its err arm as canister_err",
+    "why": "a result reply handed back as the variant, so an Err resolves as if the call succeeded",
+    "file": "src/call.ts",
+    "search": "  if (method.result === undefined) return value",
+    "replace": "  if (method.result !== null) return value"
+  },
+  {
+    "id": "ir2t-lost-poll-abandons-update",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "polls the same request again after a lost poll",
+    "why": "one failed read_state ends an update the IC may still answer as outcome_unknown, as agent.update() does with retryTimes 0",
+    "file": "src/call.ts",
+    "search": "export const REPOLL_DELAYS_MS: readonly number[] = [500, 1_000, 2_000]",
+    "replace": "export const REPOLL_DELAYS_MS: readonly number[] = []"
+  },
+  {
+    "id": "ir2t-status-less-certificate-fails-update",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "polls for an update whose synchronous answer holds no status for it",
+    "why": "a synchronous answer whose certificate holds no status for the request fails the update instead of polling for it: the v3 fix (icp-js-core#1330) DECISIONS Q8 keeps a regression test for",
+    "file": "src/call.ts",
+    "search": "  if (status === undefined) return undefined",
+    "replace": "  if (status === undefined) throw new Error(\"no status for the request\")"
+  },
+  {
+    "id": "ir2t-cancelled-read-keeps-polling",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "stops polling for a read once its signal aborts",
+    "why": "the wait between two polls ignores the read's signal, so a read whose observer went away keeps polling read_state for up to five minutes",
+    "file": "src/call.ts",
+    "search": "    untilAborted(waits(...args), signal)",
+    "replace": "    waits(...args)"
+  },
+  {
+    "id": "ir2t-cancelled-read-waits-to-repoll",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "ends the wait to poll again after a failed poll as soon as the read's signal aborts",
+    "why": "the wait before polling again after a transient read_state failure ignores the read's signal, so a read whose observer went away sits out the whole delay and only then notices",
+    "file": "src/call.ts",
+    "search": "      await untilAborted(sleep(REPOLL_DELAYS_MS[failures]), signal)",
+    "replace": "      await sleep(REPOLL_DELAYS_MS[failures])"
+  },
+  {
+    "id": "ir2t-cancelled-read-polls-anyway",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "sends no poll for a read whose signal aborted while its call was on the way",
+    "why": "no check of the read's signal before polling, so a read whose observer went away while its call was being sent still polls read_state and resolves for nobody",
+    "file": "src/call.ts",
+    "search": "    if (signal?.aborted === true) throw abortReason(signal)",
+    "replace": ""
+  },
+  {
+    "id": "ir2t-unresolved-name-sent",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "on a page whose host the cookie is not trusted for",
+    "why": "a { name } the client must not resolve sent anyway, to the id an untrusted ic_env cookie names",
+    "file": "src/network.ts",
+    "search": "  if (!net.trustsEnv) {",
+    "replace": "  if (!net.trustsEnv && false) {"
+  },
+  {
+    "id": "ir2t-zero-arg-query-key-is-prefix",
+    "package": "core",
+    "test": "tests/keys.test.ts",
+    "testName": "is the read's whole key for a method without arguments",
+    "why": "queryKey(c, method) for a method without arguments gives the method prefix, so getQueryData misses what queryOptions(c, method) cached and setQueryData makes a second entry",
+    "file": "src/options.ts",
+    "search": "    if (rest.length < 2 && prepared.args.length > 0) {",
+    "replace": "    if (rest.length < 2) {"
+  },
+  {
+    "id": "ir2t-read-sent-as-current-caller",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "never shows one principal's data under another's key",
+    "why": "a query function that reads the caller when it runs instead of using the one captured with its key, so another principal's answer lands under the key",
+    "file": "src/options.ts",
+    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
+    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+  },
+  {
+    "id": "ir2t-no-invalidation-after-unknown-outcome",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the canister's reads after a lost reply",
+    "why": "a write whose reply was lost leaves the reads it may have changed cached, so the balance shown hides a debit that happened",
+    "file": "src/options.ts",
+    "search": "  error.kind === \"canister_err\" ||\n  error.mayHaveExecuted",
+    "replace": "  error.kind === \"canister_err\""
+  },
+  {
+    "id": "ir2t-cancelled-write-invalidates",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "does not invalidate after a write cancelled before it was sent",
+    "why": "a write cancelled before anything was sent (its caller signed out) invalidates the canister's reads as if it may have run",
+    "file": "src/options.ts",
+    "search": "  error.kind === \"canister_err\" ||",
+    "replace": "  error.kind === \"canister_err\" ||\n  error.kind === \"cancelled\" ||"
+  },
+  {
+    "id": "ir2t-no-default-invalidation",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the canister's reads after a success",
+    "why": "a write invalidates nothing unless invalidates is given (the v4 prototype's default, which DECISIONS Q10 turned down)",
+    "file": "src/options.ts",
+    "search": "      return [{ record: recordOf(canister, internals, call) }]",
+    "replace": "      return []"
+  },
+  {
+    "id": "ir2t-name-write-invalidation-resolved-at-settlement",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the canister a { name } write went to when the cookie moves the name before the write settles",
+    "why": "onSettled resolves a { name } from the ic_env cookie again when the write settles, so after a local redeploy mid-write it invalidates the canister the cookie names now and leaves the reads of the one written to stale",
+    "file": "src/options.ts",
+    "search": "        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()",
+    "replace": "        const run = resolveRun()"
+  },
+  {
+    "id": "ir2t-name-write-under-app-onmutate-settles-elsewhere",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "keeps a { name } write and its invalidation on one canister when an onMutate of the app's replaces the given one",
+    "why": "onSettled looks for the run only in what onMutate returned, not by the run's function context, so under an onMutate of the app's that replaces the given one (TanStack's optimistic-update recipe) it resolves a { name } again at settlement, and a local redeploy mid-write leaves the reads of the canister written to stale",
+    "file": "src/options.ts",
+    "search": "        const run = keptRun(context) ?? runIn(onMutateResult) ?? resolveRun()",
+    "replace": "        const run = runIn(onMutateResult) ?? resolveRun()"
+  },
+  {
+    "id": "ir2t-name-write-sent-where-resolved-late",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "sends a { name } write that waited offline to the canister resolved when it started",
+    "why": "mutationFn resolves a { name } again when it starts instead of using the run onMutate resolved, so a write paused across a local redeploy goes to the new canister while onSettled invalidates the old one's reads",
+    "file": "src/options.ts",
+    "search": "          target: run?.target ?? record.resolve(),",
+    "replace": "          target: record.resolve(),"
+  },
+  {
+    "id": "ir2t-name-in-invalidates-resolved-at-settlement",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the canister a { name } in invalidates named when the write started",
+    "why": "the run keeps the canister it writes to but reads the slots of the canisters listed in invalidates lazily, when the write settles, so a { name } listed there that a local redeploy moves mid-write has the new canister's reads invalidated and the old one's left stale",
+    "file": "src/options.ts",
+    "search": "        slots: listed.slots(),",
+    "replace": "        get slots() { return listed.slots() },"
+  },
+  {
+    "id": "ir2t-query-options-accepts-update",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "throws a TypeError for an update or oneway method",
+    "why": "queryOptions builds a read from an update method, which then runs again on every refetch",
+    "file": "src/options.ts",
+    "search": "    if (isWrite(prepared.mode) && !idempotent) {",
+    "replace": "    if (prepared.mode === \"oneway\" && !idempotent) {"
+  },
+  {
+    "id": "ir2t-query-options-accepts-method-without-results",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "throws a TypeError for a method without results",
+    "why": "queryOptions builds a read of a method without results, whose query function resolves undefined: TanStack Query reports the successful call as a failed read and caches nothing",
+    "file": "src/options.ts",
+    "search": "    if (prepared.results.length === 0) {",
+    "replace": "    if (false && prepared.results.length === 0) {"
+  },
+  {
+    "id": "ir2t-idempotent-read-refetched",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "is fetched once and never refetched on focus, reconnect or remount",
+    "why": "an update read as a query is refetched when the window regains focus, running the update again",
+    "file": "src/options.ts",
+    "search": "  refetchOnWindowFocus: false,",
+    "replace": "  refetchOnWindowFocus: true,"
+  },
+  {
+    "id": "ir2t-install-chunked-code-misrouted",
+    "package": "core",
+    "test": "tests/management.test.ts",
+    "testName": "is the target_canister of install_chunked_code",
+    "why": "install_chunked_code routed by a canister_id field it does not have, instead of its target_canister",
+    "file": "src/management.ts",
+    "search": "    install_chunked_code: \"target_canister\",",
+    "replace": "    install_chunked_code: \"canister_id\","
   }
 ]
