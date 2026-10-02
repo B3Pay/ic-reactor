@@ -94,10 +94,64 @@ describe("the gate's plan on a seeded tree", () => {
 })
 
 describe("the gate's plan on this tree", () => {
-  it("blocks nothing, and skips only v4 cells", () => {
-    const p = gatePlan()
-    assert.deepEqual(p.blocked, [])
-    for (const { cell } of p.skipped) assert.match(cell, /\/v4$/)
+  it("skips no cell and blocks nothing, with --require v4 too", () => {
+    for (const require of [[], ["v4"]]) {
+      const p = gatePlan({ require })
+      assert.deepEqual(p.skipped, [], `--require ${require}`)
+      assert.deepEqual(p.blocked, [], `--require ${require}`)
+    }
+  })
+  it("scores both v4 references of each task and the six ported faulty solutions", () => {
+    const v4 = gatePlan({ require: ["v4"] }).cases.filter(
+      (c) => c.condition === "v4"
+    )
+    assert.deepEqual(
+      v4
+        .filter((c) => c.name.startsWith("reference"))
+        .map((c) => `${c.task}/${c.name}`)
+        .sort(),
+      [
+        "node-tool/reference",
+        "node-tool/reference-module-scope",
+        "react-wallet/reference",
+        "react-wallet/reference-module-scope",
+      ]
+    )
+    assert.deepEqual(
+      v4
+        .filter((c) => !c.name.startsWith("reference"))
+        .map((c) => `${c.task}/${c.name}`)
+        .sort(),
+      [
+        "node-tool/v4-never-may-have-executed",
+        "node-tool/v4-refuses-nat64-max",
+        "react-wallet/v4-every-reject-unknown",
+        "react-wallet/v4-keep-previous-data",
+        "react-wallet/v4-retry-spread",
+        "react-wallet/v4-status-not-idle",
+      ]
+    )
+  })
+  it("expects each ported faulty solution to fail what its v4-proto original fails", () => {
+    const cases = gatePlan().cases
+    const ported = cases.filter(
+      (c) => c.condition === "v4" && !c.name.startsWith("reference")
+    )
+    assert.ok(ported.length > 0)
+    for (const port of ported) {
+      const original = cases.find(
+        (c) =>
+          c.task === port.task &&
+          c.condition === "v4-proto" &&
+          c.name === port.name.replace(/^v4-/, "v4-proto-")
+      )
+      assert.ok(original, `${port.task}/${port.name} has no v4-proto original`)
+      assert.deepEqual(
+        [...port.expectFail].sort(),
+        [...original.expectFail].sort(),
+        `${port.task}/${port.name}`
+      )
+    }
   })
 })
 

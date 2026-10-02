@@ -1,0 +1,5 @@
+{
+  "condition": "v4",
+  "bug": "Adds placeholderData: keepPreviousData to the balance query, so the previous principal's balance shows while the new one loads.",
+  "expectFail": ["no_stale_balance_after_identity_switch"]
+}
