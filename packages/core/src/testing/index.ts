@@ -10,10 +10,19 @@
  * @packageDocumentation
  */
 export {
+  createFakeReplica,
   installFakeReplica,
   type FakeCallContext,
   type FakeCanister,
+  type FakeRejectCode,
   type FakeReplica,
   type FakeReplicaOptions,
   type FakeReplicaRequest,
+  type InstalledFakeReplica,
 } from "./fake-replica.js"
+export {
+  createTestAuth,
+  type TestAuth,
+  type TestAuthOptions,
+  type TestAuthStatus,
+} from "./test-auth.js"

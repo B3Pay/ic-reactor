@@ -1,6 +1,11 @@
 /**
- * A fake replica, reached through the global `fetch` an `HttpAgent` binds when
- * it is built.
+ * A fake replica, reached through the `fetch` an `HttpAgent` is given.
+ *
+ * {@link createFakeReplica} returns a `fetch` to pass as
+ * `HttpAgentOptions.fetch`, so the agents that use it are the only code that
+ * reaches the fake and nothing global is touched. {@link installFakeReplica}
+ * puts the same fake in `globalThis.fetch` instead, for code that builds its
+ * own agents.
  *
  * It holds its own root key and node key, and signs what a replica signs: a
  * BLS signature over each certificate and a node signature over each query
@@ -15,6 +20,10 @@
  * else: the status endpoint (the root key), and a canister's `query`, `call`
  * (which always answers synchronously) and `read_state` (the subnet's node
  * keys and canister ranges, which an agent reads before it trusts a query).
+ *
+ * Three fault hooks reproduce what a real network does to a call: a canister
+ * that rejects it with a chosen reject code, a reply that is lost after the
+ * canister ran, and an HTTP refusal before any canister sees the call.
  */
 import { bls12_381 } from "@noble/curves/bls12-381.js"
 import { ed25519 } from "@noble/curves/ed25519.js"
@@ -69,12 +78,10 @@ export interface FakeCallContext {
  *
  * Each handler receives the method name, the Candid-encoded argument and the
  * call context, and returns the Candid-encoded reply. A handler that throws
- * rejects the call as a canister trap does. A canister without `query`
- * rejects every query, and one without `update` every update call.
- *
- * {@link createTestCanister} builds one from typed handlers, which is what a
- * test usually wants; implement this interface directly to answer with bytes
- * the service's Candid types would not produce.
+ * rejects the call as a canister trap does, and one that calls
+ * {@link FakeReplica.reject} rejects it with the reject code it names. A
+ * canister without `query` rejects every query, and one without `update`
+ * every update call.
  */
 export interface FakeCanister {
   query?(
@@ -94,28 +101,44 @@ export interface FakeReplicaRequest {
   readonly endpoint: "status" | "query" | "call" | "read_state"
   /** The canister the request was addressed to, as text. */
   readonly canisterId?: string
+  /**
+   * The effective canister id the agent put in the request path
+   * (`/api/v3/canister/<id>/call`), as text. It is the canister the request is
+   * routed by, and it differs from {@link FakeReplicaRequest.canisterId} when
+   * a call goes to the management canister (`aaaaa-aa`), where the client
+   * chooses it from the call's arguments. Set on `query`, `call` and
+   * `read_state` requests.
+   */
+  readonly effectiveCanisterId?: string
   /** The canister method a query or call named. */
   readonly methodName?: string
   /** The principal the request came from, as text, once it was checked. */
   readonly caller?: string
   /**
-   * Why the fake refused the request before any canister saw it, as a
-   * replica refuses it: the signature, a delegation, or its targets did not
-   * check out. The agent received HTTP 400.
+   * Why the fake refused the request before any canister saw it: either the
+   * signature, a delegation, or its targets did not check out, as a replica
+   * refuses it (HTTP 400), or {@link FakeReplica.refuseNext} told the fake to
+   * answer with an HTTP status.
    */
   readonly refused?: string
+  /**
+   * Whether the reply to this request was lost by
+   * {@link FakeReplica.dropNextReply}: the agent saw a network failure. The
+   * first send of a dropped call ran the canister; a re-send of it did not.
+   */
+  readonly dropped?: true
 }
 
-/** Options for {@link installFakeReplica}. */
+/** Options for {@link createFakeReplica} and {@link installFakeReplica}. */
 export interface FakeReplicaOptions {
   /**
    * The origin the fake answers for. Point the agents under test at it, for
-   * example with `agentOptions: { host: replica.host }`.
+   * example with `HttpAgent.createSync({ host: replica.host, ... })`.
    *
-   * @defaultValue Where a `ClientManager` built with no `host` sends its
-   * calls: the page's origin when the test environment has a local one
-   * (`http://localhost:3000` in Vitest's jsdom and happy-dom), and
-   * `"http://127.0.0.1:4943"` otherwise.
+   * @defaultValue The page's origin when the test environment has a local one
+   * (`http://localhost:3000` in Vitest's jsdom and happy-dom), which is where
+   * an agent built with no `host` calls, and `"http://127.0.0.1:4943"`
+   * otherwise.
    */
   host?: string
   /**
@@ -126,18 +149,83 @@ export interface FakeReplicaOptions {
   canisters?: Record<string, FakeCanister>
 }
 
-/** A fake replica installed by {@link installFakeReplica}. */
+/**
+ * The reject codes a canister call can end with, as the Internet Computer
+ * interface specification numbers them: `1` SYS_FATAL, `2` SYS_TRANSIENT,
+ * `3` DESTINATION_INVALID, `4` CANISTER_REJECT, `5` CANISTER_ERROR and `6`
+ * SYS_UNKNOWN.
+ */
+export type FakeRejectCode = 1 | 2 | 3 | 4 | 5 | 6
+
+/** A fake replica made by {@link createFakeReplica}. */
 export interface FakeReplica {
   /** The origin the fake answers for. */
   readonly host: string
   /**
-   * The DER-encoded root key the fake signs certificates with. An agent on a
-   * local host fetches it from the fake; pass it as `agentOptions.rootKey`
-   * to an agent that does not fetch its root key.
+   * The DER-encoded root key the fake signs certificates with. Each fake has
+   * its own. Pass it as `rootKey` to an agent that does not fetch its root
+   * key, or let the agent fetch it from the fake with `shouldFetchRootKey`.
    */
   readonly rootKey: Uint8Array
+  /**
+   * The `fetch` to give an agent, as `HttpAgent.createSync({ host, fetch,
+   * rootKey })`. It answers the IC API on {@link FakeReplica.host} and
+   * refuses the IC API on any other origin with a network error, which it
+   * also logs once, so an agent built for the wrong host fails at once. It
+   * does not touch `globalThis.fetch`.
+   */
+  readonly fetch: typeof globalThis.fetch
   /** Every request an agent sent to the fake, in order. */
   readonly requests: readonly FakeReplicaRequest[]
+  /**
+   * Runs a canister at `canisterId`, replacing the one already there. For a
+   * canister that is not known when the fake is created.
+   */
+  addCanister(canisterId: string, canister: FakeCanister): void
+  /**
+   * Rejects the call being handled with `code`, as a canister does: call it
+   * from inside a canister handler. An update is rejected in a certificate,
+   * as a replica certifies a reject, and a query is rejected in the signed
+   * query response.
+   *
+   * @param code - The reject code the agent receives.
+   * @param message - The reject message. A default naming the code is used
+   * when it is left out.
+   */
+  reject(code: FakeRejectCode, message?: string): never
+  /**
+   * Loses the reply to the next update call. The canister runs and its state
+   * changes, but the agent sees a network failure instead of the answer, so
+   * it cannot know the call happened.
+   *
+   * The request is remembered, and every send of it, and every `read_state`
+   * of its status, fails as a lost connection without running the canister
+   * again. The agent's own retries, which re-send the same request, therefore
+   * cannot recover the reply and cannot run the call twice, and the agent
+   * cannot learn the outcome by polling. A real replica would still answer a
+   * `read_state` for a request id it holds: the fake models a network
+   * partition for that one request id, so the call stays outcome-unknown.
+   */
+  dropNextReply(): void
+  /**
+   * Answers the next `times` canister requests (a `query` or a `call`) with an
+   * HTTP error `status` before any canister sees them, as a gateway or a
+   * replica does when it throttles or refuses a request. The status endpoint
+   * and `read_state`, which an agent makes on its own, are not counted.
+   *
+   * An agent retries a refused request on its own unless it is built with
+   * `retryTimes: 0`; `times` is how many sends to refuse, so a test can refuse
+   * the first and let a retry through.
+   *
+   * @param status - An HTTP error status, from 400 to 599.
+   * @param times - How many requests to refuse.
+   * @defaultValue 1
+   */
+  refuseNext(status: number, times?: number): void
+}
+
+/** A fake replica installed by {@link installFakeReplica}. */
+export interface InstalledFakeReplica extends FakeReplica {
   /**
    * Takes the fake out of `globalThis.fetch`, putting back the `fetch` it
    * replaced, along with any wrapper a test installed around it since.
@@ -149,15 +237,14 @@ export interface FakeReplica {
 }
 
 /**
- * Rejects a call with a reject code other than a trap's. Thrown by the
- * handlers {@link createTestCanister} builds.
+ * Rejects a call with a reject code. Thrown by {@link FakeReplica.reject}.
  *
  * @internal
  */
 export class FakeReplicaReject extends Error {
   constructor(
-    readonly rejectCode: ReplicaRejectCode,
-    readonly errorCode: string,
+    readonly rejectCode: number,
+    readonly errorCode: string | undefined,
     message: string
   ) {
     super(message)
@@ -165,13 +252,19 @@ export class FakeReplicaReject extends Error {
   }
 }
 
+/**
+ * Thrown out of the fake's `fetch` when a reply is lost, in the form of a
+ * network failure.
+ */
+class LostReply extends TypeError {}
+
 const DEFAULT_HOST = "http://127.0.0.1:4943"
 
 /**
- * The page's origin when it is one a `ClientManager` with no `host` sends
- * its calls to and the fake can answer for: a local or remote development
- * origin, such as jsdom's `http://localhost:3000`. A mainnet origin is left
- * out, as its agents check certificates against mainnet's root key.
+ * The page's origin when it is one the fake can answer for, which is where an
+ * agent built with no `host` calls: a local or remote development origin,
+ * such as jsdom's `http://localhost:3000`. A mainnet origin is left out, as
+ * its agents check certificates against mainnet's root key.
  */
 function localPageOrigin(): string | undefined {
   try {
@@ -217,12 +310,12 @@ function urlOf(input: RequestInfo | URL): URL | undefined {
   }
 }
 
-/** Marks a `fetch` an installed fake replica put in place. */
+/** Marks a `fetch` that {@link installFakeReplica} put in place. */
 const FAKE_REPLICA_FETCH = Symbol.for("@ic-reactor/core/testing/fakeReplica")
 
 type Fetch = typeof globalThis.fetch
 
-/** What a fake replica's `fetch` knows about its place in the chain. */
+/** What an installed fake replica's `fetch` knows about its place in the chain. */
 interface FakeReplicaLink {
   /** The `fetch` the fake replaced. */
   readonly previous: Fetch
@@ -333,6 +426,7 @@ interface Envelope {
     canister_id?: Uint8Array
     method_name?: string
     arg?: Uint8Array
+    paths?: Uint8Array[][]
     sender: Uint8Array
   }
   sender_pubkey?: Uint8Array
@@ -396,104 +490,59 @@ function verifySignature(
 /** A canister's reply, or the reject a replica sends in its place. */
 type Outcome =
   | { reply: Uint8Array }
-  | { reject: { code: ReplicaRejectCode; message: string; errorCode: string } }
+  | { reject: { code: number; message: string; errorCode?: string } }
 
 const messageOf = (error: unknown) =>
   error instanceof Error ? error.message : String(error)
 
+/** Lower-case hex of `bytes`: a map key for a request id. */
+const toHex = (bytes: Uint8Array) =>
+  Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+
+/** The names the interface specification gives each reject code. */
+const REJECT_NAMES: Record<FakeRejectCode, string> = {
+  1: "SYS_FATAL",
+  2: "SYS_TRANSIENT",
+  3: "DESTINATION_INVALID",
+  4: "CANISTER_REJECT",
+  5: "CANISTER_ERROR",
+  6: "SYS_UNKNOWN",
+}
+
 /**
- * Stubs `globalThis.fetch` with a fake replica that runs `options.canisters`,
- * so a `Reactor`, a `DisplayReactor` and the hooks built on them run end to
- * end in a test, with no replica and nothing mocked in the agent.
- *
- * Install it before the agents under test are built: an `HttpAgent` keeps the
- * `fetch` it found when it was built. A `ClientManager` built at module scope
- * is built when its module is first imported, so install the fake in a setup
- * file, or import that module after installing it.
- *
- * Point the agents at `replica.host`. By default it is where a `ClientManager`
- * built with no `host` sends its calls: the page's origin in a browser-like
- * test environment such as jsdom, else `http://127.0.0.1:4943`. The fake
- * answers the IC API there and refuses the IC API on any other origin as a
- * network error, which it also logs once, so a test never reaches a real
- * network by mistake. Every other request, on any origin, goes to the `fetch`
- * it replaced. A fake installed while another is installed answers its own
- * host and hands the IC API on any other origin to the earlier one.
- *
- * It checks each request's signatures as a replica does, and refuses one that
- * does not verify with HTTP 400. It can check Ed25519, ECDSA P-256 and
- * secp256k1 keys, including delegation chains between them, which covers
- * `Ed25519KeyIdentity`, `ECDSAKeyIdentity`, `Secp256k1KeyIdentity` and a
- * `DelegationIdentity` built from them. It refuses any other kind of key.
- *
- * The signing uses `@noble/curves`, an optional peer dependency of
- * `@ic-reactor/core` that `@icp-sdk/core` already installs. Add it to your
- * devDependencies if your package manager does not let this package resolve
- * it.
- *
- * @param options - The canisters to run and the origin to answer for.
- * @returns The installed replica, with the requests it received and a
- * `restore()` that puts the previous `fetch` back.
- *
- * @example
- * ```typescript
- * import { afterEach, beforeEach, expect, it } from "vitest"
- * import { QueryClient } from "@tanstack/query-core"
- * import { ClientManager, Reactor } from "@ic-reactor/core"
- * import {
- *   createTestCanister,
- *   installFakeReplica,
- *   type FakeReplica,
- * } from "@ic-reactor/core/testing"
- * import { idlFactory, type _SERVICE } from "./declarations/backend"
- *
- * const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
- * let replica: FakeReplica
- *
- * beforeEach(() => {
- *   replica = installFakeReplica({
- *     canisters: {
- *       [BACKEND]: createTestCanister<_SERVICE>(idlFactory, {
- *         greet: ([name]) => `Hello, ${name}!`,
- *       }),
- *     },
- *   })
- * })
- * afterEach(() => replica.restore())
- *
- * it("greets", async () => {
- *   const backend = new Reactor<_SERVICE>({
- *     clientManager: new ClientManager({
- *       queryClient: new QueryClient(),
- *       agentOptions: { host: replica.host },
- *     }),
- *     name: "backend",
- *     canisterId: BACKEND,
- *     idlFactory,
- *   })
- *
- *   await expect(
- *     backend.fetchQuery({ functionName: "greet", args: ["Ada"] })
- *   ).resolves.toBe("Hello, Ada!")
- * })
- * ```
+ * How an installed fake hands on a request that is not its own to answer.
+ * Returns the answer, or `undefined` for the fake to refuse the request.
  */
-export function installFakeReplica(
-  options: FakeReplicaOptions = {}
+type PassOn = (
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  why: "not-ic-api" | "other-origin"
+) => Promise<Response> | undefined
+
+function buildFakeReplica(
+  options: FakeReplicaOptions,
+  passOn?: PassOn
 ): FakeReplica {
   const host = new URL(options.host ?? localPageOrigin() ?? DEFAULT_HOST).origin
-  const canisters: Record<string, FakeCanister> = { ...options.canisters }
+  const canisters: Record<string, FakeCanister> = {}
   const requests: FakeReplicaRequest[] = []
 
-  const installed = Object.keys(canisters).map((id) => {
+  // Throws for an ID that is not a canister ID.
+  function canisterIdOf(id: string): Principal {
     try {
       return Principal.fromText(id)
     } catch {
       throw new Error(
-        `installFakeReplica: "${id}" in \`canisters\` is not a canister ID`
+        `fake replica: "${id}" in \`canisters\` is not a canister ID`
       )
     }
-  })
+  }
+  function addCanister(id: string, canister: FakeCanister) {
+    canisters[canisterIdOf(id).toText()] = canister
+  }
+  for (const [id, canister] of Object.entries(options.canisters ?? {})) {
+    addCanister(id, canister)
+  }
 
   const secretKey = bls12_381.utils.randomSecretKey()
   const rootKey = wrapDER(
@@ -506,6 +555,12 @@ export function installFakeReplica(
   const node = Ed25519KeyIdentity.generate()
   const nodeKey = new Uint8Array(node.getPublicKey().toDer())
   const nodeId = Principal.selfAuthenticating(nodeKey)
+
+  // The fault hooks' state: how many update replies are still to be lost,
+  // the HTTP statuses still to be answered, and the calls whose reply was lost.
+  let repliesToLose = 0
+  const refusals: number[] = []
+  const lostRequests = new Set<string>()
 
   async function certify(entries: Array<[string, TreeNode]>) {
     const tree = toHashTree([...entries, ["time", leb128(nowNanos())]])
@@ -592,8 +647,8 @@ export function installFakeReplica(
     caller: Principal
   ): Promise<Outcome> {
     const reject = (
-      code: ReplicaRejectCode,
-      errorCode: string,
+      code: number,
+      errorCode: string | undefined,
       message: string
     ): Outcome => ({ reject: { code, errorCode, message } })
 
@@ -635,6 +690,7 @@ export function installFakeReplica(
 
   async function handleQuery(
     canisterId: string,
+    effectiveCanisterId: string,
     envelope: Envelope,
     caller: Principal
   ) {
@@ -642,6 +698,7 @@ export function installFakeReplica(
     requests.push({
       endpoint: "query",
       canisterId,
+      effectiveCanisterId,
       methodName: method_name,
       caller: caller.toText(),
     })
@@ -655,7 +712,9 @@ export function installFakeReplica(
             status: "rejected",
             reject_code: outcome.reject.code,
             reject_message: outcome.reject.message,
-            error_code: outcome.reject.errorCode,
+            ...(outcome.reject.errorCode === undefined
+              ? {}
+              : { error_code: outcome.reject.errorCode }),
           }
     const hash = hashOfMap({ ...body, timestamp, request_id })
     const signature = await node.sign(
@@ -675,16 +734,32 @@ export function installFakeReplica(
 
   async function handleCall(
     canisterId: string,
+    effectiveCanisterId: string,
     envelope: Envelope,
     caller: Principal
   ) {
     const { method_name = "", arg = new Uint8Array() } = envelope.content
+    const requestId = toHex(requestIdOf(envelope.content))
+    // A request id whose reply was lost stays lost: a re-send is neither run
+    // nor answered again, and its status cannot be read (see
+    // `readsLostRequest`). That models a partition for that one request id,
+    // not what a replica does, which would still answer a `read_state`.
+    const resent = lostRequests.has(requestId)
+    const lose = resent || repliesToLose > 0
+    if (lose && !resent) {
+      repliesToLose -= 1
+      lostRequests.add(requestId)
+    }
     requests.push({
       endpoint: "call",
       canisterId,
+      effectiveCanisterId,
       methodName: method_name,
       caller: caller.toText(),
+      ...(lose ? { dropped: true as const } : {}),
     })
+    if (resent) throw lostReply(method_name)
+
     const outcome = await execute(
       "update",
       canisterId,
@@ -692,6 +767,9 @@ export function installFakeReplica(
       arg,
       caller
     )
+    // The canister has run and its state has changed; only the answer is lost.
+    if (lose) throw lostReply(method_name)
+
     const status: Array<[string, TreeNode]> =
       "reply" in outcome
         ? [
@@ -702,7 +780,11 @@ export function installFakeReplica(
             ["status", utf8("rejected")],
             ["reject_code", leb128(BigInt(outcome.reject.code))],
             ["reject_message", utf8(outcome.reject.message)],
-            ["error_code", utf8(outcome.reject.errorCode)],
+            ...(outcome.reject.errorCode === undefined
+              ? []
+              : ([["error_code", utf8(outcome.reject.errorCode)]] as Array<
+                  [string, TreeNode]
+                >)),
           ]
     const certificate = await certify([
       ["request_status", [[requestIdOf(envelope.content), status]]],
@@ -710,12 +792,29 @@ export function installFakeReplica(
     return cborResponse({ status: "replied", certificate })
   }
 
+  /** Whether `envelope` reads the status of a call whose reply was lost. */
+  const readsLostRequest = (envelope: Envelope) =>
+    (envelope.content.paths ?? []).some(
+      ([label, id]) =>
+        label !== undefined &&
+        id !== undefined &&
+        new TextDecoder().decode(label) === "request_status" &&
+        lostRequests.has(toHex(id))
+    )
+
   async function handleReadState(canisterId: string) {
-    requests.push({ endpoint: "read_state", canisterId })
+    requests.push({
+      endpoint: "read_state",
+      canisterId,
+      effectiveCanisterId: canisterId,
+    })
     // The subnet holds the installed canisters and the one asked about, so a
     // query to a canister that is not installed reaches the canister lookup
     // and is rejected there, rather than failing the agent's range check.
-    const inSubnet = [...installed, Principal.fromText(canisterId)]
+    const inSubnet = [
+      ...Object.keys(canisters).map((id) => Principal.fromText(id)),
+      Principal.fromText(canisterId),
+    ]
       .map((id) => id.toUint8Array())
       .sort(compareBytes)
       .filter((id, i, ids) => i === 0 || compareBytes(ids[i - 1], id) !== 0)
@@ -736,10 +835,6 @@ export function installFakeReplica(
     return cborResponse({ certificate })
   }
 
-  const link: FakeReplicaLink = {
-    previous: globalThis.fetch,
-    restored: false,
-  }
   // Origins a misrouted IC API request came from, each logged once.
   const misrouted = new Set<string>()
 
@@ -747,17 +842,23 @@ export function installFakeReplica(
     input: RequestInfo | URL,
     init?: RequestInit
   ): Promise<Response> => {
-    // Read per request: a fake installed under this one may be restored since.
-    const next = liveFetchUnder(link)
     const url = urlOf(input)
-    if (!url || !IC_API_PATH.test(url.pathname)) return next(input, init)
+    if (!url || !IC_API_PATH.test(url.pathname)) {
+      const passed = passOn?.(input, init, "not-ic-api")
+      if (passed) return passed
+      throw new TypeError(
+        `fake replica: ${url?.href ?? String(input)} is not an IC API request, ` +
+          `which is all the fake answers`
+      )
+    }
 
     if (url.origin !== host) {
-      if (linkOf(next)) return next(input, init)
+      const passed = passOn?.(input, init, "other-origin")
+      if (passed) return passed
       const message =
         `fake replica: no route to ${url.origin}. The fake answers ${host}; ` +
-        `build the agent with \`agentOptions: { host: replica.host }\`, ` +
-        `or install the fake with \`host: "${url.origin}"\``
+        `build the agent with \`host: replica.host\` and \`fetch: replica.fetch\`, ` +
+        `or create the fake with \`host: "${url.origin}"\``
       // The agent retries a failed request, and a query hook retries a
       // failed query, so the error below can surface long after the test
       // timed out. Logged here, the cause shows up at once.
@@ -805,11 +906,26 @@ export function installFakeReplica(
         ? Principal.fromUint8Array(envelope.content.canister_id).toText()
         : effectiveCanisterId
 
+      // Before the signatures are read, as a gateway refuses a request.
+      const status = endpoint === "read_state" ? undefined : refusals.shift()
+      if (status !== undefined) {
+        const refused = `refuseNext(${status}) answered the request with HTTP ${status}`
+        requests.push({
+          endpoint,
+          canisterId,
+          effectiveCanisterId,
+          methodName: envelope.content.method_name,
+          refused,
+        })
+        return new Response(`fake replica: ${refused}`, { status })
+      }
+
       const caller = authenticate(envelope, canisterId)
       if (typeof caller === "string") {
         requests.push({
           endpoint,
           canisterId,
+          effectiveCanisterId,
           methodName: envelope.content.method_name,
           refused: caller,
         })
@@ -817,13 +933,35 @@ export function installFakeReplica(
       }
 
       if (endpoint === "query") {
-        return await handleQuery(canisterId, envelope, caller)
+        return await handleQuery(
+          canisterId,
+          effectiveCanisterId,
+          envelope,
+          caller
+        )
       }
       if (endpoint === "call") {
-        return await handleCall(canisterId, envelope, caller)
+        return await handleCall(
+          canisterId,
+          effectiveCanisterId,
+          envelope,
+          caller
+        )
+      }
+      if (readsLostRequest(envelope)) {
+        requests.push({
+          endpoint,
+          canisterId: effectiveCanisterId,
+          effectiveCanisterId,
+          dropped: true,
+        })
+        throw lostReply()
       }
       return await handleReadState(effectiveCanisterId)
     } catch (error) {
+      // A lost reply is the network failing, which the agent sees as the
+      // fetch rejecting, not as an HTTP answer.
+      if (error instanceof LostReply) throw error
       // A request the fake cannot read, or a bug in the fake. The agent sees
       // an HTTP error, which fails the test; the details go to its output.
       console.error("fake replica:", error)
@@ -834,15 +972,163 @@ export function installFakeReplica(
     }
   }
 
-  const fetch = Object.assign(fakeFetch, {
+  return {
+    host,
+    rootKey,
+    fetch: fakeFetch,
+    requests,
+    addCanister,
+    reject(code, message) {
+      throw new FakeReplicaReject(
+        code,
+        undefined,
+        message ??
+          `fake replica: the canister rejected the call with reject code ${code} (${REJECT_NAMES[code]})`
+      )
+    },
+    dropNextReply() {
+      repliesToLose += 1
+    },
+    refuseNext(status, times = 1) {
+      if (!Number.isInteger(status) || status < 400 || status > 599) {
+        throw new RangeError(
+          `refuseNext: ${status} is not an HTTP error status (400 to 599)`
+        )
+      }
+      if (!Number.isInteger(times) || times < 1) {
+        throw new RangeError(
+          `refuseNext: \`times\` is ${times}, not a count of at least 1`
+        )
+      }
+      for (let i = 0; i < times; i += 1) refusals.push(status)
+    },
+  }
+}
+
+/**
+ * The error a request fails with when its reply is lost: a `fetch` rejection,
+ * as a dropped connection is.
+ */
+const lostReply = (method?: string) =>
+  new LostReply(
+    `fake replica: the connection was lost before the reply${method ? ` to ${method}` : ""} arrived`
+  )
+
+/**
+ * Creates a fake replica that runs `options.canisters`, to give to the agents
+ * under test as their `fetch`. Nothing global is touched, so two fakes run
+ * side by side in one process, each with its own root key, node key and
+ * request log, and the agents that use one never reach the other.
+ *
+ * Point an agent at it with its `host`, its `fetch` and its root key:
+ * `HttpAgent.createSync({ host: replica.host, fetch: replica.fetch, rootKey:
+ * replica.rootKey })`, or pass `shouldFetchRootKey: true` instead of the
+ * `rootKey` to let the agent fetch it from the fake as it does from a local
+ * replica. The fake answers the IC API on `replica.host` and refuses the IC
+ * API on any other origin as a network error, which it also logs once, so a
+ * test never reaches a real network by mistake.
+ *
+ * It checks each request's signatures as a replica does, and refuses one that
+ * does not verify with HTTP 400. It can check Ed25519, ECDSA P-256 and
+ * secp256k1 keys, including delegation chains between them, which covers
+ * `Ed25519KeyIdentity`, `ECDSAKeyIdentity`, `Secp256k1KeyIdentity` and a
+ * `DelegationIdentity` built from them. It refuses any other kind of key.
+ *
+ * An agent keeps the node keys it reads in IndexedDB when the environment has
+ * one, under a name that holds only the host. Agents of two fakes that share a
+ * host therefore share cached keys. The agent notices a signature that does
+ * not verify and reads fresh keys, but pass each agent its own
+ * `subnetNodeKeyExpirableStore` to keep them apart.
+ *
+ * The signing uses `@noble/curves`, an optional peer dependency of
+ * `@ic-reactor/core` that `@icp-sdk/core` already installs. Add it to your
+ * devDependencies if your package manager does not let this package resolve
+ * it.
+ *
+ * @param options - The canisters to run and the origin to answer for.
+ * @returns The fake: its `fetch`, `host` and `rootKey`, the requests it
+ * received, and the hooks that fail a call on purpose.
+ *
+ * @example
+ * ```typescript
+ * import { HttpAgent } from "@icp-sdk/core/agent"
+ * import { IDL } from "@icp-sdk/core/candid"
+ * import { createFakeReplica } from "@ic-reactor/core/testing"
+ *
+ * const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+ *
+ * const replica = createFakeReplica({
+ *   canisters: {
+ *     [BACKEND]: {
+ *       query: () => new Uint8Array(IDL.encode([IDL.Text], ["Hello, Ada!"])),
+ *       update: () => replica.reject(4, "not today"),
+ *     },
+ *   },
+ * })
+ * const agent = HttpAgent.createSync({
+ *   host: replica.host,
+ *   fetch: replica.fetch,
+ *   rootKey: replica.rootKey,
+ * })
+ *
+ * const answer = await agent.query(BACKEND, {
+ *   methodName: "greet",
+ *   arg: new Uint8Array(IDL.encode([IDL.Text], ["Ada"])),
+ * })
+ * ```
+ */
+export function createFakeReplica(
+  options: FakeReplicaOptions = {}
+): FakeReplica {
+  return buildFakeReplica(options)
+}
+
+/**
+ * Stubs `globalThis.fetch` with a fake replica that runs `options.canisters`,
+ * for code that builds its own agents. Prefer {@link createFakeReplica}, which
+ * is passed to the agents it serves and touches nothing global.
+ *
+ * Install it before the agents under test are built: an `HttpAgent` keeps the
+ * `fetch` it found when it was built. An agent built at module scope is built
+ * when its module is first imported, so install the fake in a setup file, or
+ * import that module after installing it.
+ *
+ * Point the agents at `replica.host`. The fake answers the IC API there and
+ * refuses the IC API on any other origin as a network error, which it also
+ * logs once, so a test never reaches a real network by mistake. Every other
+ * request, on any origin, goes to the `fetch` it replaced. A fake installed
+ * while another is installed answers its own host and hands the IC API on any
+ * other origin to the earlier one.
+ *
+ * Everything else, including the request checks and the fault hooks, is
+ * {@link createFakeReplica}'s.
+ *
+ * @param options - The canisters to run and the origin to answer for.
+ * @returns The installed replica, with a `restore()` that puts the previous
+ * `fetch` back.
+ */
+export function installFakeReplica(
+  options: FakeReplicaOptions = {}
+): InstalledFakeReplica {
+  const link: FakeReplicaLink = {
+    previous: globalThis.fetch,
+    restored: false,
+  }
+  const replica = buildFakeReplica(options, (input, init, why) => {
+    // Read per request: a fake installed under this one may be restored since.
+    const next = liveFetchUnder(link)
+    return why === "other-origin" && !linkOf(next)
+      ? undefined
+      : next(input, init)
+  })
+
+  const fetch = Object.assign(replica.fetch, {
     [FAKE_REPLICA_FETCH]: link,
   }) as Fetch
   globalThis.fetch = fetch
 
   return {
-    host,
-    rootKey,
-    requests,
+    ...replica,
     restore() {
       if (link.restored) return
       link.restored = true
