@@ -813,6 +813,14 @@ describe("what it refuses", () => {
     )
   })
 
+  it("an identity that is neither an Identity nor a seed, null included", () => {
+    for (const identity of [null, "seed", {}, true]) {
+      expect(() =>
+        createTestClient({ identity } as unknown as Options)
+      ).toThrow(/identity is an Identity or a seed/)
+    }
+  })
+
   it("a seed that is not a non-negative integer", () => {
     expect(() => createTestClient({ identity: -1 })).toThrow(RangeError)
     expect(() => createTestClient({ identity: 1.5 })).toThrow(RangeError)
