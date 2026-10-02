@@ -44,10 +44,15 @@ import { isServer } from "./runtime.js"
  *   comes from the `ic_env` cookie, but only where that cookie is trusted:
  *   when both the page and the replica are local, or the client was built
  *   with `allowEnvConfig: true`. A local replica with no key from the cookie
- *   has its root key fetched. On a server there is no page and no cookie: the
- *   host is `ICP_HOST` or `IC_HOST` when `ICP_NETWORK` or `DFX_NETWORK` is
- *   `"local"` (`http://127.0.0.1:4943` if neither is set), and mainnet
- *   otherwise.
+ *   has its root key fetched. A Codespaces or Gitpod page is routed but is
+ *   not local, so there the key is neither taken from the cookie nor fetched,
+ *   and the agent checks the forwarded replica's certificates against
+ *   mainnet's key, so every certified call fails verification. Set
+ *   `allowEnvConfig: true` to take the cookie's key, or name the replica with
+ *   an object that has a `rootKey` or `fetchRootKey: true`. On a server there
+ *   is no page and no cookie: the host is `ICP_HOST` or `IC_HOST` when
+ *   `ICP_NETWORK` or `DFX_NETWORK` is `"local"` (`http://127.0.0.1:4943` if
+ *   neither is set), and mainnet otherwise.
  * - An object: any other replica. `rootKey` is used as given and never
  *   fetched. Without one the root key is fetched only when `host` is local
  *   (`localhost`, `*.localhost` or any loopback address), unless `fetchRootKey`
