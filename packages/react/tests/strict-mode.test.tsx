@@ -156,6 +156,7 @@ describe("a provider's client across mounts", () => {
       const view = render(tree("visible"))
       await act(macrotask)
       const hidden = live.client as Client
+      hidden.queryClient.setQueryData(["cached"], "before hiding")
 
       view.rerender(tree("hidden"))
       await act(macrotask)
@@ -168,11 +169,51 @@ describe("a provider's client across mounts", () => {
       const shown = live.client as Client
       expect(shown).not.toBe(hidden)
       expect(made).toHaveLength(2)
+      // Hiding a provider drops its cache, as the provider's docs say.
+      expect(shown.queryClient.getQueryData(["cached"])).toBeUndefined()
       expect(trackOf(shown).dispose).not.toHaveBeenCalled()
       await act(async () => {
         await currentAuth().signIn()
       })
       expect(view.getByTestId("status").textContent).toBe("signed-in")
+    }
+  )
+
+  it.skipIf(Activity === undefined)(
+    "builds one replacement, not two, when StrictMode shows a hidden subtree again",
+    async () => {
+      const Hideable = Activity as NonNullable<typeof Activity>
+      const { live, Probe, factory, made, trackOf, disposals } = setup()
+      const tree = (mode: "visible" | "hidden") => (
+        <StrictMode>
+          <Hideable mode={mode}>
+            <ReactorProvider client={factory}>
+              <Probe />
+            </ReactorProvider>
+          </Hideable>
+        </StrictMode>
+      )
+      const view = render(tree("visible"))
+      await act(macrotask)
+      const hidden = live.client as Client
+      const builtBefore = made.length
+
+      view.rerender(tree("hidden"))
+      await act(macrotask)
+      expect(trackOf(hidden).dispose).toHaveBeenCalledTimes(1)
+      view.rerender(tree("visible"))
+      await act(macrotask)
+
+      // StrictMode runs the effects of a revealed subtree twice before the
+      // replacement is committed; the factory still runs once for it, so no
+      // client is built only to be dropped.
+      expect(made.length - builtBefore).toBe(1)
+      const shown = live.client as Client
+      expect(shown).not.toBe(hidden)
+      expect(shown).toBe(made[made.length - 1]?.client)
+      expect(trackOf(shown).dispose).not.toHaveBeenCalled()
+      // Only the client that was hidden was ever disposed, and only once.
+      expect(disposals()).toBe(1)
     }
   )
 })

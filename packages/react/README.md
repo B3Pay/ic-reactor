@@ -111,8 +111,14 @@ macrotask and the second mount cancels it.
 
 Only the factory of the first render is used: passing another function on a
 later render does not rebuild the client. To replace the client, give the
-provider another `key`. When React shows a hidden `Activity` again after its
-client was disposed, the provider builds another one with the same factory.
+provider another `key`.
+
+When React shows a hidden `Activity` again after its client was disposed, the
+provider builds another one with the same factory. That client starts with an
+empty cache: hiding a provider inside an `Activity` drops everything it had
+fetched, because React cannot tell a hidden subtree from an unmounted one when
+it cleans up. To keep the cache across hiding, render the provider above the
+`Activity`.
 
 ## 3.x
 

@@ -82,6 +82,11 @@ export interface ReactorProviderProps {
  * `Activity` once more, and that can be long after they were cleaned up. If the
  * client was disposed meanwhile, the provider builds another from the same
  * factory, because a disposed client cannot call, sign in or cache any more.
+ * The cost is that hiding a provider inside an `Activity` drops its cache:
+ * disposing clears the `QueryClient`, and the client built on the next show
+ * starts empty. React cannot tell a hidden subtree from an unmounted one in
+ * the cleanup, so there is no way to keep it. To keep a cache across hiding,
+ * render the provider above the `Activity`, not inside it.
  *
  * @example
  * ```tsx
@@ -111,14 +116,22 @@ export function ReactorProvider({
 }: ReactorProviderProps): ReactElement {
   const [client, setClient] = useState(build)
   const firstBuild = useRef(build)
+  const replacement = useRef<
+    { readonly of: Client; readonly client: Client } | undefined
+  >(undefined)
   const pendingDispose = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined
   )
 
   useEffect(() => {
     if (disposedClients.has(client)) {
-      // A hidden subtree was shown again after its client was disposed.
-      setClient(firstBuild.current())
+      // A hidden subtree was shown again after its client was disposed. React
+      // runs this effect twice in development before the state below commits;
+      // both runs must hand it the same client, not build one to drop.
+      if (replacement.current?.of !== client) {
+        replacement.current = { of: client, client: firstBuild.current() }
+      }
+      setClient(replacement.current.client)
       return undefined
     }
     // The mount that follows a development unmount: the client is still alive.
