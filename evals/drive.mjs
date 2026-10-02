@@ -57,7 +57,8 @@
 // per run, ceiling/floor warnings and the runs needed for `--margin`.
 //
 // --resume <dir> continues a batch: runs with agent.json are not re-run, runs
-// without score.json are scored.
+// without score.json are scored. A run excluded as a harness error has no
+// agent.json, so it is run again and scored.
 //
 // ASSUMED AGENT CLI (override with --agent-cmd): Claude Code headless,
 //   claude -p "$(cat {prompt})" --output-format stream-json --verbose
@@ -1044,6 +1045,10 @@ async function main() {
           ) + "\n"
         )
       }
+      // A pending run with a score.json is a harness error recorded by an
+      // earlier attempt (`fail` above), which --resume runs again: drop that
+      // record so the new attempt is scored like any other run.
+      rmSync(join(runDirOf(outDir, run), "score.json"), { force: true })
       let errors = 0
       let limits = 0
       for (;;) {

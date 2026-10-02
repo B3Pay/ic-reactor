@@ -180,6 +180,60 @@ describe("a usage limit", () => {
   })
 })
 
+describe("a resumed batch", () => {
+  let out
+  let marker
+  let first
+  let resumed
+  before(() => {
+    out = mkdtempSync(join(tmpdir(), "drive-resume-"))
+    marker = join(mkdtempSync(join(tmpdir(), "drive-resume-marker-")), "ok")
+    // Rate limited until the marker exists, then a working solution.
+    const stub =
+      `if [ -e '${marker}' ]; then ` +
+      `cp -R '${solutions}/{task}/solutions/{condition}/reference/src/.' src/ && echo '${RESULT_OK}'; ` +
+      `else printf '%s\\n' '{"type":"result","subtype":"error_during_execution","is_error":true,` +
+      `"result":"Claude AI usage limit reached|1000000000"}'; fi`
+    first = drive(out, stub, { CLAUDE_CODE_OAUTH_TOKEN: OAUTH }, [
+      "--rate-limit-retries",
+      "0",
+      "--rate-limit-backoff-min",
+      "0",
+    ])
+    writeFileSync(marker, "")
+    resumed = spawnSync(
+      process.execPath,
+      [join(EVALS, "drive.mjs"), "--resume", out],
+      {
+        cwd: EVALS,
+        env: {
+          PATH: process.env.PATH,
+          HOME: process.env.HOME,
+          CLAUDE_CODE_OAUTH_TOKEN: OAUTH,
+        },
+        encoding: "utf8",
+        timeout: 600_000,
+      }
+    )
+  })
+  after(() => {
+    rmSync(out, { recursive: true, force: true })
+    rmSync(join(marker, ".."), { recursive: true, force: true })
+  })
+
+  it("runs a run excluded as a harness error again, and scores it", () => {
+    assert.equal(first.status, 0, first.stderr.slice(-2000))
+    assert.equal(resumed.status, 0, resumed.stderr.slice(-2000))
+    const dir = join(out, "node-tool", "thin", "001")
+    assert.ok(existsSync(join(dir, "agent.json")))
+    const score = JSON.parse(readFileSync(join(dir, "score.json"), "utf8"))
+    assert.equal(score.harnessError, undefined, score.harnessError)
+    assert.equal(score.safe, true)
+    const summary = JSON.parse(readFileSync(join(out, "summary.json"), "utf8"))
+    assert.equal(summary.harnessErrors, 0)
+  })
+})
+
 describe("a token file", () => {
   let out
   let dir
