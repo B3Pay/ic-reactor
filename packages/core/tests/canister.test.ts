@@ -9,6 +9,7 @@ import { principal, serviceMethods, type Principal } from "@candid-core/schema"
 import { encodeArgs } from "@candid-core/schema/codec"
 import { AnonymousIdentity, Cbor } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
+import { skipToken, type QueryFunctionContext } from "@tanstack/query-core"
 import { isReactorError } from "../src/index.js"
 import { toHex } from "../src/keys.js"
 import { createTestAuth, type FakeReplica } from "../src/testing/index.js"
@@ -848,6 +849,35 @@ describe("a certified canister", () => {
     await expect(canister.composite(2n)).resolves.toBe(4n)
     expect(canisterRequests(replica)).toMatchObject([{ endpoint: "query" }])
   })
+
+  it("stops polling for a read once its signal aborts, and rejects cancelled", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    // Every poll is answered without the read's status: it is never ready.
+    const later = answerLater(replica.fetch, {
+      pending: await certificateOfAnotherCall(replica),
+    })
+    const client = clientAs({ ...replica, fetch: later.fetch }, alice)
+    const certified = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      certified: true,
+    })
+    const { queryFn } = client.queryOptions(certified, "one", 1n)
+    if (queryFn === skipToken) throw new Error("the read is not skipped")
+    // What TanStack does when the last observer of a read goes away: it
+    // aborts the signal it gave the query function.
+    const controller = new AbortController()
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext)
+    await vi.waitFor(() => expect(later.polls()).toBe(1))
+    controller.abort()
+    await expect(
+      Promise.race([read, sleep(1_000).then(() => "still polling")])
+    ).rejects.toMatchObject({ kind: "cancelled", mayHaveExecuted: false })
+    // The agent's strategy polls again two seconds after the first poll.
+    await sleep(2_500)
+    expect(later.polls()).toBe(1)
+  }, 10_000)
 })
 
 describe("a call made as a caller who signs out before it is sent", () => {
