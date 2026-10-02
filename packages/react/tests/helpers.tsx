@@ -13,12 +13,22 @@ export type TestAuth = ReturnType<typeof createTestClient>["auth"]
 /**
  * A sign-in a test controls, for the tests that build a client around it
  * themselves (to count how often the client builds its auth, or to wrap it).
- * It is the `auth` of a test client; the fake replica next to it is never
- * called, since no test here calls a canister. `identity` is a seed.
+ * It is the `auth` of a test client, the only place the testing entry hands
+ * one out; the fake replica next to it is never called, since no test here
+ * calls a canister. `identity` is a seed.
+ *
+ * The test client is disposed at once. A client builds its auth on first use
+ * and this one is never used, so it never took the auth over and disposing it
+ * leaves the auth alone: whichever client the test hands the auth to owns it
+ * from then on, as every client owns the auth it builds.
  */
 export const testAuth = (
   options?: Parameters<typeof createTestClient>[0]
-): TestAuth => createTestClient(options).auth
+): TestAuth => {
+  const { client, auth } = createTestClient(options)
+  client.dispose()
+  return auth
+}
 
 /** A client on the IC whose caller is whatever `auth` says. Sends nothing. */
 export const clientWithAuth = (auth: () => AuthLike): Client =>
