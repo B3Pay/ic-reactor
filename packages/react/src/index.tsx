@@ -212,7 +212,7 @@ export function useAuth(): AuthState & {
   /** Signs in through the client's auth, passing `options` on. */
   signIn(options?: unknown): Promise<void>
   /** Signs out through the client's auth. */
-  signOut(): Promise<void>
+  signOut(options?: unknown): Promise<void>
 } {
   const client = useClient()
   const state = useSyncExternalStore(
@@ -225,7 +225,7 @@ export function useAuth(): AuthState & {
       status: state.status,
       principal: state.principal,
       signIn: (options?: unknown) => client.signIn(options),
-      signOut: () => client.signOut(),
+      signOut: (options?: unknown) => client.signOut(options),
     }),
     [client, state]
   )
