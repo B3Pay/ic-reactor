@@ -16,7 +16,7 @@ import {
 } from "@tanstack/query-core"
 import { classifyError } from "../src/errors.js"
 import type { Client } from "../src/index.js"
-import { createTestAuth } from "../src/testing/index.js"
+import { createTestAuth } from "../src/testing/test-auth.js"
 import {
   ANONYMOUS,
   FEE,

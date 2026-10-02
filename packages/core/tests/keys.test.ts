@@ -17,7 +17,7 @@ import {
   skipToken,
 } from "@tanstack/query-core"
 import { toHex } from "../src/keys.js"
-import { createTestAuth } from "../src/testing/index.js"
+import { createTestAuth } from "../src/testing/test-auth.js"
 import {
   ANONYMOUS,
   FEE,

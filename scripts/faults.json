@@ -376,5 +376,199 @@
     "file": "src/index.tsx",
     "search": "\"use client\"\n\n/**\n * `@ic-reactor/react` 4",
     "replace": "/**\n * `@ic-reactor/react` 4"
+  },
+  {
+    "id": "ir4b-test-auth-not-built-in-node",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "is the other principal after a switch of account, in Node",
+    "why": "the test client built over createClient's public path, which builds the auth only in a browser: in Node the client stays anonymous and a sign-in or a switch of account changes nothing a canister can see",
+    "file": "src/testing/test-client.ts",
+    "search": "{ authOnServer: true }",
+    "replace": "{}"
+  },
+  {
+    "id": "ir4b-create-client-builds-auth-on-a-server",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "never builds its auth, and is anonymous",
+    "why": "the test client's seam leaked into createClient: an app's client on a server builds its auth, so one createClient line is signed in on the server too",
+    "file": "src/client.ts",
+    "search": "  return createClientWith(options, {})",
+    "replace": "  return createClientWith(options, { authOnServer: true })"
+  },
+  {
+    "id": "ir4b-handler-told-a-fixed-caller",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "is the principal that is signed in, by default the identity of seed 1",
+    "why": "a handler's ctx.caller that is not the principal the fake replica verified for the request",
+    "file": "src/testing/test-client.ts",
+    "search": "        caller: principal(caller),",
+    "replace": "        caller: principal(\"aaaaa-aa\"),"
+  },
+  {
+    "id": "ir4b-handler-told-the-current-caller",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "is the principal that signed the request, even when the account is switched while the call is in flight",
+    "why": "a handler's ctx.caller read from the client at the moment the handler runs, instead of from the request the fake replica verified: a call made as one account and run after the client moved on to another tells the handler the other one, and a canister would never see that",
+    "edits": [
+      {
+        "file": "src/testing/test-client.ts",
+        "search": "type Handler = (...args: unknown[]) => unknown\n",
+        "replace": "type Handler = (...args: unknown[]) => unknown\nlet liveCaller = (): string => \"aaaaa-aa\"\n"
+      },
+      {
+        "file": "src/testing/test-client.ts",
+        "search": "        caller: principal(caller),",
+        "replace": "        caller: principal(liveCaller()),"
+      },
+      {
+        "file": "src/testing/test-client.ts",
+        "search": "  const limit = maxDepth ?? DEFAULT_MAX_DEPTH\n",
+        "replace": "  const limit = maxDepth ?? DEFAULT_MAX_DEPTH\n  liveCaller = () => client.caller()\n"
+      }
+    ]
+  },
+  {
+    "id": "ir4b-one-result-not-wrapped",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "return one value, a tuple or nothing, as the method's results are",
+    "why": "the reply collapse not reversed for one result: the handler's value is read as the list of results, so a vec or a bigint is refused or spread",
+    "file": "src/testing/test-client.ts",
+    "search": "  if (count === 1) return [reply]\n",
+    "replace": ""
+  },
+  {
+    "id": "ir4b-void-reply-encoded",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "make a void update that returns whatever it likes a method with no results",
+    "why": "the reply collapse not reversed for no results: whatever a void handler returns is encoded as a result the method does not have",
+    "file": "src/testing/test-client.ts",
+    "search": "  if (count === 0) return []",
+    "replace": "  if (count === 0) return [reply]"
+  },
+  {
+    "id": "ir4b-reject-is-a-trap",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "rejects an update with the code reject() was given, and the handler ran once",
+    "why": "reject() throws a plain error, so every reject a handler asks for reaches the client as a canister trap (code 5)",
+    "file": "src/testing/test-client.ts",
+    "search": "    reject: replica.reject,",
+    "replace": "    reject: (_code: number, message?: string): never => {\n      throw new Error(message ?? \"rejected\")\n    },"
+  },
+  {
+    "id": "ir4b-drop-next-reply-is-a-no-op",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "loses the reply to the next update only, and the handler ran exactly once",
+    "why": "dropNextReply() that loses nothing, so the update resolves and the lost-reply path is never exercised",
+    "file": "src/testing/test-client.ts",
+    "search": "    dropNextReply: replica.dropNextReply,",
+    "replace": "    dropNextReply() {},"
+  },
+  {
+    "id": "ir4b-refuse-next-is-a-no-op",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "refuses the next request with an HTTP status before the canister sees it",
+    "why": "refuseNext() that refuses nothing, so the refusal path is never exercised",
+    "file": "src/testing/test-client.ts",
+    "search": "    refuseNext: replica.refuseNext,",
+    "replace": "    refuseNext() {},"
+  },
+  {
+    "id": "ir4b-fetch-stubbed-globally",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "never replaces or uses globalThis.fetch",
+    "why": "the fake replica put in globalThis.fetch, as installFakeReplica does: code that builds its own agents reaches it and two test clients share one",
+    "file": "src/testing/test-client.ts",
+    "search": "  const client = createClientWith(",
+    "replace": "  globalThis.fetch = replica.fetch\n  const client = createClientWith("
+  },
+  {
+    "id": "ir4b-entry-exports-the-fake-replica",
+    "package": "core",
+    "test": "tests/testing-entry.test.ts",
+    "testName": "exports exactly createTestClient at runtime",
+    "why": "the fake replica re-exported from the testing entry for convenience: a second runtime name past the budget",
+    "file": "src/testing/index.ts",
+    "search": "export { createTestClient, type TestHandlers } from \"./test-client.js\"",
+    "replace": "export { createTestClient, type TestHandlers } from \"./test-client.js\"\nexport { createFakeReplica } from \"./fake-replica.js\""
+  },
+  {
+    "id": "ir4b-main-entry-reaches-testing",
+    "package": "core",
+    "test": "tests/testing-entry.test.ts",
+    "testName": "is not reached by the main entry",
+    "why": "the main entry importing the testing entry: the fake replica and @noble/curves would reach every app bundle",
+    "file": "src/index.ts",
+    "search": "export { formatUnits, parseUnits } from \"./units.js\"",
+    "replace": "export { formatUnits, parseUnits } from \"./units.js\"\nexport { createTestClient } from \"./testing/index.js\""
+  },
+  {
+    "id": "ir4b-update-answered-on-the-query-path",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "refuses to run an update method as a query",
+    "why": "a mocked update method answered on the query path, where a canister has no such query method",
+    "file": "src/testing/test-client.ts",
+    "search": "        path === \"query\" &&",
+    "replace": "        path === \"never\" &&"
+  },
+  {
+    "id": "ir4b-fake-ignores-the-network-host",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "is mainnet's key segment and host for `ic`, answered by the fake",
+    "why": "the fake replica built on its own host instead of the host of the network the test named, so the client's calls for that host reach nobody",
+    "file": "src/testing/test-client.ts",
+    "search": "    named === undefined ? {} : { host: named.host }",
+    "replace": "    {}"
+  },
+  {
+    "id": "ir4b-network-root-key-not-the-fakes",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "keeps the name a network object is given, and ignores a root key of its own",
+    "why": "a network object's own root key used instead of the fake's, so the certificates the fake signs fail verification",
+    "file": "src/testing/test-client.ts",
+    "search": "        rootKey: replica.rootKey,",
+    "replace": "        rootKey: typeof network === \"object\" ? network.rootKey : undefined,"
+  },
+  {
+    "id": "ir4b-lost-reply-update-resent",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "loses the reply to the next update only, and the handler ran exactly once",
+    "why": "an update re-sent after any failure, a lost reply included: the first send ran the handler, and the re-send runs it a second time",
+    "file": "src/call.ts",
+    "search": "          ? !management && retryUpdate(error, resends)",
+    "replace": "          ? !management && resends < UPDATE_RESEND_DELAYS_MS.length"
+  },
+  {
+    "id": "ir4b-client-disposes-an-auth-it-never-built",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "disposes its auth with the client once the client has used it, and leaves one it never built",
+    "why": "a client that builds its auth only to dispose it: a test that borrows the auth from a client it never used (the react tests' helper does) is handed one that is already disposed",
+    "file": "src/client.ts",
+    "search": "      const source = auth\n",
+    "replace": "      const source = auth ?? authFactory?.()\n"
+  },
+  {
+    "id": "ir4b-client-keeps-the-auth-it-built",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "disposes its auth with the client once the client has used it, and leaves one it never built",
+    "why": "a client that does not dispose the auth it built: its listener and any timer the auth holds outlive the test",
+    "file": "src/client.ts",
+    "search": "      source?.dispose?.()\n",
+    "replace": "      void source\n"
   }
 ]

@@ -1,5 +1,6 @@
 /**
- * `createFakeReplica` from `@ic-reactor/core/testing`: a fake replica an
+ * `createFakeReplica`, the fake replica behind `createTestClient` (internal:
+ * the testing entry exports only `createTestClient`): a fake replica an
  * `HttpAgent` is given as its `fetch`, so nothing global is stubbed.
  *
  * It refuses what a replica refuses, so a test that passes through it cannot
@@ -37,7 +38,7 @@ import {
   createFakeReplica,
   type FakeCanister,
   type FakeReplica,
-} from "../src/testing/index.js"
+} from "../src/testing/fake-replica.js"
 
 const CANISTER = "rdmx6-jaaaa-aaaaa-aaadq-cai"
 const OTHER_CANISTER = "rrkah-fqaaa-aaaaa-aaaaq-cai"

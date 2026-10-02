@@ -12,7 +12,7 @@ import { IC_ROOT_KEY, type Identity } from "@icp-sdk/core/agent"
 import { IDL } from "@icp-sdk/core/candid"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { createClient, internalsOf, type AuthLike } from "../src/client.js"
-import { createTestAuth } from "../src/testing/index.js"
+import { createTestAuth } from "../src/testing/test-auth.js"
 import {
   ANONYMOUS,
   CALL,

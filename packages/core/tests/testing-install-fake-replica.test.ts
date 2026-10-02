@@ -1,6 +1,7 @@
 /**
- * `installFakeReplica` from `@ic-reactor/core/testing`: the same fake replica,
- * put in `globalThis.fetch` for code that builds its own agents.
+ * `installFakeReplica` (internal: the testing entry exports only
+ * `createTestClient`, which never stubs `globalThis.fetch`): the same fake
+ * replica, put in `globalThis.fetch` for code that builds its own agents.
  *
  * The request checks and the fault hooks are `createFakeReplica`'s and are
  * tested with it. What is tested here is what only the global stub does:
@@ -20,7 +21,7 @@ import {
   installFakeReplica,
   type FakeCanister,
   type InstalledFakeReplica,
-} from "../src/testing/index.js"
+} from "../src/testing/fake-replica.js"
 
 const HOST = "http://localhost:4943"
 const CANISTER = "rdmx6-jaaaa-aaaaa-aaadq-cai"
