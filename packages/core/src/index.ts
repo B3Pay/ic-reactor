@@ -19,4 +19,5 @@ export {
   type ReactorError,
   type ReactorErrorKind,
 } from "./errors.js"
+export type { Canister, CanisterTarget } from "./types.js"
 export { formatUnits, parseUnits } from "./units.js"
