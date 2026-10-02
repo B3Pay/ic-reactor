@@ -170,6 +170,35 @@
     "replace": "  unclaimed?.register(held, client, client)\n"
   },
   {
+    "id": "ir6-lazy-shared-client-left-registered",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "keeps running once mounted, though the render that created it was thrown away",
+    "why": "only an owned commit unregisters, as before the fix: the render that created a lazily shared client registered it and was thrown away, the retry got it back as borrowed and mounted it without unregistering, and the next collection disposed it under the mounted tree. The effect's unregister alone is masked by hold()'s, which always runs first for a borrowed client, so both go back",
+    "edits": [
+      {
+        "file": "src/index.tsx",
+        "search": "  if (owned) unclaimed?.register(held, client, client)\n  else unclaimed?.unregister(client)\n",
+        "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
+      },
+      {
+        "file": "src/index.tsx",
+        "search": "    unclaimed?.unregister(client)\n    if (!owned) {\n      // Borrowed: never disposed here, so there is nothing to schedule, to\n      // cancel or to replace.\n      reportDisposed(client)\n      return undefined\n    }\n",
+        "replace": "    if (!owned) {\n      // Borrowed: never disposed here, so there is nothing to schedule, to\n      // cancel or to replace.\n      reportDisposed(client)\n      return undefined\n    }\n    unclaimed?.unregister(client)\n"
+      }
+    ]
+  },
+  {
+    "id": "ir6-borrowed-render-keeps-registration",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "is let go by the registry as soon as a later render gets it back",
+    "why": "a factory call that hands back a client a dropped render registered leaves the registration standing until a commit, so a collection while the fallback still shows disposes the lazily shared client the retry is about to mount",
+    "file": "src/index.tsx",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else unclaimed?.unregister(client)\n",
+    "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
+  },
+  {
     "id": "ir6-server-client-registered",
     "package": "react",
     "test": "tests/provider.server.test.tsx",
