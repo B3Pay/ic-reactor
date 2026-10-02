@@ -44,7 +44,7 @@ render.
 - `"local"`: `http://127.0.0.1:4943`; its root key is fetched.
 - `{ host, rootKey }`: any other replica. A given `rootKey` is used, never
   fetched; without one, it is fetched only from a local `host` (`localhost`,
-  `127.0.0.1`, `[::1]`), unless you write `fetchRootKey: true`.
+  `127.0.0.1`, `[::1]`). Never fetch one from any other host.
 - `"env"`: the page's network. Canisters can be named, `{ name: "backend" }`,
   from the `ic_env` cookie, believed only on a local replica or with
   `allowEnvConfig: true`. A server has no cookie: use `{ id }` there.
