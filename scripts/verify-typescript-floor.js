@@ -45,14 +45,13 @@ const keep = process.argv.includes("--keep")
 
 /**
  * The oldest TypeScript the packages support, the first stable 5.7 release.
- * The docs name it as well, so change them with it: the installation guide,
- * llms-full.txt, packages/cli/README.md, and the badges in README.md and
- * packages/core/README.md.
+ * The docs name it as well, so change them with it: the badges in README.md
+ * and packages/core/README.md.
  */
 const TYPESCRIPT_FLOOR = "5.7.2"
 
 /** The packages whose declarations are compiled, by directory under packages/. */
-const PACKAGES = ["core", "react", "candid", "parser"]
+const PACKAGES = ["core", "react"]
 
 /**
  * The tsconfig the installation guide recommends, with `skipLibCheck` off so

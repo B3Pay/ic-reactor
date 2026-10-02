@@ -1,10 +1,9 @@
-name: "Setup Rust for the parser wasm build"
+name: "Setup Rust for the e2e canister build"
 description: >-
   Installs the stable Rust toolchain with the wasm32-unknown-unknown target and
-  restores the cargo cache that packages/parser's wasm-pack build depends on.
-  Every job that runs `pnpm build` builds the parser, so every such job needs
-  both halves -- before this action they were copy-pasted per job and the cache
-  half was missing from most of them.
+  restores the cargo cache of the e2e hello_actor canister, which `icp deploy`
+  builds in e2e.yml. On the v4 line no package build needs Rust; the parser's
+  wasm-pack build that used to share this action is deleted there.
 
 runs:
   using: composite
@@ -20,7 +19,7 @@ runs:
         path: |
           ~/.cargo/registry
           ~/.cargo/git
-          packages/parser/target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('packages/parser/Cargo.lock') }}
+          e2e/target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('e2e/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-

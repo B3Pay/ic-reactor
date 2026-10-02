@@ -1,13 +1,23 @@
 name: Deploy Docs
 
+# The v4 line's copy of this workflow. Until 4.0 GA the site carries two built
+# lines: /v3/ from main and /v4/ from v4 (plus the static /v2/). A Pages deploy
+# replaces the whole site, so each deploy has to carry both lines. This one
+# builds /v4/ from its own commit and rebuilds /v3/ from main, as main's own
+# deploy builds it, and leaves the site root (index.html, llms.txt,
+# llms-full.txt) to the 3.x line until GA.
+#
+# Known gap until GA: main's copy of this workflow publishes /v3/ only and
+# removes /v4/, so a docs deploy from main drops /v4/ until the next v4 deploy
+# (push to v4 or run this workflow by hand). Deploying from v4 also needs v4 in
+# the github-pages environment's deployment branch policy (repo settings).
 on:
   push:
-    branches: [main]
+    branches: [v4]
     paths:
       - "docs/**"
       - "packages/**"
-      - "llms.txt"
-      - "llms-full.txt"
+      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
 permissions:
@@ -66,6 +76,21 @@ jobs:
 
       # docs/dist should be Astro static output
 
+      # The 3.x docs, built from main exactly as main's deploy builds them, so a
+      # v4 deploy republishes /v3/ unchanged instead of dropping it.
+      - name: Check out the 3.x line (main)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          path: v3-line
+
+      - name: Build the 3.x documentation
+        working-directory: v3-line
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile --filter '!./examples/**'
+          pnpm docs:build
+
       - name: Download existing Pages content
         id: existing-pages
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -99,24 +124,26 @@ jobs:
             shopt -s dotglob
             for item in final-docs/*; do
               case "$(basename "$item")" in
-                v2|v3|llms.txt|llms-full.txt|CNAME|.nojekyll) continue;;
+                v2|v3|v4|llms.txt|llms-full.txt|CNAME|.nojekyll) continue;;
               esac
               mv "$item" final-docs/v2/
             done
             shopt -u dotglob
           fi
 
-          # Publish the docs built from this commit.
+          # The 3.x line, built from main above.
           rm -rf final-docs/v3
           mkdir -p final-docs/v3
-          cp -r docs/dist/* final-docs/v3/
+          cp -r v3-line/docs/dist/* final-docs/v3/
 
-          # v4 is not released. Remove any stale preview documentation.
+          # The 4.x line, built from this commit.
           rm -rf final-docs/v4
+          mkdir -p final-docs/v4
+          cp -r docs/dist/* final-docs/v4/
 
-          # Keep canonical llms files available at the site root.
-          cp llms.txt final-docs/llms.txt
-          cp llms-full.txt final-docs/llms-full.txt
+          # The site-root llms files stay the 3.x line's until GA.
+          cp v3-line/llms.txt final-docs/llms.txt
+          cp v3-line/llms-full.txt final-docs/llms-full.txt
 
           # Normalize the version selector in preserved static versions.
           node << 'NODE'
@@ -124,6 +151,7 @@ jobs:
           const path = require("node:path")
 
           const selectorHtml = `<select id="version-select" onchange="handleVersionChange(event)" aria-label="Select version">
+                  <option value="v4">v4 (in development)</option>
                   <option value="v3">v3</option>
                   <option value="v2">v2</option>
                 </select>`
@@ -132,14 +160,14 @@ jobs:
                 (function () {
                   var select = document.getElementById("version-select");
                   if (!select) return;
-                  var match = window.location.pathname.match(/^\\/(v2|v3)(\\/|$)/);
+                  var match = window.location.pathname.match(/^\\/(v2|v3|v4)(\\/|$)/);
                   var currentVersion = match ? match[1] : "v3";
                   select.value = currentVersion;
                   select.addEventListener("change", function (event) {
                     var version = event.target.value;
                     var path = window.location.pathname || "/";
-                    var nextPath = /^\\/v[23](\\/|$)/.test(path)
-                      ? path.replace(/^\\/v[23](?=\\/|$)/, "/" + version)
+                    var nextPath = /^\\/v[234](\\/|$)/.test(path)
+                      ? path.replace(/^\\/v[234](?=\\/|$)/, "/" + version)
                       : "/" + version + "/";
                     window.location.href = nextPath + window.location.search + window.location.hash;
                   });
@@ -197,7 +225,7 @@ jobs:
             cp CNAME final-docs/CNAME
           fi
 
-          # Root redirect to latest docs
+          # Root redirect to the latest release's docs: v3 until 4.0 GA.
           cat > final-docs/index.html << 'EOF'
           <!doctype html>
           <html>
@@ -233,6 +261,10 @@ jobs:
                   }
                   if (path.startsWith("/v3")) {
                     window.location.replace("/v3/");
+                    return;
+                  }
+                  if (path.startsWith("/v4")) {
+                    window.location.replace("/v4/");
                     return;
                   }
                   window.location.replace("/v3" + path);

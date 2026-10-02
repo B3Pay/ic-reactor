@@ -1,7 +1,7 @@
 {
   "name": "@ic-reactor/vite-plugin",
-  "version": "0.15.1",
-  "description": "Vite plugin for zero-config IC reactor generation from Candid files",
+  "version": "4.0.0-alpha.0",
+  "description": "Vite plugin that injects the local IC environment (ic_env cookie and /api proxy) in development",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -24,8 +24,7 @@
     "src",
     "!src/**/*.test.ts",
     "!src/**/__snapshots__",
-    "README.md",
-    "llms.txt"
+    "README.md"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format esm,cjs --dts --clean --tsconfig tsconfig.json",
@@ -55,9 +54,6 @@
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
   "homepage": "https://ic-reactor.b3pay.net/v3/packages/vite-plugin",
-  "dependencies": {
-    "@ic-reactor/codegen": "workspace:*"
-  },
   "peerDependencies": {
     "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
   },

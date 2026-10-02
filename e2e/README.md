@@ -1,8 +1,9 @@
 # End-to-End Test Workspace
 
 This directory contains a small `hello_actor` canister and a suite of `vitest`
-based tests that run `@ic-reactor/core`, `@ic-reactor/candid` and
-`@ic-reactor/react` against it on a local replica.
+based tests that run `@ic-reactor/core` and `@ic-reactor/react` against it on a
+local replica. On the `v4` branch these are still the 3.x cases; the v4 rewrite
+replaces them (IR9b).
 
 ## The canister
 
@@ -20,9 +21,10 @@ one kind of value, or one kind of failure, on the wire:
 
 `src/actor/hello_actor.did` is written by hand, so change it together with
 `lib.rs`. The build embeds it as the canister's public `candid:service`
-metadata, which the `@ic-reactor/candid` tests fetch at run time, and the vite
-plugin regenerates `src/declarations/` from it each time vitest starts. Commit
-the regenerated declarations.
+metadata. `src/declarations/` is committed; on the `v4` branch nothing
+regenerates it (the 3.x vite plugin did, through `@ic-reactor/codegen`), so
+update it by hand when the `.did` changes until the v4 rewrite generates it with
+`candid-core-cli gen`.
 
 The counter is shared by every test file, and vitest runs the files in
 parallel, so a test can only assert that the counter grows, not its value.
@@ -32,7 +34,7 @@ parallel, so a test can only assert that the counter grows, not its value.
 - `pnpm start` or `pnpm test` _(both now identical)_ will:
   1. start a local `icp` network
   2. deploy the `hello_actor` canister
-  3. run tests using canister IDs resolved via `ic_env` (vite-plugin path)
+  3. run tests using canister IDs resolved via `ic_env` (seeded by `setup.ts`)
   4. execute `vitest run` against `src/test`
   5. stop the replica
 

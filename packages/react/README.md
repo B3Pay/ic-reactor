@@ -1,9 +1,9 @@
 # @ic-reactor/react
 
-> **AI coding agents:** read [`llms.txt`](./llms.txt) in this package
-> (`node_modules/@ic-reactor/react/llms.txt`) before writing code with it. It
-> is written for the installed version and lists the patterns to use and the
-> mistakes to avoid.
+> **ic-reactor 4 is in development on the `v4` branch.** This package is at a
+> `4.0.0-alpha` version that is not published, and until its rewrite lands it
+> still carries the 3.x API described below. The released 3.x package is
+> documented at https://ic-reactor.b3pay.net/v3/packages/react.
 
 React bindings for IC Reactor. This package re-exports everything from
 `@ic-reactor/core` and adds hook factories, auth hooks, direct reactor hooks,
@@ -212,8 +212,6 @@ export function App() {
 - Use `DisplayReactor` (or `defineDisplayReactor`) when you want UI-friendly
   values such as strings instead of `bigint` or `Principal`. It adds zod to the
   bundle; see [Bundle Size](#bundle-size).
-- Use generated hooks from `@ic-reactor/vite-plugin` or `@ic-reactor/cli` when
-  you have larger canisters or frequent `.did` changes.
 - When a query's arguments are not known yet, pass `skipToken` (re-exported
   from TanStack Query) in their place: `args: owner ? [owner] : skipToken` in
   `useActorQuery`, `getArgs: skipToken` in `useActorInfiniteQuery`, or
@@ -842,4 +840,3 @@ how to test as a signed-in user.
 - Docs: https://ic-reactor.b3pay.net/v3/packages/react
 - `@ic-reactor/core`: ../core/README.md
 - `@ic-reactor/vite-plugin`: ../vite-plugin/README.md
-- `@ic-reactor/cli`: ../cli/README.md

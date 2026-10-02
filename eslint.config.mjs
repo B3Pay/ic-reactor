@@ -22,11 +22,7 @@ const SOURCES = [
  * left `packages/parser` unchecked by `pnpm typecheck` (issue #340).
  */
 const TYPECHECK_PROJECTS = [
-  "packages/candid/tsconfig.typecheck.json",
-  "packages/cli/tsconfig.typecheck.json",
-  "packages/codegen/tsconfig.typecheck.json",
   "packages/core/tsconfig.typecheck.json",
-  "packages/parser/tsconfig.typecheck.json",
   "packages/react/tsconfig.typecheck.json",
   "packages/vite-plugin/tsconfig.typecheck.json",
 ]
@@ -38,8 +34,6 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/target/**",
       "**/coverage/**",
-      // didc/dfx output checked in as parser test fixtures
-      "packages/parser/tests/candid/**",
     ],
   },
   {

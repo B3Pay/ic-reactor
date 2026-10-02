@@ -13,24 +13,13 @@ const rootDir = process.cwd()
 const versionChecks = [
   { packageName: "@ic-reactor/core", packageDir: "core" },
   { packageName: "@ic-reactor/react", packageDir: "react" },
-  { packageName: "@ic-reactor/candid", packageDir: "candid" },
-  { packageName: "@ic-reactor/codegen", packageDir: "codegen" },
-  { packageName: "@ic-reactor/cli", packageDir: "cli" },
   { packageName: "@ic-reactor/vite-plugin", packageDir: "vite-plugin" },
-  { packageName: "@ic-reactor/parser", packageDir: "parser" },
 ]
 
-// Each of these ships `packages/<dir>/llms.txt` in its npm tarball, and the
-// file must open with an "Applies to `@ic-reactor/<dir>` <version>." line.
-const requiredPackageLlms = [
-  "core",
-  "react",
-  "candid",
-  "codegen",
-  "cli",
-  "vite-plugin",
-  "parser",
-]
+// The one consumer guide of the v4 line: core ships `packages/core/llms.txt`
+// in its npm tarball, and it must open with an "Applies to
+// `@ic-reactor/core` <version>." line. No other package ships a guide.
+const requiredPackageLlms = ["core"]
 
 /**
  * Files whose `https://ic-reactor.b3pay.net/...` links must resolve: the
@@ -43,7 +32,7 @@ const docsLinkFiles = [
   "README.md",
   "CHANGELOG.md",
   "CONTRIBUTING.md",
-  ...requiredPackageLlms.map((dir) => `packages/${dir}/README.md`),
+  ...versionChecks.map(({ packageDir }) => `packages/${packageDir}/README.md`),
 ]
 
 /**
@@ -57,8 +46,32 @@ const docsLinkFiles = [
  */
 const aiContextFiles = AI_CONTEXT_FILES
 
-/** The docs site is served under this base; see docs/astro.config.mjs. */
-const DOCS_BASE = "/v3/"
+/**
+ * The base the docs site in this tree is served under, read from
+ * docs/astro.config.mjs so the check follows the branch: `/v3/` on the 3.x
+ * line (main), `/v4/` on the v4 line. Links under it are resolved against
+ * this tree's pages.
+ */
+const DOCS_BASE = (() => {
+  const config = readFileSync(join(rootDir, "docs", "astro.config.mjs"), "utf8")
+  const base = config.match(/^\s*base:\s*["'](.+?)["']/m)?.[1]
+  if (!base) {
+    console.error(
+      "check-ai-context: could not read `base` from docs/astro.config.mjs"
+    )
+    process.exit(1)
+  }
+  return `/${base.replace(/^\/|\/$/g, "")}/`
+})()
+
+/**
+ * Every versioned base the site publishes (.github/workflows/docs.yml): the
+ * static 2.x docs, the 3.x line built from main and the 4.x line built from
+ * the v4 branch. A link to a base outside this set 404s. A link under a base
+ * other than DOCS_BASE is served from another line's tree, so only its base
+ * is checked here.
+ */
+const PUBLISHED_DOCS_BASES = new Set(["/v2/", "/v3/", "/v4/"])
 
 /**
  * Versions that legitimately appear in the AI-context files without belonging to
@@ -68,17 +81,7 @@ const DOCS_BASE = "/v3/"
  * @ic-reactor version, so anything else is drift until someone says otherwise.
  * Adding an entry here is the explicit way to say "this one is not ours".
  */
-const ALLOWED_EXTERNAL_VERSIONS = new Set([
-  // `@icp-sdk/auth` peer majors named in llms-full.txt's install guidance.
-  // v10 is the first to peer `@icp-sdk/core@^6`, which is what removes the
-  // npm ERESOLVE; v8 is still supported. v9 is deliberately absent -- it peers
-  // `@icp-sdk/core@^5` and is not a supported peer.
-  "8.0.0",
-  "10.0.0",
-  // The `@tanstack/react-query` peer floor of @ic-reactor/react, named in
-  // llms-full.txt's install section. `pnpm verify:peer-floors` tests it.
-  "5.90.2",
-])
+const ALLOWED_EXTERNAL_VERSIONS = new Set([])
 
 const failures = []
 
@@ -91,24 +94,11 @@ for (const { packageName, packageDir } of versionChecks) {
 }
 const validVersions = new Set(currentVersions.values())
 
-// ── 1. The version lists of the root guides ──────────────────────────────────
-// Both are published at the docs root and read by agents in consumer projects,
-// so each states the exact versions it describes. release.js and
-// release-tools.js rewrite these lines (they name the package).
-for (const guide of ["llms.txt", "llms-full.txt"]) {
-  const guideText = readFileSync(join(rootDir, guide), "utf8")
-  for (const { packageName } of versionChecks) {
-    const expectedLine = `- \`${packageName}\`: \`${currentVersions.get(packageName)}\``
+// ── 1. (3.x only) The version lists of the root llms.txt and llms-full.txt ───
+// The v4 line has no root guides: the site root serves the 3.x line's until
+// GA (.github/workflows/docs.yml), and the v4 guide ships in core's tarball.
 
-    if (!guideText.includes(expectedLine)) {
-      failures.push(
-        `${guide} is missing or out of date for ${packageName}. Expected line: ${expectedLine}`
-      )
-    }
-  }
-}
-
-// ── 2. Every package ships an AI guide stamped with its version ──────────────
+// ── 2. The package guide is stamped with its package's version ───────────────
 // The stamp tells an agent reading node_modules/@ic-reactor/<dir>/llms.txt
 // which release the guide describes. The generic version check below accepts
 // any version some package is at, so it would not notice a stamp naming
@@ -146,7 +136,10 @@ for (const packageDir of requiredPackageLlms) {
 //
 // The lookarounds keep it from matching a fragment of a longer dotted number
 // (1.2.3.4) while still allowing a version at the end of a sentence ("v3.8.0.").
-const SEMVER = /(?<![\d.])v?(\d+\.\d+\.\d+)(?![\d.]\d)/g
+// A prerelease tag (4.0.0-alpha.0) is part of the version, so it is compared
+// whole; a sentence's closing period is not taken into it.
+const SEMVER =
+  /(?<![\d.])v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)(?![\d.]\d)/g
 
 // Any /vN/ path segment, not just one inside markdown link syntax -- the same
 // narrowness bug as above.
@@ -173,12 +166,11 @@ for (const relPath of aiContextFiles) {
       )
     }
 
-    // 4. Doc links must use the served base. /v4/ was never published and the
-    //    docs workflow deletes it on every deploy, so such links 404.
+    // 4. Doc links must use a base the site publishes.
     for (const seg of line.match(VERSIONED_DOC_PATH) ?? []) {
-      if (seg !== DOCS_BASE) {
+      if (!PUBLISHED_DOCS_BASES.has(seg)) {
         failures.push(
-          `${relPath}:${i + 1} references ${seg} but the docs site is served under ${DOCS_BASE}`
+          `${relPath}:${i + 1} references ${seg} but the docs site publishes only ${[...PUBLISHED_DOCS_BASES].join(", ")}`
         )
       }
     }
@@ -220,7 +212,7 @@ for (const page of sourcePages) {
   sourceByRoute.set(route, page)
 }
 
-/** The source page a /v3/ path names, or undefined. */
+/** The source page a path under DOCS_BASE names, or undefined. */
 function resolveDocsPath(path) {
   if (path.endsWith(".md")) {
     const key = path.slice(0, -".md".length)
@@ -310,8 +302,12 @@ for (const relPath of docsLinkFiles) {
         const where = `${relPath}:${i + 1}`
 
         if (SITE_ROOT_FILES.has(path)) continue
-        const base = DOCS_BASE.replace(/^\/|\/$/g, "") // "v3"
+        const base = DOCS_BASE.replace(/^\/|\/$/g, "") // "v4"
         if (path !== base && !path.startsWith(`${base}/`)) {
+          // Served from another line's tree (DOCS_BASE's doc comment); a base
+          // the site does not publish is reported by check 4 above.
+          const other = path.match(/^(v\d+)(\/|$)/)?.[1]
+          if (other && PUBLISHED_DOCS_BASES.has(`/${other}/`)) continue
           failures.push(
             `${where} links ${url}, which is neither under ${DOCS_BASE} nor one of the files published at the site root`
           )
@@ -324,8 +320,8 @@ for (const relPath of docsLinkFiles) {
         if (page === undefined) {
           failures.push(
             `${where} links ${url}, but no page in docs/src/content/docs serves it. ` +
-              `Use the lowercase route (/v3/reference/clientmanager) or the source-cased ` +
-              `Markdown path (/v3/reference/ClientManager.md).`
+              `Use the lowercase route (${DOCS_BASE}guides/error-handling) or the source-cased ` +
+              `Markdown path (${DOCS_BASE}guides/error-handling.md).`
           )
         } else if (fragment && !headingIds(page).has(fragment)) {
           failures.push(
@@ -344,6 +340,10 @@ for (const relPath of docsLinkFiles) {
 // and no key outside the spec, which claude.ai uploads and the Skills API
 // reject.
 const SKILLS_DIR = "skill-packages"
+// Absent on the v4 line until DX3 adds its one consumer skill.
+const skillEntries = existsSync(join(rootDir, SKILLS_DIR))
+  ? readdirSync(join(rootDir, SKILLS_DIR), { withFileTypes: true })
+  : []
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 const SKILL_KEYS = new Set([
   "name",
@@ -477,9 +477,7 @@ function* skillMarkdown(relDir) {
 }
 
 const checkedSkills = new Set()
-for (const entry of readdirSync(join(rootDir, SKILLS_DIR), {
-  withFileTypes: true,
-})) {
+for (const entry of skillEntries) {
   if (!entry.isDirectory()) continue
   const relSkillMd = `${SKILLS_DIR}/${entry.name}/SKILL.md`
   if (!existsSync(join(rootDir, relSkillMd))) {
@@ -524,9 +522,8 @@ const isDirectory = (relPath) =>
   existsSync(join(rootDir, relPath)) &&
   statSync(join(rootDir, relPath)).isDirectory()
 
-if (!existsSync(join(rootDir, CLAUDE_MARKETPLACE))) {
-  failures.push(`Missing Claude Code marketplace: ${CLAUDE_MARKETPLACE}`)
-} else {
+// Optional on the v4 line: it has no plugin until DX3 adds the skill.
+if (existsSync(join(rootDir, CLAUDE_MARKETPLACE))) {
   const marketplace = readJson(CLAUDE_MARKETPLACE)
   if (marketplace !== undefined) {
     if (

@@ -28,6 +28,8 @@ export const SKIP = new Set(["icp-reactor-demo"])
  * @returns {string[]}
  */
 export function discoverExampleDirs() {
+  // The v4 line has no examples/ until the DX1 slice adds them.
+  if (!existsSync(examplesDir)) return []
   const entries = execFileSync("git", ["-C", examplesDir, "ls-files", "-z"], {
     encoding: "utf8",
   })

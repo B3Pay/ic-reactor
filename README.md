@@ -14,13 +14,20 @@
 
 ---
 
+> **This is the `v4` branch, where ic-reactor 4 is in development.** Nothing
+> from it is released: its packages are at `4.0.0-alpha.0`. ic-reactor 4 is a
+> thin layer over a candid-core generated module, with a guide that lands with
+> DX3. Until the rewrite of `@ic-reactor/core` and `@ic-reactor/react` lands,
+> the usage below is the 3.x API these packages still carry. The released 3.x
+> line lives on `main` (security fixes only until 4.0 GA) and is documented at
+> [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
+
 IC Reactor is a monorepo of libraries for building Internet Computer (ICP) apps with:
 
 - end-to-end TypeScript types
 - TanStack Query-powered caching and refetching
 - React hook factories (`useActorQuery`, `useActorMutation`, etc.)
 - display-friendly transforms (`DisplayReactor`)
-- optional code generation (CLI + Vite plugin)
 
 ## Why IC Reactor
 
@@ -38,14 +45,14 @@ IC Reactor gives you a higher-level API than raw `Actor` usage while keeping typ
 | --------------------------------------------------- | ------------------------------------------------------------------------------ |
 | [`@ic-reactor/core`](./packages/core)               | Core runtime (`ClientManager`, `Reactor`, `DisplayReactor`, cache integration) |
 | [`@ic-reactor/react`](./packages/react)             | React hooks + query/mutation factories                                         |
-| [`@ic-reactor/candid`](./packages/candid)           | Dynamic Candid parsing and runtime reactors                                    |
-| [`@ic-reactor/parser`](./packages/parser)           | Local Candid parser (WASM-based)                                               |
-| [`@ic-reactor/codegen`](./packages/codegen)         | Shared codegen pipeline used by CLI and Vite plugin                            |
-| [`@ic-reactor/cli`](./packages/cli)                 | Generate declarations + typed hooks/reactors                                   |
-| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for watch-mode hook generation                                     |
+| [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Local `ic_env` cookie and `/api` proxy for `vite dev`                          |
 
-What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md), including
-the changes on `main` that no release carries yet.
+`@ic-reactor/parser`, `@ic-reactor/codegen` and `@ic-reactor/cli` are not part
+of ic-reactor 4: `candid-core-cli gen` generates the canister module instead.
+`@ic-reactor/candid` stays at 3.x, published from `main`. None of the four is
+in this branch's tree.
+
+What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## Install
 
@@ -66,10 +73,6 @@ pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
 ```bash
 # Internet Identity auth helpers
 pnpm add @icp-sdk/auth@^10 # v10 recommended; v8 also supported
-
-# Dynamic Candid support (explorers/dev tools). The example below imports
-# ClientManager and QueryClient from these two, which a React install lacks.
-pnpm add @ic-reactor/candid @ic-reactor/core @tanstack/query-core
 ```
 
 > **Install `@icp-sdk/auth@^10` if you use npm.** v10 is the first release whose
@@ -276,76 +279,6 @@ Use `DisplayReactor` when you want transformed values for UI/forms (for example,
 import { DisplayReactor } from "@ic-reactor/react"
 ```
 
-## Code Generation (CLI and Vite Plugin)
-
-For larger canisters or frequent `.did` changes, prefer generated hooks.
-
-### Vite plugin (recommended for Vite apps)
-
-```ts
-// vite.config.ts
-import { defineConfig } from "vite"
-import react from "@vitejs/plugin-react"
-import { icReactor } from "@ic-reactor/vite-plugin"
-
-export default defineConfig({
-  plugins: [
-    react(),
-    icReactor({
-      canisters: [{ name: "backend", didFile: "./backend/backend.did" }],
-    }),
-  ],
-})
-```
-
-### CLI (explicit generation / non-Vite)
-
-```bash
-npx @ic-reactor/cli init
-npx @ic-reactor/cli generate
-```
-
-Each generated canister directory contains `declarations/`, a managed
-`index.generated.ts`, and a stable `index.ts` wrapper. The generated file exports
-the reactor plus typed React hooks:
-
-- `use<Canister>Query`, `use<Canister>SuspenseQuery`, `use<Canister>InfiniteQuery`,
-  `use<Canister>SuspenseInfiniteQuery`, `use<Canister>Mutation`, `use<Canister>Method`
-
-Set `factories: true` on a canister (with `target: "react"`, the default) to
-also generate `index.factories.generated.ts`: a `<method>Query` per query
-method (`createQuery`, or `createQueryFactory` when it takes arguments) and a
-`<method>Mutation` (`createMutation`) per update or oneway method, used with
-`.useQuery()` / `.useMutation()` in components and `.fetch()` / `.execute()`
-outside React. The `index.ts` that codegen creates re-exports it. Without
-`factories: true`, call the generated reactor directly outside React
-(`.fetchQuery()`, `.callMethod()`, `.invalidateQueries()`).
-
-## Dynamic Candid (Explorers and Dev Tools)
-
-```ts
-import { CandidDisplayReactor } from "@ic-reactor/candid"
-import { ClientManager } from "@ic-reactor/core"
-import { QueryClient } from "@tanstack/query-core"
-
-const clientManager = new ClientManager({ queryClient: new QueryClient() })
-
-const reactor = new CandidDisplayReactor({
-  name: "icp-ledger",
-  canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
-  clientManager,
-})
-
-await reactor.initialize()
-
-const balance = await reactor.callMethod({
-  functionName: "icrc1_balance_of",
-  args: [{ owner: "aaaaa-aa" }],
-})
-
-console.log(balance)
-```
-
 ## Reactor vs Standard Actor (Summary)
 
 | Feature                                   | Standard Actor | IC Reactor                                     |
@@ -359,27 +292,18 @@ console.log(balance)
 
 ## Examples
 
-| Example                                                           | Description                                                         |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------- |
-| [`all-in-one-demo`](./examples/all-in-one-demo)                   | End-to-end demo with queries, mutations, suspense, infinite queries |
-| [`tanstack-router`](./examples/tanstack-router)                   | Router loaders/actions + generated hooks                            |
-| [`query-demo`](./examples/query-demo)                             | Query and mutation factory patterns                                 |
-| [`identity-attributes-demo`](./examples/identity-attributes-demo) | Internet Identity OpenID attribute requests                         |
-| [`multiple-canister`](./examples/multiple-canister)               | Shared auth across multiple canisters                               |
-| [`ckbtc-wallet`](./examples/ckbtc-wallet)                         | More advanced canister integrations                                 |
-| [`codegen-in-action`](./examples/codegen-in-action)               | CLI vs Vite plugin codegen comparison                               |
-| [`typescript-demo`](./examples/typescript-demo)                   | Core usage without React                                            |
-| [`candid-parser`](./examples/candid-parser)                       | Dynamic Candid parsing                                              |
+The v4 branch has no example apps yet. The four v4 examples land with DX1; the
+3.x examples are on `main`.
 
 ## Documentation
 
-- Docs site: [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/) (source: [`./docs`](./docs))
+- Docs site: [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/) for
+  3.x. This branch's site (source: [`./docs`](./docs)) is served under `/v4/`
+  and holds a placeholder until DX2.
 - Changelog: [`CHANGELOG.md`](./CHANGELOG.md)
 - Package docs:
   - [`@ic-reactor/react`](./packages/react/README.md)
   - [`@ic-reactor/core`](./packages/core/README.md)
-  - [`@ic-reactor/candid`](./packages/candid/README.md)
-  - [`@ic-reactor/cli`](./packages/cli/README.md)
   - [`@ic-reactor/vite-plugin`](./packages/vite-plugin/README.md)
 
 Run docs locally:
@@ -427,65 +351,18 @@ pnpm docs:build
 
 ## AI and Agent Integration
 
-This repository is intentionally structured to work well with AI coding assistants and agents.
+ic-reactor 4 will ship one consumer guide, `llms.txt` in `@ic-reactor/core`'s
+package (`node_modules/@ic-reactor/core/llms.txt`), and one consumer skill.
+On this branch the guide is a placeholder until DX3 writes it, and the skill
+comes with it. The 3.x guides and skills are on `main`.
 
-### AI context files
-
-For apps that use IC Reactor (published with the docs, shipped in the npm packages, or installed as a skill):
-
-| File                                                         | Purpose                                                                                         |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| [`llms.txt`](./llms.txt)                                     | Index of the docs in the llmstxt.org format, served at `https://ic-reactor.b3pay.net/llms.txt`  |
-| [`llms-full.txt`](./llms-full.txt)                           | Complete guide with setup choices, snippets and anti-patterns, served at `/llms-full.txt`       |
-| `packages/*/llms.txt`                                        | Each package's own guide, shipped in its tarball: `node_modules/@ic-reactor/<package>/llms.txt` |
-| [`CHANGELOG.md`](./CHANGELOG.md)                             | Per-package changes with migration hints                                                        |
-| [`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) | Agent skill and Claude Code plugin; install below                                               |
-
-For agents working in this repository:
-
-| File                                                                   | Purpose                                                                    |
-| ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| [`AGENTS.md`](./AGENTS.md)                                             | Task-to-source routing, verification by change type, AI context file rules |
-| [`CLAUDE.md`](./CLAUDE.md)                                             | Claude / Anthropic project context                                         |
-| [`.github/copilot-instructions.md`](./.github/copilot-instructions.md) | GitHub Copilot instructions                                                |
-| [`.cursorrules`](./.cursorrules)                                       | Cursor IDE rules                                                           |
-| [`skill-packages/`](./skill-packages/)                                 | Contributor skills (`ic-reactor-hooks`, `ic-reactor-packages`)             |
-
-### Agent skill: `ic-reactor`
-
-[`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) is an
-[Agent Skill](https://agentskills.io) for apps that use IC Reactor: setup
-choices, queries and mutations, cache invalidation, server rendering, sign-in,
-errors, token amounts, testing and the mistakes to avoid, with type-checked
-examples. It sends the agent to the installed packages' `llms.txt` first, so
-it follows the app's version.
-
-In Claude Code, this repository is a plugin marketplace:
-
-```text
-/plugin marketplace add B3Pay/ic-reactor
-/plugin install ic-reactor@ic-reactor
-```
-
-For Codex, Cursor, GitHub Copilot, Gemini CLI and other agents, install it
-with the [`skills`](https://github.com/vercel-labs/skills) CLI:
-
-```bash
-npx skills add B3Pay/ic-reactor --skill ic-reactor
-```
-
-Then ask for it by name, or let the agent pick it up:
-
-```text
-Use the ic-reactor skill to add a transfer form for my ledger canister, with the balance refreshed after each transfer.
-```
-
-The `ic-reactor-hooks` and `ic-reactor-packages` skills in `skill-packages/`
-are for agents working on this repository.
+For agents working in this repository: [`AGENTS.md`](./AGENTS.md) and
+[`CLAUDE.md`](./CLAUDE.md).
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development workflow, formatting, release notes, and AI-assisted contribution guidance.
+`v4` is the development line for ic-reactor 4; `main` takes 3.x security fixes
+only until 4.0 GA. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development workflow, formatting, release notes, and AI-assisted contribution guidance.
 
 Please also review the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
