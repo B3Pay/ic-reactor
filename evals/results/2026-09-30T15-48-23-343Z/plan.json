@@ -1,0 +1,242 @@
+{
+  "args": {
+    "tasks": [
+      "node-tool",
+      "react-wallet"
+    ],
+    "conditions": [
+      "v3",
+      "thin",
+      "thin-guide",
+      "v4-proto"
+    ],
+    "n": 5,
+    "model": "claude-sonnet-5-5",
+    "effort": "medium",
+    "oauthTokenFile": "/Users/b3hr4d/.claude-eval-token",
+    "preflight": false,
+    "preflightCmd": "claude -p 'Reply with the single word: ok' --output-format stream-json --verbose --model {model} {effortFlag}--max-turns 1 --disallowedTools \"WebFetch,WebSearch\" --strict-mcp-config",
+    "jobs": 2,
+    "timeoutMin": 30,
+    "maxTurns": 60,
+    "seed": 1,
+    "mode": "sandboxed",
+    "prompt": "minimal",
+    "sandboxAllow": [],
+    "agentCmd": "claude -p \"$(cat {prompt})\" --output-format stream-json --verbose --model {model} {effortFlag}--permission-mode acceptEdits --max-turns {maxTurns} --allowedTools \"{allowedTools}\" --disallowedTools \"WebFetch,WebSearch\" --strict-mcp-config",
+    "customCmd": false,
+    "retries": 2,
+    "rateLimitRetries": 4,
+    "rateLimitBackoffMin": 5,
+    "rateLimitMaxWaitMin": 300,
+    "pilot": true,
+    "margin": 0.15,
+    "dryRun": false,
+    "estMinutes": 12,
+    "promptGiven": true,
+    "auth": "oauth",
+    "authSource": "--oauth-token-file"
+  },
+  "runs": [
+    {
+      "task": "node-tool",
+      "condition": "thin-guide",
+      "i": 1
+    },
+    {
+      "task": "node-tool",
+      "condition": "thin",
+      "i": 1
+    },
+    {
+      "task": "react-wallet",
+      "condition": "thin-guide",
+      "i": 1
+    },
+    {
+      "task": "react-wallet",
+      "condition": "v4-proto",
+      "i": 1
+    },
+    {
+      "task": "react-wallet",
+      "condition": "v3",
+      "i": 1
+    },
+    {
+      "task": "node-tool",
+      "condition": "v4-proto",
+      "i": 1
+    },
+    {
+      "task": "node-tool",
+      "condition": "v3",
+      "i": 1
+    },
+    {
+      "task": "react-wallet",
+      "condition": "thin",
+      "i": 1
+    },
+    {
+      "task": "node-tool",
+      "condition": "v4-proto",
+      "i": 2
+    },
+    {
+      "task": "react-wallet",
+      "condition": "v3",
+      "i": 2
+    },
+    {
+      "task": "node-tool",
+      "condition": "v3",
+      "i": 2
+    },
+    {
+      "task": "node-tool",
+      "condition": "thin",
+      "i": 2
+    },
+    {
+      "task": "react-wallet",
+      "condition": "thin-guide",
+      "i": 2
+    },
+    {
+      "task": "react-wallet",
+      "condition": "v4-proto",
+      "i": 2
+    },
+    {
+      "task": "node-tool",
+      "condition": "thin-guide",
+      "i": 2
+    },
+    {
+      "task": "react-wallet",
+      "condition": "thin",
+      "i": 2
+    },
+    {
+      "task": "node-tool",
+      "condition": "v4-proto",
+      "i": 3
+    },
+    {
+      "task": "react-wallet",
+      "condition": "v3",
+      "i": 3
+    },
+    {
+      "task": "react-wallet",
+      "condition": "thin",
+      "i": 3
+    },
+    {
+      "task": "react-wallet",
+      "condition": "thin-guide",
+      "i": 3
+    },
+    {
+      "task": "node-tool",
+      "condition": "v3",
+      "i": 3
+    },
+    {
+      "task": "node-tool",
+      "condition": "thin-guide",
+      "i": 3
+    },
+    {
+      "task": "react-wallet",
+      "condition": "v4-proto",
+      "i": 3
+    },
+    {
+      "task": "node-tool",
+      "condition": "thin",
+      "i": 3
+    },
+    {
+      "task": "react-wallet",
+      "condition": "v4-proto",
+      "i": 4
+    },
+    {
+      "task": "react-wallet",
+      "condition": "v3",
+      "i": 4
+    },
+    {
+      "task": "react-wallet",
+      "condition": "thin-guide",
+      "i": 4
+    },
+    {
+      "task": "node-tool",
+      "condition": "v4-proto",
+      "i": 4
+    },
+    {
+      "task": "react-wallet",
+      "condition": "thin",
+      "i": 4
+    },
+    {
+      "task": "node-tool",
+      "condition": "thin-guide",
+      "i": 4
+    },
+    {
+      "task": "node-tool",
+      "condition": "v3",
+      "i": 4
+    },
+    {
+      "task": "node-tool",
+      "condition": "thin",
+      "i": 4
+    },
+    {
+      "task": "react-wallet",
+      "condition": "v4-proto",
+      "i": 5
+    },
+    {
+      "task": "react-wallet",
+      "condition": "thin-guide",
+      "i": 5
+    },
+    {
+      "task": "node-tool",
+      "condition": "thin",
+      "i": 5
+    },
+    {
+      "task": "node-tool",
+      "condition": "thin-guide",
+      "i": 5
+    },
+    {
+      "task": "node-tool",
+      "condition": "v3",
+      "i": 5
+    },
+    {
+      "task": "react-wallet",
+      "condition": "v3",
+      "i": 5
+    },
+    {
+      "task": "node-tool",
+      "condition": "v4-proto",
+      "i": 5
+    },
+    {
+      "task": "react-wallet",
+      "condition": "thin",
+      "i": 5
+    }
+  ]
+}

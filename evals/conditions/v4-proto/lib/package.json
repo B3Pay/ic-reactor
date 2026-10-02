@@ -1,0 +1,27 @@
+{
+  "name": "@ic-reactor/v4-proto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed, mode-gated handles for Internet Computer canister methods that produce TanStack Query options.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@candid-core/schema": "0.2.0",
+    "@icp-sdk/core": "6.1.0",
+    "@tanstack/query-core": "5.104.0"
+  },
+  "devDependencies": {
+    "@candid-core/schema": "0.2.0",
+    "@icp-sdk/core": "6.1.0",
+    "@tanstack/query-core": "5.104.0",
+    "typescript": "6.0.3"
+  }
+}

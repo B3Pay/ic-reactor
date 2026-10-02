@@ -1,0 +1,404 @@
+{
+  "margin": 0.15,
+  "power": 0.8,
+  "cells": [
+    {
+      "task": "node-tool",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "condition": "thin",
+      "runs": 5,
+      "safeRate": 0,
+      "safeRateVariance": 0,
+      "requirementsMetMean": 0.857,
+      "requirementsMetVariance": 0,
+      "minutes": {
+        "mean": 1.054,
+        "median": 1.041
+      },
+      "turns": {
+        "mean": 14.8,
+        "median": 14
+      },
+      "tokens": {
+        "mean": 7597,
+        "median": 7663
+      },
+      "costUsd": {
+        "mean": 0.287
+      },
+      "exits": {
+        "normal": 5
+      },
+      "warnings": [
+        "floor: the task may be too hard for this model"
+      ]
+    },
+    {
+      "task": "node-tool",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "condition": "thin-guide",
+      "runs": 5,
+      "safeRate": 1,
+      "safeRateVariance": 0,
+      "requirementsMetMean": 1,
+      "requirementsMetVariance": 0,
+      "minutes": {
+        "mean": 0.728,
+        "median": 0.71
+      },
+      "turns": {
+        "mean": 8,
+        "median": 8
+      },
+      "tokens": {
+        "mean": 5252,
+        "median": 5038
+      },
+      "costUsd": {
+        "mean": 0.167
+      },
+      "exits": {
+        "normal": 5
+      },
+      "warnings": [
+        "ceiling: little room to show a gain"
+      ]
+    },
+    {
+      "task": "node-tool",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "condition": "v3",
+      "runs": 5,
+      "safeRate": 0,
+      "safeRateVariance": 0,
+      "requirementsMetMean": 0.857,
+      "requirementsMetVariance": 0,
+      "minutes": {
+        "mean": 1.093,
+        "median": 1.094
+      },
+      "turns": {
+        "mean": 14.8,
+        "median": 15
+      },
+      "tokens": {
+        "mean": 7062.8,
+        "median": 7077
+      },
+      "costUsd": {
+        "mean": 0.266
+      },
+      "exits": {
+        "normal": 5
+      },
+      "warnings": [
+        "floor: the task may be too hard for this model"
+      ]
+    },
+    {
+      "task": "node-tool",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "condition": "v4-proto",
+      "runs": 5,
+      "safeRate": 1,
+      "safeRateVariance": 0,
+      "requirementsMetMean": 1,
+      "requirementsMetVariance": 0,
+      "minutes": {
+        "mean": 0.671,
+        "median": 0.663
+      },
+      "turns": {
+        "mean": 8.4,
+        "median": 8
+      },
+      "tokens": {
+        "mean": 4652.2,
+        "median": 4769
+      },
+      "costUsd": {
+        "mean": 0.167
+      },
+      "exits": {
+        "normal": 5
+      },
+      "warnings": [
+        "ceiling: little room to show a gain"
+      ]
+    },
+    {
+      "task": "react-wallet",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "condition": "thin",
+      "runs": 5,
+      "safeRate": 0,
+      "safeRateVariance": 0,
+      "requirementsMetMean": 0.875,
+      "requirementsMetVariance": 0,
+      "minutes": {
+        "mean": 1.455,
+        "median": 1.385
+      },
+      "turns": {
+        "mean": 13.6,
+        "median": 13
+      },
+      "tokens": {
+        "mean": 10999.2,
+        "median": 10813
+      },
+      "costUsd": {
+        "mean": 0.335
+      },
+      "exits": {
+        "normal": 5
+      },
+      "warnings": [
+        "floor: the task may be too hard for this model"
+      ]
+    },
+    {
+      "task": "react-wallet",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "condition": "thin-guide",
+      "runs": 5,
+      "safeRate": 1,
+      "safeRateVariance": 0,
+      "requirementsMetMean": 1,
+      "requirementsMetVariance": 0,
+      "minutes": {
+        "mean": 0.79,
+        "median": 0.782
+      },
+      "turns": {
+        "mean": 6,
+        "median": 6
+      },
+      "tokens": {
+        "mean": 6925.8,
+        "median": 6904
+      },
+      "costUsd": {
+        "mean": 0.18
+      },
+      "exits": {
+        "normal": 5
+      },
+      "warnings": [
+        "ceiling: little room to show a gain"
+      ]
+    },
+    {
+      "task": "react-wallet",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "condition": "v3",
+      "runs": 5,
+      "safeRate": 0,
+      "safeRateVariance": 0,
+      "requirementsMetMean": 0.875,
+      "requirementsMetVariance": 0,
+      "minutes": {
+        "mean": 1.513,
+        "median": 1.473
+      },
+      "turns": {
+        "mean": 16.6,
+        "median": 15
+      },
+      "tokens": {
+        "mean": 11152.4,
+        "median": 10863
+      },
+      "costUsd": {
+        "mean": 0.373
+      },
+      "exits": {
+        "normal": 5
+      },
+      "warnings": [
+        "floor: the task may be too hard for this model"
+      ]
+    },
+    {
+      "task": "react-wallet",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "condition": "v4-proto",
+      "runs": 5,
+      "safeRate": 1,
+      "safeRateVariance": 0,
+      "requirementsMetMean": 1,
+      "requirementsMetVariance": 0,
+      "minutes": {
+        "mean": 0.812,
+        "median": 0.743
+      },
+      "turns": {
+        "mean": 8,
+        "median": 7
+      },
+      "tokens": {
+        "mean": 5900.4,
+        "median": 5676
+      },
+      "costUsd": {
+        "mean": 0.18
+      },
+      "exits": {
+        "normal": 5
+      },
+      "warnings": [
+        "ceiling: little room to show a gain"
+      ]
+    }
+  ],
+  "sampleSizes": [
+    {
+      "task": "node-tool",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "v4-proto - thin-guide",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 41,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "node-tool",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "thin-guide - thin",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 171,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "node-tool",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "v4-proto - thin",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 171,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "node-tool",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "v4-proto - v3",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 171,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "node-tool",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "thin-guide - v3",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 171,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "node-tool",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "thin - v3",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 41,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "react-wallet",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "v4-proto - thin-guide",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 41,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "react-wallet",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "thin-guide - thin",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 171,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "react-wallet",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "v4-proto - thin",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 171,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "react-wallet",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "v4-proto - v3",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 171,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "react-wallet",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "thin-guide - v3",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 171,
+      "runsPerCellForRequirementsMet": 2
+    },
+    {
+      "task": "react-wallet",
+      "model": "claude-sonnet-5-5",
+      "effort": "medium",
+      "prompt": "minimal",
+      "comparison": "thin - v3",
+      "margin": 0.15,
+      "power": 0.8,
+      "runsPerCellForSafeRate": 41,
+      "runsPerCellForRequirementsMet": 2
+    }
+  ]
+}

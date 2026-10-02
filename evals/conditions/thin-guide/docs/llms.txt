@@ -1,0 +1,292 @@
+# candid-core + TanStack Query on the Internet Computer
+
+> How to call Internet Computer canisters with a module generated from the
+> canister's `.did` by `candid-core-cli gen`, `@candid-core/schema`'s
+> `createActor` over `@icp-sdk/core`'s `HttpAgent`, and TanStack Query used
+> directly. There is no framework in between: this guide is the set of rules
+> that framework would otherwise enforce. The `@candid-core/schema` and
+> `@candid-core/cli` READMEs next to this file are the API reference.
+
+## Imports
+
+```ts
+import { AnonymousIdentity, HttpAgent, type Identity } from "@icp-sdk/core/agent"
+import { Principal } from "@icp-sdk/core/principal"
+import { ActorError, createActor } from "@candid-core/schema/actor"
+import { httpTransport } from "@candid-core/schema/transport-icp"
+import { actor, type Actor } from "./generated/icrc1" // the generated module
+```
+
+The generated module (`src/generated/icrc1.ts`) exports one type and one
+schema per Candid type, the service schema `actor`, and `type Actor`: one
+async function per method, with its argument and result types. Do not edit
+it.
+
+## Setup
+
+```ts
+const agent = HttpAgent.createSync({ host, identity, rootKey, shouldFetchRootKey })
+const ledger = createActor<Actor>(actor, "ryjl3-tyaaa-aaaaa-aaaba-cai", httpTransport({ agent }))
+```
+
+`host` and the root key:
+
+- mainnet — `host: "https://icp-api.io"`; no `rootKey`, no fetching.
+- a local replica — `host: "http://127.0.0.1:4943"` (or yours). Pass
+  `rootKey` when you have it, and then never fetch one; without it,
+  `shouldFetchRootKey: true` fetches it from the replica. Fetch only when the
+  host is local (`localhost`, `127.0.0.1`, `[::1]`), never from any other
+  host.
+
+The identity:
+
+- a fixed `Identity` (scripts, servers, tests); omit it for anonymous.
+- a sign-in source — anything with `getIdentity(): Identity` (the anonymous
+  identity while signed out), `isAuthenticated(): boolean` and
+  `subscribe(listener): () => void` (called on every sign-in, sign-out and
+  principal switch). Read it at the moment you act.
+
+Who is calling, and may they write:
+
+| Question               | Answer                                                                  |
+| ---------------------- | ----------------------------------------------------------------------- |
+| the caller's principal | `identity.getPrincipal().toText()` (`"2vxsx-fae"`, anonymous, when signed out) |
+| may a write be sent    | `auth.isAuthenticated() && !identity.getPrincipal().isAnonymous()`     |
+| when did it change     | `auth.subscribe(fn)`                                                    |
+
+Build one agent (and one actor) per identity, and never change an agent's
+identity afterwards (no `replaceIdentity`). A call made as Alice then always
+goes out through Alice's agent, however the sign-in state changes while it
+is in flight.
+
+In React, re-render on identity changes with `useSyncExternalStore`, and key
+the agent on the identity:
+
+```tsx
+const identity = useSyncExternalStore(auth.subscribe, auth.getIdentity)
+const signedIn = auth.isAuthenticated() && !identity.getPrincipal().isAnonymous()
+const ledger = useMemo(() => makeLedger(identity), [identity])
+```
+
+Build agents and actors once per identity (module scope, or `useState` /
+`useMemo`), not on every render.
+
+## Values
+
+The actor takes and returns the generated module's types:
+
+| Candid                       | Value                                               |
+| ---------------------------- | --------------------------------------------------- |
+| `nat`, `int`, `nat64`, `int64` | `bigint` (never `number`)                         |
+| `nat8`..`nat32`, `int8`..`int32`, floats | `number`                                |
+| `text`                       | `string`                                            |
+| `bool`                       | `boolean`                                           |
+| `principal`                  | in: `Principal.fromText(text)`; out: an object with only `toText()` |
+| `blob` / `vec nat8`          | `Uint8Array`                                        |
+| `opt T`                      | `T \| null` (the property is always present)        |
+| `vec T`                      | `T[]`                                               |
+| `record { a : T }`           | `{ a: T }` — every field present                    |
+| `variant { A : T; B }`       | `{ tag: "A"; value: T } \| { tag: "B" }`            |
+
+Make principals from user input with `Principal.fromText(text)`, which throws
+for invalid text; catch it and refuse the input. A principal in a reply is not
+a `Principal` instance: call `.toText()` on it.
+
+Arguments are positional, as in `type Actor`: `ledger.method(arg)`; a method
+with no arguments takes none.
+
+### Results
+
+Replies come back whole. A method whose result is `variant { Ok : T; Err : E }`
+resolves with `{ tag: "Ok", value }` or `{ tag: "Err", value }`; nothing
+throws for `Err`. Switch on the tag (or use `unwrapResult` from
+`@candid-core/schema/validate`).
+
+```ts
+// icrc1_transfer : (TransferArg) -> (variant { Ok : nat; Err : TransferError })
+const result = await ledger.icrc1_transfer(arg)
+if (result.tag === "Ok") {
+  const blockIndex: bigint = result.value
+}
+```
+
+## Reads
+
+Query methods go through `useQuery` (or `queryClient.fetchQuery`):
+
+```tsx
+import { skipToken, useQuery } from "@tanstack/react-query"
+
+const caller = identity.getPrincipal().toText()
+const profile = useQuery({
+  queryKey: ["ic", host, caller, BACKEND_ID, "get_profile", userId],
+  queryFn: userId ? () => backend.get_profile(Principal.fromText(userId)) : skipToken,
+})
+```
+
+`skipToken` is TanStack Query's; pass it instead of a function while the
+arguments do not exist yet.
+
+Key every read by
+`["ic", network, callerPrincipal, canisterId, method, ...args]`, with args as
+text (`principal.toText()`, `bigint.toString()`): TanStack Query hashes keys
+with `JSON.stringify`, which throws on a `bigint`. Because the caller is in
+the key, one principal's cached answer is never served to another: after a
+sign-in, sign-out or switch, the new caller's key has no data until it loads,
+and `data` is `undefined` meanwhile. Keep it that way: options that carry data
+from one key to the next (`placeholderData: keepPreviousData`, `initialData`
+from another key) would show the previous principal's data.
+
+Reads may keep TanStack Query's default retries: a query changes nothing. Add
+ordinary options as you need them (`staleTime`, `select`).
+
+`Principal.fromText` throws while you build the key if the text is not a
+principal; validate input before it reaches a query.
+
+## Writes
+
+Update methods go through `useMutation`, or are called directly:
+
+```tsx
+const transfer = useMutation({
+  mutationFn: (arg: TransferArg) => ledger.icrc1_transfer(arg),
+  onSettled: (_data, error) => {
+    // after a success, and after a failure that may have executed
+    if (!error || mayHaveExecuted(error)) {
+      return queryClient.invalidateQueries({ queryKey: ["ic", host] })
+    }
+  },
+})
+if (signedIn) transfer.mutate(arg)
+
+await ledger.icrc1_transfer(arg)                // direct call, outside React
+```
+
+- Invalidate the reads a write can change (for every caller) after a success,
+  and also after a failure that may have executed, because the write may have
+  happened. Nothing else is needed to show fresh data after an unknown outcome.
+- Do not retry a write. Mutations retry nothing by default; keep it that way.
+  If you must, re-send only after a failure that proves the canister never
+  received the request (see Errors: reject code 2, or an HTTP 4xx other than
+  408); any other failure is final.
+- A write is sent as whoever is signed in when it runs. If nobody is (or the
+  identity is anonymous), refuse it before calling anything.
+- Call update methods only from `useMutation` or directly, never from
+  `useQuery`; call query methods from `useQuery` or directly.
+
+## Errors
+
+The actor throws `ActorError` for a codec failure and passes `@icp-sdk/core`'s
+agent errors through untouched. A failed write either certainly had no
+effect, or may have executed:
+
+| What was thrown                                                        | Meaning                                                              | May have executed      |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------- |
+| `ActorError`, message starting `encode`                                | the arguments could not be encoded; nothing was sent                 | no                     |
+| your own refusal (not signed in, invalid input)                        | nothing was sent                                                     | no                     |
+| agent error, `code.name === "HttpErrorCode"`, `code.status` 4xx but not 408 | the replica or boundary refused the request                     | no                     |
+| agent error with `code.rejectCode` 1, 2 or 3                           | the IC rejected the call before any canister code ran (2 is transient) | no                   |
+| agent error with `code.rejectCode` 4 or 5                              | the canister's own code rejected (4) or trapped (5); it may have committed state first | yes (for a write) |
+| any other agent error (`kind` `"Transport"`, `"Protocol"`, `"Trust"`, `"Unknown"`: network drop, timeout, 5xx, 408) | a write went out and no trustworthy answer came back | yes |
+| `ActorError`, message starting `decode`                                | a reply arrived but did not decode as the result type                | yes (for a write)      |
+| an `Err` reply (not thrown)                                            | the canister returned `Err`                                          | no                     |
+
+Read agent errors structurally — `kind`, `code.name`, `code.rejectCode`,
+`code.status` — so an error from another copy of the agent classifies the
+same way:
+
+```ts
+function mayHaveExecuted(error: unknown): boolean {
+  if (error instanceof ActorError) return !error.message.startsWith("encode")
+  const code = (error as { code?: { name?: unknown; rejectCode?: unknown; status?: unknown } })?.code
+  if (typeof code?.rejectCode === "number") return code.rejectCode > 3
+  if (code?.name === "HttpErrorCode" && typeof code.status === "number") {
+    return !(code.status >= 400 && code.status < 500 && code.status !== 408)
+  }
+  return true
+}
+```
+
+For a query, `httpTransport` throws a plain `Error` naming the reject code in
+its message; a query changes nothing, so it never "may have executed".
+
+## Outside React
+
+```ts
+import { QueryClient } from "@tanstack/query-core"
+
+const queryClient = new QueryClient()
+const key = ["ic", host, caller, LEDGER_ID, "icrc1_balance_of", owner.toText()]
+const balance = await queryClient.fetchQuery({ queryKey: key, queryFn: () => ledger.icrc1_balance_of(account) })
+await queryClient.invalidateQueries({ queryKey: ["ic", host] })
+const fresh = await ledger.icrc1_balance_of(account)   // no cache at all
+```
+
+Direct calls never touch a cache; use them in scripts and services that must
+always see current state.
+
+## Example
+
+```tsx
+import { useMemo, useState, useSyncExternalStore } from "react"
+import { QueryClient, QueryClientProvider, skipToken, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { HttpAgent, type Identity } from "@icp-sdk/core/agent"
+import { createActor } from "@candid-core/schema/actor"
+import { httpTransport } from "@candid-core/schema/transport-icp"
+import { actor, type Actor } from "./generated/backend"
+
+const HOST = "https://icp-api.io"
+const makeBackend = (identity: Identity) =>
+  createActor<Actor>(actor, BACKEND_ID, httpTransport({ agent: HttpAgent.createSync({ host: HOST, identity }) }))
+
+export function App({ auth }: { auth: AuthLike }) {
+  const [queryClient] = useState(() => new QueryClient())
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Profile auth={auth} />
+    </QueryClientProvider>
+  )
+}
+
+function Profile({ auth }: { auth: AuthLike }) {
+  const queryClient = useQueryClient()
+  const identity = useSyncExternalStore(auth.subscribe, auth.getIdentity)
+  const me = identity.getPrincipal()
+  const signedIn = auth.isAuthenticated() && !me.isAnonymous()
+  const backend = useMemo(() => makeBackend(identity), [identity])
+  const profile = useQuery({
+    queryKey: ["ic", HOST, me.toText(), BACKEND_ID, "get_profile", me.toText()],
+    queryFn: signedIn ? () => backend.get_profile(me) : skipToken,
+  })
+  const rename = useMutation({
+    mutationFn: (name: string) => backend.set_name(me, name),
+    onSettled: (_d, error) =>
+      !error || mayHaveExecuted(error) ? queryClient.invalidateQueries({ queryKey: ["ic", HOST] }) : undefined,
+  })
+
+  if (!signedIn) return <p>Sign in</p>
+  if (profile.data === undefined) return <p>Loading…</p>
+  return (
+    <>
+      <p>{profile.data.name}</p>
+      <button disabled={rename.isPending} onClick={() => rename.mutate("Ada")}>Rename</button>
+      {rename.error && <p>{mayHaveExecuted(rename.error) ? "Unknown outcome" : rename.error.message}</p>}
+    </>
+  )
+}
+```
+
+## Do not
+
+- Pass principal text where a principal is expected: use
+  `Principal.fromText(text)`.
+- Convert `bigint` values to `number`, or put a `bigint` in a query key.
+- Add `retry` to a write, or call a write from `useQuery`: TanStack Query may
+  run a query's function again whenever it refetches, and every run of an
+  update executes again.
+- Leave the caller out of a key, or carry data across keys
+  (`keepPreviousData`, cross-key `initialData`).
+- Build agents or actors inside render without `useMemo`/`useState`, or
+  change an agent's identity once built.
+- Send a write while nobody is signed in, or as the anonymous identity.
+- Treat every failed write as "not executed": classify it as above.
