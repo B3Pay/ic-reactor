@@ -24,7 +24,8 @@
     "!src/**/*.test.*",
     "!src/**/*.spec.*",
     "!**/*.tsbuildinfo",
-    "README.md"
+    "README.md",
+    "llms.txt"
   ],
   "scripts": {
     "build": "rm -rf dist tsconfig.tsbuildinfo && tsc",

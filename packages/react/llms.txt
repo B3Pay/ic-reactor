@@ -1,0 +1,16 @@
+# @ic-reactor/react
+
+> The React bindings of ic-reactor 4: `ReactorProvider`, `useClient` and
+> `useAuth`. Their guide is the one `@ic-reactor/core` ships.
+
+Applies to `@ic-reactor/react` 4.0.0-alpha.0.
+
+Read `node_modules/@ic-reactor/core/llms.txt`. It is the one guide for both
+packages: setup, the provider and `useAuth`, reads, writes, errors, values,
+and a complete React example, with the rules each call enforces.
+
+This package has no hook around `useQuery` or `useMutation`: call TanStack
+Query's own hooks with the options the client builds,
+`useQuery(client.queryOptions(...))` and
+`useMutation(client.mutationOptions(...))`. It never re-exports
+`@ic-reactor/core`: import each name from the package that defines it.
