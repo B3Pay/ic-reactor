@@ -440,8 +440,20 @@ dated addendum and the owner's approval, as Addendum 2 did.
   what the batch measures. So is a third trap the port found: a client kept
   at module scope and handed to `ReactorProvider` type-checks, and is
   disposed when the first tree unmounts, after which every call of every
-  later tree is cancelled (in the hidden tests, 30 of 32 fail;
-  `conditions/v4/PORTING.md`, react-wallet module-scope variant).
+  later tree is cancelled (in the hidden tests, 30 of 32 failed;
+  `conditions/v4/PORTING.md`, react-wallet module-scope variant). #805 (IR6)
+  since makes the provider borrow, and never dispose, a client created before
+  its factory runs; a client created lazily inside the factory
+  (`shared ??= createClient(...)`) is still owned by the first provider, and
+  the provider logs a development error when a later tree is handed it.
+- `refuses_excess_fraction_digits` sends a nonzero ninth fraction digit.
+  `parseUnits` treats zeros past the decimals as insignificant
+  (`"1.000000000"` at 8 is 1 token, by design, #777), so a solution that
+  relies on it accepts `"1.123456780"`, which the explicit prompt's "more than
+  8 fraction digits" would refuse. No hidden test sends such an amount, and
+  the hidden tests are fixed for this gate, so it is not scored; the v4
+  references count the raw fraction digits as well, as the explicit prompt
+  reads.
 
 **Freezing.** This addendum is frozen, by replacing its status line with the
 date and recording the owner's approval below, when all of these hold:
