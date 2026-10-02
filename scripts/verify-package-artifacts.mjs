@@ -56,13 +56,25 @@ const isBinOnly = (m) =>
   Boolean(m.bin) && !m.exports && !m.main && !m.module && !m.types && !m.typings
 
 /**
- * Whether a package may publish an entry that exports nothing. On the v4 line
- * the 3.x runtime is removed and the 4 API arrives slice by slice (#790), so
- * core and react are empty until their first slice lands. That holds for an
- * alpha prerelease only: from the first beta an empty entry is a broken
- * artifact again, and the check below fails it as it always did.
+ * The packages whose root entry may export nothing for now. On the v4 line the
+ * 3.x runtime is removed and the 4 API arrives slice by slice (#790), so core
+ * and react publish an empty entry until their first slice lands. Drop a
+ * package from this set in the change that gives its entry its first export
+ * (core: the first of the errors, network and units slices; react: IR6): from
+ * then on an empty entry is a broken artifact again, which is what this check
+ * exists to catch. The import check below warns when a listed package already
+ * exports something, so a stale line does not go unnoticed.
  */
-const mayExportNothing = (manifest) => /-alpha\./.test(manifest.version ?? "")
+const MAY_EXPORT_NOTHING = new Set(["@ic-reactor/core", "@ic-reactor/react"])
+
+/**
+ * Whether a package may publish an entry that exports nothing: only the
+ * packages listed above, and only while the line is an alpha prerelease. From
+ * the first beta the allowance ends for them too.
+ */
+const mayExportNothing = (manifest) =>
+  MAY_EXPORT_NOTHING.has(manifest.name) &&
+  /-alpha\./.test(manifest.version ?? "")
 
 const failures = []
 function fail(pkg, what, detail) {
@@ -205,6 +217,15 @@ try {
           { cwd: scratch }
         )
         ok(`import ${spec} (${out.trim()})`)
+        if (
+          sub === "." &&
+          MAY_EXPORT_NOTHING.has(name) &&
+          out.trim() !== "exports:0"
+        ) {
+          console.warn(
+            `  ! ${name} exports something now: remove it from MAY_EXPORT_NOTHING so an empty entry fails again`
+          )
+        }
       } catch (e) {
         fail(name, `import ${spec}`, e.stderr || e.stdout || e.message)
       }
