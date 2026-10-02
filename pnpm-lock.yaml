@@ -213,6 +213,9 @@ importers:
         specifier: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0
         version: 8.3.0(@types/node@26.5.1)(esbuild@0.27.7)(jiti@2.7.0)(yaml@2.9.0)
     devDependencies:
+      '@candid-core/cli':
+        specifier: 0.2.0-beta.1
+        version: 0.2.0-beta.1(@candid-core/schema@0.3.0-beta.1)
       '@types/node':
         specifier: ^26.5.1
         version: 26.5.1
@@ -427,6 +430,15 @@ packages:
 
   '@cacheable/utils@2.5.0':
     resolution: {integrity: sha512-buipgOVDkkPXNR5+xBpDw7Zk2n1EvU7qBJCNUcL7rhQ//kfpOXPAvQ511Os0vpLYJ1pZnvudNytkQt2hst3wqA==}
+
+  '@candid-core/cli@0.2.0-beta.1':
+    resolution: {integrity: sha512-kmm1+COrojOVLVcpVjgHZ1c0Y/RSQoq90u3Wim/ss384NMlm4fwC2cWA7eq225a8kv+uhz1YvlVrClNYFQCaLQ==}
+    hasBin: true
+    peerDependencies:
+      '@candid-core/schema': 0.3.0-beta.1
+    peerDependenciesMeta:
+      '@candid-core/schema':
+        optional: true
 
   '@candid-core/schema@0.3.0-beta.1':
     resolution: {integrity: sha512-fO7uDzR1Dv8vvLec0/2mRpIMQrNW0KeFwlRfkDBmEy2IQ9aUflaacZgNn4jnM9amKvldAHT/o2novcV2m07Usg==}
@@ -4385,6 +4397,10 @@ snapshots:
     dependencies:
       hashery: 1.5.1
       keyv: 5.6.0
+
+  '@candid-core/cli@0.2.0-beta.1(@candid-core/schema@0.3.0-beta.1)':
+    optionalDependencies:
+      '@candid-core/schema': 0.3.0-beta.1
 
   '@candid-core/schema@0.3.0-beta.1': {}
 

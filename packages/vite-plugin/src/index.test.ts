@@ -43,7 +43,7 @@ const VITE_ROOT = path.resolve("/vite/root")
 
 describe("icReactor", () => {
   const mockOptions: IcReactorPluginOptions = {
-    canisters: [{ name: "test_canister" }],
+    canisters: { test_canister: {} },
   }
 
   const mockServer: any = {
@@ -181,12 +181,9 @@ describe("icReactor", () => {
 
       const plugin = createVitePlugin({
         ...mockOptions,
-        canisters: [
-          {
-            ...mockOptions.canisters[0],
-            canisterId: "yq4ns-hyaaa-aaaap-akbna-cai",
-          },
-        ],
+        canisters: {
+          test_canister: { canisterId: "yq4ns-hyaaa-aaaap-akbna-cai" },
+        },
       })
       const { middleware } = await serveWithEnvironment(plugin)
 
@@ -269,7 +266,7 @@ describe("icReactor", () => {
         .mockImplementation(() => {})
       mockIcp(() => new Error("project manifest not found"))
 
-      const plugin = createVitePlugin({ canisters: [] })
+      const plugin = createVitePlugin({ canisters: {} })
       await plugin.config({}, { command: "serve" })
 
       expect(consoleWarnSpy).not.toHaveBeenCalled()
@@ -300,7 +297,7 @@ describe("icReactor", () => {
     it("should inject default local II provider in env-only mode when icp-cli project detection fails", async () => {
       mockIcp(() => new Error("project manifest not found"))
 
-      const plugin = createVitePlugin({ canisters: [] })
+      const plugin = createVitePlugin({ canisters: {} })
       const { config, middleware } = await serveWithEnvironment(plugin)
 
       expect(await request(middleware)).toContain(
@@ -437,7 +434,7 @@ describe("icReactor", () => {
       it("should keep what it detected when icp fails for a moment", async () => {
         vi.spyOn(console, "warn").mockImplementation(() => {})
         const plugin = createVitePlugin({
-          canisters: [{ name: "alpha" }, { name: "beta" }],
+          canisters: { alpha: {}, beta: {} },
         })
         answerIcp({ alpha: "alpha-id" })
         const { middleware } = await serveWithEnvironment(plugin)
@@ -478,7 +475,7 @@ describe("icReactor", () => {
       it("should drop the ids of a network whose root key changed", async () => {
         vi.spyOn(console, "warn").mockImplementation(() => {})
         const plugin = createVitePlugin({
-          canisters: [{ name: "alpha" }, { name: "beta" }],
+          canisters: { alpha: {}, beta: {} },
         })
         answerIcp({ alpha: "alpha-id" })
         const { middleware } = await serveWithEnvironment(plugin)
@@ -539,12 +536,9 @@ describe("icReactor", () => {
         answerIcp({})
         const plugin = createVitePlugin({
           ...mockOptions,
-          canisters: [
-            {
-              ...mockOptions.canisters[0],
-              canisterId: "yq4ns-hyaaa-aaaap-akbna-cai",
-            },
-          ],
+          canisters: {
+            test_canister: { canisterId: "yq4ns-hyaaa-aaaap-akbna-cai" },
+          },
         })
         const { middleware } = await serveWithEnvironment(plugin)
         const calls = icpCalls()
@@ -604,7 +598,7 @@ describe("icReactor", () => {
 
       it.each([
         ["with canisters configured", mockOptions],
-        ["in env-only mode", { canisters: [] }],
+        ["in env-only mode", { canisters: {} }],
       ])(
         "should keep the user's proxy when detection fails %s",
         async (_label, options) => {

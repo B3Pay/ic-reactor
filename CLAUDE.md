@@ -22,11 +22,11 @@ this branch is written against unpublished candid-core shapes.
 
 ## Packages on this branch
 
-| Package                   | Directory              | State on `v4`                                                                                    |
-| ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
-| `@ic-reactor/core`        | `packages/core`        | `4.0.0-alpha.0`; the 3.x runtime is removed, the entry is empty until the rewrite slices fill it |
-| `@ic-reactor/react`       | `packages/react`       | `4.0.0-alpha.0`; the 3.x hooks are removed, the entry is empty until IR6 fills it                |
-| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0-alpha.0`; the `ic_env` cookie and `/api` proxy only, until generation returns (IR7)       |
+| Package                   | Directory              | State on `v4`                                                                                                                               |
+| ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@ic-reactor/core`        | `packages/core`        | `4.0.0-alpha.0`; the 3.x runtime is removed, the entry is empty until the rewrite slices fill it                                            |
+| `@ic-reactor/react`       | `packages/react`       | `4.0.0-alpha.0`; the 3.x hooks are removed, the entry is empty until IR6 fills it                                                           |
+| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0-alpha.0`; generates the candid-core module with `@candid-core/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy |
 
 Not in this tree: `@ic-reactor/parser`, `@ic-reactor/codegen` and
 `@ic-reactor/cli` (replaced by `candid-core-cli gen`), and
