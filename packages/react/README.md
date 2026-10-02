@@ -104,8 +104,11 @@ Suspense boundary above the provider that suspends), the client stays queued
 for disposal at garbage collection until the next render gets it back, so a
 collection while the fallback shows disposes the client the page then mounts
 (see [Life of the client](#life-of-the-client)). Create a shared client
-eagerly, as above. In development, a provider that is given a client which is
-already disposed logs an error that names the fix.
+eagerly, as above. In development, a provider whose factory hands back a client
+that an earlier factory call created and no provider has committed yet, as a
+lazily shared getter does, logs a warning that names the fix (under
+`StrictMode`, which calls the factory twice, on the first render); and a
+provider that is given a client which is already disposed logs an error.
 
 ## Who is signed in
 

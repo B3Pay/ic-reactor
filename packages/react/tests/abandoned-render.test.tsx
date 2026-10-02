@@ -12,7 +12,8 @@
  * A client that a dropped render created can still be in use: a factory that
  * creates a shared client on its first call hands the same one to the retry.
  * The registry must let go of it as soon as a factory returns it again, and
- * whenever a provider commits it.
+ * whenever a provider commits it. That moment is also when the pattern shows,
+ * so a development build warns about it then.
  *
  * Garbage collection decides when a real registry runs its cleanup, so most
  * tests here install a fake whose collections the test triggers
@@ -23,7 +24,7 @@ import { createTestAuth, type TestAuth } from "@ic-reactor/core/testing"
 import type { Client } from "@ic-reactor/core"
 import { act, render } from "@testing-library/react"
 import { StrictMode, Suspense, useEffect, type ReactNode } from "react"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   bindingsWith,
   clientWithAuth,
@@ -43,6 +44,8 @@ const collectGarbage = (globalThis as { gc?: () => void }).gc
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
+  vi.restoreAllMocks()
   vi.resetModules()
 })
 
@@ -286,6 +289,12 @@ describe("a client the app created before the provider's factory ran", () => {
 })
 
 describe("a shared client that the factory creates on its first call", () => {
+  beforeEach(() => {
+    // Each of these trees warns about the pattern in development; the tests
+    // of that warning are below.
+    vi.spyOn(console, "warn").mockImplementation(() => {})
+  })
+
   it("keeps running once mounted, though the render that created it was thrown away", async () => {
     const registry = fakeFinalizationRegistry()
     const { ReactorProvider, useAuth } = await bindingsWith(registry.Registry)
@@ -405,6 +414,166 @@ describe("a shared client that the factory creates on its first call", () => {
   })
 })
 
+describe("the development warning about a factory that shares a client lazily", () => {
+  /** Matches the warning, which names the pattern and the fix. */
+  const WARNING =
+    /earlier factory call created \(client \?\?= createClient\(\.\.\.\)\)\..*create a shared client eagerly/s
+
+  /**
+   * A spy on `console.warn` that also records how many trees had committed
+   * when each warning came, so a test can tell it came before any did.
+   */
+  function warnings(committed: () => number) {
+    const committedAt: number[] = []
+    const warn = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => void committedAt.push(committed()))
+    return { warn, committedAt }
+  }
+
+  it("warns once, before anything commits, when a render gets back the client of a render React threw away", async () => {
+    const { ReactorProvider, useAuth } = await bindingsWith(RealRegistry)
+    const { factory, auth, shared } = lazilySharedFactory()
+    const first = suspendUntilOpened()
+    const second = suspendUntilOpened()
+    let commits = 0
+    const { warn, committedAt } = warnings(() => commits)
+    function Status() {
+      useEffect(() => {
+        commits++
+      }, [])
+      return <p data-testid="status">{useAuth().status}</p>
+    }
+
+    const view = render(
+      <Suspense fallback={<p>loading</p>}>
+        <ReactorProvider client={factory}>
+          <Status />
+          <first.Gate />
+          <second.Gate />
+        </ReactorProvider>
+      </Suspense>
+    )
+    await act(macrotask)
+    await first.open()
+    await second.open()
+
+    expect(factory.mock.calls.length).toBeGreaterThan(2)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(String(warn.mock.calls[0]?.[0])).toMatch(WARNING)
+    expect(committedAt).toEqual([0])
+    // The warning changes nothing: the tree runs on the shared client.
+    expect(view.getByTestId("status").textContent).toBe("anonymous")
+    await act(() => auth.signIn())
+    expect(view.getByTestId("status").textContent).toBe("signed-in")
+    expect(shared().dispose).not.toHaveBeenCalled()
+    view.unmount()
+    await act(macrotask)
+  })
+
+  it("warns on the first render under StrictMode, which calls the factory twice", async () => {
+    const { ReactorProvider, useAuth } = await bindingsWith(RealRegistry)
+    const { factory } = lazilySharedFactory()
+    let commits = 0
+    const { warn, committedAt } = warnings(() => commits)
+    function Status() {
+      useEffect(() => {
+        commits++
+      }, [])
+      return <p data-testid="status">{useAuth().status}</p>
+    }
+
+    const view = render(
+      <StrictMode>
+        <ReactorProvider client={factory}>
+          <Status />
+        </ReactorProvider>
+      </StrictMode>
+    )
+    await act(macrotask)
+
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(String(warn.mock.calls[0]?.[0])).toMatch(WARNING)
+    expect(committedAt).toEqual([0])
+    view.unmount()
+    await act(macrotask)
+  })
+
+  it("says nothing in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    const { ReactorProvider, useAuth } = await bindingsWith(RealRegistry)
+    const { factory, auth } = lazilySharedFactory()
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const { Gate, open } = suspendUntilOpened()
+    function Status() {
+      return <p data-testid="status">{useAuth().status}</p>
+    }
+
+    const view = render(
+      <StrictMode>
+        <Suspense fallback={<p>loading</p>}>
+          <ReactorProvider client={factory}>
+            <Status />
+            <Gate />
+          </ReactorProvider>
+        </Suspense>
+      </StrictMode>
+    )
+    await act(macrotask)
+    await open()
+
+    expect(factory.mock.calls.length).toBeGreaterThan(1)
+    expect(warn).not.toHaveBeenCalled()
+    await act(() => auth.signIn())
+    expect(view.getByTestId("status").textContent).toBe("signed-in")
+    view.unmount()
+    await act(macrotask)
+  })
+
+  it("says nothing about a client the factory creates on each call, or one the app created before the provider rendered", async () => {
+    const bindings = await bindingsWith(RealRegistry)
+    const { ReactorProvider, useAuth } = bindings
+    const fresh = setup(bindings)
+    const borrowed = withDisposeSpy(
+      clientWithAuth(() => createTestAuth({ seed: 9, signedIn: false }))
+    )
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const { Gate, open } = suspendUntilOpened()
+    function Status() {
+      return <p data-testid="borrowed">{useAuth().status}</p>
+    }
+
+    const view = render(
+      <StrictMode>
+        <Suspense fallback={<p>loading</p>}>
+          <ReactorProvider client={fresh.factory}>
+            <fresh.Probe />
+          </ReactorProvider>
+          <ReactorProvider client={() => borrowed.client}>
+            <Status />
+            <Gate />
+          </ReactorProvider>
+        </Suspense>
+      </StrictMode>
+    )
+    await act(macrotask)
+    await open()
+    view.unmount()
+    await act(macrotask)
+    render(
+      <ReactorProvider client={() => borrowed.client}>
+        <Status />
+      </ReactorProvider>
+    )
+    await act(macrotask)
+
+    // Thrown-away renders built and dropped clients, and the borrowed client
+    // went to several renders: none of it is the pattern.
+    expect(fresh.made.length).toBeGreaterThan(1)
+    expect(warn).not.toHaveBeenCalled()
+  })
+})
+
 describe("a runtime without FinalizationRegistry", () => {
   it("still mounts, follows the auth and disposes a committed client once", async () => {
     const bindings = await bindingsWith(undefined)
@@ -496,6 +665,7 @@ describe("a real garbage collection", () => {
   )(
     "leaves a shared client created in a thrown-away render to the tree that mounted it",
     async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {})
       const gc = collectGarbage as () => void
       const bindings = await bindingsWith(RealRegistry)
       const { ReactorProvider, useAuth } = bindings

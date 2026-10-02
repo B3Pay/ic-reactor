@@ -145,6 +145,11 @@ const unclaimed =
  * render away the retry gets the same client back as borrowed, then commits
  * and uses it. Left registered, the client would be disposed under the
  * mounted tree at the next collection.
+ *
+ * That removal is also how the pattern shows itself, so it is reported in
+ * development (see {@link reportLazilyShared}). Only the call that created a
+ * client registers it, and the first removal ends the registration, so the
+ * report comes once per client.
  */
 function hold(build: () => Client): Held {
   const before = clientsCreated()
@@ -154,7 +159,7 @@ function hold(build: () => Client): Held {
     typeof serial === "number" ? serial > before : clientsCreated() > before
   const held = { client, owned }
   if (owned) unclaimed?.register(held, client, client)
-  else unclaimed?.unregister(client)
+  else if (unclaimed?.unregister(client)) reportLazilyShared()
   return held
 }
 
@@ -164,7 +169,10 @@ function hold(build: () => Client): Held {
  */
 declare const process: { readonly env: { readonly NODE_ENV?: string } }
 
-/** Whether to say so when a provider is given a dead client. */
+/**
+ * Whether to report how a provider's client was handed to it (see
+ * {@link reportDisposed} and {@link reportLazilyShared}).
+ */
 const isDevelopment = (): boolean => {
   try {
     // Written as is, so that a bundler replaces `process.env.NODE_ENV` with
@@ -195,6 +203,31 @@ function reportDisposed(client: Client): void {
   reported.add(client)
   console.error(
     "[ic-reactor] <ReactorProvider> got a disposed client, so every call is cancelled (client_disposed). " +
+      "A provider disposes only a client its own factory created: create a shared client eagerly and keep it " +
+      "alive, or use client={() => createClient({ ... })}."
+  )
+}
+
+/**
+ * Reports, in development, a factory that handed back a client which an
+ * earlier factory call created and no provider has committed yet. A lazily
+ * shared factory (`() => (client ??= createClient(...))`) does that, and so
+ * does one that returns a client another provider's factory call created.
+ *
+ * The provider of the call that created such a client owns it, so it disposes
+ * it on unmount under every other tree that uses it; and from the moment React
+ * throws the creating render away until a later render gets the client back, a
+ * garbage collection can dispose it. Both show up late, as calls that are
+ * cancelled, and on React 18 the second window can last a whole fetch of a
+ * suspending child. The pattern shows here first, and `StrictMode`, which
+ * calls the factory twice on every mount, shows it on the first render of a
+ * development build.
+ */
+function reportLazilyShared(): void {
+  if (!isDevelopment()) return
+  console.warn(
+    "[ic-reactor] <ReactorProvider> got a client that an earlier factory call created (client ??= createClient(...)). " +
+      "That call's provider disposes it on unmount, or at a garbage collection if React threw its render away. " +
       "A provider disposes only a client its own factory created: create a shared client eagerly and keep it " +
       "alive, or use client={() => createClient({ ... })}."
   )
@@ -249,8 +282,11 @@ export interface ReactorProviderProps {
  * for disposal at collection until the next render gets it back from the
  * factory, so a garbage collection while the fallback shows disposes the
  * client the retry then mounts. Create a shared client eagerly instead. In
- * development, a provider that is given a borrowed client which is already
- * disposed logs an error.
+ * development, a provider whose factory hands back a client that an earlier
+ * factory call created and no provider has committed yet, as a lazily shared
+ * factory does, logs a warning (under `StrictMode`, on its first render), and
+ * a provider that is given a borrowed client which is already disposed logs an
+ * error.
  *
  * Disposal is safe in React's development double-mount (`StrictMode` mounts,
  * unmounts and mounts every component again at once): the cleanup only
