@@ -20,10 +20,12 @@ import { toHex } from "../src/keys.js"
 import { createTestAuth } from "../src/testing/index.js"
 import {
   ANONYMOUS,
+  FEE,
   LEDGER,
   SHAPES,
   clientAs,
   clientWithAuth,
+  ledgerCanister,
   replicaWith,
   serve,
 } from "./canister-helpers.js"
@@ -171,13 +173,33 @@ describe("a read's key", () => {
     const full = client.queryKey(canister, "pair", [1n, "x"])
     expect(client.queryKey(canister, "pair")).toEqual(full.slice(0, 5))
     expect(client.queryKey(canister)).toEqual(full.slice(0, 4))
-    // Three arguments, even `undefined`, are one read's key.
     expect(client.queryKey(canister, "nothing", undefined)).toEqual([
       ...full.slice(0, 4),
       "nothing",
       hexOf([], []),
     ])
-    expect(client.queryKey(canister, "nothing")).toHaveLength(5)
+  })
+
+  it("is the read's whole key for a method without arguments, with or without the vars", async () => {
+    const replica = replicaWith({ [LEDGER]: ledgerCanister(new Map()) })
+    const client = clientAs(replica, alice)
+    const ledger = client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
+    const fee = client.queryOptions(ledger, "icrc1_fee")
+    expect(client.queryKey(ledger, "icrc1_fee")).toEqual(fee.queryKey)
+    expect(client.queryKey(ledger, "icrc1_fee", undefined)).toEqual(
+      fee.queryKey
+    )
+    // What a cache read and write are handed: the key must be whole, as
+    // getQueryData and setQueryData match it exactly.
+    await client.queryClient.fetchQuery(fee)
+    expect(
+      client.queryClient.getQueryData(client.queryKey(ledger, "icrc1_fee"))
+    ).toBe(FEE)
+    client.queryClient.setQueryData(client.queryKey(ledger, "icrc1_fee"), 1n)
+    expect(client.queryClient.getQueryData(fee.queryKey)).toBe(1n)
+    expect(
+      client.queryClient.getQueryCache().findAll({ queryKey: fee.queryKey })
+    ).toHaveLength(1)
   })
 
   it("takes a two-argument method's variables as the tuple", () => {

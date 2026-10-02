@@ -260,9 +260,15 @@ export interface Client {
    *
    * - `queryKey(c)`: every read of the canister by the current caller.
    * - `queryKey(c, method)`: every read of that method by the current caller,
-   *   whatever its arguments.
+   *   whatever its arguments. For a method without arguments, which has one
+   *   read, this is that read's key, the same as `queryKey(c, method,
+   *   undefined)`, so `queryClient.getQueryData(client.queryKey(ledger,
+   *   "icrc1_fee"))` finds what `queryOptions(ledger, "icrc1_fee")` cached.
    * - `queryKey(c, method, vars)`: the key `queryOptions(c, method, vars)`
-   *   gives, as built now. Pass `undefined` for a method without arguments.
+   *   gives, as built now.
+   *
+   * `getQueryData` and `setQueryData` match a key exactly: hand them a read's
+   * whole key, never a prefix (a method's with arguments, or a canister's).
    *
    * Keys are `['ic-reactor', network, caller, canisterId, method, args]` plus
    * `'certified'` for a certified canister (DECISIONS Q5). Build them with
