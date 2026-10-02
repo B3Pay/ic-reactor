@@ -487,6 +487,45 @@ describe("generation under vite dev", () => {
         expect(send).toHaveBeenCalledWith({ type: "full-reload" })
       )
     })
+
+    // One save regenerates every canister that names the file, so fixing the
+    // file has to clear all of them from the overlay, not the first one.
+    it("is cleared when a .did that two canisters share is fixed", async () => {
+      const app = newApp({ "did/icrc1.did": BROKEN_DID }, "real")
+      const { connections, plugin } = spyOnConnections()
+      const { server } = await serve(
+        app.root,
+        {
+          canisters: {
+            a: { didFile: "did/icrc1.did" },
+            b: { didFile: "did/icrc1.did" },
+          },
+        },
+        { before: [plugin] }
+      )
+      const send = vi.spyOn(server.ws, "send")
+
+      // Both canisters are in the overlay a browser is handed.
+      const first = { send: vi.fn() }
+      connections[0](first)
+      expect(JSON.parse(first.send.mock.calls[0][0])).toEqual(
+        errorPayload("could not generate 2 of 2 canisters")
+      )
+
+      const shared = path.join(app.root, "did/icrc1.did")
+      fs.writeFileSync(shared, PING_DID)
+      server.watcher.emit("change", shared)
+
+      await vi.waitFor(() =>
+        expect(send).toHaveBeenCalledWith({ type: "full-reload" })
+      )
+      // No overlay listing the second canister replaced the reload, and a
+      // browser that connects now is handed none.
+      expect(send).toHaveBeenCalledTimes(1)
+      const later = { send: vi.fn() }
+      connections[0](later)
+      expect(later.send).not.toHaveBeenCalled()
+    })
   })
 
   // `server.hmr: false` leaves Vite a WebSocket server that does nothing, and

@@ -384,7 +384,14 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * once there are none.
    */
   const publish = (attempted: Generated[], failures: Failure[]): void => {
-    const wasFailing = attempted.some(({ name }) => unfixed.delete(name))
+    // Every attempted canister leaves `unfixed`, not just the first one found
+    // there: a save regenerates all the canisters that name the `.did`, and
+    // `some` would stop at the first, leaving the others listed in an overlay
+    // nothing clears.
+    let wasFailing = false
+    for (const { name } of attempted) {
+      if (unfixed.delete(name)) wasFailing = true
+    }
     for (const failure of failures) unfixed.set(failure.canister.name, failure)
     if (failures.length > 0) {
       log.error(describeFailures(failures))
