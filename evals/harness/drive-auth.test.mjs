@@ -19,6 +19,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, before, describe, it } from "node:test"
 import { EVALS } from "./assemble.mjs"
+import { sandboxAvailable } from "./sandbox.mjs"
 
 const solutions = join(EVALS, "tasks")
 const OAUTH = `sk-ant-oat01-FAKE-${Math.random().toString(36).slice(2)}-TOKEN`
@@ -26,7 +27,27 @@ const API_KEY = `sk-ant-api03-FAKE-${Math.random().toString(36).slice(2)}-KEY`
 const RESULT_OK =
   '{"type":"result","subtype":"success","is_error":false,"num_turns":3,"usage":{"input_tokens":10,"output_tokens":5},"total_cost_usd":0}'
 
+/**
+ * The host environment each driver here gets: PATH, HOME, and
+ * EVALS_NO_SANDBOX when set (`EVALS_NO_SANDBOX=1 node --test …` runs this file
+ * as on a host without sandbox-exec).
+ */
+const hostEnv = () => ({
+  PATH: process.env.PATH,
+  HOME: process.env.HOME,
+  ...(process.env.EVALS_NO_SANDBOX === undefined
+    ? {}
+    : { EVALS_NO_SANDBOX: process.env.EVALS_NO_SANDBOX }),
+})
+
+/**
+ * A batch of one task × condition with a stub agent. Sandboxed where
+ * sandbox-exec exists; elsewhere in the tsc-only mode, the documented
+ * fallback, which the driver otherwise refuses to pick by itself.
+ */
 function drive(out, agentCmd, env, extra = [], n = "1") {
+  const driverEnv = { ...hostEnv(), ...env }
+  const mode = sandboxAvailable(driverEnv) ? "sandboxed" : "tsc-only"
   return spawnSync(
     process.execPath,
     [
@@ -39,6 +60,8 @@ function drive(out, agentCmd, env, extra = [], n = "1") {
       n,
       "--model",
       "stub",
+      "--mode",
+      mode,
       "--agent-cmd",
       agentCmd,
       "--sandbox-allow",
@@ -49,7 +72,7 @@ function drive(out, agentCmd, env, extra = [], n = "1") {
     ],
     {
       cwd: EVALS,
-      env: { PATH: process.env.PATH, HOME: process.env.HOME, ...env },
+      env: driverEnv,
       encoding: "utf8",
       timeout: 600_000,
     }
@@ -206,11 +229,7 @@ describe("a resumed batch", () => {
       [join(EVALS, "drive.mjs"), "--resume", out],
       {
         cwd: EVALS,
-        env: {
-          PATH: process.env.PATH,
-          HOME: process.env.HOME,
-          CLAUDE_CODE_OAUTH_TOKEN: OAUTH,
-        },
+        env: { ...hostEnv(), CLAUDE_CODE_OAUTH_TOKEN: OAUTH },
         encoding: "utf8",
         timeout: 600_000,
       }
@@ -367,7 +386,7 @@ describe("the preflight (with a stub CLI in its place)", () => {
       ],
       {
         cwd: EVALS,
-        env: { PATH: process.env.PATH, HOME: process.env.HOME, ...env },
+        env: { ...hostEnv(), ...env },
         encoding: "utf8",
         timeout: 120_000,
       }
@@ -453,11 +472,7 @@ describe("the prompt variant (with a stub agent)", () => {
       ],
       {
         cwd: EVALS,
-        env: {
-          PATH: process.env.PATH,
-          HOME: process.env.HOME,
-          CLAUDE_CODE_OAUTH_TOKEN: OAUTH,
-        },
+        env: { ...hostEnv(), CLAUDE_CODE_OAUTH_TOKEN: OAUTH },
         encoding: "utf8",
       }
     )
@@ -520,5 +535,50 @@ describe("the prompt variant (with a stub agent)", () => {
       readFileSync(join(out, "summary.rescored.json"), "utf8")
     )
     assert.deepEqual(summary.prompt, { minimal: 1 })
+  })
+})
+
+// On a host without sandbox-exec (Linux, or EVALS_NO_SANDBOX=1 as here) the
+// driver refuses to start without --mode, so the batches above would fail
+// there before reaching their assertions unless `drive` passes tsc-only.
+describe("a host without an OS sandbox (simulated with EVALS_NO_SANDBOX=1)", () => {
+  let out
+  let result
+  before(() => {
+    out = mkdtempSync(join(tmpdir(), "drive-nosandbox-"))
+    const stub =
+      `cp -R '${solutions}/{task}/solutions/{condition}/reference/src/.' src/ && ` +
+      `echo '${RESULT_OK}'`
+    result = drive(out, stub, {
+      CLAUDE_CODE_OAUTH_TOKEN: OAUTH,
+      EVALS_NO_SANDBOX: "1",
+    })
+  })
+  after(() => rmSync(out, { recursive: true, force: true }))
+
+  it("the driver does not pick a mode by itself", () => {
+    const r = spawnSync(
+      process.execPath,
+      [join(EVALS, "drive.mjs"), "--pilot", "--dry-run"],
+      {
+        cwd: EVALS,
+        env: { ...hostEnv(), EVALS_NO_SANDBOX: "1" },
+        encoding: "utf8",
+      }
+    )
+    assert.equal(r.status, 2)
+    assert.match(r.stderr, /no OS sandbox is available here/)
+  })
+
+  it("a batch runs in the tsc-only fallback, unsandboxed, and is scored", () => {
+    assert.equal(result.status, 0, result.stderr.slice(-2000))
+    const run = join(out, "node-tool", "thin", "001")
+    const plan = JSON.parse(readFileSync(join(out, "plan.json"), "utf8"))
+    const agent = JSON.parse(readFileSync(join(run, "agent.json"), "utf8"))
+    const score = JSON.parse(readFileSync(join(run, "score.json"), "utf8"))
+    assert.equal(plan.args.mode, "tsc-only")
+    assert.equal(agent.mode, "tsc-only")
+    assert.equal(agent.sandboxed, false)
+    assert.equal(score.safe, true)
   })
 })

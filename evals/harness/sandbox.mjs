@@ -22,8 +22,18 @@ import { spawnSync } from "node:child_process"
 
 export const SANDBOX_EXEC = "/usr/bin/sandbox-exec"
 
-export function sandboxAvailable() {
-  return process.platform === "darwin" && existsSync(SANDBOX_EXEC)
+/**
+ * Whether agents can run in the OS sandbox: macOS with sandbox-exec.
+ * `EVALS_NO_SANDBOX=1` makes the harness behave as on a host without it (the
+ * driver then needs `--mode tsc-only`), which is how its tests exercise that
+ * fallback on macOS.
+ */
+export function sandboxAvailable(env = process.env) {
+  return (
+    env.EVALS_NO_SANDBOX !== "1" &&
+    process.platform === "darwin" &&
+    existsSync(SANDBOX_EXEC)
+  )
 }
 
 /** The node installation this process runs on, e.g. ~/.nvm/versions/node/v24.2.0. */

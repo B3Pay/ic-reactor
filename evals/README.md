@@ -105,6 +105,7 @@ node drive.mjs --aggregate runs/<dir> --rescore      # … re-scoring each store
 node drive.mjs --pilot --prompt minimal --condition v4 --condition thin-guide --dry-run   # Addendum 3's plan
 
 node --test harness/*.test.mjs                       # sandbox, leak audit, aggregation, driver, prompts, v4 ship, gate plan
+EVALS_NO_SANDBOX=1 node --test harness/*.test.mjs    # … as on a host without sandbox-exec (tsc-only)
 node harness/check-docs.mjs [files…]                 # docs vs hidden tests (exit 1 on a hit)
 
 # the prototype's own checks
@@ -229,6 +230,13 @@ and that the minimal one matches none of the explicit rules' wording.
   has **no** fault injection — no lost replies, rejects or refusals.
 - **tsc-only** (the documented fallback where no sandbox exists): type-check
   feedback only, no test scaffold, no `node`.
+
+`EVALS_NO_SANDBOX=1` makes the harness act as on a host without
+`sandbox-exec`: `drive.mjs` then refuses to start without `--mode tsc-only`
+and runs agents unsandboxed (recorded `sandboxed: false`), and the sandbox
+tests are skipped. The driver tests (`harness/drive-auth.test.mjs`) pick
+`--mode` the same way, so they run on Linux as on macOS; one of them runs a
+batch with the variable set.
 
 ## What each hidden test checks, grouped by requirement
 
