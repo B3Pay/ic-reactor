@@ -190,6 +190,26 @@
     "replace": "      return []"
   },
   {
+    "id": "ir2t-name-write-invalidation-resolved-at-settlement",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the canister a { name } write went to when the cookie moves the name before the write settles",
+    "why": "onSettled resolves a { name } from the ic_env cookie again when the write settles, so after a local redeploy mid-write it invalidates the canister the cookie names now and leaves the reads of the one written to stale",
+    "file": "src/options.ts",
+    "search": "        const targets = (runIn(context) ?? resolveRun()).invalidates",
+    "replace": "        const targets = resolveRun().invalidates"
+  },
+  {
+    "id": "ir2t-name-write-sent-where-resolved-late",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "sends a { name } write that waited offline to the canister resolved when it started",
+    "why": "mutationFn resolves a { name } again when it starts instead of using the run onMutate resolved, so a write paused across a local redeploy goes to the new canister while onSettled invalidates the old one's reads",
+    "file": "src/options.ts",
+    "search": "          target: run?.target ?? record.resolve(),",
+    "replace": "          target: record.resolve(),"
+  },
+  {
     "id": "ir2t-query-options-accepts-update",
     "package": "core",
     "test": "tests/options.test.ts",

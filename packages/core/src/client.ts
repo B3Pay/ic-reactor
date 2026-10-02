@@ -365,8 +365,18 @@ export interface Client {
    * "Every read" includes an update read with `{ update: "idempotent" }`
    * (such as a ckBTC minter's `get_btc_address` after `update_balance`),
    * whose re-read is one more replicated call; list the reads in
-   * `invalidates` to leave it cached. To add your own `onSettled`, call this
-   * one from it.
+   * `invalidates` to leave it cached.
+   *
+   * A `{ name }` (the canister written to, or one in `invalidates`) is
+   * resolved once per run, in `onMutate`, which TanStack Query runs first
+   * and whose result it hands to `onSettled`: a write whose `ic_env` cookie
+   * entry changes before it settles (a local redeploy) invalidates the reads
+   * of the canister it wrote to. To add your own `onSettled`, call this one
+   * from it with all four arguments; to add your own `onMutate`, call this
+   * one from it with both and return its result, or spread it into yours.
+   * An `onMutate` that replaces this one leaves `mutationFn` and `onSettled`
+   * each to resolve the targets when it runs, so a cookie rewritten between
+   * the two can split the write from its invalidation.
    *
    * @throws TypeError for a canister of another client, a method a service
    * does not have, or a third argument other than `{ invalidates }`.
