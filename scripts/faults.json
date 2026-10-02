@@ -1085,8 +1085,8 @@
     "testName": "re-reads nothing when",
     "why": "every settled mutation invalidates the canister's reads, including a failure that proves nothing ran",
     "file": "src/options.ts",
-    "search": "        if (invalidates.length === 0 || !mayHaveChanged(error)) return",
-    "replace": "        if (invalidates.length === 0) return"
+    "search": "        if (!mayHaveChanged(error)) return",
+    "replace": "        if (false && !mayHaveChanged(error)) return"
   },
   {
     "id": "ir9-no-invalidation-after-success",
