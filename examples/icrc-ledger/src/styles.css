@@ -385,3 +385,7 @@ table.log tr[data-endpoint="call"] td:nth-child(2) {
   color: var(--accent);
   font-weight: 600;
 }
+
+table.blocks td:nth-child(-n + 2) {
+  white-space: nowrap;
+}

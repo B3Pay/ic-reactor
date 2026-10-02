@@ -9,8 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "gen": "candid-core-cli gen icrc1.did -o src/canisters",
-    "gen:check": "candid-core-cli gen icrc1.did -o src/canisters --check",
+    "gen": "candid-core-cli gen icrc1.did icp_ledger.did -o src/canisters",
+    "gen:check": "candid-core-cli gen icrc1.did icp_ledger.did -o src/canisters --check",
     "smoke": "node scripts/smoke.ts"
   },
   "dependencies": {

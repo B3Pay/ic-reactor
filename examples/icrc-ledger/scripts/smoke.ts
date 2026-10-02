@@ -3,6 +3,13 @@
 import assert from "node:assert/strict"
 import { principal } from "@candid-core/schema"
 import { formatUnits, isReactorError } from "@ic-reactor/core"
+import {
+  archivedRangeOptions,
+  blockRows,
+  blocksLedgerOn,
+  blockTime,
+  operationOf,
+} from "../src/blocks.ts"
 import { ICP_LEDGER, ledgerOn, mainnetClient } from "../src/ledger.ts"
 
 const NNS_GOVERNANCE = principal("rrkah-fqaaa-aaaaa-aaaaq-cai")
@@ -44,6 +51,38 @@ console.log("minting acct  ", minter?.owner ?? "none")
 console.log("metadata      ", metadata.map(([key]) => key).join(", "))
 console.log("CMC balance   ", cmc, `(${tokens(cmc)})`)
 
+// The first blocks live in an archive canister: the ledger's reply names it
+// and its method, and client.func() calls it, through the cache as the page.
+const blocks = blocksLedgerOn(client)
+const genesis = { start: 0n, length: 3n }
+const page = await client.queryClient.fetchQuery(
+  client.queryOptions(blocks, "query_blocks", genesis)
+)
+const archived = await Promise.all(
+  page.archived_blocks.map((range) =>
+    client.queryClient.fetchQuery(
+      archivedRangeOptions(client, blocks, genesis, range)
+    )
+  )
+)
+const rows = blockRows(page, archived)
+// The newest blocks the ledger still holds itself.
+const latest = await blocks.query_blocks({
+  start: page.chain_length - 2n,
+  length: 2n,
+})
+console.log("chain length  ", page.chain_length)
+for (const row of [...rows, ...blockRows(latest, [])]) {
+  const { kind, e8s } = operationOf(row.block)
+  console.log(
+    `block ${row.index}`.padEnd(14),
+    blockTime(row.block),
+    kind,
+    e8s === undefined ? "" : tokens(e8s),
+    row.from === ICP_LEDGER ? "(the ledger)" : `(archive ${row.from})`
+  )
+}
+
 // The client is anonymous: it refuses a transfer before sending anything.
 try {
   await ledger.icrc1_transfer({
@@ -78,5 +117,12 @@ assert.equal(symbol, "ICP")
 assert.equal(decimals, 8)
 assert.equal(certifiedFee, fee)
 assert.equal(typeof cmc, "bigint")
+assert.deepEqual(
+  rows.map((row) => row.index),
+  [0n, 1n, 2n]
+)
+assert.ok(rows.every((row) => row.from !== ICP_LEDGER))
+assert.equal(operationOf(rows[0]!.block).kind, "Mint")
+assert.equal(latest.archived_blocks.length, 0)
 client.dispose()
 console.log("ok")

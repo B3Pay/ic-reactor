@@ -83,3 +83,5 @@ scripts/check-snippets/app/generated/*.ts
 # index.ts) must still be formatted and checked. Each example adds its own.
 examples/icrc-ledger/src/canisters/icrc1.ts
 examples/icrc-ledger/src/canisters/icrc1.envelope.json
+examples/icrc-ledger/src/canisters/icp_ledger.ts
+examples/icrc-ledger/src/canisters/icp_ledger.envelope.json

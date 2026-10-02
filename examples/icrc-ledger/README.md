@@ -9,7 +9,11 @@ tabs:
   principal you type. The balance is `skipToken` until `isPrincipal()` accepts
   the owner. "Not a ledger" shows the error panel, which names the failure's
   `kind` and says whether the call may have executed. "Certified reads" makes
-  the ledger `{ id, certified: true }`.
+  the ledger `{ id, certified: true }`. For the ICP ledger, **Blocks** pages
+  through `query_blocks`: the ledger holds only its newest blocks, and for
+  older ranges its reply carries a callback (an archive canister and a
+  method) that `client.func(QueryArchiveFn, range.callback)` calls
+  (`src/blocks.ts`). "Genesis" reads the 2021 mints from the first archive.
 - **Sandbox** runs `createTestClient()` from `@ic-reactor/core/testing` in the
   page: a real client (it signs, sends and checks certificates) over the
   in-memory replica, with a mocked ICRC-1 ledger (`src/sandbox.ts`) that keeps
@@ -35,13 +39,14 @@ From the repository root, after `pnpm install` and `pnpm build`:
 ```sh
 pnpm --filter icrc-ledger dev        # http://localhost:5173
 pnpm --filter icrc-ledger test       # the sandbox ledger, the form, the Sandbox page
-pnpm --filter icrc-ledger smoke      # src/ledger.ts against mainnet, under Node 22.18+
+pnpm --filter icrc-ledger smoke      # src/ledger.ts and src/blocks.ts against mainnet, Node 22.18+
 pnpm --filter icrc-ledger gen:check  # fails if src/canisters/ is stale
 ```
 
-`src/canisters/icrc1.ts` is generated from `icrc1.did` by
-`@ic-reactor/vite-plugin` on every `vite dev` and `vite build` (`pnpm gen` runs
-`candid-core-cli gen` by hand). It is committed, and never edited.
+`src/canisters/` is generated from the `.did` files (`icrc1.did`, and the ICP
+ledger's block reads in `icp_ledger.did`) by `@ic-reactor/vite-plugin` on every
+`vite dev` and `vite build` (`pnpm gen` runs `candid-core-cli gen` by hand). It
+is committed, and never edited.
 
 ## Before and after
 
@@ -58,6 +63,9 @@ keys, retries, invalidation and `ReactorError` coming from the client.
 
 - `src/ledger.ts`: the mainnet client and the ledger on it.
 - `src/MainnetTab.tsx`, `src/ErrorPanel.tsx`: the Mainnet tab.
+- `src/blocks.ts`: `query_blocks` and its archive callbacks
+  (`icp_ledger.did`), tested over a mocked ledger and archive by
+  `src/blocks.test.ts`.
 - `src/sandbox.ts`: the test client and the mocked ledger, tested in Node by
   `src/sandbox.test.ts`; `src/SandboxTab.tsx` is its page, rendered in jsdom by
   `src/SandboxTab.test.tsx`.
