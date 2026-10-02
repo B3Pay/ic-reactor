@@ -245,6 +245,14 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   /** The `.did` files waiting for a run that has not started. See `onDidSaved`. */
   const queued = new Set<string>()
 
+  // Aborted when the build or dev server ends (`closeBundle`), which kills
+  // the generator processes then running and drops the runs still queued. A
+  // generator that outlived its server would keep Node alive for up to its
+  // timeout, and after a restart (a `vite.config` edit) it would write the
+  // same outDir as the new server's first run. A fresh controller follows each
+  // abort, since the same plugin object serves a server that is started again.
+  let stopper = new AbortController()
+
   const readDid = (canister: Generated): string | undefined => {
     try {
       return fs.readFileSync(didPath(canister), "utf-8")
@@ -259,12 +267,18 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * the canisters, since a rejection from a watcher callback could end the dev
    * server.
    *
+   * Resolves `undefined` when `signal` was aborted before it finished: the
+   * server it belonged to is gone, so nothing is recorded, logged or shown.
+   *
    * @param force - Generate even a canister whose `.did` text is unchanged.
+   * @param signal - The `stopper` signal current when the run was asked for.
    */
   const generateNow = async (
     wanted: Generated[],
-    force: boolean
-  ): Promise<Failure[]> => {
+    force: boolean,
+    signal: AbortSignal
+  ): Promise<Failure[] | undefined> => {
+    if (signal.aborted) return undefined
     try {
       const sources = new Map(
         wanted.map((canister) => [canister.name, readDid(canister)])
@@ -288,12 +302,15 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         cli,
         root: projectRoot,
         timeoutMs: GENERATE_TIMEOUT_MS,
+        signal,
         canisters: stale.map((canister) => ({
           name: canister.name,
           didFile: didPath(canister),
           outDir: path.resolve(projectRoot, canister.outDir),
         })),
       })
+
+      if (signal.aborted) return undefined
 
       if (result.stderr.trim()) {
         log.warn(
@@ -331,6 +348,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       }
       return failures
     } catch (error) {
+      if (signal.aborted) return undefined
       return wanted.map((canister) => ({ canister, message: describe(error) }))
     }
   }
@@ -400,9 +418,11 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     log.info(
       `ic-reactor: ${relativeToRoot(saved)} changed, regenerating ${affected.map(({ name }) => name).join(", ")}`
     )
+    const { signal } = stopper
     void serially(async () => {
       queued.delete(saved)
-      publish(affected, await generateNow(affected, true))
+      const failures = await generateNow(affected, true, signal)
+      if (failures) publish(affected, failures)
     })
   }
 
@@ -540,13 +560,24 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       // starts a rebuild, and the rebuild's buildStart regenerates.
       for (const canister of generated) this.addWatchFile(didPath(canister))
 
-      const failures = await serially(() => generateNow(generated, false))
+      const { signal } = stopper
+      const failures = await serially(() =>
+        generateNow(generated, false, signal)
+      )
+      if (!failures) return
       if (failures.length > 0 && (failOnError ?? command === "build")) {
         // A build that exits 0 would ship whatever stale bindings are still on
         // disk, which no longer match the canister.
         this.error(describeFailures(failures))
       }
       publish(generated, failures)
+    },
+
+    // The end of a build, and the close of a dev server, which Vite reports
+    // here once for each of its environments.
+    closeBundle() {
+      stopper.abort()
+      stopper = new AbortController()
     },
   }
 

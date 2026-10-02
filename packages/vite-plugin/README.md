@@ -109,6 +109,9 @@ affected.
   died: when it was generating several canisters, each is run again alone and
   only the one that hangs fails. A hang therefore costs up to two timeouts
   (120 seconds) before the others are generated.
+- Closing the dev server (or restarting it, as a `vite.config` edit does) kills
+  a generator that is still running and drops the runs still waiting, so none
+  outlives the server it belonged to or runs beside the next one.
 - A declaration the generator cannot represent is left out of the module, and
   the plugin logs each one as a warning, for example
   `ic-reactor: ledger: omitted declaration Bad (reserved_field_name)`.

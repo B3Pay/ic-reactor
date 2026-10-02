@@ -126,17 +126,24 @@ interface ProcessResult {
   problem?: string
   /** Whether Node could not start the process at all, so another try would fail the same way. */
   unstartable?: boolean
+  /** Whether the caller stopped the process, so nothing is left to try. */
+  stopped?: boolean
 }
 
 const keep = (text: string, chunk: string) =>
   text.length >= MAX_OUTPUT_BYTES ? text : text + chunk
 
-/** Run `node <bin> ...args` in `cwd` and settle with what it did. Never rejects. */
+/**
+ * Run `node <bin> ...args` in `cwd` and settle with what it did. Never
+ * rejects. Aborting `signal` kills the process, and a signal that is already
+ * aborted starts none.
+ */
 function runProcess(
   bin: string,
   args: string[],
   cwd: string,
-  timeoutMs: number
+  timeoutMs: number,
+  signal?: AbortSignal
 ): Promise<ProcessResult> {
   return new Promise((resolve) => {
     let stdout = ""
@@ -144,11 +151,27 @@ function runProcess(
     let timedOut = false
     let settled = false
 
+    const stopped: Omit<ProcessResult, "stdout" | "stderr"> = {
+      code: null,
+      signal: null,
+      problem: "was stopped",
+      stopped: true,
+    }
+    if (signal?.aborted) {
+      resolve({ stdout, stderr, ...stopped })
+      return
+    }
+
     const settle = (result: Omit<ProcessResult, "stdout" | "stderr">) => {
       if (settled) return
       settled = true
       clearTimeout(timer)
+      signal?.removeEventListener("abort", stop)
       resolve({ stdout, stderr, ...result })
+    }
+    const stop = () => {
+      child.kill("SIGKILL")
+      settle(stopped)
     }
 
     // No shell, and stdin closed: the CLI never reads it, and a child that
@@ -162,6 +185,7 @@ function runProcess(
       timedOut = true
       child.kill("SIGKILL")
     }, timeoutMs)
+    signal?.addEventListener("abort", stop, { once: true })
 
     child.stdout.setEncoding("utf-8")
     child.stderr.setEncoding("utf-8")
@@ -257,6 +281,14 @@ function formatDiagnostic(diagnostic: unknown): string {
   return [lead, ...extra].join("\n")
 }
 
+/** What every generator process of one `generate` call shares. */
+interface Context {
+  cli: string
+  root: string
+  timeoutMs: number
+  signal?: AbortSignal
+}
+
 /** One `.did` to write into one output directory, for each canister that names the pair. */
 interface Unit {
   names: string[]
@@ -273,17 +305,16 @@ interface Unit {
  * others are generated. A hang costs one more wait for that unit, and no more.
  */
 async function runGroup(
-  cli: string,
-  root: string,
+  context: Context,
   outDir: string,
-  units: Unit[],
-  timeoutMs: number
+  units: Unit[]
 ): Promise<GenerateResult> {
   const run = await runProcess(
-    cli,
+    context.cli,
     ["gen", ...units.map((unit) => unit.didFile), "-o", outDir, "--json"],
-    root,
-    timeoutMs
+    context.root,
+    context.timeoutMs,
+    context.signal
   )
 
   let entries: ReportEntry[] | undefined
@@ -299,9 +330,9 @@ async function runGroup(
   }
 
   if (!entries) {
-    if (units.length > 1 && !run.unstartable) {
+    if (units.length > 1 && !run.unstartable && !run.stopped) {
       const results = await Promise.all(
-        units.map((unit) => runGroup(cli, root, outDir, [unit], timeoutMs))
+        units.map((unit) => runGroup(context, outDir, [unit]))
       )
       return {
         outcomes: results.flatMap((result) => result.outcomes),
@@ -351,7 +382,8 @@ function quoteNames(names: string[]): string {
 
 /**
  * Generate `canisters` with the CLI at `cli`: one process for each output
- * directory, run side by side. Never rejects.
+ * directory, run side by side. Never rejects. Aborting `signal` kills the
+ * processes that are running, and their canisters fail as stopped.
  *
  * Canisters that name the same `.did` and the same `outDir` are one
  * generation: the CLI gets the file once, and its outcome belongs to each of
@@ -363,13 +395,10 @@ function quoteNames(names: string[]): string {
  * `outDir` collide) are refused here, naming both. The CLI would otherwise
  * refuse the whole run with a usage error.
  */
-export async function generate(request: {
-  cli: string
-  root: string
-  canisters: GenerateCanister[]
-  timeoutMs: number
-}): Promise<GenerateResult> {
-  const { cli, root, timeoutMs } = request
+export async function generate(
+  request: Context & { canisters: GenerateCanister[] }
+): Promise<GenerateResult> {
+  const { root } = request
   // Each pair of .did and outDir once, and the module each would write.
   const units = new Map<string, Unit>()
   const claimed = new Map<string, Unit>()
@@ -409,9 +438,7 @@ export async function generate(request: {
     groups.set(unit.outDir, [...(groups.get(unit.outDir) ?? []), unit])
   }
   const results = await Promise.all(
-    [...groups].map(([outDir, members]) =>
-      runGroup(cli, root, outDir, members, timeoutMs)
-    )
+    [...groups].map(([outDir, members]) => runGroup(request, outDir, members))
   )
   return {
     outcomes: [...outcomes, ...results.flatMap((result) => result.outcomes)],
