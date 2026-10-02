@@ -74,9 +74,9 @@ const CHECKS = [
   },
 ]
 
-/** Parses `X.Y.Z` (no prerelease) into numbers. */
+/** Parses `X.Y.Z`, or `X.Y.Z-<prerelease>` (read as `X.Y.Z`), into numbers. */
 function parseVersion(text) {
-  const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(text)
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?$/.exec(text)
   if (!match) return undefined
   return match.slice(1).map(Number)
 }
@@ -93,17 +93,22 @@ function compareVersions(a, b) {
  * The lowest version each `||` alternative of a peer range accepts.
  *
  * Supports the shapes this repo writes (`^X.Y.Z`, `~X.Y.Z`, `>=X.Y.Z`,
- * `X.Y.Z`, and `||` between them) and refuses anything else, so a new kind of
- * range fails here loudly instead of being pinned to a guess.
+ * `X.Y.Z`, an exact prerelease `X.Y.Z-<tag>`, and `||` between them) and
+ * refuses anything else, so a new kind of range fails here loudly instead of
+ * being pinned to a guess. A prerelease is accepted only exact, as core pins
+ * `@candid-core/schema` (D24): its floor is then the version itself.
  */
 function alternativeFloors(range) {
   return range.split("||").map((part) => {
     const text = part.trim()
-    const match = /^(\^|~|>=)?(\d+\.\d+\.\d+)$/.exec(text)
+    const match =
+      /^(?:(\^|~|>=)?(\d+\.\d+\.\d+)|(\d+\.\d+\.\d+-[0-9A-Za-z.-]+))$/.exec(
+        text
+      )
     if (!match) {
       throw new Error(`Cannot tell the lowest version of range "${range}"`)
     }
-    return match[2]
+    return match[2] ?? match[3]
   })
 }
 
