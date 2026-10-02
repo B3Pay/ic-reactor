@@ -362,9 +362,22 @@ export function createTestClient(
   refuseNext(status: number, times?: number): void
   /**
    * Every request the client sent the fake replica, in order, as the fake saw
-   * it: the endpoint, the canister and method, the caller it verified, and why
-   * it was refused or dropped when it was. The same array grows; copy it to
-   * keep a moment of it.
+   * it. The same array grows; copy it to keep a moment of it.
+   *
+   * An entry has an `endpoint` (`"status"`, `"query"`, `"call"` or
+   * `"read_state"`) and, where they apply:
+   *
+   * - `canisterId`: the canister the request was addressed to, as text.
+   * - `effectiveCanisterId`: the canister it was routed by. It differs from
+   *   `canisterId` for a call to the management canister (`aaaaa-aa`), where
+   *   the client takes it from the call's arguments.
+   * - `methodName`: the method a `query` or `call` named.
+   * - `caller`: the principal the request came from, as text, after the fake
+   *   checked its signature. A canister's `ctx.caller` is this.
+   * - `refused`: why the fake answered before any canister saw the request: a
+   *   signature, delegation or target that did not check out, as a replica
+   *   refuses it, or a `refuseNext()` status.
+   * - `dropped`: `true` when `dropNextReply()` lost the reply to it.
    */
   readonly requests: readonly FakeReplicaRequest[]
 } {
