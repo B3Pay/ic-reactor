@@ -10,11 +10,11 @@
 The React bindings of ic-reactor 4: three `'use client'` exports over a client
 made by [`@ic-reactor/core`](../core/README.md).
 
-| Export            | What it is                                                                     |
-| ----------------- | ------------------------------------------------------------------------------ |
-| `ReactorProvider` | Owns one client per tree and gives TanStack Query that client's `QueryClient`. |
-| `useClient`       | The client of the nearest provider.                                            |
-| `useAuth`         | Who calls (`status`, `principal`), with `signIn` and `signOut`.                |
+| Export            | What it is                                                               |
+| ----------------- | ------------------------------------------------------------------------ |
+| `ReactorProvider` | Gives a tree one client, and TanStack Query that client's `QueryClient`. |
+| `useClient`       | The client of the nearest provider.                                      |
+| `useAuth`         | Who calls (`status`, `principal`), with `signIn` and `signOut`.          |
 
 There is no hook that wraps `useQuery` or `useMutation`: read and write
 canisters with TanStack Query's own hooks and the options the client builds.
@@ -33,9 +33,20 @@ exactly this package's version (the two are released together).
 ## Provide a client
 
 `ReactorProvider` takes a factory, not a client, and calls it once for each
-mounted provider. `createClient` does no work until the client is used, so the
-same line runs in a server render (anonymous, no auth built) and in the browser
-(signed in).
+mounted provider. When it unmounts, it disposes the client only if that factory
+call created it. Both ways of writing the factory are fine:
+
+- **The provider owns the client.** A factory that creates it,
+  `client={() => createClient({ ... })}`, gives each mounted provider a client
+  of its own, and the provider disposes it when it unmounts. Use this in an
+  app that renders on a server: the factory runs once per request.
+- **The app owns the client.** A client created at module scope, one per tab
+  and used outside React too, is handed over as `client={() => client}`. The
+  provider borrows it and never disposes it, however many times it mounts and
+  unmounts: the app decides when it ends.
+
+`createClient` does no work until the client is used, so the same line runs in
+a server render (anonymous, no auth built) and in the browser (signed in).
 
 ```tsx
 "use client"
@@ -63,6 +74,34 @@ framework that renders Server Components, keep the factory in a client module
 like this one: a function cannot cross from a Server Component into a client
 one, so `<Providers>` is what the server layout renders.
 
+A client the app owns, in a browser-only app:
+
+```tsx
+"use client"
+
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider } from "@ic-reactor/react"
+import { AuthClient } from "@icp-sdk/auth/client"
+import type { ReactNode } from "react"
+
+// One client for this tab, also used outside React.
+export const client = createClient({
+  network: "ic",
+  auth: () => new AuthClient(),
+})
+
+export function Providers({ children }: { children: ReactNode }) {
+  return <ReactorProvider client={() => client}>{children}</ReactorProvider>
+}
+```
+
+Who owns a client follows from when it was created, not from where the factory
+is written. A getter that creates the shared client on its first call
+(`client ??= createClient(...)`) makes the first provider that calls it the
+owner, and that provider disposes it when it unmounts: create a shared client
+eagerly, as above. In development, a provider that is given a client which is
+already disposed logs an error that names the fix.
+
 ## Who is signed in
 
 ```tsx
@@ -89,8 +128,9 @@ anything else; the object it returns is the same until one changes.
 ## On a server
 
 - **One client per request.** A server renders each request as a tree of its
-  own, so the factory runs once per request, and no cache or caller is shared
-  between two users. Never build the client at module scope on a server.
+  own, so a factory that creates the client runs once per request, and no
+  cache or caller is shared between two users. Never build the client at
+  module scope on a server: a module-scope client is for a browser-only app.
 - **Anonymous first render.** `useAuth()` is `anonymous` on a server and on the
   first render of a hydrating page, even when the browser holds a session: the
   server has none, and the HTML has to match. A signed-in browser renders again
@@ -103,22 +143,23 @@ anything else; the object it returns is the same until one changes.
 
 ## Life of the client
 
-The provider disposes its client when it unmounts: it stops listening to the
-auth, disposes it, and clears the `QueryClient`. React's development
-double-mount (`StrictMode` unmounts and mounts every component at once) does
-not dispose a client in use, because the disposal is scheduled for the next
-macrotask and the second mount cancels it.
+The provider disposes a client its factory created when it unmounts: the
+client stops listening to the auth, disposes it, and clears the `QueryClient`.
+React's development double-mount (`StrictMode` unmounts and mounts every
+component at once) does not dispose a client in use, because the disposal is
+scheduled for the next macrotask and the second mount cancels it. A client the
+app owns is never disposed by a provider.
 
 Only the factory of the first render is used: passing another function on a
 later render does not rebuild the client. To replace the client, give the
 provider another `key`.
 
-When React shows a hidden `Activity` again after its client was disposed, the
-provider builds another one with the same factory. That client starts with an
-empty cache: hiding a provider inside an `Activity` drops everything it had
-fetched, because React cannot tell a hidden subtree from an unmounted one when
-it cleans up. To keep the cache across hiding, render the provider above the
-`Activity`.
+When React shows a hidden `Activity` again after the client the provider owns
+was disposed, the provider builds another one with the same factory. That
+client starts with an empty cache: hiding a provider inside an `Activity` drops
+everything it had fetched, because React cannot tell a hidden subtree from an
+unmounted one when it cleans up. To keep the cache across hiding, render the
+provider above the `Activity`, or give it a client the app owns.
 
 ## 3.x
 

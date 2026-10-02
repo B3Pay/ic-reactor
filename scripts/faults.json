@@ -96,8 +96,82 @@
     "testName": "keeps the client and the factory it was given when the parent renders again",
     "why": "the factory called on every render instead of once per mounted provider",
     "file": "src/index.tsx",
-    "search": "  const [client, setClient] = useState(build)\n",
-    "replace": "  const [, setClient] = useState(build)\n  const client = build()\n"
+    "search": "  const [held, setHeld] = useState(() => hold(build))\n",
+    "replace": "  const [, setHeld] = useState(() => hold(build))\n  const held = hold(build)\n"
+  },
+  {
+    "id": "ir6-module-client-disposed-on-unmount",
+    "package": "react",
+    "test": "tests/ownership.test.tsx",
+    "testName": "stays usable through three renders and unmounts in a row",
+    "why": "every client treated as the provider's own, so an unmount disposes a module-scope client and the next provider gets it back already disposed (#780)",
+    "file": "src/index.tsx",
+    "search": "typeof serial === \"number\" ? serial > before : clientsCreated() > before",
+    "replace": "true"
+  },
+  {
+    "id": "ir6-module-client-disposed-after-strict-mode",
+    "package": "react",
+    "test": "tests/ownership.test.tsx",
+    "testName": "is never disposed under StrictMode's double mount, nor by the unmount after it",
+    "why": "every client treated as the provider's own, so the unmount after StrictMode's double mount disposes a module-scope client",
+    "file": "src/index.tsx",
+    "search": "typeof serial === \"number\" ? serial > before : clientsCreated() > before",
+    "replace": "true"
+  },
+  {
+    "id": "ir6-shared-client-disposed-by-one-provider",
+    "package": "react",
+    "test": "tests/ownership.test.tsx",
+    "testName": "keeps working for one provider when another that shares it unmounts",
+    "why": "every client treated as the provider's own, so one provider's unmount disposes the client another provider still renders",
+    "file": "src/index.tsx",
+    "search": "typeof serial === \"number\" ? serial > before : clientsCreated() > before",
+    "replace": "true"
+  },
+  {
+    "id": "ir6-factory-client-borrowed",
+    "package": "react",
+    "test": "tests/strict-mode.test.tsx",
+    "testName": "disposes the client exactly once when it unmounts outside StrictMode too",
+    "why": "every client treated as borrowed, so a client the factory created is never disposed and its auth subscription and cache outlive the provider",
+    "file": "src/index.tsx",
+    "search": "typeof serial === \"number\" ? serial > before : clientsCreated() > before",
+    "replace": "false"
+  },
+  {
+    "id": "ir6-disposed-borrowed-client-silent",
+    "package": "react",
+    "test": "tests/ownership.test.tsx",
+    "testName": "says once, in development, that the client it was given is already disposed",
+    "why": "a provider handed a client its owner already disposed says nothing, so every call is cancelled with no hint why",
+    "file": "src/index.tsx",
+    "search": "      reportDisposed(client)\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6-client-count-per-module-copy",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "counts the clients of two copies of the package together",
+    "why": "the count of clients kept in the module instead of on globalThis, so two copies of core number their clients apart and a provider misreads which client its factory created",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "function nextSerial(): number {\n",
+        "replace": "let localCount = 0\nfunction nextSerial(): number {\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "  const count = (globalThis as { [CLIENTS_CREATED]?: unknown })[CLIENTS_CREATED]\n",
+        "replace": "  const count = localCount\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "    Object.defineProperty(globalThis, CLIENTS_CREATED, {",
+        "replace": "    localCount = serial\n    Object.defineProperty({}, CLIENTS_CREATED, {"
+      }
+    ]
   },
   {
     "id": "ir6-client-shared-across-requests",
@@ -109,12 +183,12 @@
       {
         "file": "src/index.tsx",
         "search": "const disposedClients = new WeakSet<Client>()\n",
-        "replace": "const disposedClients = new WeakSet<Client>()\nlet sharedClient: Client | undefined\n"
+        "replace": "const disposedClients = new WeakSet<Client>()\nlet sharedHeld: Held | undefined\n"
       },
       {
         "file": "src/index.tsx",
-        "search": "  const [client, setClient] = useState(build)\n",
-        "replace": "  const [client, setClient] = useState(() => (sharedClient ??= build()))\n"
+        "search": "  const [held, setHeld] = useState(() => hold(build))\n",
+        "replace": "  const [held, setHeld] = useState(() => (sharedHeld ??= hold(build)))\n"
       }
     ]
   },
