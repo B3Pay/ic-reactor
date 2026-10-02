@@ -84,6 +84,11 @@ void client.agentFor
 void client.current
 // @ts-expect-error internalsOf is not exported from the package entry
 void entry.internalsOf
+// The stamps ReactorProvider reads (the serial, the disposal flag) are no
+// part of the type: no symbol key, and indexing by one does not compile.
+expectTypeOf<Extract<keyof Client, symbol>>().toBeNever()
+// @ts-expect-error the serial is internal
+void client[Symbol.for("ic-reactor.client.serial")]
 expectTypeOf(internalsOf(client).agentFor).parameter(0).toEqualTypeOf<string>()
 expectTypeOf(internalsOf(client).agentFor).returns.toEqualTypeOf<
   Promise<HttpAgent>

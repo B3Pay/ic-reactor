@@ -71,7 +71,8 @@ current when it was made, or not at all.
 
 One client per browser tab, or per request on a server. In React,
 `<ReactorProvider client={() => createClient(...)}>` builds it once per
-mounted tree and disposes it on unmount. Inside, `useClient()` returns it and
+mounted tree and disposes it on unmount; a module-scope client passed as
+`client={() => client}` is borrowed, never disposed. Inside, `useClient()` returns it and
 `useAuth()` returns `{ status, principal, signIn, signOut }`, `"anonymous"`
 on a server and in a hydrating page's first render.
 
@@ -122,8 +123,7 @@ Methods take and return the generated types:
 | `variant { A : T; B }`                   | `{ tag: "A"; value: T } \| { tag: "B" }`       |
 
 Make principals from user input with `principal(text)`, which throws a
-`TypeError` for anything but canonical principal text: catch it and refuse
-the input. In render, test with `isPrincipal(text)` first.
+`TypeError` for invalid text: catch it and refuse the input. In render, test with `isPrincipal(text)` first.
 
 Direct calls take the parameters `type Actor` lists; the builders below take
 them as one value: nothing for none, the value for one, a tuple `[a, b]` for
@@ -172,7 +172,7 @@ export function Balance({ owner }: { owner: Principal | undefined }) {
 }
 ```
 
-`skipToken` (TanStack Query's) stands in for arguments not known yet;
+`skipToken` stands in for arguments not known yet;
 arguments that do not encode make the read reject `invalid_args`.
 
 Keys are `["ic-reactor", network, caller, canisterId, method, args]`, so one
@@ -207,8 +207,8 @@ export function Send({ arg }: { arg: TransferArg }) {
 ```
 
 - The mutation invalidates the canister's reads, for every caller, after a
-  success, a `canister_err` and a failure that may have executed: the write
-  may have happened. Nothing else is needed after an unknown outcome.
+  success, a `canister_err` and a failure that may have executed. Nothing
+  else is needed after an unknown outcome.
   A third argument, `{ invalidates: [canister, [canister, "method"]] }`,
   names other reads; `[]`, none. To add an `onSettled`, call the client's
   from yours.

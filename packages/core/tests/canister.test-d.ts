@@ -133,6 +133,37 @@ const nothing = new MutationObserver(
 )
 void nothing.mutate()
 
+// An onMutate of the app's composes with the given one: it spreads the given
+// one's result (the canister and reads resolved for the run) into its own,
+// and onSettled still reads them from the context.
+const transferOptions = client.mutationOptions(ledger, "icrc1_transfer")
+const optimistic = new MutationObserver(client.queryClient, {
+  ...transferOptions,
+  onMutate: (variables: icrc1.TransferArg, context?: unknown) => ({
+    ...transferOptions.onMutate(variables, context),
+    previous: client.queryClient.getQueryData(balance.queryKey),
+  }),
+})
+expectTypeOf(optimistic.getCurrentResult().context?.previous).toEqualTypeOf<
+  bigint | undefined
+>()
+expectTypeOf(
+  optimistic.getCurrentResult().error
+).toEqualTypeOf<ReactorError<icrc1.TransferError> | null>()
+
+// TanStack's optimistic-update recipe as written, an onMutate that replaces
+// the given one, compiles as well: onSettled takes whatever an onMutate of
+// the app's returns, and finds the run through the run's context instead.
+const replaced = new MutationObserver(client.queryClient, {
+  ...transferOptions,
+  onMutate: () => ({
+    previous: client.queryClient.getQueryData(balance.queryKey),
+  }),
+})
+expectTypeOf(replaced.getCurrentResult().context?.previous).toEqualTypeOf<
+  bigint | undefined
+>()
+
 // Reads of any canister of the client, or of one of their methods.
 client.mutationOptions(ledger, "icrc1_transfer", {
   invalidates: [

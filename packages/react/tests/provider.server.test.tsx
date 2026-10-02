@@ -13,7 +13,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { ReactorProvider, useAuth, useClient } from "../src/index.js"
 import {
   anonymousClient,
+  bindingsWith,
   clientWithAuth,
+  fakeFinalizationRegistry,
   testAuth,
   trackedFactory,
 } from "./helpers.js"
@@ -22,6 +24,7 @@ const storage = Object.getOwnPropertyDescriptor(globalThis, "localStorage")
 
 afterEach(() => {
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
   if (storage === undefined) {
     Reflect.deleteProperty(globalThis, "localStorage")
   } else {
@@ -125,6 +128,34 @@ describe("ReactorProvider on a server", () => {
     expect(seen).toHaveLength(2)
     expect(seen[0]).not.toBe(seen[1])
     expect(made).toHaveLength(2)
+  })
+
+  it("registers no client for disposal at collection, since the rest of the request still uses it", async () => {
+    // A server keeps no state once a component has rendered, while the
+    // children it renders later in the same request still call through the
+    // client. A registration against that state could dispose the client in
+    // the middle of the request, at whatever moment a collection runs.
+    const registry = fakeFinalizationRegistry()
+    const fresh = await bindingsWith(registry.Registry)
+    const { factory, made, disposals } = trackedFactory(() =>
+      clientWithAuth(() => testAuth({ identity: 1 }))
+    )
+    function Page() {
+      return <p>{fresh.useAuth().status}</p>
+    }
+
+    const html = renderToString(
+      <fresh.ReactorProvider client={factory}>
+        <Page />
+      </fresh.ReactorProvider>
+    )
+    registry.collectAll()
+
+    expect(html).toBe("<p>anonymous</p>")
+    expect(made).toHaveLength(1)
+    expect(registry.cleanups).toHaveLength(0)
+    expect(registry.registered).toEqual([])
+    expect(disposals()).toBe(0)
   })
 
   it("names the provider when a component reads the client outside one", () => {
