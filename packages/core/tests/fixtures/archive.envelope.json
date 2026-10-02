@@ -1,0 +1,259 @@
+{
+  "contract": {
+    "actor": {
+      "kind": "service",
+      "service": 0
+    },
+    "canonicalization_profile": "candid-core-canon-1",
+    "declarations": [
+      {
+        "name": "ArchivedRange",
+        "type": 10
+      },
+      {
+        "name": "Block",
+        "type": 6
+      },
+      {
+        "name": "BlockRange",
+        "type": 12
+      },
+      {
+        "name": "GetBlocksArgs",
+        "type": 2
+      },
+      {
+        "name": "GetBlocksResponse",
+        "type": 4
+      },
+      {
+        "name": "NotifyFn",
+        "type": 14
+      },
+      {
+        "name": "QueryArchiveFn",
+        "type": 11
+      }
+    ],
+    "format": "candid-core",
+    "format_version": 1,
+    "identities": {
+      "contract": "candid-core:contract:v1:sha256:0b8fec779e84bb50dc28135b085fc3dc3433b8f21dfbd12ce0c6abbf169d78f9",
+      "interface": "candid-core:interface:v1:sha256:72404c96af27cec36ed1703ad7da8e0c6e3395da8f34c4a05cfaca8151e56d10"
+    },
+    "producer": {
+      "candid_parser_version": "0.4.0",
+      "candid_version": "0.10.30",
+      "name": "candid-core",
+      "version": "0.1.0-beta.3"
+    },
+    "semantics_profile": "candid-1",
+    "types": [
+      {
+        "kind": "service",
+        "methods": [
+          {
+            "function": 1,
+            "id": 2557582927,
+            "name": "get_blocks"
+          },
+          {
+            "function": 13,
+            "id": 3050329177,
+            "name": "notify_hook"
+          }
+        ]
+      },
+      {
+        "args": [
+          2
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          4
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 2215343202,
+            "type": 3
+          },
+          {
+            "id": 2668074214,
+            "type": 3
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat"
+      },
+      {
+        "fields": [
+          {
+            "id": 1779015299,
+            "type": 3
+          },
+          {
+            "id": 2817142406,
+            "type": 5
+          },
+          {
+            "id": 4171053571,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 6,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 1213809850,
+            "type": 7
+          },
+          {
+            "id": 3189021458,
+            "type": 3
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 8,
+        "kind": "vec"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat8"
+      },
+      {
+        "inner": 10,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 2131139013,
+            "type": 11
+          },
+          {
+            "id": 2215343202,
+            "type": 3
+          },
+          {
+            "id": 2668074214,
+            "type": 3
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          2
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          12
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 2817142406,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          14
+        ]
+      },
+      {
+        "args": [
+          15
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          3
+        ]
+      },
+      {
+        "kind": "primitive",
+        "primitive": "text"
+      }
+    ]
+  },
+  "extensions": {
+    "org.candid-core.field-names/v1": [
+      [
+        2,
+        2215343202,
+        "start"
+      ],
+      [
+        2,
+        2668074214,
+        "length"
+      ],
+      [
+        4,
+        1779015299,
+        "first_index"
+      ],
+      [
+        4,
+        2817142406,
+        "blocks"
+      ],
+      [
+        4,
+        4171053571,
+        "archived_blocks"
+      ],
+      [
+        6,
+        1213809850,
+        "memo"
+      ],
+      [
+        6,
+        3189021458,
+        "index"
+      ],
+      [
+        10,
+        2131139013,
+        "callback"
+      ],
+      [
+        10,
+        2215343202,
+        "start"
+      ],
+      [
+        10,
+        2668074214,
+        "length"
+      ],
+      [
+        12,
+        2817142406,
+        "blocks"
+      ]
+    ]
+  }
+}

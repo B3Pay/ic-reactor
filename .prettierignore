@@ -65,3 +65,8 @@ evals/runs/
 # The pilots' aggregated results, kept byte for byte as evals/drive.mjs wrote
 # them: they are the record PREREGISTRATION.md cites.
 evals/results/
+
+# packages/core/tests/fixtures/: modules and a Contract envelope written by
+# `candid-core-cli gen`, kept byte for byte (see the README there).
+packages/core/tests/fixtures/*.ts
+packages/core/tests/fixtures/*.envelope.json

@@ -1,0 +1,14 @@
+{
+  "edits": [
+    {
+      "file": "src/types.ts",
+      "search": "    ? (...args: P) => Promise<Unwrap<R>>",
+      "replace": "    ? (...args: Textify<P>) => Promise<Unwrap<R>>"
+    },
+    {
+      "file": "src/types.ts",
+      "search": "declare const actorType: unique symbol",
+      "replace": "declare const actorType: unique symbol\n\ntype Textify<T> = T extends string\n  ? string\n  : T extends Uint8Array\n    ? T\n    : T extends object\n      ? { [K in keyof T]: Textify<T[K]> }\n      : T"
+    }
+  ]
+}

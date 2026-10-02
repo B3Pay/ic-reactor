@@ -1,0 +1,5 @@
+{
+  "file": "src/types.ts",
+  "search": "} & { readonly [actorType]?: A }",
+  "replace": "} & { readonly [actorType]?: A } & {\n  readonly [method: string]: (...args: any[]) => Promise<any>\n}"
+}
