@@ -7,3 +7,4 @@
  * @packageDocumentation
  */
 export type { Network } from "./network.js"
+export { formatUnits, parseUnits } from "./units.js"
