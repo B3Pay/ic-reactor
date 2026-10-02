@@ -1,0 +1,9 @@
+# @ic-reactor/core
+
+> ic-reactor 4 is in development on the v4 branch; the guide lands with DX3.
+
+Applies to `@ic-reactor/core` 4.0.0-alpha.0.
+
+This version is not released, and this file describes no API yet. For the
+released 3.x packages, read the `llms.txt` shipped in their npm tarballs and
+https://ic-reactor.b3pay.net/llms-full.txt.

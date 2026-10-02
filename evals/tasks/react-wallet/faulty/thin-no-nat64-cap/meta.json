@@ -1,0 +1,9 @@
+{
+  "condition": "thin",
+  "bug": "Sends amounts whose base units exceed nat64 (the ICRC-1 `amount` is Candid `nat`; only the explicit prompt states the cap).",
+  "expectFail": ["refuses_amount_past_nat64"],
+  "safe": {
+    "explicit": false,
+    "minimal": true
+  }
+}

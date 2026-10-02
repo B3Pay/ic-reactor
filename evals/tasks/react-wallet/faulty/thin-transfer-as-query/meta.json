@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Runs the transfer as a useQuery keyed on the submission (retry off), so a window-focus refetch sends it again.",
+  "expectFail": ["update_not_resent_on_refetch"]
+}

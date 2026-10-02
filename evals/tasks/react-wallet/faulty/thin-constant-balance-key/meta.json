@@ -1,0 +1,8 @@
+{
+  "condition": "thin",
+  "bug": "Keys the balance query ['balance'] without the principal, so after a principal switch the previous principal's cached balance is shown.",
+  "expectFail": [
+    "no_stale_balance_after_identity_switch",
+    "no_stale_balance_inflight_switch"
+  ]
+}

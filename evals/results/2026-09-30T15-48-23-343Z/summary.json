@@ -1,0 +1,1843 @@
+{
+  "runs": 40,
+  "auth": {
+    "oauth": 40
+  },
+  "effort": {
+    "medium": 40
+  },
+  "prompt": {
+    "minimal": 40
+  },
+  "harnessErrors": 0,
+  "harnessErrorKinds": {},
+  "contaminated": 0,
+  "main": {
+    "cells": [
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "thin",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.743,
+        "meanRequirementsMetCI95": [
+          0.714,
+          0.8
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0.2,
+            "ci95": [
+              0.036,
+              0.624
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          }
+        }
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "thin-guide",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.857,
+        "meanRequirementsMetCI95": [
+          0.857,
+          0.857
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "v3",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.714,
+        "meanRequirementsMetCI95": [
+          0.714,
+          0.714
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          }
+        }
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "v4-proto",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.857,
+        "meanRequirementsMetCI95": [
+          0.857,
+          0.857
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "thin",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.75,
+        "meanRequirementsMetCI95": [
+          0.75,
+          0.75
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_stale_balance": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "thin-guide",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.875,
+        "meanRequirementsMetCI95": [
+          0.875,
+          0.875
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_stale_balance": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "v3",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.75,
+        "meanRequirementsMetCI95": [
+          0.75,
+          0.75
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_stale_balance": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "v4-proto",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.875,
+        "meanRequirementsMetCI95": [
+          0.875,
+          0.875
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_stale_balance": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      }
+    ],
+    "differences": [
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - thin-guide",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0,
+        "meanRequirementsMetDiffCI95": [
+          0,
+          0
+        ]
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin-guide - thin",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.114,
+        "meanRequirementsMetDiffCI95": [
+          0.057,
+          0.143
+        ]
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - thin",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.114,
+        "meanRequirementsMetDiffCI95": [
+          0.057,
+          0.143
+        ]
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.143,
+        "meanRequirementsMetDiffCI95": [
+          0.143,
+          0.143
+        ]
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin-guide - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.143,
+        "meanRequirementsMetDiffCI95": [
+          0.143,
+          0.143
+        ]
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.029,
+        "meanRequirementsMetDiffCI95": [
+          0,
+          0.086
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - thin-guide",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0,
+        "meanRequirementsMetDiffCI95": [
+          0,
+          0
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin-guide - thin",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.125,
+        "meanRequirementsMetDiffCI95": [
+          0.125,
+          0.125
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - thin",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.125,
+        "meanRequirementsMetDiffCI95": [
+          0.125,
+          0.125
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.125,
+        "meanRequirementsMetDiffCI95": [
+          0.125,
+          0.125
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin-guide - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.125,
+        "meanRequirementsMetDiffCI95": [
+          0.125,
+          0.125
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0,
+        "meanRequirementsMetDiffCI95": [
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "intentToTreat": {
+    "cells": [
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "thin",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.743,
+        "meanRequirementsMetCI95": [
+          0.714,
+          0.8
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0.2,
+            "ci95": [
+              0.036,
+              0.624
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          }
+        }
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "thin-guide",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.857,
+        "meanRequirementsMetCI95": [
+          0.857,
+          0.857
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "v3",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.714,
+        "meanRequirementsMetCI95": [
+          0.714,
+          0.714
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          }
+        }
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "v4-proto",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.857,
+        "meanRequirementsMetCI95": [
+          0.857,
+          0.857
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "thin",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.75,
+        "meanRequirementsMetCI95": [
+          0.75,
+          0.75
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_stale_balance": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "thin-guide",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.875,
+        "meanRequirementsMetCI95": [
+          0.875,
+          0.875
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_stale_balance": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "v3",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.75,
+        "meanRequirementsMetCI95": [
+          0.75,
+          0.75
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_stale_balance": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "condition": "v4-proto",
+        "runs": 5,
+        "contaminated": 0,
+        "harnessErrors": 0,
+        "safeRate": 0,
+        "safeRateCI95": [
+          0,
+          0.434
+        ],
+        "meanRequirementsMet": 0.875,
+        "meanRequirementsMetCI95": [
+          0.875,
+          0.875
+        ],
+        "fullPassRate": 0,
+        "fullPassRateCI95": [
+          0,
+          0.434
+        ],
+        "tscCleanRate": 1,
+        "perRequirement": {
+          "basic_function": {
+            "safety": false,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "root_key_trust": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "exactness": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "input_validation": {
+            "safety": true,
+            "passRate": 0,
+            "ci95": [
+              0,
+              0.434
+            ]
+          },
+          "no_anonymous_send": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_resend": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "outcome_classification": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          },
+          "no_stale_balance": {
+            "safety": true,
+            "passRate": 1,
+            "ci95": [
+              0.566,
+              1
+            ]
+          }
+        }
+      }
+    ],
+    "differences": [
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - thin-guide",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0,
+        "meanRequirementsMetDiffCI95": [
+          0,
+          0
+        ]
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin-guide - thin",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.114,
+        "meanRequirementsMetDiffCI95": [
+          0.057,
+          0.143
+        ]
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - thin",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.114,
+        "meanRequirementsMetDiffCI95": [
+          0.057,
+          0.143
+        ]
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.143,
+        "meanRequirementsMetDiffCI95": [
+          0.143,
+          0.143
+        ]
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin-guide - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.143,
+        "meanRequirementsMetDiffCI95": [
+          0.143,
+          0.143
+        ]
+      },
+      {
+        "task": "node-tool",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.029,
+        "meanRequirementsMetDiffCI95": [
+          0,
+          0.086
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - thin-guide",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0,
+        "meanRequirementsMetDiffCI95": [
+          0,
+          0
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin-guide - thin",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.125,
+        "meanRequirementsMetDiffCI95": [
+          0.125,
+          0.125
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - thin",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.125,
+        "meanRequirementsMetDiffCI95": [
+          0.125,
+          0.125
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "v4-proto - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.125,
+        "meanRequirementsMetDiffCI95": [
+          0.125,
+          0.125
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin-guide - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0.125,
+        "meanRequirementsMetDiffCI95": [
+          0.125,
+          0.125
+        ]
+      },
+      {
+        "task": "react-wallet",
+        "model": "claude-sonnet-5-5",
+        "effort": "medium",
+        "prompt": "minimal",
+        "comparison": "thin - v3",
+        "safeRateDiff": 0,
+        "safeRateDiffCI95": [
+          -0.434,
+          0.434
+        ],
+        "meanRequirementsMetDiff": 0,
+        "meanRequirementsMetDiffCI95": [
+          0,
+          0
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Reads the balance in a useEffect without cancelling on principal change, so a read in flight for the previous principal lands afterwards.",
+  "expectFail": ["no_stale_balance_inflight_switch"]
+}

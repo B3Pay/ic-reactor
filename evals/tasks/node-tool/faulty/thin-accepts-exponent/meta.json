@@ -1,0 +1,5 @@
+{
+  "condition": "thin",
+  "bug": "Reads exponent notation (\"1e3\") as a number of whole tokens and sends it, instead of refusing text that is not a plain decimal.",
+  "expectFail": ["refuses_malformed_amount"]
+}
