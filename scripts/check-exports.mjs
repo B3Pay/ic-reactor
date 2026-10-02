@@ -528,15 +528,100 @@ function packageDirsOf(rootDir, packagesDir = PACKAGES_DIR) {
 }
 
 /**
- * Every place a manifest of the repository (the root's and each package's)
- * declares a dependency on `name`.
+ * The directory patterns of `pnpm-workspace.yaml`'s `packages:` list, read
+ * without a YAML parser: the list is a flat sequence of quoted or bare
+ * strings. `!pattern` excludes. Empty when there is no workspace file.
+ */
+function workspacePatternsOf(rootDir) {
+  const path = join(rootDir, "pnpm-workspace.yaml")
+  if (!existsSync(path)) return []
+  const patterns = []
+  let inPackages = false
+  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
+    if (/^packages:\s*$/.test(line)) {
+      inPackages = true
+      continue
+    }
+    if (!inPackages) continue
+    const item = /^\s+-\s+["']?([^"'#]+?)["']?\s*(#.*)?$/.exec(line)
+    if (item) patterns.push(item[1])
+    else if (/^\S/.test(line)) inPackages = false
+  }
+  return patterns
+}
+
+/**
+ * The directories a workspace pattern names, relative to `rootDir`: `*`
+ * matches one directory, `**` any depth. `node_modules` and dot-directories
+ * are never entered.
+ */
+function expandPattern(rootDir, pattern) {
+  const walk = (dir, segments) => {
+    if (segments.length === 0) return [dir]
+    const [head, ...rest] = segments
+    const childrenOf = (at) => {
+      const full = join(rootDir, at)
+      if (!existsSync(full)) return []
+      return readdirSync(full, { withFileTypes: true })
+        .filter(
+          (dirent) =>
+            dirent.isDirectory() &&
+            dirent.name !== "node_modules" &&
+            !dirent.name.startsWith(".")
+        )
+        .map((dirent) => (at === "" ? dirent.name : `${at}/${dirent.name}`))
+    }
+    if (head === "**") {
+      return [
+        ...walk(dir, rest),
+        ...childrenOf(dir).flatMap((child) => walk(child, segments)),
+      ]
+    }
+    if (head === "*")
+      return childrenOf(dir).flatMap((child) => walk(child, rest))
+    return walk(dir === "" ? head : `${dir}/${head}`, rest)
+  }
+  return walk("", pattern.split("/").filter(Boolean))
+}
+
+/**
+ * Every manifest of the repository: the root's, each publishable package's
+ * under `packagesDir`, and every workspace member `pnpm-workspace.yaml`
+ * names (e2e, docs, examples), since any of them could declare a dependency
+ * the root install then resolves for all.
+ */
+function workspaceManifestsOf(rootDir, packagesDir) {
+  const patterns = workspacePatternsOf(rootDir)
+  const excluded = new Set(
+    patterns
+      .filter((pattern) => pattern.startsWith("!"))
+      .flatMap((pattern) => expandPattern(rootDir, pattern.slice(1)))
+  )
+  const dirs = new Set([
+    ...packageDirsOf(rootDir, packagesDir),
+    ...patterns
+      .filter((pattern) => !pattern.startsWith("!"))
+      .flatMap((pattern) => expandPattern(rootDir, pattern)),
+  ])
+  return [
+    "package.json",
+    ...[...dirs]
+      .filter(
+        (dir) =>
+          !excluded.has(dir) && existsSync(join(rootDir, dir, "package.json"))
+      )
+      .sort()
+      .map((dir) => `${dir}/package.json`),
+  ]
+}
+
+/**
+ * Every place a manifest of the repository (the root's, each package's and
+ * every other workspace member's) declares a dependency on `name`.
  */
 function declaredVersions(rootDir, name, packagesDir) {
   const found = []
-  const manifests = [
-    "package.json",
-    ...packageDirsOf(rootDir, packagesDir).map((dir) => `${dir}/package.json`),
-  ]
+  const manifests = workspaceManifestsOf(rootDir, packagesDir)
   for (const manifestPath of manifests) {
     const path = join(rootDir, manifestPath)
     if (!existsSync(path)) continue

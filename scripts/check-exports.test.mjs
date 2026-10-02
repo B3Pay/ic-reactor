@@ -999,6 +999,47 @@ describe("the version of the schema that packages declare", () => {
     )
   })
 
+  it("reads every workspace member, not only packages/", () => {
+    const workspace = [
+      "packages:",
+      '  - "packages/*"',
+      '  - "e2e"',
+      "  - examples/*/*",
+      '  - "!examples/skipped/*"',
+      "",
+    ].join("\n")
+    const failures = (() => {
+      const files = { ...schema, "pnpm-workspace.yaml": workspace }
+      for (const [path, fields] of Object.entries({
+        "package.json": { devDependencies: { "@candid-core/schema": "9.0.0" } },
+        "e2e/package.json": {
+          devDependencies: { "@candid-core/schema": "^9.0.0" },
+        },
+        "examples/apps/wallet/package.json": {
+          dependencies: { "@candid-core/schema": "9.0.1" },
+        },
+        "examples/skipped/old/package.json": {
+          dependencies: { "@candid-core/schema": "8.0.0" },
+        },
+        "examples/apps/wallet/node_modules/dep/package.json": {
+          dependencies: { "@candid-core/schema": "7.0.0" },
+        },
+      })) {
+        files[path] = manifest("some-package", fields)
+      }
+      return collect({ rootDir: makeRepo(files), budget }).failures
+    })()
+    assert.equal(failures.length, 2, failures.join("\n"))
+    assert.match(
+      failures.join("\n"),
+      /e2e\/package\.json declares @candid-core\/schema "\^9\.0\.0"/
+    )
+    assert.match(
+      failures.join("\n"),
+      /examples\/apps\/wallet\/package\.json declares @candid-core\/schema "9\.0\.1"/
+    )
+  })
+
   it("is satisfied by the real manifests", () => {
     const { failures } = collect({
       rootDir: repoRoot,
