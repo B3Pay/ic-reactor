@@ -179,6 +179,48 @@ describe("generation under vite dev", () => {
     expect(generatorRuns()).toHaveLength(2)
   })
 
+  // Many canisters, one interface: an ICP ledger and a ckBTC ledger on one
+  // `icrc1.did`. A save is one run for the file, not one for each name.
+  it("regenerates canisters that share a .did together, in one process", async () => {
+    const app = newApp(
+      { "did/icrc1.did": PING_DID, "did/b.did": PING_DID },
+      "real"
+    )
+    const { server, lines } = await serve(app.root, {
+      canisters: {
+        ckbtc_ledger: { didFile: "did/icrc1.did" },
+        icp_ledger: { didFile: "did/icrc1.did" },
+        other: { didFile: "did/b.did" },
+      },
+    })
+    const shared = path.join(app.root, "did/icrc1.did")
+    const other = path.join(app.root, "did/b.did")
+    // Startup: one process, and the shared file once.
+    expect(generatorRuns()).toEqual([[shared, other]])
+    expect(lines).toContain(
+      "info: ic-reactor: generated ckbtc_ledger, icp_ledger into src/canisters/icrc1.ts"
+    )
+    expect(lines.filter((line) => line.startsWith("error:"))).toEqual([])
+
+    fs.writeFileSync(
+      shared,
+      "service : { ping : () -> (); more : () -> () };\n"
+    )
+    server.watcher.emit("change", shared)
+    await vi.waitFor(() => expect(generatorRuns()).toHaveLength(2))
+    await vi.waitFor(() =>
+      expect(
+        fs.readFileSync(path.join(app.root, "src/canisters/icrc1.ts"), "utf-8")
+      ).toContain("more")
+    )
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    expect(generatorRuns()).toEqual([[shared, other], [shared]])
+    expect(lines).toContain(
+      "info: ic-reactor: did/icrc1.did changed, regenerating ckbtc_ledger, icp_ledger"
+    )
+  })
+
   it("tells the watcher about each configured .did, and regenerates one that is added again", async () => {
     const app = newApp({ "did/a.did": PING_DID, "did/b.did": PING_DID }, "real")
     const watching: Plugin = {
@@ -531,6 +573,56 @@ describe("generation under vite build", () => {
     expect(generatorRuns()).toEqual([])
   })
 
+  // Many canisters, one interface: each is named so that the `ic_env` cookie
+  // carries its ID, and they share the one module the generator writes.
+  it("generates one module for canisters that share a .did", async () => {
+    const app = newApp({ "did/icrc1.did": LEDGER }, "real")
+    const { result, lines } = buildApp(app.root, {
+      canisters: {
+        ckbtc_ledger: { didFile: "did/icrc1.did" },
+        icp_ledger: { didFile: "did/icrc1.did" },
+      },
+    })
+    await result
+
+    expect(exists(app, "src/canisters/icrc1.ts")).toBe(true)
+    // The generator was given the file once.
+    expect(generatorRuns()).toEqual([[path.join(app.root, "did/icrc1.did")]])
+    expect(lines).toContain(
+      "info: ic-reactor: generated ckbtc_ledger, icp_ledger into src/canisters/icrc1.ts"
+    )
+  })
+
+  it("fails each canister that shares a .did the generator rejects, with one message", async () => {
+    const app = newApp({ "did/bad.did": BROKEN_DID }, "real")
+    const { result } = buildApp(app.root, {
+      canisters: {
+        a: { didFile: "did/bad.did" },
+        b: { didFile: "did/bad.did" },
+      },
+    })
+
+    await expect(result).rejects.toThrow(
+      /could not generate 2 of 2 canisters:\n {2}- a \(did\/bad\.did\), b \(did\/bad\.did\): did_parse_error/
+    )
+    expect(generatorRuns()).toHaveLength(1)
+  })
+
+  it("generates one module for each outDir when canisters share a .did across directories", async () => {
+    const app = newApp({ "did/a.did": PING_DID }, "real")
+    const { result } = buildApp(app.root, {
+      canisters: {
+        one: { didFile: "did/a.did", outDir: "gen/one" },
+        two: { didFile: "did/a.did", outDir: "gen/two" },
+      },
+    })
+    await result
+
+    expect(exists(app, "gen/one/a.ts")).toBe(true)
+    expect(exists(app, "gen/two/a.ts")).toBe(true)
+    expect(generatorRuns()).toHaveLength(2)
+  })
+
   it("refuses two canisters that would write the same file and generates the other", async () => {
     const app = newApp(
       {
@@ -543,13 +635,15 @@ describe("generation under vite build", () => {
     const { result } = buildApp(app.root, {
       canisters: {
         first: { didFile: "one/ledger.did" },
+        // A canister that shares the refused file is refused with it.
         second: { didFile: "two/ledger.did" },
+        second_too: { didFile: "two/ledger.did" },
         third: { didFile: "three/other.did" },
       },
     })
 
     await expect(result).rejects.toThrow(
-      /second \(two\/ledger\.did\): would write src\/canisters\/ledger\.ts, which "first" already writes/
+      /second \(two\/ledger\.did\), second_too \(two\/ledger\.did\): would write src\/canisters\/ledger\.ts, which "first" already writes/
     )
     expect(exists(app, "src/canisters/ledger.ts")).toBe(true)
     expect(exists(app, "src/canisters/other.ts")).toBe(true)

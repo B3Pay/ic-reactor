@@ -72,8 +72,24 @@ Each entry of `canisters` takes:
 | `outDir`     | `"src/canisters"` | Where the generator writes, relative to the Vite root                                  |
 | `canisterId` | none              | A fixed ID for the cookie, which wins over the one `icp` reports                       |
 
-Two canisters cannot write the same file: `a/ledger.did` and `b/ledger.did` in
-one `outDir` both mean `ledger.ts`, and the second is refused with a message
+Canisters that share one interface share one module. An ICP ledger and a ckBTC
+ledger both on `icrc1.did` are two entries, so that the `ic_env` cookie carries
+each ID, and one generated module:
+
+```ts
+icReactor({
+  canisters: {
+    icp_ledger: { didFile: "did/icrc1.did" },
+    ckbtc_ledger: { didFile: "did/icrc1.did" },
+  },
+})
+```
+
+The generator is given `icrc1.did` once, writes `src/canisters/icrc1.ts` once,
+and a save of the file regenerates it once. (Naming a canister without a
+`didFile` is the same thing when only the cookie is wanted.) Different `.did`
+files that name the same module cannot share an `outDir`: `a/ledger.did` and
+`b/ledger.did` both mean `ledger.ts`, and the second is refused with a message
 naming both. Give one an `outDir` of its own.
 
 ## Generation
@@ -92,8 +108,8 @@ affected.
 - A declaration the generator cannot represent is left out of the module, and
   the plugin logs each one as a warning, for example
   `ic-reactor: ledger: omitted declaration Bad (reserved_field_name)`.
-- Editing a `.did` regenerates only that canister. Saves that arrive while it
-  runs collapse into one more run. `vite build --watch` regenerates a canister
+- Editing a `.did` regenerates only the canisters that name it. Saves that
+  arrive while it runs collapse into one more run. `vite build --watch` regenerates a canister
   only when its `.did` text changed.
 
 ### When generation fails

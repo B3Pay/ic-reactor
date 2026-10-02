@@ -46,12 +46,14 @@ export interface IcReactorPluginOptions {
    * - `didFile`: the canister's Candid interface, relative to the Vite root.
    *   The plugin runs `candid-core-cli gen` on it at the start of a build or
    *   dev server and again each time the file changes, regenerating only the
-   *   canister whose file changed. The generator names its output after the
-   *   file, so `didFile: "../backend/ledger.did"` writes `ledger.ts` (the
+   *   canisters that name the file that changed. The generator names its
+   *   output after the file, so `didFile: "../backend/ledger.did"` writes `ledger.ts` (the
    *   module: it exports `actor` and the type `Actor`) and
-   *   `ledger.envelope.json` into `outDir`. Two canisters cannot write the
-   *   same file: give one an `outDir` of its own. A canister without a
-   *   `didFile` generates nothing and is only named in the cookie.
+   *   `ledger.envelope.json` into `outDir`. Canisters that name the same
+   *   `didFile` and `outDir` share that one module, which is generated once.
+   *   Different `.did` files that would write the same module are refused:
+   *   give one an `outDir` of its own. A canister without a `didFile`
+   *   generates nothing and is only named in the cookie.
    * - `outDir`: where the generator writes, relative to the Vite root.
    *   Default: `"src/canisters"`.
    * - `canisterId`: a fixed ID for the cookie, which wins over the ID `icp`
@@ -195,7 +197,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     return result
   }
 
-  /** The canisters waiting for a run that has not started. See `onDidSaved`. */
+  /** The `.did` files waiting for a run that has not started. See `onDidSaved`. */
   const queued = new Set<string>()
 
   const readDid = (canister: Generated): string | undefined => {
@@ -255,25 +257,30 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       }
 
       const failures: Failure[] = []
-      for (const outcome of result.canisters) {
-        const { name } = outcome
-        const canister = stale.find((candidate) => candidate.name === name)
-        if (!canister) continue
+      for (const outcome of result.outcomes) {
+        // The names of one outcome share a `.did`, so they succeed or fail
+        // together and are reported once.
+        const members = stale.filter(({ name }) => outcome.names.includes(name))
+        const names = members.map(({ name }) => name).join(", ")
         if (outcome.status === "failed") {
-          generatedFrom.delete(name)
-          failures.push({ canister, message: outcome.failure ?? "" })
+          for (const canister of members) {
+            generatedFrom.delete(canister.name)
+            failures.push({ canister, message: outcome.failure ?? "" })
+          }
           continue
         }
-        const source = sources.get(name)
-        if (source !== undefined) generatedFrom.set(name, source)
+        for (const { name } of members) {
+          const source = sources.get(name)
+          if (source !== undefined) generatedFrom.set(name, source)
+        }
         if (outcome.status === "written" && outcome.module) {
           log.info(
-            `ic-reactor: generated ${name} into ${relativeToRoot(outcome.module)}`
+            `ic-reactor: generated ${names} into ${relativeToRoot(outcome.module)}`
           )
         }
         for (const { kind, name: what, reason, via } of outcome.omitted) {
           log.warn(
-            `ic-reactor: ${name}: omitted ${kind} ${what} (${reason}${via ? ` via ${via}` : ""})`
+            `ic-reactor: ${names}: omitted ${kind} ${what} (${reason}${via ? ` via ${via}` : ""})`
           )
         }
       }
@@ -335,23 +342,23 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   }
 
   /**
-   * A `.did` file was saved: regenerate its canister, and only that one. Saves
-   * that arrive while it runs collapse into one run after it, so the last
-   * saved file wins without runs piling up.
+   * A `.did` file was saved: regenerate the canisters that name it, and only
+   * those. Canisters with one interface share its file and its run. Saves that
+   * arrive while it runs collapse into one run after it, so the last saved
+   * file wins without runs piling up.
    */
   const onDidSaved = (file: string): void => {
-    for (const canister of generated) {
-      if (didPath(canister) !== path.normalize(file)) continue
-      if (queued.has(canister.name)) continue
-      queued.add(canister.name)
-      log.info(
-        `ic-reactor: ${relativeToRoot(didPath(canister))} changed, regenerating ${canister.name}`
-      )
-      void serially(async () => {
-        queued.delete(canister.name)
-        publish([canister], await generateNow([canister], true))
-      })
-    }
+    const saved = path.normalize(file)
+    const affected = generated.filter((canister) => didPath(canister) === saved)
+    if (affected.length === 0 || queued.has(saved)) return
+    queued.add(saved)
+    log.info(
+      `ic-reactor: ${relativeToRoot(saved)} changed, regenerating ${affected.map(({ name }) => name).join(", ")}`
+    )
+    void serially(async () => {
+      queued.delete(saved)
+      publish(affected, await generateNow(affected, true))
+    })
   }
 
   /** Log the guide line once, before anything else the plugin says. */

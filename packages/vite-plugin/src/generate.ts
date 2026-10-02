@@ -54,20 +54,26 @@ export interface GenerateCanister {
   outDir: string
 }
 
-/** What happened to one canister. */
-export interface CanisterOutcome {
-  name: string
+/**
+ * What happened to one `.did` written into one output directory: a module, or
+ * the reason there is none. It is the fate of every canister that names that
+ * pair, which is why it lists names. Canisters with one interface (an ICP
+ * ledger and a ckBTC ledger on `icrc1.did`) are one generation and one module.
+ */
+export interface Outcome {
+  /** The canisters this applies to, by their names in the plugin options. */
+  names: string[]
   /** The module the generator wrote or checked, when it said. */
   module?: string
   /** `written` when a file was created or changed, `unchanged` otherwise. */
   status: "written" | "unchanged" | "failed"
   omitted: Omission[]
-  /** Why the canister failed, in words fit for an error message. */
+  /** Why the generation failed, in words fit for an error message. */
   failure?: string
 }
 
 export interface GenerateResult {
-  canisters: CanisterOutcome[]
+  outcomes: Outcome[]
   /**
    * What the processes that produced a report wrote to stderr. The generator
    * prints nothing there with `--json`, so any text is worth showing. The
@@ -248,28 +254,29 @@ function formatDiagnostic(diagnostic: unknown): string {
   return [lead, ...extra].join("\n")
 }
 
+/** One `.did` to write into one output directory, for each canister that names the pair. */
+interface Unit {
+  names: string[]
+  didFile: string
+  outDir: string
+}
+
 /**
- * One generator process for `canisters`, which all write into `outDir`. The
- * report names each canister's fate. A process that ends without a usable
- * report fails every canister it was given, unless there is more than one: it
- * could have been any of them, so each is run alone to find out.
+ * One generator process for `units`, which all write into `outDir`. The report
+ * names each unit's fate. A process that ends without a usable report fails
+ * every unit it was given, unless there is more than one: it could have been
+ * any of them, so each is run alone to find out.
  */
 async function runGroup(
   cli: string,
   root: string,
   outDir: string,
-  canisters: GenerateCanister[],
+  units: Unit[],
   timeoutMs: number
 ): Promise<GenerateResult> {
   const run = await runProcess(
     cli,
-    [
-      "gen",
-      ...canisters.map((canister) => canister.didFile),
-      "-o",
-      outDir,
-      "--json",
-    ],
+    ["gen", ...units.map((unit) => unit.didFile), "-o", outDir, "--json"],
     root,
     timeoutMs
   )
@@ -278,7 +285,7 @@ async function runGroup(
   let reason: string | undefined
   if (!run.problem) {
     try {
-      entries = parseReport(run.stdout, canisters.length)
+      entries = parseReport(run.stdout, units.length)
       // A process that crashed says so by its exit and its stderr.
       if (!entries && run.code === 0) reason = "it printed no report"
     } catch (error) {
@@ -288,21 +295,21 @@ async function runGroup(
 
   if (!entries) {
     // A timeout is not retried: it would cost the whole wait again for each
-    // canister.
-    if (canisters.length > 1 && !run.problem) {
+    // unit.
+    if (units.length > 1 && !run.problem) {
       const results: GenerateResult[] = []
-      for (const canister of canisters) {
-        results.push(await runGroup(cli, root, outDir, [canister], timeoutMs))
+      for (const unit of units) {
+        results.push(await runGroup(cli, root, outDir, [unit], timeoutMs))
       }
       return {
-        canisters: results.flatMap((result) => result.canisters),
+        outcomes: results.flatMap((result) => result.outcomes),
         stderr: results.map((result) => result.stderr).join(""),
       }
     }
     const failure = describeProcess(run, reason)
     return {
-      canisters: canisters.map(({ name }) => ({
-        name,
+      outcomes: units.map(({ names }) => ({
+        names,
         status: "failed",
         omitted: [],
         failure,
@@ -312,11 +319,11 @@ async function runGroup(
   }
 
   return {
-    canisters: canisters.map((canister, index): CanisterOutcome => {
+    outcomes: units.map((unit, index): Outcome => {
       const entry = entries[index]
       if (entry.status === "failed") {
         return {
-          name: canister.name,
+          names: unit.names,
           status: "failed",
           omitted: [],
           failure:
@@ -325,7 +332,7 @@ async function runGroup(
         }
       }
       return {
-        name: canister.name,
+        names: unit.names,
         module: entry.module,
         status: entry.status === "unchanged" ? "unchanged" : "written",
         omitted: entry.omitted,
@@ -335,14 +342,24 @@ async function runGroup(
   }
 }
 
+/** `"a"`, or `"a", "b"`: canister names as messages quote them. */
+function quoteNames(names: string[]): string {
+  return names.map((name) => `"${name}"`).join(", ")
+}
+
 /**
  * Generate `canisters` with the CLI at `cli`: one process for each output
  * directory, run side by side. Never rejects.
  *
- * Two canisters that would write the same file (the CLI names an output after
- * its `.did`, so `a/ledger.did` and `b/ledger.did` in one `outDir` collide) are
- * refused here, naming both, and the CLI would otherwise refuse the whole run
- * with a usage error.
+ * Canisters that name the same `.did` and the same `outDir` are one
+ * generation: the CLI gets the file once, and its outcome belongs to each of
+ * them. That is the case of many canisters with one interface (two ICRC-1
+ * ledgers on `icrc1.did`), which share one module.
+ *
+ * Different `.did` files that would write the same module (the CLI names an
+ * output after its `.did`, so `a/ledger.did` and `b/ledger.did` in one
+ * `outDir` collide) are refused here, naming both. The CLI would otherwise
+ * refuse the whole run with a usage error.
  */
 export async function generate(request: {
   cli: string
@@ -351,42 +368,59 @@ export async function generate(request: {
   timeoutMs: number
 }): Promise<GenerateResult> {
   const { cli, root, timeoutMs } = request
-  const refused: CanisterOutcome[] = []
-  const groups = new Map<string, GenerateCanister[]>()
-  const claimed = new Map<string, string>()
+  // Each pair of .did and outDir once, and the module each would write.
+  const units = new Map<string, Unit>()
+  const claimed = new Map<string, Unit>()
+  const refused = new Map<Unit, Unit>()
 
   for (const canister of request.canisters) {
-    const target = path.join(
-      canister.outDir,
-      path.basename(canister.didFile, path.extname(canister.didFile)) + ".ts"
-    )
-    const key = target.toLowerCase()
-    const owner = claimed.get(key)
-    if (owner !== undefined) {
-      refused.push({
-        name: canister.name,
-        status: "failed",
-        omitted: [],
-        failure:
-          `would write ${path.relative(root, target)}, which "${owner}" already writes. ` +
-          `The generator names a module after its .did file: rename one file or give one canister its own outDir`,
-      })
+    const key = JSON.stringify([canister.didFile, canister.outDir])
+    const same = units.get(key)
+    if (same) {
+      same.names.push(canister.name)
       continue
     }
-    claimed.set(key, canister.name)
-    groups.set(canister.outDir, [
-      ...(groups.get(canister.outDir) ?? []),
-      canister,
-    ])
+    const unit: Unit = {
+      names: [canister.name],
+      didFile: canister.didFile,
+      outDir: canister.outDir,
+    }
+    units.set(key, unit)
+    const target = moduleOf(unit).toLowerCase()
+    const owner = claimed.get(target)
+    if (owner) refused.set(unit, owner)
+    else claimed.set(target, unit)
   }
 
+  const outcomes: Outcome[] = [...refused].map(([unit, owner]) => ({
+    names: unit.names,
+    status: "failed",
+    omitted: [],
+    failure:
+      `would write ${path.relative(root, moduleOf(unit))}, which ${quoteNames(owner.names)} already writes. ` +
+      `The generator names a module after its .did file: rename one file or give one canister its own outDir`,
+  }))
+
+  const groups = new Map<string, Unit[]>()
+  for (const unit of units.values()) {
+    if (refused.has(unit)) continue
+    groups.set(unit.outDir, [...(groups.get(unit.outDir) ?? []), unit])
+  }
   const results = await Promise.all(
     [...groups].map(([outDir, members]) =>
       runGroup(cli, root, outDir, members, timeoutMs)
     )
   )
   return {
-    canisters: [...refused, ...results.flatMap((result) => result.canisters)],
+    outcomes: [...outcomes, ...results.flatMap((result) => result.outcomes)],
     stderr: results.map((result) => result.stderr).join(""),
   }
+}
+
+/** The module the CLI writes for `unit`: it names it after the `.did`. */
+function moduleOf(unit: Unit): string {
+  return path.join(
+    unit.outDir,
+    path.basename(unit.didFile, path.extname(unit.didFile)) + ".ts"
+  )
 }
