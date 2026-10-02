@@ -99,6 +99,55 @@ describe("who a handler is told called", () => {
     await expect(canister.address("y")).resolves.toBe(`y:${SEED_2}`)
   })
 
+  it("is the principal that signed the request, even when the account is switched while the call is in flight", async () => {
+    // The request carries its sender, and the fake verifies it. A handler that
+    // were told whoever is signed in when it runs would see the account that
+    // was switched to after the call went out. The switch is made after 0, 1,
+    // 2 ... microtasks of a call that is already on its way, so one of them
+    // lands between the signing and the handler, whatever the number of
+    // microtasks that takes.
+    const told: string[] = []
+    const live: string[] = []
+    const { canister, auth, client, requests } = withShapes({
+      who: ({ caller }) => {
+        told.push(caller)
+        live.push(client.caller())
+        return caller
+      },
+      address: (seed, { caller }) => {
+        told.push(caller)
+        live.push(client.caller())
+        return seed
+      },
+    })
+
+    for (const send of [
+      () => canister.who(),
+      () => canister.address("x"),
+    ] as const) {
+      for (let microtasks = 0; microtasks < 40; microtasks += 1) {
+        auth.switchTo(1)
+        const call = send()
+        for (let tick = 0; tick < microtasks; tick += 1) {
+          await Promise.resolve()
+        }
+        auth.switchTo(2)
+        // A call whose caller changed before it went out is cancelled: it
+        // sent nothing, so it told no handler anything.
+        await call.catch(() => undefined)
+      }
+    }
+
+    // Every call went out as the account it was made as, and the handler was
+    // told that, and not the other account the client is on by then.
+    expect(told).toEqual(canisterRequests({ requests }).map((r) => r.caller))
+    expect(told.length).toBeGreaterThan(0)
+    expect(told.every((caller) => caller === SEED_1)).toBe(true)
+    // The sweep reached the moment the test is about: a call signed by one
+    // principal, run after the client had moved on to the other.
+    expect(live).toContain(SEED_2)
+  })
+
   it("is the identity it was given, whether a seed or a key", async () => {
     const key = Ed25519KeyIdentity.generate()
     const byKey = withShapes({ who: ({ caller }) => caller }, { identity: key })

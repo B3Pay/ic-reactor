@@ -408,6 +408,30 @@
     "replace": "        caller: principal(\"aaaaa-aa\"),"
   },
   {
+    "id": "ir4b-handler-told-the-current-caller",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "is the principal that signed the request, even when the account is switched while the call is in flight",
+    "why": "a handler's ctx.caller read from the client at the moment the handler runs, instead of from the request the fake replica verified: a call made as one account and run after the client moved on to another tells the handler the other one, and a canister would never see that",
+    "edits": [
+      {
+        "file": "src/testing/test-client.ts",
+        "search": "type Handler = (...args: unknown[]) => unknown\n",
+        "replace": "type Handler = (...args: unknown[]) => unknown\nlet liveCaller = (): string => \"aaaaa-aa\"\n"
+      },
+      {
+        "file": "src/testing/test-client.ts",
+        "search": "        caller: principal(caller),",
+        "replace": "        caller: principal(liveCaller()),"
+      },
+      {
+        "file": "src/testing/test-client.ts",
+        "search": "  const limit = maxDepth ?? DEFAULT_MAX_DEPTH\n",
+        "replace": "  const limit = maxDepth ?? DEFAULT_MAX_DEPTH\n  liveCaller = () => client.caller()\n"
+      }
+    ]
+  },
+  {
     "id": "ir4b-one-result-not-wrapped",
     "package": "core",
     "test": "tests/testing-test-client.test.ts",
