@@ -65,7 +65,7 @@ const isBinOnly = (m) =>
  * exists to catch. The import check below warns when a listed package already
  * exports something, so a stale line does not go unnoticed.
  */
-const MAY_EXPORT_NOTHING = new Set(["@ic-reactor/core", "@ic-reactor/react"])
+const MAY_EXPORT_NOTHING = new Set(["@ic-reactor/react"])
 
 /**
  * Whether a package's ROOT entry may export nothing: only the
