@@ -471,6 +471,44 @@ describe("formatUnits", () => {
   })
 })
 
+describe("formatUnits text handed to Intl.NumberFormat", () => {
+  // The way formatUnits' documentation tells an app to add a locale's
+  // separators. The Intl types of this package's lib take a number or bigint
+  // only, so the text is cast; an app on lib ES2023 casts it to
+  // Intl.StringNumericLiteral instead.
+  const group = (text: string, options: Intl.NumberFormatOptions) =>
+    new Intl.NumberFormat("en-US", options).format(text as never)
+
+  it("keeps every digit when maximumFractionDigits covers them", () => {
+    expect(
+      group(formatUnits(123_456_789_000n, 8), { maximumFractionDigits: 8 })
+    ).toBe("1,234.56789")
+    // Past what a Number holds: 22 significant digits.
+    expect(
+      group(formatUnits(123_456_789_012_345_678_901n, 8), {
+        maximumFractionDigits: 8,
+      })
+    ).toBe("1,234,567,890,123.45678901")
+  })
+
+  it("rounds at its default of 3 digits, which is why the option is needed", () => {
+    expect(formatUnits(99_999_999n, 8)).toBe("0.99999999")
+    expect(group(formatUnits(99_999_999n, 8), {})).toBe("1")
+    expect(
+      group(formatUnits(99_999_999n, 8), { maximumFractionDigits: 8 })
+    ).toBe("0.99999999")
+  })
+
+  it("keeps padded zeros only when minimumFractionDigits asks for them", () => {
+    const padded = formatUnits(100_000_000n, 8, { minFractionDigits: 2 })
+    expect(padded).toBe("1.00")
+    expect(group(padded, { maximumFractionDigits: 8 })).toBe("1")
+    expect(
+      group(padded, { minimumFractionDigits: 2, maximumFractionDigits: 8 })
+    ).toBe("1.00")
+  })
+})
+
 describe("parseUnits and formatUnits", () => {
   // A small deterministic generator, so a failure reproduces.
   let seed = 0x2545f491
