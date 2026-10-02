@@ -20,7 +20,16 @@ import { fileURLToPath } from "node:url"
 
 export const EVALS = join(dirname(fileURLToPath(import.meta.url)), "..")
 export const TASKS = ["node-tool", "react-wallet"]
-export const CONDITIONS = ["v3", "thin", "thin-guide", "v4-proto"]
+/** Every condition the harness knows. */
+export const CONDITIONS = ["v3", "thin", "thin-guide", "v4-proto", "v4"]
+
+/**
+ * The conditions a batch runs when none is named: the pre-registered matrix
+ * (PREREGISTRATION.md). `v4` (the real ic-reactor 4 packages, issue #786)
+ * runs only when named, as Addendum 3 does: `--condition v4 --condition
+ * thin-guide`.
+ */
+export const DEFAULT_CONDITIONS = ["v3", "thin", "thin-guide", "v4-proto"]
 
 export function readJson(path) {
   return JSON.parse(readFileSync(path, "utf8"))
@@ -137,6 +146,12 @@ export function conditionDocDirs(condition) {
   return dirs.filter((dir) => existsSync(dir))
 }
 
+/** The version of `name` in the condition's node_modules, if it is installed. */
+function installedVersion(condition, name) {
+  const file = join(conditionNodeModules(condition), name, "package.json")
+  return existsSync(file) ? readJson(file).version : undefined
+}
+
 export function assembleStarter({
   task,
   condition,
@@ -172,8 +187,11 @@ export function assembleStarter({
   const pkg = readJson(join(EVALS, "conditions", base, "package.json"))
   const deps = { ...pkg.dependencies }
   for (const [name, range] of Object.entries(deps)) {
+    // A package built from this repository (v4-proto's prototype, v4's packed
+    // packages) shows the version that is installed, as npm would record it.
     if (String(range).startsWith("workspace:"))
-      deps[name] = spec.localVersion ?? "0.0.0"
+      deps[name] =
+        installedVersion(condition, name) ?? spec.localVersion ?? "0.0.0"
   }
   writeFileSync(
     join(dest, "package.json"),

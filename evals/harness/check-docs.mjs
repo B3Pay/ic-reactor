@@ -3,7 +3,7 @@
 // written, or with spaces for underscores), and no distinctive literal from a
 // hidden test file that the task prompts do not already make public.
 //
-//   node harness/check-docs.mjs [doc files...]   (default: every guide the harness author wrote)
+//   node harness/check-docs.mjs [doc files...]   (default: the three guides: v4-proto, thin-guide, v4)
 //
 // "Distinctive" = a string or numeric literal from a hidden test that holds a
 // digit, `_` or `.`, is at least 4 characters, is not an import specifier, and
@@ -25,6 +25,9 @@ import {
 const DEFAULT_DOCS = [
   "conditions/v4-proto/docs/llms.txt",
   "conditions/thin-guide/docs/llms.txt",
+  // Copied from the packed @ic-reactor/core by setup.mjs, which refuses it on
+  // a hit before copying; listed here so the default run covers it too.
+  "conditions/v4/docs/llms.txt",
 ]
 
 export function hiddenNeedles() {
@@ -97,21 +100,37 @@ export function checkDocs(files) {
 }
 
 /**
+ * Every hidden-test name, from task.json (the authoritative list), as
+ * written and with spaces for underscores. Taken from task.json rather than
+ * from hiddenNeedles(), where a name that is also a string literal in a test
+ * file is recorded under the file it was last seen in.
+ */
+export function hiddenTestNames() {
+  return TASKS.flatMap((task) =>
+    taskTests(taskSpec(task)).flatMap((name) => [
+      { needle: name, from: `${task}/task.json (test name)` },
+      {
+        needle: name.replaceAll("_", " "),
+        from: `${task}/task.json (test name, spaced)`,
+      },
+    ])
+  )
+}
+
+/**
  * The prompts of every variant: no hidden-test name (as written or spaced).
  * Literals are not checked here: the prompts are what makes a literal public.
  */
 export function checkPrompts() {
-  const names = [...hiddenNeedles()].filter(([, where]) =>
-    where.includes("(test name")
-  )
+  const names = hiddenTestNames()
   const hits = []
   for (const task of TASKS) {
     for (const variant of PROMPT_VARIANTS) {
       const file = promptFile(task, variant)
       const text = readFileSync(file, "utf8").toLowerCase()
-      for (const [needle, where] of names) {
+      for (const { needle, from } of names) {
         if (text.includes(needle.toLowerCase())) {
-          hits.push({ file: relative(EVALS, file), needle, from: where })
+          hits.push({ file: relative(EVALS, file), needle, from })
         }
       }
     }

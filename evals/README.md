@@ -6,16 +6,24 @@ Computer apps with a thin layer of typed, mode-gated per-method handles
 Query, or with ic-reactor 3 as published? It measures four conditions on the
 same tasks with the same hidden tests:
 
-| Condition    | Library the agent gets                                                                                                          | Generated input in the starter                                         | Docs in the starter (`docs/`)                                                                     | Words |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----- |
-| `v3`         | `@ic-reactor/core` + `@ic-reactor/react` 3.13.0 from npm, `@icp-sdk/core` 6.1.0, `@icp-sdk/auth` 10.0.1, TanStack Query 5.104   | `src/declarations/icrc1.did.{js,d.ts}` (`@icp-sdk/bindgen` output)     | `llms-full.txt` (repo root at 623b48c11 = 3.13.0) + the `llms.txt` shipped inside both packages   | 8,996 |
-| `thin`       | `@candid-core/schema` 0.2.0, `@icp-sdk/core`, `@icp-sdk/auth`, TanStack Query; no framework                                     | `src/generated/icrc1.ts` from `candid-core-cli gen` 0.1.0              | the READMEs shipped in `@candid-core/schema` 0.2.0 (2,274) and `@candid-core/cli` 0.1.0 (532)     | 2,806 |
-| `thin-guide` | identical to `thin` (same starter, generated module, dependencies)                                                              | identical to `thin`                                                    | thin's two READMEs + `llms.txt`, a guide for the thin stack matched to the v4-proto guide (1,792) | 4,598 |
-| `v4-proto`   | the throwaway prototype `@ic-reactor/v4-proto` (shipped as a built package: `package.json` + `dist/`) on the same stack as thin | the same `icrc1.ts` + `icrc1.service.ts` (hand-written: see "Threats") | `llms.txt` written for the prototype                                                              | 1,778 |
+| Condition    | Library the agent gets                                                                                                                                                                     | Generated input in the starter                                         | Docs in the starter (`docs/`)                                                                     | Words |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----- |
+| `v3`         | `@ic-reactor/core` + `@ic-reactor/react` 3.13.0 from npm, `@icp-sdk/core` 6.1.0, `@icp-sdk/auth` 10.0.1, TanStack Query 5.104                                                              | `src/declarations/icrc1.did.{js,d.ts}` (`@icp-sdk/bindgen` output)     | `llms-full.txt` (repo root at 623b48c11 = 3.13.0) + the `llms.txt` shipped inside both packages   | 8,996 |
+| `thin`       | `@candid-core/schema` 0.2.0, `@icp-sdk/core`, `@icp-sdk/auth`, TanStack Query; no framework                                                                                                | `src/generated/icrc1.ts` from `candid-core-cli gen` 0.1.0              | the READMEs shipped in `@candid-core/schema` 0.2.0 (2,274) and `@candid-core/cli` 0.1.0 (532)     | 2,806 |
+| `thin-guide` | identical to `thin` (same starter, generated module, dependencies)                                                                                                                         | identical to `thin`                                                    | thin's two READMEs + `llms.txt`, a guide for the thin stack matched to the v4-proto guide (1,792) | 4,598 |
+| `v4-proto`   | the throwaway prototype `@ic-reactor/v4-proto` (shipped as a built package: `package.json` + `dist/`) on the same stack as thin                                                            | the same `icrc1.ts` + `icrc1.service.ts` (hand-written: see "Threats") | `llms.txt` written for the prototype                                                              | 1,778 |
+| `v4`         | ic-reactor 4: `@ic-reactor/core` + `@ic-reactor/react` packed from this repository (shipped as `package.json` + `dist/`), `@candid-core/schema` 0.3.0-beta.1, `@icp-sdk/*`, TanStack Query | `src/generated/icrc1.ts` from `candid-core-cli gen` 0.2.0-beta.1       | the `llms.txt` packed into `@ic-reactor/core` (a placeholder until DX3, #785)                     | 48    |
 
 `thin-guide` is the honest comparator for v4-proto: a shipped thin layer would
 come with a guide too. Plain `thin` stays so the effect of the guide is
 separable (`thin-guide − thin` vs `v4-proto − thin-guide`).
+
+`v4` was added after the Decision (`PREREGISTRATION.md`): it is the gate for
+releasing ic-reactor 4.0.0-beta.1, run against a same-day `thin-guide`
+control (Addendum 3, a draft until the v4 references land). It runs only
+when named (`--condition v4`); a batch with no `--condition` runs the four
+conditions of the pilots. See "The v4 condition" below and
+`conditions/v4/README.md`.
 
 **One pilot has run with a real agent** (`claude-sonnet-5-5`, effort
 `medium`, 40 runs, explicit prompt: every cell at the ceiling; see
@@ -59,13 +67,23 @@ evals/
     starter/           condition-specific generated code
     docs/              the documentation that condition's agent is given (added to the base's docs)
   conditions/v4-proto/lib/   the prototype (src/, dist/, test/, SHIM-NOTES.md)
+  conditions/v4/      ic-reactor 4 packed from this repository (README.md, PORTING.md);
+                      its node_modules (setup, untracked) is a copy of .ship/v4's
   .ship/<condition>/node_modules   (setup) flat npm installs shipped to agents; gitignored
 ```
+
+`harness/ship.mjs` holds what setup refuses to ship for `v4` (a guide or
+package code that gives a hidden test away); `harness/ship.test.mjs` checks
+the refusal and the tree setup built.
 
 ## Running
 
 Node 22+, pnpm 10 (the repo's `packageManager`, via `npx pnpm@10.30.3` if
-needed), npm (for `.ship/`), and macOS for the agent sandbox.
+needed), npm (for `.ship/`), and macOS for the agent sandbox. For the `v4`
+condition `setup.mjs` also builds and packs `packages/core` and
+`packages/react` with `corepack pnpm`, so the repository's own workspace
+must be installed (`corepack pnpm install` at the root), and fetches
+`@candid-core/cli@0.2.0-beta.1` with `npx`.
 
 ```bash
 cd evals
@@ -81,8 +99,9 @@ node drive.mjs --preflight --model <m> --oauth-token-file <f>   # one tiny real 
 node drive.mjs --aggregate runs/<dir> [--pilot]      # re-aggregate saved results
 node drive.mjs --aggregate runs/<dir> --rescan       # … re-auditing each transcript with today's scanner
 node drive.mjs --aggregate runs/<dir> --rescore      # … re-scoring each stored solution with today's tests
+node drive.mjs --pilot --prompt minimal --condition v4 --condition thin-guide --dry-run   # Addendum 3's plan
 
-node --test harness/*.test.mjs                       # sandbox, leak audit, aggregation, driver, prompts
+node --test harness/*.test.mjs                       # sandbox, leak audit, aggregation, driver, prompts, v4 ship
 node harness/check-docs.mjs [files…]                 # docs vs hidden tests (exit 1 on a hit)
 
 # the prototype's own checks
@@ -184,8 +203,8 @@ a record without it predates the variants and counts as `explicit`. Cells are
 task × model × effort × prompt × condition: variants are never pooled and are
 compared only within themselves. A batch keeps its variant: `--resume` with
 another one is refused. `harness/assemble.test.mjs` checks, for both variants
-and both run modes, that the four conditions' prompts differ in the
-`{{LIBRARY}}` line only; that both variants state the contract the tests read;
+and both run modes, that every condition's prompt (`v4` included) differs
+from the others in the `{{LIBRARY}}` line only; that both variants state the contract the tests read;
 and that the minimal one matches none of the explicit rules' wording.
 
 ### The run modes
@@ -275,7 +294,10 @@ re-send on refetch/remount/focus and stale balance across identities.
 per task × condition; thin-guide's are thin's) must pass every test with clean
 tsc, and 29 faulty solutions (each its reference with one change) must type-check
 and fail exactly the tests in their `meta.json`; a `safe: { <variant>: bool }`
-in `meta.json` is checked too. Last run: **45/45**.
+in `meta.json` is checked too. Last run: **45/45**. A condition with no
+reference solution yet (`v4`, until its port: `conditions/v4/PORTING.md`) is
+skipped and named (`skip <task>/v4: no reference solutions yet`); with the
+v4 references and the six ported faulty solutions the gate is 55 solutions.
 
 | Faulty solution                               | Bug                                                        | Caught by                                                                                                       |
 | --------------------------------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
@@ -324,7 +346,9 @@ test name as written and spaced, every distinctive literal that the prompts of
 prompt states, such as `123456789012.34567891`, is a needle) in either guide,
 in any condition's docs, or in the public scaffold, and no test name in any
 prompt of either variant; a seeded file with three of them is caught.
-Paraphrase was reviewed by hand.
+Paraphrase was reviewed by hand. Its default list also holds
+`conditions/v4/docs/llms.txt`, which `setup.mjs` checks the same way before
+it copies the packed guide there.
 
 ## The v4-proto prototype
 
@@ -374,6 +398,25 @@ Also in `lib/SHIM-NOTES.md`, with file locations.
 7. **`unwrapResult` returns neither the arm schema nor the tag.**
 8. **Generated type names collapse by structure** (`TransferArg.amount` is
    `BlockIndex`; the .did says `Tokens`).
+
+## The v4 condition
+
+ic-reactor 4 itself, for the 4.0.0-beta.1 gate (issue #786; DECISIONS Q14 in
+#790; `PREREGISTRATION.md`, Addendum 3). `setup.mjs` builds
+`@ic-reactor/core` and `@ic-reactor/react` from this repository, packs them
+with `pnpm pack`, installs the tarballs with the pinned dependencies as a
+flat npm install into `.ship/v4` (no workspace links), refuses the tree if
+the core tarball's `llms.txt` or the packages' code gives a hidden test away,
+copies that `llms.txt` into `conditions/v4/docs/` (the only doc the agent
+gets), cuts both packages to `package.json` + `dist/`, and copies the result
+to `conditions/v4/node_modules` for the scorer, so the hidden tests run
+against exactly what agents get. The starter's `src/generated/icrc1.ts` is
+the output of the published `@candid-core/cli@0.2.0-beta.1`.
+
+Status: plumbing only. The guide is a placeholder until DX3 (#785); no
+reference or faulty solution exists until the client's builders (IR2t,
+#782) and the React bindings (IR6, #780) land; `conditions/v4/PORTING.md` is
+the port's work list. No `v4` agent run happens before Addendum 3 is frozen.
 
 ## Leak audit and sandbox
 

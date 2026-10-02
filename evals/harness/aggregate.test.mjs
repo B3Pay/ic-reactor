@@ -205,3 +205,23 @@ describe("not-applicable tests", () => {
     )
   })
 })
+
+describe("the v4 gate (PREREGISTRATION.md, Addendum 3)", () => {
+  it("compares v4 with thin-guide in the main and the intent-to-treat result", () => {
+    const minimal = (extra = {}) => ({ prompt: "minimal", ...extra })
+    const records = [
+      ...Array.from({ length: 5 }, () => record("v4", true, 1, minimal())),
+      ...Array.from({ length: 5 }, (_, i) =>
+        record("thin-guide", i < 4, i < 4 ? 1 : 0.5, minimal())
+      ),
+      record("v4", false, 0.5, minimal({ contaminated: true })),
+    ]
+    const summary = aggregate(records)
+    const diff = (result) =>
+      result.differences.find((d) => d.comparison === "v4 - thin-guide")
+    assert.equal(diff(summary.main).safeRateDiff, 0.2)
+    // 5/6 - 4/5 with the contaminated run kept.
+    assert.equal(diff(summary.intentToTreat).safeRateDiff, 0.033)
+    assert.equal(diff(summary.main).safeRateDiffCI95.length, 2)
+  })
+})

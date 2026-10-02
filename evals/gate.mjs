@@ -32,12 +32,18 @@ const tasks = opt("task") ? [opt("task")] : TASKS
 const jobs = Number(opt("jobs", "3"))
 
 const cases = []
+const skipped = []
 for (const task of tasks) {
   for (const condition of CONDITIONS) {
     // Every reference-like solution: `reference`, `reference-module-scope`, …
     const root = join(EVALS, "tasks", task, "solutions", condition)
-    for (const name of existsSync(root) ? readdirSync(root).sort() : []) {
-      if (!name.startsWith("reference")) continue
+    const references = existsSync(root)
+      ? readdirSync(root).filter((name) => name.startsWith("reference"))
+      : []
+    // A condition can exist before its solutions do (v4 until its references
+    // are ported): it is skipped, and said so, rather than failing the gate.
+    if (references.length === 0) skipped.push(`${task}/${condition}`)
+    for (const name of references.sort()) {
       cases.push({
         task,
         condition,
@@ -83,6 +89,10 @@ function score(c) {
     child.stderr.on("data", (d) => (err += d))
     child.on("close", (code) => resolve({ code, out, err }))
   })
+}
+
+for (const cell of skipped) {
+  process.stdout.write(`skip ${cell}: no reference solutions yet\n`)
 }
 
 const results = []
@@ -144,7 +154,11 @@ const bad = results.filter((r) => !r.ok)
 process.stdout.write(
   `\ngate: ${results.length - bad.length}/${results.length} solutions behaved as expected` +
     ` (${results.filter((r) => r.name.startsWith("reference")).length} references, ` +
-    `${results.filter((r) => !r.name.startsWith("reference")).length} faulty)\n`
+    `${results.filter((r) => !r.name.startsWith("reference")).length} faulty)` +
+    (skipped.length > 0
+      ? `; skipped, no reference solutions yet: ${skipped.join(", ")}`
+      : "") +
+    "\n"
 )
 if (bad.some((r) => r.line.startsWith("HARNESS"))) process.exit(2)
 process.exit(bad.length === 0 ? 0 : 1)

@@ -24,8 +24,13 @@
 // outside the run) are excluded from the main result and kept in the
 // intent-to-treat result; both are reported, with the counts.
 
-/** Pairs compared per task and model: the headline, the guide's effect, the rest. */
+/**
+ * Pairs compared per task and model: the real packages against the guide
+ * they were built from (Addendum 3, the 4.0.0-beta.1 gate), the original
+ * headline, the guide's effect, the rest.
+ */
 export const COMPARISONS = [
+  ["v4", "thin-guide"],
   ["v4-proto", "thin-guide"],
   ["thin-guide", "thin"],
   ["v4-proto", "thin"],

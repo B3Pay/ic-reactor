@@ -2,8 +2,56 @@
 //
 //   node --test harness/drive.test.mjs
 import { strict as assert } from "node:assert"
+import { spawnSync } from "node:child_process"
+import { join } from "node:path"
 import { describe, it } from "node:test"
 import { agentOutcome, plan } from "../drive.mjs"
+import { EVALS } from "./assemble.mjs"
+
+/** `drive.mjs --pilot --dry-run` with `extra`; no credential is needed. */
+function dryRun(extra = []) {
+  const r = spawnSync(
+    process.execPath,
+    [
+      join(EVALS, "drive.mjs"),
+      "--pilot",
+      "--prompt",
+      "minimal",
+      "--mode",
+      "tsc-only",
+      "--dry-run",
+      ...extra,
+    ],
+    {
+      cwd: EVALS,
+      env: { PATH: process.env.PATH, HOME: process.env.HOME },
+      encoding: "utf8",
+    }
+  )
+  assert.equal(r.status, 0, r.stderr)
+  return r.stdout
+}
+
+describe("conditions of a batch", () => {
+  it("are the pilots' four when none is named: v4 is never in by default", () => {
+    assert.match(
+      dryRun(),
+      /^cells: 8 \(tasks: node-tool, react-wallet; conditions: v3, thin, thin-guide, v4-proto\)$/m
+    )
+  })
+  it("are the named ones: Addendum 3's v4 and thin-guide", () => {
+    const out = dryRun(["--condition", "v4", "--condition", "thin-guide"])
+    assert.match(
+      out,
+      /^cells: 4 \(tasks: node-tool, react-wallet; conditions: v4, thin-guide\)$/m
+    )
+    assert.match(out, /^runs: 20 \(5 per cell\)/m)
+    assert.match(
+      out,
+      /^ {2}react-wallet × v4: 5 runs; docs\/: llms\.txt; minimal prompt/m
+    )
+  })
+})
 
 describe("plan", () => {
   const args = { tasks: ["a", "b"], conditions: ["x", "y", "z"], n: 4, seed: 7 }

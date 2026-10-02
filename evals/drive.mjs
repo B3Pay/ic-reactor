@@ -82,6 +82,7 @@ import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 import {
   CONDITIONS,
+  DEFAULT_CONDITIONS,
   EVALS,
   TASKS,
   PROMPT_VARIANTS,
@@ -278,7 +279,7 @@ function parseArgs(argv) {
     }
   }
   if (args.tasks.length === 0) args.tasks = [...TASKS]
-  if (args.conditions.length === 0) args.conditions = [...CONDITIONS]
+  if (args.conditions.length === 0) args.conditions = [...DEFAULT_CONDITIONS]
   for (const t of args.tasks) taskSpec(t)
   for (const c of args.conditions) {
     if (!CONDITIONS.includes(c)) throw new Error(`unknown condition ${c}`)
