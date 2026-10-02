@@ -57,15 +57,16 @@ const isBinOnly = (m) =>
 
 /**
  * The packages whose root entry may export nothing for now. On the v4 line the
- * 3.x runtime is removed and the 4 API arrives slice by slice (#790), so core
- * and react publish an empty entry until their first slice lands. Drop a
- * package from this set in the change that gives its entry its first export
- * (core: the first of the errors, network and units slices; react: IR6): from
- * then on an empty entry is a broken artifact again, which is what this check
- * exists to catch. The import check below warns when a listed package already
- * exports something, so a stale line does not go unnoticed.
+ * 3.x runtime was removed and the 4 API arrived slice by slice (#790), so core
+ * and react published an empty entry until their first slice landed. Both
+ * export their first names now, and the set is empty: an empty entry is a
+ * broken artifact again, which is what this check exists to catch. A package
+ * that has to publish an empty entry for a while is added here by name, and
+ * dropped in the change that gives it its first export; the import check below
+ * warns when a listed package already exports something, so a stale line does
+ * not go unnoticed.
  */
-const MAY_EXPORT_NOTHING = new Set(["@ic-reactor/react"])
+const MAY_EXPORT_NOTHING = new Set()
 
 /**
  * Whether a package's ROOT entry may export nothing: only the
