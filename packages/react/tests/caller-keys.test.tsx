@@ -160,18 +160,24 @@ async function serverRender() {
   return { server, json, html }
 }
 
-/** Hydrates `container` with `element`, returning what React reported. */
+/**
+ * Hydrates `container` with `element`, returning what React reported: the
+ * messages of its recoverable errors, the errors themselves, and its console.
+ */
 async function hydrate(element: ReactElement) {
   const recoverable: string[] = []
+  const reported: unknown[] = []
   const logged = vi.spyOn(console, "error").mockImplementation(() => {})
   await act(async () => {
     root = hydrateRoot(container, element, {
-      onRecoverableError: (error) =>
-        recoverable.push(String((error as Error).message)),
+      onRecoverableError: (error) => {
+        reported.push(error)
+        recoverable.push(String((error as Error).message))
+      },
     })
   })
   await act(macrotask)
-  return { recoverable, logged }
+  return { recoverable, reported, logged }
 }
 
 /** Every `innerHTML` of `container` that a commit left, in order. */
@@ -515,6 +521,96 @@ describe("useClient()", () => {
     )
     expect(whoamiCallers(browser)).toEqual([ANONYMOUS])
   })
+
+  it.each([false, true])(
+    "hands a nested ReactorProvider given it the client itself, which reads as the user after a signed-in reload and follows a sign-out and a sign-in (StrictMode: %s)",
+    async (strict) => {
+      const seen: Client[] = []
+      function Inner() {
+        const client = useClient()
+        seen.push(client)
+        const who = client.canister<Who>(WHO, { id: CANISTER })
+        const read = useQuery(client.queryOptions(who, "whoami"))
+        return (
+          <main data-caller={client.caller()}>
+            {read.isError ? "ERROR" : (read.data ?? "loading")}
+          </main>
+        )
+      }
+      // The hydrating render's useClient() is the anonymous view: the nested
+      // provider must hold the client it was made over, not the view.
+      function Outer() {
+        const client = useClient()
+        return (
+          <ReactorProvider client={() => client}>
+            <Inner />
+          </ReactorProvider>
+        )
+      }
+      const tree = (client: Client, state: DehydratedState) => {
+        const element = (
+          <ReactorProvider client={() => client}>
+            <HydrationBoundary state={state}>
+              <Outer />
+            </HydrationBoundary>
+          </ReactorProvider>
+        )
+        return strict ? <StrictMode>{element}</StrictMode> : element
+      }
+      const server = replica({ signedIn: false })
+      const serverWho = server.client.canister<Who>(WHO, { id: CANISTER })
+      await server.client.queryClient.prefetchQuery(
+        server.client.queryOptions(serverWho, "whoami")
+      )
+      const json = JSON.stringify(dehydrate(server.client.queryClient))
+      container.innerHTML = renderToString(
+        tree(server.client, JSON.parse(json))
+      )
+      const browser = replica({ seed: 7 })
+      const user = browser.auth.getPrincipal()?.toText()
+      const shown = () => container.querySelector("main")
+      const commits = watchCommits()
+      try {
+        const { recoverable } = await hydrate(
+          tree(browser.client, JSON.parse(json))
+        )
+        expect(recoverable).toEqual([])
+        await waitFor(() =>
+          expect(shown()?.textContent).toBe(`read by ${user}`)
+        )
+        expect(shown()?.dataset.caller).toBe(user)
+        for (let tick = 0; tick < 3; tick++) await act(macrotask)
+        // StrictMode mounts the reader twice, and each mount may read.
+        expect(new Set(whoamiCallers(browser))).toEqual(new Set([user]))
+        // The nested provider's tree, past its hydrating render, is on the
+        // outer provider's client itself.
+        expect(seen[seen.length - 1]).toBe(browser.client)
+
+        await act(async () => {
+          await browser.auth.signOut()
+        })
+        await waitFor(() =>
+          expect(shown()?.textContent).toBe(`read by ${ANONYMOUS}`)
+        )
+        expect(shown()?.dataset.caller).toBe(ANONYMOUS)
+
+        await act(async () => {
+          await browser.auth.signIn(3)
+        })
+        const next = browser.auth.getPrincipal()?.toText()
+        expect(next).not.toBe(user)
+        await waitFor(() =>
+          expect(shown()?.textContent).toBe(`read by ${next}`)
+        )
+        expect(shown()?.dataset.caller).toBe(next)
+        expect(
+          commits.commits.filter((html) => html.includes("ERROR"))
+        ).toEqual([])
+      } finally {
+        commits.stop()
+      }
+    }
+  )
 })
 
 /**
@@ -697,6 +793,54 @@ describe("a Suspense boundary still dehydrated below a component that renders wi
         else expect(recoverable).toEqual([])
         expect(logged).not.toHaveBeenCalled()
       })
+    }
+  )
+
+  it.each([
+    ["whose stored session expired", "expired"],
+    ["whose session is signed in elsewhere", "elsewhere"],
+  ] as const)(
+    "is rendered on the client when a useAuth() parent shows its status after hydrating, in a tab %s",
+    async (_, kind) => {
+      // The caller stays anonymous in such a tab, but the status differs from
+      // the server's, so the parent moves on as on a signed-in reload.
+      function StatusOnlyNav({ Late }: { Late: ComponentType }) {
+        const { status } = useAuth()
+        return (
+          <nav data-status={status}>
+            <Suspense fallback={<p>fallback</p>}>
+              <Late />
+            </Suspense>
+          </nav>
+        )
+      }
+      const empty: DehydratedState = { mutations: [], queries: [] }
+      const { server, browser } = await steadyTab(kind)
+      container.innerHTML = renderToString(
+        tree(server, empty, StatusOnlyNav, Content)
+      )
+      const served = container.querySelector("article")
+      expect(served?.textContent).toBe("from the server")
+
+      const { Late, deliver } = lateChunk(Content)
+      const { recoverable, logged } = await hydrate(
+        tree(browser, empty, StatusOnlyNav, Late)
+      )
+
+      expect(container.querySelector("nav")?.dataset.status).toBe(
+        ownStatus[kind]
+      )
+      expect(container.querySelector("p")?.textContent).toBe("fallback")
+      expect(served?.isConnected).toBe(false)
+      if (REACT_18) expect(recoverable.length).toBeGreaterThan(0)
+      else expect(recoverable).toEqual([])
+      expect(logged).not.toHaveBeenCalled()
+
+      await act(async () => deliver())
+      await act(macrotask)
+      expect(container.querySelector("article")?.textContent).toBe(
+        "from the server"
+      )
     }
   )
 
@@ -1104,14 +1248,16 @@ describe("a key whose read the hydrating render built, once the caller is anonym
     }
   )
 
+  // The rows without data guard an invariant: a reader with no data of the
+  // server's has nothing a cancelled read could leave behind.
   it.each([
-    ["with the server's data", true, false],
+    ["with the server's data", false, true],
     ["with the server's data", true, true],
     ["without data", false, false],
-    ["without data", false, true],
+    ["without data", true, false],
   ] as const)(
     "is shown by a useQuery reader %s whose sibling's suspense read suspends the move, never as an error (StrictMode: %s)",
-    async (_, withData, strict) => {
+    async (_, strict, withData) => {
       function Plain() {
         const client = useClient()
         const who = client.canister<Pair>(PAIR, { id: CANISTER })
@@ -1326,7 +1472,7 @@ describe("a suspense read the server did not dehydrate", () => {
     const browser = replica({ seed: 7 })
     const user = browser.auth.getPrincipal()?.toText()
     const commits = watchCommits()
-    const { recoverable } = await hydrate(tree(browser.client))
+    const { recoverable, reported } = await hydrate(tree(browser.client))
     await waitFor(() =>
       expect(container.querySelector("main")?.textContent).toBe(
         `read by ${user}`
@@ -1334,8 +1480,18 @@ describe("a suspense read the server did not dehydrate", () => {
     )
     commits.stop()
 
-    // React reports that it rendered the boundary on the client.
+    // React reports that it rendered the boundary on the client, with the
+    // cancelled read as the reason: the error itself on React 18, its
+    // `cause` on React 19. An `onRecoverableError` that forwards errors
+    // should ignore kind "cancelled".
     expect(recoverable.length).toBeGreaterThan(0)
+    expect(
+      reported.map((error) =>
+        REACT_18 ? error : (error as { cause?: unknown }).cause
+      )
+    ).toContainEqual(
+      expect.objectContaining({ kind: "cancelled", code: "caller_changed" })
+    )
     expect(whoamiCallers(browser)).toEqual([user])
 
     // Once nobody is current, the key the hydrating render read is read

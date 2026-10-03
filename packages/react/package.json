@@ -82,7 +82,7 @@
     {
       "name": "React bindings",
       "path": "dist/index.js",
-      "limit": "1.27 KB",
+      "limit": "1.28 KB",
       "gzip": true,
       "ignore": [
         "react",

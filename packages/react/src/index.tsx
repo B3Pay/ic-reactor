@@ -51,7 +51,8 @@ const disposedClients = new WeakSet<Client>()
  * client whose keys, read options, `caller()` and `authState()` are that
  * principal's (the client itself for one built with `identity`): what
  * {@link useClient} returns while it renders with a caller that is not the
- * live one. `Symbol.for` keys and a count on `globalThis`, so that this
+ * live one. Each such view carries the client it was made over, which
+ * {@link hold} keeps in its place. `Symbol.for` keys and a count on `globalThis`, so that this
  * module reads them from whichever copy of core made the client, and imports
  * nothing of core at run time.
  */
@@ -59,12 +60,14 @@ const CLIENTS_CREATED = Symbol.for("ic-reactor.clients.created")
 const CLIENT_SERIAL = Symbol.for("ic-reactor.client.serial")
 const CLIENT_DISPOSED = Symbol.for("ic-reactor.client.disposed")
 const CLIENT_AS = Symbol.for("ic-reactor.client.as")
+const CLIENT_OF = Symbol.for("ic-reactor.client.of")
 
 /** A client as core stamps it. */
 type Stamped = {
   readonly [CLIENT_SERIAL]?: unknown
   readonly [CLIENT_DISPOSED]?: unknown
   readonly [CLIENT_AS]?: (this: Client, principal: string) => Client
+  readonly [CLIENT_OF]?: Client
 }
 
 /** How many clients `createClient` has made in this realm so far. */
@@ -160,7 +163,10 @@ const unclaimed =
  */
 function hold(build: () => Client): Held {
   const before = clientsCreated()
-  const client = build()
+  const built = build()
+  // A view that a component's useClient() returned keeps its caller for good:
+  // hold the client it was made over, whose caller the tree then follows.
+  const client = (built as Stamped)[CLIENT_OF] ?? built
   const serial = (client as Stamped)[CLIENT_SERIAL]
   const owned =
     typeof serial === "number" ? serial > before : clientsCreated() > before
@@ -450,7 +456,11 @@ const anonymous = (): string => ANONYMOUS
  *
  * Build keys and options from what it returns in this render, never from a
  * client held at module scope: they are built for the caller this render
- * shows. It follows the client's caller with `useSyncExternalStore`, so a
+ * shows. Do not keep what it returns past the render either (in `useState`, a
+ * ref or a module variable): while a page hydrates it is a view for the
+ * anonymous caller, which never moves on. A nested {@link ReactorProvider}
+ * given it (`client={() => client}`) holds the client the view was made over.
+ * It follows the client's caller with `useSyncExternalStore`, so a
  * component that calls it renders again when the caller changes (a sign-in, a
  * switch of account, a sign-out) and never otherwise: a change of status that
  * leaves the caller as it is (a session that expired, or one signed in
@@ -477,7 +487,8 @@ const anonymous = (): string => ANONYMOUS
  *   code is still loading or its streamed HTML has not arrived, is rendered
  *   on the client when that component moves on: it shows its fallback
  *   instead of the server's HTML, and React 18 reports a recoverable error.
- *   Its data is still the user's. Render such a boundary where no component
+ *   Its data is still the user's. A `useAuth()` component also moves on in a
+ *   tab whose session expired or is signed in elsewhere. Render such a boundary where no component
  *   that renders with the caller sits above it, or pass it in as `children`,
  *   which a component's own update does not render again.
  * - A read the hydrating render built may still run once (TanStack Query
@@ -486,8 +497,11 @@ const anonymous = (): string => ANONYMOUS
  *   keeps it as it was, and a fetch of it resolves with that data. A key with
  *   none fails (`kind` `"cancelled"`, `code` `"caller_changed"`) until the
  *   anonymous caller is current again: the hydrating render's own reads never
- *   show that, but a `QueryCache` `onError` and an effect that awaits the
- *   fetch see it, so ignore `kind` `"cancelled"` there.
+ *   show that, but a `QueryCache` `onError`, an effect that awaits the fetch
+ *   and, for a `useSuspenseQuery` read the server rendered without
+ *   dehydrating its data, React's `onRecoverableError` (as the reported
+ *   error's `cause` on React 19) see it, so ignore `kind` `"cancelled"`
+ *   there.
  *
  * @throws Error outside a `ReactorProvider`, naming it.
  */
@@ -537,9 +551,10 @@ const serverState = (): AuthState => SERVER_STATE
  * that expired or is signed in elsewhere) renders the component again with its
  * own state right after hydration; an anonymous one does not, and keeps the
  * object. A component that reads `status` before then should show the same
- * thing signed out and while the session is read. On a signed-in reload, that
- * move renders a Suspense boundary that is still dehydrated below the
- * component on the client, as for {@link useClient}.
+ * thing signed out and while the session is read. Whenever it moves on after
+ * hydrating (a signed-in reload, or a session that expired or is signed in
+ * elsewhere), it renders a Suspense boundary still dehydrated below it on the
+ * client, as for {@link useClient}.
  *
  * `signIn` and `signOut` reject like {@link Client.signIn} and
  * {@link Client.signOut}: on a client built with `identity`, which has no
