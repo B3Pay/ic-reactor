@@ -233,16 +233,12 @@ It is carried as a product lesson, not as a measured claim.
 
 Approved by owner: yes, on 2026-09-30 ("stop here, ship the thin layer").
 
-## Addendum 3 — the 4.0.0-beta.1 gate (draft)
+## Addendum 3 — the 4.0.0-beta.1 gate
 
-**Status: Draft, to be frozen when the conditions under "Freezing" hold.**
-Drafted on 2026-10-02, before any agent run of the `v4` condition. The `v4`
-references, the six ported faulty solutions and one faulty solution of
-`v4`'s own landed the same day (`node gate.mjs --require v4`: 56 of 56);
-DX3's guide and the commit under test are still to come. The text above,
-including Addenda 1 and 2 and the Decision, is unchanged. Until it is frozen
-this addendum may still be edited; once frozen it changes only through a
-further dated addendum, and no `v4` agent run starts before it is frozen.
+**Status: Frozen on 2026-10-03, before any agent run of the `v4` condition.**
+Drafted on 2026-10-02. The text above, including Addenda 1 and 2 and the
+Decision, is unchanged. From here it changes only through a further dated
+addendum.
 
 **What it decides.** Not whether to build anything (the Decision above
 settled that), but whether ic-reactor 4 as packed may be released as
@@ -262,9 +258,15 @@ prompt.
   re-run in the same batch as a same-day control: same model, effort, prompt
   and harness.
 
-The commit under test, and the versions in
-`.ship/v4/node_modules/@ic-reactor/*/package.json`, are written into this
-addendum when it is frozen and into `results/README.md` with the results.
+**The commit under test** is `1ff26e511c89ced4c980814b0d53f09d931ab1b0`
+(branch `slice/dx5-run`: the `v4` branch with DX5 phase B, #807, and DX3,
+#808, merged; `packages/**` there is what those two pull requests merge into
+`v4`). `.ship/v4` built from it holds `@ic-reactor/core` 4.0.0-alpha.0,
+`@ic-reactor/react` 4.0.0-alpha.0 and `@candid-core/schema` 0.3.0-beta.1, and
+`conditions/v4/docs/llms.txt` is byte-identical to that commit's
+`packages/core/llms.txt` (1,970 words; `harness/check-docs.mjs`: 0 of 112
+needles). `node gate.mjs --require v4` on the same tree: 56 of 56. The
+versions are written into `results/README.md` with the results.
 
 **Fixed from the earlier addenda, unchanged.** The two tasks (`node-tool`,
 `react-wallet`), their hidden tests, the world, `task.json` (including
@@ -463,4 +465,41 @@ the `v4` references, the six ported faulty solutions and
 is DX3's guide as packed and passes `node harness/check-docs.mjs`; the
 commit under test is named above.
 
-Approved by owner: not yet (draft).
+Approved by owner: yes, on 2026-10-02, as the goal of the session that built
+4.0.0-beta.1 ("The eval gate passes on the real packages: the harness's `v4`
+condition, minimal prompt, both tasks, 5 runs each on Sonnet 5.5 at medium
+effort, 5 of 5 safe, and `gate.mjs` green"; "Run agent evals on my
+subscription with Sonnet 5.5 at medium effort, up to 60 runs in total"),
+which is this addendum's design (DECISIONS Q14); frozen by the lead on
+2026-10-03, with the conditions under "Freezing" met.
+
+## Result of Addendum 3 — 2026-10-03
+
+Recorded after the batch; Addendum 3 itself is unchanged. The batch ran as
+pre-registered on the commit under test (`1ff26e511`): 20 runs, 4 cells of
+5, `claude-sonnet-5-5` at effort `medium`, minimal prompt, sandboxed, seed 1,
+2 agents at a time, with a passing preflight. Results:
+`results/2026-10-03-beta1-gate/` (from `runs/beta1-gate-2026-10-03/`).
+
+| Task         | Condition    | Safe (main) | Safe (ITT) | Requirements met | Contaminated | Harness errors |
+| ------------ | ------------ | ----------- | ---------- | ---------------- | ------------ | -------------- |
+| node-tool    | `v4`         | 5 of 5      | 5 of 5     | 1.00             | 0            | 0              |
+| node-tool    | `thin-guide` | 5 of 5      | 5 of 5     | 1.00             | 0            | 0              |
+| react-wallet | `v4`         | 5 of 5      | 5 of 5     | 1.00             | 0            | 0              |
+| react-wallet | `thin-guide` | 5 of 5      | 5 of 5     | 1.00             | 0            | 0              |
+
+Each 5 of 5 has a Wilson 95% interval of [0.566, 1]; `v4 - thin-guide` is 0
+on both tasks (Newcombe [-0.434, 0.434]). Every run exited normally and
+passed `tsc`; the leak audit, with its network check, found nothing.
+`refuses_amount_past_nat64` stays not applicable under the minimal prompt
+(observed: node-tool 1 of 10, react-wallet 0 of 10, all conditions).
+
+**Pass rule.** Rule 1 holds: `v4` is safe in 5 of 5 runs on `node-tool`
+and on `react-wallet`, in the main analysis and the intent-to-treat analysis
+alike, with 5 scored, uncontaminated runs per cell. Rule 2 holds: `node
+gate.mjs --require v4` on the same tree, 56 of 56. **4.0.0-beta.1 passes
+this gate.**
+
+The caveats of "Known limits" apply: five runs per cell can catch a gross
+regression, not show equivalence; GA's gate is 20 runs per cell and a
+non-inferiority bound, pre-registered first (Q14).
