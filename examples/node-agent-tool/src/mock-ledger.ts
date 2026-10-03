@@ -22,6 +22,12 @@ type TestClient = ReturnType<typeof createTestClient>
 /** How far a `created_at_time` may be ahead of the ledger's clock: 2 minutes. */
 const PERMITTED_DRIFT_NS = 2n * 60n * 1_000_000_000n
 
+/**
+ * The reads `transfer` makes before its call, in parallel: decimals, symbol,
+ * fee and the sender's balance (src/commands/transfer.ts, step 2).
+ */
+const READS_BEFORE_THE_CALL = 4
+
 export interface MockLedgerOptions {
   /** The canister id it answers at. */
   readonly id: string
@@ -53,9 +59,16 @@ export interface MockLedger {
   rejectNextTransfer(code: 4 | 5): void
   /**
    * Has the replica answer the next transfer call with HTTP 429, `times`
-   * times in a row, as a boundary node that throttles. The replica refuses
-   * "the next request", and `transfer` makes four reads before its call, so
-   * the refusal is armed as the fourth read is answered.
+   * times in a row, as a boundary node that throttles.
+   *
+   * A workaround, not a pattern: `test.refuseNext(429)` refuses the next
+   * request of any kind, a read as much as a call, and `transfer` reads four
+   * times before it calls. So the refusal is armed once
+   * `READS_BEFORE_THE_CALL` reads have been answered, when every read
+   * has passed the replica's refusal check. (Arming it on the last read sent
+   * would race the other three, which run in parallel.) If `transfer` ever
+   * reads more or less, a read is refused instead of the call, and the demo
+   * and the tests that throttle fail on the request log.
    */
   throttleNextTransfer(times?: number): void
   /** Every transfer argument the ledger was sent, with the caller the replica verified. */
@@ -194,7 +207,7 @@ export function createMockLedger(options: MockLedgerOptions): MockLedger {
       rejectNext = code
     },
     throttleNextTransfer(times = 1) {
-      readsBeforeThrottle = 4
+      readsBeforeThrottle = READS_BEFORE_THE_CALL
       throttles = times
     },
     received,
