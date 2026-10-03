@@ -793,5 +793,338 @@
     "file": "src/client.ts",
     "search": "      source?.dispose?.()\n",
     "replace": "      void source\n"
+  },
+  {
+    "id": "ir9-anonymous-counted-as-signed-in",
+    "package": "core",
+    "test": "tests/traps/anonymous-write.test.ts",
+    "why": "the anonymous principal counted as a signed-in caller, so an update for nobody is built and sent, and the ledger books it against the account every signed-out visitor shares",
+    "file": "src/client.ts",
+    "search": "const ANONYMOUS_CALLER: Caller = Object.freeze({\n  principal: ANONYMOUS,\n  authenticated: false,\n})",
+    "replace": "const ANONYMOUS_CALLER: Caller = Object.freeze({\n  principal: ANONYMOUS,\n  authenticated: true,\n})"
+  },
+  {
+    "id": "ir9-anonymous-write-guard-skipped",
+    "package": "core",
+    "test": "tests/traps/anonymous-write.test.ts",
+    "testName": "is refused through a mutation too",
+    "why": "the check that refuses an update for a caller who is not signed in never runs, so a mutation sends the transfer as the anonymous principal",
+    "file": "src/call.ts",
+    "search": "  if (write && !caller.authenticated) {",
+    "replace": "  if (false && write && !caller.authenticated) {"
+  },
+  {
+    "id": "ir9-explicit-anonymous-identity-refused",
+    "package": "core",
+    "test": "tests/traps/anonymous-write.test.ts",
+    "testName": "sends an update only for an explicit AnonymousIdentity",
+    "why": "an explicit AnonymousIdentity refused like a signed-out user, which removes the one written-out way to write as nobody",
+    "file": "src/client.ts",
+    "search": "            principal: fixedIdentity.getPrincipal().toText(),\n            authenticated: true,",
+    "replace": "            principal: fixedIdentity.getPrincipal().toText(),\n            authenticated: fixedIdentity.getPrincipal().toText() !== ANONYMOUS,"
+  },
+  {
+    "id": "ir9-update-resent-after-canister-reject",
+    "package": "core",
+    "test": "tests/traps/update-not-resent.test.ts",
+    "testName": "is never re-sent after reject code",
+    "why": "an update re-sent after any failure, as a retry wrapper does: a canister that rejected with code 4 or trapped has booked the transfer, and the re-send books it again",
+    "file": "src/call.ts",
+    "search": "          ? !management && retryUpdate(error, resends)",
+    "replace": "          ? !management && resends < UPDATE_RESEND_DELAYS_MS.length"
+  },
+  {
+    "id": "ir9-lost-reply-resent",
+    "package": "core",
+    "test": "tests/traps/update-not-resent.test.ts",
+    "testName": "is never re-sent after its reply was lost",
+    "why": "a network failure read as proof the update never got in, and re-sent: the ledger ran the first attempt, so the transfer is booked twice",
+    "edits": [
+      {
+        "file": "src/errors.ts",
+        "search": "      ? make(\"outcome_unknown\", true, reason)\n      : make(\"not_delivered\", false, reason, agentShaped)",
+        "replace": "      ? make(\"not_delivered\", false, reason, true)\n      : make(\"not_delivered\", false, reason, agentShaped)"
+      },
+      {
+        "file": "src/errors.ts",
+        "search": "    !error.mayHaveExecuted &&\n    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
+        "replace": "    !error.mayHaveExecuted"
+      }
+    ]
+  },
+  {
+    "id": "ir9-gateway-error-resent",
+    "package": "core",
+    "test": "tests/traps/update-not-resent.test.ts",
+    "testName": "is never re-sent after HTTP",
+    "why": "an HTTP 408 or 5xx read as proof the update never got in, and re-sent, although a timeout or a gateway error may follow a delivery",
+    "edits": [
+      {
+        "file": "src/errors.ts",
+        "search": "      ? make(\"outcome_unknown\", true, reason)\n      : make(\"not_delivered\", false, reason, agentShaped)",
+        "replace": "      ? make(\"not_delivered\", false, reason, true)\n      : make(\"not_delivered\", false, reason, agentShaped)"
+      },
+      {
+        "file": "src/errors.ts",
+        "search": "    !error.mayHaveExecuted &&\n    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
+        "replace": "    !error.mayHaveExecuted"
+      }
+    ]
+  },
+  {
+    "id": "ir9-reject-2-not-resent",
+    "package": "core",
+    "test": "tests/traps/update-resent-when-never-delivered.test.ts",
+    "testName": "is sent again once after reject code 2",
+    "why": "an update turned away with reject code 2 (the subnet was busy, nothing ran) given up on, so the user sees a failure for a transfer that would have gone through",
+    "file": "src/errors.ts",
+    "search": "    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
+    "replace": "    error.httpStatus === 429"
+  },
+  {
+    "id": "ir9-429-not-resent",
+    "package": "core",
+    "test": "tests/traps/update-resent-when-never-delivered.test.ts",
+    "testName": "is sent again once after HTTP 429",
+    "why": "an update the replica rate limited with HTTP 429 given up on, so the user sees a failure for a transfer that would have gone through",
+    "file": "src/errors.ts",
+    "search": "    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
+    "replace": "    error.rejectCode === SYS_TRANSIENT"
+  },
+  {
+    "id": "ir9-resend-limit-removed",
+    "package": "core",
+    "test": "tests/traps/update-resent-when-never-delivered.test.ts",
+    "testName": "is sent again at most twice",
+    "why": "no limit on the re-sends of an update, so a replica that keeps refusing is asked for ever",
+    "file": "src/errors.ts",
+    "search": "  if (resendsSoFar >= UPDATE_RESEND_DELAYS_MS.length) return false\n",
+    "replace": ""
+  },
+  {
+    "id": "ir9-resend-made-as-current-caller",
+    "package": "core",
+    "test": "tests/traps/update-resent-when-never-delivered.test.ts",
+    "testName": "is not sent again as somebody else",
+    "why": "a re-send signed by whoever is signed in when it goes out, so a user who switched account during the wait pays for the first user's transfer",
+    "file": "src/call.ts",
+    "search": "      const agent = await internals.agentFor(caller.principal, where)",
+    "replace": "      const agent = await internals.agentFor(internals.current().principal, where)"
+  },
+  {
+    "id": "ir9-management-reject-2-not-executed-2",
+    "package": "core",
+    "test": "tests/traps/update-resent-when-never-delivered.test.ts",
+    "testName": "is never sent again to the management canister",
+    "why": "reject code 2 from aaaaa-aa classified as proof that nothing ran, as it is from every other canister, although a stop_canister rejected with it may have taken effect",
+    "file": "src/errors.ts",
+    "search": "const noCodeRan = canisterId !== MANAGEMENT_CANISTER",
+    "replace": "const noCodeRan = true"
+  },
+  {
+    "id": "ir9-management-update-resent",
+    "package": "core",
+    "test": "tests/traps/update-resent-when-never-delivered.test.ts",
+    "testName": "is never sent again to the management canister",
+    "why": "a management call classified and re-sent like any other update, although its outcomes prove nothing about what ran",
+    "edits": [
+      {
+        "file": "src/errors.ts",
+        "search": "const noCodeRan = canisterId !== MANAGEMENT_CANISTER",
+        "replace": "const noCodeRan = true"
+      },
+      {
+        "file": "src/call.ts",
+        "search": "          ? !management && retryUpdate(error, resends)",
+        "replace": "          ? retryUpdate(error, resends)"
+      }
+    ]
+  },
+  {
+    "id": "ir9-reject-4-5-read-as-no-effect",
+    "package": "core",
+    "test": "tests/traps/classification-table.test.ts",
+    "testName": "reject code 4, as an update",
+    "why": "a reject code 4 or 5 from an update reported as mayHaveExecuted false, so the app offers a retry for a transfer the canister booked before it rejected",
+    "file": "src/errors.ts",
+    "search": "      return make(\"rejected\", update, reason)",
+    "replace": "      return make(\"rejected\", false, reason)"
+  },
+  {
+    "id": "ir9-5xx-read-as-refusal",
+    "package": "core",
+    "test": "tests/traps/classification-table.test.ts",
+    "testName": "HTTP 503, as an update",
+    "why": "every HTTP error status from 400 up read as the replica refusing the request, so a 5xx from a gateway that may follow a delivery says the update never ran",
+    "file": "src/errors.ts",
+    "search": "    const refused = httpStatus >= 400 && httpStatus < 500 && httpStatus !== 408",
+    "replace": "    const refused = httpStatus >= 400 && httpStatus !== 408"
+  },
+  {
+    "id": "ir9-lost-reply-not-flagged",
+    "package": "core",
+    "test": "tests/traps/classification-table.test.ts",
+    "testName": "a lost reply, as an update",
+    "why": "an update whose reply was lost reported as mayHaveExecuted false, so the user retries a transfer the ledger booked",
+    "file": "src/errors.ts",
+    "search": "      ? make(\"outcome_unknown\", true, reason)\n      : make(\"not_delivered\", false, reason, agentShaped)",
+    "replace": "      ? make(\"outcome_unknown\", false, reason)\n      : make(\"not_delivered\", false, reason, agentShaped)"
+  },
+  {
+    "id": "ir9-undecodable-update-reply-not-flagged",
+    "package": "core",
+    "test": "tests/traps/classification-table.test.ts",
+    "testName": "a reply that does not decode, as an update",
+    "why": "an update whose reply does not decode reported as mayHaveExecuted false, although the canister ran it and only the answer is unreadable",
+    "file": "src/errors.ts",
+    "search": "    mayHaveExecuted: kind === \"invalid_reply\" && mode === \"update\",",
+    "replace": "    mayHaveExecuted: false,"
+  },
+  {
+    "id": "ir9-read-key-without-caller",
+    "package": "core",
+    "test": "tests/traps/stale-data-across-users.test.ts",
+    "why": "a read's key that does not hold who calls, as a hand-written key does, so the answer cached for one user is shown to the next user of the page",
+    "file": "src/options.ts",
+    "search": "    const key = [KEY_ROOT, network, caller, slotOf(target)]",
+    "replace": "    const key = [KEY_ROOT, network, \"anyone\", slotOf(target)]"
+  },
+  {
+    "id": "ir9-read-sent-as-current-caller-in-flight",
+    "package": "core",
+    "test": "tests/traps/stale-data-across-users.test.ts",
+    "why": "a query function that reads the caller when it runs instead of using the one captured with its key, so a read made for one principal goes out as another and its answer lands under the first one's key",
+    "file": "src/options.ts",
+    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
+    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+  },
+  {
+    "id": "ir9-update-built-as-read",
+    "package": "core",
+    "test": "tests/traps/update-as-query.test.ts",
+    "testName": "is refused when it is built",
+    "why": "queryOptions builds a read from an update method, which then runs again on every refetch",
+    "file": "src/options.ts",
+    "search": "    if (isWrite(prepared.mode) && !idempotent) {",
+    "replace": "    if (prepared.mode === \"oneway\" && !idempotent) {"
+  },
+  {
+    "id": "ir9-idempotent-read-has-no-refetch-policy",
+    "package": "core",
+    "test": "tests/traps/update-as-query.test.ts",
+    "testName": "runs once, and is not run again",
+    "why": "the opt-in drops its bounded policy (never stale, no refetch on mount, focus or reconnect), so an update read as a query runs again whenever TanStack Query refetches it",
+    "file": "src/options.ts",
+    "search": "      ...(idempotent ? IDEMPOTENT : {}),",
+    "replace": "      ...(idempotent ? {} : {}),"
+  },
+  {
+    "id": "ir9-idempotent-read-sent-as-current-caller",
+    "package": "core",
+    "test": "tests/traps/update-as-query.test.ts",
+    "testName": "once for each caller",
+    "why": "an update read with the idempotent opt-in that asks who is signed in when it runs instead of using the caller captured with its key: after a switch, Alice's read is sent as Bob and Bob's answer is cached under Alice's key",
+    "file": "src/options.ts",
+    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
+    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+  },
+  {
+    "id": "ir9-root-key-fetched-from-any-host",
+    "package": "core",
+    "test": "tests/traps/root-key-off-local.test.ts",
+    "testName": "is never asked for its root key",
+    "why": "the root key fetched for every host that is not mainnet, as v3 did, so a Codespaces, staging or hijacked host chooses the key every certificate is checked against",
+    "file": "src/network.ts",
+    "search": "      (fetchRootKey ?? isLocalHostname(agentHostnameOf(host))),",
+    "replace": "      (fetchRootKey ?? true),"
+  },
+  {
+    "id": "ir9-mainnet-root-key-fetched",
+    "package": "core",
+    "test": "tests/traps/root-key-off-local.test.ts",
+    "testName": "when mainnet is the network",
+    "why": "the root key fetched from mainnet's API host, which makes the first request of every page a key that anything on the path can substitute",
+    "file": "src/network.ts",
+    "search": "      host: IC_HOST,\n      fetchRootKey: false,",
+    "replace": "      host: IC_HOST,\n      fetchRootKey: true,"
+  },
+  {
+    "id": "ir9-name-resolved-on-untrusted-page",
+    "package": "core",
+    "test": "tests/traps/unresolved-name.test.ts",
+    "testName": "is unresolved on an ordinary web page",
+    "why": "a { name } resolved from an ic_env cookie the page cannot trust, so the call goes to whichever ledger a sibling subdomain named",
+    "file": "src/network.ts",
+    "search": "  if (!net.trustsEnv) {",
+    "replace": "  if (!net.trustsEnv && false) {"
+  },
+  {
+    "id": "ir9-cookie-trusted-for-a-local-replica-alone",
+    "package": "core",
+    "test": "tests/traps/unresolved-name.test.ts",
+    "testName": "is unresolved on an ordinary web page",
+    "why": "the cookie trusted whenever the replica is local, whatever the page: an ordinary web page pointed at a loopback replica shares its cookie jar with every sibling subdomain",
+    "file": "src/network.ts",
+    "search": "    allowEnvConfig ?? (isLocalHostname(agentHostnameOf(host)) && pageIsLocal())",
+    "replace": "    allowEnvConfig ?? isLocalHostname(agentHostnameOf(host))"
+  },
+  {
+    "id": "ir9-no-invalidation-after-write-that-may-have-run",
+    "package": "core",
+    "test": "tests/traps/invalidation-after-write.test.ts",
+    "testName": "re-reads the balance once",
+    "why": "a write that may have run invalidates nothing, so the screen keeps the old balance next to an error and the user sends the transfer again",
+    "file": "src/options.ts",
+    "search": "  error.kind === \"canister_err\" ||\n  error.mayHaveExecuted",
+    "replace": "  error.kind === \"canister_err\""
+  },
+  {
+    "id": "ir9-invalidation-after-every-failure",
+    "package": "core",
+    "test": "tests/traps/invalidation-after-write.test.ts",
+    "testName": "re-reads nothing when",
+    "why": "every settled mutation invalidates the canister's reads, including a failure that proves nothing ran",
+    "file": "src/options.ts",
+    "search": "        if (!mayHaveChanged(error)) return",
+    "replace": "        if (false && !mayHaveChanged(error)) return"
+  },
+  {
+    "id": "ir9-no-invalidation-after-success",
+    "package": "core",
+    "test": "tests/traps/invalidation-after-write.test.ts",
+    "testName": "after a success too",
+    "why": "a write invalidates nothing unless the app lists the reads (the v4 prototype's default, which DECISIONS Q10 turned down)",
+    "file": "src/options.ts",
+    "search": "      return [{ record: recordOf(canister, internals, call) }]",
+    "replace": "      return []"
+  },
+  {
+    "id": "ir9-err-resolves-as-success",
+    "package": "core",
+    "test": "tests/traps/err-arm.test.ts",
+    "why": "a result reply handed back as the variant, so an Err resolves as if the call succeeded and the screen says Sent",
+    "file": "src/call.ts",
+    "search": "  if (method.result === undefined) return value",
+    "replace": "  if (method.result !== null) return value"
+  },
+  {
+    "id": "ir9-err-payload-dropped",
+    "package": "core",
+    "test": "tests/traps/err-arm.test.ts",
+    "testName": "rejects the Err arm as canister_err with the typed payload",
+    "why": "canister_err that carries the arm's tag instead of its payload, so the app cannot read the balance an InsufficientFunds reports",
+    "file": "src/call.ts",
+    "search": "    err: payload,\n",
+    "replace": "    err: arm.tag,\n"
+  },
+  {
+    "id": "ir9-err-does-not-invalidate",
+    "package": "core",
+    "test": "tests/traps/err-arm.test.ts",
+    "testName": "are read again, because a canister may change state",
+    "why": "a write that answered Err invalidates nothing, so a fee the canister charged for the refused request is not shown",
+    "file": "src/options.ts",
+    "search": "  error.kind === \"canister_err\" ||\n  error.mayHaveExecuted",
+    "replace": "  error.mayHaveExecuted"
   }
 ]
