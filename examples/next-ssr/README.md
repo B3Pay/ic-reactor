@@ -12,17 +12,18 @@ Each scenario lives in its own small file, whose header comment names the
 rule it shows. Every one is tested (`pnpm test`), and every one shows on a
 running server.
 
-| #   | Scenario                                                                  | Files                                                                                | How to see it                                                                         |
-| --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| 1   | One client per request on the server; prefetch by `{ id }`; `dehydrate`   | `src/server/request-client.ts`, `src/server/prefetch-ledgers.ts`, `src/app/page.tsx` | `/`: each card says when the server read it                                           |
-| 2   | `ReactorProvider` factory in a `'use client'` module; nothing refetched   | `src/app/providers.tsx`, `src/components/server-data.ts`                             | `/` with the network panel open: no request to `icp-api.io` until you ask for one     |
-| 3   | Lossless hydration of `bigint`, principals and `Uint8Array`               | `src/components/LedgerCard.tsx`                                                      | the run-time type after each value; mainnet returns no blob here, the tests' mocks do |
-| 4   | Renders with JavaScript disabled                                          | `scripts/smoke.ts`                                                                   | turn JavaScript off and reload `/`                                                    |
-| 5   | Streaming with Suspense: certified balances arrive after the page         | `src/app/account/CertifiedBalances.tsx`                                              | `/account?owner=rkp4c-7iaaa-aaaaa-aaaca-cai`                                          |
-| 6   | Progressive enhancement: a GET form, validated on the server              | `src/app/account/page.tsx`, `src/server/parse-owner.ts`                              | look up with JavaScript on and off; `/account?owner=not-a-principal`                  |
-| 7   | Route Handler: a client per request, amounts as text, kind as HTTP status | `src/app/api/balance/[ledger]/[principal]/route.ts`, `src/server/balance-route.ts`   | `/api/balance/ckBTC/rkp4c-7iaaa-aaaaa-aaaca-cai`; a bad principal is a 400            |
-| 8   | Errors on the server: one section fails with its `kind`, not the page     | `src/components/LedgerError.tsx`, `src/server/error-summary.ts`                      | `/`: the "NNS governance (not a ledger)" section                                      |
-| 9   | Sign in after hydration: the new caller's keys, nothing anonymous reused  | `src/components/MyBalances.tsx`, `src/components/LedgerCard.tsx`                     | sign in with Internet Identity: "My balances" loads, each card reads again as you     |
+| #   | Scenario                                                                    | Files                                                                                | How to see it                                                                         |
+| --- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| 1   | One client per request on the server; prefetch by `{ id }`; `dehydrate`     | `src/server/request-client.ts`, `src/server/prefetch-ledgers.ts`, `src/app/page.tsx` | `/`: each card says when the server read it                                           |
+| 2   | `ReactorProvider` factory in a `'use client'` module; nothing refetched     | `src/app/providers.tsx`, `src/components/server-data.ts`                             | `/` with the network panel open: no request to `icp-api.io` until you ask for one     |
+| 3   | Lossless hydration of `bigint`, principals and `Uint8Array`                 | `src/components/LedgerCard.tsx`                                                      | the run-time type after each value; mainnet returns no blob here, the tests' mocks do |
+| 4   | Renders with JavaScript disabled                                            | `scripts/smoke.ts`                                                                   | turn JavaScript off and reload `/`                                                    |
+| 5   | Streaming with Suspense: certified balances arrive after the page           | `src/app/account/CertifiedBalances.tsx`                                              | `/account?owner=rkp4c-7iaaa-aaaaa-aaaca-cai`                                          |
+| 6   | Progressive enhancement: a GET form, validated on the server                | `src/app/account/page.tsx`, `src/server/parse-owner.ts`                              | look up with JavaScript on and off; `/account?owner=not-a-principal`                  |
+| 7   | Route Handler: a client per request, amounts as text, kind as HTTP status   | `src/app/api/balance/[ledger]/[principal]/route.ts`, `src/server/balance-route.ts`   | `/api/balance/ckBTC/rkp4c-7iaaa-aaaaa-aaaca-cai`; a bad principal is a 400            |
+| 8   | Errors on the server: one section fails with its `kind`, not the page       | `src/components/LedgerError.tsx`, `src/server/error-summary.ts`                      | `/`: the "NNS governance (not a ledger)" section                                      |
+| 9   | Sign in after hydration: the new caller's keys, nothing anonymous reused    | `src/components/MyBalances.tsx`, `src/components/LedgerCard.tsx`                     | sign in with Internet Identity: "My balances" loads, each card reads again as you     |
+| 10  | A reload while signed in: hydrated from the server's data, then read as you | `src/app/providers.tsx`, `src/components/LedgerCard.tsx`                             | sign in, then reload `/`: no hydration error, then each card reads again as you       |
 
 ## Run it
 
@@ -71,7 +72,9 @@ log to tell which side sent what:
   serves the page and its streamed section, and the next request gets a new
   one. It runs in vitest's `react-server` project (`vitest.config.ts`).
 - `src/components/hydration.test.tsx`: the home page rendered to HTML, read
-  with no script run, hydrated without a mismatch or a request, then signed in.
+  with no script run, hydrated without a mismatch or a request, then signed
+  in; and hydrated in a tab that is still signed in, without a mismatch, then
+  read as the user.
 - `src/components/MyBalances.test.tsx`: sign-in, a switch of account,
   sign-out, and a ledger whose decimals or symbol read fails.
 - `src/components/LedgerCard.test.tsx`: a card whose reads fail in the tab.
@@ -85,15 +88,24 @@ log to tell which side sent what:
 
 ## A tab that is still signed in
 
-Query keys carry the caller. An `AuthClient` reads a stored session
-synchronously, so a tab that is still signed in from an earlier visit calls as
-the user from its first render, while the server prefetched as the anonymous
-principal. The cards find nothing under the user's keys: React reports a
-hydration mismatch, renders them on the client, and the tab reads everything
-again as the user. The data shown is right (anonymous answers are never shown
-as the user's), but the server's work is not used for that tab. You meet it
-as soon as you sign in and reload: under `pnpm dev`, Next shows the mismatch
-in its error overlay. Keys follow the client's caller, while `useAuth()`
-gives the anonymous server snapshot until hydration ends; this example does
-not work around that. A visitor who is not signed in gets the behavior of
-scenario 2.
+Query keys carry the caller, and an `AuthClient` reads a stored session
+synchronously, so a tab that is still signed in from an earlier visit knows
+the user before its first render, while the server prefetched as the
+anonymous principal. The keys `useClient()` builds follow the caller React
+renders with, the one `useAuth()` returns: anonymous on the server and while
+the page hydrates. So the hydrating render finds the server's data under the
+anonymous keys, matches the server's HTML and sends nothing; then React
+renders each component that calls `useClient()` or `useAuth()` again with the
+session, and every card reads its own keys once, as the user (scenario 10).
+`src/components/hydration.test.tsx` checks it: no recoverable error, no
+console error, the server's nodes kept, no anonymous read sent, and each card
+read once as the user.
+
+That move has one cost, which this app does not pay: a Suspense boundary that
+has not hydrated yet (its streamed HTML, or its lazy code, still on the way)
+below a component that calls `useClient()` or `useAuth()` is rendered on the
+client when that component moves on, showing its fallback instead of the
+server's HTML. The streamed section of `/account` sits in a Server Component,
+and no client component above it renders with the caller, so it streams in as
+the server sent it. In your own app, keep such a boundary out from under a
+component that renders with the caller, or pass it in as `children`.

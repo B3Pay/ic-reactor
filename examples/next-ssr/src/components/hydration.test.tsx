@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 //
-// Scenarios 2, 3, 4 and 9, through the home page's tree, the way Next runs
-// it: a request client prefetches and dehydrates (src/server/prefetch-ledgers.ts);
-// the state crosses to the browser as JSON; the server renders the client
-// components with a provider client of its own, to HTML; the browser hydrates
-// that HTML with the tab's client. Three test clients, three in-memory
-// replicas: a test can see which side sent what.
+// Scenarios 2, 3, 4, 9 and 10, through the home page's tree, the way Next
+// runs it: a request client prefetches and dehydrates
+// (src/server/prefetch-ledgers.ts); the state crosses to the browser as JSON;
+// the server renders the client components with a provider client of its
+// own, to HTML; the browser hydrates that HTML with the tab's client, signed
+// out or still signed in from an earlier visit. Three test clients, three
+// in-memory replicas: a test can see which side sent what.
 import { ReactorProvider } from "@ic-reactor/react"
 import { HydrationBoundary, type DehydratedState } from "@tanstack/react-query"
 import { act, fireEvent, screen, waitFor } from "@testing-library/react"
@@ -49,8 +50,8 @@ function Page(props: {
 }
 
 const tests: MockLedgers[] = []
-const newClient = () => {
-  const test = mockLedgers()
+const newClient = (options?: Parameters<typeof mockLedgers>[0]) => {
+  const test = mockLedgers(options)
   tests.push(test)
   return test
 }
@@ -75,12 +76,21 @@ async function serverRender() {
   return { json, failures, html, ssr }
 }
 
-/** Hydrates the server's HTML with a browser client, returning what React reported. */
-async function hydrate(server: Awaited<ReturnType<typeof serverRender>>) {
-  const browser = newClient()
+/**
+ * Hydrates the server's HTML with a browser client, returning what React
+ * reported and the cards the server's HTML had. `signedIn` is a tab that is
+ * still signed in from an earlier visit: its auth knows the session before
+ * the first render, as an `AuthClient` reading its stored session does.
+ */
+async function hydrate(
+  server: Awaited<ReturnType<typeof serverRender>>,
+  options: { signedIn?: boolean } = {}
+) {
+  const browser = newClient(options)
   const container = document.createElement("div")
   container.innerHTML = server.html
   document.body.appendChild(container)
+  const servedCards = [...container.querySelectorAll("[data-ledger]")]
   const recoverable: string[] = []
   const logged = vi.spyOn(console, "error").mockImplementation(() => {})
   await act(async () => {
@@ -99,7 +109,7 @@ async function hydrate(server: Awaited<ReturnType<typeof serverRender>>) {
   })
   // Long enough for a fetch on mount, a retry or an effect to show.
   await act(() => new Promise((resolve) => setTimeout(resolve, 50)))
-  return { browser, container, recoverable, logged }
+  return { browser, container, recoverable, logged, servedCards }
 }
 
 const card = (scope: ParentNode, ledger: LedgerRef) => {
@@ -166,6 +176,40 @@ describe("the browser's first render", () => {
     const served = document.createElement("div")
     served.innerHTML = server.html
     expect(container.innerHTML).toBe(served.innerHTML)
+  })
+})
+
+describe("a reload in a tab that is still signed in", () => {
+  it("hydrates the server's HTML from the server's data, then reads every card again as the user", async () => {
+    const server = await serverRender()
+
+    const { browser, container, recoverable, logged, servedCards } =
+      await hydrate(server, { signedIn: true })
+
+    // The hydrating render built the anonymous keys the server filled, so it
+    // matched the HTML: React reported nothing and kept the server's nodes.
+    expect(recoverable).toEqual([])
+    expect(logged).not.toHaveBeenCalled()
+    expect(servedCards.length).toBe(SECTIONS.length)
+    for (const node of servedCards) expect(node.isConnected).toBe(true)
+    // Right after it, the tab shows its session, and every card reads its
+    // own keys as the user. The anonymous reads the server made are not sent
+    // again, by anyone.
+    await waitFor(() => {
+      for (const ledger of LEDGERS) {
+        expect(readText(container, ledger, "icrc1_name")).toContain(
+          `read by ${SEED_1}`
+        )
+      }
+    })
+    expect(container.querySelector(".pill")?.textContent).toMatch(
+      /^signed in: psith…4ae$/
+    )
+    expect(
+      browser.requests.filter(({ caller }) => caller === ANONYMOUS)
+    ).toEqual([])
+    expect(requestsFor(browser, "icrc1_name")).toHaveLength(LEDGERS.length)
+    for (const node of servedCards) expect(node.isConnected).toBe(true)
   })
 })
 

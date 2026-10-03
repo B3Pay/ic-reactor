@@ -7,19 +7,22 @@
 //   render: the same options the server prefetched with
 //   (src/server/prefetch-ledgers.ts), so the same keys, and the
 //   `<HydrationBoundary>` around this card has already put their data in the
-//   cache. The server render of this component and the first render of a
-//   browser that is not signed in both show it; nothing is fetched on load
-//   (`SERVER_DATA` keeps it fresh for a minute).
+//   cache. The server render of this component and the browser's hydrating
+//   render both show it, signed in or not (scenario 10); nothing is fetched
+//   on load (`SERVER_DATA` keeps it fresh for a minute).
 // - The values are exactly what the generated module types: `bigint` for the
 //   fee and the supply, principal text for the minting account, `Uint8Array`
 //   for a subaccount or a `Blob` metadata value, after the trip through JSON
 //   (scenario 3). Each value shows its type at run time.
-// - When the caller changes (a sign-in, scenario 9), these options are built
-//   again with the new caller in their keys: the card reads everything again
-//   as the new caller, and never shows the anonymous answers under them. The
-//   card calls `useAuth()` for that: it renders again only when something
-//   tells it to, and `useAuth()` does on every change of caller. Without it,
-//   the card would keep the keys of the caller it first rendered for.
+// - When the caller changes (a sign-in, scenario 9), `useClient()` renders
+//   the card again and these options are built with the new caller in their
+//   keys: the card reads everything again as the new caller, and never shows
+//   the anonymous answers under them. `useAuth()` is here only to name the
+//   caller in the card's footer.
+// - A reload in a tab that is still signed in (scenario 10) renders these
+//   options for the anonymous caller while the page hydrates, as the server
+//   did, so the card shows the server's data with nothing fetched, then reads
+//   again as the user right after.
 // - Any of those reads can fail in the tab. A read without data is `loading`
 //   only while it is pending: once it failed, its row shows the kind.
 import { isReactorError } from "@ic-reactor/core"

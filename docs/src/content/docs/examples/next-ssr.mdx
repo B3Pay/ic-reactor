@@ -18,10 +18,10 @@ and shows the server-rendering story end to end:
   `dehydrate(client.queryClient)` to a `<HydrationBoundary>`.
 - **The provider factory in a `'use client'` module.**
   `<ReactorProvider client={() => createClient({ network: "ic", auth: () => new AuthClient() })}>`
-  builds a client per mounted tree. The server render and the browser's first
-  render call as the anonymous principal, so a visitor who is not signed in
-  gets the server's keys, and the cards render from them with nothing fetched
-  on load.
+  builds a client per mounted tree. The server render and the browser's
+  hydrating render build keys for the anonymous principal, so every visitor
+  gets the server's keys, a tab still signed in from an earlier visit
+  included, and the cards hydrate from them with nothing fetched on load.
 - **Lossless hydration.** `bigint` amounts, principals and `Uint8Array`
   values arrive exact; the page prints each value's run-time type.
 - **No JavaScript needed** to read the pages: the values are in the server's
@@ -39,7 +39,8 @@ and shows the server-rendering story end to end:
   section with the error's `kind`; the rest of the page renders as usual.
 - **Sign-in after hydration.** Signing in with Internet Identity moves every
   read to keys that hold the user's principal; nothing read anonymously is
-  reused for them.
+  reused for them. A tab that reloads signed in hydrates without a mismatch,
+  then reads its own keys the same way.
 
 The tests run the real client on `createTestClient()` from
 `@ic-reactor/core/testing`, with the ledgers mocked over in-memory replicas,
