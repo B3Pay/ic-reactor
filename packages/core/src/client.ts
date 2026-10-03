@@ -216,9 +216,16 @@ export interface Client {
   signOut(options?: unknown): Promise<void>
   /**
    * Releases everything the client holds: it stops listening to its auth and
-   * disposes it, clears the `QueryClient`, and drops its agents. Calls made
-   * for it afterwards are cancelled before anything is sent. Calling it again
-   * does nothing.
+   * disposes it, clears the `QueryClient`, and drops its agents. Calling it
+   * again does nothing.
+   *
+   * Every call made on the client afterwards, a write included, rejects
+   * `cancelled` with code `client_disposed` and `mayHaveExecuted: false`, and
+   * sends nothing: a direct call, a query or mutation function, a func
+   * reference's function. A call still waiting to be sent (for its caller's
+   * identity, or to be sent again) is cancelled the same way. A direct call
+   * already sent settles as the replica answers; a read the client's
+   * `QueryClient` was running is dropped with the cache.
    */
   dispose(): void
 
@@ -451,6 +458,13 @@ export interface ClientInternals {
   readonly maxDepth: number
   /** Who calls now. Reads the auth (building it on first use, in a browser). */
   current(): Caller
+  /**
+   * Whether {@link Client.dispose} has run. The call path asks it before
+   * anything else, so that every call made on a disposed client is cancelled
+   * (`client_disposed`): a disposed client calls as the anonymous principal,
+   * and a write would otherwise be refused as `unauthenticated`.
+   */
+  disposed(): boolean
   /**
    * The agent that signs as `principal`, and only as `principal`. It is the
    * one place the client enforces "a call goes out as the principal it was
@@ -1047,6 +1061,7 @@ export function createClientWith(
     network,
     maxDepth,
     current,
+    disposed: () => disposed,
     agentFor,
   })
 

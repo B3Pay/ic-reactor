@@ -234,16 +234,17 @@ describe("a re-send that does not go through settles nothing", () => {
       calls: [false, false],
     },
     {
-      // A disposed client calls as nobody, so it refuses a write before
-      // sending it: unauthenticated, not cancelled.
-      name: "refused by the client before it was sent: the client was disposed",
+      // A disposed client cancels every call made on it before sending it,
+      // a write included: cancelled (client_disposed), not unauthenticated,
+      // which would tell the person to sign in.
+      name: "cancelled by the client before it was sent: the client was disposed",
       arm: (test) => test.client.dispose(),
       resendAttempt: {
-        kind: "unauthenticated",
+        kind: "cancelled",
         mayHaveExecuted: false,
-        code: "anonymous_write",
+        code: "client_disposed",
       },
-      got: /The re-send did not go through \(unauthenticated: /,
+      got: /The re-send did not go through \(cancelled: /,
       calls: [false],
     },
     {
