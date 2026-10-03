@@ -672,6 +672,13 @@ function warnEnvOffPage(network: Network): void {
  *   was made, so the first client's is 1.
  * - `ic-reactor.client.disposed`, on each client: a getter, `true` once
  *   `dispose()` has run.
+ * - `ic-reactor.client.as`, on each client: a method that `useClient()`
+ *   calls with the client as `this` and the principal (text) a render shows,
+ *   when that principal is not the client's live caller: the server's
+ *   anonymous one while a page hydrates in a browser that holds a session.
+ *   It returns a frozen view of `this` for that principal (see `viewAs` in
+ *   {@link createClientWith}), or `this` itself for a client built with
+ *   `identity`, whose caller never changes.
  *
  * The provider reads the count, calls its `client` factory, and compares the
  * serial of the client it gets: a higher serial means the factory created the
@@ -682,12 +689,14 @@ function warnEnvOffPage(network: Network): void {
  *
  * `Symbol.for` keys and a count kept on `globalThis`, so that two copies of
  * this package in one bundle count together, and the provider reads them
- * without importing anything of this package at run time. All three are
- * non-enumerable, so spreading or logging a client does not show them.
+ * without importing anything of this package at run time. The three on a
+ * client are non-enumerable, so spreading or logging a client does not show
+ * them.
  */
 const CLIENTS_CREATED = Symbol.for("ic-reactor.clients.created")
 const CLIENT_SERIAL = Symbol.for("ic-reactor.client.serial")
 const CLIENT_DISPOSED = Symbol.for("ic-reactor.client.disposed")
+const CLIENT_AS = Symbol.for("ic-reactor.client.as")
 
 /** Counts one more client in this realm, and returns the count. */
 function nextSerial(): number {
@@ -1050,6 +1059,73 @@ export function createClientWith(
     agentFor,
   })
 
+  /** The views of {@link viewAs}, by the object they were made over and their principal. */
+  const views = new WeakMap<object, Map<string, Client>>()
+
+  /**
+   * A view of `this` (the client, or an object over it) for a render that
+   * shows `principal` while the live caller may be someone else: the server's
+   * anonymous caller while a page hydrates in a browser that holds a session.
+   *
+   * Its `queryKey` and `queryOptions` build for `principal`, so they find
+   * what a server prefetched as that caller and render the markup the server
+   * wrote; `caller()` and `authState()` say who that is. The read options are
+   * the client's own but for the key: a read they build asks `agentFor` for
+   * `principal`'s agent, so while someone else is current it is cancelled
+   * (`caller_changed`) and never sent. Every other member is `this`'s own:
+   * canisters (made for this client, so either one accepts them),
+   * `mutationOptions`, direct calls and `func`, which sign as the caller
+   * current when they run, the `QueryClient`, `subscribe`, `signIn`,
+   * `signOut` and `dispose`.
+   *
+   * One view per object and principal, so that a component's dependencies are
+   * the same from one render to the next. Only the anonymous view and the
+   * live caller's are kept past a call for another principal, so switching
+   * accounts leaves nothing behind. A client built with `identity` has one
+   * caller for good, the one its server render built keys for too: it
+   * returns `this`.
+   */
+  function viewAs(this: unknown, principal: string): Client {
+    const base = (
+      typeof this === "object" && this !== null ? this : client
+    ) as Client
+    if (fixedCaller !== undefined) return base
+    let byPrincipal = views.get(base)
+    if (byPrincipal === undefined) views.set(base, (byPrincipal = new Map()))
+    const live = current().principal
+    for (const kept of byPrincipal.keys()) {
+      if (kept !== principal && kept !== live && kept !== ANONYMOUS) {
+        byPrincipal.delete(kept)
+      }
+    }
+    let view = byPrincipal.get(principal)
+    if (view === undefined) {
+      const caller: Caller = Object.freeze({
+        principal,
+        authenticated: principal !== ANONYMOUS,
+      })
+      const state: AuthState =
+        principal === ANONYMOUS
+          ? ANONYMOUS_STATE
+          : Object.freeze({ status: "signed-in", principal })
+      const { queryKey, queryOptions } = createBuilders(
+        internals,
+        () => client,
+        () => caller
+      )
+      view = Object.freeze(
+        Object.create(base, {
+          caller: { value: () => principal },
+          authState: { value: () => state },
+          queryKey: { value: queryKey },
+          queryOptions: { value: queryOptions },
+        }) as Client
+      )
+      byPrincipal.set(principal, view)
+    }
+    return view
+  }
+
   const members: Client = {
     ...createBuilders(internals, () => client),
     network: network.keySegment,
@@ -1095,12 +1171,13 @@ export function createClientWith(
       source?.dispose?.()
     },
   }
-  // The stamps `ReactorProvider` reads (see `CLIENTS_CREATED`), defined
+  // The stamps and the seam `@ic-reactor/react` reads (see `CLIENTS_CREATED`), defined
   // before the freeze: a frozen object takes no new property.
   const client: Client = Object.freeze(
     Object.defineProperties(members, {
       [CLIENT_SERIAL]: { value: nextSerial() },
       [CLIENT_DISPOSED]: { get: () => disposed },
+      [CLIENT_AS]: { value: viewAs },
     })
   )
 
