@@ -154,4 +154,22 @@ describe("the address book", () => {
     // Then the client's re-read shows the backend's own list.
     await screen.findByTestId("no-contacts", {}, patiently)
   })
+
+  it("shows the error of the last write only", async () => {
+    const made = await renderBook()
+    made.addContact(SEED_1, { name: "Carol", owner: principal(SEED_2) })
+    add("bob", SEED_2)
+    const refused =
+      'Refused by the canister: "bob" is in the address book already. The list is back as it was.'
+    await screen.findByText(refused, {}, patiently)
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Bob" }))
+
+    await waitFor(
+      () =>
+        expect(made.contactsOf(SEED_1).map((c) => c.name)).toEqual(["Carol"]),
+      patiently
+    )
+    await waitFor(() => expect(screen.queryByText(refused)).toBeNull())
+  })
 })

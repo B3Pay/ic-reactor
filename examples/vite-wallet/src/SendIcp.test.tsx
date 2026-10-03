@@ -163,9 +163,14 @@ describe("sending ICP", () => {
       made.auth.switchTo(2)
     })
 
+    // Once the page has the token again, as seed 2: the outcome is shown,
+    // and the button is not.
     await screen.findByText(
-      "It was sent by another account. Sent again by this one, it would be a new transfer, so it is not offered."
+      "Fee 0.0001 ICP, paid on top of the amount.",
+      {},
+      patiently
     )
+    expect(outcome()).toContain("Outcome unknown (outcome_unknown)")
     expect(
       screen.queryByRole("button", { name: "Send the same transfer again" })
     ).toBeNull()

@@ -39,7 +39,9 @@ export function AddressBook() {
     add.mutate({ name, owner: principal(owner.trim()) })
   }
 
-  const failure = add.error ?? remove.error
+  // The error of the write sent last: an earlier refusal is not news.
+  const failure =
+    add.submittedAt >= remove.submittedAt ? add.error : remove.error
   const payee = contacts.data?.find((contact) => contact.name === paying)
 
   return (

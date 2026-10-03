@@ -1,5 +1,6 @@
 // The wallet: one client per tab, and one section per scenario.
-import { ReactorProvider } from "@ic-reactor/react"
+import { ReactorProvider, useAuth } from "@ic-reactor/react"
+import { Fragment } from "react"
 import { AddressBook } from "./AddressBook.tsx"
 import type { DevAccounts } from "./auth/dev-accounts.ts"
 import { Balance } from "./Balance.tsx"
@@ -22,6 +23,7 @@ export function App({ devAccounts }: { devAccounts?: DevAccounts }) {
 
 /** The page, on whichever client the provider above it holds. */
 export function Wallet({ devAccounts }: { devAccounts?: DevAccounts }) {
+  const { principal } = useAuth()
   return (
     <main>
       <h1>ICP wallet on ic-reactor 4</h1>
@@ -32,10 +34,20 @@ export function Wallet({ devAccounts }: { devAccounts?: DevAccounts }) {
       </p>
       <EnvironmentPanel />
       <SignIn devAccounts={devAccounts} />
-      <Balance />
-      <SendIcp />
-      <Profile />
-      <AddressBook />
+      {/*
+        The account's own sections, mounted again whenever the caller
+        changes. Their reads are keyed by the caller already, but what they
+        keep in component state is not: a form, the last transfer's outcome
+        (an InsufficientFunds error carries that account's balance), a
+        mutation's error. Keyed by the principal, none of it is shown to the
+        next account, or to nobody after a sign-out.
+      */}
+      <Fragment key={principal}>
+        <Balance />
+        <SendIcp />
+        <Profile />
+        <AddressBook />
+      </Fragment>
     </main>
   )
 }

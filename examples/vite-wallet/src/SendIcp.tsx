@@ -164,24 +164,20 @@ export function Outcome(props: {
             : undefined
         }
       />
-      {error.mayHaveExecuted &&
-        (caller === attempt.from ? (
-          <p>
-            <button type="button" onClick={props.onSendAgain}>
-              Send the same transfer again
-            </button>{" "}
-            <span className="muted">
-              Same account, same <code>created_at_time</code>: if the first one
-              went through, the ledger answers Duplicate instead of paying
-              twice.
-            </span>
-          </p>
-        ) : (
-          <p className="muted">
-            It was sent by another account. Sent again by this one, it would be
-            a new transfer, so it is not offered.
-          </p>
-        ))}
+      {/* Only to the account that sent it: the ledger deduplicates per
+          sender, and the same argument from another account would be a
+          new transfer, paid in full. */}
+      {error.mayHaveExecuted && caller === attempt.from && (
+        <p>
+          <button type="button" onClick={props.onSendAgain}>
+            Send the same transfer again
+          </button>{" "}
+          <span className="muted">
+            Same account, same <code>created_at_time</code>: if the first one
+            went through, the ledger answers Duplicate instead of paying twice.
+          </span>
+        </p>
+      )}
     </div>
   )
 }
