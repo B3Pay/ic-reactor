@@ -1509,5 +1509,55 @@
     "file": "src/index.tsx",
     "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
     "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6m-pinned-refusal-kept-as-error",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "leaves a key that holds data as it found it when a read it built is cancelled",
+    "why": "a read a view built that is refused while someone else is current leaves the refusal as the error of a key that holds the server's data, so a hydrated component shows it once the anonymous caller is current again",
+    "file": "src/options.ts",
+    "search": "        if (query?.state.data !== undefined) void query.cancel({ revert: true })\n        else refusals?.add(error)\n",
+    "replace": "        if (query?.state.data === undefined) refusals?.add(error)\n"
+  },
+  {
+    "id": "ir6m-pinned-refusal-not-cleared",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "clears the cancellation from a key with no data once its principal is current again",
+    "why": "the refusal of a read a view built stays the error of a key with no data after its principal is current again, so a suspense read of it throws the refusal instead of fetching",
+    "file": "src/client.ts",
+    "search": "    clearRefusals(state.principal)\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6m-every-refusal-reverted",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "clears the cancellation from a key with no data once its principal is current again",
+    "why": "every read refused because its caller left is reverted, not only a view's, so a fetch of the client's own read resolves with old data instead of rejecting caller_changed (D20)",
+    "file": "src/options.ts",
+    "search": "        return pinned ? keepOnRefusal(context, read) : read\n",
+    "replace": "        return keepOnRefusal(context, read)\n"
+  },
+  {
+    "id": "ir6m-useclient-stays-on-server-caller-streamed-direct",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "renders a streamed boundary on the client when the parent that calls useClient() moves on",
+    "why": "useClient() renders with the server's anonymous caller for good, so a parent above a streamed boundary never moves on to the session",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6m-useauth-stays-on-server-state-streamed-direct",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "renders a streamed boundary on the client when the parent that calls useAuth() moves on",
+    "why": "useAuth() renders the server's anonymous state for good, so a parent above a streamed boundary never shows the session",
+    "file": "src/index.tsx",
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return SERVER_STATE\n"
   }
 ]
