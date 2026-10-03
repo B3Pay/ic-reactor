@@ -247,6 +247,75 @@ describe("a client pinned to a principal", () => {
     expect(sent("whoami")).toEqual([])
   })
 
+  it("keeps the error of a key with no data that no view's refusal left, once its principal is current again", async () => {
+    const test = createTestClient({ identity: 1 })
+    made.push(test)
+    test.mock<Who>(WHO, CANISTER, {
+      whoami: () => {
+        throw new Error("the canister is down")
+      },
+      stamp: ({ caller }) => `written by ${caller}`,
+    })
+    const { client, auth } = test
+    const who = client.canister<Who>(WHO, { id: CANISTER })
+    await auth.signOut()
+    const failed = { ...client.queryOptions(who, "whoami"), retry: false }
+    const rejected: unknown = await client.queryClient
+      .fetchQuery(failed)
+      .catch((error: unknown) => error)
+    expect(isReactorError(rejected) && rejected.kind).not.toBe("cancelled")
+    // The client's own read, refused (D20) because its caller left.
+    await auth.signIn()
+    const own = { ...client.queryOptions(who, "whoami"), retry: false }
+    expect(own.queryKey).not.toEqual(failed.queryKey)
+    await auth.signOut()
+    await expect(client.queryClient.fetchQuery(own)).rejects.toMatchObject({
+      code: "caller_changed",
+    })
+
+    // Each key's principal is current again: neither error is a view's
+    // refusal, so neither is cleared.
+    await auth.signIn()
+    expect(client.queryClient.getQueryState(own.queryKey)).toMatchObject({
+      status: "error",
+      error: { kind: "cancelled", code: "caller_changed" },
+    })
+    await auth.signOut()
+    expect(client.queryClient.getQueryState(failed.queryKey)).toMatchObject({
+      status: "error",
+      error: rejected,
+    })
+  })
+
+  it("leaves a fetch that replaced a cancelled refused read of the key running", async () => {
+    const { client, who, auth, sent } = signedIn()
+    const pinned = {
+      ...pin(client, ANONYMOUS).queryOptions(who, "whoami"),
+      retry: false,
+    }
+    client.queryClient.setQueryData(pinned.queryKey, "prefetched", {
+      updatedAt: 1,
+    })
+
+    // The view's read is refused at once, and TanStack cancels it (as a
+    // refetch does) before the refusal settles; the key is then read again
+    // as nobody, whose session has just ended.
+    const refused = client.queryClient.fetchQuery(pinned).catch(() => undefined)
+    void client.queryClient.cancelQueries({ queryKey: pinned.queryKey })
+    auth.expire()
+    expect(client.caller()).toBe(ANONYMOUS)
+    const own = { ...client.queryOptions(who, "whoami"), retry: false }
+    expect(own.queryKey).toEqual(pinned.queryKey)
+    const fresh = client.queryClient.fetchQuery(own)
+    await refused
+
+    await expect(fresh).resolves.toBe(`read by ${ANONYMOUS}`)
+    expect(sent("whoami")).toEqual([ANONYMOUS])
+    expect(client.queryClient.getQueryData(own.queryKey)).toBe(
+      `read by ${ANONYMOUS}`
+    )
+  })
+
   it("cancels a read pinned to a user who is no longer signed in", async () => {
     const { client, who, auth, sent } = signedIn()
     const view = pin(client, SEED_1)

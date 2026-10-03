@@ -1599,5 +1599,25 @@
     "file": "src/index.tsx",
     "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
     "replace": "      return SERVER_STATE\n"
+  },
+  {
+    "id": "ir6m-every-error-cleared",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "keeps the error of a key with no data that no view's refusal left",
+    "why": "the client clears every error of a key with no data once its principal is current again, not only a view's refusal, so a canister's rejection and the client's own caller_changed (D20) read as never fetched and are sent again",
+    "file": "src/client.ts",
+    "search": "        error !== null &&\n        refusals.has(error) &&\n",
+    "replace": "        error !== null &&\n"
+  },
+  {
+    "id": "ir6m-aborted-refusal-reverts-again",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "leaves a fetch that replaced a cancelled refused read of the key running",
+    "why": "a refused view read that TanStack had already cancelled still cancels the key, so the fetch that replaced it (a read as the caller now current) is cancelled and the key keeps the old data",
+    "file": "src/options.ts",
+    "search": "        !context.signal.aborted &&\n",
+    "replace": ""
   }
 ]
