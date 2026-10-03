@@ -297,8 +297,8 @@
     "test": "tests/hydration.test.tsx",
     "why": "the server snapshot read from the client instead of the constant, so a signed-in browser's first render no longer matches the server's HTML",
     "file": "src/index.tsx",
-    "search": "    client.authState,\n    serverState\n",
-    "replace": "    client.authState,\n    client.authState\n"
+    "search": "    },\n    serverState\n  )\n  return useMemo(",
+    "replace": "    },\n    client.authState\n  )\n  return useMemo("
   },
   {
     "id": "ir6-server-html-depends-on-the-session",
@@ -307,8 +307,8 @@
     "testName": "is rendered as the same HTML by a client that holds a session and one that does not",
     "why": "the server snapshot read from the client, so a render with a session writes different HTML from a server's",
     "file": "src/index.tsx",
-    "search": "    client.authState,\n    serverState\n",
-    "replace": "    client.authState,\n    client.authState\n"
+    "search": "    },\n    serverState\n  )\n  return useMemo(",
+    "replace": "    },\n    client.authState\n  )\n  return useMemo("
   },
   {
     "id": "ir6-snapshot-is-a-fresh-object",
@@ -317,8 +317,8 @@
     "testName": "renders again once for each sign-in, switch of account and sign-out",
     "why": "getSnapshot returns a new object on every read, which useSyncExternalStore treats as a change on every render",
     "file": "src/index.tsx",
-    "search": "    client.authState,\n    serverState\n",
-    "replace": "    () => ({ ...client.authState() }),\n    serverState\n"
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return { ...live }\n"
   },
   {
     "id": "ir6-auth-object-not-memoized",
