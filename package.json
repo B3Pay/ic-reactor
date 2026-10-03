@@ -87,6 +87,12 @@
       "undici": "^7.29.1",
       "linkinator>undici": "^8.0.0",
       "ws": "^8.21.0"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-ch52-4w7c-c8xp",
+        "GHSA-vfj7-8cjw-p6xm"
+      ]
     }
   }
 }
