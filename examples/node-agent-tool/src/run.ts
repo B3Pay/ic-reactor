@@ -40,12 +40,14 @@ export async function run(rt: Runtime): Promise<number> {
     const command = error instanceof UsageError ? error.command : undefined
     return reportFailure(out, command ?? null, failureOf(error))
   }
+  const out = createOutput(rt.io, line.json)
   if (line.help) {
-    rt.io.stdout(USAGE)
+    // With --json, the usage too is one JSON document, so an agent that reads
+    // every stdout line as JSON can ask for it.
+    out.result({ ok: true, command: "help", usage: USAGE }, [USAGE])
     return 0
   }
 
-  const out = createOutput(rt.io, line.json)
   if (line.command === "demo") return demo(out)
 
   let client: Client | undefined

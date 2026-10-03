@@ -80,8 +80,9 @@ re-send `firstAttempt` (the first failure). A failure is
 transfer `err` (the ledger's `Err`), `balance.before`/`after`, `resend` (the
 argv that re-sends the same argument) and `dedupUntil`. A bigint is a decimal
 string, bytes are hex, and an amount is `{ "units": "150000000", "tokens": "1.5" }`.
-No message quotes `NODE_AGENT_TOOL_SEED`: a malformed seed is refused by what
-is wrong with it, since an agent feeds stdout back into its context.
+`--help --json` is `{ "ok": true, "command": "help", "usage" }`. No message
+quotes `NODE_AGENT_TOOL_SEED`: a malformed seed is refused by what is wrong with
+it, since an agent feeds stdout back into its context.
 
 ```text
 {"ok":true,"command":"balance","network":"ic","ledger":{"id":"ryjl3-tyaaa-aaaaa-aaaba-cai","name":"icp"},"account":{"owner":"rkp4c-7iaaa-aaaaa-aaaca-cai","subaccount":null},"balance":{"units":"3023466972","tokens":"30.23466972"},"symbol":"ICP","decimals":8,"reads":{"icrc1_balance_of":"certified","icrc1_decimals":"query","icrc1_symbol":"query"}}

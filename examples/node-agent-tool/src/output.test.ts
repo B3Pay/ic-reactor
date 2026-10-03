@@ -112,4 +112,24 @@ describe("--help", () => {
     expect(none.exitCode).toBe(2)
     expect(none.stderr[0]).toBe("error: usage: no command given")
   })
+
+  it("with --json, is one JSON document that carries the usage", async () => {
+    const { cli } = setup()
+    for (const argv of [
+      ["--help", "--json"],
+      ["transfer", "-h", "--json"],
+    ]) {
+      const help = await cli(argv)
+      expect(help.exitCode).toBe(0)
+      expect(help.stderr).toEqual([])
+      expect(help.stdout).toHaveLength(1)
+      expect(help.docs).toEqual([
+        {
+          ok: true,
+          command: "help",
+          usage: expect.stringMatching(/^node-agent-tool: .*Exit codes: /s),
+        },
+      ])
+    }
+  })
 })
