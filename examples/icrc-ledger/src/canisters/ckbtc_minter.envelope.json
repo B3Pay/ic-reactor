@@ -1,0 +1,101 @@
+{
+  "contract": {
+    "actor": {
+      "kind": "service",
+      "service": 0
+    },
+    "canonicalization_profile": "candid-core-canon-1",
+    "declarations": [
+      {
+        "name": "GetBtcAddressArgs",
+        "type": 2
+      }
+    ],
+    "format": "candid-core",
+    "format_version": 1,
+    "identities": {
+      "contract": "candid-core:contract:v1:sha256:bbcd88132eec890fee400a01272346372737ab06ccbf39e152f0540f3889565b",
+      "interface": "candid-core:interface:v1:sha256:9f403605107d9e4adddd8a85c4b7b87d0fa5528c74c303ee31a3676c509d6132"
+    },
+    "producer": {
+      "candid_parser_version": "0.4.0",
+      "candid_version": "0.10.30",
+      "name": "candid-core",
+      "version": "0.1.0-beta.3"
+    },
+    "semantics_profile": "candid-1",
+    "types": [
+      {
+        "kind": "service",
+        "methods": [
+          {
+            "function": 1,
+            "id": 2716106269,
+            "name": "get_btc_address"
+          }
+        ]
+      },
+      {
+        "args": [
+          2
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          8
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 947296307,
+            "type": 3
+          },
+          {
+            "id": 1349681965,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 4,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "principal"
+      },
+      {
+        "inner": 6,
+        "kind": "opt"
+      },
+      {
+        "inner": 7,
+        "kind": "vec"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat8"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "text"
+      }
+    ]
+  },
+  "extensions": {
+    "org.candid-core.field-names/v1": [
+      [
+        2,
+        947296307,
+        "owner"
+      ],
+      [
+        2,
+        1349681965,
+        "subaccount"
+      ]
+    ]
+  }
+}

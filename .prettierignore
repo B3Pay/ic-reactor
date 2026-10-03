@@ -75,3 +75,15 @@ packages/core/tests/fixtures/*.envelope.json
 # for the `.did` files next to them, kept byte for byte. They are what a guide
 # snippet's `./generated/<name>` import resolves to.
 scripts/check-snippets/app/generated/*.ts
+
+# The modules and Contract envelopes `candid-core-cli gen` (run by
+# @ic-reactor/vite-plugin or an example's `gen` script) writes from an example's
+# .did, kept byte for byte so that `gen:check` passes. Listed by name, not by a
+# glob over src/canisters/: a hand-written module put next to them (a stable
+# index.ts) must still be formatted and checked. Each example adds its own.
+examples/icrc-ledger/src/canisters/icrc1.ts
+examples/icrc-ledger/src/canisters/icrc1.envelope.json
+examples/icrc-ledger/src/canisters/icp_ledger.ts
+examples/icrc-ledger/src/canisters/icp_ledger.envelope.json
+examples/icrc-ledger/src/canisters/ckbtc_minter.ts
+examples/icrc-ledger/src/canisters/ckbtc_minter.envelope.json

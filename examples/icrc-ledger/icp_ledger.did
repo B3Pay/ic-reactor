@@ -1,0 +1,142 @@
+// The part of the ICP ledger's own interface (ryjl3-tyaaa-aaaaa-aaaba-cai)
+// that reads blocks, copied from the candid:service metadata the canister
+// publishes. Its ICRC-1 methods are in icrc1.did.
+
+// Amount of tokens, measured in 10^-8 of a token.
+type Tokens = record {
+  e8s : nat64
+};
+
+// Number of nanoseconds from the UNIX epoch in UTC timezone.
+type TimeStamp = record {
+  timestamp_nanos : nat64
+};
+
+// AccountIdentifier is a 32-byte array.
+// The first 4 bytes is big-endian encoding of a CRC32 checksum of the last 28 bytes.
+type AccountIdentifier = blob;
+
+// Sequence number of a block produced by the ledger.
+type BlockIndex = nat64;
+
+// An arbitrary number associated with a transaction.
+type Memo = nat64;
+
+type Transaction = record {
+  memo : Memo;
+  icrc1_memo : opt blob;
+  operation : opt Operation;
+  created_at_time : TimeStamp
+};
+
+type GetBlocksArgs = record {
+  // The index of the first block to fetch.
+  start : BlockIndex;
+  // Max number of blocks to fetch.
+  length : nat64
+};
+
+type Operation = variant {
+  Mint : record {
+    to : AccountIdentifier;
+    amount : Tokens
+  };
+  Burn : record {
+    from : AccountIdentifier;
+    spender : opt AccountIdentifier;
+    amount : Tokens
+  };
+  Transfer : record {
+    from : AccountIdentifier;
+    to : AccountIdentifier;
+    amount : Tokens;
+    fee : Tokens;
+    spender : opt vec nat8
+  };
+  Approve : record {
+    from : AccountIdentifier;
+    spender : AccountIdentifier;
+    // This field is deprecated and should not be used.
+    allowance_e8s : int;
+    allowance : Tokens;
+    fee : Tokens;
+    expires_at : opt TimeStamp;
+    expected_allowance : opt Tokens
+  }
+};
+
+type Block = record {
+  parent_hash : opt blob;
+  transaction : Transaction;
+  timestamp : TimeStamp
+};
+
+// A prefix of the block range specified in the [GetBlocksArgs] request.
+type BlockRange = record {
+  blocks : vec Block
+};
+
+// An error indicating that the arguments passed to [QueryArchiveFn] were invalid.
+type QueryArchiveError = variant {
+  // [GetBlocksArgs.from] argument was smaller than the first block
+  // served by the canister that received the request.
+  BadFirstBlockIndex : record {
+    requested_index : BlockIndex;
+    first_valid_index : BlockIndex
+  };
+
+  // Reserved for future use.
+  Other : record {
+    error_code : nat64;
+    error_message : text
+  }
+};
+
+type QueryArchiveResult = variant {
+  // Successfully fetched zero or more blocks.
+  Ok : BlockRange;
+  // The [GetBlocksArgs] request was invalid.
+  Err : QueryArchiveError
+};
+
+// A function that is used for fetching archived ledger blocks.
+type QueryArchiveFn = func (GetBlocksArgs) -> (QueryArchiveResult) query;
+
+// The result of a "query_blocks" call: the blocks the ledger still holds,
+// and a callback per range that lives in an archive canister.
+type QueryBlocksResponse = record {
+  // The total number of blocks in the chain.
+  // If the chain length is positive, the index of the last block is `chain_len - 1`.
+  chain_length : nat64;
+
+  // System certificate for the hash of the latest block in the chain.
+  // Only present if `query_blocks` is called in a non-replicated query context.
+  certificate : opt blob;
+
+  // List of blocks that were available in the ledger when it processed the call.
+  blocks : vec Block;
+
+  // The index of the first block in "blocks".
+  // If the blocks vector is empty, the exact value of this field is not specified.
+  first_block_index : BlockIndex;
+
+  // Encoding of instructions for fetching archived blocks whose indices fall into the
+  // requested range.
+  archived_blocks : vec ArchivedBlocksRange
+};
+
+type ArchivedBlocksRange = record {
+  // The index of the first archived block that can be fetched using the callback.
+  start : BlockIndex;
+
+  // The number of blocks that can be fetch using the callback.
+  length : nat64;
+
+  // The function that should be called to fetch the archived blocks.
+  callback : QueryArchiveFn
+};
+
+service : {
+  // Queries blocks in the specified range.
+  query_blocks : (GetBlocksArgs) -> (QueryBlocksResponse) query;
+}
