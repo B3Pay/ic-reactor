@@ -65,6 +65,11 @@ log to tell which side sent what:
 
 - `src/server/*.test.ts`: the prefetch, its JSON round trip, the account
   reads, the owner parameter and the route handler.
+- `src/server/request-client.rsc.test.tsx`: `/account` rendered by React's
+  Flight server with the `react-server` condition, as Next renders Server
+  Components, so React's `cache()` memoizes as in a request: one client
+  serves the page and its streamed section, and the next request gets a new
+  one. It runs in vitest's `react-server` project (`vitest.config.ts`).
 - `src/components/hydration.test.tsx`: the home page rendered to HTML, read
   with no script run, hydrated without a mismatch or a request, then signed in.
 - `src/components/MyBalances.test.tsx`: sign-in, a switch of account, sign-out.
