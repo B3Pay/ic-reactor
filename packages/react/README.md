@@ -177,7 +177,9 @@ hydrates in a browser that holds a session (below). A client built with
   `signIn`, `signOut` and the `QueryClient` are the client's own, and a write
   signs as the caller current when it runs. Right after hydrating, React
   renders each component that calls `useClient()` or `useAuth()` again with
-  the session, and each read loads the user's keys once. A tab whose caller
+  the session, and each read loads the user's keys once: until the user's data
+  arrives, a read shows its loading state, and a `useSuspenseQuery` read its
+  boundary's fallback. A tab whose caller
   is anonymous anyway (no session, or one that expired or is signed in
   elsewhere) renders no `useClient()` component again, and no `useAuth()`
   component either unless its status differs. Show the same thing signed out
@@ -195,8 +197,8 @@ Two consequences of that move to the session are accepted, and tested:
   the caller is rendered on the client.** When a component that calls
   `useClient()` or `useAuth()` moves on to the session, the update reaches the
   boundaries it renders. A boundary that has not hydrated yet, because its
-  lazy code is still loading or, on React 19, its streamed HTML has not
-  arrived, is then rendered on the client: it shows its fallback instead of
+  lazy code is still loading or its streamed HTML has not arrived, is then
+  rendered on the client: it shows its fallback instead of
   the server's HTML until its content is ready, and React 18 reports a
   recoverable error. Its data is still the user's, and nothing is sent as
   anyone else. To keep the server's HTML, render such a boundary where no
@@ -206,10 +208,13 @@ Two consequences of that move to the session are accepted, and tested:
 - **A read the hydrating render built may run once and be cancelled.**
   TanStack Query refetches stale data on mount, and an effect may fetch with
   the hydrating render's options. Such a read is for the anonymous caller
-  while the user is current, so it is cancelled before anything is sent, with
-  `kind` `"cancelled"` and `code` `"caller_changed"`. The component has moved
-  on to the user's key by then and never shows that error, but a `QueryCache`
-  `onError` sees it: ignore `kind` `"cancelled"` there.
+  while the user is current, so it is cancelled before anything is sent. A
+  key that holds data (the server's) keeps it as it was, and a fetch of it
+  resolves with that data. A key with none fails, with `kind` `"cancelled"`
+  and `code` `"caller_changed"`, until the anonymous caller is current again.
+  The hydrating render's own reads never show that error, but a `QueryCache`
+  `onError` and an effect that awaits the fetch see it: ignore `kind`
+  `"cancelled"` there.
 
 ## Life of the client
 

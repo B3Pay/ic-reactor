@@ -465,25 +465,29 @@ const anonymous = (): string => ANONYMOUS
  * HTML; everything else (canisters, `mutationOptions`, `signIn`, `signOut`,
  * the `QueryClient`) is the client's own, and a write signs as the caller
  * current when it runs. Right after hydrating, React renders the component
- * again with the client itself, for the user. A client built with `identity`
- * keeps its caller for good and is always returned as it is.
+ * again with the client itself, for the user: a read with none of the user's
+ * data yet shows its loading state, and a `useSuspenseQuery` read its
+ * boundary's fallback, until that data arrives. A client built with
+ * `identity` keeps its caller for good and is always returned as it is.
  *
  * Two consequences of that move on a signed-in reload:
  *
  * - A Suspense boundary that is still dehydrated below a component that
  *   renders with the caller (this hook or {@link useAuth}), because its lazy
- *   code is still loading or, on React 19, its streamed HTML has not arrived,
- *   is rendered on the client when that component moves on: it shows its
- *   fallback instead of the server's HTML, and React 18 reports a recoverable
- *   error. Its data is still the user's. Render such a boundary where no
- *   component that renders with the caller sits above it, or pass it in as
- *   `children`, which a component's own update does not render again.
+ *   code is still loading or its streamed HTML has not arrived, is rendered
+ *   on the client when that component moves on: it shows its fallback
+ *   instead of the server's HTML, and React 18 reports a recoverable error.
+ *   Its data is still the user's. Render such a boundary where no component
+ *   that renders with the caller sits above it, or pass it in as `children`,
+ *   which a component's own update does not render again.
  * - A read the hydrating render built may still run once (TanStack Query
  *   refetches stale data on mount, and an effect may fetch with the view's
- *   options). It is cancelled before anything is sent (`kind` `"cancelled"`,
- *   `code` `"caller_changed"`), and the component has moved on to the user's
- *   key by then, so it never shows the error. A `QueryCache` `onError` sees
- *   it: ignore `kind` `"cancelled"` there.
+ *   options). It is cancelled before anything is sent. A key that holds data
+ *   keeps it as it was, and a fetch of it resolves with that data. A key with
+ *   none fails (`kind` `"cancelled"`, `code` `"caller_changed"`) until the
+ *   anonymous caller is current again: the hydrating render's own reads never
+ *   show that, but a `QueryCache` `onError` and an effect that awaits the
+ *   fetch see it, so ignore `kind` `"cancelled"` there.
  *
  * @throws Error outside a `ReactorProvider`, naming it.
  */
