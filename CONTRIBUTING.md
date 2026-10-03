@@ -196,6 +196,21 @@ with `Cannot find module '@bruits/satteri-<platform>'` (issue #408).
 the docs build no longer depends on the lost link. A future bump can still
 strand a different native package the same way.
 
+### `pnpm verify:audit` and the ignored advisories
+
+`pnpm verify:audit` (the CI job "Audit") fails on any high or critical
+advisory in the workspace. Fix one by raising the dependency, or a `pnpm.overrides`
+entry in the root `package.json`, past the patched version. Only when no
+patched version exists, and the package is reachable only from tooling that
+never ships (the docs site's build, not `packages/*` or an example's runtime),
+may the advisory go in `pnpm.auditConfig.ignoreGhsas`, with its reason here.
+Remove an entry as soon as a patched version is released.
+
+| Advisory                                                                 | Package                                             | Reached through                                                                                                     | Why it is ignored                                                                                                                                                          |
+| ------------------------------------------------------------------------ | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [GHSA-ch52-4w7c-c8xp](https://github.com/advisories/GHSA-ch52-4w7c-c8xp) | `http-cache-semantics` ≤ 4.2.0 (no patched version) | `docs > astro`                                                                                                      | A shared HTTP cache can serve one user's response to another through `max-stale`. The docs site is built to static files in CI; it runs no shared cache that serves users. |
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) | `braces` ≤ 3.0.3 (no patched version)               | `docs > remark-cli > unified-args > chokidar`, `docs > starlight-page-actions > vite-plugin-static-copy > chokidar` | A deeply nested pattern exhausts the stack. The patterns are the docs tooling's own file globs, not input from users.                                                      |
+
 ## Publishing (trusted publishing / tokens)
 
 This repository enforces **OIDC Trusted Publishing** for releases (no long-lived publish tokens for the publish step). Trusted publishing is more secure and produces provenance attestations when used from GitHub Actions.
