@@ -1559,5 +1559,45 @@
     "file": "src/index.tsx",
     "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
     "replace": "      return SERVER_STATE\n"
+  },
+  {
+    "id": "ir6m-provider-holds-a-view",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "hands a nested ReactorProvider given it the client itself",
+    "why": "a provider holds the anonymous view a hydrating useClient() handed its factory, so its tree reads as nobody for good and never follows a sign-in",
+    "file": "src/index.tsx",
+    "search": "  const client = (built as Stamped)[CLIENT_OF] ?? built\n",
+    "replace": "  const client = built\n"
+  },
+  {
+    "id": "ir6m-view-carries-no-client",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "carries the client it was made over",
+    "why": "a view carries no link to its client, so a provider handed one cannot hold the client instead",
+    "file": "src/client.ts",
+    "search": "          [CLIENT_OF]: { value: base },\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6m-view-of-a-view",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "carries the client it was made over",
+    "why": "a view asked for a view makes one over itself, a second view of the same client",
+    "file": "src/client.ts",
+    "search": "    const base = self[CLIENT_OF] ?? self\n",
+    "replace": "    const base = self\n"
+  },
+  {
+    "id": "ir6m-useauth-stays-on-server-state-expired-tab",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "is rendered on the client when a useAuth() parent shows its status after hydrating",
+    "why": "useAuth() renders the server's anonymous state for good, so an expired or signed-in-elsewhere tab never shows its status",
+    "file": "src/index.tsx",
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return SERVER_STATE\n"
   }
 ]
