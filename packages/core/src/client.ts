@@ -1233,12 +1233,17 @@ export function createClientWith(
     },
   }
   // The stamps and the seam `@ic-reactor/react` reads (see `CLIENTS_CREATED`), defined
-  // before the freeze: a frozen object takes no new property.
+  // before the freeze: a frozen object takes no new property. The stamps are
+  // not enumerable, so a spread copy of a client has no serial and is not
+  // taken for the client it copies. The seam is: a copy (`{ ...client }`, a
+  // test's double) keeps it, and its views are made over the copy, whose
+  // members are the client's own, so a provider given a copy hydrates as one
+  // given the client does.
   const client: Client = Object.freeze(
     Object.defineProperties(members, {
       [CLIENT_SERIAL]: { value: nextSerial() },
       [CLIENT_DISPOSED]: { get: () => disposed },
-      [CLIENT_AS]: { value: viewAs },
+      [CLIENT_AS]: { value: viewAs, enumerable: true },
     })
   )
 

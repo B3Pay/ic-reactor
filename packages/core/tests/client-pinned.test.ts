@@ -433,6 +433,23 @@ describe("a client pinned to a principal", () => {
     expect(pin(client, SEED_1)).not.toBe(first)
   })
 
+  it("keeps the seam in a spread copy, and pins views made over the copy", async () => {
+    const { client, who, sent } = signedIn()
+    const copy: Client = { ...client }
+
+    const view = pin(copy, ANONYMOUS)
+
+    expect(view.caller()).toBe(ANONYMOUS)
+    expect(view.queryKey(who, "whoami")[2]).toBe(ANONYMOUS)
+    expect(view.canister).toBe(copy.canister)
+    expect(view.queryClient).toBe(client.queryClient)
+    // The copy's own members are the client's: it still reads as the user.
+    await expect(
+      client.queryClient.fetchQuery(copy.queryOptions(who, "whoami"))
+    ).resolves.toBe(`read by ${SEED_1}`)
+    expect(sent("whoami")).toEqual([SEED_1])
+  })
+
   it("is the client itself when its caller is fixed", () => {
     const fixed = createClient({
       network: "ic",

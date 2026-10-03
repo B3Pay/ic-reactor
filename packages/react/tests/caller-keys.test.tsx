@@ -287,6 +287,30 @@ describe("hydrating with a stored session", () => {
     }
   )
 
+  it("hydrates a provider given a spread copy of the client as one given the client", async () => {
+    const { json, html } = await serverRender()
+    container.innerHTML = html
+    const served = container.querySelector("main")
+    const browser = replica({ seed: 7 })
+    const user = browser.auth.getPrincipal()?.toText()
+    // A structural copy, as a test's double of a client often is.
+    const copy: Client = { ...browser.client }
+
+    const { recoverable, logged } = await hydrate(
+      page(copy, JSON.parse(json), Reader)
+    )
+
+    expect(recoverable).toEqual([])
+    expect(logged).not.toHaveBeenCalled()
+    await waitFor(() =>
+      expect(container.querySelector("main")?.textContent).toBe(
+        `read by ${user}`
+      )
+    )
+    expect(container.querySelector("main")).toBe(served)
+    expect(whoamiCallers(browser)).toEqual([user])
+  })
+
   it("hydrates a late boundary below no component that renders with the caller from the server's keys, then moves it to the user", async () => {
     const { json, html } = await serverRender()
     container.innerHTML = html
