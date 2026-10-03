@@ -71,9 +71,10 @@ current when it was made, or not at all.
 One client per browser tab, or per request on a server. In React,
 `<ReactorProvider client={() => createClient(...)}>` builds it once per
 mounted tree and disposes it on unmount; a module-scope client passed as
-`client={() => client}` is borrowed, never disposed. Inside, `useClient()` returns it and
-`useAuth()` returns `{ status, principal, signIn, signOut }`, `"anonymous"`
-on a server and in a hydrating page's first render.
+`client={() => client}` is borrowed, never disposed. Inside, `useClient()`
+returns it (as anonymous while hydrating) and `useAuth()` returns
+`{ status, principal, signIn, signOut }`, `"anonymous"` on a server and in a
+hydrating page's first render.
 
 Any other sign-in source becomes an `AuthLike`:
 
