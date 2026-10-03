@@ -70,7 +70,9 @@ it comes with the 4 docs (#789).
 - `client.func<F>(funcSchema, ref)` calls a func reference a reply carried,
   such as an ICRC ledger's archive callback.
 - `client.caller()`, `client.authState()`, `client.subscribe(fn)`,
-  `client.signIn()`, `client.signOut()` and `client.dispose()`.
+  `client.signIn()`, `client.signOut()` and `client.dispose()`. Every call
+  made after `dispose()`, writes included, rejects `cancelled` with code
+  `client_disposed` and sends nothing (#818).
 - `isReactorError(error)` and the types `ReactorError` and
   `ReactorErrorKind`. Every rejection of a client call is a `ReactorError`
   with one of eight kinds (`invalid_args`, `unauthenticated`,
@@ -138,9 +140,20 @@ it comes with the 4 docs (#789).
   it unmounts (`StrictMode`-safe). A client the app owns, passed as
   `client={() => client}`, is borrowed and never disposed.
 - `useClient()` returns the nearest provider's client, and throws outside one.
+  Its component renders again whenever the caller's principal changes, and
+  the keys it builds are the caller's that the render shows: on a server and
+  while a page hydrates, the anonymous caller's. So a tab that holds a
+  session hydrates from the keys the server prefetched, with no mismatch and
+  nothing read again, then reads the session's keys (#813).
 - `useAuth()` returns `{ status, principal, signIn, signOut }`. `status` is
   `"anonymous"`, `"signed-in"`, `"expired"` or `"signed-in-elsewhere"`; it is
   `"anonymous"` on a server and in a hydrating page's first render.
+- Known limits of a signed-in reload, described in the README's "Keys follow
+  the caller a render shows": a Suspense boundary still hydrating below a
+  component that renders with the caller is rendered on the client when that
+  component moves to the session (pass such a boundary as `children`), and a
+  component that reads with `useSuspenseQuery` needs a Suspense boundary
+  above it.
 - The type `ReactorProviderProps`. The entry exports these 4 names and never
   re-exports `@ic-reactor/core`.
 
