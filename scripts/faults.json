@@ -401,6 +401,16 @@
     "replace": "  if (false && write && !caller.authenticated) {"
   },
   {
+    "id": "i818-disposed-write-refused-as-unauthenticated",
+    "package": "core",
+    "test": "tests/client-disposed.test.ts",
+    "testName": "rejects a direct update cancelled (client_disposed)",
+    "why": "a call on a disposed client asks who calls before whether the client is still there: the disposed client calls as nobody, so a write is refused as unauthenticated (sign in) instead of cancelled (client_disposed)",
+    "file": "src/call.ts",
+    "search": "  if (internals.disposed()) {",
+    "replace": "  if (false && internals.disposed()) {"
+  },
+  {
     "id": "ir2t-err-not-unwrapped",
     "package": "core",
     "test": "tests/canister.test.ts",

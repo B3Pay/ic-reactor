@@ -5,19 +5,25 @@
  *
  * In order, nothing sent until the last step:
  *
- * 1. the target: an unresolved `{ name }` rejects `invalid_args`
+ * 1. the client: every call on a disposed client rejects `cancelled`
+ *    (`client_disposed`), whatever else is wrong with it. This comes first
+ *    because a disposed client calls as the anonymous principal, so the
+ *    caller check below would refuse a write as `unauthenticated`;
+ * 2. the target: an unresolved `{ name }` rejects `invalid_args`
  *    (`canister_id_unresolved`); a composite query on a certified canister
  *    rejects `invalid_args` (`no_certified_path`);
- * 2. the caller: an update or a oneway by a caller who is not signed in
+ * 3. the caller: an update or a oneway by a caller who is not signed in
  *    rejects `unauthenticated` (`anonymous_write`);
- * 3. the arguments: Candid-encoded with the method's schemas, or
+ * 4. the arguments: Candid-encoded with the method's schemas, or
  *    `invalid_args` with the codec's `$`-rooted issues; a call to `aaaaa-aa`
  *    also needs a row of the effective canister id table (`management.ts`);
- * 4. the send, as the caller's own agent: `agent.query` for a read,
+ * 5. the send, as the caller's own agent: `agent.query` for a read,
  *    `agent.call` for an update, a oneway and a certified read. Every failure
  *    is classified (`classifyError`), and a call re-sends itself only when
- *    the classified failure allows it (see {@link CallRequest.resend});
- * 5. the reply: decoded with the method's result schemas (`invalid_reply` if
+ *    the classified failure allows it (see {@link CallRequest.resend}). The
+ *    agent is asked for before every attempt, and a client disposed since
+ *    the first step cancels the attempt (`ClientInternals.agentFor`);
+ * 6. the reply: decoded with the method's result schemas (`invalid_reply` if
  *    it does not decode), collapsed as the generator types it (0 results:
  *    `undefined`, 1: the value, n: the tuple), and unwrapped when the one
  *    result is an `Ok`/`Err` variant (`canister_err` with the `Err` payload).
@@ -199,6 +205,14 @@ export async function invoke(
 ): Promise<unknown> {
   const { method, target, caller } = request
   const name = method.name
+  if (internals.disposed()) {
+    throw createReactorError("cancelled", {
+      method: name,
+      canisterId: target.ok ? target.id : target.slot,
+      code: "client_disposed",
+      reason: "the call was made on a disposed client; nothing was sent",
+    })
+  }
   if (!target.ok) {
     throw createReactorError("invalid_args", {
       method: name,
