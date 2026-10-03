@@ -1,21 +1,37 @@
 // Scenario 6: the profile, read and written as the signed-in caller, and a
 // write while signed out refused by the client before it is sent.
-import { cleanup, fireEvent, screen } from "@testing-library/react"
+import { createClient, type AuthLike, type Client } from "@ic-reactor/core"
+import { ReactorProvider } from "@ic-reactor/react"
+import { SessionNotHeldError } from "@icp-sdk/auth/client"
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react"
+import { StrictMode } from "react"
 import { afterEach, describe, expect, it } from "vitest"
+import { createWalletAuth } from "./auth/wallet-auth.ts"
 import { Profile } from "./Profile.tsx"
 import {
+  BACKEND_ID,
   clearEnvCookie,
   createTestWallet,
   patiently,
   renderWithWallet,
   SEED_1,
+  setEnvCookie,
   type TestWallet,
 } from "./test/test-wallet.tsx"
 
 let wallet: TestWallet | undefined
+let lostKeyClient: Client | undefined
 afterEach(() => {
   cleanup()
   wallet?.client.dispose()
+  lostKeyClient?.dispose()
+  lostKeyClient = undefined
   clearEnvCookie()
 })
 
@@ -74,5 +90,56 @@ describe("the profile", () => {
       patiently
     )
     expect(screen.getByTestId("profile-name").textContent).toBe("No name yet.")
+  })
+
+  it("tells a signed-in user whose key is gone to sign in again, not that nobody is signed in", async () => {
+    // An Internet Identity session whose record says signed in while the key
+    // that signs for it is gone (cleared site data, another tab's sign-out
+    // the store could not report): AuthClient's getIdentity() rejects
+    // SessionNotHeldError, and the client rejects every call of that
+    // principal, read or write, `unauthenticated` with code
+    // `identity_unavailable`. createTestClient's sign-in never loses its key,
+    // so this client is built as the app's is, over the app's own auth.
+    setEnvCookie({ backend: BACKEND_ID })
+    const lostKey: AuthLike = {
+      getPrincipal: () => ({ toText: () => SEED_1 }),
+      getStatus: () => ({ state: "signed-in" }),
+      getIdentity: () => Promise.reject(new SessionNotHeldError()),
+      subscribe: () => () => {},
+      signIn: () => Promise.resolve(),
+      signOut: () => Promise.resolve(),
+    }
+    let sent = 0
+    const client = createClient({
+      network: "env",
+      // The client asks for the identity before it builds an agent, so
+      // nothing reaches this.
+      fetch: () => {
+        sent += 1
+        return Promise.reject(new Error("nothing may be sent"))
+      },
+      auth: () => createWalletAuth({ internetIdentity: lostKey }),
+    })
+    lostKeyClient = client
+    render(
+      <StrictMode>
+        <ReactorProvider client={() => client}>
+          <Profile />
+        </ReactorProvider>
+      </StrictMode>
+    )
+    const lostKeyText =
+      "Not sent: you are signed in, but the session's key could not be loaded to sign with (unauthenticated, identity_unavailable). Sign out and sign in again."
+
+    // The read fails first, then the write, and both say the same.
+    await screen.findByText("The profile could not be read.", {}, patiently)
+    await screen.findByText(lostKeyText, {}, patiently)
+    save("Ada")
+    await waitFor(
+      () => expect(screen.getAllByText(lostKeyText)).toHaveLength(2),
+      patiently
+    )
+    expect(screen.queryByText(/nobody is signed in/)).toBeNull()
+    expect(sent).toBe(0)
   })
 })
