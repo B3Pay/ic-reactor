@@ -12,7 +12,7 @@
  * key's principal or not at all (D20), and a write through it signs as
  * whoever is current when it runs.
  */
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { c } from "@candid-core/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { MutationObserver, QueryObserver } from "@tanstack/query-core"
@@ -164,6 +164,87 @@ describe("a client pinned to a principal", () => {
       client.queryClient.fetchQuery({ ...options, retry: false })
     ).resolves.toBe(`read by ${ANONYMOUS}`)
     expect(sent("whoami")).toEqual([ANONYMOUS])
+  })
+
+  it("leaves a key that holds data as it found it when a read it built is cancelled", async () => {
+    const { client, who, auth, sent } = signedIn()
+    const view = pin(client, ANONYMOUS)
+    const options = { ...view.queryOptions(who, "whoami"), retry: false }
+    // What a server dehydrated as nobody, stale by now.
+    client.queryClient.setQueryData(options.queryKey, "prefetched", {
+      updatedAt: 1,
+    })
+    const errors: unknown[] = []
+    const stop = client.queryClient.getQueryCache().subscribe((event) => {
+      if (event.type === "updated" && event.action.type === "error") {
+        errors.push(event.action.error)
+      }
+    })
+
+    // TanStack 5.90 and later resolve the reverted fetch with the data the
+    // key holds; earlier ones reject it with their CancelledError.
+    await client.queryClient.fetchQuery(options).catch(() => undefined)
+    stop()
+
+    expect(sent("whoami")).toEqual([])
+    expect(client.queryClient.getQueryState(options.queryKey)).toMatchObject({
+      status: "success",
+      fetchStatus: "idle",
+      data: "prefetched",
+      dataUpdatedAt: 1,
+      error: null,
+    })
+    expect(
+      errors.filter((error) => isReactorError(error) && error.code)
+    ).toEqual([])
+
+    // Still stale: once nobody is current, an observer reads it again.
+    await auth.signOut()
+    const observer = new QueryObserver(client.queryClient, options)
+    const unsubscribe = observer.subscribe(() => {})
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().data).toBe(`read by ${ANONYMOUS}`)
+    )
+    unsubscribe()
+    expect(sent("whoami")).toEqual([ANONYMOUS])
+  })
+
+  it("clears the cancellation from a key with no data once its principal is current again", async () => {
+    const { client, who, auth, sent } = signedIn()
+    const pinned = { ...pin(client, ANONYMOUS).queryOptions(who, "whoami") }
+    await client.queryClient.fetchQuery(pinned).catch(() => undefined)
+    // Kept while the user is current: a hydrating suspense read that was
+    // refused needs it, or it would fetch again at once and be refused again.
+    expect(client.queryClient.getQueryState(pinned.queryKey)).toMatchObject({
+      status: "error",
+      error: { kind: "cancelled", code: "caller_changed" },
+    })
+
+    // The client's own read, refused because its caller left, keeps D20's
+    // error even where the key holds data, and once that caller is back.
+    const own = { ...client.queryOptions(who, "whoami"), retry: false }
+    client.queryClient.setQueryData(own.queryKey, "earlier", { updatedAt: 1 })
+    let statusSeen: string | undefined
+    const unsubscribe = client.subscribe(() => {
+      statusSeen ??= client.queryClient.getQueryState(pinned.queryKey)?.status
+    })
+    await auth.signOut()
+    unsubscribe()
+    await expect(client.queryClient.fetchQuery(own)).rejects.toMatchObject({
+      kind: "cancelled",
+      code: "caller_changed",
+    })
+
+    // Cleared before any listener heard of the sign-out.
+    expect(statusSeen).toBe("pending")
+    expect(client.queryClient.getQueryState(pinned.queryKey)).toMatchObject({
+      status: "pending",
+      fetchStatus: "idle",
+      error: null,
+    })
+    await auth.signIn()
+    expect(client.queryClient.getQueryState(own.queryKey)?.status).toBe("error")
+    expect(sent("whoami")).toEqual([])
   })
 
   it("cancels a read pinned to a user who is no longer signed in", async () => {

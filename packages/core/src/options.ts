@@ -20,6 +20,7 @@ import { isPrincipal, resolveSchema } from "@candid-core/schema"
 import { encodeArgs, type EncodeResult } from "@candid-core/schema/codec"
 import {
   skipToken,
+  type QueryClient,
   type QueryFunctionContext,
   type QueryKey,
 } from "@tanstack/query-core"
@@ -152,9 +153,48 @@ const runKey = (context: unknown): object | undefined =>
 export function createBuilders(
   internals: ClientInternals,
   owner: () => Client,
-  current: () => Caller = internals.current
+  current: () => Caller = internals.current,
+  refusals?: WeakSet<object>
 ): Builders {
   const network = internals.network.keySegment
+  const pinned = current !== internals.current
+
+  /**
+   * A read built for a pinned principal, refused because someone else is
+   * current (`caller_changed`), must not leave the refusal as its query's
+   * error: a component that shows the key once that principal is current
+   * again (a sign-out after a signed-in reload) would show it. A query with
+   * data is left as it was found: TanStack reverts the fetch, as it reverts
+   * one its last observer left. A query with no data keeps the error for
+   * now, since a suspense read of a reverted one would fetch it again at once
+   * and be refused again (a hydrating boundary then never settles); the error
+   * goes into `refusals`, and the client clears it from the query once the
+   * pinned principal is current again.
+   */
+  const keepOnRefusal = async (
+    context: QueryFunctionContext,
+    read: Promise<unknown>
+  ): Promise<unknown> => {
+    try {
+      return await read
+    } catch (error) {
+      if (
+        !context.signal.aborted &&
+        isReactorError(error) &&
+        error.code === "caller_changed"
+      ) {
+        // TanStack 5.62 does not hand the context its `QueryClient`.
+        const queryClient =
+          (context as { client?: QueryClient }).client ?? owner().queryClient
+        const query = queryClient
+          .getQueryCache()
+          .find({ queryKey: context.queryKey, exact: true })
+        if (query?.state.data !== undefined) void query.cancel({ revert: true })
+        else refusals?.add(error)
+      }
+      throw error
+    }
+  }
 
   /**
    * What was resolved for each run of a mutation, by the function context
@@ -288,17 +328,19 @@ export function createBuilders(
         prepared.name,
         argsSegments(encoded, vars)
       ),
-      queryFn: ({ signal }: QueryFunctionContext) =>
-        invoke(internals, {
+      queryFn: (context: QueryFunctionContext) => {
+        const read = invoke(internals, {
           method: prepared,
           target,
           certified: record.certified,
           caller,
           values,
           encoded,
-          signal,
+          signal: context.signal,
           resend: false,
-        }),
+        })
+        return pinned ? keepOnRefusal(context, read) : read
+      },
       ...base,
     }
   }

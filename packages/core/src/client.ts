@@ -29,6 +29,7 @@ import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
 import { QueryClient, type QueryKey } from "@tanstack/query-core"
 import { createReactorError, retryQuery } from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
+import { KEY_ROOT } from "./keys.js"
 import {
   agentOptionsFor,
   resolveNetwork,
@@ -886,6 +887,36 @@ export function createClientWith(
   let notified: AuthState = snapshot
 
   /**
+   * The errors of reads a view built that were refused while someone else
+   * was current, and left on a query with no data (see `createBuilders`).
+   */
+  const refusals = new WeakSet<object>()
+
+  /**
+   * Clears the refusals of `principal`'s reads, now that it is current, from
+   * the queries that still hold one and nothing else, before any listener
+   * renders them: such a query reads as never fetched, so an observer fetches
+   * it, where a suspense read would otherwise throw the refusal (TanStack does
+   * not refetch an errored query on mount for one).
+   */
+  function clearRefusals(principal: string): void {
+    const queries = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: [KEY_ROOT, network.keySegment, principal] })
+    for (const query of queries) {
+      const { error, data, fetchStatus } = query.state
+      if (
+        error !== null &&
+        refusals.has(error) &&
+        data === undefined &&
+        fetchStatus === "idle"
+      ) {
+        query.setState({ ...query.state, status: "pending", error: null })
+      }
+    }
+  }
+
+  /**
    * The auth, built on first use: never in `identity` mode, never on a server
    * (unless the test client's seam says so), never after
    * {@link Client.dispose}.
@@ -935,6 +966,7 @@ export function createClientWith(
     }
     if (state === notified) return
     notified = state
+    clearRefusals(state.principal)
     for (const listener of [...listeners]) {
       // A listener may dispose the client; the rest are then not told.
       if (disposed) return
@@ -1111,7 +1143,8 @@ export function createClientWith(
       const { queryKey, queryOptions } = createBuilders(
         internals,
         () => client,
-        () => caller
+        () => caller,
+        refusals
       )
       view = Object.freeze(
         Object.create(base, {
