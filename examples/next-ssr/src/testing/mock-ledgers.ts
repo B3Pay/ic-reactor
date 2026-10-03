@@ -67,7 +67,8 @@ export const tokenOf = (ledger: LedgerRef): MockToken => {
   return token
 }
 
-function handlersFor(token: MockToken): TestHandlers<Actor> {
+/** The handlers of a mocked ledger: a test can spread them and replace one. */
+export function ledgerHandlers(token: MockToken): TestHandlers<Actor> {
   return {
     icrc1_name: (ctx) => `${token.name}, read by ${ctx.caller}`,
     icrc1_symbol: () => token.symbol,
@@ -100,7 +101,7 @@ export function mockLedgers(options: { signedIn?: boolean } = {}) {
     signedIn: options.signedIn ?? false,
   })
   for (const ledger of LEDGERS) {
-    test.mock<Actor>(actor, ledger.id, handlersFor(tokenOf(ledger)))
+    test.mock<Actor>(actor, ledger.id, ledgerHandlers(tokenOf(ledger)))
   }
   test.mock<Actor>(actor, NOT_A_LEDGER.id, {})
   return test

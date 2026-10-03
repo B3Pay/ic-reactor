@@ -14,14 +14,17 @@ import {
   waitFor,
 } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vitest"
+import { actor, type Actor } from "@/canisters/icrc1"
 import { tokens } from "@/format"
 import { LEDGERS } from "@/ledgers"
 import {
   BALANCES,
+  ledgerHandlers,
   mockLedgers,
   requestsFor,
   SEED_1,
   SEED_2,
+  tokenOf,
   type MockLedgers,
 } from "@/testing/mock-ledgers"
 import { MyBalances } from "./MyBalances"
@@ -81,13 +84,37 @@ describe("My balances", () => {
     await waitFor(() =>
       expect(icpRow(container)).toBe(icp(BALANCES.get(SEED_1) ?? 0n))
     )
+    // From now on the ICP ledger holds every balance read until released,
+    // while it answers decimals and symbol at once.
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    test.mock<Actor>(actor, ICP.id, {
+      ...ledgerHandlers(tokenOf(ICP)),
+      icrc1_balance_of: async ({ owner }) => {
+        await held
+        return BALANCES.get(owner) ?? 0n
+      },
+    })
 
     act(() => {
       test.auth.switchTo(2)
     })
 
-    // The first render as seed 2 has nothing for seed 2 yet.
+    // Seed 2's decimals and symbol arrive; seed 2's balance does not. The
+    // row has nothing to show for seed 2, and shows nothing of seed 1's.
+    await waitFor(() =>
+      expect(
+        requestsFor(test, "icrc1_symbol").filter(
+          ({ caller, canisterId }) => caller === SEED_2 && canisterId === ICP.id
+        )
+      ).toHaveLength(1)
+    )
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)))
     expect(icpRow(container)).toBe("loading")
+
+    release()
     await waitFor(() =>
       expect(icpRow(container)).toBe(icp(BALANCES.get(SEED_2) ?? 0n))
     )
