@@ -71,7 +71,7 @@ console.log(`\n📦 Syncing @ic-reactor/* example dependencies\n`)
 function findExamplePackageJsonFiles(dir) {
   const ignored = new Set(["node_modules", "dist", ".next", "out"])
   const packageJsonFiles = []
-  // The v4 line has no examples/ until the DX1 slice adds them.
+  // A tree without examples/ (the v4 line had none before DX1) has nothing to sync.
   if (!existsSync(dir)) return packageJsonFiles
 
   for (const entry of readdirSync(dir)) {

@@ -69,8 +69,21 @@ are documented at [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
 
 ## Examples
 
-The v4 branch has no example apps yet. The four v4 examples land with DX1; the
-3.x examples are on `main`.
+Four apps in [`examples/`](examples/), each with its own tests, and a page in
+the [examples docs](https://ic-reactor.b3pay.net/v4/examples/):
+
+- [`icrc-ledger`](examples/icrc-ledger/): mainnet ICP ledger reads, archive
+  callbacks, and a sandbox that injects faults into transfers.
+- [`vite-wallet`](examples/vite-wallet/): a React and Vite wallet on a local
+  icp-cli network, with Internet Identity, a dev-account sign-in, a backend
+  canister and optimistic writes.
+- [`next-ssr`](examples/next-ssr/): a Next.js App Router app over mainnet
+  ledgers, with one client per request, lossless hydration and streaming.
+- [`node-agent-tool`](examples/node-agent-tool/): a command-line tool for
+  people and AI agents, with identities, certified reads, safe re-sends and
+  JSON output.
+
+The 3.x examples are on `main`.
 
 ## Documentation
 

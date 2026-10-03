@@ -84,8 +84,9 @@ function getMdxFiles() {
     .sort()
 }
 
-// The v4 line has neither examples/ nor example pages until DX1 and DX2 add
-// them. With one and not the other, the checks below report what is missing.
+// A tree with neither examples/ nor example pages (the v4 line before DX1)
+// has nothing to check. With one and not the other, the checks below report
+// what is missing.
 if (!fs.existsSync(examplesDir) && !fs.existsSync(docsExamplesDir)) {
   console.log("No examples/ and no example docs pages: nothing to check.")
   process.exit(0)

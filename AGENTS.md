@@ -7,9 +7,9 @@ This is the `v4` branch, the development line of ic-reactor 4. `main` is the
 ic-reactor 4 against `v4`.
 
 ic-reactor 4 is a thin layer over a module that `candid-core-cli gen`
-generates, plus one consumer guide. No package code on this branch is written
-against unpublished candid-core shapes until the 0.3 beta of
-`@candid-core/schema` is published and pinned exactly.
+generates, plus one consumer guide. Its packages are written against the
+published candid-core betas, `@candid-core/schema` and `@candid-core/cli`,
+each pinned exactly.
 
 ### Packages
 
@@ -22,18 +22,19 @@ against unpublished candid-core shapes until the 0.3 beta of
 
 ## Where to start for a task
 
-| Task                          | Start here                                                                  |
-| ----------------------------- | --------------------------------------------------------------------------- |
-| Core runtime                  | `packages/core/src/`, `packages/core/tests/`                                |
-| React bindings                | `packages/react/src/`, `packages/react/tests/`                              |
-| Vite plugin generation        | `packages/vite-plugin/src/generate.ts`, `src/index.ts`                      |
-| `ic_env` cookie and dev proxy | `packages/vite-plugin/src/dev-environment.ts`, `src/env.ts`, `src/index.ts` |
-| Test client, fake replica     | `packages/core/src/testing/` (`test-client.ts` is the entry's only export)  |
-| Real-replica e2e              | `e2e/` (Rust `hello_actor` canister, `e2e/test.sh`)                         |
-| Docs site (`/v4/`)            | `docs/`, `.github/workflows/docs.yml`                                       |
-| Consumer guide and skill      | `packages/core/llms.txt`, `skill-packages/ic-reactor/SKILL.md`              |
-| Release lane                  | `scripts/release.js`, `.github/workflows/release.yml`                       |
-| CI gates and their tests      | `scripts/` (`check-exports.mjs`, `verify-traps.mjs`, `verify-faults.mjs`)   |
+| Task                          | Start here                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------- |
+| Core runtime                  | `packages/core/src/`, `packages/core/tests/`                                                |
+| React bindings                | `packages/react/src/`, `packages/react/tests/`                                              |
+| Vite plugin generation        | `packages/vite-plugin/src/generate.ts`, `src/index.ts`                                      |
+| `ic_env` cookie and dev proxy | `packages/vite-plugin/src/dev-environment.ts`, `src/env.ts`, `src/index.ts`                 |
+| Test client, fake replica     | `packages/core/src/testing/` (`test-client.ts` is the entry's only export)                  |
+| Real-replica e2e              | `e2e/` (Rust `hello_actor` canister, `e2e/test.sh`)                                         |
+| Example apps                  | `examples/<name>/` (own tests and `gen:check`; a page in `docs/src/content/docs/examples/`) |
+| Docs site (`/v4/`)            | `docs/`, `.github/workflows/docs.yml`                                                       |
+| Consumer guide and skill      | `packages/core/llms.txt`, `skill-packages/ic-reactor/SKILL.md`                              |
+| Release lane                  | `scripts/release.js`, `.github/workflows/release.yml`                                       |
+| CI gates and their tests      | `scripts/` (`check-exports.mjs`, `verify-traps.mjs`, `verify-faults.mjs`)                   |
 
 ## Verification commands
 
