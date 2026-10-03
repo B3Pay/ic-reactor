@@ -1,0 +1,58 @@
+---
+title: "Next.js SSR"
+description: Mainnet ICRC-1 ledgers read on the server, hydrated losslessly, and read again as the signed-in user, on ic-reactor 4 and the Next.js App Router
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+A Next.js App Router app built on `@ic-reactor/core` and `@ic-reactor/react`
+with TanStack Query's own hooks. It reads the ICP, ckBTC and ckETH ledgers on
+mainnet through one module generated from `icrc1.did` by `candid-core-cli gen`,
+and shows the server-rendering story end to end:
+
+- **One client per request.** A Server Component builds
+  `createClient({ network: "ic", identity: "anonymous" })` inside the request
+  (React's `cache()`), prefetches every ledger's name, symbol, decimals, fee,
+  total supply, minting account and metadata with `{ id }` targets, and hands
+  `dehydrate(client.queryClient)` to a `<HydrationBoundary>`.
+- **The provider factory in a `'use client'` module.**
+  `<ReactorProvider client={() => createClient({ network: "ic", auth: () => new AuthClient() })}>`
+  builds a client per mounted tree. The server render and the browser's first
+  render call as the anonymous principal, so a visitor who is not signed in
+  gets the server's keys, and the cards render from them with nothing fetched
+  on load.
+- **Lossless hydration.** `bigint` amounts, principals and `Uint8Array`
+  values arrive exact; the page prints each value's run-time type.
+- **No JavaScript needed** to read the pages: the values are in the server's
+  HTML, which a smoke script checks against a running `next start`.
+- **Streaming.** On the account page, certified balances (replicated calls)
+  stream in after the rest of the page, from an async Server Component inside
+  `<Suspense>`.
+- **Progressive enhancement.** The account lookup is a GET form validated on
+  the server with `isPrincipal` and `principal()`.
+- **A Route Handler** with its own client per request answers JSON, with
+  amounts as decimal text and base units, and maps a `ReactorError` kind to an
+  HTTP status.
+- **Errors on the server.** A canister that is not a ledger renders its own
+  section with the error's `kind`; the rest of the page renders as usual.
+- **Sign-in after hydration.** Signing in with Internet Identity moves every
+  read to keys that hold the user's principal; nothing read anonymously is
+  reused for them.
+
+The tests run the real client on `createTestClient()` from
+`@ic-reactor/core/testing`, with the ledgers mocked over in-memory replicas,
+and never reach mainnet.
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/v4/examples/next-ssr?file=src/app/page.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/v4/examples/next-ssr"
+  />
+</CardGrid>
