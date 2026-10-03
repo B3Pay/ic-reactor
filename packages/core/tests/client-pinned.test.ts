@@ -333,6 +333,20 @@ describe("a client pinned to a principal", () => {
     expect(pin(spied, ANONYMOUS).dispose).toBe(spied.dispose)
   })
 
+  it("carries the client it was made over, and makes a view asked of it from that client", () => {
+    const { client } = signedIn()
+    const OF = Symbol.for("ic-reactor.client.of")
+    const view = pin(client, ANONYMOUS)
+
+    // What `ReactorProvider` holds when a factory hands it a view.
+    expect((view as unknown as Record<symbol, unknown>)[OF]).toBe(client)
+    expect(Object.getOwnPropertyDescriptor(view, OF)?.enumerable).toBe(false)
+    expect((client as unknown as Record<symbol, unknown>)[OF]).toBeUndefined()
+    // A view of a view is the client's own view, not one over the view.
+    expect(pin(view, ANONYMOUS)).toBe(view)
+    expect(pin(view, SEED_1)).toBe(pin(client, SEED_1))
+  })
+
   it("keeps no view of a principal that is neither current nor anonymous, however many switches", () => {
     const { client, auth } = signedIn()
     const anonymous = pin(client, ANONYMOUS)

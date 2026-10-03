@@ -680,6 +680,11 @@ function warnEnvOffPage(network: Network): void {
  *   It returns a frozen view of `this` for that principal (see `viewAs` in
  *   {@link createClientWith}), or `this` itself for a client built with
  *   `identity`, whose caller never changes.
+ * - `ic-reactor.client.of`, on each view: the object the view was made over.
+ *   The provider holds that object, never a view, when its factory returns
+ *   one (a component's `useClient()` handed to a nested provider): a view
+ *   keeps its principal for good, so a tree on it would never follow the
+ *   caller.
  *
  * The provider reads the count, calls its `client` factory, and compares the
  * serial of the client it gets: a higher serial means the factory created the
@@ -690,14 +695,15 @@ function warnEnvOffPage(network: Network): void {
  *
  * `Symbol.for` keys and a count kept on `globalThis`, so that two copies of
  * this package in one bundle count together, and the provider reads them
- * without importing anything of this package at run time. The three on a
- * client are non-enumerable, so spreading or logging a client does not show
- * them.
+ * without importing anything of this package at run time. The keys on a
+ * client or a view are non-enumerable, so spreading or logging one does not
+ * show them.
  */
 const CLIENTS_CREATED = Symbol.for("ic-reactor.clients.created")
 const CLIENT_SERIAL = Symbol.for("ic-reactor.client.serial")
 const CLIENT_DISPOSED = Symbol.for("ic-reactor.client.disposed")
 const CLIENT_AS = Symbol.for("ic-reactor.client.as")
+const CLIENT_OF = Symbol.for("ic-reactor.client.of")
 
 /** Counts one more client in this realm, and returns the count. */
 function nextSerial(): number {
@@ -1116,11 +1122,17 @@ export function createClientWith(
    * accounts leaves nothing behind. A client built with `identity` has one
    * caller for good, the one its server render built keys for too: it
    * returns `this`.
+   *
+   * A view carries the object it was made over (`CLIENT_OF`), which
+   * `ReactorProvider` holds in its place, and asked for a view of its own it
+   * makes one of that object.
    */
   function viewAs(this: unknown, principal: string): Client {
-    const base = (
+    const self = (
       typeof this === "object" && this !== null ? this : client
-    ) as Client
+    ) as Client & { readonly [CLIENT_OF]?: Client }
+    // A view of a view is a view of what the first was made over.
+    const base = self[CLIENT_OF] ?? self
     if (fixedCaller !== undefined) return base
     let byPrincipal = views.get(base)
     if (byPrincipal === undefined) views.set(base, (byPrincipal = new Map()))
@@ -1152,6 +1164,7 @@ export function createClientWith(
           authState: { value: () => state },
           queryKey: { value: queryKey },
           queryOptions: { value: queryOptions },
+          [CLIENT_OF]: { value: base },
         }) as Client
       )
       byPrincipal.set(principal, view)
