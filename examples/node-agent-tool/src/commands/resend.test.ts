@@ -2,7 +2,14 @@
 // never a new transfer, and the ledger's deduplication tells what happened.
 import { principal } from "@candid-core/schema"
 import { describe, expect, it } from "vitest"
-import { createCli, generatePem, NOW, type Doc } from "../test-kit.ts"
+import type { MockLedger } from "../mock-ledger.ts"
+import {
+  createCli,
+  generatePem,
+  NOW,
+  type Doc,
+  type TestClient,
+} from "../test-kit.ts"
 
 const sender = generatePem("secp256k1")
 const TO = principal("ryjl3-tyaaa-aaaaa-aaaba-cai")
@@ -146,6 +153,7 @@ describe("the same argument, re-sent", () => {
     expect(result.docs[0]).toMatchObject({
       kind: "outcome_unknown",
       firstAttempt: { kind: "rejected", mayHaveExecuted: true },
+      resendAttempt: { kind: "outcome_unknown", mayHaveExecuted: true },
     })
     expect(resendOf(result.docs[0])).toContain("--created-at-time")
     expect(attempts).toBe(2)
@@ -165,4 +173,188 @@ describe("the same argument, re-sent", () => {
     expect(result.exitCode).toBe(9)
     expect(ledger.received).toHaveLength(1)
   })
+})
+
+/**
+ * Loses the reply to the first attempt (the ledger runs it), then calls `arm`
+ * while the ledger answers the balance read back after it: what `arm` sets up
+ * meets the re-send, the next request.
+ */
+const loseTheFirstThen =
+  (ledger: MockLedger, arm: (test: TestClient, ledger: MockLedger) => void) =>
+  (test: TestClient) => {
+    test.dropNextReply()
+    let reads = 0
+    ledger.mountOn(test, {
+      icrc1_balance_of: (account) => {
+        reads += 1
+        if (reads === 2) arm(test, ledger)
+        return ledger.balanceOf(account)
+      },
+    })
+  }
+
+/** 6 tokens of 10, sent once: what the first attempt leaves. */
+const AFTER_THE_FIRST = START - 600_000_000n - 10_000n
+
+describe("a re-send that does not go through settles nothing", () => {
+  // Each way the re-send can fail for certain after a lost first reply. None
+  // tells whether the first attempt ran: a ledger answers some Errs before it
+  // looks for a duplicate, and the other failures never reached it. In each
+  // case below the first attempt did run.
+  const cases: ReadonlyArray<{
+    readonly name: string
+    readonly arm: (test: TestClient, ledger: MockLedger) => void
+    readonly resendAttempt: Doc
+    /** How the person's report names what the re-send got. */
+    readonly got: RegExp
+    /** Whether the replica refused each call it received, in order. */
+    readonly calls: readonly boolean[]
+  }> = [
+    {
+      name: "refused with HTTP 429 three times: not_delivered",
+      arm: (test) => test.refuseNext(429, 3),
+      resendAttempt: {
+        kind: "not_delivered",
+        mayHaveExecuted: false,
+        httpStatus: 429,
+      },
+      got: /The re-send did not go through \(not_delivered: /,
+      calls: [false, true, true, true],
+    },
+    {
+      name: "rejected before the ledger ran it: reject code 3",
+      arm: (_test, ledger) => ledger.rejectNextTransfer(3),
+      resendAttempt: {
+        kind: "rejected",
+        mayHaveExecuted: false,
+        rejectCode: 3,
+      },
+      got: /The re-send did not go through \(rejected: /,
+      calls: [false, false],
+    },
+    {
+      // A disposed client calls as nobody, so it refuses a write before
+      // sending it: unauthenticated, not cancelled.
+      name: "refused by the client before it was sent: the client was disposed",
+      arm: (test) => test.client.dispose(),
+      resendAttempt: {
+        kind: "unauthenticated",
+        mayHaveExecuted: false,
+        code: "anonymous_write",
+      },
+      got: /The re-send did not go through \(unauthenticated: /,
+      calls: [false],
+    },
+    {
+      name: "answered InsufficientFunds",
+      arm: (_test, ledger) =>
+        ledger.answerNextTransfer({
+          tag: "InsufficientFunds",
+          value: { balance: AFTER_THE_FIRST },
+        }),
+      resendAttempt: {
+        kind: "canister_err",
+        mayHaveExecuted: false,
+        err: { tag: "InsufficientFunds", value: { balance: "399990000" } },
+      },
+      got: /The re-send did not go through \(the ledger answered InsufficientFunds, not Duplicate\)/,
+      calls: [false, false],
+    },
+    {
+      name: "answered TemporarilyUnavailable",
+      arm: (_test, ledger) =>
+        ledger.answerNextTransfer({ tag: "TemporarilyUnavailable" }),
+      resendAttempt: {
+        kind: "canister_err",
+        mayHaveExecuted: false,
+        err: { tag: "TemporarilyUnavailable" },
+      },
+      got: /\(the ledger answered TemporarilyUnavailable, not Duplicate\)/,
+      calls: [false, false],
+    },
+    {
+      name: "answered BadFee",
+      arm: (_test, ledger) =>
+        ledger.answerNextTransfer({
+          tag: "BadFee",
+          value: { expected_fee: 20_000n },
+        }),
+      resendAttempt: {
+        kind: "canister_err",
+        mayHaveExecuted: false,
+        err: { tag: "BadFee", value: { expected_fee: "20000" } },
+      },
+      got: /\(the ledger answered BadFee, not Duplicate\)/,
+      calls: [false, false],
+    },
+  ]
+
+  it.each(cases)(
+    "re-send $name: the first attempt may still have executed",
+    async ({ arm, resendAttempt, got, calls }) => {
+      const argv = ["transfer", TO, "6", "--resend-unknown", ...PEM]
+
+      const human = setup()
+      const told = await human.cli(argv, {
+        before: loseTheFirstThen(human.ledger, arm),
+      })
+      expect(told.exitCode).toBe(6)
+      const text = told.stderr.join("\n")
+      expect(text).toMatch(/^error: outcome_unknown: /)
+      expect(text).toMatch(/may have executed: yes/)
+      expect(text).toMatch(got)
+      expect(text).toMatch(
+        /That does not tell whether the first attempt did: it may still have executed\./
+      )
+      expect(text).toMatch(/Do not make a new transfer\. Re-send this same one/)
+      expect(text).toContain(
+        `node src/cli.ts transfer ${TO} 6 --fee 0.0001 --created-at-time ${NOW}`
+      )
+      // Nothing the re-send alone would advise: it moved nothing, the first may have.
+      expect(text).not.toMatch(
+        /may have executed: no|safe to run again|Nothing moved|nothing executed|try again later|leave out --fee/
+      )
+      expect(
+        told.requests
+          .filter((r) => r.endpoint === "call")
+          .map((r) => "refused" in r)
+      ).toEqual(calls)
+      expect(
+        human.ledger.balanceOf({ owner: sender.principal, subaccount: null })
+      ).toBe(AFTER_THE_FIRST)
+
+      const agent = setup()
+      const json = await agent.cli([...argv, "--json"], {
+        before: loseTheFirstThen(agent.ledger, arm),
+      })
+      expect(json.exitCode).toBe(6)
+      expect(json.docs).toHaveLength(1)
+      const doc = json.docs[0]
+      expect(doc).toMatchObject({
+        ok: false,
+        command: "transfer",
+        kind: "outcome_unknown",
+        mayHaveExecuted: true,
+        firstAttempt: { kind: "outcome_unknown", mayHaveExecuted: true },
+        resendAttempt,
+        balance: { before: { units: String(START) } },
+        dedupUntil: "2026-10-02T00:00:00.000Z",
+      })
+      expect(doc).not.toHaveProperty("err")
+      expect(resendOf(doc)).toEqual([
+        "transfer",
+        TO,
+        "6",
+        "--fee",
+        "0.0001",
+        "--created-at-time",
+        String(NOW),
+        "--ledger",
+        "icp",
+        "--pem",
+        "me.pem",
+      ])
+    }
+  )
 })

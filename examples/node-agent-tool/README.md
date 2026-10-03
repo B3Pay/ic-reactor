@@ -78,7 +78,10 @@ re-send `firstAttempt` (the first failure). A failure is
 `{ "ok": false, "command", "kind", "mayHaveExecuted", "message" }`, plus
 `code`, `rejectCode`, `httpStatus` when the `ReactorError` has them, and for a
 transfer `err` (the ledger's `Err`), `balance.before`/`after`, `resend` (the
-argv that re-sends the same argument) and `dedupUntil`. A bigint is a decimal
+argv that re-sends the same argument) and `dedupUntil`. A transfer whose
+re-send failed also has `firstAttempt` and `resendAttempt` (each `kind`,
+`mayHaveExecuted`, `message`, and `err` for an `Err`); its own `kind` and exit
+code are those of an attempt that may have executed. A bigint is a decimal
 string, bytes are hex, and an amount is `{ "units": "150000000", "tokens": "1.5" }`.
 `--help --json` is `{ "ok": true, "command": "help", "usage" }`. No message
 quotes `NODE_AGENT_TOOL_SEED`: a malformed seed is refused by what is wrong with
@@ -98,8 +101,12 @@ tool never builds a new transfer: it reads the balance back and prints the
 command that sends the very same one (`--fee` and `--created-at-time` pinned,
 the same `--pem`). Run it: `Duplicate` means the first went through, a block
 index means it had not and now has. `--resend-unknown` does this once by
-itself. After the window the ledger answers `TooOld`, and only the balance or
-the ledger's history can tell.
+itself. A re-send that does not go through (an HTTP 429 three times, a reject
+before the ledger ran it, an `Err` other than `Duplicate`) moved nothing, and
+that says nothing about the first attempt: the tool still reports the first
+attempt's unknown outcome and exit code, and prints the same re-send command.
+After the window the ledger answers `TooOld`, and only the balance or the
+ledger's history can tell.
 
 ## A real local ledger
 

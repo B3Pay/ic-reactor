@@ -55,8 +55,17 @@ export interface MockLedger {
   balanceOf(account: Account): bigint
   /** Adds to an account, as a transfer from elsewhere would. */
   credit(account: Account, units: bigint): void
-  /** Makes the next transfer reject with `code` before it changes anything. */
-  rejectNextTransfer(code: 4 | 5): void
+  /**
+   * Makes the next transfer reject with `code` before it changes anything:
+   * `4` or `5` from the canister, `3` as from the system before it ran.
+   */
+  rejectNextTransfer(code: 3 | 4 | 5): void
+  /**
+   * Makes the next transfer answer `Err(err)` and move nothing, before the
+   * ledger looks for a duplicate, as a real ledger does when it is paused
+   * (`TemporarilyUnavailable`) or its fee has changed (`BadFee`).
+   */
+  answerNextTransfer(err: TransferError): void
   /**
    * Has the replica answer the next transfer call with HTTP 429, `times`
    * times in a row, as a boundary node that throttles.
@@ -102,7 +111,8 @@ export function createMockLedger(options: MockLedgerOptions): MockLedger {
   const seen = new Map<string, bigint>()
   const received: { arg: TransferArg; caller: Principal }[] = []
   let blocks = 0n
-  let rejectNext: 4 | 5 | undefined
+  let rejectNext: 3 | 4 | 5 | undefined
+  let answerNext: TransferError | undefined
   let readsBeforeThrottle: number | undefined
   let throttles = 1
 
@@ -187,7 +197,9 @@ export function createMockLedger(options: MockLedgerOptions): MockLedger {
             `the mock ledger rejected this transfer (code ${code})`
           )
         }
-        return transfer(arg, caller)
+        const err = answerNext
+        answerNext = undefined
+        return err === undefined ? transfer(arg, caller) : refuse(err)
       },
     }
   }
@@ -205,6 +217,9 @@ export function createMockLedger(options: MockLedgerOptions): MockLedger {
     },
     rejectNextTransfer(code) {
       rejectNext = code
+    },
+    answerNextTransfer(err) {
+      answerNext = err
     },
     throttleNextTransfer(times = 1) {
       readsBeforeThrottle = READS_BEFORE_THE_CALL

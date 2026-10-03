@@ -18,7 +18,10 @@
 //    balance is read back, no new transfer is made, and the tool prints the
 //    exact command that re-sends the SAME argument (same sender, same
 //    created_at_time), which the ledger runs at most once. With
-//    --resend-unknown it makes that one re-send itself.
+//    --resend-unknown it makes that one re-send itself. A re-send that does
+//    not go through (refused, rejected before it ran, an `Err` other than
+//    `Duplicate`) shows only that the re-send moved nothing: the result stays
+//    the first attempt's unknown outcome, with its exit code.
 // 5. An `Err` from the ledger is a typed `canister_err`, printed plainly.
 //    `Duplicate` means the transfer had already gone through: it is done.
 import { principal } from "@candid-core/schema"
@@ -194,15 +197,7 @@ function done(
       outcome,
       block,
       resent: first !== undefined,
-      ...(first === undefined
-        ? {}
-        : {
-            firstAttempt: {
-              kind: first.kind,
-              mayHaveExecuted: first.mayHaveExecuted,
-              message: first.message,
-            },
-          }),
+      ...(first === undefined ? {} : { firstAttempt: attemptOf(first) }),
       ...fieldsOf(s),
     },
     rows([
@@ -218,7 +213,10 @@ function done(
   return EXIT_CODES.ok
 }
 
-/** Reports a failed send, and after one that may have executed, says what to do. */
+/**
+ * Reports a failed send, and after one that may have executed, says what to
+ * do. `first` is the first attempt's failure when this one is the re-send.
+ */
 async function failed(
   s: Sending,
   error: unknown,
@@ -229,23 +227,18 @@ async function failed(
     return done(s, refusal.value.duplicate_of, "duplicate", first)
   }
   const failure = failureOf(error, true)
-  const firstAttempt =
-    first === undefined
-      ? {}
-      : {
-          firstAttempt: {
-            kind: first.kind,
-            mayHaveExecuted: first.mayHaveExecuted,
-            message: first.message,
-          },
-        }
-
-  if (!failure.mayHaveExecuted) {
+  // The attempt nobody knows the outcome of: this one, or, when the re-send
+  // did not go through, still the first. A re-send that moved nothing tells
+  // nothing about the first attempt: a ledger answers some `Err`s (paused, a
+  // new fee) before it looks for a duplicate, the other failures never reached
+  // it, and the first request may not have run yet.
+  const unknown = failure.mayHaveExecuted ? failure : first
+  if (unknown === undefined) {
     return reportFailure(
       s.ctx.out,
       "transfer",
       failure,
-      { ...fieldsOf(s), ...firstAttempt, ...(refusal ? { err: refusal } : {}) },
+      { ...fieldsOf(s), ...(refusal ? { err: refusal } : {}) },
       refusal ? [explain(refusal, s)] : []
     )
   }
@@ -270,13 +263,20 @@ async function failed(
       return await failed(s, second, failure)
     }
   }
+  // The exit code, kind and advice are the unknown attempt's, never those of
+  // a re-send that did not go through ("safe to run again", "Nothing moved").
   return reportFailure(
     s.ctx.out,
     "transfer",
-    failure,
+    unknown,
     {
       ...fieldsOf(s),
-      ...firstAttempt,
+      ...(first === undefined
+        ? {}
+        : {
+            firstAttempt: attemptOf(first),
+            resendAttempt: attemptOf(failure, refusal),
+          }),
       balance: {
         before: amount(s.before, s.decimals),
         after:
@@ -288,13 +288,47 @@ async function failed(
       dedupUntil: until,
     },
     [
+      ...(unknown === failure ? [] : [movedNothing(failure, refusal)]),
       balanceLine(s, after),
       "Do not make a new transfer. Re-send this same one: the ledger runs it at most once, and answers",
       `Duplicate if the first went through (it remembers it until ${until}):`,
       `  node src/cli.ts ${resend.map(shellQuote).join(" ")}`,
-      "(--resend-unknown on a transfer makes this one re-send by itself.)",
+      ...(s.resendUnknown
+        ? []
+        : [
+            "(--resend-unknown on a transfer makes this one re-send by itself.)",
+          ]),
     ]
   )
+}
+
+/** One attempt of a re-sent transfer, as the JSON document lists it. */
+function attemptOf(
+  failure: Failure,
+  err?: TransferError
+): { readonly [field: string]: Json | undefined } {
+  return {
+    kind: failure.kind,
+    mayHaveExecuted: failure.mayHaveExecuted,
+    message: failure.message,
+    ...failure.details,
+    ...(err === undefined ? {} : { err }),
+  }
+}
+
+/**
+ * What a re-send that did not go through got, in a sentence: never its own
+ * advice, which would hold only if the first attempt had not run.
+ */
+function movedNothing(
+  failure: Failure,
+  refusal: TransferError | undefined
+): string {
+  const got =
+    refusal === undefined
+      ? `${failure.kind}: ${failure.message}`
+      : `the ledger answered ${refusal.tag}, not Duplicate`
+  return `The re-send did not go through (${got}). That does not tell whether the first attempt did: it may still have executed.`
 }
 
 /** The sender's balance now, or why it could not be read. */
