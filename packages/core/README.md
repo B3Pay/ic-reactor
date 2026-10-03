@@ -1,9 +1,9 @@
 # @ic-reactor/core
 
-> **ic-reactor 4 is in development on the `v4` branch.** This package is at a
-> `4.0.0-alpha` version that is not published: the 3.x runtime was removed so
-> that the 4 API can be built on a candid-core generated module, one slice at
-> a time (milestone 1,
+> **ic-reactor 4 is a prerelease.** `4.0.0-beta.1` is published under npm's
+> `beta` dist-tag, and `latest` stays 3.x until 4.0 GA: install it as
+> `@ic-reactor/core@beta`. It replaces the 3.x runtime with a thin layer over a
+> candid-core generated module (milestone 1,
 > [#790](https://github.com/B3Pay/ic-reactor/issues/790)).
 
 [![npm version](https://img.shields.io/npm/v/@ic-reactor/core.svg)](https://www.npmjs.com/package/@ic-reactor/core)
@@ -17,6 +17,17 @@ executed, network resolution, strict token-unit helpers and a test client.
 **The guide is [`llms.txt`](./llms.txt)**, shipped in this package
 (`node_modules/@ic-reactor/core/llms.txt`): setup, values, reads, writes,
 errors and a complete React example, for people and coding agents alike.
+
+## Install
+
+```bash
+npm install @ic-reactor/core@beta @icp-sdk/core @tanstack/query-core
+npm install --save-exact @candid-core/schema@0.3.0-beta.1
+```
+
+`@candid-core/schema` is a peer at exactly that version: the module
+`candid-core-cli gen` writes imports it, so the generator
+(`@candid-core/cli@0.2.0-beta.1`) has to pair with it too.
 
 ## 3.x
 

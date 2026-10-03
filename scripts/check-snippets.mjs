@@ -243,8 +243,8 @@ const COMPILER_OPTIONS = {
  * A docs page whose examples import a library no package installs (a router,
  * a form library, `next`) needs an example app that installs it listed after
  * the runtime packages, so that `react`, `@tanstack/react-query` and the rest
- * keep the versions the packages themselves compile against. The v4 line has
- * no example apps yet (the DX1 slice adds them); add each here as it lands.
+ * keep the versions the packages themselves compile against. No docs page
+ * needs one today; add the example app here when one does.
  */
 const DEPENDENCY_SOURCES = [
   "packages/react",

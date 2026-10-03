@@ -24,9 +24,9 @@ earlier ic-reactor versions (their names are gone in 4).
 
 This skill describes these versions:
 
-- `@ic-reactor/core`: `4.0.0-alpha.0`
-- `@ic-reactor/react`: `4.0.0-alpha.0`
-- `@ic-reactor/vite-plugin`: `4.0.0-alpha.0`
+- `@ic-reactor/core`: `4.0.0-beta.1`
+- `@ic-reactor/react`: `4.0.0-beta.1`
+- `@ic-reactor/vite-plugin`: `4.0.0-beta.1`
 
 ## Workflow
 
@@ -38,7 +38,9 @@ This skill describes these versions:
    Identity sign-in. `@candid-core/schema` must be the exact version
    `@ic-reactor/core` lists in its `peerDependencies`, and the generator
    `@candid-core/cli` the exact version `@ic-reactor/vite-plugin` lists:
-   install both with `--save-exact`.
+   install both with `--save-exact`. Until 4.0 is final, the `@ic-reactor/*`
+   packages above are published under npm's `beta` dist-tag, and `latest` is
+   still 3.x: install them as `@ic-reactor/core@beta`, never bare.
 3. **Generate the module** from each canister's `.did`, with
    `npx candid-core-cli gen <file>.did -o src/generated`, or with the Vite
    plugin, which regenerates on change:

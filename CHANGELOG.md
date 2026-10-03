@@ -1,7 +1,10 @@
 # Changelog
 
-Notable changes to the published `@ic-reactor/*` packages. The packages
-release in three lanes, each with its own version:
+Notable changes to the published `@ic-reactor/*` packages. ic-reactor 4
+releases from the `v4` branch in one lane, `@ic-reactor/core`,
+`@ic-reactor/react` and `@ic-reactor/vite-plugin` at one version, as
+prereleases under npm's `beta` dist-tag until 4.0 GA. The 3.x line released in
+three lanes, each with its own version:
 
 - runtime: `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/candid`
 - codegen: `@ic-reactor/codegen`, `@ic-reactor/cli`, `@ic-reactor/vite-plugin`
@@ -13,6 +16,195 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 ## Unreleased
 
 Nothing yet.
+
+## core, react, vite-plugin 4.0.0-beta.1
+
+The first prerelease of ic-reactor 4 (milestone 1, #790), published under
+npm's `beta` dist-tag: install it as `@ic-reactor/core@beta`. `latest` stays
+3.x until 4.0 GA. Changes since core and react 3.13.0 and vite-plugin 0.15.1.
+
+ic-reactor 4 is a breaking rewrite, not an upgrade of 3.x. It is a thin layer
+over the module `candid-core-cli gen` writes from a `.did` file, plus one
+guide, `node_modules/@ic-reactor/core/llms.txt`, shipped in core's tarball.
+An app calls canisters through a client from `createClient` and reads and
+writes them with TanStack Query's own hooks and the options the client
+builds. There are no reactors, hook factories or generated hooks. The three
+packages release together, at one version.
+
+3.x stays on `main` (security fixes only until 4.0 GA) and is documented at
+https://ic-reactor.b3pay.net/v3/. Migration: there is no in-place upgrade;
+generate each canister's module with `candid-core-cli gen` and port the calls
+to the client by the guide. The table of every removed name and what replaces
+it comes with the 4 docs (#789).
+
+### @ic-reactor/core
+
+#### Added
+
+- `createClient(options)`: one client per browser tab, or per request on a
+  server. It takes a `network` and exactly one caller: `identity` (an
+  `Identity`, or `"anonymous"` for a read-only client) or `auth` (a factory
+  of an `AuthLike`, such as `() => new AuthClient()` from `@icp-sdk/auth` 10,
+  called once and only in a browser). `allowEnvConfig`, `fetch` and
+  `maxDepth` (default 256) are optional. The client owns a TanStack
+  `QueryClient` (`client.queryClient`) that dehydrates and hydrates `bigint`,
+  `Uint8Array` and non-finite floats without loss.
+- `network`: `"ic"` (mainnet and its built-in root key), `"local"`
+  (`http://127.0.0.1:4943`, root key fetched), `"env"` (the page's network,
+  with canisters named `{ name }` through the `ic_env` cookie), or
+  `{ host, rootKey?, name?, fetchRootKey? }`. A given `rootKey` is used and
+  never fetched; without one, a root key is fetched only from a loopback or
+  `localhost` host, unless `fetchRootKey: true` is written out.
+- `client.canister<Actor>(actor, { id } | { name })`: a frozen object of plain
+  async methods, one per Candid method, typed from the generated `Actor` and
+  memoized, so it can be called in render. A method whose result is
+  `variant { Ok; Err }` resolves with the `Ok` value and rejects the `Err` as
+  kind `canister_err`. `{ id, certified: true }` sends `query` methods through
+  the certified path. A call to the management canister (`aaaaa-aa`) takes
+  its effective canister id from its arguments.
+- `client.queryOptions(canister, method, args | skipToken)`,
+  `client.mutationOptions(canister, method, { invalidates? })` and
+  `client.queryKey(canister, method?, args?)`, the options and keys for
+  TanStack Query. `queryOptions` throws for an update method unless its
+  fourth argument is `{ update: "idempotent" }`.
+- `client.func<F>(funcSchema, ref)` calls a func reference a reply carried,
+  such as an ICRC ledger's archive callback.
+- `client.caller()`, `client.authState()`, `client.subscribe(fn)`,
+  `client.signIn()`, `client.signOut()` and `client.dispose()`. Every call
+  made after `dispose()`, writes included, rejects `cancelled` with code
+  `client_disposed` and sends nothing (#818).
+- `isReactorError(error)` and the types `ReactorError` and
+  `ReactorErrorKind`. Every rejection of a client call is a `ReactorError`
+  with one of eight kinds (`invalid_args`, `unauthenticated`,
+  `not_delivered`, `outcome_unknown`, `rejected`, `invalid_reply`,
+  `canister_err`, `cancelled`) and a `mayHaveExecuted` boolean, which a
+  classifier sets from the reject code, the HTTP status and whether the call
+  was an update. On the management canister, reject codes 1 to 3 do not prove
+  that a write had no effect.
+- `parseUnits(text, decimals, { signed? })` and
+  `formatUnits(value, decimals, { maxFractionDigits?, minFractionDigits? })`
+  convert token amounts exactly, in `bigint`. `parseUnits` throws for text
+  that is not a plain decimal, for a negative unless `signed`, and for excess
+  fraction digits.
+- The types `Client`, `ClientOptions`, `Network`, `AuthLike`, `AuthState`,
+  `Canister` and `CanisterTarget`. With the names above, the entry exports 13.
+- `@ic-reactor/core/testing` exports `createTestClient` and `TestHandlers`: a
+  real client over an in-memory replica that signs and verifies as a replica
+  does, passed in through the client's `fetch` (nothing global is stubbed),
+  with canisters written as functions of Candid values and a sign-in the test
+  controls.
+
+#### Changed
+
+- The client keeps one immutable agent per principal and never replaces an
+  agent's identity. A call goes out as the principal current when it was
+  made. A read made for one caller that settles after a sign-in, sign-out or
+  switch rejects `cancelled` instead of landing in the new caller's cache.
+- Query keys name the caller:
+  `["ic-reactor", network, caller, canisterId, method, args]`, so one
+  principal's cached answer is never served to another. Build keys with
+  `client.queryKey`, never by hand.
+- An update is sent again only on proof that the canister never received it
+  (reject code 2 or HTTP 429), at most twice, inside the call; any other
+  failure is final. A read retries at most 3 times, only a `not_delivered`
+  failure, and never on a server.
+- A mutation is never retried: `mutationOptions` returns `retry: false`. By
+  default it invalidates its canister's reads, for every caller, after a
+  success, a `canister_err`, or a failure that may have executed.
+- A write is refused before it is sent (`unauthenticated`) while nobody is
+  signed in, and always on a client built with `identity: "anonymous"`.
+- Values are candid-core's: a principal is branded text (`principal()` and
+  `isPrincipal()` from `@candid-core/schema`), `opt T` is `T | null`, a
+  variant is `{ tag, value }` and every `blob` is a `Uint8Array`.
+- Peer dependencies: `@candid-core/schema` at exactly `0.3.0-beta.1` (new:
+  install it with `--save-exact`), `@tanstack/query-core` `^5.62.0` (no longer
+  optional), `@icp-sdk/core` `^6.1.0`, and `@noble/curves` `^2.2.0`, still
+  optional and used only by `./testing`. `zod` is no longer a dependency.
+  Migration: `npm install --save-exact @candid-core/schema@0.3.0-beta.1`.
+
+#### Removed
+
+- The 3.x runtime: `ClientManager`, `Reactor`, `DisplayReactor`, the display
+  codecs and zod validation, the 3.x errors (`CanisterError`, `CallError`), the key and
+  retry helpers (`generateKey`, `reactorRetry`), `formatTokenAmount`,
+  `parseTokenAmount` and `isPrincipalText`, and the 3.x test helpers
+  (`installFakeReplica`, `createTestCanister`). They stay on the 3.x line.
+
+### @ic-reactor/react
+
+#### Added
+
+- `ReactorProvider({ client: () => Client, children })` calls its factory
+  once per mounted tree, renders TanStack Query's `QueryClientProvider` with
+  the client's `QueryClient`, and disposes a client its factory created when
+  it unmounts (`StrictMode`-safe). A client the app owns, passed as
+  `client={() => client}`, is borrowed and never disposed.
+- `useClient()` returns the nearest provider's client, and throws outside one.
+  Its component renders again whenever the caller's principal changes, and
+  the keys it builds are the caller's that the render shows: on a server and
+  while a page hydrates, the anonymous caller's. So a tab that holds a
+  session hydrates from the keys the server prefetched, with no mismatch and
+  nothing read again, then reads the session's keys (#813).
+- `useAuth()` returns `{ status, principal, signIn, signOut }`. `status` is
+  `"anonymous"`, `"signed-in"`, `"expired"` or `"signed-in-elsewhere"`; it is
+  `"anonymous"` on a server and in a hydrating page's first render.
+- Known limits of a signed-in reload, described in the README's "Keys follow
+  the caller a render shows": a Suspense boundary still hydrating below a
+  component that renders with the caller is rendered on the client when that
+  component moves to the session (pass such a boundary as `children`), and a
+  component that reads with `useSuspenseQuery` needs a Suspense boundary
+  above it.
+- The type `ReactorProviderProps`. The entry exports these 4 names and never
+  re-exports `@ic-reactor/core`.
+
+#### Changed
+
+- `@ic-reactor/core` is a peer dependency at exactly this package's version
+  (it was a dependency). The other peers are `@tanstack/react-query`
+  `^5.90.2` and `react` `>=18.0.0`; `@icp-sdk/auth`, `@icp-sdk/core`,
+  `@noble/curves` and `react-dom` are no longer peers.
+
+#### Removed
+
+- Every 3.x hook and factory: `defineReactor`, `createActorHooks`,
+  `createReactorProvider`, `createQuery`, `createMutation`, the suspense and
+  infinite variants, `createAuthHooks`, the identity-attribute hooks and the
+  re-exported `skipToken`; and the auth classes behind them,
+  `AuthenticationManager` and `IdentityAttributesManager`. Sign in with an
+  `AuthLike` passed to `createClient` and `useAuth()`. Read and write with TanStack Query's `useQuery`
+  and `useMutation` over `client.queryOptions` and `client.mutationOptions`.
+- The `react-server` entry and `@ic-reactor/react/testing`.
+
+### @ic-reactor/vite-plugin
+
+The plugin joins the lane of core and react, at their version.
+
+#### Changed
+
+- Generation runs `candid-core-cli gen` from the app's own `@candid-core/cli`,
+  in a child process per `.did` file, so a generator failure stops that
+  process and not the dev server. It writes candid-core's module (named after
+  the `.did` file, exporting `actor` and the type `Actor`) and its
+  `.envelope.json` into `outDir`, by default `src/canisters`, and nothing
+  else.
+- `canisters` is a record keyed by canister name,
+  `{ didFile?, outDir?, canisterId? }`, instead of an array of entries.
+  `injectEnvironment` and `failOnError` work as before. The first line the
+  plugin logs names `node_modules/@ic-reactor/core/llms.txt`. Migration:
+  `canisters: [{ name: "ledger", didFile }]` becomes
+  `canisters: { ledger: { didFile } }`.
+- `@candid-core/cli` is a peer dependency at exactly `0.2.0-beta.1`, the
+  generator that pairs with `@candid-core/schema` `0.3.0-beta.1`. The `vite`
+  range is unchanged. Migration:
+  `npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1`.
+
+#### Removed
+
+- Generation through `@ic-reactor/codegen`, which is no longer a dependency:
+  the generated reactor and hook files (`index.generated.ts`,
+  `index.factories.generated.ts`, `index.ts`) and the options that shaped
+  them (the top-level `outDir`, `clientManagerPath` and `target`, and each
+  entry's `name`, `mode`, `target` and `factories`).
 
 ## core, react, candid 3.13.0
 

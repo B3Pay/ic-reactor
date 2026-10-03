@@ -5,9 +5,9 @@ routing and verification by change type are in [`AGENTS.md`](./AGENTS.md).
 
 ## Branches
 
-- **`v4`** (this branch) is the development line of ic-reactor 4. Nothing on it
-  is released: its packages are at `4.0.0-alpha.0`, and its release lane
-  publishes prereleases only, never under `latest`.
+- **`v4`** (this branch) is the development line of ic-reactor 4. Its packages
+  are at `4.0.0-beta.1`, and its release lane publishes prereleases only, under
+  npm's `beta` dist-tag, never under `latest`.
 - **`main`** is the 3.x line: security fixes only until 4.0 GA. At GA, `v3` is
   cut from `main` and `v4` becomes `main`.
 
@@ -16,22 +16,24 @@ Open pull requests for ic-reactor 4 against `v4`.
 ## What ic-reactor 4 is
 
 A thin layer over a module that `candid-core-cli gen` generates from a `.did`
-file, plus one consumer guide. There are no typed handles. Until the 0.3 beta
-of `@candid-core/schema` is published and pinned exactly, no package code on
-this branch is written against unpublished candid-core shapes.
+file, plus one consumer guide. There are no typed handles. No package code on
+this branch is written against unpublished candid-core shapes: core's peer
+`@candid-core/schema` and the Vite plugin's peer `@candid-core/cli` are pinned
+exactly to published betas.
 
 ## Packages on this branch
 
-| Package                   | Directory              | State on `v4`                                                                                                                               |
-| ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@ic-reactor/core`        | `packages/core`        | `4.0.0-alpha.0`; the 3.x runtime is removed, the entry is empty until the rewrite slices fill it                                            |
-| `@ic-reactor/react`       | `packages/react`       | `4.0.0-alpha.0`; the 3.x hooks are removed, the entry is empty until IR6 fills it                                                           |
-| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0-alpha.0`; generates the candid-core module with `@candid-core/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy |
+| Package                   | Directory              | State on `v4`                                                                                                                              |
+| ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@ic-reactor/core`        | `packages/core`        | `4.0.0-beta.1`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient`      |
+| `@ic-reactor/react`       | `packages/react`       | `4.0.0-beta.1`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                                   |
+| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0-beta.1`; generates the candid-core module with `@candid-core/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy |
 
 Not in this tree: `@ic-reactor/parser`, `@ic-reactor/codegen` and
 `@ic-reactor/cli` (replaced by `candid-core-cli gen`), and
 `@ic-reactor/candid` (frozen at 3.x, published from `main`). The 3.x example
-apps are on `main`; the v4 examples come with DX1.
+apps are on `main`; the four v4 examples are in `examples/` (`icrc-ledger`,
+`vite-wallet`, `next-ssr`, `node-agent-tool`).
 
 ## AI context
 

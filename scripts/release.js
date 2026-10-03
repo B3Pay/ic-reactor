@@ -155,9 +155,9 @@ const RELEASE_PATHS = [
   // committed, so without staging it here the repo keeps reporting the previous
   // release's VERSION even though the published artifact is correct.
   "packages/core/src/version.ts",
-  // The v4 line has no examples until DX1 recreates them, and `git add -u`
-  // refuses a pathspec that matches no tracked file, which would stop the
-  // release before its commit and tag.
+  // A tree without examples/ (the v4 line had none before DX1), since
+  // `git add -u` refuses a pathspec that matches no tracked file, which would
+  // stop the release before its commit and tag.
   ...(existsSync(join(rootDir, "examples")) ? ["examples"] : []),
 ]
 

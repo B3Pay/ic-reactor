@@ -1,6 +1,6 @@
 {
   "name": "@ic-reactor/core",
-  "version": "4.0.0-alpha.0",
+  "version": "4.0.0-beta.1",
   "description": "IC Reactor Core Library",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -47,7 +47,7 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
-  "homepage": "https://ic-reactor.b3pay.net/v3/packages/core",
+  "homepage": "https://ic-reactor.b3pay.net/v4/",
   "keywords": [
     "internet-computer",
     "icp",

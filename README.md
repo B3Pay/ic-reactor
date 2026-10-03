@@ -14,8 +14,9 @@
 
 ---
 
-> **This is the `v4` branch, where ic-reactor 4 is in development.** Nothing
-> from it is released: its packages are at `4.0.0-alpha.0`. ic-reactor 4 is a
+> **This is the `v4` branch, where ic-reactor 4 is in development.** Its
+> packages are at `4.0.0-beta.1`, published under npm's `beta` dist-tag; `latest`
+> stays 3.x until 4.0 GA. ic-reactor 4 is a
 > thin layer over a candid-core generated module, with a guide shipped in
 > `@ic-reactor/core` (`packages/core/llms.txt`). Milestone 1
 > ([#790](https://github.com/B3Pay/ic-reactor/issues/790)) replaced the 3.x
@@ -38,8 +39,8 @@ for a canister:
 
 | Package                                             | Purpose                                                                                                                                            |
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@ic-reactor/core`](./packages/core)               | The client, errors, network and units (in development)                                                                                             |
-| [`@ic-reactor/react`](./packages/react)             | `'use client'` bindings over core (in development)                                                                                                 |
+| [`@ic-reactor/core`](./packages/core)               | The client, errors, network and units (beta)                                                                                                       |
+| [`@ic-reactor/react`](./packages/react)             | `'use client'` bindings over core (beta)                                                                                                           |
 | [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Generates the candid-core module with `candid-core-cli gen` in a child process, and sets the local `ic_env` cookie and `/api` proxy for `vite dev` |
 
 `@ic-reactor/parser`, `@ic-reactor/codegen` and `@ic-reactor/cli` are not part
@@ -51,15 +52,38 @@ What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## Install
 
-ic-reactor 4 is not published yet, so there is nothing to install from this
-branch. To use ic-reactor today, install the released 3.x packages from `main`
-and follow their docs at
-[ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
+ic-reactor 4 is a prerelease, published under npm's `beta` dist-tag: a plain
+`npm install @ic-reactor/core` still installs 3.x. Install the beta with
+`@beta`, and the candid-core packages at the exact versions its peers name:
+
+```bash
+npm install @ic-reactor/core@beta @ic-reactor/react@beta \
+  @icp-sdk/core @tanstack/react-query
+npm install --save-exact @candid-core/schema@0.3.0-beta.1
+npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
+npm install --save-dev @ic-reactor/vite-plugin@beta # optional, for Vite
+```
+
+Then read `node_modules/@ic-reactor/core/llms.txt`. The released 3.x packages
+are documented at [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
 
 ## Examples
 
-The v4 branch has no example apps yet. The four v4 examples land with DX1; the
-3.x examples are on `main`.
+Four apps in [`examples/`](examples/), each with its own tests, and a page in
+the [examples docs](https://ic-reactor.b3pay.net/v4/examples/):
+
+- [`icrc-ledger`](examples/icrc-ledger/): mainnet ICP ledger reads, archive
+  callbacks, and a sandbox that injects faults into transfers.
+- [`vite-wallet`](examples/vite-wallet/): a React and Vite wallet on a local
+  icp-cli network, with Internet Identity, a dev-account sign-in, a backend
+  canister and optimistic writes.
+- [`next-ssr`](examples/next-ssr/): a Next.js App Router app over mainnet
+  ledgers, with one client per request, lossless hydration and streaming.
+- [`node-agent-tool`](examples/node-agent-tool/): a command-line tool for
+  people and AI agents, with identities, certified reads, safe re-sends and
+  JSON output.
+
+The 3.x examples are on `main`.
 
 ## Documentation
 
