@@ -137,7 +137,11 @@ anything else; the object it returns is the same until one changes.
 ## Keys follow the caller a render shows
 
 Query keys carry the caller. Build them, and every read's options, from the
-`useClient()` of the render, never from a client held at module scope:
+`useClient()` of the render, never from a client held at module scope, and do
+not keep what it returns past the render (in `useState`, a ref or a module
+variable): while a page hydrates it is a view for the anonymous caller, which
+never moves on. A nested `ReactorProvider` given it holds the client the view
+was made over.
 
 ```tsx
 import { useClient } from "@ic-reactor/react"
@@ -201,7 +205,8 @@ Two consequences of that move to the session are accepted, and tested:
   rendered on the client: it shows its fallback instead of
   the server's HTML until its content is ready, and React 18 reports a
   recoverable error. Its data is still the user's, and nothing is sent as
-  anyone else. To keep the server's HTML, render such a boundary where no
+  anyone else. A `useAuth()` component moves on, and costs the same, in a tab
+  whose session expired or is signed in elsewhere too. To keep the server's HTML, render such a boundary where no
   component that renders with the caller sits above it (a `useAuth()` header
   beside it is fine), or pass it in as `children`: a component's own update
   does not render its `children` prop again.
@@ -213,8 +218,10 @@ Two consequences of that move to the session are accepted, and tested:
   resolves with that data. A key with none fails, with `kind` `"cancelled"`
   and `code` `"caller_changed"`, until the anonymous caller is current again.
   The hydrating render's own reads never show that error, but a `QueryCache`
-  `onError` and an effect that awaits the fetch see it: ignore `kind`
-  `"cancelled"` there.
+  `onError`, an effect that awaits the fetch and, for a `useSuspenseQuery`
+  read the server rendered without dehydrating its data, React's
+  `onRecoverableError` (as the reported error's `cause` on React 19) see it:
+  ignore `kind` `"cancelled"` there.
 
 ## Life of the client
 
