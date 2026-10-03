@@ -100,14 +100,19 @@ function MyBalance({
     ...client.queryOptions(ledger, "icrc1_symbol"),
     ...SERVER_DATA,
   })
+  // The row needs all three reads, and each fails on its own: a failed
+  // decimals or symbol read leaves nothing to show, as a failed balance does.
+  const failure = [balance, decimals, symbol].find(
+    (read) => read.error !== null
+  )?.error
 
   return (
     <tr data-ledger={ref.id}>
       <th scope="row">{ref.label}</th>
       <td data-field="balance">
-        {balance.error ? (
+        {failure ? (
           <span className="error">
-            {isReactorError(balance.error) ? balance.error.kind : "error"}
+            {isReactorError(failure) ? failure.kind : "error"}
           </span>
         ) : balance.data === undefined ||
           decimals.data === undefined ||

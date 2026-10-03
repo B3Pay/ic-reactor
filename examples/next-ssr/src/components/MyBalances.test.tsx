@@ -3,7 +3,8 @@
 // Scenario 9: "My balances" asks nothing while nobody is signed in, reads
 // the user's own balances as the user after a sign-in, and starts from empty
 // keys after a switch of account, so one account's balance is never shown
-// for another.
+// for another. A row whose decimals or symbol read fails shows that failure.
+import type { TestHandlers } from "@ic-reactor/core/testing"
 import { ReactorProvider } from "@ic-reactor/react"
 import {
   act,
@@ -16,7 +17,7 @@ import {
 import { afterEach, describe, expect, it } from "vitest"
 import { actor, type Actor } from "@/canisters/icrc1"
 import { tokens } from "@/format"
-import { LEDGERS } from "@/ledgers"
+import { LEDGERS, type LedgerRef } from "@/ledgers"
 import {
   BALANCES,
   ledgerHandlers,
@@ -36,8 +37,10 @@ afterEach(() => {
   test.client.dispose()
 })
 
-function renderSection() {
+/** @param prepare - Mocks what this test changes, before anything is read. */
+function renderSection(prepare?: (mocked: MockLedgers) => void) {
   test = mockLedgers()
+  prepare?.(test)
   return render(
     <ReactorProvider client={() => test.client}>
       <MyBalances ledgers={LEDGERS} />
@@ -45,9 +48,10 @@ function renderSection() {
   )
 }
 
-const icpRow = (container: HTMLElement) =>
-  container.querySelector(`[data-ledger="${ICP.id}"] [data-field="balance"]`)
+const row = (container: HTMLElement, ledger: LedgerRef) =>
+  container.querySelector(`[data-ledger="${ledger.id}"] [data-field="balance"]`)
     ?.textContent
+const icpRow = (container: HTMLElement) => row(container, ICP)
 const icp = (units: bigint) => tokens(units, 8, "ICP")
 
 describe("My balances", () => {
@@ -75,6 +79,68 @@ describe("My balances", () => {
       requestsFor(test, "icrc1_balance_of").map(({ caller }) => caller)
     ).toEqual(LEDGERS.map(() => SEED_1))
   })
+
+  // The balance is read, but the row cannot show it without the ledger's
+  // decimals and symbol: when one of those reads fails, the row shows that
+  // failure's kind, as for a failed balance, and not "loading" for good.
+  it.each([
+    {
+      method: "icrc1_decimals",
+      // A handler that throws traps the call: reject code 5.
+      handlers: (): TestHandlers<Actor> => ({
+        icrc1_decimals: () => {
+          throw new Error("decimals trapped")
+        },
+      }),
+    },
+    {
+      method: "icrc1_symbol",
+      handlers: (mocked: MockLedgers): TestHandlers<Actor> => ({
+        icrc1_symbol: () => mocked.reject(4, "no symbol here"),
+      }),
+    },
+  ])(
+    "shows the kind of a failed $method read, not loading, though the balance was read",
+    async ({ method, handlers }) => {
+      const { container } = renderSection((mocked) =>
+        mocked.mock<Actor>(actor, ICP.id, {
+          ...ledgerHandlers(tokenOf(ICP)),
+          ...handlers(mocked),
+        })
+      )
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Sign in with Internet Identity" })
+      )
+
+      await waitFor(() => expect(icpRow(container)).toBe("rejected"))
+      // The balance read itself succeeded and is in the cache; the failure
+      // is the other read's, asked once (a trap or a reject is not retried).
+      const { client } = test
+      const ledger = client.canister<Actor>(actor, { id: ICP.id })
+      const balance = client.queryOptions(ledger, "icrc1_balance_of", {
+        owner: SEED_1,
+        subaccount: null,
+      })
+      expect(client.queryClient.getQueryData(balance.queryKey)).toBe(
+        BALANCES.get(SEED_1)
+      )
+      expect(
+        requestsFor(test, method).filter(
+          ({ canisterId }) => canisterId === ICP.id
+        )
+      ).toHaveLength(1)
+      // The other ledgers answer as usual.
+      await waitFor(() => {
+        for (const other of LEDGERS.slice(1)) {
+          const token = tokenOf(other)
+          expect(row(container, other)).toBe(
+            tokens(BALANCES.get(SEED_1) ?? 0n, token.decimals, token.symbol)
+          )
+        }
+      })
+    }
+  )
 
   it("starts from empty keys after a switch: never one account's balance for another", async () => {
     const { container } = renderSection()
