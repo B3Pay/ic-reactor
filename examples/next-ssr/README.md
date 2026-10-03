@@ -12,27 +12,31 @@ Each scenario lives in its own small file, whose header comment names the
 rule it shows. Every one is tested (`pnpm test`), and every one shows on a
 running server.
 
-| #   | Scenario                                                                  | Files                                                                                | How to see it                                                                     |
-| --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| 1   | One client per request on the server; prefetch by `{ id }`; `dehydrate`   | `src/server/request-client.ts`, `src/server/prefetch-ledgers.ts`, `src/app/page.tsx` | `/`: each card says when the server read it                                       |
-| 2   | `ReactorProvider` factory in a `'use client'` module; nothing refetched   | `src/app/providers.tsx`, `src/components/server-data.ts`                             | `/` with the network panel open: no request to `icp-api.io` until you ask for one |
-| 3   | Lossless hydration of `bigint`, principals and `Uint8Array`               | `src/components/LedgerCard.tsx`                                                      | the run-time type printed after each value                                        |
-| 4   | Renders with JavaScript disabled                                          | `scripts/smoke.ts`                                                                   | turn JavaScript off and reload `/`                                                |
-| 5   | Streaming with Suspense: certified balances arrive after the page         | `src/app/account/CertifiedBalances.tsx`                                              | `/account?owner=rkp4c-7iaaa-aaaaa-aaaca-cai`                                      |
-| 6   | Progressive enhancement: a GET form, validated on the server              | `src/app/account/page.tsx`, `src/server/parse-owner.ts`                              | look up with JavaScript on and off; `/account?owner=not-a-principal`              |
-| 7   | Route Handler: a client per request, amounts as text, kind as HTTP status | `src/app/api/balance/[ledger]/[principal]/route.ts`, `src/server/balance-route.ts`   | `/api/balance/ckBTC/rkp4c-7iaaa-aaaaa-aaaca-cai`; a bad principal is a 400        |
-| 8   | Errors on the server: one section fails with its `kind`, not the page     | `src/components/LedgerError.tsx`, `src/server/error-summary.ts`                      | `/`: the "NNS governance (not a ledger)" section                                  |
-| 9   | Sign in after hydration: the new caller's keys, nothing anonymous reused  | `src/components/MyBalances.tsx`, `src/components/LedgerCard.tsx`                     | sign in with Internet Identity: "My balances" loads, each card reads again as you |
+| #   | Scenario                                                                  | Files                                                                                | How to see it                                                                         |
+| --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| 1   | One client per request on the server; prefetch by `{ id }`; `dehydrate`   | `src/server/request-client.ts`, `src/server/prefetch-ledgers.ts`, `src/app/page.tsx` | `/`: each card says when the server read it                                           |
+| 2   | `ReactorProvider` factory in a `'use client'` module; nothing refetched   | `src/app/providers.tsx`, `src/components/server-data.ts`                             | `/` with the network panel open: no request to `icp-api.io` until you ask for one     |
+| 3   | Lossless hydration of `bigint`, principals and `Uint8Array`               | `src/components/LedgerCard.tsx`                                                      | the run-time type after each value; mainnet returns no blob here, the tests' mocks do |
+| 4   | Renders with JavaScript disabled                                          | `scripts/smoke.ts`                                                                   | turn JavaScript off and reload `/`                                                    |
+| 5   | Streaming with Suspense: certified balances arrive after the page         | `src/app/account/CertifiedBalances.tsx`                                              | `/account?owner=rkp4c-7iaaa-aaaaa-aaaca-cai`                                          |
+| 6   | Progressive enhancement: a GET form, validated on the server              | `src/app/account/page.tsx`, `src/server/parse-owner.ts`                              | look up with JavaScript on and off; `/account?owner=not-a-principal`                  |
+| 7   | Route Handler: a client per request, amounts as text, kind as HTTP status | `src/app/api/balance/[ledger]/[principal]/route.ts`, `src/server/balance-route.ts`   | `/api/balance/ckBTC/rkp4c-7iaaa-aaaaa-aaaca-cai`; a bad principal is a 400            |
+| 8   | Errors on the server: one section fails with its `kind`, not the page     | `src/components/LedgerError.tsx`, `src/server/error-summary.ts`                      | `/`: the "NNS governance (not a ledger)" section                                      |
+| 9   | Sign in after hydration: the new caller's keys, nothing anonymous reused  | `src/components/MyBalances.tsx`, `src/components/LedgerCard.tsx`                     | sign in with Internet Identity: "My balances" loads, each card reads again as you     |
 
 ## Run it
 
-From the repository root, after `pnpm install` and `pnpm build`:
-
 ```sh
-pnpm --filter next-ssr dev                              # http://localhost:3001
-pnpm --filter next-ssr build && pnpm --filter next-ssr start   # http://localhost:3011
-pnpm --filter next-ssr smoke   # checks the running start server against mainnet, Node 22.18+
+pnpm install && pnpm build   # once, at the repository root: the workspace packages
+cd examples/next-ssr
+pnpm dev                     # http://localhost:3001
+pnpm build && pnpm start     # http://localhost:3011
+pnpm smoke                   # checks the running start server against mainnet; Node 22.18+
 ```
+
+To see scenario 4, turn JavaScript off (Chrome DevTools: the command menu,
+"Disable JavaScript") and reload `/` or `/account?owner=...`: every value is
+there, and the certified section shows its fallback, which says why.
 
 The pages read mainnet when a request comes in, never during `next build`
 (`/` calls `connection()`; `/account` and the route read their parameters), so
@@ -41,8 +45,9 @@ a build needs no network.
 ## Test it
 
 ```sh
-pnpm --filter next-ssr test       # vitest; no test reaches mainnet
-pnpm --filter next-ssr gen:check  # fails if src/canisters/ is stale
+pnpm test        # vitest; no test reaches mainnet
+pnpm typecheck
+pnpm gen:check   # fails if src/canisters/ is stale
 ```
 
 The tests run the real client on `createTestClient()` from
