@@ -12,7 +12,7 @@ same tasks with the same hidden tests:
 | `thin`       | `@candid-core/schema` 0.2.0, `@icp-sdk/core`, `@icp-sdk/auth`, TanStack Query; no framework                                                                                                | `src/generated/icrc1.ts` from `candid-core-cli gen` 0.1.0              | the READMEs shipped in `@candid-core/schema` 0.2.0 (2,274) and `@candid-core/cli` 0.1.0 (532)     | 2,806 |
 | `thin-guide` | identical to `thin` (same starter, generated module, dependencies)                                                                                                                         | identical to `thin`                                                    | thin's two READMEs + `llms.txt`, a guide for the thin stack matched to the v4-proto guide (1,792) | 4,598 |
 | `v4-proto`   | the throwaway prototype `@ic-reactor/v4-proto` (shipped as a built package: `package.json` + `dist/`) on the same stack as thin                                                            | the same `icrc1.ts` + `icrc1.service.ts` (hand-written: see "Threats") | `llms.txt` written for the prototype                                                              | 1,778 |
-| `v4`         | ic-reactor 4: `@ic-reactor/core` + `@ic-reactor/react` packed from this repository (shipped as `package.json` + `dist/`), `@candid-core/schema` 0.3.0-beta.1, `@icp-sdk/*`, TanStack Query | `src/generated/icrc1.ts` from `candid-core-cli gen` 0.2.0-beta.1       | the `llms.txt` packed into `@ic-reactor/core` (a placeholder until DX3, #785)                     | 48    |
+| `v4`         | ic-reactor 4: `@ic-reactor/core` + `@ic-reactor/react` packed from this repository (shipped as `package.json` + `dist/`), `@candid-core/schema` 0.3.0-beta.1, `@icp-sdk/*`, TanStack Query | `src/generated/icrc1.ts` from `candid-core-cli gen` 0.2.0-beta.1       | the `llms.txt` packed into `@ic-reactor/core` (DX3's guide, #785)                                 | 1,970 |
 
 `thin-guide` is the honest comparator for v4-proto: a shipped thin layer would
 come with a guide too. Plain `thin` stays so the effect of the guide is
@@ -20,7 +20,7 @@ separable (`thin-guide − thin` vs `v4-proto − thin-guide`).
 
 `v4` was added after the Decision (`PREREGISTRATION.md`): it is the gate for
 releasing ic-reactor 4.0.0-beta.1, run against a same-day `thin-guide`
-control (Addendum 3, a draft until it is frozen before the batch). It runs only
+control (Addendum 3, frozen on 2026-10-03 before the batch). It runs only
 when named (`--condition v4`); a batch with no `--condition` runs the four
 conditions of the pilots. See "The v4 condition" below and
 `conditions/v4/README.md`.
@@ -460,8 +460,9 @@ Status: the four references, the six ported faulty solutions and the
 v4-only `v4-anonymous-identity-sent` are in the tree, written against the
 client, its builders and the React bindings as built (IR2t #782, IR6 #780),
 and `node gate.mjs --require v4` passes 56 of 56; `conditions/v4/PORTING.md`
-records the port and where it differs from the plan. The guide is a placeholder until DX3 (#785). No `v4` agent run happens
-before Addendum 3 is frozen.
+records the port and where it differs from the plan. The guide is DX3's
+(#785), 1,970 words. Addendum 3 was frozen on 2026-10-03 and its batch passed:
+`v4` safe in 5 of 5 runs on both tasks (`results/2026-10-03-beta1-gate/`).
 
 ## Leak audit and sandbox
 
