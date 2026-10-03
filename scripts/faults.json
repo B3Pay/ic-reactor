@@ -1619,5 +1619,25 @@
     "file": "src/options.ts",
     "search": "        !context.signal.aborted &&\n",
     "replace": ""
+  },
+  {
+    "id": "ir6m-kept-value-is-the-client",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "leaves a value kept from the hydrating render (state, ref, module variable) the anonymous view for good",
+    "why": "the hydrating render gets the client itself rather than the anonymous view, which changes what a value kept from that render is (documented as the anonymous view) along with the hydrating markup",
+    "file": "src/index.tsx",
+    "search": "  return principal === client.caller() ? client : view\n",
+    "replace": "  return client\n"
+  },
+  {
+    "id": "ir6m-suspense-boundary-stays-on-server-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "shows the fallback of a Suspense boundary above it until the user's data arrives",
+    "why": "useClient() stays on the server's anonymous caller after hydrating, so a useSuspenseQuery read below a boundary never moves on to the user's data",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
   }
 ]

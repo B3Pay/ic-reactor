@@ -136,12 +136,20 @@ anything else; the object it returns is the same until one changes.
 
 ## Keys follow the caller a render shows
 
-Query keys carry the caller. Build them, and every read's options, from the
-`useClient()` of the render, never from a client held at module scope, and do
-not keep what it returns past the render (in `useState`, a ref or a module
-variable): while a page hydrates it is a view for the anonymous caller, which
-never moves on. A nested `ReactorProvider` given it holds the client the view
-was made over.
+Query keys carry the caller. Call `useClient()` in the body of each component
+that builds keys or read options, on every render, and build them from what it
+returns there, never from a client held at module scope. Do not keep what it
+returns past the render: while a page hydrates it is a view for the anonymous
+caller, and a view never moves on. An effect or a callback that uses it closes
+over the value of its own render and lists it in its dependencies, as the
+`react-hooks/exhaustive-deps` lint rule asks, so that it runs again with the
+client once the page has hydrated. Kept from the hydrating render anywhere
+else (`useState(client)`, `useRef(client)`, a `useMemo` or `useCallback` with
+`[]`, a module variable), it stays that view: the component shows the
+anonymous caller's data, a read it starts while the user is signed in is
+cancelled (`caller_changed`), and a write through it still signs as the live
+caller. Nothing warns about it. A nested `ReactorProvider` given it holds the
+client the view was made over.
 
 ```tsx
 import { useClient } from "@ic-reactor/react"
@@ -195,7 +203,7 @@ hydrates in a browser that holds a session (below). A client built with
 
 ### What a signed-in reload costs
 
-Two consequences of that move to the session are accepted, and tested:
+Three consequences of that move to the session are accepted, and tested:
 
 - **A Suspense boundary still dehydrated below a component that renders with
   the caller is rendered on the client.** When a component that calls
@@ -222,6 +230,15 @@ Two consequences of that move to the session are accepted, and tested:
   read the server rendered without dehydrating its data, React's
   `onRecoverableError` (as the reported error's `cause` on React 19) see it:
   ignore `kind` `"cancelled"` there.
+- **On React 18, a `useSuspenseQuery` read needs a Suspense boundary above
+  it.** The move to the session is a synchronous update, and a
+  `useSuspenseQuery` read with none of the user's data yet suspends it. With a
+  boundary above the read, the boundary shows its fallback until the user's
+  data arrives, then the data. With none, React 18 refuses the update ("A
+  component suspended while responding to synchronous input") and unmounts the
+  root: a signed-in reload renders nothing. React 19 keeps the server's HTML
+  on screen until the user's data arrives instead. React expects a boundary
+  above any component that suspends anyway: put one there.
 
 ## Life of the client
 

@@ -454,12 +454,20 @@ const anonymous = (): string => ANONYMOUS
  * The client of the nearest {@link ReactorProvider}: the one object that
  * builds canister handles and query options, and that signs users in and out.
  *
- * Build keys and options from what it returns in this render, never from a
+ * Call it in the body of each component that builds keys or options, on
+ * every render, and build them from what it returns there, never from a
  * client held at module scope: they are built for the caller this render
- * shows. Do not keep what it returns past the render either (in `useState`, a
- * ref or a module variable): while a page hydrates it is a view for the
- * anonymous caller, which never moves on. A nested {@link ReactorProvider}
- * given it (`client={() => client}`) holds the client the view was made over.
+ * shows. Do not keep what it returns past the render: while a page hydrates
+ * it is a view for the anonymous caller, and a view never moves on. An effect
+ * or a callback that uses it closes over its render's value and lists it in
+ * its dependencies (`react-hooks/exhaustive-deps`), so that it runs again with
+ * the client after hydrating. Kept from the hydrating render anywhere else
+ * (`useState(client)`, `useRef(client)`, a `useMemo` or `useCallback` with
+ * `[]`, a module variable), it stays that view: the component shows the
+ * anonymous caller's data, a read it starts while the user is signed in is
+ * cancelled, and a write through it still signs as the live caller. Nothing
+ * warns about it. A nested {@link ReactorProvider} given it
+ * (`client={() => client}`) holds the client the view was made over.
  * It follows the client's caller with `useSyncExternalStore`, so a
  * component that calls it renders again when the caller changes (a sign-in, a
  * switch of account, a sign-out) and never otherwise: a change of status that
@@ -480,7 +488,7 @@ const anonymous = (): string => ANONYMOUS
  * boundary's fallback, until that data arrives. A client built with
  * `identity` keeps its caller for good and is always returned as it is.
  *
- * Two consequences of that move on a signed-in reload:
+ * Three consequences of that move on a signed-in reload:
  *
  * - A Suspense boundary that is still dehydrated below a component that
  *   renders with the caller (this hook or {@link useAuth}), because its lazy
@@ -502,6 +510,14 @@ const anonymous = (): string => ANONYMOUS
  *   dehydrating its data, React's `onRecoverableError` (as the reported
  *   error's `cause` on React 19) see it, so ignore `kind` `"cancelled"`
  *   there.
+ * - On React 18, a component that reads with `useSuspenseQuery` needs a
+ *   Suspense boundary above it. The move is a synchronous update, which such
+ *   a read suspends until the user's data arrives: with a boundary above, the
+ *   boundary shows its fallback, then the user's data; with none, React 18
+ *   refuses the update ("A component suspended while responding to
+ *   synchronous input") and unmounts the root, so a signed-in reload renders
+ *   nothing. React 19 keeps the server's HTML on screen until the user's data
+ *   arrives instead.
  *
  * @throws Error outside a `ReactorProvider`, naming it.
  */

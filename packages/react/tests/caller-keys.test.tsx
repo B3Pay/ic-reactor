@@ -42,6 +42,7 @@ import {
   startTransition,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
   version,
   type ComponentType,
@@ -520,6 +521,70 @@ describe("useClient()", () => {
       )
     )
     expect(whoamiCallers(browser)).toEqual([ANONYMOUS])
+  })
+
+  // N2, documented misuse: the guides say to read useClient() in render, and
+  // pin what keeping its hydrating value does, so that a change to it shows.
+  it("leaves a value kept from the hydrating render (state, ref, module variable) the anonymous view for good", async () => {
+    let module: Client | undefined
+    const kept: Client[] = []
+    function Keeper() {
+      const client = useClient()
+      const [state] = useState(client)
+      const ref = useRef(client)
+      module ??= client
+      kept.splice(0, 3, state, ref.current, module)
+      const who = state.canister<Who>(WHO, { id: CANISTER })
+      const read = useQuery(state.queryOptions(who, "whoami"))
+      return (
+        <main data-live={client.caller()} data-kept={state.caller()}>
+          {read.isError ? "ERROR" : (read.data ?? "loading")}
+        </main>
+      )
+    }
+    const tree = (client: Client, state: DehydratedState) => (
+      <ReactorProvider client={() => client}>
+        <HydrationBoundary state={state}>
+          <Keeper />
+        </HydrationBoundary>
+      </ReactorProvider>
+    )
+    const server = replica({ signedIn: false })
+    const serverWho = server.client.canister<Who>(WHO, { id: CANISTER })
+    await server.client.queryClient.prefetchQuery(
+      server.client.queryOptions(serverWho, "whoami")
+    )
+    const json = JSON.stringify(dehydrate(server.client.queryClient))
+    container.innerHTML = renderToString(tree(server.client, JSON.parse(json)))
+    module = undefined
+    const browser = replica({ seed: 7 })
+    const user = browser.auth.getPrincipal()?.toText()
+
+    const { recoverable } = await hydrate(
+      tree(browser.client, JSON.parse(json))
+    )
+    for (let tick = 0; tick < 3; tick++) await act(macrotask)
+
+    expect(recoverable).toEqual([])
+    const shown = () => container.querySelector("main")
+    // The component rendered again with the client, for the user, but what
+    // it kept is the hydrating render's view, and shows the server's data.
+    expect(shown()?.dataset.live).toBe(user)
+    expect(shown()?.dataset.kept).toBe(ANONYMOUS)
+    expect(shown()?.textContent).toBe(`read by ${ANONYMOUS}`)
+    expect(kept).toHaveLength(3)
+    const who = browser.client.canister<Who>(WHO, { id: CANISTER })
+    for (const value of kept) {
+      expect(value).not.toBe(browser.client)
+      expect(value.caller()).toBe(ANONYMOUS)
+      expect(value.queryKey(who, "whoami")).toContain(ANONYMOUS)
+    }
+    // A read it starts while the user is signed in is cancelled, and sends
+    // nothing as anyone.
+    await act(() => browser.client.queryClient.invalidateQueries())
+    for (let tick = 0; tick < 3; tick++) await act(macrotask)
+    expect(shown()?.textContent).toBe(`read by ${ANONYMOUS}`)
+    expect(whoamiCallers(browser)).toEqual([])
   })
 
   it.each([false, true])(
@@ -1515,6 +1580,133 @@ describe("a suspense read the server did not dehydrate", () => {
       )
     ).toEqual([])
   })
+})
+
+/**
+ * L3: the move to the session is a synchronous update, and a
+ * `useSuspenseQuery` read with none of the user's data yet suspends it. React
+ * 18 refuses a synchronous update that suspends with no Suspense boundary
+ * above it, and unmounts the root; React 19 keeps the server's HTML until the
+ * data arrives. With a boundary above the read, both show its fallback until
+ * then. Accepted: React expects a boundary above a component that suspends.
+ */
+describe("a useSuspenseQuery read on a signed-in reload", () => {
+  function SuspenseReader() {
+    const client = useClient()
+    const who = client.canister<Who>(WHO, { id: CANISTER })
+    const read = useSuspenseQuery(suspense(client.queryOptions(who, "whoami")))
+    return <main>{read.data}</main>
+  }
+  const tree = (client: Client, state: DehydratedState, boundary: boolean) => (
+    <ReactorProvider client={() => client}>
+      <HydrationBoundary state={state}>
+        <header>top</header>
+        {boundary ? (
+          <Suspense fallback={<p>fallback</p>}>
+            <SuspenseReader />
+          </Suspense>
+        ) : (
+          <SuspenseReader />
+        )}
+      </HydrationBoundary>
+    </ReactorProvider>
+  )
+  /** The server's page, with its read prefetched and dehydrated as nobody. */
+  async function served(boundary: boolean) {
+    const server = replica({ signedIn: false })
+    const serverWho = server.client.canister<Who>(WHO, { id: CANISTER })
+    await server.client.queryClient.prefetchQuery(
+      server.client.queryOptions(serverWho, "whoami")
+    )
+    const json = JSON.stringify(dehydrate(server.client.queryClient))
+    container.innerHTML = renderToString(
+      tree(server.client, JSON.parse(json), boundary)
+    )
+    expect(container.querySelector("main")?.textContent).toBe(
+      `read by ${ANONYMOUS}`
+    )
+    const browser = replica({ seed: 7 })
+    return {
+      state: JSON.parse(json) as DehydratedState,
+      main: container.querySelector("main"),
+      browser,
+      user: browser.auth.getPrincipal()?.toText(),
+    }
+  }
+
+  it("shows the fallback of a Suspense boundary above it until the user's data arrives, then that data", async () => {
+    const { state, main, browser, user } = await served(true)
+    const commits = watchCommits()
+
+    const { recoverable, logged } = await hydrate(
+      tree(browser.client, state, true)
+    )
+    await waitFor(() =>
+      expect(container.querySelector("main")?.textContent).toBe(
+        `read by ${user}`
+      )
+    )
+    commits.stop()
+
+    expect(recoverable).toEqual([])
+    expect(logged).not.toHaveBeenCalled()
+    // The move hid the server's content behind the fallback, then showed the
+    // user's data in the same node.
+    expect(commits.commits[0]).toContain("<p>fallback</p>")
+    expect(commits.commits[0]).toContain(`read by ${ANONYMOUS}`)
+    expect(commits.commits[commits.commits.length - 1]).not.toContain(
+      "fallback"
+    )
+    expect(container.querySelector("header")?.textContent).toBe("top")
+    expect(container.querySelector("main")).toBe(main)
+    expect(whoamiCallers(browser)).toEqual([user])
+  })
+
+  it(
+    REACT_18
+      ? "fails to render with no Suspense boundary above it on React 18: React unmounts the root"
+      : "keeps the server's HTML with no Suspense boundary above it on React 19 until the user's data arrives",
+    async () => {
+      const { state, main, browser, user } = await served(false)
+      const commits = watchCommits()
+      const recoverable: unknown[] = []
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+      let thrown: unknown
+      try {
+        await act(async () => {
+          root = hydrateRoot(container, tree(browser.client, state, false), {
+            onRecoverableError: (error) => recoverable.push(error),
+          })
+        })
+        await act(macrotask)
+      } catch (error) {
+        thrown = error
+      }
+
+      if (REACT_18) {
+        commits.stop()
+        expect(String((thrown as Error | undefined)?.message)).toMatch(
+          /suspended while responding to synchronous input/
+        )
+        expect(container.innerHTML).toBe("")
+        expect(commits.commits).toEqual([""])
+        return
+      }
+      await waitFor(() =>
+        expect(container.querySelector("main")?.textContent).toBe(
+          `read by ${user}`
+        )
+      )
+      commits.stop()
+      expect(thrown).toBeUndefined()
+      expect(recoverable).toEqual([])
+      expect(logged).not.toHaveBeenCalled()
+      // One commit: the server's HTML stayed until the user's data was in.
+      expect(commits.commits).toEqual([container.innerHTML])
+      expect(container.querySelector("main")).toBe(main)
+      expect(whoamiCallers(browser)).toEqual([user])
+    }
+  )
 })
 
 /**

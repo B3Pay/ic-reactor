@@ -17,11 +17,19 @@ Query's own hooks with the options the client builds,
 
 ## Keys follow the caller a render shows
 
-Build keys and read options from the `useClient()` of the render, never from a
-client held at module scope, and do not keep what it returns past the render
-(in `useState`, a ref or a module variable): while a page hydrates it is a view
-for the anonymous caller, which never moves on. A nested `ReactorProvider`
-given it holds the client the view was made over. `useClient()` follows the client's caller: a
+Call `useClient()` in the body of each component that builds keys or read
+options, on every render, and build them from what it returns there, never
+from a client held at module scope. Do not keep what it returns past the
+render: while a page hydrates it is a view for the anonymous caller, and a view
+never moves on. An effect or callback that uses it closes over its render's
+value and lists it in its dependencies (`react-hooks/exhaustive-deps`), so it
+runs again with the client after hydrating. Kept from the hydrating render
+anywhere else (`useState(client)`, `useRef(client)`, a `useMemo` or
+`useCallback` with `[]`, a module variable), it stays that view: the component
+shows the anonymous caller's data, a read it starts while the user is signed
+in is cancelled, and a write through it still signs as the live caller.
+Nothing warns about it. A nested `ReactorProvider` given it holds the client
+the view was made over. `useClient()` follows the client's caller: a
 component that calls it renders again on each sign-in, switch of account and
 sign-out, with the new caller's keys, and never for a change of status that
 leaves the caller as it is. It returns the provider's client object itself,
@@ -40,7 +48,7 @@ or one that expired or is signed in elsewhere) renders no `useClient()`
 component again, and a client built with `identity` is always returned as it
 is.
 
-A signed-in reload has two accepted costs:
+A signed-in reload has three accepted costs:
 
 - A Suspense boundary still dehydrated below a component that calls
   `useClient()` or `useAuth()` (its lazy code still loading, or its streamed
@@ -61,3 +69,10 @@ A signed-in reload has two accepted costs:
   `useSuspenseQuery` read the server rendered without dehydrating its data,
   React's `onRecoverableError` (as the reported error's `cause` on React 19)
   see it, so ignore `kind` `"cancelled"` there.
+- On React 18, put a Suspense boundary above every component that reads with
+  `useSuspenseQuery`. The move to the session is a synchronous update that
+  such a read suspends until the user's data arrives: with a boundary above,
+  it shows the fallback, then the user's data; with none, React 18 refuses
+  the update ("A component suspended while responding to synchronous input")
+  and unmounts the root, so a signed-in reload renders nothing. React 19 keeps
+  the server's HTML on screen until the user's data arrives instead.
