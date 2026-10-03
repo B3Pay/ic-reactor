@@ -1,0 +1,47 @@
+// The part of the ICP ledger's interface this wallet calls: its ICRC-1
+// methods. The ledger has more, and a client's .did may name only the ones it
+// uses. The full interface is the `icrc1.did` of examples/icrc-ledger.
+
+type Tokens = nat;
+type Subaccount = blob;
+type BlockIndex = nat;
+// Nanoseconds since the UNIX epoch, in UTC.
+type Timestamp = nat64;
+
+type Account = record {
+    owner : principal;
+    subaccount : opt Subaccount;
+};
+
+type TransferArg = record {
+    from_subaccount : opt Subaccount;
+    to : Account;
+    amount : Tokens;
+    fee : opt Tokens;
+    memo : opt blob;
+    created_at_time : opt Timestamp;
+};
+
+type TransferError = variant {
+    BadFee : record { expected_fee : Tokens };
+    BadBurn : record { min_burn_amount : Tokens };
+    InsufficientFunds : record { balance : Tokens };
+    TooOld;
+    CreatedInFuture : record { ledger_time : Timestamp };
+    TemporarilyUnavailable;
+    Duplicate : record { duplicate_of : BlockIndex };
+    GenericError : record { error_code : nat; message : text };
+};
+
+type TransferResult = variant {
+    Ok : BlockIndex;
+    Err : TransferError;
+};
+
+service : {
+    icrc1_symbol : () -> (text) query;
+    icrc1_decimals : () -> (nat8) query;
+    icrc1_fee : () -> (Tokens) query;
+    icrc1_balance_of : (Account) -> (Tokens) query;
+    icrc1_transfer : (TransferArg) -> (TransferResult);
+}

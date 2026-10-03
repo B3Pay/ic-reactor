@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/dfinity/icp-cli/refs/tags/v1.2.0/docs/schemas/icp-yaml-schema.json
+
+# The wallet's local backend, for the icp-cli 1.2.0 this example installs
+# (`pnpm icp:start`, `pnpm icp:deploy`, `pnpm icp:stop`).
+
+canisters:
+  # The app's own canister. A project canister, so `icp deploy` gives it an
+  # id and @ic-reactor/vite-plugin puts that id in the ic_env cookie as
+  # PUBLIC_CANISTER_ID:backend: the app calls it as { name: "backend" }.
+  - name: backend
+    recipe:
+      type: "@dfinity/rust@v3.2.0"
+      configuration:
+        package: backend
+        candid: backend/backend.did
+        locked: true
+
+networks:
+  # The implicit `local` network, with its network launcher pinned like
+  # e2e/icp.yaml's: left at "latest", `icp network start` asks the GitHub API
+  # which release that is, unauthenticated, and fails with "403 rate limit
+  # exceeded" when many starts share an address. An exact version is
+  # downloaded straight from its release.
+  - name: local
+    mode: managed
+    version: v16.0.0-2026-09-18-03-28
+    # Internet Identity, at http://id.ai.localhost:8000, for the
+    # "Internet Identity" sign-in.
+    ii: true
+    # The NNS, whose ICP ledger (ryjl3-tyaaa-aaaaa-aaaba-cai, the same id as
+    # on mainnet) holds the wallet's balances.
+    nns: true

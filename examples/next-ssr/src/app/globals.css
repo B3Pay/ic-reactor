@@ -1,0 +1,278 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f7f5;
+  --card: #ffffff;
+  --text: #1c1c1a;
+  --muted: #6b6b66;
+  --line: #dcdcd6;
+  --accent: #2b59c3;
+  --error: #b3261e;
+  --error-bg: #fdecea;
+  --code-bg: #efefea;
+  --ok: #1e6b3a;
+  --ok-bg: #e7f4ec;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131312;
+    --card: #1c1c1a;
+    --text: #ecece8;
+    --muted: #9a9a93;
+    --line: #34342f;
+    --accent: #8ab0ff;
+    --error: #ffb4ab;
+    --error-bg: #3a1d1a;
+    --code-bg: #262623;
+    --ok: #8fd6a8;
+    --ok-bg: #16301f;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    16px/1.5 system-ui,
+    sans-serif;
+}
+
+a {
+  color: var(--accent);
+}
+
+header.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 0;
+}
+
+header.top nav {
+  display: flex;
+  gap: 1rem;
+}
+
+main {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 3rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+.lede {
+  margin: 0.25rem 0 1.5rem;
+  color: var(--muted);
+}
+
+section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+label {
+  display: block;
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input {
+  flex: 1;
+  min-width: 16rem;
+  padding: 0.5rem 0.6rem;
+  font:
+    0.9rem ui-monospace,
+    monospace;
+  color: inherit;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+form.lookup {
+  margin-bottom: 1rem;
+}
+
+button {
+  padding: 0.3rem 0.8rem;
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--card);
+  font-weight: 600;
+}
+
+code {
+  font:
+    0.85rem ui-monospace,
+    monospace;
+  background: var(--code-bg);
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+dl {
+  margin: 0;
+}
+
+.kv {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.kv:first-child {
+  border-top: 0;
+}
+
+dt {
+  color: var(--muted);
+}
+
+dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.type {
+  display: inline-block;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--ok-bg);
+  color: var(--ok);
+  font:
+    0.75rem ui-monospace,
+    monospace;
+}
+
+.metadata {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.origin {
+  margin: 0.75rem 0 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.origin[data-origin="browser"] {
+  color: var(--accent);
+}
+
+.muted {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+}
+
+.error {
+  margin: 0.4rem 0 0;
+  padding: 0.5rem 0.7rem;
+  color: var(--error);
+  background: var(--error-bg);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.error p {
+  margin: 0.25rem 0 0;
+}
+
+.error .plain {
+  margin: 0;
+  color: var(--text);
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.05rem 0.6rem;
+  border-radius: 999px;
+  background: var(--code-bg);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.pill[data-status="signed-in"] {
+  color: var(--ok);
+  background: var(--ok-bg);
+}
+
+table.balances {
+  width: 100%;
+  margin-bottom: 1rem;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+table.balances caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 0.4rem;
+}
+
+table.balances th,
+table.balances td {
+  padding: 0.35rem 0.4rem;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+table.balances td.error {
+  border-radius: 0;
+}

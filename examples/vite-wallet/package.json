@@ -1,0 +1,46 @@
+{
+  "name": "vite-wallet",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "gen": "candid-core-cli gen backend/backend.did ledger.did -o src/canisters",
+    "gen:check": "candid-core-cli gen backend/backend.did ledger.did -o src/canisters --check",
+    "icp:start": "icp network start -d",
+    "icp:deploy": "icp deploy",
+    "icp:status": "icp network status",
+    "icp:stop": "icp network stop",
+    "faucet": "node scripts/faucet.ts"
+  },
+  "dependencies": {
+    "@candid-core/schema": "0.3.0-beta.1",
+    "@ic-reactor/core": "workspace:*",
+    "@ic-reactor/react": "workspace:*",
+    "@icp-sdk/auth": "^10.0.1",
+    "@icp-sdk/core": "^6.1.0",
+    "@tanstack/react-query": "^5.102.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@candid-core/cli": "0.2.0-beta.1",
+    "@ic-reactor/vite-plugin": "workspace:*",
+    "@icp-sdk/icp-cli": "1.2.0",
+    "@noble/curves": "^2.2.0",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.5.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.0.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.0"
+  }
+}

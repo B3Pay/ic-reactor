@@ -1,0 +1,37 @@
+// The wallet's own canister: per caller, a profile name and an address book.
+// Every method reads or writes the caller's own entry. The anonymous
+// principal has none, and every write it sends is refused.
+
+type Contact = record {
+  name : text;
+  owner : principal;
+};
+
+type Profile = record {
+  name : text;
+};
+
+// Why a write was refused. ic-reactor rejects such a reply as a
+// `canister_err`, with this value in its `err`.
+type Refusal = variant {
+  // The caller is the anonymous principal.
+  Anonymous;
+  // The name is empty, longer than 32 characters, or has a control character.
+  InvalidName : text;
+  // The address book already has a contact of this name.
+  DuplicateName : text;
+  // The address book has no contact of this name.
+  NotFound : text;
+  // The address book holds at most this many contacts.
+  Full : nat32;
+};
+
+service : {
+  // The caller's profile, or null before their first set_name.
+  get_profile : () -> (opt Profile) query;
+  set_name : (text) -> (variant { Ok : Profile; Err : Refusal });
+  // The caller's contacts, in the order they were added.
+  contacts : () -> (vec Contact) query;
+  add_contact : (Contact) -> (variant { Ok; Err : Refusal });
+  remove_contact : (text) -> (variant { Ok; Err : Refusal });
+}
