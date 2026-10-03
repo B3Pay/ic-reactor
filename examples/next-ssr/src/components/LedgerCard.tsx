@@ -20,6 +20,8 @@
 //   card calls `useAuth()` for that: it renders again only when something
 //   tells it to, and `useAuth()` does on every change of caller. Without it,
 //   the card would keep the keys of the caller it first rendered for.
+// - Any of those reads can fail in the tab. A read without data is `loading`
+//   only while it is pending: once it failed, its row shows the kind.
 import { isReactorError } from "@ic-reactor/core"
 import { useAuth, useClient } from "@ic-reactor/react"
 import { useQuery } from "@tanstack/react-query"
@@ -77,7 +79,9 @@ export function LedgerCard({ ledger: ref }: { ledger: LedgerRef }) {
 
   // Every read came from the server's render until one is fetched here.
   const fetchedHere = reads.some((r) => r.isFetchedAfterMount)
-  const loading = reads.some((r) => r.data === undefined)
+  // Pending: neither data nor an error yet. A read that failed has settled.
+  const loading = reads.some((r) => r.isPending)
+  // At 0 (the epoch) when no read has data: every one of them failed.
   const readAt = new Date(Math.max(...reads.map((r) => r.dataUpdatedAt)))
   const failure = reads.find((r) => r.error !== null)?.error
 
@@ -87,29 +91,25 @@ export function LedgerCard({ ledger: ref }: { ledger: LedgerRef }) {
         {ref.label} <code>{ref.id}</code>
       </h2>
       <dl>
-        <Row label="Name" method="icrc1_name" value={name.data}>
+        <Row label="Name" method="icrc1_name" read={name}>
           {name.data}
         </Row>
-        <Row label="Symbol" method="icrc1_symbol" value={symbol.data}>
+        <Row label="Symbol" method="icrc1_symbol" read={symbol}>
           {symbol.data}
         </Row>
-        <Row label="Decimals" method="icrc1_decimals" value={decimals.data}>
+        <Row label="Decimals" method="icrc1_decimals" read={decimals}>
           {decimals.data}
         </Row>
-        <Row label="Fee" method="icrc1_fee" value={fee.data}>
+        <Row label="Fee" method="icrc1_fee" read={fee}>
           {fee.data !== undefined && amount(fee.data)}
         </Row>
-        <Row
-          label="Total supply"
-          method="icrc1_total_supply"
-          value={supply.data}
-        >
+        <Row label="Total supply" method="icrc1_total_supply" read={supply}>
           {supply.data !== undefined && amount(supply.data)}
         </Row>
         <Row
           label="Minting account"
           method="icrc1_minting_account"
-          value={minter.data}
+          read={minter}
         >
           {minter.data === null
             ? "none"
@@ -132,7 +132,7 @@ export function LedgerCard({ ledger: ref }: { ledger: LedgerRef }) {
                 </>
               )}
         </Row>
-        <Row label="Metadata" method="icrc1_metadata" value={metadata.data}>
+        <Row label="Metadata" method="icrc1_metadata" read={metadata}>
           <ul className="metadata">
             {metadata.data?.map(([key, value]) => (
               <li key={key}>
@@ -151,6 +151,8 @@ export function LedgerCard({ ledger: ref }: { ledger: LedgerRef }) {
       <p className="origin" data-origin={fetchedHere ? "browser" : "server"}>
         {loading ? (
           "Reading in this tab, as the current caller."
+        ) : readAt.getTime() === 0 ? (
+          `Every read failed in this tab, as ${caller}.`
         ) : (
           <>
             {fetchedHere
@@ -175,14 +177,18 @@ export function LedgerCard({ ledger: ref }: { ledger: LedgerRef }) {
   )
 }
 
-/** A read of the card: its value once there is one, else `loading`. */
+/**
+ * A read of the card: its value once there is one, else the kind of its
+ * failure if it failed, else `loading`.
+ */
 function Row(props: {
   label: string
   method: string
-  value: unknown
+  read: { data: unknown; error: Error | null }
   children: ReactNode
 }) {
-  const { label, method, value, children } = props
+  const { label, method, read, children } = props
+  const value = read.data
   const scalar =
     typeof value === "bigint" ||
     typeof value === "number" ||
@@ -193,7 +199,11 @@ function Row(props: {
         {label} <code>{method}</code>
       </dt>
       <dd data-read={method}>
-        {value === undefined ? (
+        {value === undefined && read.error !== null ? (
+          <span className="error">
+            {isReactorError(read.error) ? read.error.kind : "error"}
+          </span>
+        ) : value === undefined ? (
           <span className="muted">loading</span>
         ) : (
           <>

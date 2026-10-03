@@ -74,6 +74,7 @@ log to tell which side sent what:
   with no script run, hydrated without a mismatch or a request, then signed in.
 - `src/components/MyBalances.test.tsx`: sign-in, a switch of account,
   sign-out, and a ledger whose decimals or symbol read fails.
+- `src/components/LedgerCard.test.tsx`: a card whose reads fail in the tab.
 - `src/app/providers*.test.tsx`: the real `<Providers>` on a server and in a
   browser.
 - `src/app/account/account.test.tsx`: `/account` streamed by React's server
