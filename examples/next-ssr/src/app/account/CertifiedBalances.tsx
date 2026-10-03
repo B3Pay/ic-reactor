@@ -19,8 +19,11 @@
 //   keys every read by its own caller, so a signed-in visitor would never use
 //   the promise the server dehydrated for the anonymous caller, and would read
 //   everything again.
-// It gets the request's client from `requestClient()`, the same one the page
-// used, so `icrc1_decimals` and `icrc1_symbol` are not read twice.
+// It gets the request's client from `requestClient()`: the same client, and
+// cache, the page used. The two sections share no read, though: a certified
+// canister's keys are its own, so this section reads `icrc1_decimals` and
+// `icrc1_symbol` again, certified, rather than take the page's uncertified
+// answers for them.
 import type { Principal } from "@candid-core/schema"
 import { BalanceTable } from "@/components/BalanceTable"
 import { LEDGERS } from "@/ledgers"

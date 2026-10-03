@@ -4,12 +4,14 @@
 // (scenario 5).
 //
 // Rules:
-// - Reads go through the request client's cache with
-//   `client.queryClient.fetchQuery(client.queryOptions(...))`, so the two
-//   sections of one request share `icrc1_decimals` and `icrc1_symbol` instead
-//   of asking twice. A certified canister is another object with keys of its
-//   own (they end in "certified"): an uncertified answer is never served where
-//   a certified one was asked for.
+// - Reads go through the request client's cache, with
+//   `client.queryClient.fetchQuery(client.queryOptions(...))`.
+//   `icrc1_decimals` and `icrc1_symbol` do not change mid-render, so they come
+//   from `ensureQueryData`: a Server Component of the same request that found
+//   them already read would not ask again. A certified canister is another
+//   object with keys of its own (they end in "certified"), so the certified
+//   section reads its own: an uncertified answer is never served where a
+//   certified one was asked for.
 // - Each ledger fails alone: its row carries the `ReactorError` kind, and the
 //   other rows still render.
 import type { Principal } from "@candid-core/schema"
@@ -59,7 +61,7 @@ export async function readBalances(
               subaccount: null,
             })
           ),
-          // Read once per request and reused: they do not change mid-render.
+          // Taken from this request's cache when it holds them already.
           client.queryClient.ensureQueryData(
             client.queryOptions(ledger, "icrc1_decimals")
           ),
