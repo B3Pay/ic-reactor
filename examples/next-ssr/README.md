@@ -89,6 +89,9 @@ the user from its first render, while the server prefetched as the anonymous
 principal. The cards find nothing under the user's keys: React reports a
 hydration mismatch, renders them on the client, and the tab reads everything
 again as the user. The data shown is right (anonymous answers are never shown
-as the user's), but the server's work is not used for that tab. This example
-does not work around it; a visitor who is not signed in gets the behavior of
+as the user's), but the server's work is not used for that tab. You meet it
+as soon as you sign in and reload: under `pnpm dev`, Next shows the mismatch
+in its error overlay. Keys follow the client's caller, while `useAuth()`
+gives the anonymous server snapshot until hydration ends; this example does
+not work around that. A visitor who is not signed in gets the behavior of
 scenario 2.
