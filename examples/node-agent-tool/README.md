@@ -72,7 +72,9 @@ encode). It exits 1 if any step ends otherwise.
 
 With `--json`, stdout carries one JSON object per line (one per command; one
 per event for `watch` and `demo`), and nothing else. Every object has `ok` and
-`command`. A failure is
+`command`. A transfer that went through has `outcome` (`"sent"`, or
+`"duplicate"` when the ledger had it already), `block`, `resent`, and after a
+re-send `firstAttempt` (the first failure). A failure is
 `{ "ok": false, "command", "kind", "mayHaveExecuted", "message" }`, plus
 `code`, `rejectCode`, `httpStatus` when the `ReactorError` has them, and for a
 transfer `err` (the ledger's `Err`), `balance.before`/`after`, `resend` (the
