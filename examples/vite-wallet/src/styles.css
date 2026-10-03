@@ -1,0 +1,282 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f7f5;
+  --card: #ffffff;
+  --text: #1c1c1a;
+  --muted: #6b6b66;
+  --line: #dcdcd6;
+  --accent: #2b59c3;
+  --error: #b3261e;
+  --error-bg: #fdecea;
+  --code-bg: #efefea;
+  --ok: #1e6b3a;
+  --ok-bg: #e7f4ec;
+  --warn: #8a5300;
+  --warn-bg: #fdf1dc;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131312;
+    --card: #1c1c1a;
+    --text: #ecece8;
+    --muted: #9a9a93;
+    --line: #34342f;
+    --accent: #8ab0ff;
+    --error: #ffb4ab;
+    --error-bg: #3a1d1a;
+    --code-bg: #262623;
+    --ok: #8fd6a8;
+    --ok-bg: #16301f;
+    --warn: #f3c27a;
+    --warn-bg: #3a2c14;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    16px/1.5 system-ui,
+    sans-serif;
+}
+
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+}
+
+h3 {
+  margin: 1rem 0 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.lede {
+  margin: 0.25rem 0 1.5rem;
+  color: var(--muted);
+}
+
+section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.scenario {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+label {
+  display: block;
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  font:
+    0.9rem ui-monospace,
+    monospace;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+input[aria-invalid="true"] {
+  border-color: var(--error);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 0 0.75rem;
+}
+
+button {
+  padding: 0.3rem 0.8rem;
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--card);
+  font-weight: 600;
+}
+
+code,
+pre {
+  font:
+    0.85rem ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+}
+
+code {
+  background: var(--code-bg);
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+}
+
+pre {
+  margin: 0.25rem 0 0;
+  padding: 0.6rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  white-space: pre-wrap;
+}
+
+dl {
+  margin: 0;
+}
+
+.kv {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.kv:first-child {
+  border-top: 0;
+}
+
+dt {
+  color: var(--muted);
+}
+
+dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+ul.plain {
+  margin: 0;
+  padding-left: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+ul.contacts {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+ul.contacts li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--line);
+}
+
+ul.contacts li .row {
+  margin: 0;
+}
+
+.pay {
+  margin-top: 1rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--line);
+}
+
+.big {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.pill {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.85rem;
+}
+
+.pill[data-status="signed-in"] {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.ok,
+.error,
+.warn {
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+}
+
+.ok {
+  color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.error {
+  color: var(--error);
+  background: var(--error-bg);
+}
+
+.warn {
+  color: var(--warn);
+  background: var(--warn-bg);
+}

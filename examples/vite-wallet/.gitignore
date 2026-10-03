@@ -1,0 +1,5 @@
+node_modules
+dist
+# icp-cli's local network and build state, and the backend's cargo output.
+.icp
+target
