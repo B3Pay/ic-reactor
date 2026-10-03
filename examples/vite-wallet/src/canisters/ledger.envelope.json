@@ -1,0 +1,451 @@
+{
+  "contract": {
+    "actor": {
+      "kind": "service",
+      "service": 0
+    },
+    "canonicalization_profile": "candid-core-canon-1",
+    "declarations": [
+      {
+        "name": "Account",
+        "type": 2
+      },
+      {
+        "name": "BlockIndex",
+        "type": 7
+      },
+      {
+        "name": "Subaccount",
+        "type": 5
+      },
+      {
+        "name": "Timestamp",
+        "type": 16
+      },
+      {
+        "name": "Tokens",
+        "type": 7
+      },
+      {
+        "name": "TransferArg",
+        "type": 13
+      },
+      {
+        "name": "TransferError",
+        "type": 18
+      },
+      {
+        "name": "TransferResult",
+        "type": 17
+      }
+    ],
+    "format": "candid-core",
+    "format_version": 1,
+    "identities": {
+      "contract": "candid-core:contract:v1:sha256:11d8ac2035e860456953c4f644d1341b50231861b13be28c73b59b5509dcabc9",
+      "interface": "candid-core:interface:v1:sha256:7fae0dd330b20f53ae1e4e2cb1947c1c57791da0ae20299ceb499f63228d0689"
+    },
+    "producer": {
+      "candid_parser_version": "0.4.0",
+      "candid_version": "0.10.30",
+      "name": "candid-core",
+      "version": "0.1.0-beta.3"
+    },
+    "semantics_profile": "candid-1",
+    "types": [
+      {
+        "kind": "service",
+        "methods": [
+          {
+            "function": 1,
+            "id": 247073459,
+            "name": "icrc1_balance_of"
+          },
+          {
+            "function": 8,
+            "id": 403388827,
+            "name": "icrc1_decimals"
+          },
+          {
+            "function": 9,
+            "id": 858078733,
+            "name": "icrc1_fee"
+          },
+          {
+            "function": 10,
+            "id": 1376323057,
+            "name": "icrc1_symbol"
+          },
+          {
+            "function": 12,
+            "id": 3759054340,
+            "name": "icrc1_transfer"
+          }
+        ]
+      },
+      {
+        "args": [
+          2
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          7
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 947296307,
+            "type": 3
+          },
+          {
+            "id": 1349681965,
+            "type": 4
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "principal"
+      },
+      {
+        "inner": 5,
+        "kind": "opt"
+      },
+      {
+        "inner": 6,
+        "kind": "vec"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat8"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat"
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          6
+        ]
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          7
+        ]
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          11
+        ]
+      },
+      {
+        "kind": "primitive",
+        "primitive": "text"
+      },
+      {
+        "args": [
+          13
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          17
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 25979,
+            "type": 2
+          },
+          {
+            "id": 5094982,
+            "type": 14
+          },
+          {
+            "id": 1213809850,
+            "type": 4
+          },
+          {
+            "id": 1835347746,
+            "type": 4
+          },
+          {
+            "id": 3258775938,
+            "type": 15
+          },
+          {
+            "id": 3573748184,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 7,
+        "kind": "opt"
+      },
+      {
+        "inner": 16,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat64"
+      },
+      {
+        "fields": [
+          {
+            "id": 17724,
+            "type": 7
+          },
+          {
+            "id": 3456837,
+            "type": 18
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 260448849,
+            "type": 19
+          },
+          {
+            "id": 658180290,
+            "type": 20
+          },
+          {
+            "id": 1093787796,
+            "type": 21
+          },
+          {
+            "id": 1122632043,
+            "type": 22
+          },
+          {
+            "id": 2142953889,
+            "type": 23
+          },
+          {
+            "id": 2608432112,
+            "type": 24
+          },
+          {
+            "id": 3373249171,
+            "type": 20
+          },
+          {
+            "id": 4206284395,
+            "type": 25
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 2584819143,
+            "type": 11
+          },
+          {
+            "id": 3601615940,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "null"
+      },
+      {
+        "fields": [
+          {
+            "id": 2765068699,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 326934155,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 3725446591,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 2709806499,
+            "type": 16
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 596483356,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      }
+    ]
+  },
+  "extensions": {
+    "org.candid-core.field-names/v1": [
+      [
+        2,
+        947296307,
+        "owner"
+      ],
+      [
+        2,
+        1349681965,
+        "subaccount"
+      ],
+      [
+        13,
+        25979,
+        "to"
+      ],
+      [
+        13,
+        5094982,
+        "fee"
+      ],
+      [
+        13,
+        1213809850,
+        "memo"
+      ],
+      [
+        13,
+        1835347746,
+        "from_subaccount"
+      ],
+      [
+        13,
+        3258775938,
+        "created_at_time"
+      ],
+      [
+        13,
+        3573748184,
+        "amount"
+      ],
+      [
+        17,
+        17724,
+        "Ok"
+      ],
+      [
+        17,
+        3456837,
+        "Err"
+      ],
+      [
+        18,
+        260448849,
+        "GenericError"
+      ],
+      [
+        18,
+        658180290,
+        "TemporarilyUnavailable"
+      ],
+      [
+        18,
+        1093787796,
+        "BadBurn"
+      ],
+      [
+        18,
+        1122632043,
+        "Duplicate"
+      ],
+      [
+        18,
+        2142953889,
+        "BadFee"
+      ],
+      [
+        18,
+        2608432112,
+        "CreatedInFuture"
+      ],
+      [
+        18,
+        3373249171,
+        "TooOld"
+      ],
+      [
+        18,
+        4206284395,
+        "InsufficientFunds"
+      ],
+      [
+        19,
+        2584819143,
+        "message"
+      ],
+      [
+        19,
+        3601615940,
+        "error_code"
+      ],
+      [
+        21,
+        2765068699,
+        "min_burn_amount"
+      ],
+      [
+        22,
+        326934155,
+        "duplicate_of"
+      ],
+      [
+        23,
+        3725446591,
+        "expected_fee"
+      ],
+      [
+        24,
+        2709806499,
+        "ledger_time"
+      ],
+      [
+        25,
+        596483356,
+        "balance"
+      ]
+    ]
+  }
+}

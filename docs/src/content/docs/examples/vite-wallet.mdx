@@ -1,0 +1,49 @@
+---
+title: "Vite wallet"
+description: A React and Vite ICP wallet on a local icp-cli network, with Internet Identity, a backend canister and optimistic updates on ic-reactor 4
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+An ICP wallet built with React and Vite on `@ic-reactor/core`,
+`@ic-reactor/react` and `@ic-reactor/vite-plugin`, against a local icp-cli
+network that runs the NNS ICP ledger, Internet Identity and a small Rust
+backend canister of the example's own.
+
+- **The page's network:** one client per tab,
+  `createClient({ network: "env", auth })`. The Vite plugin sets the `ic_env`
+  cookie and proxies `/api` to the local network, so the backend is called as
+  `{ name: "backend" }` and the ledger by its `{ id }`. A panel shows the id
+  the client resolved and the cookie it came from.
+- **Two ways to sign in, one client:** Internet Identity through
+  `@icp-sdk/auth`'s `AuthClient`, pointed at the local II, and a "dev account"
+  of the app's own, an `AuthLike` holding an Ed25519 key, offered only on a
+  local page. Switching accounts shows the next account nothing of the last.
+- **Reads and writes:** the balance with `skipToken` while signed out and a
+  `refetchInterval`, so a top-up from the example's faucet shows by itself;
+  ICP transfers with `parseUnits`, the fee, `created_at_time` deduplication,
+  typed ledger errors and the unknown-outcome path; a profile write refused
+  before sending while signed out.
+- **Optimistic updates:** an address book whose adds and removes show at once
+  and roll back on a refusal or a failure, while the client's own
+  invalidation still runs; paying a contact refreshes both balances and not
+  the address book.
+
+Every scenario has tests on `createTestClient()` that run without a replica
+(`pnpm test`). To run the wallet itself you need icp-cli's local network,
+which the example installs (`pnpm icp:start`, `pnpm icp:deploy`,
+`pnpm dev`), and the Rust toolchain for the backend; see its README.
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Read and edit the code in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/v4/examples/vite-wallet?file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/v4/examples/vite-wallet"
+  />
+</CardGrid>
