@@ -18,6 +18,12 @@
 // AuthClient makes those mint calls itself, so it gets the local network too:
 // the page's origin (the dev server proxies /api to the gateway) and the
 // network's root key from the cookie, which a local page trusts.
+//
+// The local Internet Identity is a test build: where mainnet's makes a
+// passkey, it asks for a seed index, and the same number is the same
+// identity every time (its `config` query says
+// `dummy_auth = opt opt record { prompt_for_index = true }`). Nothing here
+// depends on that; it is what a person sees in the window it opens.
 import { AuthClient, type AuthClientCreateOptions } from "@icp-sdk/auth/client"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { isLocalPage, type PageLocation } from "./local-page.ts"

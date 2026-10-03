@@ -2,8 +2,9 @@
 //
 // "Dev account (local only)" signs in without a passkey: an Ed25519 key this
 // tab makes and keeps in sessionStorage. It is how a person or a script demos
-// the wallet on a local network (passkeys cannot be made in an automated
-// browser), and how an account gets test ICP: `pnpm faucet <its principal>`.
+// the wallet on a local network in one click (no window to open, no prompt
+// to answer, several accounts to switch between), and how an account gets
+// test ICP: `pnpm faucet <its principal>`.
 //
 // The client takes any sign-in that has the six methods of `AuthLike`
 // (`getPrincipal`, `getStatus`, `getIdentity`, `subscribe`, `signIn`,
