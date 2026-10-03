@@ -17,7 +17,7 @@ import { createPrivateKey } from "node:crypto"
 import type { Identity } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { Secp256k1KeyIdentity } from "@icp-sdk/core/identity/secp256k1"
-import { hexArg, UsageError } from "./input.ts"
+import { UsageError } from "./input.ts"
 
 /** The environment variable that holds an Ed25519 seed. */
 export const SEED_VARIABLE = "NODE_AGENT_TOOL_SEED"
@@ -76,15 +76,41 @@ export function callerFrom(
     }
   }
   if (seed !== undefined && seed !== "") {
-    const bytes = hexArg(seed, SEED_VARIABLE, 32)
     return {
-      identity: Ed25519KeyIdentity.fromSecretKey(bytes),
+      identity: Ed25519KeyIdentity.fromSecretKey(seedBytes(seed)),
       algorithm: "ed25519",
       source: `${SEED_VARIABLE} (ed25519)`,
       flags: [],
     }
   }
   return ANONYMOUS_CALLER
+}
+
+/**
+ * The 32 bytes of the seed in NODE_AGENT_TOOL_SEED.
+ *
+ * The seed is a private key, so a refusal says what is wrong with it and
+ * never quotes it: the message goes to stderr, or to stdout in --json mode,
+ * and an agent logs both and reads them back into its context.
+ *
+ * @throws UsageError for anything but 64 hex digits.
+ */
+function seedBytes(seed: string): Uint8Array {
+  const problem = /^0x/i.test(seed)
+    ? "starts with 0x"
+    : /\s/.test(seed)
+      ? "holds white space"
+      : /[^0-9a-fA-F]/.test(seed)
+        ? "holds a character that is not a hex digit"
+        : seed.length !== 64
+          ? `has ${seed.length} hex digits`
+          : undefined
+  if (problem !== undefined) {
+    throw new UsageError(
+      `${SEED_VARIABLE} ${problem}: it takes an Ed25519 seed as exactly 64 hex digits (32 bytes), with no 0x and no spaces. Its value is not printed, since it is a private key.`
+    )
+  }
+  return new Uint8Array(Buffer.from(seed, "hex"))
 }
 
 // ---------------------------------------------------------------------------

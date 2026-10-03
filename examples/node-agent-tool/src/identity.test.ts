@@ -164,12 +164,42 @@ describe("whoami", () => {
     for (const [argv, env, reason] of [
       [["whoami", "--pem", "me.pem"], seed, /both --pem and/],
       [["whoami", "--pem", "missing.pem"], {}, /ENOENT/],
-      [["whoami"], { [SEED_VARIABLE]: "abc" }, /not hex/],
+      [["whoami"], { [SEED_VARIABLE]: "abc" }, /exactly 64 hex digits/],
     ] as const) {
       const result = await cli(argv, { env })
       expect(result.exitCode).toBe(2)
       expect(result.stderr.join("\n")).toMatch(reason)
       expect(result.options).toBeUndefined()
+    }
+  })
+
+  it(`never prints a malformed ${SEED_VARIABLE}, which is a private key`, async () => {
+    const hex = Buffer.from(generatePem("ed25519").seed).toString("hex")
+    const { cli } = createCli()
+    for (const [seed, problem] of [
+      [`0x${hex}`, /starts with 0x/],
+      [`${hex} `, /holds white space/],
+      [`${hex}\n`, /holds white space/],
+      [`${hex.slice(0, 63)}g`, /not a hex digit/],
+      [hex.slice(0, 62), /has 62 hex digits/],
+      [`${hex}00`, /has 66 hex digits/],
+    ] as const) {
+      for (const json of [false, true]) {
+        const result = await cli(
+          ["balance", ANONYMOUS, ...(json ? ["--json"] : [])],
+          { env: { [SEED_VARIABLE]: seed } }
+        )
+        expect(result.exitCode).toBe(2)
+        expect(result.options).toBeUndefined()
+        const printed = [...result.stdout, ...result.stderr].join("\n")
+        expect(printed).toMatch(problem)
+        // Neither the value nor any long run of its digits is printed.
+        expect(printed).not.toContain(hex.slice(0, 16))
+        expect(printed).not.toContain(hex.slice(-16))
+        if (json) {
+          expect(result.docs[0]).toMatchObject({ ok: false, kind: "usage" })
+        }
+      }
     }
   })
 })
