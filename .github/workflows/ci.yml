@@ -146,9 +146,12 @@ jobs:
       # above. The test job installs without the examples and its `pnpm test`
       # covers packages/** only, so this is the one job that can run them.
       # The filter selects examples/* and examples/*/* and nothing else, and
-      # --if-present skips an example that has no tests.
+      # --if-present skips an example that has no tests. The suites run one
+      # after another: each signs and verifies every call on an in-memory
+      # replica, and side by side on a CI runner they starved each other into
+      # timeouts.
       - name: Test examples
-        run: pnpm -r --filter './examples/**' run --if-present test
+        run: pnpm -r --workspace-concurrency=1 --filter './examples/**' run --if-present test
 
       # Compiles the ts/tsx fences of the docs site's hand-written pages. Their
       # examples import libraries only the example apps install, which is why

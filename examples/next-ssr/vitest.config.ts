@@ -17,6 +17,10 @@ const SERVER_COMPONENT_TESTS = "src/**/*.rsc.test.{ts,tsx}"
 export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   test: {
+    // Every read signs and verifies a reply on the in-memory replica; the
+    // streaming test holds reads on purpose. 5 s, Vitest's default, is short
+    // for a loaded CI runner.
+    testTimeout: 20_000,
     projects: [
       {
         extends: true,
