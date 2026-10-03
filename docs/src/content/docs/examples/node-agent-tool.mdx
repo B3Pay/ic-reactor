@@ -1,0 +1,60 @@
+---
+title: "Node agent tool"
+description: A command-line tool for ICRC-1 ledgers, for people and AI agents, on @ic-reactor/core outside React
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+A command-line tool for ICRC-1 ledgers that a person or an AI agent runs with
+Node 22.18 or newer (`node src/cli.ts <command>`, no build step). It is
+`@ic-reactor/core` with no React at all, one scenario per file:
+
+- **Identity:** a fixed `Identity` from a PEM file (Ed25519 or secp256k1, as
+  `icp identity export` prints it) or a hex seed, else
+  `identity: "anonymous"`, whose writes the client refuses before sending.
+- **Networks:** `--network ic|local|<url>` onto `createClient`'s `network`. A
+  root key is fetched only from a replica on this machine; any other URL needs
+  the key given.
+- **Many ledgers, one interface:** ICP, ckBTC, ckETH or any ledger id, each
+  `client.canister<Actor>(actor, { id })` over one generated module.
+- **Direct calls:** `info` and `balance` call the ledger's methods directly,
+  in parallel; `--certified` reads through `{ id, certified: true }`.
+- **Writes:** `transfer` reads the amount with `parseUnits`, pays the ledger's
+  fee and sets `created_at_time`. Every failure goes through `isReactorError`
+  and a `kind` switch, with an exit code per kind. After a failure that may
+  have executed, it reads the balance back and prints the command that
+  re-sends the same argument, which the ledger answers `Duplicate` if the
+  first went through.
+- **JSON for agents:** `--json` on every command, one document per line,
+  bigints as decimal strings, failures as
+  `{ ok: false, kind, mayHaveExecuted, message }`.
+- **The cache outside React:** `watch` polls a balance through
+  `client.queryClient.fetchQuery(client.queryOptions(...))`, prints only
+  changes, and disposes the client on Ctrl-C.
+- **Every failure, narrated:** `pnpm demo` runs the same commands on
+  `createTestClient()` from `@ic-reactor/core/testing`, with a mocked ledger:
+  a lost reply and its deduplicated re-send, an HTTP 429 the client re-sends
+  by itself, a canister reject, a signed-out write, and input refused before
+  sending. No network, no funds.
+
+```sh
+pnpm --filter node-agent-tool demo
+cd examples/node-agent-tool
+node src/cli.ts info --ledger ckbtc
+node src/cli.ts balance rkp4c-7iaaa-aaaaa-aaaca-cai --certified --json
+pnpm test
+```
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/v4/examples/node-agent-tool?file=src/commands/transfer.ts"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/v4/examples/node-agent-tool"
+  />
+</CardGrid>
