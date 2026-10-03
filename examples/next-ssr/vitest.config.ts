@@ -24,6 +24,7 @@ export default defineConfig({
           name: "app",
           environment: "node",
           include: ["src/**/*.test.{ts,tsx}"],
+          setupFiles: ["src/testing/setup.ts"],
           exclude: [...configDefaults.exclude, SERVER_COMPONENT_TESTS],
         },
       },
