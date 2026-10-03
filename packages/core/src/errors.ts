@@ -37,8 +37,8 @@ import { isServer } from "./runtime.js"
  *   its result; `err` is typed. The outcome is that answer, so
  *   `mayHaveExecuted` is `false`: re-sending is a new decision, not a retry.
  * - `cancelled`: the caller abandoned the call (an aborted query, a key whose
- *   principal is no longer current, any call on a disposed client, code
- *   `client_disposed`, or an update aborted in flight).
+ *   principal is no longer current, a call on a disposed client
+ *   (`client_disposed`), or an update aborted in flight).
  *   `mayHaveExecuted` is `false` when nothing was sent, and `true` for an
  *   update aborted after its request may already have been delivered.
  */

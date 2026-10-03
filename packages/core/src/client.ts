@@ -223,8 +223,9 @@ export interface Client {
    * `cancelled` with code `client_disposed` and `mayHaveExecuted: false`, and
    * sends nothing: a direct call, a query or mutation function, a func
    * reference's function. A call still waiting to be sent (for its caller's
-   * identity, or to be sent again) is cancelled the same way; one already
-   * sent settles as the replica answers.
+   * identity, or to be sent again) is cancelled the same way. A direct call
+   * already sent settles as the replica answers; a read the client's
+   * `QueryClient` was running is dropped with the cache.
    */
   dispose(): void
 
