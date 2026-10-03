@@ -307,13 +307,15 @@ describe("a re-send that does not go through settles nothing", () => {
       expect(text).toMatch(
         /That does not tell whether the first attempt did: it may still have executed\./
       )
+      // The first attempt's advice, not the re-send's.
+      expect(text).toMatch(/never send a new one blindly/)
       expect(text).toMatch(/Do not make a new transfer\. Re-send this same one/)
       expect(text).toContain(
         `node src/cli.ts transfer ${TO} 6 --fee 0.0001 --created-at-time ${NOW}`
       )
       // Nothing the re-send alone would advise: it moved nothing, the first may have.
       expect(text).not.toMatch(
-        /may have executed: no|safe to run again|Nothing moved|nothing executed|try again later|leave out --fee/
+        /may have executed: no|safe to run again|Nothing moved|nothing executed|try again later|leave out --fee|that answer is final|Pass --pem/
       )
       expect(
         told.requests

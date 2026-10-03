@@ -80,7 +80,8 @@ re-send `firstAttempt` (the first failure). A failure is
 transfer `err` (the ledger's `Err`), `balance.before`/`after`, `resend` (the
 argv that re-sends the same argument) and `dedupUntil`. A transfer whose
 re-send failed also has `firstAttempt` and `resendAttempt` (each `kind`,
-`mayHaveExecuted`, `message`, and `err` for an `Err`); its own `kind` and exit
+`mayHaveExecuted`, `message`, `code`, `rejectCode` and `httpStatus` when the
+`ReactorError` has them, and `err` for an `Err`); its own `kind` and exit
 code are those of an attempt that may have executed. A bigint is a decimal
 string, bytes are hex, and an amount is `{ "units": "150000000", "tokens": "1.5" }`.
 `--help --json` is `{ "ok": true, "command": "help", "usage" }`. No message
