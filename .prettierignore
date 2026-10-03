@@ -87,3 +87,5 @@ examples/icrc-ledger/src/canisters/icp_ledger.ts
 examples/icrc-ledger/src/canisters/icp_ledger.envelope.json
 examples/icrc-ledger/src/canisters/ckbtc_minter.ts
 examples/icrc-ledger/src/canisters/ckbtc_minter.envelope.json
+examples/next-ssr/src/canisters/icrc1.ts
+examples/next-ssr/src/canisters/icrc1.envelope.json
