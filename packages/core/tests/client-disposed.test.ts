@@ -14,6 +14,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { c, principal } from "@candid-core/schema"
+import type { Identity } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {
   MutationObserver,
@@ -369,6 +370,31 @@ describe("a call in flight when the client is disposed", () => {
     const write = rejection(canister.bump(1n))
     await asked.promise
     client.dispose()
+    gate.resolve()
+
+    await expect(write).resolves.toMatchObject(disposed("bump", SHAPES))
+    expect(canisterRequests(replica)).toEqual([])
+  })
+
+  it("cancels a write disposed of just after its agent was handed over, and sends nothing", async () => {
+    // The identity's promise settles; the client's own reaction to it hands
+    // the agent over, and the next reaction on the same promise disposes the
+    // client, before the call resumes and would send.
+    const asked = deferred()
+    const gate = deferred()
+    let identity: Promise<Identity> | undefined
+    const auth = createTestAuth({ seed: 1 })
+    const slowAuth = withIdentity(auth, () => {
+      identity = gate.promise.then(() => auth.getIdentity())
+      asked.resolve()
+      return identity
+    })
+    const replica = replicaOf()
+    const { client, canister } = made(clientWithAuth(replica, slowAuth))
+
+    const write = rejection(canister.bump(1n))
+    await asked.promise
+    void identity?.then(() => client.dispose())
     gate.resolve()
 
     await expect(write).resolves.toMatchObject(disposed("bump", SHAPES))

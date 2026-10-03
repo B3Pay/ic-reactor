@@ -288,6 +288,16 @@ export async function invoke(
       // Asked again before every attempt: a re-send for a caller who is no
       // longer current is cancelled, not sent as them.
       const agent = await internals.agentFor(caller.principal, where)
+      // agentFor checked for disposal before it returned the agent, but a
+      // dispose() can still run in the microtask between that check and this
+      // line (a reaction on the identity's promise, say): nothing is sent then.
+      if (internals.disposed()) {
+        throw createReactorError("cancelled", {
+          ...where,
+          code: "client_disposed",
+          reason: "the client was disposed before the call was sent",
+        })
+      }
       reply = await dispatch(agent, send, call)
       break
     } catch (error) {

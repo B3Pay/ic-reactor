@@ -407,8 +407,18 @@
     "testName": "rejects a direct update cancelled (client_disposed)",
     "why": "a call on a disposed client asks who calls before whether the client is still there: the disposed client calls as nobody, so a write is refused as unauthenticated (sign in) instead of cancelled (client_disposed)",
     "file": "src/call.ts",
-    "search": "  if (internals.disposed()) {",
-    "replace": "  if (false && internals.disposed()) {"
+    "search": "  if (internals.disposed()) {\n    throw createReactorError(\"cancelled\", {\n      method: name,",
+    "replace": "  if (false && internals.disposed()) {\n    throw createReactorError(\"cancelled\", {\n      method: name,"
+  },
+  {
+    "id": "i818-disposed-between-agent-and-send",
+    "package": "core",
+    "test": "tests/client-disposed.test.ts",
+    "testName": "cancels a write disposed of just after its agent was handed over, and sends nothing",
+    "why": "a dispose() that runs after agentFor's last check but before the call resumes from it (a reaction on the identity's promise) would still send the write with the agent it was handed",
+    "file": "src/call.ts",
+    "search": "      if (internals.disposed()) {\n        throw createReactorError(\"cancelled\", {\n          ...where,",
+    "replace": "      if (false && internals.disposed()) {\n        throw createReactorError(\"cancelled\", {\n          ...where,"
   },
   {
     "id": "ir2t-err-not-unwrapped",
