@@ -1,11 +1,30 @@
 # Porting the v4-proto solutions to `v4`
 
-The work list for DX5's second phase (issue #786): the two tasks' v4-proto
+What DX5's second phase (issue #786) ported: the two tasks' v4-proto
 reference solutions and the six v4-proto faulty solutions, rewritten against
-ic-reactor 4. Written on 2026-10-02 against the **planned** API: SCOPE item 1,
-DECISIONS Q1 to Q14, and the slices that build it (IR1 #779, IR6 #780, IR2t
-#782, IR5 #777, IR3 #775). Where the shipped API differs, the shipped API wins
-and this file changes in the same PR as the port.
+ic-reactor 4, plus one faulty solution of v4's own for a trap the port
+found. The work list was written on 2026-10-02 against the
+**planned** API (SCOPE item 1, DECISIONS Q1 to Q14, and the slices that build
+it: IR1 #779, IR6 #780, IR2t #782, IR5 #777, IR3 #775). The port was made the
+same day against the API **as built** (`packages/core/src`,
+`packages/react/src` with all five slices merged), and this file now records
+it: where the port differs from the plan, the section says so under "As
+ported".
+
+**Result.** All four references, all six ported faulty solutions and one
+v4-only faulty solution are in the tree. `node gate.mjs --require v4`
+reports 56 of 56 (45 + 4 references + 6 ports + 1 v4-only), no cell
+skipped. Each ported faulty solution fails exactly the tests its v4-proto
+original fails: no fault had to be dropped or changed, so the real library
+closed none of the six traps the prototype left open
+(`harness/gate-plan.test.mjs` checks that each port's `expectFail` equals
+its original's). It opened two the prototype did not. An explicit
+`AnonymousIdentity` is sent (below), which
+`node-tool/faulty/v4-anonymous-identity-sent` carries as a gate cell. A
+module-scope client handed to `ReactorProvider` was disposed under later
+trees (react-wallet's module-scope variant, below); #805 since makes the
+provider dispose only a client its own factory call created, so it is not a
+gate cell.
 
 ## Rules for the port
 
@@ -21,6 +40,8 @@ and this file changes in the same PR as the port.
   points at that link before the library. Nothing else crosses: the 3.13.0
   fake replica only answers `fetch`, and v4's error classification reads
   names and codes, never `instanceof` (`packages/core/src/errors.ts`).
+  _As ported:_ done first; `ship.test.mjs` passed, and no reference failure
+  of that kind showed up.
 - **Same product, new library.** Each port keeps the reference's behaviour
   line for line (the same refusals, the same `data-state` rule, the same
   module-scope or per-tree lifetime) and changes only what ic-reactor 4 now
@@ -36,24 +57,31 @@ and this file changes in the same PR as the port.
   `node gate.mjs` shows a different set, change it only with the reason in
   `meta.json` `bug` and in the README's faulty-solution table: the hidden
   tests, the world and the scoring do not change (issue #786, "Not in
-  scope").
+  scope"). _As ported:_ no set changed.
 - **The gate.** `node gate.mjs --require v4` must then report 45 + 4 + 6 =
-  55 of 55. `--require v4` fails the gate before scoring while either task's
+  55 of 55 (56 of 56 with the v4-only faulty solution added after the
+  port). `--require v4` fails the gate before scoring while either task's
   `v4` cell has no reference, and a ported faulty solution in a task whose
   `v4` references are missing fails it even without the flag, so a port
   left half done cannot pass.
 - **Imports.** `@ic-reactor/core` (`createClient`, `isReactorError`,
-  `parseUnits`, `formatUnits`, types `AuthLike`, `Client`, `ReactorError`);
+  `parseUnits`, `formatUnits`, types `AuthLike`, `Client`);
   `@ic-reactor/react` (`ReactorProvider`, `useClient`, `useAuth`);
-  `@candid-core/schema` (`isPrincipal`, `principal`, `Principal`: the only
-  import path for Candid values, D35); `@tanstack/react-query` (`useQuery`,
-  `useMutation`, `skipToken`); `./generated/icrc1` (`actor`, `type Actor`).
-  There is no `icrc1.service.ts`: the v4 condition's starter holds only the
-  CLI's `icrc1.ts`, and no mode map exists in v4 (CC2 was dropped).
+  `@candid-core/schema` (`isPrincipal`, `principal`: the only import path
+  for Candid values, D35); `@tanstack/react-query` (`useQuery`,
+  `useMutation`, `skipToken`, and `QueryClientProvider` in the react
+  module-scope variant); `./generated/icrc1` (`actor`, `type Actor`);
+  `@icp-sdk/core/agent` (`type Identity`, node-tool only, for the
+  anonymous mapping below). There is no `icrc1.service.ts`: the v4
+  condition's starter holds only the CLI's `icrc1.ts`, and no mode map
+  exists in v4 (CC2 was dropped). No port names `ReactorError` or
+  `Principal`: both are inferred (`transfer.error` is
+  `ReactorError<TransferError> | null` from the options, and `isPrincipal`
+  narrows text to `Principal`).
 
 ## API map
 
-| v4-proto (prototype)                                                                 | v4 (planned)                                                                                                                                                                                    | Decided by                    |
+| v4-proto (prototype)                                                                 | v4 (as built)                                                                                                                                                                                   | Decided by                    |
 | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | `import { LedgerService } from "./generated/icrc1.service"`                          | `import { actor, type Actor } from "./generated/icrc1"`                                                                                                                                         | SCOPE 1e                      |
 | `createClient({ network: { host, rootKey }, identity })`, identity optional          | `createClient({ network: { host, rootKey }, identity })` where `identity` is an `Identity` or `"anonymous"`, and required (or `auth`)                                                           | SCOPE 1a, 1b; D29; #779       |
@@ -66,7 +94,7 @@ and this file changes in the same PR as the port.
 | `transfer.mutate([arg])`                                                             | `transfer.mutate(arg)`                                                                                                                                                                          | Q3                            |
 | `isReactorError(e)`, `e.kind`, `e.mayHaveExecuted`, `e.message`, `e.err.tag`         | the same names from `@ic-reactor/core`                                                                                                                                                          | Q6; IR3 #775                  |
 | `isPrincipalText(text)`, `PrincipalText`                                             | `isPrincipal(text)`, `Principal` from `@candid-core/schema` (`principal(text)` throws `TypeError` instead)                                                                                      | D35                           |
-| `useSyncExternalStore(client.subscribe, client.caller)` + `client.isAuthenticated()` | `const { status, principal } = useAuth()`; signed in exactly when `status === "signed-in"`                                                                                                      | Q11; #780                     |
+| `useSyncExternalStore(client.subscribe, client.caller)` + `client.isAuthenticated()` | `const { status, principal, signIn, signOut } = useAuth()`; signed in exactly when `status === "signed-in"`                                                                                     | Q11; #780                     |
 | `useState(() => new QueryClient())` + `QueryClientProvider`                          | `ReactorProvider` with a client factory; it renders `QueryClientProvider` with `client.queryClient`                                                                                             | SCOPE 1d; D31; #780           |
 | hand-written `parseAmount` (regex, `100_000_000n`)                                   | `parseUnits(text, 8)` in a `try`; it throws `TypeError` (malformed) or `RangeError` (negative, more than 8 significant decimals)                                                                | IR5 #777                      |
 | hand-written `formatE8s`                                                             | `formatUnits(value, 8, { minFractionDigits: 8 })` (`50.00000000`, no grouping)                                                                                                                  | IR5 #777                      |
@@ -91,6 +119,13 @@ anonymous: the tool is read-only", and the hidden tests pass an
 `config.identity` to `"anonymous"` when it is absent **or** its principal is
 anonymous; `identity: config.identity ?? "anonymous"` would send the transfer.
 DX3's guide has to teach this mapping (it is the same trap for an agent).
+_As ported:_ confirmed. With that one line in place of the mapping, the
+reference fails `no_anonymous_update`, and only it: the `AnonymousIdentity`
+tool's transfer reaches the ledger. v4-proto had no such trap (its
+client refused every update whose caller principal was anonymous, however
+the identity was given: `conditions/v4-proto/lib/src/client.ts`), so no
+port carries it; `faulty/v4-anonymous-identity-sent` (below) is the
+reference with that one line, and the gate carries it like the ports.
 
 ### The `AuthLike` adapter (react-wallet, Q14)
 
@@ -115,7 +150,9 @@ function walletAuthLike(auth: WalletAuth): AuthLike {
 ```
 
 No `dispose`: the wallet does not own `WalletAuth`, and the client calls
-`auth.dispose?.()` on its own disposal.
+`auth.dispose?.()` on its own disposal. _As ported:_ exactly this, in both
+react-wallet references; it type-checks against the built `AuthLike` with no
+annotation beyond the return type.
 
 ## node-tool
 
@@ -150,24 +187,43 @@ null })` → `{ ok: true, blockIndex }`.
    did. The client re-sends only a retryable `not_delivered` (reject code 2,
    HTTP 429; Q9), so the reference adds no retry.
 
+_As ported:_ as planned. The mapping is a function, `writerOf(identity)`,
+which is where the `type Identity` import comes from. `isPrincipal` narrows
+`owner` and `to` to `Principal`, so the generated `Account` takes them with
+no `principal()` call.
+
 ### `solutions/v4/reference-module-scope/src/index.ts`
 
 The `reference` above plus v4-proto's module-scope `Map<string, Client>`
 keyed by `host|principal` (`"anonymous"` for the read-only case), unchanged:
 one client per replica and identity, built on first use, never disposed.
+_As ported:_ as planned; the key's principal part is the mapped writer's, so
+an absent identity and an `AnonymousIdentity` share the read-only client.
 
 ### `faulty/v4-never-may-have-executed` (from `v4-proto-never-may-have-executed`)
 
 The v4 `reference` with `mayHaveExecuted: error.mayHaveExecuted` replaced by
 `mayHaveExecuted: false`. Bug text unchanged. Expected failures:
 `reject_code_4_classified`, `reject_code_5_classified`,
-`lost_reply_classified`.
+`lost_reply_classified`. _As ported:_ fails exactly these.
 
 ### `faulty/v4-refuses-nat64-max` (from `v4-proto-refuses-nat64-max`)
 
 The v4 `reference` with the cap written `units < NAT64_MAX` instead of
 `units <= NAT64_MAX`. Bug text unchanged. Expected failure:
-`accepts_nat64_max`.
+`accepts_nat64_max`. _As ported:_ fails exactly this.
+
+### `faulty/v4-anonymous-identity-sent` (v4 only, no original)
+
+The v4 `reference` with `identity: writerOf(config.identity)` replaced by
+`identity: config.identity ?? "anonymous"` (and the then unused `writerOf`
+and `Identity` import removed): the line an agent writes when it reads
+"absent: anonymous" and stops there. Expected failure:
+`no_anonymous_update`, the same test `thin-anonymous-transfer` fails in the
+thin condition. Added after review, so that the gate shows the hidden tests
+catch this trap of the real library. _Measured:_ fails exactly this
+(tsc clean); with the mapping put back, the gate reports the cell `FAIL`
+with nothing failed.
 
 ## react-wallet
 
@@ -211,6 +267,13 @@ from_subaccount: null, created_at_time: null })`.
 7. Balance text: `formatUnits(balance.data, 8, { minFractionDigits: 8 })`
    in place of `formatE8s`.
 
+_As ported:_ as planned, with one difference in step 6: the sign-in and
+sign-out buttons call `signIn()` and `signOut()` from `useAuth()` instead of
+`auth.login()` and `auth.logout()`. The view no longer receives `auth`; the
+client forwards both calls to the adapter, which calls the wallet's own. The
+buttons' test ids, labels and visibility are unchanged. `AuthState.principal`
+is still typed `string`, so `principal(caller)` stays.
+
 ### `solutions/v4/reference-module-scope/src/Wallet.tsx`
 
 v4-proto's variant keeps one `QueryClient` and one client at module scope,
@@ -224,6 +287,49 @@ client={shared.queryClient}>`, passes `shared` down, and reads the auth state
 with `useSyncExternalStore(shared.subscribe, shared.authState)` instead of
 `useAuth()` (which needs the provider). Everything else is the `reference`.
 
+_Decided:_ no provider, as above. #780 shipped no way to give
+`ReactorProvider` a client it does not own: it disposes whatever its factory
+returned when the tree unmounts, and a later mount that finds that client
+disposed calls the factory again, which for a module-scope client returns the
+same disposed client, so every call after the first test would be cancelled.
+Measured, not only read: a scratch variant that hands the module-scope client
+to `ReactorProvider` (`client={() => (shared ??= createClient(...))}`, the
+rest as the `reference`) type-checks clean and fails 30 of the 32 hidden
+tests; only the first test that renders it and one that sends nothing pass.
+The provider keeps the disposed client without a word, so an agent that
+writes this sees no error, only a wallet that stops calling.
+The variant therefore renders `QueryClientProvider` with
+`shared.queryClient`, passes `shared` to the view, reads
+`useSyncExternalStore(shared.subscribe, shared.authState)`, and its buttons
+call `shared.signIn()` and `shared.signOut()`. All of these are the public
+`Client` API. This is the one place a v4 React app that keeps v3's
+module-scope idiom cannot use `useClient`/`useAuth`; the guide should say so
+if it shows a module-scope client at all.
+
+_Update (#805, IR6):_ `ReactorProvider` now disposes only a client its own
+factory call created. A client created before the factory runs, such as
+`const shared = createClient(...)` at module scope passed as
+`client={() => shared}`, is borrowed and never disposed by the provider, so
+that idiom can use `useClient`/`useAuth`. The lazy form measured above,
+`client={() => (shared ??= createClient(...))}`, still creates the client
+during the first provider's factory call, so that provider owns and disposes
+it; the provider logs a development error when a later factory hands it back.
+The variant keeps its provider-free shape, which is still correct.
+
+This is a library behaviour, not a port decision, so it went to the lead as
+an open question (#780 for the provider, DX3 #785 for the guide); no
+`packages/**` change was made here. Two paths lead to it, both in
+`ReactorProvider` (`packages/react/src/index.tsx`). A later tree's provider
+cannot cancel the earlier tree's pending disposal, which is held per
+provider instance, so the earlier tree's timer disposes the shared client
+under the later tree. And once the client is disposed, a provider that
+mounts with it takes the path meant for a re-shown `Activity`: it calls the
+factory again, gets the same disposed client back, and keeps it, without an
+error or a warning. Whether the provider should throw or warn when its factory
+returns a client it has disposed, or refuse a client it did not build, is
+the lead's call; until then the guide must not show a module-scope client
+handed to `ReactorProvider`.
+
 ### `faulty/v4-retry-spread` (from `v4-proto-retry-spread`)
 
 `useMutation({ ...client.mutationOptions(ledger, "icrc1_transfer"), retry: 3 })`.
@@ -232,7 +338,9 @@ TanStack then re-sends every rejected transfer, including after a lost
 reply. Expected failures: `canister_err_not_resent`,
 `reject_code_4_not_resent`, `reject_code_5_not_resent`,
 `lost_reply_not_resent`, `lost_reply_is_unknown`,
-`lost_reply_rereads_balance`.
+`lost_reply_rereads_balance`. _As ported:_ fails exactly these. The bug text
+now says that the spread overrides the options' `retry: false` (v4-proto's
+options had no `retry` at all).
 
 ### `faulty/v4-keep-previous-data` (from `v4-proto-keep-previous-data`)
 
@@ -241,7 +349,12 @@ placeholderData: keepPreviousData })` (`keepPreviousData` from
 `@tanstack/react-query`). Also a recorded hole (#782 criterion 13). Expected
 failure: `no_stale_balance_after_identity_switch`. v4's cancellation of a
 read whose principal is no longer current (D20) may change which stale-balance
-tests fail; if it does, record why (rules above).
+tests fail; if it does, record why (rules above). _As ported:_ fails exactly
+this; D20 changed nothing. The in-flight switch test still passes, because
+`keepPreviousData` shows the data of the key the observer last held, and the
+observer moved to the new principal's key before the old principal's read
+landed: there was no previous data to keep. After sign-in and sign-out the
+previous key is the skipped read's, which holds none either.
 
 ### `faulty/v4-every-reject-unknown` (from `v4-proto-every-reject-unknown`)
 
@@ -249,19 +362,23 @@ tests fail; if it does, record why (rules above).
 `state` rule. v4 classifies reject codes 1 and 3 as `rejected` with
 `mayHaveExecuted: false` and code 2 as `not_delivered` (IR3 #775), as
 v4-proto did. Expected failures: `reject_code_1_is_error`,
-`reject_code_3_is_error`.
+`reject_code_3_is_error`. _As ported:_ fails exactly these.
 
 ### `faulty/v4-status-not-idle` (from `v4-proto-status-not-idle`)
 
 `: transfer.status === "idle" ? "" : transfer.status` in the `state` rule.
 UI only, unaffected by the library. Expected failure: `status_starts_idle`.
+_As ported:_ fails exactly this.
 
 ## After the port
 
-- README: the conditions table gets the `v4` row's word count, the gate line
-  becomes 55/55, and the faulty-solution table gets the six `v4-` rows.
+- README: the gate line is 56/56 and the faulty-solution table has the
+  seven `v4-` rows. The conditions table's `v4` word count stays the
+  placeholder's until DX3's guide is packed.
 - `node harness/check-docs.mjs` (its default list includes
-  `conditions/v4/docs/llms.txt`) and `node setup.mjs` must pass with DX3's
-  guide in the packed core tarball.
+  `conditions/v4/docs/llms.txt`) and `node setup.mjs` must pass again with
+  DX3's guide in the packed core tarball, and `node gate.mjs --require v4`
+  must be run again on the commit under test: the references do not read
+  the guide, but they do run against the packed packages.
 - PREREGISTRATION.md Addendum 3 is frozen (its conditions are listed there)
   before any v4 agent run.

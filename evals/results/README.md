@@ -7,3 +7,10 @@ described in `../PREREGISTRATION.md`.
 
 - `2026-09-30T14-22-05-924Z`: explicit prompt.
 - `2026-09-30T15-48-23-343Z`: minimal prompt.
+- `2026-10-03-beta1-gate`: the 4.0.0-beta.1 gate of Addendum 3 (minimal
+  prompt; `v4` and a same-day `thin-guide` control; 5 runs per cell). Commit
+  under test `1ff26e511`, `.ship/v4` holding `@ic-reactor/core` and
+  `@ic-reactor/react` 4.0.0-alpha.0 and `@candid-core/schema` 0.3.0-beta.1;
+  `claude-sonnet-5-5` at effort `medium`, seed 1, 2 agents at a time. Copied
+  from `runs/beta1-gate-2026-10-03/` (plan, summary as scored at run time,
+  pilot statistics).

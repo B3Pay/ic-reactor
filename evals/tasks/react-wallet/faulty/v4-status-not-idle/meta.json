@@ -1,0 +1,5 @@
+{
+  "condition": "v4",
+  "bug": "Leaves transfer-status without the idle state before the first transfer.",
+  "expectFail": ["status_starts_idle"]
+}

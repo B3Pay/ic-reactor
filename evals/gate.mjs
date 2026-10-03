@@ -8,16 +8,24 @@
 // not applicable under a variant count toward nothing there).
 //
 //   node evals/gate.mjs [--task <task>] [--jobs <n>] [--require <condition>]…
+//        [--root <dir>]
 //
 // A cell (task × condition) with no reference solution is skipped and named.
 // It fails the gate instead, before anything is scored, when its condition is
 // pre-registered, is named by `--require` (Addendum 3 runs
 // `--require v4`), or has faulty solutions in that task (harness/gate-plan.mjs).
 //
+// `--root <dir>` reads the solutions from `<dir>/tasks/<task>/{solutions,faulty}`
+// instead of this directory's; the task specs, starters, hidden tests and
+// world still come from here. It exists for the harness's own tests
+// (harness/gate-plan.test.mjs runs the gate on a seeded tree with an empty
+// required cell); a gate that decides anything runs without it.
+//
 // Prints one line per solution and a summary; exits 1 if any expectation is
 // not met or a cell may not be skipped, 2 on a harness error.
 import { spawn } from "node:child_process"
-import { join } from "node:path"
+import { existsSync } from "node:fs"
+import { join, resolve } from "node:path"
 import { EVALS, TASKS, taskSpec } from "./harness/assemble.mjs"
 import { gatePlan } from "./harness/gate-plan.mjs"
 import { judge } from "./harness/judge.mjs"
@@ -34,7 +42,12 @@ const jobs = Number(opt("jobs", "3"))
 
 let plan
 try {
-  plan = gatePlan({ tasks, require: opts("require") })
+  const rootArg = opt("root", EVALS)
+  if (rootArg === undefined) throw new Error("--root needs a directory")
+  const root = resolve(rootArg)
+  if (!existsSync(join(root, "tasks")))
+    throw new Error(`--root ${JSON.stringify(root)}: has no tasks/ directory`)
+  plan = gatePlan({ tasks, require: opts("require"), root })
 } catch (error) {
   process.stderr.write(`gate: ${error.message}\n`)
   process.exit(2)

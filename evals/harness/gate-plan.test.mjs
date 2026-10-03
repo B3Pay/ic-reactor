@@ -4,13 +4,7 @@
 //   node --test harness/gate-plan.test.mjs
 import { strict as assert } from "node:assert"
 import { spawn } from "node:child_process"
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, beforeEach, describe, it } from "node:test"
@@ -94,10 +88,95 @@ describe("the gate's plan on a seeded tree", () => {
 })
 
 describe("the gate's plan on this tree", () => {
-  it("blocks nothing, and skips only v4 cells", () => {
-    const p = gatePlan()
-    assert.deepEqual(p.blocked, [])
-    for (const { cell } of p.skipped) assert.match(cell, /\/v4$/)
+  /**
+   * The v4 faulty solutions that are not ports: each catches a trap the real
+   * library leaves open where v4-proto did not, so it has no v4-proto
+   * original (conditions/v4/PORTING.md).
+   */
+  const V4_ONLY = ["node-tool/v4-anonymous-identity-sent"]
+  const isPort = (c) => !V4_ONLY.includes(`${c.task}/${c.name}`)
+
+  it("skips no cell and blocks nothing, with --require v4 too", () => {
+    for (const require of [[], ["v4"]]) {
+      const p = gatePlan({ require })
+      assert.deepEqual(p.skipped, [], `--require ${require}`)
+      assert.deepEqual(p.blocked, [], `--require ${require}`)
+    }
+  })
+  it("scores both v4 references of each task, the six ported faulty solutions and the v4-only one", () => {
+    const v4 = gatePlan({ require: ["v4"] }).cases.filter(
+      (c) => c.condition === "v4"
+    )
+    assert.deepEqual(
+      v4
+        .filter((c) => c.name.startsWith("reference"))
+        .map((c) => `${c.task}/${c.name}`)
+        .sort(),
+      [
+        "node-tool/reference",
+        "node-tool/reference-module-scope",
+        "react-wallet/reference",
+        "react-wallet/reference-module-scope",
+      ]
+    )
+    assert.deepEqual(
+      v4
+        .filter((c) => !c.name.startsWith("reference"))
+        .map((c) => `${c.task}/${c.name}`)
+        .sort(),
+      [
+        "node-tool/v4-anonymous-identity-sent",
+        "node-tool/v4-never-may-have-executed",
+        "node-tool/v4-refuses-nat64-max",
+        "react-wallet/v4-every-reject-unknown",
+        "react-wallet/v4-keep-previous-data",
+        "react-wallet/v4-retry-spread",
+        "react-wallet/v4-status-not-idle",
+      ]
+    )
+  })
+  it("expects each ported faulty solution to fail what its v4-proto original fails", () => {
+    const cases = gatePlan().cases
+    const ported = cases.filter(
+      (c) =>
+        c.condition === "v4" && !c.name.startsWith("reference") && isPort(c)
+    )
+    assert.equal(ported.length, 6)
+    for (const port of ported) {
+      const original = cases.find(
+        (c) =>
+          c.task === port.task &&
+          c.condition === "v4-proto" &&
+          c.name === port.name.replace(/^v4-/, "v4-proto-")
+      )
+      assert.ok(original, `${port.task}/${port.name} has no v4-proto original`)
+      assert.deepEqual(
+        [...port.expectFail].sort(),
+        [...original.expectFail].sort(),
+        `${port.task}/${port.name}`
+      )
+    }
+  })
+  it("has no v4-proto original for a v4-only faulty solution", () => {
+    const cases = gatePlan().cases
+    for (const id of V4_ONLY) {
+      const [task, name] = id.split("/")
+      assert.ok(
+        cases.some(
+          (c) => c.task === task && c.condition === "v4" && c.name === name
+        ),
+        `${id} is not in the plan`
+      )
+      assert.ok(
+        !cases.some(
+          (c) =>
+            c.task === task &&
+            c.condition === "v4-proto" &&
+            c.name === name.replace(/^v4-/, "v4-proto-")
+        ),
+        `${id} has a v4-proto original: it is a port`
+      )
+    }
   })
 })
 
@@ -127,22 +206,38 @@ describe("gate.mjs", () => {
         resolve({ status, stdout, stderr })
       })
     })
-  const v4Ported = existsSync(join(EVALS, "tasks", TASK, "solutions", "v4"))
+
+  /**
+   * A tree in which every pre-registered cell of node-tool has its two
+   * references (empty directories: the gate must not get as far as scoring
+   * them) and the v4 cell has none, as before the v4 port.
+   */
+  const root = mkdtempSync(join(tmpdir(), "ic-reactor-evals-gate-run-"))
+  for (const condition of DEFAULT_CONDITIONS) {
+    for (const name of ["reference", "reference-module-scope"]) {
+      mkdirSync(join(root, "tasks", TASK, "solutions", condition, name), {
+        recursive: true,
+      })
+    }
+  }
+  after(() => rmSync(root, { recursive: true, force: true }))
 
   it("exits 2 on a --require that names no condition", async () => {
     const r = await gate("--require", "v5")
     assert.equal(r.status, 2)
     assert.match(r.stderr, /not a condition/)
   })
-  it(
-    "fails before scoring anything when a required cell is empty",
-    { skip: v4Ported && "the v4 references exist" },
-    async () => {
-      const r = await gate("--task", TASK, "--require", "v4")
-      assert.equal(r.status, 1, r.stdout + r.stderr)
-      assert.match(r.stdout, /^FAIL node-tool\/v4: .*required by --require$/m)
-      assert.match(r.stdout, /gate: failed before scoring/)
-      assert.doesNotMatch(r.stdout, /^ok {2}/m)
-    }
-  )
+  it("exits 2 on a --root with no tasks directory", async () => {
+    const r = await gate("--root", join(root, "tasks", TASK))
+    assert.equal(r.status, 2)
+    assert.match(r.stderr, /has no tasks\/ directory/)
+  })
+  it("fails before scoring anything when a required cell is empty", async () => {
+    const r = await gate("--root", root, "--task", TASK, "--require", "v4")
+    assert.equal(r.status, 1, r.stdout + r.stderr)
+    assert.match(r.stdout, /^FAIL node-tool\/v4: .*required by --require$/m)
+    assert.match(r.stdout, /gate: failed before scoring/)
+    assert.doesNotMatch(r.stdout, /^(ok {2}|FAIL) node-tool\/[\w-]+\/[\w-]+: /m)
+    assert.doesNotMatch(r.stdout, /solutions behaved as expected/)
+  })
 })
