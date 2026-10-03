@@ -1,0 +1,11 @@
+# The optional local run of the README: an icp-cli network with the NNS
+# canisters, the ICP ledger among them, at its mainnet id. Gateway on 8001.
+networks:
+  - name: local
+    mode: managed
+    # The network launcher is pinned, as in e2e/icp.yaml: "latest" asks the
+    # GitHub API which release that is.
+    version: v16.0.0-2026-09-18-03-28
+    gateway:
+      port: 8001
+    nns: true
