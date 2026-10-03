@@ -1639,5 +1639,15 @@
     "file": "src/index.tsx",
     "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
     "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6m-no-boundary-read-stays-on-server-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "commits none of the page's updates until the user's data arrives",
+    "why": "useClient() stays on the server's anonymous caller after hydrating, so on React 19 a useSuspenseQuery read with no boundary above it suspends nothing: the page commits its updates at once and never shows the user's data",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
   }
 ]

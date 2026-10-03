@@ -510,14 +510,17 @@ const anonymous = (): string => ANONYMOUS
  *   dehydrating its data, React's `onRecoverableError` (as the reported
  *   error's `cause` on React 19) see it, so ignore `kind` `"cancelled"`
  *   there.
- * - On React 18, a component that reads with `useSuspenseQuery` needs a
- *   Suspense boundary above it. The move is a synchronous update, which such
- *   a read suspends until the user's data arrives: with a boundary above, the
- *   boundary shows its fallback, then the user's data; with none, React 18
- *   refuses the update ("A component suspended while responding to
- *   synchronous input") and unmounts the root, so a signed-in reload renders
- *   nothing. React 19 keeps the server's HTML on screen until the user's data
- *   arrives instead.
+ * - Put a Suspense boundary above every component that reads with
+ *   `useSuspenseQuery`, on React 18 and 19 alike. The move is a synchronous
+ *   update, which such a read suspends until the user's data arrives. With a
+ *   boundary above, the boundary shows its fallback, then the user's data,
+ *   and the rest of the page responds meanwhile. With none, React 18 refuses
+ *   the update ("A component suspended while responding to synchronous
+ *   input") and unmounts the root, so a signed-in reload renders nothing.
+ *   React 19 keeps the server's HTML on screen, but until the user's data
+ *   arrives, however long the read and its retries take, a click or any other
+ *   update outside a transition commits nothing, and neither does a
+ *   transition that renders the reading component again.
  *
  * @throws Error outside a `ReactorProvider`, naming it.
  */

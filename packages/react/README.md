@@ -230,15 +230,18 @@ Three consequences of that move to the session are accepted, and tested:
   read the server rendered without dehydrating its data, React's
   `onRecoverableError` (as the reported error's `cause` on React 19) see it:
   ignore `kind` `"cancelled"` there.
-- **On React 18, a `useSuspenseQuery` read needs a Suspense boundary above
-  it.** The move to the session is a synchronous update, and a
+- **A `useSuspenseQuery` read needs a Suspense boundary above it, on React 18
+  and 19 alike.** The move to the session is a synchronous update, and a
   `useSuspenseQuery` read with none of the user's data yet suspends it. With a
   boundary above the read, the boundary shows its fallback until the user's
-  data arrives, then the data. With none, React 18 refuses the update ("A
-  component suspended while responding to synchronous input") and unmounts the
-  root: a signed-in reload renders nothing. React 19 keeps the server's HTML
-  on screen until the user's data arrives instead. React expects a boundary
-  above any component that suspends anyway: put one there.
+  data arrives, then the data, and the rest of the page responds meanwhile.
+  With none, React 18 refuses the update ("A component suspended while
+  responding to synchronous input") and unmounts the root: a signed-in reload
+  renders nothing. React 19 keeps the server's HTML on screen, but until the
+  user's data arrives, however long the read and its retries take, a click or
+  any other update outside a transition commits nothing, and neither does a
+  transition that renders the reading component again. React expects a
+  boundary above any component that suspends anyway: put one there.
 
 ## Life of the client
 

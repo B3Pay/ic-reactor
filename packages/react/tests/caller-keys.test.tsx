@@ -1584,11 +1584,15 @@ describe("a suspense read the server did not dehydrate", () => {
 
 /**
  * L3: the move to the session is a synchronous update, and a
- * `useSuspenseQuery` read with none of the user's data yet suspends it. React
- * 18 refuses a synchronous update that suspends with no Suspense boundary
- * above it, and unmounts the root; React 19 keeps the server's HTML until the
- * data arrives. With a boundary above the read, both show its fallback until
- * then. Accepted: React expects a boundary above a component that suspends.
+ * `useSuspenseQuery` read with none of the user's data yet suspends it. With a
+ * Suspense boundary above the read, the boundary shows its fallback until the
+ * data arrives, and the page commits its other updates meanwhile. With none,
+ * React 18 refuses a synchronous update that suspends and unmounts the root;
+ * React 19 keeps the server's HTML but commits none of this page's updates
+ * until the data arrives: a click, a state change from outside an event, and
+ * a transition that renders the read again all wait (measured on 19.3: only a
+ * transition that leaves the read alone commits). Accepted: React expects a
+ * boundary above a component that suspends.
  */
 describe("a useSuspenseQuery read on a signed-in reload", () => {
   function SuspenseReader() {
@@ -1597,10 +1601,26 @@ describe("a useSuspenseQuery read on a signed-in reload", () => {
     const read = useSuspenseQuery(suspense(client.queryOptions(who, "whoami")))
     return <main>{read.data}</main>
   }
-  const tree = (client: Client, state: DehydratedState, boundary: boolean) => (
-    <ReactorProvider client={() => client}>
-      <HydrationBoundary state={state}>
-        <header>top</header>
+  /** {@link Counter}'s setter, for an update from outside an event. */
+  let setCount: ((update: (count: number) => number) => void) | undefined
+  /**
+   * A count, which a click on its first button adds one to and a click on its
+   * second adds one to in a transition, above the read: each update of it
+   * renders the read again.
+   */
+  function Counter({ boundary }: { boundary: boolean }) {
+    const [count, set] = useState(0)
+    setCount = set
+    return (
+      <>
+        <nav>
+          <button onClick={() => set((n) => n + 1)}>
+            <em>{count}</em>
+          </button>
+          <button onClick={() => startTransition(() => set((n) => n + 1))}>
+            later
+          </button>
+        </nav>
         {boundary ? (
           <Suspense fallback={<p>fallback</p>}>
             <SuspenseReader />
@@ -1608,10 +1628,22 @@ describe("a useSuspenseQuery read on a signed-in reload", () => {
         ) : (
           <SuspenseReader />
         )}
+      </>
+    )
+  }
+  const tree = (client: Client, state: DehydratedState, boundary: boolean) => (
+    <ReactorProvider client={() => client}>
+      <HydrationBoundary state={state}>
+        <header>top</header>
+        <Counter boundary={boundary} />
       </HydrationBoundary>
     </ReactorProvider>
   )
-  /** The server's page, with its read prefetched and dehydrated as nobody. */
+  const count = () => container.querySelector("em")?.textContent
+  /**
+   * The server's page, with its read prefetched and dehydrated as nobody, and
+   * the browser's replica, whose reads wait until the test calls `release`.
+   */
   async function served(boundary: boolean) {
     const server = replica({ signedIn: false })
     const serverWho = server.client.canister<Who>(WHO, { id: CANISTER })
@@ -1625,22 +1657,54 @@ describe("a useSuspenseQuery read on a signed-in reload", () => {
     expect(container.querySelector("main")?.textContent).toBe(
       `read by ${ANONYMOUS}`
     )
+    expect(count()).toBe("0")
     const browser = replica({ seed: 7 })
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    browser.mock<Who>(WHO, CANISTER, {
+      whoami: async ({ caller }) => {
+        await held
+        return `read by ${caller}`
+      },
+    })
     return {
       state: JSON.parse(json) as DehydratedState,
       main: container.querySelector("main"),
       browser,
       user: browser.auth.getPrincipal()?.toText(),
+      release,
     }
   }
+  /**
+   * Adds one to the count three times, as a click, a transition and a state
+   * change from outside an event, and returns the count shown after each.
+   */
+  async function update() {
+    const [click, later] = container.querySelectorAll("button")
+    const shown: (string | undefined)[] = []
+    for (const run of [
+      () => click.click(),
+      () => later.click(),
+      () => setCount?.((n) => n + 1),
+    ]) {
+      await act(async () => run())
+      await act(macrotask)
+      shown.push(count())
+    }
+    return shown
+  }
 
-  it("shows the fallback of a Suspense boundary above it until the user's data arrives, then that data", async () => {
-    const { state, main, browser, user } = await served(true)
+  it("shows the fallback of a Suspense boundary above it until the user's data arrives, then that data, and commits the page's updates meanwhile", async () => {
+    const { state, main, browser, user, release } = await served(true)
     const commits = watchCommits()
 
     const { recoverable, logged } = await hydrate(
       tree(browser.client, state, true)
     )
+    expect(container.querySelector("p")?.textContent).toBe("fallback")
+    expect(await update()).toEqual(["1", "2", "3"])
+    expect(container.querySelector("p")?.textContent).toBe("fallback")
+    release()
     await waitFor(() =>
       expect(container.querySelector("main")?.textContent).toBe(
         `read by ${user}`
@@ -1658,6 +1722,7 @@ describe("a useSuspenseQuery read on a signed-in reload", () => {
       "fallback"
     )
     expect(container.querySelector("header")?.textContent).toBe("top")
+    expect(count()).toBe("3")
     expect(container.querySelector("main")).toBe(main)
     expect(whoamiCallers(browser)).toEqual([user])
   })
@@ -1665,9 +1730,9 @@ describe("a useSuspenseQuery read on a signed-in reload", () => {
   it(
     REACT_18
       ? "fails to render with no Suspense boundary above it on React 18: React unmounts the root"
-      : "keeps the server's HTML with no Suspense boundary above it on React 19 until the user's data arrives",
+      : "keeps the server's HTML with no Suspense boundary above it on React 19, and commits none of the page's updates until the user's data arrives",
     async () => {
-      const { state, main, browser, user } = await served(false)
+      const { state, main, browser, user, release } = await served(false)
       const commits = watchCommits()
       const recoverable: unknown[] = []
       const logged = vi.spyOn(console, "error").mockImplementation(() => {})
@@ -1684,6 +1749,7 @@ describe("a useSuspenseQuery read on a signed-in reload", () => {
       }
 
       if (REACT_18) {
+        release()
         commits.stop()
         expect(String((thrown as Error | undefined)?.message)).toMatch(
           /suspended while responding to synchronous input/
@@ -1692,17 +1758,25 @@ describe("a useSuspenseQuery read on a signed-in reload", () => {
         expect(commits.commits).toEqual([""])
         return
       }
-      await waitFor(() =>
+      expect(thrown).toBeUndefined()
+      // The page looks hydrated, but the move is still pending: a click and
+      // a state change render with it, and a transition renders the read
+      // again, so the read suspends each one.
+      expect(await update()).toEqual(["0", "0", "0"])
+      expect(container.querySelector("main")?.textContent).toBe(
+        `read by ${ANONYMOUS}`
+      )
+      expect(commits.commits).toEqual([])
+      release()
+      await waitFor(() => {
         expect(container.querySelector("main")?.textContent).toBe(
           `read by ${user}`
         )
-      )
+        expect(count()).toBe("3")
+      })
       commits.stop()
-      expect(thrown).toBeUndefined()
       expect(recoverable).toEqual([])
       expect(logged).not.toHaveBeenCalled()
-      // One commit: the server's HTML stayed until the user's data was in.
-      expect(commits.commits).toEqual([container.innerHTML])
       expect(container.querySelector("main")).toBe(main)
       expect(whoamiCallers(browser)).toEqual([user])
     }
