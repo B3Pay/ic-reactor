@@ -14,3 +14,69 @@ Query's own hooks with the options the client builds,
 `useQuery(client.queryOptions(...))` and
 `useMutation(client.mutationOptions(...))`. It never re-exports
 `@ic-reactor/core`: import each name from the package that defines it.
+
+## Keys follow the caller a render shows
+
+Call `useClient()` in the body of each component that builds keys or read
+options, on every render, and build them from what it returns there, never
+from a client held at module scope. Do not keep what it returns past the
+render: while a page hydrates it is a view for the anonymous caller, and a view
+never moves on. An effect or callback that uses it closes over its render's
+value and lists it in its dependencies (`react-hooks/exhaustive-deps`), so it
+runs again with the client after hydrating. Kept from the hydrating render
+anywhere else (`useState(client)`, `useRef(client)`, a `useMemo` or
+`useCallback` with `[]`, a module variable), it stays that view: the component
+shows the anonymous caller's data, a read it starts while the user is signed
+in is cancelled, and a write through it still signs as the live caller.
+Nothing warns about it. A nested `ReactorProvider` given it holds the client
+the view was made over. `useClient()` follows the client's caller: a
+component that calls it renders again on each sign-in, switch of account and
+sign-out, with the new caller's keys, and never for a change of status that
+leaves the caller as it is. It returns the provider's client object itself,
+except while a page hydrates in a browser that holds a session: on a server and
+while a page hydrates the caller is anonymous, as for `useAuth()`, so the
+hydrating render gets a view of the client whose `queryKey`, `queryOptions`,
+`caller()` and `authState()` are the anonymous caller's. It finds what the
+server prefetched and dehydrated, matches the server's HTML and sends nothing.
+Canisters, writes, `signIn`, `signOut` and the `QueryClient` are the client's
+own, and a write signs as the caller current when it runs. Right after
+hydrating, React renders the component again with the session, and each read
+loads the user's keys once: until the user's data arrives, a read shows its
+loading state, and a `useSuspenseQuery` read its boundary's fallback. A tab
+whose caller is anonymous anyway (no session,
+or one that expired or is signed in elsewhere) renders no `useClient()`
+component again, and a client built with `identity` is always returned as it
+is.
+
+A signed-in reload has three accepted costs:
+
+- A Suspense boundary still dehydrated below a component that calls
+  `useClient()` or `useAuth()` (its lazy code still loading, or its streamed
+  HTML not arrived yet) is rendered on the client when that component
+  moves on to the session: it shows its fallback, not the server's HTML, and
+  React 18 reports a recoverable error. Its data is still the user's. A
+  `useAuth()` component also moves on in a tab whose session expired or is
+  signed in elsewhere. Render such a boundary where no component that renders with the caller sits above
+  it, or pass it in as `children`, which a component's own update does not
+  render again.
+- A read the hydrating render built may still run once (a refetch of stale
+  data on mount, or a fetch from an effect) and is then cancelled before
+  anything is sent. A key that holds data keeps it as it was, and a fetch of
+  it resolves with that data. A key with none fails, with `kind`
+  `"cancelled"` and `code` `"caller_changed"`, until the anonymous caller is
+  current again: the hydrating render's own reads never show it, but a
+  `QueryCache` `onError`, an effect that awaits the fetch and, for a
+  `useSuspenseQuery` read the server rendered without dehydrating its data,
+  React's `onRecoverableError` (as the reported error's `cause` on React 19)
+  see it, so ignore `kind` `"cancelled"` there.
+- Put a Suspense boundary above every component that reads with
+  `useSuspenseQuery`, on React 18 and 19 alike. The move to the session is a
+  synchronous update that such a read suspends until the user's data arrives:
+  with a boundary above, it shows the fallback, then the user's data, and the
+  rest of the page responds meanwhile. With none, React 18 refuses the update
+  ("A component suspended while responding to synchronous input") and
+  unmounts the root, so a signed-in reload renders nothing. React 19 keeps the
+  server's HTML on screen, but until the user's data arrives, however long the
+  read and its retries take, a click or any other update outside a transition
+  commits nothing, and neither does a transition that renders the reading
+  component again.

@@ -20,6 +20,7 @@ import { isPrincipal, resolveSchema } from "@candid-core/schema"
 import { encodeArgs, type EncodeResult } from "@candid-core/schema/codec"
 import {
   skipToken,
+  type QueryClient,
   type QueryFunctionContext,
   type QueryKey,
 } from "@tanstack/query-core"
@@ -37,7 +38,7 @@ import {
   recordOf,
   type CanisterRecord,
 } from "./canister.js"
-import type { Client, ClientInternals } from "./client.js"
+import type { Caller, Client, ClientInternals } from "./client.js"
 import { isReactorError, retryQuery } from "./errors.js"
 import {
   CERTIFIED,
@@ -141,12 +142,59 @@ const runKey = (context: unknown): object | undefined =>
 /**
  * The builders of one client. `owner` returns the client, which is built
  * after its builders.
+ *
+ * `current` says whom `queryKey` and `queryOptions` build for: the client's
+ * live caller, or the principal a view of the client is pinned to (see
+ * `CLIENT_AS` in `client.ts`). A read built for it still asks `agentFor` for
+ * that principal's agent, so it is cancelled rather than sent while someone
+ * else is current. Writes, direct calls and `func` read the live caller when
+ * they run.
  */
 export function createBuilders(
   internals: ClientInternals,
-  owner: () => Client
+  owner: () => Client,
+  current: () => Caller = internals.current,
+  refusals?: WeakSet<object>
 ): Builders {
   const network = internals.network.keySegment
+  const pinned = current !== internals.current
+
+  /**
+   * A read built for a pinned principal, refused because someone else is
+   * current (`caller_changed`), must not leave the refusal as its query's
+   * error: a component that shows the key once that principal is current
+   * again (a sign-out after a signed-in reload) would show it. A query with
+   * data is left as it was found: TanStack reverts the fetch, as it reverts
+   * one its last observer left. A query with no data keeps the error for
+   * now, since a suspense read of a reverted one would fetch it again at once
+   * and be refused again (a hydrating boundary then never settles); the error
+   * goes into `refusals`, and the client clears it from the query once the
+   * pinned principal is current again.
+   */
+  const keepOnRefusal = async (
+    context: QueryFunctionContext,
+    read: Promise<unknown>
+  ): Promise<unknown> => {
+    try {
+      return await read
+    } catch (error) {
+      if (
+        !context.signal.aborted &&
+        isReactorError(error) &&
+        error.code === "caller_changed"
+      ) {
+        // TanStack 5.62 does not hand the context its `QueryClient`.
+        const queryClient =
+          (context as { client?: QueryClient }).client ?? owner().queryClient
+        const query = queryClient
+          .getQueryCache()
+          .find({ queryKey: context.queryKey, exact: true })
+        if (query?.state.data !== undefined) void query.cancel({ revert: true })
+        else refusals?.add(error)
+      }
+      throw error
+    }
+  }
 
   /**
    * What was resolved for each run of a mutation, by the function context
@@ -183,7 +231,7 @@ export function createBuilders(
   const queryKey = (canister: unknown, ...rest: unknown[]): QueryKey => {
     const call = "client.queryKey()"
     const record = recordOf(canister, internals, call)
-    const caller = internals.current().principal
+    const caller = current().principal
     const target = record.resolve()
     const [method, vars] = rest
     if (method === undefined) return readKey(record, caller, target)
@@ -245,10 +293,11 @@ export function createBuilders(
         `[ic-reactor] ${call}: ${prepared.name} is a composite query, which has no certified path. Read it from the canister made without certified: true.`
       )
     }
-    // The read is made as the caller current now, and only ever as them: the
-    // key holds their principal, and the query function asks for their agent,
-    // which is refused once someone else is signed in.
-    const caller = internals.current()
+    // The read is made as the caller current now (or the one a view is
+    // pinned to), and only ever as them: the key holds their principal, and
+    // the query function asks for their agent, which is refused while someone
+    // else is signed in.
+    const caller = current()
     const target = record.resolve()
     const write = isWrite(prepared.mode)
     const base = {
@@ -279,17 +328,19 @@ export function createBuilders(
         prepared.name,
         argsSegments(encoded, vars)
       ),
-      queryFn: ({ signal }: QueryFunctionContext) =>
-        invoke(internals, {
+      queryFn: (context: QueryFunctionContext) => {
+        const read = invoke(internals, {
           method: prepared,
           target,
           certified: record.certified,
           caller,
           values,
           encoded,
-          signal,
+          signal: context.signal,
           resend: false,
-        }),
+        })
+        return pinned ? keepOnRefusal(context, read) : read
+      },
       ...base,
     }
   }

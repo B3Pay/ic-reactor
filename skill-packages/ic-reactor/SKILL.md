@@ -75,7 +75,8 @@ This skill describes these versions:
    `useClient()` and `useAuth()`.
 6. **Read and write** with `useQuery(client.queryOptions(...))` and
    `useMutation(client.mutationOptions(...))`, or call the canister's methods
-   directly outside React. Build options in render, and add neither `retry` to
+   directly outside React. Build options in render from that render's
+   `useClient()`, never from a module-scope client, and add neither `retry` to
    a write nor data carried across keys.
 7. **Handle failures** by `isReactorError(error)`, then `kind` and
    `mayHaveExecuted`: when it is `true`, tell the user the outcome is unknown

@@ -13,7 +13,7 @@ made by [`@ic-reactor/core`](../core/README.md).
 | Export            | What it is                                                               |
 | ----------------- | ------------------------------------------------------------------------ |
 | `ReactorProvider` | Gives a tree one client, and TanStack Query that client's `QueryClient`. |
-| `useClient`       | The client of the nearest provider.                                      |
+| `useClient`       | The client of the nearest provider, for the caller this render shows.    |
 | `useAuth`         | Who calls (`status`, `principal`), with `signIn` and `signOut`.          |
 
 There is no hook that wraps `useQuery` or `useMutation`: read and write
@@ -134,21 +134,114 @@ and `principal` is the principal calls go out as: the anonymous principal
 `useAuth()` renders once for each change of status or principal, and never for
 anything else; the object it returns is the same until one changes.
 
+## Keys follow the caller a render shows
+
+Query keys carry the caller. Call `useClient()` in the body of each component
+that builds keys or read options, on every render, and build them from what it
+returns there, never from a client held at module scope. Do not keep what it
+returns past the render: while a page hydrates it is a view for the anonymous
+caller, and a view never moves on. An effect or a callback that uses it closes
+over the value of its own render and lists it in its dependencies, as the
+`react-hooks/exhaustive-deps` lint rule asks, so that it runs again with the
+client once the page has hydrated. Kept from the hydrating render anywhere
+else (`useState(client)`, `useRef(client)`, a `useMemo` or `useCallback` with
+`[]`, a module variable), it stays that view: the component shows the
+anonymous caller's data, a read it starts while the user is signed in is
+cancelled (`caller_changed`), and a write through it still signs as the live
+caller. Nothing warns about it. A nested `ReactorProvider` given it holds the
+client the view was made over.
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function Fee({ id }: { id: string }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, { id })
+  const fee = useQuery(client.queryOptions(ledger, "icrc1_fee"))
+  return <span>{fee.data?.toString() ?? "…"}</span>
+}
+```
+
+`useClient()` follows the client's caller, so a component that calls it renders
+again on a sign-in, a switch of account and a sign-out, and builds the new
+caller's keys; a change of status that leaves the caller as it is (a session
+that expired, or one signed in elsewhere, both call anonymously) renders
+nothing. It returns the provider's client object itself, except while a page
+hydrates in a browser that holds a session (below). A client built with
+`identity` keeps its caller for good and is always returned as it is.
+
 ## On a server
 
 - **One client per request.** A server renders each request as a tree of its
   own, so a factory that creates the client runs once per request, and no
   cache or caller is shared between two users. Never build the client at
   module scope on a server: a module-scope client is for a browser-only app.
-- **Anonymous first render.** `useAuth()` is `anonymous` on a server and on the
-  first render of a hydrating page, even when the browser holds a session: the
-  server has none, and the HTML has to match. A signed-in browser renders again
-  with its session right after hydration. Show the same thing signed out and
-  while the session is read, and the page does not flicker into a different
-  layout.
+- **Anonymous while hydrating.** `useAuth()` is `anonymous` on a server and
+  while a page hydrates, even when the browser holds a session: the server has
+  none, and the HTML has to match. `useClient()` builds keys for that same
+  anonymous caller there: in a browser that holds a session (an `AuthClient`
+  reads a stored one synchronously), the hydrating render gets a view of the
+  client whose `queryKey`, `queryOptions`, `caller()` and `authState()` are
+  the anonymous caller's, so the page finds what the server prefetched and
+  dehydrated, matches its HTML, and sends nothing. Canisters, writes,
+  `signIn`, `signOut` and the `QueryClient` are the client's own, and a write
+  signs as the caller current when it runs. Right after hydrating, React
+  renders each component that calls `useClient()` or `useAuth()` again with
+  the session, and each read loads the user's keys once: until the user's data
+  arrives, a read shows its loading state, and a `useSuspenseQuery` read its
+  boundary's fallback. A tab whose caller
+  is anonymous anyway (no session, or one that expired or is signed in
+  elsewhere) renders no `useClient()` component again, and no `useAuth()`
+  component either unless its status differs. Show the same thing signed out
+  and while the session is read, and the page does not flicker into a
+  different layout.
 - **Nothing runs on a server but the render.** The auth factory is never called,
   nothing reads `window` or `localStorage`, and no effect runs, so no timer or
   listener outlives the request.
+
+### What a signed-in reload costs
+
+Three consequences of that move to the session are accepted, and tested:
+
+- **A Suspense boundary still dehydrated below a component that renders with
+  the caller is rendered on the client.** When a component that calls
+  `useClient()` or `useAuth()` moves on to the session, the update reaches the
+  boundaries it renders. A boundary that has not hydrated yet, because its
+  lazy code is still loading or its streamed HTML has not arrived, is then
+  rendered on the client: it shows its fallback instead of
+  the server's HTML until its content is ready, and React 18 reports a
+  recoverable error. Its data is still the user's, and nothing is sent as
+  anyone else. A `useAuth()` component moves on, and costs the same, in a tab
+  whose session expired or is signed in elsewhere too. To keep the server's HTML, render such a boundary where no
+  component that renders with the caller sits above it (a `useAuth()` header
+  beside it is fine), or pass it in as `children`: a component's own update
+  does not render its `children` prop again.
+- **A read the hydrating render built may run once and be cancelled.**
+  TanStack Query refetches stale data on mount, and an effect may fetch with
+  the hydrating render's options. Such a read is for the anonymous caller
+  while the user is current, so it is cancelled before anything is sent. A
+  key that holds data (the server's) keeps it as it was, and a fetch of it
+  resolves with that data. A key with none fails, with `kind` `"cancelled"`
+  and `code` `"caller_changed"`, until the anonymous caller is current again.
+  The hydrating render's own reads never show that error, but a `QueryCache`
+  `onError`, an effect that awaits the fetch and, for a `useSuspenseQuery`
+  read the server rendered without dehydrating its data, React's
+  `onRecoverableError` (as the reported error's `cause` on React 19) see it:
+  ignore `kind` `"cancelled"` there.
+- **A `useSuspenseQuery` read needs a Suspense boundary above it, on React 18
+  and 19 alike.** The move to the session is a synchronous update, and a
+  `useSuspenseQuery` read with none of the user's data yet suspends it. With a
+  boundary above the read, the boundary shows its fallback until the user's
+  data arrives, then the data, and the rest of the page responds meanwhile.
+  With none, React 18 refuses the update ("A component suspended while
+  responding to synchronous input") and unmounts the root: a signed-in reload
+  renders nothing. React 19 keeps the server's HTML on screen, but until the
+  user's data arrives, however long the read and its retries take, a click or
+  any other update outside a transition commits nothing, and neither does a
+  transition that renders the reading component again. React expects a
+  boundary above any component that suspends anyway: put one there.
 
 ## Life of the client
 

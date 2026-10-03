@@ -29,6 +29,7 @@ import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
 import { QueryClient, type QueryKey } from "@tanstack/query-core"
 import { createReactorError, retryQuery } from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
+import { KEY_ROOT } from "./keys.js"
 import {
   agentOptionsFor,
   resolveNetwork,
@@ -686,6 +687,18 @@ function warnEnvOffPage(network: Network): void {
  *   was made, so the first client's is 1.
  * - `ic-reactor.client.disposed`, on each client: a getter, `true` once
  *   `dispose()` has run.
+ * - `ic-reactor.client.as`, on each client: a method that `useClient()`
+ *   calls with the client as `this` and the principal (text) a render shows,
+ *   when that principal is not the client's live caller: the server's
+ *   anonymous one while a page hydrates in a browser that holds a session.
+ *   It returns a frozen view of `this` for that principal (see `viewAs` in
+ *   {@link createClientWith}), or `this` itself for a client built with
+ *   `identity`, whose caller never changes.
+ * - `ic-reactor.client.of`, on each view: the object the view was made over.
+ *   The provider holds that object, never a view, when its factory returns
+ *   one (a component's `useClient()` handed to a nested provider): a view
+ *   keeps its principal for good, so a tree on it would never follow the
+ *   caller.
  *
  * The provider reads the count, calls its `client` factory, and compares the
  * serial of the client it gets: a higher serial means the factory created the
@@ -696,12 +709,15 @@ function warnEnvOffPage(network: Network): void {
  *
  * `Symbol.for` keys and a count kept on `globalThis`, so that two copies of
  * this package in one bundle count together, and the provider reads them
- * without importing anything of this package at run time. All three are
- * non-enumerable, so spreading or logging a client does not show them.
+ * without importing anything of this package at run time. The keys on a
+ * client or a view are non-enumerable, so spreading or logging one does not
+ * show them.
  */
 const CLIENTS_CREATED = Symbol.for("ic-reactor.clients.created")
 const CLIENT_SERIAL = Symbol.for("ic-reactor.client.serial")
 const CLIENT_DISPOSED = Symbol.for("ic-reactor.client.disposed")
+const CLIENT_AS = Symbol.for("ic-reactor.client.as")
+const CLIENT_OF = Symbol.for("ic-reactor.client.of")
 
 /** Counts one more client in this realm, and returns the count. */
 function nextSerial(): number {
@@ -891,6 +907,36 @@ export function createClientWith(
   let notified: AuthState = snapshot
 
   /**
+   * The errors of reads a view built that were refused while someone else
+   * was current, and left on a query with no data (see `createBuilders`).
+   */
+  const refusals = new WeakSet<object>()
+
+  /**
+   * Clears the refusals of `principal`'s reads, now that it is current, from
+   * the queries that still hold one and nothing else, before any listener
+   * renders them: such a query reads as never fetched, so an observer fetches
+   * it, where a suspense read would otherwise throw the refusal (TanStack does
+   * not refetch an errored query on mount for one).
+   */
+  function clearRefusals(principal: string): void {
+    const queries = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: [KEY_ROOT, network.keySegment, principal] })
+    for (const query of queries) {
+      const { error, data, fetchStatus } = query.state
+      if (
+        error !== null &&
+        refusals.has(error) &&
+        data === undefined &&
+        fetchStatus === "idle"
+      ) {
+        query.setState({ ...query.state, status: "pending", error: null })
+      }
+    }
+  }
+
+  /**
    * The auth, built on first use: never in `identity` mode, never on a server
    * (unless the test client's seam says so), never after
    * {@link Client.dispose}.
@@ -940,6 +986,7 @@ export function createClientWith(
     }
     if (state === notified) return
     notified = state
+    clearRefusals(state.principal)
     for (const listener of [...listeners]) {
       // A listener may dispose the client; the rest are then not told.
       if (disposed) return
@@ -1065,6 +1112,81 @@ export function createClientWith(
     agentFor,
   })
 
+  /** The views of {@link viewAs}, by the object they were made over and their principal. */
+  const views = new WeakMap<object, Map<string, Client>>()
+
+  /**
+   * A view of `this` (the client, or an object over it) for a render that
+   * shows `principal` while the live caller may be someone else: the server's
+   * anonymous caller while a page hydrates in a browser that holds a session.
+   *
+   * Its `queryKey` and `queryOptions` build for `principal`, so they find
+   * what a server prefetched as that caller and render the markup the server
+   * wrote; `caller()` and `authState()` say who that is. The read options are
+   * the client's own but for the key: a read they build asks `agentFor` for
+   * `principal`'s agent, so while someone else is current it is cancelled
+   * (`caller_changed`) and never sent. Every other member is `this`'s own:
+   * canisters (made for this client, so either one accepts them),
+   * `mutationOptions`, direct calls and `func`, which sign as the caller
+   * current when they run, the `QueryClient`, `subscribe`, `signIn`,
+   * `signOut` and `dispose`.
+   *
+   * One view per object and principal, so that a component's dependencies are
+   * the same from one render to the next. Only the anonymous view and the
+   * live caller's are kept past a call for another principal, so switching
+   * accounts leaves nothing behind. A client built with `identity` has one
+   * caller for good, the one its server render built keys for too: it
+   * returns `this`.
+   *
+   * A view carries the object it was made over (`CLIENT_OF`), which
+   * `ReactorProvider` holds in its place, and asked for a view of its own it
+   * makes one of that object.
+   */
+  function viewAs(this: unknown, principal: string): Client {
+    const self = (
+      typeof this === "object" && this !== null ? this : client
+    ) as Client & { readonly [CLIENT_OF]?: Client }
+    // A view of a view is a view of what the first was made over.
+    const base = self[CLIENT_OF] ?? self
+    if (fixedCaller !== undefined) return base
+    let byPrincipal = views.get(base)
+    if (byPrincipal === undefined) views.set(base, (byPrincipal = new Map()))
+    const live = current().principal
+    for (const kept of byPrincipal.keys()) {
+      if (kept !== principal && kept !== live && kept !== ANONYMOUS) {
+        byPrincipal.delete(kept)
+      }
+    }
+    let view = byPrincipal.get(principal)
+    if (view === undefined) {
+      const caller: Caller = Object.freeze({
+        principal,
+        authenticated: principal !== ANONYMOUS,
+      })
+      const state: AuthState =
+        principal === ANONYMOUS
+          ? ANONYMOUS_STATE
+          : Object.freeze({ status: "signed-in", principal })
+      const { queryKey, queryOptions } = createBuilders(
+        internals,
+        () => client,
+        () => caller,
+        refusals
+      )
+      view = Object.freeze(
+        Object.create(base, {
+          caller: { value: () => principal },
+          authState: { value: () => state },
+          queryKey: { value: queryKey },
+          queryOptions: { value: queryOptions },
+          [CLIENT_OF]: { value: base },
+        }) as Client
+      )
+      byPrincipal.set(principal, view)
+    }
+    return view
+  }
+
   const members: Client = {
     ...createBuilders(internals, () => client),
     network: network.keySegment,
@@ -1110,12 +1232,18 @@ export function createClientWith(
       source?.dispose?.()
     },
   }
-  // The stamps `ReactorProvider` reads (see `CLIENTS_CREATED`), defined
-  // before the freeze: a frozen object takes no new property.
+  // The stamps and the seam `@ic-reactor/react` reads (see `CLIENTS_CREATED`), defined
+  // before the freeze: a frozen object takes no new property. The stamps are
+  // not enumerable, so a spread copy of a client has no serial and is not
+  // taken for the client it copies. The seam is: a copy (`{ ...client }`, a
+  // test's double) keeps it, and its views are made over the copy, whose
+  // members are the client's own, so a provider given a copy hydrates as one
+  // given the client does.
   const client: Client = Object.freeze(
     Object.defineProperties(members, {
       [CLIENT_SERIAL]: { value: nextSerial() },
       [CLIENT_DISPOSED]: { get: () => disposed },
+      [CLIENT_AS]: { value: viewAs, enumerable: true },
     })
   )
 

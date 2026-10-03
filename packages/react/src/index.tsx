@@ -46,18 +46,28 @@ const disposedClients = new WeakSet<Client>()
  * API (core's `src/client.ts` documents the other side): `globalThis` holds
  * how many clients have been made in this realm, each client carries that
  * count once it was made as its serial, and a getter that says whether it
- * was disposed. `Symbol.for` keys and a count on `globalThis`, so that this
+ * was disposed. Each client also carries a method that, called with the
+ * client as `this` and a principal's text, returns a frozen view of the
+ * client whose keys, read options, `caller()` and `authState()` are that
+ * principal's (the client itself for one built with `identity`): what
+ * {@link useClient} returns while it renders with a caller that is not the
+ * live one. Each such view carries the client it was made over, which
+ * {@link hold} keeps in its place. `Symbol.for` keys and a count on `globalThis`, so that this
  * module reads them from whichever copy of core made the client, and imports
  * nothing of core at run time.
  */
 const CLIENTS_CREATED = Symbol.for("ic-reactor.clients.created")
 const CLIENT_SERIAL = Symbol.for("ic-reactor.client.serial")
 const CLIENT_DISPOSED = Symbol.for("ic-reactor.client.disposed")
+const CLIENT_AS = Symbol.for("ic-reactor.client.as")
+const CLIENT_OF = Symbol.for("ic-reactor.client.of")
 
 /** A client as core stamps it. */
 type Stamped = {
   readonly [CLIENT_SERIAL]?: unknown
   readonly [CLIENT_DISPOSED]?: unknown
+  readonly [CLIENT_AS]?: (this: Client, principal: string) => Client
+  readonly [CLIENT_OF]?: Client
 }
 
 /** How many clients `createClient` has made in this realm so far. */
@@ -153,7 +163,10 @@ const unclaimed =
  */
 function hold(build: () => Client): Held {
   const before = clientsCreated()
-  const client = build()
+  const built = build()
+  // A view that a component's useClient() returned keeps its caller for good:
+  // hold the client it was made over, whose caller the tree then follows.
+  const client = (built as Stamped)[CLIENT_OF] ?? built
   const serial = (client as Stamped)[CLIENT_SERIAL]
   const owned =
     typeof serial === "number" ? serial > before : clientsCreated() > before
@@ -420,13 +433,8 @@ export function ReactorProvider({
   )
 }
 
-/**
- * The client of the nearest {@link ReactorProvider}: the one object that
- * builds canister handles and query options, and that signs users in and out.
- *
- * @throws Error outside a `ReactorProvider`, naming it.
- */
-export function useClient(): Client {
+/** The provider's client, or the error that names the provider. */
+function useProvided(): Client {
   const client = useContext(ClientContext)
   if (client === undefined) {
     throw new Error(
@@ -435,6 +443,101 @@ export function useClient(): Client {
     )
   }
   return client
+}
+
+/** The principal a server render, and a hydrating render, call as: nobody. */
+const ANONYMOUS = "2vxsx-fae"
+
+const anonymous = (): string => ANONYMOUS
+
+/**
+ * The client of the nearest {@link ReactorProvider}: the one object that
+ * builds canister handles and query options, and that signs users in and out.
+ *
+ * Call it in the body of each component that builds keys or options, on
+ * every render, and build them from what it returns there, never from a
+ * client held at module scope: they are built for the caller this render
+ * shows. Do not keep what it returns past the render: while a page hydrates
+ * it is a view for the anonymous caller, and a view never moves on. An effect
+ * or a callback that uses it closes over its render's value and lists it in
+ * its dependencies (`react-hooks/exhaustive-deps`), so that it runs again with
+ * the client after hydrating. Kept from the hydrating render anywhere else
+ * (`useState(client)`, `useRef(client)`, a `useMemo` or `useCallback` with
+ * `[]`, a module variable), it stays that view: the component shows the
+ * anonymous caller's data, a read it starts while the user is signed in is
+ * cancelled, and a write through it still signs as the live caller. Nothing
+ * warns about it. A nested {@link ReactorProvider} given it
+ * (`client={() => client}`) holds the client the view was made over.
+ * It follows the client's caller with `useSyncExternalStore`, so a
+ * component that calls it renders again when the caller changes (a sign-in, a
+ * switch of account, a sign-out) and never otherwise: a change of status that
+ * leaves the caller as it is (a session that expired, or one signed in
+ * elsewhere, both call as the anonymous principal) renders nothing. In the
+ * steady state it returns the provider's client object itself.
+ *
+ * On a server, and while a page hydrates, the caller is the anonymous one, as
+ * for {@link useAuth}. In a browser that holds a session, the hydrating render
+ * gets a view of the client for the anonymous caller: its `queryKey`,
+ * `queryOptions`, `caller()` and `authState()` are the anonymous caller's, so
+ * the page finds what the server prefetched and dehydrated and matches its
+ * HTML; everything else (canisters, `mutationOptions`, `signIn`, `signOut`,
+ * the `QueryClient`) is the client's own, and a write signs as the caller
+ * current when it runs. Right after hydrating, React renders the component
+ * again with the client itself, for the user: a read with none of the user's
+ * data yet shows its loading state, and a `useSuspenseQuery` read its
+ * boundary's fallback, until that data arrives. A client built with
+ * `identity` keeps its caller for good and is always returned as it is.
+ *
+ * Three consequences of that move on a signed-in reload:
+ *
+ * - A Suspense boundary that is still dehydrated below a component that
+ *   renders with the caller (this hook or {@link useAuth}), because its lazy
+ *   code is still loading or its streamed HTML has not arrived, is rendered
+ *   on the client when that component moves on: it shows its fallback
+ *   instead of the server's HTML, and React 18 reports a recoverable error.
+ *   Its data is still the user's. A `useAuth()` component also moves on in a
+ *   tab whose session expired or is signed in elsewhere. Render such a boundary where no component
+ *   that renders with the caller sits above it, or pass it in as `children`,
+ *   which a component's own update does not render again.
+ * - A read the hydrating render built may still run once (TanStack Query
+ *   refetches stale data on mount, and an effect may fetch with the view's
+ *   options). It is cancelled before anything is sent. A key that holds data
+ *   keeps it as it was, and a fetch of it resolves with that data. A key with
+ *   none fails (`kind` `"cancelled"`, `code` `"caller_changed"`) until the
+ *   anonymous caller is current again: the hydrating render's own reads never
+ *   show that, but a `QueryCache` `onError`, an effect that awaits the fetch
+ *   and, for a `useSuspenseQuery` read the server rendered without
+ *   dehydrating its data, React's `onRecoverableError` (as the reported
+ *   error's `cause` on React 19) see it, so ignore `kind` `"cancelled"`
+ *   there.
+ * - Put a Suspense boundary above every component that reads with
+ *   `useSuspenseQuery`, on React 18 and 19 alike. The move is a synchronous
+ *   update, which such a read suspends until the user's data arrives. With a
+ *   boundary above, the boundary shows its fallback, then the user's data,
+ *   and the rest of the page responds meanwhile. With none, React 18 refuses
+ *   the update ("A component suspended while responding to synchronous
+ *   input") and unmounts the root, so a signed-in reload renders nothing.
+ *   React 19 keeps the server's HTML on screen, but until the user's data
+ *   arrives, however long the read and its retries take, a click or any other
+ *   update outside a transition commits nothing, and neither does a
+ *   transition that renders the reading component again.
+ *
+ * @throws Error outside a `ReactorProvider`, naming it.
+ */
+export function useClient(): Client {
+  const client = useProvided()
+  // The view for the server's caller. A client with one caller for good is
+  // its own view and its own server snapshot: it has nothing to move on to
+  // after hydrating.
+  const view = (client as Stamped)[CLIENT_AS]?.call(client, ANONYMOUS) ?? client
+  const principal = useSyncExternalStore(
+    client.subscribe,
+    client.caller,
+    view === client ? client.caller : anonymous
+  )
+  // Only the server snapshot differs from the live caller, and only while a
+  // component hydrates.
+  return principal === client.caller() ? client : view
 }
 
 /**
@@ -446,7 +549,7 @@ export function useClient(): Client {
  */
 const SERVER_STATE: AuthState = Object.freeze({
   status: "anonymous",
-  principal: "2vxsx-fae",
+  principal: ANONYMOUS,
 })
 
 const serverState = (): AuthState => SERVER_STATE
@@ -461,11 +564,16 @@ const serverState = (): AuthState => SERVER_STATE
  * the same until the state changes, so it is safe in a dependency array or
  * as a prop of a memoized child.
  *
- * On a server, and on the first render of a hydrating page, the state is
- * `anonymous`: the server has no session, and rendering the browser's would
- * not match the server's HTML. A browser that is signed in renders again with
- * its own state right after hydration. A component that reads `status` before
- * then should show the same thing signed out and while the session is read.
+ * On a server, and while a page hydrates, the state is `anonymous`: the
+ * server has no session, and rendering the browser's would not match the
+ * server's HTML. A browser whose state is another one (signed in, or a session
+ * that expired or is signed in elsewhere) renders the component again with its
+ * own state right after hydration; an anonymous one does not, and keeps the
+ * object. A component that reads `status` before then should show the same
+ * thing signed out and while the session is read. Whenever it moves on after
+ * hydrating (a signed-in reload, or a session that expired or is signed in
+ * elsewhere), it renders a Suspense boundary still dehydrated below it on the
+ * client, as for {@link useClient}.
  *
  * `signIn` and `signOut` reject like {@link Client.signIn} and
  * {@link Client.signOut}: on a client built with `identity`, which has no
@@ -479,10 +587,16 @@ export function useAuth(): AuthState & {
   /** Signs out through the client's auth. */
   signOut(options?: unknown): Promise<void>
 } {
-  const client = useClient()
+  const client = useProvided()
   const state = useSyncExternalStore(
     client.subscribe,
-    client.authState,
+    () => {
+      const live = client.authState()
+      // The anonymous state (whose principal is always the anonymous one) is
+      // the server's own object, so an anonymous tab has nothing to move on
+      // to after hydrating.
+      return live.status === "anonymous" ? SERVER_STATE : live
+    },
     serverState
   )
   return useMemo(
