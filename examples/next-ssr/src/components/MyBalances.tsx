@@ -102,8 +102,10 @@ function MyBalance({
   })
   // The row needs all three reads, and each fails on its own: a failed
   // decimals or symbol read leaves nothing to show, as a failed balance does.
+  // A read that failed while it still holds an earlier answer (a refetch in
+  // the background) does not hide the balance, as in LedgerCard.
   const failure = [balance, decimals, symbol].find(
-    (read) => read.error !== null
+    (read) => read.data === undefined && read.error !== null
   )?.error
 
   return (

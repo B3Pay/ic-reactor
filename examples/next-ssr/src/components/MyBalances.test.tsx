@@ -3,7 +3,8 @@
 // Scenario 9: "My balances" asks nothing while nobody is signed in, reads
 // the user's own balances as the user after a sign-in, and starts from empty
 // keys after a switch of account, so one account's balance is never shown
-// for another. A row whose decimals or symbol read fails shows that failure.
+// for another. A row whose decimals or symbol read fails, with nothing to
+// show, shows that failure; a failed refetch keeps the balance up.
 import type { TestHandlers } from "@ic-reactor/core/testing"
 import { ReactorProvider } from "@ic-reactor/react"
 import {
@@ -122,8 +123,10 @@ describe("My balances", () => {
         owner: SEED_1,
         subaccount: null,
       })
-      expect(client.queryClient.getQueryData(balance.queryKey)).toBe(
-        BALANCES.get(SEED_1)
+      await waitFor(() =>
+        expect(client.queryClient.getQueryData(balance.queryKey)).toBe(
+          BALANCES.get(SEED_1)
+        )
       )
       expect(
         requestsFor(test, method).filter(
@@ -141,6 +144,46 @@ describe("My balances", () => {
       })
     }
   )
+
+  // A refetch that fails while the row already shows a balance (TanStack
+  // keeps the earlier answer) leaves the balance up: only a read with nothing
+  // to show turns the row into its failure.
+  it("keeps showing the balance when a later decimals read fails", async () => {
+    let decimalsReads = 0
+    const { container } = renderSection((mocked) =>
+      mocked.mock<Actor>(actor, ICP.id, {
+        ...ledgerHandlers(tokenOf(ICP)),
+        icrc1_decimals: () => {
+          decimalsReads += 1
+          if (decimalsReads > 1) throw new Error("decimals trapped")
+          return tokenOf(ICP).decimals
+        },
+      })
+    )
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Sign in with Internet Identity" })
+    )
+    const shown = icp(BALANCES.get(SEED_1) ?? 0n)
+    await waitFor(() => expect(icpRow(container)).toBe(shown))
+
+    const { client } = test
+    const ledger = client.canister<Actor>(actor, { id: ICP.id })
+    await act(() =>
+      client.queryClient.invalidateQueries({
+        queryKey: client.queryKey(ledger, "icrc1_decimals"),
+      })
+    )
+
+    await waitFor(() => expect(decimalsReads).toBe(2))
+    const decimals = client.queryOptions(ledger, "icrc1_decimals")
+    await waitFor(() =>
+      expect(client.queryClient.getQueryState(decimals.queryKey)?.status).toBe(
+        "error"
+      )
+    )
+    expect(icpRow(container)).toBe(shown)
+  })
 
   it("starts from empty keys after a switch: never one account's balance for another", async () => {
     const { container } = renderSection()
