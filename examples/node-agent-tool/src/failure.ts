@@ -63,7 +63,8 @@ export function failureOf(error: unknown, sent = false): Failure {
       kind: "usage",
       mayHaveExecuted: false,
       message: error.message,
-      advice: "Nothing was sent. Run with --help for the commands and flags.",
+      advice:
+        "The input was refused before any write was sent. Run with --help for the commands and flags.",
       exitCode: EXIT_CODES.usage,
       details: {},
     }

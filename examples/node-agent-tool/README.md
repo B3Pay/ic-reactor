@@ -18,7 +18,7 @@ pnpm --filter node-agent-tool demo    # every way a transfer ends, in memory: no
 cd examples/node-agent-tool
 node src/cli.ts info --ledger ckbtc   # mainnet, anonymous
 node src/cli.ts balance rkp4c-7iaaa-aaaaa-aaaca-cai --certified --json
-node src/cli.ts transfer rkp4c-7iaaa-aaaaa-aaaca-cai 1   # refused: exit 4, nothing sent
+node src/cli.ts transfer rkp4c-7iaaa-aaaaa-aaaca-cai 1   # refused: exit 4, the write is never sent
 node src/cli.ts whoami --pem me.pem   # icp identity export <name> > me.pem
 node src/cli.ts watch rkp4c-7iaaa-aaaaa-aaaca-cai --interval 2000   # Ctrl-C stops
 node src/cli.ts --help
@@ -58,8 +58,8 @@ encode). It exits 1 if any step ends otherwise.
 | ---- | ----------------- | ----------------- | ------------------------------------------------------------------------------- |
 | 0    |                   |                   | Done. A transfer the ledger answers `Duplicate` had gone through: also 0.       |
 | 1    | `unexpected`      | after a send: yes | A bug in the tool.                                                              |
-| 2    | `usage`           | no                | Bad flags or input, refused before the client was asked.                        |
-| 3    | `invalid_args`    | no                | The client could not encode the arguments; nothing sent.                        |
+| 2    | `usage`           | no                | Bad flags or input, refused before any write was sent.                          |
+| 3    | `invalid_args`    | no                | The client could not encode the arguments; the write was not sent.              |
 | 4    | `unauthenticated` | no                | A write without a key: pass `--pem` or set `NODE_AGENT_TOOL_SEED`.              |
 | 5    | `not_delivered`   | no                | Refused before it got in (the client already re-sent where safe). Run it again. |
 | 6    | `outcome_unknown` | yes               | Run the printed re-send command, never a new transfer.                          |

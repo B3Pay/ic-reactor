@@ -7,11 +7,12 @@
 // - a token amount is read with `parseUnits(text, decimals)`, which throws for
 //   "1e3", "1,5", a negative or too many fraction digits. Never `Number()`.
 //
-// Every function throws a UsageError: exit code 2, kind "usage", nothing sent.
+// Every function throws a UsageError: exit code 2, kind "usage", and no write
+// is sent. (A transfer's amount is read after the ledger's decimals are.)
 import { principal, type Principal } from "@candid-core/schema"
 import { parseUnits } from "@ic-reactor/core"
 
-/** Input refused by this tool before the client was asked to do anything. */
+/** Input refused by this tool, before any write was sent. */
 export class UsageError extends Error {
   override name = "UsageError"
   /** The command the input was for, when the command line got that far. */
