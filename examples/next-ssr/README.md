@@ -1,0 +1,78 @@
+# Next.js SSR on ic-reactor 4
+
+A Next.js App Router app (Next 16, React 19) that reads three mainnet ICRC-1
+ledgers (ICP, ckBTC and ckETH) on the server with `@ic-reactor/core`, hands
+its cache to the browser, and reads again in the browser as whoever signs in
+with Internet Identity there. One generated module,
+`src/canisters/icrc1.ts`, serves every ledger.
+
+## Scenarios
+
+Each scenario lives in its own small file, whose header comment names the
+rule it shows. Every one is tested (`pnpm test`), and every one shows on a
+running server.
+
+| #   | Scenario                                                                  | Files                                                                                | How to see it                                                                     |
+| --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
+| 1   | One client per request on the server; prefetch by `{ id }`; `dehydrate`   | `src/server/request-client.ts`, `src/server/prefetch-ledgers.ts`, `src/app/page.tsx` | `/`: each card says when the server read it                                       |
+| 2   | `ReactorProvider` factory in a `'use client'` module; nothing refetched   | `src/app/providers.tsx`, `src/components/server-data.ts`                             | `/` with the network panel open: no request to `icp-api.io` until you ask for one |
+| 3   | Lossless hydration of `bigint`, principals and `Uint8Array`               | `src/components/LedgerCard.tsx`                                                      | the run-time type printed after each value                                        |
+| 4   | Renders with JavaScript disabled                                          | `scripts/smoke.ts`                                                                   | turn JavaScript off and reload `/`                                                |
+| 5   | Streaming with Suspense: certified balances arrive after the page         | `src/app/account/CertifiedBalances.tsx`                                              | `/account?owner=rkp4c-7iaaa-aaaaa-aaaca-cai`                                      |
+| 6   | Progressive enhancement: a GET form, validated on the server              | `src/app/account/page.tsx`, `src/server/parse-owner.ts`                              | look up with JavaScript on and off; `/account?owner=not-a-principal`              |
+| 7   | Route Handler: a client per request, amounts as text, kind as HTTP status | `src/app/api/balance/[ledger]/[principal]/route.ts`, `src/server/balance-route.ts`   | `/api/balance/ckBTC/rkp4c-7iaaa-aaaaa-aaaca-cai`; a bad principal is a 400        |
+| 8   | Errors on the server: one section fails with its `kind`, not the page     | `src/components/LedgerError.tsx`, `src/server/error-summary.ts`                      | `/`: the "NNS governance (not a ledger)" section                                  |
+| 9   | Sign in after hydration: the new caller's keys, nothing anonymous reused  | `src/components/MyBalances.tsx`, `src/components/LedgerCard.tsx`                     | sign in with Internet Identity: "My balances" loads, each card reads again as you |
+
+## Run it
+
+From the repository root, after `pnpm install` and `pnpm build`:
+
+```sh
+pnpm --filter next-ssr dev                              # http://localhost:3001
+pnpm --filter next-ssr build && pnpm --filter next-ssr start   # http://localhost:3011
+pnpm --filter next-ssr smoke   # checks the running start server against mainnet, Node 22.18+
+```
+
+The pages read mainnet when a request comes in, never during `next build`
+(`/` calls `connection()`; `/account` and the route read their parameters), so
+a build needs no network.
+
+## Test it
+
+```sh
+pnpm --filter next-ssr test       # vitest; no test reaches mainnet
+pnpm --filter next-ssr gen:check  # fails if src/canisters/ is stale
+```
+
+The tests run the real client on `createTestClient()` from
+`@ic-reactor/core/testing`, over in-memory replicas that mock the ledgers at
+their mainnet ids (`src/testing/mock-ledgers.ts`). A test builds one client
+for the server's request, one for the server render of the client components
+and one for the browser tab, as the app has, and reads each replica's request
+log to tell which side sent what:
+
+- `src/server/*.test.ts`: the prefetch, its JSON round trip, the account
+  reads, the owner parameter and the route handler.
+- `src/components/hydration.test.tsx`: the home page rendered to HTML, read
+  with no script run, hydrated without a mismatch or a request, then signed in.
+- `src/components/MyBalances.test.tsx`: sign-in, a switch of account, sign-out.
+- `src/app/providers*.test.tsx`: the real `<Providers>` on a server and in a
+  browser.
+- `src/app/account/account.test.tsx`: `/account` streamed by React's server
+  renderer, the certified section held until the first part is read.
+
+`src/canisters/` is generated from `icrc1.did` by `pnpm gen`
+(`candid-core-cli gen`), committed, and never edited.
+
+## A tab that is still signed in
+
+Query keys carry the caller. An `AuthClient` reads a stored session
+synchronously, so a tab that is still signed in from an earlier visit calls as
+the user from its first render, while the server prefetched as the anonymous
+principal. The cards find nothing under the user's keys: React reports a
+hydration mismatch, renders them on the client, and the tab reads everything
+again as the user. The data shown is right (anonymous answers are never shown
+as the user's), but the server's work is not used for that tab. This example
+does not work around it; a visitor who is not signed in gets the behavior of
+scenario 2.
