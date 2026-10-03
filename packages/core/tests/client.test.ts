@@ -680,7 +680,12 @@ describe("the stamps ReactorProvider reads", () => {
       configurable: false,
     })
     expect(Object.keys(client)).not.toContain(SERIAL)
-    expect(Object.getOwnPropertySymbols({ ...client })).toEqual([])
+    // A spread copies neither stamp, so a copy is never taken for the client
+    // it copies. It does copy the view seam, on purpose (#813): a provider
+    // given a copy hydrates as one given the client does.
+    expect(Object.getOwnPropertySymbols({ ...client })).toEqual([
+      Symbol.for("ic-reactor.client.as"),
+    ])
     expect(
       Object.getOwnPropertyDescriptor(globalThis, CREATED)?.enumerable
     ).toBe(false)

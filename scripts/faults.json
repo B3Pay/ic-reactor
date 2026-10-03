@@ -297,8 +297,8 @@
     "test": "tests/hydration.test.tsx",
     "why": "the server snapshot read from the client instead of the constant, so a signed-in browser's first render no longer matches the server's HTML",
     "file": "src/index.tsx",
-    "search": "    client.authState,\n    serverState\n",
-    "replace": "    client.authState,\n    client.authState\n"
+    "search": "    },\n    serverState\n  )\n  return useMemo(",
+    "replace": "    },\n    client.authState\n  )\n  return useMemo("
   },
   {
     "id": "ir6-server-html-depends-on-the-session",
@@ -307,8 +307,8 @@
     "testName": "is rendered as the same HTML by a client that holds a session and one that does not",
     "why": "the server snapshot read from the client, so a render with a session writes different HTML from a server's",
     "file": "src/index.tsx",
-    "search": "    client.authState,\n    serverState\n",
-    "replace": "    client.authState,\n    client.authState\n"
+    "search": "    },\n    serverState\n  )\n  return useMemo(",
+    "replace": "    },\n    client.authState\n  )\n  return useMemo("
   },
   {
     "id": "ir6-snapshot-is-a-fresh-object",
@@ -317,8 +317,8 @@
     "testName": "renders again once for each sign-in, switch of account and sign-out",
     "why": "getSnapshot returns a new object on every read, which useSyncExternalStore treats as a change on every render",
     "file": "src/index.tsx",
-    "search": "    client.authState,\n    serverState\n",
-    "replace": "    () => ({ ...client.authState() }),\n    serverState\n"
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return { ...live }\n"
   },
   {
     "id": "ir6-auth-object-not-memoized",
@@ -399,6 +399,26 @@
     "file": "src/call.ts",
     "search": "  if (write && !caller.authenticated) {",
     "replace": "  if (false && write && !caller.authenticated) {"
+  },
+  {
+    "id": "i818-disposed-write-refused-as-unauthenticated",
+    "package": "core",
+    "test": "tests/client-disposed.test.ts",
+    "testName": "rejects a direct update cancelled (client_disposed)",
+    "why": "a call on a disposed client asks who calls before whether the client is still there: the disposed client calls as nobody, so a write is refused as unauthenticated (sign in) instead of cancelled (client_disposed)",
+    "file": "src/call.ts",
+    "search": "  if (internals.disposed()) {\n    throw createReactorError(\"cancelled\", {\n      method: name,",
+    "replace": "  if (false && internals.disposed()) {\n    throw createReactorError(\"cancelled\", {\n      method: name,"
+  },
+  {
+    "id": "i818-disposed-between-agent-and-send",
+    "package": "core",
+    "test": "tests/client-disposed.test.ts",
+    "testName": "cancels a write disposed of just after its agent was handed over, and sends nothing",
+    "why": "a dispose() that runs after agentFor's last check but before the call resumes from it (a reaction on the identity's promise) would still send the write with the agent it was handed",
+    "file": "src/call.ts",
+    "search": "      if (internals.disposed()) {\n        throw createReactorError(\"cancelled\", {\n          ...where,",
+    "replace": "      if (false && internals.disposed()) {\n        throw createReactorError(\"cancelled\", {\n          ...where,"
   },
   {
     "id": "ir2t-err-not-unwrapped",
@@ -1126,5 +1146,538 @@
     "file": "src/options.ts",
     "search": "  error.kind === \"canister_err\" ||\n  error.mayHaveExecuted",
     "replace": "  error.mayHaveExecuted"
+  },
+  {
+    "id": "ir6b-view-keys-from-live-caller",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "builds the keys of the pinned principal while another one is live",
+    "why": "the builders read the live caller instead of the principal a view is pinned to, so a hydrating render builds the user's keys and misses what the server dehydrated",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "    const caller = current().principal\n",
+        "replace": "    const caller = internals.current().principal\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "    const caller = current()\n    const target = record.resolve()\n    const write",
+        "replace": "    const caller = internals.current()\n    const target = record.resolve()\n    const write"
+      }
+    ]
+  },
+  {
+    "id": "ir6b-view-keys-from-live-caller-prefetch",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "finds what a server prefetched as nobody, under the same key",
+    "why": "a view's queryOptions build the live caller's key, so the anonymous data a server prefetched is not found while a signed-in page hydrates",
+    "file": "src/options.ts",
+    "search": "    const caller = current()\n    const target = record.resolve()\n    const write",
+    "replace": "    const caller = internals.current()\n    const target = record.resolve()\n    const write"
+  },
+  {
+    "id": "ir6b-view-read-sent-as-live-caller",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "cancels a read it built while someone else is current",
+    "why": "a read a view built is sent as whoever is current when it runs, so the anonymous key is filled with the user's answer (D20)",
+    "file": "src/options.ts",
+    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
+    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+  },
+  {
+    "id": "ir6b-view-read-sent-as-signed-out-caller",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "cancels a read pinned to a user who is no longer signed in",
+    "why": "a read built for a user is sent as nobody after the user signed out, and the user's key holds an anonymous answer (D20)",
+    "file": "src/options.ts",
+    "search": "          certified: record.certified,\n          caller,\n          values,\n          encoded,",
+    "replace": "          certified: record.certified,\n          caller: internals.current(),\n          values,\n          encoded,"
+  },
+  {
+    "id": "ir6b-view-anonymous-authenticated",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "refuses an idempotent update it built for nobody",
+    "why": "a view pinned to nobody says its caller may write, so an idempotent update it built is sent as an anonymous update instead of refused (anonymous_write)",
+    "file": "src/client.ts",
+    "search": "        authenticated: principal !== ANONYMOUS,\n",
+    "replace": "        authenticated: true,\n"
+  },
+  {
+    "id": "ir6b-view-writes-as-pinned-caller",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "writes as the caller current when the write runs",
+    "why": "a view's mutationOptions sign as the principal it is pinned to, so a write made from a hydrating render is refused or sent as the wrong principal",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "          caller: internals.current(),\n          values: valuesOf(prepared, vars),\n",
+        "replace": "          caller: current(),\n          values: valuesOf(prepared, vars),\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "      const { queryKey, queryOptions } = createBuilders(",
+        "replace": "      const { queryKey, queryOptions, mutationOptions } = createBuilders("
+      },
+      {
+        "file": "src/client.ts",
+        "search": "          queryOptions: { value: queryOptions },\n",
+        "replace": "          queryOptions: { value: queryOptions },\n          mutationOptions: { value: mutationOptions },\n"
+      }
+    ]
+  },
+  {
+    "id": "ir6b-view-options-held",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "builds the client's own read options but for the key",
+    "why": "a view's read options start nothing while someone else is current (disabled, never stale), so a component that renders the fetch state of a read the server did not prefetch hydrates with another markup than the server's",
+    "file": "src/client.ts",
+    "search": "          queryOptions: { value: queryOptions },\n",
+    "replace": "          queryOptions: {\n            value: (...args: unknown[]) => ({\n              ...(queryOptions as (...a: unknown[]) => object)(...args),\n              enabled: false,\n              staleTime: Infinity,\n            }),\n          },\n"
+  },
+  {
+    "id": "ir6b-view-per-call",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "is the client's own for everything but its keys",
+    "why": "a new view per call, so useClient() hands every hydrating render another object and a component's dependencies change each time",
+    "file": "src/client.ts",
+    "search": "    let view = byPrincipal.get(principal)\n",
+    "replace": "    let view: Client | undefined\n"
+  },
+  {
+    "id": "ir6b-view-kept-for-every-principal",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "keeps no view of a principal that is neither current nor anonymous",
+    "why": "the views are kept for every principal ever asked for, so a tab that switches accounts keeps one view and its builders per account for good",
+    "file": "src/client.ts",
+    "search": "      if (kept !== principal && kept !== live && kept !== ANONYMOUS) {\n",
+    "replace": "      if (kept === undefined) {\n"
+  },
+  {
+    "id": "ir6b-fixed-caller-viewed",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "is the client itself when its caller is fixed",
+    "why": "a client built with identity is pinned to the anonymous server caller, so its hydrating render misses the keys its server built and its reads are cancelled for good",
+    "file": "src/client.ts",
+    "search": "    if (fixedCaller !== undefined) return base\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6b-hydrating-keys-from-live-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "renders the server's keys, sends nothing during hydration",
+    "why": "useClient() returns the client whatever caller the render shows, so a page hydrating with a stored session builds the user's keys: React reports a mismatch and the prefetched read is sent again",
+    "file": "src/index.tsx",
+    "search": "  return principal === client.caller() ? client : view\n",
+    "replace": "  return client\n"
+  },
+  {
+    "id": "ir6b-late-boundary-keys-from-live-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "hydrates a late boundary below no component that renders with the caller",
+    "why": "useClient() returns the client whatever caller the render shows, so a boundary that hydrates after the root moved on to the session misses the server's data",
+    "file": "src/index.tsx",
+    "search": "  return principal === client.caller() ? client : view\n",
+    "replace": "  return client\n"
+  },
+  {
+    "id": "ir6b-fetch-state-keys-from-live-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "hydrates a component that renders the fetch state of a stale read the server prefetched",
+    "why": "useClient() returns the client whatever caller the render shows, so a component that renders a prefetched read's fetch state hydrates another markup than the server's",
+    "file": "src/index.tsx",
+    "search": "  return principal === client.caller() ? client : view\n",
+    "replace": "  return client\n"
+  },
+  {
+    "id": "ir6b-effect-read-not-pinned",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "is cancelled when an effect of the hydrating render runs it",
+    "why": "useClient() returns the client whatever caller the render shows, so an effect of the hydrating render fetches the user's key instead of the server's",
+    "file": "src/index.tsx",
+    "search": "  return principal === client.caller() ? client : view\n",
+    "replace": "  return client\n"
+  },
+  {
+    "id": "ir6b-hydrated-error-keys-from-live-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "is never shown as an error by a component that hydrated",
+    "why": "useClient() returns the client whatever caller the render shows, so a suspense reader hydrating with a stored session renders the user's answer over the server's HTML",
+    "file": "src/index.tsx",
+    "search": "  return principal === client.caller() ? client : view\n",
+    "replace": "  return client\n"
+  },
+  {
+    "id": "ir6b-useclient-not-subscribed",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "renders a component that uses only it again on sign-in, switch and sign-out",
+    "why": "useClient() follows no change of the caller, so a component that uses only it keeps the previous caller's keys after a sign-in, a switch or a sign-out",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    () => () => {},\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n"
+  },
+  {
+    "id": "ir6b-useclient-always-a-view",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "returns the provider's client object itself once the caller React renders is the live one",
+    "why": "useClient() returns a view in the steady state too, so the object a component gets is not the provider's client",
+    "file": "src/index.tsx",
+    "search": "  return principal === client.caller() ? client : view\n",
+    "replace": "  return view\n"
+  },
+  {
+    "id": "ir6b-hydrated-tree-keeps-the-view",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "returns the client itself after a hydration",
+    "why": "useClient() keeps returning the hydrating render's view after hydration, so the steady state never gets the provider's client back",
+    "file": "src/index.tsx",
+    "search": "  return principal === client.caller() ? client : view\n",
+    "replace": "  return view\n"
+  },
+  {
+    "id": "ir6b-useclient-stays-on-server-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "is rendered on the client when the parent that calls useClient() moves on",
+    "why": "useClient() renders with the server's anonymous caller for good, so a parent above a late boundary never moves on to the session",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6b-useclient-stays-on-server-caller-children",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "keeps the server's HTML when it is passed as children",
+    "why": "useClient() renders with the server's anonymous caller for good, so the component that wraps a late boundary never moves on to the session",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6b-useclient-stays-on-server-caller-streamed",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "keeps a streamed boundary pending when it is passed as children",
+    "why": "useClient() renders with the server's anonymous caller for good, so the component that wraps a streamed boundary never moves on to the session",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6b-useclient-stays-on-server-caller-transition",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "holds no transition: an unrelated one commits at once",
+    "why": "useClient() renders with the server's anonymous caller for good, so the nav above a late boundary never moves on to the session",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6b-late-suspense-child-stays-pinned",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "lets a late child that reads the parent's key with useSuspenseQuery settle as the user",
+    "why": "useClient() renders with the server's anonymous caller for good, so a late suspense read of the parent's key is cancelled for good instead of read as the user",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6b-suspense-read-stays-pinned",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "is cancelled while the user is current, and its boundary renders on the client as the user",
+    "why": "useClient() renders with the server's anonymous caller for good, so a suspense read the server did not dehydrate is cancelled again and again and its error boundary shows",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6b-useclient-follows-the-auth-state",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "a tab whose stored session expired > hydrates a component that calls useClient() with one render",
+    "why": "useClient() follows the whole auth state, as useAuth() does, so a tab whose session expired (an anonymous caller with another status) renders every hydrated useClient() component again, and on React 19 that render client-renders a streamed boundary below it",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const { principal } = useSyncExternalStore(\n    client.subscribe,\n    client.authState,\n    serverState\n  )\n"
+  },
+  {
+    "id": "ir6b-useclient-follows-the-auth-state-anonymous",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "a tab without a session > hydrates a component that calls useClient() with one render",
+    "why": "useClient() follows the whole auth state, so a tab without a session renders every hydrated useClient() component again (the live anonymous state is not the server's object), and on React 19 that render client-renders a streamed boundary below it",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const { principal } = useSyncExternalStore(\n    client.subscribe,\n    client.authState,\n    serverState\n  )\n"
+  },
+  {
+    "id": "ir6b-useclient-follows-the-auth-state-elsewhere",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "a tab whose session is signed in elsewhere > hydrates a component that calls useClient() with one render",
+    "why": "useClient() follows the whole auth state, so a tab signed in elsewhere renders every hydrated useClient() component again, and on React 19 that render client-renders a streamed boundary below it",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const { principal } = useSyncExternalStore(\n    client.subscribe,\n    client.authState,\n    serverState\n  )\n"
+  },
+  {
+    "id": "ir6b-fixed-caller-moves-on",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "a tab of a client built with identity > hydrates a component that calls useClient() with one render",
+    "why": "useClient() takes the anonymous caller as the server snapshot of a client built with identity too, whose caller never changes, so every hydrated useClient() component of such a client renders again and a streamed boundary below it is client-rendered",
+    "file": "src/index.tsx",
+    "search": "    view === client ? client.caller : anonymous\n",
+    "replace": "    anonymous\n"
+  },
+  {
+    "id": "ir6b-anonymous-state-not-the-snapshot",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "hydrates with one render of each component that calls useClient() or useAuth()",
+    "why": "the live anonymous state is not rendered as the server snapshot it equals, so a tab without a session renders every hydrated useAuth() consumer again with another object",
+    "file": "src/index.tsx",
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return live\n"
+  },
+  {
+    "id": "ir6b-anonymous-state-not-the-snapshot-streamed",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "leaves a streamed boundary below a useAuth() parent pending",
+    "why": "the live anonymous state is not rendered as the server snapshot it equals, so a tab without a session renders a hydrated useAuth() parent again, and on React 19 that render client-renders a streamed boundary below it",
+    "file": "src/index.tsx",
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return live\n"
+  },
+  {
+    "id": "ir6b-anonymous-state-not-the-snapshot-status",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "a hydrated useAuth() in a tab without a session > shows the server's state while hydrating",
+    "why": "the live anonymous state is not rendered as the server snapshot it equals, so a hydrated useAuth() in a tab without a session renders a second time",
+    "file": "src/index.tsx",
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return live\n"
+  },
+  {
+    "id": "ir6b-useauth-hides-expired",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "a hydrated useAuth() in a tab whose stored session expired > shows the server's state while hydrating",
+    "why": "useAuth() renders every state whose caller is anonymous as the server snapshot, so a hydrated useAuth() in a tab whose session expired shows anonymous instead of expired",
+    "file": "src/index.tsx",
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return live.principal === ANONYMOUS ? SERVER_STATE : live\n"
+  },
+  {
+    "id": "ir6b-useauth-hides-elsewhere",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "a hydrated useAuth() in a tab whose session is signed in elsewhere > shows the server's state while hydrating",
+    "why": "useAuth() renders every state whose caller is anonymous as the server snapshot, so a hydrated useAuth() in a tab signed in elsewhere shows anonymous instead of signed-in-elsewhere",
+    "file": "src/index.tsx",
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return live.principal === ANONYMOUS ? SERVER_STATE : live\n"
+  },
+  {
+    "id": "ir6b-useauth-stays-on-server-state",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "is rendered on the client when the parent that calls useAuth() moves on",
+    "why": "useAuth() renders the server's anonymous state for good, so a parent above a late boundary never shows the session",
+    "file": "src/index.tsx",
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return SERVER_STATE\n"
+  },
+  {
+    "id": "ir6b-reading-parent-stays-on-server-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "is rendered on the client when the parent that calls useClient() and reads moves on",
+    "why": "useClient() renders with the server's anonymous caller for good, so a reading parent above a late boundary keeps reading the anonymous key, which is cancelled while the user is current, and shows the error",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6b-reading-parent-stays-on-server-caller-strict",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "is rendered on the client when the parent that calls useClient() and reads, under StrictMode moves on",
+    "why": "useClient() renders with the server's anonymous caller for good under StrictMode too, so a reading parent above a late boundary shows the cancelled anonymous read as an error",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6m-pinned-refusal-kept-as-error",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "leaves a key that holds data as it found it when a read it built is cancelled",
+    "why": "a read a view built that is refused while someone else is current leaves the refusal as the error of a key that holds the server's data, so a hydrated component shows it once the anonymous caller is current again",
+    "file": "src/options.ts",
+    "search": "        if (query?.state.data !== undefined) void query.cancel({ revert: true })\n        else refusals?.add(error)\n",
+    "replace": "        if (query?.state.data === undefined) refusals?.add(error)\n"
+  },
+  {
+    "id": "ir6m-pinned-refusal-not-cleared",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "clears the cancellation from a key with no data once its principal is current again",
+    "why": "the refusal of a read a view built stays the error of a key with no data after its principal is current again, so a suspense read of it throws the refusal instead of fetching",
+    "file": "src/client.ts",
+    "search": "    clearRefusals(state.principal)\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6m-every-refusal-reverted",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "clears the cancellation from a key with no data once its principal is current again",
+    "why": "every read refused because its caller left is reverted, not only a view's, so a fetch of the client's own read resolves with old data instead of rejecting caller_changed (D20)",
+    "file": "src/options.ts",
+    "search": "        return pinned ? keepOnRefusal(context, read) : read\n",
+    "replace": "        return keepOnRefusal(context, read)\n"
+  },
+  {
+    "id": "ir6m-useclient-stays-on-server-caller-streamed-direct",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "renders a streamed boundary on the client when the parent that calls useClient() moves on",
+    "why": "useClient() renders with the server's anonymous caller for good, so a parent above a streamed boundary never moves on to the session",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6m-useauth-stays-on-server-state-streamed-direct",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "renders a streamed boundary on the client when the parent that calls useAuth() moves on",
+    "why": "useAuth() renders the server's anonymous state for good, so a parent above a streamed boundary never shows the session",
+    "file": "src/index.tsx",
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return SERVER_STATE\n"
+  },
+  {
+    "id": "ir6m-provider-holds-a-view",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "hands a nested ReactorProvider given it the client itself",
+    "why": "a provider holds the anonymous view a hydrating useClient() handed its factory, so its tree reads as nobody for good and never follows a sign-in",
+    "file": "src/index.tsx",
+    "search": "  const client = (built as Stamped)[CLIENT_OF] ?? built\n",
+    "replace": "  const client = built\n"
+  },
+  {
+    "id": "ir6m-view-carries-no-client",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "carries the client it was made over",
+    "why": "a view carries no link to its client, so a provider handed one cannot hold the client instead",
+    "file": "src/client.ts",
+    "search": "          [CLIENT_OF]: { value: base },\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6m-view-of-a-view",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "carries the client it was made over",
+    "why": "a view asked for a view makes one over itself, a second view of the same client",
+    "file": "src/client.ts",
+    "search": "    const base = self[CLIENT_OF] ?? self\n",
+    "replace": "    const base = self\n"
+  },
+  {
+    "id": "ir6m-useauth-stays-on-server-state-expired-tab",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "is rendered on the client when a useAuth() parent shows its status after hydrating",
+    "why": "useAuth() renders the server's anonymous state for good, so an expired or signed-in-elsewhere tab never shows its status",
+    "file": "src/index.tsx",
+    "search": "      return live.status === \"anonymous\" ? SERVER_STATE : live\n",
+    "replace": "      return SERVER_STATE\n"
+  },
+  {
+    "id": "ir6m-every-error-cleared",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "keeps the error of a key with no data that no view's refusal left",
+    "why": "the client clears every error of a key with no data once its principal is current again, not only a view's refusal, so a canister's rejection and the client's own caller_changed (D20) read as never fetched and are sent again",
+    "file": "src/client.ts",
+    "search": "        error !== null &&\n        refusals.has(error) &&\n",
+    "replace": "        error !== null &&\n"
+  },
+  {
+    "id": "ir6m-aborted-refusal-reverts-again",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "leaves a fetch that replaced a cancelled refused read of the key running",
+    "why": "a refused view read that TanStack had already cancelled still cancels the key, so the fetch that replaced it (a read as the caller now current) is cancelled and the key keeps the old data",
+    "file": "src/options.ts",
+    "search": "        !context.signal.aborted &&\n",
+    "replace": ""
+  },
+  {
+    "id": "ir6m-kept-value-is-the-client",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "leaves a value kept from the hydrating render (state, ref, module variable) the anonymous view for good",
+    "why": "the hydrating render gets the client itself rather than the anonymous view, which changes what a value kept from that render is (documented as the anonymous view) along with the hydrating markup",
+    "file": "src/index.tsx",
+    "search": "  return principal === client.caller() ? client : view\n",
+    "replace": "  return client\n"
+  },
+  {
+    "id": "ir6m-suspense-boundary-stays-on-server-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "shows the fallback of a Suspense boundary above it until the user's data arrives",
+    "why": "useClient() stays on the server's anonymous caller after hydrating, so a useSuspenseQuery read below a boundary never moves on to the user's data",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6m-no-boundary-read-stays-on-server-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "commits none of the page's updates until the user's data arrives",
+    "why": "useClient() stays on the server's anonymous caller after hydrating, so on React 19 a useSuspenseQuery read with no boundary above it suspends nothing: the page commits its updates at once and never shows the user's data",
+    "file": "src/index.tsx",
+    "search": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    client.caller,\n    view === client ? client.caller : anonymous\n  )\n",
+    "replace": "  const principal = useSyncExternalStore(\n    client.subscribe,\n    anonymous,\n    anonymous\n  )\n"
+  },
+  {
+    "id": "ir6m-seam-lost-in-a-spread-copy",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "keeps the seam in a spread copy, and pins views made over the copy",
+    "why": "a non-enumerable seam is not copied by `{ ...client }`, so a provider given a copy builds the user's keys while hydrating and mismatches the server's HTML",
+    "file": "src/client.ts",
+    "search": "[CLIENT_AS]: { value: viewAs, enumerable: true },",
+    "replace": "[CLIENT_AS]: { value: viewAs },"
   }
 ]
