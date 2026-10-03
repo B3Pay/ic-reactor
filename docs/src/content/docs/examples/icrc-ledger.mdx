@@ -1,0 +1,39 @@
+---
+title: "ICRC-1 ledger"
+description: Mainnet ICP ledger reads and a fault-injection transfer sandbox on ic-reactor 4
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+An explorer for an ICRC-1 ledger, built on `@ic-reactor/core`,
+`@ic-reactor/react` and `@ic-reactor/vite-plugin` with TanStack Query's own
+hooks.
+
+- **Mainnet:** a client built with `createClient({ network: "ic", identity: "anonymous" })`
+  reads the ICP ledger: name, symbol, decimals, fee, total supply, metadata,
+  the minting account and the balance of a principal you type. It also reads
+  the block log, following the archive callbacks the ledger's reply carries
+  with `client.func`. Certified reads can be switched on.
+- **Sandbox:** `createTestClient()` from `@ic-reactor/core/testing` runs a real
+  client against an in-memory replica with a mocked ledger. Sign in, switch
+  accounts, and send transfers with a fault armed (a canister reject, a lost
+  reply, HTTP 429) to see what the client reports: whether the transfer may
+  have executed, the re-read of the balance, and the single re-send after a
+  failure that proves the transfer never arrived.
+
+The generated modules come from the ledger's `.did` files through the Vite
+plugin, which runs `candid-core-cli gen`.
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/v4/examples/icrc-ledger?file=src/App.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/v4/examples/icrc-ledger"
+  />
+</CardGrid>
