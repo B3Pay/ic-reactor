@@ -32,8 +32,9 @@ and shows the server-rendering story end to end:
 - **Progressive enhancement.** The account lookup is a GET form validated on
   the server with `isPrincipal` and `principal()`.
 - **A Route Handler** with its own client per request answers JSON, with
-  amounts as decimal text and base units, and maps a `ReactorError` kind to an
-  HTTP status.
+  amounts as decimal text and base units, and maps a `ReactorError` to an
+  HTTP status by its `kind`, reading `httpStatus` where the kind is not enough:
+  a canister that does not exist is a 502, not a 503 that invites a retry.
 - **Errors on the server.** A canister that is not a ledger renders its own
   section with the error's `kind`; the rest of the page renders as usual.
 - **Sign-in after hydration.** Signing in with Internet Identity moves every

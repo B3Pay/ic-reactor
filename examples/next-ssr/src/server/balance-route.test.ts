@@ -1,7 +1,7 @@
 // Scenario 7: the balance route's handler, called as Next calls it, over a
 // test client per request.
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { LEDGERS, NOT_A_LEDGER, SAMPLE_OWNER } from "@/ledgers"
+import { LEDGERS, NOT_A_LEDGER, NO_CANISTER, SAMPLE_OWNER } from "@/ledgers"
 import {
   mockLedgers,
   requestsFor,
@@ -91,15 +91,38 @@ describe("GET /api/balance/[ledger]/[principal]", () => {
     expect(body).toMatchObject({ error: { kind: "rejected", rejectCode: 5 } })
   })
 
-  it("maps a read that never got through to 503", async () => {
-    // A boundary node refuses every request: the client re-sends a read at
-    // most twice, then gives up with `not_delivered`.
-    const { GET } = handler((test) => test.refuseNext(503, 10))
+  it.each([429, 503])(
+    "maps a read turned away with HTTP %i, which passes, to 503",
+    async (refusal) => {
+      // A boundary node refuses every request: the client re-sends a read at
+      // most twice, then gives up with `not_delivered`.
+      const { GET } = handler((test) => test.refuseNext(refusal, 10))
 
-    const { status, body } = await get(GET, "ICP", SAMPLE_OWNER)
+      const { status, body } = await get(GET, "ICP", SAMPLE_OWNER)
 
-    expect(status).toBe(503)
-    expect(body).toMatchObject({ error: { kind: "not_delivered" } })
-    expect(tests[0] && requestsFor(tests[0], "icrc1_balance_of").length).toBe(3)
+      expect(status).toBe(503)
+      expect(body).toMatchObject({
+        error: { kind: "not_delivered", httpStatus: refusal },
+      })
+      expect(tests[0] && requestsFor(tests[0], "icrc1_balance_of").length).toBe(
+        3
+      )
+    }
+  )
+
+  it("maps a canister that does not exist to 502, since asking again cannot help", async () => {
+    // What a boundary node answers for a canister id that names no canister
+    // (HTTP 400 `canister_not_found`; the fake replica would reject with code
+    // 3 instead). The client does not re-send a 4xx, and neither should the
+    // route's caller.
+    const { GET } = handler((test) => test.refuseNext(400, 10))
+
+    const { status, body } = await get(GET, NO_CANISTER, SAMPLE_OWNER)
+
+    expect(status).toBe(502)
+    expect(body).toMatchObject({
+      error: { kind: "not_delivered", httpStatus: 400 },
+    })
+    expect(tests[0] && requestsFor(tests[0], "icrc1_balance_of").length).toBe(1)
   })
 })

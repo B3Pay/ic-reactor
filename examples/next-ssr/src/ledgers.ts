@@ -29,3 +29,9 @@ export const NOT_A_LEDGER: LedgerRef = {
 
 /** The cycles minting canister: it holds ICP, so a lookup has an answer. */
 export const SAMPLE_OWNER = "rkp4c-7iaaa-aaaaa-aaaca-cai"
+
+/**
+ * A well-formed canister id that names no canister on mainnet: a boundary
+ * node refuses every read of it with HTTP 400 `canister_not_found`.
+ */
+export const NO_CANISTER = "2y4s5-zaaaa-aaad7-7777q-cai"

@@ -12,12 +12,15 @@
 //   number, which would lose digits past 2^53.
 // - Typed principals are validated with `isPrincipal` and made with
 //   `principal()`; anything else is a 400 before any call is made.
-// - A failure is a `ReactorError`: its `kind` decides the HTTP status.
+// - A failure is a `ReactorError`: its `kind` decides the HTTP status, with
+//   `httpStatus` telling a refusal that passes from one that stands
+//   (`statusOf`).
 import { isPrincipal, principal } from "@candid-core/schema"
 import {
   formatUnits,
   isReactorError,
   type Client,
+  type ReactorError,
   type ReactorErrorKind,
 } from "@ic-reactor/core"
 import { actor, type Actor } from "@/canisters/icrc1"
@@ -30,22 +33,47 @@ export interface BalanceParams {
   readonly principal: string
 }
 
-/** What the handler answers for each kind of failure. */
+/** What the handler answers for each kind of failure; see `statusOf`. */
 export const STATUS_BY_KIND = {
   // The request itself is wrong.
   invalid_args: 400,
   unauthenticated: 401,
   // The IC or the canister said no, or answered with something unusable: the
-  // upstream failed, not this request.
+  // upstream failed, not this request, and it gives the same answer again.
   rejected: 502,
   invalid_reply: 502,
   canister_err: 502,
-  // Nothing came back in time, or the read was refused before it ran: worth
-  // asking again later.
+  // Nothing came back in time.
   outcome_unknown: 504,
+  // The read was turned away for now (a rate limit, a 5xx, reject code 2) or
+  // got no answer: worth asking again later. `statusOf` sends the refusals
+  // that stand to 502 instead.
   not_delivered: 503,
   cancelled: 503,
 } as const satisfies Record<ReactorErrorKind, number>
+
+/**
+ * The HTTP status the handler answers for `error`.
+ *
+ * `kind` decides it, except where `kind` is not enough: `not_delivered`
+ * covers a refusal that passes and one that stands. HTTP 429, 408 and every
+ * 5xx pass, and so do reject code 2 and a dropped connection (no
+ * `httpStatus`): the client itself re-sends those. Any other 4xx stands: a
+ * boundary node answers 400 `canister_not_found` for a canister id that names
+ * no canister, however often it is asked. Telling a caller to come back later
+ * (503) for that would be a lie, so it is a 502, like a rejection.
+ */
+export function statusOf(error: ReactorError<unknown>): number {
+  const { kind, httpStatus } = error
+  const refusedForGood =
+    kind === "not_delivered" &&
+    httpStatus !== undefined &&
+    httpStatus >= 400 &&
+    httpStatus < 500 &&
+    httpStatus !== 408 &&
+    httpStatus !== 429
+  return refusedForGood ? 502 : STATUS_BY_KIND[kind]
+}
 
 const json = (status: number, body: unknown): Response =>
   Response.json(body, {
@@ -110,11 +138,14 @@ export function balanceRoute(newClient: () => Client) {
       })
     } catch (error) {
       if (!isReactorError(error)) throw error
-      return json(STATUS_BY_KIND[error.kind], {
+      return json(statusOf(error), {
         error: {
           kind: error.kind,
           ...(error.rejectCode !== undefined && {
             rejectCode: error.rejectCode,
+          }),
+          ...(error.httpStatus !== undefined && {
+            httpStatus: error.httpStatus,
           }),
           message: error.message,
         },

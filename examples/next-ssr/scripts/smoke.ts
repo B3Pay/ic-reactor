@@ -14,7 +14,12 @@ import assert from "node:assert/strict"
 import { createClient, formatUnits } from "@ic-reactor/core"
 import { JSDOM } from "jsdom"
 import { actor, type Actor } from "../src/canisters/icrc1.ts"
-import { LEDGERS, NOT_A_LEDGER, SAMPLE_OWNER } from "../src/ledgers.ts"
+import {
+  LEDGERS,
+  NO_CANISTER,
+  NOT_A_LEDGER,
+  SAMPLE_OWNER,
+} from "../src/ledgers.ts"
 
 const base = process.argv[2] ?? "http://localhost:3011"
 const mainnet = createClient({ network: "ic", identity: "anonymous" })
@@ -150,6 +155,15 @@ const notALedger = await api(`/api/balance/${NOT_A_LEDGER.id}/${SAMPLE_OWNER}`)
 assert.equal(notALedger.status, 502)
 console.log(
   `/api/balance/${NOT_A_LEDGER.id}/…: ${notALedger.status} kind ${JSON.stringify((notALedger.body.error as { kind?: string }).kind)}`
+)
+// A canister that does not exist: refused for good, so a 502 and not a 503.
+const missing = await api(`/api/balance/${NO_CANISTER}/${SAMPLE_OWNER}`)
+const refusal = missing.body.error as { kind?: string; httpStatus?: number }
+assert.equal(missing.status, 502)
+assert.equal(refusal.kind, "not_delivered")
+assert.equal(refusal.httpStatus, 400)
+console.log(
+  `/api/balance/${NO_CANISTER}/…: ${missing.status} kind "${refusal.kind}", HTTP ${refusal.httpStatus} from the IC`
 )
 
 console.log("smoke: every check passed")
