@@ -169,7 +169,7 @@ export async function demo(out: Output): Promise<number> {
           ? undefined
           : `expected a refused call and a call that ran, saw ${JSON.stringify(calls)}`
       },
-      why: "A 429 proves the call never got in, so the client sent it again by itself, once, after 300 ms: the replica saw the refused call and the one that ran. It is the only re-send the client makes, and never after a failure that proves nothing.",
+      why: "A 429 proves the call never got in, so the client sent it again by itself, once, after 300 ms: the replica saw the refused call and the one that ran. Status 429 and reject code 2 are the two failures after which the client re-sends a write; it never re-sends after one that proves nothing.",
     },
     {
       title: "The canister rejects (reject code 4)",
@@ -212,7 +212,7 @@ export async function demo(out: Output): Promise<number> {
         seen.some((s) => s.replica.some((r) => r.startsWith("call")))
           ? "a call reached the replica"
           : undefined,
-      why: "The tool refused the first two before asking anything: principal(text) and parseUnits threw. The third passed its checks, but created_at_time is a nat64 and 2^64 does not fit: the client refused to encode it (invalid_args), and no call left.",
+      why: "principal(text) refused the first before any request. parseUnits refused the second once the reads had told it the ledger's 8 decimals, and before any call. The third passed both, but created_at_time is a nat64 and 2^64 does not fit: the client refused to encode it (invalid_args), so no call left either.",
     },
   ]
 
