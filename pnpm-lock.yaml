@@ -205,6 +205,76 @@ importers:
         specifier: ^5.0.0
         version: 5.0.0(@types/node@26.5.1)(happy-dom@20.14.3)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
 
+  examples/vite-wallet:
+    dependencies:
+      '@candid-core/schema':
+        specifier: 0.3.0-beta.1
+        version: 0.3.0-beta.1
+      '@ic-reactor/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@ic-reactor/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@icp-sdk/auth':
+        specifier: ^10.0.1
+        version: 10.0.1(@icp-sdk/core@6.1.0)
+      '@icp-sdk/core':
+        specifier: ^6.1.0
+        version: 6.1.0
+      '@tanstack/react-query':
+        specifier: ^5.102.8
+        version: 5.102.8(react@19.3.0)
+      react:
+        specifier: ^19.3.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.3.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@candid-core/cli':
+        specifier: 0.2.0-beta.1
+        version: 0.2.0-beta.1(@candid-core/schema@0.3.0-beta.1)
+      '@ic-reactor/vite-plugin':
+        specifier: workspace:*
+        version: link:../../packages/vite-plugin
+      '@icp-sdk/icp-cli':
+        specifier: 1.2.0
+        version: 1.2.0
+      '@noble/curves':
+        specifier: ^2.2.0
+        version: 2.3.0
+      '@testing-library/dom':
+        specifier: ^10.4.1
+        version: 10.4.1
+      '@testing-library/react':
+        specifier: ^16.3.3
+        version: 16.3.3(@testing-library/dom@10.4.1)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@types/node':
+        specifier: ^26.5.1
+        version: 26.5.1
+      '@types/react':
+        specifier: ^19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      '@vitejs/plugin-react':
+        specifier: ^6.1.1
+        version: 6.1.1(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+      jsdom:
+        specifier: ^30.0.1
+        version: 30.0.1(@noble/hashes@2.4.0)
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+      vite:
+        specifier: ^8.3.0
+        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0)
+      vitest:
+        specifier: ^5.0.0
+        version: 5.0.0(@types/node@26.5.1)(happy-dom@20.14.3)(jsdom@30.0.1(@noble/hashes@2.4.0))(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.0))
+
   packages/core:
     devDependencies:
       '@candid-core/schema':
@@ -991,6 +1061,36 @@ packages:
 
   '@icp-sdk/core@6.1.0':
     resolution: {integrity: sha512-hw3kozrCoP/JqRLXmG35stFjNOyzfA7FU+lPm66WdcSEIS5PD/sMu2yhNiPIkXFJ+jodeJyxX/a379nMvLS/3g==}
+
+  '@icp-sdk/icp-cli-darwin-arm64@1.2.0':
+    resolution: {integrity: sha512-5SEMmQJgPlLJ6+a27H9xke+HGSpaH2ephPS0mQG+z8AVc8o2mi0OoSJVtdER3sLA1JTlSdJ5kQY8rkxi95Zv1Q==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@icp-sdk/icp-cli-darwin-x64@1.2.0':
+    resolution: {integrity: sha512-PiXB3iMTwGUlmwsm2iDJoSr+RCtMGW5M9p+0eVbmr8F6n2IKIWXTVU9HVyyoEILrIhBZrTS5jLJJtYYtXl4Q/g==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@icp-sdk/icp-cli-linux-arm64@1.2.0':
+    resolution: {integrity: sha512-PY6dbkNzwcSwGTGNRKiLjClXamCh9/r9z9qYJ7pB/lS0ihnR2G1qx+DG9ok3Y8PPOV5iD+2UZoBxtmERKKxTnQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@icp-sdk/icp-cli-linux-x64@1.2.0':
+    resolution: {integrity: sha512-w66Je8K5YoUsD6xUW1LutiC0SHcBHdbnT9+Jy3Wgs5GyfRIvo+RgRbxjiIYDfxb7OIH1J5C3l33fqQIYEzTSyw==}
+    cpu: [x64]
+    os: [linux]
+
+  '@icp-sdk/icp-cli-win32-x64@1.2.0':
+    resolution: {integrity: sha512-VID5a7kKquWX9thFcBT2vFYx/RZiil0jzixZqnoNrQuOpsRJM6F31c874Cu8xW8wm/QFrc1dmF0y5SZNU3dSfA==}
+    cpu: [x64]
+    os: [win32]
+
+  '@icp-sdk/icp-cli@1.2.0':
+    resolution: {integrity: sha512-fRXaVxQJLPGTNVYjhVqa+xclO42sTOqlTrbYx06zuOprBvAd+yDyf/cVnlvuUPBshLa5dAbGBG+6RvFDEmFpbA==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
 
   '@icp-sdk/signer@6.0.0':
     resolution: {integrity: sha512-P+ltVK1uV/CT8UiakoYCm3+F/e5+Jj53BaicZ0sgXphcwsWSEy93xeur3XRicBqUtMHGlYi062DEpve+tfe4pg==}
@@ -4828,6 +4928,29 @@ snapshots:
       '@scure/bip32': 2.3.0
       '@scure/bip39': 2.3.0
       asn1js: 3.0.10
+
+  '@icp-sdk/icp-cli-darwin-arm64@1.2.0':
+    optional: true
+
+  '@icp-sdk/icp-cli-darwin-x64@1.2.0':
+    optional: true
+
+  '@icp-sdk/icp-cli-linux-arm64@1.2.0':
+    optional: true
+
+  '@icp-sdk/icp-cli-linux-x64@1.2.0':
+    optional: true
+
+  '@icp-sdk/icp-cli-win32-x64@1.2.0':
+    optional: true
+
+  '@icp-sdk/icp-cli@1.2.0':
+    optionalDependencies:
+      '@icp-sdk/icp-cli-darwin-arm64': 1.2.0
+      '@icp-sdk/icp-cli-darwin-x64': 1.2.0
+      '@icp-sdk/icp-cli-linux-arm64': 1.2.0
+      '@icp-sdk/icp-cli-linux-x64': 1.2.0
+      '@icp-sdk/icp-cli-win32-x64': 1.2.0
 
   '@icp-sdk/signer@6.0.0(@icp-sdk/core@6.1.0)':
     dependencies:

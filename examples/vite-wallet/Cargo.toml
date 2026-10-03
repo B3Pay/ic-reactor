@@ -1,0 +1,5 @@
+# The backend canister's crate. icp.yaml builds it with the Rust recipe
+# (`cargo build --package backend --target wasm32-unknown-unknown`).
+[workspace]
+resolver = "2"
+members = ["backend"]

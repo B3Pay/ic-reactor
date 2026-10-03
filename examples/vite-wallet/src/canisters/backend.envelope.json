@@ -1,0 +1,275 @@
+{
+  "contract": {
+    "actor": {
+      "kind": "service",
+      "service": 0
+    },
+    "canonicalization_profile": "candid-core-canon-1",
+    "declarations": [
+      {
+        "name": "Contact",
+        "type": 3
+      },
+      {
+        "name": "Profile",
+        "type": 13
+      },
+      {
+        "name": "Refusal",
+        "type": 9
+      }
+    ],
+    "format": "candid-core",
+    "format_version": 1,
+    "identities": {
+      "contract": "candid-core:contract:v1:sha256:98c1678c38d6f52ba76d4c05ffea6243cb9e30cb948df457e353d55bd9c64af9",
+      "interface": "candid-core:interface:v1:sha256:f26e149843a1777cca4b5019187b4d932d957796f2d884bbc06bee8a8562e0ad"
+    },
+    "producer": {
+      "candid_parser_version": "0.4.0",
+      "candid_version": "0.10.30",
+      "name": "candid-core",
+      "version": "0.1.0-beta.3"
+    },
+    "semantics_profile": "candid-1",
+    "types": [
+      {
+        "kind": "service",
+        "methods": [
+          {
+            "function": 1,
+            "id": 745984467,
+            "name": "contacts"
+          },
+          {
+            "function": 6,
+            "id": 1137792101,
+            "name": "remove_contact"
+          },
+          {
+            "function": 11,
+            "id": 1998030664,
+            "name": "set_name"
+          },
+          {
+            "function": 14,
+            "id": 2034477376,
+            "name": "get_profile"
+          },
+          {
+            "function": 16,
+            "id": 2866237250,
+            "name": "add_contact"
+          }
+        ]
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          2
+        ]
+      },
+      {
+        "inner": 3,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 947296307,
+            "type": 4
+          },
+          {
+            "id": 1224700491,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "principal"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "text"
+      },
+      {
+        "args": [
+          5
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          7
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 17724,
+            "type": 8
+          },
+          {
+            "id": 3456837,
+            "type": 9
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "null"
+      },
+      {
+        "fields": [
+          {
+            "id": 434500685,
+            "type": 8
+          },
+          {
+            "id": 782112175,
+            "type": 10
+          },
+          {
+            "id": 909586774,
+            "type": 5
+          },
+          {
+            "id": 1851232335,
+            "type": 5
+          },
+          {
+            "id": 2504087746,
+            "type": 5
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat32"
+      },
+      {
+        "args": [
+          5
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          12
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 17724,
+            "type": 13
+          },
+          {
+            "id": 3456837,
+            "type": 9
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1224700491,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          15
+        ]
+      },
+      {
+        "inner": 13,
+        "kind": "opt"
+      },
+      {
+        "args": [
+          3
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          7
+        ]
+      }
+    ]
+  },
+  "extensions": {
+    "org.candid-core.field-names/v1": [
+      [
+        3,
+        947296307,
+        "owner"
+      ],
+      [
+        3,
+        1224700491,
+        "name"
+      ],
+      [
+        7,
+        17724,
+        "Ok"
+      ],
+      [
+        7,
+        3456837,
+        "Err"
+      ],
+      [
+        9,
+        434500685,
+        "Anonymous"
+      ],
+      [
+        9,
+        782112175,
+        "Full"
+      ],
+      [
+        9,
+        909586774,
+        "DuplicateName"
+      ],
+      [
+        9,
+        1851232335,
+        "NotFound"
+      ],
+      [
+        9,
+        2504087746,
+        "InvalidName"
+      ],
+      [
+        12,
+        17724,
+        "Ok"
+      ],
+      [
+        12,
+        3456837,
+        "Err"
+      ],
+      [
+        13,
+        1224700491,
+        "name"
+      ]
+    ]
+  }
+}
