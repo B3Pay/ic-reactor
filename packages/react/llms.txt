@@ -14,3 +14,39 @@ Query's own hooks with the options the client builds,
 `useQuery(client.queryOptions(...))` and
 `useMutation(client.mutationOptions(...))`. It never re-exports
 `@ic-reactor/core`: import each name from the package that defines it.
+
+## Keys follow the caller a render shows
+
+Build keys and read options from the `useClient()` of the render, never from a
+client held at module scope. `useClient()` follows the client's caller: a
+component that calls it renders again on each sign-in, switch of account and
+sign-out, with the new caller's keys, and never for a change of status that
+leaves the caller as it is. It returns the provider's client object itself,
+except while a page hydrates in a browser that holds a session: on a server and
+while a page hydrates the caller is anonymous, as for `useAuth()`, so the
+hydrating render gets a view of the client whose `queryKey`, `queryOptions`,
+`caller()` and `authState()` are the anonymous caller's. It finds what the
+server prefetched and dehydrated, matches the server's HTML and sends nothing.
+Canisters, writes, `signIn`, `signOut` and the `QueryClient` are the client's
+own, and a write signs as the caller current when it runs. Right after
+hydrating, React renders the component again with the session, and each read
+loads the user's keys once. A tab whose caller is anonymous anyway (no session,
+or one that expired or is signed in elsewhere) renders no `useClient()`
+component again, and a client built with `identity` is always returned as it
+is.
+
+A signed-in reload has two accepted costs:
+
+- A Suspense boundary still dehydrated below a component that calls
+  `useClient()` or `useAuth()` (its lazy code still loading, or on React 19 its
+  streamed HTML not arrived yet) is rendered on the client when that component
+  moves on to the session: it shows its fallback, not the server's HTML, and
+  React 18 reports a recoverable error. Its data is still the user's. Render
+  such a boundary where no component that renders with the caller sits above
+  it, or pass it in as `children`, which a component's own update does not
+  render again.
+- A read the hydrating render built may still run once (a refetch of stale
+  data on mount, or a fetch from an effect) and is then cancelled before
+  anything is sent, with `kind` `"cancelled"` and `code` `"caller_changed"`.
+  The component has moved on to the user's key and never shows it, but a
+  `QueryCache` `onError` sees it: ignore `kind` `"cancelled"` there.
