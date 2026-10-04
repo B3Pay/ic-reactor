@@ -33,8 +33,10 @@ import {
   parseArgs,
   parseNpmCommand,
   requiredScriptFindings,
+  scopePackageNames,
   stackblitzStartCommand,
   trackedConfigFindings,
+  waitForPublished,
 } from "./test-examples-published.mjs"
 
 const BETA = "4.0.0-beta.1"
@@ -588,5 +590,139 @@ describe("parseArgs", () => {
     assert.match(parseArgs(["--tmp"]).error, /--tmp needs a value/)
     assert.match(parseArgs(["--tmp", "--keep"]).error, /needs a value/)
     assert.match(parseArgs(["--kep"]).error, /Unknown option --kep/)
+  })
+})
+
+describe("waitForPublished", () => {
+  const NEXT = "4.0.0-beta.2"
+  const names = [
+    "@ic-reactor/core",
+    "@ic-reactor/react",
+    "@ic-reactor/vite-plugin",
+  ]
+
+  /** A registry where each package serves NEXT from its `readyAt`-th poll on. */
+  function registry(readyAt, { integrityLagsTag = false } = {}) {
+    const polls = Object.fromEntries(names.map((n) => [n, 0]))
+    const lookup = (name) => {
+      const poll = ++polls[name]
+      const ready = poll >= readyAt[name]
+      return {
+        tagged: ready ? NEXT : BETA,
+        integrity:
+          ready && !(integrityLagsTag && poll === readyAt[name])
+            ? "sha512-x"
+            : undefined,
+      }
+    }
+    return { lookup, polls }
+  }
+
+  function clock() {
+    let t = 0
+    return {
+      now: () => t,
+      wait: async (ms) => {
+        t += ms
+      },
+    }
+  }
+
+  it("waits until every package, not only core, is tagged and served", async () => {
+    // core is published first and vite-plugin last, as release.yml does.
+    const { lookup, polls } = registry({
+      "@ic-reactor/core": 1,
+      "@ic-reactor/react": 2,
+      "@ic-reactor/vite-plugin": 4,
+    })
+    const lines = []
+    const version = await waitForPublished(names, "beta", NEXT, {
+      lookup,
+      ...clock(),
+      pollMs: 1,
+      log: (line) => lines.push(line),
+    })
+    assert.equal(version, NEXT)
+    assert.equal(polls["@ic-reactor/vite-plugin"], 4)
+    assert.equal(lines.length, 3)
+    assert.match(lines[0], /@ic-reactor\/react@beta is 4\.0\.0-beta\.1/)
+    assert.match(lines[2], /@ic-reactor\/vite-plugin@beta is 4\.0\.0-beta\.1/)
+    assert.doesNotMatch(lines[2], /react@beta/)
+  })
+
+  it("waits for the version's integrity once the tag names it", async () => {
+    const { lookup } = registry(
+      {
+        "@ic-reactor/core": 1,
+        "@ic-reactor/react": 1,
+        "@ic-reactor/vite-plugin": 2,
+      },
+      { integrityLagsTag: true }
+    )
+    const lines = []
+    await waitForPublished(names, "beta", NEXT, {
+      lookup,
+      ...clock(),
+      pollMs: 1,
+      log: (line) => lines.push(line),
+    })
+    assert.ok(
+      lines.some((l) =>
+        /vite-plugin@4\.0\.0-beta\.2 has no dist\.integrity/.test(l)
+      )
+    )
+  })
+
+  it("names each package still behind when it times out", async () => {
+    const { lookup } = registry({
+      "@ic-reactor/core": 1,
+      "@ic-reactor/react": 1,
+      "@ic-reactor/vite-plugin": Infinity,
+    })
+    await assert.rejects(
+      waitForPublished(names, "beta", NEXT, {
+        lookup,
+        ...clock(),
+        timeoutMs: 60_000,
+        pollMs: 15_000,
+        log: () => {},
+      }),
+      (error) =>
+        /Not published as 4\.0\.0-beta\.2 after/.test(error.message) &&
+        /vite-plugin@beta is 4\.0\.0-beta\.1/.test(error.message) &&
+        !/core@beta/.test(error.message)
+    )
+  })
+})
+
+describe("scopePackageNames", () => {
+  it("is core plus every @ic-reactor/* package the manifests declare", () => {
+    assert.deepEqual(
+      scopePackageNames([
+        { dependencies: { "@ic-reactor/react": "^4", react: "^19" } },
+        { devDependencies: { "@ic-reactor/vite-plugin": "^4" } },
+        { dependencies: { "@ic-reactor/react": "^4" } },
+      ]),
+      ["@ic-reactor/core", "@ic-reactor/react", "@ic-reactor/vite-plugin"]
+    )
+    assert.deepEqual(scopePackageNames([]), ["@ic-reactor/core"])
+  })
+
+  it("covers every package the examples on this branch declare", () => {
+    const manifests = [
+      "icrc-ledger",
+      "next-ssr",
+      "node-agent-tool",
+      "vite-wallet",
+    ].map((name) =>
+      JSON.parse(
+        readFileSync(join(repoRoot, "examples", name, "package.json"), "utf8")
+      )
+    )
+    assert.deepEqual(scopePackageNames(manifests), [
+      "@ic-reactor/core",
+      "@ic-reactor/react",
+      "@ic-reactor/vite-plugin",
+    ])
   })
 })

@@ -53,8 +53,11 @@
  *   --keep                 leave the copies on disk and print where they are
  *   --tmp <dir>            make the copies under <dir> (default: the OS tmpdir)
  *   --wait-for <version>   wait (up to 10 minutes) until the `beta` dist-tag
- *                          names <version> (a leading "v" is dropped): the
- *                          release workflow runs this right after publishing
+ *                          of core and of every @ic-reactor/* package the
+ *                          examples declare names <version> (a leading "v" is
+ *                          dropped), and the registry serves its integrity:
+ *                          the release workflow runs this right after
+ *                          publishing
  *   <example>              a directory under examples/ (default: every one)
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process"
@@ -893,19 +896,92 @@ export function parseArgs(argv) {
   return out
 }
 
-/** Polls the dist-tag until it names `version`, for up to `timeoutMs`. */
-async function waitForDistTag(name, tag, version, timeoutMs = 10 * MINUTE) {
-  const deadline = Date.now() + timeoutMs
+/**
+ * The @ic-reactor/* packages a run reads from the registry: every one the
+ * manifests declare, and core (whose dist-tag names the beta under test).
+ *
+ * @param {Record<string, any>[]} manifests
+ * @returns {string[]}
+ */
+export function scopePackageNames(manifests) {
+  const names = new Set([`${SCOPE}core`])
+  for (const manifest of manifests) {
+    for (const { name } of declaredDependencies(manifest)) {
+      if (name.startsWith(SCOPE)) names.add(name)
+    }
+  }
+  return [...names].sort()
+}
+
+/**
+ * Polls each package until its `tag` dist-tag names `version` and the
+ * registry answers with `version`'s integrity, for up to `timeoutMs`. The
+ * release workflow publishes core, react and vite-plugin one after another, so
+ * the last one can lag the first by minutes; every package the run reads must
+ * be served before the examples install.
+ *
+ * `lookup(name)` resolves with what the registry serves now: the version the
+ * dist-tag names (undefined when it has none) and `version`'s integrity
+ * (undefined when that version is not served yet).
+ *
+ * @param {string[]} names
+ * @param {string} tag
+ * @param {string} version
+ * @param {{
+ *   lookup: (name: string) => Promise<{ tagged?: string, integrity?: string }> | { tagged?: string, integrity?: string },
+ *   timeoutMs?: number,
+ *   pollMs?: number,
+ *   wait?: (ms: number) => Promise<unknown>,
+ *   now?: () => number,
+ *   log?: (line: string) => void,
+ * }} options
+ * @returns {Promise<string>} `version`, once every package serves it
+ */
+export async function waitForPublished(
+  names,
+  tag,
+  version,
+  {
+    lookup,
+    timeoutMs = 10 * MINUTE,
+    pollMs = 15_000,
+    wait = sleep,
+    now = Date.now,
+    log = console.log,
+  }
+) {
+  const deadline = now() + timeoutMs
   for (;;) {
-    const current = distTagVersion(name, tag)
-    if (current === version) return current
-    if (Date.now() >= deadline) {
+    const pending = []
+    for (const name of names) {
+      const { tagged, integrity } = await lookup(name)
+      if (tagged !== version) {
+        pending.push(`${name}@${tag} is ${tagged ?? "unset"}`)
+      } else if (!integrity) {
+        pending.push(`${name}@${version} has no dist.integrity yet`)
+      }
+    }
+    if (pending.length === 0) return version
+    if (now() >= deadline) {
       throw new Error(
-        `${name}@${tag} is still ${current}, not ${version}, after ${seconds(timeoutMs)}`
+        `Not published as ${version} after ${seconds(timeoutMs)}: ${pending.join("; ")}`
       )
     }
-    console.log(`${name}@${tag} is ${current}; waiting for ${version}`)
-    await sleep(15_000)
+    log(`Waiting for ${version}: ${pending.join("; ")}`)
+    await wait(pollMs)
+  }
+}
+
+/** What the registry serves for `name` now, for `waitForPublished`. */
+function registryState(name, tag, version) {
+  const tagged = npmView(`${name}@${tag}`, "version")
+  const integrity =
+    tagged === version
+      ? npmView(`${name}@${version}`, "dist.integrity")
+      : undefined
+  return {
+    tagged: typeof tagged === "string" ? tagged : undefined,
+    integrity: typeof integrity === "string" ? integrity : undefined,
   }
 }
 
@@ -929,8 +1005,23 @@ async function main(argv) {
     return 1
   }
 
-  const betaVersion = args.waitFor
-    ? await waitForDistTag(`${SCOPE}core`, DIST_TAG, args.waitFor)
+  const waitFor = args.waitFor
+  const betaVersion = waitFor
+    ? await waitForPublished(
+        scopePackageNames(
+          names.map((name) =>
+            JSON.parse(
+              readFileSync(
+                join(repoRoot, "examples", name, "package.json"),
+                "utf8"
+              )
+            )
+          )
+        ),
+        DIST_TAG,
+        waitFor,
+        { lookup: (pkg) => registryState(pkg, DIST_TAG, waitFor) }
+      )
     : distTagVersion(`${SCOPE}core`, DIST_TAG)
   console.log(
     `${SCOPE}core@${DIST_TAG} is ${betaVersion} on ${REGISTRY}; testing ${names.join(", ")}`

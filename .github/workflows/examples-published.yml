@@ -39,7 +39,7 @@ on:
   workflow_call:
     inputs:
       wait-for:
-        description: The version the beta dist-tag must name before the run starts (a leading v is dropped)
+        description: The version the beta dist-tag of core and of every @ic-reactor package the examples declare must name, with its integrity served, before the run starts (a leading v is dropped)
         type: string
         required: false
         default: ""
