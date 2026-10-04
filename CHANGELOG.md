@@ -29,6 +29,20 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `@ic-reactor/core/testing` answers the second. `kind` and `mayHaveExecuted`
   are unchanged from the classification table. Any other HTTP 400 and any
   other reject still has no `code`.
+- `refuseNext(status, { method?, canister?, times? })` on the object
+  `createTestClient()` returns (`@ic-reactor/core/testing`): a refusal aimed
+  at the queries and calls that name `method` and are addressed to
+  `canister`, each when it is given, so a test can throttle `icrc1_transfer`
+  while the reads around it are answered (#822). A query and a replicated
+  call of the same method both match; `canister` is the canister a request
+  names, and need not be mocked; `times` (default 1) counts matching
+  requests, each send of a call the client re-sends included. The status and
+  `read_state` requests an agent makes on its own never match. A request that
+  several refusals match is refused by the one armed first. An option it does
+  not have, an empty `method` or a `canister` that is not a canister id
+  throws a `TypeError`. `refuseNext(status, times?)` is unchanged: it refuses
+  the next `times` queries or calls, whatever they are for. No export is
+  added.
 
 ## core, react, vite-plugin 4.0.0-beta.1
 
