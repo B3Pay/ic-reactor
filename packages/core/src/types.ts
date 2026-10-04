@@ -203,8 +203,17 @@ export interface CanisterQueryOptions<D, E, S extends SkipToken = SkipToken> {
   readonly queryKey: DataTag<QueryKey, D, ReactorError<E>>
   /** Calls the method as the caller in the key, or rejects `cancelled` once that caller is no longer current. `skipToken` for a skipped read. */
   readonly queryFn: ((context: QueryFunctionContext) => Promise<D>) | S
-  /** Retries only a failure that proves the call was not delivered, at most 3 times, never on a server. */
-  readonly retry: (failureCount: number, error: ReactorError<E>) => boolean
+  /**
+   * Retries only a failure that proves the call was not delivered, at most 3
+   * times, never on a server.
+   *
+   * It takes any error, as `useQueries` and `useSuspenseQueries` type it
+   * (they type a query's error from its `throwOnError` alone, `unknown`
+   * without one), and its last signature takes `ReactorError<E>`, from which
+   * `useQuery` and a `QueryObserver` type the query's `error`.
+   */
+  readonly retry: ((failureCount: number, error: unknown) => boolean) &
+    ((failureCount: number, error: ReactorError<E>) => boolean)
   /** `Infinity` for an update read with `{ update: "idempotent" }`; absent otherwise. */
   readonly staleTime?: number
   /** `false` for an update read with `{ update: "idempotent" }`; absent otherwise. */

@@ -44,7 +44,10 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `V | SkipToken`, or `skipToken` itself, keep `SkipToken` in `queryFn`'s
   type, and the suspense hooks still refuse them. `queryOptions` has a second
   signature for that case, and `CanisterQueryOptions` a third type parameter
-  that defaults to today's type. Types only: nothing changes at run time,
+  that defaults to today's type. The options' `retry` also takes an error
+  typed `unknown`, as `useQueries` and `useSuspenseQueries` type it, so those
+  hooks take the options too; `useQuery` and a `QueryObserver` still type the
+  query's error `ReactorError<E>`. Types only: nothing changes at run time,
   and no export is added. One check stops compiling: `queryFn === skipToken`
   on options built from variables that cannot be `skipToken` is now TS2367
   ("no overlap"); such a check was always false, so remove it.
