@@ -8,16 +8,16 @@ writes from a `.did` file, with `@candid-core/cli` in a child process, and it
 sets the `ic_env` cookie and the `/api` proxy under `vite dev` and
 `vite preview`. It adds no wrapper files, hooks or reactors.
 
-Its 4 line is published under npm's `beta` dist-tag. `latest` is still the 0.15
-plugin of the 3.x line, which generates reactor bindings with
-`@ic-reactor/codegen`: see [Migrating from 3.x](/v4/migrating-from-3/).
+Its 4 line replaces the 0.15 plugin of the 3.x line, which generates reactor
+bindings with `@ic-reactor/codegen`: see
+[Migrating from 3.x](/v4/migrating-from-3/).
 
 ## Install
 
 ```sh
 npm install --save-exact @candid-core/schema@0.3.0-beta.1
 npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
-npm install --save-dev @ic-reactor/vite-plugin@beta
+npm install --save-dev @ic-reactor/vite-plugin
 ```
 
 ## Exports

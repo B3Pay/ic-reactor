@@ -14,14 +14,12 @@
 
 ---
 
-> **This is the `v4` branch, where ic-reactor 4 is in development.** Its
-> packages are at `4.0.0-beta.1`, published under npm's `beta` dist-tag; `latest`
-> stays 3.x until 4.0 GA. ic-reactor 4 is a
-> thin layer over a candid-core generated module, with a guide shipped in
-> `@ic-reactor/core` (`packages/core/llms.txt`). Milestone 1
-> ([#790](https://github.com/B3Pay/ic-reactor/issues/790)) replaced the 3.x
-> runtime of `@ic-reactor/core` and `@ic-reactor/react` with the 4 API. The released
-> 3.x line lives on `main` (security fixes only until 4.0 GA) and is documented
+> **ic-reactor 4 is the current release.** It is a thin layer over a
+> candid-core generated module, with a guide shipped in `@ic-reactor/core`
+> (`packages/core/llms.txt`), and it replaced the 3.x runtime of
+> `@ic-reactor/core` and `@ic-reactor/react` with the 4 API. The 3.x line lives
+> on the [`v3` branch](https://github.com/B3Pay/ic-reactor/tree/v3), takes
+> security fixes only, until 90 days after the 4.0 release, and is documented
 > at [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
 
 IC Reactor is a monorepo of libraries for building Internet Computer (ICP) apps
@@ -39,29 +37,28 @@ for a canister:
 
 | Package                                             | Purpose                                                                                                                                            |
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`@ic-reactor/core`](./packages/core)               | The client, errors, network and units (beta)                                                                                                       |
-| [`@ic-reactor/react`](./packages/react)             | `'use client'` bindings over core (beta)                                                                                                           |
+| [`@ic-reactor/core`](./packages/core)               | The client, errors, network and units                                                                                                              |
+| [`@ic-reactor/react`](./packages/react)             | `'use client'` bindings over core                                                                                                                  |
 | [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Generates the candid-core module with `candid-core-cli gen` in a child process, and sets the local `ic_env` cookie and `/api` proxy for `vite dev` |
 
 `@ic-reactor/parser`, `@ic-reactor/codegen` and `@ic-reactor/cli` are not part
 of ic-reactor 4: `candid-core-cli gen` generates the canister module instead.
-`@ic-reactor/candid` stays at 3.x, published from `main`. None of the four is
-in this branch's tree.
+`@ic-reactor/candid` stays at 3.x, published from the `v3` branch. None of the
+four is in this branch's tree.
 
 What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md).
 
 ## Install
 
-ic-reactor 4 is a prerelease, published under npm's `beta` dist-tag: a plain
-`npm install @ic-reactor/core` still installs 3.x. Install the beta with
-`@beta`, and the candid-core packages at the exact versions its peers name:
+Install the packages, and the candid-core packages at the exact versions their
+peers name:
 
 ```bash
-npm install @ic-reactor/core@beta @ic-reactor/react@beta \
+npm install @ic-reactor/core @ic-reactor/react \
   @icp-sdk/core @tanstack/react-query
 npm install --save-exact @candid-core/schema@0.3.0-beta.1
 npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
-npm install --save-dev @ic-reactor/vite-plugin@beta # optional, for Vite
+npm install --save-dev @ic-reactor/vite-plugin # optional, for Vite
 ```
 
 Then read `node_modules/@ic-reactor/core/llms.txt`. The released 3.x packages
@@ -83,13 +80,13 @@ the [examples docs](https://ic-reactor.b3pay.net/v4/examples/):
   people and AI agents, with identities, certified reads, safe re-sends and
   JSON output.
 
-The 3.x examples are on `main`.
+The 3.x examples are on the `v3` branch.
 
 ## Documentation
 
-- Docs site: [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/) for
-  3.x. This branch's site (source: [`./docs`](./docs)) is served under `/v4/`
-  and holds a placeholder until DX2.
+- Docs site: [ic-reactor.b3pay.net/v4](https://ic-reactor.b3pay.net/v4/)
+  (source: [`./docs`](./docs)), and
+  [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/) for 3.x.
 - Changelog: [`CHANGELOG.md`](./CHANGELOG.md)
 - Package docs:
   - [`@ic-reactor/react`](./packages/react/README.md)
@@ -144,15 +141,15 @@ pnpm docs:build
 ic-reactor 4 ships one consumer guide, `llms.txt` in `@ic-reactor/core`'s
 package (`node_modules/@ic-reactor/core/llms.txt`), and one consumer skill,
 [`skill-packages/ic-reactor`](./skill-packages/ic-reactor/SKILL.md), which
-points at it. The 3.x guides and skills are on `main`.
+points at it. The 3.x guides and skills are on the `v3` branch.
 
 For agents working in this repository: [`AGENTS.md`](./AGENTS.md) and
 [`CLAUDE.md`](./CLAUDE.md).
 
 ## Contributing
 
-`v4` is the development line for ic-reactor 4; `main` takes 3.x security fixes
-only until 4.0 GA. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development workflow, formatting, release notes, and AI-assisted contribution guidance.
+`main` is the development line of ic-reactor 4; `v3` takes 3.x security fixes
+only, until 90 days after the 4.0 release. See [`CONTRIBUTING.md`](./CONTRIBUTING.md) for development workflow, formatting, release notes, and AI-assisted contribution guidance.
 
 Please also review the [Code of Conduct](./CODE_OF_CONDUCT.md).
 

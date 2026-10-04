@@ -1,9 +1,9 @@
 # @ic-reactor/vite-plugin
 
-> **ic-reactor 4 is a prerelease.** `4.0.0-beta.1` is published under npm's
-> `beta` dist-tag, and `latest` stays the 0.15 plugin of the 3.x line until 4.0
-> GA. That plugin, which generates reactor bindings with `@ic-reactor/codegen`,
-> is documented at https://ic-reactor.b3pay.net/v3/packages/vite-plugin.
+> **This is the plugin of ic-reactor 4.** It replaces the 0.15 plugin of the
+> 3.x line, which generates reactor bindings with `@ic-reactor/codegen`, is
+> documented at https://ic-reactor.b3pay.net/v3/packages/vite-plugin, and takes
+> security fixes until 90 days after the 4.0 release.
 
 A Vite plugin for an app built on a module that `candid-core-cli gen` generates
 from a `.did` file. It does two things, and exports only `icReactor` and the
@@ -27,7 +27,7 @@ peer on the CLI:
 ```sh
 npm install --save-exact @candid-core/schema@0.3.0-beta.1
 npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
-npm install --save-dev @ic-reactor/vite-plugin@beta
+npm install --save-dev @ic-reactor/vite-plugin
 ```
 
 ## Quick Start

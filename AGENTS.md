@@ -2,9 +2,9 @@
 
 ## Project snapshot
 
-This is the `v4` branch, the development line of ic-reactor 4. `main` is the
-3.x line and takes security fixes only until 4.0 GA. Open pull requests for
-ic-reactor 4 against `v4`.
+This is `main`, the line of ic-reactor 4. `v3` is the 3.x line and takes
+security fixes only, until 90 days after the 4.0 release. Open pull requests
+for ic-reactor 4 against `main`, and 3.x security fixes against `v3`.
 
 ic-reactor 4 is a thin layer over a module that `candid-core-cli gen`
 generates, plus one consumer guide. Its packages are written against the
@@ -18,7 +18,7 @@ each pinned exactly.
 - `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-beta.1`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
 
 `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli` and
-`@ic-reactor/candid` are not in this tree (the last stays at 3.x on `main`).
+`@ic-reactor/candid` are not in this tree (the last stays at 3.x on `v3`).
 
 ## Where to start for a task
 
@@ -31,9 +31,9 @@ each pinned exactly.
 | Test client, fake replica     | `packages/core/src/testing/` (`test-client.ts` is the entry's only export)                  |
 | Real-replica e2e              | `e2e/` (Rust `hello_actor` canister, `e2e/test.sh`)                                         |
 | Example apps                  | `examples/<name>/` (own tests and `gen:check`; a page in `docs/src/content/docs/examples/`) |
-| Docs site (`/v4/`)            | `docs/`, `.github/workflows/docs.yml`                                                       |
+| Docs site (`/v4/`)            | `docs/`, `.github/workflows/docs.yml`, `scripts/assemble-docs-site.mjs`                     |
 | Consumer guide and skill      | `packages/core/llms.txt`, `skill-packages/ic-reactor/SKILL.md`                              |
-| Release lane                  | `scripts/release.js`, `.github/workflows/release.yml`                                       |
+| Release lane                  | `scripts/release.js`, `scripts/release-tag.mjs`, `.github/workflows/release.yml`            |
 | CI gates and their tests      | `scripts/` (`check-exports.mjs`, `verify-traps.mjs`, `verify-faults.mjs`)                   |
 
 ## Verification commands

@@ -4,12 +4,13 @@ Thanks for your interest in contributing! This project uses pnpm workspaces. Bel
 
 ## Branches
 
-- **`v4`** is the development line of ic-reactor 4. Open pull requests for
-  new work against `v4`. It releases prereleases only (`4.0.0-alpha.N`,
-  `4.0.0-beta.N`), never under npm's `latest`.
-- **`main`** is the 3.x line and takes security fixes only until 4.0 GA. At
-  GA, `v3` is cut from `main`, `v4` becomes `main`, and 3.x security releases
-  are tagged from `v3`.
+- **`main`** is the line of ic-reactor 4. Open pull requests for new work
+  against `main`. It releases 4.x: stable versions under npm's `latest`,
+  prereleases (`4.1.0-beta.N`) under `beta`.
+- **`v3`** is the 3.x line, cut from `main` at the 4.0 GA flip. It takes
+  security fixes only, until 90 days after the 4.0 release, and 3.x security
+  releases are tagged from it with its own workflow files. Open a 3.x security
+  fix against `v3`.
 
 CI, e2e, CodeQL and dependency review run on pull requests to either branch,
 each with the workflow files of its own line.
@@ -116,8 +117,8 @@ document shares, and a directory named in `CONTEXTS` in
 `scripts/check-snippets.mjs` holds what differs for one document. A relative
 import resolves to the module of the same path there, and `globals.ts` lists the
 names a snippet may use without importing. Add a missing app name there, never
-a library export: a snippet that uses one must import it. On the `v4` branch
-`app/` holds a few generic names and the generated modules the guide imports
+a library export: a snippet that uses one must import it. `app/` holds a few
+generic names and the generated modules the guide imports
 (`app/generated/icrc1.ts`, `app/generated/backend.ts`).
 
 The consumer guides (`packages/*/llms.txt` and `skill-packages/ic-reactor/`)
@@ -135,9 +136,7 @@ lists every snippet with its result.
 
 The docs site's hand-written pages (`docs/src/content/docs`, without the
 TypeDoc output in `libs/`) are gated too, by `pnpm check:snippets:docs`, which
-CI runs in the job that installs the examples. On the `v4` branch the site is
-a placeholder until DX2, so the gate has no pages to compile yet. Unlike the
-guides, a docs page
+CI runs in the job that installs the examples. Unlike the guides, a docs page
 may assume the app it is about, so a page compiles against
 `scripts/check-snippets/docs/<section>/` (its directory under the docs content
 root, `root` for a page at the top), then against the default app. Put a name
@@ -216,16 +215,19 @@ Remove an entry as soon as a patched version is released.
 This repository enforces **OIDC Trusted Publishing** for releases (no long-lived publish tokens for the publish step). Trusted publishing is more secure and produces provenance attestations when used from GitHub Actions.
 
 - To enable: go to your package on npmjs.com → Settings → Trusted publishers and add this repository's workflow filename (e.g., `release.yml`).
+- `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` trust `release.yml` (4.x from `main`, and core and react 3.x from `v3`). Until the 3.x line's end, `@ic-reactor/vite-plugin` also trusts `release-tools.yml`, which publishes its 0.x security releases from `v3`; remove that publisher then.
 - Ensure the `release.yml` workflow has `permissions: id-token: write` (already configured).
 - After enabling and validating Trusted Publishing, do not add a write `NPM_TOKEN` secret — publishing will use the OIDC token.
 
 If your CI needs to install private dependencies, create a **read-only** granular token on npmjs.com and store it as `NPM_READ_TOKEN` (the install step will use this token when present).
 
-On the `v4` branch the release lane publishes `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` in lockstep from `v4.*` tags, and only prereleases: `scripts/release.js` refuses a version without a prerelease tag, and `release.yml` refuses a tag without a hyphen, requires the tagged commit to be on `v4`, and publishes under the `beta` dist-tag. Nothing on `v4` publishes to `latest` before GA.
+On `main` the release lane publishes `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` in lockstep from `v4.*` tags. `scripts/release-tag.mjs` decides for both `scripts/release.js` and `release.yml`: a stable 4.x version publishes under the `latest` dist-tag and becomes the latest GitHub Release, a 4.x prerelease publishes under `beta`, and any other version (3.x, 5.x, not semver) is refused. `release.yml` also requires the tagged commit to be on `main`.
+
+The 3.x line releases from the `v3` branch with that branch's own workflows: `v3.*` tags publish `@ic-reactor/core` and `@ic-reactor/react` 3.x under the `v3-latest` dist-tag and `@ic-reactor/candid` under `latest` (it has no 4.x), and `tools-v*`/`parser-v*` tags publish `@ic-reactor/vite-plugin` 0.x under `v0-latest` and the parser, codegen and cli under `latest`. None of them moves `latest` of core, react or vite-plugin, or takes the GitHub "Latest" badge.
 
 ### Approving a release
 
-Pushing a release tag no longer publishes unattended. The release workflow (`release.yml`; on `main` there is also `release-tools.yml` for the 3.x tooling lane) runs an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against its branch, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
+Pushing a release tag no longer publishes unattended. The release workflow (`release.yml`; on `v3` there is also `release-tools.yml` for the 3.x tooling lane) runs an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against its branch, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
 
 The environment lives in repository settings (Settings → Environments → `npm-publish`) and carries:
 
@@ -260,7 +262,7 @@ the tag creates still generates its own notes from the merged pull requests.
 AI-assisted contributions are welcome, but contributors are responsible for correctness before opening a PR.
 
 - Prefer existing IC Reactor patterns over introducing new abstractions.
-- The 3.x runtime is removed on `v4` and the 4 API arrives slice by slice (milestone 1, #790). Do not copy 3.x patterns (`ClientManager`, `Reactor`, hook factories) from `main`; follow the guide in `packages/core/llms.txt` once it lands.
+- The 3.x runtime is gone from `main`. Do not copy 3.x patterns (`ClientManager`, `Reactor`, hook factories) from the `v3` branch; follow the guide in `packages/core/llms.txt`.
 - Validate generated or AI-written code with tests/examples whenever possible.
 - Update docs/examples when public API usage changes.
 

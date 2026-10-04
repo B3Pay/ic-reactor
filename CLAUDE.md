@@ -5,13 +5,15 @@ routing and verification by change type are in [`AGENTS.md`](./AGENTS.md).
 
 ## Branches
 
-- **`v4`** (this branch) is the development line of ic-reactor 4. Its packages
-  are at `4.0.0-beta.1`, and its release lane publishes prereleases only, under
-  npm's `beta` dist-tag, never under `latest`.
-- **`main`** is the 3.x line: security fixes only until 4.0 GA. At GA, `v3` is
-  cut from `main` and `v4` becomes `main`.
+- **`main`** (this branch) is the line of ic-reactor 4. Its release lane
+  publishes a stable 4.x version under npm's `latest` dist-tag and a 4.x
+  prerelease under `beta` (`scripts/release-tag.mjs`).
+- **`v3`** is the 3.x line, cut from `main` at the 4.0 GA flip: security fixes
+  only, until 90 days after the 4.0 release, released with its own
+  workflows. `v4`, the branch 4 was developed on until GA, is retired.
 
-Open pull requests for ic-reactor 4 against `v4`.
+Open pull requests for ic-reactor 4 against `main`, and 3.x security fixes
+against `v3`.
 
 ## What ic-reactor 4 is
 
@@ -23,7 +25,7 @@ exactly to published betas.
 
 ## Packages on this branch
 
-| Package                   | Directory              | State on `v4`                                                                                                                              |
+| Package                   | Directory              | State on `main`                                                                                                                            |
 | ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `@ic-reactor/core`        | `packages/core`        | `4.0.0-beta.1`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient`      |
 | `@ic-reactor/react`       | `packages/react`       | `4.0.0-beta.1`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                                   |
@@ -31,8 +33,8 @@ exactly to published betas.
 
 Not in this tree: `@ic-reactor/parser`, `@ic-reactor/codegen` and
 `@ic-reactor/cli` (replaced by `candid-core-cli gen`), and
-`@ic-reactor/candid` (frozen at 3.x, published from `main`). The 3.x example
-apps are on `main`; the four v4 examples are in `examples/` (`icrc-ledger`,
+`@ic-reactor/candid` (frozen at 3.x, published from `v3`). The 3.x example
+apps are on `v3`; the four ic-reactor 4 examples are in `examples/` (`icrc-ledger`,
 `vite-wallet`, `next-ssr`, `node-agent-tool`).
 
 ## AI context
@@ -43,8 +45,9 @@ apps are on `main`; the four v4 examples are in `examples/` (`icrc-ledger`,
   `skill-packages/ic-reactor/SKILL.md`, the one consumer skill, adds only
   workflow. `node evals/harness/check-docs.mjs "$PWD/packages/core/llms.txt"`
   must find no hidden-test name or literal in the guide.
-- There is no root `llms.txt` or `llms-full.txt` on this branch. The site
-  root's `llms.txt` stays the 3.x line's until GA.
+- There is no root `llms.txt` or `llms-full.txt` in this tree. The docs
+  deploy serves `packages/core/llms.txt` as the site's `/llms.txt`, and keeps
+  the frozen 3.x `llms-full.txt` from `v3` at `/llms-full.txt` and under `/v3/`.
 - `pnpm check:ai-context` checks the version stamps and docs links of
   `scripts/ai-context-files.js`, and that none of the 34 removed 3.x names
   (`scripts/removed-v3-names.js`) appears outside a "Removed in 4.0" section.
@@ -56,8 +59,9 @@ apps are on `main`; the four v4 examples are in `examples/` (`icrc-ledger`,
 ## Docs
 
 The docs site in `docs/` is served under `/v4/` (`base` in
-`docs/astro.config.mjs`); `/v3/` is built from `main`. `.github/workflows/docs.yml`
-on this branch deploys both lines together.
+`docs/astro.config.mjs`); `/v3/` is rebuilt from the `v3` branch.
+`.github/workflows/docs.yml` deploys both lines together from `main`
+(`scripts/assemble-docs-site.mjs` assembles the site).
 
 ## Development
 

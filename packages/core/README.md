@@ -1,10 +1,9 @@
 # @ic-reactor/core
 
-> **ic-reactor 4 is a prerelease.** `4.0.0-beta.1` is published under npm's
-> `beta` dist-tag, and `latest` stays 3.x until 4.0 GA: install it as
-> `@ic-reactor/core@beta`. It replaces the 3.x runtime with a thin layer over a
-> candid-core generated module (milestone 1,
-> [#790](https://github.com/B3Pay/ic-reactor/issues/790)).
+> **This is ic-reactor 4.** It replaces the 3.x runtime with a thin layer over
+> a candid-core generated module. 3.x is documented at
+> https://ic-reactor.b3pay.net/v3/packages/core and takes security fixes until
+> 90 days after the 4.0 release.
 
 [![npm version](https://img.shields.io/npm/v/@ic-reactor/core.svg)](https://www.npmjs.com/package/@ic-reactor/core)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -21,7 +20,7 @@ errors and a complete React example, for people and coding agents alike.
 ## Install
 
 ```bash
-npm install @ic-reactor/core@beta @icp-sdk/core @tanstack/query-core
+npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
 npm install --save-exact @candid-core/schema@0.3.0-beta.1
 ```
 
@@ -32,4 +31,4 @@ npm install --save-exact @candid-core/schema@0.3.0-beta.1
 ## 3.x
 
 The released 3.x package is documented at https://ic-reactor.b3pay.net/v3/packages/core. Its source and
-security fixes live on the `main` branch.
+security fixes live on the `v3` branch.

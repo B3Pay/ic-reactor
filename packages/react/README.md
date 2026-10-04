@@ -1,8 +1,8 @@
 # @ic-reactor/react
 
-> **ic-reactor 4 is a prerelease.** `4.0.0-beta.1` is published under npm's
-> `beta` dist-tag, and `latest` stays 3.x until 4.0 GA (milestone 1,
-> [#790](https://github.com/B3Pay/ic-reactor/issues/790)).
+> **This is ic-reactor 4.** 3.x, with its hook factories and auth hooks, is
+> documented at https://ic-reactor.b3pay.net/v3/packages/react and takes
+> security fixes until 90 days after the 4.0 release.
 
 [![npm version](https://img.shields.io/npm/v/@ic-reactor/react.svg)](https://www.npmjs.com/package/@ic-reactor/react)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -25,7 +25,7 @@ path. The guide for both packages ships in core:
 ## Install
 
 ```bash
-npm install @ic-reactor/core@beta @ic-reactor/react@beta @tanstack/react-query
+npm install @ic-reactor/core @ic-reactor/react @tanstack/react-query
 ```
 
 Peers: `react` 18 or newer, `@tanstack/react-query` 5, and `@ic-reactor/core` at
@@ -279,4 +279,4 @@ provider above the `Activity`, or give it a client the app owns.
 
 The released 3.x package, with its hook factories and auth hooks, is documented
 at https://ic-reactor.b3pay.net/v3/packages/react. Its source and security fixes
-live on the `main` branch.
+live on the `v3` branch.
