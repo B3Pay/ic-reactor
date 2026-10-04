@@ -19,14 +19,16 @@ const rootDir = join(__dirname, "..")
 const version = process.argv[2]
 
 if (!version) {
-  console.error(
-    "Please provide a version: node scripts/release.js 3.0.0-beta.3"
-  )
+  console.error("Please provide a version: node scripts/release.js 3.13.1")
   process.exit(1)
 }
 
-if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
-  console.error(`Invalid version: ${version}`)
+// The v3 branch makes 3.x security releases only: a stable 3.x version, as
+// release.yml's preflight requires. 4.x releases from main.
+if (!/^3\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+  console.error(
+    `Refusing ${version}: the v3 branch releases stable 3.x versions only (such as 3.13.1).`
+  )
   process.exit(1)
 }
 
@@ -176,25 +178,27 @@ const dryRun = process.argv.includes("--dry-run")
 if (shouldPublish || dryRun) {
   console.log(`\n📤 Publishing to npm${dryRun ? " (DRY RUN)" : ""}...`)
   try {
-    // Publish runtime libraries together; parser, docs, e2e, and tooling use separate workflows.
-    const publishArgs = [
-      "--filter",
-      "@ic-reactor/core",
-      "--filter",
-      "@ic-reactor/react",
-      "--filter",
-      "@ic-reactor/candid",
-      "publish",
-      "--no-git-checks",
-      "--access",
-      "public",
+    // Each package with an explicit dist-tag. `latest` of core and react is
+    // 4.x, published from main: their 3.x releases go to `v3-latest`. candid
+    // has no 4.x and keeps `latest`.
+    const DIST_TAGS = [
+      [["@ic-reactor/core", "@ic-reactor/react"], "v3-latest"],
+      [["@ic-reactor/candid"], "latest"],
     ]
-    // A hyphen means a prerelease (3.8.0-beta.1). Publishing that to `latest` would
-    // hand it to every plain `npm install`.
-    if (version.includes("-")) publishArgs.push("--tag", "beta")
-    if (dryRun) publishArgs.push("--dry-run")
-    console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)
-    run("pnpm", publishArgs)
+    for (const [names, tag] of DIST_TAGS) {
+      const publishArgs = [
+        ...names.flatMap((name) => ["--filter", name]),
+        "publish",
+        "--no-git-checks",
+        "--access",
+        "public",
+        "--tag",
+        tag,
+      ]
+      if (dryRun) publishArgs.push("--dry-run")
+      console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)
+      run("pnpm", publishArgs)
+    }
     console.log("\n✅ Published successfully!")
   } catch (error) {
     console.error("\n❌ Publish failed:", error.message)
@@ -209,5 +213,7 @@ if (shouldPublish || dryRun) {
   )
 }
 
+// Push the branch, then this one tag: `--tags` would push every local tag.
 console.log(`\nGit commands:`)
-console.log(`  git push origin main --tags`)
+console.log(`  git push origin v3`)
+console.log(`  git push origin v${version}`)

@@ -15,12 +15,18 @@ const shouldPublish = process.argv.includes("--publish")
 const dryRun = process.argv.includes("--dry-run")
 
 if (!version || version.startsWith("--")) {
-  console.error("Please provide a version: node scripts/release-tools.js 0.1.0")
+  console.error(
+    "Please provide a version: node scripts/release-tools.js 0.15.2"
+  )
   process.exit(1)
 }
 
-if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
-  console.error(`Invalid version: ${version}`)
+// The v3 branch makes the tools' security releases only: a stable 0.x
+// version, as release-tools.yml requires.
+if (!/^0\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+  console.error(
+    `Refusing ${version}: the v3 branch releases the tools' stable 0.x versions only (such as 0.15.2).`
+  )
   process.exit(1)
 }
 
@@ -156,23 +162,30 @@ try {
 if (shouldPublish || dryRun) {
   console.log(`\n📤 Publishing tools to npm${dryRun ? " (DRY RUN)" : ""}...`)
   try {
-    const filterArgs = packages.flatMap((p) => ["--filter", `./${dirname(p)}`])
+    // Each package with an explicit dist-tag. `latest` of vite-plugin is 4.x,
+    // published from main: its 0.x releases go to `v0-latest`. codegen and cli
+    // have no 4.x and keep `latest`.
+    const distTagFor = (pkg) =>
+      pkg === "packages/vite-plugin/package.json" ? "v0-latest" : "latest"
+    for (const tag of new Set(packages.map(distTagFor))) {
+      const filterArgs = packages
+        .filter((p) => distTagFor(p) === tag)
+        .flatMap((p) => ["--filter", `./${dirname(p)}`])
+      // --no-git-checks because we just committed/tagged but haven't pushed yet
+      const publishArgs = [
+        ...filterArgs,
+        "publish",
+        "--no-git-checks",
+        "--access",
+        "public",
+        "--tag",
+        tag,
+      ]
+      if (dryRun) publishArgs.push("--dry-run")
 
-    // --no-git-checks because we just committed/tagged but haven't pushed yet
-    const publishArgs = [
-      ...filterArgs,
-      "publish",
-      "--no-git-checks",
-      "--access",
-      "public",
-    ]
-    // A hyphen means a prerelease; publishing it to `latest` would hand it to
-    // every plain `npm install`.
-    if (version.includes("-")) publishArgs.push("--tag", "beta")
-    if (dryRun) publishArgs.push("--dry-run")
-
-    console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)
-    run("pnpm", publishArgs)
+      console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)
+      run("pnpm", publishArgs)
+    }
     console.log("\n✅ Tools published successfully!")
   } catch (error) {
     console.error("\n❌ Publish failed:", error.message)
@@ -184,5 +197,5 @@ if (shouldPublish || dryRun) {
   console.log(`  node scripts/release-tools.js ${version} --dry-run`)
   console.log(`  node scripts/release-tools.js ${version} --publish`)
   console.log(`\nDon't forget to push:`)
-  console.log(`  git push origin main ${tagName}`)
+  console.log(`  git push origin v3 ${tagName}`)
 }

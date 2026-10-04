@@ -1,5 +1,12 @@
 name: Release Tools
 
+# The 3.x tooling lane, from the v3 branch: security releases of
+# @ic-reactor/parser, @ic-reactor/codegen, @ic-reactor/cli and the 0.x line of
+# @ic-reactor/vite-plugin, stable versions only, until 90 days after the 4.0
+# release. `latest` of vite-plugin is 4.x (published from main), so its 0.x
+# releases go to `v0-latest`; parser, codegen and cli have no 4.x and keep
+# `latest`. npm must list this workflow as a trusted publisher of
+# @ic-reactor/vite-plugin, next to main's release.yml.
 on:
   push:
     tags:
@@ -57,6 +64,12 @@ jobs:
             *)
               echo "::error::Unrecognized release tag: $REF"; exit 1 ;;
           esac
+          # A security line: stable 0.x versions only. A prerelease would go to
+          # `beta`, which vite-plugin's 4.x prereleases use.
+          if [[ ! "$VERSION" =~ ^0\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::$REF is not a stable 0.x version. The v3 branch publishes the tools' security releases only."
+            exit 1
+          fi
           echo "Tag $REF -> $WS (assert $ASSERT at $VERSION)"
           echo "workspaces=$WS" >> "$GITHUB_OUTPUT"
           echo "assert=$ASSERT" >> "$GITHUB_OUTPUT"
@@ -98,12 +111,12 @@ jobs:
           corepack enable
           corepack prepare pnpm@10.30.3 --activate
 
-      - name: Tag must be an ancestor of main
+      - name: Tag must be an ancestor of v3
         run: |
           set -euo pipefail
-          git fetch --no-tags origin main
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
-            echo "::error::$GITHUB_SHA is not an ancestor of origin/main. Refusing to publish."
+          git fetch --no-tags origin v3
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/v3; then
+            echo "::error::$GITHUB_SHA is not an ancestor of origin/v3. Refusing to publish."
             exit 1
           fi
 
@@ -233,20 +246,24 @@ jobs:
         run: pnpm -r --filter "{./${{ matrix.workspace }}}" test
 
       - name: Determine publish tag
+        env:
+          WORKSPACE: ${{ matrix.workspace }}
         run: |
-          # Determine publish tag based on the git tag name.
-          # Default to 'latest' for stable tags (e.g., v3.0.0). If tag contains a hyphen (e.g., v3.0.0-beta.1), use 'beta'.
-          REF=${GITHUB_REF##*/}
-          echo "Detected tag: $REF"
-          # Only treat tags with explicit prerelease identifiers as beta
-          # (e.g. v1.2.3-beta.1). A generic hyphen appears in our tag
-          # prefixes like "tools-v1.2.3" so checking for any hyphen
-          # incorrectly marked stable releases as beta.
-          if [[ "$REF" == *-beta* || "$REF" == *-alpha* || "$REF" == *-rc* ]]; then
-            echo "TAG=beta" >> $GITHUB_ENV
-          else
-            echo "TAG=latest" >> $GITHUB_ENV
-          fi
+          set -euo pipefail
+          # Per package. `latest` of vite-plugin is 4.x, published from main:
+          # its 0.x security releases go to `v0-latest` (a dist-tag cannot parse
+          # as a semver range). parser, codegen and cli have no 4.x and keep
+          # `latest`. setup already refused a prerelease.
+          case "$WORKSPACE" in
+            packages/vite-plugin) TAG=v0-latest ;;
+            packages/parser | packages/codegen | packages/cli) TAG=latest ;;
+            *)
+              echo "::error::No dist-tag is defined for $WORKSPACE."
+              exit 1
+              ;;
+          esac
+          echo "Publishing $WORKSPACE under $TAG"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
 
       - name: Publish to npm (uses npm CLI for OIDC)
         # pnpm pack converts workspace:^ to real versions, then npm publish for OIDC auth
@@ -316,6 +333,8 @@ jobs:
         with:
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          prerelease: false
+          # The repository's "Latest" release is 4.x's.
+          make_latest: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
