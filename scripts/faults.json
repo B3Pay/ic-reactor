@@ -775,6 +775,26 @@
     "replace": "        refusalFor(canisterId, envelope.content.method_name)"
   },
   {
+    "id": "822-refusal-matches-effective-canister",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "aims at the canister a management call names, aaaaa-aa, not the canister it is routed by",
+    "why": "a refusal matched by the effective canister id a request is routed by, not the canister it names, so refuseNext(status, { canister }) aimed at a canister refuses the management calls that only name it as their argument, and one aimed at aaaaa-aa never refuses them",
+    "file": "src/testing/fake-replica.ts",
+    "search": "          : refusalFor(canisterId, envelope.content.method_name)",
+    "replace": "          : refusalFor(effectiveCanisterId, envelope.content.method_name)"
+  },
+  {
+    "id": "822-refusal-method-type-unchecked",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "a refusal that cannot be armed",
+    "why": "a `method` that is not a string accepted, so refuseNext(status, { method: 5 }) is armed for a method no request can name instead of failing at once",
+    "file": "src/testing/fake-replica.ts",
+    "search": "      if (method !== undefined && (typeof method !== \"string\" || !method)) {",
+    "replace": "      if (method !== undefined && !method) {"
+  },
+  {
     "id": "ir4b-fetch-stubbed-globally",
     "package": "core",
     "test": "tests/testing-test-client.test.ts",

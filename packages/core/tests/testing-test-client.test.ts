@@ -759,6 +759,41 @@ describe("a refusal aimed at one method or canister", () => {
     ])
   })
 
+  it("aims at the canister a management call names, aaaaa-aa, not the canister it is routed by", async () => {
+    const test = setup()
+    const stopped: string[] = []
+    test.mock<management.Actor>(management.actor, MANAGEMENT, {
+      stop_canister: ({ canister_id }) => {
+        stopped.push(`${canister_id}`)
+      },
+    })
+    const ic = test.client.canister<management.Actor>(management.actor, {
+      id: MANAGEMENT,
+    })
+    // Armed first, so a refusal matched by the routing id would be used here.
+    test.refuseNext(400, { canister: SHAPES })
+    test.refuseNext(403, { canister: MANAGEMENT })
+
+    await expect(
+      ic.stop_canister({ canister_id: principal(SHAPES) })
+    ).rejects.toMatchObject({ kind: "not_delivered", httpStatus: 403 })
+    await expect(
+      ic.stop_canister({ canister_id: principal(SHAPES) })
+    ).resolves.toBeUndefined()
+
+    expect(stopped).toEqual([SHAPES])
+    expect(
+      canisterRequests(test).map((r) => [
+        r.canisterId,
+        r.effectiveCanisterId,
+        r.refused !== undefined,
+      ])
+    ).toEqual([
+      [MANAGEMENT, SHAPES, true],
+      [MANAGEMENT, SHAPES, false],
+    ])
+  })
+
   it("is matched in the order refusals were armed, and the count form still refuses whatever comes next", async () => {
     // Read as 4.0.0-beta.1 reads it: `refuseNext(status, times?)` refuses the
     // next query or call of any method. An aimed refusal armed before it
@@ -1009,6 +1044,11 @@ describe("what it refuses", () => {
     expect(() => refuseNext(429, { method: "" })).toThrow(
       new TypeError(
         'refuseNext: `method` is the name of a canister method, got ""'
+      )
+    )
+    expect(() => refuseNext(429, { method: 5 } as never)).toThrow(
+      new TypeError(
+        "refuseNext: `method` is the name of a canister method, got number"
       )
     )
     expect(() => refuseNext(429, { canister: "ledger" })).toThrow(
