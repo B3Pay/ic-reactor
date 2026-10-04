@@ -201,6 +201,14 @@ if (shouldPublish || dryRun) {
 }
 
 // Push the branch, then this one tag: `--tags` would push every local tag.
+// release.yml refuses a tag whose commit is not on main, so the commit must
+// reach main first, unchanged.
 console.log(`\nGit commands:`)
 console.log(`  git push origin main`)
 console.log(`  git push origin v${version}`)
+console.log(
+  `If main's ruleset requires a pull request and you are not on its bypass list,\n` +
+    `push this commit to a release branch instead, merge its PR with a merge\n` +
+    `commit (a squash or rebase would leave the tagged commit off main), and only\n` +
+    `then push the tag.`
+)

@@ -4,7 +4,9 @@
  *
  * A stable 4.x version goes to `latest` and takes the GitHub "Latest" badge, a
  * 4.x prerelease goes to `beta` and never to `latest`, and every other tag
- * (3.x, 5.x, not semver) is refused. release.js is run from a copy of
+ * (3.x, 5.x, not semver) is refused. release.yml is read to check that it
+ * runs on 4.x tags and publishes with what release-tag.mjs decided, from the
+ * npm-release environment. release.js is run from a copy of
  * scripts/ in a temporary repository, so a refusal that failed to stop it
  * could only bump the copy's manifests.
  *
@@ -124,6 +126,98 @@ describe("release-tag.mjs as release.yml runs it", () => {
     assert.equal(result.status, 1)
     assert.equal(result.stdout, "")
     assert.match(result.stderr, /::error::v3\.13\.1 is not a 4\.x version/)
+  })
+})
+
+/**
+ * The workflow is read as text, a job at a time: the repository root has no
+ * YAML parser of its own, and these are the exact lines that must not drift.
+ */
+const workflow = readFileSync(
+  join(scriptsDir, "..", ".github", "workflows", "release.yml"),
+  "utf8"
+)
+
+function topLevel(key) {
+  const match = workflow.match(
+    new RegExp(`^${key}:\\n([\\s\\S]*?)(?=^\\S|(?![\\s\\S]))`, "m")
+  )
+  assert.ok(match, `release.yml has a top-level ${key}:`)
+  return match[1]
+}
+
+function job(name) {
+  const jobs = topLevel("jobs")
+  const match = jobs.match(
+    new RegExp(`^  ${name}:\\n([\\s\\S]*?)(?=^  [\\w-]+:\\n|(?![\\s\\S]))`, "m")
+  )
+  assert.ok(match, `release.yml has a ${name} job`)
+  return match[1]
+}
+
+const has = (text, line) => text.split("\n").some((l) => l.trim() === line)
+
+describe("release.yml as it uses release-tag.mjs", () => {
+  it("runs on 4.x tags only", () => {
+    const tags = [...topLevel("on").matchAll(/^\s+- (.+)$/gm)].map((m) => m[1])
+    assert.deepEqual(tags, ['"v4.*"'])
+  })
+
+  it("lets preflight check the tag against main and decide the dist-tag", () => {
+    const preflight = job("preflight")
+    assert.ok(
+      has(
+        preflight,
+        'if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then'
+      )
+    )
+    assert.ok(has(preflight, "id: tag"))
+    assert.ok(
+      has(
+        preflight,
+        'node scripts/release-tag.mjs "$GITHUB_REF_NAME" | tee -a "$GITHUB_OUTPUT"'
+      )
+    )
+    for (const output of ["dist_tag", "prerelease", "make_latest"]) {
+      assert.ok(
+        has(preflight, `${output}: \${{ steps.tag.outputs.${output} }}`),
+        output
+      )
+    }
+  })
+
+  it("publishes under preflight's dist-tag, after the approval", () => {
+    const release = job("release")
+    assert.ok(has(release, "needs: [preflight, approve]"))
+    assert.ok(has(job("approve"), "environment: npm-publish"))
+    assert.ok(has(release, "TAG: ${{ needs.preflight.outputs.dist_tag }}"))
+    assert.ok(
+      has(
+        release,
+        'latest | beta) echo "Publishing under the $TAG dist-tag." ;;'
+      )
+    )
+    assert.ok(
+      has(release, 'npm publish "$TARBALL" --access public --tag "$TAG"')
+    )
+    assert.equal(release.match(/^\s*npm publish /gm).length, 1)
+  })
+
+  it("publishes from the npm-release environment, which npm can require", () => {
+    assert.ok(has(job("release"), "environment: npm-release"))
+  })
+
+  it("takes the GitHub Release's prerelease and Latest badge from preflight", () => {
+    const release = job("release")
+    assert.ok(
+      has(
+        release,
+        "prerelease: ${{ needs.preflight.outputs.prerelease == 'true' }}"
+      )
+    )
+    assert.ok(
+      has(release, "make_latest: ${{ needs.preflight.outputs.make_latest }}")
+    )
   })
 })
 
