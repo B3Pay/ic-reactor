@@ -20,7 +20,7 @@ import {
 } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join, relative, resolve } from "node:path"
 import { after, before, describe, it } from "node:test"
 import {
   EVALS,
@@ -34,6 +34,7 @@ import {
   V4_NPM_RELEASES,
   V4_PACKAGES,
   V4_PACKAGE_ENTRIES,
+  V4_SHARED_BUILD_INPUTS,
   V4_SHARED_WITH_WORLD,
   describeV4Source,
   fetchV4Tarballs,
@@ -125,6 +126,38 @@ describe("the v4 leak refusal", () => {
 
 // `--v4-from npm:<version>`, offline: tarballs built here stand in for the
 // downloaded ones, and a pin table built from them for V4_NPM_RELEASES.
+describe("the v4 tree source's dirty check", () => {
+  it("covers every file outside packages/ that a v4 package's tsconfig extends", () => {
+    for (const name of V4_PACKAGES) {
+      const dir = join(REPO, "packages", name.split("/")[1])
+      for (const file of readdirSync(dir).filter((f) =>
+        /^tsconfig.*\.json$/.test(f)
+      )) {
+        const extended = /"extends"\s*:\s*"([^"]+)"/.exec(
+          readFileSync(join(dir, file), "utf8")
+        )?.[1]
+        if (!extended) continue
+        const target = relative(
+          REPO,
+          resolve(dirname(join(dir, file)), extended)
+        )
+        if (target.startsWith("packages/")) continue
+        assert.ok(
+          V4_SHARED_BUILD_INPUTS.includes(target),
+          `${name}/${file} extends ${target}, which V4_SHARED_BUILD_INPUTS does not list`
+        )
+      }
+    }
+  })
+  it("lists only files that exist at the repository root", () => {
+    for (const file of V4_SHARED_BUILD_INPUTS)
+      assert.ok(
+        existsSync(join(REPO, file)),
+        `${file} is not in the repository`
+      )
+  })
+})
+
 describe("the v4 npm source", () => {
   let dir
   let releases

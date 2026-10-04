@@ -58,6 +58,7 @@ import { EVALS } from "./harness/assemble.mjs"
 import {
   V4_PACKAGES,
   V4_PACKAGE_ENTRIES,
+  V4_SHARED_BUILD_INPUTS,
   V4_SHARED_WITH_WORLD,
   fetchV4Tarballs,
   guideStats,
@@ -433,12 +434,15 @@ for (const condition of ["v3", "thin", "v4-proto", "v4"]) {
             : {
                 from: "tree",
                 commit: git("rev-parse", "HEAD"),
+                // The packages, and the root files their build reads: the
+                // base tsconfig both extend, the workspace and the lockfile.
                 dirty:
                   git(
                     "status",
                     "--porcelain",
                     "--",
-                    ...V4_PACKAGES.map((n) => `packages/${n.split("/")[1]}`)
+                    ...V4_PACKAGES.map((n) => `packages/${n.split("/")[1]}`),
+                    ...V4_SHARED_BUILD_INPUTS
                   ) !== "",
               }),
           packages: Object.fromEntries(

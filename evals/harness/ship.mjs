@@ -24,6 +24,20 @@ import { checkDocs, hiddenTestNames as testNamesOf } from "./check-docs.mjs"
 export const V4_PACKAGES = ["@ic-reactor/core", "@ic-reactor/react"]
 
 /**
+ * The files outside `packages/` that building V4_PACKAGES reads, relative to
+ * the repository root: the base tsconfig both packages extend, the workspace
+ * and the lockfile that decide what the build compiles against. Tree mode
+ * records a packed tree as dirty when any of these, or a package, has an
+ * uncommitted change.
+ */
+export const V4_SHARED_BUILD_INPUTS = [
+  "tsconfig.base.json",
+  "package.json",
+  "pnpm-workspace.yaml",
+  "pnpm-lock.yaml",
+]
+
+/**
  * The published releases the v4 condition may be built from, with the
  * `dist.integrity` the npm registry records for each package's tarball
  * (`npm view <name>@<version> dist.integrity`, read on 2026-10-05). setup
