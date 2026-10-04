@@ -18,6 +18,7 @@
     "sync:examples": "node scripts/sync-example-versions.js",
     "typecheck:examples": "node scripts/typecheck-examples.js",
     "build:examples": "node scripts/build-examples.js",
+    "test:examples:published": "node scripts/test-examples-published.mjs",
     "check:ai-context": "node scripts/check-ai-context.js",
     "check:snippets": "node scripts/check-snippets.mjs",
     "check:snippets:docs": "node scripts/check-snippets.mjs --docs",
