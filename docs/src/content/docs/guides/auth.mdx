@@ -1,0 +1,491 @@
+---
+title: "Auth"
+description: "Signing users in with @icp-sdk/auth 10 or any AuthLike, useAuth, caller changes, and identity attributes"
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+A client is built with exactly one way to say who calls (see
+[The client](/v4/guides/client/)).
+
+- `identity` is a caller that never changes: `"anonymous"` for a read-only
+  client, or an `Identity` for a script, a server or a test. It has no sign-in.
+- `auth` is a factory for a sign-in, and gives you users who sign in and out.
+  This page is about `auth`.
+
+Query keys carry the caller. When the user signs in or out, the client moves
+every read to the new caller's keys, and nothing read for one principal shows
+under another.
+
+## Internet Identity with @icp-sdk/auth 10
+
+The `AuthClient` of `@icp-sdk/auth` 10 is an `AuthLike` as it is. Pass a
+factory that builds one:
+
+```sh
+npm install @icp-sdk/auth
+```
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { AuthClient } from "@icp-sdk/auth/client"
+
+export const client = createClient({
+  network: "ic",
+  auth: () => new AuthClient(),
+})
+```
+
+You write no adapter. The client does the rest:
+
+- It calls the factory once, on first use, and only in a browser. On a server
+  the factory never runs and the client is anonymous.
+- It owns what the factory returns. `client.dispose()` stops listening to it
+  and calls its `dispose()`.
+- It reads `getStatus()` and `getPrincipal()` to decide who calls, and asks
+  `getIdentity()` for the identity to sign with.
+- It forwards `signIn(options)` and `signOut(options)` to it.
+
+`AuthClient` is not a peer dependency of core: you install `@icp-sdk/auth`
+yourself when you want Internet Identity.
+
+### A local Internet Identity
+
+`AuthClient` 10 derives nothing from a URL. On a local network you name the
+page people sign in on and the canister that mints their delegations, and you
+give the agent that makes those calls the local replica. The
+[Vite wallet](/v4/examples/vite-wallet/) does this for a local page:
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { AuthClient } from "@icp-sdk/auth/client"
+import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
+
+type IdentityEnv = {
+  readonly IC_ROOT_KEY?: Uint8Array
+  readonly INTERNET_IDENTITY_PROVIDER?: string
+}
+
+export const client = createClient({
+  network: "env",
+  auth: () => {
+    const env = safeGetCanisterEnv<IdentityEnv>()
+    return new AuthClient({
+      identityProvider: {
+        authorizeUrl:
+          env?.INTERNET_IDENTITY_PROVIDER ??
+          "http://id.ai.localhost:8000/authorize",
+        // Internet Identity's backend has the same id on a local network.
+        canisterId: "rdmx6-jaaaa-aaaaa-aaadq-cai",
+      },
+      agentOptions:
+        env?.IC_ROOT_KEY === undefined
+          ? { host: window.location.origin, shouldFetchRootKey: true }
+          : { host: window.location.origin, rootKey: env.IC_ROOT_KEY },
+    })
+  },
+})
+```
+
+`identityProvider` takes both values or neither. Leave it out and both are
+mainnet's. The [Vite plugin](/v4/guides/vite-plugin/) puts
+`INTERNET_IDENTITY_PROVIDER` and the replica's root key in the `ic_env` cookie
+in dev and preview. The example builds the options only when the page is
+local, and uses the defaults on a deployed page.
+
+### Sign-in options
+
+`signIn` and `signOut` of the client and of `useAuth()` pass their argument to
+the auth unchanged. For an `AuthClient` that is `maxTimeToLive` and
+`maxTimeToIdle` (nanoseconds, as `bigint`) and `returnTo` for `signIn`, and
+`returnTo` for `signOut`:
+
+```tsx
+import { useAuth } from "@ic-reactor/react"
+
+const HOUR_NS = 3_600_000_000_000n
+
+export function EightHourSession() {
+  const { status, signIn, signOut } = useAuth()
+  return status === "signed-in" ? (
+    <button onClick={() => signOut({ returnTo: "/" }).catch(console.error)}>
+      Sign out
+    </button>
+  ) : (
+    <button
+      onClick={() =>
+        signIn({ maxTimeToLive: 8n * HOUR_NS, returnTo: "/account" }).catch(
+          console.error
+        )
+      }
+    >
+      Sign in for 8 hours
+    </button>
+  )
+}
+```
+
+The client types `options` as `unknown`, so a wrong option is not a type error.
+Check it against `AuthClientSignInOptions` in `@icp-sdk/auth`.
+
+`AuthClient` has more options, such as `openIdProvider: "google"` for a
+one-click sign-in and `transport: "redirect"`. They belong to
+`@icp-sdk/auth`, not to this library.
+
+## Any other sign-in: AuthLike
+
+An `AuthLike` is six methods and an optional `dispose`:
+
+```ts nocheck
+interface AuthLike {
+  getPrincipal(): { toText(): string } | undefined
+  getStatus(): {
+    readonly state:
+      "signed-in" | "signed-in-elsewhere" | "expired" | "signed-out"
+  }
+  getIdentity(): Promise<Identity>
+  subscribe(listener: () => void): () => void
+  signIn(options?: unknown): Promise<unknown>
+  signOut(options?: unknown): Promise<unknown>
+  dispose?(): void
+}
+```
+
+The client reads `getStatus()` and `getPrincipal()` synchronously. It calls
+`getIdentity()` only when it builds or checks an agent for a signed-in
+principal, and it reads both again after every `subscribe()` notification.
+Only the state `"signed-in"` makes the client call as `getPrincipal()`. Every
+other state calls as the anonymous principal.
+
+`getIdentity()` should return the same object until the identity really
+changes. The client builds a new agent for every new identity object it is
+handed, and reads a new object for the same principal as a renewal.
+
+A wallet or a hand-rolled session fits with a small adapter. This is the one
+in the guide, `packages/core/llms.txt`:
+
+```ts
+import type { AuthLike } from "@ic-reactor/core"
+import type { Identity } from "@icp-sdk/core/agent"
+
+export interface SignInSource {
+  getIdentity(): Identity // anonymous while signed out
+  isAuthenticated(): boolean
+  login(): Promise<void>
+  logout(): Promise<void>
+  subscribe(listener: () => void): () => void
+}
+
+export function toAuthLike(source: SignInSource): AuthLike {
+  const signedIn = () =>
+    source.isAuthenticated() &&
+    !source.getIdentity().getPrincipal().isAnonymous()
+  return {
+    getPrincipal: () =>
+      signedIn() ? source.getIdentity().getPrincipal() : undefined,
+    getStatus: () => ({ state: signedIn() ? "signed-in" : "signed-out" }),
+    getIdentity: async () => source.getIdentity(),
+    subscribe: (listener) => source.subscribe(listener),
+    signIn: () => source.login(),
+    signOut: () => source.logout(),
+  }
+}
+```
+
+One client has one `auth`. To offer two sign-in sources, write one `AuthLike`
+that holds both and picks one from the options of `signIn`. The Vite wallet's
+`src/auth/wallet-auth.ts` does this for Internet Identity and a local dev
+account.
+
+## AuthState
+
+`client.authState()` and `useAuth()` give an `AuthState`: a `status` and a
+`principal`.
+
+| The auth says         | `status`                | `principal`          |
+| --------------------- | ----------------------- | -------------------- |
+| `signed-in`           | `"signed-in"`           | the signed-in user's |
+| `signed-out`          | `"anonymous"`           | `2vxsx-fae`          |
+| `expired`             | `"expired"`             | `2vxsx-fae`          |
+| `signed-in-elsewhere` | `"signed-in-elsewhere"` | `2vxsx-fae`          |
+
+`principal` is the principal calls go out as, so in every state but
+`"signed-in"` it is the anonymous principal, and a check such as
+`principal !== "2vxsx-fae"` means what it looks like. An expired session
+and one signed in on a sibling origin cannot sign a call, so they do not name
+their principal. To say whose session ended, read the auth's own
+`getStatus()`, which keeps it. For that you need your own reference to the
+`AuthClient` (see below), because the client does not expose its auth.
+
+A client built with `identity` reports `"signed-in"` with that identity's
+principal, or `"anonymous"` for `"anonymous"` and for an explicit
+`AnonymousIdentity`. A client on a server reports `"anonymous"`.
+
+## useAuth
+
+`useAuth()` returns the `AuthState` plus `signIn` and `signOut`:
+
+```tsx
+import { useAuth } from "@ic-reactor/react"
+
+export function SessionButton() {
+  const { status, principal, signIn, signOut } = useAuth()
+  if (status === "signed-in") {
+    return (
+      <button onClick={() => signOut().catch(console.error)}>
+        Sign out {principal}
+      </button>
+    )
+  }
+  return (
+    <>
+      {status === "expired" && <p>Your session expired.</p>}
+      <button onClick={() => signIn().catch(console.error)}>Sign in</button>
+    </>
+  )
+}
+```
+
+- A component that calls it renders once for each change of `status` or
+  `principal`, and never otherwise. A renewed delegation does not render it.
+- The object it returns is the same until one of them changes, so it is safe
+  in a dependency array or as a prop of a memoized child.
+- It is `"anonymous"` on a server and during a hydrating render, even when the
+  browser holds a session, so the HTML matches the server's. The component
+  renders again with the real state right after hydration. Show the same thing
+  signed out and while the session is read. See
+  [SSR and hydration](/v4/guides/ssr/).
+- It throws outside a `ReactorProvider`.
+
+`signIn` and `signOut` return a promise, and the promise can reject:
+
+- on a client built with `identity`, with a `TypeError`: there is no sign-in;
+- on a server, and after `client.dispose()`, with an `Error`;
+- with whatever the auth rejects with. `AuthClient` rejects a sign-in that a
+  later sign-in or sign-out took over from with a `SupersededError`, which you
+  can usually ignore.
+
+Always catch them, as the examples do.
+
+```tsx
+import { useAuth } from "@ic-reactor/react"
+import { SupersededError } from "@icp-sdk/auth/client"
+import { useState } from "react"
+
+export function SignInButton() {
+  const { signIn } = useAuth()
+  const [failure, setFailure] = useState<string>()
+  return (
+    <>
+      <button
+        onClick={() =>
+          signIn().catch((error: unknown) => {
+            if (error instanceof SupersededError) return
+            setFailure(error instanceof Error ? error.message : String(error))
+          })
+        }
+      >
+        Sign in
+      </button>
+      {failure !== undefined && <p role="alert">{failure}</p>}
+    </>
+  )
+}
+```
+
+Outside React, `client.authState()` is the same state, and
+`client.subscribe(listener)` calls `listener` once after each change of it.
+It returns a function that stops listening.
+
+```ts
+import { client } from "./ledger"
+
+const stop = client.subscribe(() => {
+  const { status, principal } = client.authState()
+  console.log(`caller is now ${principal} (${status})`)
+})
+
+// later
+stop()
+```
+
+## When the caller changes
+
+| Question               | Answer                                                                  |
+| ---------------------- | ----------------------------------------------------------------------- |
+| the caller's principal | `useAuth().principal`, `client.caller()` (`2vxsx-fae` unless signed in) |
+| may a write be sent    | `useAuth().status === "signed-in"`; the client refuses the rest itself  |
+| when did it change     | `useAuth()` re-renders; `client.subscribe(fn)`                          |
+
+A call goes out as the principal that was current when it was made, or not at
+all. The client keeps one agent per principal and never points an agent at
+another identity. What that means in practice:
+
+- **Components.** `useClient()` re-renders its component on a sign-in, a switch
+  of account and a sign-out, so the options it builds in that render use the
+  new caller's keys. A change of status that keeps the caller (a session that
+  expired, one signed in elsewhere) renders nothing, because both already
+  called anonymously. Call `useClient()` in the body of each component that
+  builds options, on every render.
+- **Reads in flight.** A read started for the old caller is cancelled when
+  someone else is current, before anything is sent. It fails with
+  `kind: "cancelled"` and `code: "caller_changed"`, and it never lands in the
+  new caller's key. Treat this error as "ignore" (see
+  [Errors](/v4/guides/errors/)).
+- **Writes.** A write goes out as whoever is signed in when it runs. If nobody
+  is, the client refuses it before sending: `kind: "unauthenticated"`, code
+  `anonymous_write`.
+- **Data.** After a sign-in, a sign-out or a switch, the new keys are empty
+  until they load. Do not use `placeholderData: keepPreviousData` or an
+  `initialData` taken from another key: it would show one principal's data to
+  another.
+
+A read that waits for a user uses `skipToken` (see
+[Reads](/v4/guides/reads/)):
+
+```tsx
+import { principal } from "@candid-core/schema"
+import { useClient, useAuth } from "@ic-reactor/react"
+import { skipToken, useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function MyBalance() {
+  const client = useClient()
+  const { status, principal: caller } = useAuth()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const balance = useQuery(
+    client.queryOptions(
+      ledger,
+      "icrc1_balance_of",
+      status === "signed-in"
+        ? { owner: principal(caller), subaccount: null }
+        : skipToken
+    )
+  )
+  if (status !== "signed-in") return <p>Sign in to see your balance.</p>
+  return <p>{balance.data?.toString() ?? "…"}</p>
+}
+```
+
+## Identity attributes
+
+Internet Identity can sign attributes about the user, such as an email address
+from the provider they signed in with. `@icp-sdk/auth` 10 asks for them with
+`authClient.requestAttributes`. This library has no hook for it, and the
+client does not expose its auth, so you keep your own reference to the
+`AuthClient` and give the client a factory that returns it.
+
+```ts
+import { AuthClient } from "@icp-sdk/auth/client"
+import { createClient } from "@ic-reactor/core"
+
+export const authClient = new AuthClient({ openIdProvider: "google" })
+export const client = createClient({ network: "ic", auth: () => authClient })
+```
+
+The client still owns it and disposes it with itself. Create this
+`AuthClient` in a browser-only module. In an app that also renders on a
+server, assign it inside the factory instead: a server never runs the
+factory, so the reference exists only in a browser.
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { AuthClient } from "@icp-sdk/auth/client"
+
+let authClient: AuthClient | undefined
+
+export const getAuthClient = () => authClient
+export const createAppClient = () =>
+  createClient({
+    network: "ic",
+    auth: () => (authClient = new AuthClient({ openIdProvider: "google" })),
+  })
+```
+
+### Request and decode
+
+`requestAttributes({ keys, nonce })` resolves to `{ data, signature }`, two
+`Uint8Array`s.
+
+- `keys` are the attribute names. `scopedKeys` from `@icp-sdk/auth/client`
+  scopes them to the provider of a one-click sign-in, so the user grants them
+  in one step: `scopedKeys({ openIdProvider: "google", keys: ["email"] })` is
+  `["openid:https://accounts.google.com:email"]`. For an organization's SSO use
+  `scopedKeys({ ssoDomain })`.
+- `nonce` is a callback, not a value. It returns a promise of the 32-byte
+  nonce that your own canister (the relying party) issued. A callback lets the
+  Internet Identity window open while the nonce is still loading, and lets the
+  redirect transport replay the exact same bytes.
+
+Internet Identity certifies `data` as a Candid-encoded ICRC-3 `Value`, a
+`Map` of the requested keys, plus `implicit:nonce`, `implicit:origin` and
+`implicit:issued_at_timestamp_ns` entries. A scoped key stays scoped in the
+map, and an unscoped request gets bare keys. You can describe that type with
+candid-core's schema builders and read `data` with `decode`:
+
+```ts
+import { c, type Schema } from "@candid-core/schema"
+import { decode } from "@candid-core/schema/codec"
+import { scopedKeys } from "@icp-sdk/auth/client"
+import { authClient } from "./auth-client"
+
+type Icrc3Value =
+  | { tag: "Nat"; value: bigint }
+  | { tag: "Int"; value: bigint }
+  | { tag: "Blob"; value: Uint8Array }
+  | { tag: "Text"; value: string }
+  | { tag: "Array"; value: Icrc3Value[] }
+  | { tag: "Map"; value: Array<[string, Icrc3Value]> }
+
+const Icrc3Value: Schema<Icrc3Value> = c.rec(() =>
+  c.variant({
+    Nat: c.nat,
+    Int: c.int,
+    Blob: c.blob(),
+    Text: c.text,
+    Array: c.vec(Icrc3Value),
+    Map: c.vec(c.tuple([c.text, Icrc3Value])),
+  })
+)
+
+/** The user's email, for display. `nonce` asks your own canister for one. */
+export async function readEmail(nonce: () => Promise<Uint8Array>) {
+  const keys = scopedKeys({ openIdProvider: "google", keys: ["email"] })
+  const signed = await authClient.requestAttributes({ keys, nonce })
+
+  const decoded = decode(Icrc3Value, signed.data) // never throws
+  if (!decoded.ok) throw new Error(decoded.issues[0]?.message)
+  const value = decoded.value as Icrc3Value // `decode` checked it against the schema
+
+  if (value.tag !== "Map") return undefined
+  const entry = value.value.find(([key]) => key === keys[0])
+  return entry?.[1].tag === "Text" ? entry[1].value : undefined
+}
+```
+
+This snippet imports `authClient` from the module above, saved as
+`src/auth-client.ts`.
+
+<Aside type="caution" title="Display only">
+  What you decode in the browser is not proof. Your canister, the one that
+  issued the nonce, must verify `data` and `signature` before it trusts any
+  attribute. Send both to it. Reading `data` here is for showing the user what
+  they shared.
+</Aside>
+
+The `implicit:*` entries are there for that verifier. This page does not
+describe how a canister checks the signature; see the Internet Identity
+documentation.
+
+## See also
+
+- [The client](/v4/guides/client/): `identity` and `auth`, networks, `dispose`.
+- [SSR and hydration](/v4/guides/ssr/): `useAuth()` and `useClient()` while a
+  page hydrates.
+- [Errors](/v4/guides/errors/): `unauthenticated` and `cancelled`.
+- [Testing](/v4/guides/testing/): `createTestClient()` has a test auth you can
+  sign in, switch and expire.
+- [Vite wallet](/v4/examples/vite-wallet/): Internet Identity, a dev account
+  and one client.

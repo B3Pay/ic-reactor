@@ -49,6 +49,9 @@ apps are on `main`; the four v4 examples are in `examples/` (`icrc-ledger`,
   `scripts/ai-context-files.js`, and that none of the 34 removed 3.x names
   (`scripts/removed-v3-names.js`) appears outside a "Removed in 4.0" section.
   `pnpm check:snippets` compiles the code fences of the same files.
+- The hand-written docs pages follow the removed-names rule as well; only
+  `migrating-from-3.mdx` links `/v3/`, and a page names no `@ic-reactor`
+  version. `pnpm check:snippets:docs` compiles their fences.
 
 ## Docs
 

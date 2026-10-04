@@ -210,7 +210,8 @@ export function Send({ arg }: { arg: TransferArg }) {
   success, a `canister_err` and a failure that may have executed. Nothing
   else is needed after an unknown outcome.
   A third argument, `{ invalidates: [canister, [canister, "method"]] }`,
-  names other reads; `[]`, none. To add an `onSettled`, call the client's
+  names the reads to invalidate instead (name the written canister too if
+  its reads change); `[]`, none. To add an `onSettled`, call the client's
   from yours.
 - Do not retry a write. `retry` is `false`; keep it. The client itself
   re-sends an update, at most twice, only after a failure proving the canister

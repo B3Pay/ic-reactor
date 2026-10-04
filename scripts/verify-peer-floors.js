@@ -13,10 +13,10 @@
  * accepts (through pnpm overrides, so every copy in the graph follows), installs,
  * and runs the package's typecheck and tests there. A range that joins majors,
  * like `^8.0.0 || ^10.0.0`, cannot be pinned to one floor: it has to be listed
- * in PER_MAJOR below, which installs and tests each major's floor, and a range
- * that joins majors without an entry there fails the check. The worktree is
- * removed afterwards, so your checkout is never touched; uncommitted changes
- * are not part of the run.
+ * in PER_MAJOR below, which installs each major's floor and runs the typecheck
+ * and tests once per major, and a range that joins majors without an entry
+ * there fails the check. The worktree is removed afterwards, so your checkout
+ * is never touched; uncommitted changes are not part of the run.
  *
  * TypeScript has a floor too, and this runs its check first:
  * verify-typescript-floor.js compiles the declarations of core and react with
@@ -32,30 +32,50 @@
  *            (debugging)
  */
 import { execFileSync, spawnSync } from "node:child_process"
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import {
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs"
 import { dirname, join } from "node:path"
 import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 
-const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
-const keep = process.argv.includes("--keep")
+const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..")
+const SCRIPT = fileURLToPath(import.meta.url)
 
 /**
  * Peers whose range joins majors that behave differently, per package, as
  * `{ <package>: { <peer>: { <major>: <devDependency that installs it> } } }`.
- * Each major's floor is installed under the devDependency named here, and the
- * package's tests run every copy. These are pinned through devDependencies
- * only, because an override keyed by the peer's name would move both copies
- * to one version. A major the range accepts but no devDependency installs
- * fails the check, and so does a peer range that joins majors but has no entry
- * here: pinning it to its lowest floor would test one major and say nothing
- * about the others.
+ * Each major's floor is installed in the worktree under the devDependency
+ * named here (`"vite-4": "npm:vite@4.2.0"`), so one install holds every copy.
+ * These are pinned through devDependencies only, because an override keyed by
+ * the peer's name would move every copy to one version. Then, one copy at a
+ * time, the package's `node_modules/<peer>` is linked to that copy and the
+ * package's typecheck and tests run: everything the package resolves by the
+ * peer's name (its sources, its tests, the servers its tests start, tsc) gets
+ * that major's floor, with no switch in the package's own config. A copy that
+ * fails does not stop the others, so one run names every major that fails. A
+ * major the range accepts but no entry installs fails the check, and so does a
+ * peer range that joins majors but has no entry here: pinning it to its lowest
+ * floor would test one major and say nothing about the others.
  *
- * Empty on the v4 line: react's `@icp-sdk/auth ^8 || ^10` peer, the one entry
- * 3.x had, went with the 3.x auth hooks. Add an entry before declaring a peer
- * range that joins majors.
+ * react's `@icp-sdk/auth ^8 || ^10` peer, the one entry 3.x had, went with the
+ * 3.x auth hooks. Add an entry before declaring a peer range that joins majors.
  */
-const PER_MAJOR = {}
+export const PER_MAJOR = {
+  // `^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0`: 4.2.0, 5.0.0, 6.0.0,
+  // 7.0.0 and 8.0.0. The tests start real dev, preview and build runs of each.
+  "vite-plugin": {
+    vite: { 4: "vite-4", 5: "vite-5", 6: "vite-6", 7: "vite-7", 8: "vite-8" },
+  },
+}
 
 /**
  * The packages checked, in the order they run. `follows` pins a dependency of a
@@ -64,8 +84,12 @@ const PER_MAJOR = {}
  * has to resolve that same copy, as it would in an application. react-dom is
  * not a peer of the bindings (the library never imports it), but its tests
  * render with it, and it is released with react: it follows react's floor.
+ * vite-plugin's `vite` peer is in PER_MAJOR; its exact `@candid-core/cli` peer
+ * has one version, which the lockfile already holds. `withoutOverrides` drops
+ * root `pnpm.overrides` that would move a floor's own dependencies off the
+ * versions an app on that floor installs.
  */
-const CHECKS = [
+export const CHECKS = [
   { pkg: "core" },
   {
     pkg: "react",
@@ -76,6 +100,13 @@ const CHECKS = [
     typesFor: ["react", "react-dom"],
     // react imports core through core's built dist.
     buildFirst: ["core"],
+  },
+  {
+    pkg: "vite-plugin",
+    // The root pins rollup ^4.60.1 for the repository's own installs, which
+    // would hand Vite 4 a rollup it does not depend on (^3). An app on Vite 4
+    // gets rollup 3, so each Vite copy resolves its own rollup here.
+    withoutOverrides: ["rollup"],
   },
 ]
 
@@ -103,7 +134,7 @@ function compareVersions(a, b) {
  * being pinned to a guess. A prerelease is accepted only exact, as core pins
  * `@candid-core/schema` (D24): its floor is then the version itself.
  */
-function alternativeFloors(range) {
+export function alternativeFloors(range) {
   return range.split("||").map((part) => {
     const text = part.trim()
     const match =
@@ -141,15 +172,17 @@ function run(command, args, cwd) {
 
 /**
  * The pins for one check, from the package's own peer ranges: `overrides` for
- * every copy in the graph, and `devDependencies` for the per-major installs.
+ * every copy in the graph, `devDependencies` for the per-major installs, and
+ * `copies`, one per major of each PER_MAJOR peer, in the order they run.
  */
-function pinsFor(check) {
+export function pinsFor(check, { rootDir = ROOT_DIR, perMajor: table } = {}) {
   const manifest = readJson(
     join(rootDir, "packages", check.pkg, "package.json")
   )
-  const perMajor = PER_MAJOR[check.pkg] ?? {}
+  const perMajor = (table ?? PER_MAJOR)[check.pkg] ?? {}
   const overrides = {}
   const devDependencies = {}
+  const copies = []
 
   for (const [name, range] of Object.entries(manifest.peerDependencies ?? {})) {
     // A sibling of the lockstep lane (`@ic-reactor/core` as a peer of react),
@@ -162,7 +195,7 @@ function pinsFor(check) {
       ]
       if (majors.length > 1) {
         throw new Error(
-          `${check.pkg} accepts ${name} "${range}", which joins majors ${majors.join(", ")}, but PER_MAJOR in ${fileURLToPath(import.meta.url)} has no entry for it, so only its lowest floor would be tested`
+          `${check.pkg} accepts ${name} "${range}", which joins majors ${majors.join(", ")}, but PER_MAJOR in ${SCRIPT} has no entry for it, so only its lowest floor would be tested`
         )
       }
       overrides[name] = lowestVersion(range)
@@ -173,11 +206,12 @@ function pinsFor(check) {
       const installAs = perMajor[name][major]
       if (!installAs) {
         throw new Error(
-          `${check.pkg} accepts ${name} ${major}.x, but no devDependency installs that major for its tests (PER_MAJOR in ${fileURLToPath(import.meta.url)})`
+          `${check.pkg} accepts ${name} ${major}.x, but no devDependency installs that major for its tests (PER_MAJOR in ${SCRIPT})`
         )
       }
       devDependencies[installAs] =
         installAs === name ? floor : `npm:${name}@${floor}`
+      copies.push({ peer: name, installAs, version: floor })
     }
   }
   for (const [name, peer] of Object.entries(check.follows ?? {})) {
@@ -187,11 +221,49 @@ function pinsFor(check) {
     const [major] = parseVersion(overrides[name])
     overrides[`@types/${name}`] = `^${major}.0.0`
   }
-  return { overrides, devDependencies }
+  return { overrides, devDependencies, copies }
 }
 
-function verify(check) {
-  const { overrides, devDependencies } = pinsFor(check)
+/**
+ * Points the package's `node_modules/<peer>` at the copy installed under
+ * `installAs`, so that every import of the peer from the package resolves it.
+ */
+function linkCopy(packageDir, { peer, installAs }) {
+  const modules = join(packageDir, "node_modules")
+  const target = realpathSync(join(modules, installAs))
+  const link = join(modules, peer)
+  let existing
+  try {
+    existing = lstatSync(link)
+  } catch {
+    existing = undefined
+  }
+  // A symlink is removed, never followed: the store's copy stays as it is.
+  if (existing?.isSymbolicLink()) unlinkSync(link)
+  else if (existing) rmSync(link, { recursive: true })
+  mkdirSync(dirname(link), { recursive: true })
+  symlinkSync(target, link, "dir")
+}
+
+/**
+ * Runs one check in a throwaway worktree of `rootDir`'s HEAD and returns the
+ * steps that failed (empty when the package works at its floors).
+ *
+ * @param {object} check An entry of CHECKS.
+ * @param {object} [options]
+ * @param {string} [options.rootDir] The repository; this one by default.
+ * @param {object} [options.perMajor] In place of PER_MAJOR (tests).
+ * @param {boolean} [options.keep] Leave the worktree in place.
+ * @returns {string[]}
+ */
+export function verifyPackage(
+  check,
+  { rootDir = ROOT_DIR, perMajor, keep = false } = {}
+) {
+  const { overrides, devDependencies, copies } = pinsFor(check, {
+    rootDir,
+    perMajor,
+  })
   const worktree = mkdtempSync(join(tmpdir(), `peer-floor-${check.pkg}-`))
   console.log(
     `\n▶ ${check.pkg}: ${JSON.stringify({ ...overrides, ...devDependencies })}`
@@ -213,45 +285,71 @@ function verify(check) {
       ...rootManifest.pnpm.overrides,
       ...overrides,
     }
+    for (const name of check.withoutOverrides ?? []) {
+      delete rootManifest.pnpm.overrides[name]
+    }
     writeJson(rootManifestPath, rootManifest)
 
-    const manifestPath = join(worktree, "packages", check.pkg, "package.json")
+    // An override moves a devDependency the package already has; a per-major
+    // install is added, since the package's own install needs none of them.
+    const packageDir = join(worktree, "packages", check.pkg)
+    const manifestPath = join(packageDir, "package.json")
     const manifest = readJson(manifestPath)
-    for (const [name, version] of Object.entries({
-      ...overrides,
-      ...devDependencies,
-    })) {
-      if (manifest.devDependencies?.[name] === undefined) {
-        if (name in devDependencies) {
-          throw new Error(`${check.pkg} has no devDependency named ${name}`)
-        }
-        continue
+    manifest.devDependencies = manifest.devDependencies ?? {}
+    for (const [name, version] of Object.entries(overrides)) {
+      if (manifest.devDependencies[name] !== undefined) {
+        manifest.devDependencies[name] = version
       }
-      manifest.devDependencies[name] = version
     }
+    Object.assign(manifest.devDependencies, devDependencies)
     writeJson(manifestPath, manifest)
 
     // Each project named on its own: selected only as a dependency (`react...`),
     // core would be installed without the devDependencies its build needs.
     const projects = [...(check.buildFirst ?? []), check.pkg]
     const filters = projects.flatMap((pkg) => ["--filter", `./packages/${pkg}`])
-    const steps = [
+    const setup = [
       ["pnpm", ["install", "--no-frozen-lockfile", ...filters]],
       ...(check.buildFirst ?? []).map((pkg) => [
         "pnpm",
         ["--filter", `@ic-reactor/${pkg}`, "build"],
       ]),
-      ["pnpm", ["--filter", `@ic-reactor/${check.pkg}`, "typecheck"]],
-      ["pnpm", ["--filter", `@ic-reactor/${check.pkg}`, "test"]],
     ]
-    for (const [command, args] of steps) {
+    for (const [command, args] of setup) {
       if (!run(command, args, worktree)) {
         console.error(`✖ ${check.pkg}: \`${command} ${args.join(" ")}\` failed`)
-        return false
+        return [`${check.pkg}: \`${command} ${args.join(" ")}\``]
       }
     }
-    console.log(`✔ ${check.pkg} passes at its peer floors`)
-    return true
+
+    // Without a per-major peer, one pass at the pinned floors; with one, a
+    // pass per copy, each named after the copy it ran.
+    const passes =
+      copies.length === 0
+        ? [{ label: check.pkg }]
+        : copies.map((copy) => ({
+            label: `${check.pkg} at ${copy.peer} ${copy.version}`,
+            copy,
+          }))
+    const failed = []
+    for (const { label, copy } of passes) {
+      if (copy) {
+        console.log(`\n▶ ${label} (installed as ${copy.installAs})`)
+        linkCopy(packageDir, copy)
+      }
+      for (const script of ["typecheck", "test"]) {
+        const args = ["--filter", `@ic-reactor/${check.pkg}`, script]
+        if (!run("pnpm", args, worktree)) {
+          console.error(`✖ ${label}: \`pnpm ${args.join(" ")}\` failed`)
+          failed.push(`${label}: ${script}`)
+          break
+        }
+      }
+    }
+    if (failed.length === 0) {
+      console.log(`✔ ${check.pkg} passes at its peer floors`)
+    }
+    return failed
   } finally {
     if (keep) {
       console.log(`  worktree kept at ${worktree}`)
@@ -265,22 +363,41 @@ function verify(check) {
 }
 
 /** Compiles the built declarations with the oldest supported TypeScript. */
-function verifyTypeScriptFloor() {
-  const script = join(rootDir, "scripts", "verify-typescript-floor.js")
-  return run(process.execPath, [script, ...(keep ? ["--keep"] : [])], rootDir)
+function verifyTypeScriptFloor(keep) {
+  const script = join(ROOT_DIR, "scripts", "verify-typescript-floor.js")
+  return run(process.execPath, [script, ...(keep ? ["--keep"] : [])], ROOT_DIR)
 }
 
-const failed = []
-if (!verifyTypeScriptFloor()) {
-  failed.push("the declarations at the TypeScript floor")
+function main() {
+  const keep = process.argv.includes("--keep")
+  const failed = []
+  if (!verifyTypeScriptFloor(keep)) {
+    failed.push("the declarations at the TypeScript floor")
+  }
+  for (const check of CHECKS) {
+    failed.push(...verifyPackage(check, { keep }))
+  }
+  if (failed.length > 0) {
+    console.error(`\nFailed:\n${failed.map((f) => `- ${f}`).join("\n")}`)
+    process.exit(1)
+  }
+  console.log(
+    "\nThe declarations compile at the TypeScript floor, and every checked package works at its declared peer floors."
+  )
 }
-for (const check of CHECKS) {
-  if (!verify(check)) failed.push(`${check.pkg} at its peer floors`)
+
+// Run as the command, not when the tests import the tables. Node resolves the
+// main module's symlinks (`/tmp` is one on macOS, and so is a linked script),
+// so the path it was started by is compared as a real path too: a plain
+// comparison would skip main() there and exit 0 having checked nothing.
+if (process.argv[1] && SCRIPT === realpathOrSelf(process.argv[1])) {
+  main()
 }
-if (failed.length > 0) {
-  console.error(`\nFailed: ${failed.join(", ")}`)
-  process.exit(1)
+
+function realpathOrSelf(path) {
+  try {
+    return realpathSync(path)
+  } catch {
+    return path
+  }
 }
-console.log(
-  "\nThe declarations compile at the TypeScript floor, and every checked package works at its declared peer floors."
-)

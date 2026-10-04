@@ -1,0 +1,394 @@
+---
+title: "Testing"
+description: "createTestClient from @ic-reactor/core/testing: a real client over an in-memory replica, mocked canisters, injected failures and a sign-in a test controls"
+---
+
+`createTestClient` gives you a real client for a test. Nothing in it is a stub
+of the client. Calls are signed by the principal that is signed in, sent
+through an `HttpAgent` to an in-memory replica that checks the signature and
+certifies the reply, and the client verifies the certificate. Only the canister
+is replaced, by plain functions you write. So a test sees what an app would
+see: a refused write, a lost reply, a re-send after HTTP 429, a read that
+moves to another caller's key.
+
+Nothing global is replaced. `globalThis.fetch` is untouched, and two test
+clients run side by side, each with its own replica and sign-in.
+
+## Import
+
+```ts
+import { createTestClient, type TestHandlers } from "@ic-reactor/core/testing"
+```
+
+That subpath exports `createTestClient` and the type `TestHandlers`, and
+nothing else. The fake replica signs with `@noble/curves`, an optional peer of
+`@ic-reactor/core` that `@icp-sdk/core` already installs. If your package
+manager does not let core resolve it, add it to `devDependencies`.
+
+## A first test
+
+```ts
+import { principal } from "@candid-core/schema"
+import { createTestClient } from "@ic-reactor/core/testing"
+import { afterEach, beforeEach, expect, it } from "vitest"
+import { actor, type Actor } from "./generated/icrc1"
+
+const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+let test: ReturnType<typeof createTestClient>
+
+beforeEach(() => {
+  test = createTestClient() // signed in as the identity of seed 1
+})
+
+afterEach(() => {
+  test.client.dispose()
+})
+
+it("reads the balance of the caller", async () => {
+  const { client, auth, mock } = test
+  mock<Actor>(actor, LEDGER, {
+    icrc1_balance_of: ({ owner }, { caller }) => (owner === caller ? 7n : 0n),
+  })
+
+  const ledger = client.canister<Actor>(actor, { id: LEDGER })
+  const me = principal(auth.getPrincipal()!.toText())
+
+  expect(await ledger.icrc1_balance_of({ owner: me, subaccount: null })).toBe(
+    7n
+  )
+})
+```
+
+`mock<Actor>(actor, id, handlers)` runs a canister at `id`, replacing any
+canister already there. `actor` is the service schema of the generated module
+and `Actor` its type, as for `client.canister<Actor>(actor, { id })`.
+
+## What it returns and what it takes
+
+```ts
+import { createTestClient } from "@ic-reactor/core/testing"
+
+const { client, auth, mock, reject, dropNextReply, refuseNext, requests } =
+  createTestClient({
+    identity: 1,
+    signedIn: true,
+  })
+```
+
+| Returned        | What it is                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| `client`        | a real client from `createClient`, whose auth is `auth`. Dispose it at the end of each test |
+| `auth`          | the sign-in the client calls as (see [Sign-in](#sign-in))                                   |
+| `mock`          | runs a canister at an id, answering with handlers                                           |
+| `reject`        | rejects the call being handled with a reject code, from inside a handler                    |
+| `dropNextReply` | loses the reply to the next update                                                          |
+| `refuseNext`    | answers the next canister requests with an HTTP error status                                |
+| `requests`      | every request the replica received, in order                                                |
+
+| Option           | Meaning                                                                                                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `identity`       | who is signed in at first: a real signing identity such as `Ed25519KeyIdentity`, or a number that stands for one. The same number is the same principal in every run. Default: seed `1` |
+| `signedIn`       | `true` by default. With `false` the client starts anonymous, every update is refused, and `auth.signIn()` signs in as `identity`                                                        |
+| `network`        | the network the client believes it is on, for the key segment and the host. Give the host with a scheme. The root key is always the fake's                                              |
+| `allowEnvConfig` | as for `createClient`. Only a test that resolves `{ name }` canisters from an `ic_env` cookie needs it, and a `{ name }` resolves only on a page (jsdom or happy-dom), never in Node    |
+| `maxDepth`       | how deep a decoded value may nest, for the client and the mocks. Default 256                                                                                                            |
+
+`createTestClient` throws a `TypeError` for an option that does not exist or
+cannot be used.
+
+## Writing handlers
+
+A handler is a function of domain values, the same shapes the generated
+`Actor` uses (see [Values and units](/v4/guides/values/)). It takes the
+method's arguments, then a context `{ caller }`: the principal that sent the
+call, as checked principal text, after the replica verified the signature.
+`TestHandlers<Actor>` types every method, and a handler that returns a
+`number` for a `nat` does not compile.
+
+- **Ok and Err.** For a method whose one result is `variant { Ok : T; Err : E }`,
+  return `{ tag: "Ok", value }` or `{ tag: "Err", value }`. The client unwraps
+  it as in production: the call resolves with the `Ok` value, or rejects as
+  `canister_err` with the `Err` value in `err`.
+- **No handler.** A call to a method with no handler traps, with a message that
+  names the method.
+- **Throwing.** A handler that throws traps the call, as a canister does: reject
+  code 5 with the error's message. So does a call whose arguments do not decode,
+  and a handler that returns something the method's result cannot encode.
+- **Query or update.** A method answers by its mode: a `query` on the query
+  path, an `update` on the call path. A `query` method also answers a
+  replicated call, which is how a `certified: true` canister reads it.
+- **The management canister.** `mock` takes `"aaaaa-aa"` as an id.
+
+```ts
+import { principal } from "@candid-core/schema"
+import { createTestClient, type TestHandlers } from "@ic-reactor/core/testing"
+import { expect, it } from "vitest"
+import { actor, type Actor } from "./generated/icrc1"
+
+const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+it("turns an Err into canister_err", async () => {
+  const { client, mock } = createTestClient()
+  const handlers: TestHandlers<Actor> = {
+    icrc1_transfer: () => ({
+      tag: "Err",
+      value: { tag: "InsufficientFunds", value: { balance: 0n } },
+    }),
+  }
+  mock<Actor>(actor, LEDGER, handlers)
+
+  const ledger = client.canister<Actor>(actor, { id: LEDGER })
+  const arg = {
+    to: { owner: principal("aaaaa-aa"), subaccount: null },
+    amount: 1n,
+    fee: null,
+    memo: null,
+    from_subaccount: null,
+    created_at_time: null,
+  }
+  await expect(ledger.icrc1_transfer(arg)).rejects.toMatchObject({
+    kind: "canister_err",
+    mayHaveExecuted: false,
+    err: { tag: "InsufficientFunds", value: { balance: 0n } },
+  })
+  client.dispose()
+})
+```
+
+## Injecting failures
+
+Each of these makes the client meet a failure it classifies, so a test can
+check what the app does with it. See [Errors](/v4/guides/errors/) for the
+kinds.
+
+| Call                                              | What the client meets                                                                                                                                          | Result                                                                                                       |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `reject(code, msg)`                               | inside a handler: the call is rejected with reject code 1 to 6                                                                                                 | the kind of that code, see the classification table                                                          |
+| `dropNextReply()`                                 | the next update runs, and its reply is lost                                                                                                                    | `outcome_unknown`, `mayHaveExecuted: true`; never run twice                                                  |
+| `refuseNext(status, times = 1)`                   | the next `times` canister requests (queries or calls) get HTTP `status` (400 to 599) before any canister sees them                                             | `refuseNext(429)`: one re-send; `refuseNext(429, 3)`: `not_delivered`                                        |
+| `refuseNext(status, { method, canister, times })` | the same, aimed: only the queries and calls that name `method` and are addressed to `canister` (each when given) are refused; every other request goes through | `refuseNext(429, { method: "icrc1_transfer" })`: the transfer is throttled, the reads around it are answered |
+
+The aimed form of `refuseNext` matches a query and a replicated call of the
+same method alike. `canister` is the canister a request names (`aaaaa-aa` for a
+call to the management canister), and need not be mocked: a gateway refuses a
+request for a canister that does not exist. `times` (default 1) counts matching
+requests, each re-send included. The status and `read_state` requests an agent
+makes on its own never match, and a request that several refusals match is
+refused by the one armed first.
+
+`dropNextReply` keeps its reply lost whenever the same request is asked again,
+so a test cannot run the update twice by accident. The client does not re-send
+after it: it cannot know that is safe.
+
+```ts
+import { principal } from "@candid-core/schema"
+import { createTestClient } from "@ic-reactor/core/testing"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+const arg: TransferArg = {
+  to: { owner: principal("aaaaa-aa"), subaccount: null },
+  amount: 100n,
+  fee: null,
+  memo: null,
+  from_subaccount: null,
+  created_at_time: null,
+}
+
+describe("a transfer under failure", () => {
+  let test: ReturnType<typeof createTestClient>
+
+  beforeEach(() => {
+    test = createTestClient()
+    test.mock<Actor>(actor, LEDGER, {
+      icrc1_transfer: (_arg, { caller }) =>
+        caller === principal("aaaaa-aa")
+          ? test.reject(4, "no funds")
+          : { tag: "Ok", value: 1n },
+    })
+  })
+  afterEach(() => test.client.dispose())
+
+  const sends = () =>
+    test.requests.filter(
+      (r) => r.endpoint === "call" && r.methodName === "icrc1_transfer"
+    )
+
+  it("loses a reply: the outcome is unknown", async () => {
+    const ledger = test.client.canister<Actor>(actor, { id: LEDGER })
+    test.dropNextReply()
+
+    await expect(ledger.icrc1_transfer(arg)).rejects.toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+    })
+    expect(sends()).toHaveLength(1) // the client never sent it again
+    expect(sends()[0]?.dropped).toBe(true)
+  })
+
+  it("sends again once after a 429, and it goes through", async () => {
+    const ledger = test.client.canister<Actor>(actor, { id: LEDGER })
+    test.refuseNext(429)
+
+    expect(await ledger.icrc1_transfer(arg)).toBe(1n)
+    expect(sends()).toHaveLength(2)
+    expect(sends()[0]?.refused).toContain("429")
+    expect(sends()[1]?.refused).toBeUndefined()
+  })
+
+  it("gives up after three 429s: not delivered, certainly not run", async () => {
+    const ledger = test.client.canister<Actor>(actor, { id: LEDGER })
+    test.refuseNext(429, 3)
+
+    await expect(ledger.icrc1_transfer(arg)).rejects.toMatchObject({
+      kind: "not_delivered",
+      httpStatus: 429,
+      mayHaveExecuted: false,
+    })
+    expect(sends()).toHaveLength(3) // the first send and the two re-sends the client allows itself
+  })
+})
+```
+
+The client waits 300 ms and then 600 ms before the re-sends, so the last two
+tests take about a second.
+
+## Sign-in
+
+`auth` is the sign-in the client calls as. It has the surface of an
+`@icp-sdk/auth` 10 `AuthClient`, driven by calls instead of an identity
+provider, plus the controls a test needs to play out what a user does. Every
+change is synchronous and reaches the client's listeners once, so a test
+reads the result without waiting.
+
+| Call                            | Effect                                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `auth.signOut()`                | nobody is signed in. A later `signIn()` returns to the same identity                                          |
+| `auth.signIn(identityOrSeed?)`  | signs in as that identity, or as the one it last signed in as                                                 |
+| `auth.switchTo(identityOrSeed)` | signs in as another identity in one step, with no signed-out state in between: a user picking another account |
+| `auth.expire()`                 | the session of the last identity ends: status `expired`                                                       |
+| `auth.elsewhere()`              | that identity is signed in on this domain but not held by this origin: status `signed-in-elsewhere`           |
+
+`getPrincipal()`, `getStatus()` and `getIdentity()` read the current state.
+The client owns the auth once anything has asked it who the caller is, and
+disposes it with itself.
+
+```ts
+import { createTestClient } from "@ic-reactor/core/testing"
+import { expect, it } from "vitest"
+
+it("follows the sign-in", () => {
+  const { client, auth } = createTestClient({ identity: 1 })
+  const alice = client.caller()
+  expect(client.authState().status).toBe("signed-in")
+
+  auth.switchTo(2)
+  expect(client.caller()).not.toBe(alice)
+
+  auth.expire() // an expired session calls as the anonymous principal
+  expect(client.authState().status).toBe("expired")
+  expect(client.caller()).toBe("2vxsx-fae")
+
+  auth.signOut()
+  expect(client.authState().status).toBe("anonymous")
+  client.dispose()
+})
+```
+
+## Asserting on requests
+
+`requests` is the log of what the replica received, in order. The same array
+grows, so copy it (`[...requests]`) to keep one moment of it. An entry has:
+
+| Field                 | Meaning                                                                                                                       |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `endpoint`            | `"status"`, `"query"`, `"call"` or `"read_state"`                                                                             |
+| `canisterId`          | the canister the request was addressed to                                                                                     |
+| `effectiveCanisterId` | the canister it was routed by: differs for a call to `aaaaa-aa`                                                               |
+| `methodName`          | the method a `query` or `call` named                                                                                          |
+| `caller`              | the principal the request came from, after the replica checked its signature                                                  |
+| `refused`             | why the replica answered before any canister saw the request: a bad signature, delegation or target, or a `refuseNext` status |
+| `dropped`             | `true` when `dropNextReply()` lost the reply                                                                                  |
+
+Use it to count sends (an update must not run twice), to check that a write was
+refused before sending (no `"call"` entry), and to check who signed.
+
+## Testing React
+
+Give the provider the test client as a borrowed one, `client={() => test.client}`,
+and dispose it yourself after the test. See
+[`@ic-reactor/react`](/v4/packages/react/) for what the provider owns.
+
+```tsx
+// @vitest-environment jsdom
+import { principal } from "@candid-core/schema"
+import { createTestClient } from "@ic-reactor/core/testing"
+import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { act, cleanup, render, screen } from "@testing-library/react"
+import { afterEach, expect, it } from "vitest"
+import { actor, type Actor } from "./generated/icrc1"
+
+const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+function MyBalance() {
+  const client = useClient()
+  const { principal: caller } = useAuth()
+  const ledger = client.canister<Actor>(actor, { id: LEDGER })
+  const balance = useQuery(
+    client.queryOptions(ledger, "icrc1_balance_of", {
+      owner: principal(caller),
+      subaccount: null,
+    })
+  )
+  return (
+    <p>{balance.data === undefined ? "loading" : `balance ${balance.data}`}</p>
+  )
+}
+
+afterEach(cleanup)
+
+it("shows each caller's own balance", async () => {
+  const test = createTestClient({ identity: 1 })
+  const alice = principal(test.auth.getPrincipal()!.toText())
+  test.mock<Actor>(actor, LEDGER, {
+    icrc1_balance_of: ({ owner }) => (owner === alice ? 7n : 0n),
+  })
+
+  render(
+    <ReactorProvider client={() => test.client}>
+      <MyBalance />
+    </ReactorProvider>
+  )
+  await screen.findByText("balance 7")
+
+  await act(async () => {
+    test.auth.switchTo(2) // another account: the keys move, never another's data
+  })
+  await screen.findByText("balance 0")
+
+  test.client.dispose()
+})
+```
+
+After the switch the component reads the new caller's key, which is empty until
+it loads, so the test never sees the first caller's `7` under the second.
+
+## Examples
+
+The examples ship their test kits. Read them for larger setups.
+
+- [ICRC-1 ledger](/v4/examples/icrc-ledger/):
+  [`src/sandbox.ts`](https://github.com/b3pay/ic-reactor/blob/v4/examples/icrc-ledger/src/sandbox.ts)
+  arms each failure above, and
+  [`sandbox.test.ts`](https://github.com/b3pay/ic-reactor/blob/v4/examples/icrc-ledger/src/sandbox.test.ts)
+  asserts the re-sends and the unknown outcome.
+- [Vite wallet](/v4/examples/vite-wallet/):
+  [`src/test/test-wallet.tsx`](https://github.com/b3pay/ic-reactor/blob/v4/examples/vite-wallet/src/test/test-wallet.tsx)
+  renders components in a provider over a test client with `network: "env"`
+  and an `ic_env` cookie written as the Vite plugin writes it.
+- [Node agent tool](/v4/examples/node-agent-tool/):
+  [`src/test-kit.ts`](https://github.com/b3pay/ic-reactor/blob/v4/examples/node-agent-tool/src/test-kit.ts)
+  runs a command-line tool against the in-memory replica.

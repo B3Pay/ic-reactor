@@ -1,0 +1,170 @@
+---
+title: "@ic-reactor/react"
+description: "What @ic-reactor/react exports, its peers, and how to install it"
+---
+
+`@ic-reactor/react` is the React binding of ic-reactor 4: three
+`"use client"` exports over a client made by
+[`@ic-reactor/core`](/v4/packages/core/). There is no hook that wraps
+`useQuery` or `useMutation`. You read and write canisters with TanStack Query's
+own hooks and the options the client builds, `client.queryOptions(...)` and
+`client.mutationOptions(...)`.
+
+The package never re-exports `@ic-reactor/core`, so every name has one import
+path.
+
+## Install
+
+```sh
+npm install @ic-reactor/core@beta @ic-reactor/react@beta @tanstack/react-query
+npm install @icp-sdk/core @tanstack/query-core
+npm install --save-exact @candid-core/schema@0.3.0-beta.1
+npm install @icp-sdk/auth   # for Internet Identity
+```
+
+ic-reactor 4 is published under npm's `beta` dist-tag, and `latest` is still
+3.x until 4.0 GA. The second and third lines are peers of `@ic-reactor/core`;
+see its [package page](/v4/packages/core/). For a Vite app, see also
+[the Vite plugin](/v4/packages/vite-plugin/).
+
+Peers of this package:
+
+| Peer                    | Range                                                         |
+| ----------------------- | ------------------------------------------------------------- |
+| `@ic-reactor/core`      | exactly this package's version: the two are released together |
+| `@tanstack/react-query` | `^5.90.2`                                                     |
+| `react`                 | `>=18.0.0`                                                    |
+
+Node `>=18`.
+
+## Exports
+
+The entry has four names. The export budget allows five.
+
+| Export                 | What it is                                                               |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `ReactorProvider`      | Gives a tree one client, and TanStack Query that client's `QueryClient`. |
+| `useClient`            | The client of the nearest provider, for the caller this render shows.    |
+| `useAuth`              | Who calls (`status`, `principal`), with `signIn` and `signOut`.          |
+| `ReactorProviderProps` | A type: `{ client: () => Client; children: ReactNode }`.                 |
+
+Nothing else is importable: the only subpaths are `.` and `./package.json`.
+`useQuery`, `useMutation`, `useSuspenseQuery`, `skipToken`, `dehydrate` and
+`HydrationBoundary` come from `@tanstack/react-query`, and `principal` from
+`@candid-core/schema`.
+
+### ReactorProvider
+
+```ts nocheck
+interface ReactorProviderProps {
+  readonly client: () => Client
+  readonly children: ReactNode
+}
+```
+
+`ReactorProvider` takes a factory, not a client, and calls it once for each
+mounted provider. It renders TanStack's `QueryClientProvider` with
+`client.queryClient`. When it unmounts, it disposes the client only if that
+factory call created it:
+
+- **The provider owns the client.** A factory that creates it,
+  `client={() => createClient({ ... })}`, gives each mounted provider a client
+  of its own, and the provider disposes it when it unmounts. Use this in an app
+  that renders on a server: the factory runs once per request.
+- **The app owns the client.** A client created at module scope, one per tab
+  and used outside React too, is handed over as `client={() => client}`. The
+  provider borrows it and never disposes it.
+
+```tsx
+"use client"
+
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider } from "@ic-reactor/react"
+import { AuthClient } from "@icp-sdk/auth/client"
+import type { ReactNode } from "react"
+
+export function Providers({ children }: { children: ReactNode }) {
+  return (
+    <ReactorProvider
+      client={() =>
+        createClient({ network: "ic", auth: () => new AuthClient() })
+      }
+    >
+      {children}
+    </ReactorProvider>
+  )
+}
+```
+
+Who owns a client follows from when it was created, not from where the factory
+is written. A getter such as `client ??= createClient(...)` makes the first
+provider that calls it the owner. Create a shared client eagerly instead. A
+Server Component cannot pass the factory across the client boundary, so in
+Next.js the provider sits in a client module that the layout renders: see
+[SSR and hydration](/v4/guides/ssr/).
+
+### useClient
+
+`useClient()` returns the client of the nearest provider. It throws outside a
+provider. Call it in the body of each component that builds keys or read
+options, on every render:
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function Fee({ id }: { id: string }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, { id })
+  const fee = useQuery(client.queryOptions(ledger, "icrc1_fee"))
+  return <span>{fee.data?.toString() ?? "…"}</span>
+}
+```
+
+It follows the client's caller, so a component that calls it renders again on
+a sign-in, a switch of account and a sign-out, and builds the new caller's
+keys. A change of status that leaves the caller as it is renders nothing.
+While a page hydrates in a browser that holds a session, it returns a view for
+the anonymous caller, so do not keep its result past its render. See
+[SSR and hydration](/v4/guides/ssr/).
+
+### useAuth
+
+`useAuth()` returns `{ status, principal, signIn, signOut }`: the client's
+`AuthState` with sign-in and sign-out forwarded to the client. It renders a
+component once for each change of status or principal. It is `"anonymous"` on
+a server and during a hydrating render. See [Auth](/v4/guides/auth/).
+
+## Life of the client
+
+- **StrictMode.** The development double-mount does not dispose a client in
+  use: disposal is scheduled for the next macrotask, and the second mount
+  cancels it.
+- **A render React throws away.** React runs no cleanup for a render it drops
+  before committing it, such as a provider's first render below a Suspense
+  boundary that suspends. A client the factory built for it is disposed once
+  that render's state is garbage collected (through a `FinalizationRegistry`,
+  in a browser).
+- **Replacing the client.** Only the factory of the first render is used.
+  Passing another function later does not rebuild the client. To replace the
+  client, give the provider another `key`.
+- **Activity.** If React shows a hidden `Activity` again after the client the
+  provider owns was disposed, the provider builds another one with the same
+  factory, and it starts with an empty cache. To keep the cache across hiding,
+  render the provider above the `Activity`, or give it a client the app owns.
+
+## Where to go next
+
+- [Auth](/v4/guides/auth/): `useAuth`, sign-in and caller changes.
+- [Reads](/v4/guides/reads/) and [Writes](/v4/guides/writes/): the options the
+  client builds for TanStack Query.
+- [SSR and hydration](/v4/guides/ssr/): one client per request, and the limits
+  of a signed-in reload.
+- [Testing](/v4/guides/testing/): a provider with a borrowed test client.
+- [Examples](/v4/examples/): the Vite wallet and the Next.js app.
+
+The guide for both packages is `llms.txt`, shipped in
+`node_modules/@ic-reactor/core/llms.txt`; the React package's own `llms.txt`
+points to it. The released 3.x package is documented on
+[Migrating from 3.x](/v4/migrating-from-3/).

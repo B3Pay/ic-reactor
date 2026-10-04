@@ -1,0 +1,545 @@
+---
+title: "Migrating from 3.x"
+description: "What changed in ic-reactor 4, the 34 names it removes with what to use instead, and before and after recipes for the common ones"
+---
+
+ic-reactor 4 is a smaller package than 3.x. It does not wrap each canister in a
+typed handle or generate hooks for it. A tool, `candid-core-cli gen`, writes a
+TypeScript module from your `.did` file, and `@ic-reactor/core` calls
+canisters through that module. The React hooks are TanStack Query's own: the
+client builds their options.
+
+The 3.x line is documented at
+[ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/). It gets
+security fixes only until 4.0 is released.
+
+## What changed in 4
+
+- **One generated module.** `npx candid-core-cli gen icrc1.did -o src/generated`
+  writes `src/generated/icrc1.ts`, with a type and a schema for each Candid
+  type, plus the service's `actor` schema and its `Actor` type. It replaces the
+  `idlFactory` and `_SERVICE` declarations. Never edit it. See
+  [Getting started](/v4/guides/getting-started/).
+- **One client.** `createClient` takes a network and either an identity or an
+  auth, and owns its `QueryClient`. `client.canister<Actor>(actor, { id })`
+  gives an object with one async method per Candid method. See
+  [The client](/v4/guides/client/).
+- **TanStack Query for React.** `client.queryOptions` and
+  `client.mutationOptions` give the options for `useQuery`, `useMutation` and
+  the rest. `@ic-reactor/react` exports `ReactorProvider`, `useClient` and
+  `useAuth` (and the type of the provider's props), and nothing else. See
+  [Reads](/v4/guides/reads/) and [Writes](/v4/guides/writes/).
+- **One value shape.** Candid values come back as TypeScript values:
+  `bigint` for a `nat`, text for a principal, `T | null` for an `opt`,
+  `{ tag, value }` for a variant. There is no second "display" form. See
+  [Values and units](/v4/guides/values/).
+- **One error type.** Every rejection is a `ReactorError` with a `kind` and a
+  `mayHaveExecuted` flag. See [Errors](/v4/guides/errors/).
+- **Auth is an interface.** The client accepts any `AuthLike`, and
+  `@icp-sdk/auth` 10's `AuthClient` is one as it is. See [Auth](/v4/guides/auth/).
+- **Fewer packages.** `@ic-reactor/parser`, `@ic-reactor/codegen` and
+  `@ic-reactor/cli` are replaced by `candid-core-cli gen`. `@ic-reactor/candid`
+  stays at 3.x. The Vite plugin, `icReactor` in `@ic-reactor/vite-plugin`, is
+  kept and now runs `candid-core-cli` for you. See
+  [The Vite plugin](/v4/guides/vite-plugin/).
+
+ic-reactor 4 is in beta. `latest` on npm is still 3.x, so install the 4 line
+as `@ic-reactor/core@beta` and `@ic-reactor/react@beta`.
+
+### Moving an app
+
+1. Install the 4 packages and generate the module for each `.did` file
+   ([Getting started](/v4/guides/getting-started/)).
+2. Build one client for the tab, or one per request on a server
+   ([The client](/v4/guides/client/)).
+3. Replace each canister object with `client.canister<Actor>(actor, { id })`,
+   and each hook of the old API with a TanStack hook over `client.queryOptions`
+   or `client.mutationOptions`.
+4. Replace the error checks with `isReactorError` and `kind`, and decide for
+   each write what to do when `mayHaveExecuted` is `true`.
+5. Replace the sign-in code with `auth: () => new AuthClient()` and `useAuth`.
+6. Replace amount formatting with `formatUnits` and `parseUnits`.
+7. Search your code for the names in the table below. None of them exists in 4.
+
+## Removed in 4.0 → use X
+
+The table lists the 34 names that 3.x apps import from `@ic-reactor/core` and
+`@ic-reactor/react`, in the order of the repository's
+`scripts/removed-v3-names.js`. A name that is not in the table is not in 4
+either, unless a page of this site names it. The recipes below the table show
+the common ones as before and after.
+
+| 3.x name                             | Use in 4                                                                                                                                                                                                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ClientManager`                      | `createClient({ network, identity \| auth })`                                                                                                                                                                                                                       |
+| `formatTokenAmount`                  | `formatUnits(value, decimals, { maxFractionDigits })`                                                                                                                                                                                                               |
+| `AuthenticationManager`              | `auth: () => new AuthClient()`, with `AuthClient` from `@icp-sdk/auth/client` (version 10), and `useAuth()` to read it                                                                                                                                              |
+| `createAuthHooks`                    | `useAuth()`                                                                                                                                                                                                                                                         |
+| `createMutation`                     | `useMutation(client.mutationOptions(canister, method))`                                                                                                                                                                                                             |
+| `createQuery`                        | `useQuery(client.queryOptions(canister, method, vars))`; outside React, `client.queryClient.fetchQuery(client.queryOptions(...))`                                                                                                                                   |
+| `createActorHooks`                   | `useClient()`, then `client.canister<Actor>(actor, { id })` and the TanStack hooks                                                                                                                                                                                  |
+| `createSuspenseQuery`                | `useSuspenseQuery(suspense(client.queryOptions(...)))`, where `suspense` is the small cast shown in the [recipe](#recipe-suspense-reads)                                                                                                                            |
+| `DisplayReactor`                     | Nothing: values already have one shape. Use `formatUnits` and `parseUnits` for amounts                                                                                                                                                                              |
+| `Reactor`                            | `client.canister<Actor>(actor, { id })`                                                                                                                                                                                                                             |
+| `createReactorProvider`              | `<ReactorProvider client={() => createClient(...)}>` and `useClient()`                                                                                                                                                                                              |
+| `parseTokenAmount`                   | `parseUnits(text, decimals)`                                                                                                                                                                                                                                        |
+| `defineReactor`                      | `createClient`, then `client.canister<Actor>(actor, { id })`                                                                                                                                                                                                        |
+| `isPrincipalText`                    | `isPrincipal(text)` from `@candid-core/schema`                                                                                                                                                                                                                      |
+| `generateKey`                        | `client.queryKey(canister, method?, vars?)`                                                                                                                                                                                                                         |
+| `createQueryFactory`                 | `client.queryOptions(canister, method, vars)`, called where you need the options                                                                                                                                                                                    |
+| `CanisterError`                      | `ReactorError` with `kind: "canister_err"` and the typed `err`. `ReactorError` is a type, not a class: there is no `instanceof`                                                                                                                                     |
+| `createSuspenseQueryFactory`         | As `createSuspenseQuery`                                                                                                                                                                                                                                            |
+| `isCanisterError`                    | `isReactorError(error) && error.kind === "canister_err"`                                                                                                                                                                                                            |
+| `createInfiniteQuery`                | `useInfiniteQuery` with a key that extends `client.queryKey(...)`, and pages fetched through `client.queryOptions(...)`, which refuses a read for a caller that is not the live one: see the infinite queries recipe on [Reads](/v4/guides/reads/#infinite-queries) |
+| `DisplayOf`                          | Nothing: there is one value shape                                                                                                                                                                                                                                   |
+| `ReactorArgs`                        | `Parameters<Actor["method"]>`, with the generated `Actor`                                                                                                                                                                                                           |
+| `identityAttributeKeys`              | `scopedKeys({ openIdProvider, keys })` from `@icp-sdk/auth/client`. For an issuer that is not Google, Apple or Microsoft, write the string `openid:<issuer>:<key>` yourself                                                                                         |
+| `IdentityAttributeOpenIdProvider`    | `OpenIdProvider` from `@icp-sdk/auth/client`, which is `"google" \| "apple" \| "microsoft"`. A custom issuer is not a value of it                                                                                                                                   |
+| `IdentityAttributesManager`          | `authClient.requestAttributes({ keys, nonce })`, then decode `data`: see [Auth](/v4/guides/auth/#identity-attributes)                                                                                                                                               |
+| `createIdentityAttributeHooks`       | As `IdentityAttributesManager`                                                                                                                                                                                                                                      |
+| `skipToken`                          | `skipToken` from `@tanstack/react-query`. `@ic-reactor/react` no longer exports it                                                                                                                                                                                  |
+| `reactorRetry`                       | Built in: `client.queryOptions` sets `retry`, and the client's `QueryClient` has the same default. Do not set your own                                                                                                                                              |
+| `ReactorArgsOf`                      | `Parameters<Actor[M]>`, where `M` is a method name of `Actor`                                                                                                                                                                                                       |
+| `defineDisplayReactor`               | `createClient`, then `client.canister<Actor>(actor, { id })`                                                                                                                                                                                                        |
+| `createSuspenseInfiniteQueryFactory` | `useSuspenseInfiniteQuery` with a key that extends `client.queryKey(...)`, as for `createInfiniteQuery`                                                                                                                                                             |
+| `isCallError`                        | `isReactorError(error) && error.kind !== "canister_err"`                                                                                                                                                                                                            |
+| `ReactorErrorOf`                     | `ReactorError<E>`, where `E` is the generated error type, such as `ReactorError<TransferError>`                                                                                                                                                                     |
+| `jsonToString`                       | `JSON.stringify` with a replacer that writes a `bigint` as text. Principals are text already. A cache saved with `dehydrate` keeps `bigint` and `Uint8Array` values without a helper                                                                                |
+
+### Recipe: ClientManager and defineReactor
+
+3.x built a `QueryClient`, a `ClientManager` and a `Reactor` for each canister,
+by hand or in one call with `defineReactor`. In 4 you create one client, then
+ask it for each canister.
+
+```ts nocheck
+// 3.x: src/reactor.ts
+import { defineReactor } from "@ic-reactor/react"
+import { canisterId, idlFactory, type _SERVICE } from "./declarations/ledger"
+
+export const {
+  reactor: ledger,
+  useActorQuery,
+  useActorMutation,
+  useAuth,
+} = defineReactor<_SERVICE>({ name: "ledger", idlFactory, canisterId })
+```
+
+```ts
+// 4: src/ledger.ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/icrc1"
+
+export const client = createClient({ network: "ic", identity: "anonymous" })
+export const ledger = client.canister<Actor>(actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+```
+
+`identity: "anonymous"` makes a read-only client. For an app that signs users
+in, pass `auth` instead: see the [auth recipe](#recipe-sign-in-and-useauth). A
+`QueryClient` is no longer yours to build: it is `client.queryClient`. On a
+server, build the client inside the request, not at module scope.
+
+Direct calls change in the same way. 3.x went through the reactor's
+`callMethod` and `fetchQuery`. In 4 the canister object has one method per
+Candid method, and a cached read goes through the client's `QueryClient`:
+
+```ts
+import { principal } from "@candid-core/schema"
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/icrc1"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+const ledger = client.canister<Actor>(actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+const account = { owner: principal("aaaaa-aa"), subaccount: null }
+
+// A direct call: never cached.
+const balance = await ledger.icrc1_balance_of(account)
+
+// A cached read, shared with the hooks.
+const cached = await client.queryClient.fetchQuery(
+  client.queryOptions(ledger, "icrc1_balance_of", account)
+)
+console.log(balance, cached)
+```
+
+### Recipe: hooks for a canister
+
+`createActorHooks`, `createQuery` and `createMutation` made hooks that knew one
+canister. In 4 the component asks for the client, builds the options, and
+passes them to TanStack's hooks. The variables are one value: nothing for a
+method with no arguments, the value for one, a tuple for more.
+
+```tsx nocheck
+// 3.x
+const { data } = useActorQuery({
+  functionName: "icrc1_balance_of",
+  args: owner ? [{ owner, subaccount: [] }] : skipToken,
+})
+const send = useActorMutation({ functionName: "icrc1_transfer" })
+send.mutate([arg])
+```
+
+```tsx
+// 4
+import type { Principal } from "@candid-core/schema"
+import { formatUnits } from "@ic-reactor/core"
+import { useClient } from "@ic-reactor/react"
+import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+export function Balance({ owner }: { owner: Principal | undefined }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const balance = useQuery(
+    client.queryOptions(
+      ledger,
+      "icrc1_balance_of",
+      owner ? { owner, subaccount: null } : skipToken
+    )
+  )
+  return (
+    <p>{balance.data === undefined ? "…" : formatUnits(balance.data, 8)}</p>
+  )
+}
+
+export function Send({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  return (
+    <button disabled={transfer.isPending} onClick={() => transfer.mutate(arg)}>
+      Send
+    </button>
+  )
+}
+```
+
+Call `useClient()` in the body of every component that builds options, on
+every render. Do not keep its result in state or a ref: the client it returns
+follows the signed-in caller. See [SSR and hydration](/v4/guides/ssr/) for why.
+The mutation invalidates the canister's reads by itself, so the
+`invalidateQueries` option of the 3.x mutation hook is not needed. To refresh
+other reads, the `invalidates` option replaces that default with the reads you
+name: see [Writes](/v4/guides/writes/#what-a-write-refreshes).
+
+### Recipe: suspense reads
+
+`createSuspenseQuery`, `createSuspenseQueryFactory` and the hook
+`useActorSuspenseQuery` become `useSuspenseQuery`. One thing needs care.
+`queryOptions` can return `skipToken` as the query function, and `useSuspenseQuery` refuses a
+function type that includes it, so the options do not type-check as they are.
+A read built without `skipToken` never has it, so a cast that removes it from
+the type is safe:
+
+```tsx
+import { formatUnits } from "@ic-reactor/core"
+import { useClient } from "@ic-reactor/react"
+import { useSuspenseQuery, type skipToken } from "@tanstack/react-query"
+import { Suspense } from "react"
+import { actor, type Actor } from "./generated/icrc1"
+
+// Never pass `skipToken` to a suspense read.
+const suspense = <T extends { queryFn?: unknown }>(options: T) =>
+  options as T & { queryFn: Exclude<T["queryFn"], typeof skipToken> }
+
+function Fee() {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const fee = useSuspenseQuery(
+    suspense(client.queryOptions(ledger, "icrc1_fee"))
+  )
+  return <p>Fee: {formatUnits(fee.data, 8)}</p>
+}
+
+export function Page() {
+  return (
+    <Suspense fallback={<p>Loading…</p>}>
+      <Fee />
+    </Suspense>
+  )
+}
+```
+
+Put a `Suspense` boundary above every `useSuspenseQuery` reader. Without one,
+a server-rendered page can lose its server HTML or render nothing when a
+signed-in user reloads. See [SSR and hydration](/v4/guides/ssr/).
+
+### Recipe: sign in and useAuth
+
+3.x built an `AuthenticationManager` and turned it into hooks, or got them from
+`defineReactor`. In 4, pass an `auth` factory to `createClient`. The client
+calls it once, in a browser, the first time something needs it. `AuthClient`
+from `@icp-sdk/auth` 10 fits as it is, with no adapter. Read the session with
+`useAuth`.
+
+```tsx nocheck
+// 3.x
+const { login, logout, isAuthenticated, principal } = useAuth()
+// principal: Principal | null
+```
+
+```tsx
+// 4
+import { createClient } from "@ic-reactor/core"
+import { useAuth } from "@ic-reactor/react"
+import { AuthClient } from "@icp-sdk/auth/client"
+
+export const client = createClient({
+  network: "ic",
+  auth: () => new AuthClient(),
+})
+
+export function SessionButton() {
+  const { status, principal, signIn, signOut } = useAuth()
+  return status === "signed-in" ? (
+    <button onClick={() => signOut().catch(console.error)}>
+      Sign out {principal}
+    </button>
+  ) : (
+    <button onClick={() => signIn().catch(console.error)}>Sign in</button>
+  )
+}
+```
+
+The names change: `login` is `signIn`, `logout` is `signOut`,
+`isAuthenticated` is `status === "signed-in"`, and `principal` is text, not a
+`Principal` object. `status` is `"anonymous"`, `"signed-in"`, `"expired"` or
+`"signed-in-elsewhere"`. The separate hooks for the agent state and the user
+principal are gone: `useAuth` has both. See [Auth](/v4/guides/auth/).
+
+### Recipe: the provider
+
+`createReactorProvider` built the reactors once for each mounted tree and
+handed them out through `useReactor()`. In 4, `ReactorProvider` takes a factory
+that returns a client, and `useClient()` returns it. Because it is a function,
+the provider belongs in a `"use client"` module when a server renders your
+layout.
+
+```tsx
+// 4: src/providers.tsx
+"use client"
+
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider } from "@ic-reactor/react"
+import { AuthClient } from "@icp-sdk/auth/client"
+import type { ReactNode } from "react"
+
+export function Providers({ children }: { children: ReactNode }) {
+  return (
+    <ReactorProvider
+      client={() =>
+        createClient({ network: "ic", auth: () => new AuthClient() })
+      }
+    >
+      {children}
+    </ReactorProvider>
+  )
+}
+```
+
+A factory that creates the client gives the provider the client, and the
+provider disposes it when it unmounts. That is the right shape for a server:
+the factory runs once for each request. For a client shared with code outside
+React, create it at module scope and pass `client={() => client}`. The
+provider then only borrows it. See [The client](/v4/guides/client/) and
+[`@ic-reactor/react`](/v4/packages/react/).
+
+### Recipe: amounts
+
+Both helpers keep exact digits and never go through `Number`. They take the
+token's `decimals`, which a ledger's `icrc1_decimals` returns.
+
+```ts nocheck
+// 3.x
+formatTokenAmount(150_000_000n, 8) // "1.5"
+parseTokenAmount("1.5", 8) // 150000000n
+```
+
+```ts
+// 4
+import { formatUnits, parseUnits } from "@ic-reactor/core"
+
+formatUnits(150_000_000n, 8) // "1.5"
+formatUnits(123_456_789n, 8, { maxFractionDigits: 2 }) // "1.23"
+parseUnits("1.5", 8) // 150000000n
+```
+
+`formatUnits` drops trailing zeros and truncates toward zero, never up.
+`parseUnits` throws a `TypeError` for text that is not a plain decimal, such as
+`"1,5"` or `"1e3"`, and a `RangeError` for more fraction digits than
+`decimals` or a negative amount. To group digits for a locale, pass the result
+to `Intl.NumberFormat`. See [Values and units](/v4/guides/values/).
+
+### Recipe: errors
+
+3.x had two classes for a failed call: `CanisterError` when the canister
+returned `Err`, and `CallError` for everything else. 4 has one `ReactorError`
+type, and `kind` tells them apart. `ReactorError` is a type, so you cannot use
+`instanceof`: test with `isReactorError`.
+
+```ts nocheck
+// 3.x
+if (isCanisterError(error)) return `Refused: ${error.code}`
+if (isCallError(error)) return "The call failed"
+```
+
+```ts
+// 4
+import type { Canister } from "@ic-reactor/core"
+import { isReactorError } from "@ic-reactor/core"
+import type { Actor, TransferArg } from "./generated/icrc1"
+
+export async function send(ledger: Canister<Actor>, arg: TransferArg) {
+  try {
+    await ledger.icrc1_transfer(arg)
+    return "Sent"
+  } catch (error) {
+    if (!isReactorError(error)) throw error
+    if (error.kind === "canister_err") return "Refused by the ledger"
+    if (error.mayHaveExecuted) return "Unknown outcome: read the balance again"
+    return "Not sent"
+  }
+}
+```
+
+`isReactorError(error) && error.kind !== "canister_err"` is the 4 form of
+`isCallError`: bare `isReactorError` also matches a `canister_err`. The 3.x
+`error.code` was the variant tag of the `Err` value. In 4 the `Err` value is
+`error.err`, typed, and for a variant it is `{ tag, value }`. `error.code` still
+exists, but only on a few errors the client makes itself. The `error` of a
+`useMutation` or `useQuery` is typed by the method, so you can read `err`
+without a cast:
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import {
+  actor,
+  type Actor,
+  type TransferArg,
+  type TransferError,
+} from "./generated/icrc1"
+
+export function Send({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  const error = transfer.error // ReactorError<TransferError> | null
+  const tag: TransferError["tag"] | undefined =
+    error?.kind === "canister_err" ? error.err.tag : undefined
+  return (
+    <button onClick={() => transfer.mutate(arg)}>
+      Send{tag ? `: ${tag}` : ""}
+    </button>
+  )
+}
+```
+
+See [Errors and mayHaveExecuted](/v4/guides/errors/) for every kind and what
+to do about each.
+
+### Recipe: identity attributes
+
+3.x had `identityAttributeKeys`, a manager and hooks around signed identity
+attributes. In 4 you use `@icp-sdk/auth` 10 directly: build the scoped keys
+with `scopedKeys` and call `requestAttributes` on your `AuthClient`. The client
+does not expose its auth, so keep your own reference to the `AuthClient` and
+hand it over with `auth: () => authClient`.
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { AuthClient, scopedKeys } from "@icp-sdk/auth/client"
+
+export const authClient = new AuthClient({ openIdProvider: "google" })
+export const client = createClient({ network: "ic", auth: () => authClient })
+
+// `nonce` returns the 32-byte nonce your canister issued for this request.
+export async function requestEmail(nonce: () => Promise<Uint8Array>) {
+  const keys = scopedKeys({ openIdProvider: "google", keys: ["email"] })
+  return authClient.requestAttributes({ keys, nonce })
+}
+```
+
+The result is `{ data, signature }`. The [Auth](/v4/guides/auth/) page shows
+how to decode `data`, and why the canister that issued the nonce must verify
+both before it trusts the values.
+
+### Recipe: query keys
+
+`generateKey` turned an argument list into a string for a cache key. In 4 the
+client builds the keys, and they include the caller, so one principal's data is
+never shown under another's. Never write one by hand.
+
+```ts
+import { principal } from "@candid-core/schema"
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/icrc1"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+const ledger = client.canister<Actor>(actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+const account = { owner: principal("aaaaa-aa"), subaccount: null }
+
+client.queryKey(ledger) // every read of this canister by the current caller
+client.queryKey(ledger, "icrc1_balance_of") // every read of that method
+client.queryKey(ledger, "icrc1_balance_of", account) // that read alone
+```
+
+A prefix key refetches or invalidates a group. `getQueryData` and
+`setQueryData` need the exact key. See [Reads](/v4/guides/reads/).
+
+### Recipe: types and small helpers
+
+The generated `Actor` replaces the argument and error type helpers, and the
+helpers that stay in TanStack or candid-core are imported from there:
+
+```ts
+import { isPrincipal } from "@candid-core/schema"
+import type { ReactorError } from "@ic-reactor/core"
+import { skipToken } from "@tanstack/react-query"
+import type { Actor, TransferError } from "./generated/icrc1"
+
+// The arguments of a method, as a tuple: [arg0: TransferArg].
+export type TransferArgs = Parameters<Actor["icrc1_transfer"]>
+
+// The error of a call whose canister error is TransferError.
+export type SendError = ReactorError<TransferError>
+
+// Text that may be a principal, tested before use.
+export const owner = (text: string) => (isPrincipal(text) ? text : skipToken)
+```
+
+`JSON.stringify` stands in for `jsonToString` once a replacer writes `bigint`
+as text:
+
+```ts
+export const toJson = (value: unknown) =>
+  JSON.stringify(
+    value,
+    (_key, item) => (typeof item === "bigint" ? item.toString() : item),
+    2
+  )
+```
+
+## Where to read next
+
+- [Getting started](/v4/guides/getting-started/) for the first read and write.
+- [The client](/v4/guides/client/), [Reads](/v4/guides/reads/) and
+  [Writes](/v4/guides/writes/) for what replaced the hooks.
+- [Errors and mayHaveExecuted](/v4/guides/errors/) for the error kinds.
+- [Auth](/v4/guides/auth/) for sign-in and identity attributes.
+- [SSR and hydration](/v4/guides/ssr/) for Next.js and other servers.
+- [The examples](/v4/examples/) for four complete apps written for 4.

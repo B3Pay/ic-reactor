@@ -160,6 +160,12 @@ jobs:
       - name: Docs snippet check
         run: pnpm check:snippets:docs
 
+      # The docs half of the snippet gate's own tests. It needs the examples'
+      # installs, which the Test job (where the rest of test:scripts runs)
+      # does not have, so scripts/check-snippets.test.mjs skips it there.
+      - name: Test the docs snippet gate
+        run: node --test --test-name-pattern="check:snippets --docs" scripts/check-snippets.test.mjs
+
       # `tsc` never loads a bundler, so a broken Vite/Next config type-checks
       # clean. examples/nextjs (Turbopack workspace root) and
       # examples/nextjs-app-router (Tailwind v4 PostCSS plugin) were both
@@ -208,9 +214,10 @@ jobs:
         run: pnpm test
 
       # The gates' own tests: the export budget, the trap verifier, the fault
-      # verifier, check:ai-context and check:snippets each run against
-      # repositories built for the purpose and must fail where they should.
-      # They compile against the packages built above.
+      # verifier, check:ai-context, check:snippets and the vite plugin's entry
+      # of verify:peer-floors each run against repositories built for the
+      # purpose and must fail where they should. They compile against the
+      # packages built above.
       - name: Test the gates
         run: pnpm test:scripts
 
@@ -221,11 +228,13 @@ jobs:
         run: pnpm verify:faults
 
       # Everything above runs against the lockfile, which holds the newest
-      # release of each peer. This pins core's and react's peers to the lowest
-      # versions their ranges accept and runs typecheck and tests there, in a
-      # throwaway worktree. react once declared @tanstack/react-query ^5.0.0
-      # while it did not compile below 5.89 (#475). It also compiles the
-      # declarations built above with the oldest supported TypeScript: the docs
+      # release of each peer. This pins the peers of core, react and the vite
+      # plugin to the lowest versions their ranges accept and runs typecheck and
+      # tests there, in a throwaway worktree: the vite plugin once for the floor
+      # of each Vite major its range joins (4.2.0, 5.0.0, 6.0.0, 7.0.0, 8.0.0).
+      # react once declared @tanstack/react-query ^5.0.0 while it did not
+      # compile below 5.89 (#475). It also compiles the declarations of core
+      # and react built above with the oldest supported TypeScript: the docs
       # said TypeScript 5+ while the declarations needed 5.7 (#591).
       - name: Test at the oldest supported peers and TypeScript
         run: pnpm verify:peer-floors

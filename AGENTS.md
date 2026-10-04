@@ -77,3 +77,12 @@ Its snippets import the generated modules in
 (`scripts/removed-v3-names.js`) outside a section headed "Removed in 4.0", and
 `check:snippets` compiles every `ts`/`tsx` fence of these files against the
 built packages.
+
+The hand-written docs pages (`docs/src/content/docs/`, not `libs/`) are not
+AI-context files, but `check:ai-context` holds them to the removed-names rule
+too, lets only `migrating-from-3.mdx` link `/v3/`, refuses an `@ic-reactor`
+version on a page (the site follows the branch) and any prerelease version
+that is not an exact pin of a `packages/*/package.json`, and wants each
+package's `homepage` to be its page under `/v4/packages/`.
+`pnpm check:snippets:docs` compiles the pages' fences; their fixtures are in
+`scripts/check-snippets/docs/<section>/`.

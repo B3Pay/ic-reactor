@@ -1,0 +1,151 @@
+---
+title: "@ic-reactor/core"
+description: "What @ic-reactor/core and @ic-reactor/core/testing export, their peers, and how to install them"
+---
+
+`@ic-reactor/core` is the client of ic-reactor 4. It sits on a module that
+`candid-core-cli gen` writes from a `.did` file, and it has no React in it. It
+gives you:
+
+- a client with query keys that carry the caller, TanStack Query options for
+  reads and writes, and network resolution;
+- one error type that says whether a call may have executed;
+- strict helpers for token amounts;
+- a test client over an in-memory replica, in a separate entry.
+
+It works in a browser, in Node and on a server. For React, add
+[`@ic-reactor/react`](/v4/packages/react/). For Vite, add
+[`@ic-reactor/vite-plugin`](/v4/packages/vite-plugin/).
+
+## Install
+
+```sh
+npm install @ic-reactor/core@beta @icp-sdk/core @tanstack/query-core
+npm install --save-exact @candid-core/schema@0.3.0-beta.1
+npm install @icp-sdk/auth   # for Internet Identity
+```
+
+ic-reactor 4 is published under npm's `beta` dist-tag, and `latest` is still
+3.x until 4.0 GA. Install it as `@ic-reactor/core@beta`.
+
+The generator is a separate dev dependency, pinned to the version that pairs
+with `@candid-core/schema`:
+
+```sh
+npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
+```
+
+See [Getting started](/v4/guides/getting-started/) for the first read and write.
+
+Node `>=18`.
+
+## Peers
+
+| Peer                   | Range                                                                                                      |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `@candid-core/schema`  | exactly `0.3.0-beta.1`: the module `candid-core-cli gen` writes imports it                                 |
+| `@icp-sdk/core`        | `^6.1.0`                                                                                                   |
+| `@tanstack/query-core` | `^5.62.0`                                                                                                  |
+| `@noble/curves`        | `^2.2.0`, optional: only `@ic-reactor/core/testing` signs with it, and `@icp-sdk/core` installs it already |
+
+`@icp-sdk/auth` is not a peer. Install it when users sign in with Internet
+Identity: its `AuthClient` is an `AuthLike` as it is, see
+[Auth](/v4/guides/auth/).
+
+## Exports of `@ic-reactor/core`
+
+The entry has 13 names: four at runtime and nine types. The export budget caps
+it at 13.
+
+| Export             | Kind    | What it is                                                                                                                                                                         |
+| ------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createClient`     | runtime | Builds a client from a network and a caller. See [The client](/v4/guides/client/).                                                                                                 |
+| `isReactorError`   | runtime | Tests whether a thrown value is a `ReactorError`. See [Errors](/v4/guides/errors/).                                                                                                |
+| `parseUnits`       | runtime | Text to base units: `parseUnits("1.5", 8)` is `150000000n`. See [Values and units](/v4/guides/values/).                                                                            |
+| `formatUnits`      | runtime | Base units to text, without losing digits. See [Values and units](/v4/guides/values/).                                                                                             |
+| `Client`           | type    | What `createClient` returns: `canister`, `queryOptions`, `mutationOptions`, `queryKey`, `func`, `signIn`, `signOut`, `caller`, `authState`, `subscribe`, `queryClient`, `dispose`. |
+| `ClientOptions`    | type    | The argument of `createClient`: a `network`, and exactly one of `identity` and `auth`.                                                                                             |
+| `Network`          | type    | `"ic"`, `"local"`, `"env"`, or `{ host, rootKey?, name?, fetchRootKey? }`.                                                                                                         |
+| `AuthLike`         | type    | What `auth` must be: the shape of an `@icp-sdk/auth` 10 `AuthClient`. See [Auth](/v4/guides/auth/).                                                                                |
+| `AuthState`        | type    | `{ status, principal }`: who calls now, and why.                                                                                                                                   |
+| `Canister`         | type    | What `client.canister<Actor>(actor, target)` returns: one async method per Candid method.                                                                                          |
+| `CanisterTarget`   | type    | `{ id }` or `{ name }`, each with an optional `certified`. See [Reads](/v4/guides/reads/#certified-reads).                                                                         |
+| `ReactorError`     | type    | The error every call rejects with. A type only: there is no class, so test with `isReactorError`.                                                                                  |
+| `ReactorErrorKind` | type    | The eight kinds of a `ReactorError`.                                                                                                                                               |
+
+The signatures that matter most:
+
+```ts nocheck
+function createClient(options: ClientOptions): Client
+
+type ClientOptions = {
+  readonly network: Network
+  readonly allowEnvConfig?: boolean
+  readonly fetch?: typeof globalThis.fetch
+  readonly maxDepth?: number
+} & (
+  | { readonly identity: Identity | "anonymous"; readonly auth?: never }
+  | { readonly auth: () => AuthLike; readonly identity?: never }
+)
+
+function isReactorError(error: unknown): error is ReactorError<unknown>
+
+function parseUnits(
+  text: string,
+  decimals: number,
+  options?: { signed?: boolean }
+): bigint
+function formatUnits(
+  value: bigint,
+  decimals: number,
+  options?: { maxFractionDigits?: number; minFractionDigits?: number }
+): string
+```
+
+`createClient` does no work until it is used, so the same line runs in a
+server render and in a browser. It throws a `TypeError` for options that do not
+say who calls, say it twice, or name a network or `maxDepth` it cannot use.
+
+## Exports of `@ic-reactor/core/testing`
+
+A separate entry with two names. The main entry never imports it, so none of it
+reaches an app bundle.
+
+| Export             | Kind    | What it is                                                                                    |
+| ------------------ | ------- | --------------------------------------------------------------------------------------------- |
+| `createTestClient` | runtime | A real client over an in-memory replica, with mocked canisters and a sign-in a test controls. |
+| `TestHandlers`     | type    | The handlers of a mocked canister, typed from the generated `Actor`.                          |
+
+See [Testing](/v4/guides/testing/).
+
+## What it does not export
+
+The package exports exactly these names, from exactly two subpaths: `.` and
+`./testing` (and `./package.json`). Every name has one import path, so it does
+not re-export what lives elsewhere:
+
+- `principal`, `isPrincipal` and the `Principal` type come from
+  `@candid-core/schema`.
+- `skipToken`, `useQuery`, `useMutation`, `useSuspenseQuery`,
+  `useInfiniteQuery`, `dehydrate` and `HydrationBoundary` come from TanStack
+  Query (`@tanstack/react-query`, or `@tanstack/query-core` outside React).
+
+## The guide ships in the package
+
+The tarball carries a guide for people and coding agents, written against this
+version: `node_modules/@ic-reactor/core/llms.txt`. It covers setup, values,
+reads, writes, errors and a complete React example. These pages go into more
+depth and agree with it.
+
+## Where to read next
+
+- [Getting started](/v4/guides/getting-started/): install, generate the module, first read and write.
+- [The client](/v4/guides/client/): networks, who calls, canisters, `dispose`.
+- [Values and units](/v4/guides/values/): the value shapes, `parseUnits` and `formatUnits`.
+- [Reads](/v4/guides/reads/) and [Writes](/v4/guides/writes/): the options builders, keys, invalidation and re-sends.
+- [Errors and mayHaveExecuted](/v4/guides/errors/): kinds, codes and what to do for each.
+- [Auth](/v4/guides/auth/): `AuthLike`, Internet Identity and caller changes.
+- [SSR and hydration](/v4/guides/ssr/): one client per request, dehydrate and hydrate.
+- [Testing](/v4/guides/testing/): the test client.
+
+Coming from 3.x? See [Migrating from 3.x](/v4/migrating-from-3/).

@@ -148,6 +148,8 @@ const LANGUAGES = { ts: ".ts", typescript: ".ts", tsx: ".tsx" }
 
 const SKIP_INFO = "nocheck"
 const SKIP_COMMENT = /^\s*\/\/\s*@snippet-skip\b/
+/** A first line that is a triple-slash directive, such as `/// <reference lib="..." />`. */
+const TRIPLE_SLASH = /^\s*\/\/\/\s*</
 
 /**
  * A first line naming the file the snippet is, such as `// src/reactor.ts`
@@ -243,14 +245,16 @@ const COMPILER_OPTIONS = {
  * A docs page whose examples import a library no package installs (a router,
  * a form library, `next`) needs an example app that installs it listed after
  * the runtime packages, so that `react`, `@tanstack/react-query` and the rest
- * keep the versions the packages themselves compile against. No docs page
- * needs one today; add the example app here when one does.
+ * keep the versions the packages themselves compile against.
+ * `examples/next-ssr` provides `next` for the SSR guide's App Router
+ * snippets (`next/server`, `next/headers`).
  */
 const DEPENDENCY_SOURCES = [
   "packages/react",
   "packages/core",
   "packages/vite-plugin",
   ".",
+  "examples/next-ssr",
 ]
 
 // ── Source files ─────────────────────────────────────────────────────────────
@@ -662,8 +666,15 @@ function writeSnippets(project, snippets) {
         ? `import { ${imported.join(", ")} } from "${specifier}"\n`
         : ""
 
-    writeFileSync(modulePath, prelude + snippet.code + "\n")
-    snippet.offset = prelude === "" ? 0 : 1
+    // A triple-slash directive (`/// <reference lib="es2023.intl" />`) counts
+    // only above the first statement, so a snippet that opens with one gets
+    // the import after its code instead: an import is hoisted wherever it is.
+    const directive = TRIPLE_SLASH.test(snippet.code)
+    writeFileSync(
+      modulePath,
+      directive ? snippet.code + "\n" + prelude : prelude + snippet.code + "\n"
+    )
+    snippet.offset = prelude === "" || directive ? 0 : 1
     byModule.set(modulePath, snippet)
   }
   return byModule
