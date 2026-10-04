@@ -67,12 +67,34 @@ describe("ic_env through the Vite plugin's dev server", () => {
     document.cookie = cookie!
     expect(window.location.origin).toBe(origin)
 
-    const client = createClient({ network: "env", identity: "anonymous" })
+    // Every URL the client's agent requests.
+    const requested: string[] = []
+    const client = createClient({
+      network: "env",
+      identity: "anonymous",
+      fetch: (input, init) => {
+        requested.push(input instanceof Request ? input.url : String(input))
+        return fetch(input, init)
+      },
+    })
     try {
       const hello = client.canister<Actor>(actor, { name: "hello_actor" })
       // The page's origin is the agent's host, so the call goes to the dev
       // server's /api, which forwards it to the replica.
       await expect(hello.greet("Vite")).resolves.toBe("Hello, Vite!")
+      expect(
+        requested.some(
+          (url) =>
+            url.startsWith(`${origin}/api/`) &&
+            url.includes(`/canister/${replica.canisterId}/`)
+        ),
+        "the call did not go through the dev server's /api"
+      ).toBe(true)
+      // The root key is the cookie's: the client never asks for one. A client
+      // that ignored the cookie's key would fetch it from /api/v2/status.
+      expect(requested.filter((url) => url.endsWith("/api/v2/status"))).toEqual(
+        []
+      )
       expect(client.queryKey(hello, "greet", "Vite").slice(0, 4)).toEqual([
         "ic-reactor",
         origin,

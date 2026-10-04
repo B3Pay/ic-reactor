@@ -57,16 +57,26 @@ jobs:
       - name: Setup Rust for the hello_actor canister build
         uses: ./.github/actions/setup-rust-wasm
 
-      # e2e/package.json pins the same two versions, and e2e/test.sh puts its
-      # node_modules/.bin first on PATH and refuses any other icp-cli version, so
-      # a local run uses them too. Bump both places together.
+      # e2e/package.json pins the same two versions as devDependencies, and
+      # e2e/test.sh puts e2e/node_modules/.bin first on PATH, so the suite runs
+      # those copies, here as locally. The global install is a fallback only.
+      # The next step fails when the two drift, so bump both places together.
       - name: Install icp-cli and ic-wasm
         run: npm install -g @icp-sdk/icp-cli@${{ env.ICP_CLI_VERSION }} @icp-sdk/ic-wasm@${{ env.IC_WASM_VERSION }}
 
-      - name: Confirm tool installation
+      - name: Confirm the global tools match e2e/package.json
         run: |
-          icp --version
-          ic-wasm --version
+          check() {
+            pinned="$(node -p "require('./e2e/package.json').devDependencies['$1']")"
+            actual="$($2 --version | awk '{ print $2 }')"
+            echo "$2 $actual (e2e/package.json pins $pinned)"
+            if [ "$actual" != "$pinned" ]; then
+              echo "::error::the global $2 is $actual, but e2e/package.json pins $1 $pinned. Bump ICP_CLI_VERSION / IC_WASM_VERSION and e2e/package.json together."
+              exit 1
+            fi
+          }
+          check @icp-sdk/icp-cli icp
+          check @icp-sdk/ic-wasm ic-wasm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

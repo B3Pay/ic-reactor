@@ -21,8 +21,9 @@ Then `pnpm test` in `e2e/` (or `pnpm test-e2e` at the root, or
 `bash e2e/test.sh`):
 
 1. checks that `icp` is the pinned 1.2.0 (`node_modules/.bin` comes first on
-   PATH; a global install of the same version works too, which is what CI
-   has), and that `src/declarations` matches the `.did` (`pnpm gen:check`);
+   PATH, so CI runs these copies too; a global install of the same version is
+   only a fallback, and CI checks that its global one matches the pins), and
+   that `src/declarations` matches the `.did` (`pnpm gen:check`);
 2. starts a local network (`icp network start -d`, port 8000) and deploys
    `hello_actor`;
 3. calls `greet` once with `icp` to check the deployment;

@@ -121,6 +121,12 @@ describe("calls on the local replica", () => {
         () => undefined,
         (e: unknown) => e
       )
+    // A failed verification, not just any error.
     expect(isReactorError(error)).toBe(true)
+    expect(error).toMatchObject({
+      kind: "not_delivered",
+      mayHaveExecuted: false,
+    })
+    expect((error as Error).message).toContain("could not be verified")
   })
 })

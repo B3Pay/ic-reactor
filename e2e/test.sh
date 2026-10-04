@@ -8,9 +8,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-# The icp-cli and ic-wasm this package pins come first on PATH; a global
-# install of the same version (CI's) works as well. Any other version does
-# not: the network launcher and the project format in icp.yaml are 1.2.0's.
+# The icp-cli and ic-wasm this package pins come first on PATH, in CI as
+# locally; a global install of the same version is only a fallback. Any other
+# version does not work: the network launcher and the project format in
+# icp.yaml are 1.2.0's.
 export PATH="$PWD/node_modules/.bin:$PATH"
 expected="$(node -p 'require("./package.json").devDependencies["@icp-sdk/icp-cli"]')"
 actual="$(icp --version | awk '{ print $2 }')"
