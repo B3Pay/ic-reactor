@@ -60,6 +60,51 @@ describe("conditions of a batch", () => {
       /^ {2}react-wallet × v4: 5 runs; docs\/: llms\.txt; minimal prompt/m
     )
   })
+  it("name the source of the v4 packages when v4 is in, and only then", () => {
+    const out = dryRun(["--condition", "v4", "--condition", "thin-guide"])
+    assert.match(out, /^v4 built from: .+ \(recorded in plan\.json\)$/m)
+    assert.doesNotMatch(dryRun(), /^v4 built from:/m)
+  })
+  it("plan Addendum 4's GA batch: 80 runs, 20 per cell, in a shuffle seeded 20261005", () => {
+    const out = dryRun([
+      "--n",
+      "20",
+      "--seed",
+      "20261005",
+      "--condition",
+      "v4",
+      "--condition",
+      "thin-guide",
+    ])
+    assert.match(
+      out,
+      /^runs: 80 \(20 per cell\), round-robin in a shuffle seeded 20261005;/m
+    )
+    assert.match(
+      out,
+      new RegExp(
+        "first runs, in order:\\n" +
+          [
+            "node-tool/thin-guide#1",
+            "react-wallet/thin-guide#1",
+            "node-tool/v4#1",
+            "react-wallet/v4#1",
+            "node-tool/thin-guide#2",
+            "node-tool/v4#2",
+            "react-wallet/v4#2",
+            "react-wallet/thin-guide#2",
+          ]
+            .map((run) => `  ${run}\\n`)
+            .join("")
+      )
+    )
+    for (const task of ["node-tool", "react-wallet"])
+      for (const condition of ["v4", "thin-guide"])
+        assert.match(
+          out,
+          new RegExp(`^  ${task} × ${condition}: 20 runs;`, "m")
+        )
+  })
 })
 
 describe("a new batch's --out directory", () => {

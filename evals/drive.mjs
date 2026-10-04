@@ -102,6 +102,7 @@ import {
   round,
 } from "./harness/aggregate.mjs"
 import { scanTranscript, transcriptCwd } from "./harness/leak-scan.mjs"
+import { describeV4Source, v4Source } from "./harness/ship.mjs"
 import {
   agentEnv,
   makeBatchDir,
@@ -973,6 +974,9 @@ async function main() {
     refuseUsedOutDir(outDir)
   }
   const cells = args.tasks.length * args.conditions.length
+  // Where the v4 packages under test came from (setup.mjs --v4-from): the
+  // tarballs' integrity and the guide's size and sha256, kept in plan.json.
+  const v4 = args.conditions.includes("v4") ? { v4Source: v4Source() } : {}
 
   if (args.dryRun) {
     const example = agentCommand(args, { promptFile: "<run>/prompt.md" })
@@ -987,6 +991,11 @@ async function main() {
         `run dirs: a fresh 0700 batch dir under the OS temp dir (refused if inside ${REPO}); per run work/ home/ tmp/`,
         `auth: ${args.auth === "none" ? `none found (--oauth-token-file, ${AUTH_VARS.oauth} — see \`claude setup-token\` — or ${AUTH_VARS.api_key}): a real run will refuse to start` : describeAuth(args)}; passed to the agent as exactly one variable; the value is never printed or recorded`,
         `effort: ${args.effort ?? "the CLI default"} (recorded per run; never pooled across effort levels)`,
+        ...(args.conditions.includes("v4")
+          ? [
+              `v4 built from: ${describeV4Source(v4.v4Source)} (recorded in plan.json)`,
+            ]
+          : []),
         `prompt: ${args.prompt} (${args.prompt === "explicit" ? "states the safety rules the hidden tests check" : "product and public contract only; no safety rules"}; recorded per run; never pooled across prompt variants)`,
         `preflight: before any run, one tiny call ("Reply with the single word: ok", max 1 turn) in the same isolated environment and sandbox must succeed; also runnable alone with --preflight`,
         `agent environment: PATH, HOME=<run>/home, CLAUDE_CONFIG_DIR=<run>/home/.claude, TMPDIR=<run>/tmp, and exactly one of ${AUTH_VARS.oauth} / ${AUTH_VARS.api_key} (the host's ~/.claude login is not visible)`,
@@ -1029,7 +1038,7 @@ async function main() {
   if (!args.resume) {
     writeFileSync(
       join(outDir, "plan.json"),
-      redact(JSON.stringify({ args, runs }, null, 2)) + "\n"
+      redact(JSON.stringify({ args, runs, ...v4 }, null, 2)) + "\n"
     )
   }
 
