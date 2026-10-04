@@ -192,12 +192,17 @@ export type CanisterTarget =
  * `D` is the method's data and `E` its `Err` payload. The key is tagged with
  * both, so `queryClient.getQueryData(options.queryKey)` is typed `D` and the
  * query's `error` is `ReactorError<E>`.
+ *
+ * `S` is what `queryFn` may be besides the query function: `SkipToken` when
+ * the variables the options were built from may be `skipToken`, and `never`
+ * when they cannot be, so that `useSuspenseQuery` and `useSuspenseQueries`,
+ * which take no `skipToken`, accept the options as they are.
  */
-export interface CanisterQueryOptions<D, E> {
+export interface CanisterQueryOptions<D, E, S extends SkipToken = SkipToken> {
   /** `['ic-reactor', network, caller, canisterId, method, args]`, plus `'certified'` for a certified canister. */
   readonly queryKey: DataTag<QueryKey, D, ReactorError<E>>
   /** Calls the method as the caller in the key, or rejects `cancelled` once that caller is no longer current. `skipToken` for a skipped read. */
-  readonly queryFn: ((context: QueryFunctionContext) => Promise<D>) | SkipToken
+  readonly queryFn: ((context: QueryFunctionContext) => Promise<D>) | S
   /** Retries only a failure that proves the call was not delivered, at most 3 times, never on a server. */
   readonly retry: (failureCount: number, error: ReactorError<E>) => boolean
   /** `Infinity` for an update read with `{ update: "idempotent" }`; absent otherwise. */
@@ -300,10 +305,14 @@ export interface CanisterMutationOptions<V, D, E> {
  * The arguments of `client.queryOptions()` after the method: the variables
  * (or `skipToken`), then the options. The variables may be left out for a
  * method without arguments, as in `client.queryOptions(ledger, "icrc1_fee")`.
+ * `S` is what may stand in for the variables: `SkipToken`, or `never` for
+ * variables that cannot be skipped.
  */
-export type QueryArgs<A, M extends keyof A> = [VarsOf<A, M>] extends [void]
-  ? [vars?: void | SkipToken, options?: QueryOptionsOptions]
-  : [vars: VarsOf<A, M> | SkipToken, options?: QueryOptionsOptions]
+export type QueryArgs<A, M extends keyof A, S extends SkipToken = SkipToken> = [
+  VarsOf<A, M>,
+] extends [void]
+  ? [vars?: void | S, options?: QueryOptionsOptions]
+  : [vars: VarsOf<A, M> | S, options?: QueryOptionsOptions]
 
 /** The fourth argument of `client.queryOptions()`. */
 export interface QueryOptionsOptions {

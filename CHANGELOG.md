@@ -34,6 +34,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   the next `times` queries or calls, whatever they are for. No export is
   added.
 
+#### Changed
+
+- `client.queryOptions(...)` built from variables that cannot be `skipToken`
+  (a method without arguments called without them or with `undefined`, or
+  variables whose type does not include `SkipToken`) returns options whose
+  `queryFn` type excludes `SkipToken`, so TanStack Query's `useSuspenseQuery`
+  and `useSuspenseQueries` take them without a cast (#828). Variables typed
+  `V | SkipToken`, or `skipToken` itself, keep `SkipToken` in `queryFn`'s
+  type, and the suspense hooks still refuse them. `queryOptions` has a second
+  signature for that case, and `CanisterQueryOptions` a third type parameter
+  that defaults to today's type. Types only: nothing changes at run time,
+  and no export is added. One check stops compiling: `queryFn === skipToken`
+  on options built from variables that cannot be `skipToken` is now TS2367
+  ("no overlap"); such a check was always false, so remove it.
+
 ## core, react, vite-plugin 4.0.0-beta.1
 
 The first prerelease of ic-reactor 4 (milestone 1, #790), published under

@@ -28,7 +28,6 @@ import { createTestClient } from "@ic-reactor/core/testing"
 import {
   HydrationBoundary,
   dehydrate,
-  skipToken,
   useQuery,
   useSuspenseQuery,
   type DehydratedState,
@@ -85,13 +84,6 @@ const whoamiCallers = (test: Replica): (string | undefined)[] =>
   test.requests
     .filter(({ methodName }) => methodName === "whoami")
     .map(({ caller }) => caller)
-
-/**
- * A read's options as `useSuspenseQuery` types them: its `queryFn` may not be
- * `skipToken`, which a read built with its arguments never is.
- */
-const suspense = <T extends { queryFn?: unknown }>(options: T) =>
-  options as T & { queryFn: Exclude<T["queryFn"], typeof skipToken> }
 
 const tests: ReturnType<typeof createTestClient>[] = []
 /** Clients a test made with `createClient`, disposed after it. */
@@ -1064,9 +1056,7 @@ describe("a Suspense boundary still dehydrated below a component that renders wi
       function Child() {
         const client = useClient()
         const who = client.canister<Who>(WHO, { id: CANISTER })
-        const read = useSuspenseQuery(
-          suspense(client.queryOptions(who, "whoami"))
-        )
+        const read = useSuspenseQuery(client.queryOptions(who, "whoami"))
         return <article onClick={() => clicks++}>{read.data}</article>
       }
       const server = replica({ signedIn: false })
@@ -1167,9 +1157,7 @@ describe("a read built for the caller a hydrating render shows", () => {
     function SuspenseReader() {
       const client = useClient()
       const who = client.canister<Who>(WHO, { id: CANISTER })
-      const read = useSuspenseQuery(
-        suspense(client.queryOptions(who, "whoami"))
-      )
+      const read = useSuspenseQuery(client.queryOptions(who, "whoami"))
       return <main>{read.isError ? "ERROR" : read.data}</main>
     }
     const server = replica({ signedIn: false })
@@ -1291,9 +1279,7 @@ describe("a key whose read the hydrating render built, once the caller is anonym
       function SuspenseReader() {
         const client = useClient()
         const who = client.canister<Pair>(PAIR, { id: CANISTER })
-        const read = useSuspenseQuery(
-          suspense(client.queryOptions(who, "whoami"))
-        )
+        const read = useSuspenseQuery(client.queryOptions(who, "whoami"))
         return <main>{read.isError ? "ERROR" : read.data}</main>
       }
       const wrap = (element: ReactElement) =>
@@ -1356,9 +1342,7 @@ describe("a key whose read the hydrating render built, once the caller is anonym
       function Sibling() {
         const client = useClient()
         const who = client.canister<Pair>(PAIR, { id: CANISTER })
-        const read = useSuspenseQuery(
-          suspense(client.queryOptions(who, "other"))
-        )
+        const read = useSuspenseQuery(client.queryOptions(who, "other"))
         return <aside>{read.data}</aside>
       }
       const tree = (client: Client, state: DehydratedState) => {
@@ -1521,9 +1505,7 @@ describe("a suspense read the server did not dehydrate", () => {
       const client = useClient()
       const who = client.canister<Who>(WHO, { id: CANISTER })
       return (
-        <main>
-          {useSuspenseQuery(suspense(client.queryOptions(who, "whoami"))).data}
-        </main>
+        <main>{useSuspenseQuery(client.queryOptions(who, "whoami")).data}</main>
       )
     }
     class Catch extends Component<
@@ -1622,7 +1604,7 @@ describe("a useSuspenseQuery read on a signed-in reload", () => {
   function SuspenseReader() {
     const client = useClient()
     const who = client.canister<Who>(WHO, { id: CANISTER })
-    const read = useSuspenseQuery(suspense(client.queryOptions(who, "whoami")))
+    const read = useSuspenseQuery(client.queryOptions(who, "whoami"))
     return <main>{read.data}</main>
   }
   /** {@link Counter}'s setter, for an update from outside an event. */

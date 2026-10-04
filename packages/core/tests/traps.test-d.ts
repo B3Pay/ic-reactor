@@ -62,6 +62,11 @@ import {
   MutationObserver,
   QueryObserver,
   keepPreviousData,
+  skipToken,
+  type OmitKeyof,
+  type QueryKey,
+  type QueryObserverOptions,
+  type SkipToken,
 } from "@tanstack/query-core"
 import { createClient, formatUnits, parseUnits } from "../src/index.js"
 import type { Network, ReactorError } from "../src/index.js"
@@ -195,6 +200,44 @@ void ledger.icrc1_balance_of({ owner: "aaaaa-aa", subaccount: null })
 // trap: vars-of-two-arguments-are-the-tuple
 // @ts-expect-error pair takes two arguments: pass them as the tuple [left, right]
 client.queryOptions(shapesCanister, "pair", 1n)
+
+// What `useSuspenseQuery` of `@tanstack/react-query` takes, written over
+// query-core: the options of a `QueryObserver`, without the ones a suspense
+// read has no use for, and a `queryFn` that is never `skipToken`, since a
+// suspense read cannot wait for its variables.
+type SuspenseQueryOptions<T, E, K extends QueryKey> = OmitKeyof<
+  QueryObserverOptions<T, E, T, T, K>,
+  "queryFn" | "enabled" | "throwOnError" | "placeholderData"
+> & {
+  queryFn?: Exclude<QueryObserverOptions<T, E, T, T, K>["queryFn"], SkipToken>
+}
+declare function useSuspenseQuery<T, E, K extends QueryKey>(
+  options: SuspenseQueryOptions<T, E, K>
+): { data: T }
+declare const ready: boolean
+
+// Variables that cannot be skipped give options a suspense read takes as they are.
+useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee"))
+useSuspenseQuery(client.queryOptions(ledger, "icrc1_balance_of", account))
+
+// Variables that may be skipped give options it refuses. The traps read a
+// method without arguments: under the fault of options-vars-wrong-type, which
+// widens every argument to `unknown`, the variables of a method with
+// arguments can no longer be told from `skipToken`, and one fault must remove
+// one trap. packages/react/tests/suspense.test-d.tsx refuses an `Account |
+// SkipToken` under the real `useSuspenseQuery`.
+
+const gated = client.queryOptions(
+  ledger,
+  "icrc1_fee",
+  ready ? undefined : skipToken
+)
+// trap: suspense-refuses-skippable-read
+// @ts-expect-error a suspense read cannot be skipped: render it once it can run, or read it with useQuery
+useSuspenseQuery(gated)
+// trap: suspense-refuses-skippable-read
+// @ts-expect-error skipToken is for useQuery; a suspense read always runs
+useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee", skipToken))
 
 // ---------------------------------------------------------------------------
 // The test client: handlers answer in the generated Actor's domain values

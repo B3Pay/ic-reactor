@@ -1,0 +1,5 @@
+{
+  "file": "src/client.ts",
+  "search": "    ...args: QueryArgs<A, M, never>\n",
+  "replace": "    ...args: QueryArgs<A, M>\n"
+}

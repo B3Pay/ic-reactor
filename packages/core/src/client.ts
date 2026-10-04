@@ -343,6 +343,24 @@ export interface Client {
    * method without results, a composite query of a certified canister, a
    * canister of another client, a method the service does not have, or a
    * fourth argument other than `{ update: "idempotent" }`.
+   *
+   * Built from variables that cannot be `skipToken`, the options' `queryFn`
+   * is never `skipToken` either, so `useSuspenseQuery` and
+   * `useSuspenseQueries` take them as they are.
+   */
+  queryOptions<A, M extends keyof A & string>(
+    canister: Canister<A>,
+    method: M,
+    ...args: QueryArgs<A, M, never>
+  ): CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>, never>
+  /**
+   * TanStack Query options for a read whose variables may be `skipToken`
+   * (`V | SkipToken`, or `skipToken` itself): the options' `queryFn` is
+   * `skipToken` for a skipped read, which `useQuery` takes and
+   * `useSuspenseQuery` does not. Otherwise the same as the call with
+   * variables that cannot be skipped: see that signature for the rules.
+   *
+   * @throws TypeError as the call with variables that cannot be skipped.
    */
   queryOptions<A, M extends keyof A & string>(
     canister: Canister<A>,
