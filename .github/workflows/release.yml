@@ -1,9 +1,13 @@
 name: Release
 
-# The v4 line's release lane: @ic-reactor/core, @ic-reactor/react and
-# @ic-reactor/vite-plugin in lockstep, prereleases only, from the v4 branch.
-# A tag push runs the workflow file of the tagged commit, so 3.x tags on main
-# keep main's lane.
+# The 4.x release lane: @ic-reactor/core, @ic-reactor/react and
+# @ic-reactor/vite-plugin in lockstep, from main. A stable 4.x tag publishes
+# under npm's `latest` dist-tag and becomes the latest GitHub Release; a 4.x
+# prerelease publishes under `beta` (scripts/release-tag.mjs decides, for this
+# workflow and scripts/release.js alike). A tag push runs the workflow file of
+# the tagged commit, so 3.x tags (`v3.*`, `tools-v*`, `parser-v*`) on the v3
+# branch run v3's own lanes, which never touch `latest` for core, react or
+# vite-plugin.
 on:
   push:
     tags:
@@ -27,6 +31,10 @@ jobs:
     name: Preflight
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      dist_tag: ${{ steps.tag.outputs.dist_tag }}
+      prerelease: ${{ steps.tag.outputs.prerelease }}
+      make_latest: ${{ steps.tag.outputs.make_latest }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -43,31 +51,29 @@ jobs:
           corepack enable
           corepack prepare pnpm@10.30.3 --activate
 
-      - name: Tag must be an ancestor of v4
+      - name: Tag must be an ancestor of main
         run: |
           set -euo pipefail
-          git fetch --no-tags origin v4
-          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/v4; then
-            echo "::error::$GITHUB_SHA is not an ancestor of origin/v4. Refusing to publish."
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$GITHUB_SHA is not an ancestor of origin/main. Refusing to publish."
             exit 1
           fi
 
-      # Until 4.0 GA the v4 line never publishes under `latest`, which would
-      # replace 3.x for every plain install (DECISIONS Q15).
-      - name: Tag must be a prerelease
+      # A 4.x version only: a stable one goes to `latest`, a prerelease to
+      # `beta`. Anything else (a 3.x or 5.x tag, a tag that is not semver)
+      # fails here, before the build, and publishes nothing.
+      - name: Tag must be a 4.x version
+        id: tag
         run: |
           set -euo pipefail
-          REF="${GITHUB_REF##*/}"
-          if [[ "$REF" != *-* ]]; then
-            echo "::error::$REF is not a prerelease. The v4 branch publishes prereleases only, never under latest."
-            exit 1
-          fi
+          node scripts/release-tag.mjs "$GITHUB_REF_NAME" | tee -a "$GITHUB_OUTPUT"
 
       - name: Tag version must match package manifests
+        env:
+          EXPECTED: ${{ steps.tag.outputs.version }}
         run: |
           set -euo pipefail
-          REF="${GITHUB_REF##*/}"
-          EXPECTED="${REF#v}"
           echo "Tag version: $EXPECTED"
           for pkg in packages/core packages/react packages/vite-plugin; do
             ACTUAL="$(node -p "require('./$pkg/package.json').version")"
@@ -173,26 +179,24 @@ jobs:
       - name: Run package tests
         run: pnpm --filter "{./${{ matrix.workspace }}}" test
 
-      - name: Determine publish tag
-        run: |
-          # Prereleases go to `beta`. The v4 line has no `latest` until GA;
-          # preflight already refused a tag without a hyphen, and this refuses
-          # it again rather than fall back to `latest`.
-          REF=${GITHUB_REF##*/}
-          echo "Detected tag: $REF"
-          if [[ "$REF" == *-* ]]; then
-            echo "TAG=beta" >> $GITHUB_ENV
-          else
-            echo "::error::$REF is not a prerelease; refusing to publish under latest."
-            exit 1
-          fi
-
       - name: Publish to npm (uses npm CLI for OIDC)
         # pnpm pack converts workspace:^ to real versions, then npm publish for OIDC auth
         working-directory: ${{ matrix.workspace }}
         shell: bash
+        env:
+          # Decided once, by preflight (scripts/release-tag.mjs).
+          TAG: ${{ needs.preflight.outputs.dist_tag }}
         run: |
           set -euo pipefail
+          # Always an explicit --tag: an empty one would let npm fall back to
+          # `latest` for any version.
+          case "$TAG" in
+            latest | beta) echo "Publishing under the $TAG dist-tag." ;;
+            *)
+              echo "::error::Preflight gave no dist-tag ('$TAG'); refusing to publish."
+              exit 1
+              ;;
+          esac
           # Pack first - this converts workspace:^ to actual versions
           TARBALL=$(pnpm pack | tail -1)
           if [ -z "$TARBALL" ] || [ ! -s "$TARBALL" ]; then
@@ -209,6 +213,9 @@ jobs:
         with:
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          prerelease: ${{ needs.preflight.outputs.prerelease == 'true' }}
+          # The "Latest" badge goes to a stable 4.x release only, never to a
+          # prerelease (and v3's lanes set it to false).
+          make_latest: ${{ needs.preflight.outputs.make_latest }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

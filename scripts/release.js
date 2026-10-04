@@ -11,54 +11,34 @@ import {
   syncAiContextVersions,
   syncPluginManifestVersions,
 } from "./sync-ai-context-versions.js"
+import { releaseFor } from "./release-tag.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, "..")
 
 // Get version from CLI arg
-const version = process.argv[2]
+const requested = process.argv[2]
 
-if (!version) {
-  console.error(
-    "Please provide a version: node scripts/release.js 4.0.0-alpha.1"
-  )
+if (!requested) {
+  console.error("Please provide a version: node scripts/release.js 4.0.0")
   process.exit(1)
 }
 
-if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
-  console.error(`Invalid version: ${version}`)
+// A 4.x version only, checked by the same rules as release.yml's preflight
+// (scripts/release-tag.mjs): a stable version publishes under `latest`, a
+// prerelease under `beta`. 3.x releases are made on the v3 branch.
+let release
+try {
+  release = releaseFor(requested)
+} catch (error) {
+  console.error(`Refusing ${requested}: ${error.message}`)
   process.exit(1)
 }
-
-// The v4 branch releases prereleases only. A version without a prerelease tag
-// would be published under `latest` and replace 3.x for every plain install;
-// 4.0 goes to `latest` from main after the GA flip (DECISIONS Q15), with that
-// line's own release script.
-if (!version.includes("-")) {
-  console.error(
-    `Refusing ${version}: the v4 branch publishes prereleases only (such as 4.0.0-beta.1), never under \`latest\`.`
-  )
-  process.exit(1)
-}
+// Without a leading `v`: `v4.0.0` and `4.0.0` release the same version.
+const version = release.version
 
 function run(command, args, options = {}) {
   execFileSync(command, args, { stdio: "inherit", cwd: rootDir, ...options })
-}
-
-function updateLlmsVersion(packageName, newVersion) {
-  try {
-    const llmsPath = join(rootDir, "llms.txt")
-    let llmsText = readFileSync(llmsPath, "utf-8")
-    const escapedPackage = packageName.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
-    const regex = new RegExp(`(- \`${escapedPackage}\`: \`)[^\`]+(\`)`)
-    llmsText = llmsText.replace(regex, `$1${newVersion}$2`)
-    writeFileSync(llmsPath, llmsText, "utf-8")
-    console.log(`✅ Updated ${packageName} in llms.txt to ${newVersion}`)
-  } catch (err) {
-    console.error(
-      `❌ Failed to update llms.txt for ${packageName}: ${err.message}`
-    )
-  }
 }
 
 function updatePackageJson(filePath, newVersion) {
@@ -68,9 +48,6 @@ function updatePackageJson(filePath, newVersion) {
     pkg.version = newVersion
     writeFileSync(fullPath, JSON.stringify(pkg, null, 2) + "\n")
     console.log(`✅ Updated ${filePath} to ${newVersion}`)
-    if (pkg.name && pkg.name.startsWith("@ic-reactor/")) {
-      updateLlmsVersion(pkg.name, newVersion)
-    }
   } catch (err) {
     console.error(`❌ Failed to update ${filePath}: ${err.message}`)
     process.exit(1)
@@ -203,10 +180,9 @@ if (shouldPublish || dryRun) {
       "--access",
       "public",
     ]
-    // Every version on this branch is a prerelease (checked above), and it goes
-    // to `beta`: publishing it to `latest` would hand it to every plain
-    // `npm install`.
-    publishArgs.push("--tag", "beta")
+    // Always an explicit dist-tag (`latest` for a stable 4.x version, `beta`
+    // for a prerelease), so a prerelease can never reach `latest`.
+    publishArgs.push("--tag", release.distTag)
     if (dryRun) publishArgs.push("--dry-run")
     console.log(`Running: pnpm ${publishArgs.join(" ")}\n`)
     run("pnpm", publishArgs)
@@ -224,5 +200,7 @@ if (shouldPublish || dryRun) {
   )
 }
 
+// Push the branch, then this one tag: `--tags` would push every local tag.
 console.log(`\nGit commands:`)
-console.log(`  git push origin v4 --tags`)
+console.log(`  git push origin main`)
+console.log(`  git push origin v${version}`)
