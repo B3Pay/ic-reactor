@@ -45,7 +45,7 @@ import {
 } from "node:fs"
 import { dirname, join } from "node:path"
 import { tmpdir } from "node:os"
-import { fileURLToPath, pathToFileURL } from "node:url"
+import { fileURLToPath } from "node:url"
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..")
 const SCRIPT = fileURLToPath(import.meta.url)
@@ -386,9 +386,18 @@ function main() {
   )
 }
 
-if (
-  process.argv[1] &&
-  import.meta.url === pathToFileURL(process.argv[1]).href
-) {
+// Run as the command, not when the tests import the tables. Node resolves the
+// main module's symlinks (`/tmp` is one on macOS, and so is a linked script),
+// so the path it was started by is compared as a real path too: a plain
+// comparison would skip main() there and exit 0 having checked nothing.
+if (process.argv[1] && SCRIPT === realpathOrSelf(process.argv[1])) {
   main()
+}
+
+function realpathOrSelf(path) {
+  try {
+    return realpathSync(path)
+  } catch {
+    return path
+  }
 }
