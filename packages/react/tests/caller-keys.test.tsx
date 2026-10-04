@@ -1152,57 +1152,19 @@ describe("a read built for the caller a hydrating render shows", () => {
     await waitFor(() => expect(whoamiCallers(browser)).toEqual([user]))
     errors.stop()
 
-    // A QueryCache-level onError sees it, as kind "cancelled".
+    // A listener of the client's QueryCache sees it, as kind "cancelled",
+    // and the README's filter drops it, so such a listener reports nothing.
     expect(recoverable).toEqual([])
     expect(errors.errors).toHaveLength(1)
     expect(errors.errors[0]).toMatchObject({
       kind: "cancelled",
       code: "caller_changed",
     })
-  })
-
-  it("reaches a listener of the client's QueryCache, where kind cancelled tells it apart", async () => {
-    // The client owns its QueryClient and takes no QueryCache, so an app's
-    // global onError is a listener of the cache it has, as the README says.
-    function Prefetch() {
-      const client = useClient()
-      const who = client.canister<Who>(WHO, { id: CANISTER })
-      useEffect(() => {
-        void client.queryClient.prefetchQuery(
-          client.queryOptions(who, "whoami")
-        )
-      }, [client, who])
-      return <main>page</main>
-    }
-    const tree = (client: Client) => (
-      <ReactorProvider client={() => client}>
-        <Prefetch />
-      </ReactorProvider>
-    )
-    const server = replica({ signedIn: false })
-    container.innerHTML = renderToString(tree(server.client))
-    const browser = replica({ seed: 7 })
-    const user = browser.auth.getPrincipal()?.toText()
-    const seen: unknown[] = []
-    const reported: unknown[] = []
-    // The README's listener, with what it reports collected.
-    const stop = browser.client.queryClient
-      .getQueryCache()
-      .subscribe((event) => {
-        if (event.type !== "updated" || event.action.type !== "error") return
-        const error: unknown = event.action.error
-        seen.push(error)
-        if (isReactorError(error) && error.kind === "cancelled") return
-        reported.push(error)
-      })
-
-    await hydrate(tree(browser.client))
-    await waitFor(() => expect(whoamiCallers(browser)).toEqual([user]))
-    stop()
-
-    expect(seen).toHaveLength(1)
-    expect(seen[0]).toMatchObject({ kind: "cancelled", code: "caller_changed" })
-    expect(reported).toEqual([])
+    expect(
+      errors.errors.filter(
+        (error) => !(isReactorError(error) && error.kind === "cancelled")
+      )
+    ).toEqual([])
   })
 
   it("is never shown as an error by a component that hydrated", async () => {

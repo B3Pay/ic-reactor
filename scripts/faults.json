@@ -1410,16 +1410,6 @@
     "replace": "  return client\n"
   },
   {
-    "id": "gf-cache-listener-sees-no-cancellation",
-    "package": "react",
-    "test": "tests/caller-keys.test.tsx",
-    "testName": "reaches a listener of the client's QueryCache, where kind cancelled tells it apart",
-    "why": "useClient() returns the client whatever caller the render shows, so the hydrating render's read is sent as the user and the README's QueryCache listener never sees the caller_changed cancellation it documents",
-    "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
-    "replace": "  return client\n"
-  },
-  {
     "id": "ir6b-useclient-not-subscribed",
     "package": "react",
     "test": "tests/caller-keys.test.tsx",
