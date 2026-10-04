@@ -13,6 +13,7 @@
 //                   `dist.integrity` (Addendum 4: npm:4.0.0-beta.1).
 //
 // setup.mjs records which one built the tree in .ship/v4/source.json.
+import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
@@ -107,6 +108,56 @@ export function v4TarballFindings(
       )
   }
   return findings
+}
+
+/** `npm pack <name>@<version>` into `dir`. */
+function npmPack(dir, name, version) {
+  execFileSync(
+    "npm",
+    [
+      "pack",
+      `${name}@${version}`,
+      "--pack-destination",
+      dir,
+      "--loglevel=error",
+    ],
+    { cwd: dir, stdio: ["ignore", "ignore", "inherit"] }
+  )
+}
+
+/** `npm view <name>@<version> dist.integrity`: what the registry records. */
+function npmViewIntegrity(dir, name, version) {
+  return JSON.parse(
+    execFileSync(
+      "npm",
+      ["view", `${name}@${version}`, "dist.integrity", "--json"],
+      { cwd: dir, encoding: "utf8" }
+    )
+  )
+}
+
+/**
+ * Downloads the {@link V4_PACKAGES} tarballs of `version` into `dir` and asks
+ * the registry what it records for each, then throws (one line per
+ * {@link v4TarballFindings} finding) unless every tarball is the pinned one
+ * and the registry records the pin. `pack` and `view` default to npm
+ * (setup.mjs); the tests pass fakes.
+ */
+export function fetchV4Tarballs(
+  dir,
+  version,
+  { pack = npmPack, view = npmViewIntegrity, releases = V4_NPM_RELEASES } = {}
+) {
+  const registry = {}
+  for (const name of V4_PACKAGES) {
+    pack(dir, name, version)
+    registry[name] = view(dir, name, version)
+  }
+  const findings = v4TarballFindings(dir, version, { registry, releases })
+  if (findings.length > 0)
+    throw new Error(
+      `setup: the npm tarballs are not the pinned ${version}:\n  ${findings.join("\n  ")}`
+    )
 }
 
 /** A guide's size and identity: words as `wc -w` counts them, and its sha256. */

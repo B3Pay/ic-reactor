@@ -36,6 +36,7 @@ import {
   V4_PACKAGE_ENTRIES,
   V4_SHARED_WITH_WORLD,
   describeV4Source,
+  fetchV4Tarballs,
   guideStats,
   hiddenTestNames,
   integrityOf,
@@ -231,6 +232,71 @@ describe("the v4 npm source", () => {
     const findings = v4TarballFindings(dir, version, { releases, registry })
     assert.equal(findings.length, 1, findings.join("\n"))
     assert.match(findings[0], /^@ic-reactor\/core@.*: the registry records /)
+  })
+  describe("fetchV4Tarballs (setup's npm download, with npm faked)", () => {
+    /** A fake `npm pack`: copies the fixture tarball into the target dir. */
+    const fakeNpm = (recorded) => {
+      const calls = []
+      return {
+        calls,
+        pack: (to, name, v) => {
+          calls.push(`pack ${name}@${v}`)
+          writeFileSync(
+            join(to, tarballName(name, v)),
+            readFileSync(file(name))
+          )
+        },
+        view: (_to, name, v) => {
+          calls.push(`view ${name}@${v}`)
+          return recorded[name]
+        },
+      }
+    }
+    const fetchInto = (recorded) => {
+      const to = mkdtempSync(join(tmpdir(), "ic-reactor-evals-fetch-"))
+      const npm = fakeNpm(recorded)
+      try {
+        return {
+          calls: npm.calls,
+          error: (() => {
+            try {
+              fetchV4Tarballs(to, version, { ...npm, releases })
+            } catch (error) {
+              return error
+            }
+          })(),
+          files: readdirSync(to).sort(),
+        }
+      } finally {
+        rmSync(to, { recursive: true, force: true })
+      }
+    }
+    it("packs and asks the registry for each package, and accepts the pinned tarballs", () => {
+      const { calls, error, files } = fetchInto(releases[version])
+      assert.equal(error, undefined, error?.message)
+      assert.deepEqual(
+        calls,
+        V4_PACKAGES.flatMap((n) => [
+          `pack ${n}@${version}`,
+          `view ${n}@${version}`,
+        ])
+      )
+      assert.deepEqual(
+        files,
+        V4_PACKAGES.map((n) => tarballName(n, version)).sort()
+      )
+    })
+    it("throws when the registry records another integrity than the pin", () => {
+      const { error } = fetchInto({
+        ...releases[version],
+        "@ic-reactor/react": integrityOf(file("@ic-reactor/core")),
+      })
+      assert.ok(error, "fetchV4Tarballs accepted a registry that disagrees")
+      assert.match(
+        error.message,
+        /^setup: the npm tarballs are not the pinned 9\.0\.0-fixture\.1:\n  @ic-reactor\/react@9\.0\.0-fixture\.1: the registry records sha512-/
+      )
+    })
   })
   it("refuses a version with no pin", () => {
     assert.deepEqual(v4TarballFindings(dir, "9.9.9", { releases }), [

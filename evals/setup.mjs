@@ -59,11 +59,11 @@ import {
   V4_PACKAGES,
   V4_PACKAGE_ENTRIES,
   V4_SHARED_WITH_WORLD,
+  fetchV4Tarballs,
   guideStats,
   integrityOf,
   parseV4From,
   v4ShipFindings,
-  v4TarballFindings,
 } from "./harness/ship.mjs"
 
 const REPO = join(EVALS, "..")
@@ -226,33 +226,11 @@ step("built conditions/v4-proto/lib/dist")
 const v4Tarballs = mkdtempSync(join(tmpdir(), "ic-reactor-evals-pack-"))
 if (v4From.from === "npm") {
   const { version } = v4From
-  const registry = {}
-  for (const name of V4_PACKAGES) {
-    execFileSync(
-      "npm",
-      [
-        "pack",
-        `${name}@${version}`,
-        "--pack-destination",
-        v4Tarballs,
-        "--loglevel=error",
-      ],
-      { cwd: v4Tarballs, stdio: ["ignore", "ignore", "inherit"] }
-    )
-    registry[name] = JSON.parse(
-      execFileSync(
-        "npm",
-        ["view", `${name}@${version}`, "dist.integrity", "--json"],
-        { cwd: v4Tarballs, encoding: "utf8" }
-      )
-    )
-  }
-  const findings = v4TarballFindings(v4Tarballs, version, { registry })
-  if (findings.length > 0) {
+  try {
+    fetchV4Tarballs(v4Tarballs, version)
+  } catch (error) {
     rmSync(v4Tarballs, { recursive: true, force: true })
-    throw new Error(
-      `setup: the npm tarballs are not the pinned ${version}:\n  ${findings.join("\n  ")}`
-    )
+    throw error
   }
   step(
     `downloaded ${V4_PACKAGES.map((n) => `${n}@${version}`).join(", ")} from npm ` +

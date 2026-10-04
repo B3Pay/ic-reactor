@@ -297,6 +297,36 @@ describe("pooled over tasks (PREREGISTRATION.md, Addendum 4, alternative A)", ()
     ])
     assert.deepEqual(pooled(summary.main), [])
   })
+  it("gives no pooled row when a control cell has no usable runs", () => {
+    const v4Cells = [
+      ...cell("node-tool", "v4", 0),
+      ...cell("react-wallet", "v4", 0),
+      ...cell("node-tool", "thin-guide", 0),
+    ]
+    // Every react-wallet control run a harness error: no row in either analysis.
+    const errored = aggregate([
+      ...v4Cells,
+      ...cell("react-wallet", "thin-guide", 0, { harnessError: "x" }),
+    ])
+    assert.equal(
+      errored.main.cells.filter(
+        (c) => c.task === "react-wallet" && c.condition === "thin-guide"
+      ).length,
+      1
+    )
+    assert.deepEqual(pooled(errored.main), [])
+    assert.deepEqual(pooled(errored.intentToTreat), [])
+    // Every react-wallet control run contaminated: none in main, kept in ITT.
+    const contaminated = aggregate([
+      ...v4Cells,
+      ...cell("react-wallet", "thin-guide", 0, { contaminated: true }),
+    ])
+    assert.deepEqual(pooled(contaminated.main), [])
+    assert.deepEqual(pooled(contaminated.intentToTreat)[0].counts, {
+      v4: { safe: 40, runs: 40 },
+      "thin-guide": { safe: 40, runs: 40 },
+    })
+  })
   it("prints the pooled comparison with its counts", () => {
     const summary = aggregate([
       ...cell("node-tool", "v4", 2),

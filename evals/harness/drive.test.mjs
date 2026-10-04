@@ -16,6 +16,7 @@ import { join } from "node:path"
 import { after, before, describe, it } from "node:test"
 import { agentOutcome, plan } from "../drive.mjs"
 import { EVALS } from "./assemble.mjs"
+import { v4Source } from "./ship.mjs"
 
 /** `drive.mjs --pilot --dry-run` with `extra`; no credential is needed. */
 function dryRun(extra = []) {
@@ -194,6 +195,61 @@ describe("a new batch's --out directory", () => {
     const r = batch(empty, ["--dry-run"])
     assert.equal(r.status, 0, r.stderr)
     assert.match(r.stdout, new RegExp(`^results: ${empty}/`, "m"))
+  })
+})
+
+describe("a batch's plan.json", () => {
+  let dir
+  before(() => {
+    dir = mkdtempSync(join(tmpdir(), "drive-plan-"))
+  })
+  after(() => rmSync(dir, { recursive: true, force: true }))
+  /**
+   * A real (not dry) batch with a stub agent whose preflight fails, so it
+   * stops right after writing plan.json; no credential is needed.
+   */
+  const planOf = (condition) => {
+    const out = join(dir, condition)
+    const r = spawnSync(
+      process.execPath,
+      [
+        join(EVALS, "drive.mjs"),
+        "--task",
+        "node-tool",
+        "--condition",
+        condition,
+        "--n",
+        "1",
+        "--model",
+        "stub",
+        "--mode",
+        "tsc-only",
+        "--agent-cmd",
+        "true",
+        "--preflight-cmd",
+        "false",
+        "--out",
+        out,
+      ],
+      {
+        cwd: EVALS,
+        env: { PATH: process.env.PATH, HOME: process.env.HOME },
+        encoding: "utf8",
+        timeout: 60_000,
+      }
+    )
+    assert.match(r.stderr, /preflight failed/, r.stdout + r.stderr)
+    return JSON.parse(readFileSync(join(out, "plan.json"), "utf8"))
+  }
+
+  it("records the v4 source (Addendum 4's pass rule reads v4Source) when v4 is in", () => {
+    const p = planOf("v4")
+    assert.ok("v4Source" in p, "plan.json has no v4Source")
+    // null only when setup has not recorded a source (.ship/v4/source.json).
+    assert.deepEqual(p.v4Source, v4Source())
+  })
+  it("has no v4Source when v4 is not in the batch", () => {
+    assert.ok(!("v4Source" in planOf("thin")))
   })
 })
 
