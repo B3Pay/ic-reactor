@@ -10,33 +10,52 @@
  * an example that uses a name the published beta lacks stays green there. This
  * script, for each example:
  *
- *   1. copies its git-tracked files to a directory outside the repository;
+ *   1. copies its git-tracked files to a directory outside the repository,
+ *      and refuses to run if a parent of that directory holds a node_modules
+ *      or a package.json (Node, Vite and vitest resolve a bare import by
+ *      walking up into a parent's node_modules, so an undeclared import would
+ *      be found there);
  *   2. refuses a `workspace:`, `file:`, `link:` or `portal:` range, which no
- *      standalone install resolves, and checks each @ic-reactor/* range is
- *      satisfied by the version npm's `beta` dist-tag names (asking npm, so
- *      its own semver decides);
- *   3. installs from the npm registry with npm (no workspace, no links, no
- *      lockfile of ours), with an environment that holds nothing of the
- *      repository: no `npm_*` or `pnpm_*` variable a `pnpm run` set, and no
- *      PATH entry inside the repository;
+ *      standalone install resolves, and a tracked `.npmrc` (it could point the
+ *      @ic-reactor scope at another registry, for this install and on
+ *      StackBlitz); requires the `typecheck`, `test` and `build` scripts; and
+ *      checks each @ic-reactor/* range is satisfied by the version npm's
+ *      `beta` dist-tag names (asking npm, so its own semver decides);
+ *   3. installs from registry.npmjs.org with npm (no workspace, no links, no
+ *      lockfile of ours), the default registry and the @ic-reactor and
+ *      @candid-core scopes all pinned to it on the command line, over any
+ *      `.npmrc`, with an environment that holds nothing of the repository: no
+ *      `npm_*` or `pnpm_*` variable a `pnpm run` set, and no PATH entry
+ *      inside the repository;
  *   4. checks every installed @ic-reactor/* package is a real directory, not
- *      a symlink, at exactly the `beta` version;
- *   5. runs the example's `typecheck`, `test` and `build` scripts where they
- *      exist, as the examples job does (a Next example gets the same
- *      `next-env.d.ts` shim `typecheck-examples.js` writes);
+ *      a symlink, at exactly the `beta` version, and that npm's lockfile
+ *      records it as the registry's own tarball, with the integrity the
+ *      registry publishes for that version (the proof the bytes are the
+ *      published ones);
+ *   5. runs the example's `typecheck`, `test` and `build` scripts, as the
+ *      examples job does (a Next example gets the same `next-env.d.ts` shim
+ *      `typecheck-examples.js` writes);
  *   6. runs the `startCommand` of its `.stackblitzrc`, the command StackBlitz
- *      runs after its install: `npm run dev` is started, its first page
- *      fetched and the server stopped; a command already run in step 5 is not
- *      run twice; any other command must exit 0.
+ *      runs after its install: `npm run dev [-- <args>]` is started, its first
+ *      page fetched with every same-origin script on it and every app module
+ *      those import, and the server stopped (a Next example with
+ *      `NEXT_TEST_WASM=1`, so Next loads the WebAssembly bindings a
+ *      WebContainer loads); a command already run in step 5 is not run twice;
+ *      any other command must exit 0.
  *
  * Every example's tests run without a replica (each is a `createTestClient()`
  * over an in-memory one), so nothing here starts a network. The vite-wallet
  * example needs icp-cli's local network to run the wallet itself, which is why
  * its `.stackblitzrc` runs its tests instead of its dev server.
  *
- * Usage: node scripts/test-examples-published.mjs [--keep] [<example> ...]
- *   --keep     leave the copies on disk and print where they are
- *   <example>  a directory under examples/ (default: every example)
+ * Usage: node scripts/test-examples-published.mjs [--keep] [--tmp <dir>]
+ *          [--wait-for <version>] [<example> ...]
+ *   --keep                 leave the copies on disk and print where they are
+ *   --tmp <dir>            make the copies under <dir> (default: the OS tmpdir)
+ *   --wait-for <version>   wait (up to 10 minutes) until the `beta` dist-tag
+ *                          names <version> (a leading "v" is dropped): the
+ *                          release workflow runs this right after publishing
+ *   <example>              a directory under examples/ (default: every one)
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process"
 import {
@@ -70,6 +89,28 @@ export const DIST_TAG = "beta"
 
 /** Range protocols that only resolve inside a workspace or on one disk. */
 export const LOCAL_PROTOCOLS = ["workspace:", "file:", "link:", "portal:"]
+
+/**
+ * The scopes pinned to REGISTRY on every npm command. `--registry` replaces
+ * only the default registry: a `@scope:registry=` setting in any `.npmrc`
+ * (the user's, or one in the project) still wins for its scope.
+ */
+export const PINNED_SCOPES = ["@ic-reactor", "@candid-core"]
+
+/** The registry flags of every npm command this script runs. */
+export const REGISTRY_ARGS = [
+  `--registry=${REGISTRY}`,
+  ...PINNED_SCOPES.map((scope) => `--${scope}:registry=${REGISTRY}`),
+]
+
+/** The scripts every example must have: what the examples job runs. */
+export const REQUIRED_SCRIPTS = ["typecheck", "test", "build"]
+
+/**
+ * Examples allowed to lack one of REQUIRED_SCRIPTS: { example: { script:
+ * reason } }. Empty: all four have all three.
+ */
+export const SCRIPT_EXCEPTIONS = {}
 
 const DEPENDENCY_FIELDS = [
   "dependencies",
@@ -192,6 +233,142 @@ export function checkInstalled(projectDir, declared, expectedVersion) {
   return { installed, findings }
 }
 
+/** The @ic-reactor/* entries of a lockfile's `packages`, nested ones too. */
+export function lockedScopePackages(lock) {
+  const scope = SCOPE.slice(0, -1)
+  return Object.entries(lock?.packages ?? {})
+    .map(([path, entry]) => {
+      const match = path.match(/(?:^|\/)node_modules\/(@[^/]+\/[^/]+)$/)
+      return match && match[1].startsWith(`${scope}/`)
+        ? { path, name: match[1], entry }
+        : undefined
+    })
+    .filter(Boolean)
+}
+
+/**
+ * What shows that an @ic-reactor/* package npm installed is not the registry's
+ * published tarball: a lockfile entry that is a link, whose `resolved` is not
+ * the tarball the registry names for that version, or whose `integrity` is not
+ * the one it publishes. Also an installed package the lockfile does not
+ * record. `published` is the registry's `dist` for each name at the beta.
+ *
+ * @param {Record<string, any> | undefined} lock package-lock.json
+ * @param {{
+ *   installed: string[],
+ *   published: Record<string, { tarball: string, integrity: string }>,
+ * }} options
+ * @returns {string[]}
+ */
+export function checkLockfile(lock, { installed, published }) {
+  if (!lock || typeof lock.packages !== "object") {
+    return [
+      "npm wrote no package-lock.json with a `packages` map, so where the @ic-reactor/* packages came from is unproven",
+    ]
+  }
+  const findings = []
+  const entries = lockedScopePackages(lock)
+  for (const name of installed) {
+    if (!entries.some((e) => e.path === `node_modules/${name}`)) {
+      findings.push(
+        `${name} is installed but package-lock.json does not record it`
+      )
+    }
+  }
+  for (const { path, name, entry } of entries) {
+    const dist = published[name]
+    if (entry.link) {
+      findings.push(
+        `${path} is a link (to ${entry.resolved}) in package-lock.json, not a tarball from the registry`
+      )
+      continue
+    }
+    if (!dist) {
+      findings.push(
+        `${path} is ${entry.version}: the registry's tarball for it was not looked up`
+      )
+      continue
+    }
+    if (entry.resolved !== dist.tarball || !dist.tarball.startsWith(REGISTRY)) {
+      findings.push(
+        `${path} was resolved from ${entry.resolved ?? "nowhere"}, not ${dist.tarball}`
+      )
+    }
+    if (entry.integrity !== dist.integrity) {
+      findings.push(
+        `${path} has integrity ${entry.integrity ?? "(none)"}, not the registry's ${dist.integrity}`
+      )
+    }
+  }
+  return findings
+}
+
+/**
+ * The example's tracked files that change how npm resolves its packages: a
+ * `.npmrc` can point a scope at another registry, for the install here and
+ * for StackBlitz's.
+ *
+ * @param {string[]} files paths relative to the example
+ * @returns {string[]}
+ */
+export function trackedConfigFindings(files) {
+  return files
+    .filter((file) => file.split("/").at(-1) === ".npmrc")
+    .map(
+      (file) =>
+        `${file} is tracked: an example's .npmrc could point @ic-reactor/* at another registry, here and on StackBlitz, so none is allowed`
+    )
+}
+
+/**
+ * The required scripts an example lacks, unless `exceptions` names them.
+ *
+ * @param {string} example
+ * @param {Record<string, string> | undefined} scripts
+ * @param {Record<string, Record<string, string>>} [exceptions]
+ * @returns {string[]}
+ */
+export function requiredScriptFindings(
+  example,
+  scripts,
+  exceptions = SCRIPT_EXCEPTIONS
+) {
+  return REQUIRED_SCRIPTS.filter(
+    (script) => !scripts?.[script] && !exceptions[example]?.[script]
+  ).map(
+    (script) =>
+      `package.json has no "${script}" script: every example runs typecheck, test and build here (an exception goes in SCRIPT_EXCEPTIONS, with its reason)`
+  )
+}
+
+/**
+ * The parents of `dir` holding a node_modules or a package.json, from which
+ * Node, Vite or vitest would resolve an import the example does not declare.
+ * Walks up to the filesystem root, or to `stopAt` (included).
+ *
+ * @param {string} dir
+ * @param {{ stopAt?: string }} [options]
+ * @returns {string[]}
+ */
+export function ancestorFindings(dir, { stopAt } = {}) {
+  const findings = []
+  let current = resolve(dir)
+  const last = stopAt === undefined ? undefined : resolve(stopAt)
+  while (current !== last) {
+    const parent = dirname(current)
+    if (parent === current) break
+    current = parent
+    for (const entry of ["node_modules", "package.json"]) {
+      if (existsSync(join(current, entry))) {
+        findings.push(
+          `${join(current, entry)} is above the scratch directory: an import the example does not declare would resolve there (pass --tmp <dir> with no node_modules or package.json above it)`
+        )
+      }
+    }
+  }
+  return findings
+}
+
 /**
  * A child environment that holds nothing of this repository. A `pnpm run`
  * sets `npm_*` variables (the workspace's config and package among them) and
@@ -249,69 +426,144 @@ export function stackblitzStartCommand(projectDir) {
   return { command: config.startCommand.trim() }
 }
 
-/** `npm test` and `npm run test` are the same script; so for the others. */
-export function scriptOf(command) {
-  const match = command.match(/^npm\s+(?:run(?:-script)?\s+)?([\w:-]+)$/)
+/**
+ * The package script a start command runs, and the arguments it passes after
+ * `--`. `npm test` and `npm run test` are the same script; so for the others.
+ *
+ * @param {string} command
+ * @returns {{ script: string, args: string[] } | undefined}
+ */
+export function parseNpmCommand(command) {
+  const match = command.match(
+    /^npm\s+(?:run(?:-script)?\s+)?([\w:-]+)(?:\s+--((?:\s+\S+)*))?\s*$/
+  )
   if (!match) return undefined
-  return match[1] === "t" ? "test" : match[1]
+  const script = match[1] === "t" ? "test" : match[1]
+  if (script === "run" || script === "run-script") return undefined
+  const args = (match[2] ?? "").split(/\s+/).filter(Boolean)
+  return { script, args }
 }
 
 /**
- * The same-origin scripts a page loads, as absolute URLs.
+ * The same-origin scripts a page loads, as absolute URLs, each with whether it
+ * is an ES module (`type="module"`).
  *
  * @param {string} html
  * @param {string} pageUrl
- * @returns {string[]}
+ * @returns {{ url: string, module: boolean }[]}
  */
 export function pageScripts(html, pageUrl) {
   const origin = new URL(pageUrl).origin
-  const urls = [...html.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/gi)]
-    .map((match) => new URL(match[1].replaceAll("&amp;", "&"), pageUrl))
-    .filter((url) => url.origin === origin)
-    .map((url) => url.href)
-  return [...new Set(urls)]
+  const seen = new Set()
+  const scripts = []
+  for (const match of html.matchAll(/<script\b([^>]*)>/gi)) {
+    const src = match[1].match(/\bsrc="([^"]+)"/i)?.[1]
+    if (!src) continue
+    const url = new URL(src.replaceAll("&amp;", "&"), pageUrl)
+    if (url.origin !== origin || seen.has(url.href)) continue
+    seen.add(url.href)
+    scripts.push({
+      url: url.href,
+      module: /\btype=["']?module\b/i.test(match[1]),
+    })
+  }
+  return scripts
+}
+
+/**
+ * The app modules an ES module served by a dev server imports, as absolute
+ * URLs: its static `import`/`export ... from` and string `import()`
+ * specifiers on its own origin. Pre-bundled dependencies (`/node_modules/`)
+ * and the dev server's own modules (`/@vite/client`, `/@id/...`) are left out:
+ * they are not the example's code, and a dependency re-optimisation could
+ * answer them 504 while it runs.
+ *
+ * @param {string} code
+ * @param {string} moduleUrl
+ * @returns {string[]}
+ */
+export function moduleImports(code, moduleUrl) {
+  const origin = new URL(moduleUrl).origin
+  const specifiers = [
+    ...code.matchAll(
+      /^[ \t]*(?:import|export)[ \t\n{*][^'"`;]*?\bfrom[ \t]*["']([^"'\n]+)["']/gm
+    ),
+    ...code.matchAll(/^[ \t]*import[ \t]*["']([^"'\n]+)["']/gm),
+    ...code.matchAll(/\bimport\([ \t]*["']([^"'\n]+)["'][ \t]*\)/g),
+  ].map((match) => match[1])
+  const urls = new Set()
+  for (const specifier of specifiers) {
+    if (!/^(?:\/|\.\.?\/)/.test(specifier)) continue
+    const url = new URL(specifier, moduleUrl)
+    if (url.origin !== origin) continue
+    if (/^\/(?:node_modules\/|@)/.test(url.pathname)) continue
+    urls.add(url.href)
+  }
+  return [...urls]
+}
+
+/** `npm view <spec> <field> --json`, from the registry; undefined on E404. */
+function npmView(spec, field) {
+  const result = spawnSync(
+    "npm",
+    ["view", spec, field, "--json", ...REGISTRY_ARGS],
+    { encoding: "utf8", env: isolatedEnv(process.env, repoRoot) }
+  )
+  if (result.status !== 0) {
+    if (/E404/.test(result.stdout + result.stderr)) return undefined
+    throw new Error(
+      `npm view ${spec} ${field} failed: ${result.stderr || result.stdout}`
+    )
+  }
+  return result.stdout.trim() ? JSON.parse(result.stdout) : undefined
 }
 
 /** The version a dist-tag names, from the registry. */
 function distTagVersion(name, tag) {
-  return execFileSync(
-    "npm",
-    ["view", `${name}@${tag}`, "version", `--registry=${REGISTRY}`],
-    { encoding: "utf8", env: isolatedEnv(process.env, repoRoot) }
-  ).trim()
+  const version = npmView(`${name}@${tag}`, "version")
+  if (typeof version !== "string") {
+    throw new Error(`${name} has no ${tag} dist-tag on ${REGISTRY}`)
+  }
+  return version
 }
 
 /** The published versions of `name` that `range` accepts, from the registry. */
 function npmSatisfying(name, range) {
-  const result = spawnSync(
-    "npm",
-    ["view", `${name}@${range}`, "version", "--json", `--registry=${REGISTRY}`],
-    { encoding: "utf8", env: isolatedEnv(process.env, repoRoot) }
-  )
-  if (result.status !== 0) {
-    if (/E404/.test(result.stdout + result.stderr)) return []
-    throw new Error(
-      `npm view ${name}@${range} failed: ${result.stderr || result.stdout}`
-    )
-  }
-  const parsed = JSON.parse(result.stdout || "[]")
+  const parsed = npmView(`${name}@${range}`, "version")
+  if (parsed === undefined) return []
   return Array.isArray(parsed) ? parsed : [parsed]
 }
 
-/** Copies the example's git-tracked files to `dest`. */
-function copyTracked(name, dest) {
+/** The registry's tarball URL and integrity for each name at `version`. */
+function publishedDist(names, version) {
+  const out = {}
+  for (const name of names) {
+    const dist = npmView(`${name}@${version}`, "dist")
+    if (dist?.tarball && dist?.integrity) {
+      out[name] = { tarball: dist.tarball, integrity: dist.integrity }
+    }
+  }
+  return out
+}
+
+/** The example's git-tracked files, relative to it. */
+function trackedFiles(name) {
   const prefix = `examples/${name}`
-  const files = execFileSync(
-    "git",
-    ["-C", repoRoot, "ls-files", "-z", "--", prefix],
-    { encoding: "utf8" }
-  )
+  return execFileSync("git", ["-C", repoRoot, "ls-files", "-z", "--", prefix], {
+    encoding: "utf8",
+  })
     .split("\0")
     .filter(Boolean)
+    .map((file) => relative(prefix, file))
+}
+
+/** Copies the example's git-tracked files to `dest`. */
+function copyTracked(name, files, dest) {
+  const prefix = join(repoRoot, "examples", name)
   for (const file of files) {
-    const source = join(repoRoot, file)
+    const source = join(prefix, file)
     if (!existsSync(source)) continue
-    const target = join(dest, relative(prefix, file))
+    const target = join(dest, file)
     mkdirSync(dirname(target), { recursive: true })
     copyFileSync(source, target)
   }
@@ -381,16 +633,53 @@ async function killGroup(child) {
   }
 }
 
+/** At most this many app modules are fetched from one dev server. */
+const MODULE_LIMIT = 500
+
 /**
- * Starts `npm run dev` on a free port, fetches its first page and stops it.
- * The port is passed as `--port`, which both Vite and Next take, so a server
- * already on the example's own port on this machine does not fail the run.
+ * Fetches the page's scripts and, from each ES module among them, every app
+ * module it imports, transitively: a Vite dev server compiles a module only
+ * when it is requested, so a module below the entry that fails to transform
+ * (an unresolvable import, say) answers 500 only when fetched.
  */
-async function smokeDevServer(cwd, env, timeoutMs = 4 * MINUTE) {
+async function loadScripts(scripts, deadline) {
+  const queue = scripts.map((s) => ({ ...s, from: "the page" }))
+  const seen = new Set(queue.map((s) => s.url))
+  const broken = []
+  let modules = 0
+  while (queue.length > 0) {
+    const { url, module, from } = queue.shift()
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(Math.max(1000, deadline - Date.now())),
+    })
+    const code = await res.text()
+    if (!res.ok) {
+      broken.push(`${url} (${res.status}, imported by ${from})`)
+      continue
+    }
+    if (!module) continue
+    modules++
+    for (const next of moduleImports(code, url)) {
+      if (seen.has(next) || seen.size >= MODULE_LIMIT) continue
+      seen.add(next)
+      queue.push({ url: next, module: true, from: url })
+    }
+  }
+  return { broken, fetched: seen.size, modules }
+}
+
+/**
+ * Starts `npm run dev -- <args> --port N` on a free port, fetches its first
+ * page and what that page loads, and stops it. The port is passed as
+ * `--port`, which both Vite and Next take, so a server already on the
+ * example's own port on this machine does not fail the run.
+ */
+async function smokeDevServer(cwd, env, extraArgs, timeoutMs = 4 * MINUTE) {
   const port = await freePort()
   const url = `http://localhost:${port}/`
-  const args = ["run", "dev", "--", "--port", String(port)]
-  console.log(`\n  ▶ start: npm ${args.join(" ")}, then GET ${url}`)
+  const args = ["run", "dev", "--", ...extraArgs, "--port", String(port)]
+  const shown = env.NEXT_TEST_WASM ? "NEXT_TEST_WASM=1 " : ""
+  console.log(`\n  ▶ start: ${shown}npm ${args.join(" ")}, then GET ${url}`)
   const started = Date.now()
   const child = spawn("npm", args, {
     cwd,
@@ -408,42 +697,40 @@ async function smokeDevServer(cwd, env, timeoutMs = 4 * MINUTE) {
         failure = `the dev server stopped (${exit}) before serving a page`
         break
       }
+      let response
+      let body
       try {
-        const response = await fetch(url, {
+        response = await fetch(url, {
           signal: AbortSignal.timeout(Math.max(1000, deadline - Date.now())),
         })
-        const body = await response.text()
-        if (response.ok && /<html[\s>]/i.test(body)) {
-          // The page alone proves little for Vite, whose index.html is static:
-          // its scripts are what the dev server compiles on request.
-          const scripts = pageScripts(body, url)
-          const broken = []
-          for (const src of scripts) {
-            const res = await fetch(src, {
-              signal: AbortSignal.timeout(
-                Math.max(1000, deadline - Date.now())
-              ),
-            })
-            await res.arrayBuffer()
-            if (!res.ok) broken.push(`${src} (${res.status})`)
-          }
-          if (broken.length > 0) {
-            failure = `the page's scripts did not load: ${broken.join(", ")}`
-            break
-          }
-          const ms = Date.now() - started
-          console.log(
-            `  ✓ ${url} answered ${response.status} with ${body.length} bytes of HTML, and its ${scripts.length} script(s) loaded, after ${seconds(ms)}`
-          )
-          return { ok: true, ms }
-        }
-        failure = `${url} answered ${response.status}${response.ok ? " without an <html> document" : ""}`
-        if (!response.ok) break
+        body = await response.text()
       } catch {
         // not listening yet
+        await sleep(1000)
+        continue
       }
+      if (response.ok && /<html[\s>]/i.test(body)) {
+        // The page alone proves little for Vite, whose index.html is static:
+        // its scripts, and the modules they import, are what the dev server
+        // compiles on request.
+        const scripts = pageScripts(body, url)
+        const loaded = await loadScripts(scripts, deadline)
+        if (loaded.broken.length > 0) {
+          failure = `what the page loads did not load: ${loaded.broken.join(", ")}`
+          break
+        }
+        const ms = Date.now() - started
+        console.log(
+          `  ✓ ${url} answered ${response.status} with ${body.length} bytes of HTML; its ${scripts.length} script(s) and the app modules they import loaded (${loaded.fetched} fetched, ${loaded.modules} ES modules), after ${seconds(ms)}`
+        )
+        return { ok: true, ms }
+      }
+      failure = `${url} answered ${response.status}${response.ok ? " without an <html> document" : ""}`
+      if (!response.ok) break
       await sleep(1000)
     }
+  } catch (error) {
+    failure = error.message
   } finally {
     await killGroup(child)
   }
@@ -459,10 +746,13 @@ async function testExample(name, { betaVersion, workDir }) {
   const findings = []
   console.log(`\n━━ ${name} → ${dir}`)
 
-  const count = copyTracked(name, dir)
-  console.log(`  copied ${count} tracked files`)
+  const files = trackedFiles(name)
+  copyTracked(name, files, dir)
+  console.log(`  copied ${files.length} tracked files`)
 
   const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"))
+  findings.push(...trackedConfigFindings(files))
+  findings.push(...requiredScriptFindings(name, manifest.scripts))
   findings.push(
     ...(await checkManifest(manifest, {
       betaVersion,
@@ -477,7 +767,13 @@ async function testExample(name, { betaVersion, workDir }) {
   steps.install = runStep(
     "install",
     "npm",
-    ["install", "--no-audit", "--no-fund", `--registry=${REGISTRY}`],
+    [
+      "install",
+      "--no-audit",
+      "--no-fund",
+      "--package-lock=true",
+      ...REGISTRY_ARGS,
+    ],
     dir,
     env
   )
@@ -492,32 +788,47 @@ async function testExample(name, { betaVersion, workDir }) {
     betaVersion
   )
   findings.push(...installFindings)
+  let lock
+  try {
+    lock = JSON.parse(readFileSync(join(dir, "package-lock.json"), "utf8"))
+  } catch {
+    lock = undefined
+  }
+  const locked = [...new Set(lockedScopePackages(lock).map((e) => e.name))]
+  findings.push(
+    ...checkLockfile(lock, {
+      installed: installed.map((p) => p.name),
+      published: publishedDist(locked, betaVersion),
+    })
+  )
   console.log(
-    `  installed from ${REGISTRY}: ` +
+    `  installed from ${REGISTRY} (lockfile resolved and integrity match the registry's): ` +
       installed.map((p) => `${p.name}@${p.version}`).join(", ")
   )
   if (findings.length > 0) return { name, steps, findings }
 
-  const scripts = manifest.scripts ?? {}
   const isNext = Boolean(
     manifest.dependencies?.next || manifest.devDependencies?.next
   )
   if (isNext && !existsSync(join(dir, "next-env.d.ts"))) {
     writeFileSync(join(dir, "next-env.d.ts"), NEXT_ENV)
   }
-  for (const script of ["typecheck", "test", "build"]) {
-    if (!scripts[script]) continue
+  for (const script of REQUIRED_SCRIPTS) {
+    if (!manifest.scripts?.[script]) continue
     steps[script] = runStep(script, "npm", ["run", script], dir, env)
   }
 
-  const startScript = scriptOf(start.command)
-  if (startScript === "dev") {
-    steps.start = await smokeDevServer(dir, env)
-  } else if (startScript && steps[startScript]) {
+  const parsed = parseNpmCommand(start.command)
+  if (parsed?.script === "dev") {
+    // A WebContainer has no native binary: Next loads its WebAssembly
+    // bindings there, and NEXT_TEST_WASM makes it do the same here.
+    const devEnv = isNext ? { ...env, NEXT_TEST_WASM: "1" } : env
+    steps.start = await smokeDevServer(dir, devEnv, parsed.args)
+  } else if (parsed && parsed.args.length === 0 && steps[parsed.script]) {
     console.log(
-      `\n  ▶ start: ${start.command} (already run above as "${startScript}")`
+      `\n  ▶ start: ${start.command} (already run above as "${parsed.script}")`
     )
-    steps.start = { ...steps[startScript], ran: startScript }
+    steps.start = { ...steps[parsed.script], ran: parsed.script }
   } else {
     const [command, ...args] = start.command.split(/\s+/)
     steps.start = runStep("start", command, args, dir, env, 5 * MINUTE)
@@ -556,36 +867,91 @@ function report(results, totalMs) {
   return rows.some((row) => row.at(-1) === "FAIL")
 }
 
+/**
+ * The command line: `--keep`, `--tmp <dir>`, `--wait-for <version>` and the
+ * example names.
+ *
+ * @param {string[]} argv
+ * @returns {{ keep: boolean, tmp?: string, waitFor?: string, names: string[], error?: string }}
+ */
+export function parseArgs(argv) {
+  const out = { keep: false, names: [] }
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i]
+    if (arg === "--keep") out.keep = true
+    else if (arg === "--tmp" || arg === "--wait-for") {
+      const value = argv[++i]
+      if (!value || value.startsWith("--")) {
+        return { ...out, error: `${arg} needs a value` }
+      }
+      if (arg === "--tmp") out.tmp = value
+      else out.waitFor = value.replace(/^v/, "")
+    } else if (arg.startsWith("--")) {
+      return { ...out, error: `Unknown option ${arg}` }
+    } else out.names.push(arg)
+  }
+  return out
+}
+
+/** Polls the dist-tag until it names `version`, for up to `timeoutMs`. */
+async function waitForDistTag(name, tag, version, timeoutMs = 10 * MINUTE) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    const current = distTagVersion(name, tag)
+    if (current === version) return current
+    if (Date.now() >= deadline) {
+      throw new Error(
+        `${name}@${tag} is still ${current}, not ${version}, after ${seconds(timeoutMs)}`
+      )
+    }
+    console.log(`${name}@${tag} is ${current}; waiting for ${version}`)
+    await sleep(15_000)
+  }
+}
+
 async function main(argv) {
-  const keep = argv.includes("--keep")
-  const requested = argv.filter((arg) => !arg.startsWith("--"))
+  const args = parseArgs(argv)
+  if (args.error) {
+    console.error(args.error)
+    return 1
+  }
   const all = discoverExampleDirs()
-  const unknown = requested.filter((name) => !all.includes(name))
+  const unknown = args.names.filter((name) => !all.includes(name))
   if (unknown.length > 0) {
     console.error(
       `Not an example: ${unknown.join(", ")} (examples: ${all.join(", ")})`
     )
     return 1
   }
-  const names = requested.length > 0 ? requested : all
+  const names = args.names.length > 0 ? args.names : all
   if (names.length === 0) {
     console.error("No examples found under examples/.")
     return 1
   }
 
-  const betaVersion = distTagVersion(`${SCOPE}core`, DIST_TAG)
+  const betaVersion = args.waitFor
+    ? await waitForDistTag(`${SCOPE}core`, DIST_TAG, args.waitFor)
+    : distTagVersion(`${SCOPE}core`, DIST_TAG)
   console.log(
     `${SCOPE}core@${DIST_TAG} is ${betaVersion} on ${REGISTRY}; testing ${names.join(", ")}`
   )
 
+  const base = realpathSync(args.tmp ? resolve(args.tmp) : tmpdir())
   const workDir = realpathSync(
-    mkdtempSync(join(tmpdir(), "ic-reactor-published-examples-"))
+    mkdtempSync(join(base, "ic-reactor-published-examples-"))
   )
   const rel = relative(repoRoot, workDir)
+  const refusals = []
   if (!rel.startsWith("..") && !rel.startsWith(sep)) {
-    console.error(`The scratch directory ${workDir} is inside the repository.`)
+    refusals.push(`The scratch directory ${workDir} is inside the repository.`)
+  }
+  refusals.push(...ancestorFindings(workDir))
+  if (refusals.length > 0) {
+    rmSync(workDir, { recursive: true, force: true })
+    for (const refusal of refusals) console.error(refusal)
     return 1
   }
+  const keep = args.keep
 
   const started = Date.now()
   const results = []

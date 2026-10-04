@@ -8,20 +8,41 @@ name: Examples on the published packages
 # typecheck, test and build scripts and the start command of its
 # .stackblitzrc (scripts/test-examples-published.mjs).
 #
-# On every pull request to v4, so a change that makes an example use an API the
-# published beta lacks fails here. That is intended: such an example change
-# lands with the release that publishes the API, not before it. Weekly, because
-# the examples' other ranges (Vite, Next, TanStack Query, ...) resolve to new
-# releases with no commit of ours. GitHub runs `schedule` and offers
+# On pull requests to v4 that touch an example or this check, so a change that
+# makes an example use an API the published beta lacks fails here. That is
+# intended: such an example change lands with the release that publishes the
+# API, not before it, so the release PR itself, and the push that merges it,
+# are expected to fail this job. It therefore cannot be a required check. The
+# run that counts for a release is the one release.yml calls after its publish
+# job (workflow_call), with --wait-for the tag's version, so it tests the
+# tagged examples against the packages just published. A PR touching only
+# packages/ or docs/ cannot change the outcome (the script installs the
+# published packages, not the branch's), so it does not run this; every push
+# to v4 does, so a breaking release of Vite, Next, TanStack Query or another
+# range still shows up within a push. Weekly, because those ranges resolve to
+# new releases with no commit of ours. GitHub runs `schedule` and offers
 # `workflow_dispatch` only for workflow files on the default branch, which is
 # main (3.x) until 4.0 GA, so those two triggers start working when v4 becomes
-# main.
+# main. The paths filter and the triggers are the owner's call.
 on:
   push:
     branches: [v4]
   pull_request:
     branches: [v4]
+    paths:
+      - "examples/**"
+      - "scripts/test-examples-published.mjs"
+      - "scripts/test-examples-published.test.mjs"
+      - "scripts/example-projects.js"
+      - ".github/workflows/examples-published.yml"
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      wait-for:
+        description: The version the beta dist-tag must name before the run starts (a leading v is dropped)
+        type: string
+        required: false
+        default: ""
   schedule:
     # Mondays, 06:17 UTC.
     - cron: "17 6 * * 1"
@@ -44,12 +65,19 @@ jobs:
 
       # The examples need Node 22.18 or later (node-agent-tool runs its .ts
       # files with Node's type stripping); 22 resolves to the newest 22.x.
+      # The npm cache holds tarballs by integrity, and the script compares
+      # each @ic-reactor/* package's integrity with the registry's, so a cached
+      # tarball proves the same as a downloaded one.
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: examples/*/package.json
 
       # No `pnpm install`: the script needs only Node, npm and git, and the
       # examples get nothing from the workspace.
       - name: Test the examples against the published packages
-        run: node scripts/test-examples-published.mjs
+        env:
+          WAIT_FOR: ${{ inputs.wait-for }}
+        run: node scripts/test-examples-published.mjs ${WAIT_FOR:+--wait-for "$WAIT_FOR"}

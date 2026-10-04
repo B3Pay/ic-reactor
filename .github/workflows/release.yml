@@ -212,3 +212,16 @@ jobs:
           prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The examples against the packages this run just published, from the tagged
+  # commit: the green run of examples-published.yml that counts for a release.
+  # The release PR's own run of that workflow is expected to fail when its
+  # examples use the API this release publishes.
+  examples-published:
+    name: Examples on the published beta
+    needs: release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/examples-published.yml
+    with:
+      wait-for: ${{ github.ref_name }}

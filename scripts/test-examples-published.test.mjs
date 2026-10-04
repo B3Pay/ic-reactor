@@ -11,24 +11,34 @@ import assert from "node:assert/strict"
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
-import { delimiter, join } from "node:path"
+import { delimiter, dirname, join } from "node:path"
 import { after, describe, it } from "node:test"
+import { fileURLToPath } from "node:url"
 import {
   REGISTRY,
+  REGISTRY_ARGS,
+  ancestorFindings,
   checkInstalled,
+  checkLockfile,
   checkManifest,
   isolatedEnv,
+  moduleImports,
   pageScripts,
-  scriptOf,
+  parseArgs,
+  parseNpmCommand,
+  requiredScriptFindings,
   stackblitzStartCommand,
+  trackedConfigFindings,
 } from "./test-examples-published.mjs"
 
 const BETA = "4.0.0-beta.1"
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 
 /** npm's answer for the ranges these tests use. */
 const PUBLISHED = ["3.12.5", "3.13.0", "4.0.0-beta.0", BETA]
@@ -295,19 +305,51 @@ describe("the StackBlitz start command", () => {
     )
   })
 
-  it("names the package script a start command runs", () => {
-    assert.equal(scriptOf("npm test"), "test")
-    assert.equal(scriptOf("npm t"), "test")
-    assert.equal(scriptOf("npm run test"), "test")
-    assert.equal(scriptOf("npm run dev"), "dev")
-    assert.equal(scriptOf("npm run-script gen:check"), "gen:check")
-    assert.equal(scriptOf("npm run dev -- --host"), undefined)
-    assert.equal(scriptOf("node src/cli.ts demo"), undefined)
+  it("names the package script a start command runs, and its arguments after --", () => {
+    assert.deepEqual(parseNpmCommand("npm test"), { script: "test", args: [] })
+    assert.deepEqual(parseNpmCommand("npm t"), { script: "test", args: [] })
+    assert.deepEqual(parseNpmCommand("npm run test"), {
+      script: "test",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm run dev"), {
+      script: "dev",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm run-script gen:check"), {
+      script: "gen:check",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm run dev -- --webpack"), {
+      script: "dev",
+      args: ["--webpack"],
+    })
+    assert.deepEqual(parseNpmCommand("npm run dev --  --host 0.0.0.0 "), {
+      script: "dev",
+      args: ["--host", "0.0.0.0"],
+    })
+    // npm itself would take these as its own flags, not the script's.
+    assert.equal(parseNpmCommand("npm run dev --webpack"), undefined)
+    assert.equal(parseNpmCommand("npm run"), undefined)
+    assert.equal(parseNpmCommand("node src/cli.ts demo"), undefined)
+  })
+
+  it("names --webpack for next-ssr, whose Next refuses Turbopack on a WebContainer's WASM bindings", () => {
+    const next = JSON.parse(
+      readFileSync(
+        join(repoRoot, "examples", "next-ssr", ".stackblitzrc"),
+        "utf8"
+      )
+    )
+    assert.deepEqual(parseNpmCommand(next.startCommand), {
+      script: "dev",
+      args: ["--webpack"],
+    })
   })
 })
 
 describe("pageScripts", () => {
-  it("lists the page's own scripts as absolute URLs, once each", () => {
+  it("lists the page's own scripts as absolute URLs, once each, and which are modules", () => {
     const html = `<!doctype html><html><head>
       <script type="module" src="/@vite/client"></script>
       <script type="module" src="/src/main.tsx"></script>
@@ -317,9 +359,234 @@ describe("pageScripts", () => {
       <script>inline()</script>
     </head></html>`
     assert.deepEqual(pageScripts(html, "http://localhost:5173/"), [
-      "http://localhost:5173/@vite/client",
-      "http://localhost:5173/src/main.tsx",
-      "http://localhost:5173/_next/static/chunks/a.js?v=1&x=2",
+      { url: "http://localhost:5173/@vite/client", module: true },
+      { url: "http://localhost:5173/src/main.tsx", module: true },
+      {
+        url: "http://localhost:5173/_next/static/chunks/a.js?v=1&x=2",
+        module: false,
+      },
     ])
+  })
+})
+
+describe("moduleImports", () => {
+  const url = "http://localhost:5173/src/main.tsx"
+
+  it("lists the app modules a served module imports, statically or with import()", () => {
+    const code = [
+      `import __vite__cjsImport0 from "/node_modules/.vite/deps/react.js?v=abc";`,
+      `import { createHotContext } from "/@vite/client";`,
+      `import { App } from "/src/App.tsx";`,
+      `import {`,
+      `  a,`,
+      `  b,`,
+      `} from "/src/lib/ab.ts?t=123";`,
+      `import "/src/index.css";`,
+      `export { c } from "./c.ts";`,
+      `export * from "../shared/d.ts";`,
+      `const Lazy = lazy(() => import("/src/Lazy.tsx"));`,
+      `import { ext } from "https://cdn.example.com/x.js";`,
+      `import { pkg } from "@ic-reactor/core";`,
+      `const s = "it comes from '/src/not-an-import.ts'";`,
+      `import { App as Again } from "/src/App.tsx";`,
+    ].join("\n")
+    assert.deepEqual(moduleImports(code, url), [
+      "http://localhost:5173/src/App.tsx",
+      "http://localhost:5173/src/lib/ab.ts?t=123",
+      "http://localhost:5173/src/c.ts",
+      "http://localhost:5173/shared/d.ts",
+      "http://localhost:5173/src/index.css",
+      "http://localhost:5173/src/Lazy.tsx",
+    ])
+  })
+})
+
+describe("checkLockfile", () => {
+  const tarball = (n) => `${REGISTRY}@ic-reactor/${n}/-/${n}-${BETA}.tgz`
+  const published = {
+    "@ic-reactor/core": { tarball: tarball("core"), integrity: "sha512-core" },
+    "@ic-reactor/react": {
+      tarball: tarball("react"),
+      integrity: "sha512-react",
+    },
+  }
+  const entry = (n, over = {}) => ({
+    version: BETA,
+    resolved: tarball(n),
+    integrity: `sha512-${n}`,
+    ...over,
+  })
+  const lock = (packages) => ({
+    lockfileVersion: 3,
+    packages: { "": {}, ...packages },
+  })
+  const installed = ["@ic-reactor/core", "@ic-reactor/react"]
+
+  it("passes the registry's tarballs with the registry's integrity", () => {
+    assert.deepEqual(
+      checkLockfile(
+        lock({
+          "node_modules/@ic-reactor/core": entry("core"),
+          "node_modules/@ic-reactor/react": entry("react"),
+          "node_modules/react": { version: "19.3.0", resolved: "x" },
+        }),
+        { installed, published }
+      ),
+      []
+    )
+  })
+
+  it("reports a tarball resolved from another registry", () => {
+    const elsewhere = `http://127.0.0.1:4873/@ic-reactor/react/-/react-${BETA}.tgz`
+    assert.deepEqual(
+      checkLockfile(
+        lock({
+          "node_modules/@ic-reactor/core": entry("core"),
+          "node_modules/@ic-reactor/react": entry("react", {
+            resolved: elsewhere,
+          }),
+        }),
+        { installed, published }
+      ),
+      [
+        `node_modules/@ic-reactor/react was resolved from ${elsewhere}, not ${tarball("react")}`,
+      ]
+    )
+  })
+
+  it("reports an integrity other than the registry's, nested entries too", () => {
+    assert.deepEqual(
+      checkLockfile(
+        lock({
+          "node_modules/@ic-reactor/core": entry("core"),
+          "node_modules/@ic-reactor/react": entry("react"),
+          "node_modules/x/node_modules/@ic-reactor/core": entry("core", {
+            integrity: "sha512-local-build",
+          }),
+        }),
+        { installed, published }
+      ),
+      [
+        "node_modules/x/node_modules/@ic-reactor/core has integrity sha512-local-build, not the registry's sha512-core",
+      ]
+    )
+  })
+
+  it("reports a link, an unrecorded package, an entry not looked up, and no lockfile", () => {
+    assert.deepEqual(
+      checkLockfile(
+        lock({
+          "node_modules/@ic-reactor/react": {
+            resolved: "../../packages/react",
+            link: true,
+          },
+          "node_modules/@ic-reactor/vite-plugin": entry("vite-plugin"),
+        }),
+        { installed, published }
+      ),
+      [
+        "@ic-reactor/core is installed but package-lock.json does not record it",
+        "node_modules/@ic-reactor/react is a link (to ../../packages/react) in package-lock.json, not a tarball from the registry",
+        `node_modules/@ic-reactor/vite-plugin is ${BETA}: the registry's tarball for it was not looked up`,
+      ]
+    )
+    assert.match(
+      checkLockfile(undefined, { installed, published })[0],
+      /no package-lock\.json/
+    )
+  })
+})
+
+describe("the registry", () => {
+  it("pins the @ic-reactor and @candid-core scopes, not only the default registry", () => {
+    assert.deepEqual(REGISTRY_ARGS, [
+      `--registry=${REGISTRY}`,
+      `--@ic-reactor:registry=${REGISTRY}`,
+      `--@candid-core:registry=${REGISTRY}`,
+    ])
+  })
+
+  it("refuses a tracked .npmrc, at the root or below it", () => {
+    assert.deepEqual(trackedConfigFindings(["package.json", "src/a.ts"]), [])
+    const findings = trackedConfigFindings([".npmrc", "sub/.npmrc", "npmrc.md"])
+    assert.equal(findings.length, 2)
+    assert.match(findings[0], /^\.npmrc is tracked: /)
+    assert.match(findings[1], /^sub\/\.npmrc is tracked: /)
+  })
+})
+
+describe("requiredScriptFindings", () => {
+  const all = { typecheck: "tsc", test: "vitest run", build: "vite build" }
+
+  it("requires typecheck, test and build", () => {
+    assert.deepEqual(requiredScriptFindings("x", all), [])
+    const { typecheck: _t, ...noTypecheck } = all
+    const findings = requiredScriptFindings("x", {
+      ...noTypecheck,
+      "type-check": "tsc",
+    })
+    assert.equal(findings.length, 1)
+    assert.match(findings[0], /no "typecheck" script/)
+    assert.equal(requiredScriptFindings("x", undefined).length, 3)
+  })
+
+  it("lets an exception, with its reason, skip one", () => {
+    const { build: _b, ...noBuild } = all
+    assert.deepEqual(
+      requiredScriptFindings("x", noBuild, { x: { build: "no build step" } }),
+      []
+    )
+    assert.equal(
+      requiredScriptFindings("y", noBuild, { x: { build: "no build step" } })
+        .length,
+      1
+    )
+  })
+})
+
+describe("ancestorFindings", () => {
+  it("reports a node_modules or a package.json above the scratch directory", () => {
+    const top = scratch()
+    mkdirSync(join(top, "a", "node_modules", "leaky-pkg"), { recursive: true })
+    const work = join(top, "a", "b", "c", "work")
+    mkdirSync(work, { recursive: true })
+    writeFileSync(join(top, "a", "b", "package.json"), "{}")
+    assert.deepEqual(
+      ancestorFindings(work, { stopAt: top }).map((f) => f.split(" ")[0]),
+      [join(top, "a", "b", "package.json"), join(top, "a", "node_modules")]
+    )
+  })
+
+  it("passes a tree with neither above it, and does not look at the directory itself", () => {
+    const top = scratch()
+    const work = join(top, "a", "b", "work")
+    mkdirSync(join(work, "node_modules"), { recursive: true })
+    writeFileSync(join(work, "package.json"), "{}")
+    assert.deepEqual(ancestorFindings(work, { stopAt: top }), [])
+  })
+})
+
+describe("parseArgs", () => {
+  it("reads --keep, --tmp, --wait-for (dropping a leading v) and the names", () => {
+    assert.deepEqual(
+      parseArgs([
+        "--keep",
+        "--tmp",
+        "/t",
+        "next-ssr",
+        "--wait-for",
+        "v4.0.0-beta.2",
+        "icrc-ledger",
+      ]),
+      {
+        keep: true,
+        tmp: "/t",
+        waitFor: "4.0.0-beta.2",
+        names: ["next-ssr", "icrc-ledger"],
+      }
+    )
+    assert.match(parseArgs(["--tmp"]).error, /--tmp needs a value/)
+    assert.match(parseArgs(["--tmp", "--keep"]).error, /needs a value/)
+    assert.match(parseArgs(["--kep"]).error, /Unknown option --kep/)
   })
 })

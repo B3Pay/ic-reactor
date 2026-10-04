@@ -47,9 +47,10 @@ pnpm test
 ```
 
 StackBlitz installs the example from npm and runs the demo (`npm run demo`)
-in its terminal, where `npm test` runs the tests. The commands that call a
-ledger on mainnet or on a local network, and a PEM identity from your disk,
-are for your own machine.
+in its terminal, where `npm test` runs the tests. The demo and the CLI run
+their `.ts` files with Node's type stripping, so they need Node 22.18 or later,
+there as on your machine. The commands that call a ledger on mainnet or on a
+local network, and a PEM identity from your disk, are for your own machine.
 
 <CardGrid>
   <LinkCard
