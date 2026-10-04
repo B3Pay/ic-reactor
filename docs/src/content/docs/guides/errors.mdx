@@ -118,18 +118,20 @@ simpler:
 
 ### Codes
 
-`code` narrows a kind. The client sets exactly these seven, and none on a
-failure it classified from the agent:
+`code` narrows a kind. The client sets exactly these eight. Only
+`canister_not_found` comes from the IC's answer; the client decides the others
+itself:
 
-| `code`                          | `kind`            | When                                                                                                  |
-| ------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------- |
-| `canister_id_unresolved`        | `invalid_args`    | a `{ name }` target the `ic_env` cookie cannot give: on a server, an untrusted host, or no such entry |
-| `no_certified_path`             | `invalid_args`    | a `composite_query` called on a `certified: true` canister                                            |
-| `effective_canister_id_unknown` | `invalid_args`    | a management canister call that cannot be routed from its arguments                                   |
-| `anonymous_write`               | `unauthenticated` | an update or oneway method by a caller who is not signed in                                           |
-| `identity_unavailable`          | `unauthenticated` | the auth's `getIdentity()` rejected                                                                   |
-| `caller_changed`                | `cancelled`       | the call was made for a principal that is no longer current                                           |
-| `client_disposed`               | `cancelled`       | a call on a disposed client                                                                           |
+| `code`                          | `kind`                        | When                                                                                                                                                                                                                                                                                                                        |
+| ------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `canister_id_unresolved`        | `invalid_args`                | a `{ name }` target the `ic_env` cookie cannot give: on a server, an untrusted host, or no such entry                                                                                                                                                                                                                       |
+| `no_certified_path`             | `invalid_args`                | a `composite_query` called on a `certified: true` canister                                                                                                                                                                                                                                                                  |
+| `effective_canister_id_unknown` | `invalid_args`                | a management canister call that cannot be routed from its arguments                                                                                                                                                                                                                                                         |
+| `anonymous_write`               | `unauthenticated`             | an update or oneway method by a caller who is not signed in                                                                                                                                                                                                                                                                 |
+| `identity_unavailable`          | `unauthenticated`             | the auth's `getIdentity()` rejected                                                                                                                                                                                                                                                                                         |
+| `caller_changed`                | `cancelled`                   | the call was made for a principal that is no longer current                                                                                                                                                                                                                                                                 |
+| `client_disposed`               | `cancelled`                   | a call on a disposed client                                                                                                                                                                                                                                                                                                 |
+| `canister_not_found`            | `not_delivered` or `rejected` | the IC answered that the canister does not exist: a boundary node's HTTP 400 `canister_not_found` (an id outside every subnet's range), or a replica's reject 3 with IC error code `IC0301` (an id inside a range that holds no canister). On a write the IC may already hold, a 400 keeps the code under `outcome_unknown` |
 
 An aborted call is `cancelled` with no code.
 
