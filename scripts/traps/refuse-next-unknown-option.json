@@ -1,0 +1,5 @@
+{
+  "file": "src/testing/test-client.ts",
+  "search": "      readonly times?: number\n    }\n  ): void",
+  "replace": "      readonly times?: number\n      readonly [option: string]: unknown\n    }\n  ): void"
+}

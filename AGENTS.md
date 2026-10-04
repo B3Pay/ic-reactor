@@ -57,8 +57,9 @@ each pinned exactly.
 
 Outputs under `dist`, `.icp`, `target`, `.astro` and `*.tsbuildinfo` are build
 artifacts. `docs/src/content/docs/libs/` is TypeDoc output written by
-`pnpm docs:build`. `e2e/src/declarations/` is committed and, on this branch,
-edited by hand when `e2e/src/actor/hello_actor.did` changes.
+`pnpm docs:build`. `e2e/src/declarations/` is committed: the module
+`candid-core-cli gen` writes from `e2e/src/actor/hello_actor.did` (`pnpm gen`
+in `e2e/`; `e2e/test.sh` fails a stale copy with `pnpm gen:check`).
 
 ## AI context files
 
