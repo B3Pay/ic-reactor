@@ -4,6 +4,6 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src/**/*", "setup.ts", "vitest.config.ts"],
-  "exclude": ["node_modules", "dist", "src/**/*.generated.ts"]
+  "include": ["src/**/*", "setup.ts", "global-setup.ts", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist", "target"]
 }

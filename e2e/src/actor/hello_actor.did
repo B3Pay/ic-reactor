@@ -1,20 +1,10 @@
-type Status = variant { Active; Frozen : text };
-type Profile = record {
-    owner : principal;
-    balance : nat;
-    nonce : nat64;
-    delta : int;
-    tags : vec text;
-    avatar : opt blob;
-    status : Status;
-};
 service : {
     "greet" : (text) -> (text) query;
-    "greet_update" : (text) -> (text);
-    "divide" : (nat, nat) -> (variant { Ok : nat; Err : text }) query;
-    "profile" : (principal) -> (Profile) query;
+    "is_replicated" : () -> (bool) query;
     "increment" : () -> (nat);
     "count" : () -> (nat) query;
+    "increment_by" : (nat64) -> (variant { Ok : nat; Err : text });
+    "refuse" : () -> ();
     "boom" : () -> ();
     "whoami" : () -> (principal) query
 }
