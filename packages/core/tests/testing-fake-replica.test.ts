@@ -1051,6 +1051,36 @@ describe("the fault hooks", () => {
       expect(runs.query).toBe(0)
     })
 
+    it("aimed at a canister or a method, never refuses the requests an agent makes on its own", async () => {
+      // The read_state an agent makes to trust a query is routed by the
+      // canister the refusal names, and the status request names nothing:
+      // neither is a query or call, so neither matches, and the refusal waits
+      // for the canister's next query.
+      const { replica, runs } = countingReplica()
+      const agent = HttpAgent.createSync({
+        host: replica.host,
+        fetch: replica.fetch,
+        shouldFetchRootKey: true,
+        retryTimes: 0,
+        subnetNodeKeyExpirableStore: nodeKeysOfOneAgent(),
+      })
+      replica.refuseNext(429, { canister: CANISTER })
+      replica.refuseNext(503, { method: "whoami_query" })
+
+      await agent.fetchRootKey()
+      await agent.fetchSubnetKeys({ canisterId: Principal.fromText(CANISTER) })
+      expect(
+        replica.requests.map((r) => [r.endpoint, Boolean(r.refused)])
+      ).toEqual([
+        ["status", false],
+        ["read_state", false],
+      ])
+
+      expect(shapeOf(await rejection(queryReply(agent))).status).toBe(429)
+      expect(shapeOf(await rejection(queryReply(agent))).status).toBe(503)
+      expect(runs.query).toBe(0)
+    })
+
     it("refuses as many sends as it is told to, so a retry can get through", async () => {
       const { replica, runs } = countingReplica()
       const agent = agentOn(replica, retriesAtOnce(2))

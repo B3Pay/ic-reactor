@@ -217,12 +217,48 @@ export interface FakeReplica {
    * `retryTimes: 0`; `times` is how many sends to refuse, so a test can refuse
    * the first and let a retry through.
    *
+   * Given {@link FakeRefusal} options instead of a count, it refuses only the
+   * requests that name `method` and are addressed to `canister` (each one
+   * that is given), and lets every other request through. A request that
+   * several armed refusals match is refused by the one armed first.
+   *
    * @param status - An HTTP error status, from 400 to 599.
-   * @param times - How many requests to refuse.
+   * @param times - How many requests to refuse, or which ones and how many.
    * @defaultValue 1
    */
-  refuseNext(status: number, times?: number): void
+  refuseNext(status: number, times?: number | FakeRefusal): void
 }
+
+/**
+ * Which canister requests {@link FakeReplica.refuseNext} refuses, and how
+ * many. A request matches when it names `method` and is addressed to
+ * `canister`, each when it is given: options with neither match any query or
+ * call, as a count does.
+ */
+export interface FakeRefusal {
+  /**
+   * The method a matching `query` or `call` names. A query and a replicated
+   * call of the same method both match.
+   */
+  readonly method?: string
+  /**
+   * The canister a matching request is addressed to, as text: the canister
+   * the request names, not the effective canister it is routed by, so
+   * `aaaaa-aa` for a call to the management canister. It need not run on
+   * the fake: a gateway refuses a request for a canister that does not exist.
+   */
+  readonly canister?: string
+  /**
+   * How many matching requests to refuse: each send counts, an agent's own
+   * re-send of a refused request included.
+   *
+   * @defaultValue 1
+   */
+  readonly times?: number
+}
+
+/** The options of {@link FakeRefusal}, for the message of one that is not. */
+const REFUSAL_OPTIONS = ["method", "canister", "times"] as const
 
 /** A fake replica installed by {@link installFakeReplica}. */
 export interface InstalledFakeReplica extends FakeReplica {
@@ -557,10 +593,33 @@ function buildFakeReplica(
   const nodeId = Principal.selfAuthenticating(nodeKey)
 
   // The fault hooks' state: how many update replies are still to be lost,
-  // the HTTP statuses still to be answered, and the calls whose reply was lost.
+  // the refusals still armed, in the order they were armed, and the calls
+  // whose reply was lost.
   let repliesToLose = 0
-  const refusals: number[] = []
+  const refusals: Array<{
+    readonly status: number
+    readonly method: string | undefined
+    readonly canister: string | undefined
+    left: number
+  }> = []
   const lostRequests = new Set<string>()
+
+  /**
+   * The status to refuse a `query` or `call` with, from the first armed
+   * refusal it matches, which it uses up; `undefined` to let it through.
+   */
+  function refusalFor(canisterId: string, method: string | undefined) {
+    const index = refusals.findIndex(
+      (refusal) =>
+        (refusal.method === undefined || refusal.method === method) &&
+        (refusal.canister === undefined || refusal.canister === canisterId)
+    )
+    if (index === -1) return undefined
+    const refusal = refusals[index]
+    refusal.left -= 1
+    if (refusal.left === 0) refusals.splice(index, 1)
+    return refusal.status
+  }
 
   async function certify(entries: Array<[string, TreeNode]>) {
     const tree = toHashTree([...entries, ["time", leb128(nowNanos())]])
@@ -907,7 +966,10 @@ function buildFakeReplica(
         : effectiveCanisterId
 
       // Before the signatures are read, as a gateway refuses a request.
-      const status = endpoint === "read_state" ? undefined : refusals.shift()
+      const status =
+        endpoint === "read_state"
+          ? undefined
+          : refusalFor(canisterId, envelope.content.method_name)
       if (status !== undefined) {
         const refused = `refuseNext(${status}) answered the request with HTTP ${status}`
         requests.push({
@@ -989,18 +1051,54 @@ function buildFakeReplica(
     dropNextReply() {
       repliesToLose += 1
     },
-    refuseNext(status, times = 1) {
+    refuseNext(status, which = 1) {
       if (!Number.isInteger(status) || status < 400 || status > 599) {
         throw new RangeError(
           `refuseNext: ${status} is not an HTTP error status (400 to 599)`
         )
       }
+      // A count, or anything that is not an object, is the published
+      // `(status, times?)` form, checked as it always was.
+      const options: FakeRefusal =
+        typeof which === "object" && which !== null && !Array.isArray(which)
+          ? which
+          : { times: which as number }
+      const unknown = Object.keys(options).filter(
+        (key) => !(REFUSAL_OPTIONS as readonly string[]).includes(key)
+      )
+      if (unknown.length > 0) {
+        throw new TypeError(
+          `refuseNext() has no option ${unknown.join(", ")}. Its options: ${REFUSAL_OPTIONS.join(", ")}.`
+        )
+      }
+      const { method, canister, times = 1 } = options
       if (!Number.isInteger(times) || times < 1) {
         throw new RangeError(
           `refuseNext: \`times\` is ${times}, not a count of at least 1`
         )
       }
-      for (let i = 0; i < times; i += 1) refusals.push(status)
+      if (method !== undefined && (typeof method !== "string" || !method)) {
+        throw new TypeError(
+          `refuseNext: \`method\` is the name of a canister method, got ${
+            typeof method === "string" ? '""' : typeof method
+          }`
+        )
+      }
+      let canisterId: string | undefined
+      if (canister !== undefined) {
+        try {
+          canisterId = Principal.fromText(canister).toText()
+        } catch {
+          throw new TypeError(
+            `refuseNext: \`canister\` is a canister id, such as "ryjl3-tyaaa-aaaaa-aaaba-cai" or "aaaaa-aa", got ${
+              typeof canister === "string"
+                ? JSON.stringify(canister)
+                : typeof canister
+            }`
+          )
+        }
+      }
+      refusals.push({ status, method, canister: canisterId, left: times })
     },
   }
 }

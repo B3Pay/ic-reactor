@@ -122,9 +122,31 @@ expectTypeOf(test.client).toEqualTypeOf<Client>()
 expectTypeOf(test.auth).toEqualTypeOf<TestAuth>()
 expectTypeOf(test.requests).toEqualTypeOf<readonly FakeReplicaRequest[]>()
 expectTypeOf(test.dropNextReply).toEqualTypeOf<() => void>()
-expectTypeOf(test.refuseNext).parameters.toEqualTypeOf<
+// Two forms: the published count, and the aimed one. The count is the last
+// overload, so `Parameters` still reads it as it did in 4.0.0-beta.1.
+expectTypeOf<Parameters<typeof test.refuseNext>>().toEqualTypeOf<
   [status: number, times?: number]
 >()
+expectTypeOf(test.refuseNext).parameters.toEqualTypeOf<
+  | [
+      status: number,
+      options: {
+        readonly method?: string
+        readonly canister?: string
+        readonly times?: number
+      },
+    ]
+  | [status: number, times?: number]
+>()
+// The aimed form: which method and canister, and how many.
+test.refuseNext(429)
+test.refuseNext(503, 2)
+test.refuseNext(429, { method: "icrc1_transfer", canister: LEDGER, times: 3 })
+test.refuseNext(400, { canister: LEDGER })
+// @ts-expect-error `times` is a count, not text
+test.refuseNext(429, { method: "icrc1_transfer", times: "3" })
+// @ts-expect-error a status is a number
+test.refuseNext("429", { method: "icrc1_transfer" })
 // Calling it from a handler ends the handler: it never returns.
 expectTypeOf(test.reject).parameters.toEqualTypeOf<
   [code: 1 | 2 | 3 | 4 | 5 | 6, message?: string]

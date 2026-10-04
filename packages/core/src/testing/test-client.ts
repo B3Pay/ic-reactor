@@ -360,10 +360,43 @@ export function createTestClient(
    */
   dropNextReply(): void
   /**
+   * Answers the next `times` canister requests that name `method` and are
+   * addressed to `canister` (each one that is given) with an HTTP error
+   * `status` before any canister sees them, and lets every other request
+   * through: `refuseNext(429, { method: "icrc1_transfer" })` throttles the
+   * transfer while the reads around it are answered.
+   *
+   * A query and a replicated call of the same method both match. `canister`
+   * is the canister the request names (`aaaaa-aa` for a call to the
+   * management canister), and need not be mocked: a gateway refuses a request
+   * for a canister that does not exist. `times` counts matching requests,
+   * each send of a call the client re-sends included. A request that several
+   * refusals match is refused by the one armed first.
+   *
+   * @param status - An HTTP error status, from 400 to 599.
+   * @param options - Which requests to refuse, and how many (`times`,
+   * default 1). Options with neither `method` nor `canister` refuse whatever
+   * query or call comes next, as a count does.
+   * @throws RangeError for a status that is not an HTTP error status, or a
+   * `times` that is not a count of at least 1; TypeError for an option that
+   * does not exist, an empty `method`, or a `canister` that is not a canister
+   * id.
+   */
+  refuseNext(
+    status: number,
+    options: {
+      readonly method?: string
+      readonly canister?: string
+      readonly times?: number
+    }
+  ): void
+  /**
    * Answers the next `times` canister requests (a query or a call) with an
    * HTTP error `status` before any canister sees them, as a gateway that
    * throttles does: `refuseNext(429)` is what a client is told when it is
-   * rate limited.
+   * rate limited. The status and `read_state` requests an agent makes on its
+   * own are never refused, so the refusal waits for the next query or call,
+   * whatever its method or canister.
    *
    * @param status - An HTTP error status, from 400 to 599.
    * @param times - How many requests to refuse.

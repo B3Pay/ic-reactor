@@ -65,7 +65,7 @@ import {
 } from "@tanstack/query-core"
 import { createClient, formatUnits, parseUnits } from "../src/index.js"
 import type { Network, ReactorError } from "../src/index.js"
-import type { TestHandlers } from "../src/testing/index.js"
+import { createTestClient, type TestHandlers } from "../src/testing/index.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
 import * as icrc1 from "./fixtures/icrc1.js"
 import * as shapes from "./fixtures/shapes.js"
@@ -213,6 +213,14 @@ export const balanceTypo: LedgerHandlers = { icrc1_balance: () => 1n }
 // trap: test-handler-takes-the-domain-value
 // @ts-expect-error icrc1_balance_of takes an Account, not text: ({ owner }) => ...
 export const ofText: LedgerHandlers = { icrc1_balance_of: (_o: string) => 1n }
+
+// A refusal aimed at a method: an option it does not have would be ignored,
+// and the refusal would land on whatever request came next.
+const { refuseNext } = createTestClient()
+refuseNext(429, { method: "icrc1_transfer", times: 3 })
+// trap: refuse-next-unknown-option
+// @ts-expect-error refuseNext() has no option `methd`; it is `method`
+refuseNext(429, { methd: "icrc1_transfer" })
 
 // ---------------------------------------------------------------------------
 // Known holes (D36): these COMPILE on purpose

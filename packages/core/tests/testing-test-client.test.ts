@@ -645,6 +645,143 @@ describe("the failures a test makes happen", () => {
   })
 })
 
+describe("a refusal aimed at one method or canister", () => {
+  /** A canister that names no canister on the fake. */
+  const NOWHERE = "2y4s5-zaaaa-aaad7-7777q-cai"
+  const to = principal("rrkah-fqaaa-aaaaa-aaaaq-cai")
+  const transferArg: icrc1.TransferArg = {
+    to: { owner: to, subaccount: null },
+    amount: 5n,
+    fee: null,
+    memo: null,
+    from_subaccount: null,
+    created_at_time: null,
+  }
+
+  /** A ledger at LEDGER and the shapes canister at SHAPES, counting runs. */
+  function twoCanisters() {
+    const runs = { transfer: 0, balance: 0, fee: 0, one: 0 }
+    const test = setup()
+    test.mock<icrc1.Actor>(icrc1.actor, LEDGER, {
+      icrc1_fee: () => {
+        runs.fee += 1
+        return 10_000n
+      },
+      icrc1_balance_of: () => {
+        runs.balance += 1
+        return 7n
+      },
+      icrc1_transfer: () => {
+        runs.transfer += 1
+        return { tag: "Ok", value: 1n }
+      },
+    })
+    test.mock<shapes.Actor>(shapes.actor, SHAPES, {
+      one: (n) => {
+        runs.one += 1
+        return n
+      },
+    })
+    return {
+      ...test,
+      runs,
+      ledger: test.client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER }),
+      shapes: test.client.canister<shapes.Actor>(shapes.actor, { id: SHAPES }),
+    }
+  }
+
+  /** Whether each request for `method` was refused, in order. */
+  const refusedOf = (test: Pick<Test, "requests">, method: string) =>
+    test.requests
+      .filter((request) => request.methodName === method)
+      .map((request) => request.refused !== undefined)
+
+  it.each([
+    ["icrc1_transfer", "icrc1_balance_of"],
+    ["icrc1_balance_of", "icrc1_transfer"],
+  ] as const)(
+    "refuses only %s while a concurrent %s is answered",
+    async (refused, answered) => {
+      const test = twoCanisters()
+      // Three sends: the first, and the two re-sends the client allows itself
+      // after a 429, for a read as for a write.
+      test.refuseNext(429, { method: refused, times: 3 })
+
+      const [transfer, balance] = await Promise.allSettled([
+        test.ledger.icrc1_transfer(transferArg),
+        test.ledger.icrc1_balance_of({ owner: to, subaccount: null }),
+      ])
+      const outcomes = { icrc1_transfer: transfer, icrc1_balance_of: balance }
+
+      expect(outcomes[answered]).toMatchObject({ status: "fulfilled" })
+      expect(outcomes[refused]).toMatchObject({
+        status: "rejected",
+        reason: { kind: "not_delivered", httpStatus: 429 },
+      })
+      expect(refusedOf(test, refused)).toEqual([true, true, true])
+      expect(refusedOf(test, answered)).toEqual([false])
+      expect(test.runs).toMatchObject(
+        refused === "icrc1_transfer"
+          ? { transfer: 0, balance: 1 }
+          : { transfer: 1, balance: 0 }
+      )
+    }
+  )
+
+  it("refuses only the canister it names, mocked or not, whatever the method", async () => {
+    const test = twoCanisters()
+    test.refuseNext(400, { canister: SHAPES })
+    test.refuseNext(400, { canister: NOWHERE })
+
+    await expect(test.ledger.icrc1_fee()).resolves.toBe(10_000n)
+    await expect(test.shapes.one(1n)).rejects.toMatchObject({
+      kind: "not_delivered",
+      httpStatus: 400,
+    })
+    // As a gateway answers for a canister that does not exist, not the reject
+    // code 3 the fake would answer once the request got in.
+    const nowhere = test.client.canister<icrc1.Actor>(icrc1.actor, {
+      id: NOWHERE,
+    })
+    await expect(nowhere.icrc1_fee()).rejects.toMatchObject({
+      kind: "not_delivered",
+      httpStatus: 400,
+    })
+
+    expect(test.runs).toMatchObject({ fee: 1, one: 0 })
+    // Each refusal was used once, so the next calls are answered.
+    await expect(test.shapes.one(2n)).resolves.toBe(2n)
+    expect(canisterRequests(test).map((r) => r.refused !== undefined)).toEqual([
+      false,
+      true,
+      true,
+      false,
+    ])
+  })
+
+  it("is matched in the order refusals were armed, and the count form still refuses whatever comes next", async () => {
+    // Read as 4.0.0-beta.1 reads it: `refuseNext(status, times?)` refuses the
+    // next query or call of any method. An aimed refusal armed before it
+    // does not hold it back, and waits for its own method.
+    const test = twoCanisters()
+    test.refuseNext(400, { method: "icrc1_transfer" })
+    test.refuseNext(403, 2)
+
+    await expect(test.ledger.icrc1_fee()).rejects.toMatchObject({
+      httpStatus: 403,
+    })
+    await expect(test.shapes.one(1n)).rejects.toMatchObject({
+      httpStatus: 403,
+    })
+    await expect(test.ledger.icrc1_transfer(transferArg)).rejects.toMatchObject(
+      { kind: "not_delivered", httpStatus: 400 }
+    )
+    await expect(test.ledger.icrc1_fee()).resolves.toBe(10_000n)
+
+    expect(test.runs).toMatchObject({ fee: 1, one: 0, transfer: 0 })
+  })
+})
+
 describe("what it leaves alone", () => {
   it("never replaces or uses globalThis.fetch", async () => {
     const real = vi.fn(() => {
@@ -853,5 +990,35 @@ describe("what it refuses", () => {
     expect(() =>
       mock<shapes.Actor>(shapes.actor, SHAPES, null as never)
     ).toThrow(/handlers as an object/)
+  })
+
+  it("a refusal that cannot be armed: a status, a count, an option, a method or a canister", () => {
+    const { refuseNext } = setup()
+
+    expect(() => refuseNext(200, { method: "icrc1_transfer" })).toThrow(
+      new RangeError("refuseNext: 200 is not an HTTP error status (400 to 599)")
+    )
+    expect(() => refuseNext(429, { times: 0 })).toThrow(
+      new RangeError("refuseNext: `times` is 0, not a count of at least 1")
+    )
+    expect(() => refuseNext(429, { methd: "icrc1_transfer" } as never)).toThrow(
+      new TypeError(
+        "refuseNext() has no option methd. Its options: method, canister, times."
+      )
+    )
+    expect(() => refuseNext(429, { method: "" })).toThrow(
+      new TypeError(
+        'refuseNext: `method` is the name of a canister method, got ""'
+      )
+    )
+    expect(() => refuseNext(429, { canister: "ledger" })).toThrow(
+      new TypeError(
+        'refuseNext: `canister` is a canister id, such as "ryjl3-tyaaa-aaaaa-aaaba-cai" or "aaaaa-aa", got "ledger"'
+      )
+    )
+    // The published form is checked as it was.
+    expect(() => refuseNext(429, 0)).toThrow(
+      new RangeError("refuseNext: `times` is 0, not a count of at least 1")
+    )
   })
 })
