@@ -217,3 +217,9 @@ if (shouldPublish || dryRun) {
 console.log(`\nGit commands:`)
 console.log(`  git push origin v3`)
 console.log(`  git push origin v${version}`)
+console.log(
+  `Tag only a commit that reaches v3 unchanged. If v3's ruleset requires a pull\n` +
+    `request and you are not on its bypass list, push this commit to a release\n` +
+    `branch instead, merge its PR with a merge commit (a squash or rebase would\n` +
+    `leave the tagged commit off v3), and only then push the tag.`
+)
