@@ -160,6 +160,12 @@ jobs:
       - name: Docs snippet check
         run: pnpm check:snippets:docs
 
+      # The docs half of the snippet gate's own tests. It needs the examples'
+      # installs, which the Test job (where the rest of test:scripts runs)
+      # does not have, so scripts/check-snippets.test.mjs skips it there.
+      - name: Test the docs snippet gate
+        run: node --test --test-name-pattern="check:snippets --docs" scripts/check-snippets.test.mjs
+
       # `tsc` never loads a bundler, so a broken Vite/Next config type-checks
       # clean. examples/nextjs (Turbopack workspace root) and
       # examples/nextjs-app-router (Tailwind v4 PostCSS plugin) were both
