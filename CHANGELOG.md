@@ -15,7 +15,17 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Added
+
+- `ReactorError.code` is `"canister_not_found"` when the IC answers that the
+  target canister does not exist (#821): a boundary node's HTTP 400 whose body
+  names `canister_not_found`, on a read or a write, and a reject code 3 with
+  the IC error code `IC0301`, which is how the fake replica of
+  `@ic-reactor/core/testing` answers. `kind` and `mayHaveExecuted` are
+  unchanged (`not_delivered` and `rejected`, `false` for a request the IC had
+  not accepted). Any other HTTP 400 and any other reject 3 still has no `code`.
 
 ## core, react, vite-plugin 4.0.0-beta.1
 

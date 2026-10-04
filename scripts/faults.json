@@ -1679,5 +1679,65 @@
     "file": "src/client.ts",
     "search": "[CLIENT_AS]: { value: viewAs, enumerable: true },",
     "replace": "[CLIENT_AS]: { value: viewAs },"
+  },
+  {
+    "id": "fu-not-found-boundary-body-unread",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "HTTP 400 canister_not_found (mainnet)",
+    "why": "a boundary node's HTTP 400 canister_not_found (the shape captured from mainnet) gets no `code`, so an app cannot tell a missing canister from any other refusal",
+    "file": "src/errors.ts",
+    "search": "CANISTER_NOT_FOUND_BODY.test(shape.bodyText ?? \"\")",
+    "replace": "false"
+  },
+  {
+    "id": "fu-not-found-any-mention-of-the-token",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "HTTP 400 naming it only in details",
+    "why": "any 400 whose body mentions canister_not_found anywhere gets the code, not only the one whose error line is that token",
+    "file": "src/errors.ts",
+    "search": "/^error:[ \\t]*canister_not_found[ \\t\\r]*$/m",
+    "replace": "/canister_not_found/"
+  },
+  {
+    "id": "fu-not-found-any-4xx-status",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "HTTP 404 saying canister_not_found",
+    "why": "a refusal with a status other than 400 gets the canister_not_found code from its body alone",
+    "file": "src/errors.ts",
+    "search": "  shape.httpStatus === 400\n",
+    "replace": "  shape.httpStatus !== undefined\n"
+  },
+  {
+    "id": "fu-not-found-dropped-once-accepted",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "keeps the canister_not_found code on a refusal that proves nothing",
+    "why": "an update that may already be accepted loses the canister_not_found code although the answer still names a missing canister",
+    "file": "src/errors.ts",
+    "search": "if (mayBeAccepted) return make(\"outcome_unknown\", true, reason, false, code)",
+    "replace": "if (mayBeAccepted) return make(\"outcome_unknown\", true, reason, false)"
+  },
+  {
+    "id": "fu-not-found-replica-reject-unread",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "with canister_not_found, on a query and an update",
+    "why": "the fake replica's reject 3 with IC0301 gets no `code`, so a test client and mainnet disagree about a missing canister",
+    "file": "src/errors.ts",
+    "search": "shape.rejectErrorCode === IC_CANISTER_NOT_FOUND",
+    "replace": "false"
+  },
+  {
+    "id": "fu-not-found-any-reject-3",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "reject 3 IC0536 (no such method)",
+    "why": "every reject 3 gets the canister_not_found code, a method the canister does not have included, not only one with the IC error code IC0301",
+    "file": "src/errors.ts",
+    "search": "shape.rejectErrorCode === IC_CANISTER_NOT_FOUND",
+    "replace": "true"
   }
 ]

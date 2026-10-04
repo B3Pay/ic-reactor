@@ -117,6 +117,84 @@ const http = (status: number, bodyText?: string): Built => ({
     }),
 })
 
+/**
+ * A reject that carries the IC error code next to the reject code, as a
+ * replica sends it (`error_code` in the response).
+ */
+const rejectWithErrorCode = (
+  rejectCode: number,
+  errorCode: string,
+  message: string
+): Built => ({
+  real: () =>
+    RejectError.fromCode(
+      new CertifiedRejectErrorCode(
+        REQUEST_ID,
+        rejectCode as ReplicaRejectCode,
+        message,
+        errorCode
+      )
+    ),
+  copy: () =>
+    foreign("Reject", {
+      name: "CertifiedRejectErrorCode",
+      rejectCode,
+      rejectMessage: message,
+      rejectErrorCode: errorCode,
+    }),
+})
+
+/**
+ * What a mainnet boundary node answers for a canister id that names no
+ * canister, captured on 2026-10-04 (20:38 UTC) with `@icp-sdk/core` 6.1.0:
+ * an `HttpAgent` on https://icp-api.io with `retryTimes: 0` called
+ * `2y4s5-zaaaa-aaad7-7777q-cai` once as an anonymous query and once as an
+ * update signed by a throwaway Ed25519 identity. Both threw a `ProtocolError`
+ * (`name` "ProtocolError", `kind` "Protocol") whose `code` is an
+ * `HttpErrorCode` with these fields; the two differ only in the `date` and
+ * `x-request-id` headers and in the request context (sender key and
+ * signature on the update), which the classifier does not read. A local
+ * network started by dfx 0.32.0 answered both calls with the same status and
+ * body.
+ */
+const MAINNET_CANISTER_NOT_FOUND = {
+  status: 400,
+  statusText: "Bad Request",
+  headers: [
+    ["access-control-allow-origin", "*"],
+    [
+      "access-control-expose-headers",
+      "accept-ranges,content-length,content-range,x-request-id,x-ic-canister-id",
+    ],
+    ["content-length", "73"],
+    ["content-type", "text/plain; charset=utf-8"],
+    ["date", "Sun, 04 Oct 2026 20:38:25 GMT"],
+    ["strict-transport-security", "max-age=31536000; includeSubDomains"],
+    ["x-ic-canister-id", "2y4s5-zaaaa-aaad7-7777q-cai"],
+    ["x-request-id", "01a108a3-a709-75d3-b71f-a1cac5f0d997"],
+  ] as [string, string][],
+  bodyText:
+    "error: canister_not_found\ndetails: The specified canister does not exist.",
+} as const
+
+const boundaryCanisterNotFound: Built = {
+  real: () =>
+    ProtocolError.fromCode(
+      new HttpErrorCode(
+        MAINNET_CANISTER_NOT_FOUND.status,
+        MAINNET_CANISTER_NOT_FOUND.statusText,
+        MAINNET_CANISTER_NOT_FOUND.headers,
+        MAINNET_CANISTER_NOT_FOUND.bodyText
+      )
+    ),
+  copy: () =>
+    foreign("Protocol", {
+      name: "HttpErrorCode",
+      isCertified: false,
+      ...MAINNET_CANISTER_NOT_FOUND,
+    }),
+}
+
 const transport = (cause: unknown = new TypeError("fetch failed")): Built => ({
   real: () => TransportError.fromCode(new HttpFetchErrorCode(cause)),
   copy: () =>
@@ -268,6 +346,8 @@ interface Row {
   canisterId?: string
   rejectCode?: number
   httpStatus?: number
+  /** `ReactorError.code`; absent on every row that does not set it. */
+  code?: string
   update: Outcome
   query: Outcome
 }
@@ -293,6 +373,36 @@ const rows: Row[] = [
     built: certifiedReject(3),
     rejectCode: 3,
     update: settled("rejected", false),
+    query: settled("rejected", false),
+  },
+  {
+    name: "reject 3 IC0301 (no such canister)",
+    built: rejectWithErrorCode(
+      3,
+      "IC0301",
+      `fake replica: no canister is installed at ${LEDGER}`
+    ),
+    rejectCode: 3,
+    code: "canister_not_found",
+    update: settled("rejected", false),
+    query: settled("rejected", false),
+  },
+  {
+    name: "reject 3 IC0536 (no such method)",
+    built: rejectWithErrorCode(
+      3,
+      "IC0536",
+      "Canister has no update method 'icrc1_transfer'"
+    ),
+    rejectCode: 3,
+    update: settled("rejected", false),
+    query: settled("rejected", false),
+  },
+  {
+    name: "reject 5 with IC0301",
+    built: rejectWithErrorCode(5, "IC0301", "not from a missing canister"),
+    rejectCode: 5,
+    update: settled("rejected", true),
     query: settled("rejected", false),
   },
   {
@@ -369,6 +479,28 @@ const rows: Row[] = [
     update: settled("not_delivered", false),
     query: settled("not_delivered", false),
   })),
+  {
+    name: "HTTP 400 canister_not_found (mainnet)",
+    built: boundaryCanisterNotFound,
+    httpStatus: 400,
+    code: "canister_not_found",
+    update: settled("not_delivered", false),
+    query: settled("not_delivered", false),
+  },
+  {
+    name: "HTTP 400 naming it only in details",
+    built: http(400, "error: bad_request\ndetails: not canister_not_found"),
+    httpStatus: 400,
+    update: settled("not_delivered", false),
+    query: settled("not_delivered", false),
+  },
+  {
+    name: "HTTP 404 saying canister_not_found",
+    built: http(404, MAINNET_CANISTER_NOT_FOUND.bodyText),
+    httpStatus: 404,
+    update: settled("not_delivered", false),
+    query: settled("not_delivered", false),
+  },
   {
     name: "HTTP 429",
     built: http(429, "Too Many Requests"),
@@ -447,6 +579,7 @@ describe("classifyError", () => {
           expect(error.mayHaveExecuted).toBe(want.mayHaveExecuted)
           expect(error.rejectCode).toBe(row.rejectCode)
           expect(error.httpStatus).toBe(row.httpStatus)
+          expect(error.code).toBe(row.code)
           expect(error.method).toBe(METHOD)
           expect(error.canisterId).toBe(canisterId)
           expect(error.cause).toBe(thrown)
@@ -662,6 +795,24 @@ describe("classifyError", () => {
       }
     })
 
+    it("keeps the canister_not_found code on a refusal that proves nothing", () => {
+      // The answer still says the canister does not exist; what it proves
+      // about the update is what `kind` and `mayHaveExecuted` say.
+      for (const build of [
+        boundaryCanisterNotFound.real,
+        boundaryCanisterNotFound.copy,
+      ]) {
+        const error = classifyError(
+          build(),
+          context("update", { accepted: true })
+        )
+        expect(error.kind).toBe("outcome_unknown")
+        expect(error.mayHaveExecuted).toBe(true)
+        expect(error.code).toBe("canister_not_found")
+        expect(retryUpdate(error, 0)).toBe(false)
+      }
+    })
+
     it("leaves a reject code to mean what it always means", () => {
       const error = classifyError(
         certifiedReject(2).real(),
@@ -708,7 +859,16 @@ describe("classifyError", () => {
       expect(update.kind).toBe("not_delivered")
       expect(update.mayHaveExecuted).toBe(false)
       expect(update.httpStatus).toBe(400)
+      expect(update.code).toBe("canister_not_found")
       expect(retryUpdate(update, 0)).toBe(false)
+    })
+
+    it("says canister_not_found on a read too, and is not retried", () => {
+      const query = classifyError(thrown, context("query"))
+      expect(query.kind).toBe("not_delivered")
+      expect(query.mayHaveExecuted).toBe(false)
+      expect(query.code).toBe("canister_not_found")
+      expect(retryQuery(0, query)).toBe(false)
     })
 
     it("keeps its own message short and readable, and the original as the cause", () => {

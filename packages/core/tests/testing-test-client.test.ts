@@ -535,6 +535,29 @@ describe("the failures a test makes happen", () => {
     })
   })
 
+  it("rejects a call to a canister it holds none at with canister_not_found, on a query and an update", async () => {
+    // A boundary node answers the same call with HTTP 400 canister_not_found;
+    // the fake rejects it with code 3 and IC0301, and the code is the same.
+    const test = setup()
+    const missing = test.client.canister<shapes.Actor>(shapes.actor, {
+      id: LEDGER,
+    })
+
+    await expect(missing.one(1n)).rejects.toMatchObject({
+      kind: "rejected",
+      rejectCode: 3,
+      code: "canister_not_found",
+      mayHaveExecuted: false,
+    })
+    await expect(missing.bump(1n)).rejects.toMatchObject({
+      kind: "rejected",
+      rejectCode: 3,
+      code: "canister_not_found",
+      mayHaveExecuted: false,
+    })
+    expect(canisterRequests(test)).toHaveLength(2)
+  })
+
   it("loses the reply to the next update only, and the handler ran exactly once", async () => {
     let ran = 0
     const { canister, dropNextReply, requests } = withShapes({
