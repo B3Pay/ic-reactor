@@ -13,8 +13,10 @@ import {
   build,
   createLogger,
   createServer,
+  version as viteVersion,
   type Logger,
   type Plugin,
+  type ServerOptions,
   type ViteDevServer,
 } from "vite"
 import { icReactor, type IcReactorPluginOptions } from "../src/index.js"
@@ -31,6 +33,34 @@ export const BROKEN_DID = "service : { greet : (text) -> (text query\n"
 export const PING_DID = "service : { ping : () -> () };\n"
 
 const FAKE_CLI = path.join(HERE, "fixtures", "fake-cli")
+
+/**
+ * The `server.watch` that starts no file watcher. Vite 5 and later take
+ * `null`. Vite 4, the oldest major the peer range accepts and which
+ * `verify:peer-floors` runs these tests on, has no such value and reads
+ * `null` as the default watcher, whose events would double the ones the tests
+ * emit: there the watcher ignores every path instead.
+ */
+const NO_WATCHER = (
+  Number(viteVersion.split(".")[0]) < 5 ? { ignored: ["**"] } : null
+) as ServerOptions["watch"]
+
+/**
+ * The server options of a middleware-mode server without a WebSocket, which
+ * binds no port. `hmr: false` alone is not that: Vite still opens a WebSocket
+ * server then, on the fixed port 24678, so two servers at once (two test
+ * files, or any other middleware-mode Vite on the machine) collide. Vite 4
+ * fails with EADDRINUSE, and from Vite 5 on the server logs an error, which
+ * the tests that count logged errors see. Vite 6 and later take `ws: false`
+ * (not in Vite 4's types, hence the cast). Vite 4 and 5, which
+ * `verify:peer-floors` runs these tests on, do not: there the WebSocket is
+ * attached to an HTTP server that never listens.
+ */
+export function noWebSocket(): Pick<ServerOptions, "hmr"> {
+  return Number(viteVersion.split(".")[0]) >= 6
+    ? ({ hmr: false, ws: false } as Pick<ServerOptions, "hmr">)
+    : { hmr: { server: http.createServer() } }
+}
 
 export interface App {
   /** The app's root: a real path, since Vite compares real paths. */
@@ -154,7 +184,8 @@ export interface Running {
  * Its file watcher is off by default and the tests deliver the events they
  * mean to by emitting them: a real watcher on a directory created a moment
  * ago sometimes reports the files in it, which starts a run nobody asked for.
- * `realWatcher` keeps it. `hmr: false` is the server without a WebSocket. The
+ * `realWatcher` keeps it. `hmr: false` is the server without a WebSocket
+ * (`noWebSocket`). The
  * environment half of the plugin is off, so no test runs `icp`.
  */
 export async function startDev(
@@ -170,8 +201,8 @@ export async function startDev(
     customLogger: logger,
     server: {
       middlewareMode: true,
-      hmr: hmr ? { server: httpServer } : false,
-      watch: realWatcher ? undefined : null,
+      ...(hmr ? { hmr: { server: httpServer } } : noWebSocket()),
+      watch: realWatcher ? undefined : NO_WATCHER,
     },
     plugins: [...before, icReactor({ injectEnvironment: false, ...options })],
   })

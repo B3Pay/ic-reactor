@@ -1,0 +1,281 @@
+---
+title: "Getting started"
+description: "Install ic-reactor 4, generate a module from a .did file with candid-core-cli gen or the Vite plugin, and make a first read and write"
+---
+
+import { Aside } from "@astrojs/starlight/components"
+
+This page takes an app from nothing to a first read and a first write. It uses
+the ICRC-1 ledger interface (`icrc1.did`) and the ICP ledger on mainnet.
+
+## 1. Install
+
+ic-reactor 4 is published under npm's `beta` dist-tag, and `latest` is still
+3.x. Install the `@ic-reactor/*` packages as `@ic-reactor/core@beta`, never
+bare.
+
+The core packages and the runtime they sit on:
+
+```sh
+npm install @ic-reactor/core@beta @icp-sdk/core @tanstack/query-core
+npm install --save-exact @candid-core/schema@0.3.0-beta.1
+```
+
+For React, add the provider and TanStack's React bindings. For Internet
+Identity sign-in, add `@icp-sdk/auth`:
+
+```sh
+npm install @ic-reactor/react@beta @tanstack/react-query
+npm install @icp-sdk/auth
+```
+
+The generator is a development tool:
+
+```sh
+npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
+```
+
+`@candid-core/schema` and `@candid-core/cli` are installed exactly
+(`--save-exact`) because the generated module imports the schema runtime, and
+the CLI has to pair with that runtime. `@ic-reactor/core` lists the schema
+version it needs in its `peerDependencies`; `@ic-reactor/vite-plugin` lists the
+CLI version.
+
+## 2. Generate the module
+
+Everything the client knows about a canister comes from a module that
+`candid-core-cli gen` writes from the canister's `.did` file:
+
+```sh
+npx candid-core-cli gen icrc1.did -o src/generated
+```
+
+The module is named after the `.did` file: this writes `src/generated/icrc1.ts`
+and, beside it, `src/generated/icrc1.envelope.json`. Do not edit either. The
+module exports a TypeScript type and a schema for each Candid type, the
+service schema `actor`, and `type Actor`, which lists each method as
+`(arg0: ...) => Promise<...>`.
+
+Several files can be generated at once:
+`npx candid-core-cli gen a.did b.did -o src/canisters`.
+
+In CI, add `--check`. It writes nothing and exits 1 when the files on disk
+differ from what the generator would write:
+
+```sh
+npx candid-core-cli gen icrc1.did -o src/generated --check
+```
+
+### Or generate with the Vite plugin
+
+In a Vite app, the plugin runs the same generator when `vite dev` or
+`vite build` starts, and again when the `.did` file changes. Set `outDir` to
+`src/generated` to match the imports on this page (without it the plugin
+writes to `src/canisters`):
+
+```ts
+// vite.config.ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+import { defineConfig } from "vite"
+
+export default defineConfig({
+  plugins: [
+    icReactor({
+      canisters: {
+        icrc1: { didFile: "icrc1.did", outDir: "src/generated" },
+      },
+    }),
+  ],
+})
+```
+
+The plugin also sets up a local environment. See
+[The Vite plugin](/v4/guides/vite-plugin/).
+
+## 3. Set up a client and a canister
+
+```ts
+// src/ledger.ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/icrc1"
+
+export const client = createClient({ network: "ic", identity: "anonymous" })
+export const ledger = client.canister<Actor>(actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+```
+
+`createClient` does no work until it is used. `identity: "anonymous"` is a
+client that only reads: it refuses every update before sending anything.
+`client.canister()` returns an object with one async method per Candid method.
+It returns the same object each time, so it is safe to call in a render.
+
+Read [The client](/v4/guides/client/) for the other networks and for signing
+users in.
+
+## 4. A first read, outside React
+
+Call the methods directly:
+
+```ts
+import { formatUnits } from "@ic-reactor/core"
+import { ledger } from "./ledger"
+
+const decimals = await ledger.icrc1_decimals() // 8
+const fee = await ledger.icrc1_fee() // 10000n: a bigint, never a number
+
+console.log(formatUnits(fee, decimals)) // "0.0001"
+```
+
+Amounts are `bigint` in base units. `formatUnits` turns one into text, and
+`parseUnits` goes the other way. See [Values and units](/v4/guides/values/).
+
+A direct call never touches a cache. To read through the client's cache outside
+React, use `client.queryClient.fetchQuery(client.queryOptions(...))`; see
+[Reads](/v4/guides/reads/).
+
+## 5. A first read, in React
+
+Put a `ReactorProvider` around the tree. Its `client` prop is a factory: the
+provider calls it once and owns the client it creates, disposing it when the
+provider unmounts.
+
+```tsx
+// src/App.tsx
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider, useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function App() {
+  return (
+    <ReactorProvider
+      client={() => createClient({ network: "ic", identity: "anonymous" })}
+    >
+      <Fee />
+    </ReactorProvider>
+  )
+}
+
+function Fee() {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const fee = useQuery(client.queryOptions(ledger, "icrc1_fee"))
+
+  if (fee.isPending) return <p>Loading</p>
+  if (fee.isError) return <p>{fee.error.message}</p>
+  return <p>Fee: {fee.data.toString()} base units</p>
+}
+```
+
+`useQuery` is TanStack Query's own hook. `client.queryOptions(ledger, method,
+arg)` gives it the key, the function and the retry rule. Build the options in
+render, from the `useClient()` of that render.
+
+`fee.error` is a `ReactorError`. See
+[Errors and mayHaveExecuted](/v4/guides/errors/).
+
+## 6. A first write
+
+A write needs a signed-in caller. Give the client an `auth` factory instead of
+an `identity`: users then sign in and out, and the client calls as whoever is
+signed in. The factory runs once, in a browser only.
+
+```tsx
+// src/App.tsx
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
+import { AuthClient } from "@icp-sdk/auth/client"
+import { useMutation } from "@tanstack/react-query"
+import { useState } from "react"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+export function App({ arg }: { arg: TransferArg }) {
+  return (
+    <ReactorProvider
+      client={() =>
+        createClient({ network: "ic", auth: () => new AuthClient() })
+      }
+    >
+      <Send arg={arg} />
+    </ReactorProvider>
+  )
+}
+
+function Send({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const { status, signIn } = useAuth()
+  const [signInError, setSignInError] = useState<string>()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+
+  if (status !== "signed-in")
+    return (
+      <>
+        <button
+          onClick={() =>
+            // signIn() rejects when the sign-in fails or the user closes it.
+            signIn().catch((error: unknown) => setSignInError(String(error)))
+          }
+        >
+          Sign in
+        </button>
+        {signInError && <p>{signInError}</p>}
+      </>
+    )
+  return (
+    <>
+      <button
+        disabled={transfer.isPending}
+        onClick={() => transfer.mutate(arg)}
+      >
+        Send
+      </button>
+      {transfer.error && (
+        <p>
+          {transfer.error.mayHaveExecuted
+            ? "Unknown outcome: check the balance before sending again"
+            : transfer.error.message}
+        </p>
+      )}
+    </>
+  )
+}
+```
+
+Three things in this snippet matter:
+
+- `icrc1_transfer` returns `variant { Ok : nat; Err : TransferError }`. The
+  mutation resolves with the `Ok` value, and an `Err` rejects as a
+  `ReactorError` of kind `"canister_err"` with the `Err` value in `err`.
+- A failed write either certainly had no effect, or may have executed.
+  `error.mayHaveExecuted` says which. When it is `true`, do not send the
+  transfer again blindly: read the balance first.
+- There is no `retry` on the mutation, and there must not be one. The client
+  itself re-sends an update, at most twice, only after a failure that proves
+  the canister never got it.
+
+After the write, the client invalidates the ledger's reads, so a mounted
+balance refetches by itself. See [Writes](/v4/guides/writes/).
+
+<Aside type="caution">
+  This sends a real transfer on mainnet if the signed-in user holds ICP. Try
+  writes on a local replica or with the test client first. See
+  [Testing](/v4/guides/testing/).
+</Aside>
+
+## Next
+
+- [The client](/v4/guides/client/): networks, `identity` and `auth`, disposal,
+  one client per request on a server.
+- [Reads](/v4/guides/reads/) and [Writes](/v4/guides/writes/): the rules behind
+  `queryOptions` and `mutationOptions`.
+- [Errors and mayHaveExecuted](/v4/guides/errors/): what to do for each kind of
+  failure.
+- [Auth](/v4/guides/auth/): signing in and out, and what happens to reads when
+  the caller changes.
+- [Examples](/v4/examples/): four small apps to read and run.

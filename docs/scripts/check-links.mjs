@@ -43,6 +43,9 @@ try {
     path: `${base}/`,
     serverRoot: staging,
     recurse: true,
+    // A `#fragment` must name an id on its page, so a reworded heading that
+    // breaks a link like `/v4/guides/ssr/#a-read-...` fails here.
+    checkFragments: true,
     // linkinator's default concurrency (100) overwhelms its own static server
     // once the crawl is a few hundred links: requests come back with status 0
     // (connection dropped, not a 404) and the gate fails intermittently on

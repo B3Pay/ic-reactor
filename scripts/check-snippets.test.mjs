@@ -17,6 +17,7 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   realpathSync,
   rmSync,
   symlinkSync,
@@ -88,6 +89,10 @@ function repo(files) {
     }
   }
   link(join(repoRoot, "node_modules"), join(root, "node_modules"))
+  // The docs pages also compile against what the Next.js example installs.
+  const nextSsr = join(repoRoot, "examples", "next-ssr", "node_modules")
+  if (existsSync(nextSsr))
+    link(nextSsr, join(root, "examples", "next-ssr", "node_modules"))
   for (const [path, text] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true })
     writeFileSync(join(root, path), text)
@@ -214,3 +219,46 @@ describe("check:snippets compiles the AI-context files", () => {
     assert.equal(skipped.status, 0, skipped.output)
   })
 })
+
+// `--docs` compiles against libraries only the example apps install, and the
+// checker refuses to run without them. CI's Test job installs the workspace
+// without the examples, so this suite runs in the Type Check Examples job,
+// which installs them (`.github/workflows/ci.yml`), and is skipped elsewhere.
+const examplesInstalled = readdirSync(join(repoRoot, "examples"), {
+  withFileTypes: true,
+}).every(
+  (entry) =>
+    !entry.isDirectory() ||
+    !existsSync(join(repoRoot, "examples", entry.name, "package.json")) ||
+    existsSync(join(repoRoot, "examples", entry.name, "node_modules"))
+)
+
+describe(
+  "check:snippets --docs compiles the docs pages",
+  {
+    skip: examplesInstalled
+      ? false
+      : "the examples are not installed; the Type Check Examples job runs this suite",
+  },
+  () => {
+    it("keeps a fence's triple-slash directive above the globals it is given", () => {
+      // `Intl.StringNumericLiteral` exists only with lib ES2023, which the
+      // directive adds; `principal` comes from the docs globals, so the checker
+      // adds an import for it, and that import must not push the directive down.
+      const page = (code) => `---\ntitle: Values\n---\n\n${fence(code)}\n`
+      const run = check(
+        repo({
+          "docs/src/content/docs/guides/values.mdx": page(
+            [
+              '/// <reference lib="es2023.intl" />',
+              'const text = "1234.5" as Intl.StringNumericLiteral',
+              'console.log(new Intl.NumberFormat("de-DE").format(text), principal.toText())',
+            ].join("\n")
+          ),
+        }),
+        "--docs"
+      )
+      assert.equal(run.status, 0, run.output)
+    })
+  }
+)

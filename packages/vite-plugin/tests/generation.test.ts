@@ -600,8 +600,8 @@ describe("generation under vite dev", () => {
     })
   })
 
-  // `server.hmr: false` leaves Vite a WebSocket server that does nothing, and
-  // a failure still must not end the server.
+  // A server without a WebSocket (`noWebSocket` in support.ts) has no overlay
+  // to show a failure on, and a failure still must not end the server.
   it("reports a failure and keeps serving when the server has no WebSocket", async () => {
     const app = newApp(
       { "did/ledger.did": LEDGER, "did/bad.did": BROKEN_DID },

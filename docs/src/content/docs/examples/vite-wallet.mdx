@@ -30,6 +30,10 @@ backend canister of the example's own.
   invalidation still runs; paying a contact refreshes both balances and not
   the address book.
 
+The guides behind it: [Auth](/v4/guides/auth/) for the two sign-in sources,
+[Writes](/v4/guides/writes/) for transfers and optimistic updates, and
+[the Vite plugin](/v4/guides/vite-plugin/) for the cookie and the `/api` proxy.
+
 Every scenario has tests on `createTestClient()` that run without a replica
 (`pnpm test`). To run the wallet itself you need icp-cli's local network,
 which the example installs (`pnpm icp:start`, `pnpm icp:deploy`,

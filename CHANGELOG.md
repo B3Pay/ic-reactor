@@ -19,6 +19,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Added
 
+- `ReactorError.code` is `"canister_not_found"` when the IC answers that the
+  canister a call was routed to does not exist (#821), on a read or a write.
+  The IC says it in two ways, and both get the code: a boundary node's HTTP
+  400 whose body's error line is `canister_not_found`, for a canister id
+  outside every subnet's range, and a replica's reject code 3 with the IC
+  error code `IC0301`, for an id inside a subnet's range that holds no
+  canister. Mainnet answers both ways, and the fake replica of
+  `@ic-reactor/core/testing` answers the second. `kind` and `mayHaveExecuted`
+  are unchanged from the classification table. Any other HTTP 400 and any
+  other reject still has no `code`.
 - `refuseNext(status, { method?, canister?, times? })` on the object
   `createTestClient()` returns (`@ic-reactor/core/testing`): a refusal aimed
   at the queries and calls that name `method` and are addressed to
@@ -33,6 +43,26 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   throws a `TypeError`. `refuseNext(status, times?)` is unchanged: it refuses
   the next `times` queries or calls, whatever they are for. No export is
   added.
+
+#### Documentation
+
+- The guide (`llms.txt`) said the `invalidates` option of
+  `client.mutationOptions()` names other reads. The list replaces the
+  default (every read of the canister written to): it now says so, and to
+  name the written canister too if its reads change (#829). The code is
+  unchanged.
+
+### @ic-reactor/react
+
+#### Documentation
+
+- The README, `llms.txt` and `useClient()`'s doc comment told an app to
+  ignore kind `"cancelled"` (code `"caller_changed"`) in a `QueryCache`
+  `onError`, which no app can set: the client owns its `QueryClient` and
+  takes no `QueryCache`. They now name the route an app has, a listener of
+  `client.queryClient.getQueryCache().subscribe()`, whose `"updated"` event
+  with `action.type` `"error"` carries the cancellation (#829). The code is
+  unchanged.
 
 ## core, react, vite-plugin 4.0.0-beta.1
 

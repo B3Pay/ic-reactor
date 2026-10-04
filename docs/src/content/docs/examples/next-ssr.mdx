@@ -46,6 +46,9 @@ The tests run the real client on `createTestClient()` from
 `@ic-reactor/core/testing`, with the ledgers mocked over in-memory replicas,
 and never reach mainnet.
 
+The [SSR and hydration guide](/v4/guides/ssr/) explains each rule, and
+[Auth](/v4/guides/auth/) covers sign-in and the caller.
+
 StackBlitz installs the example from npm and runs those tests (`npm test`):
 you can read and change the code there and run them again. It cannot serve
 the app. Next 16 keeps each request's state in Node's `AsyncLocalStorage`,

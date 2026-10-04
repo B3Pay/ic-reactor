@@ -14,8 +14,14 @@ import {
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, before, describe, it } from "node:test"
-import { agentOutcome, plan } from "../drive.mjs"
+import {
+  agentOutcome,
+  plan,
+  refuseChangedV4Source,
+  refuseMissingV4Source,
+} from "../drive.mjs"
 import { EVALS } from "./assemble.mjs"
+import { v4Source } from "./ship.mjs"
 
 /** `drive.mjs --pilot --dry-run` with `extra`; no credential is needed. */
 function dryRun(extra = []) {
@@ -59,6 +65,51 @@ describe("conditions of a batch", () => {
       out,
       /^ {2}react-wallet × v4: 5 runs; docs\/: llms\.txt; minimal prompt/m
     )
+  })
+  it("name the source of the v4 packages when v4 is in, and only then", () => {
+    const out = dryRun(["--condition", "v4", "--condition", "thin-guide"])
+    assert.match(out, /^v4 built from: .+ \(recorded in plan\.json\)$/m)
+    assert.doesNotMatch(dryRun(), /^v4 built from:/m)
+  })
+  it("plan Addendum 4's GA batch: 80 runs, 20 per cell, in a shuffle seeded 20261005", () => {
+    const out = dryRun([
+      "--n",
+      "20",
+      "--seed",
+      "20261005",
+      "--condition",
+      "v4",
+      "--condition",
+      "thin-guide",
+    ])
+    assert.match(
+      out,
+      /^runs: 80 \(20 per cell\), round-robin in a shuffle seeded 20261005;/m
+    )
+    assert.match(
+      out,
+      new RegExp(
+        "first runs, in order:\\n" +
+          [
+            "node-tool/thin-guide#1",
+            "react-wallet/thin-guide#1",
+            "node-tool/v4#1",
+            "react-wallet/v4#1",
+            "node-tool/thin-guide#2",
+            "node-tool/v4#2",
+            "react-wallet/v4#2",
+            "react-wallet/thin-guide#2",
+          ]
+            .map((run) => `  ${run}\\n`)
+            .join("")
+      )
+    )
+    for (const task of ["node-tool", "react-wallet"])
+      for (const condition of ["v4", "thin-guide"])
+        assert.match(
+          out,
+          new RegExp(`^  ${task} × ${condition}: 20 runs;`, "m")
+        )
   })
 })
 
@@ -149,6 +200,116 @@ describe("a new batch's --out directory", () => {
     const r = batch(empty, ["--dry-run"])
     assert.equal(r.status, 0, r.stderr)
     assert.match(r.stdout, new RegExp(`^results: ${empty}/`, "m"))
+  })
+})
+
+describe("a v4 batch with no recorded source", () => {
+  it("is refused when it would really run", () => {
+    assert.throws(
+      () => refuseMissingV4Source(null, { dryRun: false }),
+      /no \.ship\/v4\/source\.json.*not identified/s
+    )
+  })
+  it("is only shown in a dry run, and goes on with a source", () => {
+    refuseMissingV4Source(null, { dryRun: true })
+    refuseMissingV4Source({ from: "npm" }, { dryRun: false })
+  })
+})
+
+describe("resuming a batch whose v4 source changed", () => {
+  const npm = {
+    from: "npm",
+    version: "4.0.0-beta.1",
+    packages: {
+      "@ic-reactor/core": "4.0.0-beta.1",
+      "@ic-reactor/react": "4.0.0-beta.1",
+    },
+    integrity: {
+      "@ic-reactor/core": "sha512-a",
+      "@ic-reactor/react": "sha512-b",
+    },
+    guide: { words: 1974, sha256: "c" },
+  }
+  it("goes on when .ship/v4 still holds the planned source, keys in any order", () => {
+    const reordered = Object.fromEntries(Object.entries(npm).reverse())
+    refuseChangedV4Source(npm, reordered)
+  })
+  it("goes on for a plan from before v4Source was recorded", () => {
+    refuseChangedV4Source(undefined, npm)
+  })
+  it("refuses a source rebuilt from the tree, naming both", () => {
+    const tree = { ...npm, from: "tree", commit: "abc", dirty: false }
+    delete tree.version
+    assert.throws(
+      () => refuseChangedV4Source(npm, tree),
+      /planned with the v4 packages from npm 4\.0\.0-beta\.1.*now holds packed from this repository at abc/s
+    )
+  })
+  it("refuses another tarball of the same version, and a missing source", () => {
+    const other = {
+      ...npm,
+      integrity: { ...npm.integrity, "@ic-reactor/core": "sha512-z" },
+    }
+    assert.throws(() => refuseChangedV4Source(npm, other), /--resume/)
+    assert.throws(
+      () => refuseChangedV4Source(npm, null),
+      /no \.ship\/v4\/source\.json/
+    )
+  })
+})
+
+describe("a batch's plan.json", () => {
+  let dir
+  before(() => {
+    dir = mkdtempSync(join(tmpdir(), "drive-plan-"))
+  })
+  after(() => rmSync(dir, { recursive: true, force: true }))
+  /**
+   * A real (not dry) batch with a stub agent whose preflight fails, so it
+   * stops right after writing plan.json; no credential is needed.
+   */
+  const planOf = (condition) => {
+    const out = join(dir, condition)
+    const r = spawnSync(
+      process.execPath,
+      [
+        join(EVALS, "drive.mjs"),
+        "--task",
+        "node-tool",
+        "--condition",
+        condition,
+        "--n",
+        "1",
+        "--model",
+        "stub",
+        "--mode",
+        "tsc-only",
+        "--agent-cmd",
+        "true",
+        "--preflight-cmd",
+        "false",
+        "--out",
+        out,
+      ],
+      {
+        cwd: EVALS,
+        env: { PATH: process.env.PATH, HOME: process.env.HOME },
+        encoding: "utf8",
+        timeout: 60_000,
+      }
+    )
+    assert.match(r.stderr, /preflight failed/, r.stdout + r.stderr)
+    return JSON.parse(readFileSync(join(out, "plan.json"), "utf8"))
+  }
+
+  it("records the v4 source (Addendum 4's pass rule reads v4Source) when v4 is in", () => {
+    const p = planOf("v4")
+    assert.ok("v4Source" in p, "plan.json has no v4Source")
+    // null only when setup has not recorded a source (.ship/v4/source.json).
+    assert.deepEqual(p.v4Source, v4Source())
+  })
+  it("has no v4Source when v4 is not in the batch", () => {
+    assert.ok(!("v4Source" in planOf("thin")))
   })
 })
 

@@ -6,13 +6,13 @@ Computer apps with a thin layer of typed, mode-gated per-method handles
 Query, or with ic-reactor 3 as published? It measures four conditions on the
 same tasks with the same hidden tests:
 
-| Condition    | Library the agent gets                                                                                                                                                                     | Generated input in the starter                                         | Docs in the starter (`docs/`)                                                                     | Words |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----- |
-| `v3`         | `@ic-reactor/core` + `@ic-reactor/react` 3.13.0 from npm, `@icp-sdk/core` 6.1.0, `@icp-sdk/auth` 10.0.1, TanStack Query 5.104                                                              | `src/declarations/icrc1.did.{js,d.ts}` (`@icp-sdk/bindgen` output)     | `llms-full.txt` (repo root at 623b48c11 = 3.13.0) + the `llms.txt` shipped inside both packages   | 8,996 |
-| `thin`       | `@candid-core/schema` 0.2.0, `@icp-sdk/core`, `@icp-sdk/auth`, TanStack Query; no framework                                                                                                | `src/generated/icrc1.ts` from `candid-core-cli gen` 0.1.0              | the READMEs shipped in `@candid-core/schema` 0.2.0 (2,274) and `@candid-core/cli` 0.1.0 (532)     | 2,806 |
-| `thin-guide` | identical to `thin` (same starter, generated module, dependencies)                                                                                                                         | identical to `thin`                                                    | thin's two READMEs + `llms.txt`, a guide for the thin stack matched to the v4-proto guide (1,792) | 4,598 |
-| `v4-proto`   | the throwaway prototype `@ic-reactor/v4-proto` (shipped as a built package: `package.json` + `dist/`) on the same stack as thin                                                            | the same `icrc1.ts` + `icrc1.service.ts` (hand-written: see "Threats") | `llms.txt` written for the prototype                                                              | 1,778 |
-| `v4`         | ic-reactor 4: `@ic-reactor/core` + `@ic-reactor/react` packed from this repository (shipped as `package.json` + `dist/`), `@candid-core/schema` 0.3.0-beta.1, `@icp-sdk/*`, TanStack Query | `src/generated/icrc1.ts` from `candid-core-cli gen` 0.2.0-beta.1       | the `llms.txt` packed into `@ic-reactor/core` (DX3's guide, #785)                                 | 1,970 |
+| Condition    | Library the agent gets                                                                                                                                                                                                                      | Generated input in the starter                                         | Docs in the starter (`docs/`)                                                                     | Words |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----- |
+| `v3`         | `@ic-reactor/core` + `@ic-reactor/react` 3.13.0 from npm, `@icp-sdk/core` 6.1.0, `@icp-sdk/auth` 10.0.1, TanStack Query 5.104                                                                                                               | `src/declarations/icrc1.did.{js,d.ts}` (`@icp-sdk/bindgen` output)     | `llms-full.txt` (repo root at 623b48c11 = 3.13.0) + the `llms.txt` shipped inside both packages   | 8,996 |
+| `thin`       | `@candid-core/schema` 0.2.0, `@icp-sdk/core`, `@icp-sdk/auth`, TanStack Query; no framework                                                                                                                                                 | `src/generated/icrc1.ts` from `candid-core-cli gen` 0.1.0              | the READMEs shipped in `@candid-core/schema` 0.2.0 (2,274) and `@candid-core/cli` 0.1.0 (532)     | 2,806 |
+| `thin-guide` | identical to `thin` (same starter, generated module, dependencies)                                                                                                                                                                          | identical to `thin`                                                    | thin's two READMEs + `llms.txt`, a guide for the thin stack matched to the v4-proto guide (1,792) | 4,598 |
+| `v4-proto`   | the throwaway prototype `@ic-reactor/v4-proto` (shipped as a built package: `package.json` + `dist/`) on the same stack as thin                                                                                                             | the same `icrc1.ts` + `icrc1.service.ts` (hand-written: see "Threats") | `llms.txt` written for the prototype                                                              | 1,778 |
+| `v4`         | ic-reactor 4: `@ic-reactor/core` + `@ic-reactor/react` packed from this repository, or 4.0.0-beta.1 from npm (`setup.mjs --v4-from`; shipped as `package.json` + `dist/`), `@candid-core/schema` 0.3.0-beta.1, `@icp-sdk/*`, TanStack Query | `src/generated/icrc1.ts` from `candid-core-cli gen` 0.2.0-beta.1       | the `llms.txt` in the `@ic-reactor/core` tarball (DX3's guide, #785; published 4.0.0-beta.1)      | 1,974 |
 
 `thin-guide` is the honest comparator for v4-proto: a shipped thin layer would
 come with a guide too. Plain `thin` stays so the effect of the guide is
@@ -20,9 +20,10 @@ separable (`thin-guide − thin` vs `v4-proto − thin-guide`).
 
 `v4` was added after the Decision (`PREREGISTRATION.md`): it is the gate for
 releasing ic-reactor 4.0.0-beta.1, run against a same-day `thin-guide`
-control (Addendum 3, frozen on 2026-10-03 before the batch). It runs only
-when named (`--condition v4`); a batch with no `--condition` runs the four
-conditions of the pilots. See "The v4 condition" below and
+control (Addendum 3, frozen on 2026-10-03 before the batch), and of the GA
+gate built from the published 4.0.0-beta.1 (Addendum 4, drafted
+2026-10-05). It runs only when named (`--condition v4`); a batch with no
+`--condition` runs the four conditions of the pilots. See "The v4 condition" below and
 `conditions/v4/README.md`.
 
 **One pilot has run with a real agent** (`claude-sonnet-5-5`, effort
@@ -68,7 +69,7 @@ evals/
     starter/           condition-specific generated code
     docs/              the documentation that condition's agent is given (added to the base's docs)
   conditions/v4-proto/lib/   the prototype (src/, dist/, test/, SHIM-NOTES.md)
-  conditions/v4/      ic-reactor 4 packed from this repository (README.md, PORTING.md);
+  conditions/v4/      ic-reactor 4, packed from this repository or from npm (README.md, PORTING.md);
                       its node_modules (setup, untracked) is a copy of .ship/v4's,
                       with @icp-sdk/core linked to evals' own (one instance for the world)
   .ship/<condition>/node_modules   (setup) flat npm installs shipped to agents; gitignored
@@ -85,12 +86,15 @@ needed), npm (for `.ship/`), and macOS for the agent sandbox. For the `v4`
 condition `setup.mjs` also builds and packs `packages/core` and
 `packages/react` with `corepack pnpm`, so the repository's own workspace
 must be installed (`corepack pnpm install` at the root), and fetches
-`@candid-core/cli@0.2.0-beta.1` with `npx`.
+`@candid-core/cli@0.2.0-beta.1` with `npx`. With `--v4-from npm:<version>`
+it downloads the published tarballs instead (checked against the integrity
+pinned in `harness/ship.mjs`), and the root workspace is not needed.
 
 ```bash
 cd evals
 pnpm install            # its own workspace: never touches the root lockfile
 node setup.mjs          # inputs, prototype build, public scaffold, .ship/ (network: npm install)
+node setup.mjs --v4-from npm:4.0.0-beta.1   # … with v4 from the published tarballs (Addendum 4)
 
 node score.mjs --task node-tool    --condition thin --solution tasks/node-tool/solutions/thin/reference
 node gate.mjs [--task react-wallet] [--jobs 4]       # all references + all faulty solutions
@@ -103,6 +107,7 @@ node drive.mjs --aggregate runs/<dir> [--pilot]      # re-aggregate saved result
 node drive.mjs --aggregate runs/<dir> --rescan       # … re-auditing each transcript with today's scanner
 node drive.mjs --aggregate runs/<dir> --rescore      # … re-scoring each stored solution with today's tests
 node drive.mjs --pilot --prompt minimal --condition v4 --condition thin-guide --dry-run   # Addendum 3's plan
+node drive.mjs --n 20 --seed 20261005 --prompt minimal --condition v4 --condition thin-guide --dry-run   # Addendum 4's
 
 node --test harness/*.test.mjs                       # sandbox, leak audit, aggregation, driver, prompts, v4 ship, gate plan
 EVALS_NO_SANDBOX=1 node --test harness/*.test.mjs    # … as on a host without sandbox-exec (tsc-only)
@@ -315,8 +320,9 @@ in `meta.json` is checked too. The pilots' four conditions account for 16
 references and 29 faulty solutions (45/45 before `v4`); `v4` adds 4
 references, the six v4-proto faulty solutions ported to it and one of its
 own (`conditions/v4/PORTING.md`). Last run, `node gate.mjs --require v4` on
-2026-10-02: **56/56**, no cell skipped, in 15 min 29 s at the default
-`--jobs 3`. A condition with no reference solution yet is skipped and named
+2026-10-05, on `v4` built with `--v4-from npm:4.0.0-beta.1`: **56/56**, no
+cell skipped, in 15 min 52 s at the default `--jobs 3` (on 2026-10-02, on
+the tree packed for Addendum 3: 56/56 in 15 min 29 s). A condition with no reference solution yet is skipped and named
 (`skip <task>/<condition>: no reference solutions yet`), unless one of the
 rules below forbids it.
 An empty cell fails the gate before anything is scored, instead of being
@@ -442,10 +448,14 @@ Also in `lib/SHIM-NOTES.md`, with file locations.
 ## The v4 condition
 
 ic-reactor 4 itself, for the 4.0.0-beta.1 gate (issue #786; DECISIONS Q14 in
-#790; `PREREGISTRATION.md`, Addendum 3). `setup.mjs` builds
-`@ic-reactor/core` and `@ic-reactor/react` from this repository, packs them
-with `pnpm pack`, installs the tarballs with the pinned dependencies as a
-flat npm install into `.ship/v4` (no workspace links), refuses the tree if
+#790; `PREREGISTRATION.md`, Addendum 3) and the GA gate (Addendum 4).
+`setup.mjs` builds `@ic-reactor/core` and `@ic-reactor/react` from this
+repository and packs them with `pnpm pack` (the default, `--v4-from tree`),
+or downloads the published tarballs (`--v4-from npm:4.0.0-beta.1`: each must
+have the `dist.integrity` pinned in `harness/ship.mjs`, which the registry
+must still record); then it installs the tarballs with the pinned
+dependencies as a flat npm install into `.ship/v4` (no workspace links),
+records the source in `.ship/v4/source.json`, refuses the tree if
 the core tarball's `llms.txt` or the packages' code gives a hidden test away,
 copies that `llms.txt` into `conditions/v4/docs/` (the only doc the agent
 gets), cuts both packages to `package.json` + `dist/`, and copies the result
@@ -461,8 +471,13 @@ v4-only `v4-anonymous-identity-sent` are in the tree, written against the
 client, its builders and the React bindings as built (IR2t #782, IR6 #780),
 and `node gate.mjs --require v4` passes 56 of 56; `conditions/v4/PORTING.md`
 records the port and where it differs from the plan. The guide is DX3's
-(#785), 1,970 words. Addendum 3 was frozen on 2026-10-03 and its batch passed:
-`v4` safe in 5 of 5 runs on both tasks (`results/2026-10-03-beta1-gate/`).
+(#785): 1,970 words at Addendum 3's commit, 1,974 as published in
+4.0.0-beta.1 (sha256 `a07b846a…4342`). Addendum 3 was frozen on 2026-10-03
+and its batch passed: `v4` safe in 5 of 5 runs on both tasks
+(`results/2026-10-03-beta1-gate/`). Addendum 4 (the GA gate: the published
+4.0.0-beta.1, 20 runs per cell, non-inferiority against `thin-guide`) is
+drafted and not frozen; on the tree `--v4-from npm:4.0.0-beta.1` builds,
+`node gate.mjs --require v4` passes 56 of 56.
 
 ## Leak audit and sandbox
 
@@ -624,6 +639,10 @@ effort levels or prompt variants; comparing only within one of each):
 - **primary**: fraction of runs with zero safety-requirement violations, with
   Wilson intervals, and the risk difference between conditions with Newcombe's
   hybrid-score interval (checked against Newcombe 1998's worked example);
+  the same difference pooled over the tasks is reported beside it
+  (`pooled` in the summary: safe runs and runs summed per condition, within
+  one model, effort level and prompt variant), deciding nothing unless an
+  addendum says so (Addendum 4's alternative A);
 - **secondary**: mean fraction of requirements met (bootstrap intervals);
 - tsc-clean rate, full-pass rate, per-requirement pass rates alongside.
 

@@ -84,6 +84,7 @@ import {
 } from "node:fs"
 import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
+import { isDeepStrictEqual } from "node:util"
 import {
   CONDITIONS,
   DEFAULT_CONDITIONS,
@@ -102,6 +103,7 @@ import {
   round,
 } from "./harness/aggregate.mjs"
 import { scanTranscript, transcriptCwd } from "./harness/leak-scan.mjs"
+import { describeV4Source, v4Source } from "./harness/ship.mjs"
 import {
   agentEnv,
   makeBatchDir,
@@ -366,6 +368,39 @@ function rng(seed) {
 }
 
 /** Round-robin over cells, each round in a seeded shuffle. */
+/**
+ * Refuses to resume a batch whose v4 packages are no longer the ones it was
+ * planned with: `saved` is plan.json's `v4Source`, `current` what
+ * `.ship/v4/source.json` holds now. A run of the batch and the scoring read
+ * `.ship/v4` and `conditions/v4/node_modules`, so after `setup.mjs` rebuilt
+ * them from another source, the runs still to come would test other
+ * packages than the plan names. A plan from before v4Source was recorded
+ * (`saved` undefined) is let through.
+ */
+/**
+ * Refuses a real v4 batch, new or resumed, when setup has recorded no source
+ * for the v4 packages (`.ship/v4/source.json`, from a setup run that predates
+ * it, or none): its runs would test packages nobody can identify, and
+ * Addendum 4 requires plan.json's `v4Source` to name them. A dry run only
+ * prints the gap.
+ */
+export function refuseMissingV4Source(source, { dryRun }) {
+  if (source || dryRun) return
+  throw new Error(
+    "no .ship/v4/source.json: the v4 packages this batch would test are not identified. " +
+      "Run `node setup.mjs --v4-from ...` first."
+  )
+}
+
+export function refuseChangedV4Source(saved, current) {
+  if (saved === undefined || isDeepStrictEqual(saved, current)) return
+  throw new Error(
+    `--resume: this batch was planned with the v4 packages from ${describeV4Source(saved)}, ` +
+      `but .ship/v4 now holds ${describeV4Source(current)}. ` +
+      "Rebuild the planned source with `node setup.mjs --v4-from ...` before resuming."
+  )
+}
+
 export function plan({ tasks, conditions, n, seed }) {
   const random = rng(seed)
   const cells = tasks.flatMap((task) =>
@@ -942,6 +977,7 @@ async function main() {
   }
   let outDir
   let runs
+  let savedV4Source
   if (args.resume) {
     outDir = resolve(args.resume)
     const saved = JSON.parse(readFileSync(join(outDir, "plan.json"), "utf8"))
@@ -964,6 +1000,7 @@ async function main() {
     resolveCredential(args)
     if (!args.customCmd && !AUTH) throw new Error(MISSING_AUTH_MESSAGE)
     runs = saved.runs
+    savedV4Source = saved.v4Source
   } else {
     runs = plan(args)
     outDir = resolve(
@@ -973,6 +1010,12 @@ async function main() {
     refuseUsedOutDir(outDir)
   }
   const cells = args.tasks.length * args.conditions.length
+  // Where the v4 packages under test came from (setup.mjs --v4-from): the
+  // tarballs' integrity and the guide's size and sha256, kept in plan.json.
+  const v4 = args.conditions.includes("v4") ? { v4Source: v4Source() } : {}
+  if (args.conditions.includes("v4")) refuseMissingV4Source(v4.v4Source, args)
+  if (args.resume && args.conditions.includes("v4"))
+    refuseChangedV4Source(savedV4Source, v4.v4Source)
 
   if (args.dryRun) {
     const example = agentCommand(args, { promptFile: "<run>/prompt.md" })
@@ -987,6 +1030,11 @@ async function main() {
         `run dirs: a fresh 0700 batch dir under the OS temp dir (refused if inside ${REPO}); per run work/ home/ tmp/`,
         `auth: ${args.auth === "none" ? `none found (--oauth-token-file, ${AUTH_VARS.oauth} — see \`claude setup-token\` — or ${AUTH_VARS.api_key}): a real run will refuse to start` : describeAuth(args)}; passed to the agent as exactly one variable; the value is never printed or recorded`,
         `effort: ${args.effort ?? "the CLI default"} (recorded per run; never pooled across effort levels)`,
+        ...(args.conditions.includes("v4")
+          ? [
+              `v4 built from: ${describeV4Source(v4.v4Source)} (recorded in plan.json)`,
+            ]
+          : []),
         `prompt: ${args.prompt} (${args.prompt === "explicit" ? "states the safety rules the hidden tests check" : "product and public contract only; no safety rules"}; recorded per run; never pooled across prompt variants)`,
         `preflight: before any run, one tiny call ("Reply with the single word: ok", max 1 turn) in the same isolated environment and sandbox must succeed; also runnable alone with --preflight`,
         `agent environment: PATH, HOME=<run>/home, CLAUDE_CONFIG_DIR=<run>/home/.claude, TMPDIR=<run>/tmp, and exactly one of ${AUTH_VARS.oauth} / ${AUTH_VARS.api_key} (the host's ~/.claude login is not visible)`,
@@ -1029,7 +1077,7 @@ async function main() {
   if (!args.resume) {
     writeFileSync(
       join(outDir, "plan.json"),
-      redact(JSON.stringify({ args, runs }, null, 2)) + "\n"
+      redact(JSON.stringify({ args, runs, ...v4 }, null, 2)) + "\n"
     )
   }
 

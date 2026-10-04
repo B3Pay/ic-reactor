@@ -23,7 +23,7 @@
  * who sent what, and from the page whose answer it shows.
  */
 import { c } from "@candid-core/schema"
-import { createClient, type Client } from "@ic-reactor/core"
+import { createClient, isReactorError, type Client } from "@ic-reactor/core"
 import { createTestClient } from "@ic-reactor/core/testing"
 import {
   HydrationBoundary,
@@ -1152,13 +1152,19 @@ describe("a read built for the caller a hydrating render shows", () => {
     await waitFor(() => expect(whoamiCallers(browser)).toEqual([user]))
     errors.stop()
 
-    // A QueryCache-level onError sees it, as kind "cancelled".
+    // A listener of the client's QueryCache sees it, as kind "cancelled",
+    // and the README's filter drops it, so such a listener reports nothing.
     expect(recoverable).toEqual([])
     expect(errors.errors).toHaveLength(1)
     expect(errors.errors[0]).toMatchObject({
       kind: "cancelled",
       code: "caller_changed",
     })
+    expect(
+      errors.errors.filter(
+        (error) => !(isReactorError(error) && error.kind === "cancelled")
+      )
+    ).toEqual([])
   })
 
   it("is never shown as an error by a component that hydrated", async () => {
