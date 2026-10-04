@@ -6,7 +6,8 @@ name: Examples on the published packages
 # directory outside the checkout, a plain `npm install` from the registry, the
 # @ic-reactor/* packages at the version npm's `beta` dist-tag names, then its
 # typecheck, test and build scripts and the start command of its
-# .stackblitzrc (scripts/test-examples-published.mjs).
+# .stackblitzrc, that one under a model of what StackBlitz's WebContainer
+# lacks (scripts/test-examples-published.mjs).
 #
 # On pull requests to v4 that touch an example or this check, so a change that
 # makes an example use an API the published beta lacks fails here. That is

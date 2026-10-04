@@ -16,6 +16,7 @@ import {
   symlinkSync,
   writeFileSync,
 } from "node:fs"
+import { spawnSync } from "node:child_process"
 import { tmpdir } from "node:os"
 import { delimiter, dirname, join } from "node:path"
 import { after, describe, it } from "node:test"
@@ -23,6 +24,7 @@ import { fileURLToPath } from "node:url"
 import {
   REGISTRY,
   REGISTRY_ARGS,
+  WEBCONTAINER_MODEL,
   ancestorFindings,
   checkInstalled,
   checkLockfile,
@@ -37,6 +39,7 @@ import {
   stackblitzStartCommand,
   trackedConfigFindings,
   waitForPublished,
+  webContainerEnv,
 } from "./test-examples-published.mjs"
 
 const BETA = "4.0.0-beta.1"
@@ -346,6 +349,75 @@ describe("the StackBlitz start command", () => {
     assert.deepEqual(parseNpmCommand(next.startCommand), {
       script: "test",
       args: [],
+    })
+  })
+})
+
+describe("the WebContainer model", () => {
+  /** What a Node process started with `env` sees of the two gaps. */
+  function observe(env) {
+    const probe = `
+      import { AsyncLocalStorage } from "node:async_hooks"
+      const storage = new AsyncLocalStorage()
+      const seen = await storage.run("request", async () => {
+        const inRun = storage.getStore()
+        await null
+        return { inRun, afterAwait: storage.getStore() ?? null }
+      })
+      const required = (await import("node:module")).createRequire(import.meta.url)
+      console.log(JSON.stringify({
+        iterator: typeof Iterator,
+        ...seen,
+        sameClass: required("node:async_hooks").AsyncLocalStorage === AsyncLocalStorage,
+      }))
+    `
+    const result = spawnSync(
+      process.execPath,
+      ["--input-type=module", "-e", probe],
+      { env, encoding: "utf8" }
+    )
+    assert.equal(result.status, 0, result.stderr)
+    return JSON.parse(result.stdout)
+  }
+
+  it("takes the global Iterator away and keeps no AsyncLocalStorage store past an await, in every process NODE_OPTIONS reaches", () => {
+    // A path with a space: NODE_OPTIONS must carry it quoted.
+    const dir = join(scratch(), "with space")
+    mkdirSync(dir)
+    const preload = join(dir, "webcontainer-model.cjs")
+    writeFileSync(preload, WEBCONTAINER_MODEL)
+    const base = { PATH: process.env.PATH }
+
+    // Node as it is: what the model takes away is there.
+    assert.deepEqual(observe(base), {
+      iterator: "function",
+      inRun: "request",
+      afterAwait: "request",
+      sameClass: true,
+    })
+    // Under the model, for `import` and `require` alike.
+    assert.deepEqual(observe(webContainerEnv(base, preload)), {
+      iterator: "undefined",
+      inRun: "request",
+      afterAwait: null,
+      sameClass: true,
+    })
+  })
+
+  it("adds the preload to NODE_OPTIONS, after what is there", () => {
+    assert.deepEqual(
+      webContainerEnv(
+        { NODE_OPTIONS: "--max-old-space-size=4096", CI: "1" },
+        "/tmp/a b/webcontainer-model.cjs"
+      ),
+      {
+        NODE_OPTIONS:
+          '--max-old-space-size=4096 --require "/tmp/a b/webcontainer-model.cjs"',
+        CI: "1",
+      }
+    )
+    assert.deepEqual(webContainerEnv({}, "/tmp/m.cjs"), {
+      NODE_OPTIONS: '--require "/tmp/m.cjs"',
     })
   })
 })

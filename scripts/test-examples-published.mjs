@@ -36,17 +36,21 @@
  *      examples job does (a Next example gets the same `next-env.d.ts` shim
  *      `typecheck-examples.js` writes);
  *   6. runs the `startCommand` of its `.stackblitzrc`, the command StackBlitz
- *      runs after its install: `npm run dev [-- <args>]` is started, its first
- *      page fetched with every same-origin script on it and every app module
- *      those import, and the server stopped (a Next example with
- *      `NEXT_TEST_WASM=1`, so Next loads the WebAssembly bindings a
- *      WebContainer loads); a command already run in step 5 is not run twice;
- *      any other command must exit 0.
+ *      runs after its install, under a model of what StackBlitz's WebContainer
+ *      lacks (WEBCONTAINER_MODEL: no global `Iterator`, and an
+ *      AsyncLocalStorage that keeps no store past the synchronous part of
+ *      `run()`): `npm run dev [-- <args>]` is started, its first page fetched
+ *      with every same-origin script on it and every app module those import,
+ *      and the server stopped (a Next example with `NEXT_TEST_WASM=1`, so Next
+ *      loads the WebAssembly bindings a WebContainer loads); any other command
+ *      must exit 0, a script step 5 already ran on plain Node included.
  *
  * Every example's tests run without a replica (each is a `createTestClient()`
  * over an in-memory one), so nothing here starts a network. The vite-wallet
  * example needs icp-cli's local network to run the wallet itself, which is why
- * its `.stackblitzrc` runs its tests instead of its dev server.
+ * its `.stackblitzrc` runs its tests instead of its dev server. next-ssr's
+ * runs its tests too: Next 16 renders no page in a WebContainer (see
+ * WEBCONTAINER_MODEL).
  *
  * Usage: node scripts/test-examples-published.mjs [--keep] [--tmp <dir>]
  *          [--wait-for <version>] [<example> ...]
@@ -126,6 +130,86 @@ const DEPENDENCY_FIELDS = [
 const NEXT_ENV = `/// <reference types="next" />\n/// <reference types="next/image-types/global" />\n`
 
 const MINUTE = 60_000
+
+/**
+ * A model of what StackBlitz's WebContainer lacks, as the examples' start
+ * commands met it there (its `node --version` says v22.22.3), for a preload
+ * that `--require` puts into every Node process the start command starts:
+ *
+ * - No global `Iterator`: `typeof Iterator` is "undefined" there, though Node
+ *   22 defines it. jsdom 30.1 subclasses it, so all of vite-wallet's test
+ *   files failed to start there with "ReferenceError: Iterator is not
+ *   defined"; the examples pin jsdom 30.0.1.
+ * - An AsyncLocalStorage whose store is gone once `run()` returns, and so
+ *   after any await: StackBlitz says WebContainer does not implement
+ *   AsyncLocalStorage (stackblitz/starters#122), and next-ssr's `next dev`
+ *   answered 500 there with "Invariant: Expected workStore to be
+ *   initialized". Under the model `next dev` fails with the same stack, and
+ *   `next build --webpack` fails at its first prerender.
+ *
+ * Under this model each of the two failures happens here as it did on
+ * StackBlitz, and what worked there (icrc-ledger's dev server, node-agent-tool's
+ * demo) still works. It is the two gaps the examples have met, not a
+ * WebContainer: a start command green under it can still meet another one.
+ */
+export const WEBCONTAINER_MODEL = `"use strict"
+// Written by scripts/test-examples-published.mjs: see WEBCONTAINER_MODEL there.
+delete globalThis.Iterator
+class AsyncLocalStorage {
+  #store = undefined
+  getStore() {
+    return this.#store
+  }
+  run(store, fn, ...args) {
+    const outer = this.#store
+    this.#store = store
+    try {
+      return fn(...args)
+    } finally {
+      this.#store = outer
+    }
+  }
+  exit(fn, ...args) {
+    return this.run(undefined, fn, ...args)
+  }
+  enterWith(store) {
+    this.#store = store
+  }
+  disable() {
+    this.#store = undefined
+  }
+  static bind(fn) {
+    return fn
+  }
+  static snapshot() {
+    return (fn, ...args) => fn(...args)
+  }
+}
+Object.defineProperty(require("node:async_hooks"), "AsyncLocalStorage", {
+  value: AsyncLocalStorage,
+  writable: true,
+  enumerable: true,
+  configurable: true,
+})
+require("node:module").syncBuiltinESMExports()
+`
+
+/**
+ * `env` with the preload at `preload` (WEBCONTAINER_MODEL) added to
+ * NODE_OPTIONS, which every Node process the start command starts inherits:
+ * vitest's workers and Next's servers included.
+ *
+ * @param {NodeJS.ProcessEnv} env
+ * @param {string} preload
+ * @returns {NodeJS.ProcessEnv}
+ */
+export function webContainerEnv(env, preload) {
+  const option = `--require ${JSON.stringify(preload)}`
+  return {
+    ...env,
+    NODE_OPTIONS: env.NODE_OPTIONS ? `${env.NODE_OPTIONS} ${option}` : option,
+  }
+}
 
 /**
  * Every dependency a manifest declares, with the field it is declared in.
@@ -682,7 +766,9 @@ async function smokeDevServer(cwd, env, extraArgs, timeoutMs = 4 * MINUTE) {
   const url = `http://localhost:${port}/`
   const args = ["run", "dev", "--", ...extraArgs, "--port", String(port)]
   const shown = env.NEXT_TEST_WASM ? "NEXT_TEST_WASM=1 " : ""
-  console.log(`\n  ▶ start: ${shown}npm ${args.join(" ")}, then GET ${url}`)
+  console.log(
+    `\n  ▶ start, under the WebContainer model: ${shown}npm ${args.join(" ")}, then GET ${url}`
+  )
   const started = Date.now()
   const child = spawn("npm", args, {
     cwd,
@@ -743,7 +829,7 @@ async function smokeDevServer(cwd, env, extraArgs, timeoutMs = 4 * MINUTE) {
 }
 
 /** One example, start to finish. */
-async function testExample(name, { betaVersion, workDir }) {
+async function testExample(name, { betaVersion, workDir, preload }) {
   const dir = join(workDir, name.replaceAll("/", "__"))
   const steps = {}
   const findings = []
@@ -821,20 +907,25 @@ async function testExample(name, { betaVersion, workDir }) {
     steps[script] = runStep(script, "npm", ["run", script], dir, env)
   }
 
+  // Under the model of what a WebContainer lacks, even a script step 5 ran:
+  // green on Node says nothing about StackBlitz (vite-wallet's tests were).
+  const modelEnv = webContainerEnv(env, preload)
   const parsed = parseNpmCommand(start.command)
   if (parsed?.script === "dev") {
     // A WebContainer has no native binary: Next loads its WebAssembly
     // bindings there, and NEXT_TEST_WASM makes it do the same here.
-    const devEnv = isNext ? { ...env, NEXT_TEST_WASM: "1" } : env
+    const devEnv = isNext ? { ...modelEnv, NEXT_TEST_WASM: "1" } : modelEnv
     steps.start = await smokeDevServer(dir, devEnv, parsed.args)
-  } else if (parsed && parsed.args.length === 0 && steps[parsed.script]) {
-    console.log(
-      `\n  ▶ start: ${start.command} (already run above as "${parsed.script}")`
-    )
-    steps.start = { ...steps[parsed.script], ran: parsed.script }
   } else {
     const [command, ...args] = start.command.split(/\s+/)
-    steps.start = runStep("start", command, args, dir, env, 5 * MINUTE)
+    steps.start = runStep(
+      "start, under the WebContainer model",
+      command,
+      args,
+      dir,
+      modelEnv,
+      5 * MINUTE
+    )
   }
   return { name, steps, findings }
 }
@@ -842,9 +933,7 @@ async function testExample(name, { betaVersion, workDir }) {
 function report(results, totalMs) {
   const columns = ["install", "typecheck", "test", "build", "start"]
   const cell = (step) =>
-    !step
-      ? "-"
-      : `${step.ok ? "ok" : "FAIL"} ${step.ran ? `(= ${step.ran})` : seconds(step.ms)}`
+    !step ? "-" : `${step.ok ? "ok" : "FAIL"} ${seconds(step.ms)}`
   const rows = results.map((r) => {
     const failed =
       r.findings.length > 0 || Object.values(r.steps).some((s) => !s.ok)
@@ -1043,12 +1132,14 @@ async function main(argv) {
     return 1
   }
   const keep = args.keep
+  const preload = join(workDir, "webcontainer-model.cjs")
+  writeFileSync(preload, WEBCONTAINER_MODEL)
 
   const started = Date.now()
   const results = []
   try {
     for (const name of names) {
-      results.push(await testExample(name, { betaVersion, workDir }))
+      results.push(await testExample(name, { betaVersion, workDir, preload }))
     }
   } finally {
     if (keep) console.log(`\nCopies kept in ${workDir}`)
