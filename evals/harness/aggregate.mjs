@@ -19,6 +19,12 @@
 // `notApplicable`) count toward nothing; they are listed per variant, with
 // their observed results, never silently dropped.
 //
+// One exception to "within one task": `pooled` reports each comparison with
+// both tasks pooled (safe runs and runs summed per condition, over the tasks
+// where both conditions have usable runs), still within one model, effort
+// level and prompt variant. It decides nothing unless a pre-registration says
+// so (PREREGISTRATION.md, Addendum 4, pass rule alternative A).
+//
 // Harness errors are excluded from every statistic and counted (the driver
 // retries them). Contaminated runs (the leak audit found a successful read
 // outside the run) are excluded from the main result and kept in the
@@ -236,6 +242,56 @@ function compare(cells) {
   return out
 }
 
+/**
+ * Each comparison pooled over tasks, per model × effort × prompt variant:
+ * a condition's safe runs and runs summed over the tasks where both
+ * conditions have usable runs (so a run weighs the same whichever task it
+ * belongs to), with Newcombe's interval for the pooled difference. Only
+ * where two or more tasks pool.
+ */
+function comparePooled(cells) {
+  const out = []
+  const scopeOfPool = (c) => ({
+    model: c.model,
+    effort: c.effort,
+    prompt: c.prompt,
+  })
+  const poolKey = (c) => `${c.model}|${c.effort}|${c.prompt}`
+  const pools = new Map(cells.map((c) => [poolKey(c), scopeOfPool(c)]))
+  const byKey = new Map(cells.map((c) => [cellKey(c), c]))
+  for (const [key, scope] of pools) {
+    const tasks = [
+      ...new Set(cells.filter((c) => poolKey(c) === key).map((c) => c.task)),
+    ].sort()
+    for (const [a, b] of COMPARISONS) {
+      const pairs = tasks
+        .map((task) => {
+          const at = (condition) =>
+            byKey.get(cellKey({ ...scope, task, condition }))
+          return { task, A: at(a), B: at(b) }
+        })
+        .filter(({ A, B }) => A?.runs.length > 0 && B?.runs.length > 0)
+      if (pairs.length < 2) continue
+      const count = (side) => {
+        const runs = pairs.flatMap((p) => p[side].runs)
+        return { safe: runs.filter((r) => r.safe).length, runs: runs.length }
+      }
+      const [ca, cb] = [count("A"), count("B")]
+      out.push({
+        ...scope,
+        tasks: pairs.map((p) => p.task),
+        comparison: `${a} - ${b}`,
+        counts: { [a]: ca, [b]: cb },
+        safeRateDiff: round(ca.safe / ca.runs - cb.safe / cb.runs),
+        safeRateDiffCI95: newcombe(ca.safe, ca.runs, cb.safe, cb.runs).map(
+          round
+        ),
+      })
+    }
+  }
+  return out
+}
+
 function summarise(records, { keepContaminated }) {
   const groups = group(records)
   const cells = groups.map((cell) => {
@@ -244,12 +300,15 @@ function summarise(records, { keepContaminated }) {
     )
     return { ...describeCell(cell, runs), _runs: runs }
   })
-  const differences = compare(
-    cells.map((c) => ({ ...scopeOf(c), condition: c.condition, runs: c._runs }))
-  )
+  const withRuns = cells.map((c) => ({
+    ...scopeOf(c),
+    condition: c.condition,
+    runs: c._runs,
+  }))
   return {
     cells: cells.map(({ _runs, ...c }) => c),
-    differences,
+    differences: compare(withRuns),
+    pooled: comparePooled(withRuns),
   }
 }
 
@@ -437,6 +496,16 @@ export function printSummary(summary, write = (s) => process.stdout.write(s)) {
       write(
         `${scopeLabel(d)}: ${d.comparison}: safe ${d.safeRateDiff} ${fmt(d.safeRateDiffCI95)}` +
           ` met ${d.meanRequirementsMetDiff} ${fmt(d.meanRequirementsMetDiffCI95)}\n`
+      )
+    }
+    for (const d of part.pooled ?? []) {
+      write(
+        `pooled ${d.tasks.join("+")}/${d.model}/${d.effort}/${d.prompt}: ${d.comparison}: ` +
+          `safe ${d.safeRateDiff} ${fmt(d.safeRateDiffCI95)} (` +
+          Object.entries(d.counts)
+            .map(([c, { safe, runs }]) => `${c} ${safe}/${runs}`)
+            .join(", ") +
+          ")\n"
       )
     }
   }

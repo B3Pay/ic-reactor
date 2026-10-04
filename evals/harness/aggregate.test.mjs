@@ -225,3 +225,90 @@ describe("the v4 gate (PREREGISTRATION.md, Addendum 3)", () => {
     assert.equal(diff(summary.main).safeRateDiffCI95.length, 2)
   })
 })
+
+describe("pooled over tasks (PREREGISTRATION.md, Addendum 4, alternative A)", () => {
+  const minimal = (task, extra = {}) => ({
+    task,
+    prompt: "minimal",
+    effort: "medium",
+    ...extra,
+  })
+  const cell = (task, condition, failures, extra = {}) =>
+    Array.from({ length: 20 }, (_, i) =>
+      record(
+        condition,
+        i >= failures,
+        i >= failures ? 1 : 0.5,
+        minimal(task, extra)
+      )
+    )
+  const pooled = (result, comparison = "v4 - thin-guide") =>
+    result.pooled.filter((d) => d.comparison === comparison)
+
+  it("pools v4 − thin-guide over both tasks: 40/40 against 40/40", () => {
+    const summary = aggregate([
+      ...cell("node-tool", "v4", 0),
+      ...cell("react-wallet", "v4", 0),
+      ...cell("node-tool", "thin-guide", 0),
+      ...cell("react-wallet", "thin-guide", 0),
+    ])
+    const [d] = pooled(summary.main)
+    assert.deepEqual(d.tasks, ["node-tool", "react-wallet"])
+    assert.deepEqual(d.counts, {
+      v4: { safe: 40, runs: 40 },
+      "thin-guide": { safe: 40, runs: 40 },
+    })
+    assert.equal(d.safeRateDiff, 0)
+    assert.deepEqual(d.safeRateDiffCI95, [-0.088, 0.088])
+    // Per task, 20/20 against 20/20 cannot clear -0.10.
+    for (const t of summary.main.differences.filter(
+      (x) => x.comparison === "v4 - thin-guide"
+    ))
+      assert.deepEqual(t.safeRateDiffCI95, [-0.161, 0.161])
+    assert.equal(pooled(summary.intentToTreat).length, 1)
+  })
+  it("excludes contaminated runs from the main pool and keeps them in intent-to-treat", () => {
+    const summary = aggregate([
+      ...cell("node-tool", "v4", 0),
+      ...cell("react-wallet", "v4", 1),
+      ...cell("node-tool", "thin-guide", 0),
+      ...cell("react-wallet", "thin-guide", 0),
+      record("v4", false, 0.5, minimal("node-tool", { contaminated: true })),
+      record("v4", true, 1, minimal("node-tool", { harnessError: "x" })),
+    ])
+    const [main] = pooled(summary.main)
+    assert.deepEqual(main.counts.v4, { safe: 39, runs: 40 })
+    assert.deepEqual(
+      main.safeRateDiffCI95,
+      newcombe(39, 40, 40, 40).map((x) => Math.round(x * 1000) / 1000)
+    )
+    assert.equal(main.safeRateDiffCI95[0], -0.129)
+    const [itt] = pooled(summary.intentToTreat)
+    assert.deepEqual(itt.counts.v4, { safe: 39, runs: 41 })
+  })
+  it("pools only tasks where both conditions ran, and never across models or prompt variants", () => {
+    const summary = aggregate([
+      ...cell("node-tool", "v4", 0),
+      ...cell("react-wallet", "v4", 0),
+      ...cell("node-tool", "thin-guide", 0),
+      // react-wallet's control ran under another model and another prompt.
+      ...cell("react-wallet", "thin-guide", 0, { model: "model-b" }),
+      ...cell("react-wallet", "thin-guide", 0, { prompt: "explicit" }),
+    ])
+    assert.deepEqual(pooled(summary.main), [])
+  })
+  it("prints the pooled comparison with its counts", () => {
+    const summary = aggregate([
+      ...cell("node-tool", "v4", 2),
+      ...cell("react-wallet", "v4", 0),
+      ...cell("node-tool", "thin-guide", 0),
+      ...cell("react-wallet", "thin-guide", 1),
+    ])
+    let out = ""
+    printSummary(summary, (s) => (out += s))
+    assert.match(
+      out,
+      /^pooled node-tool\+react-wallet\/model-a\/medium\/minimal: v4 - thin-guide: safe -0\.025 \[-0\.142, 0\.085\] \(v4 38\/40, thin-guide 39\/40\)$/m
+    )
+  })
+})
