@@ -725,6 +725,76 @@
     "replace": "    refuseNext() {},"
   },
   {
+    "id": "822-refusal-ignores-method",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "while a concurrent",
+    "why": "refuseNext(status, { method }) that refuses whatever request comes next, as the count form does, so a concurrent read of another method is refused in the write's place",
+    "file": "src/testing/fake-replica.ts",
+    "search": "        (refusal.method === undefined || refusal.method === method) &&",
+    "replace": "        true &&"
+  },
+  {
+    "id": "822-refusal-ignores-canister",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "refuses only the canister it names, mocked or not, whatever the method",
+    "why": "refuseNext(status, { canister }) that refuses a request for any canister, so the ledger read is refused in the shapes canister's place",
+    "file": "src/testing/fake-replica.ts",
+    "search": "        (refusal.canister === undefined || refusal.canister === canisterId)",
+    "replace": "        true"
+  },
+  {
+    "id": "822-refusal-head-of-queue-only",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "is matched in the order refusals were armed, and the count form still refuses whatever comes next",
+    "why": "only the refusal armed first is looked at, as the queue of 4.0.0-beta.1 was shifted: an aimed refusal waiting for its method holds back a count armed after it, and the count form stops refusing whatever comes next",
+    "file": "src/testing/fake-replica.ts",
+    "search": "    const index = refusals.findIndex(",
+    "replace": "    const index = refusals.slice(0, 1).findIndex("
+  },
+  {
+    "id": "822-refusal-option-names-unchecked",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "a refusal that cannot be armed",
+    "why": "an option refuseNext() does not have (a misspelled `method`) accepted and ignored, so the refusal is armed for every request instead of failing at once",
+    "file": "src/testing/fake-replica.ts",
+    "search": "        (key) => !(REFUSAL_OPTIONS as readonly string[]).includes(key)",
+    "replace": "        () => false"
+  },
+  {
+    "id": "822-refusal-matches-read-state",
+    "package": "core",
+    "test": "tests/testing-fake-replica.test.ts",
+    "testName": "aimed at a canister or a method, never refuses the requests an agent makes on its own",
+    "why": "a read_state routed by the canister a refusal names is refused, so the agent cannot read the subnet's node keys and a refusal aimed at a canister lands on the agent's housekeeping",
+    "file": "src/testing/fake-replica.ts",
+    "search": "        endpoint === \"read_state\"\n          ? undefined\n          : refusalFor(canisterId, envelope.content.method_name)",
+    "replace": "        refusalFor(canisterId, envelope.content.method_name)"
+  },
+  {
+    "id": "822-refusal-matches-effective-canister",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "aims at the canister a management call names, aaaaa-aa, not the canister it is routed by",
+    "why": "a refusal matched by the effective canister id a request is routed by, not the canister it names, so refuseNext(status, { canister }) aimed at a canister refuses the management calls that only name it as their argument, and one aimed at aaaaa-aa never refuses them",
+    "file": "src/testing/fake-replica.ts",
+    "search": "          : refusalFor(canisterId, envelope.content.method_name)",
+    "replace": "          : refusalFor(effectiveCanisterId, envelope.content.method_name)"
+  },
+  {
+    "id": "822-refusal-method-type-unchecked",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "a refusal that cannot be armed",
+    "why": "a `method` that is not a string accepted, so refuseNext(status, { method: 5 }) is armed for a method no request can name instead of failing at once",
+    "file": "src/testing/fake-replica.ts",
+    "search": "      if (method !== undefined && (typeof method !== \"string\" || !method)) {",
+    "replace": "      if (method !== undefined && !method) {"
+  },
+  {
     "id": "ir4b-fetch-stubbed-globally",
     "package": "core",
     "test": "tests/testing-test-client.test.ts",
