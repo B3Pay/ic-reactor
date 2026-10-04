@@ -1799,5 +1799,55 @@
     "file": "src/errors.ts",
     "search": "asString(record.rejectErrorCode) ?? asString(code.rejectErrorCode)",
     "replace": "asString(code.rejectErrorCode)"
+  },
+  {
+    "id": "fu-not-found-fake-replica-row-unread",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "file": "src/errors.ts",
+    "testName": "reject 3 IC0301 (fake replica)",
+    "why": "the reject 3 with IC0301 that the fake replica of @ic-reactor/core/testing answers gets no `code`, so a test client and mainnet disagree about a missing canister",
+    "search": "shape.rejectErrorCode === IC_CANISTER_NOT_FOUND",
+    "replace": "false"
+  },
+  {
+    "id": "fu-not-found-code-on-reject-4-5",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "file": "src/errors.ts",
+    "testName": "reject 5 with IC0301",
+    "why": "a reject 4 or 5 that carries IC0301 gets the canister_not_found code, though a canister that rejected or trapped exists",
+    "search": "if (rejectCode === 4 || rejectCode === 5) {\n      return make(\"rejected\", update, reason)",
+    "replace": "if (rejectCode === 4 || rejectCode === 5) {\n      return make(\"rejected\", update, reason, false, shape.rejectErrorCode === IC_CANISTER_NOT_FOUND ? CANISTER_NOT_FOUND : undefined)"
+  },
+  {
+    "id": "fu-not-found-management-reject-unread",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "file": "src/errors.ts",
+    "testName": "reject 3 IC0301 from aaaaa-aa",
+    "why": "a management-canister call whose arguments name a missing canister (reject 3 with IC0301) gets no `code`, while the update must keep mayHaveExecuted true",
+    "search": "shape.rejectErrorCode === IC_CANISTER_NOT_FOUND",
+    "replace": "false"
+  },
+  {
+    "id": "fu-not-found-management-reject-2-guard",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "file": "src/errors.ts",
+    "testName": "reject 2 IC0301 from aaaaa-aa",
+    "why": "a management-canister reject other than 3 that carries IC0301 gets the canister_not_found code, so the reject code no longer has to say invalid destination",
+    "search": "shape.rejectCode === DESTINATION_INVALID &&\n      shape.rejectErrorCode",
+    "replace": "shape.rejectErrorCode"
+  },
+  {
+    "id": "fu-not-found-boundary-read-unread",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "file": "src/errors.ts",
+    "testName": "says canister_not_found on a read too",
+    "why": "a query refused by a boundary node with HTTP 400 canister_not_found gets no `code`, so a read cannot tell a missing canister from any other refusal",
+    "search": "CANISTER_NOT_FOUND_BODY.test(shape.bodyText ?? \"\")",
+    "replace": "false"
   }
 ]
