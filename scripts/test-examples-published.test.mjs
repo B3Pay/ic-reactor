@@ -336,7 +336,7 @@ describe("the StackBlitz start command", () => {
     assert.equal(parseNpmCommand("node src/cli.ts demo"), undefined)
   })
 
-  it("names --webpack for next-ssr, whose Next refuses Turbopack on a WebContainer's WASM bindings", () => {
+  it("runs next-ssr's tests, not its dev server: Next 16 renders no page in a WebContainer", () => {
     const next = JSON.parse(
       readFileSync(
         join(repoRoot, "examples", "next-ssr", ".stackblitzrc"),
@@ -344,8 +344,8 @@ describe("the StackBlitz start command", () => {
       )
     )
     assert.deepEqual(parseNpmCommand(next.startCommand), {
-      script: "dev",
-      args: ["--webpack"],
+      script: "test",
+      args: [],
     })
   })
 })
