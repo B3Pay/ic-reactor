@@ -181,8 +181,10 @@ export function BalanceOf({ text }: { text: string }) {
 a failure the client classifies as retryable: a `not_delivered` that another
 attempt can change (an HTTP 429, a reject with code 2, a network failure, a
 timeout). Every other kind fails at once: retrying `invalid_args`, `rejected`,
-`invalid_reply` or `canister_err` would only repeat the answer. A read on a
-server is never retried. The client's own `QueryClient` has the same default.
+`invalid_reply` or `canister_err` would only repeat the answer. A read through
+`queryOptions` is never retried on a server, and the client's own
+`QueryClient` has the same default. A direct call still re-sends a retryable
+read up to twice (see [Outside React](#outside-react)).
 
 The [classification table](/v4/guides/errors/) lists which failures are
 retryable. A read cannot have executed, so a retry is always safe. Writes are
@@ -376,17 +378,26 @@ export function FeeWithFallback() {
 ## Infinite queries
 
 There is no helper for `useInfiniteQuery`: the pieces are the same as for any
-read, and the recipe is short. Three rules keep it correct.
+read, and the recipe is short. Four rules keep it correct.
 
 - **Extend a client key, never write one.** Use
   `[...client.queryKey(canister, method), "pages"]`. It keeps the caller in the
   key and it keeps the read under its canister. A mutation invalidates it by
   default, because the default invalidation matches the network, the canister
   and the method of every read of the canister it wrote to, for every caller.
-- **A direct call reads the current caller, not the key's.** Capture
-  `client.caller()` in render and, in `queryFn`, throw if the caller is no
-  longer the same. Without the check, a page fetched for the old caller could
-  be stored under the old caller's key by a call that went out as the new one.
+- **Fetch through the client's read options, not a direct call.** A direct
+  call (`ledger.query_blocks(...)`, or a function from `client.func`) signs as
+  the caller current when it runs, whatever caller the key names. While a page
+  hydrates in a browser that holds a session, the key names the anonymous
+  caller the server rendered for, and a direct call goes out as the signed-in
+  user (see [SSR and hydration](/v4/guides/ssr/)). Fetch each ledger page with
+  `client.queryClient.fetchQuery` and `client.queryOptions(...)`: that read is
+  refused (`cancelled`, code `caller_changed`) unless the key's caller is the
+  one calls go out as. Give it `staleTime: 0`, so that it is asked, and
+  checked, every time.
+- **Throw if the caller changes while a page loads.** The archive reads that
+  follow the ledger page are direct calls. Listen with `client.subscribe` for
+  as long as `queryFn` runs, and throw if the caller changed.
 - **Put everything the pages depend on in the key.** A `bigint` cannot be in a
   key: write it with `toString()`.
 
@@ -395,7 +406,8 @@ This example walks the ICP ledger's blocks backwards. The ledger answers
 archived ranges; each carries a function reference that `client.func` turns
 into a call to the archive canister. See
 [`blocks.ts`](https://github.com/b3pay/ic-reactor/blob/v4/examples/icrc-ledger/src/blocks.ts)
-of the ICRC-1 ledger example for the full version.
+of the ICRC-1 ledger example for how it reads archived ranges, each as a
+cached read of its own.
 
 ```tsx
 import { useClient } from "@ic-reactor/react"
@@ -418,7 +430,6 @@ type ReadArchive = (arg: GetBlocksArgs) => Promise<BlockRange>
 
 export function RecentBlocks() {
   const client = useClient()
-  const caller = client.caller() // captured in this render
   const ledger = client.canister<Actor>(actor, {
     id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   })
@@ -438,18 +449,32 @@ export function RecentBlocks() {
     enabled: chain !== undefined,
     initialPageParam: chain ?? 0n, // the end, exclusive, of the first page
     queryFn: async ({ pageParam }): Promise<Block[]> => {
-      if (client.caller() !== caller)
-        throw new Error("The caller changed: refresh")
-      const start = pageParam > PAGE ? pageParam - PAGE : 0n
-      const args = { start, length: pageParam - start }
-      const reply = await ledger.query_blocks(args)
-      const archived = await Promise.all(
-        reply.archived_blocks.map((range: ArchivedBlocksRange) => {
-          const read = client.func<ReadArchive>(QueryArchiveFn, range.callback)
-          return read({ start: range.start, length: range.length })
+      let changed = false
+      const stop = client.subscribe(() => {
+        changed = true
+      })
+      try {
+        const start = pageParam > PAGE ? pageParam - PAGE : 0n
+        const args = { start, length: pageParam - start }
+        // Refused (caller_changed) unless the key's caller is the live one.
+        const reply = await client.queryClient.fetchQuery({
+          ...client.queryOptions(ledger, "query_blocks", args),
+          staleTime: 0,
         })
-      )
-      return [...archived.flatMap((range) => range.blocks), ...reply.blocks]
+        const archived = await Promise.all(
+          reply.archived_blocks.map((range: ArchivedBlocksRange) => {
+            const read = client.func<ReadArchive>(
+              QueryArchiveFn,
+              range.callback
+            )
+            return read({ start: range.start, length: range.length })
+          })
+        )
+        if (changed) throw new Error("The caller changed: refresh")
+        return [...archived.flatMap((range) => range.blocks), ...reply.blocks]
+      } finally {
+        stop()
+      }
     },
     getNextPageParam: (_last, _all, lastParam) =>
       lastParam > PAGE ? lastParam - PAGE : undefined,

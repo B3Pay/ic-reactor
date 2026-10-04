@@ -20,7 +20,9 @@ The rules:
    nothing reads `window` or `localStorage`, and no effect runs.
 4. **The server is anonymous.** It prefetches as the anonymous principal, and
    the browser's hydrating render uses the same principal, so the keys match.
-5. **Reads are never retried on a server.** A failed read fails once.
+5. **A read through `queryOptions` is never retried on a server.** Nor is any
+   read of the client's `QueryClient`. A direct call still re-sends a
+   retryable read up to twice.
 
 ## One client per request
 
@@ -259,7 +261,9 @@ keys once. Until the user's data arrives, a read shows its loading state.
 Nothing read anonymously is reused for the user.
 
 A tab whose caller is anonymous anyway (no session, or one that expired or is
-signed in elsewhere) renders no `useClient()` component again.
+signed in elsewhere) renders no `useClient()` component again, and no
+`useAuth()` component unless its status differs (an expired or elsewhere
+session).
 
 So show the same thing signed out and while the session is read, and the page
 does not flicker into a different layout. The example's header badge is
@@ -329,7 +333,8 @@ this library the Server Component is the one that holds up:
 ## What a signed-in reload costs
 
 Moving from the anonymous render to the session has three accepted costs, and
-the library tests each. They come from the move, and each has a fix.
+one rule keeps them small. The library tests each. They come from the move,
+and each cost has a fix.
 
 ### Do not keep what useClient returns past its render
 

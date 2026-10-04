@@ -166,11 +166,14 @@ can run the write twice. Two rules follow.
 The client itself sends an update again in exactly two cases, because only
 these two prove the first attempt was never accepted:
 
-| Failure                                                 | Re-send                               |
-| ------------------------------------------------------- | ------------------------------------- |
-| reject code 2 (`SYS_TRANSIENT`), unless from `aaaaa-aa` | after 300 ms, then after 600 ms       |
-| HTTP 429, before the request got in                     | after 300 ms, then after 600 ms       |
-| anything else, a network failure included               | never: the call fails with that error |
+| Failure                                   | Re-send                               |
+| ----------------------------------------- | ------------------------------------- |
+| reject code 2 (`SYS_TRANSIENT`)           | after 300 ms, then after 600 ms       |
+| HTTP 429, before the request got in       | after 300 ms, then after 600 ms       |
+| anything else, a network failure included | never: the call fails with that error |
+
+Neither applies to the management canister, `aaaaa-aa`: the client never
+re-sends an update there.
 
 That is at most two re-sends. If they all fail, the call fails with the last
 error, kind `not_delivered`, `mayHaveExecuted: false`. The agents the client

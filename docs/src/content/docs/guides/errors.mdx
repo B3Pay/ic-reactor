@@ -99,8 +99,8 @@ Two rules sit behind the table.
 - **Once the request may be in the IC, the HTTP rows change.** The HTTP rows,
   `IngressExpiryInvalid` and the "could not be built" row hold for an update
   only before the request may have been accepted. After the replica answered
-  202, or after the agent itself sent the request again, a later refusal says
-  nothing about the call, so all of those rows read `outcome_unknown` with
+  202 (the client is polling for the reply), a later refusal says nothing
+  about the call, so all of those rows read `outcome_unknown` with
   `mayHaveExecuted: true`. This is why a 429 on the first send is safe to send
   again, and a 429 on a later poll is not.
 - **The management canister is the exception for reject codes 1 to 3.** For
