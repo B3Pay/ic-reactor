@@ -14,7 +14,12 @@ import {
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, before, describe, it } from "node:test"
-import { agentOutcome, plan, refuseChangedV4Source } from "../drive.mjs"
+import {
+  agentOutcome,
+  plan,
+  refuseChangedV4Source,
+  refuseMissingV4Source,
+} from "../drive.mjs"
 import { EVALS } from "./assemble.mjs"
 import { v4Source } from "./ship.mjs"
 
@@ -195,6 +200,19 @@ describe("a new batch's --out directory", () => {
     const r = batch(empty, ["--dry-run"])
     assert.equal(r.status, 0, r.stderr)
     assert.match(r.stdout, new RegExp(`^results: ${empty}/`, "m"))
+  })
+})
+
+describe("a v4 batch with no recorded source", () => {
+  it("is refused when it would really run", () => {
+    assert.throws(
+      () => refuseMissingV4Source(null, { dryRun: false }),
+      /no \.ship\/v4\/source\.json.*not identified/s
+    )
+  })
+  it("is only shown in a dry run, and goes on with a source", () => {
+    refuseMissingV4Source(null, { dryRun: true })
+    refuseMissingV4Source({ from: "npm" }, { dryRun: false })
   })
 })
 

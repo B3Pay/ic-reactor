@@ -377,6 +377,21 @@ function rng(seed) {
  * packages than the plan names. A plan from before v4Source was recorded
  * (`saved` undefined) is let through.
  */
+/**
+ * Refuses a real v4 batch, new or resumed, when setup has recorded no source
+ * for the v4 packages (`.ship/v4/source.json`, from a setup run that predates
+ * it, or none): its runs would test packages nobody can identify, and
+ * Addendum 4 requires plan.json's `v4Source` to name them. A dry run only
+ * prints the gap.
+ */
+export function refuseMissingV4Source(source, { dryRun }) {
+  if (source || dryRun) return
+  throw new Error(
+    "no .ship/v4/source.json: the v4 packages this batch would test are not identified. " +
+      "Run `node setup.mjs --v4-from ...` first."
+  )
+}
+
 export function refuseChangedV4Source(saved, current) {
   if (saved === undefined || isDeepStrictEqual(saved, current)) return
   throw new Error(
@@ -998,6 +1013,7 @@ async function main() {
   // Where the v4 packages under test came from (setup.mjs --v4-from): the
   // tarballs' integrity and the guide's size and sha256, kept in plan.json.
   const v4 = args.conditions.includes("v4") ? { v4Source: v4Source() } : {}
+  if (args.conditions.includes("v4")) refuseMissingV4Source(v4.v4Source, args)
   if (args.resume && args.conditions.includes("v4"))
     refuseChangedV4Source(savedV4Source, v4.v4Source)
 
