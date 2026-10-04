@@ -17,7 +17,7 @@ const versionChecks = [
   { packageName: "@ic-reactor/vite-plugin", packageDir: "vite-plugin" },
 ]
 
-// The one consumer guide of the v4 line: core ships `packages/core/llms.txt`
+// The one consumer guide of the 4.x line: core ships `packages/core/llms.txt`
 // in its npm tarball, and it must open with an "Applies to
 // `@ic-reactor/core` <version>." line. A pointer guide in another package
 // (react's, once DX3 adds it) is stamped the same way, so a `llms.txt` that
@@ -60,7 +60,7 @@ const aiContextFiles = AI_CONTEXT_FILES
 /**
  * The base the docs site in this tree is served under, read from
  * docs/astro.config.mjs so the check follows the branch: `/v3/` on the 3.x
- * line (main), `/v4/` on the v4 line. Links under it are resolved against
+ * line (v3), `/v4/` on the 4.x line (main). Links under it are resolved against
  * this tree's pages.
  */
 const DOCS_BASE = (() => {
@@ -77,8 +77,8 @@ const DOCS_BASE = (() => {
 
 /**
  * Every versioned base the site publishes (.github/workflows/docs.yml): the
- * static 2.x docs, the 3.x line built from main and the 4.x line built from
- * the v4 branch. A link to a base outside this set 404s. A link under a base
+ * static 2.x docs, the 3.x line built from the v3 branch and the 4.x line
+ * built from main. A link to a base outside this set 404s. A link under a base
  * other than DOCS_BASE is served from another line's tree, so only its base
  * is checked here.
  */
@@ -106,8 +106,10 @@ for (const { packageName, packageDir } of versionChecks) {
 const validVersions = new Set(currentVersions.values())
 
 // ── 1. (3.x only) The version lists of the root llms.txt and llms-full.txt ───
-// The v4 line has no root guides: the site root serves the 3.x line's until
-// GA (.github/workflows/docs.yml), and the v4 guide ships in core's tarball.
+// The 4.x line has no root guides in the tree: the docs deploy serves
+// packages/core/llms.txt (checked below) as the site's /llms.txt, and
+// /llms-full.txt is the 3.x line's, frozen on the v3 branch
+// (.github/workflows/docs.yml, scripts/assemble-docs-site.mjs).
 
 // ── 2. The package guide is stamped with its package's version ───────────────
 // The stamp tells an agent reading node_modules/@ic-reactor/<dir>/llms.txt
@@ -852,7 +854,7 @@ for (const page of [...sourcePages].sort()) {
       failures.push(
         validVersions.has(version)
           ? `${relPath}:${i + 1} names the @ic-reactor version ${version}. A docs page names none: ` +
-              `the site follows the branch, so write "published under npm's \`beta\` dist-tag" instead.`
+              `the site follows main, which can be ahead of the latest release, so install without a version instead.`
           : `${relPath}:${i + 1} names version ${version}, which no package pins exactly ` +
               `(pins: ${[...exactPins].join(", ") || "none"}). Name the pin of packages/*/package.json.`
       )
@@ -899,6 +901,34 @@ for (const { packageName, packageDir } of versionChecks) {
       `${relPath} has homepage ${homepage}, but docs/src/content/docs has no packages/${packageDir} page`
     )
   }
+}
+
+// ── 12. No link to the retired v4 branch ─────────────────────────────────────
+// ic-reactor 4 lives on `main` since the 4.0 GA flip, and the `v4` branch is
+// deleted after a window, so a GitHub, raw or sandbox link to it would 404.
+// A tag (`tree/v4.0.0`) is not a branch and is allowed. Checked in the files
+// whose site links are checked, the docs pages and the docs config (its edit
+// link).
+const V4_BRANCH_LINK =
+  /(?:github\.com\/b3pay\/ic-reactor\/(?:tree|blob|edit|raw|commits)\/|raw\.githubusercontent\.com\/b3pay\/ic-reactor\/|stackblitz\.com\/github\/b3pay\/ic-reactor\/tree\/|codesandbox\.io\/p\/github\/b3pay\/ic-reactor\/)v4(?![\w.-])/gi
+for (const relPath of [
+  ...new Set([
+    ...docsLinkFiles,
+    "docs/astro.config.mjs",
+    ...[...sourcePages].sort().map((page) => `docs/src/content/docs/${page}`),
+  ]),
+]) {
+  const absPath = join(rootDir, relPath)
+  if (!existsSync(absPath)) continue
+  readFileSync(absPath, "utf8")
+    .split("\n")
+    .forEach((line, i) => {
+      for (const match of line.matchAll(V4_BRANCH_LINK)) {
+        failures.push(
+          `${relPath}:${i + 1} links the v4 branch (${match[0]}). ic-reactor 4 is on main: link main instead.`
+        )
+      }
+    })
 }
 
 if (failures.length > 0) {

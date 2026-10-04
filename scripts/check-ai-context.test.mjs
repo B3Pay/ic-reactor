@@ -607,3 +607,52 @@ describe("version stamps", () => {
     )
   })
 })
+
+describe("links to the retired v4 branch", () => {
+  const PAGES = "docs/src/content/docs"
+
+  it("fails a GitHub, sandbox or edit link to the v4 branch", () => {
+    const run = check(
+      repo({
+        "README.md": [
+          "# IC Reactor",
+          "",
+          "[Source](https://github.com/B3Pay/ic-reactor/tree/v4).",
+          "[Release](https://github.com/B3Pay/ic-reactor/tree/v4.0.0) and [main](https://github.com/b3pay/ic-reactor/tree/main/examples).",
+        ].join("\n"),
+        "packages/core/README.md":
+          "# @ic-reactor/core\n\nSee [blocks.ts](https://github.com/b3pay/ic-reactor/blob/v4/examples/icrc-ledger/src/blocks.ts).\n",
+        "docs/astro.config.mjs": `export default {\n  base: "/v4/",\n  edit: "https://github.com/b3pay/ic-reactor/edit/v4/docs/",\n}\n`,
+        [`${PAGES}/examples/icrc-ledger.mdx`]:
+          '# Ledger\n\n<a href="https://stackblitz.com/github/b3pay/ic-reactor/tree/v4/examples/icrc-ledger">Open</a>\n',
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    const lines = failureLines(run)
+    assert.equal(lines.length, 4, run.output)
+    assert.match(
+      run.output,
+      /README\.md:3 links the v4 branch \(github\.com\/B3Pay\/ic-reactor\/tree\/v4\)\. ic-reactor 4 is on main/
+    )
+    assert.match(run.output, /packages\/core\/README\.md:3 links the v4 branch/)
+    assert.match(run.output, /docs\/astro\.config\.mjs:3 links the v4 branch/)
+    assert.match(
+      run.output,
+      /docs\/src\/content\/docs\/examples\/icrc-ledger\.mdx:3 links the v4 branch \(stackblitz\.com/
+    )
+  })
+
+  it("passes links to main, to a v4.x tag and to the /v4/ docs base", () => {
+    const run = check(
+      repo({
+        "README.md": [
+          "# IC Reactor",
+          "",
+          "[Source](https://github.com/B3Pay/ic-reactor/tree/main) and [the 4.0.0 tag](https://github.com/B3Pay/ic-reactor/tree/v4.0.0).",
+          "[Docs](https://ic-reactor.b3pay.net/v4/packages/core/).",
+        ].join("\n"),
+      })
+    )
+    assert.equal(run.status, 0, run.output)
+  })
+})
