@@ -48,9 +48,19 @@ function repo(files = {}) {
     "docs/astro.config.mjs": `export default {\n  base: "/v4/",\n}\n`,
     "docs/src/content/docs/index.md": "# Docs\n",
     ...Object.fromEntries(
-      ["core", "react", "vite-plugin"].map((name) => [
-        `packages/${name}/package.json`,
-        JSON.stringify({ name: `@ic-reactor/${name}`, version: VERSION }),
+      ["core", "react", "vite-plugin"].flatMap((name) => [
+        [
+          `packages/${name}/package.json`,
+          JSON.stringify({
+            name: `@ic-reactor/${name}`,
+            version: VERSION,
+            homepage: `https://ic-reactor.b3pay.net/v4/packages/${name}/`,
+          }),
+        ],
+        [
+          `docs/src/content/docs/packages/${name}.md`,
+          `# @ic-reactor/${name}\n`,
+        ],
       ])
     ),
     "packages/core/llms.txt": GUIDE,
@@ -293,6 +303,231 @@ describe("stale 3.x names", () => {
       })
     )
     assert.equal(sentence.status, 1)
+  })
+})
+
+describe("docs pages", () => {
+  const PAGES = "docs/src/content/docs"
+
+  it("fails a removed name on a page, naming the file and the line", () => {
+    const run = check(
+      repo({
+        [`${PAGES}/guides/reads.mdx`]:
+          "# Reads\n\nBuild it with `createQuery`.\n",
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    const lines = failureLines(run)
+    assert.equal(lines.length, 1, run.output)
+    assert.match(
+      lines[0],
+      /docs\/src\/content\/docs\/guides\/reads\.mdx:3 mentions createQuery, which 4\.0 removed \(use useQuery\(client\.queryOptions/
+    )
+  })
+
+  it("reads .md pages as well as .mdx pages", () => {
+    const run = check(
+      repo({ [`${PAGES}/notes.md`]: "# Notes\n\nUse ClientManager.\n" })
+    )
+    assert.equal(run.status, 1, run.output)
+    assert.match(
+      run.output,
+      /docs\/src\/content\/docs\/notes\.md:3 mentions ClientManager/
+    )
+  })
+
+  it("allows a removed name under 'Removed in 4.0' and not after it", () => {
+    const run = check(
+      repo({
+        [`${PAGES}/migrating-from-3.mdx`]: [
+          "# Migrating",
+          "",
+          "## Removed in 4.0 → use X",
+          "",
+          "| `ClientManager` | `createClient` |",
+          "",
+          "### Recipe: providers",
+          "",
+          "createReactorProvider became ReactorProvider.",
+          "",
+          "## Where to read next",
+          "",
+          "Do not call defineReactor.",
+        ].join("\n"),
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    const lines = failureLines(run)
+    assert.equal(lines.length, 1, run.output)
+    assert.match(lines[0], /migrating-from-3\.mdx:13 mentions defineReactor/)
+  })
+
+  it("allows 'Removed in 4.0' on the migration page only", () => {
+    const run = check(
+      repo({
+        [`${PAGES}/guides/reads.mdx`]: [
+          "# Reads",
+          "",
+          "## Removed in 4.0",
+          "",
+          "createQuery became useQuery.",
+        ].join("\n"),
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    const lines = failureLines(run)
+    assert.equal(lines.length, 1, run.output)
+    assert.match(
+      lines[0],
+      /guides\/reads\.mdx:5 mentions createQuery, .*move it to migrating-from-3\.mdx/
+    )
+  })
+
+  it("does not read the generated API reference", () => {
+    const run = check(
+      repo({ [`${PAGES}/libs/classes/clientmanager.md`]: "# ClientManager\n" })
+    )
+    assert.equal(run.status, 0, run.output)
+  })
+
+  it("fails a link to the 3.x docs from any page but the migration page", () => {
+    const links = {
+      absolute: "See [3.x](https://ic-reactor.b3pay.net/v3/guides/auth/).",
+      "absolute, no path": "See <https://ic-reactor.b3pay.net/v3>.",
+      relative: "See [3.x](/v3/guides/auth/).",
+      "relative, in angle brackets": "See [3.x](</v3/>).",
+      href: '<a href="/v3/">3.x</a>',
+      "reference definition": "[3.x]: /v3/guides/auth/",
+      "in a code fence":
+        "```sh\ncurl https://ic-reactor.b3pay.net/v3/llms.txt\n```",
+    }
+    for (const [how, line] of Object.entries(links)) {
+      const run = check(
+        repo({ [`${PAGES}/guides/auth.mdx`]: `# Auth\n\n${line}\n` })
+      )
+      assert.equal(run.status, 1, `${how}: ${run.output}`)
+      const lines = failureLines(run)
+      assert.equal(lines.length, 1, `${how}: ${run.output}`)
+      assert.match(
+        lines[0],
+        /docs\/src\/content\/docs\/guides\/auth\.mdx:\d+ links the 3\.x docs/,
+        how
+      )
+      assert.match(lines[0], /Only migrating-from-3\.mdx may/)
+    }
+  })
+
+  it("lets the migration page link the 3.x docs", () => {
+    const run = check(
+      repo({
+        [`${PAGES}/migrating-from-3.mdx`]:
+          "# Migrating\n\nThe [3.x docs](https://ic-reactor.b3pay.net/v3/) and [more](/v3/guides/).\n",
+      })
+    )
+    assert.equal(run.status, 0, run.output)
+  })
+
+  it("lets a page link its own docs and name other versions in prose", () => {
+    const run = check(
+      repo({
+        [`${PAGES}/guides/auth.mdx`]: [
+          "# Auth",
+          "",
+          "See [the client](/v4/guides/client/) and [the migration](/v4/migrating-from-3/).",
+          "",
+          "Links like /v30/ or https://ic-reactor.b3pay.net/v3-notes are not the 3.x docs.",
+          "The 3.x line is on the v3 branch of main.",
+        ].join("\n"),
+      })
+    )
+    assert.equal(run.status, 0, run.output)
+  })
+
+  it("fails an @ic-reactor version on a page, and a prerelease nothing pins", () => {
+    const core = (peerDependencies) =>
+      JSON.stringify({
+        name: "@ic-reactor/core",
+        version: VERSION,
+        homepage: "https://ic-reactor.b3pay.net/v4/packages/core/",
+        peerDependencies,
+      })
+    const run = check(
+      repo({
+        "packages/core/package.json": core({
+          "@candid-core/schema": "0.3.0-beta.1",
+          "@icp-sdk/core": "^6.1.0",
+        }),
+        [`${PAGES}/guides/getting-started.mdx`]: [
+          "# Getting started",
+          "",
+          `\`${VERSION}\` is published under \`beta\`.`,
+          "npm install --save-exact @candid-core/schema@0.3.0-beta.1",
+          "npm install --save-exact @candid-core/schema@0.2.0-beta.4",
+          "Vite ^4.2.0 or 8.0.0, and TanStack Query 5.89 or newer.",
+        ].join("\n"),
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    const lines = failureLines(run)
+    assert.equal(lines.length, 2, run.output)
+    assert.match(
+      lines[0],
+      /getting-started\.mdx:3 names the @ic-reactor version 4\.0\.0-alpha\.0/
+    )
+    assert.match(
+      lines[1],
+      /getting-started\.mdx:5 names version 0\.2\.0-beta\.4, which no package pins exactly \(pins: 0\.3\.0-beta\.1\)/
+    )
+  })
+
+  it("wants each package's homepage to be its page, and the page to exist", () => {
+    const pkg = (homepage) =>
+      JSON.stringify({ name: "@ic-reactor/react", version: VERSION, homepage })
+    const wrong = check(
+      repo({
+        "packages/react/package.json": pkg("https://ic-reactor.b3pay.net/v4/"),
+      })
+    )
+    assert.equal(wrong.status, 1, wrong.output)
+    assert.match(
+      wrong.output,
+      /packages\/react\/package\.json has homepage https:\/\/ic-reactor\.b3pay\.net\/v4\/; @ic-reactor\/react's is its page, https:\/\/ic-reactor\.b3pay\.net\/v4\/packages\/react\//
+    )
+
+    const none = check(repo({ "packages/react/package.json": pkg(undefined) }))
+    assert.equal(none.status, 1, none.output)
+    assert.match(
+      none.output,
+      /packages\/react\/package\.json has no homepage; @ic-reactor\/react's is its page/
+    )
+
+    const page = "https://ic-reactor.b3pay.net/v4/packages/react/"
+    const missing = check(
+      repo({
+        "packages/react/package.json": pkg(page),
+        [`${PAGES}/packages/react.md`]: null,
+      })
+    )
+    assert.equal(missing.status, 1, missing.output)
+    assert.match(missing.output, /has no packages\/react page/)
+
+    const right = check(
+      repo({
+        "packages/react/package.json": pkg(page),
+        [`${PAGES}/packages/react.md`]: null,
+        [`${PAGES}/packages/react.mdx`]: "# @ic-reactor/react\n",
+      })
+    )
+    assert.equal(right.status, 0, right.output)
+  })
+
+  it("counts the pages in the summary", () => {
+    const run = check(
+      repo({ [`${PAGES}/a.mdx`]: "# A\n", [`${PAGES}/b.mdx`]: "# B\n" })
+    )
+    assert.equal(run.status, 0, run.output)
+    // index.md, the three package pages, a.mdx and b.mdx
+    assert.match(run.output, /, 6 docs pages,/)
   })
 })
 

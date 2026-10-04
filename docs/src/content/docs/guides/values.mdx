@@ -1,0 +1,255 @@
+---
+title: "Values and units"
+description: "How Candid values look in TypeScript, how to make principals, and how to convert token amounts with parseUnits and formatUnits"
+---
+
+A module that `candid-core-cli gen` writes types every Candid value as plain
+TypeScript. There are no wrapper classes. This page lists the shapes, shows
+how to make arguments, and shows how to convert token amounts exactly.
+
+## Candid to TypeScript
+
+| Candid                                   | TypeScript                                              |
+| ---------------------------------------- | ------------------------------------------------------- |
+| `nat`, `int`, `nat64`, `int64`           | `bigint` (never `number`)                               |
+| `nat8`..`nat32`, `int8`..`int32`, floats | `number`                                                |
+| `text`, `bool`                           | `string`, `boolean`                                     |
+| `principal`                              | `Principal`: branded principal text                     |
+| `blob`, `vec nat8`                       | `Uint8Array`                                            |
+| `opt T`                                  | `T \| null` (the property is always present)            |
+| `opt opt T`, `opt null`                  | `{ some: T \| null } \| null`, `{ some: null } \| null` |
+| `vec T`                                  | `T[]`                                                   |
+| `record { a : T }`                       | `{ a: T }`, every field present                         |
+| `variant { A : T; B }`                   | `{ tag: "A"; value: T } \| { tag: "B" }`                |
+
+Three consequences:
+
+- **`bigint` for amounts.** A `nat` is a `bigint`, so a ledger's balance is
+  `bigint` too. `icrc1_decimals` is a `nat8`, so it is a `number`.
+- **`null` for an empty `opt`.** The property is always there. A record with an
+  optional field is written with `null`, not by leaving the field out.
+- **Variants are `{ tag, value }`.** A variant arm with no payload has no
+  `value`.
+
+An ICRC-1 transfer shows all three:
+
+```ts
+import { principal } from "@candid-core/schema"
+import type { Account, TransferArg, TransferError } from "./generated/icrc1"
+
+const to: Account = {
+  owner: principal("aaaaa-aa"),
+  subaccount: null, // opt blob
+}
+
+const arg: TransferArg = {
+  to,
+  amount: 150_000_000n, // nat
+  fee: null,
+  memo: null,
+  from_subaccount: null,
+  created_at_time: null,
+}
+
+export function describe(error: TransferError): string {
+  switch (error.tag) {
+    case "InsufficientFunds":
+      return `the balance is ${error.value.balance}`
+    case "BadFee":
+      return `the fee is ${error.value.expected_fee}`
+    case "TooOld":
+      return "created_at_time is too old" // no value on this arm
+    default:
+      return error.tag
+  }
+}
+```
+
+## Principals
+
+A `Principal` is principal text with a brand, so a plain `string` does not
+pass for one. Make one with `principal(text)` from `@candid-core/schema`. It
+accepts only canonical text and throws a `TypeError` for anything else, so
+catch it where the text comes from a user:
+
+```ts
+import { isPrincipal, principal, type Principal } from "@candid-core/schema"
+
+export function parseOwner(text: string): Principal | undefined {
+  try {
+    return principal(text.trim())
+  } catch {
+    return undefined // refuse the input
+  }
+}
+
+export function isOwner(text: string): boolean {
+  return isPrincipal(text) // in render: no throw
+}
+```
+
+`principal` also takes an `@icp-sdk/core` `Principal`, or any object with a
+`toText()` method. `isPrincipal(value)` is the same check without the throw: use
+it first in render, for example to pass `skipToken` until a typed owner is
+valid. Never cast text to `Principal`. A cast skips the check, and the value is
+refused later, when it is encoded.
+
+`principal` and `isPrincipal` come from `@candid-core/schema` only.
+`@ic-reactor/core` and `@ic-reactor/react` do not re-export them.
+
+## Arguments
+
+- A **direct call** takes the parameters as `type Actor` lists them:
+  `ledger.icrc1_balance_of(account)`, `backend.set_name(owner, "Ada")`.
+- The **builders**, `client.queryOptions` and `client.mutationOptions`, take
+  the variables as one value: nothing for a method with no arguments, the value
+  for one argument, and a tuple `[a, b]` for several.
+
+```ts
+import { principal } from "@candid-core/schema"
+import { client } from "./ledger"
+import { actor, type Actor } from "./generated/backend"
+
+const backend = client.canister<Actor>(actor, {
+  id: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+})
+const me = principal("aaaaa-aa")
+
+// Direct: the parameters, as Actor lists them.
+await backend.get_profile(me)
+
+// Builders: one value for one argument. A method with no arguments takes
+// nothing, as in client.queryOptions(ledger, "icrc1_fee").
+const getProfile = client.queryOptions(backend, "get_profile", me)
+
+// set_name has two parameters, so its variables are a tuple:
+const setName = client.mutationOptions(backend, "set_name")
+// useMutation(setName).mutate([me, "Ada"])
+```
+
+## Results
+
+A method whose single result is `variant { Ok : T; Err : E }` resolves with the
+`Ok` value. The `Err` value rejects as a `ReactorError` of kind
+`"canister_err"`, with the value in `err`, typed on a query's or mutation's
+`error`. See [Errors and mayHaveExecuted](/v4/guides/errors/).
+
+## Token amounts
+
+A ledger counts in base units: e8s for ICP, satoshis for ckBTC, wei for ckETH.
+`parseUnits` and `formatUnits` convert between those and the decimal text a
+person reads and types. Neither goes through `Number`, so every amount a ledger
+can hold converts exactly in both directions.
+
+### Why not `Number`
+
+```ts
+const lost = Math.floor(Number("0.29") * 10 ** 8)
+console.log(lost) // 28999999: a transfer of 0.29 would send 0.28999999
+
+const wei = BigInt(Math.floor(Number("1.1") * 1e18))
+console.log(wei) // 1100000000000000128n: not 1.1 tokens at 18 decimals
+```
+
+The helpers work on the digits, not on a `Number`.
+
+### `parseUnits`
+
+`parseUnits(text, decimals, options?)` reads text a person typed and returns
+base units as a `bigint`:
+
+```ts
+import { parseUnits } from "@ic-reactor/core"
+
+parseUnits("1.5", 8) // 150000000n
+parseUnits("0.29", 8) // 29000000n
+parseUnits("1.1", 18) // 1100000000000000000n
+parseUnits(" 5. ", 8) // 500000000n: whitespace around the number, and "5.", are fine
+parseUnits(".5", 8) // 50000000n
+parseUnits("1.000000000", 8) // 100000000n: the extra zeros change nothing
+parseUnits("-1", 8, { signed: true }) // -100000000n, for an int amount
+```
+
+It refuses anything it would have to guess at:
+
+| Input                                                  | Result       |
+| ------------------------------------------------------ | ------------ |
+| not text, blank, letters                               | `TypeError`  |
+| grouping (`"1,5"`), exponents (`"1e3"`), a leading `+` | `TypeError`  |
+| a lone `.`, whitespace inside the number               | `TypeError`  |
+| `decimals` that is not a whole number                  | `TypeError`  |
+| more significant fraction digits than `decimals`       | `RangeError` |
+| a negative amount without `signed: true`               | `RangeError` |
+| `decimals` outside 0 to 255                            | `RangeError` |
+
+`"0.123456789"` at 8 decimals is no amount of e8s, and rounding it would send
+something other than what was typed, so it is refused. In a form, catch both
+errors, show the message, and send nothing:
+
+```ts
+import { parseUnits } from "@ic-reactor/core"
+
+export function readAmount(input: string, decimals: number): bigint | string {
+  try {
+    return parseUnits(input, decimals)
+  } catch (error) {
+    return (error as Error).message
+  }
+}
+```
+
+There is no upper bound on the result. The limit belongs to the Candid type: a
+`nat64` field refuses 2^64 when the call is encoded, as `invalid_args`, before
+anything is sent, and an ICRC-1 `amount` is a `nat`, which has no limit.
+
+### `formatUnits`
+
+`formatUnits(value, decimals, options?)` shows base units as plain decimal text.
+The text is only `-`, the digits and `.`, the same on a server and in every
+browser, and the form `parseUnits` reads back.
+
+```ts
+import { formatUnits } from "@ic-reactor/core"
+
+formatUnits(150_000_000n, 8) // "1.5": trailing zeros are dropped
+formatUnits(100_000_000n, 8) // "1"
+formatUnits(123_456_789n, 8, { maxFractionDigits: 2 }) // "1.23"
+formatUnits(99_999_999n, 8, { maxFractionDigits: 2 }) // "0.99", never "1"
+formatUnits(100_000_000n, 8, { minFractionDigits: 2 }) // "1.00"
+formatUnits(-1n, 8) // "-0.00000001"
+```
+
+- `maxFractionDigits` cuts the digits past it toward zero and never rounds up.
+  A display never shows more than is held.
+- `minFractionDigits` pads the fraction with zeros instead of trimming them.
+- There is no `"-0"`: a negative amount whose shown digits are all zero is
+  written without the sign.
+- `formatUnits` throws a `TypeError` when `value` is not a `bigint`, and a
+  `RangeError` for digit options outside 0 to 255 or a `minFractionDigits` above
+  `maxFractionDigits`.
+
+### Locale display
+
+For a locale's separators, format the text yourself with `Intl.NumberFormat`.
+It reads a decimal string exactly, but it rounds to 3 fraction digits unless you
+say otherwise, so give it a `maximumFractionDigits` as large as the digits the
+text has:
+
+```ts
+/// <reference lib="es2023.intl" />
+import { formatUnits } from "@ic-reactor/core"
+
+const text = formatUnits(123_456_789_000n, 8) // "1234.56789"
+const shown = new Intl.NumberFormat("de-DE", {
+  maximumFractionDigits: 8,
+}).format(
+  text as Intl.StringNumericLiteral // the cast needs lib ES2023
+)
+console.log(shown) // "1.234,56789"
+```
+
+Before lib ES2023, the `Intl` types accept only a `number` or a `bigint`, and a
+`number` loses digits. That is why the cast, and the reference line, are there.
+
+Next: [Reads](/v4/guides/reads/) and [Writes](/v4/guides/writes/) use these
+values.

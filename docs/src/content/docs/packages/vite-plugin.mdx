@@ -1,0 +1,67 @@
+---
+title: "@ic-reactor/vite-plugin"
+description: "What @ic-reactor/vite-plugin exports, its peers, and how to install it"
+---
+
+`@ic-reactor/vite-plugin` generates the module that `candid-core-cli gen`
+writes from a `.did` file, with `@candid-core/cli` in a child process, and it
+sets the `ic_env` cookie and the `/api` proxy under `vite dev` and
+`vite preview`. It adds no wrapper files, hooks or reactors.
+
+Its 4 line is published under npm's `beta` dist-tag. `latest` is still the 0.15
+plugin of the 3.x line, which generates reactor bindings with
+`@ic-reactor/codegen`: see [Migrating from 3.x](/v4/migrating-from-3/).
+
+## Install
+
+```sh
+npm install --save-exact @candid-core/schema@0.3.0-beta.1
+npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
+npm install --save-dev @ic-reactor/vite-plugin@beta
+```
+
+## Exports
+
+The package has one entry, `@ic-reactor/vite-plugin`, in ESM and CommonJS. It
+exports two names, and there is no other subpath:
+
+| Name                     | Kind     | What it is                                                   |
+| ------------------------ | -------- | ------------------------------------------------------------ |
+| `icReactor`              | function | `icReactor(options?)` returns the Vite plugin                |
+| `IcReactorPluginOptions` | type     | The options: `canisters`, `injectEnvironment`, `failOnError` |
+
+```ts
+import { icReactor, type IcReactorPluginOptions } from "@ic-reactor/vite-plugin"
+import { defineConfig } from "vite"
+
+const options: IcReactorPluginOptions = {
+  canisters: { icrc1: { didFile: "did/icrc1.did" } },
+}
+
+export default defineConfig({ plugins: [icReactor(options)] })
+```
+
+## Peers
+
+| Peer               | Range                                              |
+| ------------------ | -------------------------------------------------- |
+| `@candid-core/cli` | exactly `0.2.0-beta.1`                             |
+| `vite`             | `^4.2.0`, `^5.0.0`, `^6.0.0`, `^7.0.0` or `^8.0.0` |
+
+The CLI is pinned exactly because the plugin runs the CLI your app installs,
+and that CLI has to pair with the `@candid-core/schema` runtime the generated
+modules import. The plugin itself imports no `@ic-reactor` runtime package, so
+it can be used with the generated module alone.
+
+## Read next
+
+- [The Vite plugin](/v4/guides/vite-plugin/): options, generation, failures and
+  the local environment in full.
+- [Getting started](/v4/guides/getting-started/): install, generate and make a
+  first read and write.
+- [Vite wallet](/v4/examples/vite-wallet/): `network: "env"` and `{ name }`
+  targets on a local `icp` network.
+- [ICRC-1 ledger](/v4/examples/icrc-ledger/): three `.did` files generated into
+  one `outDir`, with `injectEnvironment: false`.
+- [@ic-reactor/core](/v4/packages/core/) and
+  [@ic-reactor/react](/v4/packages/react/): the runtime packages.
