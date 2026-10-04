@@ -209,3 +209,32 @@ export const withStaleTime = {
   staleTime: 1,
 }
 expectTypeOf<Extract<typeof withStaleTime.queryFn, SkipToken>>().toBeNever()
+
+// A `retry` written into the options' type takes an error typed `unknown`
+// too, as `useQueries` and `useSuspenseQueries` call it, so one whose error
+// parameter is annotated `ReactorError<E>` stops compiling: the third break
+// the CHANGELOG lists. One annotated `unknown`, or left to the context,
+// compiles.
+const outcome = client.queryOptions(ledger, "outcome", 1n)
+export const annotatedRetry: typeof outcome = {
+  ...outcome,
+  // @ts-expect-error the options' retry must also take an error typed unknown
+  retry: (_n: number, error: ReactorError<string>) => error.kind === "rejected",
+}
+export const unknownRetry: typeof outcome = {
+  ...outcome,
+  retry: (_n: number, error: unknown) => error !== null,
+}
+export const contextualRetry: typeof outcome = {
+  ...outcome,
+  retry: (n, error) => n < 3 && error !== null,
+}
+export function RetryOfTheApp() {
+  // A `retry` passed to the hook replaces the options' own, and keeps its
+  // annotation.
+  return useQuery({
+    ...outcome,
+    retry: (_n: number, error: ReactorError<string>) =>
+      error.kind === "rejected",
+  })
+}

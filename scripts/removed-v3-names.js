@@ -45,7 +45,7 @@ export const REMOVED_V3_NAMES = [
   },
   {
     name: "createSuspenseQuery",
-    use: "useSuspenseQuery over client.queryOptions(...), cast to drop skipToken from queryFn (docs: Reads, Suspense)",
+    use: "useSuspenseQuery over client.queryOptions(...) (docs: Reads, Suspense)",
   },
   {
     name: "DisplayReactor",
@@ -70,7 +70,7 @@ export const REMOVED_V3_NAMES = [
   },
   {
     name: "createSuspenseQueryFactory",
-    use: "useSuspenseQuery over client.queryOptions(...), cast to drop skipToken from queryFn (docs: Reads, Suspense)",
+    use: "useSuspenseQuery over client.queryOptions(...) (docs: Reads, Suspense)",
   },
   {
     name: "isCanisterError",

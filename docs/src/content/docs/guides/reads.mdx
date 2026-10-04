@@ -335,10 +335,13 @@ A direct read re-sends after a retryable failure, at most twice.
 `useSuspenseQuery` suspends until the data is there and never returns
 `undefined`. Two things to know.
 
-First, `client.queryOptions(...)` does not type-check as the argument of
-`useSuspenseQuery`. Its `queryFn` can be `skipToken`, which a suspense read
-excludes. The cast below removes it from the type. Never pass `skipToken` to a
-suspense read.
+First, `useSuspenseQuery` and `useSuspenseQueries` take the options of
+`client.queryOptions(...)` as they are when the variables cannot be
+`skipToken`. Options built with variables typed `V | SkipToken`, or with
+`skipToken` itself, keep `skipToken` in the type of `queryFn`, and the suspense
+hooks refuse them: a suspense read cannot wait for its variables. Read the
+variables first, or use `useQuery`. The same holds for a method whose one
+argument is Candid `reserved`, whose variables are typed `unknown`.
 
 Second, a component that suspends needs a `Suspense` boundary above it. This
 holds on React 18 and 19, and matters most on a page that hydrates: see
@@ -347,22 +350,16 @@ holds on React 18 and 19, and matters most on a page that hydrates: see
 ```tsx
 import { formatUnits } from "@ic-reactor/core"
 import { useClient } from "@ic-reactor/react"
-import { type skipToken, useSuspenseQuery } from "@tanstack/react-query"
+import { useSuspenseQuery } from "@tanstack/react-query"
 import { Suspense } from "react"
 import { actor, type Actor } from "./generated/icrc1"
-
-// The cast the types need: the same options, without skipToken in queryFn.
-const suspense = <T extends { queryFn?: unknown }>(options: T) =>
-  options as T & { queryFn: Exclude<T["queryFn"], typeof skipToken> }
 
 function Fee() {
   const client = useClient()
   const ledger = client.canister<Actor>(actor, {
     id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   })
-  const fee = useSuspenseQuery(
-    suspense(client.queryOptions(ledger, "icrc1_fee"))
-  )
+  const fee = useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee"))
   return <span>{formatUnits(fee.data, 8)}</span>
 }
 

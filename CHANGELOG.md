@@ -73,6 +73,12 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
     with the canister and method, and spread its result to add options:
     `{ ...options, staleTime: 1 }`. `ReturnType<Client["queryOptions"]>`
     still compiles.
+  - A `retry` written into the options' type with its error parameter
+    annotated, such as `retry: (n: number, e: ReactorError<E>) => ...` in a
+    value typed by the options: the options' `retry` must now also take an
+    error typed `unknown`. Annotate it `unknown`, or leave the parameter to
+    the context. Passing such a `retry` to `useQuery({ ...options, retry })`
+    still compiles.
 
   Wrong variables or an unknown method name are now reported as TS2769 ("No
   overload matches this call", listing both signatures), where they were
