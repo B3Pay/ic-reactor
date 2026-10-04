@@ -1,17 +1,134 @@
 ---
 title: IC Reactor 4
-description: ic-reactor 4 is a prerelease, developed on the v4 branch
+description: A thin layer over a module that candid-core-cli generates from a .did file, with a client, one error type, units helpers, a test client and a React provider
 editUrl: false
 ---
 
-ic-reactor 4 is developed on the
-[`v4` branch](https://github.com/B3Pay/ic-reactor/tree/v4). Its first
-prerelease, `4.0.0-beta.1`, is published under npm's `beta` dist-tag; `latest`
-stays 3.x until 4.0 GA, so install it as `@ic-reactor/core@beta`. Its guide
-ships in the package, at `node_modules/@ic-reactor/core/llms.txt`. These pages
-are rewritten for 4 in a later change.
+import { CardGrid, LinkCard } from "@astrojs/starlight/components"
 
-The released 3.x packages are documented at [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
+ic-reactor 4 is a thin layer over a module that `candid-core-cli gen`
+generates from a `.did` file. The layer is a client with caller-scoped query
+keys, one error type that says whether a call may have executed, helpers for
+token units, a test client over an in-memory replica, and a React provider
+with `useAuth`. Reading and writing use TanStack Query's own hooks.
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/icrc1"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+const ledger = client.canister<Actor>(actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+
+console.log(await ledger.icrc1_symbol()) // "ICP"
+```
+
+## Status
+
+ic-reactor 4 is a prerelease. Its betas are published under npm's `beta`
+dist-tag, and `latest` is still 3.x until 4.0 GA. Install it as
+`@ic-reactor/core@beta`, never bare. The code is developed on the
+[`v4` branch](https://github.com/B3Pay/ic-reactor/tree/v4).
+
+These pages describe what is built on `v4` and nothing else. The one guide
+that ships in the package, `node_modules/@ic-reactor/core/llms.txt`, is for
+people and coding agents alike, and these pages agree with it.
+
+Coming from 3.x? Start with [Migrating from 3.x](/v4/migrating-from-3/): the
+3.x names are gone, and that page maps each one to its 4 replacement.
+
+## Start here
+
+<CardGrid>
+  <LinkCard
+    title="Getting started"
+    description="Install, generate the module, make a first read and write"
+    href="/v4/guides/getting-started/"
+  />
+  <LinkCard
+    title="Examples"
+    description="Four small apps: a ledger explorer, a Next.js app, a wallet and a Node tool"
+    href="/v4/examples/"
+  />
+  <LinkCard
+    title="Migrating from 3.x"
+    description="The 34 removed names and what replaces them"
+    href="/v4/migrating-from-3/"
+  />
+</CardGrid>
+
+## Guides
+
+In reading order.
+
+<CardGrid>
+  <LinkCard
+    title="The client"
+    description="Networks, identity or auth, canisters, dispose, one client per request"
+    href="/v4/guides/client/"
+  />
+  <LinkCard
+    title="Values and units"
+    description="Candid values in TypeScript, principals, parseUnits and formatUnits"
+    href="/v4/guides/values/"
+  />
+  <LinkCard
+    title="Reads"
+    description="queryOptions, keys, certified reads, retries, suspense, infinite queries"
+    href="/v4/guides/reads/"
+  />
+  <LinkCard
+    title="Writes"
+    description="mutationOptions, invalidation, and why a write is never retried"
+    href="/v4/guides/writes/"
+  />
+  <LinkCard
+    title="Errors and mayHaveExecuted"
+    description="ReactorError, its kinds and codes, and what to do for each"
+    href="/v4/guides/errors/"
+  />
+  <LinkCard
+    title="Auth"
+    description="Sign in and out, AuthLike, useAuth, identity attributes"
+    href="/v4/guides/auth/"
+  />
+  <LinkCard
+    title="SSR and hydration"
+    description="Next.js App Router, a client per request, dehydrate and hydrate"
+    href="/v4/guides/ssr/"
+  />
+  <LinkCard
+    title="Testing"
+    description="createTestClient: a fake replica, refused requests, test sign-in"
+    href="/v4/guides/testing/"
+  />
+  <LinkCard
+    title="The Vite plugin"
+    description="Generation, the ic_env cookie and the /api proxy"
+    href="/v4/guides/vite-plugin/"
+  />
+</CardGrid>
+
+## Packages
+
+<CardGrid>
+  <LinkCard
+    title="@ic-reactor/core"
+    description="The client, ReactorError, the units helpers, and the test client"
+    href="/v4/packages/core/"
+  />
+  <LinkCard
+    title="@ic-reactor/react"
+    description="ReactorProvider, useClient and useAuth"
+    href="/v4/packages/react/"
+  />
+  <LinkCard
+    title="@ic-reactor/vite-plugin"
+    description="Generates the module and sets up the local environment"
+    href="/v4/packages/vite-plugin/"
+  />
+</CardGrid>
 
 The API reference in the sidebar is generated from the `v4` branch as it
 stands.

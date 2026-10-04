@@ -3,4 +3,329 @@ title: "The client"
 description: "createClient: the network, who calls (identity or auth), client.canister, dispose, and one client per request on a server"
 ---
 
-The client: networks, identity and auth, canisters, disposal. This page is being written.
+import { Aside } from "@astrojs/starlight/components"
+
+`createClient` makes the one object an app builds: per browser tab, or per
+request on a server. It decides who calls, keeps one agent per principal, and
+owns the `QueryClient` that every read is cached in.
+
+```ts
+import { createClient } from "@ic-reactor/core"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+```
+
+`createClient` does no work until the client is used. The same line therefore
+runs in a server render (anonymous, with no auth built) and in a browser.
+
+## Options
+
+| Option           | Meaning                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `network`        | Where the canisters are. Required. See [Networks](#networks).                                                              |
+| `identity`       | A fixed caller: an `Identity`, or `"anonymous"`.                                                                           |
+| `auth`           | A factory for a sign-in the user controls: `() => AuthLike`.                                                               |
+| `allowEnvConfig` | Whether the `ic_env` cookie (root key and canister ids) is believed. Absent: only when the page and the replica are local. |
+| `fetch`          | The `fetch` every agent sends with. Default: the global one. A test passes a fake replica's.                               |
+| `maxDepth`       | How deep a decoded reply may nest. Default 256. Raise it for replies like an ICRC-3 block log's values.                    |
+
+Pass exactly one of `identity` and `auth`. `createClient` throws a `TypeError`
+for options that name neither, name both, or name a network or a `maxDepth`
+that cannot be used.
+
+## Networks
+
+| `network` | Host                                                                                                                                                              | Root key                                                                                                                          | Key segment                               |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `"ic"`    | `https://icp-api.io`                                                                                                                                              | Mainnet's, built into the agent. Nothing is fetched.                                                                              | `"ic"`                                    |
+| `"local"` | `http://127.0.0.1:4943`                                                                                                                                           | Fetched from the replica before the first call.                                                                                   | `"local"`                                 |
+| an object | `host`                                                                                                                                                            | `rootKey` as given, never fetched. Without it, fetched only when `host` is local, unless `fetchRootKey` says otherwise.           | `name`, or `host` when there is no `name` |
+| `"env"`   | In a browser, the page's own origin when the page is local, on a mainnet boundary domain, or on Codespaces or Gitpod. On a server, see [below](#env-on-a-server). | From the `ic_env` cookie, only where the cookie is trusted. A local replica with no key from the cookie has its root key fetched. | the resolved host                         |
+
+An object network looks like this:
+
+```ts
+import { createClient } from "@ic-reactor/core"
+
+declare const stagingRootKey: Uint8Array
+
+const client = createClient({
+  network: {
+    host: "https://replica.staging.example.com",
+    rootKey: stagingRootKey,
+    name: "staging",
+  },
+  identity: "anonymous",
+})
+```
+
+### The root key
+
+The root key is what certificates are checked against, so who may hand one over
+is decided by a short list:
+
+- A `rootKey` you give is used, and never fetched.
+- Without one, the client fetches the key only from a local host: `localhost`,
+  a name ending in `.localhost`, or any loopback address (`127.0.0.0/8`,
+  `[::1]`). Any other host is checked against mainnet's key.
+- `fetchRootKey: true` makes the client fetch the key from any host. Write it
+  only for a host whose key you trust, because the host then chooses the key.
+
+### The `ic_env` cookie
+
+The `ic_env` cookie carries a root key and canister ids. The Vite plugin and
+asset canisters set it. The client reads it only in a browser, and believes it
+only when both the replica and the page are local, or when you write
+`allowEnvConfig: true`. Any sibling subdomain of a page's domain can write a
+cookie, so write `allowEnvConfig: true` only when every subdomain of the page's
+domain is trusted. `allowEnvConfig: false` never reads the cookie.
+
+Canisters named in the cookie are called by name: `{ name: "backend" }` reads
+`PUBLIC_CANISTER_ID:backend` from the cookie. See
+[The Vite plugin](/v4/guides/vite-plugin/) for how the local cookie is made.
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/backend"
+
+const client = createClient({ network: "env", identity: "anonymous" })
+const backend = client.canister<Actor>(actor, { name: "backend" })
+```
+
+On Codespaces and Gitpod, the page is routed through its own origin but is not
+local. The key is then neither taken from the cookie nor fetched, and certified
+calls fail verification. Set `allowEnvConfig: true`, or use an object network
+with a `rootKey` or `fetchRootKey: true`.
+
+### `"env"` on a server
+
+A server has no page and no cookie. The host is `ICP_HOST` or `IC_HOST` when
+`ICP_NETWORK` (or `DFX_NETWORK`) is `"local"`, `http://127.0.0.1:4943` if
+neither host is set, and mainnet otherwise.
+
+Without a cookie, a `{ name }` target never resolves: every call rejects as
+`invalid_args` with code `canister_id_unresolved`, and nothing is sent. Use
+`{ id }` on a server. In development the client warns about this once per
+process.
+
+<Aside type="note">
+  The network's key segment is part of every query key. With `"env"`, a server's
+  segment is its host, and a browser's is often the page's origin, so a read
+  dehydrated by the server is found in the browser only when both resolve the
+  same host. For server rendering, use `"ic"`, or an object network with the
+  same `name` on both sides. See [SSR and hydration](/v4/guides/ssr/).
+</Aside>
+
+## Who calls
+
+### `identity`
+
+- `identity: "anonymous"` makes a read-only client. Every update is refused
+  before it is sent, as `unauthenticated` with code `anonymous_write`.
+- `identity: someIdentity` signs every call, updates included. Use it for
+  scripts, servers and tests.
+
+An explicit `new AnonymousIdentity()` makes an anonymous client that _may_
+send updates, as the anonymous principal. If you are handed an identity that
+might be anonymous, map it:
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import type { Identity } from "@icp-sdk/core/agent"
+
+export function clientFor(identity: Identity | undefined) {
+  return createClient({
+    network: "ic",
+    identity:
+      identity && !identity.getPrincipal().isAnonymous()
+        ? identity
+        : "anonymous",
+  })
+}
+```
+
+### `auth`
+
+`auth` is a factory for a sign-in that users control. It is called once, on
+first use, and only in a browser. The client owns what it returns and disposes
+it with itself.
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { AuthClient } from "@icp-sdk/auth/client"
+
+const client = createClient({ network: "ic", auth: () => new AuthClient() })
+```
+
+`@icp-sdk/auth` 10's `AuthClient` is an `AuthLike` as it is. Any other sign-in
+source needs a small adapter. See [Auth](/v4/guides/auth/).
+
+### Who is calling
+
+| Question               | Answer                                                                    |
+| ---------------------- | ------------------------------------------------------------------------- |
+| the caller's principal | `client.caller()` (`"2vxsx-fae"` unless signed in), `useAuth().principal` |
+| may a write be sent    | `client.authState().status === "signed-in"`; the client refuses the rest  |
+| when did it change     | `client.subscribe(listener)`, or `useAuth()` re-renders                   |
+
+```ts
+import { client } from "./ledger"
+
+const stop = client.subscribe(() => {
+  const { status, principal } = client.authState()
+  console.log(status, principal)
+})
+// later: stop()
+```
+
+`authState()` returns the same object until the status or the principal
+changes. `subscribe` calls the listener once per such change, and does nothing
+on a disposed client.
+
+The client keeps one agent per principal, and a call goes out as the principal
+that was current when it was made, or not at all. A read started for the
+previous caller is cancelled (`cancelled`, code `caller_changed`) instead of
+being sent as the new one. See [Auth](/v4/guides/auth/) for what that means for
+the cache.
+
+`client.signIn(options)` and `client.signOut(options)` go to the auth, with
+the options passed on. They reject with a `TypeError` on a client built with an
+`identity`, and with an `Error` on a server and after `dispose()`.
+
+## Canisters
+
+`client.canister<Actor>(actor, target)` returns a frozen object with one async
+method per Candid method.
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/icrc1"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+const ledger = client.canister<Actor>(actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+
+const symbol = await ledger.icrc1_symbol()
+```
+
+- The same service and target give the same object every time, so it is safe
+  to call in a render.
+- `<Actor>` is not checked against `actor`. Pass the `Actor` of the same
+  generated module.
+- It throws a `TypeError` for a schema that is not a service, a target of the
+  wrong shape, or an `id` that is not principal text.
+- A method resolves with the value `Actor` types. The exception is a method
+  whose single result is a `variant { Ok : T; Err : E }`: it resolves with the
+  `Ok` value and rejects as `canister_err` with the `Err` value in `err`.
+- A method sends its call as the caller signed in when it is called. A
+  write by a caller who is not signed in rejects as `unauthenticated` and
+  sends nothing.
+
+### Targets
+
+A target is `{ id }` or `{ name }`, plus an optional `certified`:
+
+- `{ id: "ryjl3-tyaaa-aaaaa-aaaba-cai" }` names the canister.
+- `{ name: "backend" }` reads the id from the `ic_env` cookie when a call or a
+  key is built, and only where the cookie is trusted. If it cannot, every call
+  rejects as `invalid_args` with code `canister_id_unresolved`, and the keys
+  carry `"$unresolved:backend"`.
+- `certified: true` makes another canister object whose query methods go as
+  replicated calls, with certified replies. See [Reads](/v4/guides/reads/).
+
+### Re-sends
+
+A direct call re-sends itself only when the failure shows it is safe. An update
+is re-sent after a reject code 2 or an HTTP 429, at most twice, and never from
+the management canister. A direct read is re-sent after a retryable failure, at
+most twice. Everything else is final. [Writes](/v4/guides/writes/) has the
+rules; direct calls never touch a cache.
+
+### The management canister
+
+The management canister, `aaaaa-aa`, works with a module generated from its
+`.did`: `client.canister<Actor>(actor, { id: "aaaaa-aa" })`. The client takes
+the effective canister id from the call's arguments. A call that cannot be
+routed rejects as `invalid_args` with code `effective_canister_id_unknown`.
+
+### Function references
+
+Some replies carry a function reference: an ICRC ledger's `query_blocks` names
+an archive canister and a method for each older range. `client.func` turns one
+into an async function. It takes the generated schema of the func type and the
+reference, and it follows the same caller rules and the same errors as a
+canister's methods.
+
+```ts
+import { client } from "./ledger"
+import {
+  QueryArchiveFn,
+  type ArchivedBlocksRange,
+  type BlockRange,
+  type GetBlocksArgs,
+} from "./generated/icp_ledger"
+
+type ReadArchive = (arg: GetBlocksArgs) => Promise<BlockRange>
+
+export async function readRange(range: ArchivedBlocksRange) {
+  const read = client.func<ReadArchive>(QueryArchiveFn, range.callback)
+  return read({ start: range.start, length: range.length })
+}
+```
+
+A generated func type carries no signature, so you write the one the `.did`
+gives, with the `Ok` payload as the result. The type argument is not checked.
+The [ICRC-1 ledger example](/v4/examples/icrc-ledger/) does this in
+`src/blocks.ts`.
+
+## Dispose
+
+`client.dispose()` releases everything the client holds. It stops listening to
+the auth and disposes it, clears the `QueryClient`, and drops the agents. Calling
+it again does nothing.
+
+Afterwards every call on the client rejects as `cancelled` with code
+`client_disposed` and `mayHaveExecuted: false`, and sends nothing. That covers a
+direct call, a query function, a mutation function and a func reference. A
+direct call that was already sent settles as the replica answers.
+
+## One client per tab, one per request
+
+- In a browser, build one client per tab.
+- On a server, build one client **per request**. A client's cache and agents
+  belong to whoever it calls as, so a module-scope client on a server is shared
+  by every request.
+- Never build a client per render.
+
+In React, `<ReactorProvider client={() => createClient(...)}>` builds the client
+once per mounted tree and disposes it on unmount. A module-scope client passed
+as `client={() => client}` is borrowed, and never disposed. See
+[@ic-reactor/react](/v4/packages/react/).
+
+In Next.js, React's `cache` gives one client per request:
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { cache } from "react"
+
+export const requestClient = cache(() =>
+  createClient({ network: "ic", identity: "anonymous" })
+)
+```
+
+[SSR and hydration](/v4/guides/ssr/) has the rest.
+
+## Reading the client
+
+Two properties are worth knowing:
+
+- `client.network` is the network's key segment, as in the table above.
+- `client.queryClient` is the `QueryClient` the client owns. Its default `retry`
+  retries a read only after a failure that proves it was not delivered, and
+  never on a server. Its dehydrate and hydrate defaults keep `bigint`,
+  `Uint8Array` and the floats JSON cannot write, so a server's `dehydrate()`
+  survives `JSON.stringify` and comes back exact.
+
+The next pages use the client: [Values and units](/v4/guides/values/),
+[Reads](/v4/guides/reads/) and [Writes](/v4/guides/writes/).

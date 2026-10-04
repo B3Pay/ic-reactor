@@ -3,4 +3,468 @@ title: "Reads"
 description: "client.queryOptions with TanStack Query: keys that carry the caller, skipToken, retries, certified reads, suspense and infinite queries"
 ---
 
-Reading canisters with TanStack Query. This page is being written.
+A read is a TanStack Query query. `client.queryOptions` builds its options, and
+you hand them to `useQuery`, `useSuspenseQuery`, `fetchQuery` or any other
+TanStack API. The client does the parts that are easy to get wrong: the key
+carries the caller, the query function calls as that caller, and `retry` only
+re-sends what can be re-sent.
+
+This page assumes the setup of [Getting started](/v4/guides/getting-started/)
+and [The client](/v4/guides/client/).
+
+## A first read
+
+```tsx
+import type { Principal } from "@candid-core/schema"
+import { formatUnits } from "@ic-reactor/core"
+import { useClient } from "@ic-reactor/react"
+import { skipToken, useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function Balance({ owner }: { owner: Principal | undefined }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const balance = useQuery(
+    client.queryOptions(
+      ledger,
+      "icrc1_balance_of",
+      owner ? { owner, subaccount: null } : skipToken
+    )
+  )
+  return (
+    <p>{balance.data === undefined ? "…" : formatUnits(balance.data, 8)}</p>
+  )
+}
+```
+
+Three rules sit in those few lines.
+
+- **Build the options in render, from that render's `useClient()`.** Do not
+  build them once at module scope and do not keep `useClient()`'s result past
+  its render. The caller can change between renders, and so must the key. The
+  [SSR page](/v4/guides/ssr/) explains why this matters while a page hydrates.
+- **The variables are one value.** Nothing for a method without arguments, the
+  value for one argument, a tuple `[a, b]` for two or more. A direct call
+  (`ledger.icrc1_balance_of(account)`) takes the parameters as the generated
+  `Actor` lists them. See [Values and units](/v4/guides/values/).
+- **`client.canister()` is safe in render.** It returns the same object for the
+  same service and target every time.
+
+`queryOptions` throws a `TypeError` for a method the service does not have, so
+a wrong method name fails at once, not on the first fetch.
+
+## Keys carry the caller
+
+The key of a read is:
+
+```text
+["ic-reactor", network, caller, canisterId, method, args]
+```
+
+| Segment      | Value                                                                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `network`    | `"ic"`, `"local"`, a custom network's `name` (or its host), or the resolved host for `"env"`                                                      |
+| `caller`     | the principal text calls go out as now: `"2vxsx-fae"` unless someone is signed in                                                                 |
+| `canisterId` | the canister, as text (`"$unresolved:<name>"` for a `{ name }` the `ic_env` cookie cannot resolve)                                                |
+| `method`     | the Candid method                                                                                                                                 |
+| `args`       | the hex of the Candid encoding of the variables; `"$skip"` for `skipToken`; `"$invalid"` and a text of the value for variables that do not encode |
+
+A read through a canister made with `certified: true` has one more segment at
+the end, `"certified"` (see [Certified reads](#certified-reads)).
+
+The caller is in the key so that one principal's answer is never served to
+another. Reads often depend on who asks: a balance, a profile, an inbox. After
+a sign-in, a sign-out or an account switch, a component that calls
+`useClient()` renders again, builds the new caller's key and finds it empty:
+`data` is `undefined` until the read loads. The old caller's read, if still in
+flight, never lands under the new key (see [The caller changes](#the-caller-changes)).
+
+Because of this, add nothing that carries data across keys:
+
+- no `placeholderData: keepPreviousData`: it would show the previous caller's
+  data while the new caller's loads;
+- no `initialData` taken from another key.
+
+## Finding a key: `client.queryKey`
+
+Never write a key by hand. A key typed out as an array is a plain `QueryKey`:
+it leaves the caller out and matches nothing the client caches or invalidates.
+Ask the client:
+
+```ts
+import { principal } from "@candid-core/schema"
+import { client, ledger } from "./ledger"
+
+const account = { owner: principal("aaaaa-aa"), subaccount: null }
+
+// A prefix: every read of the ledger by the current caller.
+await client.queryClient.invalidateQueries({
+  queryKey: client.queryKey(ledger),
+})
+
+// A prefix: every icrc1_balance_of read of the current caller, whatever the account.
+await client.queryClient.invalidateQueries({
+  queryKey: client.queryKey(ledger, "icrc1_balance_of"),
+})
+
+// The exact key of one read. getQueryData and setQueryData need an exact key.
+const balance = client.queryClient.getQueryData<bigint>(
+  client.queryKey(ledger, "icrc1_balance_of", account)
+)
+
+// A method without arguments has one read, so its method key is its exact key.
+const fee = client.queryClient.getQueryData<bigint>(
+  client.queryKey(ledger, "icrc1_fee")
+)
+```
+
+- `queryKey(canister)`: every read of the canister by the current caller.
+- `queryKey(canister, method)`: every read of that method by the current
+  caller. For a method without arguments this is the read's exact key.
+- `queryKey(canister, method, variables)`: the exact key `queryOptions` gives
+  for those variables.
+
+`invalidateQueries` takes a prefix. `getQueryData` and `setQueryData` match a
+key exactly, so give them a whole key and never a prefix.
+
+`queryKey` never throws for variables that do not encode: the key then holds
+`"$invalid"`. It throws a `TypeError` for a canister of another client or a
+method the service does not have.
+
+A key for the current caller is not a key for every caller. A write
+invalidates the written canister's reads for every caller, see
+[Writes](/v4/guides/writes/).
+
+## `skipToken` and arguments that do not encode
+
+While the variables are not known yet, pass `skipToken` in their place. Import
+it from `@tanstack/react-query`: `@ic-reactor/react` does not re-export it.
+The query then does not run, and its key ends in `"$skip"`.
+
+Variables that do not encode (a typed-in string that is not a principal, a
+number where a `nat` is asked) do not throw while rendering. The key is tagged
+`"$invalid"`, and the read rejects with kind `invalid_args` and the codec's
+`issues`. Nothing is sent.
+
+```tsx
+import { isPrincipal, principal } from "@candid-core/schema"
+import { useClient } from "@ic-reactor/react"
+import { skipToken, useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function BalanceOf({ text }: { text: string }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  // Wait until the text is a principal, then read.
+  const owner = isPrincipal(text) ? principal(text) : undefined
+  const balance = useQuery(
+    client.queryOptions(
+      ledger,
+      "icrc1_balance_of",
+      owner ? { owner, subaccount: null } : skipToken
+    )
+  )
+  if (balance.error?.kind === "invalid_args") {
+    return <p>{balance.error.issues?.[0]?.message ?? balance.error.message}</p>
+  }
+  return <p>{balance.data?.toString() ?? "…"}</p>
+}
+```
+
+## Retries
+
+`queryOptions` sets `retry`. A read is retried at most 3 times, and only after
+a failure the client classifies as retryable: a `not_delivered` that another
+attempt can change (an HTTP 429, a reject with code 2, a network failure, a
+timeout). Every other kind fails at once: retrying `invalid_args`, `rejected`,
+`invalid_reply` or `canister_err` would only repeat the answer. A read on a
+server is never retried. The client's own `QueryClient` has the same default.
+
+The [classification table](/v4/guides/errors/) lists which failures are
+retryable. A read cannot have executed, so a retry is always safe. Writes are
+different, see [Writes](/v4/guides/writes/).
+
+## Adding options
+
+The options are plain TanStack Query options. Spread them to add your own:
+
+```tsx
+import { formatUnits } from "@ic-reactor/core"
+import { useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function Fee() {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const fee = useQuery({
+    ...client.queryOptions(ledger, "icrc1_fee"),
+    staleTime: 60_000,
+    select: (value) => formatUnits(value, 8),
+  })
+  return <span>{fee.data ?? "…"}</span>
+}
+```
+
+Keep `queryKey`, `queryFn` and `retry` as the client set them.
+
+## The caller changes
+
+The query function calls as the caller that was current when the options were
+built, which is the caller in the key. If someone else is signed in by the time
+it runs, it refuses: the read fails with kind `cancelled`, code
+`caller_changed`, `mayHaveExecuted: false`, and nothing is sent. It never
+lands under the new caller's key, and the component, which renders again with
+the new caller, reads its own key.
+
+You will not see this error in a component: it renders under the new key. It
+can show up in a global error handler, such as a listener on
+`client.queryClient.getQueryCache()`. Ignore kind `"cancelled"` there. The
+[SSR page](/v4/guides/ssr/#a-read-the-hydrating-render-built-may-be-cancelled-once)
+shows such a listener, and the one case where a read built by a hydrating
+render is cancelled once.
+
+## Update methods
+
+An update method is not a read. `queryOptions` throws a `TypeError` for one: a
+query refetches on mount, on focus and on reconnect, and every refetch would
+run the update again. Use `useMutation` with `client.mutationOptions`, see
+[Writes](/v4/guides/writes/). A method that returns nothing is also refused
+(`TypeError`): there is nothing to cache, so call it directly.
+
+One case is different. Some update methods give the same answer however often
+they run. The ckBTC minter's `get_btc_address` is one: it is an update call,
+it needs a signed-in caller, and it returns the same deposit address for an
+account every time. Read it as a query with a fourth argument:
+
+```tsx
+import { useAuth, useClient } from "@ic-reactor/react"
+import { skipToken, useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/ckbtc_minter"
+
+export function DepositAddress() {
+  const client = useClient()
+  const { status } = useAuth()
+  const minter = client.canister<Actor>(actor, {
+    id: "mqygn-kiaaa-aaaar-qaadq-cai",
+  })
+  const address = useQuery(
+    client.queryOptions(
+      minter,
+      "get_btc_address",
+      status === "signed-in" ? { owner: null, subaccount: null } : skipToken,
+      { update: "idempotent" }
+    )
+  )
+  return <p>{address.data ?? "…"}</p>
+}
+```
+
+`{ update: "idempotent" }` is a promise that you make. The read is fetched once
+per key and caller: `staleTime` is `Infinity`, and it does not refetch on
+mount, window focus or reconnect. It is retried only after a failure that
+proves it never got in. A write to the same canister through
+`mutationOptions` invalidates it like any other read of that canister, so it
+runs once more, as a replicated call. That is safe for an idempotent method but
+it is a cost. To keep the read cached across writes, list the reads a write
+changes in `invalidates`, see [Writes](/v4/guides/writes/).
+
+Do not use `{ update: "idempotent" }` for a method that changes state.
+
+## Certified reads
+
+A plain query is answered by one replica and is not certified. For a reply you
+can verify, build the canister with `certified: true`:
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useQuery } from "@tanstack/react-query"
+import { actor, type Actor } from "./generated/icrc1"
+
+export function CertifiedSupply() {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+    certified: true,
+  })
+  const supply = useQuery(client.queryOptions(ledger, "icrc1_total_supply"))
+  return <p>{supply.data?.toString() ?? "…"}</p>
+}
+```
+
+The `query` methods of that canister object are sent as replicated calls, and
+the client verifies the certificate of the reply. Its keys end in
+`"certified"`, so a certified read and a plain read of the same method are two
+different reads in the cache. There is no composite query on a certified
+canister: a `composite_query` method has no certified path. Calling it
+directly rejects `invalid_args` with code `no_certified_path`, and
+`queryOptions` throws a `TypeError`.
+
+A certified read is slower than a plain query, as a replicated call is. Use it
+for the values you must be able to trust, and plain reads for the rest.
+
+## Outside React
+
+The same options work with the client's `QueryClient`. A direct call on the
+canister touches no cache:
+
+```ts
+import { client, ledger } from "./ledger"
+
+const fee = await client.queryClient.fetchQuery(
+  client.queryOptions(ledger, "icrc1_fee")
+)
+await client.queryClient.invalidateQueries({
+  queryKey: client.queryKey(ledger),
+})
+const fresh = await ledger.icrc1_fee() // not cached
+```
+
+A direct read re-sends after a retryable failure, at most twice.
+
+## Suspense
+
+`useSuspenseQuery` suspends until the data is there and never returns
+`undefined`. Two things to know.
+
+First, `client.queryOptions(...)` does not type-check as the argument of
+`useSuspenseQuery`. Its `queryFn` can be `skipToken`, which a suspense read
+excludes. The cast below removes it from the type. Never pass `skipToken` to a
+suspense read.
+
+Second, a component that suspends needs a `Suspense` boundary above it. This
+holds on React 18 and 19, and matters most on a page that hydrates: see
+[SSR and hydration](/v4/guides/ssr/).
+
+```tsx
+import { formatUnits } from "@ic-reactor/core"
+import { useClient } from "@ic-reactor/react"
+import { type skipToken, useSuspenseQuery } from "@tanstack/react-query"
+import { Suspense } from "react"
+import { actor, type Actor } from "./generated/icrc1"
+
+// The cast the types need: the same options, without skipToken in queryFn.
+const suspense = <T extends { queryFn?: unknown }>(options: T) =>
+  options as T & { queryFn: Exclude<T["queryFn"], typeof skipToken> }
+
+function Fee() {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const fee = useSuspenseQuery(
+    suspense(client.queryOptions(ledger, "icrc1_fee"))
+  )
+  return <span>{formatUnits(fee.data, 8)}</span>
+}
+
+export function FeeWithFallback() {
+  return (
+    <Suspense fallback={<span>…</span>}>
+      <Fee />
+    </Suspense>
+  )
+}
+```
+
+## Infinite queries
+
+There is no helper for `useInfiniteQuery`: the pieces are the same as for any
+read, and the recipe is short. Three rules keep it correct.
+
+- **Extend a client key, never write one.** Use
+  `[...client.queryKey(canister, method), "pages"]`. It keeps the caller in the
+  key and it keeps the read under its canister. A mutation invalidates it by
+  default, because the default invalidation matches the network, the canister
+  and the method of every read of the canister it wrote to, for every caller.
+- **A direct call reads the current caller, not the key's.** Capture
+  `client.caller()` in render and, in `queryFn`, throw if the caller is no
+  longer the same. Without the check, a page fetched for the old caller could
+  be stored under the old caller's key by a call that went out as the new one.
+- **Put everything the pages depend on in the key.** A `bigint` cannot be in a
+  key: write it with `toString()`.
+
+This example walks the ICP ledger's blocks backwards. The ledger answers
+`query_blocks` with the blocks it still holds and, for older ones, a list of
+archived ranges; each carries a function reference that `client.func` turns
+into a call to the archive canister. See
+[`blocks.ts`](https://github.com/b3pay/ic-reactor/blob/v4/examples/icrc-ledger/src/blocks.ts)
+of the ICRC-1 ledger example for the full version.
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query"
+import {
+  actor,
+  QueryArchiveFn,
+  type Actor,
+  type ArchivedBlocksRange,
+  type Block,
+  type BlockRange,
+  type GetBlocksArgs,
+} from "./generated/icp_ledger"
+
+const PAGE = 10n
+
+// The signature the `.did` gives the archive callback: a generated func type
+// carries none. The Ok payload is the result; Err rejects as canister_err.
+type ReadArchive = (arg: GetBlocksArgs) => Promise<BlockRange>
+
+export function RecentBlocks() {
+  const client = useClient()
+  const caller = client.caller() // captured in this render
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+
+  // An empty range asks only for the length of the chain.
+  const tip = useQuery(
+    client.queryOptions(ledger, "query_blocks", { start: 0n, length: 0n })
+  )
+  const chain = tip.data?.chain_length
+
+  const pages = useInfiniteQuery({
+    queryKey: [
+      ...client.queryKey(ledger, "query_blocks"),
+      "pages",
+      chain?.toString(),
+    ],
+    enabled: chain !== undefined,
+    initialPageParam: chain ?? 0n, // the end, exclusive, of the first page
+    queryFn: async ({ pageParam }): Promise<Block[]> => {
+      if (client.caller() !== caller)
+        throw new Error("The caller changed: refresh")
+      const start = pageParam > PAGE ? pageParam - PAGE : 0n
+      const args = { start, length: pageParam - start }
+      const reply = await ledger.query_blocks(args)
+      const archived = await Promise.all(
+        reply.archived_blocks.map((range: ArchivedBlocksRange) => {
+          const read = client.func<ReadArchive>(QueryArchiveFn, range.callback)
+          return read({ start: range.start, length: range.length })
+        })
+      )
+      return [...archived.flatMap((range) => range.blocks), ...reply.blocks]
+    },
+    getNextPageParam: (_last, _all, lastParam) =>
+      lastParam > PAGE ? lastParam - PAGE : undefined,
+  })
+
+  return (
+    <>
+      <p>{pages.data?.pages.flat().length ?? 0} blocks</p>
+      <button
+        disabled={!pages.hasNextPage || pages.isFetchingNextPage}
+        onClick={() => void pages.fetchNextPage()}
+      >
+        Older
+      </button>
+    </>
+  )
+}
+```
