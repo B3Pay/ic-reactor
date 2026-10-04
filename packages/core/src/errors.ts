@@ -71,8 +71,11 @@ type ReactorErrorBase = Error & {
   readonly canisterId: string
   /**
    * A machine-readable sub-reason within a `kind`, such as
-   * `"canister_id_unresolved"` for an unresolved `{ name }` target or
-   * `"anonymous_write"` for an update without a signed-in identity.
+   * `"canister_id_unresolved"` for an unresolved `{ name }` target,
+   * `"anonymous_write"` for an update without a signed-in identity, or
+   * `"canister_not_found"` when the IC answered that the canister the request
+   * was routed to does not exist (for a call to `aaaaa-aa`, the canister its
+   * arguments name, while `canisterId` stays `aaaaa-aa`).
    */
   readonly code?: string
   /** The IC reject code (1 to 6, or whatever the replica sent), when there was one. */
@@ -423,6 +426,30 @@ const PRE_SEND_CODES: ReadonlySet<string> = new Set([
   "InvalidReadStateRequestErrorCode",
 ])
 
+/**
+ * `ReactorError.code` when the IC answers that the canister a request was
+ * addressed to does not exist.
+ */
+const CANISTER_NOT_FOUND = "canister_not_found"
+
+/**
+ * The error line of the body a boundary node answers with HTTP 400 for a
+ * canister id outside every subnet's range (the HTTP gateway of a local
+ * network answers the same): `error: canister_not_found`, then a `details:`
+ * line. The cause token is the gateway's machine-readable marker; the details
+ * line is free text and is not read. With the `m` flag, `$` also matches
+ * before a `\r`, so a CRLF body reads the same.
+ */
+const CANISTER_NOT_FOUND_BODY = /^error:[ \t]*canister_not_found[ \t]*$/m
+
+/**
+ * The IC error code (`CanisterNotFound`) a replica puts on a reject 3 for a
+ * canister id inside its subnet's range that holds no canister. Mainnet
+ * answers a query and an update that way, and so does the fake replica of
+ * `@ic-reactor/core/testing`.
+ */
+const IC_CANISTER_NOT_FOUND = "IC0301"
+
 /** The longest detail text a ReactorError's `message` carries. */
 const MAX_DETAIL = 160
 
@@ -437,7 +464,11 @@ interface Shape {
   /** The `name` of the agent's `ErrorCode`, such as `"HttpErrorCode"`. */
   readonly codeName: string | undefined
   readonly rejectCode: number | undefined
+  /** The IC error code of a reject, such as `"IC0301"`. */
+  readonly rejectErrorCode: string | undefined
   readonly httpStatus: number | undefined
+  /** The body of an HTTP refusal, unshortened. */
+  readonly bodyText: string | undefined
   /** Short human text from the error: a reject message, an HTTP body, ... */
   readonly detail: string
   readonly statusText: string
@@ -511,11 +542,27 @@ function readShape(error: unknown): Shape {
     kind: asString(record.kind),
     codeName,
     rejectCode,
+    // Flat first, like the reject code, so a hand-built error reads the same.
+    rejectErrorCode:
+      asString(record.rejectErrorCode) ?? asString(code.rejectErrorCode),
     httpStatus,
+    bodyText: asString(code.bodyText),
     detail: condense(detail),
     statusText: condense(asString(code.statusText)),
   }
 }
+
+/**
+ * Whether the answer says that the canister the request was addressed to does
+ * not exist: an HTTP 400 whose body's error line is `canister_not_found`, or
+ * a reject 3 carrying the IC error code `IC0301`. Read from the shape only, so
+ * any other 400 or reject 3 says nothing of the kind.
+ */
+const saysCanisterNotFound = (shape: Shape): boolean =>
+  shape.httpStatus === 400
+    ? CANISTER_NOT_FOUND_BODY.test(shape.bodyText ?? "")
+    : shape.rejectCode === DESTINATION_INVALID &&
+      shape.rejectErrorCode === IC_CANISTER_NOT_FOUND
 
 /** Whether `error`, or what it wraps, is an abort. */
 function isAbort(error: unknown, depth = 0): boolean {
@@ -547,6 +594,20 @@ const withDetail = (lead: string, detail: string): string =>
  * | HTTP 429 | `not_delivered`, retryable | false / false |
  * | any other HTTP 4xx, `IngressExpiryInvalid` | `not_delivered` | false / false |
  * | a request that could not be built or signed (CBOR or DER encoding, an invalid identity, no `fetch`, no canister id) | `not_delivered` | false / false |
+ *
+ * A canister that does not exist also sets `code: "canister_not_found"`, and
+ * changes nothing else. The IC says it in one of two ways. For a canister id
+ * outside every subnet's range, a boundary node answers HTTP 400 with a body
+ * whose error line is `canister_not_found` (a row of "any other HTTP 4xx").
+ * For an id inside a subnet's range that holds no canister, the replica
+ * rejects with code 3 and the IC error code `IC0301`: mainnet does, for a
+ * query and an update, and so does the fake replica of
+ * `@ic-reactor/core/testing` (a row of "reject 1 or 3", or of the `aaaaa-aa`
+ * row for a call to the management canister). No other 400 and no other
+ * reject gets the code. The code names the canister the request was routed
+ * to: for `aaaaa-aa`, the one its arguments name. It stays on an update that
+ * may already be in the IC, whose 400 reads as `outcome_unknown` like any
+ * other, and is never set on `cancelled`.
  *
  * For a query nothing that matters executes, so every doubt is `not_delivered`
  * and `mayHaveExecuted` is `false`. The HTTP rows, and `IngressExpiryInvalid`,
@@ -585,13 +646,15 @@ export function classifyError(
     kind: ReactorErrorKind,
     mayHaveExecuted: boolean,
     reason: string,
-    retryable = false
+    retryable = false,
+    code?: string
   ): ReactorError =>
     build({
       kind,
       mayHaveExecuted,
       reason,
       retryable,
+      code,
       method,
       canisterId,
       rejectCode,
@@ -637,7 +700,8 @@ export function classifyError(
       rejectCode === SYS_FATAL ||
       rejectCode === DESTINATION_INVALID
     ) {
-      return make("rejected", !noCodeRan && update, reason)
+      const code = saysCanisterNotFound(shape) ? CANISTER_NOT_FOUND : undefined
+      return make("rejected", !noCodeRan && update, reason, false, code)
     }
     if (rejectCode === 4 || rejectCode === 5) {
       return make("rejected", update, reason)
@@ -681,8 +745,11 @@ export function classifyError(
     // canister): the canister never saw it. 408 is the exception, a timeout
     // after the request may have been passed on. 5xx may follow a delivery.
     const refused = httpStatus >= 400 && httpStatus < 500 && httpStatus !== 408
-    if (!refused || mayBeAccepted) return doubt(reason)
-    return make("not_delivered", false, reason, httpStatus === 429)
+    if (!refused) return doubt(reason)
+    // The code says what the answer said; `kind` still says what it proves.
+    const code = saysCanisterNotFound(shape) ? CANISTER_NOT_FOUND : undefined
+    if (mayBeAccepted) return make("outcome_unknown", true, reason, false, code)
+    return make("not_delivered", false, reason, httpStatus === 429, code)
   }
 
   // Transport, Protocol, Trust, External, Limit, Unknown, a polling timeout,

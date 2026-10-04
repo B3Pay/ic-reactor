@@ -19,6 +19,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Added
 
+- `ReactorError.code` is `"canister_not_found"` when the IC answers that the
+  canister a call was routed to does not exist (#821), on a read or a write.
+  The IC says it in two ways, and both get the code: a boundary node's HTTP
+  400 whose body's error line is `canister_not_found`, for a canister id
+  outside every subnet's range, and a replica's reject code 3 with the IC
+  error code `IC0301`, for an id inside a subnet's range that holds no
+  canister. Mainnet answers both ways, and the fake replica of
+  `@ic-reactor/core/testing` answers the second. `kind` and `mayHaveExecuted`
+  are unchanged from the classification table. Any other HTTP 400 and any
+  other reject still has no `code`.
 - `refuseNext(status, { method?, canister?, times? })` on the object
   `createTestClient()` returns (`@ic-reactor/core/testing`): a refusal aimed
   at the queries and calls that name `method` and are addressed to
