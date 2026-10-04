@@ -1,0 +1,5 @@
+{
+  "file": "src/types.ts",
+  "search": "        ? unknown extends VarsOf<A, M>\n          ? never\n          : VarsOf<A, M>\n",
+  "replace": "        ? VarsOf<A, M>\n"
+}

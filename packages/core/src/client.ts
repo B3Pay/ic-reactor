@@ -339,14 +339,16 @@ export interface Client {
    * This throws a `TypeError` for it too; call it directly, as
    * `await canister.method()`.
    *
+   * Built from variables that cannot be `skipToken`, the options' `queryFn`
+   * is never `skipToken` either, so `useSuspenseQuery` and
+   * `useSuspenseQueries` take them as they are. Variables typed `unknown` (a
+   * Candid `reserved` argument) may be, so such a read takes the next
+   * signature and keeps `SkipToken`.
+   *
    * @throws TypeError for an update or oneway method without the opt-in, a
    * method without results, a composite query of a certified canister, a
    * canister of another client, a method the service does not have, or a
    * fourth argument other than `{ update: "idempotent" }`.
-   *
-   * Built from variables that cannot be `skipToken`, the options' `queryFn`
-   * is never `skipToken` either, so `useSuspenseQuery` and
-   * `useSuspenseQueries` take them as they are.
    */
   queryOptions<A, M extends keyof A & string>(
     canister: Canister<A>,

@@ -196,7 +196,10 @@ export type CanisterTarget =
  * `S` is what `queryFn` may be besides the query function: `SkipToken` when
  * the variables the options were built from may be `skipToken`, and `never`
  * when they cannot be, so that `useSuspenseQuery` and `useSuspenseQueries`,
- * which take no `skipToken`, accept the options as they are.
+ * which take no `skipToken`, accept the options as they are. A compiler
+ * message or a hover prints `SkipToken` as `unique symbol`:
+ * `CanisterQueryOptions<bigint, never, unique symbol>` is options that may be
+ * skipped.
  */
 export interface CanisterQueryOptions<D, E, S extends SkipToken = SkipToken> {
   /** `['ic-reactor', network, caller, canisterId, method, args]`, plus `'certified'` for a certified canister. */
@@ -315,13 +318,23 @@ export interface CanisterMutationOptions<V, D, E> {
  * (or `skipToken`), then the options. The variables may be left out for a
  * method without arguments, as in `client.queryOptions(ledger, "icrc1_fee")`.
  * `S` is what may stand in for the variables: `SkipToken`, or `never` for
- * variables that cannot be skipped.
+ * variables that cannot be skipped. Variables typed `unknown` (a method whose
+ * one argument is Candid `reserved`) may hold `skipToken` whatever their
+ * value, so with `S` `never` they accept nothing: such a read always takes
+ * the call with `S` `SkipToken`, and its `queryFn` keeps `SkipToken`.
  */
 export type QueryArgs<A, M extends keyof A, S extends SkipToken = SkipToken> = [
   VarsOf<A, M>,
 ] extends [void]
   ? [vars?: void | S, options?: QueryOptionsOptions]
-  : [vars: VarsOf<A, M> | S, options?: QueryOptionsOptions]
+  : [
+      vars: [S] extends [never]
+        ? unknown extends VarsOf<A, M>
+          ? never
+          : VarsOf<A, M>
+        : VarsOf<A, M> | S,
+      options?: QueryOptionsOptions,
+    ]
 
 /** The fourth argument of `client.queryOptions()`. */
 export interface QueryOptionsOptions {

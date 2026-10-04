@@ -69,7 +69,7 @@ import {
   type SkipToken,
 } from "@tanstack/query-core"
 import { createClient, formatUnits, parseUnits } from "../src/index.js"
-import type { Network, ReactorError } from "../src/index.js"
+import type { Canister, Network, ReactorError } from "../src/index.js"
 import { createTestClient, type TestHandlers } from "../src/testing/index.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
 import * as icrc1 from "./fixtures/icrc1.js"
@@ -216,9 +216,12 @@ declare function useSuspenseQuery<T, E, K extends QueryKey>(
 ): { data: T }
 declare const ready: boolean
 
-// Variables that cannot be skipped give options a suspense read takes as they are.
+// Variables that cannot be skipped give options a suspense read takes as they
+// are. The read with variables is a tuple: under the fault of
+// options-vars-wrong-type a single argument is `unknown`, which may hold
+// `skipToken`, and its read would be refused too.
 useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee"))
-useSuspenseQuery(client.queryOptions(ledger, "icrc1_balance_of", account))
+useSuspenseQuery(client.queryOptions(shapesCanister, "pair", [1n, "x"]))
 
 // Variables that may be skipped give options it refuses. The traps read a
 // method without arguments: under the fault of options-vars-wrong-type, which
@@ -238,6 +241,13 @@ useSuspenseQuery(gated)
 // trap: suspense-refuses-skippable-read
 // @ts-expect-error skipToken is for useQuery; a suspense read always runs
 useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee", skipToken))
+
+// A Candid `reserved` argument is `unknown`, which `skipToken` is too: its
+// variables may always be skipped, and the options keep SkipToken.
+declare const reserved: Canister<{ anything: (r: unknown) => Promise<bigint> }>
+// trap: suspense-refuses-reserved-skip
+// @ts-expect-error a reserved argument may be skipToken, so a suspense read refuses it; read it with useQuery
+useSuspenseQuery(client.queryOptions(reserved, "anything", skipToken))
 
 // ---------------------------------------------------------------------------
 // The test client: handlers answer in the generated Actor's domain values

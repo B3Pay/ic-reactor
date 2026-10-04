@@ -30,6 +30,8 @@ type Ledger = {
     n: bigint
   ) => Promise<{ tag: "Ok"; value: bigint } | { tag: "Err"; value: string }>
   pair: (left: bigint, right: string) => Promise<string>
+  /** A Candid `reserved` argument, which a generated module types `unknown`. */
+  anything: (value: unknown) => Promise<bigint>
 }
 
 declare const client: Client
@@ -83,12 +85,31 @@ export function SuspenseReads() {
   expectTypeOf(spread.data).toEqualTypeOf<bigint>()
 
   // Variables that may be skipped: a suspense read cannot wait for them.
+  // The two lines below each refusal say it is for SkipToken: without them a
+  // refusal for another reason (a retry the hook does not take) would pass.
   const maybe = client.queryOptions(ledger, "icrc1_balance_of", maybeAccount)
   // @ts-expect-error a suspense read cannot be skipped; read it with useQuery
   const skipped = useSuspenseQuery(maybe)
+  expectTypeOf<
+    Extract<typeof maybe.queryFn, SkipToken>
+  >().toEqualTypeOf<SkipToken>()
+  useQuery(maybe)
   const none = client.queryOptions(ledger, "icrc1_fee", skipToken)
   // @ts-expect-error skipToken is for useQuery
   const skippedMany = useSuspenseQueries({ queries: [none] })
+  expectTypeOf<
+    Extract<typeof none.queryFn, SkipToken>
+  >().toEqualTypeOf<SkipToken>()
+  useQueries({ queries: [none] })
+
+  // A reserved argument is `unknown`, which may hold skipToken whatever its
+  // value: such a read keeps SkipToken, and a suspense read of it needs a cast.
+  const reserved = client.queryOptions(ledger, "anything", 1n)
+  // @ts-expect-error a reserved argument may be skipToken
+  const reservedRead = useSuspenseQuery(reserved)
+  expectTypeOf<
+    Extract<typeof reserved.queryFn, SkipToken>
+  >().toEqualTypeOf<SkipToken>()
 
   return [
     fee,
@@ -101,6 +122,7 @@ export function SuspenseReads() {
     spread,
     skipped,
     skippedMany,
+    reservedRead,
   ].length
 }
 
@@ -116,8 +138,10 @@ export function Reads() {
     client.queryOptions(ledger, "icrc1_balance_of", account)
   )
   expectTypeOf(read.data).toEqualTypeOf<bigint | undefined>()
+  expectTypeOf(read.error).toEqualTypeOf<ReactorError | null>()
   const none = useQuery(client.queryOptions(ledger, "icrc1_fee", skipToken))
   expectTypeOf(none.data).toEqualTypeOf<bigint | undefined>()
+  expectTypeOf(none.error).toEqualTypeOf<ReactorError | null>()
   // useQueries types each query's error from its throwOnError alone, so the
   // options' retry must take any error.
   const [fee, balance] = useQueries({
@@ -162,3 +186,26 @@ expectTypeOf(
 expectTypeOf(
   queryClient.fetchQuery(client.queryOptions(ledger, "icrc1_fee"))
 ).toEqualTypeOf<Promise<bigint>>()
+
+// A wrapper of `client.queryOptions` written against the published 4.0.0-beta.1
+// types stops compiling where it takes the function's type whole: the
+// function has two signatures now, and one function cannot satisfy both, nor
+// can `Parameters` (the last signature's) be spread back into the call. The
+// forms below are the break the CHANGELOG lists.
+// @ts-expect-error a function typed Client["queryOptions"] must satisfy both signatures
+export const typedWrapper: Client["queryOptions"] = (c, m, ...rest) =>
+  // @ts-expect-error neither signature takes the rest of both
+  client.queryOptions(c, m, ...rest)
+export const spreadWrapper = (...args: Parameters<Client["queryOptions"]>) =>
+  // @ts-expect-error Parameters of an overloaded function is the last signature's, and its rest is not a tuple here
+  client.queryOptions(...args)
+
+// What a wrapper still does: the result type, and the options spread with the
+// app's own.
+export type QueryOptionsResult = ReturnType<Client["queryOptions"]>
+expectTypeOf<QueryOptionsResult["queryKey"]>().not.toBeNever()
+export const withStaleTime = {
+  ...client.queryOptions(ledger, "icrc1_balance_of", account),
+  staleTime: 1,
+}
+expectTypeOf<Extract<typeof withStaleTime.queryFn, SkipToken>>().toBeNever()

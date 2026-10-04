@@ -1,5 +1,5 @@
 {
-  "file": "src/client.ts",
-  "search": "    ...args: QueryArgs<A, M, never>\n",
-  "replace": "    ...args: QueryArgs<A, M>\n"
+  "file": "src/types.ts",
+  "search": "  ? [vars?: void | S, options?: QueryOptionsOptions]\n",
+  "replace": "  ? [vars?: void | SkipToken, options?: QueryOptionsOptions]\n"
 }

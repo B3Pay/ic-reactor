@@ -47,10 +47,26 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   that defaults to today's type. The options' `retry` also takes an error
   typed `unknown`, as `useQueries` and `useSuspenseQueries` type it, so those
   hooks take the options too; `useQuery` and a `QueryObserver` still type the
-  query's error `ReactorError<E>`. Types only: nothing changes at run time,
-  and no export is added. One check stops compiling: `queryFn === skipToken`
-  on options built from variables that cannot be `skipToken` is now TS2367
-  ("no overlap"); such a check was always false, so remove it.
+  query's error `ReactorError<E>`. A method whose one argument is Candid
+  `reserved` takes variables typed `unknown`, which may hold `skipToken`, so
+  its options keep `SkipToken` whatever the variables, and a suspense read of
+  it still needs a cast. Types only: nothing changes at run time, and no
+  export is added. Code that compiled against 4.0.0-beta.1 and stops
+  compiling:
+  - `queryFn === skipToken` on options built from variables that cannot be
+    `skipToken` is now TS2367 ("no overlap"). Such a check was always false,
+    so remove it.
+  - A function typed `Client["queryOptions"]` (one function cannot satisfy
+    both signatures), and a call that spreads
+    `Parameters<Client["queryOptions"]>` back into `client.queryOptions`
+    (`Parameters` takes the last signature only). Call `client.queryOptions`
+    with the canister and method, and spread its result to add options:
+    `{ ...options, staleTime: 1 }`. `ReturnType<Client["queryOptions"]>`
+    still compiles.
+
+  Wrong variables or an unknown method name are now reported as TS2769 ("No
+  overload matches this call", listing both signatures), where they were
+  TS2345.
 
 ## core, react, vite-plugin 4.0.0-beta.1
 
