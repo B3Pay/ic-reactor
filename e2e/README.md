@@ -1,54 +1,79 @@
 # End-to-End Test Workspace
 
-This directory contains a small `hello_actor` canister and the `vitest` setup
-that will run `@ic-reactor/core` and `@ic-reactor/react` against it on a local
-replica. On the `v4` branch there are no cases yet: the 3.x cases were removed
-with the 3.x runtime, and the v4 cases are written on a real replica in the beta
-phase (IR9b, #787). Until then the E2E job proves only that the canister builds,
-deploys and answers a call, and `vitest run` passes with no test files.
+The real-replica suite of ic-reactor 4: a small Rust canister, `hello_actor`,
+deployed to a local icp-cli 1.2.0 network, and twelve vitest cases that call
+it through the published API of `@ic-reactor/core`, `@ic-reactor/react` and
+`@ic-reactor/vite-plugin`, with the module `candid-core-cli gen` writes from
+its `.did`.
+
+## Running it
+
+From the repository root, once:
+
+```bash
+pnpm install   # installs icp-cli 1.2.0 and ic-wasm 0.11.1 into e2e/node_modules
+pnpm build     # the suite imports the built packages
+```
+
+Rust with the `wasm32-unknown-unknown` target builds the canister.
+
+Then `pnpm test` in `e2e/` (or `pnpm test-e2e` at the root, or
+`bash e2e/test.sh`):
+
+1. checks that `icp` is the pinned 1.2.0 (`node_modules/.bin` comes first on
+   PATH; a global install of the same version works too, which is what CI
+   has), and that `src/declarations` matches the `.did` (`pnpm gen:check`);
+2. starts a local network (`icp network start -d`, port 8000) and deploys
+   `hello_actor`;
+3. calls `greet` once with `icp` to check the deployment;
+4. runs `vitest run`;
+5. stops the network, also when a step fails.
+
+To iterate on the cases, keep a network up yourself:
+
+```bash
+pnpm icp:start && pnpm icp:deploy
+pnpm test:vitest            # or: pnpm exec vitest run src/errors.test.ts
+pnpm icp:stop
+```
+
+`global-setup.ts` asks `icp` for the network's URL and root key and the
+canister's id, and fails the run when there is none. A run that finds no test
+file fails too: there is no `passWithNoTests`.
 
 ## The canister
 
-Besides `greet` and `greet_update`, each method in `src/actor/src/lib.rs` puts
-one kind of value, or one kind of failure, on the wire:
+`src/actor/src/lib.rs`; each method puts one kind of value or failure on the
+wire.
 
-| Method      | Signature                                                | Covers                                                                                                                                                           |
-| ----------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `divide`    | `(nat, nat) -> (variant { Ok : nat; Err : text }) query` | Both arms of a Result. A zero divisor returns `Err`.                                                                                                             |
-| `profile`   | `(principal) -> (Profile) query`                         | A record of `principal`, `nat`, `nat64`, `int`, `vec text`, `opt blob` and a variant. The anonymous principal gets no avatar and the `Frozen` arm with its text. |
-| `increment` | `() -> (nat)`                                            | A stateful update call.                                                                                                                                          |
-| `count`     | `() -> (nat) query`                                      | A query that reads what `increment` wrote.                                                                                                                       |
-| `boom`      | `() -> ()`                                               | A trap, which the replica rejects.                                                                                                                               |
-| `whoami`    | `() -> (principal) query`                                | The caller, for the identity switch.                                                                                                                             |
+| Method          | Signature                                       | Covers                                                                                 |
+| --------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `greet`         | `(text) -> (text) query`                        | A query.                                                                               |
+| `is_replicated` | `() -> (bool) query`                            | How a query went out: `false` as a query, `true` as an update call (a certified read). |
+| `increment`     | `() -> (nat)`                                   | A stateful update.                                                                     |
+| `count`         | `() -> (nat) query`                             | Reads what the updates wrote.                                                          |
+| `increment_by`  | `(nat64) -> (variant { Ok : nat; Err : text })` | Both arms of a Result from an update. Zero returns `Err` and changes nothing.          |
+| `refuse`        | `() -> ()`                                      | `ic0.msg_reject`: reject code 4.                                                       |
+| `boom`          | `() -> ()`                                      | A trap: reject code 5.                                                                 |
+| `whoami`        | `() -> (principal) query`                       | The caller, for the identity switch.                                                   |
 
 `src/actor/hello_actor.did` is written by hand, so change it together with
-`lib.rs`. The build embeds it as the canister's public `candid:service`
-metadata. `src/declarations/` is committed; on the `v4` branch nothing
-regenerates it (the 3.x vite plugin did, through `@ic-reactor/codegen`), so
-update it by hand when the `.did` changes until the v4 rewrite generates it with
-`candid-core-cli gen`.
+`lib.rs`; the build embeds it as the canister's `candid:service` metadata.
+`src/declarations/hello_actor.ts` (and its Contract envelope) is what
+`candid-core-cli gen` writes from it: run `pnpm gen` after a change to the
+`.did`, and commit both. Prettier leaves them alone.
 
-The counter is shared by every test file, and vitest runs the files in
-parallel, so a test can only assert that the counter grows, not its value.
+## The cases
 
-## Running tests
+The files run one at a time (`fileParallelism: false`): they share the
+canister's counter, and the anonymous-write case reads it back. Each runs in
+jsdom, where `auth` sign-in, the `ic_env` cookie and `ReactorProvider` exist;
+the agent sends with Node's `fetch`.
 
-- `pnpm start` or `pnpm test` _(both now identical)_ will:
-  1. start a local `icp` network
-  2. deploy the `hello_actor` canister
-  3. call `greet` once to verify the deployment
-  4. execute `vitest run` over `src/**/*.test.*` (no cases at present), with
-     canister IDs resolved via `ic_env` (seeded by `setup.ts`)
-  5. stop the replica
-
-The `test` script used to invoke `vitest` directly which caused a confusing
-`CANISTER_ID_HELLO_ACTOR is missing` error when the `.env` file wasn't
-present. The package has been updated so `pnpm test` now wraps the full setup
-sequence; you can still run `vitest` manually if you prefer, but make sure you
-have deployed and/or sourced the `.env` yourself.
-
-## Troubleshooting
-
-- If you ever see an error about `CANISTER_ID_HELLO_ACTOR` not being set,
-  ensure `icp network start` and `icp deploy hello_actor` have completed before
-  running tests. The test setup seeds the `ic_env` cookie from `icp` CLI.
+| File               | Case                                                                                                                                                                                                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `calls.test.ts`    | A query (direct and through `queryOptions`, sent as a query); an update through `mutationOptions`, which invalidates the canister's reads; a certified read (`{ id, certified: true }`); the root key fetched from the local replica.                                                                   |
+| `errors.test.ts`   | A reject 4 and a trap (reject 5), both `rejected` and may have executed; a Result `Err` as `canister_err`, which did not leave the outcome open; an anonymous write refused before sending (`unauthenticated`, `anonymous_write`); an unresolved `{ name }` (`invalid_args`, `canister_id_unresolved`). |
+| `identity.test.ts` | A switch between two Ed25519 identities on one client: the caller the canister sees, `client.caller()` and the query keys all follow it.                                                                                                                                                                |
+| `vite-env.test.ts` | A Vite dev server with `@ic-reactor/vite-plugin`, started in the test: the page load's `ic_env` cookie resolves `{ name: "hello_actor" }`, and the call goes through the server's `/api` proxy.                                                                                                         |
+| `react.test.tsx`   | `ReactorProvider`, `useClient` and `useQuery`: the component renders what the canister answers, as whoever is signed in, and again after a switch.                                                                                                                                                      |

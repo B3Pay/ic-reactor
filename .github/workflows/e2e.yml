@@ -57,6 +57,9 @@ jobs:
       - name: Setup Rust for the hello_actor canister build
         uses: ./.github/actions/setup-rust-wasm
 
+      # e2e/package.json pins the same two versions, and e2e/test.sh puts its
+      # node_modules/.bin first on PATH and refuses any other icp-cli version, so
+      # a local run uses them too. Bump both places together.
       - name: Install icp-cli and ic-wasm
         run: npm install -g @icp-sdk/icp-cli@${{ env.ICP_CLI_VERSION }} @icp-sdk/ic-wasm@${{ env.IC_WASM_VERSION }}
 
