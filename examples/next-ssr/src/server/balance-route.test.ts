@@ -126,9 +126,11 @@ describe("GET /api/balance/[ledger]/[principal]", () => {
   })
 
   it("maps a canister that does not exist to 502, with code canister_not_found", async () => {
-    // Mainnet answers HTTP 400 `canister_not_found` (`kind: "not_delivered"`);
-    // the fake replica rejects with code 3 (`kind: "rejected"`). Both say
-    // `code: "canister_not_found"`, and both are a 502.
+    // For this id, outside every subnet's range, mainnet answers HTTP 400
+    // `canister_not_found` (`kind: "not_delivered"`); the fake replica rejects
+    // with code 3 and IC0301 (`kind: "rejected"`), as a mainnet replica does
+    // for an id inside its range that holds no canister. All say
+    // `code: "canister_not_found"`, and all are a 502.
     const { GET } = handler()
 
     const { status, body } = await get(GET, NO_CANISTER, SAMPLE_OWNER)

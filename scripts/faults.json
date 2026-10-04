@@ -1697,7 +1697,7 @@
     "testName": "HTTP 400 naming it only in details",
     "why": "any 400 whose body mentions canister_not_found anywhere gets the code, not only the one whose error line is that token",
     "file": "src/errors.ts",
-    "search": "/^error:[ \\t]*canister_not_found[ \\t\\r]*$/m",
+    "search": "/^error:[ \\t]*canister_not_found[ \\t]*$/m",
     "replace": "/canister_not_found/"
   },
   {
@@ -1734,10 +1734,70 @@
     "id": "fu-not-found-any-reject-3",
     "package": "core",
     "test": "tests/errors.test.ts",
-    "testName": "reject 3 IC0536 (no such method)",
-    "why": "every reject 3 gets the canister_not_found code, a method the canister does not have included, not only one with the IC error code IC0301",
+    "testName": "reject 3 with another IC error code",
+    "why": "every reject 3 gets the canister_not_found code, not only one with the IC error code IC0301",
     "file": "src/errors.ts",
     "search": "shape.rejectErrorCode === IC_CANISTER_NOT_FOUND",
     "replace": "true"
+  },
+  {
+    "id": "fu-not-found-mainnet-reject-unread",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "reject 3 IC0301 (mainnet",
+    "why": "mainnet's reject 3 with IC0301 for an id inside a subnet's range that holds no canister (the shape captured from mainnet) gets no `code`",
+    "file": "src/errors.ts",
+    "search": "shape.rejectErrorCode === IC_CANISTER_NOT_FOUND",
+    "replace": "false"
+  },
+  {
+    "id": "fu-not-found-any-reject-code-with-ic0301",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "reject 1 with IC0301",
+    "why": "a reject other than 3 that carries IC0301 gets the canister_not_found code, so the reject code no longer has to say invalid destination",
+    "file": "src/errors.ts",
+    "search": "shape.rejectCode === DESTINATION_INVALID &&\n      shape.rejectErrorCode",
+    "replace": "shape.rejectErrorCode"
+  },
+  {
+    "id": "fu-not-found-error-line-unanchored",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "HTTP 400 with a longer error token",
+    "why": "an error line that only starts with canister_not_found (such as canister_not_found_elsewhere) gets the code",
+    "file": "src/errors.ts",
+    "search": "canister_not_found[ \\t]*$/m",
+    "replace": "canister_not_found/m"
+  },
+  {
+    "id": "fu-not-found-crlf-body-unread",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "HTTP 400 canister_not_found, CRLF",
+    "why": "the error line is read up to a bare \\n, so a canister_not_found body with CRLF line ends loses the code",
+    "file": "src/errors.ts",
+    "search": "canister_not_found[ \\t]*$/m",
+    "replace": "canister_not_found[ \\t]*(?:\\n|$)/"
+  },
+  {
+    "id": "fu-not-found-code-on-cancelled",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "gives a cancelled call no canister_not_found code",
+    "why": "a cancelled call gets the canister_not_found code from whatever the agent threw, though a cancel says nothing about the canister",
+    "file": "src/errors.ts",
+    "search": "return make(\"cancelled\", update, DEFAULT_REASON.cancelled)",
+    "replace": "return make(\"cancelled\", update, DEFAULT_REASON.cancelled, false, saysCanisterNotFound(shape) ? CANISTER_NOT_FOUND : undefined)"
+  },
+  {
+    "id": "fu-not-found-flat-error-code-unread",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "reads an IC error code that sits on the error itself",
+    "why": "an IC error code on the error itself, as a hand-built error carries it, is not read, though the reject code there is",
+    "file": "src/errors.ts",
+    "search": "asString(record.rejectErrorCode) ?? asString(code.rejectErrorCode)",
+    "replace": "asString(code.rejectErrorCode)"
   }
 ]

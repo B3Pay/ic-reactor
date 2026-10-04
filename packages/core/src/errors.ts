@@ -73,8 +73,9 @@ type ReactorErrorBase = Error & {
    * A machine-readable sub-reason within a `kind`, such as
    * `"canister_id_unresolved"` for an unresolved `{ name }` target,
    * `"anonymous_write"` for an update without a signed-in identity, or
-   * `"canister_not_found"` when the IC answered that the target canister does
-   * not exist.
+   * `"canister_not_found"` when the IC answered that the canister the request
+   * was routed to does not exist (for a call to `aaaaa-aa`, the canister its
+   * arguments name, while `canisterId` stays `aaaaa-aa`).
    */
   readonly code?: string
   /** The IC reject code (1 to 6, or whatever the replica sent), when there was one. */
@@ -432,18 +433,20 @@ const PRE_SEND_CODES: ReadonlySet<string> = new Set([
 const CANISTER_NOT_FOUND = "canister_not_found"
 
 /**
- * The error line of the body a boundary node (and the HTTP gateway of a local
- * network) answers with HTTP 400 for a canister id that names no canister:
- * `error: canister_not_found`, then a `details:` line. The cause token is the
- * gateway's machine-readable marker; the details line is free text and is not
- * read.
+ * The error line of the body a boundary node answers with HTTP 400 for a
+ * canister id outside every subnet's range (the HTTP gateway of a local
+ * network answers the same): `error: canister_not_found`, then a `details:`
+ * line. The cause token is the gateway's machine-readable marker; the details
+ * line is free text and is not read. With the `m` flag, `$` also matches
+ * before a `\r`, so a CRLF body reads the same.
  */
-const CANISTER_NOT_FOUND_BODY = /^error:[ \t]*canister_not_found[ \t\r]*$/m
+const CANISTER_NOT_FOUND_BODY = /^error:[ \t]*canister_not_found[ \t]*$/m
 
 /**
  * The IC error code (`CanisterNotFound`) a replica puts on a reject 3 for a
- * canister that does not exist, as the fake replica of
- * `@ic-reactor/core/testing` does.
+ * canister id inside its subnet's range that holds no canister. Mainnet
+ * answers a query and an update that way, and so does the fake replica of
+ * `@ic-reactor/core/testing`.
  */
 const IC_CANISTER_NOT_FOUND = "IC0301"
 
@@ -539,7 +542,9 @@ function readShape(error: unknown): Shape {
     kind: asString(record.kind),
     codeName,
     rejectCode,
-    rejectErrorCode: asString(code.rejectErrorCode),
+    // Flat first, like the reject code, so a hand-built error reads the same.
+    rejectErrorCode:
+      asString(record.rejectErrorCode) ?? asString(code.rejectErrorCode),
     httpStatus,
     bodyText: asString(code.bodyText),
     detail: condense(detail),
@@ -591,13 +596,18 @@ const withDetail = (lead: string, detail: string): string =>
  * | a request that could not be built or signed (CBOR or DER encoding, an invalid identity, no `fetch`, no canister id) | `not_delivered` | false / false |
  *
  * A canister that does not exist also sets `code: "canister_not_found"`, and
- * changes nothing else: a boundary node answers a request addressed to one
- * with an HTTP 400 whose body's error line is `canister_not_found` (a row of
- * "any other HTTP 4xx"), and the fake replica of `@ic-reactor/core/testing`
- * rejects it with code 3 and the IC error code `IC0301` (a row of "reject 1
- * or 3"). No other 400 and no other reject 3 gets the code. The code stays
- * on an update that may already be in the IC, whose 400 reads as
- * `outcome_unknown` like any other.
+ * changes nothing else. The IC says it in one of two ways. For a canister id
+ * outside every subnet's range, a boundary node answers HTTP 400 with a body
+ * whose error line is `canister_not_found` (a row of "any other HTTP 4xx").
+ * For an id inside a subnet's range that holds no canister, the replica
+ * rejects with code 3 and the IC error code `IC0301`: mainnet does, for a
+ * query and an update, and so does the fake replica of
+ * `@ic-reactor/core/testing` (a row of "reject 1 or 3", or of the `aaaaa-aa`
+ * row for a call to the management canister). No other 400 and no other
+ * reject gets the code. The code names the canister the request was routed
+ * to: for `aaaaa-aa`, the one its arguments name. It stays on an update that
+ * may already be in the IC, whose 400 reads as `outcome_unknown` like any
+ * other, and is never set on `cancelled`.
  *
  * For a query nothing that matters executes, so every doubt is `not_delivered`
  * and `mayHaveExecuted` is `false`. The HTTP rows, and `IngressExpiryInvalid`,

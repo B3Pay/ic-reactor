@@ -536,8 +536,9 @@ describe("the failures a test makes happen", () => {
   })
 
   it("rejects a call to a canister it holds none at with canister_not_found, on a query and an update", async () => {
-    // A boundary node answers the same call with HTTP 400 canister_not_found;
-    // the fake rejects it with code 3 and IC0301, and the code is the same.
+    // Like a mainnet replica for an id inside its range that holds no
+    // canister, the fake rejects with code 3 and IC0301. (A boundary node
+    // answers HTTP 400 for an id outside every range; the code is the same.)
     const test = setup()
     const missing = test.client.canister<shapes.Actor>(shapes.actor, {
       id: LEDGER,

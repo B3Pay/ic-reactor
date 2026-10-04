@@ -145,8 +145,8 @@ const rejectWithErrorCode = (
 })
 
 /**
- * What a mainnet boundary node answers for a canister id that names no
- * canister, captured on 2026-10-04 (20:38 UTC) with `@icp-sdk/core` 6.1.0:
+ * What a mainnet boundary node answers for a canister id outside every
+ * subnet's range, captured on 2026-10-04 (20:38 UTC) with `@icp-sdk/core` 6.1.0:
  * an `HttpAgent` on https://icp-api.io with `retryTimes: 0` called
  * `2y4s5-zaaaa-aaad7-7777q-cai` once as an anonymous query and once as an
  * update signed by a throwaway Ed25519 identity. Both threw a `ProtocolError`
@@ -193,6 +193,54 @@ const boundaryCanisterNotFound: Built = {
       isCertified: false,
       ...MAINNET_CANISTER_NOT_FOUND,
     }),
+}
+
+/**
+ * What a mainnet replica answers for a canister id inside a subnet's range
+ * that holds no canister, captured on 2026-10-04 (21:06 UTC) with
+ * `@icp-sdk/core` 6.1.0: an `HttpAgent` on https://icp-api.io with
+ * `retryTimes: 0` called `b7dp4-4aaaa-aaaaa-paaaa-cai` (inside the NNS
+ * subnet's range) once as an anonymous query and once as an update signed by
+ * a throwaway Ed25519 identity. Both threw a `RejectError` (`kind` "Reject")
+ * with these fields: the query's `code` an `UncertifiedRejectErrorCode`, the
+ * update's an `UncertifiedRejectUpdateErrorCode`.
+ */
+const MAINNET_REJECT_NOT_FOUND = {
+  rejectCode: 3,
+  rejectMessage: "Canister b7dp4-4aaaa-aaaaa-paaaa-cai not found",
+  rejectErrorCode: "IC0301",
+} as const
+
+const mainnetRejectNotFound = (
+  name: "UncertifiedRejectErrorCode" | "UncertifiedRejectUpdateErrorCode"
+): Built => {
+  const { rejectCode, rejectMessage, rejectErrorCode } =
+    MAINNET_REJECT_NOT_FOUND
+  return {
+    real: () =>
+      RejectError.fromCode(
+        name === "UncertifiedRejectErrorCode"
+          ? new UncertifiedRejectErrorCode(
+              REQUEST_ID,
+              rejectCode,
+              rejectMessage,
+              rejectErrorCode,
+              undefined
+            )
+          : new UncertifiedRejectUpdateErrorCode(
+              REQUEST_ID,
+              rejectCode,
+              rejectMessage,
+              rejectErrorCode
+            )
+      ),
+    copy: () =>
+      foreign("Reject", {
+        name,
+        isCertified: false,
+        ...MAINNET_REJECT_NOT_FOUND,
+      }),
+  }
 }
 
 const transport = (cause: unknown = new TypeError("fetch failed")): Built => ({
@@ -376,7 +424,23 @@ const rows: Row[] = [
     query: settled("rejected", false),
   },
   {
-    name: "reject 3 IC0301 (no such canister)",
+    name: "reject 3 IC0301 (mainnet query)",
+    built: mainnetRejectNotFound("UncertifiedRejectErrorCode"),
+    rejectCode: 3,
+    code: "canister_not_found",
+    update: settled("rejected", false),
+    query: settled("rejected", false),
+  },
+  {
+    name: "reject 3 IC0301 (mainnet update)",
+    built: mainnetRejectNotFound("UncertifiedRejectUpdateErrorCode"),
+    rejectCode: 3,
+    code: "canister_not_found",
+    update: settled("rejected", false),
+    query: settled("rejected", false),
+  },
+  {
+    name: "reject 3 IC0301 (fake replica)",
     built: rejectWithErrorCode(
       3,
       "IC0301",
@@ -388,13 +452,16 @@ const rows: Row[] = [
     query: settled("rejected", false),
   },
   {
-    name: "reject 3 IC0536 (no such method)",
-    built: rejectWithErrorCode(
-      3,
-      "IC0536",
-      "Canister has no update method 'icrc1_transfer'"
-    ),
+    name: "reject 3 with another IC error code",
+    built: rejectWithErrorCode(3, "IC0599", "another invalid destination"),
     rejectCode: 3,
+    update: settled("rejected", false),
+    query: settled("rejected", false),
+  },
+  {
+    name: "reject 1 with IC0301",
+    built: rejectWithErrorCode(1, "IC0301", "not a reject 3"),
+    rejectCode: 1,
     update: settled("rejected", false),
     query: settled("rejected", false),
   },
@@ -456,6 +523,29 @@ const rows: Row[] = [
     update: settled("rejected", true),
     query: settled("rejected", false),
   })),
+  {
+    // The code names the canister the arguments name; `canisterId` stays
+    // aaaaa-aa, and an update keeps the management canister's reading.
+    name: "reject 3 IC0301 from aaaaa-aa",
+    built: rejectWithErrorCode(
+      3,
+      "IC0301",
+      MAINNET_REJECT_NOT_FOUND.rejectMessage
+    ),
+    canisterId: MANAGEMENT,
+    rejectCode: 3,
+    code: "canister_not_found",
+    update: settled("rejected", true),
+    query: settled("rejected", false),
+  },
+  {
+    name: "reject 2 IC0301 from aaaaa-aa",
+    built: rejectWithErrorCode(2, "IC0301", "not a reject 3"),
+    canisterId: MANAGEMENT,
+    rejectCode: 2,
+    update: settled("rejected", true),
+    query: settled("rejected", false),
+  },
   ...[4, 5].map((code): Row => ({
     name: `reject ${code} from the management canister`,
     built: certifiedReject(code),
@@ -491,6 +581,24 @@ const rows: Row[] = [
     name: "HTTP 400 naming it only in details",
     built: http(400, "error: bad_request\ndetails: not canister_not_found"),
     httpStatus: 400,
+    update: settled("not_delivered", false),
+    query: settled("not_delivered", false),
+  },
+  {
+    name: "HTTP 400 with a longer error token",
+    built: http(400, "error: canister_not_found_elsewhere\ndetails: x"),
+    httpStatus: 400,
+    update: settled("not_delivered", false),
+    query: settled("not_delivered", false),
+  },
+  {
+    name: "HTTP 400 canister_not_found, CRLF",
+    built: http(
+      400,
+      "error: canister_not_found\r\ndetails: The specified canister does not exist.\r\n"
+    ),
+    httpStatus: 400,
+    code: "canister_not_found",
     update: settled("not_delivered", false),
     query: settled("not_delivered", false),
   },
@@ -652,6 +760,19 @@ describe("classifyError", () => {
     expect(error.mayHaveExecuted).toBe(false)
   })
 
+  it("reads an IC error code that sits on the error itself", () => {
+    const flat = {
+      kind: "Reject",
+      rejectCode: 3,
+      rejectErrorCode: "IC0301",
+      message: "no such canister",
+    }
+    const error = classifyError(flat, context("update"))
+    expect(error.kind).toBe("rejected")
+    expect(error.code).toBe("canister_not_found")
+    expect(error.mayHaveExecuted).toBe(false)
+  })
+
   it("ignores a status on a code that is not an HttpErrorCode", () => {
     // Only the agent's HTTP error code says the answer was an HTTP refusal.
     const odd = foreign("Protocol", { name: "SomethingElse", status: 400 })
@@ -742,6 +863,19 @@ describe("classifyError", () => {
         context("query", { signal: controller.signal })
       )
       expect(error.kind).toBe("not_delivered")
+    })
+
+    it("gives a cancelled call no canister_not_found code, whatever the agent said", () => {
+      const controller = new AbortController()
+      controller.abort()
+      for (const mode of ["update", "query"] as const) {
+        const error = classifyError(
+          boundaryCanisterNotFound.real(),
+          context(mode, { signal: controller.signal })
+        )
+        expect(error.kind).toBe("cancelled")
+        expect(error.code).toBeUndefined()
+      }
     })
 
     it("keeps an aborted update open: the request may already have been sent", () => {

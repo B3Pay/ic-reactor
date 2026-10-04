@@ -43,7 +43,8 @@ The route of scenario 7 answers a failure with a status that says whether
 asking again can help. A canister id that names no canister,
 `/api/balance/2y4s5-zaaaa-aaad7-7777q-cai/rkp4c-7iaaa-aaaaa-aaaca-cai`, is a
 502 with `kind: "not_delivered"`, `httpStatus: 400` and
-`code: "canister_not_found"`: the IC refused it for good. A rate limit or a 5xx from the IC is a 503.
+`code: "canister_not_found"`: the IC refused it for good. A rate limit or a
+5xx from the IC is a 503.
 
 The pages read mainnet when a request comes in, never during `next build`
 (`/` calls `connection()`; `/account` and the route read their parameters), so
