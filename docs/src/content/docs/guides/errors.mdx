@@ -222,10 +222,13 @@ what happened. Two ways to know:
   changed, and decide from what you find. In React, the mutation has already
   invalidated the canister's reads, so the page shows it.
 - **Let the canister deduplicate.** If the method can tell a repeat from a new
-  call, send the same argument again. The ICRC-1 ledger does: with the same
-  `created_at_time`, a second identical transfer from the same account is
-  answered `Duplicate`, which means the first one went through. The client
-  does not do this for you. It is the ledger's feature, and the
+  call, send the same argument again. The ICRC-1 ledger does: a second
+  transfer from the same account identical to the first, `created_at_time`
+  and `memo` included, is answered `Duplicate`, which means the first one
+  went through. Give each transfer its own `memo`, or two different
+  transfers of the same amount made in the same millisecond look like one,
+  and the second is reported as done when it never ran. The client does not
+  do this for you. It is the ledger's feature, and the
   [Vite wallet example](/v4/examples/vite-wallet/) uses it as its recipe.
 
 ```ts
@@ -239,7 +242,8 @@ export async function transferOnce(to: Account, amount: bigint) {
     to,
     amount,
     fee: null,
-    memo: null,
+    // This transfer's own: only a repeat of this argument is a duplicate.
+    memo: crypto.getRandomValues(new Uint8Array(16)),
     from_subaccount: null,
     created_at_time: BigInt(Date.now()) * 1_000_000n, // nanoseconds; makes a repeat detectable
   }
