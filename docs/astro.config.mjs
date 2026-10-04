@@ -46,7 +46,40 @@ export default defineConfig({
       ],
       sidebar: [
         { label: "Overview", link: "/" },
-        { label: "Examples", link: "/examples" },
+        {
+          label: "Guides",
+          items: [
+            { label: "Getting started", slug: "guides/getting-started" },
+            { label: "The client", slug: "guides/client" },
+            { label: "Values and units", slug: "guides/values" },
+            { label: "Reads", slug: "guides/reads" },
+            { label: "Writes", slug: "guides/writes" },
+            { label: "Errors and mayHaveExecuted", slug: "guides/errors" },
+            { label: "Auth", slug: "guides/auth" },
+            { label: "SSR and hydration", slug: "guides/ssr" },
+            { label: "Testing", slug: "guides/testing" },
+            { label: "The Vite plugin", slug: "guides/vite-plugin" },
+          ],
+        },
+        {
+          label: "Packages",
+          items: [
+            { label: "@ic-reactor/core", slug: "packages/core" },
+            { label: "@ic-reactor/react", slug: "packages/react" },
+            { label: "@ic-reactor/vite-plugin", slug: "packages/vite-plugin" },
+          ],
+        },
+        {
+          label: "Examples",
+          items: [
+            { label: "All examples", slug: "examples" },
+            { label: "ICRC-1 ledger", slug: "examples/icrc-ledger" },
+            { label: "Next.js SSR", slug: "examples/next-ssr" },
+            { label: "Vite wallet", slug: "examples/vite-wallet" },
+            { label: "Node agent tool", slug: "examples/node-agent-tool" },
+          ],
+        },
+        { label: "Migrating from 3.x", slug: "migrating-from-3" },
         {
           label: "API Reference",
           collapsed: true,

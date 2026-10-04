@@ -243,14 +243,16 @@ const COMPILER_OPTIONS = {
  * A docs page whose examples import a library no package installs (a router,
  * a form library, `next`) needs an example app that installs it listed after
  * the runtime packages, so that `react`, `@tanstack/react-query` and the rest
- * keep the versions the packages themselves compile against. No docs page
- * needs one today; add the example app here when one does.
+ * keep the versions the packages themselves compile against.
+ * `examples/next-ssr` provides `next` for the SSR guide's App Router
+ * snippets (`next/server`, `next/headers`).
  */
 const DEPENDENCY_SOURCES = [
   "packages/react",
   "packages/core",
   "packages/vite-plugin",
   ".",
+  "examples/next-ssr",
 ]
 
 // ── Source files ─────────────────────────────────────────────────────────────
