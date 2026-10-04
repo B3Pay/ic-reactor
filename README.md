@@ -441,7 +441,7 @@ For apps that use IC Reactor (published with the docs, shipped in the npm packag
 | File                                                         | Purpose                                                                                           |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | [`llms.txt`](./llms.txt)                                     | Index of the docs in the llmstxt.org format, served at `https://ic-reactor.b3pay.net/v3/llms.txt` |
-| [`llms-full.txt`](./llms-full.txt)                           | Complete guide with setup choices, snippets and anti-patterns, served at `/llms-full.txt`         |
+| [`llms-full.txt`](./llms-full.txt)                           | Complete guide with setup choices, snippets and anti-patterns, served at `/v3/llms-full.txt`      |
 | `packages/*/llms.txt`                                        | Each package's own guide, shipped in its tarball: `node_modules/@ic-reactor/<package>/llms.txt`   |
 | [`CHANGELOG.md`](./CHANGELOG.md)                             | Per-package changes with migration hints                                                          |
 | [`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) | Agent skill and Claude Code plugin; install below                                                 |
