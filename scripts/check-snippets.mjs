@@ -148,6 +148,8 @@ const LANGUAGES = { ts: ".ts", typescript: ".ts", tsx: ".tsx" }
 
 const SKIP_INFO = "nocheck"
 const SKIP_COMMENT = /^\s*\/\/\s*@snippet-skip\b/
+/** A first line that is a triple-slash directive, such as `/// <reference lib="..." />`. */
+const TRIPLE_SLASH = /^\s*\/\/\/\s*</
 
 /**
  * A first line naming the file the snippet is, such as `// src/reactor.ts`
@@ -664,8 +666,15 @@ function writeSnippets(project, snippets) {
         ? `import { ${imported.join(", ")} } from "${specifier}"\n`
         : ""
 
-    writeFileSync(modulePath, prelude + snippet.code + "\n")
-    snippet.offset = prelude === "" ? 0 : 1
+    // A triple-slash directive (`/// <reference lib="es2023.intl" />`) counts
+    // only above the first statement, so a snippet that opens with one gets
+    // the import after its code instead: an import is hoisted wherever it is.
+    const directive = TRIPLE_SLASH.test(snippet.code)
+    writeFileSync(
+      modulePath,
+      directive ? snippet.code + "\n" + prelude : prelude + snippet.code + "\n"
+    )
+    snippet.offset = prelude === "" || directive ? 0 : 1
     byModule.set(modulePath, snippet)
   }
   return byModule
