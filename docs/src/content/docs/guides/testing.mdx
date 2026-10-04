@@ -162,11 +162,20 @@ Each of these makes the client meet a failure it classifies, so a test can
 check what the app does with it. See [Errors](/v4/guides/errors/) for the
 kinds.
 
-| Call                            | What the client meets                                                                                              | Result                                                                |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
-| `reject(code, msg)`             | inside a handler: the call is rejected with reject code 1 to 6                                                     | the kind of that code, see the classification table                   |
-| `dropNextReply()`               | the next update runs, and its reply is lost                                                                        | `outcome_unknown`, `mayHaveExecuted: true`; never run twice           |
-| `refuseNext(status, times = 1)` | the next `times` canister requests (queries or calls) get HTTP `status` (400 to 599) before any canister sees them | `refuseNext(429)`: one re-send; `refuseNext(429, 3)`: `not_delivered` |
+| Call                                              | What the client meets                                                                                                                                          | Result                                                                                                       |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `reject(code, msg)`                               | inside a handler: the call is rejected with reject code 1 to 6                                                                                                 | the kind of that code, see the classification table                                                          |
+| `dropNextReply()`                                 | the next update runs, and its reply is lost                                                                                                                    | `outcome_unknown`, `mayHaveExecuted: true`; never run twice                                                  |
+| `refuseNext(status, times = 1)`                   | the next `times` canister requests (queries or calls) get HTTP `status` (400 to 599) before any canister sees them                                             | `refuseNext(429)`: one re-send; `refuseNext(429, 3)`: `not_delivered`                                        |
+| `refuseNext(status, { method, canister, times })` | the same, aimed: only the queries and calls that name `method` and are addressed to `canister` (each when given) are refused; every other request goes through | `refuseNext(429, { method: "icrc1_transfer" })`: the transfer is throttled, the reads around it are answered |
+
+The aimed form of `refuseNext` matches a query and a replicated call of the
+same method alike. `canister` is the canister a request names (`aaaaa-aa` for a
+call to the management canister), and need not be mocked: a gateway refuses a
+request for a canister that does not exist. `times` (default 1) counts matching
+requests, each re-send included. The status and `read_state` requests an agent
+makes on its own never match, and a request that several refusals match is
+refused by the one armed first.
 
 `dropNextReply` keeps its reply lost whenever the same request is asked again,
 so a test cannot run the update twice by accident. The client does not re-send
