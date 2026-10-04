@@ -6,7 +6,7 @@
 import { execFile } from "node:child_process"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { icReactor } from "../src/index.js"
-import { createApp, get, startDev, type App } from "./support.js"
+import { createApp, get, noWebSocket, startDev, type App } from "./support.js"
 
 // `env.ts` runs `icp` through `execFile`; nothing here needs it to exist.
 vi.mock("child_process", async (importOriginal) => ({
@@ -70,7 +70,7 @@ describe("mode test", () => {
       configFile: false,
       mode: "test",
       logLevel: "silent",
-      server: { middlewareMode: true, hmr: false },
+      server: { middlewareMode: true, ...noWebSocket() },
       plugins: [icReactor({ canisters: { backend: {} } })],
     })
     closers.push(() => server.close())
@@ -89,7 +89,7 @@ describe("vite dev", () => {
       configFile: false,
       mode: "development",
       logLevel: "silent",
-      server: { middlewareMode: true, hmr: false },
+      server: { middlewareMode: true, ...noWebSocket() },
       plugins: [icReactor({ canisters: { backend: {} } })],
     })
     closers.push(() => server.close())

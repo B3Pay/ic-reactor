@@ -115,7 +115,7 @@ describe("a generator that is running when the dev server closes", () => {
     app = createApp({ "did/a.did": "ok\n" }, "fake")
     const plugin = icReactor({
       canisters: { a: { didFile: "did/a.did" } },
-    }) as Plugin & {
+    }) as Omit<Plugin, "configResolved" | "buildStart" | "closeBundle"> & {
       configResolved: (config: unknown) => void
       buildStart: (this: unknown) => Promise<void>
       closeBundle: () => void

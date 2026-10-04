@@ -13,6 +13,7 @@ import path from "node:path"
 import type { AddressInfo } from "node:net"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { createServer, preview, type Plugin } from "vite"
+import { noWebSocket } from "../tests/support.js"
 import { icReactor } from "./index.js"
 
 const ROOT_KEY =
@@ -169,7 +170,7 @@ describe.skipIf(process.platform === "win32")(
         root,
         configFile: false,
         logLevel: "silent",
-        server: { middlewareMode: true, hmr: false },
+        server: { middlewareMode: true, ...noWebSocket() },
         plugins: [plugin(), ...laterPlugins],
       })
       closers.push(() => server.close())
