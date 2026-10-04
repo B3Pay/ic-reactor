@@ -25,6 +25,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { after, describe, it } from "node:test"
 import { fileURLToPath } from "node:url"
+import { runInNewContext } from "node:vm"
 import { assembleSite } from "./assemble-docs-site.mjs"
 
 const scriptsDir = dirname(fileURLToPath(import.meta.url))
@@ -100,6 +101,24 @@ function assembleDefault(root, overrides = {}) {
 
 const read = (path) => readFileSync(path, "utf8")
 
+/**
+ * Runs the inline script of a generated redirect page against a stub
+ * `window.location` at `pathname`, and returns where it sends the browser.
+ */
+function redirectTarget(html, pathname) {
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+  assert.equal(scripts.length, 1, "one inline script")
+  let target
+  const location = {
+    pathname,
+    replace(url) {
+      target = url
+    },
+  }
+  runInNewContext(scripts[0][1], { window: { location } })
+  return target
+}
+
 describe("assembleSite, option (A): /v3/ rebuilt from the v3 branch", () => {
   it("publishes /v4/ from this commit and /v3/ from the v3 branch", () => {
     const out = assembleDefault(workspace())
@@ -131,6 +150,25 @@ describe("assembleSite, option (A): /v3/ rebuilt from the v3 branch", () => {
     assert.match(notFound, /window\.location\.replace\("\/v4" \+ path\)/)
     assert.match(notFound, /\(v2\|v3\|v4\)/)
     assert.doesNotMatch(notFound, /"\/v3" \+ path/)
+  })
+
+  it("redirects a miss to the line it is under, and any other path to /v4/", () => {
+    const out = assembleDefault(workspace())
+    assert.equal(redirectTarget(read(join(out, "index.html")), "/"), "/v4/")
+    const notFound = read(join(out, "404.html"))
+    for (const [path, target] of [
+      ["/v4/missing", "/v4/"],
+      ["/v4/guides/missing/", "/v4/"],
+      ["/v4", "/v4/"],
+      ["/v3/x", "/v3/"],
+      ["/v2/modules/missing.html", "/v2/"],
+      ["/foo", "/v4/foo"],
+      ["/guides/client/", "/v4/guides/client/"],
+      ["/v5/x", "/v4/v5/x"],
+      ["/v40/x", "/v4/v40/x"],
+    ]) {
+      assert.equal(redirectTarget(notFound, path), target, path)
+    }
   })
 
   it("serves the 4.x guide at /llms.txt and the frozen 3.x file at /llms-full.txt", () => {
