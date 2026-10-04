@@ -8,8 +8,8 @@ Applies to `@ic-reactor/react` 3.13.0.
 
 Read this file from `node_modules/@ic-reactor/react/llms.txt` when writing
 code against the installed version. The complete guide for every package is
-https://ic-reactor.b3pay.net/llms-full.txt, and behaviour changes are in
-https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
+https://ic-reactor.b3pay.net/v3/llms-full.txt, and behaviour changes are in
+https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md.
 
 ## Install
 
@@ -275,6 +275,6 @@ shared reactor with `queryClient.clear()`, and test a signed-in user with
 - Authentication: https://ic-reactor.b3pay.net/v3/guides/authentication.md
 - Error handling: https://ic-reactor.b3pay.net/v3/guides/error-handling.md
 - Testing: https://ic-reactor.b3pay.net/v3/guides/testing.md
-- Index of all docs: https://ic-reactor.b3pay.net/llms.txt
-- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
-- Agent skill for Claude Code and other agents: https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor
+- Index of all docs: https://ic-reactor.b3pay.net/v3/llms.txt
+- Full guide: https://ic-reactor.b3pay.net/v3/llms-full.txt
+- Agent skill for Claude Code and other agents: https://github.com/B3Pay/ic-reactor/tree/v3/skill-packages/ic-reactor

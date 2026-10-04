@@ -8,8 +8,8 @@ Applies to `@ic-reactor/candid` 3.13.0.
 
 Read this file from `node_modules/@ic-reactor/candid/llms.txt` when writing
 code against the installed version. The complete guide for every package is
-https://ic-reactor.b3pay.net/llms-full.txt, and behaviour changes are in
-https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
+https://ic-reactor.b3pay.net/v3/llms-full.txt, and behaviour changes are in
+https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md.
 
 ## Install
 
@@ -125,5 +125,5 @@ export async function transferForm(canisterId: string) {
 - MetadataReactor: https://ic-reactor.b3pay.net/v3/packages/candid/metadatareactor.md
 - MetadataDisplayReactor: https://ic-reactor.b3pay.net/v3/packages/candid/metadatadisplayreactor.md
 - Parser: https://ic-reactor.b3pay.net/v3/packages/parser.md
-- Index of all docs: https://ic-reactor.b3pay.net/llms.txt
-- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Index of all docs: https://ic-reactor.b3pay.net/v3/llms.txt
+- Full guide: https://ic-reactor.b3pay.net/v3/llms-full.txt

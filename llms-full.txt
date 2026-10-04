@@ -6,10 +6,10 @@
 > avoid.
 
 This guide is for code that uses the published packages. The short index of
-the documentation is https://ic-reactor.b3pay.net/llms.txt. Both are published
-from the main branch, so they can describe changes that no release carries
+the documentation is https://ic-reactor.b3pay.net/v3/llms.txt. Both are published
+from the v3 branch, so they can describe changes that no release carries
 yet; the Unreleased section of
-https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md lists those, with
+https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md lists those, with
 migration hints for behaviour changes. Each installed package also carries a
 guide for its own API at `node_modules/@ic-reactor/<package>/llms.txt`,
 written for the version installed.
@@ -1040,9 +1040,9 @@ it("turns an Err into a CanisterError", async () => {
 ## Links
 
 - Documentation: https://ic-reactor.b3pay.net/v3/
-- Index for agents: https://ic-reactor.b3pay.net/llms.txt
-- Changelog: https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md
-- Agent skill: https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor
+- Index for agents: https://ic-reactor.b3pay.net/v3/llms.txt
+- Changelog: https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md
+- Agent skill: https://github.com/B3Pay/ic-reactor/tree/v3/skill-packages/ic-reactor
 - React setup: https://ic-reactor.b3pay.net/v3/framework/react-setup.md
 - Queries: https://ic-reactor.b3pay.net/v3/framework/queries.md
 - Mutations: https://ic-reactor.b3pay.net/v3/framework/mutations.md
