@@ -189,6 +189,7 @@ import { createClient } from "@ic-reactor/core"
 import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
 import { AuthClient } from "@icp-sdk/auth/client"
 import { useMutation } from "@tanstack/react-query"
+import { useState } from "react"
 import { actor, type Actor, type TransferArg } from "./generated/icrc1"
 
 export function App({ arg }: { arg: TransferArg }) {
@@ -206,13 +207,26 @@ export function App({ arg }: { arg: TransferArg }) {
 function Send({ arg }: { arg: TransferArg }) {
   const client = useClient()
   const { status, signIn } = useAuth()
+  const [signInError, setSignInError] = useState<string>()
   const ledger = client.canister<Actor>(actor, {
     id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   })
   const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
 
   if (status !== "signed-in")
-    return <button onClick={() => void signIn()}>Sign in</button>
+    return (
+      <>
+        <button
+          onClick={() =>
+            // signIn() rejects when the sign-in fails or the user closes it.
+            signIn().catch((error: unknown) => setSignInError(String(error)))
+          }
+        >
+          Sign in
+        </button>
+        {signInError && <p>{signInError}</p>}
+      </>
+    )
   return (
     <>
       <button
