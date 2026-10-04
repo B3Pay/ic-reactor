@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { after, before, describe, it } from "node:test"
-import { agentOutcome, plan } from "../drive.mjs"
+import { agentOutcome, plan, refuseChangedV4Source } from "../drive.mjs"
 import { EVALS } from "./assemble.mjs"
 import { v4Source } from "./ship.mjs"
 
@@ -195,6 +195,48 @@ describe("a new batch's --out directory", () => {
     const r = batch(empty, ["--dry-run"])
     assert.equal(r.status, 0, r.stderr)
     assert.match(r.stdout, new RegExp(`^results: ${empty}/`, "m"))
+  })
+})
+
+describe("resuming a batch whose v4 source changed", () => {
+  const npm = {
+    from: "npm",
+    version: "4.0.0-beta.1",
+    packages: {
+      "@ic-reactor/core": "4.0.0-beta.1",
+      "@ic-reactor/react": "4.0.0-beta.1",
+    },
+    integrity: {
+      "@ic-reactor/core": "sha512-a",
+      "@ic-reactor/react": "sha512-b",
+    },
+    guide: { words: 1974, sha256: "c" },
+  }
+  it("goes on when .ship/v4 still holds the planned source, keys in any order", () => {
+    const reordered = Object.fromEntries(Object.entries(npm).reverse())
+    refuseChangedV4Source(npm, reordered)
+  })
+  it("goes on for a plan from before v4Source was recorded", () => {
+    refuseChangedV4Source(undefined, npm)
+  })
+  it("refuses a source rebuilt from the tree, naming both", () => {
+    const tree = { ...npm, from: "tree", commit: "abc", dirty: false }
+    delete tree.version
+    assert.throws(
+      () => refuseChangedV4Source(npm, tree),
+      /planned with the v4 packages from npm 4\.0\.0-beta\.1.*now holds packed from this repository at abc/s
+    )
+  })
+  it("refuses another tarball of the same version, and a missing source", () => {
+    const other = {
+      ...npm,
+      integrity: { ...npm.integrity, "@ic-reactor/core": "sha512-z" },
+    }
+    assert.throws(() => refuseChangedV4Source(npm, other), /--resume/)
+    assert.throws(
+      () => refuseChangedV4Source(npm, null),
+      /no \.ship\/v4\/source\.json/
+    )
   })
 })
 
