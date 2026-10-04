@@ -4,6 +4,8 @@
 
 IC Reactor v3 is a TypeScript monorepo for Internet Computer apps.
 
+This is the `v3` branch: security fixes only, until 90 days after the 4.0 release. ic-reactor 4 is on `main`. Open 3.x pull requests against `v3`.
+
 Treat the published documentation and package manifests as the v3 release line.
 
 ### Packages
@@ -130,12 +132,12 @@ Two audiences, kept apart:
   - `llms.txt`: an index in the llmstxt.org shape (H1, `>` summary, short
     orientation, `##` sections of `[title](url): note` links, `## Optional`
     last). `.github/workflows/docs.yml` publishes it at
-    `https://ic-reactor.b3pay.net/llms.txt`. Its links point at the `.md`
+    `https://ic-reactor.b3pay.net/v3/llms.txt`. Its links point at the `.md`
     companions `starlight-page-actions` publishes for each docs page under
     `/v3/` (source-cased: `reference/ClientManager.md`, and `packages/candid.md`
     for `packages/candid/index.mdx`).
   - `llms-full.txt`: the complete consumer guide, published at
-    `https://ic-reactor.b3pay.net/llms-full.txt`. Every snippet must compile
+    `https://ic-reactor.b3pay.net/v3/llms-full.txt`. Every snippet must compile
     against the public API of the current packages; `pnpm check:snippets`
     compiles them, and those of every other file here and the READMEs.
   - `packages/<name>/llms.txt`: each package's own guide, shipped in its npm

@@ -192,13 +192,15 @@ This repository enforces **OIDC Trusted Publishing** for releases (no long-lived
 - Ensure the `release.yml` workflow has `permissions: id-token: write` (already configured).
 - After enabling and validating Trusted Publishing, do not add a write `NPM_TOKEN` secret — publishing will use the OIDC token.
 
+On the `v3` branch both lanes make security releases only, of stable versions, and set every dist-tag explicitly: `release.yml` publishes `@ic-reactor/core` and `@ic-reactor/react` 3.x under `v3-latest` (`latest` is 4.x, published from `main`) and `@ic-reactor/candid` under `latest`; `release-tools.yml` publishes `@ic-reactor/vite-plugin` 0.x under `v0-latest` and the parser, codegen and cli under `latest`. Neither marks its GitHub Release as the repository's latest. `@ic-reactor/vite-plugin` trusts both `release.yml` (4.x, from `main`) and `release-tools.yml` (0.x, from here) as publishers.
+
 If your CI needs to install private dependencies, create a **read-only** granular token on npmjs.com and store it as `NPM_READ_TOKEN` (the install step will use this token when present).
 
 The release workflow also auto-selects a publish tag from the git tag name: prerelease tags containing a hyphen (e.g., `v3.0.0-beta.1`) are published with the `beta` tag; stable tags publish to `latest`.
 
 ### Approving a release
 
-Pushing a release tag no longer publishes unattended. Both release workflows (`release.yml` for `v*`, `release-tools.yml` for `tools-v*` and `parser-v*`) run an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against `main`, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
+Pushing a release tag no longer publishes unattended. Both release workflows (`release.yml` for `v3.*`, `release-tools.yml` for `tools-v*` and `parser-v*`) run an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against `v3`, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
 
 The environment lives in repository settings (Settings → Environments → `npm-publish`) and carries:
 
@@ -252,9 +254,9 @@ Consumer AI context (for apps that install the packages; keep repo paths,
 pnpm commands and CI notes out of these):
 
 - `llms.txt` — index of the docs in the llmstxt.org format, published at
-  `https://ic-reactor.b3pay.net/llms.txt`
+  `https://ic-reactor.b3pay.net/v3/llms.txt`
 - `llms-full.txt` — the complete guide, published at
-  `https://ic-reactor.b3pay.net/llms-full.txt`
+  `https://ic-reactor.b3pay.net/v3/llms-full.txt`
 - `packages/<name>/llms.txt` — each package's guide, shipped in its tarball
   and opening with an `Applies to` version line; the package README points to
   it

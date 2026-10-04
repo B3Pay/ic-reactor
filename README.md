@@ -14,6 +14,11 @@
 
 ---
 
+> **This is the `v3` branch: the 3.x line takes security fixes only, until 90
+> days after the 4.0 release.** ic-reactor 4 is on
+> [`main`](https://github.com/B3Pay/ic-reactor/tree/main), with its own docs.
+> Open a 3.x security fix as a pull request against `v3`.
+
 IC Reactor is a monorepo of libraries for building Internet Computer (ICP) apps with:
 
 - end-to-end TypeScript types
@@ -45,7 +50,7 @@ IC Reactor gives you a higher-level API than raw `Actor` usage while keeping typ
 | [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for watch-mode hook generation                                     |
 
 What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md), including
-the changes on `main` that no release carries yet.
+the changes on `v3` that no release carries yet.
 
 ## Install
 
@@ -433,13 +438,13 @@ This repository is intentionally structured to work well with AI coding assistan
 
 For apps that use IC Reactor (published with the docs, shipped in the npm packages, or installed as a skill):
 
-| File                                                         | Purpose                                                                                         |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| [`llms.txt`](./llms.txt)                                     | Index of the docs in the llmstxt.org format, served at `https://ic-reactor.b3pay.net/llms.txt`  |
-| [`llms-full.txt`](./llms-full.txt)                           | Complete guide with setup choices, snippets and anti-patterns, served at `/llms-full.txt`       |
-| `packages/*/llms.txt`                                        | Each package's own guide, shipped in its tarball: `node_modules/@ic-reactor/<package>/llms.txt` |
-| [`CHANGELOG.md`](./CHANGELOG.md)                             | Per-package changes with migration hints                                                        |
-| [`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) | Agent skill and Claude Code plugin; install below                                               |
+| File                                                         | Purpose                                                                                           |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| [`llms.txt`](./llms.txt)                                     | Index of the docs in the llmstxt.org format, served at `https://ic-reactor.b3pay.net/v3/llms.txt` |
+| [`llms-full.txt`](./llms-full.txt)                           | Complete guide with setup choices, snippets and anti-patterns, served at `/llms-full.txt`         |
+| `packages/*/llms.txt`                                        | Each package's own guide, shipped in its tarball: `node_modules/@ic-reactor/<package>/llms.txt`   |
+| [`CHANGELOG.md`](./CHANGELOG.md)                             | Per-package changes with migration hints                                                          |
+| [`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) | Agent skill and Claude Code plugin; install below                                                 |
 
 For agents working in this repository:
 
