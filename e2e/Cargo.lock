@@ -222,7 +222,6 @@ dependencies = [
  "candid",
  "ic-cdk",
  "serde",
- "serde_bytes",
 ]
 
 [[package]]

@@ -95,3 +95,9 @@ examples/vite-wallet/src/canisters/ledger.ts
 examples/vite-wallet/src/canisters/ledger.envelope.json
 examples/node-agent-tool/src/canisters/icrc1.ts
 examples/node-agent-tool/src/canisters/icrc1.envelope.json
+
+# e2e/src/declarations/: the module and Contract envelope `candid-core-cli gen`
+# writes from e2e/src/actor/hello_actor.did (`pnpm gen` in e2e/), kept byte for
+# byte so that `pnpm gen:check` passes.
+e2e/src/declarations/hello_actor.ts
+e2e/src/declarations/hello_actor.envelope.json
