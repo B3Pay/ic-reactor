@@ -723,11 +723,15 @@ const IC_REACTOR_IMPORT =
   /\bimport\s+(?:type\s+)?\{[^}]*\}\s*from\s*["']@ic-reactor\/[^"']*["']/g
 
 /**
- * Every mention of a removed name outside a "Removed in 4.0" section.
+ * Every mention of a removed name outside a "Removed in 4.0" section, or every
+ * mention at all when `exempt` is `false`.
  *
+ * @param {string} text
+ * @param {{ exempt?: boolean }} [options] - `exempt: false` ignores the
+ *   "Removed in 4.0" headings
  * @returns {{ line: number, name: string }[]} `line` is 1-based
  */
-function staleNameMentions(text) {
+function staleNameMentions(text, { exempt = true } = {}) {
   const lines = text.split("\n")
   const starts = []
   let offset = 0
@@ -759,7 +763,7 @@ function staleNameMentions(text) {
       if (heading) {
         const level = heading[1].length
         const title = heading[2].replace(/[`*_]/g, "")
-        if (REMOVED_HEADING.test(title)) exemptLevel = level
+        if (exempt && REMOVED_HEADING.test(title)) exemptLevel = level
         else if (exemptLevel !== null && level <= exemptLevel)
           exemptLevel = null
       }
@@ -800,7 +804,9 @@ for (const relPath of aiContextFiles) {
 // ── 10. The 4 docs pages teach no removed name and link no 3.x page ──────────
 // The pages of docs/src/content/docs are what a person reads once they have
 // found the site, so they follow check 9 as the AI-context files do: a removed
-// name appears only under a heading that begins "Removed in 4.0". They are not
+// name appears only under a heading that begins "Removed in 4.0", and only on
+// the migration page (V3_LINK_PAGE). Another page gets no exemption for such a
+// heading, so the table of removed names stays in one place. They are not
 // in AI_CONTEXT_FILES, which would also apply check 3 and let the release
 // script rewrite them: a page names versions of other packages (a peer range,
 // a TanStack Query release) that check 3 refuses. The generated API reference
@@ -852,7 +858,9 @@ for (const page of [...sourcePages].sort()) {
       )
     }
   })
-  for (const { line, name } of staleNameMentions(text)) {
+  for (const { line, name } of staleNameMentions(text, {
+    exempt: page === V3_LINK_PAGE,
+  })) {
     failures.push(
       `${relPath}:${line} mentions ${name}, which 4.0 removed (use ${removedByName.get(name).use}). ` +
         `Remove it, or move it to ${V3_LINK_PAGE}, under a heading that begins "Removed in 4.0".`
@@ -872,12 +880,17 @@ for (const page of [...sourcePages].sort()) {
 // ── 11. Each package's homepage is its own page of the 4 docs ───────────────
 // npm shows `homepage` as the package's link, so it names the package's page
 // (`https://ic-reactor.b3pay.net/v4/packages/core/`), and that page must exist.
+// All three packages publish, so a missing `homepage` fails too: npm would
+// fall back to the repository's README.
 for (const { packageName, packageDir } of versionChecks) {
   const relPath = `packages/${packageDir}/package.json`
   const { homepage } = JSON.parse(readFileSync(join(rootDir, relPath), "utf8"))
-  if (homepage === undefined) continue
   const expected = `${DOCS_SITE}${DOCS_BASE}packages/${packageDir}/`
-  if (homepage !== expected) {
+  if (homepage === undefined) {
+    failures.push(
+      `${relPath} has no homepage; ${packageName}'s is its page, ${expected}`
+    )
+  } else if (homepage !== expected) {
     failures.push(
       `${relPath} has homepage ${homepage}; ${packageName}'s is its page, ${expected}`
     )

@@ -48,9 +48,19 @@ function repo(files = {}) {
     "docs/astro.config.mjs": `export default {\n  base: "/v4/",\n}\n`,
     "docs/src/content/docs/index.md": "# Docs\n",
     ...Object.fromEntries(
-      ["core", "react", "vite-plugin"].map((name) => [
-        `packages/${name}/package.json`,
-        JSON.stringify({ name: `@ic-reactor/${name}`, version: VERSION }),
+      ["core", "react", "vite-plugin"].flatMap((name) => [
+        [
+          `packages/${name}/package.json`,
+          JSON.stringify({
+            name: `@ic-reactor/${name}`,
+            version: VERSION,
+            homepage: `https://ic-reactor.b3pay.net/v4/packages/${name}/`,
+          }),
+        ],
+        [
+          `docs/src/content/docs/packages/${name}.md`,
+          `# @ic-reactor/${name}\n`,
+        ],
       ])
     ),
     "packages/core/llms.txt": GUIDE,
@@ -352,6 +362,27 @@ describe("docs pages", () => {
     assert.match(lines[0], /migrating-from-3\.mdx:13 mentions defineReactor/)
   })
 
+  it("allows 'Removed in 4.0' on the migration page only", () => {
+    const run = check(
+      repo({
+        [`${PAGES}/guides/reads.mdx`]: [
+          "# Reads",
+          "",
+          "## Removed in 4.0",
+          "",
+          "createQuery became useQuery.",
+        ].join("\n"),
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    const lines = failureLines(run)
+    assert.equal(lines.length, 1, run.output)
+    assert.match(
+      lines[0],
+      /guides\/reads\.mdx:5 mentions createQuery, .*move it to migrating-from-3\.mdx/
+    )
+  })
+
   it("does not read the generated API reference", () => {
     const run = check(
       repo({ [`${PAGES}/libs/classes/clientmanager.md`]: "# ClientManager\n" })
@@ -417,6 +448,7 @@ describe("docs pages", () => {
       JSON.stringify({
         name: "@ic-reactor/core",
         version: VERSION,
+        homepage: "https://ic-reactor.b3pay.net/v4/packages/core/",
         peerDependencies,
       })
     const run = check(
@@ -462,14 +494,27 @@ describe("docs pages", () => {
       /packages\/react\/package\.json has homepage https:\/\/ic-reactor\.b3pay\.net\/v4\/; @ic-reactor\/react's is its page, https:\/\/ic-reactor\.b3pay\.net\/v4\/packages\/react\//
     )
 
+    const none = check(repo({ "packages/react/package.json": pkg(undefined) }))
+    assert.equal(none.status, 1, none.output)
+    assert.match(
+      none.output,
+      /packages\/react\/package\.json has no homepage; @ic-reactor\/react's is its page/
+    )
+
     const page = "https://ic-reactor.b3pay.net/v4/packages/react/"
-    const missing = check(repo({ "packages/react/package.json": pkg(page) }))
+    const missing = check(
+      repo({
+        "packages/react/package.json": pkg(page),
+        [`${PAGES}/packages/react.md`]: null,
+      })
+    )
     assert.equal(missing.status, 1, missing.output)
     assert.match(missing.output, /has no packages\/react page/)
 
     const right = check(
       repo({
         "packages/react/package.json": pkg(page),
+        [`${PAGES}/packages/react.md`]: null,
         [`${PAGES}/packages/react.mdx`]: "# @ic-reactor/react\n",
       })
     )
@@ -481,7 +526,8 @@ describe("docs pages", () => {
       repo({ [`${PAGES}/a.mdx`]: "# A\n", [`${PAGES}/b.mdx`]: "# B\n" })
     )
     assert.equal(run.status, 0, run.output)
-    assert.match(run.output, /, 3 docs pages,/)
+    // index.md, the three package pages, a.mdx and b.mdx
+    assert.match(run.output, /, 6 docs pages,/)
   })
 })
 
