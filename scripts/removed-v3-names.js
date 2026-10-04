@@ -1,6 +1,6 @@
 /**
  * The 34 names ic-reactor 3 exported that 4.0 removes, each with what to use
- * instead. It is the "Removed in 4.0" table of the migration page (DX2, #792)
+ * instead. It is the "Removed in 4.0" table of the migration page (DX2, #789)
  * as data, so `check-ai-context.js` can keep the 4.x guides from teaching a
  * name that no longer exists.
  *
@@ -45,7 +45,7 @@ export const REMOVED_V3_NAMES = [
   },
   {
     name: "createSuspenseQuery",
-    use: "useSuspenseQuery(client.queryOptions(...))",
+    use: "useSuspenseQuery over client.queryOptions(...), cast to drop skipToken from queryFn (docs: Reads, Suspense)",
   },
   {
     name: "DisplayReactor",
@@ -66,11 +66,11 @@ export const REMOVED_V3_NAMES = [
   { name: "createQueryFactory", use: "client.queryOptions" },
   {
     name: "CanisterError",
-    use: "ReactorError with kind: 'canister_err'",
+    use: "isReactorError(e) && e.kind === 'canister_err' (ReactorError is a type, not a class)",
   },
   {
     name: "createSuspenseQueryFactory",
-    use: "useSuspenseQuery(client.queryOptions(...))",
+    use: "useSuspenseQuery over client.queryOptions(...), cast to drop skipToken from queryFn (docs: Reads, Suspense)",
   },
   {
     name: "isCanisterError",
@@ -78,25 +78,25 @@ export const REMOVED_V3_NAMES = [
   },
   {
     name: "createInfiniteQuery",
-    use: "useInfiniteQuery with client.queryKey and direct calls",
+    use: "useInfiniteQuery with a key extending client.queryKey and direct calls (docs: Reads, Infinite queries)",
   },
   { name: "DisplayOf", use: "nothing: there is one value shape" },
   { name: "ReactorArgs", use: "Parameters<Actor['method']>" },
   {
     name: "identityAttributeKeys",
-    use: "authClient.requestAttributes and the guide's ICRC-3 snippet",
+    use: "scopedKeys({ openIdProvider, keys }) from @icp-sdk/auth/client",
   },
   {
     name: "IdentityAttributeOpenIdProvider",
-    use: "the @icp-sdk/auth 10 types",
+    use: "OpenIdProvider from @icp-sdk/auth/client",
   },
   {
     name: "IdentityAttributesManager",
-    use: "authClient.requestAttributes",
+    use: "authClient.requestAttributes({ keys, nonce }), then decode data (docs: Auth, Identity attributes)",
   },
   {
     name: "createIdentityAttributeHooks",
-    use: "authClient.requestAttributes",
+    use: "authClient.requestAttributes({ keys, nonce }), then decode data (docs: Auth, Identity attributes)",
   },
   {
     name: "skipToken",
@@ -111,9 +111,12 @@ export const REMOVED_V3_NAMES = [
   },
   {
     name: "createSuspenseInfiniteQueryFactory",
-    use: "useSuspenseInfiniteQuery and client.queryKey",
+    use: "useSuspenseInfiniteQuery with a key extending client.queryKey (docs: Reads, Infinite queries)",
   },
-  { name: "isCallError", use: "isReactorError" },
+  {
+    name: "isCallError",
+    use: "isReactorError(e) && e.kind !== 'canister_err'",
+  },
   { name: "ReactorErrorOf", use: "ReactorError<E>" },
   {
     name: "jsonToString",
