@@ -1,22 +1,24 @@
 # The `v4` condition
 
-ic-reactor 4 as it will be published (issue #786): `@ic-reactor/core` and
-`@ic-reactor/react` packed from this repository, `@candid-core/schema`
-0.3.0-beta.1, and the module `@candid-core/cli` 0.2.0-beta.1 generates from
-`harness/icrc1.did`. Agents get the core tarball's `llms.txt` as their only
-documentation. It is the condition of the 4.0.0-beta.1 gate
-(`PREREGISTRATION.md`, Addendum 3) and runs only when named
-(`drive.mjs --condition v4`); the default matrix is the four conditions of
-the pilots.
+ic-reactor 4 as published (issue #786): `@ic-reactor/core` and
+`@ic-reactor/react`, either packed from this repository (`node setup.mjs`,
+as the 4.0.0-beta.1 gate did) or downloaded from npm as published
+(`node setup.mjs --v4-from npm:4.0.0-beta.1`, as the GA gate does), with
+`@candid-core/schema` 0.3.0-beta.1 and the module `@candid-core/cli`
+0.2.0-beta.1 generates from `harness/icrc1.did`. Agents get the core
+tarball's `llms.txt` as their only documentation. It is the condition of the
+4.0.0-beta.1 gate (`PREREGISTRATION.md`, Addendum 3) and of the GA gate
+(Addendum 4), and runs only when named (`drive.mjs --condition v4`); the
+default matrix is the four conditions of the pilots.
 
-| File                             | What it is                                                                                                                                              |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `condition.json`                 | the `{{LIBRARY}}` line and the docs list                                                                                                                |
-| `package.json`                   | what an agent may import. `workspace:*` marks a package packed from this repository's `packages/`; everything else is pinned as in the other conditions |
-| `starter/src/generated/icrc1.ts` | the CLI's output, unedited (setup.mjs regenerates it)                                                                                                   |
-| `docs/llms.txt`                  | `packages/core/llms.txt` as packed into the core tarball (setup.mjs copies it). Until DX3 (#785) lands it is the placeholder guide                      |
-| `node_modules/` (not tracked)    | the scorer's install: a copy of `.ship/v4/node_modules`, with `@icp-sdk/core` linked to evals' own (step 6 below)                                       |
-| `PORTING.md`                     | the work list for porting the v4-proto references and faulty solutions to this condition                                                                |
+| File                             | What it is                                                                                                                                                             |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `condition.json`                 | the `{{LIBRARY}}` line and the docs list                                                                                                                               |
+| `package.json`                   | what an agent may import. `workspace:*` marks a package setup installs from a tarball (packed here, or from npm); everything else is pinned as in the other conditions |
+| `starter/src/generated/icrc1.ts` | the CLI's output, unedited (setup.mjs regenerates it)                                                                                                                  |
+| `docs/llms.txt`                  | the core tarball's `llms.txt` (setup.mjs copies it): the published 4.0.0-beta.1 guide, 1,974 words, sha256 `a07b846a…4342`                                             |
+| `node_modules/` (not tracked)    | the scorer's install: a copy of `.ship/v4/node_modules`, with `@icp-sdk/core` linked to evals' own (step 6 below)                                                      |
+| `PORTING.md`                     | the work list for porting the v4-proto references and faulty solutions to this condition                                                                               |
 
 The starter module is generated with:
 
@@ -30,11 +32,28 @@ picked up), keeping `<dir>/icrc1.ts` only; the CLI's `icrc1.envelope.json`
 
 ## How setup.mjs builds it
 
-1. Builds `@ic-reactor/core` and `@ic-reactor/react` from this repository
-   (`corepack pnpm --filter … build`, at the repository root) and packs them
-   with `corepack pnpm --filter … pack --pack-destination <tmp>`, which
-   rewrites `workspace:` ranges as a release does. The root workspace must
-   be installed (`corepack pnpm install` at the repository root).
+1. Gets the two tarballs, from one of two sources (`--v4-from`):
+   - `tree` (the default): builds `@ic-reactor/core` and `@ic-reactor/react`
+     from this repository (`corepack pnpm --filter … build`, at the
+     repository root) and packs them with `corepack pnpm --filter … pack
+--pack-destination <tmp>`, which rewrites `workspace:` ranges as a
+     release does. The root workspace must be installed (`corepack pnpm
+install` at the repository root).
+   - `npm:<version>`: downloads the published tarballs with `npm pack
+<name>@<version>`, and refuses them unless each one's sha512 is the
+     `dist.integrity` that `V4_NPM_RELEASES` in `harness/ship.mjs` pins and
+     the registry still records (`npm view <name>@<version> dist.integrity`).
+     Only 4.0.0-beta.1 is pinned:
+
+     | Package                          | `dist.integrity`                                                                                  |
+     | -------------------------------- | ------------------------------------------------------------------------------------------------- |
+     | `@ic-reactor/core@4.0.0-beta.1`  | `sha512-qvxoX5SJa0ubJumLRctpYx9SqFynu3PXKO9E2fJpiDMKrb6y6rlxncR6XBALqjDdFi8UVYJxWXMhqG8Va/6alg==` |
+     | `@ic-reactor/react@4.0.0-beta.1` | `sha512-U0Bvz6qRmrnDCXCd27T28EJ3SNO5Z3eu2oENrHE5CMg6v36AzcjDWgwSzGTL+f8LDxGaFhvcuCGVAEYypNpCMg==` |
+
+     The repository's workspace is not built and need not be installed.
+
+   Every later step is the same for both sources.
+
 2. Installs the tarballs, from `.ship/v4/tarballs/`, with every pinned
    dependency into `.ship/v4/node_modules` as a flat npm install: no
    workspace links, no pnpm store paths.
@@ -61,9 +80,17 @@ picked up), keeping `<dir>/icrc1.ts` only; the CLI's `icrc1.envelope.json`
    link it is, as in the four other conditions (one pnpm store) and in an
    agent's own run (one npm install).
 
+7. Writes `.ship/v4/source.json`: the source (`npm` and the version, or
+   `tree` and the commit), the installed versions, each tarball's integrity,
+   and the guide's word count and sha256. `drive.mjs` prints it in a dry run
+   and keeps it in `plan.json` (`v4Source`).
+
 `harness/ship.test.mjs` checks the result (the cut packages, no repository
-path, the single guide, the scorer's copy and its one `@icp-sdk/core`, the
-assembled starter) and the refusal on seeded files.
+path, the single guide byte for byte as the core tarball holds it, the
+recorded source against the tarballs and npm's lockfile, the scorer's copy
+and its one `@icp-sdk/core`, the assembled starter), the refusals on seeded
+files and on local tarball fixtures (offline), and that the pins are what
+the registry records (skipped, with the reason, when it cannot be reached).
 
 ## Status
 
@@ -74,7 +101,6 @@ tasks, the six faulty solutions ported from v4-proto
 original fails, and one of v4's own,
 `node-tool/faulty/v4-anonymous-identity-sent`, for a trap the real library
 opens (an explicit `AnonymousIdentity` is sent). `node gate.mjs --require
-v4` (what Addendum 3 runs) reports 56 of 56 with no cell skipped. The guide
-is still the placeholder until DX3 (#785) packs its own into the core
-tarball; `node setup.mjs` and the gate run again on that commit before
-Addendum 3 is frozen.
+v4` (what Addenda 3 and 4 run) reports 56 of 56 with no cell skipped, on
+the tree packed for Addendum 3 and on the published 4.0.0-beta.1
+(`--v4-from npm:4.0.0-beta.1`, 2026-10-05).

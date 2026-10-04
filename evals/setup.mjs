@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // One-time setup after `pnpm install` in evals/ (idempotent; re-run freely):
 //
+//   node setup.mjs [--v4-from tree|npm:<version>]
+//
 // 1. Generates the candid-core module from harness/icrc1.did with the
 //    published `candid-core-cli gen` (0.1.0) into the thin and v4-proto
 //    starters, so what agents see is exactly what the CLI emits.
@@ -27,6 +29,16 @@
 // the hidden tests' world shares it: step 8). Its starter module comes from
 // the published @candid-core/cli beta that pairs with @candid-core/schema
 // 0.3.0-beta.1.
+//
+// `--v4-from npm:<version>` (Addendum 4: npm:4.0.0-beta.1) takes the two v4
+// packages from the npm registry instead of packing this tree: `npm pack
+// <name>@<version>` downloads each published tarball, which must have the
+// sha512 that harness/ship.mjs V4_NPM_RELEASES pins and that the registry
+// records (`npm view … dist.integrity`). Everything after that is the same as
+// for a packed tree: the same install, the same refusals, the same cut, the
+// same scorer copy. The repository's own workspace is then not built (and
+// need not be installed). .ship/v4/source.json records which source built
+// the tree, and the guide's word count and sha256.
 import { execFileSync, spawnSync } from "node:child_process"
 import {
   copyFileSync,
@@ -47,11 +59,28 @@ import {
   V4_PACKAGES,
   V4_PACKAGE_ENTRIES,
   V4_SHARED_WITH_WORLD,
+  guideStats,
+  integrityOf,
+  parseV4From,
   v4ShipFindings,
+  v4TarballFindings,
 } from "./harness/ship.mjs"
 
 const REPO = join(EVALS, "..")
 const nm = join(EVALS, "node_modules")
+
+/** Where the v4 packages come from: `--v4-from tree` (default) or `npm:<version>`. */
+const v4From = (() => {
+  const argv = process.argv.slice(2)
+  let value
+  for (let i = 0; i < argv.length; i += 1) {
+    if (argv[i] !== "--v4-from")
+      throw new Error(`setup: unknown argument ${argv[i]}`)
+    value = argv[++i]
+    if (value === undefined) throw new Error("setup: --v4-from needs a value")
+  }
+  return parseV4From(value)
+})()
 
 /**
  * The generator of the v4 condition's starter module: the published CLI beta
@@ -191,9 +220,45 @@ execFileSync(
 step("built conditions/v4-proto/lib/dist")
 
 // 4b. The v4 packages: built from this repository's sources, then packed as a
-//     release would publish them (pnpm rewrites `workspace:` ranges).
+//     release would publish them (pnpm rewrites `workspace:` ranges); or,
+//     with --v4-from npm:<version>, the published tarballs, checked against
+//     the integrity pinned in harness/ship.mjs and the registry's.
 const v4Tarballs = mkdtempSync(join(tmpdir(), "ic-reactor-evals-pack-"))
-{
+if (v4From.from === "npm") {
+  const { version } = v4From
+  const registry = {}
+  for (const name of V4_PACKAGES) {
+    execFileSync(
+      "npm",
+      [
+        "pack",
+        `${name}@${version}`,
+        "--pack-destination",
+        v4Tarballs,
+        "--loglevel=error",
+      ],
+      { cwd: v4Tarballs, stdio: ["ignore", "ignore", "inherit"] }
+    )
+    registry[name] = JSON.parse(
+      execFileSync(
+        "npm",
+        ["view", `${name}@${version}`, "dist.integrity", "--json"],
+        { cwd: v4Tarballs, encoding: "utf8" }
+      )
+    )
+  }
+  const findings = v4TarballFindings(v4Tarballs, version, { registry })
+  if (findings.length > 0) {
+    rmSync(v4Tarballs, { recursive: true, force: true })
+    throw new Error(
+      `setup: the npm tarballs are not the pinned ${version}:\n  ${findings.join("\n  ")}`
+    )
+  }
+  step(
+    `downloaded ${V4_PACKAGES.map((n) => `${n}@${version}`).join(", ")} from npm ` +
+      "(sha512 = the pinned and the registry's dist.integrity)"
+  )
+} else {
   const filters = V4_PACKAGES.flatMap((name) => ["--filter", name])
   execFileSync("corepack", ["pnpm", ...filters, "build"], {
     cwd: REPO,
@@ -371,6 +436,49 @@ for (const condition of ["v3", "thin", "v4-proto", "v4"]) {
           rmSync(join(target, entry), { recursive: true, force: true })
       }
     }
+    // Which source built this tree (drive.mjs records it in plan.json).
+    const installed = (name) =>
+      JSON.parse(
+        readFileSync(
+          join(dir, "node_modules", ...name.split("/"), "package.json"),
+          "utf8"
+        )
+      ).version
+    const git = (...args) =>
+      execFileSync("git", ["-C", REPO, ...args], { encoding: "utf8" }).trim()
+    writeFileSync(
+      join(dir, "source.json"),
+      JSON.stringify(
+        {
+          ...(v4From.from === "npm"
+            ? { from: "npm", version: v4From.version }
+            : {
+                from: "tree",
+                commit: git("rev-parse", "HEAD"),
+                dirty:
+                  git(
+                    "status",
+                    "--porcelain",
+                    "--",
+                    ...V4_PACKAGES.map((n) => `packages/${n.split("/")[1]}`)
+                  ) !== "",
+              }),
+          packages: Object.fromEntries(
+            V4_PACKAGES.map((n) => [n, installed(n)])
+          ),
+          integrity: Object.fromEntries(
+            V4_PACKAGES.map((n) => [
+              n,
+              integrityOf(join(dir, "tarballs", v4Tarball(n))),
+            ])
+          ),
+          // The guide as copied to conditions/v4/docs (the cut removed it).
+          guide: guideStats(readFileSync(join(docsDir, "llms.txt"), "utf8")),
+        },
+        null,
+        2
+      ) + "\n"
+    )
   }
   // Every non-optional dependency must be installed.
   const unmet = spawnSync("npm", ["ls", "--all"], {
