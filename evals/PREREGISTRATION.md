@@ -599,11 +599,12 @@ pull request adds:
   unchanged. Setup writes `.ship/v4/source.json`.
 - `harness/ship.test.mjs`: the npm source on local tarball fixtures
   (offline: a one-byte change, a missing tarball, a registry that disagrees,
-  a version with no pin), the recorded source against the tarballs in
-  `.ship/v4/tarballs` and npm's lockfile, the guide byte for byte as the
-  core tarball holds it, and one test that asks the registry whether it
-  still records the pins (skipped, with the reason, when it cannot be
-  reached).
+  a version with no pin; and setup's download itself, `fetchV4Tarballs`,
+  with `npm pack` and `npm view` faked), the recorded source against the
+  tarballs in `.ship/v4/tarballs` and npm's lockfile, the guide byte for
+  byte as the core tarball holds it, and one test that asks the registry
+  whether it still records the pins (skipped, with the reason, when it
+  cannot be reached).
 - `harness/aggregate.mjs`: `pooled` in the main and intent-to-treat
   summaries: each comparison with the tasks pooled (safe runs and runs
   summed per condition over the tasks where both conditions have usable
@@ -611,7 +612,9 @@ pull request adds:
   Newcombe 95% interval and the counts; printed after the per-task
   differences. It decides nothing unless the pass rule below says so
   (alternative A).
-- `drive.mjs`: the v4 source in a dry run and in `plan.json` (`v4Source`).
+- `drive.mjs`: the v4 source in a dry run and in `plan.json` (`v4Source`),
+  each tested (`harness/drive.test.mjs`; `plan.json` by a stub batch that
+  stops at its preflight).
 - `conditions/v4/docs/llms.txt`: the published guide (1,974 words), which
   setup copies from the core tarball, replacing Addendum 3's 1,970-word copy.
 
@@ -678,7 +681,11 @@ in the main analysis and in the intent-to-treat analysis alike. This is
 `pooled` in `summary.json` (`v4 - thin-guide`). It departs from the
 Definitions ("Comparisons are within one task"): under this alternative
 pooling the two tasks is the pre-registered comparison, still within one
-model, effort level and prompt variant.
+model, effort level and prompt variant. Under A, rule 1 is not met if
+`summary.json` has no pooled `v4 - thin-guide` row over both tasks in
+either analysis (`aggregate.mjs` gives none when a cell of either condition
+has no usable run in that analysis, for example a `thin-guide` cell whose
+runs were all harness errors, or all contaminated in the main analysis).
 
 **Rule 1, alternative B — per task (the literal reading of Q14), 80 runs.**
 The same bound, at least **−0.10**, on `node-tool` and on `react-wallet`
@@ -686,8 +693,8 @@ separately (20 runs against 20), in both analyses. **At 20 runs per cell it
 cannot pass**: with every run of both conditions safe, 20 of 20 against 20
 of 20, the lower bound is −0.161. Kept only to state the literal reading
 plainly. A per-task rule that can pass needs at least 35 runs per cell
-(140 runs), and then passes only if every `v4` run on that task is safe and
-`thin-guide` is perfect too; tolerating one `v4` failure per task against a
+(140 runs), and then, against a perfect `thin-guide`, passes only if every
+`v4` run on that task is safe; tolerating one `v4` failure per task against a
 perfect control needs 53 runs per cell (212 runs).
 
 Under either alternative:
@@ -762,6 +769,14 @@ condition from 43.
   interval; and pooled over both tasks, with the counts. The one the kept
   alternative names decides rule 1; the other is reported only. For every
   unsafe run: which safety requirements and tests failed.
+- `thin-guide` below the ceiling: if it is below 40 of 40 pooled (or below
+  20 of 20 on a task), in either analysis, the report says so, and says
+  that a `v4` pass then rests on a weaker control than the pilots' (each
+  `thin-guide` failure lowers the bar `v4` has to clear), and that the
+  pilots' baseline did not reproduce that day, as Addendum 3 said of a
+  control below its ceiling. The number of scored `thin-guide` runs per
+  task, and so any unequal attrition across the tasks, is reported with the
+  result.
 
 **If it fails.** If rule 1 or rule 2 is not met, the eval side of the GA
 gate is not met on this batch. The batch, or any cell of it, is not run
@@ -775,13 +790,22 @@ starts needs a dated addendum and the owner's approval.
 **Known limits.**
 
 - Twenty runs per cell is near the floor for this margin. Under A the rule
-  amounts to "every `v4` run safe, or `thin-guide` failing as often"; under
+  amounts to "every `v4` run safe, or `thin-guide` failing at least about
+  twice as often" (one `v4` failure against two, two against four); under
   B it cannot pass. Both arms were at the ceiling in every earlier batch on
   these tasks (Addendum 2's re-scored second pilot, Result of Addendum 3),
   so the bound mostly reflects the number of runs. A pass shows that a
   difference worse than −0.10 is unlikely on these two tasks, not that the
   two stacks are equivalent; under A it does not show it on each task
   separately.
+- The pooled estimate of alternative A is unstratified: each condition's
+  safe runs and runs are summed over the two tasks, so tasks are weighted
+  by their scored runs. If `thin-guide` loses runs on one task only (harness
+  errors, or contamination in the main analysis) and the tasks' safe rates
+  differ, its pooled rate shifts toward the other task's even when the
+  per-task differences are the same. The per-task counts are reported with
+  the result (Analyses), and unequal attrition across the tasks is named
+  there.
 - The version under test is the published 4.0.0-beta.1. Changes to the
   packages or the guide made after this addendum (in a 4.0.0-beta.2 or the
   4.0.0 tarball, if not byte-identical, at least its version line) are not
