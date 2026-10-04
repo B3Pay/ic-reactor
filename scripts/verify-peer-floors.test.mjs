@@ -5,11 +5,13 @@
  *
  * The runs go through the real check (a git worktree, `pnpm install`, the
  * package's scripts) in a repository of their own, whose vite-plugin declares
- * the real plugin's `vite` range. Its `vite` releases are stand-ins served by
- * a registry on 127.0.0.1, each exporting its version, so nothing is fetched
- * from npm and pnpm's store and cache stay in the temp directory. Its scripts
- * record the Vite version they import; a seeded fault fails one of them on the
- * 4.2 floor.
+ * the real plugin's `vite` range and whose root pins `rollup` with an override,
+ * as the real root does. Its `vite` and `rollup` releases are stand-ins served
+ * by a registry on 127.0.0.1, so nothing is fetched from npm and pnpm's store
+ * and cache stay in the temp directory: each `vite` exports its version and
+ * that of the rollup it resolves (3 for Vite 4, 4 from Vite 5 on, as the real
+ * releases depend). Its scripts record both; a seeded fault fails one of them
+ * on the 4.2 floor.
  *
  * Run by `pnpm test:scripts`; it needs `pnpm`, `git` and `tar` on the PATH.
  */
@@ -160,48 +162,92 @@ const server = createServer((req, res) => {
 server.listen(0, "127.0.0.1", () => console.log(server.address().port))
 `
 
+/** The rollup the stand-in of a Vite floor depends on, as the real one does. */
+const ROLLUP_OF = (viteFloor) =>
+  viteFloor.startsWith("4.") ? "3.0.0" : "4.0.0"
+
 /**
- * Packs a stand-in `vite` for each floor and serves them; resolves to the
- * registry's URL.
+ * Packs the stand-in releases of one package and writes its packument:
+ * `releases` maps each version to its `dependencies` and the files of its
+ * tarball.
  */
-async function serveVite(dir) {
+function publish(dir, name, releases) {
   const versions = {}
-  for (const version of VITE_FLOORS) {
-    const source = join(dir, `vite-${version}`)
+  for (const [version, { dependencies = {}, files }] of Object.entries(
+    releases
+  )) {
+    const source = join(dir, `${name}-${version}`)
+    const manifest = { name, version, type: "module", main: "index.js" }
     writeFiles(source, {
-      "package/package.json": JSON.stringify({
-        name: "vite",
-        version,
-        type: "module",
-        main: "index.js",
-        types: "index.d.ts",
-      }),
-      "package/index.js": `export const version = ${JSON.stringify(version)}\n`,
-      "package/index.d.ts": `export declare const version: string\n`,
+      "package/package.json": JSON.stringify({ ...manifest, dependencies }),
+      ...Object.fromEntries(
+        Object.entries(files).map(([path, text]) => [`package/${path}`, text])
+      ),
     })
-    const file = `vite-${version}.tgz`
+    const file = `${name}-${version}.tgz`
     execFileSync("tar", ["-czf", join(dir, file), "-C", source, "package"], {
       // No AppleDouble files from macOS's tar.
       env: { ...process.env, COPYFILE_DISABLE: "1" },
     })
     const bytes = readFileSync(join(dir, file))
     versions[version] = {
-      name: "vite",
+      name,
       version,
+      dependencies,
       dist: {
-        tarball: `{{REGISTRY}}/vite/-/${file}`,
+        tarball: `{{REGISTRY}}/${name}/-/${file}`,
         shasum: createHash("sha1").update(bytes).digest("hex"),
         integrity: `sha512-${createHash("sha512").update(bytes).digest("base64")}`,
       },
     }
   }
   writeFileSync(
-    join(dir, "vite.json"),
+    join(dir, `${name}.json`),
     JSON.stringify({
-      name: "vite",
-      "dist-tags": { latest: VITE_FLOORS.at(-1) },
+      name,
+      "dist-tags": { latest: Object.keys(releases).at(-1) },
       versions,
     })
+  )
+}
+
+/**
+ * Packs a stand-in `vite` for each floor, and the `rollup` 3 and 4 they
+ * depend on, and serves them; resolves to the registry's URL.
+ */
+async function serveVite(dir) {
+  publish(
+    dir,
+    "rollup",
+    Object.fromEntries(
+      ["3.0.0", "4.0.0"].map((version) => [
+        version,
+        {
+          files: {
+            "index.js": `export const VERSION = ${JSON.stringify(version)}\n`,
+          },
+        },
+      ])
+    )
+  )
+  publish(
+    dir,
+    "vite",
+    Object.fromEntries(
+      VITE_FLOORS.map((version) => [
+        version,
+        {
+          dependencies: { rollup: `^${ROLLUP_OF(version)}` },
+          files: {
+            "index.js": [
+              `export const version = ${JSON.stringify(version)}`,
+              `export { VERSION as rollupVersion } from "rollup"`,
+              "",
+            ].join("\n"),
+          },
+        },
+      ])
+    )
   )
 
   const child = spawn(
@@ -217,13 +263,17 @@ async function serveVite(dir) {
   return { url: `http://127.0.0.1:${port}/`, stop: () => child.kill() }
 }
 
+/** The line `step` records for `name` at a Vite floor. */
+const ran = (name, floor) => `${name} ${floor} rollup ${ROLLUP_OF(floor)}`
+
 /**
- * A script of the seeded plugin: it records `<name> <the Vite it imports>` in
- * the log, and exits 1 on the floor `failOn` names.
+ * A script of the seeded plugin: it records `<name> <the Vite it imports>
+ * rollup <the rollup that Vite resolves>` in the log, and exits 1 on the floor
+ * `failOn` names.
  */
 const step = (name, failOn) => `import { appendFileSync } from "node:fs"
-import { version } from "vite"
-appendFileSync(process.env.PEER_FLOORS_TEST_LOG, ${JSON.stringify(name)} + " " + version + "\\n")
+import { rollupVersion, version } from "vite"
+appendFileSync(process.env.PEER_FLOORS_TEST_LOG, ${JSON.stringify(name)} + " " + version + " rollup " + rollupVersion + "\\n")
 if (version === ${JSON.stringify(failOn ?? null)}) {
   console.error(${JSON.stringify(name)} + " fails on vite " + version)
   process.exit(1)
@@ -242,22 +292,27 @@ describe("vite-plugin at its Vite floors", () => {
   /**
    * A repository whose vite-plugin declares the real `vite` range and whose
    * typecheck and test scripts record the Vite they import, failing where
-   * `fail` says; resolves to its root and the recorded runs.
+   * `fail` says; resolves to its root and the recorded runs. Its root pins
+   * rollup 4, as the real root pins rollup ^4.60.1 for its own installs: the
+   * check drops that override (`withoutOverrides`), or Vite 4 would get it.
    */
   function seeded(fail = {}) {
+    const settings = {
+      registry: registry.url,
+      "store-dir": join(work, "store"),
+      "cache-dir": join(work, "cache"),
+    }
     const root = repository({
       "package.json": JSON.stringify({
         name: "peer-floors-seed",
         private: true,
         packageManager: ROOT_MANIFEST.packageManager,
+        pnpm: { overrides: { rollup: "^4.0.0" } },
       }),
       "pnpm-workspace.yaml": 'packages:\n  - "packages/*"\n',
-      ".npmrc": [
-        `registry=${registry.url}`,
-        `store-dir=${join(work, "store")}`,
-        `cache-dir=${join(work, "cache")}`,
-        "",
-      ].join("\n"),
+      ".npmrc": Object.entries(settings)
+        .map(([key, value]) => `${key}=${value}\n`)
+        .join(""),
       "packages/vite-plugin/package.json": JSON.stringify({
         name: "@ic-reactor/vite-plugin",
         private: true,
@@ -274,13 +329,30 @@ describe("vite-plugin at its Vite floors", () => {
     return {
       root,
       run: () => {
-        const saved = process.env.PEER_FLOORS_TEST_LOG
-        process.env.PEER_FLOORS_TEST_LOG = log
+        // The settings go in the environment too: run by `pnpm test:scripts`,
+        // this process inherits pnpm's `npm_config_registry`, which the
+        // check's installs would take over the seeded .npmrc, fetching the
+        // real Vite releases from npm.
+        const env = {
+          PEER_FLOORS_TEST_LOG: log,
+          ...Object.fromEntries(
+            Object.entries(settings).map(([key, value]) => [
+              `npm_config_${key.replaceAll("-", "_")}`,
+              value,
+            ])
+          ),
+        }
+        const saved = Object.fromEntries(
+          Object.keys(env).map((key) => [key, process.env[key]])
+        )
+        Object.assign(process.env, env)
         try {
           return verifyPackage(VITE_PLUGIN, { rootDir: root })
         } finally {
-          if (saved === undefined) delete process.env.PEER_FLOORS_TEST_LOG
-          else process.env.PEER_FLOORS_TEST_LOG = saved
+          for (const [key, value] of Object.entries(saved)) {
+            if (value === undefined) delete process.env[key]
+            else process.env[key] = value
+          }
         }
       },
       runs: () => readFileSync(log, "utf8").trim().split("\n"),
@@ -295,12 +367,15 @@ describe("vite-plugin at its Vite floors", () => {
       .split("\n")
       .filter((line) => line.startsWith("worktree "))
 
-  it("runs the typecheck and the tests at the floor of each Vite major, and passes", () => {
+  it("runs the typecheck and the tests at the floor of each Vite major, each on the rollup its Vite depends on, and passes", () => {
     const seed = seeded()
     assert.deepEqual(seed.run(), [])
     assert.deepEqual(
       seed.runs(),
-      VITE_FLOORS.flatMap((floor) => [`typecheck ${floor}`, `test ${floor}`])
+      VITE_FLOORS.flatMap((floor) => [
+        ran("typecheck", floor),
+        ran("test", floor),
+      ])
     )
     // The worktree is gone again.
     assert.equal(worktrees(seed.root).length, 1)
@@ -311,7 +386,10 @@ describe("vite-plugin at its Vite floors", () => {
     assert.deepEqual(seed.run(), ["vite-plugin at vite 4.2.0: test"])
     assert.deepEqual(
       seed.runs(),
-      VITE_FLOORS.flatMap((floor) => [`typecheck ${floor}`, `test ${floor}`])
+      VITE_FLOORS.flatMap((floor) => [
+        ran("typecheck", floor),
+        ran("test", floor),
+      ])
     )
     assert.equal(worktrees(seed.root).length, 1)
   })
@@ -320,10 +398,10 @@ describe("vite-plugin at its Vite floors", () => {
     const seed = seeded({ typecheck: "4.2.0" })
     assert.deepEqual(seed.run(), ["vite-plugin at vite 4.2.0: typecheck"])
     assert.deepEqual(seed.runs(), [
-      "typecheck 4.2.0",
+      ran("typecheck", "4.2.0"),
       ...VITE_FLOORS.slice(1).flatMap((floor) => [
-        `typecheck ${floor}`,
-        `test ${floor}`,
+        ran("typecheck", floor),
+        ran("test", floor),
       ]),
     ])
   })
