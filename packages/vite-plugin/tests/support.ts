@@ -13,8 +13,10 @@ import {
   build,
   createLogger,
   createServer,
+  version as viteVersion,
   type Logger,
   type Plugin,
+  type ServerOptions,
   type ViteDevServer,
 } from "vite"
 import { icReactor, type IcReactorPluginOptions } from "../src/index.js"
@@ -31,6 +33,17 @@ export const BROKEN_DID = "service : { greet : (text) -> (text query\n"
 export const PING_DID = "service : { ping : () -> () };\n"
 
 const FAKE_CLI = path.join(HERE, "fixtures", "fake-cli")
+
+/**
+ * The `server.watch` that starts no file watcher. Vite 5 and later take
+ * `null`. Vite 4, the oldest major the peer range accepts and which
+ * `verify:peer-floors` runs these tests on, has no such value and reads
+ * `null` as the default watcher, whose events would double the ones the tests
+ * emit: there the watcher ignores every path instead.
+ */
+const NO_WATCHER = (
+  Number(viteVersion.split(".")[0]) < 5 ? { ignored: ["**"] } : null
+) as ServerOptions["watch"]
 
 export interface App {
   /** The app's root: a real path, since Vite compares real paths. */
@@ -171,7 +184,7 @@ export async function startDev(
     server: {
       middlewareMode: true,
       hmr: hmr ? { server: httpServer } : false,
-      watch: realWatcher ? undefined : null,
+      watch: realWatcher ? undefined : NO_WATCHER,
     },
     plugins: [...before, icReactor({ injectEnvironment: false, ...options })],
   })
