@@ -505,11 +505,12 @@ const anonymous = (): string => ANONYMOUS
  *   keeps it as it was, and a fetch of it resolves with that data. A key with
  *   none fails (`kind` `"cancelled"`, `code` `"caller_changed"`) until the
  *   anonymous caller is current again: the hydrating render's own reads never
- *   show that, but a `QueryCache` `onError`, an effect that awaits the fetch
- *   and, for a `useSuspenseQuery` read the server rendered without
- *   dehydrating its data, React's `onRecoverableError` (as the reported
- *   error's `cause` on React 19) see it, so ignore `kind` `"cancelled"`
- *   there.
+ *   show that, but a listener of
+ *   `client.queryClient.getQueryCache().subscribe()` (the client takes no
+ *   `QueryCache` of yours), an effect that awaits the fetch and, for a
+ *   `useSuspenseQuery` read the server rendered without dehydrating its
+ *   data, React's `onRecoverableError` (as the reported error's `cause` on
+ *   React 19) see it, so ignore `kind` `"cancelled"` there.
  * - Put a Suspense boundary above every component that reads with
  *   `useSuspenseQuery`, on React 18 and 19 alike. The move is a synchronous
  *   update, which such a read suspends until the user's data arrives. With a

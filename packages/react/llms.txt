@@ -65,7 +65,9 @@ A signed-in reload has three accepted costs:
   it resolves with that data. A key with none fails, with `kind`
   `"cancelled"` and `code` `"caller_changed"`, until the anonymous caller is
   current again: the hydrating render's own reads never show it, but a
-  `QueryCache` `onError`, an effect that awaits the fetch and, for a
+  listener of `client.queryClient.getQueryCache().subscribe()` (an
+  `"updated"` event whose `action.type` is `"error"`; the client takes no
+  `QueryCache` of yours), an effect that awaits the fetch and, for a
   `useSuspenseQuery` read the server rendered without dehydrating its data,
   React's `onRecoverableError` (as the reported error's `cause` on React 19)
   see it, so ignore `kind` `"cancelled"` there.

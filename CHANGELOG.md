@@ -34,6 +34,26 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   the next `times` queries or calls, whatever they are for. No export is
   added.
 
+#### Documentation
+
+- The guide (`llms.txt`) said the `invalidates` option of
+  `client.mutationOptions()` names other reads. The list replaces the
+  default (every read of the canister written to): it now says so, and to
+  name the written canister too if its reads change (#829). The code is
+  unchanged.
+
+### @ic-reactor/react
+
+#### Documentation
+
+- The README, `llms.txt` and `useClient()`'s doc comment told an app to
+  ignore kind `"cancelled"` (code `"caller_changed"`) in a `QueryCache`
+  `onError`, which no app can set: the client owns its `QueryClient` and
+  takes no `QueryCache`. They now name the route an app has, a listener of
+  `client.queryClient.getQueryCache().subscribe()`, whose `"updated"` event
+  with `action.type` `"error"` carries the cancellation (#829). The code is
+  unchanged.
+
 ## core, react, vite-plugin 4.0.0-beta.1
 
 The first prerelease of ic-reactor 4 (milestone 1, #790), published under

@@ -541,6 +541,25 @@
     "replace": "      return []"
   },
   {
+    "id": "gf-invalidates-adds-to-the-default",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "is read again after a write to its canister, unless invalidates leaves it out",
+    "why": "a listed invalidates is added to the default (every read of the canister written to) instead of replacing it, as the guide's old \"names other reads\" read",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "    return listed.map((entry: unknown) => {",
+        "replace": "    return [{ record: recordOf(canister, internals, call) }].concat(listed.map((entry: unknown) => {"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "      return { record: recordOf(entry, internals, `${call} invalidates`) }\n    })\n",
+        "replace": "      return { record: recordOf(entry, internals, `${call} invalidates`) }\n    }))\n"
+      }
+    ]
+  },
+  {
     "id": "ir2t-name-write-invalidation-resolved-at-settlement",
     "package": "core",
     "test": "tests/options.test.ts",
@@ -1386,6 +1405,16 @@
     "test": "tests/caller-keys.test.tsx",
     "testName": "is never shown as an error by a component that hydrated",
     "why": "useClient() returns the client whatever caller the render shows, so a suspense reader hydrating with a stored session renders the user's answer over the server's HTML",
+    "file": "src/index.tsx",
+    "search": "  return principal === client.caller() ? client : view\n",
+    "replace": "  return client\n"
+  },
+  {
+    "id": "gf-cache-listener-sees-no-cancellation",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "reaches a listener of the client's QueryCache, where kind cancelled tells it apart",
+    "why": "useClient() returns the client whatever caller the render shows, so the hydrating render's read is sent as the user and the README's QueryCache listener never sees the caller_changed cancellation it documents",
     "file": "src/index.tsx",
     "search": "  return principal === client.caller() ? client : view\n",
     "replace": "  return client\n"

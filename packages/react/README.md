@@ -225,11 +225,14 @@ Three consequences of that move to the session are accepted, and tested:
   key that holds data (the server's) keeps it as it was, and a fetch of it
   resolves with that data. A key with none fails, with `kind` `"cancelled"`
   and `code` `"caller_changed"`, until the anonymous caller is current again.
-  The hydrating render's own reads never show that error, but a `QueryCache`
-  `onError`, an effect that awaits the fetch and, for a `useSuspenseQuery`
-  read the server rendered without dehydrating its data, React's
-  `onRecoverableError` (as the reported error's `cause` on React 19) see it:
-  ignore `kind` `"cancelled"` there.
+  The hydrating render's own reads never show that error, but a global
+  error listener, an effect that awaits the fetch and, for a
+  `useSuspenseQuery` read the server rendered without dehydrating its data,
+  React's `onRecoverableError` (as the reported error's `cause` on React 19)
+  see it: ignore `kind` `"cancelled"` there. The client owns its
+  `QueryClient` and takes no `QueryCache`, so a global listener is
+  `client.queryClient.getQueryCache().subscribe()`, which sees the error as
+  an `"updated"` event whose `action.type` is `"error"`.
 - **A `useSuspenseQuery` read needs a Suspense boundary above it, on React 18
   and 19 alike.** The move to the session is a synchronous update, and a
   `useSuspenseQuery` read with none of the user's data yet suspends it. With a
