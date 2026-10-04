@@ -10,7 +10,8 @@ routing and verification by change type are in [`AGENTS.md`](./AGENTS.md).
   prerelease under `beta` (`scripts/release-tag.mjs`).
 - **`v3`** is the 3.x line, cut from `main` at the 4.0 GA flip: security fixes
   only, until 90 days after the 4.0 release, released with its own
-  workflows. `v4`, the branch 4 was developed on until GA, is retired.
+  workflows. `v4`, the branch 4 was developed on until GA, is retired after a
+  short window; open nothing new against it.
 
 Open pull requests for ic-reactor 4 against `main`, and 3.x security fixes
 against `v3`.

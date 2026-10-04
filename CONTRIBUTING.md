@@ -216,6 +216,7 @@ This repository enforces **OIDC Trusted Publishing** for releases (no long-lived
 
 - To enable: go to your package on npmjs.com → Settings → Trusted publishers and add this repository's workflow filename (e.g., `release.yml`).
 - `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` trust `release.yml` (4.x from `main`, and core and react 3.x from `v3`). Until the 3.x line's end, `@ic-reactor/vite-plugin` also trusts `release-tools.yml`, which publishes its 0.x security releases from `v3`; remove that publisher then.
+- Bind each trusted publisher to the `npm-release` environment, the environment of every publish job on `main` and `v3` (the GA-flip runbook does this after the 4.0.0 release). It has no reviewer; it only lets npm refuse the publish job of an older commit, which has no environment (see "Tagging a 3.x release" below).
 - Ensure the `release.yml` workflow has `permissions: id-token: write` (already configured).
 - After enabling and validating Trusted Publishing, do not add a write `NPM_TOKEN` secret — publishing will use the OIDC token.
 
@@ -223,7 +224,21 @@ If your CI needs to install private dependencies, create a **read-only** granula
 
 On `main` the release lane publishes `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` in lockstep from `v4.*` tags. `scripts/release-tag.mjs` decides for both `scripts/release.js` and `release.yml`: a stable 4.x version publishes under the `latest` dist-tag and becomes the latest GitHub Release, a 4.x prerelease publishes under `beta`, and any other version (3.x, 5.x, not semver) is refused. `release.yml` also requires the tagged commit to be on `main`.
 
-The 3.x line releases from the `v3` branch with that branch's own workflows: `v3.*` tags publish `@ic-reactor/core` and `@ic-reactor/react` 3.x under the `v3-latest` dist-tag and `@ic-reactor/candid` under `latest` (it has no 4.x), and `tools-v*`/`parser-v*` tags publish `@ic-reactor/vite-plugin` 0.x under `v0-latest` and the parser, codegen and cli under `latest`. None of them moves `latest` of core, react or vite-plugin, or takes the GitHub "Latest" badge.
+The 3.x line releases from the `v3` branch with that branch's own workflows: `v3.*` tags publish `@ic-reactor/core` and `@ic-reactor/react` 3.x under the `v3-latest` dist-tag and `@ic-reactor/candid` under `latest` (it has no 4.x), and `tools-v*`/`parser-v*` tags publish `@ic-reactor/vite-plugin` 0.x under `v0-latest` and the parser, codegen and cli under `latest`. None of them moves `latest` of core, react or vite-plugin, or takes the GitHub "Latest" badge, as long as the tag is on a `v3` commit that contains those lanes.
+
+### Tagging a 3.x release
+
+A tag push runs the workflow file of the commit the tag points at, not the branch's current one. `main`'s history (and `v3`'s, up to the merge that added its lanes) holds 3.x commits whose `release.yml` and `release-tools.yml` publish any stable version under `latest`, and some of them carry a version that was never published (core, react and candid 3.0.5; codegen, cli and vite-plugin 0.15.0). A `v3.*`, `tools-v*` or `parser-v*` tag on such a commit runs that commit's workflow, and the older ones have no preflight and no approval job. Before you push a 3.x tag, check the commit it points at:
+
+```sh
+SHA=$(git rev-parse v3.13.1)   # or tools-v0.15.2, parser-v0.6.1
+git show "$SHA":.github/workflows/release.yml | grep -q v3-latest && echo "v3 lane"           # for a v3.* tag
+git show "$SHA":.github/workflows/release-tools.yml | grep -q v0-latest && echo "v0 lane"     # for a tools-v* or parser-v* tag
+```
+
+Push the tag only when the check prints its line. The `npm-release` environment closes this for good once every package's trusted publisher names it: the publish jobs of `release.yml` on `main` and of both lanes on `v3` run in it, and the publish jobs of older commits do not, so npm refuses their tokens.
+
+`v3` and `main` may carry a ruleset that requires pull requests. A release script's printed `git push origin <branch>` then works only for a maintainer on the ruleset's bypass list. Otherwise push the release commit to a branch, merge its pull request with a merge commit (a squash or rebase would leave the tagged commit off the branch, and the preflight refuses it), and push the tag after the merge.
 
 ### Approving a release
 
