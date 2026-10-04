@@ -249,7 +249,7 @@ The environment lives in repository settings (Settings → Environments → `npm
 - a required reviewer (self-approval allowed, so for a solo maintainer this is a confirmation step, not a second-person requirement);
 - a deployment tag policy limited to `v*`, `tools-v*` and `parser-v*`, so a run from any other ref cannot deploy to it at all.
 
-The `environment:` key is read from the tagged revision, like the preflight, so a tag pointing at a commit that predates it would skip the pause. The tag policy is settings-enforced and holds regardless. The `Release tags` ruleset, which limits who can create those tags, is the third leg; none of the three is sufficient alone.
+The `environment:` key is read from the tagged revision, like the preflight, so a tag pointing at a commit that predates it would skip the pause. The tag policy is settings-enforced, but it applies only to a job that names the environment, and such a commit names none: the `npm-release` binding of the trusted publishers is what refuses its publish. The `Release tags` ruleset, which limits who can create those tags, is the third leg; none of the three is sufficient alone.
 
 ## Commits & PRs
 
