@@ -94,9 +94,13 @@ describe("GET /api/balance/[ledger]/[principal]", () => {
   it.each([429, 503])(
     "maps a read turned away with HTTP %i, which passes, to 503",
     async (refusal) => {
-      // A boundary node refuses every request: the client re-sends a read at
-      // most twice, then gives up with `not_delivered`.
-      const { GET } = handler((test) => test.refuseNext(refusal, 10))
+      // A boundary node turns the balance read away every time it is sent:
+      // the client re-sends a read at most twice, then gives up with
+      // `not_delivered`. A fourth send would be answered, and the route would
+      // answer 200.
+      const { GET } = handler((test) =>
+        test.refuseNext(refusal, { method: "icrc1_balance_of", times: 3 })
+      )
 
       const { status, body } = await get(GET, "ICP", SAMPLE_OWNER)
 
@@ -113,9 +117,11 @@ describe("GET /api/balance/[ledger]/[principal]", () => {
   it("maps a canister that does not exist to 502, since asking again cannot help", async () => {
     // What a boundary node answers for a canister id that names no canister
     // (HTTP 400 `canister_not_found`; the fake replica would reject with code
-    // 3 instead). The client does not re-send a 4xx, and neither should the
-    // route's caller.
-    const { GET } = handler((test) => test.refuseNext(400, 10))
+    // 3 instead) to each of the route's three reads. The client does not
+    // re-send a 4xx, and neither should the route's caller.
+    const { GET } = handler((test) =>
+      test.refuseNext(400, { canister: NO_CANISTER, times: 3 })
+    )
 
     const { status, body } = await get(GET, NO_CANISTER, SAMPLE_OWNER)
 

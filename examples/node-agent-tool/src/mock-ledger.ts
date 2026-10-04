@@ -22,12 +22,6 @@ type TestClient = ReturnType<typeof createTestClient>
 /** How far a `created_at_time` may be ahead of the ledger's clock: 2 minutes. */
 const PERMITTED_DRIFT_NS = 2n * 60n * 1_000_000_000n
 
-/**
- * The reads `transfer` makes before its call, in parallel: decimals, symbol,
- * fee and the sender's balance (src/commands/transfer.ts, step 2).
- */
-const READS_BEFORE_THE_CALL = 4
-
 export interface MockLedgerOptions {
   /** The canister id it answers at. */
   readonly id: string
@@ -67,17 +61,10 @@ export interface MockLedger {
    */
   answerNextTransfer(err: TransferError): void
   /**
-   * Has the replica answer the next transfer call with HTTP 429, `times`
-   * times in a row, as a boundary node that throttles.
-   *
-   * A workaround, not a pattern: `test.refuseNext(429)` refuses the next
-   * request of any kind, a read as much as a call, and `transfer` reads four
-   * times before it calls. So the refusal is armed once
-   * `READS_BEFORE_THE_CALL` reads have been answered, when every read
-   * has passed the replica's refusal check. (Arming it on the last read sent
-   * would race the other three, which run in parallel.) If `transfer` ever
-   * reads more or less, a read is refused instead of the call, and the demo
-   * and the tests that throttle fail on the request log.
+   * Has the replica of the test client the ledger was last mounted on answer
+   * the next `times` sends of `icrc1_transfer` to this ledger with HTTP 429,
+   * as a boundary node that throttles. The reads `transfer` makes before its
+   * call are answered.
    */
   throttleNextTransfer(times?: number): void
   /** Every transfer argument the ledger was sent, with the caller the replica verified. */
@@ -113,8 +100,7 @@ export function createMockLedger(options: MockLedgerOptions): MockLedger {
   let blocks = 0n
   let rejectNext: 3 | 4 | 5 | undefined
   let answerNext: TransferError | undefined
-  let readsBeforeThrottle: number | undefined
-  let throttles = 1
+  let mounted: TestClient | undefined
 
   const balanceOf = (account: Account) => accounts.get(keyOf(account)) ?? 0n
   const refuse = (value: TransferError): TransferResult => ({
@@ -161,32 +147,24 @@ export function createMockLedger(options: MockLedgerOptions): MockLedger {
   }
 
   const handlersFor = (test: TestClient): TestHandlers<Actor> => {
-    /** Answers a read, and arms a throttle once enough reads were answered. */
-    const read = <T>(value: T): T => {
-      if (readsBeforeThrottle !== undefined && --readsBeforeThrottle === 0) {
-        readsBeforeThrottle = undefined
-        test.refuseNext(429, throttles)
-      }
-      return value
-    }
     return {
-      icrc1_name: () => read(name),
-      icrc1_symbol: () => read(symbol),
-      icrc1_decimals: () => read(decimals),
-      icrc1_fee: () => read(fee),
+      icrc1_name: () => name,
+      icrc1_symbol: () => symbol,
+      icrc1_decimals: () => decimals,
+      icrc1_fee: () => fee,
       icrc1_total_supply: () =>
-        read([...accounts.values()].reduce((sum, units) => sum + units, 0n)),
-      icrc1_minting_account: () => read(null),
-      icrc1_metadata: () =>
-        read([
-          ["icrc1:name", { tag: "Text", value: name }],
-          ["icrc1:symbol", { tag: "Text", value: symbol }],
-          ["icrc1:decimals", { tag: "Nat", value: BigInt(decimals) }],
-          ["icrc1:fee", { tag: "Nat", value: fee }],
-        ]),
-      icrc1_supported_standards: () =>
-        read([{ name: "ICRC-1", url: "https://github.com/dfinity/ICRC-1" }]),
-      icrc1_balance_of: (account) => read(balanceOf(account)),
+        [...accounts.values()].reduce((sum, units) => sum + units, 0n),
+      icrc1_minting_account: () => null,
+      icrc1_metadata: () => [
+        ["icrc1:name", { tag: "Text", value: name }],
+        ["icrc1:symbol", { tag: "Text", value: symbol }],
+        ["icrc1:decimals", { tag: "Nat", value: BigInt(decimals) }],
+        ["icrc1:fee", { tag: "Nat", value: fee }],
+      ],
+      icrc1_supported_standards: () => [
+        { name: "ICRC-1", url: "https://github.com/dfinity/ICRC-1" },
+      ],
+      icrc1_balance_of: (account) => balanceOf(account),
       icrc1_transfer: (arg, { caller }) => {
         received.push({ arg, caller })
         const code = rejectNext
@@ -210,6 +188,7 @@ export function createMockLedger(options: MockLedgerOptions): MockLedger {
     fee,
     mountOn(test, overrides = {}) {
       test.mock<Actor>(actor, id, { ...handlersFor(test), ...overrides })
+      mounted = test
     },
     balanceOf,
     credit(account, units) {
@@ -222,8 +201,10 @@ export function createMockLedger(options: MockLedgerOptions): MockLedger {
       answerNext = err
     },
     throttleNextTransfer(times = 1) {
-      readsBeforeThrottle = READS_BEFORE_THE_CALL
-      throttles = times
+      if (mounted === undefined) {
+        throw new Error("throttleNextTransfer(): mount the ledger first")
+      }
+      mounted.refuseNext(429, { method: "icrc1_transfer", canister: id, times })
     },
     received,
   }
