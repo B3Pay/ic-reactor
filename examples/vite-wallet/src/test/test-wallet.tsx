@@ -121,7 +121,7 @@ function transferKey(caller: Principal, arg: TransferArg): string {
     hex(arg.to.subaccount),
     arg.amount,
     arg.fee ?? "null",
-    hex(arg.memo),
+    arg.memo === null ? "-" : hex(arg.memo),
     arg.created_at_time,
   ].join("|")
 }
