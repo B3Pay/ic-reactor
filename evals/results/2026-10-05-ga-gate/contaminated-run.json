@@ -1,0 +1,29 @@
+{
+ "run": "react-wallet/v4#14",
+ "contaminated": true,
+ "audit": {
+  "auditable": true,
+  "toolCalls": 9,
+  "attempts": 1,
+  "violations": [
+   {
+    "tool": "Read",
+    "value": "/private/var/folders/f8/k3ttpp4d5ns4shtytwf375ym0000gn/T/ic-reactor-eval-batch-eEb7SZ/react-wallet--v4--014/home/.claude/projects/-private-var-folders-f8-k3ttpp4d5ns4shtytwf375ym0000gn-T-ic-reactor-eval-batch-eEb7SZ-react-wallet--v4--014-work/3df55d72-125e-42cd-81c2-b4a872b1d515/tool-results/b65qfoxqg.txt",
+    "resolved": "/private/var/folders/f8/k3ttpp4d5ns4shtytwf375ym0000gn/T/ic-reactor-eval-batch-eEb7SZ/react-wallet--v4--014/home/.claude/projects/-private-var-folders-f8-k3ttpp4d5ns4shtytwf375ym0000gn-T-ic-reactor-eval-batch-eEb7SZ-react-wallet--v4--014-work/3df55d72-125e-42cd-81c2-b4a872b1d515/tool-results/b65qfoxqg.txt",
+    "reason": "file_path outside the run directory",
+    "blocked": false
+   }
+  ]
+ },
+ "transcript_excerpts": [
+  {
+   "tool_result_first_300_chars": "<persisted-output>\nOutput too large (29.6KB). Full output saved to: /private/var/folders/f8/k3ttpp4d5ns4shtytwf375ym0000gn/T/ic-reactor-eval-batch-eEb7SZ/react-wallet--v4--014/home/.claude/projects/-private-var-folders-f8-k3ttpp4d5ns4shtytwf375ym0000gn-T-ic-reactor-eval-batch-eEb7SZ-react-wallet--v4"
+  },
+  {
+   "tool_use": "Read",
+   "input": {
+    "file_path": "/private/var/folders/f8/k3ttpp4d5ns4shtytwf375ym0000gn/T/ic-reactor-eval-batch-eEb7SZ/react-wallet--v4--014/home/.claude/projects/-private-var-folders-f8-k3ttpp4d5ns4shtytwf375ym0000gn-T-ic-reactor-eval-batch-eEb7SZ-react-wallet--v4--014-work/3df55d72-125e-42cd-81c2-b4a872b1d515/tool-results/b65qfoxqg.txt"
+   }
+  }
+ ]
+}

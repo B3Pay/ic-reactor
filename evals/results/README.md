@@ -14,3 +14,10 @@ described in `../PREREGISTRATION.md`.
   `claude-sonnet-5-5` at effort `medium`, seed 1, 2 agents at a time. Copied
   from `runs/beta1-gate-2026-10-03/` (plan, summary as scored at run time,
   pilot statistics).
+- `2026-10-05-ga-gate`: the 4.0.0 GA gate of Addendum 4 (minimal prompt;
+  `v4` from the published 4.0.0-beta.1 tarballs and a same-day `thin-guide`
+  control; 20 runs per cell). Run from `9f78b706c` (harness `4ef91cb7b`);
+  `claude-sonnet-5-5` at effort `medium`, seed 20261005, 2 agents at a
+  time. Copied from `runs/ga-gate-2026-10-05/` (plan, summary as scored at
+  run time, pilot statistics), plus `contaminated-run.json`: the audit
+  record and transcript excerpts of the one contaminated run.

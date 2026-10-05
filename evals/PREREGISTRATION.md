@@ -898,3 +898,96 @@ Recorded with this approval, as the owner decided on 2026-10-05:
 - Addendum 3's approval line and its 56th gate cell
   (`node-tool/faulty/v4-anonymous-identity-sent`) are confirmed. Addendum 3
   is frozen, so the confirmation is recorded here.
+
+## Result of Addendum 4 — 2026-10-05
+
+Recorded after the batch; Addendum 4 itself is unchanged. The batch ran as
+pre-registered from `9f78b706c`, the merge of #841, whose `evals/` differs
+from the harness commit `4ef91cb7b` only in this file. Its shape:
+
+- 80 runs, 4 cells of 20, round-robin in the shuffle seeded 20261005;
+- `claude-sonnet-5-5` at effort `medium`, the minimal prompt, sandboxed, 2
+  agents at a time, with a passing preflight;
+- `plan.json`'s `v4Source` names `npm` 4.0.0-beta.1 with the two pinned
+  integrities.
+
+Every run exited normally, so no harness error was retried and 80 agent
+runs were made in all. Results are in `results/2026-10-05-ga-gate/`, copied
+from `runs/ga-gate-2026-10-05/`, with the contaminated run's audit record in
+`contaminated-run.json`.
+
+| Task         | Condition    | Safe (main) | Safe (ITT) | Requirements met | `tsc` clean | Contaminated | Harness errors | Minutes (median) | Turns (median) |
+| ------------ | ------------ | ----------- | ---------- | ---------------- | ----------- | ------------ | -------------- | ---------------- | -------------- |
+| node-tool    | `v4`         | 20 of 20    | 20 of 20   | 1.00             | 1.00        | 0            | 0              | 0.65             | 7.5            |
+| node-tool    | `thin-guide` | 20 of 20    | 20 of 20   | 1.00             | 1.00        | 0            | 0              | 0.61             | 6              |
+| react-wallet | `v4`         | 19 of 19    | 20 of 20   | 1.00             | 1.00        | 1            | 0              | 0.81             | 8              |
+| react-wallet | `thin-guide` | 20 of 20    | 20 of 20   | 1.00             | 1.00        | 0            | 0              | 0.82             | 6              |
+
+Wilson 95% intervals: 20 of 20 is [0.839, 1] and 19 of 19 is [0.832, 1].
+Every scored run is safe in both analyses, so no failing test or
+requirement is left to report. `refuses_amount_past_nat64` stays not
+applicable under the minimal prompt (observed: 0 of 40 on each task, all
+conditions). `thin-guide` is at its ceiling in both analyses (20 of 20 on
+each task) and scored 20 runs per task, so attrition is equal across the
+tasks.
+
+`v4 − thin-guide`, with Newcombe 95% intervals. Each lower bound is read
+unrounded from `harness/aggregate.mjs`'s `newcombe`:
+
+| Comparison                          | Main                                     | Intent-to-treat                          |
+| ----------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| **Pooled over both tasks (rule 1)** | 39/39 vs 40/40: 0, [**−0.0897**, 0.0876] | 40/40 vs 40/40: 0, [**−0.0876**, 0.0876] |
+| node-tool (reported only)           | 20/20 vs 20/20: 0, [−0.161, 0.161]       | 20/20 vs 20/20: 0, [−0.161, 0.161]       |
+| react-wallet (reported only)        | 19/19 vs 20/20: 0, [−0.168, 0.161]       | 20/20 vs 20/20: 0, [−0.161, 0.161]       |
+
+**The contaminated run** is react-wallet/`v4`#14. The leak audit flagged
+one Read of `<run>/home/.claude/projects/<project>/<session>/tool-results/b65qfoxqg.txt`
+as a "file_path outside the run directory". The transcript shows what it
+was:
+
+1. The agent ran one Bash `cat` of its starter's own files: `docs/llms.txt`,
+   `src/Wallet.tsx`, `src/main.tsx`, the head of the generated module,
+   `test/support/world.ts`, `test/support/auth.ts` and the head of
+   `TASK.md`.
+2. The CLI answered "Output too large (29.6KB). Full output saved to:" that
+   path.
+3. The agent read the file back.
+
+The path is inside the run's own home, which the driver creates for each
+run, and the file holds only that run's own tool output, all of it from
+`<run>/work`. Nothing outside the run was read. The audit counts only
+`<run>/work` as the run directory and has no rule for the CLI's persisted
+tool output. The CLI binary is the one Addendum 3's batch used (installed
+2026-09-30); this persistence did not occur in that batch's 20 runs. Scored,
+the run is safe, and it counts in the intent-to-treat analysis.
+
+**Pass rule.**
+
+- Rule 2 holds: `node gate.mjs --require v4` passed 56 of 56 on the tree,
+  before the batch (Approval above).
+- Rule 1's bound holds in both analyses: −0.0897 (main) and −0.0876
+  (intent-to-treat), both at least −0.10.
+- Rule 1 is **not met.** react-wallet/`v4` holds a contaminated run, and so
+  only 19 scored, uncontaminated runs in the main analysis. "A `v4` cell
+  with a contaminated run … does not meet rule 1."
+
+**The eval side of the GA gate is not met on this batch, as written.**
+
+**Under "If it fails".** No run is unsafe, so there is no failing test to
+trace. The cause of the rule-1 failure is outside ic-reactor: the harness's
+leak audit does not recognise the CLI's persisted tool output in the run's
+own home. Under the plan committed before the batch, this is reported, and
+the owner decides whether GA ships with this result stated. The batch is not
+run again.
+
+Reported beside the result, and changing nothing (as "Analyses" says of a
+re-audit): with that one read counted inside the run, the run is
+uncontaminated. The main analysis would then be 40 of 40 against 40 of 40
+pooled, with a lower bound of −0.0876, and every `v4` cell would hold 20
+scored, uncontaminated runs. Both a fix to the audit (accepting reads of the
+run's own `home/.claude/projects/*/*/tool-results/` files) and any new batch
+would need a further dated addendum and the owner's approval.
+
+The caveats of "Known limits" apply. In particular, the batch measured the
+published 4.0.0-beta.1 and its 1,974-word guide; `v4`'s guide is 1,986 words
+since #831, a change the owner accepted.
