@@ -88,4 +88,26 @@ describe("paying a contact", () => {
       patiently
     )
   })
+
+  it("after a lost reply, re-sends the same payment, memo included, and is answered Duplicate", async () => {
+    const made = await renderPayGrace()
+    made.dropNextReply()
+    pay("1")
+
+    const again = await payForm().findByRole(
+      "button",
+      { name: "Send the same transfer again" },
+      patiently
+    )
+    fireEvent.click(again)
+
+    await payForm().findByText(
+      "Refused by the canister: Duplicate of block 0: this exact transfer went through already, and was not made twice.",
+      { exact: false },
+      patiently
+    )
+    // Paid once: the same argument, memo included, sent twice.
+    expect(made.transfers[1]).toEqual(made.transfers[0])
+    expect(made.balanceOf(SEED_2)).toBe(3n * ICP)
+  })
 })
