@@ -10,9 +10,13 @@
 //   page says the outcome is unknown. It does not re-read anything itself:
 //   the client's onSettled already refetched the ledger's reads, the balance
 //   included. It offers "Send the same transfer again" only while the sender
-//   is still the caller. The same argument (same `created_at_time`) from the
-//   same account is deduplicated (`Duplicate` if the first one went through);
-//   from another account it would be a new transfer, paid in full.
+//   is still the caller, and sends the attempt's own argument: the same
+//   `memo` and `created_at_time`. The same argument from the same account is
+//   deduplicated (`Duplicate` if the first one went through); from another
+//   account it would be a new transfer, paid in full. Each press of Send reads
+//   the form again, so a new transfer gets a new memo, and is never taken for
+//   the duplicate of another one of the same amount made in the same
+//   millisecond.
 // - No `retry` is added: the client re-sends an update only when the failure
 //   proves it never arrived, and any other re-send could pay twice.
 import type { ReactorError } from "@ic-reactor/core"
@@ -173,8 +177,9 @@ export function Outcome(props: {
             Send the same transfer again
           </button>{" "}
           <span className="muted">
-            Same account, same <code>created_at_time</code>: if the first one
-            went through, the ledger answers Duplicate instead of paying twice.
+            Same account, same <code>memo</code> and{" "}
+            <code>created_at_time</code>: if the first one went through, the
+            ledger answers Duplicate instead of paying twice.
           </span>
         </p>
       )}
