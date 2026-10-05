@@ -95,7 +95,7 @@ unchanged.
 
 ### Examples, e2e and evals (not published)
 
-- The four examples pin `^4.0.0-beta.2`, and two use what it adds:
+- The four examples pin `^4.0.0-beta.2`, and three use what it adds:
   `node-agent-tool`'s mock ledger throttles exactly `icrc1_transfer` with the
   aimed `refuseNext` instead of counting the reads before it, the
   `icrc-ledger` sandbox's HTTP 429 faults hit only the transfer, and
