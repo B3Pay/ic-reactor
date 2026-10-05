@@ -341,8 +341,9 @@ export interface Client {
    *
    * Built from variables that cannot be `skipToken`, the options' `queryFn`
    * is never `skipToken` either, so `useSuspenseQuery` and
-   * `useSuspenseQueries` take them as they are. Variables typed `unknown` (a
-   * Candid `reserved` argument) may be, so such a read takes the next
+   * `useSuspenseQueries` take them as they are. Variables of a type
+   * `skipToken` is assignable to, such as `unknown` (a Candid `reserved`
+   * argument) or `{}`, may be, so every read of such a method takes the next
    * signature and keeps `SkipToken`.
    *
    * @throws TypeError for an update or oneway method without the opt-in, a

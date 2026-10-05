@@ -32,6 +32,14 @@ type Ledger = {
   pair: (left: bigint, right: string) => Promise<string>
   /** A Candid `reserved` argument, which a generated module types `unknown`. */
   anything: (value: unknown) => Promise<bigint>
+  /** `record {}`, as `candid-core-cli gen` writes it. */
+  empty: (value: Record<string, never>) => Promise<bigint>
+  /** A record of opts alone, an opt and `null`, as the generator writes them. */
+  options: (value: { limit: bigint | null }) => Promise<bigint>
+  maybeNat: (value: bigint | null) => Promise<bigint>
+  nothing: (value: null) => Promise<bigint>
+  /** `record {}` written `{}`, as other generators write it. */
+  braces: (value: {}) => Promise<bigint>
 }
 
 declare const client: Client
@@ -111,6 +119,55 @@ export function SuspenseReads() {
     Extract<typeof reserved.queryFn, SkipToken>
   >().toEqualTypeOf<SkipToken>()
 
+  // Variables of a type `skipToken` is not assignable to: an empty record as
+  // the generator writes it, a record of opts alone, an opt and `null`. A value
+  // reads under suspense, and skipToken is refused.
+  const empty = useSuspenseQuery(client.queryOptions(ledger, "empty", {}))
+  expectTypeOf(empty.data).toEqualTypeOf<bigint>()
+  const emptySkipped = client.queryOptions(ledger, "empty", skipToken)
+  // @ts-expect-error skipToken is for useQuery
+  const emptySkippedRead = useSuspenseQuery(emptySkipped)
+  expectTypeOf<
+    Extract<typeof emptySkipped.queryFn, SkipToken>
+  >().toEqualTypeOf<SkipToken>()
+  useQuery(emptySkipped)
+  const [opts, opt, nothing] = useSuspenseQueries({
+    queries: [
+      client.queryOptions(ledger, "options", { limit: null }),
+      client.queryOptions(ledger, "maybeNat", null),
+      client.queryOptions(ledger, "nothing", null),
+    ],
+  })
+  expectTypeOf(opts.data).toEqualTypeOf<bigint>()
+  expectTypeOf(opt.data).toEqualTypeOf<bigint>()
+  expectTypeOf(nothing.data).toEqualTypeOf<bigint>()
+  const othersSkipped = [
+    client.queryOptions(ledger, "options", skipToken),
+    client.queryOptions(ledger, "maybeNat", skipToken),
+    client.queryOptions(ledger, "nothing", skipToken),
+  ] as const
+  // @ts-expect-error skipToken is for useQueries
+  const othersSkippedRead = useSuspenseQueries({ queries: othersSkipped })
+  useQueries({ queries: othersSkipped })
+
+  // `{}` is a type skipToken is assignable to, like a reserved argument's
+  // `unknown`: it cannot tell a value from skipToken, so every read of it
+  // keeps SkipToken, with skipToken or with a value.
+  const bracesSkipped = client.queryOptions(ledger, "braces", skipToken)
+  // @ts-expect-error `{}` may be skipToken
+  const bracesSkippedRead = useSuspenseQuery(bracesSkipped)
+  expectTypeOf<
+    Extract<typeof bracesSkipped.queryFn, SkipToken>
+  >().toEqualTypeOf<SkipToken>()
+  useQuery(bracesSkipped)
+  const bracesValue = client.queryOptions(ledger, "braces", {})
+  // @ts-expect-error `{}` may be skipToken
+  const bracesRead = useSuspenseQuery(bracesValue)
+  expectTypeOf<
+    Extract<typeof bracesValue.queryFn, SkipToken>
+  >().toEqualTypeOf<SkipToken>()
+  useQuery(bracesValue)
+
   return [
     fee,
     name,
@@ -123,6 +180,14 @@ export function SuspenseReads() {
     skipped,
     skippedMany,
     reservedRead,
+    empty,
+    emptySkippedRead,
+    opts,
+    opt,
+    nothing,
+    othersSkippedRead,
+    bracesSkippedRead,
+    bracesRead,
   ].length
 }
 

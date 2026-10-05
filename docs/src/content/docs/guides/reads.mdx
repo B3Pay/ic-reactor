@@ -340,8 +340,10 @@ First, `useSuspenseQuery` and `useSuspenseQueries` take the options of
 `skipToken`. Options built with variables typed `V | SkipToken`, or with
 `skipToken` itself, keep `skipToken` in the type of `queryFn`, and the suspense
 hooks refuse them: a suspense read cannot wait for its variables. Read the
-variables first, or use `useQuery`. The same holds for a method whose one
-argument is Candid `reserved`, whose variables are typed `unknown`.
+variables first, or use `useQuery`. The same holds for every read of a method
+whose variables' type `skipToken` is assignable to, such as one whose one
+argument is Candid `reserved` (typed `unknown`): the type cannot tell a value
+from `skipToken`.
 
 Second, a component that suspends needs a `Suspense` boundary above it. This
 holds on React 18 and 19, and matters most on a page that hydrates: see

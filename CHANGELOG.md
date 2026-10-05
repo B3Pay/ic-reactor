@@ -57,12 +57,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   that defaults to today's type. The options' `retry` also takes an error
   typed `unknown`, as `useQueries` and `useSuspenseQueries` type it, so those
   hooks take the options too; `useQuery` and a `QueryObserver` still type the
-  query's error `ReactorError<E>`. A method whose one argument is Candid
-  `reserved` takes variables typed `unknown`, which may hold `skipToken`, so
-  its options keep `SkipToken` whatever the variables, and a suspense read of
-  it still needs a cast. Types only: nothing changes at run time, and no
-  export is added. Code that compiled against 4.0.0-beta.1 and stops
-  compiling:
+  query's error `ReactorError<E>`. Variables of a type `skipToken` is
+  assignable to cannot be told from it: the options of such a method keep
+  `SkipToken` whatever the variables, and a suspense read of it still needs a
+  cast. Of what `candid-core-cli gen` writes, that is only a method whose one
+  argument is Candid `reserved` (typed `unknown`): it writes `record {}` as
+  `Record<string, never>`, which a suspense read takes. A type written by
+  hand that `skipToken` fits, such as `{}`, is another. Types only: nothing
+  changes at run time, and no export is added. Code that compiled against
+  4.0.0-beta.1 and stops compiling:
   - `queryFn === skipToken` on options built from variables that cannot be
     `skipToken` is now TS2367 ("no overlap"). Such a check was always false,
     so remove it.
