@@ -75,5 +75,6 @@ pnpm verify:traps     # Each @ts-expect-error of traps.test-d.ts bites (CI gate)
 pnpm verify:faults    # Each test of scripts/faults.json fails under its fault (CI gate)
 pnpm test:scripts     # The gates' own tests (CI gate; build first)
 pnpm verify:packages  # Pack and verify the published artifacts
+pnpm test:examples:published # Each example installed from npm against the published beta (own CI workflow)
 pnpm verify:peer-floors # Lowest peers and oldest TypeScript (CI gate; build first)
 ```

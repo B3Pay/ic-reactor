@@ -1,0 +1,4 @@
+{
+  "installDependencies": true,
+  "startCommand": "npm test -- --testTimeout=30000"
+}

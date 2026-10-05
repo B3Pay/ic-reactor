@@ -38,7 +38,12 @@ tabs:
 When a transfer may have executed, "Send the same transfer again" is offered
 only while its sender is the caller. ICRC-1 deduplicates per sender account,
 so the same argument signed by another account (after a switch to seed 2) is
-a new transfer, paid in full.
+a new transfer, paid in full. Each press of Send gives its transfer a `memo`
+of its own (16 random bytes, `src/transfer-form.ts`), and the re-send sends
+that transfer's argument, memo and `created_at_time` included: the ledger
+deduplicates on the whole argument, so two transfers of the same amount made
+in the same millisecond are two transfers, and neither is taken for the
+other's `Duplicate`.
 
 The Sandbox also has a mocked ckBTC minter. `get_btc_address` is an update
 method, which `client.queryOptions` refuses unless told it is idempotent:

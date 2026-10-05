@@ -32,11 +32,17 @@ export type ReadTransfer =
  * - `created_at_time` (`nowMs`, in nanoseconds) makes the transfer
  *   deduplicated: the same argument sent again by the same account is
  *   answered `Duplicate`, and pays nothing twice.
+ * - `memo` is this transfer's own, 16 random bytes: the ledger takes two
+ *   arguments for one only when every field matches, so two different
+ *   transfers of the same amount made in the same millisecond are not taken
+ *   for each other's `Duplicate`. Read the form once per transfer, and re-send
+ *   the argument it gave, memo included.
  */
 export function readTransferForm(
   form: TransferForm,
   token: Pick<Token, "decimals" | "fee">,
-  nowMs: number = Date.now()
+  nowMs: number = Date.now(),
+  memo: Uint8Array = newMemo()
 ): ReadTransfer {
   const to = form.to.trim()
   if (!isPrincipal(to)) {
@@ -66,11 +72,16 @@ export function readTransferForm(
       to: { owner: principal(to), subaccount: null },
       amount,
       fee: token.fee,
-      memo: null,
+      memo,
       from_subaccount: null,
       created_at_time: BigInt(nowMs) * 1_000_000n,
     },
   }
+}
+
+/** A memo of its own for one transfer: 16 bytes from `crypto.getRandomValues`. */
+export function newMemo(): Uint8Array {
+  return crypto.getRandomValues(new Uint8Array(16))
 }
 
 /** What the ledger's `Err` means, in a sentence. */
