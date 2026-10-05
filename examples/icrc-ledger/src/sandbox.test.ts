@@ -6,6 +6,7 @@ import { MutationObserver, QueryObserver } from "@tanstack/react-query"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { TransferArg } from "./canisters/icrc1.ts"
 import {
+  DECIMALS,
   FEE,
   SEED_1,
   SEED_2,
@@ -15,6 +16,7 @@ import {
   type Fault,
   type Sandbox,
 } from "./sandbox.ts"
+import { readTransferForm } from "./transfer-form.ts"
 
 const made: Sandbox[] = []
 
@@ -190,6 +192,57 @@ describe("the mocked ICRC-1 ledger", () => {
     await expect(balanceOf(sandbox, SEED_1)).resolves.toBe(
       START_1 - 150_000_000n - FEE
     )
+  })
+})
+
+describe("deduplication on the mocked ledger, as the page's transfers meet it", () => {
+  const arg = (read: ReturnType<typeof readTransferForm>): TransferArg => {
+    if (!read.ok) throw new Error(`refused: ${read.reason}`)
+    return read.arg
+  }
+
+  it("executes two transfers of the same amount made in the same millisecond, and answers a re-send Duplicate of the first one's block", async () => {
+    const sandbox = setup()
+    // One clock reading for both, as two presses of Send in one millisecond.
+    const nowMs = Date.now()
+    const form = { to: SEED_2, amount: "1.5", fee: "" }
+    const first = arg(readTransferForm(form, DECIMALS, nowMs))
+    const second = arg(readTransferForm(form, DECIMALS, nowMs))
+
+    // The first one runs (block 0), but its reply is lost.
+    sandbox.arm("lost-reply")
+    const lost = await rejection(sandbox.ledger.icrc1_transfer(first))
+    expect(lost.mayHaveExecuted).toBe(true)
+
+    // The second is a transfer of its own, not the first one's duplicate.
+    await expect(sandbox.ledger.icrc1_transfer(second)).resolves.toBe(1n)
+    // The first one's re-send is answered Duplicate, with the first's block.
+    const resent = await rejection(sandbox.ledger.icrc1_transfer(first))
+    expect(resent.err).toEqual({
+      tag: "Duplicate",
+      value: { duplicate_of: 0n },
+    })
+    // Two transfers paid, each once.
+    await expect(balanceOf(sandbox, SEED_2)).resolves.toBe(
+      START_2 + 2n * 150_000_000n
+    )
+    await expect(balanceOf(sandbox, SEED_1)).resolves.toBe(
+      START_1 - 2n * (150_000_000n + FEE)
+    )
+  })
+
+  it("takes no memo and an empty memo for two transfers", async () => {
+    const sandbox = setup()
+    const created_at_time = BigInt(Date.now()) * 1_000_000n
+
+    await expect(
+      sandbox.ledger.icrc1_transfer(transferArg({ created_at_time }))
+    ).resolves.toBe(0n)
+    await expect(
+      sandbox.ledger.icrc1_transfer(
+        transferArg({ created_at_time, memo: new Uint8Array(0) })
+      )
+    ).resolves.toBe(1n)
   })
 })
 
