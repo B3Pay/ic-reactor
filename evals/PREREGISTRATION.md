@@ -913,8 +913,9 @@ from the harness commit `4ef91cb7b` only in this file. Its shape:
 
 Every run exited normally, so no harness error was retried and 80 agent
 runs were made in all. Results are in `results/2026-10-05-ga-gate/`, copied
-from `runs/ga-gate-2026-10-05/`, with the contaminated run's audit record in
-`contaminated-run.json`.
+from `runs/ga-gate-2026-10-05/`. `contaminated-run.json` holds the
+contaminated run's audit record, the Bash call whose output the CLI saved,
+and the whole file as the agent read it back, with its sha256.
 
 | Task         | Condition    | Safe (main) | Safe (ITT) | Requirements met | `tsc` clean | Contaminated | Harness errors | Minutes (median) | Turns (median) |
 | ------------ | ------------ | ----------- | ---------- | ---------------- | ----------- | ------------ | -------------- | ---------------- | -------------- |

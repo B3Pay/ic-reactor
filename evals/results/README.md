@@ -19,5 +19,6 @@ described in `../PREREGISTRATION.md`.
   control; 20 runs per cell). Run from `9f78b706c` (harness `4ef91cb7b`);
   `claude-sonnet-5-5` at effort `medium`, seed 20261005, 2 agents at a
   time. Copied from `runs/ga-gate-2026-10-05/` (plan, summary as scored at
-  run time, pilot statistics), plus `contaminated-run.json`: the audit
-  record and transcript excerpts of the one contaminated run.
+  run time, pilot statistics), plus `contaminated-run.json`: the one
+  contaminated run's audit record, the Bash call whose output the CLI
+  saved, and the whole file as the agent read it back.
