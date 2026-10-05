@@ -32,6 +32,7 @@ export const SAMPLE_OWNER = "rkp4c-7iaaa-aaaaa-aaaca-cai"
 
 /**
  * A well-formed canister id that names no canister on mainnet: a boundary
- * node refuses every read of it with HTTP 400 `canister_not_found`.
+ * node refuses every read of it with HTTP 400 `canister_not_found`, which the
+ * client reports as `code: "canister_not_found"`.
  */
 export const NO_CANISTER = "2y4s5-zaaaa-aaad7-7777q-cai"
