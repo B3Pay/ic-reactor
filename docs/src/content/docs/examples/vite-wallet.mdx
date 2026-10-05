@@ -39,10 +39,16 @@ Every scenario has tests on `createTestClient()` that run without a replica
 which the example installs (`pnpm icp:start`, `pnpm icp:deploy`,
 `pnpm dev`), and the Rust toolchain for the backend; see its README.
 
+StackBlitz installs the example from npm and runs those tests (`npm test`):
+you can read and change the code there and run them again. It cannot run the
+wallet itself. icp-cli's local network is a native binary, which StackBlitz
+does not run, and the backend needs the Rust toolchain, so the page it would
+serve has no network to call. Clone the repository to run the wallet.
+
 <CardGrid>
   <LinkCard
     title="Open in StackBlitz"
-    description="Read and edit the code in your browser"
+    description="Read the code and run the tests in your browser (not the wallet)"
     href="https://stackblitz.com/github/b3pay/ic-reactor/tree/v4/examples/vite-wallet?file=src/App.tsx"
   />
   <LinkCard

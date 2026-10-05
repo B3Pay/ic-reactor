@@ -49,10 +49,18 @@ and never reach mainnet.
 The [SSR and hydration guide](/v4/guides/ssr/) explains each rule, and
 [Auth](/v4/guides/auth/) covers sign-in and the caller.
 
+StackBlitz installs the example from npm and runs the tests (`npm test`):
+you can read and change the code there and run them again. It cannot serve
+the app. Next 16 keeps each request's state in Node's `AsyncLocalStorage`,
+which StackBlitz does not implement, so `next dev` fails there on every page
+with Next's own "Invariant: Expected workStore to be initialized", and a
+production build renders through the same storage. Clone the repository to
+run the app.
+
 <CardGrid>
   <LinkCard
     title="Open in StackBlitz"
-    description="Edit and run in your browser"
+    description="Read the code and run the tests in your browser (not the app)"
     href="https://stackblitz.com/github/b3pay/ic-reactor/tree/v4/examples/next-ssr?file=src/app/page.tsx"
   />
   <LinkCard
