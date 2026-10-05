@@ -190,7 +190,7 @@ This repository enforces **OIDC Trusted Publishing** for releases (no long-lived
 
 - To enable: go to your package on npmjs.com → Settings → Trusted publishers and add this repository's workflow filename (e.g., `release.yml`).
 - Ensure the `release.yml` workflow has `permissions: id-token: write` (already configured).
-- Bind each trusted publisher to the `npm-release` environment, the environment of the publish job of both lanes here and of `release.yml` on `main` (the GA-flip runbook does this). It has no reviewer; it only lets npm refuse the publish job of an older commit, which has no environment (see "Tagging a release" below).
+- Bind each trusted publisher to the `npm-release` environment, the environment of the publish job of both lanes here and of `release.yml` on `main` (the GA-flip runbook does this). npm cannot edit a trusted publisher: add a new one with the same workflow and environment `npm-release`, then delete the old one that names no environment. A package can hold up to 10 publishers, and an unbound entry left next to a bound one still accepts any job, so the binding holds only once no entry for that workflow is left without an environment. It has no reviewer; it only lets npm refuse the publish job of an older commit, which has no environment (see "Tagging a release" below).
 - After enabling and validating Trusted Publishing, do not add a write `NPM_TOKEN` secret — publishing will use the OIDC token.
 
 On the `v3` branch both lanes make security releases only, of stable versions, and set every dist-tag explicitly: `release.yml` publishes `@ic-reactor/core` and `@ic-reactor/react` 3.x under `v3-latest` (`latest` is 4.x, published from `main`) and `@ic-reactor/candid` under `latest`; `release-tools.yml` publishes `@ic-reactor/vite-plugin` 0.x under `v0-latest` and the parser, codegen and cli under `latest`. Neither marks its GitHub Release as the repository's latest. `@ic-reactor/vite-plugin` trusts both `release.yml` (4.x, from `main`) and `release-tools.yml` (0.x, from here) as publishers. All of this holds only for a tag on a commit that contains these lanes; see "Tagging a release".
@@ -205,7 +205,7 @@ git show "$SHA":.github/workflows/release.yml | grep -q v3-latest && echo "v3 la
 git show "$SHA":.github/workflows/release-tools.yml | grep -q v0-latest && echo "v0 lane"     # for a tools-v* or parser-v* tag
 ```
 
-Push the tag only when the check prints its line. The `npm-release` environment closes this for good once every package's trusted publisher names it: the publish jobs of both lanes here and of `release.yml` on `main` run in it, and the publish jobs of older commits do not, so npm refuses their tokens.
+Push the tag only when the check prints its line. The `npm-release` environment closes this for good once no package has a trusted publisher left without it: the publish jobs of both lanes here and of `release.yml` on `main` run in it, and the publish jobs of older commits do not, so npm refuses their tokens.
 
 `v3` may carry a ruleset that requires pull requests. The release scripts' printed `git push origin v3` then works only for a maintainer on the ruleset's bypass list. Otherwise push the release commit to a branch, merge its pull request with a merge commit (a squash or rebase would leave the tagged commit off `v3`, and the preflight refuses it), and push the tag after the merge.
 
