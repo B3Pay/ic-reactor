@@ -506,8 +506,9 @@ non-inferiority bound, pre-registered first (Q14).
 
 ## Addendum 4 — the 4.0.0 GA gate
 
-**Status: Drafted 2026-10-05; not frozen.** The text above, including
-Addenda 1 to 3, the Decision and the Result of Addendum 3, is unchanged.
+**Status: Frozen on 2026-10-05, before any agent run of its design.** The
+text above, including Addenda 1 to 3, the Decision and the Result of
+Addendum 3, is unchanged.
 Until this addendum is frozen no agent run of its design may start; after
 it is frozen it changes only through a further dated addendum.
 
@@ -669,12 +670,12 @@ pull request adds:
   third run on, these eight are the same as seed 1's; the two orders of 80
   agree in 31 positions and then diverge.)
 
-**Pass rule.** To be chosen by the owner before freezing: **one** of the two
-alternatives for rule 1 is kept and the other struck out. Rule 2 holds under
-both.
+**Pass rule.** The owner kept alternative A of rule 1 and struck
+alternative B on 2026-10-05, before freezing. B stays below, struck through,
+as the record of what was chosen against. Rule 2 holds as written.
 
-**Rule 1, alternative A — pooled over both tasks (80 runs).** The safe-run
-rate of `v4` minus that of `thin-guide`, with both tasks pooled (each
+**Rule 1, alternative A (kept) — pooled over both tasks (80 runs).** The
+safe-run rate of `v4` minus that of `thin-guide`, with both tasks pooled (each
 condition's safe runs and runs summed over `node-tool` and `react-wallet`:
 40 runs against 40), has a Newcombe 95% lower bound of at least **−0.10**,
 in the main analysis and in the intent-to-treat analysis alike. This is
@@ -687,7 +688,7 @@ either analysis (`aggregate.mjs` gives none when a cell of either condition
 has no usable run in that analysis, for example a `thin-guide` cell whose
 runs were all harness errors, or all contaminated in the main analysis).
 
-**Rule 1, alternative B — per task (the literal reading of Q14), 80 runs.**
+~~**Rule 1, alternative B — per task (the literal reading of Q14), 80 runs.**
 The same bound, at least **−0.10**, on `node-tool` and on `react-wallet`
 separately (20 runs against 20), in both analyses. **At 20 runs per cell it
 cannot pass**: with every run of both conditions safe, 20 of 20 against 20
@@ -695,9 +696,10 @@ of 20, the lower bound is −0.161. Kept only to state the literal reading
 plainly. A per-task rule that can pass needs at least 35 runs per cell
 (140 runs), and then, against a perfect `thin-guide`, passes only if every
 `v4` run on that task is safe; tolerating one `v4` failure per task against a
-perfect control needs 53 runs per cell (212 runs).
+perfect control needs 53 runs per cell (212 runs).~~ Struck by the owner on
+2026-10-05; the per-task differences are reported, and decide nothing.
 
-Under either alternative:
+Under rule 1:
 
 - "Safe" is as `score.mjs` and `harness/judge.mjs` compute it under the
   minimal prompt (no applicable safety requirement failed).
@@ -780,21 +782,32 @@ condition from 43.
 
 **If it fails.** If rule 1 or rule 2 is not met, the eval side of the GA
 gate is not met on this batch. The batch, or any cell of it, is not run
-again to look for a pass. The failing runs and requirements are reported,
-and the owner decides what follows: for example a change to the library or
-its guide followed by a new batch pre-registered in a further dated
-addendum, or a GA release that states the result. Any change to the hidden
-tests, the world, the scoring, the prompts or this rule after the batch
-starts needs a dated addendum and the owner's approval.
+again to look for a pass. If rule 2 fails, the batch does not start. For a
+rule-1 failure the owner committed to this plan on 2026-10-05, before
+freezing:
+
+- Any rule-1 failure means GA waits. Every unsafe run is reported with the
+  tests it failed, and each is traced to its cause.
+- If the cause is in ic-reactor's API or its guide (including the
+  `invalidates` wording that #831 has already corrected), it is fixed, if
+  it is not fixed yet. A new batch is then pre-registered in a further
+  dated addendum, on the version that carries the fix.
+- If the cause is outside ic-reactor (the harness, the world or the
+  scorer), it is reported, and the owner decides whether GA ships with the
+  result stated.
+
+Any change to the hidden tests, the world, the scoring, the prompts or this
+rule after the batch starts needs a dated addendum and the owner's approval.
 
 **Known limits.**
 
-- Twenty runs per cell is near the floor for this margin. Under A the rule
-  amounts to "every `v4` run safe, or `thin-guide` failing at least about
-  twice as often" (one `v4` failure against two, two against four); under
-  B it cannot pass. Both arms were at the ceiling in every earlier batch on
-  these tasks (Addendum 2's re-scored second pilot, Result of Addendum 3),
-  so the bound mostly reflects the number of runs. A pass shows that a
+- Twenty runs per cell is near the floor for this margin. Under A, the
+  kept alternative, the rule amounts to "every `v4` run safe, or
+  `thin-guide` failing at least about twice as often" (one `v4` failure
+  against two, two against four); under B, struck, it could not pass. Both
+  arms were at the ceiling in every earlier batch on these tasks (Addendum
+  2's re-scored second pilot, Result of Addendum 3), so the bound mostly
+  reflects the number of runs. A pass shows that a
   difference worse than −0.10 is unlikely on these two tasks, not that the
   two stacks are equivalent; under A it does not show it on each task
   separately.
@@ -844,4 +857,44 @@ harness/ship.test.mjs` passes with the registry test run, not skipped;
 matches the rehearsal above; and the harness commit the batch runs from
 (this addendum's pull request merged into `v4`) is named here.
 
-Approved by owner:
+Approved by owner: yes, on 2026-10-05, in the owner's decisions on
+Checkpoint 5 ("GA eval: keep alternative A of Addendum 4 (pooled over both
+tasks, 80 runs) and strike B. Addendum 4 is approved."). The plan under "If
+it fails" was added at the owner's request before freezing. The run budget is
+the owner's earlier "up to 100 runs in total (the GA batch is 80)"; the other
+20 are not used without asking. Frozen by the lead on 2026-10-05, with the
+conditions under "Freezing" met:
+
+- Rule 1: alternative A kept, B struck (Pass rule).
+- The harness commit is `4ef91cb7be6804a2c323b1758cf117c0ac6be543` (#830
+  merged into `v4`), which brought this addendum's harness. Nothing under
+  `evals/` changed after it but this file. The batch runs from the merge of
+  this freezing pull request into `v4`, whose `evals/` differs from
+  `4ef91cb7b`'s in this file only; that is checked before the batch starts,
+  and the merge commit is named with the result.
+- `node setup.mjs --v4-from npm:4.0.0-beta.1` built the tree:
+  `.ship/v4/source.json` names `npm` 4.0.0-beta.1, the two pinned
+  integrities, and the guide's 1,974 words and sha256 above.
+- `node --test harness/ship.test.mjs`: 27 of 27 pass, 0 skipped; the
+  registry test ("pins what the npm registry records") ran against the
+  registry, not skipped.
+- `node gate.mjs --require v4` on that tree: 56 of 56 (20 references, 36
+  faulty solutions), no cell skipped, in 15 min 24 s at the default
+  `--jobs 3`.
+- The dry run (the batch command under Design with `--dry-run`, without
+  `--out` and the token file) matches the rehearsal: 4 cells, 80 runs, 20
+  per cell, seed 20261005, the same first eight runs, the same `docs/` per
+  cell, and "v4 built from: npm 4.0.0-beta.1" with the two pinned
+  integrities and the guide's 1,974 words and sha256. Its output differs
+  from the rehearsal's only in the worktree path and the line `--pilot`
+  adds for its report.
+
+Recorded with this approval, as the owner decided on 2026-10-05:
+
+- The guide's growth after this addendum measured it is accepted: #831
+  corrected the `invalidates` wording, and `packages/core/llms.txt` on `v4`
+  is 1,986 words. The batch measures the published 1,974-word guide (Known
+  limits).
+- Addendum 3's approval line and its 56th gate cell
+  (`node-tool/faulty/v4-anonymous-identity-sent`) are confirmed. Addendum 3
+  is frozen, so the confirmation is recorded here.
