@@ -166,12 +166,15 @@ export function createSandbox(options: { latencyMs?: number } = {}): Sandbox {
   function transfer(arg: TransferArg, caller: Principal): TransferResult {
     const from: Account = { owner: caller, subaccount: arg.from_subaccount }
     const now = BigInt(Date.now()) * 1_000_000n
+    // As ICRC-1 deduplicates: on the whole transaction, so two arguments that
+    // differ in any field (the memo too, and no memo from an empty one) are
+    // two transfers.
     const txKey = [
       accountKey(from),
       accountKey(arg.to),
       arg.amount,
       arg.fee ?? "",
-      hex(arg.memo),
+      arg.memo === null ? "-" : hex(arg.memo),
       arg.created_at_time,
     ].join("|")
     if (arg.created_at_time !== null) {

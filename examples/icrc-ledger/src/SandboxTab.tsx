@@ -237,6 +237,11 @@ function Accounts({ sandbox }: { sandbox: Sandbox }) {
 
 /** One press of Send: what was sent, and what was known before it went. */
 interface Attempt {
+  /**
+   * The argument as sent, its own `memo` and `created_at_time` included: a
+   * re-send sends this again, and each press of Send reads the form anew, so
+   * a new transfer is never taken for the duplicate of another.
+   */
   readonly arg: TransferArg
   /**
    * Who sent it: the principal the client signs as, read from the client
@@ -550,9 +555,9 @@ function Outcome(props: {
               Send the same transfer again
             </button>{" "}
             <span className="muted">
-              Same sender, same <code>created_at_time</code>: if the first one
-              went through, the ledger answers <code>Duplicate</code> instead of
-              paying twice.
+              Same sender, same <code>memo</code> and{" "}
+              <code>created_at_time</code>: if the first one went through, the
+              ledger answers <code>Duplicate</code> instead of paying twice.
             </span>
           </p>
         ) : (
