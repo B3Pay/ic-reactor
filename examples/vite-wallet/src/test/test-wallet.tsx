@@ -101,6 +101,31 @@ export interface TestWallet {
 
 const TX_WINDOW_NS = 24n * 60n * 60n * 1_000_000_000n
 
+const hex = (bytes: Uint8Array | null) =>
+  bytes === null
+    ? "null"
+    : `0x${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`
+
+/**
+ * What the ledger deduplicates on, as ICRC-1's "Transaction deduplication"
+ * has it: the whole transaction, so the sending account (caller and
+ * `from_subaccount`), `to`, `amount`, `fee`, `memo` and `created_at_time`.
+ * Two arguments that differ in any field, the memo included, are two
+ * transfers.
+ */
+function transferKey(caller: Principal, arg: TransferArg): string {
+  return [
+    caller,
+    hex(arg.from_subaccount),
+    arg.to.owner,
+    hex(arg.to.subaccount),
+    arg.amount,
+    arg.fee ?? "null",
+    hex(arg.memo),
+    arg.created_at_time,
+  ].join("|")
+}
+
 export function createTestWallet(
   options: { signedIn?: boolean; cookie?: boolean } = {}
 ): TestWallet {
@@ -153,9 +178,7 @@ export function createTestWallet(
 
   function transfer(arg: TransferArg, caller: Principal) {
     const err = (value: TransferError) => ({ tag: "Err" as const, value })
-    const txKey = [caller, arg.to.owner, arg.amount, arg.created_at_time].join(
-      "|"
-    )
+    const txKey = transferKey(caller, arg)
     if (arg.created_at_time !== null) {
       const now = BigInt(Date.now()) * 1_000_000n
       if (arg.created_at_time < now - TX_WINDOW_NS)
