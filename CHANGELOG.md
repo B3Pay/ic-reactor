@@ -48,7 +48,7 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 - `client.queryOptions(...)` built from variables that cannot be `skipToken`
   (a method without arguments called without them or with `undefined`, or
-  variables whose type does not include `SkipToken`) returns options whose
+  variables of a type `skipToken` is not assignable to) returns options whose
   `queryFn` type excludes `SkipToken`, so TanStack Query's `useSuspenseQuery`
   and `useSuspenseQueries` take them without a cast (#828). Variables typed
   `V | SkipToken`, or `skipToken` itself, keep `SkipToken` in `queryFn`'s
@@ -59,8 +59,8 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   hooks take the options too; `useQuery` and a `QueryObserver` still type the
   query's error `ReactorError<E>`. Variables of a type `skipToken` is
   assignable to cannot be told from it: the options of such a method keep
-  `SkipToken` whatever the variables, and a suspense read of it still needs a
-  cast. Of what `candid-core-cli gen` writes, that is only a method whose one
+  `SkipToken` whatever the variables: read it with `useQuery`, or cast its
+  `queryFn` for a suspense read. Of what `candid-core-cli gen` writes, that is only a method whose one
   argument is Candid `reserved` (typed `unknown`): it writes `record {}` as
   `Record<string, never>`, which a suspense read takes. A type written by
   hand that `skipToken` fits, such as `{}`, is another. Types only: nothing
@@ -82,6 +82,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
     error typed `unknown`. Annotate it `unknown`, or leave the parameter to
     the context. Passing such a `retry` to `useQuery({ ...options, retry })`
     still compiles.
+  - A variable inferred from the options of a read that cannot be skipped,
+    given the options of one that can: `let o = client.queryOptions(c, m, v)`
+    then `o = client.queryOptions(c, m, skipToken)` is now TS2322, and so is
+    the same through a `useState` setter, a `push` onto an inferred array or
+    a parameter typed `typeof o`. The two options are different types now.
+    Build both in one expression,
+    `ready ? client.queryOptions(c, m, v) : client.queryOptions(c, m, skipToken)`,
+    whose union `useQuery` takes, or type the variables `V | SkipToken` so
+    that both reads give the options that keep `SkipToken`.
 
   Wrong variables or an unknown method name are now reported as TS2769 ("No
   overload matches this call", listing both signatures), where they were

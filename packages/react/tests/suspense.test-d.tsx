@@ -118,6 +118,13 @@ export function SuspenseReads() {
   expectTypeOf<
     Extract<typeof reserved.queryFn, SkipToken>
   >().toEqualTypeOf<SkipToken>()
+  // The cast the Reads guide gives for it.
+  const reservedCast = useSuspenseQuery(
+    reserved as typeof reserved & {
+      queryFn: Exclude<typeof reserved.queryFn, SkipToken>
+    }
+  )
+  expectTypeOf(reservedCast.data).toEqualTypeOf<bigint>()
 
   // Variables of a type `skipToken` is not assignable to: an empty record as
   // the generator writes it, a record of opts alone, an opt and `null`. A value
@@ -141,14 +148,27 @@ export function SuspenseReads() {
   expectTypeOf(opts.data).toEqualTypeOf<bigint>()
   expectTypeOf(opt.data).toEqualTypeOf<bigint>()
   expectTypeOf(nothing.data).toEqualTypeOf<bigint>()
-  const othersSkipped = [
-    client.queryOptions(ledger, "options", skipToken),
-    client.queryOptions(ledger, "maybeNat", skipToken),
-    client.queryOptions(ledger, "nothing", skipToken),
-  ] as const
-  // @ts-expect-error skipToken is for useQueries
-  const othersSkippedRead = useSuspenseQueries({ queries: othersSkipped })
-  useQueries({ queries: othersSkipped })
+  // Each with skipToken is refused on its own, so one that wrongly read
+  // under suspense could not hide behind the others.
+  const optsSkipped = client.queryOptions(ledger, "options", skipToken)
+  // @ts-expect-error skipToken is for useQuery
+  const optsSkippedRead = useSuspenseQuery(optsSkipped)
+  expectTypeOf<
+    Extract<typeof optsSkipped.queryFn, SkipToken>
+  >().toEqualTypeOf<SkipToken>()
+  const optSkipped = client.queryOptions(ledger, "maybeNat", skipToken)
+  // @ts-expect-error skipToken is for useQuery
+  const optSkippedRead = useSuspenseQuery(optSkipped)
+  expectTypeOf<
+    Extract<typeof optSkipped.queryFn, SkipToken>
+  >().toEqualTypeOf<SkipToken>()
+  const nothingSkipped = client.queryOptions(ledger, "nothing", skipToken)
+  // @ts-expect-error skipToken is for useQuery
+  const nothingSkippedRead = useSuspenseQuery(nothingSkipped)
+  expectTypeOf<
+    Extract<typeof nothingSkipped.queryFn, SkipToken>
+  >().toEqualTypeOf<SkipToken>()
+  useQueries({ queries: [optsSkipped, optSkipped, nothingSkipped] })
 
   // `{}` is a type skipToken is assignable to, like a reserved argument's
   // `unknown`: it cannot tell a value from skipToken, so every read of it
@@ -180,12 +200,15 @@ export function SuspenseReads() {
     skipped,
     skippedMany,
     reservedRead,
+    reservedCast,
     empty,
     emptySkippedRead,
     opts,
     opt,
     nothing,
-    othersSkippedRead,
+    optsSkippedRead,
+    optSkippedRead,
+    nothingSkippedRead,
     bracesSkippedRead,
     bracesRead,
   ].length
@@ -294,6 +317,30 @@ export const contextualRetry: typeof outcome = {
   ...outcome,
   retry: (n, error) => n < 3 && error !== null,
 }
+// The options of a read that cannot be skipped and of one that can are two
+// types now, so a variable inferred from the first no longer holds the
+// second: the fourth break the CHANGELOG lists. Built in one expression, the
+// two make a union that useQuery takes; a variable typed `V | SkipToken`
+// gives the wide options either way.
+export function OneVariableTwoReads(ready: boolean) {
+  let reassigned = client.queryOptions(ledger, "outcome", 1n)
+  const first = reassigned
+  // @ts-expect-error options that cannot be skipped do not hold options that can
+  reassigned = client.queryOptions(ledger, "outcome", skipToken)
+  expectTypeOf<Extract<typeof reassigned.queryFn, SkipToken>>().toBeNever()
+  const either = ready
+    ? client.queryOptions(ledger, "outcome", 1n)
+    : client.queryOptions(ledger, "outcome", skipToken)
+  const read = useQuery(either)
+  expectTypeOf(read.data).toEqualTypeOf<bigint | undefined>()
+  expectTypeOf(read.error).toEqualTypeOf<ReactorError<string> | null>()
+  const n: bigint | SkipToken = ready ? 1n : skipToken
+  let wide = client.queryOptions(ledger, "outcome", n)
+  const firstWide = wide
+  wide = client.queryOptions(ledger, "outcome", skipToken)
+  return [first, reassigned, read, firstWide, wide]
+}
+
 export function RetryOfTheApp() {
   // A `retry` passed to the hook replaces the options' own, and keeps its
   // annotation.
