@@ -1,6 +1,6 @@
 # @ic-reactor/react
 
-> **ic-reactor 4 is a prerelease.** `4.0.0-beta.1` is published under npm's
+> **ic-reactor 4 is a prerelease.** `4.0.0-beta.2` is published under npm's
 > `beta` dist-tag, and `latest` stays 3.x until 4.0 GA (milestone 1,
 > [#790](https://github.com/B3Pay/ic-reactor/issues/790)).
 

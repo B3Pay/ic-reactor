@@ -1,6 +1,6 @@
 # @ic-reactor/vite-plugin
 
-> **ic-reactor 4 is a prerelease.** `4.0.0-beta.1` is published under npm's
+> **ic-reactor 4 is a prerelease.** `4.0.0-beta.2` is published under npm's
 > `beta` dist-tag, and `latest` stays the 0.15 plugin of the 3.x line until 4.0
 > GA. That plugin, which generates reactor bindings with `@ic-reactor/codegen`,
 > is documented at https://ic-reactor.b3pay.net/v3/packages/vite-plugin.
