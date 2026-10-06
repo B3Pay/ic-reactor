@@ -22,12 +22,12 @@ errors and a complete React example, for people and coding agents alike.
 
 ```bash
 npm install @ic-reactor/core@beta @icp-sdk/core @tanstack/query-core
-npm install --save-exact @candid-core/schema@0.3.0-beta.1
+npm install --save-exact @candid-core/schema@0.3.0
 ```
 
 `@candid-core/schema` is a peer at exactly that version: the module
 `candid-core-cli gen` writes imports it, so the generator
-(`@candid-core/cli@0.2.0-beta.1`) has to pair with it too.
+(`@candid-core/cli@0.2.0`) has to pair with it too.
 
 ## 3.x
 

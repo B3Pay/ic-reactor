@@ -19,7 +19,7 @@ A thin layer over a module that `candid-core-cli gen` generates from a `.did`
 file, plus one consumer guide. There are no typed handles. No package code on
 this branch is written against unpublished candid-core shapes: core's peer
 `@candid-core/schema` and the Vite plugin's peer `@candid-core/cli` are pinned
-exactly to published betas.
+exactly to published stable releases.
 
 ## Packages on this branch
 

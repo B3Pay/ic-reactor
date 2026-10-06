@@ -15,11 +15,11 @@ through their `actor` schemas exactly as an app does.
 
 ## Regenerating
 
-With `@candid-core/cli@0.2.0-beta.1` (the generator that pairs with
-`@candid-core/schema@0.3.0-beta.1`), from this directory:
+With `@candid-core/cli@0.2.0` (the generator that pairs with
+`@candid-core/schema@0.3.0`), from this directory:
 
 ```sh
-npx -y @candid-core/cli@0.2.0-beta.1 gen icrc1.did shapes.did archive.did management.did skippable.did -o .
+npx -y @candid-core/cli@0.2.0 gen icrc1.did shapes.did archive.did management.did skippable.did -o .
 ```
 
 Add `--check` to the same command to verify that nothing drifted. Each

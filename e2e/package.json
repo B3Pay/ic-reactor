@@ -16,13 +16,13 @@
     "typecheck": "tsc --noEmit -p tsconfig.typecheck.json"
   },
   "dependencies": {
-    "@candid-core/schema": "0.3.0-beta.1",
+    "@candid-core/schema": "0.3.0",
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/react": "workspace:*",
     "@icp-sdk/core": "^6.1.0"
   },
   "devDependencies": {
-    "@candid-core/cli": "0.2.0-beta.1",
+    "@candid-core/cli": "0.2.0",
     "@ic-reactor/vite-plugin": "workspace:*",
     "@icp-sdk/ic-wasm": "0.11.1",
     "@icp-sdk/icp-cli": "1.2.0",

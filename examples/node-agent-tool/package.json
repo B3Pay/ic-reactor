@@ -16,14 +16,14 @@
     "gen:check": "candid-core-cli gen icrc1.did -o src/canisters --check"
   },
   "dependencies": {
-    "@candid-core/schema": "0.3.0-beta.1",
+    "@candid-core/schema": "0.3.0",
     "@ic-reactor/core": "^4.0.0-beta.2",
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
     "@tanstack/query-core": "^5.102.8"
   },
   "devDependencies": {
-    "@candid-core/cli": "0.2.0-beta.1",
+    "@candid-core/cli": "0.2.0",
     "@icp-sdk/icp-cli": "1.2.0",
     "@types/node": "^26.5.1",
     "typescript": "^6.0.3",

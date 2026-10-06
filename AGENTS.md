@@ -8,8 +8,8 @@ ic-reactor 4 against `v4`.
 
 ic-reactor 4 is a thin layer over a module that `candid-core-cli gen`
 generates, plus one consumer guide. Its packages are written against the
-published candid-core betas, `@candid-core/schema` and `@candid-core/cli`,
-each pinned exactly.
+published stable candid-core releases, `@candid-core/schema` and
+`@candid-core/cli`, each pinned exactly.
 
 ### Packages
 

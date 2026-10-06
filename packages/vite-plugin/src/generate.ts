@@ -23,7 +23,7 @@ import path from "node:path"
  * install the generator that pairs with the `@candid-core/schema` runtime its
  * generated modules import.
  */
-export const CANDID_CORE_CLI_VERSION = "0.2.0-beta.1"
+export const CANDID_CORE_CLI_VERSION = "0.2.0"
 
 /** The `schemaVersion` of the `--json` document this module understands. */
 const REPORT_SCHEMA_VERSION = 1
