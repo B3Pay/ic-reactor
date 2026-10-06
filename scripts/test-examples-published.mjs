@@ -8,8 +8,9 @@
  * `linkWorkspacePackages` links each @ic-reactor/* range to packages/*. That
  * proves the examples against the code on the branch, not against the release:
  * an example that uses a name the published release lacks stays green there.
- * This script tests against one dist-tag per run (see `distTagFor`): `beta`
- * for a prerelease and `latest` for a stable release. For each example, it:
+ * This script tests against one dist-tag per run (see `resolveRun`): `beta`
+ * for a prerelease and `latest` for a stable release, of the `--wait-for`
+ * version or else of the branch's own. For each example, it:
  *
  *   1. copies its git-tracked files to a directory outside the repository,
  *      and refuses to run if a parent of that directory holds a node_modules
@@ -109,11 +110,12 @@ const RELEASE_VERSION =
  * the dist-tag it publishes under; that file arrives with #836 and is not on
  * this branch, so the rule is repeated here rather than imported.
  *
- * Without `--wait-for` (the push, pull request, weekly and manual runs),
- * `latest`: the examples pin a stable range (`^4.0.0`) from 4.0.0 on, which no
- * prerelease satisfies.
+ * A run without `--wait-for` (push, pull request, weekly, manual) passes the
+ * branch's own version instead (see `resolveRun`), so it gets the tag of the
+ * branch's last release. With no value at all, `latest`.
  *
- * @param {string | undefined} waitFor the `--wait-for` value, if any
+ * @param {string | undefined} waitFor the `--wait-for` value (or the
+ *   branch's version), if any
  * @returns {"latest" | "beta"}
  * @throws {Error} when `waitFor` is not a version
  */
@@ -644,8 +646,8 @@ function npmView(spec, field) {
 }
 
 /** The version a dist-tag names, from the registry. */
-function distTagVersion(name, tag) {
-  const version = npmView(`${name}@${tag}`, "version")
+function distTagVersion(name, tag, view = npmView) {
+  const version = view(`${name}@${tag}`, "version")
   if (typeof version !== "string") {
     throw new Error(`${name} has no ${tag} dist-tag on ${REGISTRY}`)
   }
@@ -1102,16 +1104,48 @@ export async function waitForPublished(
 }
 
 /** What the registry serves for `name` now, for `waitForPublished`. */
-function registryState(name, tag, version) {
-  const tagged = npmView(`${name}@${tag}`, "version")
+function registryState(name, tag, version, view = npmView) {
+  const tagged = view(`${name}@${tag}`, "version")
   const integrity =
     tagged === version
-      ? npmView(`${name}@${version}`, "dist.integrity")
+      ? view(`${name}@${version}`, "dist.integrity")
       : undefined
   return {
     tagged: typeof tagged === "string" ? tagged : undefined,
     integrity: typeof integrity === "string" ? integrity : undefined,
   }
+}
+
+/**
+ * A run's dist-tag and the version under test.
+ *
+ * The tag is `distTagFor(waitFor ?? branchVersion)`. With `--wait-for` (the
+ * release's run), the tag that release publishes under, and the version is
+ * `waitFor` once every one of `packages` serves it under that tag
+ * (`waitForPublished`). Without it, the tag of the branch's version, which is
+ * the version of its last release: release.js syncs the examples to exactly
+ * that version (sync-example-versions.js), so `latest` after a stable release
+ * such as 4.0.0, and `beta` through a later prerelease cycle such as 4.1.0's,
+ * whose ranges no `latest` satisfies; the version is the one that tag names.
+ *
+ * @param {{ waitFor?: string, branchVersion?: string, packages: string[] }} run
+ * @param {{ view?: (spec: string, field: string) => unknown } & Partial<Parameters<typeof waitForPublished>[3]>} [options]
+ *   `view(spec, field)` answers as `npm view <spec> <field> --json` does
+ *   (undefined for a 404); the rest goes to `waitForPublished`
+ * @returns {Promise<{ tag: "latest" | "beta", version: string }>}
+ */
+export async function resolveRun(
+  { waitFor, branchVersion, packages },
+  { view = npmView, ...waitOptions } = {}
+) {
+  const tag = distTagFor(waitFor ?? branchVersion)
+  const version = waitFor
+    ? await waitForPublished(packages, tag, waitFor, {
+        ...waitOptions,
+        lookup: (name) => registryState(name, tag, waitFor, view),
+      })
+    : distTagVersion(`${SCOPE}core`, tag, view)
+  return { tag, version }
 }
 
 async function main(argv) {
@@ -1134,31 +1168,22 @@ async function main(argv) {
     return 1
   }
 
-  const waitFor = args.waitFor
+  const readManifest = (...path) =>
+    JSON.parse(readFileSync(join(repoRoot, ...path), "utf8"))
   let tag
+  let version
   try {
-    tag = distTagFor(waitFor)
+    ;({ tag, version } = await resolveRun({
+      waitFor: args.waitFor,
+      branchVersion: readManifest("packages", "core", "package.json").version,
+      packages: scopePackageNames(
+        names.map((name) => readManifest("examples", name, "package.json"))
+      ),
+    }))
   } catch (error) {
     console.error(error.message)
     return 1
   }
-  const version = waitFor
-    ? await waitForPublished(
-        scopePackageNames(
-          names.map((name) =>
-            JSON.parse(
-              readFileSync(
-                join(repoRoot, "examples", name, "package.json"),
-                "utf8"
-              )
-            )
-          )
-        ),
-        tag,
-        waitFor,
-        { lookup: (pkg) => registryState(pkg, tag, waitFor) }
-      )
-    : distTagVersion(`${SCOPE}core`, tag)
   console.log(
     `${SCOPE}core@${tag} is ${version} on ${REGISTRY}; testing ${names.join(", ")}`
   )

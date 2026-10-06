@@ -11,30 +11,35 @@ name: Examples on the published packages
 #
 # The dist-tag: with wait-for (the release's run), the one that release
 # publishes under, `beta` for a prerelease tag and `latest` for a stable one;
-# without it (push, pull request, weekly and manual runs), `latest`, because
-# the examples pin a stable range (^4.0.0) from 4.0.0 on.
+# without it (push, pull request, weekly and manual runs), the one of the
+# version in packages/core/package.json, the branch's last release, to whose
+# exact version release.js syncs the examples: `latest` after 4.0.0, `beta`
+# through a later prerelease cycle such as 4.1.0's.
 #
-# On pull requests to v4 that touch an example or this check, so a change that
-# makes an example use an API the published packages lack fails here. That is
-# intended: such an example change lands with the release that publishes the
-# API, not before it, so the release PR itself, and the push that merges it,
-# are expected to fail this job. It therefore cannot be a required check. The
-# run that counts for a release is the one release.yml calls after its publish
-# job (workflow_call), with --wait-for the tag's version, so it tests the
-# tagged examples against the packages just published. A PR touching only
-# packages/ or docs/ cannot change the outcome (the script installs the
-# published packages, not the branch's), so it does not run this; every push
-# to v4 does, so a breaking release of Vite, Next, TanStack Query or another
-# range still shows up within a push. Weekly, because those ranges resolve to
-# new releases with no commit of ours. GitHub runs `schedule` and offers
-# `workflow_dispatch` only for workflow files on the default branch, which is
-# main (3.x) until 4.0 GA, so those two triggers start working when v4 becomes
-# main. The paths filter and the triggers are the owner's call.
+# On pull requests to v4 or main that touch an example or this check, so a
+# change that makes an example use an API the published packages lack fails
+# here. That is intended: such an example change lands with the release that
+# publishes the API, not before it, so the release PR itself, and the push
+# that merges it, are expected to fail this job. It therefore cannot be a
+# required check. The run that counts for a release is the one release.yml
+# calls after its publish job (workflow_call), with --wait-for the tag's
+# version, so it tests the tagged examples against the packages just
+# published. A PR touching only packages/ or docs/ cannot change the outcome
+# (the script installs the published packages, not the branch's), so it does
+# not run this; every push to v4 or main does, so a breaking release of Vite,
+# Next, TanStack Query or another range still shows up within a push. Weekly,
+# because those ranges resolve to new releases with no commit of ours. GitHub
+# runs `schedule` and offers `workflow_dispatch` only for workflow files on
+# the default branch, which is main (3.x) until 4.0 GA, so those two triggers
+# start working when v4 becomes main. main is listed next to v4, as ci.yml
+# lists it, so the push and pull request runs carry on once v4 becomes main;
+# until then the 3.x commits on main carry no copy of this file, so pushes
+# there do not run it. The paths filter and the triggers are the owner's call.
 on:
   push:
-    branches: [v4]
+    branches: [main, v4]
   pull_request:
-    branches: [v4]
+    branches: [main, v4]
     paths:
       - "examples/**"
       - "scripts/test-examples-published.mjs"
