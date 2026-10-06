@@ -15,6 +15,37 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+Nothing yet.
+
+## core, react, vite-plugin 4.0.0-beta.2
+
+Prepared on 2026-10-06; not published yet. It goes out under npm's `beta`
+dist-tag, as `@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA.
+Changes since 4.0.0-beta.1.
+
+An app on beta.1 upgrades by bumping all three packages to `4.0.0-beta.2`, and
+the candid-core pair to its stable releases, both exact:
+
+```sh
+npm install --save-exact @candid-core/schema@0.3.0
+npm install --save-dev --save-exact @candid-core/cli@0.2.0
+```
+
+No export is added or removed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2), and a module generated for beta.1 need not be regenerated.
+Code that compiled against beta.1 compiles unchanged, unless it does one of
+the four things core's Changed entry on `queryOptions` lists, or switches
+exhaustively over candid-core's `ContractIssueCode`. What is new is
+one error code a missing canister now carries, an aimed form of the test
+client's `refuseNext`, and read options that TanStack Query's suspense hooks
+take without a cast.
+
+The 4 docs are at https://ic-reactor.b3pay.net/v4/: getting started, guides to
+the client, reads, writes, errors, auth, SSR, testing, values and the Vite
+plugin, a page per package, and "Migrating from 3.x" with the table of every
+removed 3.x name and what replaces it (#789). Each package's `homepage` now
+points at its page there.
+
 ### @ic-reactor/core
 
 #### Added
@@ -96,6 +127,34 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   overload matches this call", listing both signatures), where they were
   TS2345.
 
+- Peer dependency: `@candid-core/schema` at exactly `0.3.0`, the stable
+  release of the 0.3 line, where beta.1 pinned `0.3.0-beta.1`. The other peers
+  are unchanged. Migration: `npm install --save-exact @candid-core/schema@0.3.0`,
+  with the plugin's `@candid-core/cli@0.2.0` below. What an app meets, from
+  candid-core's [0.3.0 release notes](https://github.com/b3hr4d/candid-core/blob/acabe0fcfbd8019d14e2c2550c5e6cd872a3529a/.github/release-notes/npm/schema/0.3.0.md):
+  - A `rec` hop is no longer charged against the decode limits, so the
+    client's `maxDepth` (default 256) counts a reply's Candid nesting alone. A
+    recursive reply, such as an ICRC-3 block's `Value`, may nest deeper at the
+    same `maxDepth` than before; through a `schemaFromContract()` actor, about
+    128 levels used to reach the default, and now 256 do.
+  - Replies refused that were accepted, only at a limit: the `null` a reply
+    gets for a field its message omits (`opt`, `null` or `reserved`) is now
+    charged one depth level, at the field's own level, and one element. So
+    such a field at exactly the client's `maxDepth` rejects `invalid_reply`
+    with a `value_depth` issue, and a large reply whose records omit such
+    fields can pass the decoder's 1,000,000-element bound, which the client
+    does not change: 500,000 records that each omit one field now cost
+    1,000,001 elements and reject `invalid_reply` with a `value_elements`
+    issue. A test client checks its mocks' replies at its `maxDepth` too,
+    where a tag-only variant (`{ tag }`) at exactly `maxDepth` is now
+    refused. At the default `maxDepth`, only a reply 256 levels deep reaches
+    the depth refusals.
+  - `schemaFromContract()` refuses a Contract document with a key the format
+    does not define, a type node nothing reaches, or type nodes and no root,
+    as candid-core's own loader does. Every document `candid-core compile`
+    writes still loads. Its `ContractIssueCode` gains `unknown_key`,
+    `orphan_type_node` and `rootless_type_arena`.
+
 #### Documentation
 
 - The guide (`llms.txt`) said the `invalidates` option of
@@ -115,6 +174,58 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `client.queryClient.getQueryCache().subscribe()`, whose `"updated"` event
   with `action.type` `"error"` carries the cancellation (#829). The code is
   unchanged.
+
+### @ic-reactor/vite-plugin
+
+CI now runs its typecheck and tests at the floor of each Vite major its `vite`
+peer range accepts, 4.2.0, 5.0.0, 6.0.0, 7.0.0 and 8.0.0, where before it ran
+on the newest Vite only (#823). The range is unchanged.
+
+#### Changed
+
+- Peer dependency: `@candid-core/cli` at exactly `0.2.0`, the stable generator
+  that pairs with `@candid-core/schema` `0.3.0`, where beta.1 pinned
+  `0.2.0-beta.1`. The plugin's install hints name it; nothing else in the
+  plugin changed. Migration:
+  `npm install --save-dev --save-exact @candid-core/cli@0.2.0`. It writes the
+  same module as 0.2.0-beta.1 for every `.did` both accept, and refuses two
+  that 0.2.0-beta.1 did not: a type on a cycle through `opt` alone
+  (`type T = opt T;`, `did_type_check_error`) and a run of more than 256
+  consecutive comments (`resource_limit_exceeded`). The plugin reports either
+  as that canister's generation failure. See candid-core's
+  [0.2.0 release notes](https://github.com/b3hr4d/candid-core/blob/acabe0fcfbd8019d14e2c2550c5e6cd872a3529a/.github/release-notes/npm/cli/0.2.0.md).
+
+### Examples, e2e and evals (not published)
+
+- The four examples pin `^4.0.0-beta.2`, and three use what it adds:
+  `node-agent-tool`'s mock ledger throttles exactly `icrc1_transfer` with the
+  aimed `refuseNext` instead of counting the reads before it, the
+  `icrc-ledger` sandbox's HTTP 429 faults hit only the transfer, and
+  `next-ssr`'s balance route answers a missing canister with a 502 that
+  carries `code: "canister_not_found"` (#821, #822).
+- A new script and workflow run each example the way someone who copies it
+  out of the repository does, and as StackBlitz does: a plain `npm install`
+  of the `@ic-reactor/*` beta published on npm, then its typecheck, tests,
+  build and StackBlitz start command. The release workflow runs it once the
+  packages are published (#788). Each example has a `.stackblitzrc`, and
+  `jsdom` is pinned to `30.0.1`.
+- `vite-wallet`'s and `icrc-ledger`'s transfers carry a memo of each
+  transfer's own, kept for its re-send, so two transfers of the same amount
+  in the same millisecond are never taken for each other's `Duplicate`; their
+  test ledgers deduplicate on the whole argument, memo included (#833, #838).
+- The e2e suite is rewritten for 4: twelve cases on an icp-cli 1.2.0 local
+  network, over a `hello_actor` module generated by `candid-core-cli gen`
+  (#787).
+- The examples and the e2e suite pin `@candid-core/schema` `0.3.0` and
+  `@candid-core/cli` `0.2.0`. Every module the examples, core's tests and the e2e
+  suite generate is byte-identical under 0.2.0.
+- The eval harness can build the `v4` condition from the published
+  4.0.0-beta.1 tarballs, and the GA eval (Addendum 4 of
+  `evals/PREREGISTRATION.md`) ran on the published 4.0.0-beta.1 (#790). GA
+  ships on the result of Addendum 4, stated as recorded: rule 1 was not met as
+  written, because the leak audit flagged react-wallet/`v4`#14's read of its
+  own persisted tool output; all 80 runs were safe, and the pooled bound held
+  in both analyses (−0.0897 main, −0.0876 intent-to-treat, against −0.10).
 
 ## core, react, vite-plugin 4.0.0-beta.1
 

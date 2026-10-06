@@ -267,8 +267,15 @@ export function createSandbox(options: { latencyMs?: number } = {}): Sandbox {
       if (fault === "reject-4") armedReject = 4
       else if (fault === "reject-2") armedReject = 2
       else if (fault === "lost-reply") test.dropNextReply()
-      else if (fault === "http-429") test.refuseNext(429)
-      else test.refuseNext(429, 3)
+      else {
+        // Aimed at the transfer, so a balance read the page makes meanwhile
+        // is answered.
+        test.refuseNext(429, {
+          method: "icrc1_transfer",
+          canister: SANDBOX_LEDGER,
+          times: fault === "http-429" ? 1 : 3,
+        })
+      }
     },
   }
 }

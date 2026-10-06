@@ -12,9 +12,15 @@ name: Examples on the published packages
 # On pull requests to v4 that touch an example or this check, so a change that
 # makes an example use an API the published beta lacks fails here. That is
 # intended: such an example change lands with the release that publishes the
-# API, not before it, so the release PR itself, and the push that merges it,
-# are expected to fail this job. It therefore cannot be a required check. The
-# run that counts for a release is the one release.yml calls after its publish
+# API, not before it. A release PR, and the push that merges it, sync every
+# example to the branch's own version before it is published; a run that finds
+# exactly that (every @ic-reactor/* range is ^<the version in
+# packages/core/package.json>, and npm has no such version yet) defers and
+# passes, saying so (awaitsRelease), unless a dependency uses a local
+# protocol (workspace:, file: …); the checks that need no registry
+# (staticFindings) still run first and fail it. Any other unsatisfied range still fails,
+# so this is not a required check. The run that counts for a release is the
+# one release.yml calls after its publish
 # job (workflow_call), with --wait-for the tag's version, so it tests the
 # tagged examples against the packages just published. A PR touching only
 # packages/ or docs/ cannot change the outcome (the script installs the

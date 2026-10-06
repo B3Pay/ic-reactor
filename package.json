@@ -1,6 +1,6 @@
 {
   "name": "ic-reactor",
-  "version": "4.0.0-beta.1",
+  "version": "4.0.0-beta.2",
   "type": "module",
   "private": true,
   "description": "The modern, type-safe library for building Internet Computer applications",
@@ -59,7 +59,7 @@
     "url": "https://github.com/B3Pay/ic-reactor.git"
   },
   "devDependencies": {
-    "@candid-core/schema": "0.3.0-beta.1",
+    "@candid-core/schema": "0.3.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.5.1",
     "eslint": "^10.10.0",

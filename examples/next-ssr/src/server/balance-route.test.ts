@@ -94,9 +94,13 @@ describe("GET /api/balance/[ledger]/[principal]", () => {
   it.each([429, 503])(
     "maps a read turned away with HTTP %i, which passes, to 503",
     async (refusal) => {
-      // A boundary node refuses every request: the client re-sends a read at
-      // most twice, then gives up with `not_delivered`.
-      const { GET } = handler((test) => test.refuseNext(refusal, 10))
+      // A boundary node turns the balance read away every time it is sent:
+      // the client re-sends a read at most twice, then gives up with
+      // `not_delivered`. A fourth send would be answered, and the route would
+      // answer 200.
+      const { GET } = handler((test) =>
+        test.refuseNext(refusal, { method: "icrc1_balance_of", times: 3 })
+      )
 
       const { status, body } = await get(GET, "ICP", SAMPLE_OWNER)
 
@@ -110,19 +114,38 @@ describe("GET /api/balance/[ledger]/[principal]", () => {
     }
   )
 
-  it("maps a canister that does not exist to 502, since asking again cannot help", async () => {
-    // What a boundary node answers for a canister id that names no canister
-    // (HTTP 400 `canister_not_found`; the fake replica would reject with code
-    // 3 instead). The client does not re-send a 4xx, and neither should the
-    // route's caller.
-    const { GET } = handler((test) => test.refuseNext(400, 10))
+  it("maps a read refused with an HTTP 4xx that stands to 502, since asking again cannot help", async () => {
+    // A boundary node answers HTTP 400 for a canister id that names no
+    // canister, or a request it cannot accept, however often it is asked: here
+    // it turns the balance read away each of the three times a read could be
+    // sent. The client does not re-send a 4xx, and neither should the route's
+    // caller.
+    const { GET } = handler((test) =>
+      test.refuseNext(400, { method: "icrc1_balance_of", times: 3 })
+    )
 
-    const { status, body } = await get(GET, NO_CANISTER, SAMPLE_OWNER)
+    const { status, body } = await get(GET, "ICP", SAMPLE_OWNER)
 
     expect(status).toBe(502)
     expect(body).toMatchObject({
       error: { kind: "not_delivered", httpStatus: 400 },
     })
     expect(tests[0] && requestsFor(tests[0], "icrc1_balance_of").length).toBe(1)
+  })
+
+  it("maps a canister that does not exist to 502, with code canister_not_found", async () => {
+    // For this id, outside every subnet's range, mainnet answers HTTP 400
+    // `canister_not_found` (`kind: "not_delivered"`); the fake replica rejects
+    // with code 3 and IC0301 (`kind: "rejected"`), as a mainnet replica does
+    // for an id inside its range that holds no canister. All say
+    // `code: "canister_not_found"`, and all are a 502.
+    const { GET } = handler()
+
+    const { status, body } = await get(GET, NO_CANISTER, SAMPLE_OWNER)
+
+    expect(status).toBe(502)
+    expect(body).toMatchObject({
+      error: { kind: "rejected", rejectCode: 3, code: "canister_not_found" },
+    })
   })
 })

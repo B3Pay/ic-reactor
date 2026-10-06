@@ -1,6 +1,6 @@
 # @ic-reactor/vite-plugin
 
-> **ic-reactor 4 is a prerelease.** `4.0.0-beta.1` is published under npm's
+> **ic-reactor 4 is a prerelease.** `4.0.0-beta.2` is published under npm's
 > `beta` dist-tag, and `latest` stays the 0.15 plugin of the 3.x line until 4.0
 > GA. That plugin, which generates reactor bindings with `@ic-reactor/codegen`,
 > is documented at https://ic-reactor.b3pay.net/v3/packages/vite-plugin.
@@ -21,12 +21,12 @@ type `IcReactorPluginOptions`:
 
 The plugin runs the `@candid-core/cli` your app installs, and that CLI has to
 pair with the `@candid-core/schema` runtime the generated modules import. Both
-are pinned to one exact release while they are betas, and so is the plugin's
-peer on the CLI:
+are pinned to one exact release, as candid-core asks of every release before
+1.0, and so is the plugin's peer on the CLI:
 
 ```sh
-npm install --save-exact @candid-core/schema@0.3.0-beta.1
-npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
+npm install --save-exact @candid-core/schema@0.3.0
+npm install --save-dev --save-exact @candid-core/cli@0.2.0
 npm install --save-dev @ic-reactor/vite-plugin@beta
 ```
 

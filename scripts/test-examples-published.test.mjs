@@ -26,6 +26,8 @@ import {
   REGISTRY_ARGS,
   WEBCONTAINER_MODEL,
   ancestorFindings,
+  awaitsRelease,
+  definesScript,
   checkInstalled,
   checkLockfile,
   checkManifest,
@@ -37,6 +39,8 @@ import {
   requiredScriptFindings,
   scopePackageNames,
   stackblitzStartCommand,
+  startScriptFindings,
+  staticFindings,
   trackedConfigFindings,
   waitForPublished,
   webContainerEnv,
@@ -157,6 +161,240 @@ describe("checkManifest", () => {
 
   it("leaves other packages' registry ranges to npm", async () => {
     assert.deepEqual(await check({ dependencies: { next: "^16.3.8" } }), [])
+  })
+})
+
+describe("awaitsRelease", () => {
+  const example = (deps, devDeps = {}) => ({
+    name: "example",
+    dependencies: { "@candid-core/schema": "0.3.0", ...deps },
+    devDependencies: devDeps,
+  })
+  const synced = [
+    example(
+      {
+        "@ic-reactor/core": "^4.0.0-beta.2",
+        "@ic-reactor/react": "^4.0.0-beta.2",
+      },
+      { "@ic-reactor/vite-plugin": "^4.0.0-beta.2" }
+    ),
+    example({ "@ic-reactor/core": "^4.0.0-beta.2" }),
+  ]
+  const before = {
+    branchVersion: "4.0.0-beta.2",
+    publishedVersions: ["4.0.0-beta.1"],
+  }
+
+  it("defers a release pull request: every example pins the branch's unpublished version", () => {
+    assert.equal(awaitsRelease(synced, before), true)
+  })
+
+  it("tests once the branch's version is published", () => {
+    assert.equal(
+      awaitsRelease(synced, {
+        branchVersion: "4.0.0-beta.2",
+        publishedVersions: ["4.0.0-beta.1", "4.0.0-beta.2"],
+      }),
+      false
+    )
+  })
+
+  it("tests when one example pins anything but the branch's version", () => {
+    for (const range of [
+      "^4.0.0-beta.1",
+      "4.0.0-beta.2",
+      "~4.0.0-beta.2",
+      "^4.0.0",
+      "*",
+    ]) {
+      const manifests = [...synced, example({ "@ic-reactor/core": range })]
+      assert.equal(awaitsRelease(manifests, before), false, range)
+    }
+  })
+
+  it("tests a local protocol range, which checkManifest refuses", () => {
+    const manifests = [
+      ...synced,
+      example({ "@ic-reactor/react": "workspace:*" }),
+    ]
+    assert.equal(awaitsRelease(manifests, before), false)
+  })
+
+  it("tests a local protocol on any other dependency, even with every @ic-reactor range synced", () => {
+    for (const range of [
+      "workspace:*",
+      "file:../tool",
+      "link:../tool",
+      "portal:../tool",
+    ]) {
+      const manifests = [
+        synced[0],
+        {
+          ...example({ "@ic-reactor/core": "^4.0.0-beta.2" }),
+          devDependencies: { "some-tool": range },
+        },
+      ]
+      assert.equal(awaitsRelease(manifests, before), false, range)
+    }
+  })
+
+  it("tests when any one example declares no @ic-reactor package, even beside synced ones", () => {
+    assert.equal(awaitsRelease([...synced, example({})], before), false)
+  })
+
+  it("tests when no example declares an @ic-reactor package, or the branch has no version", () => {
+    assert.equal(awaitsRelease([example({})], before), false)
+    assert.equal(
+      awaitsRelease(synced, {
+        branchVersion: undefined,
+        publishedVersions: [],
+      }),
+      false
+    )
+  })
+})
+
+describe("staticFindings", () => {
+  const scripts = {
+    typecheck: "tsc",
+    test: "vitest run",
+    build: "vite build",
+    dev: "vite",
+  }
+  const ok = { command: "npm run dev" }
+
+  it("finds nothing for an example with its scripts, no tracked config and a start command", () => {
+    assert.deepEqual(
+      staticFindings("example", {
+        files: ["package.json", "src/a.ts"],
+        scripts,
+        start: ok,
+      }),
+      []
+    )
+  })
+
+  it("collects each check's findings, so a deferral cannot skip them", () => {
+    const findings = staticFindings("example", {
+      files: ["package.json", ".npmrc"],
+      scripts: { typecheck: "tsc", test: "vitest run" },
+      start: { finding: ".stackblitzrc is missing" },
+    })
+    assert.equal(findings.length, 3, findings.join("\n"))
+    assert.ok(findings.some((f) => f.includes(".npmrc")))
+    assert.ok(findings.some((f) => f.includes('"build"')))
+    assert.ok(findings.includes(".stackblitzrc is missing"))
+  })
+})
+
+describe("startScriptFindings", () => {
+  const scripts = { dev: "vite", test: "vitest run", build: "vite build" }
+  const files = ["package.json"]
+
+  it("passes an npm start command that names a defined script", () => {
+    for (const command of [
+      "npm run dev",
+      "npm run dev -- --host",
+      "npm test",
+      "npm t",
+      "npm run-script build",
+    ]) {
+      assert.deepEqual(
+        startScriptFindings(command, { files, scripts }),
+        [],
+        command
+      )
+    }
+  })
+
+  it("refuses an npm start command whose script is not defined", () => {
+    for (const command of [
+      "npm run typo",
+      "npm start",
+      "npm run serve -- --port 3000",
+    ]) {
+      const findings = startScriptFindings(command, { files, scripts })
+      assert.equal(findings.length, 1, command)
+      assert.ok(findings[0].includes("does not define"), findings[0])
+    }
+  })
+
+  it("passes npm's default start, node server.js, when server.js is tracked", () => {
+    assert.deepEqual(
+      startScriptFindings("npm start", {
+        files: ["package.json", "server.js"],
+        scripts,
+      }),
+      []
+    )
+  })
+
+  it("refuses a command it cannot check: npm options, other programs (fails closed)", () => {
+    for (const command of [
+      "npm run typo --loglevel=silent",
+      "npm --prefix . run dev",
+      "node index.js",
+      "npx vite",
+      "npm run",
+    ]) {
+      const findings = startScriptFindings(command, { files, scripts })
+      assert.equal(findings.length, 1, command)
+      assert.ok(
+        findings[0].includes("not a plain npm script command"),
+        findings[0]
+      )
+    }
+  })
+
+  it("leaves a missing start command to stackblitzStartCommand's own finding", () => {
+    assert.deepEqual(startScriptFindings(undefined, { files, scripts }), [])
+  })
+
+  it("is part of staticFindings, so a deferral checks it", () => {
+    const findings = staticFindings("example", {
+      files,
+      scripts: { typecheck: "tsc", ...scripts },
+      start: { command: "npm run typo" },
+    })
+    assert.equal(findings.length, 1, findings.join("\n"))
+  })
+})
+
+describe("definesScript", () => {
+  it("takes only a non-empty string, as npm does", () => {
+    const scripts = {
+      build: "vite build",
+      typecheck: 42,
+      test: "",
+      lint: "  ",
+      dev: null,
+    }
+    assert.equal(definesScript(scripts, "build"), true)
+    for (const name of [
+      "typecheck",
+      "test",
+      "lint",
+      "dev",
+      "missing",
+      "toString",
+    ]) {
+      assert.equal(definesScript(scripts, name), false, name)
+    }
+    assert.equal(definesScript(undefined, "build"), false)
+  })
+
+  it("makes requiredScriptFindings and startScriptFindings refuse a non-string script", () => {
+    const scripts = {
+      typecheck: 42,
+      test: "vitest run",
+      build: "vite build",
+      dev: true,
+    }
+    assert.equal(requiredScriptFindings("example", scripts, {}).length, 1)
+    assert.equal(
+      startScriptFindings("npm run dev", { files: [], scripts }).length,
+      1
+    )
   })
 })
 
@@ -336,6 +574,29 @@ describe("the StackBlitz start command", () => {
     // npm itself would take these as its own flags, not the script's.
     assert.equal(parseNpmCommand("npm run dev --webpack"), undefined)
     assert.equal(parseNpmCommand("npm run"), undefined)
+    // Only the lifecycle commands have a bare form; npm refuses `npm dev`.
+    assert.equal(parseNpmCommand("npm dev"), undefined)
+    // Any unquoted script name npm runs, dots and slashes included.
+    assert.deepEqual(parseNpmCommand("npm run dev.web"), {
+      script: "dev.web",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm run gen/types -- --watch"), {
+      script: "gen/types",
+      args: ["--watch"],
+    })
+    // A name starting with "-" is an npm option, not a script.
+    assert.equal(parseNpmCommand("npm run --silent dev"), undefined)
+    assert.equal(parseNpmCommand("npm build -- --watch"), undefined)
+    assert.deepEqual(parseNpmCommand("npm start"), {
+      script: "start",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm restart"), {
+      script: "restart",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm run t"), { script: "t", args: [] })
     assert.equal(parseNpmCommand("node src/cli.ts demo"), undefined)
   })
 

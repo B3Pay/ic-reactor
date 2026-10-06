@@ -8,14 +8,14 @@ ic-reactor 4 against `v4`.
 
 ic-reactor 4 is a thin layer over a module that `candid-core-cli gen`
 generates, plus one consumer guide. Its packages are written against the
-published candid-core betas, `@candid-core/schema` and `@candid-core/cli`,
-each pinned exactly.
+published stable candid-core releases, `@candid-core/schema` and
+`@candid-core/cli`, each pinned exactly.
 
 ### Packages
 
-- `@ic-reactor/core` (`packages/core`, `4.0.0-beta.1`) — the 4 API of milestone 1: `createClient`, `ReactorError` and `isReactorError`, `parseUnits` and `formatUnits`, and their types (13 names, `scripts/export-budget.mjs`). `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
-- `@ic-reactor/react` (`packages/react`, `4.0.0-beta.1`) — `'use client'` bindings over a core client: `ReactorProvider`, `useClient`, `useAuth` and the type `ReactorProviderProps`. It never re-exports core.
-- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-beta.1`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
+- `@ic-reactor/core` (`packages/core`, `4.0.0-beta.2`) — the 4 API of milestone 1: `createClient`, `ReactorError` and `isReactorError`, `parseUnits` and `formatUnits`, and their types (13 names, `scripts/export-budget.mjs`). `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
+- `@ic-reactor/react` (`packages/react`, `4.0.0-beta.2`) — `'use client'` bindings over a core client: `ReactorProvider`, `useClient`, `useAuth` and the type `ReactorProviderProps`. It never re-exports core.
+- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-beta.2`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
 
 `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli` and
 `@ic-reactor/candid` are not in this tree (the last stays at 3.x on `main`).
@@ -45,7 +45,7 @@ each pinned exactly.
 - AI context (CI gate): `pnpm check:ai-context` — version stamps, and docs links limited to the published bases (`/v2/`, `/v3/`, `/v4/`), with `/v4/` links resolved against `docs/src/content/docs/`.
 - Snippets (CI gate; build first): `pnpm check:snippets`, and `pnpm check:snippets:docs` for the docs pages.
 - Published artifacts: `pnpm verify:packages`
-- Examples on the published beta: `pnpm test:examples:published` (needs only Node, npm and git) — each example's tracked files copied outside the repository and installed from npm with npm; it refuses a `workspace:` range, checks every installed @ic-reactor/* package is a real directory at the version of npm's `beta` dist-tag, then runs the example's `typecheck`, `test` and `build` scripts, and its `.stackblitzrc` start command under a model of what StackBlitz's WebContainer lacks (no global `Iterator`; an `AsyncLocalStorage` that keeps no store across an await). Its own workflow, `.github/workflows/examples-published.yml`, runs it on pushes and pull requests to `v4`. An example change that needs an unpublished API lands with the release that publishes it.
+- Examples on the published beta: `pnpm test:examples:published` (needs only Node, npm and git) — each example's tracked files copied outside the repository and installed from npm with npm; it refuses a `workspace:` range, checks every installed @ic-reactor/* package is a real directory at the version of npm's `beta` dist-tag, then runs the example's `typecheck`, `test` and `build` scripts, and its `.stackblitzrc` start command under a model of what StackBlitz's WebContainer lacks (no global `Iterator`; an `AsyncLocalStorage` that keeps no store across an await). Its own workflow, `.github/workflows/examples-published.yml`, runs it on pushes and pull requests to `v4`. An example change that needs an unpublished API lands with the release that publishes it. A run without `--wait-for` whose examples all pin `^<the branch's own version>` while npm has no such version yet (a release pull request, or its merge before the tag), and no dependency uses a local protocol, runs the checks that need no registry (tracked config files, required scripts, and the `.stackblitzrc` start command, which must be a plain npm script command, `npm run <script>` with arguments after a bare `--`, naming a defined script), then defers to the release's run and passes, saying so.
 - Peer and TypeScript floors (CI gate; build first): `pnpm verify:peer-floors`
 - Docs: `pnpm docs:build`, `pnpm docs:check-links`
 - Export budget (CI gate; build first): `pnpm check:exports` — the built declarations of core, `core/testing`, react and the Vite plugin against the plan in `scripts/export-budget.mjs`: no unplanned name, no more than the cap, no name exported twice or also exported by `@candid-core/schema` or TanStack Query (D35), no `exports` subpath or publishable package the file does not list, and the schema declared only at the pinned version. Adding a public name or subpath means adding it to that file in the same change.

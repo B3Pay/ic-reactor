@@ -726,7 +726,7 @@ describe("generation under vite build", () => {
     })
 
     await expect(result).rejects.toThrow(
-      /its report has schemaVersion 2, and this plugin reads 1; install @candid-core\/cli@0\.2\.0-beta\.1/
+      /its report has schemaVersion 2, and this plugin reads 1; install @candid-core\/cli@0\.2\.0(?![-.\w])/
     )
   })
 
@@ -836,7 +836,7 @@ describe("generation under vite build", () => {
 
       // Both canisters fail for one reason, which is said once.
       await expect(result).rejects.toThrow(
-        /could not generate 2 of 2 canisters:\n {2}- a \(did\/a\.did\), b \(did\/b\.did\): cannot find @candid-core\/cli from .*npm install --save-dev --save-exact @candid-core\/cli@0\.2\.0-beta\.1/s
+        /could not generate 2 of 2 canisters:\n {2}- a \(did\/a\.did\), b \(did\/b\.did\): cannot find @candid-core\/cli from .*npm install --save-dev --save-exact @candid-core\/cli@0\.2\.0(?![-.\w])/s
       )
     })
     expect(generatorRuns()).toEqual([])

@@ -264,6 +264,49 @@ export async function checkManifest(manifest, { betaVersion, satisfying }) {
 }
 
 /**
+ * Whether the examples wait on a release that is not published yet, so that
+ * a run without `--wait-for` has nothing it can test. That is so when the
+ * branch's own version (`packages/core/package.json`, which `release.js`
+ * bumps, syncing every example to `^<version>`) is not among the registry's
+ * versions, and every @ic-reactor/* range of every example is exactly
+ * `^<version>`: a release pull request, or its merge before the tag publishes
+ * it. No published version can satisfy those ranges yet, and `release.yml`'s
+ * `examples-published` job tests the examples with `--wait-for` once the
+ * release is out. Any other range is checked as usual and fails as usual, and
+ * so does a local protocol (`workspace:`, `file:` …) on any dependency of any
+ * example, @ic-reactor or not: no deferral skips that check.
+ *
+ * @param {Record<string, any>[]} manifests the examples' package.json files
+ * @param {{ branchVersion: string | undefined, publishedVersions: string[] }} state
+ * @returns {boolean}
+ */
+export function awaitsRelease(manifests, { branchVersion, publishedVersions }) {
+  if (!branchVersion || publishedVersions.includes(branchVersion)) return false
+  // A local protocol on any dependency, not only an @ic-reactor one, is what
+  // checkManifest refuses without asking the registry: never defer past it.
+  const local = manifests.some((manifest) =>
+    declaredDependencies(manifest).some(({ range }) =>
+      LOCAL_PROTOCOLS.some((protocol) => range.startsWith(protocol))
+    )
+  )
+  if (local) return false
+  // Every example must wait on the release itself: one with no @ic-reactor
+  // range, or any other range, can be tested now and is not deferred.
+  return (
+    manifests.length > 0 &&
+    manifests.every((manifest) => {
+      const ranges = declaredDependencies(manifest)
+        .filter(({ name }) => name.startsWith(SCOPE))
+        .map(({ range }) => range)
+      return (
+        ranges.length > 0 &&
+        ranges.every((range) => range === `^${branchVersion}`)
+      )
+    })
+  )
+}
+
+/**
  * The @ic-reactor/* packages installed in `projectDir`, and what is wrong with
  * them: one the manifest declares that is missing, a symlink (a link into a
  * workspace, not a package from the registry), or a version other than
@@ -408,7 +451,22 @@ export function trackedConfigFindings(files) {
 }
 
 /**
- * The required scripts an example lacks, unless `exceptions` names them.
+ * Whether `scripts` defines `name` as npm runs it: a non-empty string. npm
+ * skips any other value, and `npm run <name>` then fails with "Missing script".
+ *
+ * @param {Record<string, unknown> | undefined} scripts
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function definesScript(scripts, name) {
+  const value =
+    scripts && Object.hasOwn(scripts, name) ? scripts[name] : undefined
+  return typeof value === "string" && value.trim() !== ""
+}
+
+/**
+ * The required scripts an example lacks (a script is defined only as a
+ * non-empty string: `definesScript`), unless `exceptions` names them.
  *
  * @param {string} example
  * @param {Record<string, string> | undefined} scripts
@@ -421,7 +479,8 @@ export function requiredScriptFindings(
   exceptions = SCRIPT_EXCEPTIONS
 ) {
   return REQUIRED_SCRIPTS.filter(
-    (script) => !scripts?.[script] && !exceptions[example]?.[script]
+    (script) =>
+      !definesScript(scripts, script) && !exceptions[example]?.[script]
   ).map(
     (script) =>
       `package.json has no "${script}" script: every example runs typecheck, test and build here (an exception goes in SCRIPT_EXCEPTIONS, with its reason)`
@@ -488,6 +547,58 @@ export function isolatedEnv(env, root) {
 }
 
 /**
+ * The checks that need no registry, for one example: its tracked config files
+ * (`trackedConfigFindings`), its required scripts (`requiredScriptFindings`)
+ * and its `.stackblitzrc` start command (`stackblitzStartCommand`'s finding,
+ * and the npm script it names: `startScriptFindings`).
+ * `testExample` runs them on the copy before installing, and `main` runs them
+ * on the checkout before a run defers to the release (`awaitsRelease`), so a
+ * deferral never skips them.
+ *
+ * @param {string} name the example
+ * @param {{ files: string[], scripts: Record<string, string> | undefined, start: { finding?: string } }} example
+ * @returns {string[]}
+ */
+export function staticFindings(name, { files, scripts, start }) {
+  return [
+    ...trackedConfigFindings(files),
+    ...requiredScriptFindings(name, scripts),
+    ...(start.finding ? [start.finding] : []),
+    ...startScriptFindings(start.command, { files, scripts }),
+  ]
+}
+
+/**
+ * A start command must be a plain npm script command, `npm run <script>`
+ * (or `npm run-script`, or a bare lifecycle command: `npm test`/`npm t`,
+ * `npm start`, `npm stop`, `npm restart`), optionally with
+ * arguments after a bare `--`, naming a script the example defines. npm's one
+ * default, `npm start` with no `start` script, runs `node server.js`, so it
+ * passes when `server.js` is tracked. Anything else is refused, npm options
+ * (`--loglevel=silent`) and other programs (`node x.js`, `npx vite`)
+ * included: this checks the command without running it, so it accepts only
+ * the form it can check (it fails closed).
+ *
+ * @param {string | undefined} command the `.stackblitzrc` start command
+ * @param {{ files: string[], scripts: Record<string, string> | undefined }} example
+ * @returns {string[]}
+ */
+export function startScriptFindings(command, { files, scripts }) {
+  if (!command) return []
+  const parsed = parseNpmCommand(command)
+  if (!parsed) {
+    return [
+      `.stackblitzrc's start command "${command}" is not a plain npm script command: write it as "npm run <script>" (arguments after a bare "--"), so its script can be checked`,
+    ]
+  }
+  if (definesScript(scripts, parsed.script)) return []
+  if (parsed.script === "start" && files.includes("server.js")) return []
+  return [
+    `.stackblitzrc's start command "${command}" runs the npm script "${parsed.script}", which package.json does not define`,
+  ]
+}
+
+/**
  * The command StackBlitz runs after installing, from `.stackblitzrc`.
  *
  * @param {string} projectDir
@@ -514,20 +625,40 @@ export function stackblitzStartCommand(projectDir) {
 }
 
 /**
+ * npm's bare commands that run the package script of the same name: the
+ * lifecycle scripts, and `t` for `test`. Any other script runs only as
+ * `npm run <script>`: `npm dev` is an unknown command to npm.
+ */
+const NPM_LIFECYCLE_COMMANDS = {
+  test: "test",
+  t: "test",
+  start: "start",
+  stop: "stop",
+  restart: "restart",
+}
+
+/**
  * The package script a start command runs, and the arguments it passes after
- * `--`. `npm test` and `npm run test` are the same script; so for the others.
+ * `--`. `npm run <script>` (or `npm run-script`) for any script, and the bare
+ * lifecycle commands (`npm test`, `npm t`, `npm start`, `npm stop`, `npm
+ * restart`) for theirs; `npm test` and `npm run test` are the same script.
+ * A script name is any unquoted word not starting with `-` (an npm option):
+ * `npm run dev.web` names `dev.web`. Anything else, `npm dev` included, is
+ * not a script command.
  *
  * @param {string} command
  * @returns {{ script: string, args: string[] } | undefined}
  */
 export function parseNpmCommand(command) {
   const match = command.match(
-    /^npm\s+(?:run(?:-script)?\s+)?([\w:-]+)(?:\s+--((?:\s+\S+)*))?\s*$/
+    /^npm\s+(?:(run(?:-script)?)\s+)?([^\s-]\S*)(?:\s+--((?:\s+\S+)*))?\s*$/
   )
   if (!match) return undefined
-  const script = match[1] === "t" ? "test" : match[1]
-  if (script === "run" || script === "run-script") return undefined
-  const args = (match[2] ?? "").split(/\s+/).filter(Boolean)
+  const [, run, name, rest] = match
+  if (name === "run" || name === "run-script") return undefined
+  const script = run ? name : NPM_LIFECYCLE_COMMANDS[name]
+  if (!script) return undefined
+  const args = (rest ?? "").split(/\s+/).filter(Boolean)
   return { script, args }
 }
 
@@ -840,16 +971,16 @@ async function testExample(name, { betaVersion, workDir, preload }) {
   console.log(`  copied ${files.length} tracked files`)
 
   const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"))
-  findings.push(...trackedConfigFindings(files))
-  findings.push(...requiredScriptFindings(name, manifest.scripts))
+  const start = stackblitzStartCommand(dir)
+  findings.push(
+    ...staticFindings(name, { files, scripts: manifest.scripts, start })
+  )
   findings.push(
     ...(await checkManifest(manifest, {
       betaVersion,
       satisfying: npmSatisfying,
     }))
   )
-  const start = stackblitzStartCommand(dir)
-  if (start.finding) findings.push(start.finding)
   if (findings.length > 0) return { name, steps, findings }
 
   const env = isolatedEnv(process.env, repoRoot)
@@ -1095,22 +1226,43 @@ async function main(argv) {
   }
 
   const waitFor = args.waitFor
-  const betaVersion = waitFor
-    ? await waitForPublished(
-        scopePackageNames(
-          names.map((name) =>
-            JSON.parse(
-              readFileSync(
-                join(repoRoot, "examples", name, "package.json"),
-                "utf8"
-              )
-            )
-          )
-        ),
-        DIST_TAG,
-        waitFor,
-        { lookup: (pkg) => registryState(pkg, DIST_TAG, waitFor) }
+  const manifests = names.map((name) =>
+    JSON.parse(
+      readFileSync(join(repoRoot, "examples", name, "package.json"), "utf8")
+    )
+  )
+  if (!waitFor) {
+    const branchVersion = JSON.parse(
+      readFileSync(join(repoRoot, "packages", "core", "package.json"), "utf8")
+    ).version
+    const versions = npmView(`${SCOPE}core`, "versions") ?? []
+    const publishedVersions = Array.isArray(versions) ? versions : [versions]
+    if (awaitsRelease(manifests, { branchVersion, publishedVersions })) {
+      const results = names.map((name) => ({
+        name,
+        steps: {},
+        findings: staticFindings(name, {
+          files: trackedFiles(name),
+          scripts: manifests[names.indexOf(name)].scripts,
+          start: stackblitzStartCommand(join(repoRoot, "examples", name)),
+        }),
+      }))
+      if (results.some((result) => result.findings.length > 0)) {
+        report(results, 0)
+        return 1
+      }
+      console.log(
+        `The examples pin ^${branchVersion}, this branch's own version, which is not on ${REGISTRY} yet: ` +
+          `a release that has not been published. The checks that need no registry pass. release.yml's examples-published job tests them ` +
+          `against it once it is (--wait-for v${branchVersion}). Nothing to test here.`
       )
+      return 0
+    }
+  }
+  const betaVersion = waitFor
+    ? await waitForPublished(scopePackageNames(manifests), DIST_TAG, waitFor, {
+        lookup: (pkg) => registryState(pkg, DIST_TAG, waitFor),
+      })
     : distTagVersion(`${SCOPE}core`, DIST_TAG)
   console.log(
     `${SCOPE}core@${DIST_TAG} is ${betaVersion} on ${REGISTRY}; testing ${names.join(", ")}`

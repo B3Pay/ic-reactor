@@ -15,7 +15,7 @@
 ---
 
 > **This is the `v4` branch, where ic-reactor 4 is in development.** Its
-> packages are at `4.0.0-beta.1`, published under npm's `beta` dist-tag; `latest`
+> packages are at `4.0.0-beta.2`, published under npm's `beta` dist-tag; `latest`
 > stays 3.x until 4.0 GA. ic-reactor 4 is a
 > thin layer over a candid-core generated module, with a guide shipped in
 > `@ic-reactor/core` (`packages/core/llms.txt`). Milestone 1
@@ -59,8 +59,8 @@ ic-reactor 4 is a prerelease, published under npm's `beta` dist-tag: a plain
 ```bash
 npm install @ic-reactor/core@beta @ic-reactor/react@beta \
   @icp-sdk/core @tanstack/react-query
-npm install --save-exact @candid-core/schema@0.3.0-beta.1
-npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
+npm install --save-exact @candid-core/schema@0.3.0
+npm install --save-dev --save-exact @candid-core/cli@0.2.0
 npm install --save-dev @ic-reactor/vite-plugin@beta # optional, for Vite
 ```
 
