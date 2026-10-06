@@ -7,8 +7,9 @@
  * The examples job of CI runs the examples inside the workspace, where
  * `linkWorkspacePackages` links each @ic-reactor/* range to packages/*. That
  * proves the examples against the code on the branch, not against the release:
- * an example that uses a name the published beta lacks stays green there. This
- * script, for each example:
+ * an example that uses a name the published release lacks stays green there.
+ * This script tests against one dist-tag per run (see `distTagFor`): `beta`
+ * for a prerelease and `latest` for a stable release. For each example, it:
  *
  *   1. copies its git-tracked files to a directory outside the repository,
  *      and refuses to run if a parent of that directory holds a node_modules
@@ -19,8 +20,8 @@
  *      standalone install resolves, and a tracked `.npmrc` (it could point the
  *      @ic-reactor scope at another registry, for this install and on
  *      StackBlitz); requires the `typecheck`, `test` and `build` scripts; and
- *      checks each @ic-reactor/* range is satisfied by the version npm's
- *      `beta` dist-tag names (asking npm, so its own semver decides);
+ *      checks each @ic-reactor/* range is satisfied by the version the run's
+ *      dist-tag names (asking npm, so its own semver decides);
  *   3. installs from registry.npmjs.org with npm (no workspace, no links, no
  *      lockfile of ours), the default registry and the @ic-reactor and
  *      @candid-core scopes all pinned to it on the command line, over any
@@ -28,7 +29,7 @@
  *      `npm_*` or `pnpm_*` variable a `pnpm run` set, and no PATH entry
  *      inside the repository;
  *   4. checks every installed @ic-reactor/* package is a real directory, not
- *      a symlink, at exactly the `beta` version, and that npm's lockfile
+ *      a symlink, at exactly that version, and that npm's lockfile
  *      records it as the registry's own tarball, with the integrity the
  *      registry publishes for that version (the proof the bytes are the
  *      published ones);
@@ -56,12 +57,15 @@
  *          [--wait-for <version>] [<example> ...]
  *   --keep                 leave the copies on disk and print where they are
  *   --tmp <dir>            make the copies under <dir> (default: the OS tmpdir)
- *   --wait-for <version>   wait (up to 10 minutes) until the `beta` dist-tag
- *                          of core and of every @ic-reactor/* package the
- *                          examples declare names <version> (a leading "v" is
+ *   --wait-for <version>   wait (up to 10 minutes) until the dist-tag the
+ *                          release of <version> publishes under (`beta` for a
+ *                          prerelease, `latest` for a stable version) of core
+ *                          and of every @ic-reactor/* package the examples
+ *                          declare names <version> (a leading "v" is
  *                          dropped), and the registry serves its integrity:
  *                          the release workflow runs this right after
- *                          publishing
+ *                          publishing, with the tag it published. Without it,
+ *                          the run tests whatever `latest` names now.
  *   <example>              a directory under examples/ (default: every one)
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process"
@@ -91,8 +95,38 @@ export const REGISTRY = "https://registry.npmjs.org/"
 /** The packages this repository publishes. */
 export const SCOPE = "@ic-reactor/"
 
-/** The dist-tag the v4 line publishes under (never `latest` before GA). */
-export const DIST_TAG = "beta"
+/** A version, or a tag of one: MAJOR.MINOR.PATCH, an optional -prerelease. */
+const RELEASE_VERSION =
+  /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/
+
+/**
+ * The dist-tag a run tests against.
+ *
+ * With `--wait-for`, the one the release of that version publishes under:
+ * `beta` for a prerelease (a `-` part after MAJOR.MINOR.PATCH, with or without
+ * a leading `v`), `latest` for a stable version. This mirrors the rule of
+ * `releaseFor` in scripts/release-tag.mjs, which release.yml uses to choose
+ * the dist-tag it publishes under; that file arrives with #836 and is not on
+ * this branch, so the rule is repeated here rather than imported.
+ *
+ * Without `--wait-for` (the push, pull request, weekly and manual runs),
+ * `latest`: the examples pin a stable range (`^4.0.0`) from 4.0.0 on, which no
+ * prerelease satisfies.
+ *
+ * @param {string | undefined} waitFor the `--wait-for` value, if any
+ * @returns {"latest" | "beta"}
+ * @throws {Error} when `waitFor` is not a version
+ */
+export function distTagFor(waitFor) {
+  if (waitFor === undefined) return "latest"
+  const match = RELEASE_VERSION.exec(waitFor)
+  if (!match) {
+    throw new Error(
+      `--wait-for ${waitFor} is not a release version (MAJOR.MINOR.PATCH, with an optional -prerelease and no +build).`
+    )
+  }
+  return match[4] === undefined ? "latest" : "beta"
+}
 
 /** Range protocols that only resolve inside a workspace or on one disk. */
 export const LOCAL_PROTOCOLS = ["workspace:", "file:", "link:", "portal:"]
@@ -228,18 +262,20 @@ export function declaredDependencies(manifest) {
 }
 
 /**
- * What stops this manifest from installing standalone against the published
- * beta. `satisfying(name, range)` resolves with the published versions of
- * `name` the range accepts (npm's answer, in the script).
+ * What stops this manifest from installing standalone against the version
+ * `tag` names on npm (`version`). `satisfying(name, range)` resolves with the
+ * published versions of `name` the range accepts (npm's answer, in the
+ * script).
  *
  * @param {Record<string, any>} manifest
  * @param {{
- *   betaVersion: string,
+ *   tag: string,
+ *   version: string,
  *   satisfying: (name: string, range: string) => Promise<string[]> | string[],
  * }} options
  * @returns {Promise<string[]>}
  */
-export async function checkManifest(manifest, { betaVersion, satisfying }) {
+export async function checkManifest(manifest, { tag, version, satisfying }) {
   const findings = []
   for (const { field, name, range } of declaredDependencies(manifest)) {
     const protocol = LOCAL_PROTOCOLS.find((p) => range.startsWith(p))
@@ -251,9 +287,9 @@ export async function checkManifest(manifest, { betaVersion, satisfying }) {
     }
     if (!name.startsWith(SCOPE)) continue
     const versions = await satisfying(name, range)
-    if (!versions.includes(betaVersion)) {
+    if (!versions.includes(version)) {
       findings.push(
-        `${field}.${name} is "${range}", which ${DIST_TAG} (${betaVersion}) does not satisfy` +
+        `${field}.${name} is "${range}", which ${tag} (${version}) does not satisfy` +
           (versions.length > 0
             ? `: npm would install ${versions.at(-1)}`
             : ": no published version satisfies it")
@@ -267,14 +303,15 @@ export async function checkManifest(manifest, { betaVersion, satisfying }) {
  * The @ic-reactor/* packages installed in `projectDir`, and what is wrong with
  * them: one the manifest declares that is missing, a symlink (a link into a
  * workspace, not a package from the registry), or a version other than
- * `expectedVersion`.
+ * `expectedVersion`, the one `tag` names.
  *
  * @param {string} projectDir
  * @param {string[]} declared the @ic-reactor/* names the manifest declares
  * @param {string} expectedVersion
+ * @param {string} tag the dist-tag that names `expectedVersion`
  * @returns {{ installed: { name: string, version: string }[], findings: string[] }}
  */
-export function checkInstalled(projectDir, declared, expectedVersion) {
+export function checkInstalled(projectDir, declared, expectedVersion, tag) {
   const scopeDir = join(projectDir, "node_modules", SCOPE.slice(0, -1))
   const present = existsSync(scopeDir)
     ? readdirSync(scopeDir).map((entry) => `${SCOPE}${entry}`)
@@ -313,7 +350,7 @@ export function checkInstalled(projectDir, declared, expectedVersion) {
     installed.push({ name, version })
     if (version !== expectedVersion) {
       findings.push(
-        `${name} installed at ${version}, not ${expectedVersion} (${DIST_TAG})`
+        `${name} installed at ${version}, not ${expectedVersion} (${tag})`
       )
     }
   }
@@ -338,7 +375,8 @@ export function lockedScopePackages(lock) {
  * published tarball: a lockfile entry that is a link, whose `resolved` is not
  * the tarball the registry names for that version, or whose `integrity` is not
  * the one it publishes. Also an installed package the lockfile does not
- * record. `published` is the registry's `dist` for each name at the beta.
+ * record. `published` is the registry's `dist` for each name at the version
+ * under test.
  *
  * @param {Record<string, any> | undefined} lock package-lock.json
  * @param {{
@@ -829,7 +867,7 @@ async function smokeDevServer(cwd, env, extraArgs, timeoutMs = 4 * MINUTE) {
 }
 
 /** One example, start to finish. */
-async function testExample(name, { betaVersion, workDir, preload }) {
+async function testExample(name, { tag, version, workDir, preload }) {
   const dir = join(workDir, name.replaceAll("/", "__"))
   const steps = {}
   const findings = []
@@ -844,7 +882,8 @@ async function testExample(name, { betaVersion, workDir, preload }) {
   findings.push(...requiredScriptFindings(name, manifest.scripts))
   findings.push(
     ...(await checkManifest(manifest, {
-      betaVersion,
+      tag,
+      version,
       satisfying: npmSatisfying,
     }))
   )
@@ -874,7 +913,8 @@ async function testExample(name, { betaVersion, workDir, preload }) {
   const { installed, findings: installFindings } = checkInstalled(
     dir,
     declared,
-    betaVersion
+    version,
+    tag
   )
   findings.push(...installFindings)
   let lock
@@ -887,7 +927,7 @@ async function testExample(name, { betaVersion, workDir, preload }) {
   findings.push(
     ...checkLockfile(lock, {
       installed: installed.map((p) => p.name),
-      published: publishedDist(locked, betaVersion),
+      published: publishedDist(locked, version),
     })
   )
   console.log(
@@ -987,7 +1027,7 @@ export function parseArgs(argv) {
 
 /**
  * The @ic-reactor/* packages a run reads from the registry: every one the
- * manifests declare, and core (whose dist-tag names the beta under test).
+ * manifests declare, and core (whose dist-tag names the version under test).
  *
  * @param {Record<string, any>[]} manifests
  * @returns {string[]}
@@ -1095,7 +1135,14 @@ async function main(argv) {
   }
 
   const waitFor = args.waitFor
-  const betaVersion = waitFor
+  let tag
+  try {
+    tag = distTagFor(waitFor)
+  } catch (error) {
+    console.error(error.message)
+    return 1
+  }
+  const version = waitFor
     ? await waitForPublished(
         scopePackageNames(
           names.map((name) =>
@@ -1107,13 +1154,13 @@ async function main(argv) {
             )
           )
         ),
-        DIST_TAG,
+        tag,
         waitFor,
-        { lookup: (pkg) => registryState(pkg, DIST_TAG, waitFor) }
+        { lookup: (pkg) => registryState(pkg, tag, waitFor) }
       )
-    : distTagVersion(`${SCOPE}core`, DIST_TAG)
+    : distTagVersion(`${SCOPE}core`, tag)
   console.log(
-    `${SCOPE}core@${DIST_TAG} is ${betaVersion} on ${REGISTRY}; testing ${names.join(", ")}`
+    `${SCOPE}core@${tag} is ${version} on ${REGISTRY}; testing ${names.join(", ")}`
   )
 
   const base = realpathSync(args.tmp ? resolve(args.tmp) : tmpdir())
@@ -1139,7 +1186,7 @@ async function main(argv) {
   const results = []
   try {
     for (const name of names) {
-      results.push(await testExample(name, { betaVersion, workDir, preload }))
+      results.push(await testExample(name, { tag, version, workDir, preload }))
     }
   } finally {
     if (keep) console.log(`\nCopies kept in ${workDir}`)
@@ -1148,7 +1195,7 @@ async function main(argv) {
   const failed = report(results, Date.now() - started)
   if (!failed) {
     console.log(
-      `✅ ${results.length} example(s) green against ${SCOPE}*@${betaVersion} from npm`
+      `✅ ${results.length} example(s) green against ${SCOPE}*@${version} (${tag}) from npm`
     )
   }
   return failed ? 1 : 0
