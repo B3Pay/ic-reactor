@@ -992,3 +992,20 @@ would need a further dated addendum and the owner's approval.
 The caveats of "Known limits" apply. In particular, the batch measured the
 published 4.0.0-beta.1 and its 1,974-word guide; `v4`'s guide is 1,986 words
 since #831, a change the owner accepted.
+
+## Decision on the result of Addendum 4 — 2026-10-06
+
+Recorded after the result; Addendum 4 and its Result are unchanged. Under
+"If it fails" the cause of the rule-1 failure is outside ic-reactor (the
+harness's leak audit), so the owner decides whether GA ships with the result
+stated. On 2026-10-06 the owner decided: **GA ships on this result, stated
+as recorded in "Result of Addendum 4".**
+
+The statement, wherever the eval is cited (release notes, docs, the
+decisions log #790), is this one, and never "passed": rule 1 was not met as
+written, because the leak audit flagged react-wallet/`v4`#14's read of its
+own persisted tool output; all 80 runs were safe, and the pooled bound held
+in both analyses (−0.0897 main, −0.0876 intent-to-treat, against −0.10).
+
+The leak audit's handling of the CLI's persisted tool output is fixed for
+future batches by a further dated addendum, which changes nothing above.
