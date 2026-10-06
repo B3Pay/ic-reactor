@@ -1175,36 +1175,82 @@ Strictness calls, each the owner's to overturn:
   but whose `glob` reaches outside is a violation and is not listed in
   `persistedReads`.
 - Each of the 37 tests was shown to fail with the rule removed or loosened,
-  on a copy of `leak-scan.mjs` with one change at a time. The first draft
-  of this addendum did so for its 23 tests: the rule removed (the accepted
-  tests fail); no notice needed (13 refused tests fail); a prefix match; a
-  same-directory match; a same-file-name match (another session); notices
-  from any speaker; notices found by searching the transcript text; the
-  notice not anchored; no read-after-notice check; no call-before-notice
-  check; Read results counted; the producing call not required to be
-  clean; any depth under `tool-results`; anything under `home/`; `..`
-  allowed in the read; no symlink check; any run directory; Bash covered
-  too; Grep not covered. The read made before the call whose output it
-  names is refused by three conditions at once (order, the call seen before
-  the read, the call judged clean before the read), so it fails only with
-  the notice requirement removed or all three loosened together. For the
-  14 tests added since, one change each, with what failed: the notice text
-  alone, without the CLI's record or session (the first draft's rule: the
-  Bash-output, subagent, repeated-notice, other-path and other-session
-  tests); the record's path not compared (subagent, other path); the
-  session not compared (other session); a notice taken from any
-  `tool_result` nested in the message (nested in the record); more than one
-  block allowed in the message (beside another `tool_result`); the end of
-  the notice not anchored (followed by other text); several text blocks
-  allowed (several text blocks); any tool or field accepted, any field of
-  Read or Grep accepted, or Glob added as a reader (every other tool or
-  field); the first draft's symlink check, which followed links (dangling
-  symlink); no symlink check (the three symlink tests); `persistedReads`
-  listed before the call is judged (the Grep with a `glob`); the producing
-  call not required to be clean (the repeated notice, and the output of a
-  call that reached outside); and the rule removed (the accepted tests,
-  the one-text-block one among them). These are harness tests, not package
-  tests, so they have no `scripts/faults.json` entry.
+  on a copy of `leak-scan.mjs` with one change at a time (several, where
+  said), the copy's test file run whole. For each test, the change that
+  makes it fail:
+  - react-wallet/`v4`#14's read, from its record; the record's shape with
+    the saved file on disk; a notice that is one text block: the rule
+    removed.
+  - A Grep of the saved file: Grep not taken as a reader.
+  - No notice: no notice required (any read of a path of the pattern
+    accepted).
+  - A notice naming a different file: the notice's directory compared
+    instead of its path.
+  - A read whose path only begins with the noticed one: a prefix match.
+  - Another session's directory: the file name compared instead of the
+    path.
+  - A notice only in assistant text: no single change, and not the
+    speaker, the one-block and the CLI's-record conditions dropped
+    together. It is refused by every condition on the notice's place at
+    once: the speaker, the CLI's record, one block per message, and the
+    block type (a text block is not a `tool_result` and answers no call).
+    It fails with no notice required.
+  - A notice in a `tool_result` block inside an assistant message: no
+    single change. It is refused by the speaker and by one block per
+    message (the message also holds the call), each alone; it fails with
+    both dropped together (any speaker, and the first `tool_result` of a
+    message of several blocks taken), and with no notice required.
+  - A notice that is a Read result of another file: Read results taken.
+  - A notice inside other output: the notice's start not anchored.
+  - A read before its notice: no check that the read follows the notice.
+  - A read before the call whose output it names: no single change. It is
+    refused by four conditions at once: the read follows the notice; the
+    call has been seen before the read; the call comes before the notice
+    (a call not yet seen has no place); the call was judged clean before
+    the read. It fails with all four dropped together, not with the last
+    three alone, and with no notice required.
+  - A notice that answers a later call: no check that the call comes
+    before the notice.
+  - The saved output of a call that reached outside: the producing call
+    not required to be clean.
+  - A path one segment below `tool-results`: any depth under
+    `tool-results`.
+  - A path missing the session segment: any depth between `projects` and
+    `tool-results`.
+  - A read written with `..`: `..` allowed in the read.
+  - A notice whose path is written with `..`: the notice's path resolved
+    before it is compared.
+  - `home/.claude.json`, `home/.claude/settings.json` and a session
+    transcript: anything under `home/` accepted.
+  - A Bash `cat` of the saved file: a Bash command naming a path under a
+    `tool-results` directory accepted.
+  - A saved file that is a symlink out of the run; a session directory that
+    is a symlink out of the run: no symlink check.
+  - A saved file that is a dangling symlink: a symlink check that follows
+    links (the resolved path compared, only when it exists).
+  - A run directory not named `work`: any run directory.
+  - A notice that is a Bash command's output: the CLI's record and session
+    not required.
+  - A notice that is a subagent's result; a notice whose record names
+    another path: the record's path not compared.
+  - A notice a clean call repeats, naming the saved output of a call that
+    reached outside: the producing call not required to be clean.
+  - A notice whose message is from another session: the session not
+    compared.
+  - A notice nested in the CLI's record instead of the content: the notice
+    taken from any `tool_result` nested in the message.
+  - A notice beside another `tool_result` in its message: more than one
+    block allowed in the message.
+  - A notice followed by other text: the notice's end not anchored.
+  - A notice that is one of several text blocks: several text blocks
+    allowed.
+  - Every other tool or field at the saved path: any tool or field
+    accepted.
+  - The Grep whose `glob` reaches outside: `persistedReads` listed before
+    the call is judged.
+
+  These are harness tests, not package tests, so they have no
+  `scripts/faults.json` entry.
 
 **The re-audit of Addendum 4's batch**, reported beside its result. It
 changes nothing: the outcome stays as recorded in "Result of Addendum 4"
@@ -1221,11 +1267,10 @@ before and after, and the run-time `summary.json` is the one in
 rescanned summary is copied, byte for byte, to
 `results/2026-10-05-ga-gate/summary.rescanned.json` (sha256
 `591177f03fe9c7a728d47a6cca91cdf2426cd2a7dc96ae05dac6bdd4f15d0745`).
-The re-audit was run again with the rule as it now stands (the CLI's record
-required, rule 3): it rewrote `summary.rescanned.json` byte for byte the
-same, the 1,755 files under `runs/ga-gate-2026-10-05/` (the 1,754 and that
-summary) hashed the same before and after, and every run's verdict,
-attempts and accepted reads were the same as with the first draft's rule.
+The re-audit was run with the rule as frozen here: a second run rewrote
+`summary.rescanned.json` byte for byte the same, and the 1,755 files under
+`runs/ga-gate-2026-10-05/` (the 1,754 and that summary) hashed the same
+before and after it.
 
 | Task         | Condition    | Contaminated (run time → rescan) | Safe, main (run time → rescan) | Safe, ITT (run time → rescan) |
 | ------------ | ------------ | -------------------------------- | ------------------------------ | ----------------------------- |
