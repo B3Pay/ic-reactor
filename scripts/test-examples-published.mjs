@@ -548,7 +548,8 @@ export function staticFindings(name, { files, scripts, start }) {
 
 /**
  * A start command must be a plain npm script command, `npm run <script>`
- * (or `npm run-script`, `npm <script>`, `npm test`/`npm t`), optionally with
+ * (or `npm run-script`, or a bare lifecycle command: `npm test`/`npm t`,
+ * `npm start`, `npm stop`, `npm restart`), optionally with
  * arguments after a bare `--`, naming a script the example defines. npm's one
  * default, `npm start` with no `start` script, runs `node server.js`, so it
  * passes when `server.js` is tracked. Anything else is refused, npm options
@@ -602,20 +603,38 @@ export function stackblitzStartCommand(projectDir) {
 }
 
 /**
+ * npm's bare commands that run the package script of the same name: the
+ * lifecycle scripts, and `t` for `test`. Any other script runs only as
+ * `npm run <script>`: `npm dev` is an unknown command to npm.
+ */
+const NPM_LIFECYCLE_COMMANDS = {
+  test: "test",
+  t: "test",
+  start: "start",
+  stop: "stop",
+  restart: "restart",
+}
+
+/**
  * The package script a start command runs, and the arguments it passes after
- * `--`. `npm test` and `npm run test` are the same script; so for the others.
+ * `--`. `npm run <script>` (or `npm run-script`) for any script, and the bare
+ * lifecycle commands (`npm test`, `npm t`, `npm start`, `npm stop`, `npm
+ * restart`) for theirs; `npm test` and `npm run test` are the same script.
+ * Anything else, `npm dev` included, is not a script command.
  *
  * @param {string} command
  * @returns {{ script: string, args: string[] } | undefined}
  */
 export function parseNpmCommand(command) {
   const match = command.match(
-    /^npm\s+(?:run(?:-script)?\s+)?([\w:-]+)(?:\s+--((?:\s+\S+)*))?\s*$/
+    /^npm\s+(?:(run(?:-script)?)\s+)?([\w:-]+)(?:\s+--((?:\s+\S+)*))?\s*$/
   )
   if (!match) return undefined
-  const script = match[1] === "t" ? "test" : match[1]
-  if (script === "run" || script === "run-script") return undefined
-  const args = (match[2] ?? "").split(/\s+/).filter(Boolean)
+  const [, run, name, rest] = match
+  if (name === "run" || name === "run-script") return undefined
+  const script = run ? name : NPM_LIFECYCLE_COMMANDS[name]
+  if (!script) return undefined
+  const args = (rest ?? "").split(/\s+/).filter(Boolean)
   return { script, args }
 }
 

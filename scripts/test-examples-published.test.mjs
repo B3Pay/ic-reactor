@@ -531,6 +531,18 @@ describe("the StackBlitz start command", () => {
     // npm itself would take these as its own flags, not the script's.
     assert.equal(parseNpmCommand("npm run dev --webpack"), undefined)
     assert.equal(parseNpmCommand("npm run"), undefined)
+    // Only the lifecycle commands have a bare form; npm refuses `npm dev`.
+    assert.equal(parseNpmCommand("npm dev"), undefined)
+    assert.equal(parseNpmCommand("npm build -- --watch"), undefined)
+    assert.deepEqual(parseNpmCommand("npm start"), {
+      script: "start",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm restart"), {
+      script: "restart",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm run t"), { script: "t", args: [] })
     assert.equal(parseNpmCommand("node src/cli.ts demo"), undefined)
   })
 
