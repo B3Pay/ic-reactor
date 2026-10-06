@@ -61,7 +61,35 @@
 // was NOT blocked — a successful outside read — or when the transcript holds
 // no parseable JSON (it cannot be audited). The run's own node_modules counts
 // as inside, including the target of a node_modules symlink.
-import { existsSync, realpathSync } from "node:fs"
+//
+// The CLI's persisted tool output (PREREGISTRATION.md, Addendum 5). When a
+// tool's output is too large, the CLI saves it under the run's own home and
+// answers the call with a notice instead. A Read (`file_path`) or Grep
+// (`path`) of such a file is not a violation when all of these hold, and is
+// judged as any other path otherwise:
+// - the run directory is `<run>/work`, and the path, resolved as every path
+//   here is (lexically: `.`, `..`, `//`, `~`, `$HOME`; no symlink is
+//   followed), is exactly
+//   `<run>/home/.claude/projects/<one segment>/<one segment>/tool-results/<one file name>`;
+// - the path as written has no `..` segment;
+// - an earlier top-level user message of the transcript is the CLI's answer
+//   to a call whose output it saved: its content is one tool_result block,
+//   whose whole content is the notice — `<persisted-output>`, then "Output
+//   too large (<size>). Full output saved to: <path>", …,
+//   `</persisted-output>` — and the message's `tool_use_result`, the CLI's
+//   own record of the call, has `persistedOutputPath` equal to that <path>,
+//   and `session_id` equal to its session segment. A tool's output is text
+//   inside `content` or inside a field of `tool_use_result`; it cannot add
+//   that field, so notice-shaped output of a Bash `printf`, a `cat` or a
+//   subagent is not a notice;
+// - the notice's <path> is the read's path, byte for byte;
+// - the notice answers an earlier tool call that is not a Read and in which
+//   the scan found no violation, blocked or not;
+// - no component of the path below `<run>` is a symlink, as far as the path
+//   exists when the scan runs (the driver scans before it removes the run).
+// A Bash command that names the path (`cat <path>`) is still a violation, and
+// so is any other tool or field naming it (Write, Edit, Glob, a Read `path`).
+import { existsSync, lstatSync, realpathSync } from "node:fs"
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path"
 import { homedir } from "node:os"
 
@@ -115,6 +143,14 @@ const CODE_FLAGS = new Set([
   "--exec",
 ])
 const SHELLS = new Set(["sh", "bash", "zsh", "dash"])
+// The CLI's persisted-output notice, as the whole content of a tool_result.
+const PERSISTED_NOTICE =
+  /^<persisted-output>\nOutput too large \([^()\n]+\)\. Full output saved to: ([^\n]+)\n[\s\S]*\n<\/persisted-output>$/
+// Where the CLI persists it, relative to `<run>`: one project, one session.
+const PERSISTED_PATH =
+  /^home\/\.claude\/projects\/[^/]+\/[^/]+\/tool-results\/[^/]+$/
+// The tool and field that may read a persisted output back.
+const PERSISTED_READERS = { Read: "file_path", Grep: "path" }
 
 // ---------------------------------------------------------------- network
 const words = (text) => new Set(text.trim().split(/\s+/))
@@ -1042,6 +1078,72 @@ function* toolBlocks(value) {
   }
 }
 
+/**
+ * The CLI's persisted-output notice in one transcript message (header
+ * comment), as `{ block, path }`: a top-level user message whose content is
+ * one tool_result block, whose whole content is the notice, and whose
+ * `tool_use_result` (the CLI's own record of the call, beside the content the
+ * agent receives) has `persistedOutputPath` equal to the path the notice
+ * names, with the message's `session_id` as that path's session segment.
+ */
+function cliNotice(doc) {
+  const content = doc?.type === "user" ? doc.message?.content : undefined
+  if (!Array.isArray(content) || content.length !== 1) return undefined
+  const [block] = content
+  if (block?.type !== "tool_result" || typeof block.tool_use_id !== "string")
+    return undefined
+  const inner = block.content
+  const text =
+    typeof inner === "string"
+      ? inner
+      : Array.isArray(inner) &&
+          inner.length === 1 &&
+          inner[0]?.type === "text" &&
+          typeof inner[0].text === "string"
+        ? inner[0].text
+        : undefined
+  const match = text === undefined ? null : PERSISTED_NOTICE.exec(text)
+  if (!match) return undefined
+  const path = match[1]
+  const meta = doc.tool_use_result
+  if (
+    !meta ||
+    typeof meta !== "object" ||
+    meta.persistedOutputPath !== path ||
+    typeof doc.session_id !== "string" ||
+    path.split("/").at(-3) !== doc.session_id
+  )
+    return undefined
+  return { block, path }
+}
+
+/**
+ * Whether no part of `path` below `<run>` is a symlink, as far as the path
+ * exists now: each component is lstat'ed, so a link is refused even when its
+ * target is gone. What does not exist (the run removed, in a re-audit) has no
+ * link to find.
+ */
+function linkFree(path, run) {
+  let at = run
+  for (const part of path.slice(run.length + 1).split("/")) {
+    at = join(at, part)
+    let stat
+    try {
+      stat = lstatSync(at)
+    } catch {
+      return true
+    }
+    if (stat.isSymbolicLink()) return false
+  }
+  return true
+}
+
+/** `<run>` for a run directory `<run>/work`, in each spelling roots() has. */
+function runRoots(runDir) {
+  const work = [resolve(runDir), realpathOrSelf(resolve(runDir))]
+  return [...new Set(work.filter((w) => basename(w) === "work").map(dirname))]
+}
+
 function parseTranscript(text) {
   const docs = []
   const trimmed = text.trim()
@@ -1089,7 +1191,10 @@ export function transcriptCwd(transcript) {
  * @param {{ runDir: string }} options
  * @returns {{ contaminated: boolean, auditable: boolean, toolCalls: number,
  *   attempts: number, violations: Array<{ tool: string, value: string,
- *   resolved?: string, reason: string, blocked: boolean }> }}
+ *   resolved?: string, reason: string, blocked: boolean }>,
+ *   persistedReads: Array<{ tool: string, value: string }> }}
+ *   `persistedReads` are the reads of the CLI's persisted output that were
+ *   not counted as violations (header comment).
  */
 export function scanTranscript(transcript, { runDir }) {
   const allowed = roots(runDir)
@@ -1108,12 +1213,18 @@ export function scanTranscript(transcript, { runDir }) {
           blocked: false,
         },
       ],
+      persistedReads: [],
     }
   }
   const uses = []
   const results = new Map()
-  for (const doc of docs) {
+  // Transcript order of every block, and the CLI's persisted-output notices.
+  const order = new Map()
+  const notices = []
+  for (const doc of docs.flat()) {
+    const notice = cliNotice(doc)
     for (const block of toolBlocks(doc)) {
+      order.set(block, order.size)
       if (block.type === "tool_use" && typeof block.name === "string")
         uses.push(block)
       if (
@@ -1121,13 +1232,50 @@ export function scanTranscript(transcript, { runDir }) {
         typeof block.tool_use_id === "string"
       ) {
         results.set(block.tool_use_id, block)
+        if (block === notice?.block)
+          notices.push({
+            path: notice.path,
+            at: order.get(block),
+            id: block.tool_use_id,
+          })
       }
     }
   }
   const violations = []
+  const persistedReads = []
   const written = new Map()
+  const usesById = new Map()
+  const cleanCalls = new Set()
+  const homes = runRoots(runDir)
+  /** A Read or Grep of the CLI's persisted output (header comment). */
+  const persistedRead = (use, input, field) => {
+    const raw = input[field]
+    if (PERSISTED_READERS[use.name] !== field || raw.split("/").includes(".."))
+      return false
+    const path = expand(raw, resolve(runDir))
+    const at = order.get(use)
+    const run = homes.find(
+      (home) =>
+        path.startsWith(home + sep) &&
+        PERSISTED_PATH.test(path.slice(home.length + 1))
+    )
+    if (run === undefined || !linkFree(path, run)) return false
+    return notices.some((notice) => {
+      const producer = usesById.get(notice.id)
+      return (
+        notice.path === path &&
+        notice.at < at &&
+        producer !== undefined &&
+        order.get(producer) < notice.at &&
+        producer.name !== "Read" &&
+        cleanCalls.has(producer)
+      )
+    })
+  }
   let shellCwd = resolve(runDir)
   for (const use of uses) {
+    if (typeof use.id === "string" && !usesById.has(use.id))
+      usesById.set(use.id, use)
     const found = []
     const input = use.input && typeof use.input === "object" ? use.input : {}
     const flag = (v) => found.push(v)
@@ -1143,8 +1291,14 @@ export function scanTranscript(transcript, { runDir }) {
         reason: "network tool",
       })
     }
+    // Accepted reads of persisted output, listed only if the call is clean.
+    const reads = []
     for (const field of PATH_FIELDS) {
       if (typeof input[field] === "string" && input[field] !== "") {
+        if (persistedRead(use, input, field)) {
+          reads.push({ tool: use.name, value: input[field] })
+          continue
+        }
         check(
           input[field],
           resolve(runDir),
@@ -1186,7 +1340,11 @@ export function scanTranscript(transcript, { runDir }) {
         for (const edit of input.edits) applyEdit(written, path, edit)
       }
     }
-    if (found.length === 0) continue
+    if (found.length === 0) {
+      persistedReads.push(...reads)
+      cleanCalls.add(use)
+      continue
+    }
     const result = results.get(use.id)
     const text = result === undefined ? "" : resultText(result)
     const refusals = text.split("\n").filter((line) => PERMISSION.test(line))
@@ -1210,5 +1368,6 @@ export function scanTranscript(transcript, { runDir }) {
     toolCalls: uses.length,
     attempts: violations.length,
     violations,
+    persistedReads,
   }
 }
