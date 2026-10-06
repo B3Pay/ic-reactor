@@ -6,13 +6,14 @@ import { strict as assert } from "node:assert"
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { after, before, describe, it } from "node:test"
 import { scanTranscript } from "./leak-scan.mjs"
 
@@ -659,5 +660,641 @@ describe("clean look-alikes are not network use", () => {
       ["Bash", { command: "node probe.mjs" }],
     ])
     assert.equal(result.attempts, 0, JSON.stringify(result.violations, null, 2))
+  })
+})
+
+// ------------------------------------------------ the CLI's persisted output
+// PREREGISTRATION.md, Addendum 5. The accepted case is react-wallet/v4#14 of
+// Addendum 4's batch, as results/2026-10-05-ga-gate/contaminated-run.json
+// records it: the Bash call whose output the CLI saved, the CLI's notice and
+// the rest of the message that carried it (its session and the CLI's record
+// of the call), and the Read of the saved file.
+describe("the CLI's persisted tool output", () => {
+  const record = JSON.parse(
+    readFileSync(
+      new URL(
+        "../results/2026-10-05-ga-gate/contaminated-run.json",
+        import.meta.url
+      ),
+      "utf8"
+    )
+  )
+  const recordPath = record.flagged_read.tool_call.input.file_path
+  // `<run>` of the record: the batch's run directory, gone since the batch.
+  const recordRun = recordPath.slice(0, recordPath.indexOf("/home/.claude/"))
+  const producerInput = record.producer.tool_call.input
+  const recordNotice = record.producer.tool_result
+  const recordMessage = record.producer.cli_message
+
+  const assistant = (...content) => ({
+    type: "assistant",
+    message: { role: "assistant", content },
+  })
+  const user = (...content) => ({
+    type: "user",
+    message: { role: "user", content },
+  })
+  const call = (id, name, input) => ({ type: "tool_use", id, name, input })
+  const answer = (id, content) => ({
+    type: "tool_result",
+    tool_use_id: id,
+    content,
+    is_error: false,
+  })
+  const jsonl = (cwd, messages) =>
+    [{ type: "system", subtype: "init", cwd }, ...messages]
+      .map((m) => JSON.stringify(m))
+      .join("\n") + "\n"
+  const savedTo = (content) =>
+    /Full output saved to: ([^\n]+)\n/.exec(
+      typeof content === "string" ? content : content[0].text
+    )?.[1]
+  /**
+   * The CLI's answer to a call whose output it saved, in the record's shape:
+   * the notice, and beside it the session and the CLI's own record of the
+   * call, naming the saved file.
+   */
+  const cli = (
+    id,
+    noticeText,
+    { path = savedTo(noticeText), session = path?.split("/").at(-3) } = {}
+  ) => ({
+    ...user(answer(id, noticeText)),
+    session_id: session,
+    tool_use_result: {
+      stdout: "# @ic-reactor/core\n",
+      stderr: "",
+      interrupted: false,
+      isImage: false,
+      noOutputExpected: false,
+      persistedOutputPath: path,
+      persistedOutputSize: 30301,
+    },
+  })
+  /** The CLI's notice, in the shape of the record's. */
+  const notice = (path, preview = "# @ic-reactor/core") =>
+    `<persisted-output>\nOutput too large (29.6KB). Full output saved to: ${path}\n\nPreview (first 2KB):\n${preview}\n...\n</persisted-output>`
+  const persistedPath = (run, file = "b65qfoxqg.txt", session = "s1") =>
+    join(
+      run,
+      "home",
+      ".claude",
+      "projects",
+      "-run-work",
+      session,
+      "tool-results",
+      file
+    )
+  /** The record's three steps: producer, notice, read back. */
+  const steps = ({
+    noticeText,
+    readPath,
+    producer = call("toolu_p", "Bash", producerInput),
+    readTool = "Read",
+    readField = "file_path",
+  }) => [
+    assistant(producer),
+    cli(producer.id, noticeText),
+    assistant(call("toolu_r", readTool, { [readField]: readPath })),
+    user(answer("toolu_r", "1\t# @ic-reactor/core")),
+  ]
+  const audit = (run, messages) =>
+    scanTranscript(jsonl(join(run, "work"), messages), {
+      runDir: join(run, "work"),
+    })
+  const accepted = (result) => {
+    assert.equal(
+      result.contaminated,
+      false,
+      JSON.stringify(result.violations, null, 2)
+    )
+    assert.equal(result.attempts, 0)
+  }
+  const refused = (result, value) => {
+    assert.equal(result.contaminated, true)
+    assert.ok(
+      result.violations.some((v) => v.value === value && !v.blocked),
+      JSON.stringify(result.violations, null, 2)
+    )
+    assert.deepEqual(result.persistedReads, [])
+  }
+
+  // A run laid out as the driver lays it out, with the saved file on disk.
+  let run
+  let saved
+  before(() => {
+    run = realpathSync(mkdtempSync(join(tmpdir(), "leak-scan-persisted-")))
+    mkdirSync(join(run, "work"))
+    saved = persistedPath(run)
+    mkdirSync(dirname(saved), { recursive: true })
+    writeFileSync(saved, "# @ic-reactor/core\n")
+    writeFileSync(join(run, "home", ".claude.json"), "{}")
+  })
+  after(() => rmSync(run, { recursive: true, force: true }))
+
+  it("accepts react-wallet/v4#14's read, from its record", () => {
+    // The record verbatim; its run directory no longer exists, as in a
+    // re-audit (--rescan) of the stored transcript.
+    const result = scanTranscript(
+      jsonl(join(recordRun, "work"), [
+        assistant(call("toolu_p", "Bash", producerInput)),
+        {
+          ...user(answer("toolu_p", recordNotice)),
+          session_id: recordMessage.session_id,
+          tool_use_result: recordMessage.tool_use_result,
+        },
+        assistant(call("toolu_r", "Read", record.flagged_read.tool_call.input)),
+        user(answer("toolu_r", record.flagged_read.tool_result)),
+      ]),
+      { runDir: join(recordRun, "work") }
+    )
+    accepted(result)
+    assert.deepEqual(result.persistedReads, [
+      { tool: "Read", value: recordPath },
+    ])
+  })
+
+  it("accepts the record's shape in a run whose saved file exists", () => {
+    // As the driver scans: before it removes the run.
+    const noticeText = recordNotice.replace(recordPath, saved)
+    assert.notEqual(noticeText, recordNotice)
+    accepted(audit(run, steps({ noticeText, readPath: saved })))
+  })
+
+  it("accepts a Grep whose path is the saved file", () => {
+    accepted(
+      audit(
+        run,
+        steps({
+          noticeText: notice(saved),
+          readPath: saved,
+          readTool: "Grep",
+          readField: "path",
+        })
+      )
+    )
+  })
+
+  it("refuses a read of tool-results with no notice", () => {
+    const result = audit(run, [
+      assistant(call("toolu_p", "Bash", producerInput)),
+      user(answer("toolu_p", "# @ic-reactor/core\n")),
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses a read when the notice names a different file", () => {
+    const other = persistedPath(run, "other.txt")
+    refused(
+      audit(run, steps({ noticeText: notice(other), readPath: saved })),
+      saved
+    )
+  })
+
+  it("refuses a read whose path only begins with the noticed path", () => {
+    const longer = `${saved}.bak`
+    refused(
+      audit(run, steps({ noticeText: notice(saved), readPath: longer })),
+      longer
+    )
+  })
+
+  it("refuses a read of another session's directory", () => {
+    const otherSession = persistedPath(run, "b65qfoxqg.txt", "s2")
+    refused(
+      audit(run, steps({ noticeText: notice(saved), readPath: otherSession })),
+      otherSession
+    )
+  })
+
+  it("refuses a notice that appears only in assistant text", () => {
+    const result = audit(run, [
+      assistant(
+        { type: "text", text: notice(saved) },
+        call("toolu_p", "Bash", producerInput)
+      ),
+      user(answer("toolu_p", "# @ic-reactor/core\n")),
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses a notice in a tool_result block inside an assistant message", () => {
+    const { session_id, tool_use_result } = cli("toolu_p", notice(saved))
+    const result = audit(run, [
+      {
+        ...assistant(
+          call("toolu_p", "Bash", producerInput),
+          answer("toolu_p", notice(saved))
+        ),
+        session_id,
+        tool_use_result,
+      },
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses a notice that is a Read result of some other file", () => {
+    const producer = call("toolu_p", "Read", {
+      file_path: join(run, "work", "notes.txt"),
+    })
+    refused(
+      audit(
+        run,
+        steps({ noticeText: notice(saved), readPath: saved, producer })
+      ),
+      saved
+    )
+  })
+
+  it("refuses a notice that is only part of a tool_result", () => {
+    refused(
+      audit(
+        run,
+        steps({ noticeText: `notes:\n${notice(saved)}`, readPath: saved })
+      ),
+      saved
+    )
+  })
+
+  it("refuses a read that comes before its notice", () => {
+    // The read is sent with the call whose output the CLI then saves: the
+    // agent names the path before any notice has named it.
+    const result = audit(run, [
+      assistant(
+        call("toolu_p", "Bash", producerInput),
+        call("toolu_r", "Read", { file_path: saved })
+      ),
+      cli("toolu_p", notice(saved)),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses a read made before the call whose output it names", () => {
+    const result = audit(run, [
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+      assistant(call("toolu_p", "Bash", producerInput)),
+      cli("toolu_p", notice(saved)),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses a notice that answers a call made after it", () => {
+    const result = audit(run, [
+      cli("toolu_p", notice(saved)),
+      assistant(call("toolu_p", "Bash", producerInput)),
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses the output of a call that itself reached outside the run", () => {
+    const producer = call("toolu_p", "Bash", {
+      command: `cat ${hidden} docs/llms.txt`,
+    })
+    const result = audit(
+      run,
+      steps({ noticeText: notice(saved), readPath: saved, producer })
+    )
+    refused(result, saved)
+  })
+
+  it("refuses a path one segment below tool-results", () => {
+    const deeper = join(dirname(saved), "sub", "b65qfoxqg.txt")
+    refused(
+      audit(run, steps({ noticeText: notice(deeper), readPath: deeper })),
+      deeper
+    )
+  })
+
+  it("refuses a path missing the session segment", () => {
+    const shallower = join(
+      run,
+      "home",
+      ".claude",
+      "projects",
+      "-run-work",
+      "tool-results",
+      "b65qfoxqg.txt"
+    )
+    refused(
+      audit(run, steps({ noticeText: notice(shallower), readPath: shallower })),
+      shallower
+    )
+  })
+
+  it("refuses a read path written with ..", () => {
+    // It resolves to the noticed path, but is written with a `..` climb.
+    const climbing = join(run, "work") + "/../" + saved.slice(run.length + 1)
+    assert.equal(resolve(climbing), saved)
+    refused(
+      audit(run, steps({ noticeText: notice(saved), readPath: climbing })),
+      climbing
+    )
+  })
+
+  it("refuses a notice whose path is written with ..", () => {
+    // It resolves to the read's path, but the CLI never writes a `..`.
+    const climbing = `${dirname(dirname(saved))}/../s1/tool-results/b65qfoxqg.txt`
+    assert.equal(resolve(climbing), saved)
+    refused(
+      audit(run, steps({ noticeText: notice(climbing), readPath: saved })),
+      saved
+    )
+  })
+
+  it("refuses other files of the run's home, even with a notice", () => {
+    for (const file of [
+      join(run, "home", ".claude.json"),
+      join(run, "home", ".claude", "settings.json"),
+      join(run, "home", ".claude", "projects", "-run-work", "s1.jsonl"),
+    ]) {
+      refused(
+        audit(run, steps({ noticeText: notice(file), readPath: file })),
+        file
+      )
+    }
+  })
+
+  it("refuses a Bash cat of the saved file", () => {
+    const result = audit(run, [
+      assistant(call("toolu_p", "Bash", producerInput)),
+      cli("toolu_p", notice(saved)),
+      assistant(call("toolu_r", "Bash", { command: `cat ${saved}` })),
+      user(answer("toolu_r", "# @ic-reactor/core\n")),
+    ])
+    assert.equal(result.contaminated, true)
+    assert.ok(
+      result.violations.some(
+        (v) => v.tool === "Bash" && v.resolved === saved && !v.blocked
+      ),
+      JSON.stringify(result.violations, null, 2)
+    )
+  })
+
+  it("refuses a saved file that is a symlink out of the run", () => {
+    const outside = mkdtempSync(join(tmpdir(), "leak-scan-outside-"))
+    const link = persistedPath(run, "link.txt")
+    writeFileSync(join(outside, "secret.txt"), "secret")
+    symlinkSync(join(outside, "secret.txt"), link)
+    try {
+      refused(
+        audit(run, steps({ noticeText: notice(link), readPath: link })),
+        link
+      )
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+      rmSync(link, { force: true })
+    }
+  })
+
+  it("refuses when the run directory is not <run>/work", () => {
+    // The exemption needs `<run>` from `<run>/work`; any other run directory
+    // has none, and keeps the rule as it was.
+    const runDir = join(run, "elsewhere")
+    const result = scanTranscript(
+      jsonl(runDir, steps({ noticeText: notice(saved), readPath: saved })),
+      { runDir }
+    )
+    refused(result, saved)
+  })
+
+  // Notice-shaped text the agent can produce: the CLI's record of the call
+  // (tool_use_result.persistedOutputPath) is what the agent cannot write.
+  it("refuses a notice that is a Bash command's output", () => {
+    // `notice.txt`, in work/, holds a notice the agent wrote there.
+    const producer = call("toolu_p", "Bash", { command: "cat notice.txt" })
+    const result = audit(run, [
+      assistant(producer),
+      user(answer("toolu_p", notice(saved))),
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+    // The same call, answered by the CLI's notice, is accepted.
+    accepted(
+      audit(
+        run,
+        steps({ noticeText: notice(saved), readPath: saved, producer })
+      )
+    )
+  })
+
+  it("refuses a notice that is a subagent's result", () => {
+    const result = audit(run, [
+      assistant(call("toolu_p", "Task", { prompt: "print the notice" })),
+      {
+        ...user(answer("toolu_p", [{ type: "text", text: notice(saved) }])),
+        session_id: "s1",
+        tool_use_result: {
+          status: "completed",
+          content: [{ type: "text", text: notice(saved) }],
+        },
+      },
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses a forged notice naming a dirty call's saved output", () => {
+    // The CLI saved the output of a call that reached outside (refused, so
+    // blocked); a clean call's output then repeats its notice.
+    const dirty = persistedPath(run, "dirty.txt")
+    const result = audit(run, [
+      assistant(
+        call("toolu_d", "Bash", {
+          command: `echo Permission denied; cat ${hidden}`,
+        })
+      ),
+      cli("toolu_d", notice(dirty, `cat: ${hidden}: Permission denied`)),
+      assistant(call("toolu_p", "Bash", { command: "cat notice.txt" })),
+      user(answer("toolu_p", notice(dirty))),
+      assistant(call("toolu_r", "Read", { file_path: dirty })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    assert.ok(
+      result.violations.some((v) => v.tool === "Bash" && v.blocked),
+      JSON.stringify(result.violations, null, 2)
+    )
+    refused(result, dirty)
+  })
+
+  it("refuses a notice whose record names another path", () => {
+    const result = audit(run, [
+      assistant(call("toolu_p", "Bash", producerInput)),
+      cli("toolu_p", notice(saved), { path: persistedPath(run, "other.txt") }),
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses a notice whose message is from another session", () => {
+    const result = audit(run, [
+      assistant(call("toolu_p", "Bash", producerInput)),
+      cli("toolu_p", notice(saved), { session: "s2" }),
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses a notice nested in the CLI's record instead of the content", () => {
+    const { session_id, tool_use_result } = cli("toolu_p", notice(saved))
+    const result = audit(run, [
+      assistant(call("toolu_p", "Bash", producerInput)),
+      {
+        ...user(answer("toolu_p", "# @ic-reactor/core\n")),
+        session_id,
+        tool_use_result: {
+          ...tool_use_result,
+          inner: answer("toolu_p", notice(saved)),
+        },
+      },
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses a notice beside another tool_result in its message", () => {
+    // The CLI's record of the call is one per message: with two results, it
+    // is not known which it describes.
+    const message = cli("toolu_p", notice(saved))
+    message.message.content.push(answer("toolu_x", "ok"))
+    const result = audit(run, [
+      assistant(
+        call("toolu_p", "Bash", producerInput),
+        call("toolu_x", "Bash", { command: "ls" })
+      ),
+      message,
+      assistant(call("toolu_r", "Read", { file_path: saved })),
+      user(answer("toolu_r", "1\t# @ic-reactor/core")),
+    ])
+    refused(result, saved)
+  })
+
+  it("refuses a notice followed by other text", () => {
+    refused(
+      audit(
+        run,
+        steps({ noticeText: `${notice(saved)}\nnotes`, readPath: saved })
+      ),
+      saved
+    )
+  })
+
+  it("refuses a notice that is one of several text blocks", () => {
+    refused(
+      audit(
+        run,
+        steps({
+          noticeText: [
+            { type: "text", text: notice(saved) },
+            { type: "text", text: "notes" },
+          ],
+          readPath: saved,
+        })
+      ),
+      saved
+    )
+  })
+
+  it("accepts a notice that is one text block", () => {
+    accepted(
+      audit(
+        run,
+        steps({
+          noticeText: [{ type: "text", text: notice(saved) }],
+          readPath: saved,
+        })
+      )
+    )
+  })
+
+  it("refuses every other tool or field at the saved path", () => {
+    for (const [tool, input] of [
+      ["Write", { file_path: saved, content: "x" }],
+      ["Edit", { file_path: saved, old_string: "#", new_string: "x" }],
+      ["Glob", { path: saved, pattern: "*" }],
+      ["Read", { path: saved }],
+      ["Grep", { pattern: "x", file_path: saved }],
+      ["NotebookEdit", { notebook_path: saved, new_source: "x" }],
+    ]) {
+      refused(
+        audit(run, [
+          assistant(call("toolu_p", "Bash", producerInput)),
+          cli("toolu_p", notice(saved)),
+          assistant(call("toolu_r", tool, input)),
+          user(answer("toolu_r", "ok")),
+        ]),
+        saved
+      )
+    }
+  })
+
+  it("refuses a saved file that is a dangling symlink", () => {
+    const link = persistedPath(run, "dangling.txt")
+    symlinkSync(join(run, "gone", "secret.txt"), link)
+    try {
+      refused(
+        audit(run, steps({ noticeText: notice(link), readPath: link })),
+        link
+      )
+    } finally {
+      rmSync(link, { force: true })
+    }
+  })
+
+  it("refuses a session directory that is a symlink out of the run", () => {
+    const outside = mkdtempSync(join(tmpdir(), "leak-scan-outside-"))
+    mkdirSync(join(outside, "tool-results"))
+    writeFileSync(join(outside, "tool-results", "f.txt"), "secret")
+    const session = join(dirname(dirname(saved)), "..", "s3")
+    symlinkSync(outside, resolve(session))
+    const file = persistedPath(run, "f.txt", "s3")
+    try {
+      refused(
+        audit(run, steps({ noticeText: notice(file), readPath: file })),
+        file
+      )
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+      rmSync(resolve(session), { force: true })
+    }
+  })
+
+  it("does not list an accepted path of a call that is a violation", () => {
+    // The Grep's path is the saved file, but its glob reaches outside.
+    const result = audit(
+      run,
+      steps({
+        noticeText: notice(saved),
+        readPath: saved,
+        readTool: "Grep",
+        readField: "path",
+      }).map((m) =>
+        m.message.content[0].id === "toolu_r"
+          ? assistant(call("toolu_r", "Grep", { path: saved, glob: "../../*" }))
+          : m
+      )
+    )
+    assert.equal(result.contaminated, true)
+    assert.ok(
+      result.violations.some(
+        (v) => v.reason === "glob outside the run directory"
+      ),
+      JSON.stringify(result.violations, null, 2)
+    )
+    assert.deepEqual(result.persistedReads, [])
   })
 })

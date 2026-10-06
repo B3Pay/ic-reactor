@@ -682,6 +682,7 @@ async function agentRun(args, batchDir, outDir, run) {
       toolCalls: audit.toolCalls,
       attempts: audit.attempts,
       violations: audit.violations.slice(0, 20),
+      persistedReads: audit.persistedReads.slice(0, 20),
     },
   }
   writeFileSync(
@@ -787,6 +788,7 @@ function rescan(records) {
         toolCalls: audit.toolCalls,
         attempts: audit.attempts,
         violations: audit.violations.slice(0, 20),
+        persistedReads: audit.persistedReads.slice(0, 20),
       },
     }
   })

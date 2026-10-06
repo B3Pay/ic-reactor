@@ -81,6 +81,7 @@
       "postcss": "^8.5.26",
       "minimatch": "^10.2.5",
       "rollup": "^4.60.1",
+      "sharp": "^0.35.5",
       "smol-toml": "^1.6.1",
       "source-map-js": "^1.2.2",
       "svgo": "^4.0.2",
