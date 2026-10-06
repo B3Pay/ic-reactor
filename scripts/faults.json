@@ -1938,5 +1938,15 @@
     "why": "a query refused by a boundary node with HTTP 400 canister_not_found gets no `code`, so a read cannot tell a missing canister from any other refusal",
     "search": "CANISTER_NOT_FOUND_BODY.test(shape.bodyText ?? \"\")",
     "replace": "false"
+  },
+  {
+    "id": "835-nullish-vars-read-as-skipped",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "gives a query function for every value in place of the variables, and skipToken only for skipToken",
+    "why": "variables that are null or left out (an opt, Candid null, a method without arguments) read as skipToken, so the builder returns queryFn: skipToken where the types promise a query function and useSuspenseQuery takes the options",
+    "file": "src/options.ts",
+    "search": "    if (vars === skipToken) {\n      return {\n        queryKey: readKey(record, caller.principal, target, prepared.name, [",
+    "replace": "    if (vars === skipToken || vars == null) {\n      return {\n        queryKey: readKey(record, caller.principal, target, prepared.name, ["
   }
 ]

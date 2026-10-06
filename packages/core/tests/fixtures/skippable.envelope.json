@@ -1,0 +1,182 @@
+{
+  "contract": {
+    "actor": {
+      "kind": "service",
+      "service": 0
+    },
+    "canonicalization_profile": "candid-core-canon-1",
+    "declarations": [
+      {
+        "name": "Empty",
+        "type": 12
+      },
+      {
+        "name": "Options",
+        "type": 8
+      }
+    ],
+    "format": "candid-core",
+    "format_version": 1,
+    "identities": {
+      "contract": "candid-core:contract:v1:sha256:a4143c301bb56fb4847252c7df954ae3427c3926285c539378f219a5b6489c47",
+      "interface": "candid-core:interface:v1:sha256:ac5f85b642de2e3e05fc2c05b145527fc18170ac58665c18390d716f28056d4f"
+    },
+    "producer": {
+      "candid_parser_version": "0.4.0",
+      "candid_version": "0.10.30",
+      "name": "candid-core",
+      "version": "0.1.0-beta.3"
+    },
+    "semantics_profile": "candid-1",
+    "types": [
+      {
+        "kind": "service",
+        "methods": [
+          {
+            "function": 1,
+            "id": 861650267,
+            "name": "no_args"
+          },
+          {
+            "function": 3,
+            "id": 3122469258,
+            "name": "maybe_nat"
+          },
+          {
+            "function": 5,
+            "id": 3493939655,
+            "name": "nothing_at_all"
+          },
+          {
+            "function": 7,
+            "id": 4082859987,
+            "name": "only_opts"
+          },
+          {
+            "function": 11,
+            "id": 4201474371,
+            "name": "empty_record"
+          },
+          {
+            "function": 13,
+            "id": 4212028802,
+            "name": "anything"
+          }
+        ]
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          2
+        ]
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat"
+      },
+      {
+        "args": [
+          4
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          2
+        ]
+      },
+      {
+        "inner": 2,
+        "kind": "opt"
+      },
+      {
+        "args": [
+          6
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          2
+        ]
+      },
+      {
+        "kind": "primitive",
+        "primitive": "null"
+      },
+      {
+        "args": [
+          8
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          2
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1963007803,
+            "type": 4
+          },
+          {
+            "id": 2931218834,
+            "type": 9
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 10,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "text"
+      },
+      {
+        "args": [
+          12
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          2
+        ]
+      },
+      {
+        "fields": [],
+        "kind": "record"
+      },
+      {
+        "args": [
+          14
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          2
+        ]
+      },
+      {
+        "kind": "primitive",
+        "primitive": "reserved"
+      }
+    ]
+  },
+  "extensions": {
+    "org.candid-core.field-names/v1": [
+      [
+        8,
+        1963007803,
+        "limit"
+      ],
+      [
+        8,
+        2931218834,
+        "prefix"
+      ]
+    ]
+  }
+}

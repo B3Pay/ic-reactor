@@ -1,0 +1,5 @@
+{
+  "file": "src/types.ts",
+  "search": "          : VarsOf<A, M>\n        : VarsOf<A, M> | S,\n",
+  "replace": "          : VarsOf<A, M> | SkipToken\n        : VarsOf<A, M> | S,\n"
+}
