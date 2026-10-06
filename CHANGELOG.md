@@ -223,9 +223,9 @@ on the newest Vite only (#823). The range is unchanged.
   4.0.0-beta.1 tarballs, and the GA eval (Addendum 4 of
   `evals/PREREGISTRATION.md`) ran on the published 4.0.0-beta.1 (#790). GA
   ships on the result of Addendum 4, stated as recorded: rule 1 was not met as
-  written, because the leak audit flagged react-wallet/v4#14's read of its own
-  persisted tool output; all 80 runs were safe and the pooled bound held in
-  both analyses.
+  written, because the leak audit flagged react-wallet/`v4`#14's read of its
+  own persisted tool output; all 80 runs were safe, and the pooled bound held
+  in both analyses (−0.0897 main, −0.0876 intent-to-treat, against −0.10).
 
 ## core, react, vite-plugin 4.0.0-beta.1
 
