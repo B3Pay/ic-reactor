@@ -1012,9 +1012,10 @@ future batches by a further dated addendum, which changes nothing above.
 
 ## Addendum 5 — the leak audit and the CLI's persisted tool output
 
-**Status: drafted 2026-10-06, for the owner's review.** It is frozen, and
-merged, only after the owner has read it. The text above, including
-Addendum 4, its Result and the Decision on it, is unchanged.
+**Status: Frozen on 2026-10-06, after the owner's review.** The text
+above, including Addendum 4, its Result and the Decision on it, is
+unchanged. After freezing, this addendum changes only through a further
+dated addendum.
 
 **What it decides.** The leak audit's rule for the CLI's persisted tool
 output, for batches run after this addendum is frozen. It changes no
@@ -1336,4 +1337,10 @@ at run time, and the owner's decision is on that result.
 - The tests are the harness's own (`node --test harness/*.test.mjs`); the
   rule has met one real case, the batch above.
 
-Approved by owner:
+Approved by owner: yes, on 2026-10-06 ("Addendum 5 approved, freeze and
+merge it"), after reading it in its pull request (#846), with the rule as
+written, including the strictness calls above: the CLI's record beside the
+notice (rule 3), order (rule 4) and the producing call's cleanliness (rule
+5). Frozen by the lead on 2026-10-06. The rule applies to batches run from
+the merge of #846 on; the re-audit above is reported beside Addendum 4's
+result and changes no recorded outcome.
