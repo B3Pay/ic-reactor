@@ -524,11 +524,29 @@ Agents could read the hidden tests by absolute path, so:
   `$(…)` are scanned as commands. Each violation is judged on its own: one
   whose call failed, or whose output reports a permission refusal naming it,
   is an **attempt**; one that succeeded makes the run **contaminated**.
-  `harness/leak-scan.test.mjs` (84 tests) covers each form, clean look-alikes
+  `harness/leak-scan.test.mjs` (107 tests) covers each form, clean look-alikes
   (the first pilot's two false positives among them), evasions, and blocked
   vs successful. `drive.mjs --aggregate <dir> --rescan` re-audits stored
   transcripts with the current scanner and writes `summary.rescanned.json`
   beside the original.
+- **The CLI's persisted tool output** (in the transcript audit, from
+  `PREREGISTRATION.md` Addendum 5). When a tool's output is too large, the
+  CLI saves it as
+  `<run>/home/.claude/projects/<project>/<session>/tool-results/<file>` and
+  answers the call with a `<persisted-output>` notice naming that path. A
+  Read (`file_path`) or Grep (`path`) of exactly that path is not a
+  violation when an earlier tool_result, in a user message, is that notice
+  as a whole and names the path byte for byte; the notice answers an
+  earlier call that is not a Read and had no violation; the path as written
+  has no `..`; the run directory is `<run>/work`; and the file, if it still
+  exists, is not reached through a symlink. Anything else in the run's home
+  (`.claude.json`, settings, session files), a path one segment off that
+  shape, and a Bash command naming the path (`cat <path>`) are violations,
+  as before. The accepted reads are listed in each run's audit record as
+  `persistedReads`. The 23 tests of "the CLI's persisted tool output" take
+  the accepted case from Addendum 4's batch
+  (`results/2026-10-05-ga-gate/contaminated-run.json`) and refuse each
+  departure from it.
 - **Network from the shell** (in the transcript audit, the only line there).
   The sandbox leaves the network open: the agent CLI runs inside it and needs
   its API, and a profile cannot allow one host and deny the rest (`remote ip`
