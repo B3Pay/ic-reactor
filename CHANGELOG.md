@@ -137,13 +137,18 @@ points at its page there.
     recursive reply, such as an ICRC-3 block's `Value`, may nest deeper at the
     same `maxDepth` than before; through a `schemaFromContract()` actor, about
     128 levels used to reach the default, and now 256 do.
-  - Replies refused that were accepted, only at the limit: the `null` a reply
+  - Replies refused that were accepted, only at a limit: the `null` a reply
     gets for a field its message omits (`opt`, `null` or `reserved`) is now
-    charged at the field's own level, so such a field at exactly the client's
-    `maxDepth` rejects `invalid_reply` with a `value_depth` issue. A test
-    client checks its mocks' replies at its `maxDepth` too, where a tag-only
-    variant (`{ tag }`) at exactly `maxDepth` is now refused. At the default
-    `maxDepth`, only a reply 256 levels deep reaches either.
+    charged one depth level, at the field's own level, and one element. So
+    such a field at exactly the client's `maxDepth` rejects `invalid_reply`
+    with a `value_depth` issue, and a large reply whose records omit such
+    fields can pass the decoder's 1,000,000-element bound, which the client
+    does not change: 500,000 records that each omit one field now cost
+    1,000,001 elements and reject `invalid_reply` with a `value_elements`
+    issue. A test client checks its mocks' replies at its `maxDepth` too,
+    where a tag-only variant (`{ tag }`) at exactly `maxDepth` is now
+    refused. At the default `maxDepth`, only a reply 256 levels deep reaches
+    the depth refusals.
   - `schemaFromContract()` refuses a Contract document with a key the format
     does not define, a type node nothing reaches, or type nodes and no root,
     as candid-core's own loader does. Every document `candid-core compile`
