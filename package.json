@@ -73,6 +73,7 @@
     "overrides": {
       "axios": "^1.16.0",
       "brace-expansion": "^5.0.11",
+      "compression": "^1.8.2",
       "devalue": "^5.9.3",
       "fast-uri": "^3.1.6",
       "h3": "^1.15.9",
@@ -81,6 +82,7 @@
       "minimatch": "^10.2.5",
       "rollup": "^4.60.1",
       "smol-toml": "^1.6.1",
+      "source-map-js": "^1.2.2",
       "svgo": "^4.0.2",
       "tar": "^7.5.22",
       "yaml": "^2.8.3",
