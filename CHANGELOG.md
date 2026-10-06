@@ -19,9 +19,9 @@ Nothing yet.
 
 ## core, react, vite-plugin 4.0.0
 
-Prepared on 2026-10-06; not published yet. 4.0.0 is the first stable release
-of the ic-reactor 4 line (milestone 1, #790). It is published from `main`
-after the 4.0 GA flip, under npm's `latest` dist-tag, so a plain
+Prepared on 2026-10-06. 4.0.0 is the first stable release of the ic-reactor
+4 line (milestone 1, #790). It is published from `main` after the 4.0 GA
+flip, under npm's `latest` dist-tag, so a plain
 `npm install @ic-reactor/core` installs 4. The 3.x line gets security fixes
 only, until 90 days after this release.
 
@@ -57,16 +57,16 @@ npm install --save-dev --save-exact @candid-core/cli@0.2.0
   published 4.0.0-beta.1. GA ships on the result of Addendum 4, stated as
   recorded: rule 1 was not met as written, because the leak audit flagged
   react-wallet/`v4`#14's read of its own persisted tool output; all 80 runs
-  were safe and the pooled bound held in both analyses (−0.0897 main,
-  −0.0876 intent-to-treat). The result and the owner's decision are recorded
-  there, under "Result of Addendum 4" and "Decision on the result of
-  Addendum 4" (#844).
+  were safe, and the pooled bound held in both analyses (−0.0897 main,
+  −0.0876 intent-to-treat, against −0.10). The result and the owner's
+  decision are recorded there, under "Result of Addendum 4" and "Decision on
+  the result of Addendum 4" (#844).
 
 ## core, react, vite-plugin 4.0.0-beta.2
 
-Prepared on 2026-10-06; not published yet. It goes out under npm's `beta`
-dist-tag, as `@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA.
-Changes since 4.0.0-beta.1.
+Prepared on 2026-10-06. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.1.
 
 An app on beta.1 upgrades by bumping all three packages to `4.0.0-beta.2`, and
 the candid-core pair to its stable releases, both exact:
