@@ -72,16 +72,24 @@
 //   followed), is exactly
 //   `<run>/home/.claude/projects/<one segment>/<one segment>/tool-results/<one file name>`;
 // - the path as written has no `..` segment;
-// - an earlier tool_result in the transcript, in a user message (never in an
-//   assistant message), is the CLI's notice as a whole — `<persisted-output>`,
-//   then "Output too large (<size>). Full output saved to: <path>", …,
-//   `</persisted-output>` — and names exactly that path, already normalised;
-// - that tool_result answers an earlier tool call that is not a Read and in
-//   which the scan found no violation, blocked or not;
-// - if the file still exists when the scan runs (the driver scans before it
-//   removes the run), its real path is the same path: no symlink on the way.
-// A Bash command that names the path (`cat <path>`) is still a violation.
-import { existsSync, realpathSync } from "node:fs"
+// - an earlier top-level user message of the transcript is the CLI's answer
+//   to a call whose output it saved: its content is one tool_result block,
+//   whose whole content is the notice — `<persisted-output>`, then "Output
+//   too large (<size>). Full output saved to: <path>", …,
+//   `</persisted-output>` — and the message's `tool_use_result`, the CLI's
+//   own record of the call, has `persistedOutputPath` equal to that <path>,
+//   and `session_id` equal to its session segment. A tool's output is text
+//   inside `content` or inside a field of `tool_use_result`; it cannot add
+//   that field, so notice-shaped output of a Bash `printf`, a `cat` or a
+//   subagent is not a notice;
+// - the notice's <path> is the read's path, byte for byte;
+// - the notice answers an earlier tool call that is not a Read and in which
+//   the scan found no violation, blocked or not;
+// - no component of the path below `<run>` is a symlink, as far as the path
+//   exists when the scan runs (the driver scans before it removes the run).
+// A Bash command that names the path (`cat <path>`) is still a violation, and
+// so is any other tool or field naming it (Write, Edit, Glob, a Read `path`).
+import { existsSync, lstatSync, realpathSync } from "node:fs"
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path"
 import { homedir } from "node:os"
 
@@ -1061,42 +1069,73 @@ function applyEdit(written, path, edit) {
 
 // ---------------------------------------------------------------- transcripts
 
-/**
- * Every tool_use and tool_result block, in transcript order, with the speaker
- * of the message it is in: "assistant" if any enclosing object is an
- * assistant message (`type` or `role` "assistant"), else "user" if one is a
- * user message, else undefined.
- */
-function* toolBlocks(value, speaker) {
+function* toolBlocks(value) {
   if (Array.isArray(value)) {
-    for (const item of value) yield* toolBlocks(item, speaker)
+    for (const item of value) yield* toolBlocks(item)
   } else if (value && typeof value === "object") {
-    const own = [value.type, value.role].find(
-      (s) => s === "assistant" || s === "user"
-    )
-    if (own && speaker !== "assistant") speaker = own
-    if (value.type === "tool_use" || value.type === "tool_result")
-      yield { block: value, speaker }
-    for (const child of Object.values(value)) yield* toolBlocks(child, speaker)
+    if (value.type === "tool_use" || value.type === "tool_result") yield value
+    for (const child of Object.values(value)) yield* toolBlocks(child)
   }
 }
 
-/** The path a tool_result's whole content names as the CLI's notice. */
-function persistedNotice(result) {
-  const content = result.content
+/**
+ * The CLI's persisted-output notice in one transcript message (header
+ * comment), as `{ block, path }`: a top-level user message whose content is
+ * one tool_result block, whose whole content is the notice, and whose
+ * `tool_use_result` (the CLI's own record of the call, beside the content the
+ * agent receives) has `persistedOutputPath` equal to the path the notice
+ * names, with the message's `session_id` as that path's session segment.
+ */
+function cliNotice(doc) {
+  const content = doc?.type === "user" ? doc.message?.content : undefined
+  if (!Array.isArray(content) || content.length !== 1) return undefined
+  const [block] = content
+  if (block?.type !== "tool_result" || typeof block.tool_use_id !== "string")
+    return undefined
+  const inner = block.content
   const text =
-    typeof content === "string"
-      ? content
-      : Array.isArray(content) &&
-          content.length === 1 &&
-          content[0]?.type === "text" &&
-          typeof content[0].text === "string"
-        ? content[0].text
+    typeof inner === "string"
+      ? inner
+      : Array.isArray(inner) &&
+          inner.length === 1 &&
+          inner[0]?.type === "text" &&
+          typeof inner[0].text === "string"
+        ? inner[0].text
         : undefined
   const match = text === undefined ? null : PERSISTED_NOTICE.exec(text)
   if (!match) return undefined
   const path = match[1]
-  return isAbsolute(path) && resolve(path) === path ? path : undefined
+  const meta = doc.tool_use_result
+  if (
+    !meta ||
+    typeof meta !== "object" ||
+    meta.persistedOutputPath !== path ||
+    typeof doc.session_id !== "string" ||
+    path.split("/").at(-3) !== doc.session_id
+  )
+    return undefined
+  return { block, path }
+}
+
+/**
+ * Whether no part of `path` below `<run>` is a symlink, as far as the path
+ * exists now: each component is lstat'ed, so a link is refused even when its
+ * target is gone. What does not exist (the run removed, in a re-audit) has no
+ * link to find.
+ */
+function linkFree(path, run) {
+  let at = run
+  for (const part of path.slice(run.length + 1).split("/")) {
+    at = join(at, part)
+    let stat
+    try {
+      stat = lstatSync(at)
+    } catch {
+      return true
+    }
+    if (stat.isSymbolicLink()) return false
+  }
+  return true
 }
 
 /** `<run>` for a run directory `<run>/work`, in each spelling roots() has. */
@@ -1182,8 +1221,9 @@ export function scanTranscript(transcript, { runDir }) {
   // Transcript order of every block, and the CLI's persisted-output notices.
   const order = new Map()
   const notices = []
-  for (const doc of docs) {
-    for (const { block, speaker } of toolBlocks(doc)) {
+  for (const doc of docs.flat()) {
+    const notice = cliNotice(doc)
+    for (const block of toolBlocks(doc)) {
       order.set(block, order.size)
       if (block.type === "tool_use" && typeof block.name === "string")
         uses.push(block)
@@ -1192,9 +1232,12 @@ export function scanTranscript(transcript, { runDir }) {
         typeof block.tool_use_id === "string"
       ) {
         results.set(block.tool_use_id, block)
-        const path = speaker === "user" ? persistedNotice(block) : undefined
-        if (path !== undefined)
-          notices.push({ path, at: order.get(block), id: block.tool_use_id })
+        if (block === notice?.block)
+          notices.push({
+            path: notice.path,
+            at: order.get(block),
+            id: block.tool_use_id,
+          })
       }
     }
   }
@@ -1211,15 +1254,12 @@ export function scanTranscript(transcript, { runDir }) {
       return false
     const path = expand(raw, resolve(runDir))
     const at = order.get(use)
-    if (
-      !homes.some((run) =>
-        PERSISTED_PATH.test(
-          path.startsWith(run + sep) ? path.slice(run.length + 1) : ""
-        )
-      ) ||
-      (existsSync(path) && fileKey(realpathOrSelf(path)) !== fileKey(path))
+    const run = homes.find(
+      (home) =>
+        path.startsWith(home + sep) &&
+        PERSISTED_PATH.test(path.slice(home.length + 1))
     )
-      return false
+    if (run === undefined || !linkFree(path, run)) return false
     return notices.some((notice) => {
       const producer = usesById.get(notice.id)
       return (
@@ -1251,10 +1291,12 @@ export function scanTranscript(transcript, { runDir }) {
         reason: "network tool",
       })
     }
+    // Accepted reads of persisted output, listed only if the call is clean.
+    const reads = []
     for (const field of PATH_FIELDS) {
       if (typeof input[field] === "string" && input[field] !== "") {
         if (persistedRead(use, input, field)) {
-          persistedReads.push({ tool: use.name, value: input[field] })
+          reads.push({ tool: use.name, value: input[field] })
           continue
         }
         check(
@@ -1299,6 +1341,7 @@ export function scanTranscript(transcript, { runDir }) {
       }
     }
     if (found.length === 0) {
+      persistedReads.push(...reads)
       cleanCalls.add(use)
       continue
     }

@@ -21,7 +21,9 @@ described in `../PREREGISTRATION.md`.
   time. Copied from `runs/ga-gate-2026-10-05/` (plan, summary as scored at
   run time, pilot statistics), plus `contaminated-run.json`: the one
   contaminated run's audit record, the Bash call whose output the CLI
-  saved, and the whole file as the agent read it back.
+  saved, the rest of the message that carried the CLI's notice (its
+  session and the CLI's record of the call, added for Addendum 5), and the
+  whole file as the agent read it back.
   `summary.rescanned.json` is the re-audit of Addendum 5
   (`node drive.mjs --aggregate runs/ga-gate-2026-10-05 --rescan`, with the
   leak audit as Addendum 5 changes it), copied from

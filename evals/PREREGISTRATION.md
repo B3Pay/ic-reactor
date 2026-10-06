@@ -1044,21 +1044,31 @@ directory, `<run>/work`, is a violation):
    segment off (`tool-results/sub/<file>`, `projects/<p>/tool-results/<file>`)
    does not match. A run directory with another name gives no `<run>`, and
    no read is accepted.
-2. **A notice names it.** An earlier `tool_result` in the transcript is, as
-   its whole content, the CLI's notice: it begins `<persisted-output>`, its
-   next line is `Output too large (<size>). Full output saved to: <path>`,
-   and it ends `</persisted-output>` (content that is one string, or one
-   text block). Its `<path>` equals the read's resolved path byte for byte.
-   A notice inside other output ("notes:" and then the notice) does not
-   count; nor does a prefix (the read `<path>.bak` against a notice of
+2. **A notice names it.** An earlier message of the transcript holds, as
+   the whole content of a `tool_result`, the CLI's notice: it begins
+   `<persisted-output>`, its next line is
+   `Output too large (<size>). Full output saved to: <path>`, and it ends
+   `</persisted-output>`, with nothing after it. The content is one string,
+   or one text block. Its `<path>` equals the read's resolved path byte for
+   byte. A notice inside other output ("notes:" and then the notice, or the
+   notice and then more text, or the notice and a second text block) does
+   not count; nor does a prefix (the read `<path>.bak` against a notice of
    `<path>`); nor another session's directory, since the session segment is
    part of the path.
-3. **The notice is the CLI's, not the agent's.** It must be in a user
-   message (where the CLI's tool results are), and no enclosing message may
-   be an assistant one: notice text the agent wrote, or a `tool_result`
-   block placed inside an assistant message, does not count. It must answer
-   an earlier tool call that is **not a Read**, so a Read of some other file
-   whose text is a notice does not count.
+3. **The notice is the CLI's, not the agent's.** The message holding it is
+   a top-level user message of the stream (`"type": "user"`), its content
+   is that one `tool_result` block and nothing else, and beside the content
+   the message carries the CLI's own record of the call: a
+   `tool_use_result` object whose `persistedOutputPath` is the notice's
+   `<path>`, and a `session_id` equal to that path's session segment. The
+   CLI writes these two fields; a tool's output is a string inside the
+   content or inside a field of `tool_use_result` (a Bash call's `stdout`, a
+   Grep's `content`), and cannot add them. So notice-shaped text that a
+   Bash `printf` or `cat` prints, that a subagent returns, or that the agent
+   writes in its own message does not count, and neither does a notice
+   block nested anywhere else in a message (inside an assistant message, or
+   inside `tool_use_result`). The notice must also answer an earlier tool
+   call that is **not a Read**.
 4. **Order.** The notice comes before the read in the transcript, and the
    call it answers comes before the notice (the CLI names the path first).
    A read sent in the same message as the call whose output is saved, before
@@ -1067,84 +1077,134 @@ directory, `<run>/work`, is a violation):
    answers had no violation of its own, blocked or not. Its output came from
    inside the run, so reading the saved file back reads nothing the audit
    had not already passed. If the call reached outside, reading its full
-   output back stays a violation.
+   output back stays a violation, and since rule 3 takes only the CLI's
+   notice, a clean call cannot lend its cleanliness to another call's saved
+   output by repeating that call's notice.
 6. **No `..`.** The read's path as written has no `..` segment, even one
-   that resolves back to the noticed path (`<run>/work/../home/…`). The
-   notice's path must already be normalised (absolute, and equal to its own
-   resolution); a notice naming a path with `..` names nothing.
-7. **No symlink.** If the file still exists when the audit runs, its real
-   path must be the path itself (`/private/var` and `/var` taken as one, as
-   elsewhere in the audit). At run time it exists: the driver audits before
-   it removes the run.
+   that resolves back to the noticed path (`<run>/work/../home/…`). A
+   notice naming a path with `..` names nothing: the read's path is
+   normalised, and the notice's must equal it byte for byte.
+7. **No symlink.** No component of the path below `<run>` (`home`,
+   `.claude`, `projects`, the project, the session, `tool-results`, the
+   file) is a symlink, as far as the path exists when the audit runs. Each
+   component is checked without following it, so a link is refused even
+   when its target is gone. At run time the path exists: the driver audits
+   before it removes the run.
 
 Strictness calls, each the owner's to overturn:
 
 - **What the resolver sees.** The audit resolves paths lexically, as it
   always has: `.`, `..`, repeated `/`, `~`, `~user`, `$HOME` and `$PWD`,
   from the run directory. It does not follow symlinks; rule 7 adds the one
-  real-path check, and only while the file exists. `~` and `$HOME` are the
-  audit's own home, not the run's, so a read written `~/.claude/projects/…`
-  stays a violation.
+  link check, and only for the part of the path that exists. `~` and
+  `$HOME` are the audit's own home, not the run's, so a read written
+  `~/.claude/projects/…` stays a violation.
 - **Bash.** A Bash command naming the path (`cat <path>`) stays a violation,
   as every Bash command reaching outside `work/` is. The owner's rule names
   "a read", and the agent has Read for it.
-- **Grep yes, Glob no.** Grep's `path` can name one file, and a Grep of the
-  saved file is a read of it, so it is covered on the same terms. Glob names
-  a pattern or a directory, never one saved file (a Glob of `tool-results/`
-  would list the others), so it is not.
+- **Grep yes, Glob no, no other tool.** Grep's `path` can name one file, and
+  a Grep of the saved file is a read of it, so it is covered on the same
+  terms. Glob names a pattern or a directory, never one saved file (a Glob
+  of `tool-results/` would list the others), so it is not. Any other tool
+  or field naming the path (Write, Edit, NotebookEdit, a Read `path`, a
+  Grep `file_path`) is a violation, as before.
 - **The rest of the run's home stays outside the run**, exactly as today:
   `.claude.json`, `.claude/settings.json`, the session's own transcript
   under `projects/`, and anything else there, with or without a notice.
-- **The notice field, not the metadata.** The CLI's stream-json also carries
-  a `tool_use_result.persistedOutputPath` beside the notice. The rule rests
-  on the notice the agent receives, as the owner wrote it, and does not read
-  that field.
+- **The CLI's record, not only the notice.** The owner's rule asks for "the
+  CLI's persisted-output notice". The notice text alone does not show whose
+  it is: a clean call can print the same text (a `cat` of a file the agent
+  wrote, a subagent's answer), and could name any saved file, including the
+  saved output of a call that reached outside. So the rule also requires
+  the record the CLI writes beside the notice, `persistedOutputPath` and
+  `session_id` (rule 3), which a tool's output cannot add. Addendum 4's run
+  carries both (`results/2026-10-05-ga-gate/contaminated-run.json`,
+  `producer.cli_message`), and so does the batch's other saved output
+  (react-wallet/`v4`#5).
 - **Order is required**, and so is the producing call's cleanliness (rules
   4 and 5). Neither is in the owner's words; both are recommended, since the
   CLI writes the notice first and the file holds the call's whole output.
 
 **Harness changes.** In this addendum's pull request, under `evals/` only:
 
-- `harness/leak-scan.mjs`: the rule above. The tool blocks are walked in
-  transcript order with the speaker of the message each is in; notices are
-  collected from user messages; `scanTranscript` returns `persistedReads`,
-  the reads it accepted under the rule. The rest of the audit is unchanged.
+- `harness/leak-scan.mjs`: the rule above. Notices are taken only from the
+  content of top-level user messages that carry the CLI's record of the
+  call; `scanTranscript` returns `persistedReads`, the reads it accepted
+  under the rule, listing a call only when the scan found no violation in
+  it. The rest of the audit is unchanged.
 - `drive.mjs`: each run's audit record (`agent.json`, and a re-audit's) also
   keeps `persistedReads`.
-- `harness/leak-scan.test.mjs`: 23 tests in "the CLI's persisted tool
-  output" (84 before, 107 now). Accepted: react-wallet/`v4`#14 verbatim
+- `results/2026-10-05-ga-gate/contaminated-run.json`: `producer.cli_message`
+  added, the rest of the user message that carried react-wallet/`v4`#14's
+  notice, copied from its stored transcript (line 7 of
+  `runs/ga-gate-2026-10-05/react-wallet/v4/014/agent.stdout`): its
+  `session_id`, `uuid`, `timestamp` and `parent_tool_use_id`, and the CLI's
+  `tool_use_result` without its `stdout` (the 29,991-character output
+  itself, given by its sha256 and length). Nothing else in the record
+  changed.
+- `harness/leak-scan.test.mjs`: 37 tests in "the CLI's persisted tool
+  output" (84 before, 121 now). Accepted: react-wallet/`v4`#14 verbatim
   from `results/2026-10-05-ga-gate/contaminated-run.json` (the Bash call,
-  the CLI's notice, the Read and its result), with its run directory gone as
-  in a re-audit; the same shape in a run laid out as the driver lays it out,
-  with the saved file on disk; and a Grep of the saved file. Refused, each
-  in its own test: a tool-results read with no notice; a notice naming a
-  different file; a read whose path only begins with the noticed one;
+  the CLI's notice with the session and record of its message, the Read and
+  its result), with its run directory gone as in a re-audit; the same shape
+  in a run laid out as the driver lays it out, with the saved file on disk;
+  a notice that is one text block; and a Grep of the saved file. Refused,
+  each in its own test: a tool-results read with no notice; a notice naming
+  a different file; a read whose path only begins with the noticed one;
   another session's directory; a notice only in assistant text; a notice in
   a `tool_result` block inside an assistant message; a notice that is a
-  Read result of another file; a notice inside other output; a read before
-  its notice; a read before the call whose output it names; a notice that
-  answers a later call; the saved output of a call that reached outside the
-  run; a path one segment below `tool-results`; a path missing the session
-  segment; a read written with `..`; a notice whose path is written with
-  `..`; `home/.claude.json`, `home/.claude/settings.json` and a session
-  transcript, each with a notice; a Bash `cat` of the saved file; a saved
-  file that is a symlink out of the run; and a run directory not named
-  `work`.
-- Each of the 23 tests was shown to fail with the rule removed or loosened,
-  on a copy of `leak-scan.mjs` with one change at a time: the rule removed
-  (the three accepted tests fail); no notice needed (13 refused tests
-  fail); a prefix match; a same-directory match; a same-file-name match
-  (another session); notices from any speaker; notices found by searching
-  the transcript text; the notice not anchored; no read-after-notice check;
-  no call-before-notice check; Read results counted; the producing call
-  not required to be clean; any depth under `tool-results`; anything under
-  `home/`; `..` allowed in the read; the notice's path normalised instead of
-  refused; no symlink check; any run directory; Bash covered too; Grep not
-  covered. The read made before the call whose output it names is refused
-  by three conditions at once (order, the call seen before the read, the
-  call judged clean before the read), so it fails only with the notice
-  requirement removed or all three loosened together. These are harness
-  tests, not package tests, so they have no `scripts/faults.json` entry.
+  Read result of another file; a notice inside other output; a notice
+  followed by other text; a notice that is one of several text blocks; a
+  notice that is a Bash command's output; a notice that is a subagent's
+  result; a notice a clean call repeats, naming the saved output of a call
+  that reached outside (refused, so blocked); a notice whose record names
+  another path; a notice whose message is from another session; a notice
+  nested in the CLI's record instead of the content; a notice beside
+  another `tool_result` in its message; a read before its notice; a read
+  before the call whose output it names; a notice that answers a later
+  call; the saved output of a call that reached outside the run; a path one
+  segment below `tool-results`; a path missing the session segment; a read
+  written with `..`; a notice whose path is written with `..`;
+  `home/.claude.json`, `home/.claude/settings.json` and a session
+  transcript, each with a notice; a Bash `cat` of the saved file; every
+  other tool or field at the saved path (Write, Edit, Glob `path`, Read
+  `path`, Grep `file_path`, NotebookEdit); a saved file that is a symlink
+  out of the run; a saved file that is a dangling symlink; a session
+  directory that is a symlink out of the run; and a run directory not
+  named `work`. One more checks that a Grep whose `path` is the saved file
+  but whose `glob` reaches outside is a violation and is not listed in
+  `persistedReads`.
+- Each of the 37 tests was shown to fail with the rule removed or loosened,
+  on a copy of `leak-scan.mjs` with one change at a time. The first draft
+  of this addendum did so for its 23 tests: the rule removed (the accepted
+  tests fail); no notice needed (13 refused tests fail); a prefix match; a
+  same-directory match; a same-file-name match (another session); notices
+  from any speaker; notices found by searching the transcript text; the
+  notice not anchored; no read-after-notice check; no call-before-notice
+  check; Read results counted; the producing call not required to be
+  clean; any depth under `tool-results`; anything under `home/`; `..`
+  allowed in the read; no symlink check; any run directory; Bash covered
+  too; Grep not covered. The read made before the call whose output it
+  names is refused by three conditions at once (order, the call seen before
+  the read, the call judged clean before the read), so it fails only with
+  the notice requirement removed or all three loosened together. For the
+  14 tests added since, one change each, with what failed: the notice text
+  alone, without the CLI's record or session (the first draft's rule: the
+  Bash-output, subagent, repeated-notice, other-path and other-session
+  tests); the record's path not compared (subagent, other path); the
+  session not compared (other session); a notice taken from any
+  `tool_result` nested in the message (nested in the record); more than one
+  block allowed in the message (beside another `tool_result`); the end of
+  the notice not anchored (followed by other text); several text blocks
+  allowed (several text blocks); any tool or field accepted, any field of
+  Read or Grep accepted, or Glob added as a reader (every other tool or
+  field); the first draft's symlink check, which followed links (dangling
+  symlink); no symlink check (the three symlink tests); `persistedReads`
+  listed before the call is judged (the Grep with a `glob`); the producing
+  call not required to be clean (the repeated notice, and the output of a
+  call that reached outside); and the rule removed (the accepted tests,
+  the one-text-block one among them). These are harness tests, not package
+  tests, so they have no `scripts/faults.json` entry.
 
 **The re-audit of Addendum 4's batch**, reported beside its result. It
 changes nothing: the outcome stays as recorded in "Result of Addendum 4"
@@ -1161,6 +1221,11 @@ before and after, and the run-time `summary.json` is the one in
 rescanned summary is copied, byte for byte, to
 `results/2026-10-05-ga-gate/summary.rescanned.json` (sha256
 `591177f03fe9c7a728d47a6cca91cdf2426cd2a7dc96ae05dac6bdd4f15d0745`).
+The re-audit was run again with the rule as it now stands (the CLI's record
+required, rule 3): it rewrote `summary.rescanned.json` byte for byte the
+same, the 1,755 files under `runs/ga-gate-2026-10-05/` (the 1,754 and that
+summary) hashed the same before and after, and every run's verdict,
+attempts and accepted reads were the same as with the first draft's rule.
 
 | Task         | Condition    | Contaminated (run time → rescan) | Safe, main (run time → rescan) | Safe, ITT (run time → rescan) |
 | ------------ | ------------ | -------------------------------- | ------------------------------ | ----------------------------- |
@@ -1195,11 +1260,21 @@ at run time, and the owner's decision is on that result.
 
 **Known limits.**
 
-- The rule recognises the notice as this CLI writes it (Addendum 4's batch,
-  CLI 2.1.285). If a later CLI words it otherwise, the read is flagged as
-  before: the rule fails closed, and a batch's result would again need the
-  owner.
-- The symlink check needs the file, so it holds at run time and not in a
+- The rule recognises the notice, and the record beside it, as this CLI
+  writes them (Addendum 4's batch, CLI 2.1.285). If a later CLI words the
+  notice otherwise, or renames or drops `persistedOutputPath` or
+  `session_id`, the read is flagged as before: the rule fails closed, and a
+  batch's result would again need the owner.
+- Rule 3 trusts that no tool's output reaches the top level of
+  `tool_use_result` as a field name. In Addendum 4's batch every
+  `tool_use_result` is a string or has a fixed set of fields the CLI names:
+  Bash (`stdout`, `stderr`, `interrupted`, `isImage`, `noOutputExpected`,
+  and `returnCodeInterpretation` or the two persisted-output fields), Read
+  (`file`, `type`), Write, Edit and Grep likewise. No run used a subagent,
+  and the driver runs the agent with `--strict-mcp-config` and no MCP
+  server, whose structured results could carry fields of their own. A batch
+  whose agents use other tools would need this looked at again.
+- The link check needs the path, so it holds at run time and not in a
   re-audit, where the run is gone and the path is judged lexically.
 - The audit does not compare the saved file with the call's output. It
   relies on the CLI being what writes `tool-results/`. An agent's write or
@@ -1208,10 +1283,7 @@ at run time, and the owner's decision is on that result.
   interpreter code with a computed path (`process.env.HOME + …`) is not
   seen; that is the audit's existing limit for any access made that way
   (such code could as well print what it read), which the OS sandbox is the
-  first line against. A clean call whose output is a notice-shaped text
-  (for example a `cat` of a file in `work/` that holds one) counts as a
-  notice; the path it names must still be a file in the run's own
-  `tool-results/`.
+  first line against.
 - A read sent in the same message as the call whose output gets saved is
   refused even if the path turns out right. The agent cannot know the path
   before the notice, so this costs nothing on the CLI's behaviour seen so
