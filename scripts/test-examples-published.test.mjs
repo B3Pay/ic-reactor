@@ -576,6 +576,17 @@ describe("the StackBlitz start command", () => {
     assert.equal(parseNpmCommand("npm run"), undefined)
     // Only the lifecycle commands have a bare form; npm refuses `npm dev`.
     assert.equal(parseNpmCommand("npm dev"), undefined)
+    // Any unquoted script name npm runs, dots and slashes included.
+    assert.deepEqual(parseNpmCommand("npm run dev.web"), {
+      script: "dev.web",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm run gen/types -- --watch"), {
+      script: "gen/types",
+      args: ["--watch"],
+    })
+    // A name starting with "-" is an npm option, not a script.
+    assert.equal(parseNpmCommand("npm run --silent dev"), undefined)
     assert.equal(parseNpmCommand("npm build -- --watch"), undefined)
     assert.deepEqual(parseNpmCommand("npm start"), {
       script: "start",

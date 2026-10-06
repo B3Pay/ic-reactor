@@ -642,14 +642,16 @@ const NPM_LIFECYCLE_COMMANDS = {
  * `--`. `npm run <script>` (or `npm run-script`) for any script, and the bare
  * lifecycle commands (`npm test`, `npm t`, `npm start`, `npm stop`, `npm
  * restart`) for theirs; `npm test` and `npm run test` are the same script.
- * Anything else, `npm dev` included, is not a script command.
+ * A script name is any unquoted word not starting with `-` (an npm option):
+ * `npm run dev.web` names `dev.web`. Anything else, `npm dev` included, is
+ * not a script command.
  *
  * @param {string} command
  * @returns {{ script: string, args: string[] } | undefined}
  */
 export function parseNpmCommand(command) {
   const match = command.match(
-    /^npm\s+(?:(run(?:-script)?)\s+)?([\w:-]+)(?:\s+--((?:\s+\S+)*))?\s*$/
+    /^npm\s+(?:(run(?:-script)?)\s+)?([^\s-]\S*)(?:\s+--((?:\s+\S+)*))?\s*$/
   )
   if (!match) return undefined
   const [, run, name, rest] = match
