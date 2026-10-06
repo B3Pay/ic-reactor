@@ -1,0 +1,15 @@
+type Empty = record {};
+type Options = record { limit : opt nat; prefix : opt text };
+
+// One method per shape of variables `skipToken` might be assignable to: an
+// empty record, a record of opts alone, an opt, reserved, null, and no
+// arguments. Only a read whose variables cannot hold `skipToken` gives
+// options without `SkipToken` in their `queryFn` type.
+service : {
+  empty_record : (Empty) -> (nat) query;
+  only_opts : (Options) -> (nat) query;
+  maybe_nat : (opt nat) -> (nat) query;
+  anything : (reserved) -> (nat) query;
+  nothing_at_all : (null) -> (nat) query;
+  no_args : () -> (nat) query;
+}

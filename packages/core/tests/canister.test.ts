@@ -9,7 +9,7 @@ import { principal, serviceMethods, type Principal } from "@candid-core/schema"
 import { encodeArgs } from "@candid-core/schema/codec"
 import { AnonymousIdentity, Cbor } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
-import { skipToken, type QueryFunctionContext } from "@tanstack/query-core"
+import type { QueryFunctionContext } from "@tanstack/query-core"
 import { isReactorError } from "../src/index.js"
 import { toHex } from "../src/keys.js"
 import { type FakeReplica } from "../src/testing/fake-replica.js"
@@ -863,7 +863,6 @@ describe("a certified canister", () => {
       certified: true,
     })
     const { queryFn } = client.queryOptions(certified, "one", 1n)
-    if (queryFn === skipToken) throw new Error("the read is not skipped")
     // What TanStack does when the last observer of a read goes away: it
     // aborts the signal it gave the query function.
     const controller = new AbortController()
@@ -891,7 +890,6 @@ describe("a certified canister", () => {
       certified: true,
     })
     const { queryFn } = client.queryOptions(certified, "one", 1n)
-    if (queryFn === skipToken) throw new Error("the read is not skipped")
     const controller = new AbortController()
     const read = queryFn({
       signal: controller.signal,
@@ -926,7 +924,6 @@ describe("a certified canister", () => {
       certified: true,
     })
     const { queryFn } = client.queryOptions(certified, "one", 1n)
-    if (queryFn === skipToken) throw new Error("the read is not skipped")
     await expect(
       queryFn({ signal: controller.signal } as QueryFunctionContext)
     ).rejects.toMatchObject({ kind: "cancelled", mayHaveExecuted: false })

@@ -62,13 +62,19 @@ import {
   MutationObserver,
   QueryObserver,
   keepPreviousData,
+  skipToken,
+  type OmitKeyof,
+  type QueryKey,
+  type QueryObserverOptions,
+  type SkipToken,
 } from "@tanstack/query-core"
 import { createClient, formatUnits, parseUnits } from "../src/index.js"
-import type { Network, ReactorError } from "../src/index.js"
+import type { Canister, Network, ReactorError } from "../src/index.js"
 import { createTestClient, type TestHandlers } from "../src/testing/index.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
 import * as icrc1 from "./fixtures/icrc1.js"
 import * as shapes from "./fixtures/shapes.js"
+import * as skippable from "./fixtures/skippable.js"
 
 // What a generated module's `Err` arm looks like for ICRC-1 `icrc1_transfer`.
 type TransferError =
@@ -195,6 +201,69 @@ void ledger.icrc1_balance_of({ owner: "aaaaa-aa", subaccount: null })
 // trap: vars-of-two-arguments-are-the-tuple
 // @ts-expect-error pair takes two arguments: pass them as the tuple [left, right]
 client.queryOptions(shapesCanister, "pair", 1n)
+
+// What `useSuspenseQuery` of `@tanstack/react-query` takes, written over
+// query-core: the options of a `QueryObserver`, without the ones a suspense
+// read has no use for, and a `queryFn` that is never `skipToken`, since a
+// suspense read cannot wait for its variables.
+type SuspenseQueryOptions<T, E, K extends QueryKey> = OmitKeyof<
+  QueryObserverOptions<T, E, T, T, K>,
+  "queryFn" | "enabled" | "throwOnError" | "placeholderData"
+> & {
+  queryFn?: Exclude<QueryObserverOptions<T, E, T, T, K>["queryFn"], SkipToken>
+}
+declare function useSuspenseQuery<T, E, K extends QueryKey>(
+  options: SuspenseQueryOptions<T, E, K>
+): { data: T }
+declare const ready: boolean
+
+// Variables that cannot be skipped give options a suspense read takes as they
+// are. The read with variables is a tuple: under the fault of
+// options-vars-wrong-type a single argument is `unknown`, which may hold
+// `skipToken`, and its read would be refused too.
+useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee"))
+useSuspenseQuery(client.queryOptions(shapesCanister, "pair", [1n, "x"]))
+
+// Variables that may be skipped give options it refuses. The traps read a
+// method without arguments: under the fault of options-vars-wrong-type, which
+// widens every argument to `unknown`, the variables of a method with
+// arguments can no longer be told from `skipToken`, and one fault must remove
+// one trap. packages/react/tests/suspense.test-d.tsx refuses an `Account |
+// SkipToken` under the real `useSuspenseQuery`.
+
+const gated = client.queryOptions(
+  ledger,
+  "icrc1_fee",
+  ready ? undefined : skipToken
+)
+// trap: suspense-refuses-skippable-read
+// @ts-expect-error a suspense read cannot be skipped: render it once it can run, or read it with useQuery
+useSuspenseQuery(gated)
+// trap: suspense-refuses-skippable-read
+// @ts-expect-error skipToken is for useQuery; a suspense read always runs
+useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee", skipToken))
+
+// Variables of a type `skipToken` is assignable to may always be skipped, and
+// the options keep SkipToken: a Candid `reserved` argument, which the
+// generator writes `unknown`, and an empty record written `{}` by hand
+// (`candid-core-cli gen` writes `record {}` as `Record<string, never>`, which
+// a symbol is not). tests/skip.test-d.ts pins what the generator writes.
+const skippableIds = { id: "rrkah-fqaaa-aaaaa-aaaaq-cai" }
+const gen = client.canister<skippable.Actor>(skippable.actor, skippableIds)
+declare const braces: Canister<{ braces: (r: {}) => Promise<bigint> }>
+// trap: suspense-refuses-vars-skip-fits
+// @ts-expect-error a reserved argument may be skipToken, so a suspense read refuses it; read it with useQuery
+useSuspenseQuery(client.queryOptions(gen, "anything", skipToken))
+// trap: suspense-refuses-vars-skip-fits
+// @ts-expect-error skipToken is assignable to `{}`, so a suspense read refuses it; read it with useQuery
+useSuspenseQuery(client.queryOptions(braces, "braces", skipToken))
+
+// An argument `skipToken` is not assignable to, such as an empty record as the
+// generator writes it, still takes `skipToken` in its place, and the options
+// keep SkipToken.
+// trap: suspense-refuses-argument-skip
+// @ts-expect-error skipToken is for useQuery; a suspense read always runs
+useSuspenseQuery(client.queryOptions(gen, "empty_record", skipToken))
 
 // ---------------------------------------------------------------------------
 // The test client: handlers answer in the generated Actor's domain values

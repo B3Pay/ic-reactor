@@ -39,6 +39,7 @@ import {
 import { withIdentity } from "./client-helpers.js"
 import * as icrc1 from "./fixtures/icrc1.js"
 import * as shapes from "./fixtures/shapes.js"
+import * as skippable from "./fixtures/skippable.js"
 import { icEnvCookie, stubPage } from "./network-helpers.js"
 
 afterEach(() => {
@@ -267,6 +268,59 @@ describe("queryOptions", () => {
     const options = client.queryOptions(canister, "one", skipToken)
     expect(options.queryFn).toBe(skipToken)
     expect(options.queryKey[options.queryKey.length - 1]).toBe("$skip")
+  })
+
+  it("gives a query function for every value in place of the variables, and skipToken only for skipToken", async () => {
+    // The types drop SkipToken from the options' queryFn for variables that
+    // cannot be skipToken, so the builder must run each such read: an empty
+    // record, a record of opts alone, an opt and null, each null where it can
+    // be, and no arguments.
+    const replica = replicaWith({
+      [SHAPES]: serve<skippable.Actor>(skippable.actor, {
+        empty_record: () => 1n,
+        only_opts: ([{ limit }]) => limit ?? 2n,
+        maybe_nat: ([n]) => n ?? 3n,
+        nothing_at_all: () => 4n,
+        no_args: () => 5n,
+        anything: () => 6n,
+      }),
+    })
+    const client = clientAs(replica, alice)
+    const canister = client.canister<skippable.Actor>(skippable.actor, {
+      id: SHAPES,
+    })
+    const reads = [
+      [client.queryOptions(canister, "empty_record", {}), 1n],
+      [
+        client.queryOptions(canister, "only_opts", {
+          limit: null,
+          prefix: null,
+        }),
+        2n,
+      ],
+      [client.queryOptions(canister, "maybe_nat", null), 3n],
+      [client.queryOptions(canister, "nothing_at_all", null), 4n],
+      [client.queryOptions(canister, "no_args"), 5n],
+      [client.queryOptions(canister, "no_args", undefined), 5n],
+      [client.queryOptions(canister, "anything", null), 6n],
+    ] as const
+    for (const [options, expected] of reads) {
+      expect(typeof options.queryFn).toBe("function")
+      await expect(client.queryClient.fetchQuery(options)).resolves.toBe(
+        expected
+      )
+    }
+    for (const method of [
+      "empty_record",
+      "only_opts",
+      "maybe_nat",
+      "nothing_at_all",
+      "no_args",
+      "anything",
+    ] as const) {
+      const options = client.queryOptions(canister, method, skipToken)
+      expect(options.queryFn).toBe(skipToken)
+    }
   })
 
   it("throws a TypeError for an update or oneway method, a certified composite query, or an unknown fourth argument", () => {
