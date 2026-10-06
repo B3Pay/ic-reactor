@@ -324,14 +324,25 @@ describe("startScriptFindings", () => {
     )
   })
 
-  it("leaves a command that is not an npm script to the run", () => {
-    for (const command of ["node index.js", "npx vite", undefined]) {
-      assert.deepEqual(
-        startScriptFindings(command, { files, scripts }),
-        [],
-        String(command)
+  it("refuses a command it cannot check: npm options, other programs (fails closed)", () => {
+    for (const command of [
+      "npm run typo --loglevel=silent",
+      "npm --prefix . run dev",
+      "node index.js",
+      "npx vite",
+      "npm run",
+    ]) {
+      const findings = startScriptFindings(command, { files, scripts })
+      assert.equal(findings.length, 1, command)
+      assert.ok(
+        findings[0].includes("not a plain npm script command"),
+        findings[0]
       )
     }
+  })
+
+  it("leaves a missing start command to stackblitzStartCommand's own finding", () => {
+    assert.deepEqual(startScriptFindings(undefined, { files, scripts }), [])
   })
 
   it("is part of staticFindings, so a deferral checks it", () => {

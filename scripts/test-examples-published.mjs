@@ -547,19 +547,28 @@ export function staticFindings(name, { files, scripts, start }) {
 }
 
 /**
- * An npm start command must name a script the example defines: `npm run X`
- * (or `npm X`, `npm test`) with no script `X` fails when StackBlitz runs it.
- * npm's one default, `npm start` with no `start` script, runs `node
- * server.js`, so it passes when `server.js` is tracked. A start command that
- * is not an npm script, or one this cannot parse, is left to the run.
+ * A start command must be a plain npm script command, `npm run <script>`
+ * (or `npm run-script`, `npm <script>`, `npm test`/`npm t`), optionally with
+ * arguments after a bare `--`, naming a script the example defines. npm's one
+ * default, `npm start` with no `start` script, runs `node server.js`, so it
+ * passes when `server.js` is tracked. Anything else is refused, npm options
+ * (`--loglevel=silent`) and other programs (`node x.js`, `npx vite`)
+ * included: this checks the command without running it, so it accepts only
+ * the form it can check (it fails closed).
  *
  * @param {string | undefined} command the `.stackblitzrc` start command
  * @param {{ files: string[], scripts: Record<string, string> | undefined }} example
  * @returns {string[]}
  */
 export function startScriptFindings(command, { files, scripts }) {
-  const parsed = command ? parseNpmCommand(command) : undefined
-  if (!parsed || Object.hasOwn(scripts ?? {}, parsed.script)) return []
+  if (!command) return []
+  const parsed = parseNpmCommand(command)
+  if (!parsed) {
+    return [
+      `.stackblitzrc's start command "${command}" is not a plain npm script command: write it as "npm run <script>" (arguments after a bare "--"), so its script can be checked`,
+    ]
+  }
+  if (Object.hasOwn(scripts ?? {}, parsed.script)) return []
   if (parsed.script === "start" && files.includes("server.js")) return []
   return [
     `.stackblitzrc's start command "${command}" runs the npm script "${parsed.script}", which package.json does not define`,
