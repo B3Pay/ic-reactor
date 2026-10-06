@@ -527,7 +527,8 @@ export function isolatedEnv(env, root) {
 /**
  * The checks that need no registry, for one example: its tracked config files
  * (`trackedConfigFindings`), its required scripts (`requiredScriptFindings`)
- * and its `.stackblitzrc` start command (`stackblitzStartCommand`'s finding).
+ * and its `.stackblitzrc` start command (`stackblitzStartCommand`'s finding,
+ * and the npm script it names: `startScriptFindings`).
  * `testExample` runs them on the copy before installing, and `main` runs them
  * on the checkout before a run defers to the release (`awaitsRelease`), so a
  * deferral never skips them.
@@ -541,6 +542,27 @@ export function staticFindings(name, { files, scripts, start }) {
     ...trackedConfigFindings(files),
     ...requiredScriptFindings(name, scripts),
     ...(start.finding ? [start.finding] : []),
+    ...startScriptFindings(start.command, { files, scripts }),
+  ]
+}
+
+/**
+ * An npm start command must name a script the example defines: `npm run X`
+ * (or `npm X`, `npm test`) with no script `X` fails when StackBlitz runs it.
+ * npm's one default, `npm start` with no `start` script, runs `node
+ * server.js`, so it passes when `server.js` is tracked. A start command that
+ * is not an npm script, or one this cannot parse, is left to the run.
+ *
+ * @param {string | undefined} command the `.stackblitzrc` start command
+ * @param {{ files: string[], scripts: Record<string, string> | undefined }} example
+ * @returns {string[]}
+ */
+export function startScriptFindings(command, { files, scripts }) {
+  const parsed = command ? parseNpmCommand(command) : undefined
+  if (!parsed || Object.hasOwn(scripts ?? {}, parsed.script)) return []
+  if (parsed.script === "start" && files.includes("server.js")) return []
+  return [
+    `.stackblitzrc's start command "${command}" runs the npm script "${parsed.script}", which package.json does not define`,
   ]
 }
 

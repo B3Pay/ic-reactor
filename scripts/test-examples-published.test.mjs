@@ -38,6 +38,7 @@ import {
   requiredScriptFindings,
   scopePackageNames,
   stackblitzStartCommand,
+  startScriptFindings,
   staticFindings,
   trackedConfigFindings,
   waitForPublished,
@@ -249,7 +250,12 @@ describe("awaitsRelease", () => {
 })
 
 describe("staticFindings", () => {
-  const scripts = { typecheck: "tsc", test: "vitest run", build: "vite build" }
+  const scripts = {
+    typecheck: "tsc",
+    test: "vitest run",
+    build: "vite build",
+    dev: "vite",
+  }
   const ok = { command: "npm run dev" }
 
   it("finds nothing for an example with its scripts, no tracked config and a start command", () => {
@@ -273,6 +279,68 @@ describe("staticFindings", () => {
     assert.ok(findings.some((f) => f.includes(".npmrc")))
     assert.ok(findings.some((f) => f.includes('"build"')))
     assert.ok(findings.includes(".stackblitzrc is missing"))
+  })
+})
+
+describe("startScriptFindings", () => {
+  const scripts = { dev: "vite", test: "vitest run", build: "vite build" }
+  const files = ["package.json"]
+
+  it("passes an npm start command that names a defined script", () => {
+    for (const command of [
+      "npm run dev",
+      "npm run dev -- --host",
+      "npm test",
+      "npm t",
+      "npm run-script build",
+    ]) {
+      assert.deepEqual(
+        startScriptFindings(command, { files, scripts }),
+        [],
+        command
+      )
+    }
+  })
+
+  it("refuses an npm start command whose script is not defined", () => {
+    for (const command of [
+      "npm run typo",
+      "npm start",
+      "npm run serve -- --port 3000",
+    ]) {
+      const findings = startScriptFindings(command, { files, scripts })
+      assert.equal(findings.length, 1, command)
+      assert.ok(findings[0].includes("does not define"), findings[0])
+    }
+  })
+
+  it("passes npm's default start, node server.js, when server.js is tracked", () => {
+    assert.deepEqual(
+      startScriptFindings("npm start", {
+        files: ["package.json", "server.js"],
+        scripts,
+      }),
+      []
+    )
+  })
+
+  it("leaves a command that is not an npm script to the run", () => {
+    for (const command of ["node index.js", "npx vite", undefined]) {
+      assert.deepEqual(
+        startScriptFindings(command, { files, scripts }),
+        [],
+        String(command)
+      )
+    }
+  })
+
+  it("is part of staticFindings, so a deferral checks it", () => {
+    const findings = staticFindings("example", {
+      files,
+      scripts: { typecheck: "tsc", ...scripts },
+      start: { command: "npm run typo" },
+    })
+    assert.equal(findings.length, 1, findings.join("\n"))
   })
 })
 
