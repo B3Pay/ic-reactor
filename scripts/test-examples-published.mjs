@@ -272,8 +272,9 @@ export async function checkManifest(manifest, { betaVersion, satisfying }) {
  * `^<version>`: a release pull request, or its merge before the tag publishes
  * it. No published version can satisfy those ranges yet, and `release.yml`'s
  * `examples-published` job tests the examples with `--wait-for` once the
- * release is out. Any other range, a local protocol included, is checked as
- * usual and fails as usual.
+ * release is out. Any other range is checked as usual and fails as usual, and
+ * so does a local protocol (`workspace:`, `file:` …) on any dependency of any
+ * example, @ic-reactor or not: no deferral skips that check.
  *
  * @param {Record<string, any>[]} manifests the examples' package.json files
  * @param {{ branchVersion: string | undefined, publishedVersions: string[] }} state
@@ -281,6 +282,14 @@ export async function checkManifest(manifest, { betaVersion, satisfying }) {
  */
 export function awaitsRelease(manifests, { branchVersion, publishedVersions }) {
   if (!branchVersion || publishedVersions.includes(branchVersion)) return false
+  // A local protocol on any dependency, not only an @ic-reactor one, is what
+  // checkManifest refuses without asking the registry: never defer past it.
+  const local = manifests.some((manifest) =>
+    declaredDependencies(manifest).some(({ range }) =>
+      LOCAL_PROTOCOLS.some((protocol) => range.startsWith(protocol))
+    )
+  )
+  if (local) return false
   const ranges = manifests.flatMap((manifest) =>
     declaredDependencies(manifest)
       .filter(({ name }) => name.startsWith(SCOPE))

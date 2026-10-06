@@ -217,6 +217,24 @@ describe("awaitsRelease", () => {
     assert.equal(awaitsRelease(manifests, before), false)
   })
 
+  it("tests a local protocol on any other dependency, even with every @ic-reactor range synced", () => {
+    for (const range of [
+      "workspace:*",
+      "file:../tool",
+      "link:../tool",
+      "portal:../tool",
+    ]) {
+      const manifests = [
+        synced[0],
+        {
+          ...example({ "@ic-reactor/core": "^4.0.0-beta.2" }),
+          devDependencies: { "some-tool": range },
+        },
+      ]
+      assert.equal(awaitsRelease(manifests, before), false, range)
+    }
+  })
+
   it("tests when no example declares an @ic-reactor package, or the branch has no version", () => {
     assert.equal(awaitsRelease([example({})], before), false)
     assert.equal(
