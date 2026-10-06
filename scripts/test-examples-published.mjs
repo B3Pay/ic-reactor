@@ -264,6 +264,34 @@ export async function checkManifest(manifest, { betaVersion, satisfying }) {
 }
 
 /**
+ * Whether the examples wait on a release that is not published yet, so that
+ * a run without `--wait-for` has nothing it can test. That is so when the
+ * branch's own version (`packages/core/package.json`, which `release.js`
+ * bumps, syncing every example to `^<version>`) is not among the registry's
+ * versions, and every @ic-reactor/* range of every example is exactly
+ * `^<version>`: a release pull request, or its merge before the tag publishes
+ * it. No published version can satisfy those ranges yet, and `release.yml`'s
+ * `examples-published` job tests the examples with `--wait-for` once the
+ * release is out. Any other range, a local protocol included, is checked as
+ * usual and fails as usual.
+ *
+ * @param {Record<string, any>[]} manifests the examples' package.json files
+ * @param {{ branchVersion: string | undefined, publishedVersions: string[] }} state
+ * @returns {boolean}
+ */
+export function awaitsRelease(manifests, { branchVersion, publishedVersions }) {
+  if (!branchVersion || publishedVersions.includes(branchVersion)) return false
+  const ranges = manifests.flatMap((manifest) =>
+    declaredDependencies(manifest)
+      .filter(({ name }) => name.startsWith(SCOPE))
+      .map(({ range }) => range)
+  )
+  return (
+    ranges.length > 0 && ranges.every((range) => range === `^${branchVersion}`)
+  )
+}
+
+/**
  * The @ic-reactor/* packages installed in `projectDir`, and what is wrong with
  * them: one the manifest declares that is missing, a symlink (a link into a
  * workspace, not a package from the registry), or a version other than
@@ -1095,22 +1123,30 @@ async function main(argv) {
   }
 
   const waitFor = args.waitFor
-  const betaVersion = waitFor
-    ? await waitForPublished(
-        scopePackageNames(
-          names.map((name) =>
-            JSON.parse(
-              readFileSync(
-                join(repoRoot, "examples", name, "package.json"),
-                "utf8"
-              )
-            )
-          )
-        ),
-        DIST_TAG,
-        waitFor,
-        { lookup: (pkg) => registryState(pkg, DIST_TAG, waitFor) }
+  const manifests = names.map((name) =>
+    JSON.parse(
+      readFileSync(join(repoRoot, "examples", name, "package.json"), "utf8")
+    )
+  )
+  if (!waitFor) {
+    const branchVersion = JSON.parse(
+      readFileSync(join(repoRoot, "packages", "core", "package.json"), "utf8")
+    ).version
+    const versions = npmView(`${SCOPE}core`, "versions") ?? []
+    const publishedVersions = Array.isArray(versions) ? versions : [versions]
+    if (awaitsRelease(manifests, { branchVersion, publishedVersions })) {
+      console.log(
+        `The examples pin ^${branchVersion}, this branch's own version, which is not on ${REGISTRY} yet: ` +
+          `a release that has not been published. release.yml's examples-published job tests them ` +
+          `against it once it is (--wait-for v${branchVersion}). Nothing to test here.`
       )
+      return 0
+    }
+  }
+  const betaVersion = waitFor
+    ? await waitForPublished(scopePackageNames(manifests), DIST_TAG, waitFor, {
+        lookup: (pkg) => registryState(pkg, DIST_TAG, waitFor),
+      })
     : distTagVersion(`${SCOPE}core`, DIST_TAG)
   console.log(
     `${SCOPE}core@${DIST_TAG} is ${betaVersion} on ${REGISTRY}; testing ${names.join(", ")}`

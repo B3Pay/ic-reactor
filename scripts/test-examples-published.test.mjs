@@ -26,6 +26,7 @@ import {
   REGISTRY_ARGS,
   WEBCONTAINER_MODEL,
   ancestorFindings,
+  awaitsRelease,
   checkInstalled,
   checkLockfile,
   checkManifest,
@@ -157,6 +158,74 @@ describe("checkManifest", () => {
 
   it("leaves other packages' registry ranges to npm", async () => {
     assert.deepEqual(await check({ dependencies: { next: "^16.3.8" } }), [])
+  })
+})
+
+describe("awaitsRelease", () => {
+  const example = (deps, devDeps = {}) => ({
+    name: "example",
+    dependencies: { "@candid-core/schema": "0.3.0", ...deps },
+    devDependencies: devDeps,
+  })
+  const synced = [
+    example(
+      {
+        "@ic-reactor/core": "^4.0.0-beta.2",
+        "@ic-reactor/react": "^4.0.0-beta.2",
+      },
+      { "@ic-reactor/vite-plugin": "^4.0.0-beta.2" }
+    ),
+    example({ "@ic-reactor/core": "^4.0.0-beta.2" }),
+  ]
+  const before = {
+    branchVersion: "4.0.0-beta.2",
+    publishedVersions: ["4.0.0-beta.1"],
+  }
+
+  it("defers a release pull request: every example pins the branch's unpublished version", () => {
+    assert.equal(awaitsRelease(synced, before), true)
+  })
+
+  it("tests once the branch's version is published", () => {
+    assert.equal(
+      awaitsRelease(synced, {
+        branchVersion: "4.0.0-beta.2",
+        publishedVersions: ["4.0.0-beta.1", "4.0.0-beta.2"],
+      }),
+      false
+    )
+  })
+
+  it("tests when one example pins anything but the branch's version", () => {
+    for (const range of [
+      "^4.0.0-beta.1",
+      "4.0.0-beta.2",
+      "~4.0.0-beta.2",
+      "^4.0.0",
+      "*",
+    ]) {
+      const manifests = [...synced, example({ "@ic-reactor/core": range })]
+      assert.equal(awaitsRelease(manifests, before), false, range)
+    }
+  })
+
+  it("tests a local protocol range, which checkManifest refuses", () => {
+    const manifests = [
+      ...synced,
+      example({ "@ic-reactor/react": "workspace:*" }),
+    ]
+    assert.equal(awaitsRelease(manifests, before), false)
+  })
+
+  it("tests when no example declares an @ic-reactor package, or the branch has no version", () => {
+    assert.equal(awaitsRelease([example({})], before), false)
+    assert.equal(
+      awaitsRelease(synced, {
+        branchVersion: undefined,
+        publishedVersions: [],
+      }),
+      false
+    )
   })
 })
 
