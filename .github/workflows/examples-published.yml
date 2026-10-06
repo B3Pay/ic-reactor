@@ -17,7 +17,8 @@ name: Examples on the published packages
 # exactly that (every @ic-reactor/* range is ^<the version in
 # packages/core/package.json>, and npm has no such version yet) defers and
 # passes, saying so (awaitsRelease), unless a dependency uses a local
-# protocol (workspace:, file: …). Any other unsatisfied range still fails,
+# protocol (workspace:, file: …); the checks that need no registry
+# (staticFindings) still run first and fail it. Any other unsatisfied range still fails,
 # so this is not a required check. The run that counts for a release is the
 # one release.yml calls after its publish
 # job (workflow_call), with --wait-for the tag's version, so it tests the

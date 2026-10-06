@@ -525,6 +525,26 @@ export function isolatedEnv(env, root) {
 }
 
 /**
+ * The checks that need no registry, for one example: its tracked config files
+ * (`trackedConfigFindings`), its required scripts (`requiredScriptFindings`)
+ * and its `.stackblitzrc` start command (`stackblitzStartCommand`'s finding).
+ * `testExample` runs them on the copy before installing, and `main` runs them
+ * on the checkout before a run defers to the release (`awaitsRelease`), so a
+ * deferral never skips them.
+ *
+ * @param {string} name the example
+ * @param {{ files: string[], scripts: Record<string, string> | undefined, start: { finding?: string } }} example
+ * @returns {string[]}
+ */
+export function staticFindings(name, { files, scripts, start }) {
+  return [
+    ...trackedConfigFindings(files),
+    ...requiredScriptFindings(name, scripts),
+    ...(start.finding ? [start.finding] : []),
+  ]
+}
+
+/**
  * The command StackBlitz runs after installing, from `.stackblitzrc`.
  *
  * @param {string} projectDir
@@ -877,16 +897,16 @@ async function testExample(name, { betaVersion, workDir, preload }) {
   console.log(`  copied ${files.length} tracked files`)
 
   const manifest = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"))
-  findings.push(...trackedConfigFindings(files))
-  findings.push(...requiredScriptFindings(name, manifest.scripts))
+  const start = stackblitzStartCommand(dir)
+  findings.push(
+    ...staticFindings(name, { files, scripts: manifest.scripts, start })
+  )
   findings.push(
     ...(await checkManifest(manifest, {
       betaVersion,
       satisfying: npmSatisfying,
     }))
   )
-  const start = stackblitzStartCommand(dir)
-  if (start.finding) findings.push(start.finding)
   if (findings.length > 0) return { name, steps, findings }
 
   const env = isolatedEnv(process.env, repoRoot)
@@ -1144,9 +1164,22 @@ async function main(argv) {
     const versions = npmView(`${SCOPE}core`, "versions") ?? []
     const publishedVersions = Array.isArray(versions) ? versions : [versions]
     if (awaitsRelease(manifests, { branchVersion, publishedVersions })) {
+      const results = names.map((name) => ({
+        name,
+        steps: {},
+        findings: staticFindings(name, {
+          files: trackedFiles(name),
+          scripts: manifests[names.indexOf(name)].scripts,
+          start: stackblitzStartCommand(join(repoRoot, "examples", name)),
+        }),
+      }))
+      if (results.some((result) => result.findings.length > 0)) {
+        report(results, 0)
+        return 1
+      }
       console.log(
         `The examples pin ^${branchVersion}, this branch's own version, which is not on ${REGISTRY} yet: ` +
-          `a release that has not been published. release.yml's examples-published job tests them ` +
+          `a release that has not been published. The checks that need no registry pass. release.yml's examples-published job tests them ` +
           `against it once it is (--wait-for v${branchVersion}). Nothing to test here.`
       )
       return 0

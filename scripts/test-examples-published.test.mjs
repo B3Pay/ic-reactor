@@ -38,6 +38,7 @@ import {
   requiredScriptFindings,
   scopePackageNames,
   stackblitzStartCommand,
+  staticFindings,
   trackedConfigFindings,
   waitForPublished,
   webContainerEnv,
@@ -244,6 +245,34 @@ describe("awaitsRelease", () => {
       }),
       false
     )
+  })
+})
+
+describe("staticFindings", () => {
+  const scripts = { typecheck: "tsc", test: "vitest run", build: "vite build" }
+  const ok = { command: "npm run dev" }
+
+  it("finds nothing for an example with its scripts, no tracked config and a start command", () => {
+    assert.deepEqual(
+      staticFindings("example", {
+        files: ["package.json", "src/a.ts"],
+        scripts,
+        start: ok,
+      }),
+      []
+    )
+  })
+
+  it("collects each check's findings, so a deferral cannot skip them", () => {
+    const findings = staticFindings("example", {
+      files: ["package.json", ".npmrc"],
+      scripts: { typecheck: "tsc", test: "vitest run" },
+      start: { finding: ".stackblitzrc is missing" },
+    })
+    assert.equal(findings.length, 3, findings.join("\n"))
+    assert.ok(findings.some((f) => f.includes(".npmrc")))
+    assert.ok(findings.some((f) => f.includes('"build"')))
+    assert.ok(findings.includes(".stackblitzrc is missing"))
   })
 })
 
