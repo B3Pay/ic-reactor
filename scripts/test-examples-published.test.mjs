@@ -27,6 +27,7 @@ import {
   WEBCONTAINER_MODEL,
   ancestorFindings,
   awaitsRelease,
+  definesScript,
   checkInstalled,
   checkLockfile,
   checkManifest,
@@ -237,6 +238,10 @@ describe("awaitsRelease", () => {
     }
   })
 
+  it("tests when any one example declares no @ic-reactor package, even beside synced ones", () => {
+    assert.equal(awaitsRelease([...synced, example({})], before), false)
+  })
+
   it("tests when no example declares an @ic-reactor package, or the branch has no version", () => {
     assert.equal(awaitsRelease([example({})], before), false)
     assert.equal(
@@ -352,6 +357,44 @@ describe("startScriptFindings", () => {
       start: { command: "npm run typo" },
     })
     assert.equal(findings.length, 1, findings.join("\n"))
+  })
+})
+
+describe("definesScript", () => {
+  it("takes only a non-empty string, as npm does", () => {
+    const scripts = {
+      build: "vite build",
+      typecheck: 42,
+      test: "",
+      lint: "  ",
+      dev: null,
+    }
+    assert.equal(definesScript(scripts, "build"), true)
+    for (const name of [
+      "typecheck",
+      "test",
+      "lint",
+      "dev",
+      "missing",
+      "toString",
+    ]) {
+      assert.equal(definesScript(scripts, name), false, name)
+    }
+    assert.equal(definesScript(undefined, "build"), false)
+  })
+
+  it("makes requiredScriptFindings and startScriptFindings refuse a non-string script", () => {
+    const scripts = {
+      typecheck: 42,
+      test: "vitest run",
+      build: "vite build",
+      dev: true,
+    }
+    assert.equal(requiredScriptFindings("example", scripts, {}).length, 1)
+    assert.equal(
+      startScriptFindings("npm run dev", { files: [], scripts }).length,
+      1
+    )
   })
 })
 

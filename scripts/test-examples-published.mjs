@@ -290,13 +290,19 @@ export function awaitsRelease(manifests, { branchVersion, publishedVersions }) {
     )
   )
   if (local) return false
-  const ranges = manifests.flatMap((manifest) =>
-    declaredDependencies(manifest)
-      .filter(({ name }) => name.startsWith(SCOPE))
-      .map(({ range }) => range)
-  )
+  // Every example must wait on the release itself: one with no @ic-reactor
+  // range, or any other range, can be tested now and is not deferred.
   return (
-    ranges.length > 0 && ranges.every((range) => range === `^${branchVersion}`)
+    manifests.length > 0 &&
+    manifests.every((manifest) => {
+      const ranges = declaredDependencies(manifest)
+        .filter(({ name }) => name.startsWith(SCOPE))
+        .map(({ range }) => range)
+      return (
+        ranges.length > 0 &&
+        ranges.every((range) => range === `^${branchVersion}`)
+      )
+    })
   )
 }
 
@@ -445,7 +451,22 @@ export function trackedConfigFindings(files) {
 }
 
 /**
- * The required scripts an example lacks, unless `exceptions` names them.
+ * Whether `scripts` defines `name` as npm runs it: a non-empty string. npm
+ * skips any other value, and `npm run <name>` then fails with "Missing script".
+ *
+ * @param {Record<string, unknown> | undefined} scripts
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function definesScript(scripts, name) {
+  const value =
+    scripts && Object.hasOwn(scripts, name) ? scripts[name] : undefined
+  return typeof value === "string" && value.trim() !== ""
+}
+
+/**
+ * The required scripts an example lacks (a script is defined only as a
+ * non-empty string: `definesScript`), unless `exceptions` names them.
  *
  * @param {string} example
  * @param {Record<string, string> | undefined} scripts
@@ -458,7 +479,8 @@ export function requiredScriptFindings(
   exceptions = SCRIPT_EXCEPTIONS
 ) {
   return REQUIRED_SCRIPTS.filter(
-    (script) => !scripts?.[script] && !exceptions[example]?.[script]
+    (script) =>
+      !definesScript(scripts, script) && !exceptions[example]?.[script]
   ).map(
     (script) =>
       `package.json has no "${script}" script: every example runs typecheck, test and build here (an exception goes in SCRIPT_EXCEPTIONS, with its reason)`
@@ -569,7 +591,7 @@ export function startScriptFindings(command, { files, scripts }) {
       `.stackblitzrc's start command "${command}" is not a plain npm script command: write it as "npm run <script>" (arguments after a bare "--"), so its script can be checked`,
     ]
   }
-  if (Object.hasOwn(scripts ?? {}, parsed.script)) return []
+  if (definesScript(scripts, parsed.script)) return []
   if (parsed.script === "start" && files.includes("server.js")) return []
   return [
     `.stackblitzrc's start command "${command}" runs the npm script "${parsed.script}", which package.json does not define`,
