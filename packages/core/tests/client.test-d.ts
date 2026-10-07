@@ -85,11 +85,10 @@ createClient({
     return createTestAuth()
   },
 })
-// @ts-expect-error the factory is handed one argument, not two
-createClient({
-  network: "ic",
-  auth: (_network, _more: string) => createTestAuth(),
-})
+// The factory is handed one argument, never two.
+const twoArguments = (_network: unknown, _more: string) => createTestAuth()
+// @ts-expect-error a factory that needs a second argument is never given one
+createClient({ network: "ic", auth: twoArguments })
 expectTypeOf<AuthClient>().toExtend<AuthLike>()
 
 // A status the client does not know is not an AuthLike's.
