@@ -73,16 +73,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
     the project runs dfx.
   - The Internet Identity the `auth` factory is handed for `"local"`, which
     is `http://id.ai.localhost:8000/authorize`, the Vite plugin's default.
-  - The fake replica of `@ic-reactor/core/testing` (`createFakeReplica`,
-    `installFakeReplica`, and so `createTestClient`), whose default host is
-    `"local"`'s: `http://127.0.0.1:8000` where the test environment has no
-    local page origin. So a `createTestClient` with no `network`, outside a
-    page, connects to `http://127.0.0.1:8000` and its query keys carry that
-    host as their network segment. A test that asserted
-    `http://127.0.0.1:4943` there, or pointed an agent at it by hand, passes
-    `host: "http://127.0.0.1:4943"` to the fake (or
-    `network: { host: "http://127.0.0.1:4943" }` to the test client) to keep
-    it.
+  - `createTestClient` of `@ic-reactor/core/testing`, whose default host is
+    `"local"`'s. With no `network`, outside a page, it now answers at
+    `http://127.0.0.1:8000`, and its query keys carry that host as their
+    network segment. A test that asserted `http://127.0.0.1:4943` there
+    passes `network: { host: "http://127.0.0.1:4943" }` to keep it.
 
 ### @ic-reactor/vite-plugin
 
