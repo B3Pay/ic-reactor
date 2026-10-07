@@ -10,9 +10,11 @@ the ICRC-1 ledger interface (`icrc1.did`) and the ICP ledger on mainnet.
 
 `icrc1.did` is the file of the same name in the repository's
 [`examples/icrc-ledger`](https://github.com/B3Pay/ic-reactor/tree/v4/examples/icrc-ledger)
-directory. Copy it to your project's root, or save any live canister's
-interface from the canister itself (see
-[Get a canister's .did](#get-a-canisters-did) below).
+directory. Copy it to your project's root. To work with another canister,
+save its interface from the canister itself (see
+[Get a canister's .did](#get-a-canisters-did) below). The generator names a
+module after its file, so a saved `icp_ledger.did` gives
+`./generated/icp_ledger`, not the `./generated/icrc1` this page imports.
 
 ## 1. Install
 
@@ -143,6 +145,11 @@ console.log(`wrote ${out}: ${did.length} bytes of certified candid:service from 
 ```sh
 npx tsx scripts/fetch-did.ts ryjl3-tyaaa-aaaaa-aaaba-cai icp_ledger.did
 ```
+
+That saves the ICP ledger's full interface, which is not `icrc1.did`, and
+`npx candid-core-cli gen icp_ledger.did -o src/generated` names its module
+`icp_ledger`: import from `./generated/icp_ledger` in place of this page's
+`./generated/icrc1`.
 
 With [icp-cli](https://github.com/dfinity/icp-cli) installed,
 `icp canister metadata <canister-id> candid:service -n ic > icp_ledger.did`

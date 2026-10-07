@@ -115,8 +115,11 @@ export const client = createClient({
 ```
 
 `identityProvider` takes both values or neither. A factory that takes no
-argument, `() => new AuthClient()`, still works, and always signs in with
-mainnet's Internet Identity.
+argument, `() => new AuthClient()`, still works on mainnet. It ignores the
+network the client hands it, so on any other network it signs in with
+mainnet's Internet Identity, whose delegations the replica rejects, and the
+client cannot tell that it did. On any network but mainnet, pass `network`
+through.
 
 ### Sign-in options
 

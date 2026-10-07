@@ -192,7 +192,8 @@ export type ClientOptions = {
        * `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
        *
        * A factory that takes no argument, such as `() => new AuthClient()`,
-       * is fine too.
+       * still works on mainnet. It ignores `network`, so on any other network
+       * it signs in with mainnet's Internet Identity: pass `network` through.
        */
       readonly auth: (network: {
         readonly agentOptions: {

@@ -23,8 +23,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   client's network, under `@icp-sdk/auth` 10's own option names, so
   `auth: (network) => new AuthClient(network)` signs users in on the network
   the client calls (#790). `() => new AuthClient()` and every other factory
-  that takes no argument work as before, and no export is added: the
-  argument's type is written inline in `ClientOptions`.
+  that takes no argument work as before, which for `AuthClient` means on
+  mainnet only, since such a factory ignores the network. No export is added:
+  the argument's type is written inline in `ClientOptions`.
   - `network.agentOptions` is the host, root key and `shouldFetchRootKey` of
     the client's own agents, which `AuthClient` makes its mint and revoke
     calls with.
