@@ -36,8 +36,9 @@ import { isServer } from "./runtime.js"
  *
  * - `"ic"`: mainnet, through `https://icp-api.io`, checked against the
  *   mainnet root key the agent ships with. Nothing is fetched.
- * - `"local"`: a replica on `http://127.0.0.1:4943`. Its root key is fetched
- *   from the replica before the first call.
+ * - `"local"`: icp-cli's local network, `http://127.0.0.1:8000`. Its root key
+ *   is fetched from the replica before the first call. A dfx replica (port
+ *   4943) is an object: `{ host: "http://127.0.0.1:4943" }`.
  * - `"env"`: the network of the page this code runs in, as an asset canister
  *   or a dev server describes it. In a browser, a page on a local replica or
  *   on a mainnet boundary domain (and a Codespaces or Gitpod page, which
@@ -52,8 +53,9 @@ import { isServer } from "./runtime.js"
  *   `allowEnvConfig: true` to take the cookie's key, or name the replica with
  *   an object that has a `rootKey` or `fetchRootKey: true`. On a server there
  *   is no page and no cookie: the host is `ICP_HOST` or `IC_HOST` when
- *   `ICP_NETWORK` or `DFX_NETWORK` is `"local"` (`http://127.0.0.1:4943` if
- *   neither is set), and mainnet otherwise.
+ *   `ICP_NETWORK` is `"local"` (`http://127.0.0.1:8000` if neither is set),
+ *   and mainnet otherwise. With no `ICP_NETWORK`, dfx's `DFX_NETWORK=local`
+ *   counts too, and its default is dfx's `http://127.0.0.1:4943`.
  * - An object: any other replica. `rootKey` is used as given and never
  *   fetched. Without one the root key is fetched only when `host` is local
  *   (`localhost`, `*.localhost` or any loopback address), unless `fetchRootKey`
@@ -162,7 +164,10 @@ const principalProblem = (text: string): string | undefined => {
 }
 
 const IC_HOST = "https://icp-api.io"
-const LOCAL_HOST = "http://127.0.0.1:4943"
+/** icp-cli's local network: its gateway's default port is 8000. */
+const LOCAL_HOST = "http://127.0.0.1:8000"
+/** dfx's local replica, the default only when `DFX_NETWORK` is the signal. */
+const DFX_LOCAL_HOST = "http://127.0.0.1:4943"
 
 /** The domains whose pages route agent traffic through their own origin. */
 const MAINNET_DOMAINS = ["ic0.app", "icp0.io", "icp-api.io"]
@@ -291,16 +296,22 @@ const processEnv = (): Record<string, string | undefined> | undefined => {
 
 /**
  * The host `"env"` falls back to when no page routes the agent. With
- * `ICP_NETWORK` (or the older `DFX_NETWORK`, which it overrides) set to
- * `"local"` that is `ICP_HOST` or `IC_HOST`, else the local replica; any other
- * value, or none, is mainnet. v3 fell back to `https://ic0.app` here; this is
- * the same mainnet host `"ic"` uses.
+ * `ICP_NETWORK` set to `"local"` that is `ICP_HOST` or `IC_HOST`, else
+ * icp-cli's local network, `"local"`'s `http://127.0.0.1:8000`. The older
+ * `DFX_NETWORK` counts only when `ICP_NETWORK` is not set (which overrides
+ * it): with `DFX_NETWORK=local` it is `ICP_HOST` or `IC_HOST`, else dfx's own
+ * replica, `http://127.0.0.1:4943`, because that variable says the project
+ * runs dfx. Any other value, or none, is mainnet. v3 fell back to
+ * `https://ic0.app` here; this is the same mainnet host `"ic"` uses.
  */
 const fallbackHost = (): string => {
   const env = processEnv()
-  const network = env?.ICP_NETWORK ?? env?.DFX_NETWORK
+  const fromIcp = env?.ICP_NETWORK !== undefined
+  const network = fromIcp ? env?.ICP_NETWORK : env?.DFX_NETWORK
   if (network !== "local") return IC_HOST
-  return env?.ICP_HOST || env?.IC_HOST || LOCAL_HOST
+  return (
+    env?.ICP_HOST || env?.IC_HOST || (fromIcp ? LOCAL_HOST : DFX_LOCAL_HOST)
+  )
 }
 
 /**

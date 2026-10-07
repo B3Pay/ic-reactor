@@ -281,7 +281,7 @@ describe("the agent of a principal", () => {
 
 describe("the root key", () => {
   it("is fetched from a local replica once per agent, before that agent's first request", async () => {
-    // 'local' is the fake replica's default host, http://127.0.0.1:4943.
+    // 'local' is the fake replica's default host, http://127.0.0.1:8000.
     const replica = replicaWithWhoami()
     const auth = createTestAuth({ seed: 1 })
     onPage()
