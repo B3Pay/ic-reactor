@@ -26,6 +26,7 @@
  * @module
  */
 
+import { IC_ROOT_KEY } from "@icp-sdk/core/agent"
 import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { Principal } from "@icp-sdk/core/principal"
 import { isServer } from "./runtime.js"
@@ -35,8 +36,9 @@ import { isServer } from "./runtime.js"
  *
  * - `"ic"`: mainnet, through `https://icp-api.io`, checked against the
  *   mainnet root key the agent ships with. Nothing is fetched.
- * - `"local"`: a replica on `http://127.0.0.1:4943`. Its root key is fetched
- *   from the replica before the first call.
+ * - `"local"`: icp-cli's local network, `http://127.0.0.1:8000`. Its root key
+ *   is fetched from the replica before the first call. A dfx replica (port
+ *   4943) is an object: `{ host: "http://127.0.0.1:4943" }`.
  * - `"env"`: the network of the page this code runs in, as an asset canister
  *   or a dev server describes it. In a browser, a page on a local replica or
  *   on a mainnet boundary domain (and a Codespaces or Gitpod page, which
@@ -51,8 +53,9 @@ import { isServer } from "./runtime.js"
  *   `allowEnvConfig: true` to take the cookie's key, or name the replica with
  *   an object that has a `rootKey` or `fetchRootKey: true`. On a server there
  *   is no page and no cookie: the host is `ICP_HOST` or `IC_HOST` when
- *   `ICP_NETWORK` or `DFX_NETWORK` is `"local"` (`http://127.0.0.1:4943` if
- *   neither is set), and mainnet otherwise.
+ *   `ICP_NETWORK` is `"local"` (`http://127.0.0.1:8000` if neither is set),
+ *   and mainnet otherwise. With no `ICP_NETWORK`, dfx's `DFX_NETWORK=local`
+ *   counts too, and its default is dfx's `http://127.0.0.1:4943`.
  * - An object: any other replica. `rootKey` is used as given and never
  *   fetched. Without one the root key is fetched only when `host` is local
  *   (`localhost`, `*.localhost` or any loopback address), unless `fetchRootKey`
@@ -161,7 +164,10 @@ const principalProblem = (text: string): string | undefined => {
 }
 
 const IC_HOST = "https://icp-api.io"
-const LOCAL_HOST = "http://127.0.0.1:4943"
+/** icp-cli's local network: its gateway's default port is 8000. */
+const LOCAL_HOST = "http://127.0.0.1:8000"
+/** dfx's local replica, the default only when `DFX_NETWORK` is the signal. */
+const DFX_LOCAL_HOST = "http://127.0.0.1:4943"
 
 /** The domains whose pages route agent traffic through their own origin. */
 const MAINNET_DOMAINS = ["ic0.app", "icp0.io", "icp-api.io"]
@@ -200,7 +206,7 @@ const isLocalHostname = (hostname: string | undefined): boolean => {
 }
 
 /**
- * The hostname `HttpAgent` connects to for `host`, found the way the agent
+ * The URL `HttpAgent` connects to for `host`, found the way the agent
  * finds it (`determineHost` in `@icp-sdk/core`): on a page, a host that does
  * not start with a scheme, such as `127.0.0.1:4943` or a bare Codespaces
  * domain, is read against the page's protocol. The agent's scheme test is
@@ -208,17 +214,19 @@ const isLocalHostname = (hostname: string | undefined): boolean => {
  * has no hostname here either, and neither has a scheme-less host where there
  * is no page. A host the agent cannot read is not local.
  */
-const agentHostnameOf = (host: string): string | undefined => {
+const agentUrlOf = (host: string): URL | undefined => {
   try {
-    return (
-      !/^[a-z]+:/.test(host) && typeof window !== "undefined"
-        ? new URL(`${window.location.protocol}//${host}`)
-        : new URL(host)
-    ).hostname
+    return !/^[a-z]+:/.test(host) && typeof window !== "undefined"
+      ? new URL(`${window.location.protocol}//${host}`)
+      : new URL(host)
   } catch {
     return undefined
   }
 }
+
+/** The hostname of {@link agentUrlOf}. */
+const agentHostnameOf = (host: string): string | undefined =>
+  agentUrlOf(host)?.hostname
 
 /** The hostname of a page origin, or `undefined` when it is not a URL (an opaque origin reads as `"null"`). */
 const pageHostnameOf = (origin: string | undefined): string | undefined => {
@@ -288,16 +296,22 @@ const processEnv = (): Record<string, string | undefined> | undefined => {
 
 /**
  * The host `"env"` falls back to when no page routes the agent. With
- * `ICP_NETWORK` (or the older `DFX_NETWORK`, which it overrides) set to
- * `"local"` that is `ICP_HOST` or `IC_HOST`, else the local replica; any other
- * value, or none, is mainnet. v3 fell back to `https://ic0.app` here; this is
- * the same mainnet host `"ic"` uses.
+ * `ICP_NETWORK` set to `"local"` that is `ICP_HOST` or `IC_HOST`, else
+ * icp-cli's local network, `"local"`'s `http://127.0.0.1:8000`. The older
+ * `DFX_NETWORK` counts only when `ICP_NETWORK` is not set (which overrides
+ * it): with `DFX_NETWORK=local` it is `ICP_HOST` or `IC_HOST`, else dfx's own
+ * replica, `http://127.0.0.1:4943`, because that variable says the project
+ * runs dfx. Any other value, or none, is mainnet. v3 fell back to
+ * `https://ic0.app` here; this is the same mainnet host `"ic"` uses.
  */
 const fallbackHost = (): string => {
   const env = processEnv()
-  const network = env?.ICP_NETWORK ?? env?.DFX_NETWORK
+  const fromIcp = env?.ICP_NETWORK !== undefined
+  const network = fromIcp ? env?.ICP_NETWORK : env?.DFX_NETWORK
   if (network !== "local") return IC_HOST
-  return env?.ICP_HOST || env?.IC_HOST || LOCAL_HOST
+  return (
+    env?.ICP_HOST || env?.IC_HOST || (fromIcp ? LOCAL_HOST : DFX_LOCAL_HOST)
+  )
 }
 
 /**
@@ -516,4 +530,185 @@ export const resolveCanisterId = (
     )
   }
   return { ok: true, id: value }
+}
+
+// ---------------------------------------------------------------------------
+// What the auth factory is told about the network
+// ---------------------------------------------------------------------------
+
+/**
+ * Internet Identity's canister: its id on mainnet, and the id icp-cli installs
+ * its built-in Internet Identity at on every local network it starts.
+ */
+const INTERNET_IDENTITY = "rdmx6-jaaaa-aaaaa-aaadq-cai"
+
+/** Where a sign-in ceremony runs and which canister mints its delegations: `@icp-sdk/auth` 10's `identityProvider`. */
+export interface IdentityProvider {
+  readonly authorizeUrl: string
+  readonly canisterId: string
+}
+
+/**
+ * What the client hands its `auth` factory, under `@icp-sdk/auth` 10's own
+ * option names, so that `(network) => new AuthClient(network)` signs in on
+ * the client's network.
+ */
+export interface AuthNetwork {
+  readonly agentOptions: AgentNetworkOptions
+  readonly identityProvider?: IdentityProvider
+}
+
+/** The result of {@link authNetworkFor}. */
+export interface AuthNetworkResolution {
+  readonly network: AuthNetwork
+  /**
+   * Set when the network is not mainnet's and no identity provider could be
+   * named for it: why, as a clause for a warning. An auth built without one
+   * signs in with mainnet's Internet Identity, whose delegations a replica
+   * with another root key rejects.
+   */
+  readonly gap?: string
+}
+
+const hexOf = (bytes: Uint8Array): string =>
+  Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")
+
+/**
+ * Whether the agent verifies against mainnet's root key: it fetches none, and
+ * holds either none of its own (the agent's default is mainnet's) or one equal
+ * to mainnet's (a mainnet asset canister's cookie carries it).
+ */
+const verifiesAsMainnet = (net: ResolvedNetwork): boolean =>
+  !net.fetchRootKey &&
+  (net.rootKey === undefined || hexOf(net.rootKey) === IC_ROOT_KEY)
+
+/** The cookie's `INTERNET_IDENTITY_PROVIDER`, when it is an http(s) URL. */
+const cookieAuthorizeUrl = (
+  env: Readonly<Record<string, unknown>> | undefined
+): string | undefined => {
+  const value = env?.INTERNET_IDENTITY_PROVIDER
+  if (typeof value !== "string" || value === "") return undefined
+  try {
+    const { protocol } = new URL(value)
+    return protocol === "http:" || protocol === "https:" ? value : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** The cookie's `PUBLIC_CANISTER_ID:internet_identity`, when it is principal text. */
+const cookieInternetIdentity = (
+  env: Readonly<Record<string, unknown>> | undefined
+): string | undefined => {
+  const value = env?.["PUBLIC_CANISTER_ID:internet_identity"]
+  return typeof value === "string" &&
+    value !== "" &&
+    principalProblem(value) === undefined
+    ? value
+    : undefined
+}
+
+/**
+ * icp-cli's built-in Internet Identity for a gateway at `host`:
+ * `id.ai.localhost` on the gateway's scheme and port. The same rule as the
+ * Vite plugin's `localInternetIdentityProvider`, which puts this URL in the
+ * `ic_env` cookie.
+ */
+const builtInAuthorizeUrl = (host: string): string | undefined => {
+  const url = agentUrlOf(host)
+  if (url === undefined) return undefined
+  return `${url.protocol}//id.ai.localhost${url.port ? `:${url.port}` : ""}/authorize`
+}
+
+/**
+ * What the client tells its `auth` factory: the agent options of its own
+ * agents, and the identity provider to sign in with, by these rules in order.
+ *
+ * 1. A trusted `ic_env` cookie that names `INTERNET_IDENTITY_PROVIDER`: that
+ *    URL, with the cookie's `PUBLIC_CANISTER_ID:internet_identity`, or
+ *    Internet Identity's own id when it names none.
+ * 2. A trusted cookie that names an `internet_identity` canister but no URL
+ *    (the project deploys its own): none, and a gap unless the network is
+ *    mainnet's. Its URL cannot be derived from its id.
+ * 3. `"local"`, or a network object whose host is local: icp-cli's built-in
+ *    Internet Identity on that host's port.
+ * 4. `"env"` on a local page: none, and a gap. The agent's host is the
+ *    page's (a dev server, or a gateway serving an asset canister), which
+ *    does not say where icp-cli's built-in Internet Identity is.
+ * 5. Any other network that does not verify against mainnet's root key: none,
+ *    and a gap.
+ * 6. Mainnet: none. `AuthClient`'s defaults are mainnet's.
+ *
+ * Reads the cookie, so it is called when the factory is, in a browser.
+ */
+export const authNetworkFor = (
+  network: Network,
+  net: ResolvedNetwork
+): AuthNetworkResolution => {
+  const agentOptions = agentOptionsFor(net)
+  const env = net.trustsEnv ? readCanisterEnv() : undefined
+  const authorizeUrl = cookieAuthorizeUrl(env)
+  const projectCanister = cookieInternetIdentity(env)
+
+  if (authorizeUrl !== undefined) {
+    return {
+      network: {
+        agentOptions,
+        identityProvider: {
+          authorizeUrl,
+          canisterId: projectCanister ?? INTERNET_IDENTITY,
+        },
+      },
+    }
+  }
+
+  const mainnet = verifiesAsMainnet(net)
+  if (projectCanister !== undefined) {
+    return mainnet
+      ? { network: { agentOptions } }
+      : {
+          network: { agentOptions },
+          gap:
+            `the ic_env cookie names an internet_identity canister (${projectCanister}) ` +
+            `but no INTERNET_IDENTITY_PROVIDER, and its sign-in URL cannot be derived from its id`,
+        }
+  }
+
+  const localHost =
+    network === "local" ||
+    (typeof network === "object" &&
+      isLocalHostname(agentHostnameOf(network.host)))
+  const builtIn = localHost ? builtInAuthorizeUrl(net.host) : undefined
+  if (builtIn !== undefined) {
+    return {
+      network: {
+        agentOptions,
+        identityProvider: {
+          authorizeUrl: builtIn,
+          canisterId: INTERNET_IDENTITY,
+        },
+      },
+    }
+  }
+
+  if (network === "env" && pageIsLocal()) {
+    const why = net.trustsEnv
+      ? `whose ic_env cookie names no INTERNET_IDENTITY_PROVIDER`
+      : `with allowEnvConfig: false, so no INTERNET_IDENTITY_PROVIDER is read from the ic_env cookie`
+    return {
+      network: { agentOptions },
+      gap:
+        `network "env" on a local page ${why}: ` +
+        `the agent's host (${net.host}) does not say where icp-cli's built-in Internet Identity is`,
+    }
+  }
+
+  if (!mainnet) {
+    return {
+      network: { agentOptions },
+      gap: `its root key is not mainnet's, and nothing names an identity provider for it`,
+    }
+  }
+
+  return { network: { agentOptions } }
 }

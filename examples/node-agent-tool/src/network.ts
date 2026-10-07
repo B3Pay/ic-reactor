@@ -6,7 +6,8 @@
 //
 // - `ic`: mainnet through https://icp-api.io, with the root key the agent
 //   ships with. Nothing is fetched.
-// - `local`: http://127.0.0.1:4943. The client fetches that replica's key.
+// - `local`: icp-cli's local network, http://127.0.0.1:8000. The client
+//   fetches that replica's key.
 // - a local <url> (localhost, *.localhost, 127.0.0.0/8, [::1]), such as an
 //   icp-cli network on another port: `{ host }`, and the client fetches its key.
 // - any other <url>: `{ host, rootKey }`, with the key given as

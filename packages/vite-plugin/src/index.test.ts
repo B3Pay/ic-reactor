@@ -219,14 +219,14 @@ describe("icReactor", () => {
       const { config, middleware } = await serveWithEnvironment(plugin)
 
       expect(await request(middleware)).toBeUndefined()
-      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
+      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:8000")
       // Silent detection failure is indistinguishable from a working setup
       // until the app blows up on an undefined canister id at runtime. The
       // warning says what the plugin does about it.
       expect(consoleWarnSpy).toHaveBeenCalledOnce()
       const [warning] = consoleWarnSpy.mock.calls[0]
       expect(warning).toContain("Could not detect the local IC environment")
-      expect(warning).toContain("/api goes to http://127.0.0.1:4943 for now")
+      expect(warning).toContain("/api goes to http://127.0.0.1:8000 for now")
       expect(warning).toContain(
         "asks `icp` again on each page load until it answers"
       )
@@ -303,7 +303,7 @@ describe("icReactor", () => {
       expect(await request(middleware)).toContain(
         "INTERNET_IDENTITY_PROVIDER%3Dhttp%3A%2F%2Fid.ai.localhost%3A8000%2Fauthorize"
       )
-      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:4943")
+      expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:8000")
     })
 
     it("should return empty config for build command", async () => {
@@ -380,12 +380,13 @@ describe("icReactor", () => {
         const apiEntry = config.server.proxy["/api"]
         const proxyOptions = { ...apiEntry }
         apiEntry.configure({}, proxyOptions)
-        expect(proxyOptions.target).toBe("http://127.0.0.1:4943")
+        expect(proxyOptions.target).toBe("http://127.0.0.1:8000")
         expect(await request(middleware)).toBeUndefined()
 
+        // A gateway on another port than the fallback's, so the switch shows.
         answerIcp(
           { test_canister: "bkyz2-fmaaa-aaaaa-qaaaq-cai" },
-          { root_key: "fresh-root-key", api_url: "http://127.0.0.1:8000" }
+          { root_key: "fresh-root-key", api_url: "http://127.0.0.1:8080" }
         )
 
         const cookie = await request(middleware)
@@ -393,9 +394,9 @@ describe("icReactor", () => {
         expect(cookie).toContain(
           "PUBLIC_CANISTER_ID%3Atest_canister%3Dbkyz2-fmaaa-aaaaa-qaaaq-cai"
         )
-        expect(proxyOptions.target).toBe("http://127.0.0.1:8000")
+        expect(proxyOptions.target).toBe("http://127.0.0.1:8080")
         expect(consoleLogSpy).toHaveBeenCalledWith(
-          "[ic-reactor] Detected the local IC network: the ic_env cookie now carries its root key and /api goes to http://127.0.0.1:8000."
+          "[ic-reactor] Detected the local IC network: the ic_env cookie now carries its root key and /api goes to http://127.0.0.1:8080."
         )
       })
 
@@ -551,11 +552,13 @@ describe("icReactor", () => {
 
     // Vite deep-merges what a plugin's config hook returns over the user's
     // config, so the /api entry the plugin returned replaced the user's own.
-    // examples/codegen-in-action proxies /api to icp-cli's port 8000 and got
-    // 4943. These run Vite's real resolveConfig, which does that merge.
+    // examples/codegen-in-action proxied /api to its own replica and got the
+    // plugin's fallback. Here the user's replica is a dfx one on 4943, not the
+    // fallback's 8000. These run Vite's real resolveConfig, which does that
+    // merge.
     describe("with a Vite config that already proxies /api", () => {
       const userApiProxy = {
-        target: "http://127.0.0.1:8000",
+        target: "http://127.0.0.1:4943",
         changeOrigin: true,
       }
 
@@ -642,7 +645,7 @@ describe("icReactor", () => {
       expect(resolved.server.proxy).toEqual({
         "/assets": "http://127.0.0.1:9000",
         "/api": {
-          target: "http://127.0.0.1:4943",
+          target: "http://127.0.0.1:8000",
           changeOrigin: true,
           configure: expect.any(Function),
         },

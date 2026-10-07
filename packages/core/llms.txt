@@ -40,7 +40,8 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
 `network` and the root key:
 
 - `"ic"`: mainnet (`https://icp-api.io`) and its built-in root key.
-- `"local"`: `http://127.0.0.1:4943`; its root key is fetched.
+- `"local"`: icp-cli's local network, `http://127.0.0.1:8000`; its root key
+  is fetched. A dfx replica is `{ host: "http://127.0.0.1:4943" }`.
 - `{ host, rootKey }`: any other replica. A given `rootKey` is used, never
   fetched; without one, it is fetched only from a local `host` (`localhost`,
   `127.0.0.1`, `[::1]`). Never fetch one from any other host.
@@ -54,8 +55,21 @@ Who calls (exactly one):
   read-only: every update is refused before sending. A
   `new AnonymousIdentity()` signs writes, so map one you are handed:
   `identity: id && !id.getPrincipal().isAnonymous() ? id : "anonymous"`.
-- `auth: () => new AuthClient()` (`@icp-sdk/auth/client`): users sign in and
-  out. The factory runs once, in a browser only.
+- `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth/client`):
+  users sign in and out. The factory runs once, in a browser only. `network`
+  is `{ agentOptions, identityProvider? }`: the client's host and root key
+  (and its `fetch`, when you gave one), and the Internet Identity to sign in
+  with (the `ic_env` cookie's, or icp-cli's built-in one for a local host). Absent on a mainnet client, it
+  means mainnet's. Absent on any other network (a project that deploys its
+  own `internet_identity`, `"env"` on a local page with no
+  `INTERNET_IDENTITY_PROVIDER` in the cookie, a replica with its own root
+  key), sign-in cannot work, and a factory that reads
+  `network.identityProvider`, as `new AuthClient(network)` does, gets a
+  warning once in development. Name the provider there, which never warns:
+  `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
+  A spread that adds other options, `{ ...network, derivationOrigin }`, reads no
+  provider and gets no warning, so name one there too.
+  `() => new AuthClient()` ignores `network`, so it suits mainnet only.
 
 Who is calling, and may they write:
 

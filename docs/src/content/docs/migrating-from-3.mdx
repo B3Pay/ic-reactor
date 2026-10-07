@@ -60,7 +60,7 @@ the 4.0 release.
    or `client.mutationOptions`.
 4. Replace the error checks with `isReactorError` and `kind`, and decide for
    each write what to do when `mayHaveExecuted` is `true`.
-5. Replace the sign-in code with `auth: () => new AuthClient()` and `useAuth`.
+5. Replace the sign-in code with `auth: (network) => new AuthClient(network)` and `useAuth`.
 6. Replace amount formatting with `formatUnits` and `parseUnits`.
 7. Search your code for the names in the table below. None of them exists in 4.
 
@@ -76,7 +76,7 @@ the common ones as before and after.
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `ClientManager`                      | `createClient({ network, identity \| auth })`                                                                                                                                                                                                                       |
 | `formatTokenAmount`                  | `formatUnits(value, decimals, { maxFractionDigits })`                                                                                                                                                                                                               |
-| `AuthenticationManager`              | `auth: () => new AuthClient()`, with `AuthClient` from `@icp-sdk/auth/client` (version 10), and `useAuth()` to read it                                                                                                                                              |
+| `AuthenticationManager`              | `auth: (network) => new AuthClient(network)`, with `AuthClient` from `@icp-sdk/auth/client` (version 10), and `useAuth()` to read it                                                                                                                                |
 | `createAuthHooks`                    | `useAuth()`                                                                                                                                                                                                                                                         |
 | `createMutation`                     | `useMutation(client.mutationOptions(canister, method))`                                                                                                                                                                                                             |
 | `createQuery`                        | `useQuery(client.queryOptions(canister, method, vars))`; outside React, `client.queryClient.fetchQuery(client.queryOptions(...))`                                                                                                                                   |
@@ -293,7 +293,7 @@ import { AuthClient } from "@icp-sdk/auth/client"
 
 export const client = createClient({
   network: "ic",
-  auth: () => new AuthClient(),
+  auth: (network) => new AuthClient(network),
 })
 
 export function SessionButton() {
@@ -335,7 +335,10 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <ReactorProvider
       client={() =>
-        createClient({ network: "ic", auth: () => new AuthClient() })
+        createClient({
+          network: "ic",
+          auth: (network) => new AuthClient(network),
+        })
       }
     >
       {children}

@@ -202,13 +202,16 @@ ic_root_key=<hex key>&PUBLIC_CANISTER_ID:<name>=<id>&...&INTERNET_IDENTITY_PROVI
 ```
 
 It carries the replica's root key, one `PUBLIC_CANISTER_ID:<name>` for each
-canister, and the local Internet Identity's url when there is one.
+canister, and the local Internet Identity's url when there is one. A client
+that trusts the cookie hands that url to its `auth` factory, so
+`auth: (network) => new AuthClient(network)` signs in with the local Internet
+Identity (see [Auth](/v4/guides/auth/#the-network-the-factory-is-handed)).
 
 ### Detection
 
-- If detection fails, the plugin falls back to proxying `/api` to
-  `http://127.0.0.1:4943` and sets no cookie, or with no canisters configured,
-  one that names only the built-in Internet Identity. It warns when that
+- If detection fails, the plugin falls back to proxying `/api` to icp-cli's
+  local network, `http://127.0.0.1:8000`, and sets no cookie, or with no
+  canisters configured, one that names only the built-in Internet Identity. It warns when that
   happens with canisters configured, and when a configured canister has no id.
   Run with `DEBUG=ic-reactor` to see the `icp` output behind the warning.
 - Detection is complete once `icp` reports the network and every configured

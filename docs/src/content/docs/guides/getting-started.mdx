@@ -8,6 +8,14 @@ import { Aside } from "@astrojs/starlight/components"
 This page takes an app from nothing to a first read and a first write. It uses
 the ICRC-1 ledger interface (`icrc1.did`) and the ICP ledger on mainnet.
 
+`icrc1.did` is the file of the same name in the repository's
+[`examples/icrc-ledger`](https://github.com/B3Pay/ic-reactor/tree/v4/examples/icrc-ledger)
+directory. Copy it to your project's root. To work with another canister,
+save its interface from the canister itself (see
+[Get a canister's .did](#get-a-canisters-did) below). The generator names a
+module after its file, so a saved `icp_ledger.did` gives
+`./generated/icp_ledger`, not the `./generated/icrc1` this page imports.
+
 ## 1. Install
 
 The core packages and the runtime they sit on:
@@ -40,7 +48,8 @@ CLI version.
 ## 2. Generate the module
 
 Everything the client knows about a canister comes from a module that
-`candid-core-cli gen` writes from the canister's `.did` file:
+`candid-core-cli gen` writes from the canister's `.did` file. With
+`icrc1.did` in the project's root:
 
 ```sh
 npx candid-core-cli gen icrc1.did -o src/generated
@@ -88,6 +97,63 @@ export default defineConfig({
 The plugin also sets up a local environment. See
 [The Vite plugin](/v4/guides/vite-plugin/).
 
+Commit `icrc1.did` and the generated module. Vite's `react-ts` template builds
+with `tsc -b && vite build`, so TypeScript checks `src/` before the plugin has
+generated anything, and a fresh clone without the module fails its first
+build. If you would rather not commit the module, run
+`npx candid-core-cli gen icrc1.did -o src/generated` before `tsc -b`, for
+example in a `prebuild` script.
+
+An app that only talks to mainnet has no local network for the plugin to
+find, and `vite dev` says "Could not detect the local IC environment". Set
+`injectEnvironment: false` in `icReactor({ ... })` to skip that detection.
+
+### Get a canister's .did
+
+Every canister on the Internet Computer can publish its Candid interface as
+`candid:service` metadata. This script reads it from certified state and
+saves it to a file:
+
+{/* prettier-ignore */}
+```ts
+// scripts/fetch-did.ts: save a live canister's Candid interface from certified
+// state. readState checks the subnet's signature against the IC root key, and
+// throws when the replica cannot be reached or refuses the read.
+// usage: npx tsx scripts/fetch-did.ts <canister-id> [out.did]
+import { HttpAgent, StatePaths } from "@icp-sdk/core/agent"
+import { Principal } from "@icp-sdk/core/principal"
+import { writeFile } from "node:fs/promises"
+
+const [id, out = `${id}.did`] = process.argv.slice(2)
+if (!id) throw new Error("usage: fetch-did <canister-id> [out.did]")
+
+const canisterId = Principal.fromText(id)
+const agent = await HttpAgent.create({ host: "https://icp-api.io" })
+const path = StatePaths.canisterCandid(canisterId)
+const { values } = await agent.readState({ canisterId }, { paths: [path] })
+const did = values.get(path)
+if (did === null) throw new Error(`${id} has no candid:service metadata`)
+
+await writeFile(out, did)
+console.log(`wrote ${out}: ${did.length} bytes of certified candid:service from ${id}`)
+```
+
+```sh
+npx tsx scripts/fetch-did.ts ryjl3-tyaaa-aaaaa-aaaba-cai icp_ledger.did
+```
+
+That saves the ICP ledger's full interface, which is not `icrc1.did`, and
+`npx candid-core-cli gen icp_ledger.did -o src/generated` names its module
+`icp_ledger`: import from `./generated/icp_ledger` in place of this page's
+`./generated/icrc1`.
+
+With [icp-cli](https://github.com/dfinity/icp-cli) installed,
+`icp canister metadata <canister-id> candid:service -n ic > icp_ledger.did`
+reads the same metadata. A canister that keeps its metadata private, or
+publishes none, has no interface to fetch: ask its developers for the `.did`.
+Fetching it at build time from the Vite plugin is planned
+([#852](https://github.com/B3Pay/ic-reactor/issues/852)).
+
 ## 3. Set up a client and a canister
 
 ```ts
@@ -114,6 +180,7 @@ users in.
 Call the methods directly:
 
 ```ts
+// src/read.ts
 import { formatUnits } from "@ic-reactor/core"
 import { ledger } from "./ledger"
 
@@ -122,6 +189,10 @@ const fee = await ledger.icrc1_fee() // 10000n: a bigint, never a number
 
 console.log(formatUnits(fee, decimals)) // "0.0001"
 ```
+
+Run it with `npx tsx src/read.ts`. Plain `node src/read.ts` fails: Node
+resolves an import such as `./ledger` only with its file extension, which a
+bundler's imports leave out.
 
 Amounts are `bigint` in base units. `formatUnits` turns one into text, and
 `parseUnits` goes the other way. See [Values and units](/v4/guides/values/).
@@ -166,6 +237,10 @@ function Fee() {
 }
 ```
 
+This file exports a named `App`. Vite's `react-ts` template imports a default
+one in `src/main.tsx`, so change that import to
+`import { App } from "./App"`.
+
 `useQuery` is TanStack Query's own hook. `client.queryOptions(ledger, method,
 arg)` gives it the key, the function and the retry rule. Build the options in
 render, from the `useClient()` of that render.
@@ -184,25 +259,29 @@ signed in. The factory runs once, in a browser only.
 import { createClient } from "@ic-reactor/core"
 import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
 import { AuthClient } from "@icp-sdk/auth/client"
+import { principal } from "@candid-core/schema"
 import { useMutation } from "@tanstack/react-query"
 import { useState } from "react"
-import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+import { actor, type Actor } from "./generated/icrc1"
 
-export function App({ arg }: { arg: TransferArg }) {
+export function App() {
   return (
     <ReactorProvider
       client={() =>
-        createClient({ network: "ic", auth: () => new AuthClient() })
+        createClient({
+          network: "ic",
+          auth: (network) => new AuthClient(network),
+        })
       }
     >
-      <Send arg={arg} />
+      <Send />
     </ReactorProvider>
   )
 }
 
-function Send({ arg }: { arg: TransferArg }) {
+function Send() {
   const client = useClient()
-  const { status, signIn } = useAuth()
+  const { status, principal: caller, signIn } = useAuth()
   const [signInError, setSignInError] = useState<string>()
   const ledger = client.canister<Actor>(actor, {
     id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
@@ -227,9 +306,20 @@ function Send({ arg }: { arg: TransferArg }) {
     <>
       <button
         disabled={transfer.isPending}
-        onClick={() => transfer.mutate(arg)}
+        onClick={() =>
+          // 1 e8s to the signed-in principal itself. The ledger still
+          // charges its fee.
+          transfer.mutate({
+            to: { owner: principal(caller), subaccount: null },
+            amount: 1n,
+            fee: null,
+            memo: null,
+            from_subaccount: null,
+            created_at_time: null,
+          })
+        }
       >
-        Send
+        Send 1 e8s to yourself
       </button>
       {transfer.error && (
         <p>

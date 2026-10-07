@@ -61,7 +61,10 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <ReactorProvider
       client={() =>
-        createClient({ network: "ic", auth: () => new AuthClient() })
+        createClient({
+          network: "ic",
+          auth: (network) => new AuthClient(network),
+        })
       }
     >
       {children}
@@ -88,7 +91,7 @@ import type { ReactNode } from "react"
 // One client for this tab, also used outside React.
 export const client = createClient({
   network: "ic",
-  auth: () => new AuthClient(),
+  auth: (network) => new AuthClient(network),
 })
 
 export function Providers({ children }: { children: ReactNode }) {

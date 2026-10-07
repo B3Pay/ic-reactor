@@ -137,8 +137,8 @@ export interface FakeReplicaOptions {
    *
    * @defaultValue The page's origin when the test environment has a local one
    * (`http://localhost:3000` in Vitest's jsdom and happy-dom), which is where
-   * an agent built with no `host` calls, and `"http://127.0.0.1:4943"`
-   * otherwise.
+   * an agent built with no `host` calls, and `"http://127.0.0.1:8000"`
+   * (the client's `"local"` network) otherwise.
    */
   host?: string
   /**
@@ -294,7 +294,8 @@ export class FakeReplicaReject extends Error {
  */
 class LostReply extends TypeError {}
 
-const DEFAULT_HOST = "http://127.0.0.1:4943"
+/** The client's `"local"` network: icp-cli's gateway on its default port. */
+const DEFAULT_HOST = "http://127.0.0.1:8000"
 
 /**
  * The page's origin when it is one the fake can answer for, which is where an
