@@ -56,7 +56,8 @@ The client calls the factory with one argument, `network`, under
 network the client calls:
 
 - `agentOptions` is the host, root key and `shouldFetchRootKey` of the
-  client's own agents. `AuthClient` makes its mint and revoke calls with them.
+  client's own agents, and its `fetch`, when you gave one. `AuthClient` makes
+  its mint and revoke calls with them.
 - `identityProvider` is the Internet Identity to sign in with, as the two
   values `AuthClient` 10 takes (the page a person signs in on and the canister
   that mints their delegations), or absent, which `AuthClient` reads as
@@ -88,11 +89,16 @@ So with `network: "env"` and the plugin's cookie, the one line above signs in
 with the local Internet Identity in dev and with mainnet's on a deployed page.
 
 A local replica rejects every delegation mainnet's Internet Identity mints.
-So in cases 2, 4 and 5, on a network that is not mainnet's, the client never
-lets `AuthClient` fall back to mainnet's in silence: it warns once, in
-development, that sign-in cannot work on this network without an identity
-provider, and gives the line that names one:
+So in cases 2, 4 and 5, on a network that is not mainnet's, the client warns
+when the factory reads `network.identityProvider`, as `new AuthClient(network)`
+does. The warning comes once, in development: sign-in cannot work on this
+network without an identity provider, and the line that names one is
 `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
+A factory that names its own provider, as that line does, or builds an auth
+that is not Internet Identity, never sees the warning. Nor does a spread that
+adds other options and names no provider, such as
+`new AuthClient({ ...network, derivationOrigin })`: it does not read
+`identityProvider`, so on these networks it must name one.
 
 For the `internet_identity` your project deploys, `authorizeUrl` is the
 sign-in page it serves and `canisterId` the id `icp deploy` gave its backend:

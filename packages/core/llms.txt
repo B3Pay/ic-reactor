@@ -57,15 +57,18 @@ Who calls (exactly one):
   `identity: id && !id.getPrincipal().isAnonymous() ? id : "anonymous"`.
 - `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth/client`):
   users sign in and out. The factory runs once, in a browser only. `network`
-  is `{ agentOptions, identityProvider? }`: the client's host and root key,
-  and the Internet Identity to sign in with (the `ic_env` cookie's, or
-  icp-cli's built-in one for a local host). Absent on a mainnet client, it
+  is `{ agentOptions, identityProvider? }`: the client's host and root key
+  (and its `fetch`, when you gave one), and the Internet Identity to sign in
+  with (the `ic_env` cookie's, or icp-cli's built-in one for a local host). Absent on a mainnet client, it
   means mainnet's. Absent on any other network (a project that deploys its
   own `internet_identity`, `"env"` on a local page with no
   `INTERNET_IDENTITY_PROVIDER` in the cookie, a replica with its own root
-  key), sign-in cannot work and the client warns once in development. Name
-  the provider there:
+  key), sign-in cannot work, and a factory that reads
+  `network.identityProvider`, as `new AuthClient(network)` does, gets a
+  warning once in development. Name the provider there, which never warns:
   `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
+  A spread that adds other options, `{ ...network, derivationOrigin }`, reads no
+  provider and gets no warning, so name one there too.
   `() => new AuthClient()` ignores `network`, so it suits mainnet only.
 
 Who is calling, and may they write:

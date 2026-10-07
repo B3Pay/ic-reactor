@@ -12,6 +12,7 @@
  * `caller()` is.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { AuthClient } from "@icp-sdk/auth/client"
 import { IC_ROOT_KEY } from "@icp-sdk/core/agent"
 import {
   createClient,
@@ -78,6 +79,22 @@ const cookieWithProvider = (
   provider = "http://id.ai.localhost:8001/authorize",
   extra: Record<string, string> = {}
 ) => icEnvCookie({ ...extra, INTERNET_IDENTITY_PROVIDER: provider })
+
+/**
+ * The provider `@icp-sdk/auth` 10's `AuthClient` constructor signs in with:
+ * `options.identityProvider`, read as it reads it, or mainnet's.
+ */
+const providerOf = (options: AuthNetwork) =>
+  options.identityProvider ?? {
+    authorizeUrl: "https://id.ai/authorize",
+    canisterId: II,
+  }
+
+/** A factory that reads its options as `new AuthClient(network)` does. */
+function readsLikeAuthClient(options: AuthNetwork): AuthLike {
+  void providerOf(options)
+  return createTestAuth()
+}
 
 describe("the network an auth factory is handed", () => {
   it("is mainnet's for \"ic\", with no identity provider (AuthClient's defaults)", () => {
@@ -265,13 +282,23 @@ describe("a factory that takes no argument", () => {
 })
 
 describe("the warning for a network with no identity provider", () => {
-  /** Builds a client, makes it build its auth, and returns the warnings. */
+  /**
+   * Builds a client whose factory reads `network.identityProvider` as
+   * `new AuthClient(network)` does, makes it build its auth, and returns the
+   * warnings.
+   */
   function warningsFor(
     network: ClientOptions["network"],
     extra: { allowEnvConfig?: boolean } = {}
   ): string[] {
     const warn = muteWarnings()
-    handedTo(network, extra)
+    const client = createClient({
+      network,
+      auth: readsLikeAuthClient,
+      ...extra,
+    })
+    made.push(client)
+    client.caller()
     return warn.mock.calls.map((call) => String(call[0]))
   }
 
@@ -371,9 +398,11 @@ describe("the warning for a network with no identity provider", () => {
     let calls = 0
     const client = createClient({
       network: "env",
-      auth: () => {
+      auth: (network) => {
         calls++
+        void network.identityProvider
         if (calls === 1) throw new Error("not yet")
+        void network.identityProvider
         return createTestAuth()
       },
     })
@@ -386,7 +415,7 @@ describe("the warning for a network with no identity provider", () => {
     expect(calls).toBe(2)
     expect(warn).toHaveBeenCalledTimes(1)
 
-    const other = createClient({ network: "env", auth: () => createTestAuth() })
+    const other = createClient({ network: "env", auth: readsLikeAuthClient })
     made.push(other)
     other.caller()
 
@@ -409,5 +438,216 @@ describe("the warning for a network with no identity provider", () => {
 
     expect(client.caller()).toBe(auth.getPrincipal()!.toText())
     expect(warn).not.toHaveBeenCalled()
+  })
+})
+
+describe("when the warning comes", () => {
+  /** A local page with no cookie: "env" there names no identity provider. */
+  const gapPage = () => stubPage("http://localhost:5173", { cookie: "" })
+
+  /** The local page's own provider, as an app that knows it would name it. */
+  const OWN_PROVIDER = {
+    authorizeUrl: "http://id.ai.localhost:8000/authorize",
+    canisterId: PROJECT_II,
+  }
+
+  /** Builds a client on "env" with `auth`, makes it build its auth, and returns the warnings. */
+  function warningsOf(auth: (network: AuthNetwork) => AuthLike): string[] {
+    const warn = muteWarnings()
+    const client = createClient({ network: "env", auth })
+    made.push(client)
+    client.caller()
+    return warn.mock.calls.map((call) => String(call[0]))
+  }
+
+  /**
+   * {@link gapPage}, with what the real `AuthClient`'s defaults need of a page
+   * and the fake page lacks: `localStorage`, and event listeners on the page
+   * and its document.
+   */
+  const stubAuthClientPage = () => {
+    gapPage()
+    vi.stubGlobal("document", {
+      cookie: "",
+      visibilityState: "visible",
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })
+    const items = new Map<string, string>()
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => void items.set(key, value),
+      removeItem: (key: string) => void items.delete(key),
+    })
+    vi.stubGlobal("addEventListener", () => {})
+    vi.stubGlobal("removeEventListener", () => {})
+    // An IndexedDB whose open never settles: the session restore the
+    // constructor starts waits forever, and these tests never ask for it.
+    class PendingRequest {
+      addEventListener() {}
+      removeEventListener() {}
+    }
+    vi.stubGlobal("IDBRequest", PendingRequest)
+    vi.stubGlobal("indexedDB", { open: () => new PendingRequest() })
+  }
+
+  it("is given when the factory reads network.identityProvider as AuthClient's constructor does", () => {
+    gapPage()
+
+    const warnings = warningsOf(readsLikeAuthClient)
+
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain("sign-in cannot work on this network")
+  })
+
+  it("is given by a real AuthClient built with new AuthClient(network)", () => {
+    stubAuthClientPage()
+
+    const warnings = warningsOf((network) => new AuthClient(network))
+
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain("sign-in cannot work on this network")
+  })
+
+  it("is given to a factory that destructures identityProvider", () => {
+    gapPage()
+
+    const warnings = warningsOf(({ agentOptions, identityProvider }) => {
+      void agentOptions
+      void identityProvider
+      return createTestAuth()
+    })
+
+    expect(warnings).toHaveLength(1)
+  })
+
+  it("is not given to a factory that names its own provider by spreading network, which gets that provider", () => {
+    gapPage()
+    let provider: unknown
+
+    const warnings = warningsOf((network) => {
+      provider = providerOf({ ...network, identityProvider: OWN_PROVIDER })
+      return createTestAuth()
+    })
+
+    expect(warnings).toEqual([])
+    expect(provider).toEqual(OWN_PROVIDER)
+  })
+
+  it("is not given to a real AuthClient built from the override", () => {
+    stubAuthClientPage()
+
+    const warnings = warningsOf(
+      (network) =>
+        new AuthClient({
+          ...network,
+          identityProvider: OWN_PROVIDER,
+        })
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  it("is not given to a factory that ignores network, for an auth that is not Internet Identity", () => {
+    gapPage()
+
+    expect(warningsOf(() => createTestAuth())).toEqual([])
+    expect(warningsOf((_network) => createTestAuth())).toEqual([])
+  })
+
+  it("is not given to a spread that adds other options and names no provider, which must name one", () => {
+    stubAuthClientPage()
+
+    const warnings = warningsOf(
+      (network) =>
+        new AuthClient({
+          ...network,
+          disableBrowserActivity: true,
+        })
+    )
+
+    expect(warnings).toEqual([])
+  })
+
+  it("leaves identityProvider out of Object.keys and JSON where none was named", () => {
+    gapPage()
+    const warn = muteWarnings()
+
+    const network = handedTo("env")
+
+    expect(Object.keys(network)).toEqual(["agentOptions"])
+    expect(Object.keys(JSON.parse(JSON.stringify(network)))).toEqual([
+      "agentOptions",
+    ])
+    expect(warn).not.toHaveBeenCalled()
+  })
+})
+
+describe("the fetch an auth factory is handed", () => {
+  it("is the client's fetch, called as a plain function, when one was given", async () => {
+    stubPage("https://app.example.com")
+    const receivers: unknown[] = []
+    const response = new Response("ok")
+    const userFetch = vi.fn(function (this: unknown) {
+      receivers.push(this)
+      return Promise.resolve(response)
+    }) as unknown as typeof fetch
+    let handed: AuthNetwork | undefined
+    const client = createClient({
+      network: "ic",
+      fetch: userFetch,
+      auth: (network) => {
+        handed = network
+        return createTestAuth()
+      },
+    })
+    made.push(client)
+    client.caller()
+
+    const agentOptions = handed!.agentOptions
+    expect(typeof agentOptions.fetch).toBe("function")
+    expect(await agentOptions.fetch!("https://icp-api.io/api/v2/status")).toBe(
+      response
+    )
+    expect(userFetch).toHaveBeenCalledWith(
+      "https://icp-api.io/api/v2/status",
+      undefined
+    )
+    expect(receivers).toEqual([undefined])
+  })
+
+  it("is the client's fetch where no identity provider could be named", async () => {
+    // "env" on a local page with no cookie: the handed object is built apart.
+    stubPage("http://localhost:5173", { cookie: "" })
+    const response = new Response("ok")
+    const userFetch = vi.fn(() => Promise.resolve(response))
+    let handed: AuthNetwork | undefined
+    const client = createClient({
+      network: "env",
+      fetch: userFetch as unknown as typeof fetch,
+      auth: (network) => {
+        handed = network
+        return createTestAuth()
+      },
+    })
+    made.push(client)
+    client.caller()
+
+    const agentOptions = handed!.agentOptions
+    expect(typeof agentOptions.fetch).toBe("function")
+    expect(
+      await agentOptions.fetch!("http://localhost:5173/api/v2/status")
+    ).toBe(response)
+    expect(userFetch).toHaveBeenCalledWith(
+      "http://localhost:5173/api/v2/status",
+      undefined
+    )
+  })
+
+  it("is absent when the client was given none", () => {
+    stubPage("https://app.example.com")
+
+    expect("fetch" in handedTo("ic").agentOptions).toBe(false)
+    expect("fetch" in handedTo("local").agentOptions).toBe(false)
   })
 })

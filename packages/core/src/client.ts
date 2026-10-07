@@ -176,7 +176,7 @@ export type ClientOptions = {
        * calls:
        *
        * - `agentOptions`: the host, root key and `shouldFetchRootKey` of the
-       *   client's own agents.
+       *   client's own agents, and its `fetch`, when you gave one.
        * - `identityProvider`: the Internet Identity to sign in with. A trusted
        *   `ic_env` cookie's `INTERNET_IDENTITY_PROVIDER` (with its
        *   `PUBLIC_CANISTER_ID:internet_identity`, or
@@ -188,8 +188,14 @@ export type ClientOptions = {
        * own `internet_identity`, `"env"` on a local page with no provider in
        * the cookie, a replica with its own root key), sign-in cannot work: a
        * replica rejects the delegations mainnet's Internet Identity mints.
-       * The client says so once, in development. Name the provider:
+       * The client says so once, in development, when the factory reads
+       * `network.identityProvider`, as `new AuthClient(network)` does. Name
+       * the provider:
        * `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
+       * A factory that names its own provider, as that one does, or builds
+       * an auth that is not Internet Identity, never sees the warning. Nor
+       * does a spread that adds other options and names no provider, such as
+       * `{ ...network, derivationOrigin }`: it must name one on such a network.
        *
        * A factory that takes no argument, such as `() => new AuthClient()`,
        * still works on mainnet. It ignores `network`, so on any other network
@@ -200,6 +206,7 @@ export type ClientOptions = {
           readonly host: string
           readonly rootKey?: Uint8Array
           readonly shouldFetchRootKey: boolean
+          readonly fetch?: typeof globalThis.fetch
         }
         readonly identityProvider?: {
           readonly authorizeUrl: string
@@ -209,6 +216,11 @@ export type ClientOptions = {
       readonly identity?: never
     }
 )
+
+/** What the `auth` factory is handed: `network` in `(network) => new AuthClient(network)`. */
+type AuthNetworkArgument = Parameters<
+  Extract<ClientOptions, { readonly auth: unknown }>["auth"]
+>[0]
 
 /**
  * A client made by {@link createClient}: one per browser tab, or one per
@@ -875,12 +887,6 @@ export interface ClientSeams {
    * call can see.
    */
   readonly authOnServer?: boolean
-  /**
-   * Keeps quiet about a network no identity provider could be named for. A
-   * test client's auth is the test auth, which ignores the network it is
-   * handed and signs in with no identity provider at all.
-   */
-  readonly quietAuthNetwork?: boolean
 }
 
 /**
@@ -997,6 +1003,54 @@ export function createClientWith(
   }
 
   /**
+   * Says, once per client and in development only, that sign-in cannot work
+   * on this network: an auth built without an identity provider signs in with
+   * mainnet's Internet Identity, whose delegations this replica rejects.
+   */
+  const warnNoProvider = (gap: string): void => {
+    if (warnedAuthNetwork || !isDevelopment()) return
+    warnedAuthNetwork = true
+    console.warn(
+      `[ic-reactor] sign-in cannot work on this network (${network.host}) without an identity provider: ${gap}. ` +
+        "The auth factory was given no identityProvider, so an AuthClient built from it signs in with mainnet's " +
+        "Internet Identity, whose delegations this replica rejects. Name the provider: " +
+        "(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } }). " +
+        "(Logged once, in development.)"
+    )
+  }
+
+  /**
+   * What the auth factory is handed (see `authNetworkFor`), with the client's
+   * `fetch` in its `agentOptions` when one was given, so an `AuthClient`'s own
+   * agents send as the client's do.
+   *
+   * Where no identity provider could be named, `identityProvider` is a getter
+   * that is not enumerable: it returns `undefined`, and its first read warns.
+   * So `new AuthClient(network)`, which reads it, warns; a factory that names
+   * its own provider with `{ ...network, identityProvider }` never reads it,
+   * since a spread copies only enumerable properties; and a factory that
+   * ignores `network`, for an auth that is not Internet Identity, never does.
+   */
+  const authNetwork = (): AuthNetworkArgument => {
+    const resolution = authNetworkFor(options.network, network)
+    const agentOptions =
+      agentFetch === undefined
+        ? resolution.network.agentOptions
+        : { ...resolution.network.agentOptions, fetch: agentFetch }
+    const { gap } = resolution
+    if (gap === undefined) return { ...resolution.network, agentOptions }
+    const handed = { agentOptions }
+    Object.defineProperty(handed, "identityProvider", {
+      get: (): undefined => {
+        warnNoProvider(gap)
+        return undefined
+      },
+      enumerable: false,
+    })
+    return handed
+  }
+
+  /**
    * The auth, built on first use: never in `identity` mode, never on a server
    * (unless the test client's seam says so), never after
    * {@link Client.dispose}.
@@ -1010,23 +1064,7 @@ export function createClientWith(
     ) {
       return auth
     }
-    const resolution = authNetworkFor(options.network, network)
-    if (
-      resolution.gap !== undefined &&
-      !warnedAuthNetwork &&
-      seams.quietAuthNetwork !== true &&
-      isDevelopment()
-    ) {
-      warnedAuthNetwork = true
-      console.warn(
-        `[ic-reactor] sign-in cannot work on this network (${network.host}) without an identity provider: ${resolution.gap}. ` +
-          "The auth factory was given no identityProvider, so an AuthClient built from it signs in with mainnet's " +
-          "Internet Identity, whose delegations this replica rejects. Name the provider: " +
-          "(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } }). " +
-          "(Logged once, in development.)"
-      )
-    }
-    const built = checkAuth(authFactory(resolution.network))
+    const built = checkAuth(authFactory(authNetwork()))
     auth = built
     const initial = stateOf(built)
     if (!sameState(initial, snapshot)) snapshot = Object.freeze(initial)

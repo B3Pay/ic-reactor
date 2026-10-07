@@ -27,8 +27,8 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   mainnet only, since such a factory ignores the network. No export is added:
   the argument's type is written inline in `ClientOptions`.
   - `network.agentOptions` is the host, root key and `shouldFetchRootKey` of
-    the client's own agents, which `AuthClient` makes its mint and revoke
-    calls with.
+    the client's own agents, and the client's `fetch` when one was given,
+    which `AuthClient` makes its mint and revoke calls with.
   - `network.identityProvider` is, in order: the `ic_env` cookie's
     `INTERNET_IDENTITY_PROVIDER` where the client trusts the cookie, with the
     cookie's `PUBLIC_CANISTER_ID:internet_identity` or
@@ -38,17 +38,20 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
     `rdmx6-jaaaa-aaaaa-aaadq-cai`; and otherwise absent, which `AuthClient`
     reads as mainnet's Internet Identity.
   - A replica that is not mainnet rejects every delegation mainnet's Internet
-    Identity mints, so the client never lets a sign-in fall back to it in
-    silence. Where no provider can be named on a network that does not verify
+    Identity mints. Where no provider can be named on a network that does not verify
     against mainnet's root key (a trusted cookie that names an
     `internet_identity` canister but no URL, `"env"` on a local page whose
     cookie names no provider, or a replica with a root key of its own, given
-    or fetched), the client warns once, in development, that sign-in cannot
-    work there, with the line that names a provider:
+    or fetched), the client warns once, in development, when the factory
+    reads `network.identityProvider`, as `new AuthClient(network)` does, that
+    sign-in cannot work there, with the line that names a provider:
     `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
-    `"ic"` and `"env"` on a mainnet page never warn, and neither does the
-    test client of `@ic-reactor/core/testing`, whose factory ignores the
-    network.
+    A factory that names its own provider, as that line does, or builds an
+    auth that is not Internet Identity never sees it, and neither does a
+    spread that adds other options and names no provider, such as
+    `{ ...network, derivationOrigin }`, which must name one there. `"ic"` and `"env"` on a
+    mainnet page never warn, and neither does the test client of
+    `@ic-reactor/core/testing`, whose factory ignores the network.
 
   Code that compiled against 4.0.0-beta.2 and stops compiling: a call of a
   function typed `ClientOptions["auth"]` with no argument. Pass it the
