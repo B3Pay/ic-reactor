@@ -554,6 +554,20 @@ describe("when the warning comes", () => {
     expect(warningsOf((_network) => createTestAuth())).toEqual([])
   })
 
+  it("is not given to a spread that adds other options and names no provider, which must name one", () => {
+    stubAuthClientPage()
+
+    const warnings = warningsOf(
+      (network) =>
+        new AuthClient({
+          ...network,
+          disableBrowserActivity: true,
+        })
+    )
+
+    expect(warnings).toEqual([])
+  })
+
   it("leaves identityProvider out of Object.keys and JSON where none was named", () => {
     gapPage()
     const warn = muteWarnings()
@@ -599,6 +613,34 @@ describe("the fetch an auth factory is handed", () => {
       undefined
     )
     expect(receivers).toEqual([undefined])
+  })
+
+  it("is the client's fetch where no identity provider could be named", async () => {
+    // "env" on a local page with no cookie: the handed object is built apart.
+    stubPage("http://localhost:5173", { cookie: "" })
+    const response = new Response("ok")
+    const userFetch = vi.fn(() => Promise.resolve(response))
+    let handed: AuthNetwork | undefined
+    const client = createClient({
+      network: "env",
+      fetch: userFetch as unknown as typeof fetch,
+      auth: (network) => {
+        handed = network
+        return createTestAuth()
+      },
+    })
+    made.push(client)
+    client.caller()
+
+    const agentOptions = handed!.agentOptions
+    expect(typeof agentOptions.fetch).toBe("function")
+    expect(
+      await agentOptions.fetch!("http://localhost:5173/api/v2/status")
+    ).toBe(response)
+    expect(userFetch).toHaveBeenCalledWith(
+      "http://localhost:5173/api/v2/status",
+      undefined
+    )
   })
 
   it("is absent when the client was given none", () => {

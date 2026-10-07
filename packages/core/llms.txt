@@ -66,6 +66,8 @@ Who calls (exactly one):
   `network.identityProvider`, as `new AuthClient(network)` does, gets a
   warning once in development. Name the provider there, which never warns:
   `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
+  A spread that adds other options, `{ ...network, derivationOrigin }`, reads no
+  provider and gets no warning, so name one there too.
   `() => new AuthClient()` ignores `network`, so it suits mainnet only.
 
 Who is calling, and may they write:

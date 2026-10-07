@@ -193,7 +193,9 @@ export type ClientOptions = {
        * the provider:
        * `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
        * A factory that names its own provider, as that one does, or builds
-       * an auth that is not Internet Identity, never sees the warning.
+       * an auth that is not Internet Identity, never sees the warning. Nor
+       * does a spread that adds other options and names no provider, such as
+       * `{ ...network, derivationOrigin }`: it must name one on such a network.
        *
        * A factory that takes no argument, such as `() => new AuthClient()`,
        * still works on mainnet. It ignores `network`, so on any other network

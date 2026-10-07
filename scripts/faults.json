@@ -2318,5 +2318,25 @@
     "file": "src/client.ts",
     "search": "    const agentOptions =\n      agentFetch === undefined\n        ? resolution.network.agentOptions\n        : { ...resolution.network.agentOptions, fetch: agentFetch }",
     "replace": "    const agentOptions = { ...resolution.network.agentOptions, fetch: agentFetch }"
+  },
+  {
+    "id": "790-auth-provider-getter-enumerable-other-spread",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is not given to a spread that adds other options and names no provider",
+    "why": "the warning getter enumerable, so a spread that adds other options reads it and warns: the documented silence of such a spread is gone without the docs saying so",
+    "file": "src/client.ts",
+    "search": "      enumerable: false,",
+    "replace": "      enumerable: true,"
+  },
+  {
+    "id": "790-auth-fetch-dropped-in-gap",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is the client's fetch where no identity provider could be named",
+    "why": "the client's fetch dropped from the object handed where no provider could be named, so new AuthClient(network)'s agents send with the global fetch on exactly the local networks",
+    "file": "src/client.ts",
+    "search": "    const handed = { agentOptions }",
+    "replace": "    const handed = { agentOptions: resolution.network.agentOptions }"
   }
 ]
