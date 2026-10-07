@@ -11,8 +11,10 @@
 //   the server render, and once in the browser tab, where it lives across
 //   client-side navigations (the layout stays mounted) and is disposed if the
 //   tree ever unmounts.
-// - `auth: () => new AuthClient()` (`@icp-sdk/auth` 10) is called only in a
-//   browser, on first use. In the server render the client never builds it
+// - `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth` 10) is
+//   called only in a browser, on first use, with the client's network (on
+//   "ic", mainnet's agent options and no identity provider, so mainnet's
+//   Internet Identity). In the server render the client never builds it
 //   and calls as the anonymous principal, 2vxsx-fae, which is also who the
 //   server's own request client (src/server/request-client.ts) prefetched
 //   as. So the keys the server dehydrated are the keys the browser asks for
@@ -46,7 +48,10 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <ReactorProvider
       client={() =>
-        createClient({ network: "ic", auth: () => new AuthClient() })
+        createClient({
+          network: "ic",
+          auth: (network) => new AuthClient(network),
+        })
       }
     >
       {children}

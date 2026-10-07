@@ -54,8 +54,13 @@ Who calls (exactly one):
   read-only: every update is refused before sending. A
   `new AnonymousIdentity()` signs writes, so map one you are handed:
   `identity: id && !id.getPrincipal().isAnonymous() ? id : "anonymous"`.
-- `auth: () => new AuthClient()` (`@icp-sdk/auth/client`): users sign in and
-  out. The factory runs once, in a browser only.
+- `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth/client`):
+  users sign in and out. The factory runs once, in a browser only. `network`
+  is `{ agentOptions, identityProvider? }`: the client's host and root key,
+  and the Internet Identity to sign in with (the `ic_env` cookie's, or
+  icp-cli's built-in one for a local host; absent means mainnet's). A project
+  that deploys its own `internet_identity` names it:
+  `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
 
 Who is calling, and may they write:
 
