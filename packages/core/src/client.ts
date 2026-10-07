@@ -32,12 +32,13 @@ import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
 import {
   agentOptionsFor,
+  authNetworkFor,
   resolveNetwork,
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
 import { createBuilders } from "./options.js"
-import { isServer } from "./runtime.js"
+import { isDevelopment, isServer } from "./runtime.js"
 import type {
   Canister,
   CanisterMutationOptions,
@@ -165,11 +166,45 @@ export type ClientOptions = {
   | {
       /**
        * Builds the sign-in this client calls as, such as
-       * `() => new AuthClient()`. It is called once, on first use, and only in
-       * a browser: on a server the client is anonymous and never calls it. The
-       * client owns what it returns and disposes it with itself.
+       * `(network) => new AuthClient(network)`. It is called once, on first
+       * use, and only in a browser: on a server the client is anonymous and
+       * never calls it. The client owns what it returns and disposes it with
+       * itself.
+       *
+       * `network` is the client's network under `@icp-sdk/auth` 10's own
+       * option names, so `new AuthClient(network)` signs in where the client
+       * calls:
+       *
+       * - `agentOptions`: the host, root key and `shouldFetchRootKey` of the
+       *   client's own agents.
+       * - `identityProvider`: the Internet Identity to sign in with. A trusted
+       *   `ic_env` cookie's `INTERNET_IDENTITY_PROVIDER` (with its
+       *   `PUBLIC_CANISTER_ID:internet_identity`, or
+       *   `rdmx6-jaaaa-aaaaa-aaadq-cai`); else, for `"local"` or a local host,
+       *   icp-cli's built-in one at `http://id.ai.localhost:<port>/authorize`;
+       *   else absent, which `AuthClient` reads as mainnet's.
+       *
+       * Absent on a network that is not mainnet's (a project that deploys its
+       * own `internet_identity`, `"env"` on a local page with no provider in
+       * the cookie, a replica with its own root key), sign-in cannot work: a
+       * replica rejects the delegations mainnet's Internet Identity mints.
+       * The client says so once, in development. Name the provider:
+       * `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
+       *
+       * A factory that takes no argument, such as `() => new AuthClient()`,
+       * is fine too.
        */
-      readonly auth: () => AuthLike
+      readonly auth: (network: {
+        readonly agentOptions: {
+          readonly host: string
+          readonly rootKey?: Uint8Array
+          readonly shouldFetchRootKey: boolean
+        }
+        readonly identityProvider?: {
+          readonly authorizeUrl: string
+          readonly canisterId: string
+        }
+      }) => AuthLike
       readonly identity?: never
     }
 )
@@ -591,12 +626,12 @@ function checkOptions(options: ClientOptions): void {
   if (identity === undefined && auth === undefined) {
     throw new TypeError(
       '[ic-reactor] createClient() needs to know who calls: identity: "anonymous" for a read-only client, ' +
-        "identity: <Identity> for a fixed signer, or auth: () => new AuthClient() to sign users in, in a browser."
+        "identity: <Identity> for a fixed signer, or auth: (network) => new AuthClient(network) to sign users in, in a browser."
     )
   }
   if (auth !== undefined && typeof auth !== "function") {
     throw new TypeError(
-      "[ic-reactor] auth is a factory, called only in a browser: auth: () => new AuthClient(), not the AuthClient itself."
+      "[ic-reactor] auth is a factory, called only in a browser: auth: (network) => new AuthClient(network), not the AuthClient itself."
     )
   }
   if (
@@ -661,16 +696,6 @@ function checkHost(host: string): void {
   }
 }
 
-const isProduction = (): boolean => {
-  try {
-    return (
-      typeof process !== "undefined" && process.env.NODE_ENV === "production"
-    )
-  } catch {
-    return false
-  }
-}
-
 let warnedEnvOffPage = false
 
 /**
@@ -680,7 +705,12 @@ let warnedEnvOffPage = false
  * client per request.
  */
 function warnEnvOffPage(network: Network): void {
-  if (network !== "env" || !isServer() || warnedEnvOffPage || isProduction()) {
+  if (
+    network !== "env" ||
+    !isServer() ||
+    warnedEnvOffPage ||
+    !isDevelopment()
+  ) {
     return
   }
   warnedEnvOffPage = true
@@ -819,7 +849,7 @@ function stateOf(auth: AuthLike): AuthState {
  * import { AuthClient } from "@icp-sdk/auth/client"
  * import { createClient } from "@ic-reactor/core"
  *
- * const client = createClient({ network: "ic", auth: () => new AuthClient() })
+ * const client = createClient({ network: "ic", auth: (network) => new AuthClient(network) })
  * client.subscribe(() => console.log(client.authState()))
  * await client.signIn()
  * ```
@@ -844,6 +874,12 @@ export interface ClientSeams {
    * call can see.
    */
   readonly authOnServer?: boolean
+  /**
+   * Keeps quiet about a network no identity provider could be named for. A
+   * test client's auth is the test auth, which ignores the network it is
+   * handed and signs in with no identity provider at all.
+   */
+  readonly quietAuthNetwork?: boolean
 }
 
 /**
@@ -921,6 +957,8 @@ export function createClientWith(
   const listeners = new Set<() => void>()
   let auth: AuthLike | undefined
   let unsubscribeAuth: (() => void) | undefined
+  /** Whether this client said that its network has no identity provider. */
+  let warnedAuthNetwork = false
   let disposed = false
   /** What {@link Client.authState} returns: replaced only when the state changes. */
   let snapshot: AuthState = fixedState ?? ANONYMOUS_STATE
@@ -971,7 +1009,23 @@ export function createClientWith(
     ) {
       return auth
     }
-    const built = checkAuth(authFactory())
+    const resolution = authNetworkFor(options.network, network)
+    if (
+      resolution.gap !== undefined &&
+      !warnedAuthNetwork &&
+      seams.quietAuthNetwork !== true &&
+      isDevelopment()
+    ) {
+      warnedAuthNetwork = true
+      console.warn(
+        `[ic-reactor] sign-in cannot work on this network (${network.host}) without an identity provider: ${resolution.gap}. ` +
+          "The auth factory was given no identityProvider, so an AuthClient built from it signs in with mainnet's " +
+          "Internet Identity, whose delegations this replica rejects. Name the provider: " +
+          "(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } }). " +
+          "(Logged once, in development.)"
+      )
+    }
+    const built = checkAuth(authFactory(resolution.network))
     auth = built
     const initial = stateOf(built)
     if (!sameState(initial, snapshot)) snapshot = Object.freeze(initial)
@@ -1113,7 +1167,7 @@ export function createClientWith(
     if (authFactory === undefined) {
       throw new TypeError(
         `[ic-reactor] ${call}() needs a client built with auth; this one was built with identity, which never changes. ` +
-          "Build it as createClient({ network, auth: () => new AuthClient() }) to sign users in and out."
+          "Build it with auth: (network) => new AuthClient(network) to sign users in and out."
       )
     }
     const source = ensureAuth()

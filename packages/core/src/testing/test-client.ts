@@ -486,7 +486,7 @@ export function createTestClient(
       allowEnvConfig,
       maxDepth,
     },
-    { authOnServer: true }
+    { authOnServer: true, quietAuthNetwork: true }
   )
   const limit = maxDepth ?? DEFAULT_MAX_DEPTH
 

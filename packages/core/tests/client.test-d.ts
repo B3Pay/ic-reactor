@@ -51,6 +51,45 @@ export const fromAuthClient: AuthLike = authClient
 export const fromTestAuth: AuthLike = createTestAuth({ seed: 1 })
 createClient({ network: "ic", auth: () => new AuthClient() })
 createClient({ network: "ic", auth: () => createTestAuth() })
+
+// The factory is handed the client's network under AuthClient 10's own option
+// names, so it passes straight through, or spread with a provider of its own.
+createClient({ network: "env", auth: (network) => new AuthClient(network) })
+createClient({
+  network: "env",
+  auth: (network) =>
+    new AuthClient({
+      ...network,
+      identityProvider: {
+        authorizeUrl: "http://id.ai.localhost:8000/authorize",
+        canisterId: "bkyz2-fmaaa-aaaaa-qaaaq-cai",
+      },
+      openIdProvider: "google",
+    }),
+})
+createClient({
+  network: "local",
+  auth: (network) => {
+    expectTypeOf(network.agentOptions.host).toEqualTypeOf<string>()
+    expectTypeOf(network.agentOptions.rootKey).toEqualTypeOf<
+      Uint8Array | undefined
+    >()
+    expectTypeOf(
+      network.agentOptions.shouldFetchRootKey
+    ).toEqualTypeOf<boolean>()
+    expectTypeOf(network.identityProvider).toEqualTypeOf<
+      { readonly authorizeUrl: string; readonly canisterId: string } | undefined
+    >()
+    // @ts-expect-error what the client hands over is read, never written
+    network.agentOptions = { host: "x", shouldFetchRootKey: false }
+    return createTestAuth()
+  },
+})
+// @ts-expect-error the factory is handed one argument, not two
+createClient({
+  network: "ic",
+  auth: (_network, _more: string) => createTestAuth(),
+})
 expectTypeOf<AuthClient>().toExtend<AuthLike>()
 
 // A status the client does not know is not an AuthLike's.
