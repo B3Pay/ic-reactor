@@ -1,6 +1,6 @@
 # @ic-reactor/core
 
-> **ic-reactor 4 is a prerelease.** `4.0.0-beta.2` is published under npm's
+> **ic-reactor 4 is a prerelease.** `4.0.0-beta.3` is published under npm's
 > `beta` dist-tag, and `latest` stays 3.x until 4.0 GA: install it as
 > `@ic-reactor/core@beta`. It replaces the 3.x runtime with a thin layer over a
 > candid-core generated module (milestone 1,

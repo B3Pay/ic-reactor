@@ -85,8 +85,9 @@ The client picks the identity provider by these rules, in order:
    cookie, or fetched): no provider.
 6. Mainnet: no provider, and `AuthClient`'s defaults are right.
 
-So with `network: "env"` and the plugin's cookie, the one line above signs in
-with the local Internet Identity in dev and with mainnet's on a deployed page.
+So in the [Vite wallet](/v4/examples/vite-wallet/), with `network: "env"` and
+the plugin's cookie, the one line above signs in with the local Internet
+Identity in dev and with mainnet's on a deployed page.
 
 A local replica rejects every delegation mainnet's Internet Identity mints.
 So in cases 2, 4 and 5, on a network that is not mainnet's, the client warns

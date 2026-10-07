@@ -13,9 +13,9 @@ published stable candid-core releases, `@candid-core/schema` and
 
 ### Packages
 
-- `@ic-reactor/core` (`packages/core`, `4.0.0-beta.2`) — the 4 API of milestone 1: `createClient`, `ReactorError` and `isReactorError`, `parseUnits` and `formatUnits`, and their types (13 names, `scripts/export-budget.mjs`). `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
-- `@ic-reactor/react` (`packages/react`, `4.0.0-beta.2`) — `'use client'` bindings over a core client: `ReactorProvider`, `useClient`, `useAuth` and the type `ReactorProviderProps`. It never re-exports core.
-- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-beta.2`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
+- `@ic-reactor/core` (`packages/core`, `4.0.0-beta.3`) — the 4 API of milestone 1: `createClient`, `ReactorError` and `isReactorError`, `parseUnits` and `formatUnits`, and their types (13 names, `scripts/export-budget.mjs`). `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
+- `@ic-reactor/react` (`packages/react`, `4.0.0-beta.3`) — `'use client'` bindings over a core client: `ReactorProvider`, `useClient`, `useAuth` and the type `ReactorProviderProps`. It never re-exports core.
+- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-beta.3`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
 
 `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli` and
 `@ic-reactor/candid` are not in this tree (the last stays at 3.x on `main`).
