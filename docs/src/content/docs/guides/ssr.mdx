@@ -67,7 +67,10 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <ReactorProvider
       client={() =>
-        createClient({ network: "ic", auth: () => new AuthClient() })
+        createClient({
+          network: "ic",
+          auth: (network) => new AuthClient(network),
+        })
       }
     >
       {children}
@@ -112,8 +115,9 @@ The `network` option is part of every query key. On a server:
   client logs a warning once per process. Use `{ id }` for every canister a
   server calls.
 - Where `"env"` points a server is: `ICP_HOST` or `IC_HOST` when `ICP_NETWORK`
-  (or `DFX_NETWORK`) is `"local"` (`http://127.0.0.1:4943` if neither host is
-  set), and mainnet otherwise.
+  is `"local"` (icp-cli's `http://127.0.0.1:8000` if neither host is set), and
+  mainnet otherwise. With no `ICP_NETWORK`, dfx's `DFX_NETWORK=local` counts
+  too, and its default is dfx's `http://127.0.0.1:4943`.
 
 Keys match between the server and the browser only when their network segment
 matches. The segment of `"ic"` is `"ic"`. The segment of an object network is

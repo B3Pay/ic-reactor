@@ -38,7 +38,7 @@ that cannot be used.
 | `network` | Host                                                                                                                                                                                                                                                                                                                     | Root key                                                                                                                          | Key segment                               |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
 | `"ic"`    | `https://icp-api.io`                                                                                                                                                                                                                                                                                                     | Mainnet's, built into the agent. Nothing is fetched.                                                                              | `"ic"`                                    |
-| `"local"` | `http://127.0.0.1:4943`                                                                                                                                                                                                                                                                                                  | Fetched from the replica before the first call.                                                                                   | `"local"`                                 |
+| `"local"` | `http://127.0.0.1:8000`                                                                                                                                                                                                                                                                                                  | Fetched from the replica before the first call.                                                                                   | `"local"`                                 |
 | an object | `host`                                                                                                                                                                                                                                                                                                                   | `rootKey` as given, never fetched. Without it, fetched only when `host` is local, unless `fetchRootKey` says otherwise.           | `name`, or `host` when there is no `name` |
 | `"env"`   | In a browser, the page's own origin when the page is local, on a mainnet boundary domain, or on Codespaces or Gitpod. Any other page (Vercel, a custom domain) uses the server rule [below](#env-on-a-server), which in a browser is usually mainnet (`https://icp-api.io`). On a server, see [below](#env-on-a-server). | From the `ic_env` cookie, only where the cookie is trusted. A local replica with no key from the cookie has its root key fetched. | the resolved host                         |
 
@@ -100,8 +100,10 @@ with a `rootKey` or `fetchRootKey: true`.
 ### `"env"` on a server
 
 A server has no page and no cookie. The host is `ICP_HOST` or `IC_HOST` when
-`ICP_NETWORK` (or `DFX_NETWORK`) is `"local"`, `http://127.0.0.1:4943` if
-neither host is set, and mainnet otherwise.
+`ICP_NETWORK` is `"local"`, `http://127.0.0.1:8000` (icp-cli's local network,
+as for `"local"`) if neither host is set, and mainnet otherwise. With no
+`ICP_NETWORK`, dfx's `DFX_NETWORK=local` counts too, and its default is dfx's
+replica, `http://127.0.0.1:4943`.
 
 Without a cookie, a `{ name }` target never resolves: every call rejects as
 `invalid_args` with code `canister_id_unresolved`, and nothing is sent. Use
@@ -154,11 +156,18 @@ it with itself.
 import { createClient } from "@ic-reactor/core"
 import { AuthClient } from "@icp-sdk/auth/client"
 
-const client = createClient({ network: "ic", auth: () => new AuthClient() })
+const client = createClient({
+  network: "ic",
+  auth: (network) => new AuthClient(network),
+})
 ```
 
+The factory is handed the client's `network` as `AuthClient` takes it:
+`agentOptions` (the host and root key of the client's own agents, and its
+`fetch`, when you gave one) and, where one can be named, `identityProvider`,
+the Internet Identity to sign in with.
 `@icp-sdk/auth` 10's `AuthClient` is an `AuthLike` as it is. Any other sign-in
-source needs a small adapter. See [Auth](/v4/guides/auth/).
+source needs a small adapter. See [Auth](/v4/guides/auth/) for both.
 
 ### Who is calling
 

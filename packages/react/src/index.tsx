@@ -250,7 +250,7 @@ function reportLazilyShared(): void {
 export interface ReactorProviderProps {
   /**
    * Returns the client of this tree. Either it creates one, such as
-   * `() => createClient({ network: "ic", auth: () => new AuthClient() })`, and
+   * `() => createClient({ network: "ic", auth: (network) => new AuthClient(network) })`, and
    * the provider owns that client and disposes it when it unmounts; or it
    * returns a client the app created before, at module scope, as
    * `() => client`, and the provider borrows it and never disposes it.
@@ -346,7 +346,7 @@ export interface ReactorProviderProps {
  *   return (
  *     <ReactorProvider
  *       client={() =>
- *         createClient({ network: "ic", auth: () => new AuthClient() })
+ *         createClient({ network: "ic", auth: (network) => new AuthClient(network) })
  *       }
  *     >
  *       {children}
@@ -369,7 +369,7 @@ export interface ReactorProviderProps {
  *
  * export const client = createClient({
  *   network: "ic",
- *   auth: () => new AuthClient(),
+ *   auth: (network) => new AuthClient(network),
  * })
  *
  * export function Providers({ children }: { children: ReactNode }) {

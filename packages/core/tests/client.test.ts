@@ -176,7 +176,7 @@ describe("a client built with an identity", () => {
 
     await expect(client.signIn()).rejects.toThrow(TypeError)
     await expect(client.signIn()).rejects.toThrow(
-      /built with identity.*auth: \(\) => new AuthClient\(\)/
+      /built with identity.*auth: \(network\) => new AuthClient\(network\)/
     )
     await expect(client.signOut()).rejects.toThrow(TypeError)
   })

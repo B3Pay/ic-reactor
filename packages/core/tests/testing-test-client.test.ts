@@ -978,7 +978,7 @@ describe("the network it believes it is on", () => {
 
     await expect(test.canister.one(1n)).resolves.toBe(2n)
     expect(test.client.network).toBe("local")
-    expect(internalsOf(test.client).network.host).toBe("http://127.0.0.1:4943")
+    expect(internalsOf(test.client).network.host).toBe("http://127.0.0.1:8000")
   })
 
   it("follows the environment's host for `env`", async () => {

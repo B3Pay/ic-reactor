@@ -188,11 +188,12 @@ Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
 (defaults to `"local"`).
 
 If environment detection fails, the plugin falls back to proxying `/api` to
-`http://127.0.0.1:4943`, and sets no cookie, or with no canisters configured one
-that names only icp-cli's built-in Internet Identity. It warns when that happens
-with canisters configured, and when a configured canister has no ID, because
-the failure is otherwise indistinguishable from success until the app breaks on
-an undefined canister id. Run with `DEBUG=ic-reactor` to see the `icp` output
+icp-cli's local network, `http://127.0.0.1:8000`, and sets no cookie, or with
+no canisters configured one that names only icp-cli's built-in Internet
+Identity. It warns when that happens with canisters configured, and when a
+configured canister has no ID, because the failure is otherwise
+indistinguishable from success until the app breaks on an undefined canister
+id. Run with `DEBUG=ic-reactor` to see the `icp` output
 behind the warning.
 
 Detection is complete once `icp` reports the network and every configured

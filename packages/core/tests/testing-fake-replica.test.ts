@@ -42,7 +42,7 @@ import {
 
 const CANISTER = "rdmx6-jaaaa-aaaaa-aaadq-cai"
 const OTHER_CANISTER = "rrkah-fqaaa-aaaaa-aaaaq-cai"
-const DEFAULT_HOST = "http://127.0.0.1:4943"
+const DEFAULT_HOST = "http://127.0.0.1:8000"
 
 // A fake replica is handed to agents, never installed: whatever a test does,
 // the global `fetch` is the one the file started with.
@@ -1132,7 +1132,7 @@ describe("the fault hooks", () => {
 })
 
 describe("the fake replica's routing", () => {
-  it("answers http://127.0.0.1:4943 when no host is given", async () => {
+  it('answers http://127.0.0.1:8000, the client\'s "local", when no host is given', async () => {
     const replica = createFakeReplica({
       canisters: { [CANISTER]: { query: answerWithCaller } },
     })
@@ -1224,7 +1224,7 @@ describe("the fake replica's routing", () => {
     it.each([
       ["a mainnet page", "https://abcde-aaaaa-aaaaa-aaaaa-cai.icp0.io/"],
       ["an opaque origin", "file:///tmp/index.html"],
-    ])("answers http://127.0.0.1:4943 on %s", (_, href) => {
+    ])("answers http://127.0.0.1:8000 on %s", (_, href) => {
       vi.stubGlobal("location", new URL(href))
 
       expect(createFakeReplica().host).toBe(DEFAULT_HOST)
