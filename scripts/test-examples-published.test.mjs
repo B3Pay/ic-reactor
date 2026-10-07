@@ -26,6 +26,8 @@ import {
   REGISTRY_ARGS,
   WEBCONTAINER_MODEL,
   ancestorFindings,
+  awaitsRelease,
+  definesScript,
   checkInstalled,
   checkLockfile,
   checkManifest,
@@ -39,6 +41,8 @@ import {
   resolveRun,
   scopePackageNames,
   stackblitzStartCommand,
+  startScriptFindings,
+  staticFindings,
   trackedConfigFindings,
   waitForPublished,
   webContainerEnv,
@@ -88,13 +92,18 @@ const SCOPE_PACKAGES = [
 
 /**
  * `npm view <spec> <field>` against a registry where every @ic-reactor
- * package's dist-tags are `tags` and every version in them is served with an
- * integrity. Records each spec asked for in `asked`.
+ * package's dist-tags are `tags`, its published versions are `versions`
+ * (default: the ones `tags` name), and every version the tags name is served
+ * with an integrity. Records each spec asked for in `asked`.
  */
-function fakeView(tags) {
+function fakeView(tags, versions = Object.values(tags)) {
   const asked = []
   const view = (spec, field) => {
     asked.push(`${spec} ${field}`)
+    if (field === "versions") {
+      assert.ok(SCOPE_PACKAGES.includes(spec), `asked npm about ${spec}`)
+      return versions
+    }
     const at = spec.lastIndexOf("@")
     const [name, selector] = [spec.slice(0, at), spec.slice(at + 1)]
     assert.ok(SCOPE_PACKAGES.includes(name), `asked npm about ${name}`)
@@ -107,14 +116,24 @@ function fakeView(tags) {
   return { view, asked }
 }
 
-/** What main() resolves for `argv` on a branch at `branchVersion`. */
-const resolveFor = (argv, branchVersion, tags) => {
-  const { view, asked } = fakeView(tags)
+/**
+ * What main() resolves for `argv` on a branch at `branchVersion`: with
+ * `manifests` (the examples' package.json files), as main() passes them, and
+ * the packages a release run waits on taken from them; without, every
+ * package and no example.
+ */
+const resolveFor = (
+  argv,
+  branchVersion,
+  tags,
+  { manifests, versions } = {}
+) => {
+  const { view, asked } = fakeView(tags, versions)
   const run = resolveRun(
     {
       waitFor: parseArgs(argv).waitFor,
       branchVersion,
-      packages: SCOPE_PACKAGES,
+      ...(manifests ? { manifests } : { packages: SCOPE_PACKAGES }),
     },
     // No polling: a package the tag does not name yet fails at once.
     { view, timeoutMs: 0, wait: async () => {}, log: () => {} }
@@ -217,6 +236,88 @@ describe("resolveRun", () => {
     const { run, asked } = resolveFor(["--wait-for", "latest"], STABLE, tags)
     await assert.rejects(run, /is not a release version/)
     assert.deepEqual(asked, [])
+  })
+
+  // The examples as release.js leaves them on this branch: every
+  // @ic-reactor/* range is ^<the branch's version>.
+  const pinned = (version) => [
+    {
+      dependencies: {
+        "@ic-reactor/core": `^${version}`,
+        "@ic-reactor/react": `^${version}`,
+      },
+      devDependencies: { "@ic-reactor/vite-plugin": `^${version}` },
+    },
+    { dependencies: { "@ic-reactor/core": `^${version}`, zod: "^4.1.0" } },
+  ]
+  const beforeGa = { beta: BETA, latest: "3.13.0" }
+
+  it("defers a run with no --wait-for while the examples wait on the branch's unpublished version", async () => {
+    const { run, asked } = resolveFor([], STABLE, beforeGa, {
+      manifests: pinned(STABLE),
+    })
+    assert.deepEqual(await run, { deferred: true, version: STABLE })
+    // Only core's versions: no dist-tag is read, so nothing is tested.
+    assert.deepEqual(asked, ["@ic-reactor/core versions"])
+  })
+
+  it("tests the branch's tag once its version is published, with the same examples", async () => {
+    const { run, asked } = resolveFor([], STABLE, tags, {
+      manifests: pinned(STABLE),
+    })
+    assert.deepEqual(await run, { tag: "latest", version: STABLE })
+    assert.deepEqual(asked, [
+      "@ic-reactor/core versions",
+      "@ic-reactor/core@latest version",
+    ])
+    // The same in a prerelease cycle: deferred, then beta.
+    const next = "4.1.0-beta.1"
+    const cycle = { beta: BETA, latest: STABLE }
+    assert.deepEqual(
+      await resolveFor([], next, cycle, { manifests: pinned(next) }).run,
+      { deferred: true, version: next }
+    )
+    assert.deepEqual(
+      await resolveFor(
+        [],
+        next,
+        { ...cycle, beta: next },
+        {
+          manifests: pinned(next),
+        }
+      ).run,
+      { tag: "beta", version: next }
+    )
+  })
+
+  it("never defers a release run, even with the examples on its unpublished version", async () => {
+    const waiting = resolveFor(["--wait-for", "v4.0.0"], STABLE, beforeGa, {
+      manifests: pinned(STABLE),
+    })
+    await assert.rejects(waiting.run, /@ic-reactor\/core@latest is 3\.13\.0/)
+    assert.ok(!waiting.asked.some((line) => line.endsWith(" versions")))
+    // Once published, it waits on every package the examples declare.
+    const { run, asked } = resolveFor(["--wait-for", "v4.0.0"], STABLE, tags, {
+      manifests: pinned(STABLE),
+    })
+    assert.deepEqual(await run, { tag: "latest", version: STABLE })
+    for (const name of SCOPE_PACKAGES) {
+      assert.ok(asked.includes(`${name}@latest version`), name)
+    }
+  })
+
+  it("tests the branch's tag, without asking for core's versions, when an example does not wait on the release", async () => {
+    const [first, second] = pinned(STABLE)
+    for (const manifests of [
+      // A local protocol is refused by checkManifest: never deferred past.
+      [first, { ...second, devDependencies: { tool: "workspace:*" } }],
+      // A range other than ^<the branch's version>.
+      [first, { dependencies: { "@ic-reactor/core": "^4.0.0-beta.2" } }],
+    ]) {
+      const { run, asked } = resolveFor([], STABLE, beforeGa, { manifests })
+      assert.deepEqual(await run, { tag: "latest", version: "3.13.0" })
+      assert.deepEqual(asked, ["@ic-reactor/core@latest version"])
+    }
   })
 })
 
@@ -348,6 +449,240 @@ describe("checkManifest", () => {
       [
         `dependencies.@ic-reactor/react is "${BETA}", which latest (${STABLE}) does not satisfy: npm would install ${BETA}`,
       ]
+    )
+  })
+})
+
+describe("awaitsRelease", () => {
+  const example = (deps, devDeps = {}) => ({
+    name: "example",
+    dependencies: { "@candid-core/schema": "0.3.0", ...deps },
+    devDependencies: devDeps,
+  })
+  const synced = [
+    example(
+      {
+        "@ic-reactor/core": "^4.0.0-beta.2",
+        "@ic-reactor/react": "^4.0.0-beta.2",
+      },
+      { "@ic-reactor/vite-plugin": "^4.0.0-beta.2" }
+    ),
+    example({ "@ic-reactor/core": "^4.0.0-beta.2" }),
+  ]
+  const before = {
+    branchVersion: "4.0.0-beta.2",
+    publishedVersions: ["4.0.0-beta.1"],
+  }
+
+  it("defers a release pull request: every example pins the branch's unpublished version", () => {
+    assert.equal(awaitsRelease(synced, before), true)
+  })
+
+  it("tests once the branch's version is published", () => {
+    assert.equal(
+      awaitsRelease(synced, {
+        branchVersion: "4.0.0-beta.2",
+        publishedVersions: ["4.0.0-beta.1", "4.0.0-beta.2"],
+      }),
+      false
+    )
+  })
+
+  it("tests when one example pins anything but the branch's version", () => {
+    for (const range of [
+      "^4.0.0-beta.1",
+      "4.0.0-beta.2",
+      "~4.0.0-beta.2",
+      "^4.0.0",
+      "*",
+    ]) {
+      const manifests = [...synced, example({ "@ic-reactor/core": range })]
+      assert.equal(awaitsRelease(manifests, before), false, range)
+    }
+  })
+
+  it("tests a local protocol range, which checkManifest refuses", () => {
+    const manifests = [
+      ...synced,
+      example({ "@ic-reactor/react": "workspace:*" }),
+    ]
+    assert.equal(awaitsRelease(manifests, before), false)
+  })
+
+  it("tests a local protocol on any other dependency, even with every @ic-reactor range synced", () => {
+    for (const range of [
+      "workspace:*",
+      "file:../tool",
+      "link:../tool",
+      "portal:../tool",
+    ]) {
+      const manifests = [
+        synced[0],
+        {
+          ...example({ "@ic-reactor/core": "^4.0.0-beta.2" }),
+          devDependencies: { "some-tool": range },
+        },
+      ]
+      assert.equal(awaitsRelease(manifests, before), false, range)
+    }
+  })
+
+  it("tests when any one example declares no @ic-reactor package, even beside synced ones", () => {
+    assert.equal(awaitsRelease([...synced, example({})], before), false)
+  })
+
+  it("tests when no example declares an @ic-reactor package, or the branch has no version", () => {
+    assert.equal(awaitsRelease([example({})], before), false)
+    assert.equal(
+      awaitsRelease(synced, {
+        branchVersion: undefined,
+        publishedVersions: [],
+      }),
+      false
+    )
+  })
+})
+
+describe("staticFindings", () => {
+  const scripts = {
+    typecheck: "tsc",
+    test: "vitest run",
+    build: "vite build",
+    dev: "vite",
+  }
+  const ok = { command: "npm run dev" }
+
+  it("finds nothing for an example with its scripts, no tracked config and a start command", () => {
+    assert.deepEqual(
+      staticFindings("example", {
+        files: ["package.json", "src/a.ts"],
+        scripts,
+        start: ok,
+      }),
+      []
+    )
+  })
+
+  it("collects each check's findings, so a deferral cannot skip them", () => {
+    const findings = staticFindings("example", {
+      files: ["package.json", ".npmrc"],
+      scripts: { typecheck: "tsc", test: "vitest run" },
+      start: { finding: ".stackblitzrc is missing" },
+    })
+    assert.equal(findings.length, 3, findings.join("\n"))
+    assert.ok(findings.some((f) => f.includes(".npmrc")))
+    assert.ok(findings.some((f) => f.includes('"build"')))
+    assert.ok(findings.includes(".stackblitzrc is missing"))
+  })
+})
+
+describe("startScriptFindings", () => {
+  const scripts = { dev: "vite", test: "vitest run", build: "vite build" }
+  const files = ["package.json"]
+
+  it("passes an npm start command that names a defined script", () => {
+    for (const command of [
+      "npm run dev",
+      "npm run dev -- --host",
+      "npm test",
+      "npm t",
+      "npm run-script build",
+    ]) {
+      assert.deepEqual(
+        startScriptFindings(command, { files, scripts }),
+        [],
+        command
+      )
+    }
+  })
+
+  it("refuses an npm start command whose script is not defined", () => {
+    for (const command of [
+      "npm run typo",
+      "npm start",
+      "npm run serve -- --port 3000",
+    ]) {
+      const findings = startScriptFindings(command, { files, scripts })
+      assert.equal(findings.length, 1, command)
+      assert.ok(findings[0].includes("does not define"), findings[0])
+    }
+  })
+
+  it("passes npm's default start, node server.js, when server.js is tracked", () => {
+    assert.deepEqual(
+      startScriptFindings("npm start", {
+        files: ["package.json", "server.js"],
+        scripts,
+      }),
+      []
+    )
+  })
+
+  it("refuses a command it cannot check: npm options, other programs (fails closed)", () => {
+    for (const command of [
+      "npm run typo --loglevel=silent",
+      "npm --prefix . run dev",
+      "node index.js",
+      "npx vite",
+      "npm run",
+    ]) {
+      const findings = startScriptFindings(command, { files, scripts })
+      assert.equal(findings.length, 1, command)
+      assert.ok(
+        findings[0].includes("not a plain npm script command"),
+        findings[0]
+      )
+    }
+  })
+
+  it("leaves a missing start command to stackblitzStartCommand's own finding", () => {
+    assert.deepEqual(startScriptFindings(undefined, { files, scripts }), [])
+  })
+
+  it("is part of staticFindings, so a deferral checks it", () => {
+    const findings = staticFindings("example", {
+      files,
+      scripts: { typecheck: "tsc", ...scripts },
+      start: { command: "npm run typo" },
+    })
+    assert.equal(findings.length, 1, findings.join("\n"))
+  })
+})
+
+describe("definesScript", () => {
+  it("takes only a non-empty string, as npm does", () => {
+    const scripts = {
+      build: "vite build",
+      typecheck: 42,
+      test: "",
+      lint: "  ",
+      dev: null,
+    }
+    assert.equal(definesScript(scripts, "build"), true)
+    for (const name of [
+      "typecheck",
+      "test",
+      "lint",
+      "dev",
+      "missing",
+      "toString",
+    ]) {
+      assert.equal(definesScript(scripts, name), false, name)
+    }
+    assert.equal(definesScript(undefined, "build"), false)
+  })
+
+  it("makes requiredScriptFindings and startScriptFindings refuse a non-string script", () => {
+    const scripts = {
+      typecheck: 42,
+      test: "vitest run",
+      build: "vite build",
+      dev: true,
+    }
+    assert.equal(requiredScriptFindings("example", scripts, {}).length, 1)
+    assert.equal(
+      startScriptFindings("npm run dev", { files: [], scripts }).length,
+      1
     )
   })
 })
@@ -538,6 +873,29 @@ describe("the StackBlitz start command", () => {
     // npm itself would take these as its own flags, not the script's.
     assert.equal(parseNpmCommand("npm run dev --webpack"), undefined)
     assert.equal(parseNpmCommand("npm run"), undefined)
+    // Only the lifecycle commands have a bare form; npm refuses `npm dev`.
+    assert.equal(parseNpmCommand("npm dev"), undefined)
+    // Any unquoted script name npm runs, dots and slashes included.
+    assert.deepEqual(parseNpmCommand("npm run dev.web"), {
+      script: "dev.web",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm run gen/types -- --watch"), {
+      script: "gen/types",
+      args: ["--watch"],
+    })
+    // A name starting with "-" is an npm option, not a script.
+    assert.equal(parseNpmCommand("npm run --silent dev"), undefined)
+    assert.equal(parseNpmCommand("npm build -- --watch"), undefined)
+    assert.deepEqual(parseNpmCommand("npm start"), {
+      script: "start",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm restart"), {
+      script: "restart",
+      args: [],
+    })
+    assert.deepEqual(parseNpmCommand("npm run t"), { script: "t", args: [] })
     assert.equal(parseNpmCommand("node src/cli.ts demo"), undefined)
   })
 
