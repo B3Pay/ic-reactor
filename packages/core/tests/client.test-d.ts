@@ -54,7 +54,14 @@ createClient({ network: "ic", auth: () => createTestAuth() })
 
 // The factory is handed the client's network under AuthClient 10's own option
 // names, so it passes straight through, or spread with a provider of its own.
+// Its agentOptions, fetch included, fit AuthClient 10's
+// Omit<HttpAgentOptions, "identity">.
 createClient({ network: "env", auth: (network) => new AuthClient(network) })
+createClient({
+  network: "env",
+  fetch: globalThis.fetch,
+  auth: (network) => new AuthClient(network),
+})
 createClient({
   network: "env",
   auth: (network) =>
@@ -77,6 +84,10 @@ createClient({
     expectTypeOf(
       network.agentOptions.shouldFetchRootKey
     ).toEqualTypeOf<boolean>()
+    // The client's own fetch, when it was given one, for AuthClient's agents.
+    expectTypeOf(network.agentOptions.fetch).toEqualTypeOf<
+      typeof globalThis.fetch | undefined
+    >()
     expectTypeOf(network.identityProvider).toEqualTypeOf<
       { readonly authorizeUrl: string; readonly canisterId: string } | undefined
     >()
