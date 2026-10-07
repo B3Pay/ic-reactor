@@ -17,7 +17,7 @@ and shows the server-rendering story end to end:
   total supply, minting account and metadata with `{ id }` targets, and hands
   `dehydrate(client.queryClient)` to a `<HydrationBoundary>`.
 - **The provider factory in a `'use client'` module.**
-  `<ReactorProvider client={() => createClient({ network: "ic", auth: (network) => new AuthClient(network) })}>`
+  `<ReactorProvider client={() => createClient({ network: "ic", auth: () => new AuthClient() })}>`
   builds a client per mounted tree. The server render and the browser's
   hydrating render build keys for the anonymous principal, so every visitor
   gets the server's keys, a tab still signed in from an earlier visit

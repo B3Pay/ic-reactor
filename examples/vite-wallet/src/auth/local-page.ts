@@ -1,6 +1,7 @@
 // Whether the page is served from this machine: the only place the dev
-// account is offered. The same test ic-reactor applies before it trusts the
-// ic_env cookie: localhost, its subdomains, and the loopback addresses.
+// account is offered and the local Internet Identity is used. The same test
+// ic-reactor applies before it trusts the ic_env cookie: localhost, its
+// subdomains, and the loopback addresses.
 
 /** The part of `window.location` this reads. */
 export interface PageLocation {
