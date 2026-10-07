@@ -621,8 +621,9 @@ const builtInAuthorizeUrl = (host: string): string | undefined => {
  *    mainnet's. Its URL cannot be derived from its id.
  * 3. `"local"`, or a network object whose host is local: icp-cli's built-in
  *    Internet Identity on that host's port.
- * 4. `"env"` on a local page: none, and a gap. The agent's host is the dev
- *    server, which says nothing of the gateway's port.
+ * 4. `"env"` on a local page: none, and a gap. The agent's host is the
+ *    page's (a dev server, or a gateway serving an asset canister), which
+ *    does not say where icp-cli's built-in Internet Identity is.
  * 5. Any other network that does not verify against mainnet's root key: none,
  *    and a gap.
  * 6. Mainnet: none. `AuthClient`'s defaults are mainnet's.
@@ -680,11 +681,14 @@ export const authNetworkFor = (
   }
 
   if (network === "env" && pageIsLocal()) {
+    const why = net.trustsEnv
+      ? `whose ic_env cookie names no INTERNET_IDENTITY_PROVIDER`
+      : `with allowEnvConfig: false, so no INTERNET_IDENTITY_PROVIDER is read from the ic_env cookie`
     return {
       network: { agentOptions },
       gap:
-        `network "env" on a local page whose ic_env cookie names no INTERNET_IDENTITY_PROVIDER: ` +
-        `the agent's host is the dev server (${net.host}), which does not say where the replica's gateway is`,
+        `network "env" on a local page ${why}: ` +
+        `the agent's host (${net.host}) does not say where icp-cli's built-in Internet Identity is`,
     }
   }
 

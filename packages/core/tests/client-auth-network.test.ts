@@ -182,6 +182,51 @@ describe("the network an auth factory is handed", () => {
     ).toBeUndefined()
   })
 
+  it('takes the cookie\'s provider for "ic" when allowEnvConfig: true trusts the cookie', () => {
+    stubPage("https://app.example.com", {
+      cookie: cookieWithProvider("https://id.example.com/authorize"),
+    })
+
+    expect(handedTo("ic", { allowEnvConfig: true }).identityProvider).toEqual({
+      authorizeUrl: "https://id.example.com/authorize",
+      canisterId: II,
+    })
+  })
+
+  it("ignores a cookie's INTERNET_IDENTITY_PROVIDER that is not an http(s) URL", () => {
+    stubPage("http://localhost:5173", {
+      cookie: cookieWithProvider("javascript:alert(1)"),
+    })
+    muteWarnings()
+
+    expect(handedTo("env").identityProvider).toBeUndefined()
+  })
+
+  it("names Internet Identity's own id when the cookie's internet_identity is not principal text", () => {
+    stubPage("http://localhost:5173", {
+      cookie: cookieWithProvider("http://id.ai.localhost:8001/authorize", {
+        "PUBLIC_CANISTER_ID:internet_identity": "not-a-principal",
+      }),
+    })
+
+    expect(handedTo("env").identityProvider).toEqual({
+      authorizeUrl: "http://id.ai.localhost:8001/authorize",
+      canisterId: II,
+    })
+  })
+
+  it("names the built-in Internet Identity on the local host's scheme, with no port where it has none", () => {
+    stubPage("https://app.example.com")
+
+    expect(
+      handedTo({ host: "https://foo.localhost", rootKey: GIVEN_ROOT_KEY })
+        .identityProvider
+    ).toEqual({
+      authorizeUrl: "https://id.ai.localhost/authorize",
+      canisterId: II,
+    })
+  })
+
   it('omits the provider for "env" on a mainnet page, whose agent checks against mainnet\'s key', () => {
     stubPage("https://abcde-aaaaa-aaaaa-aaaaa-cai.icp0.io")
 
@@ -264,6 +309,17 @@ describe("the warning for a network with no identity provider", () => {
 
     expect(warnings).toHaveLength(1)
     expect(warnings[0]).toContain("names no INTERNET_IDENTITY_PROVIDER")
+  })
+
+  it('blames allowEnvConfig: false, not the cookie, for "env" on a local page whose cookie it does not read', () => {
+    stubPage("http://localhost:5173", { cookie: cookieWithProvider() })
+
+    const warnings = warningsFor("env", { allowEnvConfig: false })
+
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain("allowEnvConfig: false")
+    expect(warnings[0]).not.toContain("names no INTERNET_IDENTITY_PROVIDER")
+    expect(warnings[0]).toContain(OVERRIDE)
   })
 
   it("is given for a replica with a root key of its own, given or fetched", () => {
