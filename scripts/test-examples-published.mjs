@@ -112,9 +112,10 @@ const RELEASE_VERSION =
  * With `--wait-for`, the one the release of that version publishes under:
  * `beta` for a prerelease (a `-` part after MAJOR.MINOR.PATCH, with or without
  * a leading `v`), `latest` for a stable version. This mirrors the rule of
- * `releaseFor` in scripts/release-tag.mjs, which release.yml uses to choose
- * the dist-tag it publishes under; that file arrives with #836 and is not on
- * this branch, so the rule is repeated here rather than imported.
+ * `releaseFor` in scripts/release-tag.mjs, with which release.yml chooses the
+ * dist-tag it publishes under once the GA flip (#836) brings that file; the
+ * rule is repeated here rather than imported, so this script works with or
+ * without it.
  *
  * A run without `--wait-for` (push, pull request, weekly, manual) passes the
  * branch's own version instead (see `resolveRun`), so it gets the tag of the
