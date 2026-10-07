@@ -56,8 +56,8 @@ peers name:
 ```bash
 npm install @ic-reactor/core @ic-reactor/react \
   @icp-sdk/core @tanstack/react-query
-npm install --save-exact @candid-core/schema@0.3.0-beta.1
-npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
+npm install --save-exact @candid-core/schema@0.3.0
+npm install --save-dev --save-exact @candid-core/cli@0.2.0
 npm install --save-dev @ic-reactor/vite-plugin # optional, for Vite
 ```
 

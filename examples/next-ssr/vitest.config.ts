@@ -8,6 +8,10 @@ const SERVER_COMPONENT_TESTS = "src/**/*.rsc.test.{ts,tsx}"
 // `createTestClient()` over an in-memory replica. Server modules run in Node;
 // a test that renders for the browser says `@vitest-environment jsdom`.
 //
+// package.json pins jsdom to 30.0.1: jsdom 30.1 subclasses the global
+// `Iterator`, which StackBlitz's WebContainer does not define, so there a jsdom
+// test fails to start with "ReferenceError: Iterator is not defined".
+//
 // A `*.rsc.test.tsx` file runs in the "react-server" project, as Next runs
 // Server Components: with the `react-server` export condition, so `react` is
 // React's server build, whose `cache()` memoizes for one request. Vitest

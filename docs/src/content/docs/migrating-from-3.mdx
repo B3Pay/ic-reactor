@@ -81,7 +81,7 @@ the common ones as before and after.
 | `createMutation`                     | `useMutation(client.mutationOptions(canister, method))`                                                                                                                                                                                                             |
 | `createQuery`                        | `useQuery(client.queryOptions(canister, method, vars))`; outside React, `client.queryClient.fetchQuery(client.queryOptions(...))`                                                                                                                                   |
 | `createActorHooks`                   | `useClient()`, then `client.canister<Actor>(actor, { id })` and the TanStack hooks                                                                                                                                                                                  |
-| `createSuspenseQuery`                | `useSuspenseQuery(suspense(client.queryOptions(...)))`, where `suspense` is the small cast shown in the [recipe](#recipe-suspense-reads)                                                                                                                            |
+| `createSuspenseQuery`                | `useSuspenseQuery(client.queryOptions(...))`: see the [recipe](#recipe-suspense-reads)                                                                                                                                                                              |
 | `DisplayReactor`                     | Nothing: values already have one shape. Use `formatUnits` and `parseUnits` for amounts                                                                                                                                                                              |
 | `Reactor`                            | `client.canister<Actor>(actor, { id })`                                                                                                                                                                                                                             |
 | `createReactorProvider`              | `<ReactorProvider client={() => createClient(...)}>` and `useClient()`                                                                                                                                                                                              |
@@ -236,31 +236,25 @@ name: see [Writes](/v4/guides/writes/#what-a-write-refreshes).
 ### Recipe: suspense reads
 
 `createSuspenseQuery`, `createSuspenseQueryFactory` and the hook
-`useActorSuspenseQuery` become `useSuspenseQuery`. One thing needs care.
-`queryOptions` can return `skipToken` as the query function, and `useSuspenseQuery` refuses a
-function type that includes it, so the options do not type-check as they are.
-A read built without `skipToken` never has it, so a cast that removes it from
-the type is safe:
+`useActorSuspenseQuery` become `useSuspenseQuery`, which takes the options of
+`client.queryOptions(...)` as they are. A suspense read cannot wait for its
+variables: options built with `skipToken`, or with variables typed
+`V | SkipToken`, keep `skipToken` in the type of `queryFn`, and
+`useSuspenseQuery` refuses them.
 
 ```tsx
 import { formatUnits } from "@ic-reactor/core"
 import { useClient } from "@ic-reactor/react"
-import { useSuspenseQuery, type skipToken } from "@tanstack/react-query"
+import { useSuspenseQuery } from "@tanstack/react-query"
 import { Suspense } from "react"
 import { actor, type Actor } from "./generated/icrc1"
-
-// Never pass `skipToken` to a suspense read.
-const suspense = <T extends { queryFn?: unknown }>(options: T) =>
-  options as T & { queryFn: Exclude<T["queryFn"], typeof skipToken> }
 
 function Fee() {
   const client = useClient()
   const ledger = client.canister<Actor>(actor, {
     id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
   })
-  const fee = useSuspenseQuery(
-    suspense(client.queryOptions(ledger, "icrc1_fee"))
-  )
+  const fee = useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee"))
   return <p>Fee: {formatUnits(fee.data, 8)}</p>
 }
 

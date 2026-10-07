@@ -22,9 +22,10 @@ backend canister of the example's own.
   local page. Switching accounts shows the next account nothing of the last.
 - **Reads and writes:** the balance with `skipToken` while signed out and a
   `refetchInterval`, so a top-up from the example's faucet shows by itself;
-  ICP transfers with `parseUnits`, the fee, `created_at_time` deduplication,
-  typed ledger errors and the unknown-outcome path; a profile write refused
-  before sending while signed out.
+  ICP transfers with `parseUnits`, the fee, deduplication by `created_at_time`
+  and a `memo` per transfer, typed ledger errors and the
+  unknown-outcome path; a profile write refused before sending while signed
+  out.
 - **Optimistic updates:** an address book whose adds and removes show at once
   and roll back on a refusal or a failure, while the client's own
   invalidation still runs; paying a contact refreshes both balances and not
@@ -39,10 +40,16 @@ Every scenario has tests on `createTestClient()` that run without a replica
 which the example installs (`pnpm icp:start`, `pnpm icp:deploy`,
 `pnpm dev`), and the Rust toolchain for the backend; see its README.
 
+StackBlitz installs the example from npm and runs those tests (`npm test`):
+you can read and change the code there and run them again. It cannot run the
+wallet itself. icp-cli's local network is a native binary, which StackBlitz
+does not run, and the backend needs the Rust toolchain, so the page it would
+serve has no network to call. Clone the repository to run the wallet.
+
 <CardGrid>
   <LinkCard
     title="Open in StackBlitz"
-    description="Read and edit the code in your browser"
+    description="Read the code and run the tests in your browser (not the wallet)"
     href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/vite-wallet?file=src/App.tsx"
   />
   <LinkCard

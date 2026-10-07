@@ -103,7 +103,7 @@ export const FOREIGN = [
   {
     package: "@candid-core/schema",
     from: "packages/core",
-    pin: "0.3.0-beta.1",
+    pin: "0.3.0",
     subpaths: [".", "./validate", "./contract", "./codec"],
   },
   {

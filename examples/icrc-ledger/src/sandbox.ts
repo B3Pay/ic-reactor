@@ -166,12 +166,15 @@ export function createSandbox(options: { latencyMs?: number } = {}): Sandbox {
   function transfer(arg: TransferArg, caller: Principal): TransferResult {
     const from: Account = { owner: caller, subaccount: arg.from_subaccount }
     const now = BigInt(Date.now()) * 1_000_000n
+    // As ICRC-1 deduplicates: on the whole transaction, so two arguments that
+    // differ in any field (the memo too, and no memo from an empty one) are
+    // two transfers.
     const txKey = [
       accountKey(from),
       accountKey(arg.to),
       arg.amount,
       arg.fee ?? "",
-      hex(arg.memo),
+      arg.memo === null ? "-" : hex(arg.memo),
       arg.created_at_time,
     ].join("|")
     if (arg.created_at_time !== null) {
@@ -264,8 +267,15 @@ export function createSandbox(options: { latencyMs?: number } = {}): Sandbox {
       if (fault === "reject-4") armedReject = 4
       else if (fault === "reject-2") armedReject = 2
       else if (fault === "lost-reply") test.dropNextReply()
-      else if (fault === "http-429") test.refuseNext(429)
-      else test.refuseNext(429, 3)
+      else {
+        // Aimed at the transfer, so a balance read the page makes meanwhile
+        // is answered.
+        test.refuseNext(429, {
+          method: "icrc1_transfer",
+          canister: SANDBOX_LEDGER,
+          times: fault === "http-429" ? 1 : 3,
+        })
+      }
     },
   }
 }

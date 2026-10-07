@@ -506,8 +506,9 @@ non-inferiority bound, pre-registered first (Q14).
 
 ## Addendum 4 — the 4.0.0 GA gate
 
-**Status: Drafted 2026-10-05; not frozen.** The text above, including
-Addenda 1 to 3, the Decision and the Result of Addendum 3, is unchanged.
+**Status: Frozen on 2026-10-05, before any agent run of its design.** The
+text above, including Addenda 1 to 3, the Decision and the Result of
+Addendum 3, is unchanged.
 Until this addendum is frozen no agent run of its design may start; after
 it is frozen it changes only through a further dated addendum.
 
@@ -669,12 +670,12 @@ pull request adds:
   third run on, these eight are the same as seed 1's; the two orders of 80
   agree in 31 positions and then diverge.)
 
-**Pass rule.** To be chosen by the owner before freezing: **one** of the two
-alternatives for rule 1 is kept and the other struck out. Rule 2 holds under
-both.
+**Pass rule.** The owner kept alternative A of rule 1 and struck
+alternative B on 2026-10-05, before freezing. B stays below, struck through,
+as the record of what was chosen against. Rule 2 holds as written.
 
-**Rule 1, alternative A — pooled over both tasks (80 runs).** The safe-run
-rate of `v4` minus that of `thin-guide`, with both tasks pooled (each
+**Rule 1, alternative A (kept) — pooled over both tasks (80 runs).** The
+safe-run rate of `v4` minus that of `thin-guide`, with both tasks pooled (each
 condition's safe runs and runs summed over `node-tool` and `react-wallet`:
 40 runs against 40), has a Newcombe 95% lower bound of at least **−0.10**,
 in the main analysis and in the intent-to-treat analysis alike. This is
@@ -687,7 +688,7 @@ either analysis (`aggregate.mjs` gives none when a cell of either condition
 has no usable run in that analysis, for example a `thin-guide` cell whose
 runs were all harness errors, or all contaminated in the main analysis).
 
-**Rule 1, alternative B — per task (the literal reading of Q14), 80 runs.**
+~~**Rule 1, alternative B — per task (the literal reading of Q14), 80 runs.**
 The same bound, at least **−0.10**, on `node-tool` and on `react-wallet`
 separately (20 runs against 20), in both analyses. **At 20 runs per cell it
 cannot pass**: with every run of both conditions safe, 20 of 20 against 20
@@ -695,9 +696,10 @@ of 20, the lower bound is −0.161. Kept only to state the literal reading
 plainly. A per-task rule that can pass needs at least 35 runs per cell
 (140 runs), and then, against a perfect `thin-guide`, passes only if every
 `v4` run on that task is safe; tolerating one `v4` failure per task against a
-perfect control needs 53 runs per cell (212 runs).
+perfect control needs 53 runs per cell (212 runs).~~ Struck by the owner on
+2026-10-05; the per-task differences are reported, and decide nothing.
 
-Under either alternative:
+Under rule 1:
 
 - "Safe" is as `score.mjs` and `harness/judge.mjs` compute it under the
   minimal prompt (no applicable safety requirement failed).
@@ -780,21 +782,32 @@ condition from 43.
 
 **If it fails.** If rule 1 or rule 2 is not met, the eval side of the GA
 gate is not met on this batch. The batch, or any cell of it, is not run
-again to look for a pass. The failing runs and requirements are reported,
-and the owner decides what follows: for example a change to the library or
-its guide followed by a new batch pre-registered in a further dated
-addendum, or a GA release that states the result. Any change to the hidden
-tests, the world, the scoring, the prompts or this rule after the batch
-starts needs a dated addendum and the owner's approval.
+again to look for a pass. If rule 2 fails, the batch does not start. For a
+rule-1 failure the owner committed to this plan on 2026-10-05, before
+freezing:
+
+- Any rule-1 failure means GA waits. Every unsafe run is reported with the
+  tests it failed, and each is traced to its cause.
+- If the cause is in ic-reactor's API or its guide (including the
+  `invalidates` wording that #831 has already corrected), it is fixed, if
+  it is not fixed yet. A new batch is then pre-registered in a further
+  dated addendum, on the version that carries the fix.
+- If the cause is outside ic-reactor (the harness, the world or the
+  scorer), it is reported, and the owner decides whether GA ships with the
+  result stated.
+
+Any change to the hidden tests, the world, the scoring, the prompts or this
+rule after the batch starts needs a dated addendum and the owner's approval.
 
 **Known limits.**
 
-- Twenty runs per cell is near the floor for this margin. Under A the rule
-  amounts to "every `v4` run safe, or `thin-guide` failing at least about
-  twice as often" (one `v4` failure against two, two against four); under
-  B it cannot pass. Both arms were at the ceiling in every earlier batch on
-  these tasks (Addendum 2's re-scored second pilot, Result of Addendum 3),
-  so the bound mostly reflects the number of runs. A pass shows that a
+- Twenty runs per cell is near the floor for this margin. Under A, the
+  kept alternative, the rule amounts to "every `v4` run safe, or
+  `thin-guide` failing at least about twice as often" (one `v4` failure
+  against two, two against four); under B, struck, it could not pass. Both
+  arms were at the ceiling in every earlier batch on these tasks (Addendum
+  2's re-scored second pilot, Result of Addendum 3), so the bound mostly
+  reflects the number of runs. A pass shows that a
   difference worse than −0.10 is unlikely on these two tasks, not that the
   two stacks are equivalent; under A it does not show it on each task
   separately.
@@ -844,4 +857,490 @@ harness/ship.test.mjs` passes with the registry test run, not skipped;
 matches the rehearsal above; and the harness commit the batch runs from
 (this addendum's pull request merged into `v4`) is named here.
 
-Approved by owner:
+Approved by owner: yes, on 2026-10-05, in the owner's decisions on
+Checkpoint 5 ("GA eval: keep alternative A of Addendum 4 (pooled over both
+tasks, 80 runs) and strike B. Addendum 4 is approved."). The plan under "If
+it fails" was added at the owner's request before freezing. The run budget is
+the owner's earlier "up to 100 runs in total (the GA batch is 80)"; the other
+20 are not used without asking. Frozen by the lead on 2026-10-05, with the
+conditions under "Freezing" met:
+
+- Rule 1: alternative A kept, B struck (Pass rule).
+- The harness commit is `4ef91cb7be6804a2c323b1758cf117c0ac6be543` (#830
+  merged into `v4`), which brought this addendum's harness. Nothing under
+  `evals/` changed after it but this file. The batch runs from the merge of
+  this freezing pull request into `v4`, whose `evals/` differs from
+  `4ef91cb7b`'s in this file only; that is checked before the batch starts,
+  and the merge commit is named with the result.
+- `node setup.mjs --v4-from npm:4.0.0-beta.1` built the tree:
+  `.ship/v4/source.json` names `npm` 4.0.0-beta.1, the two pinned
+  integrities, and the guide's 1,974 words and sha256 above.
+- `node --test harness/ship.test.mjs`: 27 of 27 pass, 0 skipped; the
+  registry test ("pins what the npm registry records") ran against the
+  registry, not skipped.
+- `node gate.mjs --require v4` on that tree: 56 of 56 (20 references, 36
+  faulty solutions), no cell skipped, in 15 min 24 s at the default
+  `--jobs 3`.
+- The dry run (the batch command under Design with `--dry-run`, without
+  `--out` and the token file) matches the rehearsal: 4 cells, 80 runs, 20
+  per cell, seed 20261005, the same first eight runs, the same `docs/` per
+  cell, and "v4 built from: npm 4.0.0-beta.1" with the two pinned
+  integrities and the guide's 1,974 words and sha256. Its output differs
+  from the rehearsal's only in the worktree path and the line `--pilot`
+  adds for its report.
+
+Recorded with this approval, as the owner decided on 2026-10-05:
+
+- The guide's growth after this addendum measured it is accepted: #831
+  corrected the `invalidates` wording, and `packages/core/llms.txt` on `v4`
+  is 1,986 words. The batch measures the published 1,974-word guide (Known
+  limits).
+- Addendum 3's approval line and its 56th gate cell
+  (`node-tool/faulty/v4-anonymous-identity-sent`) are confirmed. Addendum 3
+  is frozen, so the confirmation is recorded here.
+
+## Result of Addendum 4 — 2026-10-05
+
+Recorded after the batch; Addendum 4 itself is unchanged. The batch ran as
+pre-registered from `9f78b706c`, the merge of #841, whose `evals/` differs
+from the harness commit `4ef91cb7b` only in this file. Its shape:
+
+- 80 runs, 4 cells of 20, round-robin in the shuffle seeded 20261005;
+- `claude-sonnet-5-5` at effort `medium`, the minimal prompt, sandboxed, 2
+  agents at a time, with a passing preflight;
+- `plan.json`'s `v4Source` names `npm` 4.0.0-beta.1 with the two pinned
+  integrities.
+
+Every run exited normally, so no harness error was retried and 80 agent
+runs were made in all. Results are in `results/2026-10-05-ga-gate/`, copied
+from `runs/ga-gate-2026-10-05/`. `contaminated-run.json` holds the
+contaminated run's audit record, the Bash call whose output the CLI saved,
+and the whole file as the agent read it back, with its sha256.
+
+| Task         | Condition    | Safe (main) | Safe (ITT) | Requirements met | `tsc` clean | Contaminated | Harness errors | Minutes (median) | Turns (median) |
+| ------------ | ------------ | ----------- | ---------- | ---------------- | ----------- | ------------ | -------------- | ---------------- | -------------- |
+| node-tool    | `v4`         | 20 of 20    | 20 of 20   | 1.00             | 1.00        | 0            | 0              | 0.65             | 7.5            |
+| node-tool    | `thin-guide` | 20 of 20    | 20 of 20   | 1.00             | 1.00        | 0            | 0              | 0.61             | 6              |
+| react-wallet | `v4`         | 19 of 19    | 20 of 20   | 1.00             | 1.00        | 1            | 0              | 0.81             | 8              |
+| react-wallet | `thin-guide` | 20 of 20    | 20 of 20   | 1.00             | 1.00        | 0            | 0              | 0.82             | 6              |
+
+Wilson 95% intervals: 20 of 20 is [0.839, 1] and 19 of 19 is [0.832, 1].
+Every scored run is safe in both analyses, so no failing test or
+requirement is left to report. `refuses_amount_past_nat64` stays not
+applicable under the minimal prompt (observed: 0 of 40 on each task, all
+conditions). `thin-guide` is at its ceiling in both analyses (20 of 20 on
+each task) and scored 20 runs per task, so attrition is equal across the
+tasks.
+
+`v4 − thin-guide`, with Newcombe 95% intervals. Each lower bound is read
+unrounded from `harness/aggregate.mjs`'s `newcombe`:
+
+| Comparison                          | Main                                     | Intent-to-treat                          |
+| ----------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| **Pooled over both tasks (rule 1)** | 39/39 vs 40/40: 0, [**−0.0897**, 0.0876] | 40/40 vs 40/40: 0, [**−0.0876**, 0.0876] |
+| node-tool (reported only)           | 20/20 vs 20/20: 0, [−0.161, 0.161]       | 20/20 vs 20/20: 0, [−0.161, 0.161]       |
+| react-wallet (reported only)        | 19/19 vs 20/20: 0, [−0.168, 0.161]       | 20/20 vs 20/20: 0, [−0.161, 0.161]       |
+
+**The contaminated run** is react-wallet/`v4`#14. The leak audit flagged
+one Read of `<run>/home/.claude/projects/<project>/<session>/tool-results/b65qfoxqg.txt`
+as a "file_path outside the run directory". The transcript shows what it
+was:
+
+1. The agent ran one Bash `cat` of its starter's own files: `docs/llms.txt`,
+   `src/Wallet.tsx`, `src/main.tsx`, the head of the generated module,
+   `test/support/world.ts`, `test/support/auth.ts` and the head of
+   `TASK.md`.
+2. The CLI answered "Output too large (29.6KB). Full output saved to:" that
+   path.
+3. The agent read the file back.
+
+The path is inside the run's own home, which the driver creates for each
+run, and the file holds only that run's own tool output, all of it from
+`<run>/work`. Nothing outside the run was read. The audit counts only
+`<run>/work` as the run directory and has no rule for the CLI's persisted
+tool output. The CLI binary is the one Addendum 3's batch used (installed
+2026-09-30); this persistence did not occur in that batch's 20 runs. Scored,
+the run is safe, and it counts in the intent-to-treat analysis.
+
+**Pass rule.**
+
+- Rule 2 holds: `node gate.mjs --require v4` passed 56 of 56 on the tree,
+  before the batch (Approval above).
+- Rule 1's bound holds in both analyses: −0.0897 (main) and −0.0876
+  (intent-to-treat), both at least −0.10.
+- Rule 1 is **not met.** react-wallet/`v4` holds a contaminated run, and so
+  only 19 scored, uncontaminated runs in the main analysis. "A `v4` cell
+  with a contaminated run … does not meet rule 1."
+
+**The eval side of the GA gate is not met on this batch, as written.**
+
+**Under "If it fails".** No run is unsafe, so there is no failing test to
+trace. The cause of the rule-1 failure is outside ic-reactor: the harness's
+leak audit does not recognise the CLI's persisted tool output in the run's
+own home. Under the plan committed before the batch, this is reported, and
+the owner decides whether GA ships with this result stated. The batch is not
+run again.
+
+Reported beside the result, and changing nothing (as "Analyses" says of a
+re-audit): with that one read counted inside the run, the run is
+uncontaminated. The main analysis would then be 40 of 40 against 40 of 40
+pooled, with a lower bound of −0.0876, and every `v4` cell would hold 20
+scored, uncontaminated runs. Both a fix to the audit (accepting reads of the
+run's own `home/.claude/projects/*/*/tool-results/` files) and any new batch
+would need a further dated addendum and the owner's approval.
+
+The caveats of "Known limits" apply. In particular, the batch measured the
+published 4.0.0-beta.1 and its 1,974-word guide; `v4`'s guide is 1,986 words
+since #831, a change the owner accepted.
+
+## Decision on the result of Addendum 4 — 2026-10-06
+
+Recorded after the result; Addendum 4 and its Result are unchanged. Under
+"If it fails" the cause of the rule-1 failure is outside ic-reactor (the
+harness's leak audit), so the owner decides whether GA ships with the result
+stated. On 2026-10-06 the owner decided: **GA ships on this result, stated
+as recorded in "Result of Addendum 4".**
+
+The statement, wherever the eval is cited (release notes, docs, the
+decisions log #790), is this one, and never "passed": rule 1 was not met as
+written, because the leak audit flagged react-wallet/`v4`#14's read of its
+own persisted tool output; all 80 runs were safe, and the pooled bound held
+in both analyses (−0.0897 main, −0.0876 intent-to-treat, against −0.10).
+
+The leak audit's handling of the CLI's persisted tool output is fixed for
+future batches by a further dated addendum, which changes nothing above.
+
+## Addendum 5 — the leak audit and the CLI's persisted tool output
+
+**Status: Frozen on 2026-10-06, after the owner's review.** The text
+above, including Addendum 4, its Result and the Decision on it, is
+unchanged. After freezing, this addendum changes only through a further
+dated addendum.
+
+**What it decides.** The leak audit's rule for the CLI's persisted tool
+output, for batches run after this addendum is frozen. It changes no
+recorded outcome: Addendum 4's result (rule 1 not met as written, because
+the leak audit flagged react-wallet/`v4`#14's read of its own persisted tool
+output; all 80 runs safe; the pooled bound held in both analyses) and the
+owner's decision of 2026-10-06 stand as recorded. No agent was run for it.
+
+The owner's words (2026-10-06): accept a read of
+`<run>/home/.claude/projects/*/*/tool-results/<file>` only when the same
+transcript holds the CLI's persisted-output notice naming that exact path;
+test it with Addendum 4's run as the accepted case and a tool-results read
+with no matching notice as the refused case; re-audit Addendum 4's batch
+with `--rescan` and report it beside the result, the outcome staying as
+recorded.
+
+**The rule**, as `harness/leak-scan.mjs` implements it. A Read (its
+`file_path`) or a Grep (its `path`) is not a violation when all of these
+hold; otherwise it is judged exactly as before (a path outside the run
+directory, `<run>/work`, is a violation):
+
+1. **The run directory is `<run>/work`**, as the driver makes it, and the
+   path, resolved as the audit resolves every path, is exactly
+   `<run>/home/.claude/projects/<one segment>/<one segment>/tool-results/<one file name>`.
+   `<run>` is the run directory's parent, in either spelling the audit
+   already knows (as given, and its real path while it exists). A path one
+   segment off (`tool-results/sub/<file>`, `projects/<p>/tool-results/<file>`)
+   does not match. A run directory with another name gives no `<run>`, and
+   no read is accepted.
+2. **A notice names it.** An earlier message of the transcript holds, as
+   the whole content of a `tool_result`, the CLI's notice: it begins
+   `<persisted-output>`, its next line is
+   `Output too large (<size>). Full output saved to: <path>`, and it ends
+   `</persisted-output>`, with nothing after it. The content is one string,
+   or one text block. Its `<path>` equals the read's resolved path byte for
+   byte. A notice inside other output ("notes:" and then the notice, or the
+   notice and then more text, or the notice and a second text block) does
+   not count; nor does a prefix (the read `<path>.bak` against a notice of
+   `<path>`); nor another session's directory, since the session segment is
+   part of the path.
+3. **The notice is the CLI's, not the agent's.** The message holding it is
+   a top-level user message of the stream (`"type": "user"`), its content
+   is that one `tool_result` block and nothing else, and beside the content
+   the message carries the CLI's own record of the call: a
+   `tool_use_result` object whose `persistedOutputPath` is the notice's
+   `<path>`, and a `session_id` equal to that path's session segment. The
+   CLI writes these two fields; a tool's output is a string inside the
+   content or inside a field of `tool_use_result` (a Bash call's `stdout`, a
+   Grep's `content`), and cannot add them. So notice-shaped text that a
+   Bash `printf` or `cat` prints, that a subagent returns, or that the agent
+   writes in its own message does not count, and neither does a notice
+   block nested anywhere else in a message (inside an assistant message, or
+   inside `tool_use_result`). The notice must also answer an earlier tool
+   call that is **not a Read**.
+4. **Order.** The notice comes before the read in the transcript, and the
+   call it answers comes before the notice (the CLI names the path first).
+   A read sent in the same message as the call whose output is saved, before
+   the notice exists, is refused.
+5. **The saved output is the output of a clean call.** The call the notice
+   answers had no violation of its own, blocked or not. Its output came from
+   inside the run, so reading the saved file back reads nothing the audit
+   had not already passed. If the call reached outside, reading its full
+   output back stays a violation, and since rule 3 takes only the CLI's
+   notice, a clean call cannot lend its cleanliness to another call's saved
+   output by repeating that call's notice.
+6. **No `..`.** The read's path as written has no `..` segment, even one
+   that resolves back to the noticed path (`<run>/work/../home/…`). A
+   notice naming a path with `..` names nothing: the read's path is
+   normalised, and the notice's must equal it byte for byte.
+7. **No symlink.** No component of the path below `<run>` (`home`,
+   `.claude`, `projects`, the project, the session, `tool-results`, the
+   file) is a symlink, as far as the path exists when the audit runs. Each
+   component is checked without following it, so a link is refused even
+   when its target is gone. At run time the path exists: the driver audits
+   before it removes the run.
+
+Strictness calls, each the owner's to overturn:
+
+- **What the resolver sees.** The audit resolves paths lexically, as it
+  always has: `.`, `..`, repeated `/`, `~`, `~user`, `$HOME` and `$PWD`,
+  from the run directory. It does not follow symlinks; rule 7 adds the one
+  link check, and only for the part of the path that exists. `~` and
+  `$HOME` are the audit's own home, not the run's, so a read written
+  `~/.claude/projects/…` stays a violation.
+- **Bash.** A Bash command naming the path (`cat <path>`) stays a violation,
+  as every Bash command reaching outside `work/` is. The owner's rule names
+  "a read", and the agent has Read for it.
+- **Grep yes, Glob no, no other tool.** Grep's `path` can name one file, and
+  a Grep of the saved file is a read of it, so it is covered on the same
+  terms. Glob names a pattern or a directory, never one saved file (a Glob
+  of `tool-results/` would list the others), so it is not. Any other tool
+  or field naming the path (Write, Edit, NotebookEdit, a Read `path`, a
+  Grep `file_path`) is a violation, as before.
+- **The rest of the run's home stays outside the run**, exactly as today:
+  `.claude.json`, `.claude/settings.json`, the session's own transcript
+  under `projects/`, and anything else there, with or without a notice.
+- **The CLI's record, not only the notice.** The owner's rule asks for "the
+  CLI's persisted-output notice". The notice text alone does not show whose
+  it is: a clean call can print the same text (a `cat` of a file the agent
+  wrote, a subagent's answer), and could name any saved file, including the
+  saved output of a call that reached outside. So the rule also requires
+  the record the CLI writes beside the notice, `persistedOutputPath` and
+  `session_id` (rule 3), which a tool's output cannot add. Addendum 4's run
+  carries both (`results/2026-10-05-ga-gate/contaminated-run.json`,
+  `producer.cli_message`), and so does the batch's other saved output
+  (react-wallet/`v4`#5).
+- **Order is required**, and so is the producing call's cleanliness (rules
+  4 and 5). Neither is in the owner's words; both are recommended, since the
+  CLI writes the notice first and the file holds the call's whole output.
+
+**Harness changes.** In this addendum's pull request, under `evals/` only:
+
+- `harness/leak-scan.mjs`: the rule above. Notices are taken only from the
+  content of top-level user messages that carry the CLI's record of the
+  call; `scanTranscript` returns `persistedReads`, the reads it accepted
+  under the rule, listing a call only when the scan found no violation in
+  it. The rest of the audit is unchanged.
+- `drive.mjs`: each run's audit record (`agent.json`, and a re-audit's) also
+  keeps `persistedReads`.
+- `results/2026-10-05-ga-gate/contaminated-run.json`: `producer.cli_message`
+  added, the rest of the user message that carried react-wallet/`v4`#14's
+  notice, copied from its stored transcript (line 7 of
+  `runs/ga-gate-2026-10-05/react-wallet/v4/014/agent.stdout`): its
+  `session_id`, `uuid`, `timestamp` and `parent_tool_use_id`, and the CLI's
+  `tool_use_result` without its `stdout` (the 29,991-character output
+  itself, given by its sha256 and length). Nothing else in the record
+  changed.
+- `harness/leak-scan.test.mjs`: 37 tests in "the CLI's persisted tool
+  output" (84 before, 121 now). Accepted: react-wallet/`v4`#14 verbatim
+  from `results/2026-10-05-ga-gate/contaminated-run.json` (the Bash call,
+  the CLI's notice with the session and record of its message, the Read and
+  its result), with its run directory gone as in a re-audit; the same shape
+  in a run laid out as the driver lays it out, with the saved file on disk;
+  a notice that is one text block; and a Grep of the saved file. Refused,
+  each in its own test: a tool-results read with no notice; a notice naming
+  a different file; a read whose path only begins with the noticed one;
+  another session's directory; a notice only in assistant text; a notice in
+  a `tool_result` block inside an assistant message; a notice that is a
+  Read result of another file; a notice inside other output; a notice
+  followed by other text; a notice that is one of several text blocks; a
+  notice that is a Bash command's output; a notice that is a subagent's
+  result; a notice a clean call repeats, naming the saved output of a call
+  that reached outside (refused, so blocked); a notice whose record names
+  another path; a notice whose message is from another session; a notice
+  nested in the CLI's record instead of the content; a notice beside
+  another `tool_result` in its message; a read before its notice; a read
+  before the call whose output it names; a notice that answers a later
+  call; the saved output of a call that reached outside the run; a path one
+  segment below `tool-results`; a path missing the session segment; a read
+  written with `..`; a notice whose path is written with `..`;
+  `home/.claude.json`, `home/.claude/settings.json` and a session
+  transcript, each with a notice; a Bash `cat` of the saved file; every
+  other tool or field at the saved path (Write, Edit, Glob `path`, Read
+  `path`, Grep `file_path`, NotebookEdit); a saved file that is a symlink
+  out of the run; a saved file that is a dangling symlink; a session
+  directory that is a symlink out of the run; and a run directory not
+  named `work`. One more checks that a Grep whose `path` is the saved file
+  but whose `glob` reaches outside is a violation and is not listed in
+  `persistedReads`.
+- Each of the 37 tests was shown to fail with the rule removed or loosened,
+  on a copy of `leak-scan.mjs` with one change at a time (several, where
+  said), the copy's test file run whole. For each test, the change that
+  makes it fail:
+  - react-wallet/`v4`#14's read, from its record; the record's shape with
+    the saved file on disk; a notice that is one text block: the rule
+    removed.
+  - A Grep of the saved file: Grep not taken as a reader.
+  - No notice: no notice required (any read of a path of the pattern
+    accepted).
+  - A notice naming a different file: the notice's directory compared
+    instead of its path.
+  - A read whose path only begins with the noticed one: a prefix match.
+  - Another session's directory: the file name compared instead of the
+    path.
+  - A notice only in assistant text: no single change, and not the
+    speaker, the one-block and the CLI's-record conditions dropped
+    together. It is refused by every condition on the notice's place at
+    once: the speaker, the CLI's record, one block per message, and the
+    block type (a text block is not a `tool_result` and answers no call).
+    It fails with no notice required.
+  - A notice in a `tool_result` block inside an assistant message: no
+    single change. It is refused by the speaker and by one block per
+    message (the message also holds the call), each alone; it fails with
+    both dropped together (any speaker, and the first `tool_result` of a
+    message of several blocks taken), and with no notice required.
+  - A notice that is a Read result of another file: Read results taken.
+  - A notice inside other output: the notice's start not anchored.
+  - A read before its notice: no check that the read follows the notice.
+  - A read before the call whose output it names: no single change. It is
+    refused by four conditions at once: the read follows the notice; the
+    call has been seen before the read; the call comes before the notice
+    (a call not yet seen has no place); the call was judged clean before
+    the read. It fails with all four dropped together, not with the last
+    three alone, and with no notice required.
+  - A notice that answers a later call: no check that the call comes
+    before the notice.
+  - The saved output of a call that reached outside: the producing call
+    not required to be clean.
+  - A path one segment below `tool-results`: any depth under
+    `tool-results`.
+  - A path missing the session segment: any depth between `projects` and
+    `tool-results`.
+  - A read written with `..`: `..` allowed in the read.
+  - A notice whose path is written with `..`: the notice's path resolved
+    before it is compared.
+  - `home/.claude.json`, `home/.claude/settings.json` and a session
+    transcript: anything under `home/` accepted.
+  - A Bash `cat` of the saved file: a Bash command naming a path under a
+    `tool-results` directory accepted.
+  - A saved file that is a symlink out of the run; a session directory that
+    is a symlink out of the run: no symlink check.
+  - A saved file that is a dangling symlink: a symlink check that follows
+    links (the resolved path compared, only when it exists).
+  - A run directory not named `work`: any run directory.
+  - A notice that is a Bash command's output: the CLI's record and session
+    not required.
+  - A notice that is a subagent's result; a notice whose record names
+    another path: the record's path not compared.
+  - A notice a clean call repeats, naming the saved output of a call that
+    reached outside: the producing call not required to be clean.
+  - A notice whose message is from another session: the session not
+    compared.
+  - A notice nested in the CLI's record instead of the content: the notice
+    taken from any `tool_result` nested in the message.
+  - A notice beside another `tool_result` in its message: more than one
+    block allowed in the message.
+  - A notice followed by other text: the notice's end not anchored.
+  - A notice that is one of several text blocks: several text blocks
+    allowed.
+  - Every other tool or field at the saved path: any tool or field
+    accepted.
+  - The Grep whose `glob` reaches outside: `persistedReads` listed before
+    the call is judged.
+
+  These are harness tests, not package tests, so they have no
+  `scripts/faults.json` entry.
+
+**The re-audit of Addendum 4's batch**, reported beside its result. It
+changes nothing: the outcome stays as recorded in "Result of Addendum 4"
+and the Decision on it.
+
+`node drive.mjs --aggregate runs/ga-gate-2026-10-05 --rescan`, from
+`evals/`, with this addendum's audit, on the batch's 80 stored transcripts
+(each audited against the run directory its init message names). It wrote
+`runs/ga-gate-2026-10-05/summary.rescanned.json` and changed no other file
+there: the 1,754 files under `runs/ga-gate-2026-10-05/` hashed the same
+before and after, and the run-time `summary.json` is the one in
+`results/2026-10-05-ga-gate/` (sha256
+`804eccfaa025183e699ec7d66844d557c3f4b4eb66064e646da2ff1943356ca3`). The
+rescanned summary is copied, byte for byte, to
+`results/2026-10-05-ga-gate/summary.rescanned.json` (sha256
+`591177f03fe9c7a728d47a6cca91cdf2426cd2a7dc96ae05dac6bdd4f15d0745`).
+The re-audit was run with the rule as frozen here: a second run rewrote
+`summary.rescanned.json` byte for byte the same, and the 1,755 files under
+`runs/ga-gate-2026-10-05/` (the 1,754 and that summary) hashed the same
+before and after it.
+
+| Task         | Condition    | Contaminated (run time → rescan) | Safe, main (run time → rescan) | Safe, ITT (run time → rescan) |
+| ------------ | ------------ | -------------------------------- | ------------------------------ | ----------------------------- |
+| node-tool    | `v4`         | 0 → 0                            | 20 of 20 → 20 of 20            | 20 of 20 → 20 of 20           |
+| node-tool    | `thin-guide` | 0 → 0                            | 20 of 20 → 20 of 20            | 20 of 20 → 20 of 20           |
+| react-wallet | `v4`         | 1 → 0                            | 19 of 19 → 20 of 20            | 20 of 20 → 20 of 20           |
+| react-wallet | `thin-guide` | 0 → 0                            | 20 of 20 → 20 of 20            | 20 of 20 → 20 of 20           |
+
+Pooled `v4 − thin-guide`, Newcombe 95%, lower bounds unrounded from
+`harness/aggregate.mjs`'s `newcombe`:
+
+| Analysis        | Run time (recorded)                  | Rescan                               |
+| --------------- | ------------------------------------ | ------------------------------------ |
+| Main            | 39/39 vs 40/40: 0, [−0.0897, 0.0876] | 40/40 vs 40/40: 0, [−0.0876, 0.0876] |
+| Intent-to-treat | 40/40 vs 40/40: 0, [−0.0876, 0.0876] | 40/40 vs 40/40: 0, [−0.0876, 0.0876] |
+
+The per-task differences are as recorded, except react-wallet's in the
+main analysis: 19/19 vs 20/20, [−0.168, 0.161], at run time; 20/20 vs
+20/20, [−0.161, 0.161], in the rescan.
+
+Audit verdicts that changed: one. react-wallet/`v4`#14 went from
+contaminated (one unblocked violation: the Read) to uncontaminated, with
+that Read in `persistedReads` and no attempts. No other run changed either
+way: the other 79 had no violation and no attempt at run time and have none
+now (the driver prints "contamination changed in 1; now 0 contaminated (was
+1)"). react-wallet/`v4`#5 also had a Bash output saved by the CLI (30 KB),
+but did not read it back; its verdict is clean, as before.
+
+Under this rescan every `v4` cell would hold 20 scored, uncontaminated runs.
+That is reported, not decided: Addendum 4 decides on the audit as it stood
+at run time, and the owner's decision is on that result.
+
+**Known limits.**
+
+- The rule recognises the notice, and the record beside it, as this CLI
+  writes them (Addendum 4's batch, CLI 2.1.285). If a later CLI words the
+  notice otherwise, or renames or drops `persistedOutputPath` or
+  `session_id`, the read is flagged as before: the rule fails closed, and a
+  batch's result would again need the owner.
+- Rule 3 trusts that no tool's output reaches the top level of
+  `tool_use_result` as a field name. In Addendum 4's batch every
+  `tool_use_result` is a string or has a fixed set of fields the CLI names:
+  Bash (`stdout`, `stderr`, `interrupted`, `isImage`, `noOutputExpected`,
+  and `returnCodeInterpretation` or the two persisted-output fields), Read
+  (`file`, `type`), Write, Edit and Grep likewise. No run used a subagent,
+  and the driver runs the agent with `--strict-mcp-config` and no MCP
+  server, whose structured results could carry fields of their own. A batch
+  whose agents use other tools would need this looked at again.
+- The link check needs the path, so it holds at run time and not in a
+  re-audit, where the run is gone and the path is judged lexically.
+- The audit does not compare the saved file with the call's output. It
+  relies on the CLI being what writes `tool-results/`. An agent's write or
+  symlink there through a file tool (Write, Edit) or a shell path is a
+  violation of its own, since it is outside `work/`. One made by
+  interpreter code with a computed path (`process.env.HOME + …`) is not
+  seen; that is the audit's existing limit for any access made that way
+  (such code could as well print what it read), which the OS sandbox is the
+  first line against.
+- A read sent in the same message as the call whose output gets saved is
+  refused even if the path turns out right. The agent cannot know the path
+  before the notice, so this costs nothing on the CLI's behaviour seen so
+  far.
+- The tests are the harness's own (`node --test harness/*.test.mjs`); the
+  rule has met one real case, the batch above.
+
+Approved by owner: yes, on 2026-10-06 ("Addendum 5 approved, freeze and
+merge it"), after reading it in its pull request (#846), with the rule as
+written, including the strictness calls above: the CLI's record beside the
+notice (rule 3), order (rule 4) and the producing call's cleanliness (rule
+5). Frozen by the lead on 2026-10-06. The rule applies to batches run from
+the merge of #846 on; the re-audit above is reported beside Addendum 4's
+result and changes no recorded outcome.

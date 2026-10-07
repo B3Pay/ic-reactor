@@ -62,7 +62,7 @@ function send(to: string, amount: string) {
 const outcome = () => screen.getByTestId("outcome").textContent
 
 describe("sending ICP", () => {
-  it("sends the amount with the fee shown and a created_at_time, and the balance follows", async () => {
+  it("sends the amount with the fee shown, a memo and a created_at_time, and the balance follows", async () => {
     const made = await renderSend()
     send(BOB, "1.5")
 
@@ -71,6 +71,7 @@ describe("sending ICP", () => {
     await screen.findByText("5.4999 ICP", {}, patiently)
     expect(made.transfers).toHaveLength(1)
     expect(made.transfers[0]?.fee).toBe(FEE)
+    expect(made.transfers[0]?.memo).toHaveLength(16)
     expect(made.transfers[0]?.created_at_time).not.toBeNull()
   })
 
@@ -144,7 +145,7 @@ describe("sending ICP", () => {
         ),
       patiently
     )
-    // Paid once: the same argument, sent twice by the same account.
+    // Paid once: the same argument, memo included, sent twice by the same account.
     expect(made.balanceOf(BOB)).toBe(1n * ICP)
     expect(made.transfers[1]).toEqual(made.transfers[0])
   })

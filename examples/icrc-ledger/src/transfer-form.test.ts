@@ -10,20 +10,30 @@ const form = (overrides: Partial<TransferForm> = {}): TransferForm => ({
 })
 
 describe("reading the transfer form", () => {
-  it("makes the exact argument: base units, the ledger's fee, created_at_time in ns", () => {
+  it("makes the exact argument: base units, the ledger's fee, the memo, created_at_time in ns", () => {
+    const memo = new Uint8Array(16).fill(7)
     expect(
-      readTransferForm(form({ to: ` ${SEED_2} ` }), 8, 1_700_000_000_000)
+      readTransferForm(form({ to: ` ${SEED_2} ` }), 8, 1_700_000_000_000, memo)
     ).toEqual({
       ok: true,
       arg: {
         to: { owner: SEED_2, subaccount: null },
         amount: 150_000_000n,
         fee: null,
-        memo: null,
+        memo,
         from_subaccount: null,
         created_at_time: 1_700_000_000_000_000_000n,
       },
     })
+  })
+
+  it("gives each transfer its own 16-byte memo, even in the same millisecond", () => {
+    const first = readTransferForm(form(), 8, 1_700_000_000_000)
+    const second = readTransferForm(form(), 8, 1_700_000_000_000)
+    if (!first.ok || !second.ok) throw new Error("refused")
+    expect(first.arg.memo).toHaveLength(16)
+    expect(second.arg.memo).toHaveLength(16)
+    expect(second.arg.memo).not.toEqual(first.arg.memo)
   })
 
   it("keeps a typed fee, also exactly", () => {

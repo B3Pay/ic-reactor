@@ -818,7 +818,9 @@ for (const relPath of aiContextFiles) {
 // site follows the branch, so a release would leave one stale), and every
 // prerelease version it names, such as the `--save-exact` install of
 // `@candid-core/schema`, is the exact pin some packages/*/package.json has,
-// so an install line moves with the pin.
+// so an install line moves with the pin. A stable version is held to the pin
+// when the page names it with its package, as `@candid-core/schema@0.3.0`: a
+// package that packages/*/package.json pins exactly is installed at that pin.
 //
 // The pages also keep out of the 3.x docs: one page, the migration guide,
 // links `/v3/`, and every other page reaches the 3.x docs through it. A link
@@ -830,25 +832,43 @@ const V3_LINK_PAGE = "migrating-from-3.mdx"
 const V3_LINK =
   /ic-reactor\.b3pay\.net\/v3(?![\w-])|(?:\]\(\s*<?|href=\s*["']|^\s*\[[^\]]+\]:\s*<?)\/v3(?![\w-])/g
 
-/** Exact prerelease pins (`0.3.0-beta.1`) of the packages' dependencies. */
+/** Exact prerelease pins (such as `0.3.0-beta.1`) of the packages' dependencies. */
 const exactPins = new Set()
+/** Every exact pin of the packages' dependencies, stable ones included, by package. */
+const exactPinsByName = new Map()
 for (const { packageDir } of versionChecks) {
   const pkg = JSON.parse(
     readFileSync(join(rootDir, "packages", packageDir, "package.json"), "utf8")
   )
   for (const field of ["dependencies", "peerDependencies", "devDependencies"]) {
-    for (const range of Object.values(pkg[field] ?? {})) {
+    for (const [name, range] of Object.entries(pkg[field] ?? {})) {
       if (/^\d+\.\d+\.\d+-[0-9A-Za-z.-]+$/.test(range)) exactPins.add(range)
+      if (/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(range)) {
+        if (!exactPinsByName.has(name)) exactPinsByName.set(name, new Set())
+        exactPinsByName.get(name).add(range)
+      }
     }
   }
 }
 const PRERELEASE =
   /(?<![\d.])v?(\d+\.\d+\.\d+-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)(?![\d.]\d)/g
+/** A scoped package named with a version, as an install line names it: `@scope/name@1.2.3`. */
+const NAMED_VERSION =
+  /(?<![\w@/.-])(@[a-z0-9][\w.-]*\/[a-z0-9][\w.-]*)@(\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?)(?![\w.-]*\d)/g
 
 for (const page of [...sourcePages].sort()) {
   const relPath = `docs/src/content/docs/${page}`
   const text = readFileSync(join(rootDir, relPath), "utf8")
   text.split("\n").forEach((line, i) => {
+    for (const [, name, version] of line.matchAll(NAMED_VERSION)) {
+      const pins = exactPinsByName.get(name)
+      // A prerelease is held to the pins by the rule below.
+      if (!pins || version.includes("-") || pins.has(version)) continue
+      failures.push(
+        `${relPath}:${i + 1} names ${name}@${version}, which packages/*/package.json pins exactly at ` +
+          `${[...pins].join(", ")}. Name the pin.`
+      )
+    }
     for (const [, version] of line.matchAll(PRERELEASE)) {
       if (exactPins.has(version)) continue
       failures.push(

@@ -1,0 +1,5 @@
+{
+  "file": "src/types.ts",
+  "search": "  ? [vars?: void | S, options?: QueryOptionsOptions]\n",
+  "replace": "  ? [vars?: void | SkipToken, options?: QueryOptionsOptions]\n"
+}

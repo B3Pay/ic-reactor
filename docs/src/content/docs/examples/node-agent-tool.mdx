@@ -50,10 +50,16 @@ node src/cli.ts balance rkp4c-7iaaa-aaaaa-aaaca-cai --certified --json
 pnpm test
 ```
 
+StackBlitz installs the example from npm and runs the demo (`npm run demo`)
+in its terminal, where `npm test` runs the tests. The demo and the CLI run
+their `.ts` files with Node's type stripping, so they need Node 22.18 or later,
+there as on your machine. The commands that call a ledger on mainnet or on a
+local network, and a PEM identity from your disk, are for your own machine.
+
 <CardGrid>
   <LinkCard
     title="Open in StackBlitz"
-    description="Edit and run in your browser"
+    description="Run the demo and the tests in your browser"
     href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/node-agent-tool?file=src/commands/transfer.ts"
   />
   <LinkCard

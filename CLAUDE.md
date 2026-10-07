@@ -22,15 +22,15 @@ A thin layer over a module that `candid-core-cli gen` generates from a `.did`
 file, plus one consumer guide. There are no typed handles. No package code on
 this branch is written against unpublished candid-core shapes: core's peer
 `@candid-core/schema` and the Vite plugin's peer `@candid-core/cli` are pinned
-exactly to published betas.
+exactly to published stable releases.
 
 ## Packages on this branch
 
 | Package                   | Directory              | State on `main`                                                                                                                            |
 | ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@ic-reactor/core`        | `packages/core`        | `4.0.0-beta.1`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient`      |
-| `@ic-reactor/react`       | `packages/react`       | `4.0.0-beta.1`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                                   |
-| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0-beta.1`; generates the candid-core module with `@candid-core/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy |
+| `@ic-reactor/core`        | `packages/core`        | `4.0.0-beta.2`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient`      |
+| `@ic-reactor/react`       | `packages/react`       | `4.0.0-beta.2`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                                   |
+| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0-beta.2`; generates the candid-core module with `@candid-core/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy |
 
 Not in this tree: `@ic-reactor/parser`, `@ic-reactor/codegen` and
 `@ic-reactor/cli` (replaced by `candid-core-cli gen`), and
@@ -80,5 +80,6 @@ pnpm verify:traps     # Each @ts-expect-error of traps.test-d.ts bites (CI gate)
 pnpm verify:faults    # Each test of scripts/faults.json fails under its fault (CI gate)
 pnpm test:scripts     # The gates' own tests (CI gate; build first)
 pnpm verify:packages  # Pack and verify the published artifacts
+pnpm test:examples:published # Each example installed from npm against the published beta (own CI workflow)
 pnpm verify:peer-floors # Lowest peers and oldest TypeScript (CI gate; build first)
 ```

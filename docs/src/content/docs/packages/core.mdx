@@ -21,7 +21,7 @@ It works in a browser, in Node and on a server. For React, add
 
 ```sh
 npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
-npm install --save-exact @candid-core/schema@0.3.0-beta.1
+npm install --save-exact @candid-core/schema@0.3.0
 npm install @icp-sdk/auth   # for Internet Identity
 ```
 
@@ -29,7 +29,7 @@ The generator is a separate dev dependency, pinned to the version that pairs
 with `@candid-core/schema`:
 
 ```sh
-npm install --save-dev --save-exact @candid-core/cli@0.2.0-beta.1
+npm install --save-dev --save-exact @candid-core/cli@0.2.0
 ```
 
 See [Getting started](/v4/guides/getting-started/) for the first read and write.
@@ -40,7 +40,7 @@ Node `>=18`.
 
 | Peer                   | Range                                                                                                      |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `@candid-core/schema`  | exactly `0.3.0-beta.1`: the module `candid-core-cli gen` writes imports it                                 |
+| `@candid-core/schema`  | exactly `0.3.0`: the module `candid-core-cli gen` writes imports it                                        |
 | `@icp-sdk/core`        | `^6.1.0`                                                                                                   |
 | `@tanstack/query-core` | `^5.62.0`                                                                                                  |
 | `@noble/curves`        | `^2.2.0`, optional: only `@ic-reactor/core/testing` signs with it, and `@icp-sdk/core` installs it already |

@@ -484,23 +484,15 @@ above every component that reads with `useSuspenseQuery`, on React 18 and 19.
 ```tsx
 "use client"
 
-import { skipToken, useSuspenseQuery } from "@tanstack/react-query"
+import { useSuspenseQuery } from "@tanstack/react-query"
 import { useClient } from "@ic-reactor/react"
 import { Suspense } from "react"
 import { actor, type Actor } from "@/canisters/icrc1"
 
-// `queryOptions` may carry `skipToken` as its `queryFn`, which
-// `useSuspenseQuery` refuses at the type level. This read never passes
-// `skipToken`, so say so to the compiler.
-const suspense = <T extends { queryFn?: unknown }>(options: T) =>
-  options as T & { queryFn: Exclude<T["queryFn"], typeof skipToken> }
-
 function Fee({ id }: { id: string }) {
   const client = useClient()
   const ledger = client.canister<Actor>(actor, { id })
-  const fee = useSuspenseQuery(
-    suspense(client.queryOptions(ledger, "icrc1_fee"))
-  )
+  const fee = useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee"))
   return <span>{fee.data.toString()}</span>
 }
 
@@ -513,7 +505,9 @@ export function FeeBox({ id }: { id: string }) {
 }
 ```
 
-Never pass `skipToken` to a suspense read.
+A suspense read cannot wait for its variables: `useSuspenseQuery` refuses
+options built with `skipToken` or with variables typed `V | SkipToken` (see
+[Reads](/v4/guides/reads/#suspense)).
 
 ## See also
 

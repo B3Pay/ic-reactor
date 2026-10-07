@@ -480,6 +480,42 @@ describe("docs pages", () => {
     )
   })
 
+  it("holds a stable install of a package pinned exactly to the pin", () => {
+    const run = check(
+      repo({
+        "packages/core/package.json": JSON.stringify({
+          name: "@ic-reactor/core",
+          version: VERSION,
+          homepage: "https://ic-reactor.b3pay.net/v4/packages/core/",
+          peerDependencies: {
+            "@candid-core/schema": "0.3.0",
+            "@tanstack/query-core": "^5.62.0",
+          },
+        }),
+        [`${PAGES}/guides/getting-started.mdx`]: [
+          "# Getting started",
+          "",
+          "npm install --save-exact @candid-core/schema@0.3.0",
+          "npm install --save-exact @candid-core/schema@0.2.0",
+          "npm install @tanstack/query-core@5.62.0 @candid-core/cli@0.1.0",
+          "npm install --save-exact @candid-core/schema@0.3.0-beta.1",
+          "Pin `@candid-core/schema@0.3.0`.",
+        ].join("\n"),
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    const lines = failureLines(run)
+    assert.equal(lines.length, 2, run.output)
+    assert.match(
+      lines[0],
+      /getting-started\.mdx:4 names @candid-core\/schema@0\.2\.0, which packages\/\*\/package\.json pins exactly at 0\.3\.0\. Name the pin\./
+    )
+    assert.match(
+      lines[1],
+      /getting-started\.mdx:6 names version 0\.3\.0-beta\.1, which no package pins exactly \(pins: none\)/
+    )
+  })
+
   it("wants each package's homepage to be its page, and the page to exist", () => {
     const pkg = (homepage) =>
       JSON.stringify({ name: "@ic-reactor/react", version: VERSION, homepage })

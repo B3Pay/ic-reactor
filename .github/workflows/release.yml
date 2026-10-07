@@ -228,3 +228,18 @@ jobs:
           make_latest: ${{ needs.preflight.outputs.make_latest }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # The examples against the packages this run just published, from the tagged
+  # commit: the green run of examples-published.yml that counts for a release.
+  # The release PR's own run of that workflow is expected to fail when its
+  # examples use the API this release publishes.
+  # The publish job's matrix runs one package at a time (core, react,
+  # vite-plugin), so --wait-for waits for every one of them, not only core.
+  examples-published:
+    name: Examples on the published beta
+    needs: release
+    permissions:
+      contents: read
+    uses: ./.github/workflows/examples-published.yml
+    with:
+      wait-for: ${{ github.ref_name }}

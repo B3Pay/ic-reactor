@@ -59,9 +59,10 @@ export const STATUS_BY_KIND = {
  * covers a refusal that passes and one that stands. HTTP 429, 408 and every
  * 5xx pass, and so do reject code 2 and a dropped connection (no
  * `httpStatus`): the client itself re-sends those. Any other 4xx stands: a
- * boundary node answers 400 `canister_not_found` for a canister id that names
- * no canister, however often it is asked. Telling a caller to come back later
- * (503) for that would be a lie, so it is a 502, like a rejection.
+ * boundary node answers 400 for a canister id that names no canister
+ * (`code: "canister_not_found"`), however often it is asked, and refuses a bad
+ * signature the same way each time. Telling a caller to come back later (503)
+ * for that would be a lie, so it is a 502, like a rejection.
  */
 export function statusOf(error: ReactorError<unknown>): number {
   const { kind, httpStatus } = error
@@ -141,6 +142,7 @@ export function balanceRoute(newClient: () => Client) {
       return json(statusOf(error), {
         error: {
           kind: error.kind,
+          ...(error.code !== undefined && { code: error.code }),
           ...(error.rejectCode !== undefined && {
             rejectCode: error.rejectCode,
           }),
