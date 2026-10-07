@@ -646,8 +646,8 @@
     "testName": "is the other principal after a switch of account, in Node",
     "why": "the test client built over createClient's public path, which builds the auth only in a browser: in Node the client stays anonymous and a sign-in or a switch of account changes nothing a canister can see",
     "file": "src/testing/test-client.ts",
-    "search": "{ authOnServer: true }",
-    "replace": "{}"
+    "search": "{ authOnServer: true, quietAuthNetwork: true }",
+    "replace": "{ quietAuthNetwork: true }"
   },
   {
     "id": "ir4b-create-client-builds-auth-on-a-server",
