@@ -25,40 +25,27 @@ flip, under npm's `latest` dist-tag, so a plain
 `npm install @ic-reactor/core` installs 4. The 3.x line gets security fixes
 only, until 90 days after this release.
 
-Changes since 4.0.0-beta.2.
+Changes since 4.0.0-beta.3: the version only. No export, type, peer or
+behaviour changed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2).
 
-An app on beta.2 upgrades by bumping all three packages to `4.0.0`. An app on
-`network: "local"` against a dfx replica names it instead:
-`network: { host: "http://127.0.0.1:4943" }`.
-
-No export is added or removed (core 13, `@ic-reactor/core/testing` 2, react 4,
-vite-plugin 2), no peer changed, and a module generated for beta.2 need not be
-regenerated. Two things changed, as core's and the Vite plugin's entries
-below say:
-
-- The `auth` factory is handed the client's network, so
-  `auth: (network) => new AuthClient(network)` signs users in on the network
-  the client calls. Code that compiled against beta.2 compiles unchanged,
-  unless it calls a function typed `ClientOptions["auth"]` with no argument,
-  or uses one where a function of no argument is expected.
-- **BREAKING:** `network: "local"` is icp-cli's local network,
-  `http://127.0.0.1:8000`, not dfx's `http://127.0.0.1:4943`. The test
-  client's default host (where its fake replica answers) and the Vite
-  plugin's fallback `/api` proxy moved with it. `"env"` on a server with
-  dfx's `DFX_NETWORK=local` and no `ICP_NETWORK` keeps 4943.
+An app on beta.3 upgrades by bumping all three packages to `4.0.0`. An app on
+beta.2 or earlier also reads the 4.0.0-beta.3 section below, which has the
+`auth` factory's network argument and the breaking change of
+`network: "local"`, with its migration. A module generated for beta.3 need
+not be regenerated.
 
 The guide (`llms.txt`) and the skill now say they apply to 4.0.0, and the
-guide teaches the factory's argument. The four examples pin `^4.0.0` and pass
-the network to `AuthClient`. With the GA flip (#836), the packages' READMEs
+four examples pin `^4.0.0`. With the GA flip (#836), the packages' READMEs
 and the skill install 4 from `latest` (bare), not `@beta`, and the READMEs
 drop the prerelease note.
 
-For the whole change from 3.x, read the 4.0.0-beta.2 and 4.0.0-beta.1
-sections below, and
+For the whole change from 3.x, read the 4.0.0-beta.3, 4.0.0-beta.2 and
+4.0.0-beta.1 sections below, and
 [Migrating from 3.x](https://ic-reactor.b3pay.net/v4/migrating-from-3/),
 with the table of every removed 3.x name and what replaces it.
 
-It requires the stable candid-core pair, both pinned exactly, as in beta.2:
+It requires the stable candid-core pair, both pinned exactly, as in beta.3:
 
 - `@ic-reactor/core`: peer `@candid-core/schema` at exactly `0.3.0`;
 - `@ic-reactor/vite-plugin`: peer `@candid-core/cli` at exactly `0.2.0`.
@@ -82,6 +69,48 @@ npm install --save-dev --save-exact @candid-core/cli@0.2.0
   −0.0876 intent-to-treat, against −0.10). The result and the owner's
   decision are recorded there, under "Result of Addendum 4" and "Decision on
   the result of Addendum 4" (#844).
+
+## core, react, vite-plugin 4.0.0-beta.3
+
+Prepared on 2026-10-07. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.2.
+
+An app on beta.2 upgrades by bumping all three packages to `4.0.0-beta.3`. An
+app on `network: "local"` against a dfx replica names it instead:
+`network: { host: "http://127.0.0.1:4943" }`.
+
+No export is added or removed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2), no peer changed, and a module generated for beta.2 need not be
+regenerated. Two things changed, as core's and the Vite plugin's entries
+below say:
+
+- The `auth` factory is handed the client's network, so
+  `auth: (network) => new AuthClient(network)` signs users in on the network
+  the client calls. Code that compiled against beta.2 compiles unchanged,
+  unless it calls a function typed `ClientOptions["auth"]` with no argument,
+  uses one where a function of no argument is expected, or passes as `auth` a
+  factory whose optional first parameter is not the network.
+- **BREAKING:** `network: "local"` is icp-cli's local network,
+  `http://127.0.0.1:8000`, not dfx's `http://127.0.0.1:4943`. The test
+  client's default host (where its fake replica answers) and the Vite
+  plugin's fallback `/api` proxy moved with it. `"env"` on a server with
+  dfx's `DFX_NETWORK=local` and no `ICP_NETWORK` keeps 4943.
+
+The guide (`llms.txt`) and the skill now say they apply to 4.0.0-beta.3, and
+the guide teaches the factory's argument. The four examples pin
+`^4.0.0-beta.3`, and the two that sign in (`next-ssr`, `vite-wallet`) pass
+the network to `AuthClient`.
+
+It requires the stable candid-core pair, both pinned exactly, as in beta.2:
+
+- `@ic-reactor/core`: peer `@candid-core/schema` at exactly `0.3.0`;
+- `@ic-reactor/vite-plugin`: peer `@candid-core/cli` at exactly `0.2.0`.
+
+```sh
+npm install --save-exact @candid-core/schema@0.3.0
+npm install --save-dev --save-exact @candid-core/cli@0.2.0
+```
 
 ### @ic-reactor/core
 
@@ -185,16 +214,17 @@ npm install --save-dev --save-exact @candid-core/cli@0.2.0
 
 ### Examples (not published)
 
-- The four examples pin `^4.0.0`. `next-ssr`'s provider and `vite-wallet`'s
-  client build their `AuthClient` with `(network) => new AuthClient(network)`.
-  `vite-wallet`'s hand-built local Internet Identity
-  (`src/auth/internet-identity.ts` and its test) is gone: on a local page the
-  client hands its factory the cookie's provider and the local network, and on
-  a deployed page no provider, which `AuthClient` reads as mainnet's. Its
-  `isLocalPage` tests, which decide where the dev account is offered, moved
-  to `src/auth/local-page.test.ts`. These edits wait for this release because
-  each example installs the published packages, which carry the factory's
-  argument from 4.0.0 on.
+- The four examples pin `^4.0.0-beta.3`. The two that sign in pass the
+  network to `AuthClient`: `next-ssr`'s provider and `vite-wallet`'s client
+  build it with
+  `(network) => new AuthClient(network)`. `vite-wallet`'s hand-built local
+  Internet Identity (`src/auth/internet-identity.ts` and its test) is gone: on
+  a local page the client hands its factory the cookie's provider and the
+  local network, and on a deployed page no provider, which `AuthClient` reads
+  as mainnet's. Its `isLocalPage` tests, which decide where the dev account is
+  offered, moved to `src/auth/local-page.test.ts`. These edits waited for this
+  release because each example installs the published packages, which carry
+  the factory's argument from 4.0.0-beta.3 on.
 - `node-agent-tool`'s network comment says `local` is icp-cli's
   `http://127.0.0.1:8000`.
 
