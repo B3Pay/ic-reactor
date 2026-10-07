@@ -101,12 +101,12 @@ describe("an installed fake replica", () => {
     }
   })
 
-  it("answers http://127.0.0.1:4943 when no host is given", async () => {
+  it('answers http://127.0.0.1:8000, the client\'s "local", when no host is given', async () => {
     const replica = installFakeReplica({
       canisters: { [CANISTER]: { query: answerWithCaller } },
     })
     try {
-      expect(replica.host).toBe("http://127.0.0.1:4943")
+      expect(replica.host).toBe("http://127.0.0.1:8000")
       expect((await whoamiQueryAs(undefined, replica.host)).isAnonymous()).toBe(
         true
       )
@@ -266,11 +266,11 @@ describe("an installed fake replica", () => {
     it.each([
       ["a mainnet page", "https://abcde-aaaaa-aaaaa-aaaaa-cai.icp0.io/"],
       ["an opaque origin", "file:///tmp/index.html"],
-    ])("answers http://127.0.0.1:4943 on %s", (_, href) => {
+    ])("answers http://127.0.0.1:8000 on %s", (_, href) => {
       vi.stubGlobal("location", new URL(href))
       const replica = installFakeReplica()
       try {
-        expect(replica.host).toBe("http://127.0.0.1:4943")
+        expect(replica.host).toBe("http://127.0.0.1:8000")
       } finally {
         replica.restore()
       }

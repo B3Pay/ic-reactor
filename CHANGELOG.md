@@ -54,6 +54,44 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   function typed `ClientOptions["auth"]` with no argument. Pass it the
   network, or type the function `() => AuthLike`.
 
+#### Changed
+
+- **BREAKING:** `network: "local"` is icp-cli's local network,
+  `http://127.0.0.1:8000`, rather than dfx's replica on
+  `http://127.0.0.1:4943` (#790). 8000 is icp-cli's default gateway port
+  ([`gateway.port`](https://github.com/dfinity/icp-cli/blob/ffcb2235515bc5623e6c98ba0b9d24a303aaac36/docs/reference/configuration.md#L294),
+  [the `local` network](https://github.com/dfinity/icp-cli/blob/ffcb2235515bc5623e6c98ba0b9d24a303aaac36/docs/reference/configuration.md#L513),
+  [environments](https://github.com/dfinity/icp-cli/blob/ffcb2235515bc5623e6c98ba0b9d24a303aaac36/docs/concepts/environments.md#L73)). For a dfx replica, name
+  it: `network: { host: "http://127.0.0.1:4943" }`. The same holds for:
+  - `"env"` on a server with `ICP_NETWORK=local` and no `ICP_HOST` or
+    `IC_HOST`, which now falls back to `http://127.0.0.1:8000`. With dfx's
+    `DFX_NETWORK=local` and no `ICP_NETWORK` (which overrides it), the
+    fallback stays dfx's `http://127.0.0.1:4943`, since that variable says
+    the project runs dfx.
+  - The Internet Identity the `auth` factory is handed for `"local"`, which
+    is `http://id.ai.localhost:8000/authorize`, the Vite plugin's default.
+  - The fake replica of `@ic-reactor/core/testing` (`createFakeReplica`,
+    `installFakeReplica`, and so `createTestClient`), whose default host is
+    `"local"`'s: `http://127.0.0.1:8000` where the test environment has no
+    local page origin. So a `createTestClient` with no `network`, outside a
+    page, connects to `http://127.0.0.1:8000` and its query keys carry that
+    host as their network segment. A test that asserted
+    `http://127.0.0.1:4943` there, or pointed an agent at it by hand, passes
+    `host: "http://127.0.0.1:4943"` to the fake (or
+    `network: { host: "http://127.0.0.1:4943" }` to the test client) to keep
+    it.
+
+### @ic-reactor/vite-plugin
+
+#### Changed
+
+- **BREAKING:** When detection fails, `/api` goes to icp-cli's local network,
+  `http://127.0.0.1:8000`, rather than `http://127.0.0.1:4943` (#790), as
+  `"local"` does in core and as the cookie's fallback Internet Identity,
+  `http://id.ai.localhost:8000/authorize`, already did. A project on a dfx
+  replica proxies `/api` itself (`server.proxy["/api"]`), which the plugin
+  leaves in place.
+
 ### Docs
 
 - Every `auth` factory in the docs, the guide (`llms.txt`), the READMEs and

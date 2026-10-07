@@ -90,31 +90,32 @@ describe("the network an auth factory is handed", () => {
     expect(warn).not.toHaveBeenCalled()
   })
 
-  it("names icp-cli's built-in Internet Identity on the replica's port for \"local\"", () => {
+  it('names icp-cli\'s built-in Internet Identity on port 8000 for "local", as the Vite plugin does', () => {
     stubPage("https://app.example.com")
 
     expect(handedTo("local")).toEqual({
-      agentOptions: { host: "http://127.0.0.1:4943", shouldFetchRootKey: true },
+      agentOptions: { host: "http://127.0.0.1:8000", shouldFetchRootKey: true },
       identityProvider: {
-        authorizeUrl: "http://id.ai.localhost:4943/authorize",
+        authorizeUrl: "http://id.ai.localhost:8000/authorize",
         canisterId: II,
       },
     })
   })
 
-  it("names the built-in Internet Identity for a local host, with the root key it was given", () => {
+  it("names the built-in Internet Identity on a local host's own port, with the root key it was given", () => {
     stubPage("https://app.example.com")
 
+    // A gateway on a port other than icp-cli's default (gateway.port).
     expect(
-      handedTo({ host: "http://localhost:8000", rootKey: GIVEN_ROOT_KEY })
+      handedTo({ host: "http://localhost:8080", rootKey: GIVEN_ROOT_KEY })
     ).toEqual({
       agentOptions: {
-        host: "http://localhost:8000",
+        host: "http://localhost:8080",
         rootKey: GIVEN_ROOT_KEY,
         shouldFetchRootKey: false,
       },
       identityProvider: {
-        authorizeUrl: "http://id.ai.localhost:8000/authorize",
+        authorizeUrl: "http://id.ai.localhost:8080/authorize",
         canisterId: II,
       },
     })

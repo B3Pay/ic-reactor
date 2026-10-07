@@ -665,8 +665,8 @@ function describe(error: unknown): string {
  *
  * Vite deep-merges the object a `config` hook returns over the user's config,
  * so an `/api` entry returned here replaced the user's own. A project that
- * pointed `/api` at icp-cli's port 8000 got 4943 instead, and nothing reported
- * the swap. Vite's merge skips an undefined value, so returning nothing leaves
+ * pointed `/api` at its own replica got the plugin's fallback instead, and
+ * nothing reported the swap. Vite's merge skips an undefined value, so returning nothing leaves
  * the user's entry in place.
  *
  * `configure` receives the options object Vite builds the proxy from. Every

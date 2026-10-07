@@ -23,8 +23,11 @@ import {
   type IcEnvironment,
 } from "./env.js"
 
-/** Where `/api` goes while `icp` reports no network. */
-export const DEFAULT_LOCAL_REPLICA = "http://127.0.0.1:4943"
+/**
+ * Where `/api` goes while `icp` reports no network: icp-cli's local network
+ * on its default gateway port, the client's `"local"`.
+ */
+export const DEFAULT_LOCAL_REPLICA = "http://127.0.0.1:8000"
 
 /**
  * The Internet Identity provider the cookie names when no canister is

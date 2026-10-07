@@ -40,7 +40,8 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
 `network` and the root key:
 
 - `"ic"`: mainnet (`https://icp-api.io`) and its built-in root key.
-- `"local"`: `http://127.0.0.1:4943`; its root key is fetched.
+- `"local"`: icp-cli's local network, `http://127.0.0.1:8000`; its root key
+  is fetched. A dfx replica is `{ host: "http://127.0.0.1:4943" }`.
 - `{ host, rootKey }`: any other replica. A given `rootKey` is used, never
   fetched; without one, it is fetched only from a local `host` (`localhost`,
   `127.0.0.1`, `[::1]`). Never fetch one from any other host.

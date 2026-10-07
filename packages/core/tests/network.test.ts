@@ -34,6 +34,10 @@ import {
 } from "./network-helpers.js"
 
 const LOCAL_REPLICA = "http://127.0.0.1:4943"
+/** icp-cli's local network: its gateway's default port is 8000. */
+const ICP_CLI_LOCAL = "http://127.0.0.1:8000"
+/** dfx's local replica. */
+const DFX_LOCAL = "http://127.0.0.1:4943"
 const CODESPACE = "https://fluffy-space-5173.app.github.dev"
 const GITPOD = "https://5173-user-repo-abc123.ws-us118.gitpod.io"
 const CUSTOM_DOMAIN = "https://testnet.example.com"
@@ -67,17 +71,17 @@ describe("the network table", () => {
     })
   })
 
-  it('"local" is a replica on 127.0.0.1:4943, whose root key is fetched', () => {
+  it('"local" is icp-cli\'s local network on 127.0.0.1:8000, whose root key is fetched', () => {
     const net = resolveNetwork("local")
 
     expect(net).toStrictEqual({
       keySegment: "local",
-      host: LOCAL_REPLICA,
+      host: ICP_CLI_LOCAL,
       fetchRootKey: true,
       trustsEnv: false,
     })
     expect(agentOptionsFor(net)).toStrictEqual({
-      host: LOCAL_REPLICA,
+      host: ICP_CLI_LOCAL,
       shouldFetchRootKey: true,
     })
   })
@@ -465,7 +469,7 @@ describe('"env" in a browser', () => {
 
       const net = resolveNetwork("env")
 
-      expect(net.host).toBe(LOCAL_REPLICA)
+      expect(net.host).toBe(ICP_CLI_LOCAL)
       // The page decides who can write the cookie, and this page is not local.
       expect(net.trustsEnv).toBe(false)
       expect(net.rootKey).toBeUndefined()
@@ -542,17 +546,34 @@ describe('"env" on a server', () => {
     })
   })
 
-  it.each([
-    ["ICP_NETWORK", { ICP_NETWORK: "local" }],
-    ["DFX_NETWORK", { DFX_NETWORK: "local" }],
-  ] as const)("is the local replica when %s is local", (_, env) => {
-    stubProcessEnv(env)
+  it("is icp-cli's local network, 127.0.0.1:8000, when ICP_NETWORK is local", () => {
+    stubProcessEnv({ ICP_NETWORK: "local" })
 
     const net = resolveNetwork("env")
 
-    expect(net.host).toBe(LOCAL_REPLICA)
-    expect(net.keySegment).toBe(LOCAL_REPLICA)
+    expect(net.host).toBe(ICP_CLI_LOCAL)
+    expect(net.keySegment).toBe(ICP_CLI_LOCAL)
     expect(net.fetchRootKey).toBe(true)
+    // The same address as "local".
+    expect(net.host).toBe(resolveNetwork("local").host)
+
+    // ICP_NETWORK is the signal, so a DFX_NETWORK beside it changes nothing.
+    stubProcessEnv({ ICP_NETWORK: "local", DFX_NETWORK: "local" })
+    expect(resolveNetwork("env").host).toBe(ICP_CLI_LOCAL)
+  })
+
+  it("is dfx's replica, 127.0.0.1:4943, when only DFX_NETWORK is local", () => {
+    stubProcessEnv({ DFX_NETWORK: "local" })
+
+    const net = resolveNetwork("env")
+
+    expect(net.host).toBe(DFX_LOCAL)
+    expect(net.keySegment).toBe(DFX_LOCAL)
+    expect(net.fetchRootKey).toBe(true)
+
+    // A host from the environment still wins.
+    stubProcessEnv({ DFX_NETWORK: "local", IC_HOST: "http://127.0.0.1:9000" })
+    expect(resolveNetwork("env").host).toBe("http://127.0.0.1:9000")
   })
 
   it("lets ICP_NETWORK override DFX_NETWORK", () => {
@@ -560,23 +581,23 @@ describe('"env" on a server', () => {
     expect(resolveNetwork("env").host).toBe(MAINNET)
 
     stubProcessEnv({ ICP_NETWORK: "local", DFX_NETWORK: "ic" })
-    expect(resolveNetwork("env").host).toBe(LOCAL_REPLICA)
+    expect(resolveNetwork("env").host).toBe(ICP_CLI_LOCAL)
   })
 
   it("takes ICP_HOST, then IC_HOST, for a local network", () => {
     stubProcessEnv({
       ICP_NETWORK: "local",
-      ICP_HOST: "http://127.0.0.1:8000",
+      ICP_HOST: "http://127.0.0.1:8080",
       IC_HOST: "http://127.0.0.1:9000",
     })
-    expect(resolveNetwork("env").host).toBe("http://127.0.0.1:8000")
+    expect(resolveNetwork("env").host).toBe("http://127.0.0.1:8080")
 
     stubProcessEnv({ ICP_NETWORK: "local", IC_HOST: "http://127.0.0.1:9000" })
     expect(resolveNetwork("env").host).toBe("http://127.0.0.1:9000")
 
     // An empty variable is unset.
     stubProcessEnv({ ICP_NETWORK: "local", ICP_HOST: "", IC_HOST: "" })
-    expect(resolveNetwork("env").host).toBe(LOCAL_REPLICA)
+    expect(resolveNetwork("env").host).toBe(ICP_CLI_LOCAL)
   })
 
   it("ignores ICP_HOST and IC_HOST when the network is not local", () => {

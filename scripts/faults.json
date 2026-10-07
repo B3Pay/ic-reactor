@@ -1953,7 +1953,7 @@
     "id": "790-auth-factory-handed-agent-options-only",
     "package": "core",
     "test": "tests/client-auth-network.test.ts",
-    "testName": "names the built-in Internet Identity for a local host, with the root key it was given",
+    "testName": "names the built-in Internet Identity on a local host's own port, with the root key it was given",
     "why": "the auth factory handed only the agent options, so an AuthClient on a local replica signs in with mainnet's Internet Identity",
     "file": "src/client.ts",
     "search": "    const built = checkAuth(authFactory(resolution.network))",
@@ -1973,7 +1973,7 @@
     "id": "790-auth-built-in-ii-port-fixed",
     "package": "core",
     "test": "tests/client-auth-network.test.ts",
-    "testName": "names icp-cli",
+    "testName": "names the built-in Internet Identity on a local host's own port",
     "why": "the built-in Internet Identity's URL always on port 8000, whatever port the client's replica is on",
     "file": "src/network.ts",
     "search": "  return `${url.protocol}//id.ai.localhost${url.port ? `:${url.port}` : \"\"}/authorize`",
@@ -2208,5 +2208,75 @@
     "file": "src/network.ts",
     "search": "    const why = net.trustsEnv\n",
     "replace": "    const why = true\n"
+  },
+  {
+    "id": "local-port-local-is-dfx",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "\"local\" is icp-cli's local network on 127.0.0.1:8000",
+    "why": "\"local\" back on dfx's 127.0.0.1:4943 instead of icp-cli's 127.0.0.1:8000",
+    "file": "src/network.ts",
+    "search": "const LOCAL_HOST = \"http://127.0.0.1:8000\"",
+    "replace": "const LOCAL_HOST = \"http://127.0.0.1:4943\""
+  },
+  {
+    "id": "local-port-auth-ii-on-dfx-port",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "names icp-cli's built-in Internet Identity on port 8000 for \"local\"",
+    "why": "\"local\" on dfx's 4943, so the auth factory's built-in Internet Identity is id.ai.localhost:4943, not the Vite plugin's id.ai.localhost:8000",
+    "file": "src/network.ts",
+    "search": "const LOCAL_HOST = \"http://127.0.0.1:8000\"",
+    "replace": "const LOCAL_HOST = \"http://127.0.0.1:4943\""
+  },
+  {
+    "id": "local-port-icp-network-on-dfx-port",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "is icp-cli's local network, 127.0.0.1:8000, when ICP_NETWORK is local",
+    "why": "a server with ICP_NETWORK=local falls back to dfx's 127.0.0.1:4943, not icp-cli's 127.0.0.1:8000",
+    "file": "src/network.ts",
+    "search": "(fromIcp ? LOCAL_HOST : DFX_LOCAL_HOST)",
+    "replace": "DFX_LOCAL_HOST"
+  },
+  {
+    "id": "local-port-dfx-network-loses-4943",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "is dfx's replica, 127.0.0.1:4943, when only DFX_NETWORK is local",
+    "why": "a server with only dfx's DFX_NETWORK=local falls back to icp-cli's 127.0.0.1:8000, where no dfx replica listens",
+    "file": "src/network.ts",
+    "search": "(fromIcp ? LOCAL_HOST : DFX_LOCAL_HOST)",
+    "replace": "LOCAL_HOST"
+  },
+  {
+    "id": "local-port-dfx-network-overrides-icp",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "is icp-cli's local network, 127.0.0.1:8000, when ICP_NETWORK is local",
+    "why": "a DFX_NETWORK beside ICP_NETWORK=local decides the port, so the server falls back to dfx's 4943 although ICP_NETWORK names icp-cli's network",
+    "file": "src/network.ts",
+    "search": "const fromIcp = env?.ICP_NETWORK !== undefined",
+    "replace": "const fromIcp =\n    env?.ICP_NETWORK !== undefined && env?.DFX_NETWORK === undefined"
+  },
+  {
+    "id": "local-port-fake-replica-on-dfx-port",
+    "package": "core",
+    "test": "tests/testing-fake-replica.test.ts",
+    "testName": "answers http://127.0.0.1:8000, the client's \"local\", when no host is given",
+    "why": "the fake replica's default host left on dfx's 4943, so a test client on \"local\" (icp-cli's 8000) calls a host the fake does not answer",
+    "file": "src/testing/fake-replica.ts",
+    "search": "const DEFAULT_HOST = \"http://127.0.0.1:8000\"",
+    "replace": "const DEFAULT_HOST = \"http://127.0.0.1:4943\""
+  },
+  {
+    "id": "local-port-plugin-proxy-on-dfx-port",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should fallback to default proxy when icp-cli fails",
+    "why": "the plugin's fallback /api proxy left on dfx's 4943 while core's \"local\" and the cookie's Internet Identity are on icp-cli's 8000",
+    "file": "src/dev-environment.ts",
+    "search": "export const DEFAULT_LOCAL_REPLICA = \"http://127.0.0.1:8000\"",
+    "replace": "export const DEFAULT_LOCAL_REPLICA = \"http://127.0.0.1:4943\""
   }
 ]

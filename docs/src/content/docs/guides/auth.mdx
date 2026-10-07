@@ -75,7 +75,8 @@ The client picks the identity provider by these rules, in order:
    derived from its id. No provider.
 3. The network is `"local"`, or an object whose host is local: icp-cli's
    built-in Internet Identity, `http://id.ai.localhost:<port>/authorize` on
-   the replica's port, with `rdmx6-jaaaa-aaaaa-aaadq-cai`.
+   the replica's port, with `rdmx6-jaaaa-aaaaa-aaadq-cai`. For `"local"` that
+   is `http://id.ai.localhost:8000/authorize`, the Vite plugin's default too.
 4. `"env"` on a local page whose cookie names no provider: the agent's host is
    the page's (a dev server, or a gateway serving an asset canister), which
    does not say where icp-cli's built-in Internet Identity is. No provider.
