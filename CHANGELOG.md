@@ -39,7 +39,8 @@ below say:
 - The `auth` factory is handed the client's network, so
   `auth: (network) => new AuthClient(network)` signs users in on the network
   the client calls. Code that compiled against beta.2 compiles unchanged,
-  unless it calls a function typed `ClientOptions["auth"]` with no argument.
+  unless it calls a function typed `ClientOptions["auth"]` with no argument,
+  or uses one where a function of no argument is expected.
 - **BREAKING:** `network: "local"` is icp-cli's local network,
   `http://127.0.0.1:8000`, not dfx's `http://127.0.0.1:4943`. The test
   client's default host (where its fake replica answers) and the Vite
@@ -121,8 +122,10 @@ npm install --save-dev --save-exact @candid-core/cli@0.2.0
     `@ic-reactor/core/testing`, whose factory ignores the network.
 
   Code that compiled against 4.0.0-beta.2 and stops compiling: a call of a
-  function typed `ClientOptions["auth"]` with no argument. Pass it the
-  network, or type the function `() => AuthLike`.
+  function typed `ClientOptions["auth"]` with no argument, or its use as a
+  `() => AuthLike`. Pass it the network, or type the function
+  `() => AuthLike`. A factory whose optional first parameter is not the
+  network, such as `(x?: string) => ...`, stops compiling too.
 
 #### Changed
 
@@ -171,14 +174,14 @@ npm install --save-dev --save-exact @candid-core/cli@0.2.0
   is `(network) => new AuthClient(network)`. The Auth guide's 25-line local
   Internet Identity setup is that one line, with the rules above and the
   override for a project that deploys its own `internet_identity`.
-- Getting started says where `icrc1.did` comes from, and a new section, "Get
-  a canister's .did", adds a script that saves a live canister's `.did` from
-  certified state (with the `icp canister metadata` command that does the
-  same), runs the first read with `npx tsx`, says to change the default
-  `App` import of Vite's template, builds the transfer's argument in place,
-  says to commit the `.did` and the generated module (Vite's `react-ts`
-  template type-checks before the plugin generates), and names
-  `injectEnvironment: false` for an app that only talks to mainnet.
+- Getting started says where `icrc1.did` comes from, runs the first read
+  with `npx tsx`, says to change the default `App` import of Vite's
+  template, builds the transfer's argument in place, says to commit the
+  `.did` and the generated module (Vite's `react-ts` template type-checks
+  before the plugin generates), and names `injectEnvironment: false` for an
+  app that only talks to mainnet. A new section, "Get a canister's .did",
+  adds a script that saves a live canister's `.did` from certified state,
+  with the `icp canister metadata` command that does the same.
 
 ### Examples (not published)
 
