@@ -46,7 +46,8 @@ below say:
 
 The guide (`llms.txt`) and the skill now say they apply to 4.0.0-beta.3, and
 the guide teaches the factory's argument. The four examples pin
-`^4.0.0-beta.3` and pass the network to `AuthClient`.
+`^4.0.0-beta.3`, and the two that sign in (`next-ssr`, `vite-wallet`) pass
+the network to `AuthClient`.
 
 It requires the stable candid-core pair, both pinned exactly, as in beta.2:
 
@@ -160,8 +161,9 @@ npm install --save-dev --save-exact @candid-core/cli@0.2.0
 
 ### Examples (not published)
 
-- The four examples pin `^4.0.0-beta.3`, and pass the network to `AuthClient`:
-  `next-ssr`'s provider and `vite-wallet`'s client build it with
+- The four examples pin `^4.0.0-beta.3`. The two that sign in pass the
+  network to `AuthClient`: `next-ssr`'s provider and `vite-wallet`'s client
+  build it with
   `(network) => new AuthClient(network)`. `vite-wallet`'s hand-built local
   Internet Identity (`src/auth/internet-identity.ts` and its test) is gone: on
   a local page the client hands its factory the cookie's provider and the
