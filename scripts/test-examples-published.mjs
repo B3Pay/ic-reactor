@@ -598,9 +598,9 @@ export function isolatedEnv(env, root) {
  * (`trackedConfigFindings`), its required scripts (`requiredScriptFindings`)
  * and its `.stackblitzrc` start command (`stackblitzStartCommand`'s finding,
  * and the npm script it names: `startScriptFindings`).
- * `testExample` runs them on the copy before installing, and `main` runs them
- * on the checkout before a run defers to the release (`awaitsRelease`), so a
- * deferral never skips them.
+ * `testExample` runs them on the copy before installing, and `deferredRun`
+ * runs them on the checkout when a run defers to the release
+ * (`awaitsRelease`), so a deferral never skips them.
  *
  * @param {string} name the example
  * @param {{ files: string[], scripts: Record<string, string> | undefined, start: { finding?: string } }} example
@@ -1270,8 +1270,8 @@ function registryState(name, tag, version, view = npmView) {
  *   `^<it>`, and no dependency uses a local protocol), a release pull request
  *   or its merge before the tag publishes it, the run defers:
  *   `{ deferred: true, version: branchVersion }`. The caller still runs the
- *   checks that need no registry (`staticFindings`), and a finding there fails
- *   the run. Core's versions are asked for only when every example pins
+ *   checks that need no registry (`deferredRun`, over `staticFindings`), and a
+ *   finding there fails the run. Core's versions are asked for only when every example pins
  *   `^<branchVersion>`.
  * - Otherwise the tag is that of the branch's version, which is the version
  *   of its last release: release.js syncs the examples to exactly that
@@ -1323,6 +1323,59 @@ export async function resolveRun(
   return { tag, version }
 }
 
+/**
+ * A deferred run (`resolveRun`'s `{ deferred: true }`): it still runs the
+ * checks that need no registry (`staticFindings`) on each example of the
+ * checkout, so deferring never skips them. A finding fails the run (exit 1,
+ * reported); with none it passes (exit 0) and says what it deferred to.
+ *
+ * @param {string[]} names the examples
+ * @param {{
+ *   version: string,
+ *   manifests: Record<string, any>[],
+ *   files?: (name: string) => string[],
+ *   startCommand?: (name: string) => { command?: string, finding?: string },
+ *   onFindings?: (results: { name: string, steps: {}, findings: string[] }[]) => void,
+ *   log?: (message: string) => void,
+ * }} run `manifests` are the examples' package.json files, in `names`'
+ *   order; `files`, `startCommand`, `onFindings` and `log` default to the
+ *   checkout's tracked files, its `.stackblitzrc`, the run's report and
+ *   `console.log`
+ * @returns {0 | 1} the run's exit code
+ */
+export function deferredRun(
+  names,
+  {
+    version,
+    manifests,
+    files = trackedFiles,
+    startCommand = (name) =>
+      stackblitzStartCommand(join(repoRoot, "examples", name)),
+    onFindings = (results) => report(results, 0),
+    log = console.log,
+  }
+) {
+  const results = names.map((name, i) => ({
+    name,
+    steps: {},
+    findings: staticFindings(name, {
+      files: files(name),
+      scripts: manifests[i].scripts,
+      start: startCommand(name),
+    }),
+  }))
+  if (results.some((result) => result.findings.length > 0)) {
+    onFindings(results)
+    return 1
+  }
+  log(
+    `The examples pin ^${version}, this branch's own version, which is not on ${REGISTRY} yet: ` +
+      `a release that has not been published. The checks that need no registry pass. release.yml's examples-published job tests them ` +
+      `against it once it is (--wait-for v${version}). Nothing to test here.`
+  )
+  return 0
+}
+
 async function main(argv) {
   const args = parseArgs(argv)
   if (args.error) {
@@ -1360,26 +1413,7 @@ async function main(argv) {
     return 1
   }
   if (run.deferred) {
-    // Deferring never skips the checks that need no registry.
-    const results = names.map((name, i) => ({
-      name,
-      steps: {},
-      findings: staticFindings(name, {
-        files: trackedFiles(name),
-        scripts: manifests[i].scripts,
-        start: stackblitzStartCommand(join(repoRoot, "examples", name)),
-      }),
-    }))
-    if (results.some((result) => result.findings.length > 0)) {
-      report(results, 0)
-      return 1
-    }
-    console.log(
-      `The examples pin ^${run.version}, this branch's own version, which is not on ${REGISTRY} yet: ` +
-        `a release that has not been published. The checks that need no registry pass. release.yml's examples-published job tests them ` +
-        `against it once it is (--wait-for v${run.version}). Nothing to test here.`
-    )
-    return 0
+    return deferredRun(names, { version: run.version, manifests })
   }
   const { tag, version } = run
   console.log(

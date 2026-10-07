@@ -28,6 +28,7 @@ import {
   ancestorFindings,
   awaitsRelease,
   definesScript,
+  deferredRun,
   checkInstalled,
   checkLockfile,
   checkManifest,
@@ -573,6 +574,51 @@ describe("staticFindings", () => {
     assert.ok(findings.some((f) => f.includes(".npmrc")))
     assert.ok(findings.some((f) => f.includes('"build"')))
     assert.ok(findings.includes(".stackblitzrc is missing"))
+  })
+})
+
+describe("deferredRun", () => {
+  const scripts = {
+    typecheck: "tsc",
+    test: "vitest run",
+    build: "vite build",
+    dev: "vite",
+  }
+  /** A deferred run over one example with these scripts, recording its output. */
+  function deferFor(exampleScripts) {
+    const reported = []
+    const logged = []
+    const code = deferredRun(["example"], {
+      version: STABLE,
+      manifests: [{ scripts: exampleScripts }],
+      files: () => ["package.json", "src/a.ts"],
+      startCommand: () => ({ command: "npm run dev" }),
+      onFindings: (results) => reported.push(...results),
+      log: (message) => logged.push(message),
+    })
+    return { code, reported, logged }
+  }
+
+  it("passes with the deferral message when the checks that need no registry find nothing", () => {
+    const { code, reported, logged } = deferFor(scripts)
+    assert.equal(code, 0)
+    assert.deepEqual(reported, [])
+    assert.equal(logged.length, 1)
+    assert.match(logged[0], /pin \^4\.0\.0, this branch's own version/)
+    assert.match(logged[0], /--wait-for v4\.0\.0/)
+  })
+
+  it("fails, and reports the finding, when an example lacks a required script", () => {
+    const { test: _, ...withoutTest } = scripts
+    const { code, reported, logged } = deferFor(withoutTest)
+    assert.equal(code, 1)
+    assert.deepEqual(logged, [])
+    assert.equal(reported.length, 1)
+    assert.equal(reported[0].name, "example")
+    assert.ok(
+      reported[0].findings.some((f) => f.includes('"test"')),
+      reported[0].findings.join("\n")
+    )
   })
 })
 
