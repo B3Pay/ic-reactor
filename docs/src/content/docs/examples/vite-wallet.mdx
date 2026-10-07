@@ -17,9 +17,11 @@ backend canister of the example's own.
   `{ name: "backend" }` and the ledger by its `{ id }`. A panel shows the id
   the client resolved and the cookie it came from.
 - **Two ways to sign in, one client:** Internet Identity through
-  `@icp-sdk/auth`'s `AuthClient`, pointed at the local II, and a "dev account"
-  of the app's own, an `AuthLike` holding an Ed25519 key, offered only on a
-  local page. Switching accounts shows the next account nothing of the last.
+  `@icp-sdk/auth`'s `AuthClient`, built with
+  `(network) => new AuthClient(network)` from the network the client hands it
+  (the local II on a local page), and a "dev account" of the app's own, an
+  `AuthLike` holding an Ed25519 key, offered only on a local page. Switching
+  accounts shows the next account nothing of the last.
 - **Reads and writes:** the balance with `skipToken` while signed out and a
   `refetchInterval`, so a top-up from the example's faucet shows by itself;
   ICP transfers with `parseUnits`, the fee, deduplication by `created_at_time`

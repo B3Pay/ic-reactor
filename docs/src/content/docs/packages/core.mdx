@@ -82,8 +82,25 @@ type ClientOptions = {
   readonly maxDepth?: number
 } & (
   | { readonly identity: Identity | "anonymous"; readonly auth?: never }
-  | { readonly auth: () => AuthLike; readonly identity?: never }
+  | {
+      readonly auth: (network: AuthNetwork) => AuthLike
+      readonly identity?: never
+    }
 )
+
+// Not exported: what the auth factory is handed, `network` in `(network) => new AuthClient(network)`.
+type AuthNetwork = {
+  readonly agentOptions: {
+    readonly host: string
+    readonly rootKey?: Uint8Array
+    readonly shouldFetchRootKey: boolean
+    readonly fetch?: typeof globalThis.fetch
+  }
+  readonly identityProvider?: {
+    readonly authorizeUrl: string
+    readonly canisterId: string
+  }
+}
 
 function isReactorError(error: unknown): error is ReactorError<unknown>
 
@@ -102,6 +119,8 @@ function formatUnits(
 `createClient` does no work until it is used, so the same line runs in a
 server render and in a browser. It throws a `TypeError` for options that do not
 say who calls, say it twice, or name a network or `maxDepth` it cannot use.
+The `auth` factory is handed the client's network:
+[Auth](/v4/guides/auth/) says where its `identityProvider` comes from.
 
 ## Exports of `@ic-reactor/core/testing`
 
