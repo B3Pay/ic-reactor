@@ -106,7 +106,9 @@ const read = (path) => readFileSync(path, "utf8")
  * `window.location` at `pathname`, and returns where it sends the browser.
  */
 function redirectTarget(html, pathname) {
-  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+  const scripts = [
+    ...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\b[^>]*>/gi),
+  ]
   assert.equal(scripts.length, 1, "one inline script")
   let target
   const location = {

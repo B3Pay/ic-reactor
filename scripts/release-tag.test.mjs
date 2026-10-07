@@ -250,7 +250,9 @@ describe("release.js", () => {
       assert.equal(result.status, 1)
       assert.match(
         result.stderr,
-        new RegExp(`Refusing ${version.replace(/[.+]/g, "\\$&")}: `)
+        new RegExp(
+          `Refusing ${version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}: `
+        )
       )
       for (const pkg of ["core", "react", "vite-plugin"]) {
         const manifest = JSON.parse(
