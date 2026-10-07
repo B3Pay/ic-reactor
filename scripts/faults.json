@@ -1948,5 +1948,395 @@
     "file": "src/options.ts",
     "search": "    if (vars === skipToken) {\n      return {\n        queryKey: readKey(record, caller.principal, target, prepared.name, [",
     "replace": "    if (vars === skipToken || vars == null) {\n      return {\n        queryKey: readKey(record, caller.principal, target, prepared.name, ["
+  },
+  {
+    "id": "790-auth-factory-handed-agent-options-only",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "names the built-in Internet Identity for a local host, with the root key it was given",
+    "why": "the auth factory handed only the agent options, so an AuthClient on a local replica signs in with mainnet's Internet Identity",
+    "file": "src/client.ts",
+    "search": "    const built = checkAuth(authFactory(authNetwork()))",
+    "replace": "    const built = checkAuth(\n      authFactory({ agentOptions: authNetwork().agentOptions })\n    )"
+  },
+  {
+    "id": "790-auth-factory-zero-argument-refused",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "still builds the auth the client calls as",
+    "why": "a factory that takes no argument (() => new AuthClient()) no longer builds an auth, as if only network-aware factories were supported",
+    "file": "src/client.ts",
+    "search": "    const built = checkAuth(authFactory(authNetwork()))",
+    "replace": "    const built = checkAuth(\n      authFactory.length > 0 ? authFactory(authNetwork()) : undefined\n    )"
+  },
+  {
+    "id": "790-auth-built-in-ii-port-fixed",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "names icp-cli",
+    "why": "the built-in Internet Identity's URL always on port 8000, whatever port the client's replica is on",
+    "file": "src/network.ts",
+    "search": "  return `${url.protocol}//id.ai.localhost${url.port ? `:${url.port}` : \"\"}/authorize`",
+    "replace": "  return `${url.protocol}//id.ai.localhost:8000/authorize`"
+  },
+  {
+    "id": "790-auth-cookie-provider-ignored",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "takes the trusted cookie",
+    "why": "a trusted ic_env cookie's INTERNET_IDENTITY_PROVIDER ignored, so \"env\" on a local page has no identity provider",
+    "file": "src/network.ts",
+    "search": "  const authorizeUrl = cookieAuthorizeUrl(env)\n",
+    "replace": "  const authorizeUrl = undefined as string | undefined\n"
+  },
+  {
+    "id": "790-auth-cookie-ii-canister-ignored",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "takes the cookie's internet_identity canister with its provider",
+    "why": "the cookie's PUBLIC_CANISTER_ID:internet_identity ignored next to its provider URL, so delegations are asked of rdmx6 instead of the project's own canister",
+    "file": "src/network.ts",
+    "search": "          canisterId: projectCanister ?? INTERNET_IDENTITY,",
+    "replace": "          canisterId: INTERNET_IDENTITY,"
+  },
+  {
+    "id": "790-auth-untrusted-cookie-read",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "does not read a provider from a cookie it does not trust",
+    "why": "the identity provider read from an ic_env cookie the client does not trust, which any sibling subdomain can write",
+    "file": "src/network.ts",
+    "search": "  const env = net.trustsEnv ? readCanisterEnv() : undefined\n",
+    "replace": "  const env = readCanisterEnv()\n"
+  },
+  {
+    "id": "790-auth-any-host-is-local",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "names no identity provider for a host that is not local",
+    "why": "every object network treated as a local replica, so a remote one is handed id.ai.localhost",
+    "file": "src/network.ts",
+    "search": "    (typeof network === \"object\" &&\n      isLocalHostname(agentHostnameOf(network.host)))",
+    "replace": "    typeof network === \"object\""
+  },
+  {
+    "id": "790-auth-ic-treated-as-local",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is mainnet",
+    "why": "\"ic\" handed icp-cli's built-in Internet Identity, as if every named network were local",
+    "file": "src/network.ts",
+    "search": "    network === \"local\" ||\n    (typeof network",
+    "replace": "    network !== \"env\" ||\n    (typeof network"
+  },
+  {
+    "id": "790-auth-env-mainnet-page-treated-as-local",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "on a mainnet page",
+    "why": "\"env\" handed the built-in Internet Identity on a mainnet page, as if \"env\" were always local",
+    "file": "src/network.ts",
+    "search": "    network === \"local\" ||\n    (typeof network",
+    "replace": "    network === \"local\" ||\n    network === \"env\" ||\n    (typeof network"
+  },
+  {
+    "id": "790-auth-env-web-host-treated-as-local",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "on an ordinary web host",
+    "why": "\"env\" handed the built-in Internet Identity on an ordinary web host, which falls back to mainnet",
+    "file": "src/network.ts",
+    "search": "    network === \"local\" ||\n    (typeof network",
+    "replace": "    network === \"local\" ||\n    network === \"env\" ||\n    (typeof network"
+  },
+  {
+    "id": "790-auth-warn-project-ii-silent",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is given for a project that deploys its own internet_identity",
+    "why": "a project's own internet_identity, named without a URL, falls back silently to mainnet's Internet Identity on a local replica",
+    "file": "src/network.ts",
+    "search": "    return mainnet\n      ? { network: { agentOptions } }",
+    "replace": "    return true\n      ? { network: { agentOptions } }"
+  },
+  {
+    "id": "790-auth-warn-env-local-page-unexplained",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "on a local page whose cookie names no provider",
+    "why": "\"env\" on a local page with no provider in the cookie not told apart: the warning blames the root key instead of the missing INTERNET_IDENTITY_PROVIDER",
+    "file": "src/network.ts",
+    "search": "  if (network === \"env\" && pageIsLocal()) {",
+    "replace": "  if (false as boolean) {"
+  },
+  {
+    "id": "790-auth-warn-env-local-page-no-cookie",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "with no cookie at all",
+    "why": "\"env\" on a local page with no ic_env cookie not told apart: the warning blames the root key instead of the missing INTERNET_IDENTITY_PROVIDER",
+    "file": "src/network.ts",
+    "search": "  if (network === \"env\" && pageIsLocal()) {",
+    "replace": "  if (false as boolean) {"
+  },
+  {
+    "id": "790-auth-warn-fetched-key-is-mainnet",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is given for a replica with a root key of its own",
+    "why": "a replica whose root key is fetched counted as mainnet, so it falls back silently to mainnet's Internet Identity",
+    "file": "src/network.ts",
+    "search": "const verifiesAsMainnet = (net: ResolvedNetwork): boolean =>\n  !net.fetchRootKey &&\n",
+    "replace": "const verifiesAsMainnet = (net: ResolvedNetwork): boolean =>\n"
+  },
+  {
+    "id": "790-auth-warn-mainnet-key-counted-as-other",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is never given",
+    "why": "any root key in the cookie counted as not mainnet's, so a mainnet page whose cookie carries mainnet's key warns",
+    "file": "src/network.ts",
+    "search": "  (net.rootKey === undefined || hexOf(net.rootKey) === IC_ROOT_KEY)",
+    "replace": "  net.rootKey === undefined"
+  },
+  {
+    "id": "790-auth-warn-without-gap",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is not given where a provider was named",
+    "why": "the warning given whatever the network, a provider named or not",
+    "file": "src/client.ts",
+    "search": "    const { gap } = resolution\n    if (gap === undefined) return",
+    "replace": "    const gap = resolution.gap ?? \"none\"\n    if (false as boolean) return"
+  },
+  {
+    "id": "790-auth-warn-every-factory-call",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is given once per client",
+    "why": "the warning repeated each time the factory runs, which it does again after it throws",
+    "file": "src/client.ts",
+    "search": "    if (warnedAuthNetwork || !isDevelopment()) return",
+    "replace": "    if (!isDevelopment()) return"
+  },
+  {
+    "id": "790-auth-warn-in-production",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is not given in production",
+    "why": "the development warning given in a production build",
+    "file": "src/client.ts",
+    "search": "    if (warnedAuthNetwork || !isDevelopment()) return",
+    "replace": "    if (warnedAuthNetwork) return"
+  },
+  {
+    "id": "790-auth-warn-from-test-client",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is not given by a test client",
+    "why": "the warning given before the factory runs, wherever no provider was named, so a test client on \"ic\" warns about its fake replica's root key, though its test auth ignores the network",
+    "file": "src/client.ts",
+    "search": "    const built = checkAuth(authFactory(authNetwork()))",
+    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+  },
+  {
+    "id": "790-auth-local-ignores-cookie-provider",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "prefers the cookie's provider to the built-in one for a local host",
+    "why": "\"local\" always handed the built-in Internet Identity, even where a trusted cookie names the provider the network really runs",
+    "file": "src/network.ts",
+    "search": "  if (authorizeUrl !== undefined) {",
+    "replace": "  if (authorizeUrl !== undefined && network !== \"local\") {"
+  },
+  {
+    "id": "790-auth-ic-ignores-trusted-cookie",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "when allowEnvConfig: true trusts the cookie",
+    "why": "\"ic\" never reads a provider from the cookie, though allowEnvConfig: true makes the client trust it",
+    "file": "src/network.ts",
+    "search": "  const env = net.trustsEnv ? readCanisterEnv() : undefined\n",
+    "replace": "  const env =\n    net.trustsEnv && network !== \"ic\" ? readCanisterEnv() : undefined\n"
+  },
+  {
+    "id": "790-auth-cookie-provider-any-scheme",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "that is not an http(s) URL",
+    "why": "any INTERNET_IDENTITY_PROVIDER taken from the cookie, so a javascript: URL becomes the page AuthClient opens to sign in",
+    "file": "src/network.ts",
+    "search": "    return protocol === \"http:\" || protocol === \"https:\" ? value : undefined",
+    "replace": "    return value"
+  },
+  {
+    "id": "790-auth-cookie-ii-not-validated",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "internet_identity is not principal text",
+    "why": "a cookie's internet_identity that is not principal text handed on as the canister to ask for delegations",
+    "file": "src/network.ts",
+    "search": "    principalProblem(value) === undefined\n    ? value",
+    "replace": "    true\n    ? value"
+  },
+  {
+    "id": "790-auth-built-in-ii-empty-port",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "with no port where it has none",
+    "why": "the built-in Internet Identity's URL always given a port, so a host without one yields id.ai.localhost:/authorize",
+    "file": "src/network.ts",
+    "search": "  return `${url.protocol}//id.ai.localhost${url.port ? `:${url.port}` : \"\"}/authorize`",
+    "replace": "  return `${url.protocol}//id.ai.localhost:${url.port}/authorize`"
+  },
+  {
+    "id": "790-auth-built-in-ii-always-http",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "on the local host's scheme",
+    "why": "the built-in Internet Identity's URL always http:, so an https local gateway is handed a sign-in page on another scheme",
+    "file": "src/network.ts",
+    "search": "  return `${url.protocol}//id.ai.localhost${url.port ? `:${url.port}` : \"\"}/authorize`",
+    "replace": "  return `http://id.ai.localhost${url.port ? `:${url.port}` : \"\"}/authorize`"
+  },
+  {
+    "id": "790-auth-warn-untrusted-cookie-blamed",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "blames allowEnvConfig: false",
+    "why": "the warning for \"env\" on a local page says the cookie names no provider where allowEnvConfig: false kept the client from reading it",
+    "file": "src/network.ts",
+    "search": "    const why = net.trustsEnv\n",
+    "replace": "    const why = true\n"
+  },
+  {
+    "id": "790-auth-warn-before-factory-overridden",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is not given to a factory that names its own provider by spreading network",
+    "why": "the warning given before the factory runs, so the override it teaches, { ...network, identityProvider }, still logs that sign-in cannot work",
+    "file": "src/client.ts",
+    "search": "    const built = checkAuth(authFactory(authNetwork()))",
+    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+  },
+  {
+    "id": "790-auth-warn-before-factory-real-override",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is not given to a real AuthClient built from the override",
+    "why": "the warning given before the factory runs, so a real AuthClient built with its own identityProvider still logs that sign-in cannot work",
+    "file": "src/client.ts",
+    "search": "    const built = checkAuth(authFactory(authNetwork()))",
+    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+  },
+  {
+    "id": "790-auth-warn-before-factory-not-ii",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is not given to a factory that ignores network",
+    "why": "the warning given before the factory runs, so an auth that is not Internet Identity, which never reads the network, logs that sign-in cannot work",
+    "file": "src/client.ts",
+    "search": "    const built = checkAuth(authFactory(authNetwork()))",
+    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+  },
+  {
+    "id": "790-auth-provider-read-silent",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is given when the factory reads network.identityProvider as AuthClient",
+    "why": "the identityProvider getter returns undefined without a word, so new AuthClient(network) signs in with mainnet's Internet Identity on a replica that rejects it, silently",
+    "file": "src/client.ts",
+    "search": "      get: (): undefined => {\n        warnNoProvider(gap)\n        return undefined\n      },",
+    "replace": "      get: (): undefined => undefined,"
+  },
+  {
+    "id": "790-auth-provider-read-silent-real-authclient",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is given by a real AuthClient built with new AuthClient(network)",
+    "why": "the identityProvider getter returns undefined without a word, so @icp-sdk/auth 10's own AuthClient, which reads it in its constructor, falls back to mainnet silently",
+    "file": "src/client.ts",
+    "search": "      get: (): undefined => {\n        warnNoProvider(gap)\n        return undefined\n      },",
+    "replace": "      get: (): undefined => undefined,"
+  },
+  {
+    "id": "790-auth-provider-read-silent-destructured",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is given to a factory that destructures identityProvider",
+    "why": "the identityProvider getter returns undefined without a word, so a factory that destructures it is never told it is missing",
+    "file": "src/client.ts",
+    "search": "      get: (): undefined => {\n        warnNoProvider(gap)\n        return undefined\n      },",
+    "replace": "      get: (): undefined => undefined,"
+  },
+  {
+    "id": "790-auth-provider-getter-enumerable",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "leaves identityProvider out of Object.keys and JSON",
+    "why": "the warning getter enumerable, so Object.keys and JSON show an identityProvider that is absent",
+    "file": "src/client.ts",
+    "search": "      enumerable: false,",
+    "replace": "      enumerable: true,"
+  },
+  {
+    "id": "790-auth-provider-getter-enumerable-spread",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is not given to a factory that names its own provider by spreading network",
+    "why": "the warning getter enumerable, so the override's spread reads it and warns, though the override names its own provider",
+    "file": "src/client.ts",
+    "search": "      enumerable: false,",
+    "replace": "      enumerable: true,"
+  },
+  {
+    "id": "790-auth-fetch-not-handed",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is the client's fetch, called as a plain function",
+    "why": "the client's fetch not handed to the auth factory, so new AuthClient(network)'s agents send with the global fetch",
+    "file": "src/client.ts",
+    "search": "        : { ...resolution.network.agentOptions, fetch: agentFetch }",
+    "replace": "        : resolution.network.agentOptions"
+  },
+  {
+    "id": "790-auth-fetch-handed-unbound",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is the client's fetch, called as a plain function",
+    "why": "the user's fetch handed as it was given, so an agent calling it as its own method calls it on another this, where a browser's native fetch throws \"Illegal invocation\"",
+    "file": "src/client.ts",
+    "search": "        : { ...resolution.network.agentOptions, fetch: agentFetch }",
+    "replace": "        : { ...resolution.network.agentOptions, fetch: userFetch }"
+  },
+  {
+    "id": "790-auth-fetch-key-always-present",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is absent when the client was given none",
+    "why": "a fetch key handed even when the client was given no fetch, so a spread over an AuthClient's own agentOptions.fetch replaces it with undefined",
+    "file": "src/client.ts",
+    "search": "    const agentOptions =\n      agentFetch === undefined\n        ? resolution.network.agentOptions\n        : { ...resolution.network.agentOptions, fetch: agentFetch }",
+    "replace": "    const agentOptions = { ...resolution.network.agentOptions, fetch: agentFetch }"
+  },
+  {
+    "id": "790-auth-provider-getter-enumerable-other-spread",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is not given to a spread that adds other options and names no provider",
+    "why": "the warning getter enumerable, so a spread that adds other options reads it and warns: the documented silence of such a spread is gone without the docs saying so",
+    "file": "src/client.ts",
+    "search": "      enumerable: false,",
+    "replace": "      enumerable: true,"
+  },
+  {
+    "id": "790-auth-fetch-dropped-in-gap",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "is the client's fetch where no identity provider could be named",
+    "why": "the client's fetch dropped from the object handed where no provider could be named, so new AuthClient(network)'s agents send with the global fetch on exactly the local networks",
+    "file": "src/client.ts",
+    "search": "    const handed = { agentOptions }",
+    "replace": "    const handed = { agentOptions: resolution.network.agentOptions }"
   }
 ]

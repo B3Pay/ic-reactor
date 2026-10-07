@@ -202,7 +202,10 @@ ic_root_key=<hex key>&PUBLIC_CANISTER_ID:<name>=<id>&...&INTERNET_IDENTITY_PROVI
 ```
 
 It carries the replica's root key, one `PUBLIC_CANISTER_ID:<name>` for each
-canister, and the local Internet Identity's url when there is one.
+canister, and the local Internet Identity's url when there is one. A client
+that trusts the cookie hands that url to its `auth` factory, so
+`auth: (network) => new AuthClient(network)` signs in with the local Internet
+Identity (see [Auth](/v4/guides/auth/#the-network-the-factory-is-handed)).
 
 ### Detection
 

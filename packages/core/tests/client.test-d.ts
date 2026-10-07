@@ -51,6 +51,55 @@ export const fromAuthClient: AuthLike = authClient
 export const fromTestAuth: AuthLike = createTestAuth({ seed: 1 })
 createClient({ network: "ic", auth: () => new AuthClient() })
 createClient({ network: "ic", auth: () => createTestAuth() })
+
+// The factory is handed the client's network under AuthClient 10's own option
+// names, so it passes straight through, or spread with a provider of its own.
+// Its agentOptions, fetch included, fit AuthClient 10's
+// Omit<HttpAgentOptions, "identity">.
+createClient({ network: "env", auth: (network) => new AuthClient(network) })
+createClient({
+  network: "env",
+  fetch: globalThis.fetch,
+  auth: (network) => new AuthClient(network),
+})
+createClient({
+  network: "env",
+  auth: (network) =>
+    new AuthClient({
+      ...network,
+      identityProvider: {
+        authorizeUrl: "http://id.ai.localhost:8000/authorize",
+        canisterId: "bkyz2-fmaaa-aaaaa-qaaaq-cai",
+      },
+      openIdProvider: "google",
+    }),
+})
+createClient({
+  network: "local",
+  auth: (network) => {
+    expectTypeOf(network.agentOptions.host).toEqualTypeOf<string>()
+    expectTypeOf(network.agentOptions.rootKey).toEqualTypeOf<
+      Uint8Array | undefined
+    >()
+    expectTypeOf(
+      network.agentOptions.shouldFetchRootKey
+    ).toEqualTypeOf<boolean>()
+    // The client's own fetch, when it was given one, for AuthClient's agents.
+    expectTypeOf(network.agentOptions.fetch).toEqualTypeOf<
+      typeof globalThis.fetch | undefined
+    >()
+    expectTypeOf(network.identityProvider).toEqualTypeOf<
+      { readonly authorizeUrl: string; readonly canisterId: string } | undefined
+    >()
+    // @ts-expect-error what the client hands over is read, never written
+    network.agentOptions = { host: "x", shouldFetchRootKey: false }
+    return createTestAuth()
+  },
+})
+// The factory is handed one argument, never two.
+const twoArguments = (_network: unknown, _more: string) => createTestAuth()
+// @ts-expect-error a factory that needs a second argument is never given one
+createClient({ network: "ic", auth: twoArguments })
 expectTypeOf<AuthClient>().toExtend<AuthLike>()
 
 // A status the client does not know is not an AuthLike's.

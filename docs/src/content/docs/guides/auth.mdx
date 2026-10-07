@@ -32,7 +32,7 @@ import { AuthClient } from "@icp-sdk/auth/client"
 
 export const client = createClient({
   network: "ic",
-  auth: () => new AuthClient(),
+  auth: (network) => new AuthClient(network),
 })
 ```
 
@@ -49,49 +49,83 @@ You write no adapter. The client does the rest:
 `AuthClient` is not a peer dependency of core: you install `@icp-sdk/auth`
 yourself when you want Internet Identity.
 
-### A local Internet Identity
+### The network the factory is handed
 
-`AuthClient` 10 derives nothing from a URL. On a local network you name the
-page people sign in on and the canister that mints their delegations, and you
-give the agent that makes those calls the local replica. The
-[Vite wallet](/v4/examples/vite-wallet/) does this for a local page:
+The client calls the factory with one argument, `network`, under
+`AuthClient`'s own option names, so passing it through signs users in on the
+network the client calls:
+
+- `agentOptions` is the host, root key and `shouldFetchRootKey` of the
+  client's own agents, and its `fetch`, when you gave one. `AuthClient` makes
+  its mint and revoke calls with them.
+- `identityProvider` is the Internet Identity to sign in with, as the two
+  values `AuthClient` 10 takes (the page a person signs in on and the canister
+  that mints their delegations), or absent, which `AuthClient` reads as
+  mainnet's.
+
+The client picks the identity provider by these rules, in order:
+
+1. The `ic_env` cookie is trusted (see [The client](/v4/guides/client/)) and
+   names `INTERNET_IDENTITY_PROVIDER`: that URL, with the cookie's
+   `PUBLIC_CANISTER_ID:internet_identity`, or Internet Identity's own id,
+   `rdmx6-jaaaa-aaaaa-aaadq-cai`, when it names none. The
+   [Vite plugin](/v4/guides/vite-plugin/) writes this cookie in dev and
+   preview.
+2. The trusted cookie names an `internet_identity` canister but no URL: the
+   project deploys its own Internet Identity, whose sign-in page cannot be
+   derived from its id. No provider.
+3. The network is `"local"`, or an object whose host is local: icp-cli's
+   built-in Internet Identity, `http://id.ai.localhost:<port>/authorize` on
+   the replica's port, with `rdmx6-jaaaa-aaaaa-aaadq-cai`.
+4. `"env"` on a local page whose cookie names no provider: the agent's host is
+   the page's (a dev server, or a gateway serving an asset canister), which
+   does not say where icp-cli's built-in Internet Identity is. No provider.
+5. Any other network whose root key is not mainnet's (one given, from the
+   cookie, or fetched): no provider.
+6. Mainnet: no provider, and `AuthClient`'s defaults are right.
+
+So with `network: "env"` and the plugin's cookie, the one line above signs in
+with the local Internet Identity in dev and with mainnet's on a deployed page.
+
+A local replica rejects every delegation mainnet's Internet Identity mints.
+So in cases 2, 4 and 5, on a network that is not mainnet's, the client warns
+when the factory reads `network.identityProvider`, as `new AuthClient(network)`
+does. The warning comes once, in development: sign-in cannot work on this
+network without an identity provider, and the line that names one is
+`(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
+A factory that names its own provider, as that line does, or builds an auth
+that is not Internet Identity, never sees the warning. Nor does a spread that
+adds other options and names no provider, such as
+`new AuthClient({ ...network, derivationOrigin })`: it does not read
+`identityProvider`, so on these networks it must name one.
+
+For the `internet_identity` your project deploys, `authorizeUrl` is the
+sign-in page it serves and `canisterId` the id `icp deploy` gave its backend:
 
 ```ts
 import { createClient } from "@ic-reactor/core"
 import { AuthClient } from "@icp-sdk/auth/client"
-import { safeGetCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 
-type IdentityEnv = {
-  readonly IC_ROOT_KEY?: Uint8Array
-  readonly INTERNET_IDENTITY_PROVIDER?: string
-}
+// Your own Internet Identity: its sign-in page, and its backend canister.
+const authorizeUrl = "http://my-ii.localhost:8000/authorize"
+const canisterId = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
 
 export const client = createClient({
   network: "env",
-  auth: () => {
-    const env = safeGetCanisterEnv<IdentityEnv>()
-    return new AuthClient({
-      identityProvider: {
-        authorizeUrl:
-          env?.INTERNET_IDENTITY_PROVIDER ??
-          "http://id.ai.localhost:8000/authorize",
-        // Internet Identity's backend has the same id on a local network.
-        canisterId: "rdmx6-jaaaa-aaaaa-aaadq-cai",
-      },
-      agentOptions:
-        env?.IC_ROOT_KEY === undefined
-          ? { host: window.location.origin, shouldFetchRootKey: true }
-          : { host: window.location.origin, rootKey: env.IC_ROOT_KEY },
-    })
-  },
+  auth: (network) =>
+    new AuthClient({
+      ...network,
+      identityProvider: { authorizeUrl, canisterId },
+    }),
 })
 ```
 
-`identityProvider` takes both values or neither. Leave it out and both are
-mainnet's. The [Vite plugin](/v4/guides/vite-plugin/) puts
-`INTERNET_IDENTITY_PROVIDER` and the replica's root key in the `ic_env` cookie
-in dev and preview. The example builds the options only when the page is
-local, and uses the defaults on a deployed page.
+`identityProvider` takes both values or neither. A factory that takes no
+argument, `() => new AuthClient()`, still works on mainnet. It ignores the
+network the client hands it, so on any other network it signs in with
+mainnet's Internet Identity, whose delegations the replica rejects, and the
+client cannot tell that it did. On any network but mainnet, pass `network`
+through.
 
 ### Sign-in options
 
@@ -400,7 +434,8 @@ export const getAuthClient = () => authClient
 export const createAppClient = () =>
   createClient({
     network: "ic",
-    auth: () => (authClient = new AuthClient({ openIdProvider: "google" })),
+    auth: (network) =>
+      (authClient = new AuthClient({ ...network, openIdProvider: "google" })),
   })
 ```
 

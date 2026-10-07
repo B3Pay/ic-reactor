@@ -15,7 +15,64 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Added
+
+- The `auth` factory of `createClient` is called with one argument, the
+  client's network, under `@icp-sdk/auth` 10's own option names, so
+  `auth: (network) => new AuthClient(network)` signs users in on the network
+  the client calls (#790). `() => new AuthClient()` and every other factory
+  that takes no argument work as before, which for `AuthClient` means on
+  mainnet only, since such a factory ignores the network. No export is added:
+  the argument's type is written inline in `ClientOptions`.
+  - `network.agentOptions` is the host, root key and `shouldFetchRootKey` of
+    the client's own agents, and the client's `fetch` when one was given,
+    which `AuthClient` makes its mint and revoke calls with.
+  - `network.identityProvider` is, in order: the `ic_env` cookie's
+    `INTERNET_IDENTITY_PROVIDER` where the client trusts the cookie, with the
+    cookie's `PUBLIC_CANISTER_ID:internet_identity` or
+    `rdmx6-jaaaa-aaaaa-aaadq-cai`; for `"local"` or a network object whose
+    host is local, icp-cli's built-in Internet Identity,
+    `http://id.ai.localhost:<port of the host>/authorize` with
+    `rdmx6-jaaaa-aaaaa-aaadq-cai`; and otherwise absent, which `AuthClient`
+    reads as mainnet's Internet Identity.
+  - A replica that is not mainnet rejects every delegation mainnet's Internet
+    Identity mints. Where no provider can be named on a network that does not verify
+    against mainnet's root key (a trusted cookie that names an
+    `internet_identity` canister but no URL, `"env"` on a local page whose
+    cookie names no provider, or a replica with a root key of its own, given
+    or fetched), the client warns once, in development, when the factory
+    reads `network.identityProvider`, as `new AuthClient(network)` does, that
+    sign-in cannot work there, with the line that names a provider:
+    `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
+    A factory that names its own provider, as that line does, or builds an
+    auth that is not Internet Identity never sees it, and neither does a
+    spread that adds other options and names no provider, such as
+    `{ ...network, derivationOrigin }`, which must name one there. `"ic"` and `"env"` on a
+    mainnet page never warn, and neither does the test client of
+    `@ic-reactor/core/testing`, whose factory ignores the network.
+
+  Code that compiled against 4.0.0-beta.2 and stops compiling: a call of a
+  function typed `ClientOptions["auth"]` with no argument. Pass it the
+  network, or type the function `() => AuthLike`.
+
+### Docs
+
+- Every `auth` factory in the docs, the guide (`llms.txt`), the READMEs and
+  the examples is `(network) => new AuthClient(network)`. The Auth guide's
+  25-line local Internet Identity setup is that one line, with the rules
+  above and the override for a project that deploys its own
+  `internet_identity`, and the Vite wallet example builds its Internet
+  Identity sign-in from it.
+- Getting started says where `icrc1.did` comes from, adds a script that saves
+  a live canister's `.did` from certified state (with the `icp canister
+metadata` command that does the same), runs the first read with
+  `npx tsx`, says to change the default `App` import of Vite's template,
+  builds the transfer's argument in place, says to commit the `.did` and the
+  generated module (Vite's `react-ts` template type-checks before the plugin
+  generates), and names `injectEnvironment: false` for an app that only talks
+  to mainnet.
 
 ## core, react, vite-plugin 4.0.0-beta.2
 

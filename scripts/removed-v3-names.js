@@ -28,7 +28,7 @@ export const REMOVED_V3_NAMES = [
   },
   {
     name: "AuthenticationManager",
-    use: "auth: () => new AuthClient() from @icp-sdk/auth 10",
+    use: "auth: (network) => new AuthClient(network) from @icp-sdk/auth 10",
   },
   { name: "createAuthHooks", use: "useAuth()" },
   {

@@ -154,11 +154,18 @@ it with itself.
 import { createClient } from "@ic-reactor/core"
 import { AuthClient } from "@icp-sdk/auth/client"
 
-const client = createClient({ network: "ic", auth: () => new AuthClient() })
+const client = createClient({
+  network: "ic",
+  auth: (network) => new AuthClient(network),
+})
 ```
 
+The factory is handed the client's `network` as `AuthClient` takes it:
+`agentOptions` (the host and root key of the client's own agents, and its
+`fetch`, when you gave one) and, where one can be named, `identityProvider`,
+the Internet Identity to sign in with.
 `@icp-sdk/auth` 10's `AuthClient` is an `AuthLike` as it is. Any other sign-in
-source needs a small adapter. See [Auth](/v4/guides/auth/).
+source needs a small adapter. See [Auth](/v4/guides/auth/) for both.
 
 ### Who is calling
 
