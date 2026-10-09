@@ -1,6 +1,7 @@
 import { describe, expectTypeOf, it } from "vitest"
 import {
   isReactorError,
+  type Canister,
   type ReactorError,
   type ReactorErrorKind,
 } from "../src/index.js"
@@ -131,6 +132,33 @@ describe("isReactorError(error, canister, method)", () => {
         } else {
           expectTypeOf(e.err).toEqualTypeOf<undefined>()
         }
+      }
+    }
+    expectTypeOf(catches).toBeFunction()
+  })
+
+  it("gives each method its own Err arm, never another method's", () => {
+    type ApproveError = { tag: "Expired"; value: { ledger_time: bigint } }
+    type Icrc2 = icrc1.Actor & {
+      icrc2_approve: (
+        arg: unknown
+      ) => Promise<
+        { tag: "Ok"; value: bigint } | { tag: "Err"; value: ApproveError }
+      >
+    }
+    const icrc2 = {} as Canister<Icrc2>
+    const catches = (e: unknown) => {
+      if (
+        isReactorError(e, icrc2, "icrc2_approve") &&
+        e.kind === "canister_err"
+      ) {
+        expectTypeOf(e.err).toEqualTypeOf<ApproveError>()
+      }
+      if (
+        isReactorError(e, icrc2, "icrc1_transfer") &&
+        e.kind === "canister_err"
+      ) {
+        expectTypeOf(e.err).toEqualTypeOf<icrc1.TransferError>()
       }
     }
     expectTypeOf(catches).toBeFunction()

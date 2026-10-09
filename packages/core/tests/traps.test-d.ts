@@ -211,14 +211,30 @@ client.queryOptions(shapesCanister, "pair", 1n)
 // The typed guard: `err` is the Err arm of the method it names, not another's
 // ---------------------------------------------------------------------------
 
+// An ICRC-2 ledger: icrc2_approve has an Err arm of its own, which has no
+// BadBurn; that is icrc1_transfer's.
+type ApproveError =
+  | { tag: "AllowanceChanged"; value: { current_allowance: bigint } }
+  | { tag: "Expired"; value: { ledger_time: bigint } }
+  | { tag: "InsufficientFunds"; value: { balance: bigint } }
+declare const icrc2Ledger: Canister<
+  icrc1.Actor & {
+    icrc2_approve: (
+      arg: unknown
+    ) => Promise<
+      { tag: "Ok"; value: bigint } | { tag: "Err"; value: ApproveError }
+    >
+  }
+>
+
 export const readAnotherMethodsErr = (error: unknown) => {
   if (
-    isReactorError(error, ledger, "icrc1_balance_of") &&
+    isReactorError(error, icrc2Ledger, "icrc2_approve") &&
     error.kind === "canister_err"
   ) {
     // trap: guard-err-is-the-methods
-    // @ts-expect-error icrc1_balance_of has no Err arm; the TransferError is icrc1_transfer's: name the method that was called
-    return error.err.tag
+    // @ts-expect-error an approve cannot fail with BadBurn, a transfer's Err: the guard types `err` by the method named, so name the one that was called
+    return error.err.tag === "BadBurn"
   }
   return undefined
 }
