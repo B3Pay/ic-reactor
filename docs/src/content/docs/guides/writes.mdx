@@ -235,6 +235,12 @@ rejects and sends nothing:
   `mutate(again.arg)` rejects `invalid_args` (code `arg_changed`) if the
   object was changed since.
 
+A refusal is not the end of the write. It replaces the mutation's
+`outcome_unknown` error, so `client.resendOf(transfer.error)` is `undefined`
+after it, and the write it re-sends still has an unknown outcome: read the
+state back, and do not ignore it as you might another `cancelled` (see
+[Errors](/v4/guides/errors/#what-to-do-for-each-kind)).
+
 Once offered, that object stays held to that write on every mutation of the
 client, for good: another account that sends the same object is cancelled
 too. Build a new argument object for each new transfer, and for another

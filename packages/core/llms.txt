@@ -242,8 +242,10 @@ export function Send({ arg }: { arg: TransferArg }) {
   still the caller; then `again.send()` sends the same bytes to the same
   canister as that sender, and `transfer.mutate(again.arg)` sends the
   argument only as that same write, or rejects and sends nothing
-  (`caller_changed`, `target_changed`, `arg_changed`). Never change an
-  offered argument: build a new one for a new transfer. A method with no
+  (`caller_changed`, `target_changed`, `arg_changed`). Such a refusal
+  replaces the mutation's error, so `resendOf` offers nothing after it, and
+  the first write's outcome is still unknown: read the state back, never
+  ignore it as a plain `cancelled`. Never change an offered argument: build a new one for a new transfer. A method with no
   such key has no safe re-send: read the state back.
 - Call update methods only from `useMutation` or directly, never from
   `useQuery`; call query methods from `useQuery` or directly.
@@ -260,14 +262,14 @@ have executed:
 
 | What happened                                                                   | `kind`                            | May have executed |
 | ------------------------------------------------------------------------------- | --------------------------------- | ----------------- |
-| refused before sending: arguments that do not encode, a write while signed out  | `invalid_args`, `unauthenticated` | no                |
+| refused before sending: arguments that do not encode (or an offered re-send's argument changed since: `arg_changed`), a write while signed out | `invalid_args`, `unauthenticated` | no |
 | HTTP 4xx except 408 (429 included): the replica or a boundary node refused it    | `not_delivered`                   | no                |
 | reject code 1, 2 (transient) or 3: rejected before any canister code ran         | `rejected` (2: `not_delivered`)   | no                |
 | reject code 4 or 5: the canister rejected or trapped, maybe after changing state | `rejected`                        | yes (a write)     |
 | a sent write got no trustworthy answer: network drop, timeout, 5xx, 408          | `outcome_unknown`                 | yes               |
 | a reply that did not decode                                                      | `invalid_reply`                   | yes (a write)     |
 | the canister returned `Err`                                                      | `canister_err`                    | no                |
-| the caller changed, or the call was aborted                                      | `cancelled`                       | no (an aborted write: yes) |
+| the caller changed, the call was aborted, or an offered re-send would go elsewhere (`target_changed`) | `cancelled` | no (an aborted write: yes) |
 
 On the management canister (`aaaaa-aa`), codes 1 to 3 prove nothing: a write
 there may have executed. A query changes nothing, so a failed read never "may
