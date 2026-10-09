@@ -1,7 +1,7 @@
 /**
  * Tests of `test-examples-published.mjs`'s own checks, on manifests and
  * node_modules trees built for the purpose: what keeps an example from
- * installing standalone against the published beta, and what shows that an
+ * installing standalone against the published packages, and what shows that an
  * install did not come from the registry. The install, the example's scripts
  * and the dev server are the script's run itself (`pnpm test:examples:published`).
  *
@@ -28,15 +28,18 @@ import {
   ancestorFindings,
   awaitsRelease,
   definesScript,
+  deferredRun,
   checkInstalled,
   checkLockfile,
   checkManifest,
+  distTagFor,
   isolatedEnv,
   moduleImports,
   pageScripts,
   parseArgs,
   parseNpmCommand,
   requiredScriptFindings,
+  resolveRun,
   scopePackageNames,
   stackblitzStartCommand,
   startScriptFindings,
@@ -47,6 +50,7 @@ import {
 } from "./test-examples-published.mjs"
 
 const BETA = "4.0.0-beta.1"
+const STABLE = "4.0.0"
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..")
 
 /** npm's answer for the ranges these tests use. */
@@ -62,7 +66,261 @@ function satisfying(name, range) {
 }
 
 const check = (manifest) =>
-  checkManifest(manifest, { betaVersion: BETA, satisfying })
+  checkManifest(manifest, { tag: "beta", version: BETA, satisfying })
+
+/** npm's answer once 4.0.0 is published under `latest`. */
+function satisfyingAfterGa(name, range) {
+  assert.ok(name.startsWith("@ic-reactor/"), `asked npm about ${name}`)
+  if (range === "^4.0.0" || range === STABLE) return [STABLE]
+  // A caret range on a prerelease admits the later stable release too.
+  if (range === "^4.0.0-beta.0") return ["4.0.0-beta.0", BETA, STABLE]
+  if (range === BETA) return [BETA]
+  throw new Error(`unexpected range ${range}`)
+}
+
+const checkLatest = (manifest) =>
+  checkManifest(manifest, {
+    tag: "latest",
+    version: STABLE,
+    satisfying: satisfyingAfterGa,
+  })
+
+const SCOPE_PACKAGES = [
+  "@ic-reactor/core",
+  "@ic-reactor/react",
+  "@ic-reactor/vite-plugin",
+]
+
+/**
+ * `npm view <spec> <field>` against a registry where every @ic-reactor
+ * package's dist-tags are `tags`, its published versions are `versions`
+ * (default: the ones `tags` name), and every version the tags name is served
+ * with an integrity. Records each spec asked for in `asked`.
+ */
+function fakeView(tags, versions = Object.values(tags)) {
+  const asked = []
+  const view = (spec, field) => {
+    asked.push(`${spec} ${field}`)
+    if (field === "versions") {
+      assert.ok(SCOPE_PACKAGES.includes(spec), `asked npm about ${spec}`)
+      return versions
+    }
+    const at = spec.lastIndexOf("@")
+    const [name, selector] = [spec.slice(0, at), spec.slice(at + 1)]
+    assert.ok(SCOPE_PACKAGES.includes(name), `asked npm about ${name}`)
+    if (field === "version") return tags[selector]
+    if (field === "dist.integrity") {
+      return Object.values(tags).includes(selector) ? "sha512-x" : undefined
+    }
+    throw new Error(`unexpected field ${field}`)
+  }
+  return { view, asked }
+}
+
+/**
+ * What main() resolves for `argv` on a branch at `branchVersion`: with
+ * `manifests` (the examples' package.json files), as main() passes them, and
+ * the packages a release run waits on taken from them; without, every
+ * package and no example.
+ */
+const resolveFor = (
+  argv,
+  branchVersion,
+  tags,
+  { manifests, versions } = {}
+) => {
+  const { view, asked } = fakeView(tags, versions)
+  const run = resolveRun(
+    {
+      waitFor: parseArgs(argv).waitFor,
+      branchVersion,
+      ...(manifests ? { manifests } : { packages: SCOPE_PACKAGES }),
+    },
+    // No polling: a package the tag does not name yet fails at once.
+    { view, timeoutMs: 0, wait: async () => {}, log: () => {} }
+  )
+  return { run, asked }
+}
+
+describe("distTagFor", () => {
+  it("is latest for a stable version, with or without a leading v", () => {
+    assert.equal(distTagFor("v4.0.0"), "latest")
+    assert.equal(distTagFor("4.0.0"), "latest")
+  })
+
+  it("is beta for a prerelease, with or without a leading v", () => {
+    assert.equal(distTagFor("v4.0.0-beta.2"), "beta")
+    assert.equal(distTagFor("4.0.0-beta.2"), "beta")
+    assert.equal(distTagFor("4.0.1-rc.1"), "beta")
+  })
+
+  it("is latest without --wait-for, as the push and weekly runs have none", () => {
+    assert.equal(distTagFor(undefined), "latest")
+    assert.equal(distTagFor(parseArgs([]).waitFor), "latest")
+  })
+
+  it("follows parseArgs's --wait-for, from the tag release.yml passes", () => {
+    assert.equal(
+      distTagFor(parseArgs(["--wait-for", "v4.0.0"]).waitFor),
+      "latest"
+    )
+    assert.equal(
+      distTagFor(parseArgs(["--wait-for", "v4.0.0-beta.2"]).waitFor),
+      "beta"
+    )
+  })
+
+  it("refuses a value that is not a version", () => {
+    for (const value of ["latest", "beta", "4.0", "v4", "4.0.0+build.1", ""]) {
+      assert.throws(() => distTagFor(value), /is not a release version/)
+    }
+  })
+})
+
+describe("resolveRun", () => {
+  const tags = { beta: BETA, latest: STABLE }
+
+  it("tests latest on a branch at a stable version, with no --wait-for", async () => {
+    const { run, asked } = resolveFor([], STABLE, tags)
+    assert.deepEqual(await run, { tag: "latest", version: STABLE })
+    assert.deepEqual(asked, ["@ic-reactor/core@latest version"])
+  })
+
+  it("tests beta on a branch in a prerelease cycle, with no --wait-for", async () => {
+    // After a 4.1.0-beta.1 release the examples pin ^4.1.0-beta.1, which
+    // latest (4.0.x) cannot satisfy.
+    const { run, asked } = resolveFor([], "4.1.0-beta.1", {
+      beta: "4.1.0-beta.1",
+      latest: "4.0.3",
+    })
+    assert.deepEqual(await run, { tag: "beta", version: "4.1.0-beta.1" })
+    assert.deepEqual(asked, ["@ic-reactor/core@beta version"])
+  })
+
+  it("tests latest when the branch's version is unknown", async () => {
+    const { run } = resolveFor([], undefined, tags)
+    assert.deepEqual(await run, { tag: "latest", version: STABLE })
+  })
+
+  it("waits on latest for every package on the v4.0.0 release's run", async () => {
+    const { run, asked } = resolveFor(["--wait-for", "v4.0.0"], BETA, tags)
+    assert.deepEqual(await run, { tag: "latest", version: STABLE })
+    for (const name of SCOPE_PACKAGES) {
+      assert.ok(asked.includes(`${name}@latest version`), name)
+      assert.ok(asked.includes(`${name}@${STABLE} dist.integrity`), name)
+    }
+    assert.ok(!asked.some((line) => line.includes("@beta")), asked.join("; "))
+  })
+
+  it("waits on beta for every package on a prerelease's run", async () => {
+    const next = "4.0.0-beta.2"
+    const { run, asked } = resolveFor(["--wait-for", `v${next}`], STABLE, {
+      beta: next,
+      latest: "3.13.0",
+    })
+    assert.deepEqual(await run, { tag: "beta", version: next })
+    for (const name of SCOPE_PACKAGES) {
+      assert.ok(asked.includes(`${name}@beta version`), name)
+    }
+    assert.ok(!asked.some((line) => line.includes("@latest")), asked.join("; "))
+  })
+
+  it("fails a release run whose tag does not name its version yet", async () => {
+    const { run } = resolveFor(["--wait-for", "v4.0.0"], STABLE, {
+      beta: STABLE,
+      latest: "3.13.0",
+    })
+    await assert.rejects(run, /@ic-reactor\/core@latest is 3\.13\.0/)
+  })
+
+  it("refuses a --wait-for that is not a version, before asking npm", async () => {
+    const { run, asked } = resolveFor(["--wait-for", "latest"], STABLE, tags)
+    await assert.rejects(run, /is not a release version/)
+    assert.deepEqual(asked, [])
+  })
+
+  // The examples as release.js leaves them on this branch: every
+  // @ic-reactor/* range is ^<the branch's version>.
+  const pinned = (version) => [
+    {
+      dependencies: {
+        "@ic-reactor/core": `^${version}`,
+        "@ic-reactor/react": `^${version}`,
+      },
+      devDependencies: { "@ic-reactor/vite-plugin": `^${version}` },
+    },
+    { dependencies: { "@ic-reactor/core": `^${version}`, zod: "^4.1.0" } },
+  ]
+  const beforeGa = { beta: BETA, latest: "3.13.0" }
+
+  it("defers a run with no --wait-for while the examples wait on the branch's unpublished version", async () => {
+    const { run, asked } = resolveFor([], STABLE, beforeGa, {
+      manifests: pinned(STABLE),
+    })
+    assert.deepEqual(await run, { deferred: true, version: STABLE })
+    // Only core's versions: no dist-tag is read, so nothing is tested.
+    assert.deepEqual(asked, ["@ic-reactor/core versions"])
+  })
+
+  it("tests the branch's tag once its version is published, with the same examples", async () => {
+    const { run, asked } = resolveFor([], STABLE, tags, {
+      manifests: pinned(STABLE),
+    })
+    assert.deepEqual(await run, { tag: "latest", version: STABLE })
+    assert.deepEqual(asked, [
+      "@ic-reactor/core versions",
+      "@ic-reactor/core@latest version",
+    ])
+    // The same in a prerelease cycle: deferred, then beta.
+    const next = "4.1.0-beta.1"
+    const cycle = { beta: BETA, latest: STABLE }
+    assert.deepEqual(
+      await resolveFor([], next, cycle, { manifests: pinned(next) }).run,
+      { deferred: true, version: next }
+    )
+    assert.deepEqual(
+      await resolveFor(
+        [],
+        next,
+        { ...cycle, beta: next },
+        {
+          manifests: pinned(next),
+        }
+      ).run,
+      { tag: "beta", version: next }
+    )
+  })
+
+  it("never defers a release run, even with the examples on its unpublished version", async () => {
+    const waiting = resolveFor(["--wait-for", "v4.0.0"], STABLE, beforeGa, {
+      manifests: pinned(STABLE),
+    })
+    await assert.rejects(waiting.run, /@ic-reactor\/core@latest is 3\.13\.0/)
+    assert.ok(!waiting.asked.some((line) => line.endsWith(" versions")))
+    // Once published, it waits on every package the examples declare.
+    const { run, asked } = resolveFor(["--wait-for", "v4.0.0"], STABLE, tags, {
+      manifests: pinned(STABLE),
+    })
+    assert.deepEqual(await run, { tag: "latest", version: STABLE })
+    for (const name of SCOPE_PACKAGES) {
+      assert.ok(asked.includes(`${name}@latest version`), name)
+    }
+  })
+
+  it("tests the branch's tag, without asking for core's versions, when an example does not wait on the release", async () => {
+    const [first, second] = pinned(STABLE)
+    for (const manifests of [
+      // A local protocol is refused by checkManifest: never deferred past.
+      [first, { ...second, devDependencies: { tool: "workspace:*" } }],
+      // A range other than ^<the branch's version>.
+      [first, { dependencies: { "@ic-reactor/core": "^4.0.0-beta.2" } }],
+    ]) {
+      const { run, asked } = resolveFor([], STABLE, beforeGa, { manifests })
+      assert.deepEqual(await run, { tag: "latest", version: "3.13.0" })
+      assert.deepEqual(asked, ["@ic-reactor/core@latest version"])
+    }
+  })
+})
 
 const roots = []
 after(() => {
@@ -161,6 +419,38 @@ describe("checkManifest", () => {
 
   it("leaves other packages' registry ranges to npm", async () => {
     assert.deepEqual(await check({ dependencies: { next: "^16.3.8" } }), [])
+  })
+
+  it("passes ^4.0.0 on a run with no --wait-for, and on the v4.0.0 release's run", async () => {
+    // What main() does: resolveRun's tag and version, then the manifest
+    // against them, on a branch at 4.0.0 once 4.0.0 is on latest.
+    const tags = { beta: BETA, latest: STABLE }
+    const checkRun = async (argv, manifest) =>
+      checkManifest(manifest, {
+        ...(await resolveFor(argv, STABLE, tags).run),
+        satisfying: satisfyingAfterGa,
+      })
+    const manifest = {
+      dependencies: { "@ic-reactor/react": "^4.0.0" },
+      devDependencies: { "@ic-reactor/vite-plugin": "^4.0.0-beta.0" },
+    }
+    assert.deepEqual(await checkRun([], manifest), [])
+    assert.deepEqual(await checkRun(["--wait-for", "v4.0.0"], manifest), [])
+    assert.deepEqual(
+      await checkRun(["--wait-for", `v${BETA}`], {
+        dependencies: { "@ic-reactor/react": BETA },
+      }),
+      []
+    )
+  })
+
+  it("reports a range latest does not satisfy, naming latest", async () => {
+    assert.deepEqual(
+      await checkLatest({ dependencies: { "@ic-reactor/react": BETA } }),
+      [
+        `dependencies.@ic-reactor/react is "${BETA}", which latest (${STABLE}) does not satisfy: npm would install ${BETA}`,
+      ]
+    )
   })
 })
 
@@ -287,6 +577,51 @@ describe("staticFindings", () => {
   })
 })
 
+describe("deferredRun", () => {
+  const scripts = {
+    typecheck: "tsc",
+    test: "vitest run",
+    build: "vite build",
+    dev: "vite",
+  }
+  /** A deferred run over one example with these scripts, recording its output. */
+  function deferFor(exampleScripts) {
+    const reported = []
+    const logged = []
+    const code = deferredRun(["example"], {
+      version: STABLE,
+      manifests: [{ scripts: exampleScripts }],
+      files: () => ["package.json", "src/a.ts"],
+      startCommand: () => ({ command: "npm run dev" }),
+      onFindings: (results) => reported.push(...results),
+      log: (message) => logged.push(message),
+    })
+    return { code, reported, logged }
+  }
+
+  it("passes with the deferral message when the checks that need no registry find nothing", () => {
+    const { code, reported, logged } = deferFor(scripts)
+    assert.equal(code, 0)
+    assert.deepEqual(reported, [])
+    assert.equal(logged.length, 1)
+    assert.match(logged[0], /pin \^4\.0\.0, this branch's own version/)
+    assert.match(logged[0], /--wait-for v4\.0\.0/)
+  })
+
+  it("fails, and reports the finding, when an example lacks a required script", () => {
+    const { test: _, ...withoutTest } = scripts
+    const { code, reported, logged } = deferFor(withoutTest)
+    assert.equal(code, 1)
+    assert.deepEqual(logged, [])
+    assert.equal(reported.length, 1)
+    assert.equal(reported[0].name, "example")
+    assert.ok(
+      reported[0].findings.some((f) => f.includes('"test"')),
+      reported[0].findings.join("\n")
+    )
+  })
+})
+
 describe("startScriptFindings", () => {
   const scripts = { dev: "vite", test: "vitest run", build: "vite build" }
   const files = ["package.json"]
@@ -406,7 +741,7 @@ describe("checkInstalled", () => {
       "@ic-reactor/core": BETA,
       "@ic-reactor/react": BETA,
     })
-    assert.deepEqual(checkInstalled(dir, declared, BETA), {
+    assert.deepEqual(checkInstalled(dir, declared, BETA, "beta"), {
       installed: [
         { name: "@ic-reactor/core", version: BETA },
         { name: "@ic-reactor/react", version: BETA },
@@ -423,7 +758,7 @@ describe("checkInstalled", () => {
       join(dir, "node_modules", "@ic-reactor", "react"),
       "dir"
     )
-    const { findings } = checkInstalled(dir, declared, BETA)
+    const { findings } = checkInstalled(dir, declared, BETA, "beta")
     assert.equal(findings.length, 1)
     assert.match(
       findings[0],
@@ -436,7 +771,7 @@ describe("checkInstalled", () => {
       "@ic-reactor/core": BETA,
       "@ic-reactor/react": "3.13.0",
     })
-    assert.deepEqual(checkInstalled(dir, declared, BETA).findings, [
+    assert.deepEqual(checkInstalled(dir, declared, BETA, "beta").findings, [
       `@ic-reactor/react installed at 3.13.0, not ${BETA} (beta)`,
     ])
   })
@@ -447,18 +782,28 @@ describe("checkInstalled", () => {
       "@ic-reactor/react": BETA,
       "@ic-reactor/vite-plugin": "4.0.0-beta.0",
     })
-    assert.deepEqual(checkInstalled(dir, declared, BETA).findings, [
+    assert.deepEqual(checkInstalled(dir, declared, BETA, "beta").findings, [
       `@ic-reactor/vite-plugin installed at 4.0.0-beta.0, not ${BETA} (beta)`,
+    ])
+  })
+
+  it("reports a version other than latest's, naming latest", () => {
+    const dir = project({
+      "@ic-reactor/core": STABLE,
+      "@ic-reactor/react": BETA,
+    })
+    assert.deepEqual(checkInstalled(dir, declared, STABLE, "latest").findings, [
+      `@ic-reactor/react installed at ${BETA}, not ${STABLE} (latest)`,
     ])
   })
 
   it("reports a declared package that is not installed", () => {
     const dir = project({ "@ic-reactor/core": BETA })
-    assert.deepEqual(checkInstalled(dir, declared, BETA).findings, [
+    assert.deepEqual(checkInstalled(dir, declared, BETA, "beta").findings, [
       "@ic-reactor/react is declared but not installed",
     ])
     assert.deepEqual(
-      checkInstalled(scratch(), ["@ic-reactor/core"], BETA).findings,
+      checkInstalled(scratch(), ["@ic-reactor/core"], BETA, "beta").findings,
       ["@ic-reactor/core is declared but not installed"]
     )
   })

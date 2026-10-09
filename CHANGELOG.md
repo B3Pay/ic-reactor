@@ -28,6 +28,59 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   (CONTRIBUTING.md, "Size budget"). Core's config moved from its
   `package.json` to `packages/core/.size-limit.js`, which is not published.
 
+## core, react, vite-plugin 4.0.0
+
+Prepared on 2026-10-07. 4.0.0 is the first stable release of the ic-reactor
+4 line (milestone 1, #790). It is published from `main` after the 4.0 GA
+flip, under npm's `latest` dist-tag, so a plain
+`npm install @ic-reactor/core` installs 4. The 3.x line gets security fixes
+only, until 90 days after this release.
+
+Changes since 4.0.0-beta.3: the version only. No export, type, peer or
+behaviour changed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2).
+
+An app on beta.3 upgrades by bumping all three packages to `4.0.0`. An app on
+beta.2 or earlier also reads the 4.0.0-beta.3 section below, which has the
+`auth` factory's network argument and the breaking change of
+`network: "local"`, with its migration. A module generated for beta.3 need
+not be regenerated.
+
+The guide (`llms.txt`) and the skill now say they apply to 4.0.0, and the
+four examples pin `^4.0.0`. With the GA flip (#836), the packages' READMEs
+and the skill install 4 from `latest` (bare), not `@beta`, and the READMEs
+drop the prerelease note.
+
+For the whole change from 3.x, read the 4.0.0-beta.3, 4.0.0-beta.2 and
+4.0.0-beta.1 sections below, and
+[Migrating from 3.x](https://ic-reactor.b3pay.net/v4/migrating-from-3/),
+with the table of every removed 3.x name and what replaces it.
+
+It requires the stable candid-core pair, both pinned exactly, as in beta.3:
+
+- `@ic-reactor/core`: peer `@candid-core/schema` at exactly `0.3.0`;
+- `@ic-reactor/vite-plugin`: peer `@candid-core/cli` at exactly `0.2.0`.
+
+```sh
+npm install --save-exact @candid-core/schema@0.3.0
+npm install --save-dev --save-exact @candid-core/cli@0.2.0
+```
+
+### GA exit criteria
+
+- The four examples (#788), the 4 docs and the "Removed in 4.0" table
+  (#789), and the runtime-trap suite with the real-replica e2e rewrite
+  (#787) are done.
+- The GA eval, Addendum 4 of
+  [`evals/PREREGISTRATION.md`](./evals/PREREGISTRATION.md), ran on the
+  published 4.0.0-beta.1. GA ships on the result of Addendum 4, stated as
+  recorded: rule 1 was not met as written, because the leak audit flagged
+  react-wallet/`v4`#14's read of its own persisted tool output; all 80 runs
+  were safe, and the pooled bound held in both analyses (−0.0897 main,
+  −0.0876 intent-to-treat, against −0.10). The result and the owner's
+  decision are recorded there, under "Result of Addendum 4" and "Decision on
+  the result of Addendum 4" (#844).
+
 ## core, react, vite-plugin 4.0.0-beta.3
 
 Prepared on 2026-10-07. It goes out under npm's `beta` dist-tag, as

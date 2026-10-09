@@ -7,8 +7,14 @@
  * The examples job of CI runs the examples inside the workspace, where
  * `linkWorkspacePackages` links each @ic-reactor/* range to packages/*. That
  * proves the examples against the code on the branch, not against the release:
- * an example that uses a name the published beta lacks stays green there. This
- * script, for each example:
+ * an example that uses a name the published release lacks stays green there.
+ * This script tests against one dist-tag per run (see `resolveRun`): `beta`
+ * for a prerelease and `latest` for a stable release, of the `--wait-for`
+ * version or else of the branch's own. A run without `--wait-for` whose
+ * examples all wait on the branch's own, unpublished version (a release pull
+ * request, or its merge before the tag: `awaitsRelease`) runs only the checks
+ * that need no registry (`staticFindings`) and defers to the release's run.
+ * For each example, it:
  *
  *   1. copies its git-tracked files to a directory outside the repository,
  *      and refuses to run if a parent of that directory holds a node_modules
@@ -19,8 +25,8 @@
  *      standalone install resolves, and a tracked `.npmrc` (it could point the
  *      @ic-reactor scope at another registry, for this install and on
  *      StackBlitz); requires the `typecheck`, `test` and `build` scripts; and
- *      checks each @ic-reactor/* range is satisfied by the version npm's
- *      `beta` dist-tag names (asking npm, so its own semver decides);
+ *      checks each @ic-reactor/* range is satisfied by the version the run's
+ *      dist-tag names (asking npm, so its own semver decides);
  *   3. installs from registry.npmjs.org with npm (no workspace, no links, no
  *      lockfile of ours), the default registry and the @ic-reactor and
  *      @candid-core scopes all pinned to it on the command line, over any
@@ -28,7 +34,7 @@
  *      `npm_*` or `pnpm_*` variable a `pnpm run` set, and no PATH entry
  *      inside the repository;
  *   4. checks every installed @ic-reactor/* package is a real directory, not
- *      a symlink, at exactly the `beta` version, and that npm's lockfile
+ *      a symlink, at exactly that version, and that npm's lockfile
  *      records it as the registry's own tarball, with the integrity the
  *      registry publishes for that version (the proof the bytes are the
  *      published ones);
@@ -56,12 +62,17 @@
  *          [--wait-for <version>] [<example> ...]
  *   --keep                 leave the copies on disk and print where they are
  *   --tmp <dir>            make the copies under <dir> (default: the OS tmpdir)
- *   --wait-for <version>   wait (up to 10 minutes) until the `beta` dist-tag
- *                          of core and of every @ic-reactor/* package the
- *                          examples declare names <version> (a leading "v" is
+ *   --wait-for <version>   wait (up to 10 minutes) until the dist-tag the
+ *                          release of <version> publishes under (`beta` for a
+ *                          prerelease, `latest` for a stable version) of core
+ *                          and of every @ic-reactor/* package the examples
+ *                          declare names <version> (a leading "v" is
  *                          dropped), and the registry serves its integrity:
  *                          the release workflow runs this right after
- *                          publishing
+ *                          publishing, with the tag it published. Without it,
+ *                          the run tests the dist-tag of the branch's version
+ *                          (packages/core/package.json), or defers while the
+ *                          examples wait on that version's release
  *   <example>              a directory under examples/ (default: every one)
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process"
@@ -91,8 +102,40 @@ export const REGISTRY = "https://registry.npmjs.org/"
 /** The packages this repository publishes. */
 export const SCOPE = "@ic-reactor/"
 
-/** The dist-tag the v4 line publishes under (never `latest` before GA). */
-export const DIST_TAG = "beta"
+/** A version, or a tag of one: MAJOR.MINOR.PATCH, an optional -prerelease. */
+const RELEASE_VERSION =
+  /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/
+
+/**
+ * The dist-tag a run tests against.
+ *
+ * With `--wait-for`, the one the release of that version publishes under:
+ * `beta` for a prerelease (a `-` part after MAJOR.MINOR.PATCH, with or without
+ * a leading `v`), `latest` for a stable version. This mirrors the rule of
+ * `releaseFor` in scripts/release-tag.mjs, with which release.yml chooses the
+ * dist-tag it publishes under once the GA flip (#836) brings that file; the
+ * rule is repeated here rather than imported, so this script works with or
+ * without it.
+ *
+ * A run without `--wait-for` (push, pull request, weekly, manual) passes the
+ * branch's own version instead (see `resolveRun`), so it gets the tag of the
+ * branch's last release. With no value at all, `latest`.
+ *
+ * @param {string | undefined} waitFor the `--wait-for` value (or the
+ *   branch's version), if any
+ * @returns {"latest" | "beta"}
+ * @throws {Error} when `waitFor` is not a version
+ */
+export function distTagFor(waitFor) {
+  if (waitFor === undefined) return "latest"
+  const match = RELEASE_VERSION.exec(waitFor)
+  if (!match) {
+    throw new Error(
+      `--wait-for ${waitFor} is not a release version (MAJOR.MINOR.PATCH, with an optional -prerelease and no +build).`
+    )
+  }
+  return match[4] === undefined ? "latest" : "beta"
+}
 
 /** Range protocols that only resolve inside a workspace or on one disk. */
 export const LOCAL_PROTOCOLS = ["workspace:", "file:", "link:", "portal:"]
@@ -228,18 +271,20 @@ export function declaredDependencies(manifest) {
 }
 
 /**
- * What stops this manifest from installing standalone against the published
- * beta. `satisfying(name, range)` resolves with the published versions of
- * `name` the range accepts (npm's answer, in the script).
+ * What stops this manifest from installing standalone against the version
+ * `tag` names on npm (`version`). `satisfying(name, range)` resolves with the
+ * published versions of `name` the range accepts (npm's answer, in the
+ * script).
  *
  * @param {Record<string, any>} manifest
  * @param {{
- *   betaVersion: string,
+ *   tag: string,
+ *   version: string,
  *   satisfying: (name: string, range: string) => Promise<string[]> | string[],
  * }} options
  * @returns {Promise<string[]>}
  */
-export async function checkManifest(manifest, { betaVersion, satisfying }) {
+export async function checkManifest(manifest, { tag, version, satisfying }) {
   const findings = []
   for (const { field, name, range } of declaredDependencies(manifest)) {
     const protocol = LOCAL_PROTOCOLS.find((p) => range.startsWith(p))
@@ -251,9 +296,9 @@ export async function checkManifest(manifest, { betaVersion, satisfying }) {
     }
     if (!name.startsWith(SCOPE)) continue
     const versions = await satisfying(name, range)
-    if (!versions.includes(betaVersion)) {
+    if (!versions.includes(version)) {
       findings.push(
-        `${field}.${name} is "${range}", which ${DIST_TAG} (${betaVersion}) does not satisfy` +
+        `${field}.${name} is "${range}", which ${tag} (${version}) does not satisfy` +
           (versions.length > 0
             ? `: npm would install ${versions.at(-1)}`
             : ": no published version satisfies it")
@@ -310,14 +355,15 @@ export function awaitsRelease(manifests, { branchVersion, publishedVersions }) {
  * The @ic-reactor/* packages installed in `projectDir`, and what is wrong with
  * them: one the manifest declares that is missing, a symlink (a link into a
  * workspace, not a package from the registry), or a version other than
- * `expectedVersion`.
+ * `expectedVersion`, the one `tag` names.
  *
  * @param {string} projectDir
  * @param {string[]} declared the @ic-reactor/* names the manifest declares
  * @param {string} expectedVersion
+ * @param {string} tag the dist-tag that names `expectedVersion`
  * @returns {{ installed: { name: string, version: string }[], findings: string[] }}
  */
-export function checkInstalled(projectDir, declared, expectedVersion) {
+export function checkInstalled(projectDir, declared, expectedVersion, tag) {
   const scopeDir = join(projectDir, "node_modules", SCOPE.slice(0, -1))
   const present = existsSync(scopeDir)
     ? readdirSync(scopeDir).map((entry) => `${SCOPE}${entry}`)
@@ -356,7 +402,7 @@ export function checkInstalled(projectDir, declared, expectedVersion) {
     installed.push({ name, version })
     if (version !== expectedVersion) {
       findings.push(
-        `${name} installed at ${version}, not ${expectedVersion} (${DIST_TAG})`
+        `${name} installed at ${version}, not ${expectedVersion} (${tag})`
       )
     }
   }
@@ -381,7 +427,8 @@ export function lockedScopePackages(lock) {
  * published tarball: a lockfile entry that is a link, whose `resolved` is not
  * the tarball the registry names for that version, or whose `integrity` is not
  * the one it publishes. Also an installed package the lockfile does not
- * record. `published` is the registry's `dist` for each name at the beta.
+ * record. `published` is the registry's `dist` for each name at the version
+ * under test.
  *
  * @param {Record<string, any> | undefined} lock package-lock.json
  * @param {{
@@ -551,9 +598,9 @@ export function isolatedEnv(env, root) {
  * (`trackedConfigFindings`), its required scripts (`requiredScriptFindings`)
  * and its `.stackblitzrc` start command (`stackblitzStartCommand`'s finding,
  * and the npm script it names: `startScriptFindings`).
- * `testExample` runs them on the copy before installing, and `main` runs them
- * on the checkout before a run defers to the release (`awaitsRelease`), so a
- * deferral never skips them.
+ * `testExample` runs them on the copy before installing, and `deferredRun`
+ * runs them on the checkout when a run defers to the release
+ * (`awaitsRelease`), so a deferral never skips them.
  *
  * @param {string} name the example
  * @param {{ files: string[], scripts: Record<string, string> | undefined, start: { finding?: string } }} example
@@ -737,8 +784,8 @@ function npmView(spec, field) {
 }
 
 /** The version a dist-tag names, from the registry. */
-function distTagVersion(name, tag) {
-  const version = npmView(`${name}@${tag}`, "version")
+function distTagVersion(name, tag, view = npmView) {
+  const version = view(`${name}@${tag}`, "version")
   if (typeof version !== "string") {
     throw new Error(`${name} has no ${tag} dist-tag on ${REGISTRY}`)
   }
@@ -960,7 +1007,7 @@ async function smokeDevServer(cwd, env, extraArgs, timeoutMs = 4 * MINUTE) {
 }
 
 /** One example, start to finish. */
-async function testExample(name, { betaVersion, workDir, preload }) {
+async function testExample(name, { tag, version, workDir, preload }) {
   const dir = join(workDir, name.replaceAll("/", "__"))
   const steps = {}
   const findings = []
@@ -977,7 +1024,8 @@ async function testExample(name, { betaVersion, workDir, preload }) {
   )
   findings.push(
     ...(await checkManifest(manifest, {
-      betaVersion,
+      tag,
+      version,
       satisfying: npmSatisfying,
     }))
   )
@@ -1005,7 +1053,8 @@ async function testExample(name, { betaVersion, workDir, preload }) {
   const { installed, findings: installFindings } = checkInstalled(
     dir,
     declared,
-    betaVersion
+    version,
+    tag
   )
   findings.push(...installFindings)
   let lock
@@ -1018,7 +1067,7 @@ async function testExample(name, { betaVersion, workDir, preload }) {
   findings.push(
     ...checkLockfile(lock, {
       installed: installed.map((p) => p.name),
-      published: publishedDist(locked, betaVersion),
+      published: publishedDist(locked, version),
     })
   )
   console.log(
@@ -1118,7 +1167,7 @@ export function parseArgs(argv) {
 
 /**
  * The @ic-reactor/* packages a run reads from the registry: every one the
- * manifests declare, and core (whose dist-tag names the beta under test).
+ * manifests declare, and core (whose dist-tag names the version under test).
  *
  * @param {Record<string, any>[]} manifests
  * @returns {string[]}
@@ -1193,16 +1242,138 @@ export async function waitForPublished(
 }
 
 /** What the registry serves for `name` now, for `waitForPublished`. */
-function registryState(name, tag, version) {
-  const tagged = npmView(`${name}@${tag}`, "version")
+function registryState(name, tag, version, view = npmView) {
+  const tagged = view(`${name}@${tag}`, "version")
   const integrity =
     tagged === version
-      ? npmView(`${name}@${version}`, "dist.integrity")
+      ? view(`${name}@${version}`, "dist.integrity")
       : undefined
   return {
     tagged: typeof tagged === "string" ? tagged : undefined,
     integrity: typeof integrity === "string" ? integrity : undefined,
   }
+}
+
+/**
+ * A run's dist-tag and the version under test, or that the run defers.
+ *
+ * With `--wait-for` (the release's run, which never defers): the tag that
+ * release publishes under (`distTagFor(waitFor)`), and the version is
+ * `waitFor` once every one of `packages` serves it under that tag
+ * (`waitForPublished`).
+ *
+ * Without it (push, pull request, weekly and manual runs), the branch's
+ * version (`branchVersion`, from packages/core/package.json) decides:
+ *
+ * - When the examples wait on it (`awaitsRelease`: it is not among core's
+ *   published versions, every @ic-reactor/* range of every example is exactly
+ *   `^<it>`, and no dependency uses a local protocol), a release pull request
+ *   or its merge before the tag publishes it, the run defers:
+ *   `{ deferred: true, version: branchVersion }`. The caller still runs the
+ *   checks that need no registry (`deferredRun`, over `staticFindings`), and a
+ *   finding there fails the run. Core's versions are asked for only when every example pins
+ *   `^<branchVersion>`.
+ * - Otherwise the tag is that of the branch's version, which is the version
+ *   of its last release: release.js syncs the examples to exactly that
+ *   version (sync-example-versions.js), so `latest` after a stable release
+ *   such as 4.0.0, and `beta` through a later prerelease cycle such as
+ *   4.1.0's, whose ranges no `latest` satisfies; the version is the one that
+ *   tag names. With no branch version, `latest`.
+ *
+ * @param {{
+ *   waitFor?: string,
+ *   branchVersion?: string,
+ *   manifests?: Record<string, any>[],
+ *   packages?: string[],
+ * }} run `manifests` are the examples' package.json files; `packages`, the
+ *   ones a release run waits on, default to `scopePackageNames(manifests)`
+ * @param {{ view?: (spec: string, field: string) => unknown } & Partial<Parameters<typeof waitForPublished>[3]>} [options]
+ *   `view(spec, field)` answers as `npm view <spec> <field> --json` does
+ *   (undefined for a 404); the rest goes to `waitForPublished`
+ * @returns {Promise<{ tag: "latest" | "beta", version: string, deferred?: undefined } | { deferred: true, version: string }>}
+ */
+export async function resolveRun(
+  {
+    waitFor,
+    branchVersion,
+    manifests = [],
+    packages = scopePackageNames(manifests),
+  },
+  { view = npmView, ...waitOptions } = {}
+) {
+  if (
+    !waitFor &&
+    // Every example pins ^<branchVersion>: only then is npm asked whether
+    // that version is out.
+    awaitsRelease(manifests, { branchVersion, publishedVersions: [] }) &&
+    awaitsRelease(manifests, {
+      branchVersion,
+      publishedVersions: [view(`${SCOPE}core`, "versions") ?? []].flat(),
+    })
+  ) {
+    return { deferred: true, version: branchVersion }
+  }
+  const tag = distTagFor(waitFor ?? branchVersion)
+  const version = waitFor
+    ? await waitForPublished(packages, tag, waitFor, {
+        ...waitOptions,
+        lookup: (name) => registryState(name, tag, waitFor, view),
+      })
+    : distTagVersion(`${SCOPE}core`, tag, view)
+  return { tag, version }
+}
+
+/**
+ * A deferred run (`resolveRun`'s `{ deferred: true }`): it still runs the
+ * checks that need no registry (`staticFindings`) on each example of the
+ * checkout, so deferring never skips them. A finding fails the run (exit 1,
+ * reported); with none it passes (exit 0) and says what it deferred to.
+ *
+ * @param {string[]} names the examples
+ * @param {{
+ *   version: string,
+ *   manifests: Record<string, any>[],
+ *   files?: (name: string) => string[],
+ *   startCommand?: (name: string) => { command?: string, finding?: string },
+ *   onFindings?: (results: { name: string, steps: {}, findings: string[] }[]) => void,
+ *   log?: (message: string) => void,
+ * }} run `manifests` are the examples' package.json files, in `names`'
+ *   order; `files`, `startCommand`, `onFindings` and `log` default to the
+ *   checkout's tracked files, its `.stackblitzrc`, the run's report and
+ *   `console.log`
+ * @returns {0 | 1} the run's exit code
+ */
+export function deferredRun(
+  names,
+  {
+    version,
+    manifests,
+    files = trackedFiles,
+    startCommand = (name) =>
+      stackblitzStartCommand(join(repoRoot, "examples", name)),
+    onFindings = (results) => report(results, 0),
+    log = console.log,
+  }
+) {
+  const results = names.map((name, i) => ({
+    name,
+    steps: {},
+    findings: staticFindings(name, {
+      files: files(name),
+      scripts: manifests[i].scripts,
+      start: startCommand(name),
+    }),
+  }))
+  if (results.some((result) => result.findings.length > 0)) {
+    onFindings(results)
+    return 1
+  }
+  log(
+    `The examples pin ^${version}, this branch's own version, which is not on ${REGISTRY} yet: ` +
+      `a release that has not been published. The checks that need no registry pass. release.yml's examples-published job tests them ` +
+      `against it once it is (--wait-for v${version}). Nothing to test here.`
+  )
+  return 0
 }
 
 async function main(argv) {
@@ -1225,47 +1396,28 @@ async function main(argv) {
     return 1
   }
 
-  const waitFor = args.waitFor
+  const readManifest = (...path) =>
+    JSON.parse(readFileSync(join(repoRoot, ...path), "utf8"))
   const manifests = names.map((name) =>
-    JSON.parse(
-      readFileSync(join(repoRoot, "examples", name, "package.json"), "utf8")
-    )
+    readManifest("examples", name, "package.json")
   )
-  if (!waitFor) {
-    const branchVersion = JSON.parse(
-      readFileSync(join(repoRoot, "packages", "core", "package.json"), "utf8")
-    ).version
-    const versions = npmView(`${SCOPE}core`, "versions") ?? []
-    const publishedVersions = Array.isArray(versions) ? versions : [versions]
-    if (awaitsRelease(manifests, { branchVersion, publishedVersions })) {
-      const results = names.map((name) => ({
-        name,
-        steps: {},
-        findings: staticFindings(name, {
-          files: trackedFiles(name),
-          scripts: manifests[names.indexOf(name)].scripts,
-          start: stackblitzStartCommand(join(repoRoot, "examples", name)),
-        }),
-      }))
-      if (results.some((result) => result.findings.length > 0)) {
-        report(results, 0)
-        return 1
-      }
-      console.log(
-        `The examples pin ^${branchVersion}, this branch's own version, which is not on ${REGISTRY} yet: ` +
-          `a release that has not been published. The checks that need no registry pass. release.yml's examples-published job tests them ` +
-          `against it once it is (--wait-for v${branchVersion}). Nothing to test here.`
-      )
-      return 0
-    }
+  let run
+  try {
+    run = await resolveRun({
+      waitFor: args.waitFor,
+      branchVersion: readManifest("packages", "core", "package.json").version,
+      manifests,
+    })
+  } catch (error) {
+    console.error(error.message)
+    return 1
   }
-  const betaVersion = waitFor
-    ? await waitForPublished(scopePackageNames(manifests), DIST_TAG, waitFor, {
-        lookup: (pkg) => registryState(pkg, DIST_TAG, waitFor),
-      })
-    : distTagVersion(`${SCOPE}core`, DIST_TAG)
+  if (run.deferred) {
+    return deferredRun(names, { version: run.version, manifests })
+  }
+  const { tag, version } = run
   console.log(
-    `${SCOPE}core@${DIST_TAG} is ${betaVersion} on ${REGISTRY}; testing ${names.join(", ")}`
+    `${SCOPE}core@${tag} is ${version} on ${REGISTRY}; testing ${names.join(", ")}`
   )
 
   const base = realpathSync(args.tmp ? resolve(args.tmp) : tmpdir())
@@ -1291,7 +1443,7 @@ async function main(argv) {
   const results = []
   try {
     for (const name of names) {
-      results.push(await testExample(name, { betaVersion, workDir, preload }))
+      results.push(await testExample(name, { tag, version, workDir, preload }))
     }
   } finally {
     if (keep) console.log(`\nCopies kept in ${workDir}`)
@@ -1300,7 +1452,7 @@ async function main(argv) {
   const failed = report(results, Date.now() - started)
   if (!failed) {
     console.log(
-      `✅ ${results.length} example(s) green against ${SCOPE}*@${betaVersion} from npm`
+      `✅ ${results.length} example(s) green against ${SCOPE}*@${version} (${tag}) from npm`
     )
   }
   return failed ? 1 : 0

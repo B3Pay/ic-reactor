@@ -6,8 +6,9 @@ routing and verification by change type are in [`AGENTS.md`](./AGENTS.md).
 ## Branches
 
 - **`v4`** (this branch) is the development line of ic-reactor 4. Its packages
-  are at `4.0.0-beta.3`, and its release lane publishes prereleases only, under
-  npm's `beta` dist-tag, never under `latest`.
+  are at `4.0.0`, which is tagged and published under `latest` from `main`
+  after the GA flip. Until then its release lane publishes prereleases only,
+  under npm's `beta` dist-tag, never under `latest`.
 - **`main`** is the 3.x line: security fixes only until 4.0 GA. At GA, `v3` is
   cut from `main` and `v4` becomes `main`.
 
@@ -23,11 +24,11 @@ exactly to published stable releases.
 
 ## Packages on this branch
 
-| Package                   | Directory              | State on `v4`                                                                                                                              |
-| ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@ic-reactor/core`        | `packages/core`        | `4.0.0-beta.3`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient`      |
-| `@ic-reactor/react`       | `packages/react`       | `4.0.0-beta.3`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                                   |
-| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0-beta.3`; generates the candid-core module with `@candid-core/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy |
+| Package                   | Directory              | State on `v4`                                                                                                                       |
+| ------------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `@ic-reactor/core`        | `packages/core`        | `4.0.0`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient`      |
+| `@ic-reactor/react`       | `packages/react`       | `4.0.0`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                                   |
+| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0`; generates the candid-core module with `@candid-core/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy |
 
 Not in this tree: `@ic-reactor/parser`, `@ic-reactor/codegen` and
 `@ic-reactor/cli` (replaced by `candid-core-cli gen`), and
@@ -76,6 +77,6 @@ pnpm verify:traps     # Each @ts-expect-error of traps.test-d.ts bites (CI gate)
 pnpm verify:faults    # Each test of scripts/faults.json fails under its fault (CI gate)
 pnpm test:scripts     # The gates' own tests (CI gate; build first)
 pnpm verify:packages  # Pack and verify the published artifacts
-pnpm test:examples:published # Each example installed from npm against the published beta (own CI workflow)
+pnpm test:examples:published # Each example installed from npm against the published packages (own CI workflow)
 pnpm verify:peer-floors # Lowest peers and oldest TypeScript (CI gate; build first)
 ```
