@@ -31,8 +31,12 @@ import path from "node:path"
 const repoRoot = path.resolve(import.meta.dirname, "../..")
 const docsExamplesDir = path.join(repoRoot, "docs/src/content/docs/examples")
 const examplesDir = path.join(repoRoot, "examples")
+// A sandbox opens a branch of the repository. Only `main` is the 4.x line: a
+// link to a version branch (`v3`, or `v4`, which is retired after the 4.0 GA
+// flip) is matched so that it can be refused below.
+const SANDBOX_BRANCH = "main"
 const providerPattern =
-  /https:\/\/(?:stackblitz\.com\/github|codesandbox\.io\/p\/github)\/b3pay\/ic-reactor\/(?:tree\/)?(?:main|v4)(?:\/examples)?\/([^?"\s)]+)[^"\s)]*/g
+  /https:\/\/(?:stackblitz\.com\/github|codesandbox\.io\/p\/github)\/b3pay\/ic-reactor\/(?:tree\/)?(main|v\d+)(?:\/examples)?\/([^?"\s)]+)[^"\s)]*/g
 
 /**
  * `target` resolved under `root`, or `undefined` when it leaves `root` or names
@@ -123,11 +127,17 @@ for (const file of pages) {
 
   for (const match of matches) {
     const url = match[0]
+    if (match[1] !== SANDBOX_BRANCH) {
+      errors.add(
+        `${file} opens the ${match[1]} branch (${url}); sandbox links open ${SANDBOX_BRANCH}`
+      )
+      continue
+    }
     let examplePath
     try {
-      examplePath = decodeURIComponent(match[1]).replace(/\/+$/, "")
+      examplePath = decodeURIComponent(match[2]).replace(/\/+$/, "")
     } catch {
-      errors.add(`${file} has a sandbox path that is not valid: ${match[1]}`)
+      errors.add(`${file} has a sandbox path that is not valid: ${match[2]}`)
       continue
     }
 

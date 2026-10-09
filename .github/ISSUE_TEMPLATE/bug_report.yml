@@ -25,7 +25,9 @@ body:
       options:
         - "@ic-reactor/core"
         - "@ic-reactor/react"
-        - "@ic-reactor/parser"
+        - "@ic-reactor/vite-plugin"
+        - "@ic-reactor/candid (3.x)"
+        - "@ic-reactor/parser, codegen or cli (3.x)"
     validations:
       required: true
 
@@ -34,7 +36,7 @@ body:
     attributes:
       label: Package Version
       description: What version of the package are you using?
-      placeholder: "3.0.0"
+      placeholder: "4.0.0"
     validations:
       required: true
 

@@ -11,7 +11,7 @@ client builds their options.
 
 The 3.x line is documented at
 [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/). It gets
-security fixes only until 4.0 is released.
+security fixes only, from the `v3` branch, until 90 days after the 4.0 release.
 
 ## What changed in 4
 
@@ -43,8 +43,11 @@ security fixes only until 4.0 is released.
   kept and now runs `candid-core-cli` for you. See
   [The Vite plugin](/v4/guides/vite-plugin/).
 
-ic-reactor 4 is in beta. `latest` on npm is still 3.x, so install the 4 line
-as `@ic-reactor/core@beta` and `@ic-reactor/react@beta`.
+ic-reactor 4 is on npm's `latest` dist-tag, so `npm install @ic-reactor/core`
+installs it. An app that stays on 3.x keeps its `^3` ranges: the 3.x line takes
+security fixes, from the
+[`v3` branch](https://github.com/B3Pay/ic-reactor/tree/v3), until 90 days after
+the 4.0 release.
 
 ### Moving an app
 

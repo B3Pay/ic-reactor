@@ -1,7 +1,7 @@
 name: E2E Tests
 
 on:
-  # main is the 3.x line and v4 the 4.x development line; see ci.yml.
+  # main is the 4.x line; v4 stays listed until it is retired. See ci.yml.
   push:
     branches: [main, v4]
   pull_request:

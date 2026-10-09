@@ -2,9 +2,9 @@
 
 ## Project snapshot
 
-This is the `v4` branch, the development line of ic-reactor 4. `main` is the
-3.x line and takes security fixes only until 4.0 GA. Open pull requests for
-ic-reactor 4 against `v4`.
+This is `main`, the line of ic-reactor 4. `v3` is the 3.x line and takes
+security fixes only, until 90 days after the 4.0 release. Open pull requests
+for ic-reactor 4 against `main`, and 3.x security fixes against `v3`.
 
 ic-reactor 4 is a thin layer over a module that `candid-core-cli gen`
 generates, plus one consumer guide. Its packages are written against the
@@ -18,7 +18,7 @@ published stable candid-core releases, `@candid-core/schema` and
 - `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-beta.3`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
 
 `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli` and
-`@ic-reactor/candid` are not in this tree (the last stays at 3.x on `main`).
+`@ic-reactor/candid` are not in this tree (the last stays at 3.x on `v3`).
 
 ## Where to start for a task
 
@@ -31,9 +31,9 @@ published stable candid-core releases, `@candid-core/schema` and
 | Test client, fake replica     | `packages/core/src/testing/` (`test-client.ts` is the entry's only export)                  |
 | Real-replica e2e              | `e2e/` (Rust `hello_actor` canister, `e2e/test.sh`)                                         |
 | Example apps                  | `examples/<name>/` (own tests and `gen:check`; a page in `docs/src/content/docs/examples/`) |
-| Docs site (`/v4/`)            | `docs/`, `.github/workflows/docs.yml`                                                       |
+| Docs site (`/v4/`)            | `docs/`, `.github/workflows/docs.yml`, `scripts/assemble-docs-site.mjs`                     |
 | Consumer guide and skill      | `packages/core/llms.txt`, `skill-packages/ic-reactor/SKILL.md`                              |
-| Release lane                  | `scripts/release.js`, `.github/workflows/release.yml`                                       |
+| Release lane                  | `scripts/release.js`, `scripts/release-tag.mjs`, `.github/workflows/release.yml`            |
 | CI gates and their tests      | `scripts/` (`check-exports.mjs`, `verify-traps.mjs`, `verify-faults.mjs`)                   |
 
 ## Verification commands
@@ -46,7 +46,7 @@ published stable candid-core releases, `@candid-core/schema` and
 - Snippets (CI gate; build first): `pnpm check:snippets`, and `pnpm check:snippets:docs` for the docs pages.
 - Size (CI gate; build first): `pnpm size` — gzipped size-limit checks, each limit just above its measured size. `packages/core/.size-limit.js` and react's `size-limit` field measure each package's own code: size-limit leaves out every peer of the package it runs in. `scripts/size-app/` (a private workspace package that declares no peers, so nothing is left out) measures what an app pays with the peers included: `{ createClient }` from core, and `createClient` with `ReactorProvider` and `useClient` without React itself. A change that moves a number, a dependency bump included, states the delta in its pull request and raises that limit in the same change.
 - Published artifacts: `pnpm verify:packages`
-- Examples on the published beta: `pnpm test:examples:published` (needs only Node, npm and git) — each example's tracked files copied outside the repository and installed from npm with npm; it refuses a `workspace:` range, checks every installed @ic-reactor/* package is a real directory at the version of npm's `beta` dist-tag, then runs the example's `typecheck`, `test` and `build` scripts, and its `.stackblitzrc` start command under a model of what StackBlitz's WebContainer lacks (no global `Iterator`; an `AsyncLocalStorage` that keeps no store across an await). Its own workflow, `.github/workflows/examples-published.yml`, runs it on pushes and pull requests to `v4`. An example change that needs an unpublished API lands with the release that publishes it. A run without `--wait-for` whose examples all pin `^<the branch's own version>` while npm has no such version yet (a release pull request, or its merge before the tag), and no dependency uses a local protocol, runs the checks that need no registry (tracked config files, required scripts, and the `.stackblitzrc` start command, which must be a plain npm script command, `npm run <script>` with arguments after a bare `--`, naming a defined script), then defers to the release's run and passes, saying so.
+- Examples on the published beta: `pnpm test:examples:published` (needs only Node, npm and git) — each example's tracked files copied outside the repository and installed from npm with npm; it refuses a `workspace:` range, checks every installed @ic-reactor/* package is a real directory at the version of npm's `beta` dist-tag, then runs the example's `typecheck`, `test` and `build` scripts, and its `.stackblitzrc` start command under a model of what StackBlitz's WebContainer lacks (no global `Iterator`; an `AsyncLocalStorage` that keeps no store across an await). Its own workflow, `.github/workflows/examples-published.yml`, runs it on pushes and pull requests to `main`. An example change that needs an unpublished API lands with the release that publishes it. A run without `--wait-for` whose examples all pin `^<the branch's own version>` while npm has no such version yet (a release pull request, or its merge before the tag), and no dependency uses a local protocol, runs the checks that need no registry (tracked config files, required scripts, and the `.stackblitzrc` start command, which must be a plain npm script command, `npm run <script>` with arguments after a bare `--`, naming a defined script), then defers to the release's run and passes, saying so.
 - Peer and TypeScript floors (CI gate; build first): `pnpm verify:peer-floors`
 - Docs: `pnpm docs:build`, `pnpm docs:check-links`
 - Export budget (CI gate; build first): `pnpm check:exports` — the built declarations of core, `core/testing`, react and the Vite plugin against the plan in `scripts/export-budget.mjs`: no unplanned name, no more than the cap, no name exported twice or also exported by `@candid-core/schema` or TanStack Query (D35), no `exports` subpath or publishable package the file does not list, and the schema declared only at the pinned version. Adding a public name or subpath means adding it to that file in the same change.

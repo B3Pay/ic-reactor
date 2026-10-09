@@ -4,12 +4,13 @@ Thanks for your interest in contributing! This project uses pnpm workspaces. Bel
 
 ## Branches
 
-- **`v4`** is the development line of ic-reactor 4. Open pull requests for
-  new work against `v4`. It releases prereleases only (`4.0.0-alpha.N`,
-  `4.0.0-beta.N`), never under npm's `latest`.
-- **`main`** is the 3.x line and takes security fixes only until 4.0 GA. At
-  GA, `v3` is cut from `main`, `v4` becomes `main`, and 3.x security releases
-  are tagged from `v3`.
+- **`main`** is the line of ic-reactor 4. Open pull requests for new work
+  against `main`. It releases 4.x: stable versions under npm's `latest`,
+  prereleases (`4.1.0-beta.N`) under `beta`.
+- **`v3`** is the 3.x line, cut from `main` at the 4.0 GA flip. It takes
+  security fixes only, until 90 days after the 4.0 release, and 3.x security
+  releases are tagged from it with its own workflow files. Open a 3.x security
+  fix against `v3`.
 
 CI, e2e, CodeQL and dependency review run on pull requests to either branch,
 each with the workflow files of its own line.
@@ -144,8 +145,8 @@ document shares, and a directory named in `CONTEXTS` in
 `scripts/check-snippets.mjs` holds what differs for one document. A relative
 import resolves to the module of the same path there, and `globals.ts` lists the
 names a snippet may use without importing. Add a missing app name there, never
-a library export: a snippet that uses one must import it. On the `v4` branch
-`app/` holds a few generic names and the generated modules the guide imports
+a library export: a snippet that uses one must import it. `app/` holds a few
+generic names and the generated modules the guide imports
 (`app/generated/icrc1.ts`, `app/generated/backend.ts`).
 
 The consumer guides (`packages/*/llms.txt` and `skill-packages/ic-reactor/`)
@@ -163,9 +164,7 @@ lists every snippet with its result.
 
 The docs site's hand-written pages (`docs/src/content/docs`, without the
 TypeDoc output in `libs/`) are gated too, by `pnpm check:snippets:docs`, which
-CI runs in the job that installs the examples. On the `v4` branch the site is
-a placeholder until DX2, so the gate has no pages to compile yet. Unlike the
-guides, a docs page
+CI runs in the job that installs the examples. Unlike the guides, a docs page
 may assume the app it is about, so a page compiles against
 `scripts/check-snippets/docs/<section>/` (its directory under the docs content
 root, `root` for a page at the top), then against the default app. Put a name
@@ -244,23 +243,41 @@ Remove an entry as soon as a patched version is released.
 This repository enforces **OIDC Trusted Publishing** for releases (no long-lived publish tokens for the publish step). Trusted publishing is more secure and produces provenance attestations when used from GitHub Actions.
 
 - To enable: go to your package on npmjs.com → Settings → Trusted publishers and add this repository's workflow filename (e.g., `release.yml`).
+- `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` trust `release.yml` (4.x from `main`, and core and react 3.x from `v3`). Until the 3.x line's end, `@ic-reactor/vite-plugin` also trusts `release-tools.yml`, which publishes its 0.x security releases from `v3`; remove that publisher then.
+- Bind each trusted publisher to the `npm-release` environment, the environment of every publish job on `main` and `v3` (the GA-flip runbook does this after the 4.0.0 release). npm cannot edit a trusted publisher: add a new one with the same workflow and environment `npm-release`, then delete the old one that names no environment. A package can hold up to 10 publishers, and an unbound entry left next to a bound one still accepts any job, so the binding holds only once no entry for that workflow is left without an environment. It has no reviewer; it only lets npm refuse the publish job of an older commit, which has no environment (see "Tagging a 3.x release" below).
 - Ensure the `release.yml` workflow has `permissions: id-token: write` (already configured).
 - After enabling and validating Trusted Publishing, do not add a write `NPM_TOKEN` secret — publishing will use the OIDC token.
 
 If your CI needs to install private dependencies, create a **read-only** granular token on npmjs.com and store it as `NPM_READ_TOKEN` (the install step will use this token when present).
 
-On the `v4` branch the release lane publishes `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` in lockstep from `v4.*` tags, and only prereleases: `scripts/release.js` refuses a version without a prerelease tag, and `release.yml` refuses a tag without a hyphen, requires the tagged commit to be on `v4`, and publishes under the `beta` dist-tag. Nothing on `v4` publishes to `latest` before GA.
+On `main` the release lane publishes `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` in lockstep from `v4.*` tags. `scripts/release-tag.mjs` decides for both `scripts/release.js` and `release.yml`: a stable 4.x version publishes under the `latest` dist-tag and becomes the latest GitHub Release, a 4.x prerelease publishes under `beta`, and any other version (3.x, 5.x, not semver) is refused. `release.yml` also requires the tagged commit to be on `main`.
+
+The 3.x line releases from the `v3` branch with that branch's own workflows: `v3.*` tags publish `@ic-reactor/core` and `@ic-reactor/react` 3.x under the `v3-latest` dist-tag and `@ic-reactor/candid` under `latest` (it has no 4.x), and `tools-v*`/`parser-v*` tags publish `@ic-reactor/vite-plugin` 0.x under `v0-latest` and the parser, codegen and cli under `latest`. None of them moves `latest` of core, react or vite-plugin, or takes the GitHub "Latest" badge, as long as the tag is on a `v3` commit that contains those lanes.
+
+### Tagging a 3.x release
+
+A tag push runs the workflow file of the commit the tag points at, not the branch's current one. `main`'s history (and `v3`'s, up to the merge that added its lanes) holds 3.x commits whose `release.yml` and `release-tools.yml` publish any stable version under `latest`, and some of them carry a version that was never published (core, react and candid 3.0.5; codegen, cli and vite-plugin 0.15.0). A `v3.*`, `tools-v*` or `parser-v*` tag on such a commit runs that commit's workflow, and the older ones have no preflight and no approval job. Before you push a 3.x tag, check the commit it points at:
+
+```sh
+SHA=$(git rev-parse v3.13.1)   # or tools-v0.15.2, parser-v0.6.1
+git show "$SHA":.github/workflows/release.yml | grep -q v3-latest && echo "v3 lane"           # for a v3.* tag
+git show "$SHA":.github/workflows/release-tools.yml | grep -q v0-latest && echo "v0 lane"     # for a tools-v* or parser-v* tag
+```
+
+Push the tag only when the check prints its line. The `npm-release` environment closes this for good once no package has a trusted publisher left without it: the publish jobs of `release.yml` on `main` and of both lanes on `v3` run in it, and the publish jobs of older commits do not, so npm refuses their tokens.
+
+`v3` and `main` may carry a ruleset that requires pull requests. A release script's printed `git push origin <branch>` then works only for a maintainer on the ruleset's bypass list. Otherwise push the release commit to a branch, merge its pull request with a merge commit (a squash or rebase would leave the tagged commit off the branch, and the preflight refuses it), and push the tag after the merge.
 
 ### Approving a release
 
-Pushing a release tag no longer publishes unattended. The release workflow (`release.yml`; on `main` there is also `release-tools.yml` for the 3.x tooling lane) runs an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against its branch, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
+Pushing a release tag no longer publishes unattended. The release workflow (`release.yml`; on `v3` there is also `release-tools.yml` for the 3.x tooling lane) runs an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against its branch, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
 
 The environment lives in repository settings (Settings → Environments → `npm-publish`) and carries:
 
 - a required reviewer (self-approval allowed, so for a solo maintainer this is a confirmation step, not a second-person requirement);
 - a deployment tag policy limited to `v*`, `tools-v*` and `parser-v*`, so a run from any other ref cannot deploy to it at all.
 
-The `environment:` key is read from the tagged revision, like the preflight, so a tag pointing at a commit that predates it would skip the pause. The tag policy is settings-enforced and holds regardless. The `Release tags` ruleset, which limits who can create those tags, is the third leg; none of the three is sufficient alone.
+The `environment:` key is read from the tagged revision, like the preflight, so a tag pointing at a commit that predates it would skip the pause. The tag policy is settings-enforced, but it applies only to a job that names the environment, and such a commit names none: the `npm-release` binding of the trusted publishers is what refuses its publish. The `Release tags` ruleset, which limits who can create those tags, is the third leg; none of the three is sufficient alone.
 
 ## Commits & PRs
 
@@ -290,7 +307,7 @@ the tag creates still generates its own notes from the merged pull requests.
 AI-assisted contributions are welcome, but contributors are responsible for correctness before opening a PR.
 
 - Prefer existing IC Reactor patterns over introducing new abstractions.
-- The 3.x runtime is removed on `v4` and the 4 API arrives slice by slice (milestone 1, #790). Do not copy 3.x patterns (`ClientManager`, `Reactor`, hook factories) from `main`; follow the guide in `packages/core/llms.txt` once it lands.
+- The 3.x runtime is gone from `main`. Do not copy 3.x patterns (`ClientManager`, `Reactor`, hook factories) from the `v3` branch; follow the guide in `packages/core/llms.txt`.
 - Validate generated or AI-written code with tests/examples whenever possible.
 - Update docs/examples when public API usage changes.
 

@@ -1,10 +1,10 @@
 # Changelog
 
 Notable changes to the published `@ic-reactor/*` packages. ic-reactor 4
-releases from the `v4` branch in one lane, `@ic-reactor/core`,
-`@ic-reactor/react` and `@ic-reactor/vite-plugin` at one version, as
-prereleases under npm's `beta` dist-tag until 4.0 GA. The 3.x line released in
-three lanes, each with its own version:
+releases from `main` in one lane, `@ic-reactor/core`, `@ic-reactor/react` and
+`@ic-reactor/vite-plugin` at one version: stable versions under npm's `latest`
+dist-tag, prereleases under `beta`. The 3.x line, on the `v3` branch since the
+4.0 GA flip, releases in three lanes, each with its own version:
 
 - runtime: `@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/candid`
 - codegen: `@ic-reactor/codegen`, `@ic-reactor/cli`, `@ic-reactor/vite-plugin`
