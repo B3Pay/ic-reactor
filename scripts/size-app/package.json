@@ -1,0 +1,24 @@
+{
+  "name": "size-app",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "What an app pays for @ic-reactor/core and @ic-reactor/react with their peers included. Declares no peerDependencies on purpose: size-limit adds the peers of the package it runs in to every check's ignore.",
+  "scripts": {
+    "size": "size-limit"
+  },
+  "dependencies": {
+    "@candid-core/schema": "0.3.0",
+    "@ic-reactor/core": "workspace:*",
+    "@ic-reactor/react": "workspace:*",
+    "@icp-sdk/core": "^6.1.0",
+    "@noble/curves": "^2.2.0",
+    "@tanstack/query-core": "^5.102.8",
+    "@tanstack/react-query": "^5.102.8",
+    "react": "^19.3.0"
+  },
+  "devDependencies": {
+    "@size-limit/preset-small-lib": "^13.0.3",
+    "size-limit": "^13.0.3"
+  }
+}

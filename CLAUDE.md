@@ -65,6 +65,7 @@ on this branch deploys both lines together.
 pnpm install          # pnpm is pinned by packageManager; corepack picks it up
 pnpm build            # Build the packages
 pnpm test             # Run the package tests
+pnpm size             # Tight size limits, peers left out and included (CI gate; build first)
 pnpm typecheck        # Type-check every package and e2e/ (CI gate)
 pnpm lint             # ESLint over packages/*/src and tests (CI gate; build first)
 pnpm format:check     # Prettier over the repo (CI gate)
