@@ -42,17 +42,23 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   or `undefined` offers nothing), and the principal that sent it is the
   caller now: nothing after a sign-out or a sign-in as another account, the
   offer again once the sender signs back in, and on a view pinned to a
-  principal (hydration) the live caller decides. The offer's `arg` is the
-  attempt's own argument, and goes out only as its sender, by `send()` or by
-  `mutate(arg)` on any mutation of this client; once someone else is the
-  caller either one rejects `cancelled` (`caller_changed`) and sends nothing.
-  Once offered, that object stays held to its sender, so a new write needs a
-  new argument object. The
+  principal (hydration) the live caller decides. It also offers nothing once
+  the argument object was changed since it was sent, or once the canister
+  object resolves to another canister id than the write went to (a `{ name }`
+  the `ic_env` cookie maps elsewhere). The offer's `arg` is the attempt's own
+  argument, and goes out only as the same write. `send()` sends the bytes
+  the attempt sent, to the canister id it went to. `mutate(arg)`, on any
+  mutation of this client, sends it only to that method and canister id, and
+  only while it encodes to those bytes. Each refusal sends nothing: `cancelled`
+  (`caller_changed`) once someone else is the caller, `cancelled`
+  (`target_changed`) for another method or canister id, and `invalid_args`
+  (`arg_changed`) for an argument changed since. Once offered, that object
+  stays held to that write, so a new write needs a new argument object. The
   client cannot check that a canister deduplicates: a method without such a
   key has no safe re-send. It is a method of `Client`, not a new export: core
-  still has 13 names. Core's size limit is raised to 14.8 kB (14,750 B
-  measured, +301 B), and the app checks to 89.8 kB (89,746 B, +262 B) and
-  91 kB (90,960 B, +268 B). React's own code is unchanged.
+  still has 13 names. Core's size limit is raised to 15 kB (14,946 B
+  measured, +497 B for `resendOf`), and the app checks to 90 kB (89,944 B,
+  +460 B) and 91.2 kB (91,148 B, +456 B). React's own code is unchanged.
 
 ### @ic-reactor/vite-plugin
 

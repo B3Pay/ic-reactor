@@ -207,6 +207,12 @@ all of these hold:
   arguments), and `dedupedBy` finds a key in it: neither `undefined` nor
   `null`. A transfer without `created_at_time` is not deduplicated by the
   ledger, so it is not offered.
+- The argument is still what was sent: it encodes to the same bytes. If the
+  app changed that object since, it is not offered.
+- The canister object still resolves to the canister the write went to. A
+  `{ name }` that the `ic_env` cookie maps to another canister since (a local
+  redeploy) is not offered: that canister has never seen the transfer, and
+  would run it.
 - Whoever sent it is the caller now. After a sign-out, or a sign-in as
   another account, nothing is offered: the same argument from another sender
   is a new transfer, paid in full. Signing back in as the sender offers it
@@ -217,12 +223,22 @@ all of these hold:
 The offer's `arg` is the attempt's own argument, the object `mutate` was
 given, and `from` is its sender. Send it with `mutate(again.arg)` on the same
 mutation, which keeps its pending state and invalidation, or with
-`again.send()`. Either one goes out only as `from`: if someone else is the
-caller by then, it rejects `cancelled` (code `caller_changed`) and sends
-nothing. Once offered, that object stays held to its sender on every mutation
-of the client, for good: another account that sends the same object is
-cancelled too. Build a new argument object for each new transfer, and for
-another account.
+`again.send()`. Either one goes out only as the same write, and otherwise
+rejects and sends nothing:
+
+- only as `from`: if someone else is the caller by then, it rejects
+  `cancelled` (code `caller_changed`);
+- only to the method and canister the write went to: `again.send()` always
+  goes there, and a mutation whose canister now resolves elsewhere rejects
+  `cancelled` (code `target_changed`);
+- only with the bytes the write sent: `again.send()` sends those bytes, and
+  `mutate(again.arg)` rejects `invalid_args` (code `arg_changed`) if the
+  object was changed since.
+
+Once offered, that object stays held to that write on every mutation of the
+client, for good: another account that sends the same object is cancelled
+too. Build a new argument object for each new transfer, and for another
+account, and never change one you sent.
 
 ```tsx
 import { useAuth, useClient } from "@ic-reactor/react"
