@@ -74,7 +74,7 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `React.lazy`, with no change to the library (#855). Measured on the Vite
   wallet with Vite 8.3.0, the first load drops from 622.46 kB (193.56 kB
   gzipped) to 222.30 kB (69.90 kB gzipped), and 401.79 kB (126.21 kB gzipped)
-  loads after the first paint. It says what a route guard sees meanwhile:
+  moves to chunks loaded asynchronously. It says what a route guard sees meanwhile:
   `AuthState.status` keeps its four members, with none for "not loaded yet",
   so a guard lives inside the lazy tree and the `Suspense` fallback stands for
   "not known yet". It also says that the boundaries for `useSuspenseQuery`

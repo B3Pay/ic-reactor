@@ -51,8 +51,8 @@ yourself when you want Internet Identity.
 
 The factory returns the auth synchronously, so the module that builds the
 client imports `AuthClient` statically, and, when the entry module imports
-that module statically, a bundler puts it in the page's first chunk. To load
-the client, the sign-in code and the generated module after the first paint
+that module statically, a bundler puts it in the page's first chunk. To keep
+the client, the sign-in code and the generated module out of that chunk
 instead, lazy-load the component that holds the `ReactorProvider`: see
 [Keep the IC stack out of the first load](/v4/guides/getting-started/#keep-the-ic-stack-out-of-the-first-load),
 which also says what a route guard sees while it loads.

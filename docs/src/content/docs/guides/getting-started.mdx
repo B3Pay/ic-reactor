@@ -393,9 +393,9 @@ balance refetches by itself. See [Writes](/v4/guides/writes/).
 
 The `App` of step 6 imports the client, `AuthClient` and the generated module.
 `src/main.tsx` imports `App`, so a Vite build puts all of them in the one chunk
-the page loads before it shows anything. `React.lazy` moves them to chunks that
-load after the first paint, with no change to `App.tsx` and no option of this
-library:
+the page loads before it shows anything. `React.lazy` moves them out of that
+chunk, into chunks the page loads asynchronously, with no change to `App.tsx`
+and no option of this library:
 
 ```tsx
 // src/main.tsx
@@ -428,14 +428,17 @@ minified JavaScript (its 3.28 kB of CSS loads first either way). For the lazy
 build its `main.tsx` was changed as above, with its dev accounts, which import
 `@icp-sdk/core`, loaded in the same lazy import:
 
-| `vite build` of the wallet | First load                | After the first paint     |
+| `vite build` of the wallet | First chunk               | Loaded asynchronously     |
 | -------------------------- | ------------------------- | ------------------------- |
 | as it is                   | 622.46 kB, 193.56 kB gzip | nothing                   |
 | with `React.lazy`          | 222.30 kB, 69.90 kB gzip  | 401.79 kB, 126.21 kB gzip |
 
 The first load is React, React DOM and the fallback. The rest is the client,
 the agent with its certificate check, `AuthClient` and the wallet's own code,
-in three chunks the browser fetches together once the first one runs. Every
+in three chunks the browser fetches together once the first one runs. React
+starts that import while it renders `<App />`, so a fast or cached import can
+arrive before the fallback is ever painted: what moves is the first chunk's
+size, not a guarantee that the rest loads after the first paint. Every
 chunk is under 222 kB, so the build stays under Vite's 500 kB chunk warning,
 which the wallet otherwise raises to 700 kB.
 
@@ -457,8 +460,10 @@ component that reads with `useSuspenseQuery` (see
 [Reads](/v4/guides/reads/#suspense)) and every lazy route. React can still
 start the provider over a few times before it commits: for a moment after it
 last showed a fallback (300 ms in React 19), it holds back a new one, and it
-starts again when a read finishes in that time. Each client it throws away is
-disposed after a garbage collection, but each one sent the read. When the
+starts again when a read finishes in that time. Each client it throws away has
+already sent the read. The provider disposes such a client only as a best
+effort, when the runtime has `FinalizationRegistry` and the garbage collector
+runs its finalizer, which JavaScript does not guarantee. When the
 first screen reads with `useSuspenseQuery`, build the client once, at the top
 level of the lazy module, and hand it to the provider, so every attempt gets
 the same client and cache and the read is sent once:
