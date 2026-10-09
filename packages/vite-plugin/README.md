@@ -160,7 +160,8 @@ export default defineConfig({
   share one fetch. When they name different canisters or networks to fetch it
   from, none is fetched and each fails, naming them and the file: give each
   its own `didFile`, or write the file yourself. A `didFile` on disk is shared
-  whatever their `canisterId`s.
+  whatever their `canisterId`s. A `didFile` that is a symlink is written
+  through, to the file it links to.
 - `canisterId` is also the ID the `ic_env` cookie carries under `vite dev`.
 
 ## Generation

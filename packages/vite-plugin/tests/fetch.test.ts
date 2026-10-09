@@ -295,6 +295,17 @@ describe("a missing didFile", () => {
   })
 })
 
+/** `app` with `linked`, a symlink to its `did` directory, made first. */
+function linkDid(app: App): App {
+  fs.mkdirSync(path.join(app.root, "did"), { recursive: true })
+  fs.symlinkSync(
+    path.join(app.root, "did"),
+    path.join(app.root, "linked"),
+    "junction"
+  )
+  return app
+}
+
 // Whether the temporary directory the apps are made in ignores case, as macOS
 // and Windows do by default and Linux does not.
 const IGNORES_CASE = foldsCase(fs.realpathSync(os.tmpdir())) === true
@@ -380,6 +391,170 @@ describe("one didFile under two paths", () => {
       expect.stringContaining("linked/ledger.did changed, regenerating a, b")
     )
     expect(lines.filter((line) => line.startsWith("error:"))).toEqual([])
+  })
+
+  // The watcher may report one file under any name of it: each of these
+  // reports it under the name the other entry gives it.
+  it("through a symlinked directory starts no run when the watcher reports the fetched write under the other name", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = linkDid(newApp({}))
+    const network = { host: ic.host }
+    const { server, lines } = await serve(app.root, {
+      canisters: {
+        a: { didFile: "did/ledger.did", canisterId: LEDGER_ID, network },
+        b: {
+          didFile: "linked/ledger.did",
+          canisterId: LEDGER_ID,
+          network,
+          outDir: "src/b",
+        },
+      },
+    })
+    expect(read(app, "did/ledger.did")).toBe(LEDGER)
+    expect(generatorRuns()).toBe(2)
+
+    server.watcher.emit("add", path.join(app.root, "linked/ledger.did"))
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    expect(generatorRuns()).toBe(2)
+    expect(lines.filter((line) => line.startsWith("error:"))).toEqual([])
+  })
+
+  it("through a symlinked directory fails every entry when the watcher reports the file deleted under either name", async () => {
+    const app = linkDid(newApp({}))
+    fs.writeFileSync(path.join(app.root, "did/ledger.did"), LEDGER)
+    const { server, lines } = await serve(app.root, {
+      canisters: {
+        a: { didFile: "did/ledger.did" },
+        b: { didFile: "linked/ledger.did", outDir: "src/b" },
+      },
+    })
+    expect(generatorRuns()).toBe(2)
+
+    fs.rmSync(path.join(app.root, "did/ledger.did"))
+    server.watcher.emit("unlink", path.join(app.root, "linked/ledger.did"))
+    await vi.waitFor(() =>
+      expect(lines).toContainEqual(
+        expect.stringContaining(
+          "- a (did/ledger.did), b (linked/ledger.did): the .did file was deleted"
+        )
+      )
+    )
+    expect(generatorRuns()).toBe(2)
+  })
+
+  it("through a symlinked directory starts one run for two saves reported under each name", async () => {
+    const app = linkDid(newApp({}))
+    fs.writeFileSync(path.join(app.root, "did/ledger.did"), LEDGER)
+    const { server, lines } = await serve(app.root, {
+      canisters: {
+        a: { didFile: "did/ledger.did" },
+        b: { didFile: "linked/ledger.did", outDir: "src/b" },
+      },
+    })
+    expect(generatorRuns()).toBe(2)
+
+    // Both before the queued run starts: the second joins it.
+    server.watcher.emit("change", path.join(app.root, "did/ledger.did"))
+    server.watcher.emit("change", path.join(app.root, "linked/ledger.did"))
+    await vi.waitFor(() => expect(generatorRuns()).toBe(4))
+    await new Promise((resolve) => setTimeout(resolve, 300))
+    expect(generatorRuns()).toBe(4)
+    expect(
+      lines.filter((line) => line.includes("changed, regenerating"))
+    ).toHaveLength(1)
+    expect(lines.filter((line) => line.startsWith("error:"))).toEqual([])
+  })
+
+  it("through a symlink to a file is written through it, so an entry that names the target generates from the fetch", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = newApp({ "shared/ledger.did": PING_DID })
+    fs.mkdirSync(path.join(app.root, "did"))
+    fs.symlinkSync(
+      "../shared/ledger.did",
+      path.join(app.root, "did/ledger.did"),
+      "file"
+    )
+    const network = { host: ic.host }
+    vi.stubEnv("IC_REACTOR_FETCH", "all")
+    // @candid-core/cli 0.2.0 reads no .did through a symlink to a file, so
+    // "a" fails to generate, loudly, with did_source_not_found, as it would
+    // with no fetch at all: failOnError is off to look past it.
+    const { result, lines } = runBuild(app.root, {
+      failOnError: false,
+      canisters: {
+        a: { didFile: "did/ledger.did", canisterId: LEDGER_ID, network },
+        b: {
+          didFile: "shared/ledger.did",
+          canisterId: LEDGER_ID,
+          network,
+          outDir: "src/b",
+        },
+      },
+    })
+    await result
+    expect(ic.requests).toHaveLength(2)
+    expect(
+      fs.lstatSync(path.join(app.root, "did/ledger.did")).isSymbolicLink()
+    ).toBe(true)
+    expect(read(app, "did/ledger.did")).toBe(LEDGER)
+    expect(read(app, "shared/ledger.did")).toBe(LEDGER)
+    expect(read(app, "src/b/ledger.ts")).toContain("icrc1_transfer")
+    expect(
+      lines.filter((line) => line.startsWith("error:")).join("\n")
+    ).toContain("- a (did/ledger.did): did_source_not_found")
+    expect(lines).not.toContainEqual(expect.stringContaining("- b ("))
+  })
+
+  it("through a directory symlink whose target is not made yet is one file, and refused when its canisters differ", async () => {
+    const ic = await fakeIc({
+      [LEDGER_ID]: { candid: LEDGER },
+      [MINTER_ID]: { candid: PING_DID },
+    })
+    const network = { host: ic.host }
+    // `linked` names `did`, which the fetch makes.
+    const dangling = (app: App) => {
+      fs.symlinkSync(
+        path.join(app.root, "did"),
+        path.join(app.root, "linked"),
+        "junction"
+      )
+      return app
+    }
+
+    const app = dangling(newApp({}))
+    await runBuild(app.root, {
+      canisters: {
+        a: { didFile: "did/ledger.did", canisterId: LEDGER_ID, network },
+        b: {
+          didFile: "linked/ledger.did",
+          canisterId: LEDGER_ID,
+          network,
+          outDir: "src/b",
+        },
+      },
+    }).result
+    expect(ic.requests).toHaveLength(2)
+    expect(read(app, "did/ledger.did")).toBe(LEDGER)
+    expect(read(app, "src/canisters/ledger.ts")).toContain("icrc1_transfer")
+    expect(read(app, "src/b/ledger.ts")).toContain("icrc1_transfer")
+
+    const other = dangling(newApp({}))
+    const message = await buildError(other, {
+      canisters: {
+        a: { didFile: "did/ledger.did", canisterId: LEDGER_ID, network },
+        b: {
+          didFile: "linked/ledger.did",
+          canisterId: MINTER_ID,
+          network,
+          outDir: "src/b",
+        },
+      },
+    })
+    expect(message).toContain(
+      `"a", "b" name did/ledger.did and linked/ledger.did, which are one file, but not one canister to fetch it from`
+    )
+    expect(ic.requests).toHaveLength(2)
+    expect(exists(other, "did")).toBe(false)
   })
 
   // Skipped where the filesystem tells the two names apart, as Linux's does:
@@ -483,6 +658,22 @@ describe("canisters that name one didFile and different canisters", () => {
     )
     expect(ic.requests).toEqual([])
 
+    // A network that is not one is named as given.
+    const invalid = await buildError(app, {
+      canisters: {
+        icp: { didFile: "icrc1.did", canisterId: LEDGER_ID, network },
+        icp_typo: {
+          didFile: "icrc1.did",
+          canisterId: LEDGER_ID,
+          network: "mainnet" as never,
+        },
+      },
+    })
+    expect(invalid).toContain(
+      `icp_typo: ${LEDGER_ID} on "mainnet" (not a network))`
+    )
+    expect(ic.requests).toEqual([])
+
     // On disk, the file is theirs to share, and nothing is fetched.
     fs.writeFileSync(path.join(app.root, "icrc1.did"), LEDGER)
     await runBuild(app.root, options).result
@@ -524,6 +715,17 @@ describe("fileIdentity", () => {
     expect(folding("did/Ledger.did")).toBe(before)
     expect(folding("linked/Ledger.did")).toBe(before)
     expect(exact("linked/Ledger.did")).toBe(exact("did/Ledger.did"))
+
+    // Through symlinks whose targets are not made yet: a directory, and a
+    // file, each named as the target it will be.
+    fs.symlinkSync(at("later"), at("ahead"), "junction")
+    expect(exact("ahead/ledger.did")).toBe(exact("later/ledger.did"))
+    fs.symlinkSync("../later/x.did", at("did/x.did"), "file")
+    expect(exact("did/x.did")).toBe(exact("later/x.did"))
+    expect(exact("linked/x.did")).toBe(exact("later/x.did"))
+    fs.mkdirSync(at("later"))
+    fs.writeFileSync(at("later/x.did"), PING_DID)
+    expect(exact("ahead/x.did")).toBe(exact("did/x.did"))
   })
 })
 
@@ -727,6 +929,42 @@ describe("IC_REACTOR_FETCH", () => {
     // Served: the next buildStart does not fetch it again.
     await buildStart()
     expect(context.error).not.toHaveBeenCalled()
+    expect(ic.requests).toHaveLength(2)
+  })
+
+  it("is served once for a didFile that is a symlink, which it writes through", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = newApp({ "shared/real.did": OLD })
+    fs.mkdirSync(path.join(app.root, "did"))
+    fs.symlinkSync(
+      "../shared/real.did",
+      path.join(app.root, "did/ledger.did"),
+      "file"
+    )
+    vi.stubEnv("IC_REACTOR_FETCH", "ledger")
+    const { buildStart, context } = oneBuildPlugin(app, ic.host)
+    // The fetch and the write succeed. @candid-core/cli 0.2.0 then reads no
+    // .did through a symlink to a file (did_source_not_found), as with no
+    // fetch at all: that is the only error allowed.
+    const onlyTheCliFailed = () => {
+      for (const [message] of context.error.mock.calls) {
+        expect(String(message)).toContain(
+          "- ledger (did/ledger.did): did_source_not_found"
+        )
+      }
+    }
+
+    await buildStart()
+    onlyTheCliFailed()
+    expect(ic.requests).toHaveLength(2)
+    expect(
+      fs.lstatSync(path.join(app.root, "did/ledger.did")).isSymbolicLink()
+    ).toBe(true)
+    expect(read(app, "shared/real.did")).toBe(LEDGER)
+
+    // Served: the file's key is the same after the write as before it.
+    await buildStart()
+    onlyTheCliFailed()
     expect(ic.requests).toHaveLength(2)
   })
 

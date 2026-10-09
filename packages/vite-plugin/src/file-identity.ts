@@ -19,47 +19,81 @@ import path from "node:path"
  */
 export type FoldsCase = (dir: string) => boolean | undefined
 
+/** Symlinks followed by hand before a path is taken as it is spelled. */
+const MAX_LINKS = 40
+
 /**
- * A key that is equal for two paths exactly when they name the same file,
- * whether or not the file exists yet.
+ * Where `file` really is: the path every spelling of it reads and writes,
+ * with `dir`, the existing directory the next name of it is looked up in.
  *
  * - The part of `file` that exists is resolved with `fs.realpathSync.native`,
  *   which follows every symlink and, on macOS and Windows, returns the case
  *   the names have on disk.
+ * - A symlink whose target does not exist yet (a `didFile` that links to a
+ *   file not written yet, or a directory symlink to a directory not made yet)
+ *   is followed to that target, as `writeFile` through it would.
  * - The part that does not exist yet (a `didFile` the plugin is about to
  *   write, and the directories it will make for it) is joined to that as it
  *   is spelled.
- * - Where the filesystem of the deepest existing directory ignores case, the
- *   whole key is lowercased, so that a name spelled in another case, which
- *   `realpath` cannot correct while the file does not exist, still gives the
- *   key of the file it will be. The key of a file is then the same before and
- *   after the plugin writes it.
+ *
+ * Never throws: a path no part of which resolves is taken as it is.
+ */
+function locate(file: string): { real: string; dir: string } {
+  const absolute = path.resolve(file)
+  const missing: string[] = []
+  let at = absolute
+  let links = 0
+  for (;;) {
+    try {
+      const real = fs.realpathSync.native(at)
+      return missing.length === 0
+        ? { real, dir: path.dirname(real) }
+        : { real: path.join(real, ...missing), dir: real }
+    } catch {
+      // Missing, or a symlink whose target is.
+    }
+    const parent = path.dirname(at)
+    if (parent === at) return { real: absolute, dir: path.dirname(absolute) }
+    try {
+      const target = fs.readlinkSync(at)
+      if (links++ < MAX_LINKS) {
+        // Relative to the real directory the link is in: `..` in it climbs
+        // from there, not from the link's spelling.
+        at = path.resolve(fs.realpathSync.native(parent), target)
+        continue
+      }
+    } catch {
+      // Not a symlink: a name that does not exist yet.
+    }
+    missing.unshift(path.basename(at))
+    at = parent
+  }
+}
+
+/**
+ * The path `file` is read and written at: through every symlink, so that a
+ * write does not replace a symlinked `didFile` with a file of its own and
+ * leave its target, which other spellings read, as it was. See `locate`.
+ */
+export function realFile(file: string): string {
+  return locate(file).real
+}
+
+/**
+ * A key that is equal for two paths exactly when they name the same file,
+ * whether or not the file exists yet: where `locate` says the file is.
+ *
+ * Where the filesystem of the deepest existing directory ignores case, the
+ * whole key is lowercased, so that a name spelled in another case, which
+ * `realpath` cannot correct while the file does not exist, still gives the
+ * key of the file it will be. The key of a file is then the same before and
+ * after the plugin writes it.
  *
  * Never throws: a path no part of which resolves is its own key.
  */
 export function fileIdentity(file: string, folds: FoldsCase): string {
-  const absolute = path.resolve(file)
-  const missing: string[] = []
-  let at = absolute
-  for (;;) {
-    let real: string | undefined
-    try {
-      real = fs.realpathSync.native(at)
-    } catch {
-      real = undefined
-    }
-    if (real !== undefined) {
-      const key = missing.length === 0 ? real : path.join(real, ...missing)
-      // The directory the next name is looked up in: the file's own when it
-      // exists, the deepest existing one otherwise.
-      const dir = missing.length === 0 ? path.dirname(real) : real
-      return folds(dir) === true ? key.toLowerCase() : key
-    }
-    const parent = path.dirname(at)
-    if (parent === at) return absolute
-    missing.unshift(path.basename(at))
-    at = parent
-  }
+  const { real, dir } = locate(file)
+  return folds(dir) === true ? real.toLowerCase() : real
 }
 
 /** `folds`, asked once for each directory. */

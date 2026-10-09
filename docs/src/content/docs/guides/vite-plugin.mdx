@@ -173,7 +173,9 @@ export default defineConfig({
   interface the file holds cannot be told: nothing is fetched, and each of
   them fails with a message naming them and the file. Give each its own
   `didFile`, or write the file yourself. A `didFile` on disk is theirs to
-  share, whatever their `canisterId`s, since nothing is fetched for it.
+  share, whatever their `canisterId`s, since nothing is fetched for it. A
+  `didFile` that is a symlink is written through: the fetch goes to the file
+  it links to, which every name of it then reads.
 
 `network` says where the canister is:
 

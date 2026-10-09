@@ -37,7 +37,7 @@ import {
   writeDid,
   type CanisterNetwork,
 } from "./fetch.js"
-import { cachedFoldsCase, fileIdentity } from "./file-identity.js"
+import { cachedFoldsCase, fileIdentity, realFile } from "./file-identity.js"
 import {
   GENERATE_TIMEOUT_MS,
   foldsCase,
@@ -466,8 +466,13 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   ): string | undefined => {
     const sourceOf = ({ canisterId, network }: Generated) => {
       const resolved = resolveNetwork(network)
+      // A network that is not one is named as given, so the conflict does
+      // not hide what is wrong with it.
       return typeof resolved === "string"
-        ? { key: `${canisterId}\0${JSON.stringify(network)}`, label: "?" }
+        ? {
+            key: `${canisterId}\0${JSON.stringify(network)}`,
+            label: `${JSON.stringify(network)} (not a network)`,
+          }
         : {
             key: `${canisterId}\0${resolved.host}\0${resolved.fetchRootKey}`,
             label: resolved.label,
@@ -559,7 +564,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       }
 
       const jobs = [...byFile].flatMap(([key, members]) => {
-        // Written and read under the first spelling.
+        // Named in messages by the first spelling.
         const file = didPath(members[0])
         const fetchable = members.filter(({ canisterId }) => canisterId)
         const again = refetched.has(key)
@@ -599,9 +604,13 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
           continue
         }
         const from = `the certified candid:service of ${source.canisterId} on ${result.network}`
+        // Read and written through every symlink: a write to a symlinked
+        // spelling would replace the symlink with a file of its own, and leave
+        // the target, which the other spellings read, as it was.
+        const target = realFile(file)
         let before: string | undefined
         try {
-          before = fs.readFileSync(file, "utf-8")
+          before = fs.readFileSync(target, "utf-8")
         } catch {
           before = undefined
         }
@@ -613,7 +622,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         // Only a dev server's watcher reports the write and clears the entry.
         if (devServer) justFetched.set(key, result.did)
         try {
-          writeDid(file, result.did)
+          writeDid(target, result.did)
         } catch (writeError) {
           // Only the canisters of this file fail: the others generate.
           justFetched.delete(key)
