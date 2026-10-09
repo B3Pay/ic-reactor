@@ -389,6 +389,81 @@ balance refetches by itself. See [Writes](/v4/guides/writes/).
   [Testing](/v4/guides/testing/).
 </Aside>
 
+## Keep the IC stack out of the first load
+
+The `App` of step 6 imports the client, `AuthClient` and the generated module.
+`src/main.tsx` imports `App`, so a Vite build puts all of them in the one chunk
+the page loads before it shows anything. `React.lazy` moves them to chunks that
+load after the first paint, with no change to `App.tsx` and no option of this
+library:
+
+```tsx
+// src/main.tsx
+import { lazy, StrictMode, Suspense } from "react"
+import { createRoot } from "react-dom/client"
+
+// App builds the client (ReactorProvider, createClient, AuthClient) and
+// imports the generated module: all of it loads with this import.
+const App = lazy(() => import("./App").then((m) => ({ default: m.App })))
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <Suspense fallback={<p>Loading…</p>}>
+      <App />
+    </Suspense>
+  </StrictMode>
+)
+```
+
+It holds only while `main.tsx`, and every module it imports statically,
+imports nothing from `@ic-reactor/*`, `@icp-sdk/*` or the generated module.
+One static import of any of them puts it back in the first chunk. The
+`ReactorProvider` is inside `App`, so every `useClient()` and `useAuth()` is
+too.
+
+Measured on the [Vite wallet](/v4/examples/vite-wallet/) with Vite 8.3.0,
+minified JavaScript (its 3.28 kB of CSS loads first either way). For the lazy
+build its `main.tsx` was changed as above, with its dev accounts, which import
+`@icp-sdk/core`, loaded in the same lazy import:
+
+| `vite build` of the wallet | First load                | After the first paint     |
+| -------------------------- | ------------------------- | ------------------------- |
+| as it is                   | 622.46 kB, 193.56 kB gzip | nothing                   |
+| with `React.lazy`          | 222.30 kB, 69.90 kB gzip  | 401.79 kB, 126.21 kB gzip |
+
+The first load is React, React DOM and the fallback. The rest is the client,
+the agent with its certificate check, `AuthClient` and the wallet's own code,
+in three chunks the browser fetches together once the first one runs. The
+largest of them is 208.38 kB, so the build also stays under Vite's 500 kB
+chunk warning, which the wallet otherwise raises to 700 kB.
+
+### What a route guard sees
+
+`AuthState.status` is one of `"anonymous"`, `"signed-in"`, `"expired"` and
+`"signed-in-elsewhere"`, and it keeps those four: there is no member for "not
+loaded yet". With the pattern above:
+
+- **While the chunk loads**, React shows the `Suspense` fallback and renders
+  nothing below it. There is no client and no auth yet, and no status to
+  read: `useAuth()` throws outside a `ReactorProvider`. Put the guard, and the
+  routes it guards, inside `App`, below the provider, and let the fallback
+  stand for "not known yet". Code that runs before the chunk arrives, such as
+  a router loader in `main.tsx`, must not redirect on sign-in: it cannot know.
+- **On the first render inside `App`**, the provider builds the client, and
+  the first `useAuth()` or `useClient()` builds the auth and reads its state. `AuthClient` of
+  `@icp-sdk/auth` 10 reads its stored session synchronously when it is built,
+  so a returning user is `"signed-in"` on that first render, never
+  `"anonymous"` first.
+- **An `AuthLike` of your own** that learns its session asynchronously says
+  `signed-out`, so `"anonymous"`, until it knows. The status cannot tell that
+  apart from a signed-out user, so a guard over such an auth renders nothing,
+  or a fallback, until the auth's own signal says it is ready, and only then
+  redirects on `"anonymous"`.
+
+A page that hydrates server HTML is another case: `useAuth()` is `"anonymous"`
+during the hydrating render whatever the session. See
+[SSR and hydration](/v4/guides/ssr/).
+
 ## Next
 
 - [The client](/v4/guides/client/): networks, `identity` and `auth`, disposal,
