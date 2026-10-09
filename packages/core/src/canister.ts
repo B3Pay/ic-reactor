@@ -228,6 +228,7 @@ export function canisterFactory(
             caller: internals.current(),
             values: args,
             resend: true,
+            canister,
           }),
       })
     }

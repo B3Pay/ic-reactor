@@ -1,11 +1,15 @@
 import { describe, expectTypeOf, it } from "vitest"
 import {
   isReactorError,
+  type Canister,
   type ReactorError,
   type ReactorErrorKind,
 } from "../src/index.js"
 import * as entry from "../src/index.js"
+import { createClient } from "../src/index.js"
 import type { CallMode, ErrorContext } from "../src/errors.js"
+import * as icrc1 from "./fixtures/icrc1.js"
+import * as shapes from "./fixtures/shapes.js"
 
 // An `Err` arm shaped like the ICRC-1 ledger's.
 type TransferError =
@@ -107,6 +111,139 @@ describe("isReactorError", () => {
       }
     }
     expectTypeOf(catches).toBeFunction()
+  })
+})
+
+describe("isReactorError(error, canister, method)", () => {
+  const client = createClient({ network: "ic", identity: "anonymous" })
+  const ledger = client.canister<icrc1.Actor>(icrc1.actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const service = client.canister<shapes.Actor>(shapes.actor, {
+    id: "rrkah-fqaaa-aaaaa-aaaaq-cai",
+  })
+
+  it("narrows to the method's Err arm: `err` is typed after a canister_err check", () => {
+    const catches = (e: unknown) => {
+      if (isReactorError(e, ledger, "icrc1_transfer")) {
+        expectTypeOf(e).toEqualTypeOf<
+          ReactorError<icrc1.TransferError> & {
+            readonly method: "icrc1_transfer"
+          }
+        >()
+        if (e.kind === "canister_err") {
+          expectTypeOf(e.err).toEqualTypeOf<icrc1.TransferError>()
+        } else {
+          expectTypeOf(e.err).toEqualTypeOf<undefined>()
+        }
+      }
+    }
+    expectTypeOf(catches).toBeFunction()
+  })
+
+  it("gives each method its own Err arm, never another method's", () => {
+    type ApproveError = { tag: "Expired"; value: { ledger_time: bigint } }
+    type Icrc2 = icrc1.Actor & {
+      icrc2_approve: (
+        arg: unknown
+      ) => Promise<
+        { tag: "Ok"; value: bigint } | { tag: "Err"; value: ApproveError }
+      >
+    }
+    const icrc2 = {} as Canister<Icrc2>
+    const catches = (e: unknown) => {
+      if (
+        isReactorError(e, icrc2, "icrc2_approve") &&
+        e.kind === "canister_err"
+      ) {
+        expectTypeOf(e.err).toEqualTypeOf<ApproveError>()
+      }
+      if (
+        isReactorError(e, icrc2, "icrc1_transfer") &&
+        e.kind === "canister_err"
+      ) {
+        expectTypeOf(e.err).toEqualTypeOf<icrc1.TransferError>()
+      }
+    }
+    expectTypeOf(catches).toBeFunction()
+  })
+
+  it("reads a result spelled ok/err the same way", () => {
+    const catches = (e: unknown) => {
+      if (isReactorError(e, service, "outcome") && e.kind === "canister_err") {
+        expectTypeOf(e.err).toEqualTypeOf<string>()
+      }
+    }
+    expectTypeOf(catches).toBeFunction()
+  })
+
+  it("narrows a method without an Err arm to ReactorError, whose `err` is undefined", () => {
+    const catches = (e: unknown) => {
+      if (isReactorError(e, ledger, "icrc1_fee")) {
+        expectTypeOf(e).toEqualTypeOf<
+          ReactorError & { readonly method: "icrc1_fee" }
+        >()
+        if (e.kind === "canister_err") {
+          expectTypeOf(e.err).toEqualTypeOf<undefined>()
+        }
+      }
+      if (isReactorError(e, service, "three") && e.kind === "canister_err") {
+        // Ok, Err and a third arm: not a result, so there is no Err arm.
+        expectTypeOf(e.err).toEqualTypeOf<undefined>()
+      }
+    }
+    expectTypeOf(catches).toBeFunction()
+  })
+
+  it("keeps every kind when it is false: another call's error can be of any kind", () => {
+    const catches = (e: unknown) => {
+      if (!isReactorError(e)) throw e
+      if (!isReactorError(e, ledger, "icrc1_transfer")) {
+        expectTypeOf(e).toEqualTypeOf<ReactorError<unknown>>()
+        expectTypeOf(e.kind).toEqualTypeOf<ReactorErrorKind>()
+      }
+      const declared = e as ReactorError<icrc1.TransferError>
+      if (!isReactorError(declared, ledger, "icrc1_fee")) {
+        expectTypeOf(declared.kind).toEqualTypeOf<ReactorErrorKind>()
+      }
+    }
+    expectTypeOf(catches).toBeFunction()
+  })
+
+  it("takes only the canister's own methods, and a canister", () => {
+    const e: unknown = undefined
+    // @ts-expect-error icrc1_balance is not a method of the ledger
+    isReactorError(e, ledger, "icrc1_balance")
+    // @ts-expect-error outcome is a method of the shapes service, not of the ledger
+    isReactorError(e, ledger, "outcome")
+    // @ts-expect-error the method goes with its canister
+    isReactorError(e, ledger)
+    expectTypeOf(isReactorError).toBeFunction()
+  })
+
+  it("keeps the one-argument form", () => {
+    const catches = (e: unknown) => {
+      if (isReactorError(e)) {
+        expectTypeOf(e).toEqualTypeOf<ReactorError<unknown>>()
+      }
+    }
+    expectTypeOf(catches).toBeFunction()
+  })
+
+  it("keeps the one-argument form when passed point-free", () => {
+    // Inferring from an overloaded function, TypeScript takes its last
+    // signature: that must be the one-argument form, or `filter` and `find`
+    // stop narrowing.
+    const reasons: unknown[] = []
+    expectTypeOf(reasons.filter(isReactorError)).toEqualTypeOf<
+      ReactorError<unknown>[]
+    >()
+    expectTypeOf(reasons.find(isReactorError)).toEqualTypeOf<
+      ReactorError<unknown> | undefined
+    >()
+    expectTypeOf(
+      reasons.filter(isReactorError).map((e) => e.kind)
+    ).toEqualTypeOf<ReactorError<unknown>["kind"][]>()
   })
 })
 

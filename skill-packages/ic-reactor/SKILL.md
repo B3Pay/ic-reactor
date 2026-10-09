@@ -82,7 +82,8 @@ This skill describes these versions:
    a write nor data carried across keys.
 7. **Handle failures** by `isReactorError(error)`, then `kind` and
    `mayHaveExecuted`: when it is `true`, tell the user the outcome is unknown
-   and re-read; never re-send.
+   and re-read; never re-send. After a direct call, use
+   `isReactorError(error, canister, method)` to read a typed `err`; never cast it.
 8. **Test** through `createTestClient()` from `@ic-reactor/core/testing`, a
    real client over an in-memory replica, not with stubbed calls; then run the
    app's type check and tests.

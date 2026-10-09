@@ -30,7 +30,54 @@ try {
 same error with a typed `err`. For a method whose result is
 `variant { Ok : T; Err : E }`, the `error` of a query or mutation is
 `ReactorError<E>`, and `err` is typed `E` exactly when `kind` is
-`"canister_err"`. For a direct call you assert the type yourself.
+`"canister_err"`.
+
+For a direct call, name the canister and the method the error came from:
+`isReactorError(error, canister, method)` narrows to that method's
+`ReactorError<E>`, so `err` is typed after the `kind` check, with no cast. For
+a method without an `Err` arm, `err` stays `undefined`.
+
+```ts
+import { isReactorError } from "@ic-reactor/core"
+import type { Account } from "./generated/icrc1"
+import { ledger } from "./ledger"
+
+/** Sends a transfer, and says what happened. */
+export async function pay(to: Account, amount: bigint): Promise<string> {
+  const arg = {
+    to,
+    amount,
+    fee: null,
+    memo: null,
+    from_subaccount: null,
+    created_at_time: null,
+  }
+  try {
+    return `Sent in block ${await ledger.icrc1_transfer(arg)}.`
+  } catch (error) {
+    if (!isReactorError(error, ledger, "icrc1_transfer")) throw error
+    if (
+      error.kind === "canister_err" &&
+      error.err.tag === "InsufficientFunds"
+    ) {
+      return `The balance is ${error.err.value.balance}.` // error.err is a TransferError
+    }
+    return error.message
+  }
+}
+```
+
+The check is made when the code runs, not only by the compiler: the guard is
+`true` only for an error that a call of that method on that canister object
+rejected with, whether the call was direct, a query function or a mutation
+function built from it. An error of another method, of another canister
+object, or of a `client.func` call is `false`, even when it is a
+`ReactorError`, so the guard never types one call's error as another's. The
+canister made with `certified: true` is another object, and so is the same
+canister made by another client. `client.canister()` returns the same object
+for the same module and target, so a canister made again where the error is
+caught is the one the call was made on. A `false` result says only that the
+error is not that call's: it can still be of any `kind`.
 
 ## The fields
 
@@ -233,7 +280,7 @@ what happened. Two ways to know:
 
 ```ts
 import { isReactorError } from "@ic-reactor/core"
-import type { Account, TransferError } from "./generated/icrc1"
+import type { Account } from "./generated/icrc1"
 import { ledger } from "./ledger"
 
 /** Sends a transfer, and after an unknown outcome sends the same argument once more. */
@@ -254,9 +301,12 @@ export async function transferOnce(to: Account, amount: bigint) {
     try {
       return await ledger.icrc1_transfer(arg) // the identical argument
     } catch (second) {
-      if (isReactorError(second) && second.kind === "canister_err") {
-        const err = second.err as TransferError
-        if (err.tag === "Duplicate") return err.value.duplicate_of // the first one went through
+      if (
+        isReactorError(second, ledger, "icrc1_transfer") &&
+        second.kind === "canister_err" &&
+        second.err.tag === "Duplicate"
+      ) {
+        return second.err.value.duplicate_of // the first one went through
       }
       throw second
     }

@@ -68,7 +68,12 @@ import {
   type QueryObserverOptions,
   type SkipToken,
 } from "@tanstack/query-core"
-import { createClient, formatUnits, parseUnits } from "../src/index.js"
+import {
+  createClient,
+  formatUnits,
+  isReactorError,
+  parseUnits,
+} from "../src/index.js"
 import type { Canister, Network, ReactorError } from "../src/index.js"
 import { createTestClient, type TestHandlers } from "../src/testing/index.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
@@ -201,6 +206,49 @@ void ledger.icrc1_balance_of({ owner: "aaaaa-aa", subaccount: null })
 // trap: vars-of-two-arguments-are-the-tuple
 // @ts-expect-error pair takes two arguments: pass them as the tuple [left, right]
 client.queryOptions(shapesCanister, "pair", 1n)
+
+// ---------------------------------------------------------------------------
+// The typed guard: `err` is the Err arm of the method it names, not another's
+// ---------------------------------------------------------------------------
+
+// An ICRC-2 ledger: icrc2_approve has an Err arm of its own, which has no
+// BadBurn; that is icrc1_transfer's.
+type ApproveError =
+  | { tag: "AllowanceChanged"; value: { current_allowance: bigint } }
+  | { tag: "Expired"; value: { ledger_time: bigint } }
+  | { tag: "InsufficientFunds"; value: { balance: bigint } }
+declare const icrc2Ledger: Canister<
+  icrc1.Actor & {
+    icrc2_approve: (
+      arg: unknown
+    ) => Promise<
+      { tag: "Ok"; value: bigint } | { tag: "Err"; value: ApproveError }
+    >
+  }
+>
+
+export const readAnotherMethodsErr = (error: unknown) => {
+  if (
+    isReactorError(error, icrc2Ledger, "icrc2_approve") &&
+    error.kind === "canister_err"
+  ) {
+    // trap: guard-err-is-the-methods
+    // @ts-expect-error an approve cannot fail with BadBurn, a transfer's Err: the guard types `err` by the method named, so name the one that was called
+    return error.err.tag === "BadBurn"
+  }
+  return undefined
+}
+
+// A false three-argument guard means only "not this call's error". The error
+// can still be of any kind, even once the one-argument guard has narrowed it.
+export const readAnotherCallsKind = (error: unknown) => {
+  if (!isReactorError(error)) throw error
+  if (isReactorError(error, ledger, "icrc1_transfer")) return undefined
+  // trap: guard-false-keeps-every-kind
+  // @ts-expect-error another call's error can be of any kind, not only canister_err: check kind before reading err
+  const kind: "canister_err" = error.kind
+  return kind
+}
 
 // What `useSuspenseQuery` of `@tanstack/react-query` takes, written over
 // query-core: the options of a `QueryObserver`, without the ones a suspense

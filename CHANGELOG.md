@@ -15,6 +15,25 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+#### Added
+
+- `isReactorError(error, canister, method)` narrows a direct call's error to
+  `ReactorError<E>`, where `E` is that method's `Err` arm, so `err` is typed
+  after `kind === "canister_err"` without a cast; for a method without an `Err`
+  arm, `err` stays `undefined` (#849). The guard checks at run time: every
+  error a call rejects with (a direct call, a query function or a mutation
+  function built from the canister) carries the canister object it was made
+  on, under an internal symbol, and the guard is `true` only for an error of
+  that method on that canister object. An error of another method, of another
+  canister object (the `certified: true` one, or the same canister of another
+  client) or of a `client.func` call is `false`, and a `false` result leaves
+  every `kind` possible. The one-argument form is unchanged, including
+  point-free use: `errors.filter(isReactorError)` is still typed
+  `ReactorError<unknown>[]`, because the one-argument signature is listed last.
+  It is an overload of an existing export: core still has 13 names.
+
 ### @ic-reactor/vite-plugin
 
 #### Added
@@ -46,10 +65,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `canisterId`, and keeps the script for an app without Vite. The Vite plugin
   guide has a section on the fetch: when it happens, `network` and its root
   keys, `IC_REACTOR_FETCH`, and its four failures.
+- The errors guide shows `isReactorError(error, canister, method)` and what it
+  checks; its duplicate-transfer recipe and the writes guide's direct
+  transfer read the typed `err` instead of casting it. The consumer guide
+  (`llms.txt`) and the skill say to use it after a direct call.
 
 ### CI (not published)
 
-- Core's size limit is 14.4 kB gzipped, just above its measured 14,347 B,
+- Core's size limit was set to 14.4 kB gzipped, just above its measured 14,347 B,
   where it was 50 kB, as react's 1.28 kB already sits at its size. Two new
   checks measure what an app pays with the peers included, which the
   packages' own checks never see: `{ createClient }` (89,363 B against
@@ -59,6 +82,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   moves a size states the delta and raises its limit deliberately
   (CONTRIBUTING.md, "Size budget"). Core's config moved from its
   `package.json` to `packages/core/.size-limit.js`, which is not published.
+- Core's size limit is raised to 14.5 kB: the guard's canister check adds
+  102 B (14,449 B measured). The app checks measure 89,484 B (+121 B) and
+  90,692 B (+126 B), still under their limits.
 
 ## core, react, vite-plugin 4.0.0-beta.3
 

@@ -60,7 +60,7 @@ it at 13.
 | Export             | Kind    | What it is                                                                                                                                                                         |
 | ------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `createClient`     | runtime | Builds a client from a network and a caller. See [The client](/v4/guides/client/).                                                                                                 |
-| `isReactorError`   | runtime | Tests whether a thrown value is a `ReactorError`. See [Errors](/v4/guides/errors/).                                                                                                |
+| `isReactorError`   | runtime | Tests whether a thrown value is a `ReactorError`; with a canister and a method, one of that call's, its `err` typed. See [Errors](/v4/guides/errors/).                             |
 | `parseUnits`       | runtime | Text to base units: `parseUnits("1.5", 8)` is `150000000n`. See [Values and units](/v4/guides/values/).                                                                            |
 | `formatUnits`      | runtime | Base units to text, without losing digits. See [Values and units](/v4/guides/values/).                                                                                             |
 | `Client`           | type    | What `createClient` returns: `canister`, `queryOptions`, `mutationOptions`, `queryKey`, `func`, `signIn`, `signOut`, `caller`, `authState`, `subscribe`, `queryClient`, `dispose`. |
@@ -106,6 +106,11 @@ type AuthNetwork = {
 }
 
 function isReactorError(error: unknown): error is ReactorError<unknown>
+function isReactorError<A, M extends keyof A & string>(
+  error: unknown,
+  canister: Canister<A>,
+  method: M
+): error is ReactorError<ErrorOf<A, M>> & { readonly method: M } // ErrorOf: the method's Err arm, or never
 
 function parseUnits(
   text: string,

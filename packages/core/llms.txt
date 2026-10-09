@@ -238,8 +238,12 @@ export function Send({ arg }: { arg: TransferArg }) {
 ## Errors
 
 Every rejection is a `ReactorError`: test with `isReactorError(error)`, then
-read `kind` and `mayHaveExecuted`. A failed write either certainly had no
-effect, or may have executed:
+read `kind` and `mayHaveExecuted`. For a direct call, test with
+`isReactorError(error, canister, method)`: it narrows `error.err` to that
+method's `Err` arm after `kind === "canister_err"` (no cast), and it is `false`
+for an error of any other method, canister object or `client.func` call (it
+checks at run time). A failed write either certainly had no effect, or may
+have executed:
 
 | What happened                                                                   | `kind`                            | May have executed |
 | ------------------------------------------------------------------------------- | --------------------------------- | ----------------- |
@@ -273,8 +277,9 @@ try {
   const arg = { to: account, amount: parseUnits("1.5", 8), fee: null, memo: null, from_subaccount: null, created_at_time: null }
   await ledger.icrc1_transfer(arg) // refused unless `client` was built with an Identity
 } catch (error) {
-  if (!isReactorError(error)) throw error
-  console.error(error.mayHaveExecuted ? "unknown outcome: re-read first" : error.kind)
+  if (!isReactorError(error, ledger, "icrc1_transfer")) throw error
+  if (error.kind === "canister_err") console.error(error.err.tag) // a TransferError
+  else console.error(error.mayHaveExecuted ? "unknown outcome: re-read first" : error.kind)
 }
 ```
 

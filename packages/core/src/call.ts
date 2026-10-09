@@ -86,6 +86,7 @@ import {
   UPDATE_RESEND_DELAYS_MS,
   classifyError,
   createReactorError,
+  fromCanister,
   invalidReplyError,
   isRetryable,
   retryUpdate,
@@ -192,14 +193,29 @@ export interface CallRequest {
    * re-sent after any failure the classifier marks retryable, at most twice.
    */
   readonly resend: boolean
+  /**
+   * The canister object the call is made on, absent for a func reference.
+   * Every error the call rejects with is marked with it (`fromCanister`), so
+   * that `isReactorError(error, canister, method)` can tell its own call's
+   * errors from any other's.
+   */
+  readonly canister?: object
 }
 
 /**
  * Runs one call through the steps of this module. Resolves with the reply as
  * the generated `Actor` types it (unwrapped), and rejects with a
- * `ReactorError`.
+ * `ReactorError`, marked with the request's canister when it has one.
  */
-export async function invoke(
+export const invoke = (
+  internals: ClientInternals,
+  request: CallRequest
+): Promise<unknown> =>
+  run(internals, request).catch((error: unknown) => {
+    throw fromCanister(error, request.canister)
+  })
+
+async function run(
   internals: ClientInternals,
   request: CallRequest
 ): Promise<unknown> {
