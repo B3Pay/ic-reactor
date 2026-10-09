@@ -61,10 +61,11 @@ pnpm check:snippets    # compiles the ts/tsx snippets of the guides and READMEs
 pnpm check:snippets:docs  # the same, plus the docs site's pages (needs the examples installed)
 pnpm lint              # ESLint over packages/*/src and packages/*/tests
 pnpm typecheck         # every package and e2e/, including their tests
+pnpm size              # gzipped size limits, see [Size budget](#size-budget)
 ```
 
 `pnpm check:snippets`, `pnpm check:snippets:docs` and `pnpm lint` read the
-packages' built declarations, so run `pnpm build` first. See [Code snippets](#code-snippets) for what to do
+packages' built declarations, and `pnpm size` measures their built `dist`, so run `pnpm build` first. See [Code snippets](#code-snippets) for what to do
 when a snippet fails.
 
 If you touched `packages/` or `examples/`, also type-check and build every
@@ -99,6 +100,33 @@ It packs each publishable package, installs the tarballs into a scratch project
 outside the workspace, imports and requires every entry point in real Node, and
 runs `publint` + `attw`. Nothing else in CI can catch a broken published
 artifact, because in-repo consumers resolve through workspace symlinks.
+
+## Size budget
+
+`pnpm size` (the CI step "Check package sizes") runs size-limit over the built
+packages, gzipped. Every limit sits just above its measured size, on purpose:
+
+| Check                   | Config                                        | What it measures                                                             |
+| ----------------------- | --------------------------------------------- | ---------------------------------------------------------------------------- |
+| Core Library            | `packages/core/.size-limit.js`                | core's own `dist/index.js`                                                   |
+| React bindings          | `size-limit` in `packages/react/package.json` | react's own `dist/index.js`                                                  |
+| App: `{ createClient }` | `scripts/size-app/.size-limit.js`             | `createClient` with all it pulls from core's peers                           |
+| App: React path         | `scripts/size-app/.size-limit.js`             | `createClient`, `ReactorProvider` and `useClient`, with every peer but React |
+
+size-limit adds every `peerDependencies` entry of the package it runs in to
+each check's `ignore`, so the first two never see `@icp-sdk/core`,
+`@candid-core/schema`, `@noble/curves` or `@tanstack/query-core`. The last two
+run from `scripts/size-app/`, a private workspace package that declares no
+peers, so a change in what core pulls from them fails there. Keep it free of
+peers; `pnpm test:scripts` checks that.
+
+A pull request that changes any of these numbers says by how much, in bytes,
+and raises the limit it crosses in the same change; one that shrinks a number
+by more than 0.5 kB lowers that limit. Where the config has comments (core's
+and `scripts/size-app/`'s), they record the new measured size and margin. That
+includes a dependency bump that moves a peer's size. Read the numbers with `pnpm build && pnpm size`; run
+`pnpm exec size-limit --json` in `packages/core`, `packages/react` or
+`scripts/size-app` for exact bytes.
 
 ## Code snippets
 
@@ -239,6 +267,8 @@ The `environment:` key is read from the tagged revision, like the preflight, so 
 - Use clear, descriptive commit messages.
 - Prefer small, focused PRs.
 - Include tests where applicable.
+- State the size delta of `pnpm size` (or that there is none), and raise a
+  limit only deliberately, as [Size budget](#size-budget) says.
 - Add or update documentation for public API changes.
 - Record a change users will notice under `## Unreleased` in
   [`CHANGELOG.md`](./CHANGELOG.md), in its package's Added, Changed,

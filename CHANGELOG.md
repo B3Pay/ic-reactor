@@ -15,7 +15,18 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### CI (not published)
+
+- Core's size limit is 14.4 kB gzipped, just above its measured 14,347 B,
+  where it was 50 kB, as react's 1.28 kB already sits at its size. Two new
+  checks measure what an app pays with the peers included, which the
+  packages' own checks never see: `{ createClient }` (89,363 B against
+  89.5 kB) and `createClient` with `ReactorProvider` and `useClient`, React
+  itself left out (90,566 B against 90.7 kB). They run in `pnpm size`, CI's
+  "Check package sizes" step, from `scripts/size-app/`. A pull request that
+  moves a size states the delta and raises its limit deliberately
+  (CONTRIBUTING.md, "Size budget"). Core's config moved from its
+  `package.json` to `packages/core/.size-limit.js`, which is not published.
 
 ## core, react, vite-plugin 4.0.0-beta.3
 
