@@ -28,8 +28,10 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   on, under an internal symbol, and the guard is `true` only for an error of
   that method on that canister object. An error of another method, of another
   canister object (the `certified: true` one, or the same canister of another
-  client) or of a `client.func` call is `false`. The one-argument form is
-  unchanged. It is an overload of an existing export: core still has 13 names.
+  client) or of a `client.func` call is `false`, and a `false` result leaves
+  every `kind` possible. The one-argument form is unchanged, including
+  point-free use such as `errors.filter(isReactorError)`. It is an overload of
+  an existing export: core still has 13 names.
 
 ### @ic-reactor/vite-plugin
 
@@ -69,8 +71,8 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### CI (not published)
 
-- Core's size limit is 14.5 kB: the guard's canister check adds 99 B (14,446 B
-  measured). The app checks measure 89,481 B (+118 B) and 90,688 B (+122 B),
+- Core's size limit is 14.5 kB: the guard's canister check adds 102 B (14,449 B
+  measured). The app checks measure 89,484 B (+121 B) and 90,692 B (+126 B),
   still under their limits.
 - Core's size limit is 14.4 kB gzipped, just above its measured 14,347 B,
   where it was 50 kB, as react's 1.28 kB already sits at its size. Two new

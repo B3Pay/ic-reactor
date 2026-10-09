@@ -2646,8 +2646,8 @@
     "testName": "is false for an error of another method of the same canister",
     "why": "the guard checks the canister only, so an error of another method is narrowed to this method's Err arm",
     "file": "src/errors.ts",
-    "search": ": own[CANISTER] === canister && own.method === method)",
-    "replace": ": own[CANISTER] === canister)"
+    "search": "!!canister && own[CANISTER] === canister && own.method === method",
+    "replace": "!!canister && own[CANISTER] === canister"
   },
   {
     "id": "ir849-guard-ignores-the-canister",
@@ -2656,8 +2656,8 @@
     "testName": "is false for an error of the same method called through another canister object or a func reference",
     "why": "the guard checks the method name only, so an error of another canister, or of a func reference, is narrowed to this canister's Err arm",
     "file": "src/errors.ts",
-    "search": ": own[CANISTER] === canister && own.method === method)",
-    "replace": ": own.method === method)"
+    "search": "!!canister && own[CANISTER] === canister && own.method === method",
+    "replace": "!!canister && own.method === method"
   },
   {
     "id": "ir849-read-error-unmarked",
@@ -2686,8 +2686,28 @@
     "testName": "is false when only one of the canister and the method is given",
     "why": "a method given without a canister falls back to the one-argument guard and narrows any ReactorError",
     "file": "src/errors.ts",
-    "search": "? method === undefined",
-    "replace": "? true"
+    "search": "(typeof canister === \"object\" || typeof method === \"string\"",
+    "replace": "(typeof canister === \"object\""
+  },
+  {
+    "id": "ir849-unmarked-matches-a-missing-canister",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "is false when only one of the canister and the method is given",
+    "why": "a method given without a canister is compared with an unmarked error, whose missing mark equals the missing canister, so an error of a func reference is narrowed",
+    "file": "src/errors.ts",
+    "search": "? !!canister && own[CANISTER]",
+    "replace": "? own[CANISTER]"
+  },
+  {
+    "id": "ir849-point-free-takes-the-checked-form",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "stays the one-argument guard when passed point-free to an array method",
+    "why": "any second argument selects the checked form, so errors.filter(isReactorError) drops every ReactorError, as the index and array are not its canister and method",
+    "file": "src/errors.ts",
+    "search": "(typeof canister === \"object\" || typeof method === \"string\"",
+    "replace": "(canister !== undefined || method !== undefined"
   },
   {
     "id": "ir849-mark-overwritten",

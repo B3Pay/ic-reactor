@@ -15,16 +15,16 @@
 // with the packages' own checks; run `pnpm build` first.
 export default [
   {
-    // Measured 89,481 B with the canister check of isReactorError (89,363 B
-    // on 4.0.0-beta.3, +118 B): the limit leaves 19 B.
+    // Measured 89,484 B with the canister check of isReactorError (89,363 B
+    // on 4.0.0-beta.3, +121 B): the limit leaves 16 B.
     name: "App: { createClient } from @ic-reactor/core, peers included",
     path: "core.js",
     limit: "89.5 kB",
     gzip: true,
   },
   {
-    // Measured 90,688 B with the canister check of isReactorError (90,566 B
-    // on 4.0.0-beta.3, +122 B): the limit leaves 12 B. React itself is left
+    // Measured 90,692 B with the canister check of isReactorError (90,566 B
+    // on 4.0.0-beta.3, +126 B): the limit leaves 8 B. React itself is left
     // out: the app ships it with or without ic-reactor.
     name: "App: createClient, ReactorProvider and useClient, peers included, React left out",
     path: "react.js",

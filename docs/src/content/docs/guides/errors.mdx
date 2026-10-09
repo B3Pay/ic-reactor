@@ -76,7 +76,8 @@ object, or of a `client.func` call is `false`, even when it is a
 canister made with `certified: true` is another object, and so is the same
 canister made by another client. `client.canister()` returns the same object
 for the same module and target, so a canister made again where the error is
-caught is the one the call was made on.
+caught is the one the call was made on. A `false` result says only that the
+error is not that call's: it can still be of any `kind`.
 
 ## The fields
 

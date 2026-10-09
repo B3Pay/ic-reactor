@@ -126,7 +126,11 @@ describe("isReactorError(error, canister, method)", () => {
   it("narrows to the method's Err arm: `err` is typed after a canister_err check", () => {
     const catches = (e: unknown) => {
       if (isReactorError(e, ledger, "icrc1_transfer")) {
-        expectTypeOf(e).toEqualTypeOf<ReactorError<icrc1.TransferError>>()
+        expectTypeOf(e).toEqualTypeOf<
+          ReactorError<icrc1.TransferError> & {
+            readonly method: "icrc1_transfer"
+          }
+        >()
         if (e.kind === "canister_err") {
           expectTypeOf(e.err).toEqualTypeOf<icrc1.TransferError>()
         } else {
@@ -176,7 +180,9 @@ describe("isReactorError(error, canister, method)", () => {
   it("narrows a method without an Err arm to ReactorError, whose `err` is undefined", () => {
     const catches = (e: unknown) => {
       if (isReactorError(e, ledger, "icrc1_fee")) {
-        expectTypeOf(e).toEqualTypeOf<ReactorError>()
+        expectTypeOf(e).toEqualTypeOf<
+          ReactorError & { readonly method: "icrc1_fee" }
+        >()
         if (e.kind === "canister_err") {
           expectTypeOf(e.err).toEqualTypeOf<undefined>()
         }
@@ -184,6 +190,21 @@ describe("isReactorError(error, canister, method)", () => {
       if (isReactorError(e, service, "three") && e.kind === "canister_err") {
         // Ok, Err and a third arm: not a result, so there is no Err arm.
         expectTypeOf(e.err).toEqualTypeOf<undefined>()
+      }
+    }
+    expectTypeOf(catches).toBeFunction()
+  })
+
+  it("keeps every kind when it is false: another call's error can be of any kind", () => {
+    const catches = (e: unknown) => {
+      if (!isReactorError(e)) throw e
+      if (!isReactorError(e, ledger, "icrc1_transfer")) {
+        expectTypeOf(e).toEqualTypeOf<ReactorError<unknown>>()
+        expectTypeOf(e.kind).toEqualTypeOf<ReactorErrorKind>()
+      }
+      const declared = e as ReactorError<icrc1.TransferError>
+      if (!isReactorError(declared, ledger, "icrc1_fee")) {
+        expectTypeOf(declared.kind).toEqualTypeOf<ReactorErrorKind>()
       }
     }
     expectTypeOf(catches).toBeFunction()

@@ -71,6 +71,7 @@ describe("isReactorError(error, canister, method)", () => {
     const { ledger } = setup()
     const error = await caught(ledger.icrc1_transfer(transfer))
 
+    expect(error).toMatchObject({ kind: "canister_err" })
     expect(isReactorError(error, ledger, "icrc1_transfer")).toBe(true)
     if (
       isReactorError(error, ledger, "icrc1_transfer") &&
@@ -81,7 +82,8 @@ describe("isReactorError(error, canister, method)", () => {
         value: { balance: 0n },
       })
     }
-    // The one-argument form is unchanged.
+    // The one-argument form still holds for it (point-free use is the next
+    // test's).
     expect(isReactorError(error)).toBe(true)
     // An error the call made before sending anything is that call's too.
     const readOnly = clientAs(
@@ -91,6 +93,20 @@ describe("isReactorError(error, canister, method)", () => {
     const refused = await caught(readOnly.icrc1_transfer(transfer))
     expect(refused).toMatchObject({ kind: "unauthenticated" })
     expect(isReactorError(refused, readOnly, "icrc1_transfer")).toBe(true)
+  })
+
+  it("stays the one-argument guard when passed point-free to an array method", async () => {
+    const { ledger } = setup()
+    const error = await caught(ledger.icrc1_transfer(transfer))
+    const plain = new Error("not a ReactorError")
+    const errors = [error, plain]
+
+    // filter, some, find and every call it with (element, index, array).
+    expect(errors.filter(isReactorError)).toEqual([error])
+    expect(errors.some(isReactorError)).toBe(true)
+    expect(errors.find(isReactorError)).toBe(error)
+    expect([error].every(isReactorError)).toBe(true)
+    expect([plain].some(isReactorError)).toBe(false)
   })
 
   it("is false for an error of another method of the same canister", async () => {
@@ -168,6 +184,15 @@ describe("isReactorError(error, canister, method)", () => {
     expect(untyped(error, undefined, "icrc1_transfer")).toBe(false)
     expect(untyped(error, ledger)).toBe(false)
     expect(untyped(error, ledger, undefined)).toBe(false)
+    // An error no canister marked (a func reference's) has no canister to
+    // match a missing one.
+    const unmarked = createReactorError("cancelled", {
+      method: "icrc1_transfer",
+      canisterId: LEDGER,
+    })
+    expect(untyped(unmarked)).toBe(true)
+    expect(untyped(unmarked, undefined, "icrc1_transfer")).toBe(false)
+    expect(untyped(unmarked, null, "icrc1_transfer")).toBe(false)
   })
 
   it("keeps the first canister an error was marked with", () => {

@@ -149,14 +149,18 @@ const CANISTER = Symbol.for("ic-reactor.ReactorError.canister")
 /**
  * Whether `error` is a {@link ReactorError}, including one created by another
  * copy of this package. Narrows to `ReactorError<unknown>`: after a check on
- * `kind === "canister_err"`, `err` is `unknown`.
+ * `kind === "canister_err"`, `err` is `unknown`. It can be passed point-free,
+ * as in `errors.filter(isReactorError)`: the index and the array an array
+ * method passes are not a canister and a method.
  */
 export function isReactorError(error: unknown): error is ReactorError<unknown>
 /**
  * Whether `error` is a {@link ReactorError} that a call of `method` on
  * `canister` rejected with. Narrows to `ReactorError<E>`, where `E` is the
- * method's `Err` arm: after a check on `kind === "canister_err"`, `err` is
- * typed. For a method without an `Err` arm, `err` is `undefined`.
+ * method's `Err` arm, and whose `method` is `method`: after a check on
+ * `kind === "canister_err"`, `err` is typed. For a method without an `Err`
+ * arm, `err` is `undefined`. When it is `false`, the error is only not that
+ * call's: it keeps every `kind`.
  *
  * The check is made at run time, not only in the types: it is `false` for an
  * error from another method, from another canister object (the one made with
@@ -181,22 +185,25 @@ export function isReactorError<A, M extends keyof A & string>(
   error: unknown,
   canister: Canister<A>,
   method: M
-): error is ReactorError<ErrorOf<A, M>>
+): error is ReactorError<ErrorOf<A, M>> & { readonly method: M }
 export function isReactorError(
   error: unknown,
-  canister?: object,
-  method?: string
+  canister?: unknown,
+  method?: unknown
 ): boolean {
   const own = error as Record<PropertyKey, unknown>
   return (
     typeof error === "object" &&
     error !== null &&
     own[BRAND] === true &&
-    // Without a canister and a method this is the plain guard; with them, the
-    // error must say it came from exactly that call.
-    (canister === undefined
-      ? method === undefined
-      : own[CANISTER] === canister && own.method === method)
+    // With a canister object or a method name, the error must say it came
+    // from exactly that call, and either one alone is never enough. Other
+    // extra arguments are not this form's: passed point-free, as in
+    // `errors.filter(isReactorError)`, the guard is called with an index and
+    // an array, and stays the plain guard.
+    (typeof canister === "object" || typeof method === "string"
+      ? !!canister && own[CANISTER] === canister && own.method === method
+      : true)
   )
 }
 

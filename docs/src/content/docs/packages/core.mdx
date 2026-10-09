@@ -110,7 +110,7 @@ function isReactorError<A, M extends keyof A & string>(
   error: unknown,
   canister: Canister<A>,
   method: M
-): error is ReactorError<ErrorOf<A, M>> // ErrorOf: the method's Err arm, or never
+): error is ReactorError<ErrorOf<A, M>> & { readonly method: M } // ErrorOf: the method's Err arm, or never
 
 function parseUnits(
   text: string,

@@ -239,6 +239,17 @@ export const readAnotherMethodsErr = (error: unknown) => {
   return undefined
 }
 
+// A false three-argument guard means only "not this call's error". The error
+// can still be of any kind, even once the one-argument guard has narrowed it.
+export const readAnotherCallsKind = (error: unknown) => {
+  if (!isReactorError(error)) throw error
+  if (isReactorError(error, ledger, "icrc1_transfer")) return undefined
+  // trap: guard-false-keeps-every-kind
+  // @ts-expect-error another call's error can be of any kind, not only canister_err: check kind before reading err
+  const kind: "canister_err" = error.kind
+  return kind
+}
+
 // What `useSuspenseQuery` of `@tanstack/react-query` takes, written over
 // query-core: the options of a `QueryObserver`, without the ones a suspense
 // read has no use for, and a `queryFn` that is never `skipToken`, since a
