@@ -88,6 +88,7 @@ import {
   createReactorError,
   fromCanister,
   invalidReplyError,
+  isReactorError,
   isRetryable,
   retryUpdate,
   type CallMode,
@@ -203,15 +204,30 @@ export interface CallRequest {
 }
 
 /**
+ * The request of each write that failed with `mayHaveExecuted: true`, by the
+ * error it rejected with: what `client.resendOf()` offers to send again, as
+ * the same caller, to the same canister, with the same arguments.
+ */
+export const UNKNOWN_WRITES = new WeakMap<object, CallRequest>()
+
+/**
  * Runs one call through the steps of this module. Resolves with the reply as
  * the generated `Actor` types it (unwrapped), and rejects with a
- * `ReactorError`, marked with the request's canister when it has one.
+ * `ReactorError`, marked with the request's canister when it has one. A write
+ * whose outcome is unknown is kept in {@link UNKNOWN_WRITES}.
  */
 export const invoke = (
   internals: ClientInternals,
   request: CallRequest
 ): Promise<unknown> =>
   run(internals, request).catch((error: unknown) => {
+    if (
+      isReactorError(error) &&
+      error.mayHaveExecuted &&
+      isWrite(request.method.mode)
+    ) {
+      UNKNOWN_WRITES.set(error, request)
+    }
     throw fromCanister(error, request.canister)
   })
 

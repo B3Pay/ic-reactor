@@ -347,6 +347,40 @@ export interface QueryOptionsOptions {
   readonly update: "idempotent"
 }
 
+/** The fourth argument of `client.resendOf()`. */
+export interface ResendOptions<V> {
+  /**
+   * What makes the canister answer this argument at most once, read from it:
+   * `(arg) => arg.created_at_time` for an ICRC-1 transfer. `undefined` or
+   * `null` means the argument carries no such key, and nothing is offered.
+   * The client cannot check that the canister deduplicates on it: the app
+   * states it.
+   */
+  readonly dedupedBy: (arg: V) => unknown
+}
+
+/**
+ * What `client.resendOf()` offers: a write whose outcome is unknown, to send
+ * again exactly as it was sent, and only as whoever sent it.
+ */
+export interface Resend<V, D> {
+  /**
+   * The argument the attempt sent: the very object `mutate` or the call was
+   * given (the list, for several arguments). `mutate(resend.arg)` on the
+   * mutation that failed sends it again through the mutation, as `from` or
+   * not at all.
+   */
+  readonly arg: V
+  /** The principal that sent the attempt, as text: the only caller a re-send goes out as. */
+  readonly from: string
+  /**
+   * Sends `arg` again now, to the canister the attempt went to, as `from`. If
+   * someone else is the caller by then, it rejects `cancelled`
+   * (`caller_changed`) and sends nothing. Settles as a direct call does.
+   */
+  send(): Promise<D>
+}
+
 /** A read to invalidate after a write: every read of a canister, or of one of its methods. */
 export type InvalidationTarget =
   Canister<object> | readonly [canister: Canister<object>, method: string]

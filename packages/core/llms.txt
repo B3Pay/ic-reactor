@@ -232,6 +232,15 @@ export function Send({ arg }: { arg: TransferArg }) {
   never got it (reject code 2, status 429); any other failure is final.
 - A write is sent as whoever is signed in when it runs. If nobody is, the
   client refuses it (`unauthenticated`) before calling anything.
+- Send the same write again after `mayHaveExecuted: true` only to a method
+  that runs the same argument from the same sender at most once, such as an
+  ICRC-1 transfer with `created_at_time` set (it answers `Duplicate`).
+  `client.resendOf(transfer.error, ledger, "icrc1_transfer", { dedupedBy: (arg) => arg.created_at_time })`
+  is `undefined` unless that write's outcome is unknown, `dedupedBy` finds a
+  key (not `null`) in its argument, and its sender is still the caller; then
+  `transfer.mutate(again.arg)`, or `again.send()`, sends that argument as that
+  sender, or is cancelled (`caller_changed`). A method with no such key has no
+  safe re-send: read the state back.
 - Call update methods only from `useMutation` or directly, never from
   `useQuery`; call query methods from `useQuery` or directly.
 

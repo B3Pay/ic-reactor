@@ -48,6 +48,8 @@ import type {
   ErrorOf,
   MutationOptionsOptions,
   QueryArgs,
+  Resend,
+  ResendOptions,
   VarsOf,
 } from "./types.js"
 
@@ -468,6 +470,59 @@ export interface Client {
     method: M,
     options?: MutationOptionsOptions
   ): CanisterMutationOptions<VarsOf<A, M>, DataOf<A, M>, ErrorOf<A, M>>
+
+  /**
+   * The write `error` reports, offered to send again exactly as it was sent,
+   * by whoever sent it, when its outcome is unknown; `undefined` when there
+   * is nothing to offer.
+   *
+   * Only for a method that deduplicates: one that runs the same argument
+   * from the same sender at most once, as an ICRC-1 ledger does for a
+   * transfer with `created_at_time` set (it answers `Duplicate` the second
+   * time). Sending again a write that does not deduplicate can run it twice:
+   * there, read the state back instead. `dedupedBy` states what the canister
+   * deduplicates on, read from the argument:
+   *
+   * ```ts
+   * const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+   * const again = client.resendOf(transfer.error, ledger, "icrc1_transfer", {
+   *   dedupedBy: (arg) => arg.created_at_time,
+   * })
+   * // again && <button onClick={() => transfer.mutate(again.arg)}>Send the same transfer again</button>
+   * ```
+   *
+   * It offers a re-send only when all of these hold, and is read again on
+   * every call, so read it during render, in a component that re-renders
+   * when the caller changes (one that calls `useAuth()`):
+   *
+   * - `error` is one a write of `method` on `canister` rejected with (a
+   *   direct call, or a mutation function built from the canister), with
+   *   `mayHaveExecuted: true`. Any other failure proves the outcome, and a
+   *   success needs no re-send.
+   * - Its argument is an object: a record or a variant, or the list of
+   *   several arguments.
+   * - `dedupedBy(arg)` is neither `undefined` nor `null`.
+   * - The principal that sent it is the caller now. After a sign-out, or a
+   *   sign-in as another principal, nothing is offered: the same argument
+   *   from another sender is a new write. Signing in again as the sender
+   *   offers it again. A view of the client pinned to a principal (what
+   *   `useClient()` returns while a page hydrates) answers for the live
+   *   caller, whom a write goes out as.
+   *
+   * The offer's `arg` goes out only as its `from`: by `send()`, or by
+   * `mutate(arg)` on the mutation that failed, which keeps its pending state
+   * and invalidation. Either one rejects `cancelled` (`caller_changed`) and
+   * sends nothing once someone else is the caller.
+   *
+   * @throws TypeError for a canister of another client, a method the service
+   * does not have, or no `dedupedBy` function.
+   */
+  resendOf<A, M extends keyof A & string>(
+    error: unknown,
+    canister: Canister<A>,
+    method: M,
+    options: ResendOptions<VarsOf<A, M>>
+  ): Resend<VarsOf<A, M>, DataOf<A, M>> | undefined
 
   /**
    * An async function for a func reference a reply carried, such as an ICRC

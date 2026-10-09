@@ -25,6 +25,7 @@ import {
   type QueryKey,
 } from "@tanstack/query-core"
 import {
+  UNKNOWN_WRITES,
   invoke,
   isWrite,
   prepareMethod,
@@ -53,7 +54,12 @@ import { MANAGEMENT_CANISTER } from "./management.js"
 /** The builders `createClient` puts on a client. */
 export type Builders = Pick<
   Client,
-  "canister" | "queryKey" | "queryOptions" | "mutationOptions" | "func"
+  | "canister"
+  | "queryKey"
+  | "queryOptions"
+  | "mutationOptions"
+  | "resendOf"
+  | "func"
 >
 
 /** What an update read with `{ update: "idempotent" }` adds to its options (DECISIONS Q2). */
@@ -204,6 +210,13 @@ export function createBuilders(
    * even when an `onMutate` of the app's replaced ours.
    */
   const runsByContext = new WeakMap<object, MutationRun>()
+
+  /**
+   * The argument of each re-send `resendOf` offered, and the caller who sent
+   * it first: a mutation given that very argument sends it as that caller, or
+   * is cancelled.
+   */
+  const offered = new WeakMap<object, Caller>()
 
   /** The run kept for a run's function context, if TanStack passed one and a run was kept for it. */
   const keptRun = (context: unknown): MutationRun | undefined => {
@@ -421,7 +434,9 @@ export function createBuilders(
         if (key !== undefined) runsByContext.set(key, run)
         return { [RUN]: run }
       },
-      // The caller is read when the mutation runs. The target is the one
+      // The caller is read when the mutation runs, unless the argument is a
+      // re-send `resendOf` offered: that goes out as its first sender, or
+      // not at all (`agentFor` refuses another). The target is the one
       // onMutate resolved for this run where TanStack passes the run's
       // context (5.89 and later), and is resolved now otherwise.
       mutationFn: (vars: unknown, context?: unknown) => {
@@ -442,7 +457,7 @@ export function createBuilders(
           method: prepared,
           target: run?.target ?? record.resolve(),
           certified: record.certified,
-          caller: internals.current(),
+          caller: offered.get(vars as object) ?? internals.current(),
           values: valuesOf(prepared, vars),
           resend: true,
           canister: canister as object,
@@ -477,6 +492,53 @@ export function createBuilders(
             ),
         })
       },
+    }
+  }
+
+  const resendOf = (
+    error: unknown,
+    canister: unknown,
+    method: unknown,
+    options?: { readonly dedupedBy?: unknown }
+  ) => {
+    const call = "client.resendOf()"
+    const { name, args } = methodOf(
+      recordOf(canister, internals, call),
+      method,
+      call
+    )
+    const dedupedBy = options?.dedupedBy
+    if (typeof dedupedBy !== "function") {
+      throw new TypeError(
+        `[ic-reactor] ${call} needs { dedupedBy: (arg) => key }: what makes ${name} run the same argument at most once, such as an ICRC-1 transfer's created_at_time. ` +
+          "A write without one has no safe re-send."
+      )
+    }
+    // Kept only for a write whose outcome is unknown, made on `canister`.
+    const attempt = UNKNOWN_WRITES.get(error as object)
+    if (
+      attempt === undefined ||
+      attempt.canister !== canister ||
+      attempt.method.name !== name
+    ) {
+      return undefined
+    }
+    const { values, caller } = attempt
+    const arg = args.length > 1 ? values : values[0]
+    if (
+      typeof arg !== "object" ||
+      arg === null ||
+      // The sender, and no one else, may send it again.
+      internals.current().principal !== caller.principal ||
+      (dedupedBy(arg) ?? null) === null
+    ) {
+      return undefined
+    }
+    offered.set(arg, caller)
+    return {
+      arg,
+      from: caller.principal,
+      send: () => invoke(internals, attempt),
     }
   }
 
@@ -535,6 +597,7 @@ export function createBuilders(
     queryKey,
     queryOptions,
     mutationOptions,
+    resendOf,
     func,
   } as unknown as Builders
 }

@@ -250,6 +250,22 @@ export const readAnotherCallsKind = (error: unknown) => {
   return kind
 }
 
+// ---------------------------------------------------------------------------
+// Re-sending: only a write the app says the canister deduplicates
+// ---------------------------------------------------------------------------
+
+export const resendWithoutAKey = (error: unknown) =>
+  // trap: resend-states-its-dedupe-key
+  // @ts-expect-error re-sending is safe only for a write the canister deduplicates: state what it deduplicates on with { dedupedBy }
+  client.resendOf(error, ledger, "icrc1_transfer")
+
+export const resendByAFieldItLacks = (error: unknown) =>
+  client.resendOf(error, ledger, "icrc1_transfer", {
+    // trap: resend-key-reads-the-methods-arg
+    // @ts-expect-error dedupedBy reads the method's own argument, and a TransferArg has no nonce: name the field the canister deduplicates on
+    dedupedBy: (arg) => arg.nonce,
+  })
+
 // What `useSuspenseQuery` of `@tanstack/react-query` takes, written over
 // query-core: the options of a `QueryObserver`, without the ones a suspense
 // read has no use for, and a `queryFn` that is never `skipToken`, since a
