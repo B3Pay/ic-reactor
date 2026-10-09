@@ -239,8 +239,10 @@ export function Send({ arg }: { arg: TransferArg }) {
   is `undefined` unless that write's outcome is unknown, `dedupedBy` finds a
   key (not `null`) in its argument, and its sender is still the caller; then
   `transfer.mutate(again.arg)`, or `again.send()`, sends that argument as that
-  sender, or is cancelled (`caller_changed`). A method with no such key has no
-  safe re-send: read the state back.
+  sender, or is cancelled (`caller_changed`). Once offered, that object stays
+  held to its sender on every mutation of the client: build a new argument
+  for a new transfer. A method with no such key has no safe re-send: read the
+  state back.
 - Call update methods only from `useMutation` or directly, never from
   `useQuery`; call query methods from `useQuery` or directly.
 

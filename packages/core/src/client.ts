@@ -510,9 +510,11 @@ export interface Client {
    *   caller, whom a write goes out as.
    *
    * The offer's `arg` goes out only as its `from`: by `send()`, or by
-   * `mutate(arg)` on the mutation that failed, which keeps its pending state
-   * and invalidation. Either one rejects `cancelled` (`caller_changed`) and
-   * sends nothing once someone else is the caller.
+   * `mutate(arg)` on any mutation of this client (the one that failed keeps
+   * its pending state and invalidation). Either one rejects `cancelled`
+   * (`caller_changed`) and sends nothing once someone else is the caller.
+   * Once offered, that object stays held to `from`: build a new argument for
+   * a new write, rather than send the same object from another account.
    *
    * @throws TypeError for a canister of another client, a method the service
    * does not have, or no `dedupedBy` function.

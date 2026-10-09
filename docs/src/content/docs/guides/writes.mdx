@@ -219,7 +219,10 @@ given, and `from` is its sender. Send it with `mutate(again.arg)` on the same
 mutation, which keeps its pending state and invalidation, or with
 `again.send()`. Either one goes out only as `from`: if someone else is the
 caller by then, it rejects `cancelled` (code `caller_changed`) and sends
-nothing.
+nothing. Once offered, that object stays held to its sender on every mutation
+of the client, for good: another account that sends the same object is
+cancelled too. Build a new argument object for each new transfer, and for
+another account.
 
 ```tsx
 import { useAuth, useClient } from "@ic-reactor/react"
@@ -227,7 +230,7 @@ import { useMutation } from "@tanstack/react-query"
 import { actor, type Actor, type TransferArg } from "./generated/icrc1"
 
 // `arg` has `created_at_time` set and a `memo` of its own: build a new one for
-// each new transfer, and send that same one again.
+// each new transfer (and when the account changes), and send that same one again.
 export function SendOnce({ arg }: { arg: TransferArg }) {
   const client = useClient()
   // Re-renders when the caller changes, and the offer follows.

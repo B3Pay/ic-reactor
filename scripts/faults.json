@@ -2720,6 +2720,26 @@
     "replace": "if (canister && isReactorError(error)) {"
   },
   {
+    "id": "ir850-nothing-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers the attempt's own argument after a lost reply, and the re-send answers Duplicate",
+    "why": "a write whose outcome is unknown is not kept with its error, so resendOf has nothing to offer after a lost reply",
+    "file": "src/call.ts",
+    "search": "      UNKNOWN_WRITES.set(error, request)\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-copy-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers the attempt's own argument after a lost reply, and the re-send answers Duplicate",
+    "why": "the offer carries a copy of the argument, not the object the attempt sent, so the mutation cannot tell it is a re-send and holds it to no sender",
+    "file": "src/options.ts",
+    "search": "    return {\n      arg,\n",
+    "replace": "    return {\n      arg: { ...arg },\n"
+  },
+  {
     "id": "ir850-known-outcome-offered",
     "package": "core",
     "test": "tests/resend.test.ts",
@@ -2788,6 +2808,16 @@
     "file": "src/options.ts",
     "search": "      attempt.canister !== canister ||\n",
     "replace": ""
+  },
+  {
+    "id": "ir850-other-method-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing for another method's or canister object's error",
+    "why": "the attempt's method is not compared, so the error of one write is offered as a re-send of another method of the same canister",
+    "file": "src/options.ts",
+    "search": "      attempt.method.name !== name\n",
+    "replace": "      false\n"
   },
   {
     "id": "ir850-view-answers-for-its-pin",

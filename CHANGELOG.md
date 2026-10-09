@@ -44,8 +44,10 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   offer again once the sender signs back in, and on a view pinned to a
   principal (hydration) the live caller decides. The offer's `arg` is the
   attempt's own argument, and goes out only as its sender, by `send()` or by
-  `mutate(arg)` on the mutation that failed; once someone else is the caller
-  either one rejects `cancelled` (`caller_changed`) and sends nothing. The
+  `mutate(arg)` on any mutation of this client; once someone else is the
+  caller either one rejects `cancelled` (`caller_changed`) and sends nothing.
+  Once offered, that object stays held to its sender, so a new write needs a
+  new argument object. The
   client cannot check that a canister deduplicates: a method without such a
   key has no safe re-send. It is a method of `Client`, not a new export: core
   still has 13 names. Core's size limit is raised to 14.8 kB (14,750 B

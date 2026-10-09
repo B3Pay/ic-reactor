@@ -366,9 +366,10 @@ export interface ResendOptions<V> {
 export interface Resend<V, D> {
   /**
    * The argument the attempt sent: the very object `mutate` or the call was
-   * given (the list, for several arguments). `mutate(resend.arg)` on the
-   * mutation that failed sends it again through the mutation, as `from` or
-   * not at all.
+   * given (the list, for several arguments). `mutate(resend.arg)` sends it
+   * again through a mutation, as `from` or not at all. From the time it is
+   * offered, `mutate` on any mutation of this client sends that object only
+   * as `from`: build a new argument for a new write.
    */
   readonly arg: V
   /** The principal that sent the attempt, as text: the only caller a re-send goes out as. */
