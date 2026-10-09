@@ -2628,5 +2628,24 @@
     "file": "src/fetch.ts",
     "search": "    sdk = { agent, principal }\n  } catch (error) {\n",
     "replace": "    sdk = { agent, principal }\n  } catch (error) {\n    throw error\n"
+  },
+  {
+    "id": "did-fetch-failed-refetch-recorded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is tried again at the next buildStart when it failed, and served once it succeeds",
+    "why": "an IC_REACTOR_FETCH re-fetch recorded as served before its result is checked, so after a transient failure the next buildStart keeps the stale didFile instead of trying again",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "        if (!result.ok) {\n",
+        "replace": "        if (again) refetched.add(file)\n        if (!result.ok) {\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "        // Recorded only now: a fetch or a write that failed is tried again.\n        if (again) refetched.add(file)\n",
+        "replace": ""
+      }
+    ]
   }
 ]

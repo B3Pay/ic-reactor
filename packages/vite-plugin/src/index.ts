@@ -411,7 +411,9 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * The `.did` files `IC_REACTOR_FETCH` has had fetched again, by absolute
    * path. A request is served once in the life of the plugin: the second
    * `buildStart` of Vite 6 and later, and each rebuild of
-   * `vite build --watch`, read the file it wrote.
+   * `vite build --watch`, read the file it wrote. A file is recorded only once
+   * its fetch succeeded and the file on disk holds what was fetched, so a
+   * fetch or a write that failed is tried again on the next `buildStart`.
    */
   const refetched = new Set<string>()
 
@@ -496,7 +498,6 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       if (signal.aborted) return undefined
 
       for (const { file, members, source, again, result } of results) {
-        if (again) refetched.add(file)
         if (!result.ok) {
           for (const canister of members) {
             failures.push({ canister, message: result.message })
@@ -512,6 +513,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         }
         if (before === result.did) {
           log.info(`ic-reactor: ${relativeToRoot(file)} matches ${from}`)
+          if (again) refetched.add(file)
           continue
         }
         // Only a dev server's watcher reports the write and clears the entry.
@@ -531,6 +533,8 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
           }
           continue
         }
+        // Recorded only now: a fetch or a write that failed is tried again.
+        if (again) refetched.add(file)
         log.info(
           `ic-reactor: ${before === undefined ? "wrote" : "rewrote"} ${relativeToRoot(file)} from ${from} ` +
             `(${Buffer.byteLength(result.did)} bytes): commit it with the app`

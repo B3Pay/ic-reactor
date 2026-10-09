@@ -14,13 +14,15 @@ import type { AddressInfo } from "node:net"
 import path from "node:path"
 import { spawn } from "node:child_process"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type { Plugin } from "vite"
 import { fetchCandid, resolveNetwork } from "../src/fetch.js"
-import type { IcReactorPluginOptions } from "../src/index.js"
+import { icReactor, type IcReactorPluginOptions } from "../src/index.js"
 import { startFakeIc } from "./fake-ic.js"
 import {
   createApp,
   LEDGER_DID,
   PING_DID,
+  recordingLogger,
   runBuild,
   startDev,
   type App,
@@ -400,6 +402,62 @@ describe("IC_REACTOR_FETCH", () => {
     expect(message).toContain(
       "ping (did/ping.did): IC_REACTOR_FETCH asks to fetch its didFile again, but it names no canisterId"
     )
+  })
+
+  // `vite build --watch` calls buildStart again on every rebuild, and Vite 6
+  // and later call it once for each environment: one plugin, two buildStarts.
+  it("is tried again at the next buildStart when it failed, and served once it succeeds", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = newApp({ "did/ledger.did": OLD })
+    // The network is down for the first buildStart only.
+    let down = true
+    const real = globalThis.fetch
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: string | URL | Request, init?: RequestInit) =>
+        down
+          ? Promise.reject(new TypeError("fetch failed: the network is down"))
+          : real(input, init)
+      )
+    )
+    vi.stubEnv("IC_REACTOR_FETCH", "ledger")
+    const plugin = icReactor({
+      canisters: {
+        ledger: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network: { host: ic.host },
+        },
+      },
+    }) as Plugin & {
+      configResolved: (config: unknown) => void
+      buildStart: (this: unknown) => Promise<void>
+    }
+    const { logger, lines } = recordingLogger()
+    plugin.configResolved({ root: app.root, command: "build", logger })
+    const context = { addWatchFile: vi.fn(), error: vi.fn() }
+
+    await plugin.buildStart.call(context)
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(String(context.error.mock.calls[0][0])).toContain(
+      `ledger (did/ledger.did): could not reach ${ic.host}`
+    )
+    expect(read(app, "did/ledger.did")).toBe(OLD)
+    expect(ic.requests).toEqual([])
+
+    down = false
+    await plugin.buildStart.call(context)
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(read(app, "did/ledger.did")).toBe(LEDGER)
+    expect(lines).toContainEqual(
+      expect.stringContaining(`rewrote did/ledger.did from the certified`)
+    )
+    expect(read(app, "src/canisters/ledger.ts")).toContain("icrc1_transfer")
+    expect(ic.requests).toHaveLength(2)
+
+    // Served: the next buildStart reads the file it wrote.
+    await plugin.buildStart.call(context)
+    expect(ic.requests).toHaveLength(2)
   })
 })
 

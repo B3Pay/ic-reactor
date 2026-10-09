@@ -211,7 +211,8 @@ Each failure says what happened to which canister, and what to do next:
 A canister whose fetch failed is not generated, and the failure follows
 `failOnError` as a generation failure does: under `vite build` it fails the
 build, and under `vite dev` it is logged and shown in the overlay. A fetch that
-failed is tried again at the next `buildStart`: each rebuild of
+failed, one that `IC_REACTOR_FETCH` asked for included, is tried again at the
+next `buildStart`: each rebuild of
 `vite build --watch`, and each Vite environment that starts one. Writing the
 `didFile` yourself always works instead: the plugin reads a file on disk and
 fetches nothing.
