@@ -22,8 +22,12 @@ import { Principal } from "@icp-sdk/core/principal"
 
 /** How the fake answers a canister's `read_state`. */
 export type Canister =
-  /** Its interface: certified at `candid:service`. */
-  | { candid: string }
+  /**
+   * Its interface: certified at `candid:service`. A `forged` one is signed
+   * with a key other than the root key the fake reports, as a man in the
+   * middle would sign it.
+   */
+  | { candid: string; forged?: boolean }
   /** No `candid:service` metadata: a certificate without the path. */
   | { absent: true }
   /** Private metadata, which a replica refuses to anyone but a controller. */
@@ -93,13 +97,17 @@ export async function startFakeIc(
   canisters: Record<string, Canister>
 ): Promise<FakeIc> {
   const secretKey = bls12_381.utils.randomSecretKey()
+  const forgerKey = bls12_381.utils.randomSecretKey()
   const rootKey = wrapDER(
     bls12_381.shortSignatures.getPublicKey(secretKey).toBytes(),
     BLS12_381_G2_OID
   )
   const requests: string[] = []
 
-  const certify = async (entries: Array<[string, TreeNode]>) => {
+  const certify = async (
+    entries: Array<[string, TreeNode]>,
+    signer: Uint8Array
+  ) => {
     const now = BigInt(Date.now()) * 1_000_000n
     const tree = toHashTree([...entries, ["time", leb128(now)]])
     const rootHash = await reconstruct(tree)
@@ -109,7 +117,7 @@ export async function startFakeIc(
     ])
     const signature = bls12_381.shortSignatures.sign(
       bls12_381.shortSignatures.hash(message),
-      secretKey
+      signer
     )
     return Cbor.encode({ tree, signature: signature.toBytes() })
   }
@@ -165,20 +173,25 @@ export async function startFakeIc(
           "candid" in canister
             ? [["candid:service", utf8(canister.candid)]]
             : []
-        const certificate = await certify([
+        const signer =
+          "forged" in canister && canister.forged ? forgerKey : secretKey
+        const certificate = await certify(
           [
-            "canister",
             [
+              "canister",
               [
-                Principal.fromText(id).toUint8Array(),
                 [
-                  ["metadata", metadata],
-                  ["module_hash", new Uint8Array(32)],
+                  Principal.fromText(id).toUint8Array(),
+                  [
+                    ["metadata", metadata],
+                    ["module_hash", new Uint8Array(32)],
+                  ],
                 ],
               ],
             ],
           ],
-        ])
+          signer
+        )
         send(res, 200, Cbor.encode({ certificate }))
       })().catch((error: unknown) => {
         send(res, 500, String(error))

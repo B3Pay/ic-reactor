@@ -30,9 +30,12 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `"ic"` (mainnet's root key, the default), `"local"` (icp-cli's
   `http://127.0.0.1:8000`, its root key fetched) or `{ host }` (its root key
   fetched only when the host is local, as `createClient` decides). An
-  unreachable network, a refused read (private metadata), absent metadata and
-  a canister that does not exist each fail with their own message, naming
-  the canister and what to do next, under `failOnError` as generation does.
+  unreachable network, a refused read (private metadata), absent metadata, a
+  canister that does not exist, a certificate that does not verify (naming
+  the root key it was checked against) and no answer within 30 seconds each
+  fail with their own message, naming the canister and what to do next, under
+  `failOnError` as generation does. A `didFile` that cannot be written fails
+  only the canisters that name it.
   No export is added.
 - `@icp-sdk/core` `^6.1.0` is an optional peer, loaded only for a fetch.
   Every app on `@ic-reactor/core` has it already.

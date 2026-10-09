@@ -2528,5 +2528,105 @@
     "file": "src/fetch.ts",
     "search": "if (did === null || did === undefined) {",
     "replace": "if (did === undefined) {"
+  },
+  {
+    "id": "did-fetch-root-key-from-any-host",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is fetched only from a local host",
+    "why": "the root key fetched from any host, so a host that is not local hands over its own key and its certificates are no longer checked against mainnet's",
+    "file": "src/fetch.ts",
+    "search": "fetchRootKey: isLocalHostname(url.hostname),",
+    "replace": "fetchRootKey: true,"
+  },
+  {
+    "id": "did-fetch-root-key-from-remote-host",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "of a host that is not local is mainnet's, so its own certificate fails and nothing is written",
+    "why": "the root key fetched from a host that is not local, so a certificate it signs with its own key is accepted and written to didFile",
+    "file": "src/fetch.ts",
+    "search": "fetchRootKey: isLocalHostname(url.hostname),",
+    "replace": "fetchRootKey: true,"
+  },
+  {
+    "id": "did-fetch-certificate-unverified",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "signed with another key than the root key fails the canister, and nothing is written",
+    "why": "the certificate's signature not checked, so a forged candid:service is written to didFile and generated",
+    "file": "src/fetch.ts",
+    "search": "{ paths: [candidPath] }",
+    "replace": "{ paths: [candidPath], blsVerify: async () => true }"
+  },
+  {
+    "id": "did-fetch-trust-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "signed with another key than the root key fails the canister, and nothing is written",
+    "why": "a certificate that does not verify reported as an unknown agent error, without naming the root key it was checked against",
+    "file": "src/fetch.ts",
+    "search": "if (error instanceof TrustError) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-write-error-fails-all",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "fails its own canisters only, naming the file, and the others generate",
+    "why": "a didFile that cannot be written fails every canister, including those that would have generated",
+    "file": "src/index.ts",
+    "search": "} catch (writeError) {",
+    "replace": "} catch (writeError) {\n          throw writeError"
+  },
+  {
+    "id": "did-fetch-unknown-network-read-as-ic",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "refuses a network that is not ic, local or a host, before any request",
+    "why": "a misspelt network read as mainnet, so the fetch goes to a network the user did not name",
+    "file": "src/fetch.ts",
+    "search": "if (network === undefined || network === \"ic\") {",
+    "replace": "if (network === undefined || network !== \"local\" && typeof network === \"string\") {"
+  },
+  {
+    "id": "did-fetch-bad-canister-id-throws",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "refuses a canisterId that is not a canister ID, before any request",
+    "why": "a canisterId that is not a principal throws out of the fetch instead of failing the canister with a message",
+    "file": "src/fetch.ts",
+    "search": "principal = sdk.principal.Principal.fromText(canisterId)\n  } catch (error) {\n",
+    "replace": "principal = sdk.principal.Principal.fromText(canisterId)\n  } catch (error) {\n    throw error\n"
+  },
+  {
+    "id": "did-fetch-timeout-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "gives up when the network does not answer within the deadline",
+    "why": "a network that does not answer within the deadline reported as an unknown error, without saying it timed out",
+    "file": "src/fetch.ts",
+    "search": "if (timedOut) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-local-hint-dropped",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says to start the local network when local cannot be reached",
+    "why": "an unreachable local network reported without saying to start it with icp network start",
+    "file": "src/fetch.ts",
+    "search": "network.label === \"local\"",
+    "replace": "false"
+  },
+  {
+    "id": "did-fetch-sdk-missing-throws",
+    "package": "vite-plugin",
+    "test": "tests/fetch-sdk.test.ts",
+    "testName": "says to install @icp-sdk/core when it cannot be loaded",
+    "why": "a missing @icp-sdk/core throws out of the fetch instead of saying to install it or write the didFile",
+    "file": "src/fetch.ts",
+    "search": "    sdk = { agent, principal }\n  } catch (error) {\n",
+    "replace": "    sdk = { agent, principal }\n  } catch (error) {\n    throw error\n"
   }
 ]

@@ -200,10 +200,19 @@ Each failure says what happened to which canister, and what to do next:
 - **No metadata:** the canister publishes no `candid:service`, so there is no
   interface to fetch.
 - **No such canister** on that network: check `canisterId` and `network`.
+- **The certificate does not verify** against the root key in the table above:
+  the message names that key. A `{ host }` that is not local is checked against
+  mainnet's key, so a testnet's own certificates fail there.
+- **No answer within 30 seconds**, retries included: the message names the
+  host.
+- **The file cannot be written** (a read-only directory, say): only the
+  canisters that name it fail, and the others generate.
 
 A canister whose fetch failed is not generated, and the failure follows
 `failOnError` as a generation failure does: under `vite build` it fails the
-build, and under `vite dev` it is logged and shown in the overlay. Writing the
+build, and under `vite dev` it is logged and shown in the overlay. A fetch that
+failed is tried again at the next `buildStart`: each rebuild of
+`vite build --watch`, and each Vite environment that starts one. Writing the
 `didFile` yourself always works instead: the plugin reads a file on disk and
 fetches nothing.
 

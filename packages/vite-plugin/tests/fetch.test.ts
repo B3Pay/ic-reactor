@@ -14,6 +14,7 @@ import type { AddressInfo } from "node:net"
 import path from "node:path"
 import { spawn } from "node:child_process"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { fetchCandid, resolveNetwork } from "../src/fetch.js"
 import type { IcReactorPluginOptions } from "../src/index.js"
 import { startFakeIc } from "./fake-ic.js"
 import {
@@ -87,6 +88,41 @@ function refuseNetwork(): string[] {
     })
   )
   return asked
+}
+
+/**
+ * A `fetch` that sends what is asked of `host` to `to` instead: a host that is
+ * not local, which the fake replica answers.
+ */
+function forward(host: string, to: string): void {
+  const real = globalThis.fetch
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: string | URL | Request, init?: RequestInit) => {
+      const url = input instanceof Request ? input.url : String(input)
+      if (!url.startsWith(host)) {
+        return Promise.reject(new TypeError(`the test refuses ${url}`))
+      }
+      return real(to + url.slice(host.length), init)
+    })
+  )
+}
+
+/** A local URL that accepts connections and never answers. */
+async function silentHost(): Promise<string> {
+  const server = http.createServer(() => {})
+  await new Promise<void>((resolve) =>
+    server.listen(0, "127.0.0.1", () => resolve())
+  )
+  closers.push(
+    () =>
+      new Promise((resolve) => {
+        server.closeAllConnections()
+        server.close(resolve)
+      })
+  )
+  const { port } = server.address() as AddressInfo
+  return `http://127.0.0.1:${port}`
 }
 
 /** A local URL nothing listens on. */
@@ -363,6 +399,165 @@ describe("IC_REACTOR_FETCH", () => {
     const message = await buildError(app, options)
     expect(message).toContain(
       "ping (did/ping.did): IC_REACTOR_FETCH asks to fetch its didFile again, but it names no canisterId"
+    )
+  })
+})
+
+describe("the root key", () => {
+  it("is fetched only from a local host", () => {
+    const fetches = (network: Parameters<typeof resolveNetwork>[0]) => {
+      const resolved = resolveNetwork(network)
+      return typeof resolved === "string" ? resolved : resolved.fetchRootKey
+    }
+    expect(fetches(undefined)).toBe(false)
+    expect(fetches("ic")).toBe(false)
+    expect(fetches({ host: "https://example.com" })).toBe(false)
+    expect(fetches({ host: "http://localhost.example.com" })).toBe(false)
+    expect(fetches({ host: "http://notlocalhost:8000" })).toBe(false)
+    expect(fetches({ host: "http://0.0.0.0:8000" })).toBe(false)
+    expect(fetches({ host: "http://127.0.0.1.example.com" })).toBe(false)
+    expect(fetches("local")).toBe(true)
+    expect(fetches({ host: "http://localhost:4943" })).toBe(true)
+    expect(fetches({ host: "http://app.localhost:8000" })).toBe(true)
+    expect(fetches({ host: "http://127.1.2.3:8000" })).toBe(true)
+    expect(fetches({ host: "http://[::1]:8000" })).toBe(true)
+  })
+
+  it("of a host that is not local is mainnet's, so its own certificate fails and nothing is written", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const remote = "https://replica.example"
+    forward(remote, ic.host)
+    const app = newApp({})
+    const message = await buildError(app, {
+      canisters: {
+        ledger: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network: { host: remote },
+        },
+      },
+    })
+
+    // Its own key is never asked for: only the certified read.
+    expect(ic.requests).toEqual([
+      `POST /api/v3/canister/${LEDGER_ID}/read_state`,
+    ])
+    expect(message).toContain(
+      `ledger (did/ledger.did): the certificate ${remote} sent for the candid:service of ${LEDGER_ID} did not verify against mainnet's root key, since the root key of a host that is not local is never fetched from it (`
+    )
+    expect(message).toContain("or write did/ledger.did yourself")
+    expect(exists(app, "did/ledger.did")).toBe(false)
+  })
+})
+
+describe("a certificate", () => {
+  it("signed with another key than the root key fails the canister, and nothing is written", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER, forged: true } })
+    const app = newApp({ "did/ping.did": PING_DID })
+    const { result, lines } = runBuild(app.root, {
+      failOnError: false,
+      canisters: {
+        ping: { didFile: "did/ping.did" },
+        ledger: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network: { host: ic.host },
+        },
+      },
+    })
+    await result
+    const errors = lines.filter((line) => line.startsWith("error:"))
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toContain("could not generate 1 of 2 canisters")
+    expect(errors[0]).toContain(
+      `ledger (did/ledger.did): the certificate ${ic.host} sent for the candid:service of ${LEDGER_ID} did not verify against the root key fetched from ${ic.host} (`
+    )
+    expect(exists(app, "did/ledger.did")).toBe(false)
+    expect(exists(app, "src/canisters/ledger.ts")).toBe(false)
+    expect(exists(app, "src/canisters/ping.ts")).toBe(true)
+  })
+})
+
+describe("a fetched didFile that cannot be written", () => {
+  it("fails its own canisters only, naming the file, and the others generate", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    // `blocked` is a file, so no directory can be made there.
+    const app = newApp({ "did/ping.did": PING_DID, blocked: "" })
+    const { result, lines } = runBuild(app.root, {
+      failOnError: false,
+      canisters: {
+        ping: { didFile: "did/ping.did" },
+        ledger: {
+          didFile: "blocked/ledger.did",
+          canisterId: LEDGER_ID,
+          network: { host: ic.host },
+        },
+      },
+    })
+    await result
+    const errors = lines.filter((line) => line.startsWith("error:"))
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toContain("could not generate 1 of 2 canisters")
+    expect(errors[0]).toContain(
+      `ledger (blocked/ledger.did): fetched the certified candid:service of ${LEDGER_ID} on ${ic.host}, but could not write it to blocked/ledger.did: `
+    )
+    expect(exists(app, "src/canisters/ping.ts")).toBe(true)
+  })
+})
+
+describe("fetchCandid", () => {
+  const request = { canisterId: LEDGER_ID, didFile: "did/ledger.did" }
+
+  it("refuses a network that is not ic, local or a host, before any request", async () => {
+    const asked = refuseNetwork()
+    const result = await fetchCandid({
+      ...request,
+      network: "mainnet" as never,
+    })
+    expect(result).toEqual({
+      ok: false,
+      message: `network "mainnet" is not "ic", "local" or { host: "<http or https URL>" }`,
+    })
+    expect(asked).toEqual([])
+  })
+
+  it("refuses a canisterId that is not a canister ID, before any request", async () => {
+    const asked = refuseNetwork()
+    const result = await fetchCandid({
+      ...request,
+      canisterId: "not-a-canister",
+      network: "ic",
+    })
+    expect(result.ok).toBe(false)
+    expect(!result.ok && result.message).toMatch(
+      /^canisterId "not-a-canister" is not a canister ID: /
+    )
+    expect(asked).toEqual([])
+  })
+
+  it("gives up when the network does not answer within the deadline", async () => {
+    const host = await silentHost()
+    const result = await fetchCandid({
+      ...request,
+      network: { host },
+      timeoutMs: 300,
+    })
+    expect(result.ok).toBe(false)
+    expect(!result.ok && result.message).toBe(
+      `${host} did not answer within 0.3s, so the candid:service of ${LEDGER_ID} could not be read. ` +
+        "Check the connection and build again, or write did/ledger.did yourself, and the plugin reads it instead of fetching."
+    )
+  })
+
+  it("says to start the local network when local cannot be reached", async () => {
+    refuseNetwork()
+    const result = await fetchCandid({ ...request, network: "local" })
+    expect(result.ok).toBe(false)
+    expect(!result.ok && result.message).toContain(
+      `could not reach http://127.0.0.1:8000 to read the candid:service of ${LEDGER_ID} on local (`
+    )
+    expect(!result.ok && result.message).toContain(
+      "Is the local network running? Start it with `icp network start`."
     )
   })
 })

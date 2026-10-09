@@ -416,9 +416,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   const refetched = new Set<string>()
 
   /**
-   * The text this plugin last wrote to each `.did` it fetched, by absolute
-   * path, until the watcher reports that write. The run that fetched the file
-   * generates it, so the watcher's event for that write starts no second run.
+   * The text this plugin last wrote to each `.did` it fetched under a dev
+   * server, by absolute path, until the watcher reports that write. The run
+   * that fetched the file generates it, so the watcher's event for that write
+   * starts no second run. A build has no such watcher, and records nothing.
    */
   const justFetched = new Map<string, string>()
 
@@ -429,6 +430,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * one fetch, from the first of them with a `canisterId` (or the first one
    * `IC_REACTOR_FETCH` names). A `didFile` on disk that nobody asked to fetch
    * again costs no network request, and `@icp-sdk/core` is not even loaded.
+   *
+   * A fetch that failed is not remembered: the next `buildStart` (a rebuild
+   * of `vite build --watch`, or another Vite environment's) tries it again,
+   * so a network that comes back is used without restarting Vite.
    *
    * Resolves with the canisters that cannot be generated, since their fetch
    * failed, or `undefined` when `signal` was aborted first. Never rejects.
@@ -509,8 +514,23 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
           log.info(`ic-reactor: ${relativeToRoot(file)} matches ${from}`)
           continue
         }
-        justFetched.set(file, result.did)
-        writeDid(file, result.did)
+        // Only a dev server's watcher reports the write and clears the entry.
+        if (devServer) justFetched.set(file, result.did)
+        try {
+          writeDid(file, result.did)
+        } catch (writeError) {
+          // Only the canisters of this file fail: the others generate.
+          justFetched.delete(file)
+          for (const canister of members) {
+            failures.push({
+              canister,
+              message:
+                `fetched ${from}, but could not write it to ${relativeToRoot(file)}: ${describe(writeError)}. ` +
+                `Make its directory writable and build again.`,
+            })
+          }
+          continue
+        }
         log.info(
           `ic-reactor: ${before === undefined ? "wrote" : "rewrote"} ${relativeToRoot(file)} from ${from} ` +
             `(${Buffer.byteLength(result.did)} bytes): commit it with the app`

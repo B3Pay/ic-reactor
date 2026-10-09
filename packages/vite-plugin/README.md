@@ -148,10 +148,13 @@ export default defineConfig({
   only when the host is local (`localhost`, `*.localhost` or a loopback
   address) and is mainnet's otherwise, as `createClient` decides.
 - An unreachable network, a refused read (the canister keeps its interface
-  private), a canister that publishes no `candid:service`, and a canister that
-  does not exist on that network each fail with a message of their own, naming
-  the canister and what to do next. A failed fetch follows `failOnError` as a
-  failed generation does.
+  private), a canister that publishes no `candid:service`, a canister that
+  does not exist on that network, a certificate that does not verify against
+  the root key (the message names the key), and a network that does not answer
+  within 30 seconds each fail with a message of their own, naming the canister
+  and what to do next. A `didFile` that cannot be written fails only the
+  canisters that name it. A failed fetch follows `failOnError` as a failed
+  generation does, and is tried again at the next build.
 - `canisterId` is also the ID the `ic_env` cookie carries under `vite dev`.
 
 ## Generation

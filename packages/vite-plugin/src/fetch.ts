@@ -180,6 +180,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
     AgentError,
     HttpErrorCode,
     HttpFetchErrorCode,
+    TrustError,
   } = sdk.agent
 
   let principal: import("@icp-sdk/core/principal").Principal
@@ -280,14 +281,36 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
           `Build again later, ${ownFile}.`,
       }
     }
+    const reason = firstLine(
+      error instanceof Error ? error.message : String(error)
+    )
+    if (error instanceof TrustError) {
+      return {
+        ok: false,
+        message:
+          `the certificate ${network.host} sent for the candid:service of ${where} did not verify against ${rootKeyOf(network)} (${reason}). ` +
+          `Check that network names the network the canister is on, ${ownFile}.`,
+      }
+    }
     return {
       ok: false,
-      message: `could not read the certified candid:service of ${where}: ${firstLine(error instanceof Error ? error.message : String(error))}`,
+      message: `could not read the certified candid:service of ${where} (${reason}). Build again, ${ownFile}.`,
     }
   } finally {
     clearTimeout(timer)
     signal?.removeEventListener("abort", stop)
   }
+}
+
+/**
+ * The root key a certificate from `network` is checked against, as a message
+ * names it. A host that is not local never hands over a key of its own.
+ */
+function rootKeyOf(network: ResolvedNetwork): string {
+  if (network.fetchRootKey) return `the root key fetched from ${network.host}`
+  return network.label === "ic"
+    ? "mainnet's root key"
+    : `mainnet's root key, since the root key of a host that is not local is never fetched from it`
 }
 
 /** What `fetch` threw, with the network error Node keeps in its `cause`. */
