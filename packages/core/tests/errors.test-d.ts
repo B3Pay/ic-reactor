@@ -229,6 +229,22 @@ describe("isReactorError(error, canister, method)", () => {
     }
     expectTypeOf(catches).toBeFunction()
   })
+
+  it("keeps the one-argument form when passed point-free", () => {
+    // Inferring from an overloaded function, TypeScript takes its last
+    // signature: that must be the one-argument form, or `filter` and `find`
+    // stop narrowing.
+    const reasons: unknown[] = []
+    expectTypeOf(reasons.filter(isReactorError)).toEqualTypeOf<
+      ReactorError<unknown>[]
+    >()
+    expectTypeOf(reasons.find(isReactorError)).toEqualTypeOf<
+      ReactorError<unknown> | undefined
+    >()
+    expectTypeOf(
+      reasons.filter(isReactorError).map((e) => e.kind)
+    ).toEqualTypeOf<ReactorError<unknown>["kind"][]>()
+  })
 })
 
 describe("ErrorContext", () => {

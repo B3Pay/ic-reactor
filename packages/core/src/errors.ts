@@ -147,14 +147,6 @@ const RETRYABLE = Symbol.for("ic-reactor.ReactorError.retryable")
 const CANISTER = Symbol.for("ic-reactor.ReactorError.canister")
 
 /**
- * Whether `error` is a {@link ReactorError}, including one created by another
- * copy of this package. Narrows to `ReactorError<unknown>`: after a check on
- * `kind === "canister_err"`, `err` is `unknown`. It can be passed point-free,
- * as in `errors.filter(isReactorError)`: the index and the array an array
- * method passes are not a canister and a method.
- */
-export function isReactorError(error: unknown): error is ReactorError<unknown>
-/**
  * Whether `error` is a {@link ReactorError} that a call of `method` on
  * `canister` rejected with. Narrows to `ReactorError<E>`, where `E` is the
  * method's `Err` arm, and whose `method` is `method`: after a check on
@@ -186,6 +178,15 @@ export function isReactorError<A, M extends keyof A & string>(
   canister: Canister<A>,
   method: M
 ): error is ReactorError<ErrorOf<A, M>> & { readonly method: M }
+/**
+ * Whether `error` is a {@link ReactorError}, including one created by another
+ * copy of this package. Narrows to `ReactorError<unknown>`: after a check on
+ * `kind === "canister_err"`, `err` is `unknown`. It can be passed point-free,
+ * as in `errors.filter(isReactorError)`: the index and the array an array
+ * method passes are not a canister and a method. This signature is listed
+ * after the three-argument one so that point-free use infers it.
+ */
+export function isReactorError(error: unknown): error is ReactorError<unknown>
 export function isReactorError(
   error: unknown,
   canister?: unknown,

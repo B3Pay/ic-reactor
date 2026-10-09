@@ -30,8 +30,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   canister object (the `certified: true` one, or the same canister of another
   client) or of a `client.func` call is `false`, and a `false` result leaves
   every `kind` possible. The one-argument form is unchanged, including
-  point-free use such as `errors.filter(isReactorError)`. It is an overload of
-  an existing export: core still has 13 names.
+  point-free use: `errors.filter(isReactorError)` is still typed
+  `ReactorError<unknown>[]`, because the one-argument signature is listed last.
+  It is an overload of an existing export: core still has 13 names.
 
 ### @ic-reactor/vite-plugin
 
@@ -71,10 +72,7 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### CI (not published)
 
-- Core's size limit is 14.5 kB: the guard's canister check adds 102 B (14,449 B
-  measured). The app checks measure 89,484 B (+121 B) and 90,692 B (+126 B),
-  still under their limits.
-- Core's size limit is 14.4 kB gzipped, just above its measured 14,347 B,
+- Core's size limit was set to 14.4 kB gzipped, just above its measured 14,347 B,
   where it was 50 kB, as react's 1.28 kB already sits at its size. Two new
   checks measure what an app pays with the peers included, which the
   packages' own checks never see: `{ createClient }` (89,363 B against
@@ -84,6 +82,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   moves a size states the delta and raises its limit deliberately
   (CONTRIBUTING.md, "Size budget"). Core's config moved from its
   `package.json` to `packages/core/.size-limit.js`, which is not published.
+- Core's size limit is raised to 14.5 kB: the guard's canister check adds
+  102 B (14,449 B measured). The app checks measure 89,484 B (+121 B) and
+  90,692 B (+126 B), still under their limits.
 
 ## core, react, vite-plugin 4.0.0-beta.3
 
