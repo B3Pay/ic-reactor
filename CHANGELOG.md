@@ -47,7 +47,8 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   object resolves to another canister id than the write went to (a `{ name }`
   the `ic_env` cookie maps elsewhere). The offer's `arg` is the attempt's own
   argument, and goes out only as the same write. `send()` sends the bytes
-  the attempt sent, to the canister id it went to. `mutate(arg)`, on any
+  the attempt sent, to the canister id it went to (a management call routed
+  by the effective canister id it went out with). `mutate(arg)`, on any
   mutation of this client, sends it only to that method and canister id, and
   only while it encodes to those bytes. Each refusal sends nothing: `cancelled`
   (`caller_changed`) once someone else is the caller, `cancelled`
@@ -56,9 +57,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   stays held to that write, so a new write needs a new argument object. The
   client cannot check that a canister deduplicates: a method without such a
   key has no safe re-send. It is a method of `Client`, not a new export: core
-  still has 13 names. Core's size limit is raised to 15 kB (14,946 B
-  measured, +497 B for `resendOf`), and the app checks to 90 kB (89,944 B,
-  +460 B) and 91.2 kB (91,148 B, +456 B). React's own code is unchanged.
+  still has 13 names. Core's size limit is raised to 15 kB (14,957 B
+  measured, +508 B for `resendOf`), and the app checks to 90 kB (89,949 B,
+  +465 B) and 91.2 kB (91,155 B, +463 B). React's own code is unchanged.
 
 ### @ic-reactor/vite-plugin
 

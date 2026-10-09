@@ -3123,5 +3123,15 @@
     "file": "src/options.ts",
     "search": "send: () => invoke(internals, attempt),",
     "replace": "send: () => invoke(internals, { ...attempt, target: record.resolve() }),"
+  },
+  {
+    "id": "ir850-c1-effective-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "routes a management write's re-send by the effective canister id its write went out with",
+    "why": "run derives a management call's effective canister id from the argument objects every time, so send() of a kept write whose argument was changed since routes its original bytes by another canister",
+    "file": "src/call.ts",
+    "search": "if (management && !request.effective) {",
+    "replace": "if (management) {"
   }
 ]

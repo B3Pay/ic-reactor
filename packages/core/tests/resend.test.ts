@@ -448,4 +448,28 @@ describe("client.resendOf", () => {
     })
     expect(calls).toEqual(["stop"])
   })
+
+  it("routes a management write's re-send by the effective canister id its write went out with", async () => {
+    const t = setup()
+    t.mock<management.Actor>(management.actor, MANAGEMENT, {
+      stop_canister: () => undefined,
+    })
+    const ic = t.client.canister<management.Actor>(management.actor, {
+      id: MANAGEMENT,
+    })
+    const arg = { canister_id: principal(SHAPES) }
+    t.dropNextReply()
+    const error = await ic.stop_canister(arg).catch((e: unknown) => e)
+    expect(error).toMatchObject({ kind: "outcome_unknown" })
+    const again = t.client.resendOf(error, ic, "stop_canister", {
+      dedupedBy: (arg) => arg.canister_id,
+    })
+    expect(again?.arg).toBe(arg)
+
+    // The bytes still name SHAPES, so the call must still be routed by it.
+    rewrite(arg, { canister_id: principal(LEDGER) })
+    await expect(again?.send()).resolves.toBeUndefined()
+    const stops = t.requests.filter((r) => r.methodName === "stop_canister")
+    expect(stops.map((r) => r.effectiveCanisterId)).toEqual([SHAPES, SHAPES])
+  })
 })

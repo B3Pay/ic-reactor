@@ -186,6 +186,12 @@ export interface CallRequest {
    */
   encoded?: EncodeResult
   /**
+   * The effective canister id a call to `aaaaa-aa` is routed by: derived from
+   * the arguments by `run` the first time, which sets it here, so a kept
+   * write is routed where its bytes went, as {@link encoded} is.
+   */
+  effective?: string
+  /**
    * The write this call sends again: set by a mutation given an argument
    * `client.resendOf()` offered. The call is refused, and nothing sent,
    * unless it is that write ({@link differs}).
@@ -343,11 +349,10 @@ async function run(
       )
     }
   }
-  let effective = target.id
-  if (management) {
+  if (management && !request.effective) {
     const routed = effectiveCanisterId(name, request.values)
     if (!routed.ok) throw unroutable(where, routed)
-    effective = routed.id
+    request.effective = routed.id
   }
 
   const mode: CallMode = write ? "update" : "query"
@@ -359,7 +364,7 @@ async function run(
         : "query"
   const call: Outgoing = {
     canisterId: target.id,
-    effective,
+    effective: request.effective ?? target.id,
     methodName: name,
     arg: encoded.bytes,
     mode,

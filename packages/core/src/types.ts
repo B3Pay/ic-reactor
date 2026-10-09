@@ -379,7 +379,7 @@ export interface Resend<V, D> {
   readonly from: string
   /**
    * Sends again now the bytes the attempt sent, to the canister id it went
-   * to, as `from`, whatever became of `arg` or of a `{ name }` since. If
+   * to (for `aaaaa-aa`, routed by the same effective canister id), as `from`, whatever became of `arg` or of a `{ name }` since. If
    * someone else is the caller by then, it rejects `cancelled`
    * (`caller_changed`) and sends nothing. Settles as a direct call does.
    */
