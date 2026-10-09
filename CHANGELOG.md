@@ -96,6 +96,18 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   checks; its duplicate-transfer recipe and the writes guide's direct
   transfer read the typed `err` instead of casting it. The consumer guide
   (`llms.txt`) and the skill say to use it after a direct call.
+- Getting started has a section on keeping the IC stack (the client,
+  `AuthClient` and the generated module) out of an app's first load with
+  `React.lazy`, with no change to the library (#855). Measured on the Vite
+  wallet with Vite 8.3.0, the first load drops from 622.46 kB (193.56 kB
+  gzipped) to 222.30 kB (69.90 kB gzipped), and 401.79 kB (126.21 kB gzipped)
+  moves to chunks loaded asynchronously. It says what a route guard sees meanwhile:
+  `AuthState.status` keeps its four members, with none for "not loaded yet",
+  so a guard lives inside the lazy tree and the `Suspense` fallback stands for
+  "not known yet". It also says that the boundaries for `useSuspenseQuery`
+  reads and lazy routes go below the `ReactorProvider`: with only the entry's
+  boundary above it, a suspending read rebuilds the client on every attempt
+  and never renders. The Auth guide links to it.
 
 ### CI (not published)
 
