@@ -24,7 +24,7 @@ export default [
   {
     // Measured 90,566 B on 4.0.0-beta.3: the limit leaves 134 B. React itself
     // is left out: the app ships it with or without ic-reactor.
-    name: "App: createClient, ReactorProvider and useClient, peers but React included",
+    name: "App: createClient, ReactorProvider and useClient, peers included, React left out",
     path: "react.js",
     limit: "90.7 kB",
     gzip: true,

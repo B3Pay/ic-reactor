@@ -57,11 +57,17 @@ describe("the size-app fixture", () => {
       join(repoRoot, ".github", "workflows", "ci.yml"),
       "utf8"
     )
-    const build = ci.indexOf("run: pnpm build\n")
-    const size = ci.indexOf("run: pnpm size\n")
+    // Only the build job: the lint job also runs `pnpm build`, earlier in the file.
+    const start = ci.indexOf("\n  build:\n")
+    assert.ok(start !== -1, "ci.yml has no build job")
+    const next = ci.slice(start + 1).search(/\n  [a-z][a-z-]*:\n/)
+    const job =
+      next === -1 ? ci.slice(start) : ci.slice(start, start + 1 + next)
+    const build = job.indexOf("run: pnpm build\n")
+    const size = job.indexOf("run: pnpm size\n")
     assert.ok(
       build !== -1 && size > build,
-      "ci.yml runs no `pnpm size` after `pnpm build`"
+      "ci.yml's build job runs no `pnpm size` after `pnpm build`"
     )
   })
 })
