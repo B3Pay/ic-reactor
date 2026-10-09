@@ -274,14 +274,15 @@ what happened. Two ways to know:
   and `memo` included, is answered `Duplicate`, which means the first one
   went through. Give each transfer its own `memo`, or two different
   transfers of the same amount made in the same millisecond look like one,
-  and the second is reported as done when it never ran. The client does not
-  do this for you. It is the ledger's feature, and the
-  [Vite wallet example](/v4/examples/vite-wallet/) uses it as its recipe.
+  and the second is reported as done when it never ran. It is the ledger's
+  feature: `client.resendOf()` offers the re-send only for a key you say the
+  canister deduplicates on, and only to the account that sent it (see
+  [Writes](/v4/guides/writes/#sending-the-same-write-again)).
 
 ```ts
 import { isReactorError } from "@ic-reactor/core"
 import type { Account } from "./generated/icrc1"
-import { ledger } from "./ledger"
+import { client, ledger } from "./ledger"
 
 /** Sends a transfer, and after an unknown outcome sends the same argument once more. */
 export async function transferOnce(to: Account, amount: bigint) {
@@ -297,9 +298,13 @@ export async function transferOnce(to: Account, amount: bigint) {
   try {
     return await ledger.icrc1_transfer(arg)
   } catch (error) {
-    if (!isReactorError(error) || !error.mayHaveExecuted) throw error
+    // Offered only after an unknown outcome, while its sender is the caller.
+    const again = client.resendOf(error, ledger, "icrc1_transfer", {
+      dedupedBy: (sent) => sent.created_at_time,
+    })
+    if (again === undefined) throw error
     try {
-      return await ledger.icrc1_transfer(arg) // the identical argument
+      return await again.send() // the identical argument, as the same sender
     } catch (second) {
       if (
         isReactorError(second, ledger, "icrc1_transfer") &&

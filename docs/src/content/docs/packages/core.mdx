@@ -63,7 +63,7 @@ it at 13.
 | `isReactorError`   | runtime | Tests whether a thrown value is a `ReactorError`; with a canister and a method, one of that call's, its `err` typed. See [Errors](/v4/guides/errors/).                             |
 | `parseUnits`       | runtime | Text to base units: `parseUnits("1.5", 8)` is `150000000n`. See [Values and units](/v4/guides/values/).                                                                            |
 | `formatUnits`      | runtime | Base units to text, without losing digits. See [Values and units](/v4/guides/values/).                                                                                             |
-| `Client`           | type    | What `createClient` returns: `canister`, `queryOptions`, `mutationOptions`, `queryKey`, `func`, `signIn`, `signOut`, `caller`, `authState`, `subscribe`, `queryClient`, `dispose`. |
+| `Client`           | type    | A client offers: `canister`, `queryOptions`, `mutationOptions`, `resendOf`, `queryKey`, `func`, `signIn`, `signOut`, `caller`, `authState`, `subscribe`, `queryClient`, `dispose`. |
 | `ClientOptions`    | type    | The argument of `createClient`: a `network`, and exactly one of `identity` and `auth`.                                                                                             |
 | `Network`          | type    | `"ic"`, `"local"`, `"env"`, or `{ host, rootKey?, name?, fetchRootKey? }`.                                                                                                         |
 | `AuthLike`         | type    | What `auth` must be: the shape of an `@icp-sdk/auth` 10 `AuthClient`. See [Auth](/v4/guides/auth/).                                                                                |

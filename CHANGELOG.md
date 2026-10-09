@@ -33,6 +33,24 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   point-free use: `errors.filter(isReactorError)` is still typed
   `ReactorError<unknown>[]`, because the one-argument signature is listed last.
   It is an overload of an existing export: core still has 13 names.
+- `client.resendOf(error, canister, method, { dedupedBy })` offers to send a
+  write again exactly as it was sent, after a failure that left its outcome
+  unknown, and only for a method the app says deduplicates (#850). It returns
+  `undefined` unless `error` is a write of that method on that canister with
+  `mayHaveExecuted: true`, its argument is an object in which `dedupedBy`
+  finds a key (`(arg) => arg.created_at_time` for an ICRC-1 transfer; `null`
+  or `undefined` offers nothing), and the principal that sent it is the
+  caller now: nothing after a sign-out or a sign-in as another account, the
+  offer again once the sender signs back in, and on a view pinned to a
+  principal (hydration) the live caller decides. The offer's `arg` is the
+  attempt's own argument, and goes out only as its sender, by `send()` or by
+  `mutate(arg)` on the mutation that failed; once someone else is the caller
+  either one rejects `cancelled` (`caller_changed`) and sends nothing. The
+  client cannot check that a canister deduplicates: a method without such a
+  key has no safe re-send. It is a method of `Client`, not a new export: core
+  still has 13 names. Core's size limit is raised to 14.8 kB (14,750 B
+  measured, +301 B), and the app checks to 89.8 kB (89,746 B, +262 B) and
+  91 kB (90,960 B, +268 B). React's own code is unchanged.
 
 ### @ic-reactor/vite-plugin
 
