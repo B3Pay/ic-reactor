@@ -2408,5 +2408,125 @@
     "file": "src/client.ts",
     "search": "    const handed = { agentOptions }",
     "replace": "    const handed = { agentOptions: resolution.network.agentOptions }"
+  },
+  {
+    "id": "did-fetch-on-disk-fetched",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is generated with no network request under vite build and vite dev",
+    "why": "a didFile on disk fetched all the same, so a build needs the network and can rewrite the committed file",
+    "file": "src/index.ts",
+    "search": "again ?? (fs.existsSync(file) ? undefined : fetchable[0])",
+    "replace": "again ?? fetchable[0]"
+  },
+  {
+    "id": "did-fetch-not-written",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is written from the certified candid:service and generated, and a second build makes no request",
+    "why": "the fetched interface is not written to didFile, so there is nothing to generate from",
+    "file": "src/index.ts",
+    "search": "        writeDid(file, result.did)\n",
+    "replace": ""
+  },
+  {
+    "id": "did-fetch-every-build",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is written from the certified candid:service and generated, and a second build makes no request",
+    "why": "every build fetches the interface again, though the first one wrote didFile",
+    "file": "src/index.ts",
+    "search": "again ?? (fs.existsSync(file) ? undefined : fetchable[0])",
+    "replace": "again ?? fetchable[0]"
+  },
+  {
+    "id": "did-fetch-shared-file-fetched-twice",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is fetched once for the canisters that share it",
+    "why": "canisters that name one didFile each fetch it, and each writes the same file",
+    "file": "src/index.ts",
+    "search": "        return source ? [{ file, members, source, again: !!again }] : []",
+    "replace": "        return fs.existsSync(file)\n          ? []\n          : fetchable.map((source) => ({ file, members, source, again: !!again }))"
+  },
+  {
+    "id": "did-fetch-watcher-regenerates-own-write",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is written and generated once under vite dev, though the watcher reports the write",
+    "why": "the watcher's event for the plugin's own write of a fetched didFile starts a second generator run",
+    "file": "src/index.ts",
+    "search": "        if (fs.readFileSync(saved, \"utf-8\") === fetched) return\n",
+    "replace": ""
+  },
+  {
+    "id": "did-fetch-403-not-refused",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a read refused with HTTP 403 (private metadata) reported as any other HTTP answer, without saying the interface is private",
+    "file": "src/fetch.ts",
+    "search": "if (status === 401 || status === 403) {",
+    "replace": "if (status === 401) {"
+  },
+  {
+    "id": "did-fetch-unreachable-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a network that cannot be reached reported as an unknown agent error, without saying what to do",
+    "file": "src/fetch.ts",
+    "search": "if (error instanceof AgentError && error.hasCode(HttpFetchErrorCode)) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-not-found-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a canister that does not exist on the network reported as any other HTTP answer, without naming canisterId and network",
+    "file": "src/fetch.ts",
+    "search": "if (/canister_not_found/.test(bodyText)) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-failure-dropped",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "follows failOnError: logged, and the other canisters generated",
+    "why": "a failed fetch is dropped: the canister is neither generated nor reported",
+    "file": "src/index.ts",
+    "search": "        return failures && [...unfetched, ...failures]",
+    "replace": "        return failures"
+  },
+  {
+    "id": "did-fetch-variable-ignored",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is the only thing that rewrites a didFile on disk",
+    "why": "IC_REACTOR_FETCH is ignored, so nothing fetches a didFile on disk again",
+    "file": "src/index.ts",
+    "search": "const wanted = (process.env[FETCH_VARIABLE] ?? \"\")",
+    "replace": "const wanted = (\"\" as string)"
+  },
+  {
+    "id": "did-fetch-all-ignored",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "takes all, and fails a named canister that has no canisterId",
+    "why": "IC_REACTOR_FETCH=all read as a canister named all, so nothing is fetched again",
+    "file": "src/index.ts",
+    "search": "const all = wanted.includes(\"all\")",
+    "replace": "const all = false"
+  },
+  {
+    "id": "did-fetch-absent-read-as-interface",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a certificate without candid:service read as an interface, so the canister fails with a write error instead of saying it publishes none",
+    "file": "src/fetch.ts",
+    "search": "if (did === null || did === undefined) {",
+    "replace": "if (did === undefined) {"
   }
 ]

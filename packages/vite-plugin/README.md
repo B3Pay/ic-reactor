@@ -12,7 +12,9 @@ type `IcReactorPluginOptions`:
 - **Generation.** It runs `candid-core-cli gen` on each configured `.did` file
   when a build or the dev server starts, and again when that file changes. The
   generated module is candid-core's, as the generator wrote it: the plugin
-  adds no wrapper files, hooks or reactors.
+  adds no wrapper files, hooks or reactors. A `.did` that is not on disk yet
+  can be fetched from the live canister first (see "Fetch a .did from a live
+  canister").
 - **Environment.** Under `vite dev` and `vite preview` it sets the `ic_env`
   cookie and proxies `/api` to the local IC network, so the app finds its
   canister IDs and the replica's root key without configuration.
@@ -29,6 +31,10 @@ npm install --save-exact @candid-core/schema@0.3.0
 npm install --save-dev --save-exact @candid-core/cli@0.2.0
 npm install --save-dev @ic-reactor/vite-plugin@beta
 ```
+
+`@icp-sdk/core` 6.1 or later is an optional peer: the plugin loads it only to
+fetch a `.did` from a live canister, and an app on `@ic-reactor/core` has it
+installed already.
 
 ## Quick Start
 
@@ -66,11 +72,12 @@ library: `ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt`.
 
 Each entry of `canisters` takes:
 
-| Field        | Default           | Meaning                                                                                |
-| ------------ | ----------------- | -------------------------------------------------------------------------------------- |
-| `didFile`    | none              | The canister's Candid file, relative to the Vite root. Without it nothing is generated |
-| `outDir`     | `"src/canisters"` | Where the generator writes, relative to the Vite root                                  |
-| `canisterId` | none              | A fixed ID for the cookie, which wins over the one `icp` reports                       |
+| Field        | Default           | Meaning                                                                                                                |
+| ------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `didFile`    | none              | The canister's Candid file, relative to the Vite root. Without it nothing is generated                                 |
+| `outDir`     | `"src/canisters"` | Where the generator writes, relative to the Vite root                                                                  |
+| `canisterId` | none              | A fixed ID for the cookie, which wins over the one `icp` reports, and the canister a missing `didFile` is fetched from |
+| `network`    | `"ic"`            | Where that canister is, for the fetch: `"ic"`, `"local"` or `{ host }`                                                 |
 
 Canisters that share one interface share one module. An ICP ledger and a ckBTC
 ledger both on `icrc1.did` are two entries, so that the `ic_env` cookie carries
@@ -102,6 +109,50 @@ naming both. Give one an `outDir` of its own. Names that differ only in case
 (`Ledger.did` and `ledger.did`) collide only where the filesystem of the
 `outDir` ignores case, as macOS and Windows do by default: the plugin checks
 the filesystem and does not refuse them where it tells them apart.
+
+## Fetch a .did from a live canister
+
+Give an entry a `canisterId`, and a `didFile` that is not on disk is written
+from the live canister's `candid:service` metadata, read from certified state
+with `HttpAgent.readState`, before it is generated:
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite"
+import { icReactor } from "@ic-reactor/vite-plugin"
+
+export default defineConfig({
+  plugins: [
+    icReactor({
+      canisters: {
+        ledger: {
+          didFile: "did/icp_ledger.did", // written when missing: commit it
+          canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+          network: "ic",
+        },
+      },
+    }),
+  ],
+})
+```
+
+- A `didFile` on disk is generated with no network request, under `vite build`
+  and `vite dev`. Commit the file the plugin writes, and builds stay
+  reproducible and work offline.
+- It is fetched again only on request: `IC_REACTOR_FETCH=ledger vite build`
+  (names separated by commas, or `all`). A build without it never rewrites a
+  `didFile`.
+- `network` is `"ic"` (mainnet, checked against the mainnet root key; the
+  default), `"local"` (icp-cli's local network on `http://127.0.0.1:8000`,
+  whose root key is fetched from it), or `{ host }`, whose root key is fetched
+  only when the host is local (`localhost`, `*.localhost` or a loopback
+  address) and is mainnet's otherwise, as `createClient` decides.
+- An unreachable network, a refused read (the canister keeps its interface
+  private), a canister that publishes no `candid:service`, and a canister that
+  does not exist on that network each fail with a message of their own, naming
+  the canister and what to do next. A failed fetch follows `failOnError` as a
+  failed generation does.
+- `canisterId` is also the ID the `ic_env` cookie carries under `vite dev`.
 
 ## Generation
 
