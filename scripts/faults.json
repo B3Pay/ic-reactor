@@ -2408,5 +2408,436 @@
     "file": "src/client.ts",
     "search": "    const handed = { agentOptions }",
     "replace": "    const handed = { agentOptions: resolution.network.agentOptions }"
+  },
+  {
+    "id": "did-fetch-on-disk-fetched",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is generated with no network request under vite build and vite dev",
+    "why": "a didFile on disk fetched all the same, so a build needs the network and can rewrite the committed file",
+    "file": "src/index.ts",
+    "search": "again ?? (fs.existsSync(file) ? undefined : fetchable[0])",
+    "replace": "again ?? fetchable[0]"
+  },
+  {
+    "id": "did-fetch-not-written",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is written from the certified candid:service and generated, and a second build makes no request",
+    "why": "the fetched interface is not written to didFile, so there is nothing to generate from",
+    "file": "src/index.ts",
+    "search": "          writeDid(target, result.did)\n",
+    "replace": ""
+  },
+  {
+    "id": "did-fetch-every-build",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is written from the certified candid:service and generated, and a second build makes no request",
+    "why": "every build fetches the interface again, though the first one wrote didFile",
+    "file": "src/index.ts",
+    "search": "again ?? (fs.existsSync(file) ? undefined : fetchable[0])",
+    "replace": "again ?? fetchable[0]"
+  },
+  {
+    "id": "did-fetch-shared-file-fetched-twice",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is fetched once for the entries that share it and name one canister",
+    "why": "entries that name one didFile and one canister each fetch it, and each writes the same file",
+    "file": "src/index.ts",
+    "search": "        return [{ key, file, members, source, again: !!again }]",
+    "replace": "        return fetchable.map((source) => ({ key, file, members, source, again: !!again }))"
+  },
+  {
+    "id": "did-fetch-watcher-regenerates-own-write",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is written and generated once under vite dev, though the watcher reports the write",
+    "why": "the watcher's event for the plugin's own write of a fetched didFile starts a second generator run",
+    "file": "src/index.ts",
+    "search": "        if (fs.readFileSync(saved, \"utf-8\") === fetched) return\n",
+    "replace": ""
+  },
+  {
+    "id": "did-fetch-403-not-refused",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a read refused with HTTP 403 (private metadata) reported as any other HTTP answer, without saying the interface is private",
+    "file": "src/fetch.ts",
+    "search": "if (status === 401 || status === 403) {",
+    "replace": "if (status === 401) {"
+  },
+  {
+    "id": "did-fetch-unreachable-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a network that cannot be reached reported as an unknown agent error, without saying what to do",
+    "file": "src/fetch.ts",
+    "search": "if (error instanceof AgentError && error.hasCode(HttpFetchErrorCode)) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-not-found-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a canister that does not exist on the network reported as any other HTTP answer, without naming canisterId and network",
+    "file": "src/fetch.ts",
+    "search": "if (/canister_not_found/.test(bodyText)) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-failure-dropped",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "follows failOnError: logged, and the other canisters generated",
+    "why": "a failed fetch is dropped: the canister is neither generated nor reported",
+    "file": "src/index.ts",
+    "search": "        return failures && [...unfetched, ...failures]",
+    "replace": "        return failures"
+  },
+  {
+    "id": "did-fetch-variable-ignored",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is the only thing that rewrites a didFile on disk",
+    "why": "IC_REACTOR_FETCH is ignored, so nothing fetches a didFile on disk again",
+    "file": "src/index.ts",
+    "search": "const wanted = (process.env[FETCH_VARIABLE] ?? \"\")",
+    "replace": "const wanted = (\"\" as string)"
+  },
+  {
+    "id": "did-fetch-all-ignored",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "takes all, and fails a named canister that has no canisterId",
+    "why": "IC_REACTOR_FETCH=all read as a canister named all, so nothing is fetched again",
+    "file": "src/index.ts",
+    "search": "const all = wanted.includes(\"all\")",
+    "replace": "const all = false"
+  },
+  {
+    "id": "did-fetch-absent-read-as-interface",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a certificate without candid:service read as an interface, so the canister fails with a write error instead of saying it publishes none",
+    "file": "src/fetch.ts",
+    "search": "if (did === null || did === undefined) {",
+    "replace": "if (did === undefined) {"
+  },
+  {
+    "id": "did-fetch-root-key-from-any-host",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is fetched only from a local host",
+    "why": "the root key fetched from any host, so a host that is not local hands over its own key and its certificates are no longer checked against mainnet's",
+    "file": "src/fetch.ts",
+    "search": "fetchRootKey: isLocalHostname(url.hostname),",
+    "replace": "fetchRootKey: true,"
+  },
+  {
+    "id": "did-fetch-root-key-from-remote-host",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "of a host that is not local is mainnet's, so its own certificate fails and nothing is written",
+    "why": "the root key fetched from a host that is not local, so a certificate it signs with its own key is accepted and written to didFile",
+    "file": "src/fetch.ts",
+    "search": "fetchRootKey: isLocalHostname(url.hostname),",
+    "replace": "fetchRootKey: true,"
+  },
+  {
+    "id": "did-fetch-certificate-unverified",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "signed with another key than the root key fails the canister, and nothing is written",
+    "why": "the certificate's signature not checked, so a forged candid:service is written to didFile and generated",
+    "file": "src/fetch.ts",
+    "search": "{ paths: [candidPath] }",
+    "replace": "{ paths: [candidPath], blsVerify: async () => true }"
+  },
+  {
+    "id": "did-fetch-trust-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "signed with another key than the root key fails the canister, and nothing is written",
+    "why": "a certificate that does not verify reported as an unknown agent error, without naming the root key it was checked against",
+    "file": "src/fetch.ts",
+    "search": "if (error instanceof TrustError) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-write-error-fails-all",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "fails its own canisters only, naming the file, and the others generate",
+    "why": "a didFile that cannot be written fails every canister, including those that would have generated",
+    "file": "src/index.ts",
+    "search": "} catch (writeError) {",
+    "replace": "} catch (writeError) {\n          throw writeError"
+  },
+  {
+    "id": "did-fetch-unknown-network-read-as-ic",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "refuses a network that is not ic, local or a host, before any request",
+    "why": "a misspelt network read as mainnet, so the fetch goes to a network the user did not name",
+    "file": "src/fetch.ts",
+    "search": "if (network === undefined || network === \"ic\") {",
+    "replace": "if (network === undefined || network !== \"local\" && typeof network === \"string\") {"
+  },
+  {
+    "id": "did-fetch-bad-canister-id-throws",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "refuses a canisterId that is not a canister ID, before any request",
+    "why": "a canisterId that is not a principal throws out of the fetch instead of failing the canister with a message",
+    "file": "src/fetch.ts",
+    "search": "principal = sdk.principal.Principal.fromText(canisterId)\n  } catch (error) {\n",
+    "replace": "principal = sdk.principal.Principal.fromText(canisterId)\n  } catch (error) {\n    throw error\n"
+  },
+  {
+    "id": "did-fetch-timeout-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "gives up when the network does not answer within the deadline",
+    "why": "a network that does not answer within the deadline reported as an unknown error, without saying it timed out",
+    "file": "src/fetch.ts",
+    "search": "if (timedOut) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-local-hint-dropped",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says to start the local network when local cannot be reached",
+    "why": "an unreachable local network reported without saying to start it with icp network start",
+    "file": "src/fetch.ts",
+    "search": "network.label === \"local\"",
+    "replace": "false"
+  },
+  {
+    "id": "did-fetch-sdk-missing-throws",
+    "package": "vite-plugin",
+    "test": "tests/fetch-sdk.test.ts",
+    "testName": "says to install @icp-sdk/core when it cannot be loaded",
+    "why": "a missing @icp-sdk/core throws out of the fetch instead of saying to install it or write the didFile",
+    "file": "src/fetch.ts",
+    "search": "    sdk = { agent, principal }\n  } catch (error) {\n",
+    "replace": "    sdk = { agent, principal }\n  } catch (error) {\n    throw error\n"
+  },
+  {
+    "id": "did-fetch-failed-refetch-recorded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is tried again at the next buildStart when it failed, and served once it succeeds",
+    "why": "an IC_REACTOR_FETCH re-fetch recorded as served before its result is checked, so after a transient failure the next buildStart keeps the stale didFile instead of trying again",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "        if (!result.ok) {\n",
+        "replace": "        if (again) refetched.add(key)\n        if (!result.ok) {\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "        // Recorded only now: a fetch or a write that failed is tried again.\n        if (again) refetched.add(key)\n",
+        "replace": ""
+      }
+    ]
+  },
+  {
+    "id": "did-fetch-matching-refetch-not-recorded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is served once when the fetch matches the file on disk",
+    "why": "an IC_REACTOR_FETCH re-fetch that matches the didFile on disk is not recorded as served, so every later buildStart of the same plugin fetches it again",
+    "file": "src/index.ts",
+    "search": "          if (again) refetched.add(key)\n          continue\n",
+    "replace": "          continue\n"
+  },
+  {
+    "id": "did-fetch-failed-write-recorded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is tried again at the next buildStart when the write failed",
+    "why": "an IC_REACTOR_FETCH re-fetch recorded as served before its write, so after a failed write the next buildStart keeps the stale didFile instead of trying again",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "        if (devServer) justFetched.set(key, result.did)\n",
+        "replace": "        if (again) refetched.add(key)\n        if (devServer) justFetched.set(key, result.did)\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "        // Recorded only now: a fetch or a write that failed is tried again.\n        if (again) refetched.add(key)\n",
+        "replace": ""
+      }
+    ]
+  },
+  {
+    "id": "did-fetch-symlink-two-files",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlinked directory is fetched once, and refused when its canisters differ",
+    "why": "fetches grouped by the didFile as written, so one file named through a symlinked directory is fetched once for each name, and two canisters' interfaces race to be the file both generate from",
+    "file": "src/index.ts",
+    "search": "        const key = identify(didPath(canister))\n",
+    "replace": "        const key = didPath(canister)\n"
+  },
+  {
+    "id": "did-fetch-watcher-by-spelling",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlinked directory regenerates every entry when the watcher reports either name",
+    "why": "the watcher's event matched against the didFile as written, so a save reported under one name of the file regenerates only the entries that spell it that way",
+    "file": "src/index.ts",
+    "search": "    const affected = generated.filter(\n      (canister) => identify(didPath(canister)) === key\n    )\n    if (affected.length === 0 || queued.has(key)) return\n",
+    "replace": "    const affected = generated.filter(\n      (canister) => didPath(canister) === saved\n    )\n    if (affected.length === 0 || queued.has(key)) return\n"
+  },
+  {
+    "id": "did-fetch-case-not-folded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is one key for every spelling of a file, before and after it exists",
+    "why": "a name in another case not folded where the filesystem ignores case, so did/Ledger.did and did/ledger.did are two fetches of one file, and a missing file's key changes once it is written",
+    "file": "src/file-identity.ts",
+    "search": "  return folds(dir) === true ? real.toLowerCase() : real\n",
+    "replace": "  return real\n"
+  },
+  {
+    "id": "did-fetch-conflict-fetched",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "are refused with no fetch, and share the file once it is on disk",
+    "why": "canisters that name one missing didFile and different canisters fetch it from the first of them, and the others generate from that canister's interface",
+    "file": "src/index.ts",
+    "search": "        const conflict = conflictOf(members, fetchable)\n",
+    "replace": "        const conflict = undefined as string | undefined\n"
+  },
+  {
+    "id": "did-fetch-conflict-network-ignored",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "are refused with no fetch, and share the file once it is on disk",
+    "why": "one canister on two networks taken for one source, so the file is fetched from whichever network comes first",
+    "file": "src/index.ts",
+    "search": "key: `${canisterId}\\0${resolved.host}\\0${resolved.fetchRootKey}`,",
+    "replace": "key: `${canisterId}`,"
+  },
+  {
+    "id": "did-fetch-conflict-on-disk",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "are refused with no fetch, and share the file once it is on disk",
+    "why": "canisters that share a didFile on disk refused for naming different canisters though nothing is fetched, so two ICRC-1 ledgers on one committed icrc1.did no longer build",
+    "file": "src/index.ts",
+    "search": "        if (!source) return []\n",
+    "replace": "        if (!source && fetchable.length < 2) return []\n"
+  },
+  {
+    "id": "did-fetch-symlink-written-over",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlink to a file is written through it, so an entry that names the target generates from the fetch",
+    "why": "a fetched didFile written at the spelling of the first entry, so a didFile that is a symlink to a file is replaced by a file of its own, and the entry that names the target generates from its old interface",
+    "file": "src/index.ts",
+    "search": "        const target = realFile(file)\n",
+    "replace": "        const target = file\n"
+  },
+  {
+    "id": "did-fetch-symlink-refetched-every-build",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is served once for a didFile that is a symlink, which it writes through",
+    "why": "a re-fetched didFile that is a symlink replaced by a file of its own, whose key then differs from the one recorded as served, so IC_REACTOR_FETCH fetches it again at every buildStart",
+    "file": "src/index.ts",
+    "search": "        const target = realFile(file)\n",
+    "replace": "        const target = file\n"
+  },
+  {
+    "id": "did-fetch-dangling-directory-symlink",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a directory symlink whose target is not made yet is one file, and refused when its canisters differ",
+    "why": "a symlink whose target does not exist yet taken for a missing name, so a directory symlink to a directory not made yet is a second file: two canisters on it are both fetched into one file, and one generates from the other's interface",
+    "file": "src/file-identity.ts",
+    "search": "      if (links++ < MAX_LINKS) {\n",
+    "replace": "      if (links++ < 0) {\n"
+  },
+  {
+    "id": "did-fetch-identity-dangling-not-followed",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is one key for every spelling of a file, before and after it exists",
+    "why": "fileIdentity stops at a symlink whose target does not exist yet, so the symlink and its target are two keys until the target is made",
+    "file": "src/file-identity.ts",
+    "search": "      if (links++ < MAX_LINKS) {\n",
+    "replace": "      if (links++ < 0) {\n"
+  },
+  {
+    "id": "did-fetch-just-fetched-by-spelling",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlinked directory starts no run when the watcher reports the fetched write under the other name",
+    "why": "the plugin's own write of a fetched file recorded and looked up by the path as written, so the watcher's event for it under another name of the file starts a second generator run",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "        if (devServer) justFetched.set(key, result.did)\n",
+        "replace": "        if (devServer) justFetched.set(file, result.did)\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "    const fetched = justFetched.get(key)\n    if (fetched !== undefined) {\n      justFetched.delete(key)\n",
+        "replace": "    const fetched = justFetched.get(saved)\n    if (fetched !== undefined) {\n      justFetched.delete(saved)\n"
+      }
+    ]
+  },
+  {
+    "id": "did-fetch-removed-by-spelling",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlinked directory fails every entry when the watcher reports the file deleted under either name",
+    "why": "a deleted file matched against the didFile as written, so a deletion reported under one name of the file fails only the entries that spell it that way, and the others go on looking current",
+    "file": "src/index.ts",
+    "search": "    const removed = path.normalize(file)\n    const key = identify(removed)\n    const affected = generated.filter(\n      (canister) => identify(didPath(canister)) === key\n    )\n",
+    "replace": "    const removed = path.normalize(file)\n    const affected = generated.filter(\n      (canister) => didPath(canister) === removed\n    )\n"
+  },
+  {
+    "id": "did-fetch-queued-by-spelling",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlinked directory starts one run for two saves reported under each name",
+    "why": "the saves waiting for a run recorded by the path as written, so two saves of one file reported under two names start two generator runs",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "    if (affected.length === 0 || queued.has(key)) return\n",
+        "replace": "    if (affected.length === 0 || queued.has(saved)) return\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "    queued.add(key)\n",
+        "replace": "    queued.add(saved)\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "      queued.delete(key)\n",
+        "replace": "      queued.delete(saved)\n"
+      }
+    ]
+  },
+  {
+    "id": "did-fetch-conflict-network-unnamed",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "are refused with no fetch, and share the file once it is on disk",
+    "why": "a canister whose network is not one shown as on ? in a conflict, which hides what is wrong with its network",
+    "file": "src/index.ts",
+    "search": "            label: `${JSON.stringify(network)} (not a network)`,\n",
+    "replace": "            label: \"?\",\n"
   }
 ]

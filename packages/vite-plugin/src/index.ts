@@ -7,6 +7,10 @@
  *   changes, it runs `candid-core-cli gen` in a child process (see
  *   generate.ts) and leaves candid-core's module as the generator wrote it. No
  *   wrapper files, hooks or reactors are generated.
+ * - Fetching: a `didFile` that is not on disk is written from the live
+ *   canister's certified `candid:service` before it is generated, when the
+ *   canister names a `canisterId` (see fetch.ts). Nothing is fetched for a
+ *   `didFile` that exists, unless `IC_REACTOR_FETCH` asks for it.
  * - Environment: under `vite dev` and `vite preview` it sets the `ic_env`
  *   cookie and proxies `/api` to the local IC network (see dev-environment.ts).
  */
@@ -27,7 +31,19 @@ import {
   type LocalEnvironment,
   type LocalEnvironmentState,
 } from "./dev-environment.js"
-import { GENERATE_TIMEOUT_MS, generate, resolveCliBin } from "./generate.js"
+import {
+  fetchCandid,
+  resolveNetwork,
+  writeDid,
+  type CanisterNetwork,
+} from "./fetch.js"
+import { cachedFoldsCase, fileIdentity, realFile } from "./file-identity.js"
+import {
+  GENERATE_TIMEOUT_MS,
+  foldsCase,
+  generate,
+  resolveCliBin,
+} from "./generate.js"
 
 const PLUGIN_NAME = "ic-reactor-plugin"
 
@@ -61,8 +77,26 @@ export interface IcReactorPluginOptions {
    *   generates nothing and is only named in the cookie.
    * - `outDir`: where the generator writes, relative to the Vite root.
    *   Default: `"src/canisters"`.
-   * - `canisterId`: a fixed ID for the cookie, which wins over the ID `icp`
-   *   reports for the canister.
+   * - `canisterId`: the canister's ID. Under `vite dev` and `vite preview` the
+   *   cookie carries it, and it wins over the ID `icp` reports for the
+   *   canister. With a `didFile` that is not on disk, the build first reads
+   *   the canister's `candid:service` from certified state on `network` and
+   *   writes it to `didFile`, which is then generated as any other and
+   *   committed with the app. A `didFile` on disk is never fetched or
+   *   rewritten: the build reads it with no network access. To fetch it again,
+   *   run the build or dev server with `IC_REACTOR_FETCH=<name>` (several
+   *   names separated by commas, or `all`). A fetch that fails (the network
+   *   cannot be reached, the canister keeps its interface private or publishes
+   *   none) fails the canister as a generation does, under `failOnError`.
+   *   Canisters that name one file, under any path to it, share one fetch;
+   *   when they name different canisters (or networks) to fetch it from, none
+   *   is fetched and each fails, since whose interface it is cannot be told.
+   * - `network`: where the canister to fetch is. `"ic"`, mainnet, checked
+   *   against the mainnet root key; `"local"`, icp-cli's local network on
+   *   `http://127.0.0.1:8000`, whose root key is fetched from it; or
+   *   `{ host }`, any other replica, whose root key is fetched only when the
+   *   host is local (`localhost`, `*.localhost` or a loopback address) and is
+   *   mainnet's otherwise. Only a fetch reads it. Default: `"ic"`.
    *
    * The generator is the `@candid-core/cli` the app has installed, run as a
    * child process so that a failure on one `.did` stops that process and not
@@ -70,7 +104,12 @@ export interface IcReactorPluginOptions {
    */
   canisters?: Record<
     string,
-    { didFile?: string; outDir?: string; canisterId?: string }
+    {
+      didFile?: string
+      outDir?: string
+      canisterId?: string
+      network?: "ic" | "local" | { host: string }
+    }
   >
   /**
    * Inject the local IC environment under `vite dev` and `vite preview`: set
@@ -107,7 +146,13 @@ interface Generated {
   name: string
   didFile: string
   outDir: string
+  /** The live canister its `didFile` is fetched from when it is not on disk. */
+  canisterId?: string
+  network?: CanisterNetwork
 }
+
+/** The environment variable that asks for a `didFile` to be fetched again. */
+const FETCH_VARIABLE = "IC_REACTOR_FETCH"
 
 /** A canister that did not generate, and why. */
 interface Failure {
@@ -127,8 +172,12 @@ const consoleLog: PluginLog = {
 /**
  * The Vite plugin for an app built on a candid-core generated module.
  *
- * It does two things:
+ * It does three things:
  *
+ * - **Fetches a missing `.did`.** A canister with a `canisterId` whose
+ *   `didFile` is not on disk has it written from the live canister's
+ *   certified `candid:service` first. A `didFile` on disk costs no network
+ *   request. See {@link IcReactorPluginOptions.canisters}.
  * - **Generates the module.** When a build or the dev server starts, and
  *   when a configured `.did` changes, it runs the app's `candid-core-cli gen`
  *   on each `didFile` and leaves the module as the generator wrote it: no
@@ -150,7 +199,10 @@ const consoleLog: PluginLog = {
  *
  * The plugin needs `@candid-core/cli`, at the exact release that pairs with
  * the `@candid-core/schema` the generated modules import, installed in the
- * app. It imports neither, and no `@ic-reactor` runtime package.
+ * app. It imports neither, and no `@ic-reactor` runtime package. To fetch a
+ * missing `didFile` from a live canister it imports `@icp-sdk/core`, an
+ * optional peer that every app on `@ic-reactor/core` has installed; an app
+ * whose `.did` files are all on disk never loads it.
  *
  * @example
  * ```ts
@@ -158,7 +210,14 @@ const consoleLog: PluginLog = {
  * export default defineConfig({
  *   plugins: [
  *     icReactor({
- *       canisters: { ledger: { didFile: "../backend/ledger.did" } },
+ *       canisters: {
+ *         backend: { didFile: "../backend/backend.did" },
+ *         // Written from mainnet's ledger when missing; commit it.
+ *         ledger: {
+ *           didFile: "did/icp_ledger.did",
+ *           canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+ *         },
+ *       },
  *     }),
  *   ],
  * })
@@ -177,8 +236,15 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
 
   /** The canisters that have a `.did` to generate from. */
   const generated: Generated[] = names.flatMap((name) => {
-    const { didFile, outDir = DEFAULT_OUT_DIR } = canisters[name]
-    return didFile === undefined ? [] : [{ name, didFile, outDir }]
+    const {
+      didFile,
+      outDir = DEFAULT_OUT_DIR,
+      canisterId,
+      network,
+    } = canisters[name]
+    return didFile === undefined
+      ? []
+      : [{ name, didFile, outDir, canisterId, network }]
   })
 
   // Vite resolves relative project paths against the resolved `config.root`,
@@ -218,6 +284,15 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     path.relative(projectRoot, file) || "."
 
   /**
+   * The file a path names, as a key: equal for every spelling of one file,
+   * through a symlinked directory or, where the filesystem ignores case, in
+   * another case. See file-identity.ts. Fetches, the files fetched and the
+   * watcher's events are all matched by it, never by the path as written.
+   */
+  const foldsCaseOnce = cachedFoldsCase(foldsCase)
+  const identify = (file: string) => fileIdentity(file, foldsCaseOnce)
+
+  /**
    * The `.did` text each canister last generated from. A rebuild that finds
    * the text unchanged skips the canister, which is every rebuild of
    * `vite build --watch` that was not caused by a `.did`, and the second
@@ -242,7 +317,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     return result
   }
 
-  /** The `.did` files waiting for a run that has not started. See `onDidSaved`. */
+  /**
+   * The `.did` files waiting for a run that has not started, by `identify`.
+   * See `onDidSaved`.
+   */
   const queued = new Set<string>()
 
   // Aborted when the build or dev server ends (`closeBundle`), which kills
@@ -356,6 +434,229 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   }
 
   /**
+   * The `.did` files `IC_REACTOR_FETCH` has had fetched again, by
+   * `identify`. A request is served once in the life of the plugin: the second
+   * `buildStart` of Vite 6 and later, and each rebuild of
+   * `vite build --watch`, read the file it wrote. A file is recorded only once
+   * its fetch succeeded and the file on disk holds what was fetched, so a
+   * fetch or a write that failed is tried again on the next `buildStart`.
+   */
+  const refetched = new Set<string>()
+
+  /**
+   * The text this plugin last wrote to each `.did` it fetched under a dev
+   * server, by `identify`, until the watcher reports that write. The run
+   * that fetched the file generates it, so the watcher's event for that write
+   * starts no second run. A build has no such watcher, and records nothing.
+   */
+  const justFetched = new Map<string, string>()
+
+  /**
+   * Why the canisters that name one file (`members`) cannot have it fetched,
+   * or `undefined` when they can: the ones that name a `canisterId`
+   * (`fetchable`) name different canisters, or one canister on different
+   * networks, so whose interface the file is cannot be told. Asked only when
+   * the file is to be fetched: a file on disk that nobody asked to fetch again
+   * is read by them all, whatever their `canisterId`s (two ICRC-1 ledgers
+   * on one `icrc1.did`).
+   */
+  const conflictOf = (
+    members: Generated[],
+    fetchable: Generated[]
+  ): string | undefined => {
+    const sourceOf = ({ canisterId, network }: Generated) => {
+      const resolved = resolveNetwork(network)
+      // A network that is not one is named as given, so the conflict does
+      // not hide what is wrong with it.
+      return typeof resolved === "string"
+        ? {
+            key: `${canisterId}\0${JSON.stringify(network)}`,
+            label: `${JSON.stringify(network)} (not a network)`,
+          }
+        : {
+            key: `${canisterId}\0${resolved.host}\0${resolved.fetchRootKey}`,
+            label: resolved.label,
+          }
+    }
+    const sources = new Set(fetchable.map((canister) => sourceOf(canister).key))
+    if (sources.size < 2) return undefined
+    const spellings = [
+      ...new Set(members.map((canister) => relativeToRoot(didPath(canister)))),
+    ]
+    const file =
+      spellings.length === 1
+        ? spellings[0]
+        : `${spellings.join(" and ")}, which are one file,`
+    const fetches = fetchable
+      .map(
+        (canister) =>
+          `${canister.name}: ${canister.canisterId} on ${sourceOf(canister).label}`
+      )
+      .join("; ")
+    return (
+      `${quoteNames(members.map(({ name }) => name))} name ${file} but not one canister to fetch it from ` +
+      `(${fetches}): which one's interface the file holds cannot be told, so it is not fetched. ` +
+      `Give each canister a didFile of its own, or write ${spellings[0]} yourself and the plugin reads it instead of fetching.`
+    )
+  }
+
+  /** `failures` with each canister once, for the first reason it failed. */
+  const dedupe = (failures: Failure[]): Failure[] =>
+    failures.filter(
+      (failure, index) =>
+        failures.findIndex(({ canister }) => canister === failure.canister) ===
+        index
+    )
+
+  /**
+   * Write each `didFile` that a canister names a `canisterId` for and that is
+   * not on disk, from the live canister's certified `candid:service`, and
+   * each one `IC_REACTOR_FETCH` names. Canisters that name one `.did`, under
+   * any spelling of it, share one fetch when they name one canister on one
+   * network, and fail with no fetch when they name more (see `conflictOf`).
+   * A `didFile` on disk that nobody asked to fetch again costs no network
+   * request, and `@icp-sdk/core` is not even loaded.
+   *
+   * A fetch that failed is not remembered: the next `buildStart` (a rebuild
+   * of `vite build --watch`, or another Vite environment's) tries it again,
+   * so a network that comes back is used without restarting Vite.
+   *
+   * Resolves with the canisters that cannot be generated, since their fetch
+   * failed, or `undefined` when `signal` was aborted first. Never rejects.
+   */
+  const fetchMissing = async (
+    signal: AbortSignal
+  ): Promise<Failure[] | undefined> => {
+    if (signal.aborted) return undefined
+    const failures: Failure[] = []
+    try {
+      const wanted = (process.env[FETCH_VARIABLE] ?? "")
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean)
+      const all = wanted.includes("all")
+      const asked = (canister: Generated) =>
+        all || wanted.includes(canister.name)
+
+      for (const name of all ? [] : wanted) {
+        const canister = generated.find((entry) => entry.name === name)
+        if (!canister) {
+          log.warn(
+            `ic-reactor: ${FETCH_VARIABLE} names "${name}", which is not a canister with a didFile in this plugin's options`
+          )
+        } else if (!canister.canisterId) {
+          failures.push({
+            canister,
+            message: `${FETCH_VARIABLE} asks to fetch its didFile again, but it names no canisterId to fetch it from`,
+          })
+        }
+      }
+
+      // By the file, not by its spelling: two spellings of one file (through
+      // a symlinked directory, or in another case where the filesystem
+      // ignores case) are one fetch and one write. Fetched once for each
+      // spelling, the last write would win, and every canister would generate
+      // from the interface of whichever canister was fetched last.
+      const byFile = new Map<string, Generated[]>()
+      for (const canister of generated) {
+        const key = identify(didPath(canister))
+        byFile.set(key, [...(byFile.get(key) ?? []), canister])
+      }
+
+      const jobs = [...byFile].flatMap(([key, members]) => {
+        // Named in messages by the first spelling.
+        const file = didPath(members[0])
+        const fetchable = members.filter(({ canisterId }) => canisterId)
+        const again = refetched.has(key)
+          ? undefined
+          : fetchable.find((canister) => asked(canister))
+        const source = again ?? (fs.existsSync(file) ? undefined : fetchable[0])
+        if (!source) return []
+        const conflict = conflictOf(members, fetchable)
+        if (conflict) {
+          for (const canister of members) {
+            failures.push({ canister, message: conflict })
+          }
+          return []
+        }
+        return [{ key, file, members, source, again: !!again }]
+      })
+      if (jobs.length === 0) return dedupe(failures)
+
+      const results = await Promise.all(
+        jobs.map(async (job) => ({
+          ...job,
+          result: await fetchCandid({
+            canisterId: job.source.canisterId as string,
+            network: job.source.network,
+            didFile: relativeToRoot(job.file),
+            signal,
+          }),
+        }))
+      )
+      if (signal.aborted) return undefined
+
+      for (const { key, file, members, source, again, result } of results) {
+        if (!result.ok) {
+          for (const canister of members) {
+            failures.push({ canister, message: result.message })
+          }
+          continue
+        }
+        const from = `the certified candid:service of ${source.canisterId} on ${result.network}`
+        // Read and written through every symlink: a write to a symlinked
+        // spelling would replace the symlink with a file of its own, and leave
+        // the target, which the other spellings read, as it was.
+        const target = realFile(file)
+        let before: string | undefined
+        try {
+          before = fs.readFileSync(target, "utf-8")
+        } catch {
+          before = undefined
+        }
+        if (before === result.did) {
+          log.info(`ic-reactor: ${relativeToRoot(file)} matches ${from}`)
+          if (again) refetched.add(key)
+          continue
+        }
+        // Only a dev server's watcher reports the write and clears the entry.
+        if (devServer) justFetched.set(key, result.did)
+        try {
+          writeDid(target, result.did)
+        } catch (writeError) {
+          // Only the canisters of this file fail: the others generate.
+          justFetched.delete(key)
+          for (const canister of members) {
+            failures.push({
+              canister,
+              message:
+                `fetched ${from}, but could not write it to ${relativeToRoot(file)}: ${describe(writeError)}. ` +
+                `Make its directory writable and build again.`,
+            })
+          }
+          continue
+        }
+        // Recorded only now: a fetch or a write that failed is tried again.
+        if (again) refetched.add(key)
+        log.info(
+          `ic-reactor: ${before === undefined ? "wrote" : "rewrote"} ${relativeToRoot(file)} from ${from} ` +
+            `(${Buffer.byteLength(result.did)} bytes): commit it with the app`
+        )
+      }
+      return dedupe(failures)
+    } catch (error) {
+      if (signal.aborted) return undefined
+      const failed = new Set(failures.map(({ canister }) => canister))
+      return [
+        ...failures,
+        ...generated
+          .filter((canister) => !failed.has(canister))
+          .map((canister) => ({ canister, message: describe(error) })),
+      ]
+    }
+  }
+
+  /**
    * The error text for failed canisters. Canisters that failed for the same
    * reason (no CLI installed, one crash) are listed under it once.
    */
@@ -444,15 +745,30 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    */
   const onDidSaved = (file: string): void => {
     const saved = path.normalize(file)
-    const affected = generated.filter((canister) => didPath(canister) === saved)
-    if (affected.length === 0 || queued.has(saved)) return
-    queued.add(saved)
+    // By the file: the watcher may report it under any of its spellings.
+    const key = identify(saved)
+    const affected = generated.filter(
+      (canister) => identify(didPath(canister)) === key
+    )
+    if (affected.length === 0 || queued.has(key)) return
+    // The plugin's own write of a fetched file, which the run that fetched it
+    // generates.
+    const fetched = justFetched.get(key)
+    if (fetched !== undefined) {
+      justFetched.delete(key)
+      try {
+        if (fs.readFileSync(saved, "utf-8") === fetched) return
+      } catch {
+        // Gone again: regenerate, which reports it.
+      }
+    }
+    queued.add(key)
     log.info(
       `ic-reactor: ${relativeToRoot(saved)} changed, regenerating ${affected.map(({ name }) => name).join(", ")}`
     )
     const { signal } = stopper
     void serially(async () => {
-      queued.delete(saved)
+      queued.delete(key)
       const failures = await generateNow(affected, true, signal)
       if (failures) publish(affected, failures)
     })
@@ -469,8 +785,9 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    */
   const onDidRemoved = (file: string): void => {
     const removed = path.normalize(file)
+    const key = identify(removed)
     const affected = generated.filter(
-      (canister) => didPath(canister) === removed
+      (canister) => identify(didPath(canister)) === key
     )
     if (affected.length === 0) return
     const { signal } = stopper
@@ -484,7 +801,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
           affected.map((canister) => ({
             canister,
             message:
-              "the .did file was deleted; its module is not regenerated until the file comes back",
+              "the .did file was deleted; its module is not regenerated until the file comes back" +
+              (canister.canisterId
+                ? `, or until the dev server restarts and fetches it from ${canister.canisterId}`
+                : ""),
           }))
         )
       } catch (error) {
@@ -631,9 +951,19 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       for (const canister of generated) this.addWatchFile(didPath(canister))
 
       const { signal } = stopper
-      const failures = await serially(() =>
-        generateNow(generated, false, signal)
-      )
+      const failures = await serially(async () => {
+        // A canister whose `.did` could not be fetched has nothing to
+        // generate from: it fails with the reason, and the others generate.
+        const unfetched = await fetchMissing(signal)
+        if (!unfetched) return undefined
+        const failed = new Set(unfetched.map(({ canister }) => canister))
+        const failures = await generateNow(
+          generated.filter((canister) => !failed.has(canister)),
+          false,
+          signal
+        )
+        return failures && [...unfetched, ...failures]
+      })
       if (!failures) return
       if (failures.length > 0 && (failOnError ?? command === "build")) {
         // A build that exits 0 would ship whatever stale bindings are still on

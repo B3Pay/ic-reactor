@@ -472,6 +472,12 @@ importers:
       '@candid-core/cli':
         specifier: 0.2.0
         version: 0.2.0(@candid-core/schema@0.3.0)
+      '@icp-sdk/core':
+        specifier: ^6.1.0
+        version: 6.1.0
+      '@noble/curves':
+        specifier: ^2.2.0
+        version: 2.3.0
       '@types/node':
         specifier: ^26.5.1
         version: 26.5.1
