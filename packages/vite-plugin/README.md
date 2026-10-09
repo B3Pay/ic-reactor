@@ -161,7 +161,11 @@ export default defineConfig({
   from, none is fetched and each fails, naming them and the file: give each
   its own `didFile`, or write the file yourself. A `didFile` on disk is shared
   whatever their `canisterId`s. A `didFile` that is a symlink is written
-  through, to the file it links to.
+  through, to the file it links to. Only the fetch is shared: the generator
+  (`@candid-core/cli` 0.2.0) reads a `didFile` only by its exact name on disk,
+  and not through a symlink to a file, so an entry that names it either way
+  fails with `did_source_not_found`. Name the file as it is on disk in each
+  entry.
 - `canisterId` is also the ID the `ic_env` cookie carries under `vite dev`.
 
 ## Generation

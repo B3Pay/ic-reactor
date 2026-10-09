@@ -175,7 +175,11 @@ export default defineConfig({
   `didFile`, or write the file yourself. A `didFile` on disk is theirs to
   share, whatever their `canisterId`s, since nothing is fetched for it. A
   `didFile` that is a symlink is written through: the fetch goes to the file
-  it links to, which every name of it then reads.
+  it links to. The sharing is the fetch's only: the generator
+  (`@candid-core/cli` 0.2.0) reads a `didFile` only by its exact name on disk,
+  and not through a symlink to a file, so an entry that names it either way
+  fails with `did_source_not_found`. In each entry, name the file as it is on
+  disk.
 
 `network` says where the canister is:
 
