@@ -15,20 +15,20 @@
 // with the packages' own checks; run `pnpm build` first.
 export default [
   {
-    // Measured 89,944 B with client.resendOf() held to the bytes and the
-    // canister id a write went out with (89,746 B before that, +198 B;
+    // Measured 89,949 B with client.resendOf() held to the bytes and the
+    // canister ids a write went out with (89,746 B before that, +203 B;
     // 89,484 B before resendOf; 89,363 B on 4.0.0-beta.3): the limit leaves
-    // 56 B.
+    // 51 B.
     name: "App: { createClient } from @ic-reactor/core, peers included",
     path: "core.js",
     limit: "90 kB",
     gzip: true,
   },
   {
-    // Measured 91,148 B with client.resendOf() held to the bytes and the
-    // canister id a write went out with (90,960 B before that, +188 B;
+    // Measured 91,155 B with client.resendOf() held to the bytes and the
+    // canister ids a write went out with (90,960 B before that, +195 B;
     // 90,692 B before resendOf; 90,566 B on 4.0.0-beta.3): the limit leaves
-    // 52 B. React itself is left out: the app ships it with or without
+    // 45 B. React itself is left out: the app ships it with or without
     // ic-reactor.
     name: "App: createClient, ReactorProvider and useClient, peers included, React left out",
     path: "react.js",
