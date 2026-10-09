@@ -166,8 +166,20 @@ export default defineConfig({
   with `IC_REACTOR_FETCH=ledger` (names separated by commas, or `all`). A build
   without it never rewrites a `didFile`. Under `vite dev` it is served once,
   when the server starts.
-- Canisters that name one `didFile` share one fetch, from the first of them
-  with a `canisterId`.
+- Canisters that name one `didFile` share one fetch. It is one file however
+  it is named: through a symlinked directory, or in another case where the
+  filesystem ignores case (macOS and Windows by default). When they name
+  different canisters, or one canister on different networks, which one's
+  interface the file holds cannot be told: nothing is fetched, and each of
+  them fails with a message naming them and the file. Give each its own
+  `didFile`, or write the file yourself. A `didFile` on disk is theirs to
+  share, whatever their `canisterId`s, since nothing is fetched for it. A
+  `didFile` that is a symlink is written through: the fetch goes to the file
+  it links to. The sharing is the fetch's only: the generator
+  (`@candid-core/cli` 0.2.0) reads a `didFile` only by its exact name on disk,
+  and not through a symlink to a file, so an entry that names it either way
+  fails with `did_source_not_found`. In each entry, name the file as it is on
+  disk.
 
 `network` says where the canister is:
 
@@ -211,7 +223,8 @@ Each failure says what happened to which canister, and what to do next:
 A canister whose fetch failed is not generated, and the failure follows
 `failOnError` as a generation failure does: under `vite build` it fails the
 build, and under `vite dev` it is logged and shown in the overlay. A fetch that
-failed is tried again at the next `buildStart`: each rebuild of
+failed, one that `IC_REACTOR_FETCH` asked for included, is tried again at the
+next `buildStart`: each rebuild of
 `vite build --watch`, and each Vite environment that starts one. Writing the
 `didFile` yourself always works instead: the plugin reads a file on disk and
 fetches nothing.
