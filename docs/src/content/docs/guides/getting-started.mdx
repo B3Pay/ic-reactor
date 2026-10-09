@@ -403,7 +403,9 @@ import { lazy, StrictMode, Suspense } from "react"
 import { createRoot } from "react-dom/client"
 
 // App builds the client (ReactorProvider, createClient, AuthClient) and
-// imports the generated module: all of it loads with this import.
+// imports the generated module: all of it loads with this import. The
+// boundary below waits for this import only: the boundaries for reads and
+// lazy routes go inside App, below its ReactorProvider.
 const App = lazy(() => import("./App").then((m) => ({ default: m.App })))
 
 createRoot(document.getElementById("root")!).render(
@@ -433,9 +435,74 @@ build its `main.tsx` was changed as above, with its dev accounts, which import
 
 The first load is React, React DOM and the fallback. The rest is the client,
 the agent with its certificate check, `AuthClient` and the wallet's own code,
-in three chunks the browser fetches together once the first one runs. The
-largest of them is 208.38 kB, so the build also stays under Vite's 500 kB
-chunk warning, which the wallet otherwise raises to 700 kB.
+in three chunks the browser fetches together once the first one runs. Every
+chunk is under 222 kB, so the build stays under Vite's 500 kB chunk warning,
+which the wallet otherwise raises to 700 kB.
+
+### Suspense boundaries go below the provider
+
+The boundary in `main.tsx` sits above the `ReactorProvider`. When something
+below the provider suspends before the provider's first commit, and no
+boundary sits between them, React throws that render away, the provider's
+state with it, and the next attempt calls the factory again:
+
+- A `useSuspenseQuery` read there never ends. Each attempt gets a new client
+  and an empty cache, sends the read again and suspends again, so the page
+  stays on the `main.tsx` fallback.
+- A lazily loaded route there renders once its chunk arrives, but every
+  attempt before that builds a client of its own.
+
+So put a `Suspense` boundary inside `App`, below the provider, around every
+component that reads with `useSuspenseQuery` (see
+[Reads](/v4/guides/reads/#suspense)) and every lazy route. React can still
+start the provider over a few times before it commits: for a moment after it
+last showed a fallback (300 ms in React 19), it holds back a new one, and it
+starts again when a read finishes in that time. Each client it throws away is
+disposed after a garbage collection, but each one sent the read. When the
+first screen reads with `useSuspenseQuery`, build the client once, at the top
+level of the lazy module, and hand it to the provider, so every attempt gets
+the same client and cache and the read is sent once:
+
+```tsx
+// src/App.tsx, when the first screen suspends
+import { createClient } from "@ic-reactor/core"
+import { ReactorProvider, useClient } from "@ic-reactor/react"
+import { AuthClient } from "@icp-sdk/auth/client"
+import { useSuspenseQuery } from "@tanstack/react-query"
+import { Suspense } from "react"
+import { actor, type Actor } from "./generated/icrc1"
+
+// Built once, when the lazy chunk runs, and never disposed: the provider
+// disposes only a client its own factory created.
+const appClient = createClient({
+  network: "ic",
+  auth: (network) => new AuthClient(network),
+})
+
+export function App() {
+  return (
+    <ReactorProvider client={() => appClient}>
+      <Suspense fallback={<p>Loading the fee…</p>}>
+        <Fee />
+      </Suspense>
+    </ReactorProvider>
+  )
+}
+
+function Fee() {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  const fee = useSuspenseQuery(client.queryOptions(ledger, "icrc1_fee"))
+  return <p>Fee: {fee.data.toString()} base units</p>
+}
+```
+
+That suits a browser-only app whose root is never unmounted. A module that
+also runs on a server keeps the factory: a module-scope client there is shared
+by every request. See
+[The client](/v4/guides/client/#one-client-per-tab-one-per-request).
 
 ### What a route guard sees
 
@@ -447,13 +514,16 @@ loaded yet". With the pattern above:
   nothing below it. There is no client and no auth yet, and no status to
   read: `useAuth()` throws outside a `ReactorProvider`. Put the guard, and the
   routes it guards, inside `App`, below the provider, and let the fallback
-  stand for "not known yet". Code that runs before the chunk arrives, such as
-  a router loader in `main.tsx`, must not redirect on sign-in: it cannot know.
+  stand for "not known yet". A `Suspense` boundary of the guard's own, around
+  the lazy routes it renders, goes there too, below the provider. Code that
+  runs before the chunk arrives, such as a router loader in `main.tsx`, must
+  not redirect on sign-in: it cannot know.
 - **On the first render inside `App`**, the provider builds the client, and
-  the first `useAuth()` or `useClient()` builds the auth and reads its state. `AuthClient` of
-  `@icp-sdk/auth` 10 reads its stored session synchronously when it is built,
-  so a returning user is `"signed-in"` on that first render, never
-  `"anonymous"` first.
+  the first `useAuth()` or `useClient()` builds the auth and reads its state.
+  `AuthClient` of `@icp-sdk/auth` 10 reads its stored session synchronously
+  when it is built, so a returning user is `"signed-in"` on that first render,
+  never `"anonymous"` first. The status falls to `"anonymous"` later only if
+  the stored session turns out unusable, as on any sign-out.
 - **An `AuthLike` of your own** that learns its session asynchronously says
   `signed-out`, so `"anonymous"`, until it knows. The status cannot tell that
   apart from a signed-out user, so a guard over such an auth renders nothing,

@@ -77,7 +77,10 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   loads after the first paint. It says what a route guard sees meanwhile:
   `AuthState.status` keeps its four members, with none for "not loaded yet",
   so a guard lives inside the lazy tree and the `Suspense` fallback stands for
-  "not known yet". The Auth guide links to it.
+  "not known yet". It also says that the boundaries for `useSuspenseQuery`
+  reads and lazy routes go below the `ReactorProvider`: with only the entry's
+  boundary above it, a suspending read rebuilds the client on every attempt
+  and never renders. The Auth guide links to it.
 
 ### CI (not published)
 
