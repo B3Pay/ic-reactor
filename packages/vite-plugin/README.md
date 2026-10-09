@@ -155,6 +155,12 @@ export default defineConfig({
   and what to do next. A `didFile` that cannot be written fails only the
   canisters that name it. A failed fetch follows `failOnError` as a failed
   generation does, and is tried again at the next build.
+- Canisters that name one `didFile` (under any path to it: through a
+  symlinked directory, or in another case where the filesystem ignores case)
+  share one fetch. When they name different canisters or networks to fetch it
+  from, none is fetched and each fails, naming them and the file: give each
+  its own `didFile`, or write the file yourself. A `didFile` on disk is shared
+  whatever their `canisterId`s.
 - `canisterId` is also the ID the `ic_env` cookie carries under `vite dev`.
 
 ## Generation

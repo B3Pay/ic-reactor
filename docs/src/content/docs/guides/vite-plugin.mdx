@@ -166,8 +166,14 @@ export default defineConfig({
   with `IC_REACTOR_FETCH=ledger` (names separated by commas, or `all`). A build
   without it never rewrites a `didFile`. Under `vite dev` it is served once,
   when the server starts.
-- Canisters that name one `didFile` share one fetch, from the first of them
-  with a `canisterId`.
+- Canisters that name one `didFile` share one fetch. It is one file however
+  it is named: through a symlinked directory, or in another case where the
+  filesystem ignores case (macOS and Windows by default). When they name
+  different canisters, or one canister on different networks, which one's
+  interface the file holds cannot be told: nothing is fetched, and each of
+  them fails with a message naming them and the file. Give each its own
+  `didFile`, or write the file yourself. A `didFile` on disk is theirs to
+  share, whatever their `canisterId`s, since nothing is fetched for it.
 
 `network` says where the canister is:
 
