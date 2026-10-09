@@ -2647,5 +2647,34 @@
         "replace": ""
       }
     ]
+  },
+  {
+    "id": "did-fetch-matching-refetch-not-recorded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is served once when the fetch matches the file on disk",
+    "why": "an IC_REACTOR_FETCH re-fetch that matches the didFile on disk is not recorded as served, so every later buildStart of the same plugin fetches it again",
+    "file": "src/index.ts",
+    "search": "          if (again) refetched.add(file)\n          continue\n",
+    "replace": "          continue\n"
+  },
+  {
+    "id": "did-fetch-failed-write-recorded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is tried again at the next buildStart when the write failed",
+    "why": "an IC_REACTOR_FETCH re-fetch recorded as served before its write, so after a failed write the next buildStart keeps the stale didFile instead of trying again",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "        if (devServer) justFetched.set(file, result.did)\n",
+        "replace": "        if (again) refetched.add(file)\n        if (devServer) justFetched.set(file, result.did)\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "        // Recorded only now: a fetch or a write that failed is tried again.\n        if (again) refetched.add(file)\n",
+        "replace": ""
+      }
+    ]
   }
 ]

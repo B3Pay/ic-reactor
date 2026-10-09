@@ -138,6 +138,30 @@ async function closedHost(): Promise<string> {
   return `http://127.0.0.1:${port}`
 }
 
+/**
+ * One `vite build` plugin for a ledger canister on `host`, whose buildStart
+ * the test calls directly: as `vite build --watch` does on every rebuild, and
+ * Vite 6 and later once for each environment.
+ */
+function oneBuildPlugin(app: App, host: string) {
+  const plugin = icReactor({
+    canisters: {
+      ledger: {
+        didFile: "did/ledger.did",
+        canisterId: LEDGER_ID,
+        network: { host },
+      },
+    },
+  }) as Plugin & {
+    configResolved: (config: unknown) => void
+    buildStart: (this: unknown) => Promise<void>
+  }
+  const { logger, lines } = recordingLogger()
+  plugin.configResolved({ root: app.root, command: "build", logger })
+  const context = { addWatchFile: vi.fn(), error: vi.fn() }
+  return { buildStart: () => plugin.buildStart.call(context), context, lines }
+}
+
 const read = (app: App, file: string) =>
   fs.readFileSync(path.join(app.root, file), "utf-8")
 const exists = (app: App, file: string) =>
@@ -421,23 +445,9 @@ describe("IC_REACTOR_FETCH", () => {
       )
     )
     vi.stubEnv("IC_REACTOR_FETCH", "ledger")
-    const plugin = icReactor({
-      canisters: {
-        ledger: {
-          didFile: "did/ledger.did",
-          canisterId: LEDGER_ID,
-          network: { host: ic.host },
-        },
-      },
-    }) as Plugin & {
-      configResolved: (config: unknown) => void
-      buildStart: (this: unknown) => Promise<void>
-    }
-    const { logger, lines } = recordingLogger()
-    plugin.configResolved({ root: app.root, command: "build", logger })
-    const context = { addWatchFile: vi.fn(), error: vi.fn() }
+    const { buildStart, context, lines } = oneBuildPlugin(app, ic.host)
 
-    await plugin.buildStart.call(context)
+    await buildStart()
     expect(context.error).toHaveBeenCalledTimes(1)
     expect(String(context.error.mock.calls[0][0])).toContain(
       `ledger (did/ledger.did): could not reach ${ic.host}`
@@ -446,7 +456,7 @@ describe("IC_REACTOR_FETCH", () => {
     expect(ic.requests).toEqual([])
 
     down = false
-    await plugin.buildStart.call(context)
+    await buildStart()
     expect(context.error).toHaveBeenCalledTimes(1)
     expect(read(app, "did/ledger.did")).toBe(LEDGER)
     expect(lines).toContainEqual(
@@ -456,8 +466,57 @@ describe("IC_REACTOR_FETCH", () => {
     expect(ic.requests).toHaveLength(2)
 
     // Served: the next buildStart reads the file it wrote.
-    await plugin.buildStart.call(context)
+    await buildStart()
     expect(ic.requests).toHaveLength(2)
+  })
+
+  it("is served once when the fetch matches the file on disk", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = newApp({ "did/ledger.did": LEDGER })
+    vi.stubEnv("IC_REACTOR_FETCH", "ledger")
+    const { buildStart, context, lines } = oneBuildPlugin(app, ic.host)
+
+    await buildStart()
+    expect(context.error).not.toHaveBeenCalled()
+    expect(lines).toContainEqual(
+      expect.stringContaining(`did/ledger.did matches the certified`)
+    )
+    expect(ic.requests).toHaveLength(2)
+
+    // Served: the next buildStart does not fetch it again.
+    await buildStart()
+    expect(context.error).not.toHaveBeenCalled()
+    expect(ic.requests).toHaveLength(2)
+  })
+
+  it("is tried again at the next buildStart when the write failed", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = newApp({ "did/ledger.did": OLD })
+    vi.stubEnv("IC_REACTOR_FETCH", "ledger")
+    const { buildStart, context, lines } = oneBuildPlugin(app, ic.host)
+    const dir = path.join(app.root, "did")
+
+    // did/ is read-only for the first buildStart only.
+    fs.chmodSync(dir, 0o555)
+    try {
+      await buildStart()
+    } finally {
+      fs.chmodSync(dir, 0o755)
+    }
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(String(context.error.mock.calls[0][0])).toContain(
+      `ledger (did/ledger.did): fetched the certified candid:service of ${LEDGER_ID} on ${ic.host}, but could not write it to did/ledger.did: `
+    )
+    expect(read(app, "did/ledger.did")).toBe(OLD)
+    expect(ic.requests).toHaveLength(2)
+
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(read(app, "did/ledger.did")).toBe(LEDGER)
+    expect(lines).toContainEqual(
+      expect.stringContaining(`rewrote did/ledger.did from the certified`)
+    )
+    expect(ic.requests).toHaveLength(4)
   })
 })
 
