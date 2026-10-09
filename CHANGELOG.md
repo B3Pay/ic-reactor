@@ -15,6 +15,35 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/vite-plugin
+
+#### Added
+
+- A canister entry with a `canisterId` has its `didFile` fetched from the live
+  canister when the file is not on disk (#852, phase 1). The plugin reads
+  `candid:service` from certified state with `HttpAgent.readState`, checked
+  against the network's root key, writes it to `didFile`, and generates the
+  module from it; the file is committed with the app. A `didFile` on disk
+  costs no network request, under `vite build` and `vite dev`, and is fetched
+  again only on request: `IC_REACTOR_FETCH=<name>` (names separated by
+  commas, or `all`). The new `network` field says where the canister is:
+  `"ic"` (mainnet's root key, the default), `"local"` (icp-cli's
+  `http://127.0.0.1:8000`, its root key fetched) or `{ host }` (its root key
+  fetched only when the host is local, as `createClient` decides). An
+  unreachable network, a refused read (private metadata), absent metadata and
+  a canister that does not exist each fail with their own message, naming
+  the canister and what to do next, under `failOnError` as generation does.
+  No export is added.
+- `@icp-sdk/core` `^6.1.0` is an optional peer, loaded only for a fetch.
+  Every app on `@ic-reactor/core` has it already.
+
+### Docs
+
+- Getting started's "Get a canister's .did" leads with the plugin's
+  `canisterId`, and keeps the script for an app without Vite. The Vite plugin
+  guide has a section on the fetch: when it happens, `network` and its root
+  keys, `IC_REACTOR_FETCH`, and its four failures.
+
 ### CI (not published)
 
 - Core's size limit is 14.4 kB gzipped, just above its measured 14,347 B,

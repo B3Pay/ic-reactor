@@ -115,8 +115,41 @@ find, and `vite dev` says "Could not detect the local IC environment". Set
 ### Get a canister's .did
 
 Every canister on the Internet Computer can publish its Candid interface as
-`candid:service` metadata. This script reads it from certified state and
-saves it to a file:
+`candid:service` metadata. In a Vite app, give the canister's entry its
+`canisterId`: when `didFile` is not on disk, `vite dev` or `vite build` reads
+the metadata from certified state, writes it to `didFile`, and generates the
+module from it.
+
+```ts
+// vite.config.ts
+import { icReactor } from "@ic-reactor/vite-plugin"
+import { defineConfig } from "vite"
+
+export default defineConfig({
+  plugins: [
+    icReactor({
+      canisters: {
+        icp_ledger: {
+          didFile: "icp_ledger.did", // written when missing: commit it
+          canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+          network: "ic", // the default
+          outDir: "src/generated",
+        },
+      },
+      injectEnvironment: false,
+    }),
+  ],
+})
+```
+
+Commit the file it writes. Once `didFile` is on disk, a build reads it and
+makes no network request, so builds stay reproducible and work offline. To
+fetch it again, run `IC_REACTOR_FETCH=icp_ledger npx vite build` (names
+separated by commas, or `all`). The plugin needs `@icp-sdk/core` for the
+fetch, which the install above has already added. See
+[The Vite plugin](/v4/guides/vite-plugin/#fetch-a-did-from-a-live-canister).
+
+Without Vite, this script reads the same metadata and saves it to a file:
 
 {/* prettier-ignore */}
 ```ts
@@ -155,8 +188,6 @@ With [icp-cli](https://github.com/dfinity/icp-cli) installed,
 `icp canister metadata <canister-id> candid:service -n ic > icp_ledger.did`
 reads the same metadata. A canister that keeps its metadata private, or
 publishes none, has no interface to fetch: ask its developers for the `.did`.
-Fetching it at build time from the Vite plugin is planned
-([#852](https://github.com/B3Pay/ic-reactor/issues/852)).
 
 ## 3. Set up a client and a canister
 

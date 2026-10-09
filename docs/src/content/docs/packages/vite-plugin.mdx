@@ -46,12 +46,16 @@ export default defineConfig({ plugins: [icReactor(options)] })
 | Peer               | Range                                              |
 | ------------------ | -------------------------------------------------- |
 | `@candid-core/cli` | exactly `0.2.0`                                    |
+| `@icp-sdk/core`    | `^6.1.0`, optional                                 |
 | `vite`             | `^4.2.0`, `^5.0.0`, `^6.0.0`, `^7.0.0` or `^8.0.0` |
 
 The CLI is pinned exactly because the plugin runs the CLI your app installs,
 and that CLI has to pair with the `@candid-core/schema` runtime the generated
 modules import. The plugin itself imports no `@ic-reactor` runtime package, so
-it can be used with the generated module alone.
+it can be used with the generated module alone. It loads `@icp-sdk/core` only
+to [fetch a `.did` from a live canister](/v4/guides/vite-plugin/#fetch-a-did-from-a-live-canister),
+when a `didFile` is not on disk; every app on `@ic-reactor/core` has it
+installed already.
 
 ## Read next
 
