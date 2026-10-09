@@ -361,21 +361,25 @@ export interface ResendOptions<V> {
 
 /**
  * What `client.resendOf()` offers: a write whose outcome is unknown, to send
- * again exactly as it was sent, and only as whoever sent it.
+ * again exactly as it was sent (the same bytes, to the same canister id), and
+ * only as whoever sent it.
  */
 export interface Resend<V, D> {
   /**
    * The argument the attempt sent: the very object `mutate` or the call was
    * given (the list, for several arguments). `mutate(resend.arg)` sends it
-   * again through a mutation, as `from` or not at all. From the time it is
-   * offered, `mutate` on any mutation of this client sends that object only
-   * as `from`: build a new argument for a new write.
+   * again through a mutation, as the same write or not at all: as `from`
+   * (else `cancelled`, `caller_changed`), to the method and canister id the
+   * attempt went to (else `cancelled`, `target_changed`), and while it still
+   * encodes to the bytes the attempt sent (else `invalid_args`,
+   * `arg_changed`). Do not change it: build a new argument for a new write.
    */
   readonly arg: V
   /** The principal that sent the attempt, as text: the only caller a re-send goes out as. */
   readonly from: string
   /**
-   * Sends `arg` again now, to the canister the attempt went to, as `from`. If
+   * Sends again now the bytes the attempt sent, to the canister id it went
+   * to, as `from`, whatever became of `arg` or of a `{ name }` since. If
    * someone else is the caller by then, it rejects `cancelled`
    * (`caller_changed`) and sends nothing. Settles as a direct call does.
    */

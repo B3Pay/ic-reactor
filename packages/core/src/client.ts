@@ -502,6 +502,10 @@ export interface Client {
    * - Its argument is an object: a record or a variant, or the list of
    *   several arguments.
    * - `dedupedBy(arg)` is neither `undefined` nor `null`.
+   * - The argument still encodes to the bytes the attempt sent: an argument
+   *   object changed since then is not offered.
+   * - `canister` still resolves to the canister id the attempt went to: a
+   *   `{ name }` the `ic_env` cookie maps elsewhere since is not offered.
    * - The principal that sent it is the caller now. After a sign-out, or a
    *   sign-in as another principal, nothing is offered: the same argument
    *   from another sender is a new write. Signing in again as the sender
@@ -509,12 +513,17 @@ export interface Client {
    *   `useClient()` returns while a page hydrates) answers for the live
    *   caller, whom a write goes out as.
    *
-   * The offer's `arg` goes out only as its `from`: by `send()`, or by
-   * `mutate(arg)` on any mutation of this client (the one that failed keeps
-   * its pending state and invalidation). Either one rejects `cancelled`
-   * (`caller_changed`) and sends nothing once someone else is the caller.
-   * Once offered, that object stays held to `from`: build a new argument for
-   * a new write, rather than send the same object from another account.
+   * The offer goes out only as the same write. `send()` sends the bytes the
+   * attempt sent, to the canister id it went to. `mutate(arg)`, on the
+   * mutation that failed (which keeps its pending state and invalidation) or
+   * any other of this client, sends `arg` only to the method and canister id
+   * the attempt went to, and only while it encodes to the same bytes. Either
+   * one goes out only as `from`. Each refusal sends nothing: `cancelled`
+   * (`caller_changed`) once someone else is the caller, `cancelled`
+   * (`target_changed`) for another method or canister id, and `invalid_args`
+   * (`arg_changed`) for an argument changed since it was sent. Once
+   * offered, that object stays held to that write: build a new argument for
+   * a new write, rather than change this one or send it from another account.
    *
    * @throws TypeError for a canister of another client, a method the service
    * does not have, or no `dedupedBy` function.

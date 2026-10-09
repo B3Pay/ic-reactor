@@ -20,7 +20,9 @@ import type { Canister, ErrorOf } from "./types.js"
  * What kind of failure a {@link ReactorError} reports.
  *
  * - `invalid_args`: the arguments could not be encoded, or the target canister
- *   id could not be resolved. Nothing was sent.
+ *   id could not be resolved, or a re-send `client.resendOf()` offered was
+ *   given an argument changed since it was sent (`arg_changed`). Nothing was
+ *   sent.
  * - `unauthenticated`: an update was attempted while not signed in. Nothing was
  *   sent.
  * - `not_delivered`: nothing that matters ran. Either the request was refused
@@ -39,7 +41,9 @@ import type { Canister, ErrorOf } from "./types.js"
  *   `mayHaveExecuted` is `false`: re-sending is a new decision, not a retry.
  * - `cancelled`: the caller abandoned the call (an aborted query, a key whose
  *   principal is no longer current, a call on a disposed client
- *   (`client_disposed`), or an update aborted in flight).
+ *   (`client_disposed`), a re-send that would go to another method or
+ *   canister id than the write it re-sends (`target_changed`), or an update
+ *   aborted in flight).
  *   `mayHaveExecuted` is `false` when nothing was sent, and `true` for an
  *   update aborted after its request may already have been delivered.
  */

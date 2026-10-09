@@ -2,10 +2,12 @@
 // size-limit adds each `peerDependencies` entry of this package to the check's
 // `ignore` (and an `ignore: []` here does not stop it).
 //
-// The limit is tight on purpose, as react's is: measured 14,750 B with
-// `client.resendOf()` (14,449 B before it, +301 B; 14,347 B on 4.0.0-beta.3),
-// so it leaves 50 B. A change that grows core fails here, and its pull request
-// states the size delta and raises this limit deliberately.
+// The limit is tight on purpose, as react's is: measured 14,946 B with
+// `client.resendOf()` holding a re-send to the bytes and the canister id the
+// write went out with (14,750 B before that, +196 B; 14,449 B before
+// resendOf; 14,347 B on 4.0.0-beta.3), so it leaves 54 B. A change that
+// grows core fails here, and its pull request states the size delta and
+// raises this limit deliberately.
 //
 // What an app pays for core with its peers included is measured by
 // `scripts/size-app/`, which declares no peers. Both run in `pnpm size`.
@@ -13,7 +15,7 @@ export default [
   {
     name: "Core Library",
     path: "dist/index.js",
-    limit: "14.8 kB",
+    limit: "15 kB",
     gzip: true,
   },
 ]

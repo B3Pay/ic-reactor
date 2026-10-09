@@ -26,10 +26,12 @@ import {
 } from "@tanstack/query-core"
 import {
   UNKNOWN_WRITES,
+  differs,
   invoke,
   isWrite,
   prepareMethod,
   valuesOf,
+  type CallRequest,
   type ResolvedTarget,
 } from "./call.js"
 import {
@@ -212,11 +214,11 @@ export function createBuilders(
   const runsByContext = new WeakMap<object, MutationRun>()
 
   /**
-   * The argument of each re-send `resendOf` offered, and the caller who sent
-   * it first: a mutation given that very argument sends it as that caller, or
-   * is cancelled.
+   * The argument of each re-send `resendOf` offered, and the write it was
+   * first sent in: a mutation given that very argument sends it as that
+   * write's caller, to its canister id, with its bytes, or not at all.
    */
-  const offered = new WeakMap<object, Caller>()
+  const offered = new WeakMap<object, CallRequest>()
 
   /** The run kept for a run's function context, if TanStack passed one and a run was kept for it. */
   const keptRun = (context: unknown): MutationRun | undefined => {
@@ -435,9 +437,10 @@ export function createBuilders(
         return { [RUN]: run }
       },
       // The caller is read when the mutation runs, unless the argument is a
-      // re-send `resendOf` offered: that goes out as its first sender, or
-      // not at all (`agentFor` refuses another). The target is the one
-      // onMutate resolved for this run where TanStack passes the run's
+      // re-send `resendOf` offered: that goes out as its first sender, to the
+      // canister id it went to, with the bytes it had, or not at all
+      // (`agentFor` refuses another caller, `run` the rest). The target is
+      // the one onMutate resolved for this run where TanStack passes the run's
       // context (5.89 and later), and is resolved now otherwise.
       mutationFn: (vars: unknown, context?: unknown) => {
         // TanStack hands a pending mutation the options of a later render
@@ -453,14 +456,16 @@ export function createBuilders(
           run = resolveRun()
           runsByContext.set(key, run)
         }
+        const again = offered.get(vars as object)
         return invoke(internals, {
           method: prepared,
           target: run?.target ?? record.resolve(),
           certified: record.certified,
-          caller: offered.get(vars as object) ?? internals.current(),
+          caller: again?.caller ?? internals.current(),
           values: valuesOf(prepared, vars),
           resend: true,
           canister: canister as object,
+          again,
         })
       },
       retry: false as const,
@@ -502,11 +507,9 @@ export function createBuilders(
     options?: { readonly dedupedBy?: unknown }
   ) => {
     const call = "client.resendOf()"
-    const { name, args } = methodOf(
-      recordOf(canister, internals, call),
-      method,
-      call
-    )
+    const record = recordOf(canister, internals, call)
+    const prepared = methodOf(record, method, call)
+    const { name, args } = prepared
     const dedupedBy = options?.dedupedBy
     if (typeof dedupedBy !== "function") {
       throw new TypeError(
@@ -514,13 +517,10 @@ export function createBuilders(
           "A write without one has no safe re-send."
       )
     }
-    // Kept only for a write whose outcome is unknown, made on `canister`.
+    // Kept only for a write whose outcome is unknown, made on `canister`
+    // (`differs` below compares the method).
     const attempt = UNKNOWN_WRITES.get(error as object)
-    if (
-      attempt === undefined ||
-      attempt.canister !== canister ||
-      attempt.method.name !== name
-    ) {
+    if (attempt === undefined || attempt.canister !== canister) {
       return undefined
     }
     const { values, caller } = attempt
@@ -530,14 +530,18 @@ export function createBuilders(
       arg === null ||
       // The sender, and no one else, may send it again.
       internals.current().principal !== caller.principal ||
+      // Only for the method it called, while the argument is what was sent
+      // and the canister object still resolves to the canister it went to.
+      differs(attempt, prepared, record.resolve(), encodeArgs(args, values)) ||
       (dedupedBy(arg) ?? null) === null
     ) {
       return undefined
     }
-    offered.set(arg, caller)
+    offered.set(arg, attempt)
     return {
       arg,
       from: caller.principal,
+      // The attempt itself: its canister id and the bytes it sent.
       send: () => invoke(internals, attempt),
     }
   }
