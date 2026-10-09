@@ -345,7 +345,6 @@ no cache, so nothing is invalidated: refresh what you need yourself.
 ```ts
 import { principal } from "@candid-core/schema"
 import { isReactorError, parseUnits } from "@ic-reactor/core"
-import type { TransferError } from "./generated/icrc1"
 import { client, ledger } from "./ledger"
 
 try {
@@ -364,10 +363,9 @@ try {
     queryKey: client.queryKey(ledger),
   })
 } catch (error) {
-  if (!isReactorError(error)) throw error
+  if (!isReactorError(error, ledger, "icrc1_transfer")) throw error
   if (error.kind === "canister_err") {
-    const err = error.err as TransferError
-    console.error("refused:", err.tag)
+    console.error("refused:", error.err.tag) // error.err is a TransferError
   } else if (error.mayHaveExecuted) {
     console.error("unknown outcome: read the balance before sending again")
   } else {
@@ -376,6 +374,8 @@ try {
 }
 ```
 
-`isReactorError` narrows to `ReactorError<unknown>`, so `err` is `unknown`
-until you assert its type. A direct update is re-sent by the client under the
+`isReactorError(error, ledger, "icrc1_transfer")` narrows to the
+`ReactorError` of that method, so `err` is its `TransferError`; it is `false`
+for an error of any other call (see
+[Errors](/v4/guides/errors/#testing-for-a-reactorerror)). A direct update is re-sent by the client under the
 same two rules as above, and under no others.

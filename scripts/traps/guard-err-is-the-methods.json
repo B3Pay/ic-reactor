@@ -1,0 +1,5 @@
+{
+  "file": "src/errors.ts",
+  "search": "): error is ReactorError<ErrorOf<A, M>>",
+  "replace": "): error is ReactorError<{ [K in keyof A]: ErrorOf<A, K> }[keyof A]>"
+}

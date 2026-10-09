@@ -68,7 +68,12 @@ import {
   type QueryObserverOptions,
   type SkipToken,
 } from "@tanstack/query-core"
-import { createClient, formatUnits, parseUnits } from "../src/index.js"
+import {
+  createClient,
+  formatUnits,
+  isReactorError,
+  parseUnits,
+} from "../src/index.js"
 import type { Canister, Network, ReactorError } from "../src/index.js"
 import { createTestClient, type TestHandlers } from "../src/testing/index.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
@@ -201,6 +206,22 @@ void ledger.icrc1_balance_of({ owner: "aaaaa-aa", subaccount: null })
 // trap: vars-of-two-arguments-are-the-tuple
 // @ts-expect-error pair takes two arguments: pass them as the tuple [left, right]
 client.queryOptions(shapesCanister, "pair", 1n)
+
+// ---------------------------------------------------------------------------
+// The typed guard: `err` is the Err arm of the method it names, not another's
+// ---------------------------------------------------------------------------
+
+export const readAnotherMethodsErr = (error: unknown) => {
+  if (
+    isReactorError(error, ledger, "icrc1_balance_of") &&
+    error.kind === "canister_err"
+  ) {
+    // trap: guard-err-is-the-methods
+    // @ts-expect-error icrc1_balance_of has no Err arm; the TransferError is icrc1_transfer's: name the method that was called
+    return error.err.tag
+  }
+  return undefined
+}
 
 // What `useSuspenseQuery` of `@tanstack/react-query` takes, written over
 // query-core: the options of a `QueryObserver`, without the ones a suspense

@@ -338,6 +338,7 @@ export function createBuilders(
           encoded,
           signal: context.signal,
           resend: false,
+          canister: canister as object,
         })
         return pinned ? keepOnRefusal(context, read) : read
       },
@@ -444,6 +445,7 @@ export function createBuilders(
           caller: internals.current(),
           values: valuesOf(prepared, vars),
           resend: true,
+          canister: canister as object,
         })
       },
       retry: false as const,

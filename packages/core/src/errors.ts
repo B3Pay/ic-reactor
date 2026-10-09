@@ -14,6 +14,7 @@
  * @module
  */
 import { isServer } from "./runtime.js"
+import type { Canister, ErrorOf } from "./types.js"
 
 /**
  * What kind of failure a {@link ReactorError} reports.
@@ -138,16 +139,79 @@ const BRAND = Symbol.for("ic-reactor.ReactorError")
 const RETRYABLE = Symbol.for("ic-reactor.ReactorError.retryable")
 
 /**
+ * The canister object a call was made on, on every error a call made through
+ * one rejects with (see {@link fromCanister}). Internal: it is not part of
+ * {@link ReactorError}. Shared across copies for the same reason as
+ * {@link BRAND}.
+ */
+const CANISTER = Symbol.for("ic-reactor.ReactorError.canister")
+
+/**
  * Whether `error` is a {@link ReactorError}, including one created by another
  * copy of this package. Narrows to `ReactorError<unknown>`: after a check on
  * `kind === "canister_err"`, `err` is `unknown`.
  */
-export function isReactorError(error: unknown): error is ReactorError<unknown> {
+export function isReactorError(error: unknown): error is ReactorError<unknown>
+/**
+ * Whether `error` is a {@link ReactorError} that a call of `method` on
+ * `canister` rejected with. Narrows to `ReactorError<E>`, where `E` is the
+ * method's `Err` arm: after a check on `kind === "canister_err"`, `err` is
+ * typed. For a method without an `Err` arm, `err` is `undefined`.
+ *
+ * The check is made at run time, not only in the types: it is `false` for an
+ * error from another method, from another canister object (the one made with
+ * `certified: true` is another object, and so is a canister of another
+ * client), and from a func reference, so it never narrows an error to the
+ * wrong `Err` type. `client.canister()` returns the same object for the same
+ * generated module and target, so the canister can be made again where the
+ * error is caught.
+ *
+ * @example
+ * ```ts
+ * try {
+ *   await ledger.icrc1_transfer(arg)
+ * } catch (error) {
+ *   if (isReactorError(error, ledger, "icrc1_transfer") && error.kind === "canister_err") {
+ *     error.err // the ledger's TransferError
+ *   }
+ * }
+ * ```
+ */
+export function isReactorError<A, M extends keyof A & string>(
+  error: unknown,
+  canister: Canister<A>,
+  method: M
+): error is ReactorError<ErrorOf<A, M>>
+export function isReactorError(
+  error: unknown,
+  canister?: object,
+  method?: string
+): boolean {
+  const own = error as Record<PropertyKey, unknown>
   return (
     typeof error === "object" &&
     error !== null &&
-    (error as Record<symbol, unknown>)[BRAND] === true
+    own[BRAND] === true &&
+    // Without a canister and a method this is the plain guard; with them, the
+    // error must say it came from exactly that call.
+    (canister === undefined
+      ? method === undefined
+      : own[CANISTER] === canister && own.method === method)
   )
+}
+
+/**
+ * Marks `error`, when it is a {@link ReactorError}, as one a call on
+ * `canister` rejected with, for the guard's three-argument form, and returns
+ * it. Without a canister (a func reference) nothing is marked. An error
+ * already marked keeps its first canister, as it keeps its `method` and
+ * `canisterId`.
+ */
+export const fromCanister = (error: unknown, canister?: object): unknown => {
+  if (canister && isReactorError(error) && !(CANISTER in error)) {
+    Object.defineProperty(error, CANISTER, { value: canister })
+  }
+  return error
 }
 
 // ---------------------------------------------------------------------------
