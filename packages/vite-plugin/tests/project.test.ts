@@ -160,6 +160,67 @@ describe("methods", () => {
     expect(exists(app, "src/canisters/ping.ts")).toBe(true)
   })
 
+  it("of canisters that share a missing didFile must be one list, or nothing is fetched", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = newApp({})
+    const network = { host: ic.host }
+    const { message } = await buildError(app, {
+      canisters: {
+        a: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network,
+          methods: ["icrc1_transfer", "icrc1_fee"],
+        },
+        // The same list in another order is the same projection.
+        b: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network,
+          methods: ["icrc1_fee", "icrc1_transfer"],
+          outDir: "src/b",
+        },
+        c: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network,
+          methods: ["icrc1_fee"],
+          outDir: "src/c",
+        },
+      },
+    })
+    expect(message).toContain(
+      `"a", "b", "c" name did/ledger.did but not one canister to fetch it from (` +
+        `a: ${LEDGER_ID} on ${ic.host} projected to icrc1_fee, icrc1_transfer; ` +
+        `b: ${LEDGER_ID} on ${ic.host} projected to icrc1_fee, icrc1_transfer; ` +
+        `c: ${LEDGER_ID} on ${ic.host} projected to icrc1_fee)`
+    )
+    expect(ic.requests).toEqual([])
+    expect(exists(app, "did/ledger.did")).toBe(false)
+
+    // Without c, a and b share one fetch.
+    const { result } = runBuild(app.root, {
+      canisters: {
+        a: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network,
+          methods: ["icrc1_transfer", "icrc1_fee"],
+        },
+        b: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network,
+          methods: ["icrc1_fee", "icrc1_transfer"],
+          outDir: "src/b",
+        },
+      },
+    })
+    await result
+    expect(ic.requests).toHaveLength(2)
+    expect(read(app, "did/ledger.did")).not.toContain("icrc1_name")
+  })
+
   it("refuses an empty list and a name with a comma, with no request", async () => {
     const asked = refuseNetwork()
     const app = newApp({})

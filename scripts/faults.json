@@ -2496,8 +2496,8 @@
     "testName": "follows failOnError: logged, and the other canisters generated",
     "why": "a failed fetch is dropped: the canister is neither generated nor reported",
     "file": "src/index.ts",
-    "search": "        return failures && [...unfetched, ...failures]",
-    "replace": "        return failures"
+    "search": "        return generation && dedupe([...failures, ...generation])",
+    "replace": "        return generation && dedupe([...failures.filter((failure) => !fetchedNow.failures.includes(failure)), ...generation])"
   },
   {
     "id": "did-fetch-variable-ignored",
@@ -2506,8 +2506,8 @@
     "testName": "is the only thing that rewrites a didFile on disk",
     "why": "IC_REACTOR_FETCH is ignored, so nothing fetches a didFile on disk again",
     "file": "src/index.ts",
-    "search": "const wanted = (process.env[FETCH_VARIABLE] ?? \"\")",
-    "replace": "const wanted = (\"\" as string)"
+    "search": "      const { names: wanted, all } = namesIn(FETCH_VARIABLE, [\"all\"])",
+    "replace": "      const { names: wanted, all } = namesIn(\"IC_REACTOR_FETCH_IGNORED\", [\"all\"])"
   },
   {
     "id": "did-fetch-all-ignored",
@@ -2516,8 +2516,8 @@
     "testName": "takes all, and fails a named canister that has no canisterId",
     "why": "IC_REACTOR_FETCH=all read as a canister named all, so nothing is fetched again",
     "file": "src/index.ts",
-    "search": "const all = wanted.includes(\"all\")",
-    "replace": "const all = false"
+    "search": "      const { names: wanted, all } = namesIn(FETCH_VARIABLE, [\"all\"])",
+    "replace": "      const { names: wanted, all } = namesIn(FETCH_VARIABLE, [])"
   },
   {
     "id": "did-fetch-absent-read-as-interface",
@@ -2869,8 +2869,8 @@
     "testName": "is served once when the fetch matches the file on disk",
     "why": "an IC_REACTOR_FETCH re-fetch that matches the didFile on disk is not recorded as served, so every later buildStart of the same plugin fetches it again",
     "file": "src/index.ts",
-    "search": "          if (again) refetched.add(key)\n          continue\n",
-    "replace": "          continue\n"
+    "search": "          if (again) refetched.add(key)\n          fetched.add(key)\n          continue\n",
+    "replace": "          fetched.add(key)\n          continue\n"
   },
   {
     "id": "did-fetch-failed-write-recorded",
@@ -2938,8 +2938,8 @@
     "testName": "are refused with no fetch, and share the file once it is on disk",
     "why": "one canister on two networks taken for one source, so the file is fetched from whichever network comes first",
     "file": "src/index.ts",
-    "search": "key: `${canisterId}\\0${resolved.host}\\0${resolved.fetchRootKey}`,",
-    "replace": "key: `${canisterId}`,"
+    "search": "key: `${canisterId}\\0${resolved.host}\\0${resolved.fetchRootKey}\\0${projection.key}`,",
+    "replace": "key: `${canisterId}\\0${projection.key}`,"
   },
   {
     "id": "did-fetch-conflict-on-disk",
@@ -3051,7 +3051,7 @@
     "testName": "are refused with no fetch, and share the file once it is on disk",
     "why": "a canister whose network is not one shown as on ? in a conflict, which hides what is wrong with its network",
     "file": "src/index.ts",
-    "search": "            label: `${JSON.stringify(network)} (not a network)`,\n",
+    "search": "            label: `${JSON.stringify(network)} (not a network)${projection.label}`,\n",
     "replace": "            label: \"?\",\n"
   },
   {
@@ -3293,5 +3293,15 @@
     "file": "src/index.ts",
     "search": "      const mismatched = await compareMethods(affected, signal)",
     "replace": "      const mismatched: Failure[] = []"
+  },
+  {
+    "id": "did-project-conflict-list-ignored",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of canisters that share a missing didFile must be one list, or nothing is fetched",
+    "why": "canisters that share a didFile but name other methods taken for one source, so the file holds the projection of whichever comes first",
+    "file": "src/index.ts",
+    "search": "key: `${canisterId}\\0${resolved.host}\\0${resolved.fetchRootKey}\\0${projection.key}`,",
+    "replace": "key: `${canisterId}\\0${resolved.host}\\0${resolved.fetchRootKey}`,"
   }
 ]
