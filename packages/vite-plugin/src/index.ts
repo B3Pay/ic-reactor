@@ -907,9 +907,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * fetches a file on disk. A file this run just fetched is compared too: a
    * canister that shares it may name another list.
    *
-   * A file that cannot be listed (it does not compile) is left to the
-   * generator, which reports it. Resolves with the canisters that cannot be
-   * generated, or `undefined` when `signal` was aborted first. Never rejects.
+   * A file whose methods cannot be listed (it does not compile, or the CLI
+   * failed) fails the canister: a comparison that did not run must not pass
+   * for one that did. Resolves with the canisters that cannot be generated,
+   * or `undefined` when `signal` was aborted first. Never rejects.
    */
   const compareMethods = async (
     wanted: Generated[],
@@ -949,8 +950,15 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     if (signal.aborted) return undefined
 
     for (const { canister, text, methods, key, listed } of results) {
-      if (!listed.ok) continue
       const file = relativeToRoot(didPath(canister))
+      if (!listed.ok) {
+        // Not remembered: the next save or buildStart lists it again.
+        failures.push({
+          canister,
+          message: `methods cannot be compared with ${file}, whose methods could not be listed:\n${listed.message}`,
+        })
+        continue
+      }
       const lacking = methods.filter((name) => !listed.methods.includes(name))
       const extra = listed.methods.filter((name) => !methods.includes(name))
       const fix = canister.canisterId
@@ -981,6 +989,16 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * failed is not remembered, and runs again.
    */
   const verified = new Map<string, string>()
+
+  /**
+   * The failure of each canister whose last live check failed (or could not
+   * be made), by canister name, until a later live check of it passes. Only a
+   * `buildStart` checks: a save under `vite dev` makes no request, so it
+   * cannot tell that the file matches the canister again, and it leaves the
+   * canister failed, in the log and the overlay, and not generated, whatever
+   * the save changed. The check runs again when the dev server restarts.
+   */
+  const liveFailures = new Map<string, Failure>()
 
   /**
    * The live check: fetch the certified interface of each canister of
@@ -1323,22 +1341,42 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       }
     }
     queued.add(key)
-    log.info(
-      `ic-reactor: ${relativeToRoot(saved)} changed, regenerating ${affected.map(({ name }) => name).join(", ")}`
-    )
+    const regenerating = affected.filter(({ name }) => !liveFailures.has(name))
+    if (regenerating.length > 0) {
+      log.info(
+        `ic-reactor: ${relativeToRoot(saved)} changed, regenerating ${regenerating.map(({ name }) => name).join(", ")}`
+      )
+    }
     const { signal } = stopper
     void serially(async () => {
       queued.delete(key)
-      // No live check here: a save is never a network request.
-      const mismatched = await compareMethods(affected, signal)
+      // No live check here: a save is never a network request. So a canister
+      // whose live check failed stays failed, and is not generated: only a
+      // check that passes clears it (see `liveFailures`).
+      const standing: Failure[] = []
+      const open: Generated[] = []
+      for (const canister of affected) {
+        const failure = liveFailures.get(canister.name)
+        if (!failure) {
+          open.push(canister)
+          continue
+        }
+        standing.push({
+          canister,
+          message:
+            `${failure.message}\n${relativeToRoot(saved)} was saved, and a save makes no request: ` +
+            `this stands until a live check passes, which runs when the dev server restarts.`,
+        })
+      }
+      const mismatched = await compareMethods(open, signal)
       if (!mismatched) return
       const failed = new Set(mismatched.map(({ canister }) => canister))
       const failures = await generateNow(
-        affected.filter((canister) => !failed.has(canister)),
+        open.filter((canister) => !failed.has(canister)),
         true,
         signal
       )
-      if (failures) publish(affected, [...mismatched, ...failures])
+      if (failures) publish(affected, [...standing, ...mismatched, ...failures])
     })
   }
 
@@ -1535,8 +1573,13 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         const mismatched = await compareMethods(remaining(), signal)
         if (!mismatched) return undefined
         failures.push(...mismatched)
-        const unverified = await verifyLive(remaining(), fetched, signal)
+        const checking = remaining()
+        const unverified = await verifyLive(checking, fetched, signal)
         if (!unverified) return undefined
+        for (const { name } of checking) liveFailures.delete(name)
+        for (const failure of unverified) {
+          liveFailures.set(failure.canister.name, failure)
+        }
         failures.push(...unverified)
         const generation = await generateNow(remaining(), false, signal)
         return generation && dedupe([...failures, ...generation])

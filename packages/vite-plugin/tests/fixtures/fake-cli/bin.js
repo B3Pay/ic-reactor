@@ -12,12 +12,21 @@
 //         600 ms
 //   NEWER reports as below, with a schemaVersion no plugin knows
 //   other reports each entry as written, in the --json shape of the real CLI
+// `project` (and any command other than `gen`) crashes as a trap does, so a
+// methods canister's file cannot be listed while `gen` would still succeed.
 // Every run appends its arguments to runs.log beside this file.
 const fs = require("node:fs")
 const path = require("node:path")
 
 const args = process.argv.slice(2)
 fs.appendFileSync(path.join(__dirname, "runs.log"), JSON.stringify(args) + "\n")
+
+if (args[0] !== "gen") {
+  process.stderr.write(
+    `RuntimeError: unreachable executed (fake trap in ${args[0]})\n`
+  )
+  process.exit(101)
+}
 
 const outDir = args[args.indexOf("-o") + 1]
 const entries = args.slice(1, args.indexOf("-o"))

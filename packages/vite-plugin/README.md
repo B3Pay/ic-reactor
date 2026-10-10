@@ -202,7 +202,9 @@ export default defineConfig({
   compares the two with no network access: a name of `methods` that the file
   does not hold fails the canister, and a method the file holds that `methods`
   does not name is a warning. Both say to fetch the file again with
-  `IC_REACTOR_FETCH=<name>`, which writes the projection to the new list.
+  `IC_REACTOR_FETCH=<name>`, which writes the projection to the new list. A
+  file whose methods cannot be listed (it does not compile, or
+  `candid-core-cli` fails) fails the canister.
 - Canisters that name one `didFile` to be fetched must name one list to share
   its fetch, and an entry with no `canisterId` counts too, since it generates
   from the same file: its `methods`, or the whole interface when it names
@@ -236,7 +238,10 @@ over `verify: "live"`.
   check that was asked for and did not run does not pass.
 - A file the build just fetched is the live interface, and is not checked. A
   check that passed is not repeated for the same text by a later rebuild, and
-  a save under `vite dev` never makes a request.
+  a save under `vite dev` never makes a request. So a canister whose check
+  failed stays failed after a save under `vite dev`, whatever the save
+  changed, and is not generated, until a check passes: restart the dev server
+  (`r` and Enter in its terminal) to check again.
 
 ## Generation
 

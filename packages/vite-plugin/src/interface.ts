@@ -40,11 +40,14 @@ export const INTERFACE_TIMEOUT_MS = 60_000
 const MAX_REPORT_BYTES = 16 * 1024 * 1024
 
 /**
- * The method name asked for to list a service's methods: the failure of a
- * projection to a method the service lacks lists them. A name no canister
- * gives a method, and that `project`'s comma-separated list can carry.
+ * The names asked for to list a service's methods: the failure of a
+ * projection to a method the service lacks lists them. The empty name is one
+ * no service can have, since candid-core refuses a service that declares it
+ * (`empty_method_name`), so the projection always fails and always lists them.
+ * `project` reads `--methods ""` as the empty list, and splits any other value
+ * on commas as it is, so two empty names are sent: `--methods ,`.
  */
-const PROBE_METHOD = "ic-reactor list methods"
+const NO_METHOD = ["", ""] as const
 
 /** The identities `project` and `check` report for one interface. */
 export interface Identities {
@@ -248,18 +251,20 @@ export function project(
 
 /**
  * The methods of the service `source` declares, in name order. A projection
- * to a method the service lacks fails, and its first diagnostic lists them.
- * Never rejects.
+ * to a method the service lacks fails, and its first diagnostic lists them:
+ * it is asked for the empty name, which no service has (`NO_METHOD`). Any
+ * other outcome is a failure, which the caller must report: a list that could
+ * not be read is never an empty one. Never rejects.
  */
 export async function listMethods(
   context: CliContext,
   source: Source
 ): Promise<MethodList> {
-  const result = await project(context, source, [PROBE_METHOD])
+  const result = await project(context, source, NO_METHOD)
   if (result.ok) {
     return {
       ok: false,
-      message: `its service has a method named "${PROBE_METHOD}", so its methods cannot be listed`,
+      message: `candid-core-cli project accepted the empty method name, which no service can have, so its methods cannot be listed`,
     }
   }
   const [first] = result.diagnostics ?? []

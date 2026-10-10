@@ -13,7 +13,7 @@ import path from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Plugin } from "vite"
 import { icReactor, type IcReactorPluginOptions } from "../src/index.js"
-import { startFakeIc } from "./fake-ic.js"
+import { startFakeIc, type Canister } from "./fake-ic.js"
 import {
   createApp,
   LEDGER_DID,
@@ -434,6 +434,57 @@ describe("methods", () => {
     expect(asked).toEqual([])
   })
 
+  // The names are listed with a projection to a name no service can have.
+  // One that a service can have, as the name the plugin once asked for, lists
+  // nothing when the service has it.
+  it("of a didFile are compared with it whatever its methods are named", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({
+      "did/item.did": WRITTEN.replace(
+        "service : {\n",
+        'service : {\n  "ic-reactor list methods" : () -> ();\n'
+      ),
+    })
+    const { message } = await buildError(app, {
+      canisters: {
+        item: {
+          didFile: "did/item.did",
+          canisterId: LEDGER_ID,
+          methods: ["get", "absent"],
+        },
+      },
+    })
+    expect(lineOf(message, "item")).toContain(
+      "item (did/item.did): methods names absent, which did/item.did does not hold (it holds get, ic-reactor list methods, maybe, put)"
+    )
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    expect(asked).toEqual([])
+  })
+
+  // The CLI that lists them crashes, and its `gen` would succeed: the
+  // comparison that did not run must not pass for one that did.
+  it("of a didFile whose methods cannot be listed fail the canister, which is not generated", async () => {
+    const asked = refuseNetwork()
+    const app = createApp({ "did/item.did": WRITTEN }, "fake")
+    apps.push(app)
+    const { message } = await buildError(app, {
+      canisters: {
+        item: {
+          didFile: "did/item.did",
+          canisterId: LEDGER_ID,
+          methods: ["get"],
+        },
+      },
+    })
+    expect(message).toContain("could not generate 1 of 1 canisters")
+    expect(lineOf(message, "item")).toContain(
+      "item (did/item.did): methods cannot be compared with did/item.did, whose methods could not be listed:"
+    )
+    expect(message).toContain("fake trap in project")
+    expect(app.runs().map(([command]) => command)).toEqual(["project"])
+    expect(asked).toEqual([])
+  })
+
   it("is projected again by IC_REACTOR_FETCH, which rewrites the file", async () => {
     const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
     const app = newApp({ "did/ledger.did": LEDGER })
@@ -471,6 +522,27 @@ service : {
 /** `WRITTEN` with `edits` made, as the live canister now publishes it. */
 const liveWith = (...edits: Array<[string, string]>) =>
   edits.reduce((text, [from, to]) => text.replace(from, to), WRITTEN)
+
+/**
+ * Capture what the plugin registers on the WebSocket server. A listener is
+ * handed the connecting client as Vite hands it: a socket with `send`.
+ */
+function spyOnConnections() {
+  const connections: Array<(client?: unknown) => void> = []
+  const plugin: Plugin = {
+    name: "spy-on-connections",
+    enforce: "pre",
+    configureServer(server) {
+      vi.spyOn(server.ws, "on").mockImplementation(((
+        event: string,
+        callback: (client?: unknown) => void
+      ) => {
+        if (event === "connection") connections.push(callback)
+      }) as never)
+    },
+  }
+  return { connections, plugin }
+}
 
 /** A plugin for one canister checked live, whose buildStart the test calls. */
 function verifyingPlugin(app: App, host: string) {
@@ -674,6 +746,72 @@ describe("the live check", () => {
       'warn: ic-reactor: IC_REACTOR_VERIFY is "0,item", and 0 turns the live check off: no canister is checked'
     )
     expect(ic.requests).toEqual([])
+  })
+
+  // A save makes no request, so it cannot tell that the file matches the
+  // canister again: whatever it changed, the failure stands, in the log and
+  // the overlay, until a check passes when the server starts again.
+  it("that failed under vite dev stands when the .did is saved, changed or not, until a check passes at the next start", async () => {
+    const canisters: Record<string, Canister> = {
+      [LEDGER_ID]: { candid: liveWith(["  put : (nat) -> ();\n", ""]) },
+    }
+    const ic = await fakeIc(canisters)
+    const app = newApp({ "did/item.did": WRITTEN })
+    const { connections, plugin } = spyOnConnections()
+    const running = await startDev(app.root, checked(ic.host), {
+      before: [plugin],
+    })
+    let closed = false
+    const close = async () => {
+      if (closed) return
+      closed = true
+      await running.close()
+    }
+    closers.push(close)
+    const failure =
+      `item (did/item.did): the live check found ${LEDGER_ID} on ${ic.host} ` +
+      `incompatible with did/item.did (1 error)`
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors()).toHaveLength(1)
+    expect(errors()[0]).toContain(failure)
+    expect(ic.requests).toHaveLength(2)
+    const send = vi.spyOn(running.server.ws, "send")
+
+    // Saved as it is (a touch), then with an edit that changes no method.
+    const file = path.join(app.root, "did/item.did")
+    for (const text of [WRITTEN, `// Edited.\n${WRITTEN}`]) {
+      const before = errors().length
+      fs.writeFileSync(file, text)
+      running.server.watcher.emit("change", file)
+      await vi.waitFor(() => expect(errors()).toHaveLength(before + 1))
+      expect(errors()[before]).toContain(failure)
+      expect(errors()[before]).toContain(
+        "did/item.did was saved, and a save makes no request: this stands until a live check passes, which runs when the dev server restarts."
+      )
+      expect(send).not.toHaveBeenCalledWith({ type: "full-reload" })
+      // A browser that connects now is handed it.
+      const client = { send: vi.fn() }
+      connections[0](client)
+      expect(client.send).toHaveBeenCalledTimes(1)
+      expect(
+        JSON.parse(client.send.mock.calls[0][0] as string).err.message
+      ).toContain(failure)
+    }
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    expect(ic.requests).toHaveLength(2)
+
+    // The canister is put back: the next start checks again, and it passes.
+    canisters[LEDGER_ID] = { candid: WRITTEN }
+    await close()
+    const next = await startDev(app.root, checked(ic.host))
+    closers.push(next.close)
+    expect(next.lines.filter((line) => line.startsWith("error:"))).toEqual([])
+    expect(next.lines).toContainEqual(
+      `info: ic-reactor: item: did/item.did matches the live interface of ${LEDGER_ID} on ${ic.host}`
+    )
+    expect(exists(app, "src/canisters/item.ts")).toBe(true)
+    expect(ic.requests).toHaveLength(4)
   })
 
   it("that cannot read the canister fails it, and says how to turn the check off", async () => {

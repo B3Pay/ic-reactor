@@ -3301,7 +3301,7 @@
     "testName": "are compared with a didFile saved under vite dev, with no request",
     "why": "a save under vite dev regenerates a methods canister without comparing the file with methods, so a file that lost a method generates a module without it",
     "file": "src/index.ts",
-    "search": "      const mismatched = await compareMethods(affected, signal)",
+    "search": "      const mismatched = await compareMethods(open, signal)",
     "replace": "      const mismatched: Failure[] = []"
   },
   {
@@ -3353,5 +3353,35 @@
     "file": "src/index.ts",
     "search": "        const conflict = conflictOf(members, fetchable)",
     "replace": "        const conflict =\n          again && members.some(({ methods }) => methods)\n            ? undefined\n            : conflictOf(members, fetchable)"
+  },
+  {
+    "id": "did-project-list-probe-collides",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a didFile are compared with it whatever its methods are named",
+    "why": "the methods of a didFile listed by projecting to a name a service can have, so a service with a method of that name cannot be listed and is not compared with methods",
+    "file": "src/interface.ts",
+    "search": "const NO_METHOD = [\"\", \"\"] as const",
+    "replace": "const NO_METHOD = [\"ic-reactor list methods\"] as const"
+  },
+  {
+    "id": "did-project-list-failure-skipped",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a didFile whose methods cannot be listed fail the canister, which is not generated",
+    "why": "a didFile whose methods cannot be listed skipped by the comparison, so a methods list naming a method the file lacks generates a module without it",
+    "file": "src/index.ts",
+    "search": "      if (!listed.ok) {\n",
+    "replace": "      if (!listed.ok) continue\n      if (false) {\n"
+  },
+  {
+    "id": "did-verify-save-clears-failure",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that failed under vite dev stands when the .did is saved, changed or not, until a check passes at the next start",
+    "why": "a save under vite dev regenerates a canister whose live check failed and clears its failure from the log and the overlay, though no check ran, so bindings known not to match the canister are served",
+    "file": "src/index.ts",
+    "search": "        const failure = liveFailures.get(canister.name)\n",
+    "replace": "        const failure = undefined as Failure | undefined\n"
   }
 ]

@@ -273,7 +273,9 @@ bytes, so `IC_REACTOR_FETCH` rewrites the file only when the canister changed.
   fails the canister, since its module would lack the method. A method the
   file holds that `methods` does not name is a warning, and the module keeps
   it. Both say to run `IC_REACTOR_FETCH=<name>`, which writes the projection to
-  the new list.
+  the new list. A file whose methods cannot be listed (it does not compile, or
+  `candid-core-cli` fails) fails the canister: a comparison that did not run
+  does not pass.
 - Canisters that name one `didFile` share its fetch only when they name one
   list. Every one of them generates from the file, so an entry with no
   `canisterId` counts as much as the one it is fetched for: its `methods`, or
@@ -332,7 +334,10 @@ the check off (`IC_REACTOR_VERIFY=0`): a check that was asked for and did not
 run does not pass. A
 file the same build just fetched is the live interface, and is not checked. A
 check that passed is not made again for the same text by a later
-`buildStart`, and a save under `vite dev` never makes a request.
+`buildStart`, and a save under `vite dev` never makes a request. So under
+`vite dev` a canister whose check failed stays failed after a save, whatever
+the save changed, and is not generated: only a check that passes clears it.
+Restart the dev server (`r` and Enter in its terminal) to check again.
 
 ### How the plugin runs candid-core
 
