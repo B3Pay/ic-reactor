@@ -70,7 +70,12 @@ The tests run a real client over the in-memory replica of
 like the plugin's. `src/canisters/` is generated from `backend/backend.did`
 and `ledger.did` by `@ic-reactor/vite-plugin` on every `vite dev` and
 `vite build` (`pnpm gen` runs `candid-core-cli gen` by hand), committed, and
-never edited.
+never edited. `ledger.did` is the projection of the mainnet ICP ledger's
+interface to the five methods the wallet calls (the ledger entry's `methods` in
+`vite.config.ts`), as the plugin wrote it from the live canister. It is
+committed, so builds read it and make no request. `IC_REACTOR_FETCH=ledger`
+writes it again from the canister, and `IC_REACTOR_VERIFY=ledger pnpm build`
+checks it against the live ledger.
 
 ## The env network in production
 

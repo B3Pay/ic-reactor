@@ -11,38 +11,38 @@
         "type": 2
       },
       {
-        "name": "BlockIndex",
+        "name": "Icrc1BlockIndex",
         "type": 7
       },
       {
-        "name": "Subaccount",
-        "type": 5
-      },
-      {
-        "name": "Timestamp",
+        "name": "Icrc1Timestamp",
         "type": 16
       },
       {
-        "name": "Tokens",
+        "name": "Icrc1Tokens",
         "type": 7
+      },
+      {
+        "name": "Icrc1TransferError",
+        "type": 18
+      },
+      {
+        "name": "Icrc1TransferResult",
+        "type": 17
+      },
+      {
+        "name": "SubAccount",
+        "type": 5
       },
       {
         "name": "TransferArg",
         "type": 13
-      },
-      {
-        "name": "TransferError",
-        "type": 18
-      },
-      {
-        "name": "TransferResult",
-        "type": 17
       }
     ],
     "format": "candid-core",
     "format_version": 1,
     "identities": {
-      "contract": "candid-core:contract:v1:sha256:11d8ac2035e860456953c4f644d1341b50231861b13be28c73b59b5509dcabc9",
+      "contract": "candid-core:contract:v1:sha256:9dea739b16bf1a6e8019f90eef5e6dbc10cc9e200069aa1919ba3bc67b8d96b5",
       "interface": "candid-core:interface:v1:sha256:7fae0dd330b20f53ae1e4e2cb1947c1c57791da0ae20299ceb499f63228d0689"
     },
     "producer": {

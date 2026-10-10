@@ -14,7 +14,11 @@ const $AccountIdentifier: $.Schema<AccountIdentifier> = $.c.rec(() => $.c.blob()
 export { $AccountIdentifier as AccountIdentifier };
 
 export type ArchivedBlocksRange = {
-  /** The function that should be called to fetch the archived blocks. */
+  /**
+   * The function that should be called to fetch the archived blocks.
+   * The range of the blocks accessible using this function is given by [from]
+   * and [len] fields above.
+   */
   callback: QueryArchiveFn;
   /** The index of the first archived block that can be fetched using the callback. */
   start: bigint;
@@ -35,7 +39,24 @@ const $BlockIndex: $.Schema<BlockIndex> = $.c.rec(() => $.c.nat64);
 export { $BlockIndex as BlockIndex };
 
 /** A prefix of the block range specified in the [GetBlocksArgs] request. */
-export type BlockRange = { blocks: Array<Block> };
+export type BlockRange = {
+  /**
+   * A prefix of the requested block range.
+   * The index of the first block is equal to [GetBlocksArgs.from].
+   *
+   * Note that the number of blocks might be less than the requested
+   * [GetBlocksArgs.len] for various reasons, for example:
+   *
+   * 1. The query might have hit the replica with an outdated state
+   * that doesn't have the full block range yet.
+   * 2. The requested range is too large to fit into a single reply.
+   *
+   * NOTE: the list of blocks can be empty if:
+   * 1. [GetBlocksArgs.len] was zero.
+   * 2. [GetBlocksArgs.from] was larger than the last block known to the canister.
+   */
+  blocks: Array<Block>;
+};
 /** A prefix of the block range specified in the [GetBlocksArgs] request. */
 const $BlockRange: $.Schema<BlockRange> = $.c.rec(() => $.c.record({ blocks: $.c.vec($Block) }));
 export { $BlockRange as BlockRange };
@@ -49,9 +70,15 @@ export type GetBlocksArgs = {
 const $GetBlocksArgs: $.Schema<GetBlocksArgs> = $.c.rec(() => $.c.record({ start: $.c.nat64, length: $.c.nat64 }));
 export { $GetBlocksArgs as GetBlocksArgs };
 
-/** An arbitrary number associated with a transaction. */
+/**
+ * An arbitrary number associated with a transaction.
+ * The caller can set it in a `transfer` call as a correlation identifier.
+ */
 export type Memo = bigint;
-/** An arbitrary number associated with a transaction. */
+/**
+ * An arbitrary number associated with a transaction.
+ * The caller can set it in a `transfer` call as a correlation identifier.
+ */
 const $Memo: $.Schema<Memo> = $.c.rec(() => $.c.nat64);
 export { $Memo as Memo };
 
@@ -115,8 +142,14 @@ const $QueryArchiveResult: $.Schema<QueryArchiveResult> = $.c.rec(() => $.c.vari
 export { $QueryArchiveResult as QueryArchiveResult };
 
 /**
- * The result of a "query_blocks" call: the blocks the ledger still holds,
- * and a callback per range that lives in an archive canister.
+ * The result of a "query_blocks" call.
+ *
+ * The structure of the result is somewhat complicated because the main ledger canister might
+ * not have all the blocks that the caller requested: One or more "archive" canisters might
+ * store some of the requested blocks.
+ *
+ * Note: as of Q4 2021 when this interface is authored, the IC doesn't support making nested
+ * query calls within a query call.
  */
 export type QueryBlocksResponse = {
   /**
@@ -124,7 +157,15 @@ export type QueryBlocksResponse = {
    * Only present if `query_blocks` is called in a non-replicated query context.
    */
   certificate: AccountIdentifier | null;
-  /** List of blocks that were available in the ledger when it processed the call. */
+  /**
+   * List of blocks that were available in the ledger when it processed the call.
+   *
+   * The blocks form a contiguous range, with the first block having index
+   * [first_block_index] (see below), and the last block having index
+   * [first_block_index] + len(blocks) - 1.
+   *
+   * The block range can be an arbitrary sub-range of the originally requested range.
+   */
   blocks: Array<Block>;
   /**
    * The total number of blocks in the chain.
@@ -139,12 +180,21 @@ export type QueryBlocksResponse = {
   /**
    * Encoding of instructions for fetching archived blocks whose indices fall into the
    * requested range.
+   *
+   * For each entry `e` in [archived_blocks], `[e.from, e.from + len)` is a sub-range
+   * of the originally requested block range.
    */
   archived_blocks: Array<ArchivedBlocksRange>;
 };
 /**
- * The result of a "query_blocks" call: the blocks the ledger still holds,
- * and a callback per range that lives in an archive canister.
+ * The result of a "query_blocks" call.
+ *
+ * The structure of the result is somewhat complicated because the main ledger canister might
+ * not have all the blocks that the caller requested: One or more "archive" canisters might
+ * store some of the requested blocks.
+ *
+ * Note: as of Q4 2021 when this interface is authored, the IC doesn't support making nested
+ * query calls within a query call.
  */
 const $QueryBlocksResponse: $.Schema<QueryBlocksResponse> = $.c.rec(() => $.c.record({ certificate: $.c.opt($AccountIdentifier), blocks: $.c.vec($Block), chain_length: $.c.nat64, first_block_index: $.c.nat64, archived_blocks: $.c.vec($ArchivedBlocksRange) }));
 export { $QueryBlocksResponse as QueryBlocksResponse };

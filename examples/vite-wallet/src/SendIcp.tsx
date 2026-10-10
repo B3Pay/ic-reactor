@@ -26,7 +26,7 @@ import type { ReactorError } from "@ic-reactor/core"
 import { useAuth, useClient } from "@ic-reactor/react"
 import { useMutation } from "@tanstack/react-query"
 import { useState, type FormEvent } from "react"
-import type { TransferArg, TransferError } from "./canisters/ledger.ts"
+import type { TransferArg, Icrc1TransferError } from "./canisters/ledger.ts"
 import { ErrorNote } from "./ErrorNote.tsx"
 import { showAmount, useToken, type Token } from "./token.ts"
 import {
@@ -134,7 +134,7 @@ export function Outcome(props: {
   token: Token
   isPending: boolean
   block: bigint | undefined
-  error: ReactorError<TransferError> | null
+  error: ReactorError<Icrc1TransferError> | null
   /** Sends the same transfer again: present only while `client.resendOf` offers it. */
   onSendAgain: (() => void) | undefined
 }) {
