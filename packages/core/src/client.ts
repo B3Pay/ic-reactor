@@ -47,7 +47,10 @@ import type {
   DataOf,
   ErrorOf,
   MutationOptionsOptions,
+  OptInMethod,
+  OptInQueryArgs,
   QueryArgs,
+  ReadMethod,
   Resend,
   ResendOptions,
   VarsOf,
@@ -369,12 +372,16 @@ export interface Client {
    * `retry` retries only a failure that proves the call was not delivered, at
    * most 3 times, and never on a server.
    *
-   * No type says whether a method is a query or an update, so this checks at
-   * run time and throws a `TypeError` for an update or a oneway method: a
-   * query refetches, and every refetch would run the update again. Use
-   * {@link Client.mutationOptions} for a write. An update that returns the
-   * same answer however often it runs (ckBTC's `get_btc_address`) can be read
-   * with `{ update: "idempotent" }` as the fourth argument: it is fetched once
+   * An update or a oneway method of a generated `Actor` does not compile
+   * here (`method` is a `ReadMethod<A>`): a query refetches, and every
+   * refetch would run the update again. Use {@link Client.mutationOptions}
+   * for a write. The generated `Actor` says each method's mode; a method of
+   * an `Actor` written by hand says none and compiles, and this checks it at
+   * run time instead, throwing a `TypeError` for an update or a oneway. An
+   * update that returns the same answer however often it runs (ckBTC's
+   * `get_btc_address`) can be read with `{ update: "idempotent" }` as the
+   * fourth argument (the third signature; a oneway does not compile even
+   * then): it is fetched once
    * per key and caller (`staleTime: Infinity`, no refetch on mount, focus or
    * reconnect), needs a signed-in caller like any update, and is retried only
    * after a failure that proves it never got in (DECISIONS Q2). It is still a
@@ -399,9 +406,11 @@ export interface Client {
    * @throws TypeError for an update or oneway method without the opt-in, a
    * method without results, a composite query of a certified canister, a
    * canister of another client, a method the service does not have, or a
-   * fourth argument other than `{ update: "idempotent" }`.
+   * fourth argument other than `{ update: "idempotent" }`. An update or a
+   * oneway reaches this check only through an `Actor` that does not say the
+   * method's mode.
    */
-  queryOptions<A, M extends keyof A & string>(
+  queryOptions<A, M extends ReadMethod<A>>(
     canister: Canister<A>,
     method: M,
     ...args: QueryArgs<A, M, never>
@@ -415,10 +424,44 @@ export interface Client {
    *
    * @throws TypeError as the call with variables that cannot be skipped.
    */
-  queryOptions<A, M extends keyof A & string>(
+  queryOptions<A, M extends ReadMethod<A>>(
     canister: Canister<A>,
     method: M,
     ...args: QueryArgs<A, M>
+  ): CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>>
+  /**
+   * TanStack Query options for an update read like a query, with
+   * `{ update: "idempotent" }`: only for an update that returns the same
+   * answer however often it runs, such as ckBTC's `get_btc_address`.
+   *
+   * ```ts
+   * useQuery(client.queryOptions(minter, "get_btc_address", arg, { update: "idempotent" }))
+   * ```
+   *
+   * The variables come first, even `undefined` for a method without
+   * arguments. A oneway method does not compile here either (`method` is an
+   * `OptInMethod<A>`): it has no reply to cache. The read is fetched once per
+   * key and caller; see the first signature for the rules every read
+   * follows.
+   *
+   * @throws TypeError as the call without the opt-in, except for an update.
+   */
+  queryOptions<A, M extends OptInMethod<A>>(
+    canister: Canister<A>,
+    method: M,
+    ...args: OptInQueryArgs<A, M, never>
+  ): CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>, never>
+  /**
+   * The opt-in read of an update, with variables that may be `skipToken`:
+   * its `queryFn` is `skipToken` for a skipped read. Otherwise the same as
+   * the opt-in call with variables that cannot be skipped.
+   *
+   * @throws TypeError as the call without the opt-in, except for an update.
+   */
+  queryOptions<A, M extends OptInMethod<A>>(
+    canister: Canister<A>,
+    method: M,
+    ...args: OptInQueryArgs<A, M>
   ): CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>>
 
   /**

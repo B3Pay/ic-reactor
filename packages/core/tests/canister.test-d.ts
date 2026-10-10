@@ -18,6 +18,11 @@ import {
   type CanisterTarget,
   type ReactorError,
 } from "../src/index.js"
+import type {
+  CanisterQueryOptions,
+  OptInMethod,
+  ReadMethod,
+} from "../src/types.js"
 import * as archive from "./fixtures/archive.js"
 import * as icrc1 from "./fixtures/icrc1.js"
 import * as shapes from "./fixtures/shapes.js"
@@ -97,11 +102,79 @@ const address = client.queryOptions(service, "address", "seed", {
 expectTypeOf(client.queryClient.getQueryData(address.queryKey)).toEqualTypeOf<
   string | undefined
 >()
+// The opt-in read's options are those of any read: variables that cannot be
+// skipped give a queryFn that is never skipToken, and variables that may be
+// skipped keep it.
+expectTypeOf(address).toEqualTypeOf<
+  CanisterQueryOptions<string, never, never>
+>()
+expectTypeOf(
+  client.queryOptions(service, "address", skipToken, { update: "idempotent" })
+).toEqualTypeOf<CanisterQueryOptions<string, never>>()
+expectTypeOf(
+  client.queryOptions(service, "three", undefined, { update: "idempotent" })
+).toEqualTypeOf<CanisterQueryOptions<shapes.Three, never, never>>()
+// A query may pass the opt-in too, as before modes were read.
+expectTypeOf(
+  client.queryOptions(ledger, "icrc1_fee", undefined, { update: "idempotent" })
+).toEqualTypeOf<CanisterQueryOptions<bigint, never, never>>()
 // A result read keeps its error type.
 const outcome = client.queryOptions(service, "outcome", 1n)
 expectTypeOf(
   new QueryObserver(client.queryClient, outcome).getCurrentResult().error
 ).toEqualTypeOf<ReactorError<string> | null>()
+
+// ---------------------------------------------------------------------------
+// The methods a read is built from, by the mode the generated Actor says
+// ---------------------------------------------------------------------------
+
+// Without the opt-in: the queries and the composite query, never an update or
+// the oneway. tests/traps.test-d.ts proves that queryOptions refuses the rest.
+expectTypeOf<ReadMethod<shapes.Actor>>().toEqualTypeOf<
+  | "one"
+  | "who"
+  | "maybe"
+  | "composite"
+  | "many"
+  | "pair"
+  | "nothing"
+  | "lookup"
+  | "small"
+  | "bytes"
+  | "outcome"
+>()
+// With { update: "idempotent" }: the updates too, still never the oneway.
+expectTypeOf<OptInMethod<shapes.Actor>>().toEqualTypeOf<
+  Exclude<keyof shapes.Actor, "fire">
+>()
+expectTypeOf<ReadMethod<icrc1.Actor>>().toEqualTypeOf<
+  Exclude<keyof icrc1.Actor, "icrc1_transfer">
+>()
+// An Actor written by hand says no mode: every method passes, and the client
+// checks the mode at run time.
+type HandWritten = {
+  fee: () => Promise<bigint>
+  transfer: (arg: icrc1.TransferArg) => Promise<bigint>
+  notify: (text: string) => Promise<void>
+}
+expectTypeOf<ReadMethod<HandWritten>>().toEqualTypeOf<
+  "fee" | "transfer" | "notify"
+>()
+expectTypeOf<OptInMethod<HandWritten>>().toEqualTypeOf<
+  "fee" | "transfer" | "notify"
+>()
+// A generated Actor with methods added by hand: the generated update is
+// refused, the added method is not.
+expectTypeOf<
+  ReadMethod<icrc1.Actor & { icrc2_approve: (arg: unknown) => Promise<bigint> }>
+>().toEqualTypeOf<
+  Exclude<keyof icrc1.Actor, "icrc1_transfer"> | "icrc2_approve"
+>()
+// The mode does not reach the canister's methods: a direct call of an update
+// is a plain async function.
+expectTypeOf(ledger.icrc1_transfer).toEqualTypeOf<
+  (arg0: icrc1.TransferArg) => Promise<bigint>
+>()
 
 // ---------------------------------------------------------------------------
 // mutationOptions: the variables, the data and the typed Err

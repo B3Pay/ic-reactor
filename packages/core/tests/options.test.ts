@@ -35,6 +35,7 @@ import {
   requestsFor,
   serve,
   sleep,
+  type HandWritten,
 } from "./canister-helpers.js"
 import { withIdentity } from "./client-helpers.js"
 import * as icrc1 from "./fixtures/icrc1.js"
@@ -330,12 +331,21 @@ describe("queryOptions", () => {
       id: SHAPES,
       certified: true,
     })
-    expect(() => client.queryOptions(canister, "bump", 1n)).toThrow(
+    // The generated Actor's update and oneway methods do not compile here
+    // (tests/traps.test-d.ts); typed by hand, without modes, they do, and the
+    // check at run time refuses them.
+    const handWritten = client.canister<HandWritten<shapes.Actor>>(
+      shapes.actor,
+      { id: SHAPES }
+    )
+    expect(() => client.queryOptions(handWritten, "bump", 1n)).toThrow(
       /bump is an update method/
     )
-    expect(() => client.queryOptions(canister, "note", "x")).toThrow(TypeError)
+    expect(() => client.queryOptions(handWritten, "note", "x")).toThrow(
+      TypeError
+    )
     expect(() =>
-      client.queryOptions(canister, "fire", "x", { update: "idempotent" })
+      client.queryOptions(handWritten, "fire", "x", { update: "idempotent" })
     ).toThrow(/oneway/)
     expect(() => client.queryOptions(certified, "composite", 1n)).toThrow(
       /composite query/
