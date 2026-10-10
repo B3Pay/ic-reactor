@@ -162,6 +162,17 @@ npm install --save-dev --save-exact @candid-core/cli@0.2.0
   checks; its duplicate-transfer recipe and the writes guide's direct
   transfer read the typed `err` instead of casting it. The consumer guide
   (`llms.txt`) and the skill say to use it after a direct call.
+- The writes guide has a section, "Sending the same write again", on
+  `client.resendOf` (#850): when a re-send is safe, what `dedupedBy` states,
+  that the offer goes out only as its sender, and the refusals
+  `caller_changed`, `target_changed` and `arg_changed`, each of which leaves
+  the write's outcome unknown. The errors guide lists the two new codes,
+  `target_changed` under `cancelled` and `arg_changed` under `invalid_args`,
+  says not to ignore a refused re-send as another `cancelled`, and its
+  duplicate-transfer recipe offers the re-send with `client.resendOf`. The
+  core reference page shows the three-argument `isReactorError` signature and
+  `resendOf` on `Client`, and the Vite plugin reference page lists the
+  optional `@icp-sdk/core` peer and when it is loaded.
 - Getting started has a section on keeping the IC stack (the client,
   `AuthClient` and the generated module) out of an app's first load with
   `React.lazy`, with no change to the library (#855). Measured on the Vite
