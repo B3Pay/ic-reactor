@@ -790,6 +790,9 @@ describe("the live check", () => {
         "did/item.did was saved, and a save makes no request: this stands until a live check passes, which runs when the dev server restarts."
       )
       expect(send).not.toHaveBeenCalledWith({ type: "full-reload" })
+      expect(
+        running.lines.filter((line) => line.includes("changed, regenerating"))
+      ).toEqual([])
       // A browser that connects now is handed it.
       const client = { send: vi.fn() }
       connections[0](client)
@@ -811,6 +814,55 @@ describe("the live check", () => {
       `info: ic-reactor: item: did/item.did matches the live interface of ${LEDGER_ID} on ${ic.host}`
     )
     expect(exists(app, "src/canisters/item.ts")).toBe(true)
+    expect(ic.requests).toHaveLength(4)
+  })
+
+  // `r` and Enter restarts the server with the same plugin object, so the
+  // failure it holds must be cleared by the check that passes, or the next
+  // save would still stand on it.
+  it("that failed under vite dev is cleared by a check that passes when the same server restarts, and a save then regenerates", async () => {
+    const canisters: Record<string, Canister> = {
+      [LEDGER_ID]: { candid: liveWith(["  put : (nat) -> ();\n", ""]) },
+    }
+    const ic = await fakeIc(canisters)
+    const app = newApp({ "did/item.did": WRITTEN })
+    const running = await startDev(app.root, checked(ic.host))
+    closers.push(running.close)
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors()).toHaveLength(1)
+    expect(errors()[0]).toContain(
+      `item (did/item.did): the live check found ${LEDGER_ID} on ${ic.host} incompatible with did/item.did (1 error)`
+    )
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+
+    // The canister is put back, and the same server restarts.
+    canisters[LEDGER_ID] = { candid: WRITTEN }
+    await running.server.restart()
+    expect(running.lines).toContainEqual(
+      `info: ic-reactor: item: did/item.did matches the live interface of ${LEDGER_ID} on ${ic.host}`
+    )
+    expect(exists(app, "src/canisters/item.ts")).toBe(true)
+    expect(ic.requests).toHaveLength(4)
+
+    // A save now regenerates, with no request and no new error.
+    fs.rmSync(path.join(app.root, "src/canisters/item.ts"))
+    const generatedLine =
+      "info: ic-reactor: generated item into src/canisters/item.ts"
+    const before = running.lines.filter((line) => line === generatedLine).length
+    const file = path.join(app.root, "did/item.did")
+    fs.writeFileSync(file, `// Edited.\n${WRITTEN}`)
+    running.server.watcher.emit("change", file)
+    await vi.waitFor(() =>
+      expect(
+        running.lines.filter((line) => line === generatedLine)
+      ).toHaveLength(before + 1)
+    )
+    expect(running.lines).toContain(
+      "info: ic-reactor: did/item.did changed, regenerating item"
+    )
+    expect(exists(app, "src/canisters/item.ts")).toBe(true)
+    expect(errors()).toHaveLength(1)
     expect(ic.requests).toHaveLength(4)
   })
 

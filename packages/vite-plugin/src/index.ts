@@ -992,11 +992,14 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
 
   /**
    * The failure of each canister whose last live check failed (or could not
-   * be made), by canister name, until a later live check of it passes. Only a
-   * `buildStart` checks: a save under `vite dev` makes no request, so it
-   * cannot tell that the file matches the canister again, and it leaves the
-   * canister failed, in the log and the overlay, and not generated, whatever
-   * the save changed. The check runs again when the dev server restarts.
+   * be made), by canister name. Only a `buildStart` checks: a save under
+   * `vite dev` makes no request, so it cannot tell that the file matches the
+   * canister again, and it leaves the canister failed, in the log and the
+   * overlay, and not generated, whatever the save changed. A later
+   * `buildStart` (the dev server's restart, which keeps this plugin object
+   * for an inline config) clears it when it checks the canister and the check
+   * passes, when it fetched the file, or when the check is off for it
+   * (`IC_REACTOR_VERIFY=0`).
    */
   const liveFailures = new Map<string, Failure>()
 
@@ -1341,18 +1344,15 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       }
     }
     queued.add(key)
-    const regenerating = affected.filter(({ name }) => !liveFailures.has(name))
-    if (regenerating.length > 0) {
-      log.info(
-        `ic-reactor: ${relativeToRoot(saved)} changed, regenerating ${regenerating.map(({ name }) => name).join(", ")}`
-      )
-    }
     const { signal } = stopper
     void serially(async () => {
       queued.delete(key)
+      // Dropped when the server closed while it waited.
+      if (signal.aborted) return
       // No live check here: a save is never a network request. So a canister
-      // whose live check failed stays failed, and is not generated: only a
-      // check that passes clears it (see `liveFailures`).
+      // whose live check failed stays failed, and is not generated, until a
+      // start checks it again (see `liveFailures`). Read here, in the job, and
+      // not when the save is queued: a check in flight may still set it.
       const standing: Failure[] = []
       const open: Generated[] = []
       for (const canister of affected) {
@@ -1367,6 +1367,11 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             `${failure.message}\n${relativeToRoot(saved)} was saved, and a save makes no request: ` +
             `this stands until a live check passes, which runs when the dev server restarts.`,
         })
+      }
+      if (open.length > 0) {
+        log.info(
+          `ic-reactor: ${relativeToRoot(saved)} changed, regenerating ${open.map(({ name }) => name).join(", ")}`
+        )
       }
       const mismatched = await compareMethods(open, signal)
       if (!mismatched) return

@@ -3383,5 +3383,25 @@
     "file": "src/index.ts",
     "search": "        const failure = liveFailures.get(canister.name)\n",
     "replace": "        const failure = undefined as Failure | undefined\n"
+  },
+  {
+    "id": "did-verify-restart-keeps-failure",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that failed under vite dev is cleared by a check that passes when the same server restarts, and a save then regenerates",
+    "why": "a live check that passes when the dev server restarts with the same plugin object leaves the canister's earlier failure in place, so every later save still fails it and serves no bindings, though the check passed",
+    "file": "src/index.ts",
+    "search": "        for (const { name } of checking) liveFailures.delete(name)\n",
+    "replace": ""
+  },
+  {
+    "id": "did-save-queued-after-close-runs",
+    "package": "vite-plugin",
+    "test": "tests/close.test.ts",
+    "testName": "is killed with the server, and nothing is reported for it",
+    "why": "a save queued behind a run when the dev server closes still starts after the close, and reports that it regenerates a canister of a server that is gone",
+    "file": "src/index.ts",
+    "search": "      // Dropped when the server closed while it waited.\n      if (signal.aborted) return\n",
+    "replace": ""
   }
 ]
