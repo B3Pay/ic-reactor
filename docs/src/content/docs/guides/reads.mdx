@@ -268,6 +268,16 @@ builds the read, and throws a `TypeError` for an update or a oneway. A method
 that returns nothing is refused the same way (`TypeError`), whatever its mode:
 there is nothing to cache, so call it directly.
 
+A function generic over the method name, `M extends keyof A & string`, cannot
+pass its `method` on to `queryOptions`: TypeScript cannot tell that such an `M`
+is a `ReadMethod<A>`, even when every call of the function names a query, so
+the call does not compile. Give the type arguments yourself,
+`client.queryOptions<A, any>(canister, method, vars)`: the call compiles, the
+mode is checked at run time as for an `Actor` written by hand, and the data of
+the options is `unknown`, for your function to state. The same goes for an
+`{ update: "idempotent" }` that may be `undefined`: for an update, pass a value
+whose type says it is the opt-in.
+
 One case is different. Some update methods give the same answer however often
 they run. The ckBTC minter's `get_btc_address` is one: it is an update call,
 it needs a signed-in caller, and it returns the same deposit address for an

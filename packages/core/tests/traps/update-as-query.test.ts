@@ -13,8 +13,8 @@
  * (`tests/traps.test-d.ts`). For an `Actor` written by hand, which does not,
  * it throws a `TypeError` at the line that builds the read, which says to use
  * `mutationOptions`, and sends nothing: that run-time check is what this file
- * proves, through the ledger typed by hand. The one case where an update is a read,
- * a method that answers the same however often it runs (ckBTC's
+ * proves, through the ledger typed by hand. The one case where an update is a
+ * read, a method that answers the same however often it runs (ckBTC's
  * `get_btc_address`), is a written-out opt-in, `{ update: "idempotent" }`,
  * which is bounded: the read runs once per caller, and focus, reconnect and
  * remount do not run it again.

@@ -87,20 +87,38 @@ generated `Actor` carries (`$.WithMode<mode>`, from `candid-core-cli gen`
 | `oneway`                          | **does not compile**        | **does not compile**            |
 | none (an `Actor` written by hand) | compiles                    | compiles                        |
 
-The refused calls are exactly those that throw a `TypeError` at run time
-today, so no call that works stops compiling. This is a compile-time break
-for code that names an update method of a generated `Actor` without the
-opt-in, or a oneway method with or without it: such code compiled on
-beta.4 and threw when it ran. The error is `TS2769` ("No overload matches
-this call"), saying that the method `is not assignable to parameter of type
-'ReadMethod<Actor>'`, or `'OptInMethod<Actor>'` for a oneway with the
-opt-in. Use `client.mutationOptions` for a write, or call it directly; pass
+This is a compile-time break for code that names an update method of a
+generated `Actor` without a fourth argument whose type is
+`{ update: "idempotent" }`, or that names a oneway method with or without it.
+The error is `TS2769` ("No overload matches this call"), saying that the
+method `is not assignable to parameter of type 'ReadMethod<Actor>'`, or
+`'OptInMethod<Actor>'` for a oneway with the opt-in. Use
+`client.mutationOptions` for a write, or call it directly; pass
 `{ update: "idempotent" }` only for an update that answers the same however
 often it runs.
 
-A call whose method is a type parameter (`M extends keyof A & string`, in a
-generic wrapper) did not compile on beta.4 either, and still does not. An
-`Actor` written by hand is unchanged: its methods say no mode, every one of
+Such a call with the method's name written out compiled on beta.4 and threw a
+`TypeError` when it ran. Two kinds of call compiled on beta.4, could run
+without a `TypeError`, and no longer compile:
+
+- **A fourth argument that may be `undefined`.** Its type, such as that of an
+  `opts?: QueryOptionsOptions` a wrapper passes on, does not say it is the
+  opt-in, so for an update method the call does not compile, though it
+  ran whenever the value was defined. Pass `{ update: "idempotent" }`, or a
+  value whose type is `QueryOptionsOptions`. For a query it compiles as
+  before.
+- **A wrapper generic over the method name.** In
+  `function read<A, M extends keyof A & string>(c: Canister<A>, method: M, vars: …)`,
+  `client.queryOptions(c, method, vars)` compiled on beta.4, and is valid at
+  run time whenever `method` names a query. TypeScript cannot tell that such
+  an `M` is a `ReadMethod<A>`, and `ReadMethod` is not exported for a wrapper
+  to constrain `M` with, so the call does not compile. The escape is explicit
+  type arguments, `client.queryOptions<A, any>(c, method, vars)`: it compiles,
+  the run-time check still refuses an update or a oneway, and the options'
+  data is `unknown`, for the wrapper to state. (A wrapper that passed
+  `...args: any[]`, or no variables, did not compile on beta.4 either.)
+
+An `Actor` written by hand is unchanged: its methods say no mode, every one of
 them compiles as before, and the run-time check refuses an update or a oneway
 as before.
 

@@ -21,6 +21,7 @@ import {
 import type {
   CanisterQueryOptions,
   OptInMethod,
+  QueryOptionsOptions,
   ReadMethod,
 } from "../src/types.js"
 import * as archive from "./fixtures/archive.js"
@@ -175,6 +176,42 @@ expectTypeOf<
 expectTypeOf(ledger.icrc1_transfer).toEqualTypeOf<
   (arg0: icrc1.TransferArg) => Promise<bigint>
 >()
+
+// Two calls that compiled on beta.4 and no longer do, though each may run
+// without a TypeError (the CHANGELOG's Unreleased entry says so).
+//
+// A wrapper generic over the method name: TypeScript cannot tell that a
+// method `M extends keyof A & string` is a ReadMethod<A>, whatever M is.
+export function readOf<A, M extends keyof A & string>(
+  canister: Canister<A>,
+  method: M,
+  vars: never
+) {
+  // @ts-expect-error M may be an update of a generated Actor: not a ReadMethod<A>
+  return client.queryOptions(canister, method, vars)
+}
+// Its escape: explicit type arguments, with `any` for the method. The call
+// compiles, and the run-time check still refuses an update or a oneway.
+export function readOfAny<A, M extends keyof A & string>(
+  canister: Canister<A>,
+  method: M,
+  vars: never
+) {
+  return client.queryOptions<A, any>(canister, method, vars)
+}
+// Its data is unknown, and its error type never: the wrapper states both.
+expectTypeOf(readOfAny(ledger, "icrc1_fee", undefined as never)).toEqualTypeOf<
+  CanisterQueryOptions<unknown, never, never>
+>()
+// An opt-in that may be undefined: an update without `{ update: "idempotent" }`
+// throws at run time, so a fourth argument the type does not know is the
+// opt-in does not compile for an update. For a query it compiles as before.
+declare const maybeOptIn: QueryOptionsOptions | undefined
+// @ts-expect-error the opt-in may be undefined, and an update without it throws
+client.queryOptions(ledger, "icrc1_transfer", transferArg, maybeOptIn)
+expectTypeOf(
+  client.queryOptions(ledger, "icrc1_fee", undefined, maybeOptIn)
+).toEqualTypeOf<CanisterQueryOptions<bigint, never, never>>()
 
 // ---------------------------------------------------------------------------
 // mutationOptions: the variables, the data and the typed Err

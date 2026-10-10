@@ -205,6 +205,10 @@ not compile (an `Actor` written by hand says no mode: it throws at run time).
 An update that answers the same however often it runs (ckBTC's
 `get_btc_address`) opts in with a fourth argument, `{ update: "idempotent" }`,
 after the arguments (`undefined` when it takes none); a oneway never compiles.
+A function generic over the method name (`M extends keyof A & string`) does
+not compile passing it on; give the type arguments,
+`client.queryOptions<A, any>(canister, method, vars)`, which keeps the
+run-time check and types the data `unknown`.
 The target `{ id, certified: true }` certifies `query` replies.
 
 ## Writes

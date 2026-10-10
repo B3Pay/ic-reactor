@@ -381,15 +381,19 @@ export interface Client {
    * update that returns the same answer however often it runs (ckBTC's
    * `get_btc_address`) can be read with `{ update: "idempotent" }` as the
    * fourth argument (the third signature; a oneway does not compile even
-   * then): it is fetched once
-   * per key and caller (`staleTime: Infinity`, no refetch on mount, focus or
-   * reconnect), needs a signed-in caller like any update, and is retried only
-   * after a failure that proves it never got in (DECISIONS Q2). It is still a
-   * read of its canister, so a write to that canister through
-   * {@link Client.mutationOptions} invalidates it by default and it runs once
-   * more, as a replicated call: safe for an idempotent method, but a cost. To
-   * keep it cached across writes, name the reads a write changes in
-   * `invalidates`.
+   * then): it is fetched once per key and caller (`staleTime: Infinity`, no
+   * refetch on mount, focus or reconnect), needs a signed-in caller like any
+   * update, and is retried only after a failure that proves it never got in
+   * (DECISIONS Q2). It is still a read of its canister, so a write to that
+   * canister through {@link Client.mutationOptions} invalidates it by default
+   * and it runs once more, as a replicated call: safe for an idempotent
+   * method, but a cost. To keep it cached across writes, name the reads a
+   * write changes in `invalidates`.
+   *
+   * A function generic over the method name (`M extends keyof A & string`)
+   * cannot pass it on, since no type says such an `M` is a `ReadMethod<A>`:
+   * give the type arguments, `queryOptions<A, any>(canister, method, vars)`,
+   * which keeps the run-time check and types the data `unknown`.
    *
    * A method without results (`() -> () query`) has nothing to cache: its
    * call resolves `undefined`, which TanStack Query takes for a failed read.
