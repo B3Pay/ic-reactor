@@ -84,7 +84,8 @@ async function buildError(app: App, options: IcReactorPluginOptions) {
 const lineOf = (message: string, name: string) =>
   message.split("\n").find((line) => line.includes(`- ${name} (`)) ?? ""
 
-const METHODS = ["icrc1_transfer", "icrc1_balance_of"]
+// `as const`: the option takes a readonly list.
+const METHODS = ["icrc1_transfer", "icrc1_balance_of"] as const
 
 describe("methods", () => {
   it("writes a missing didFile as the projection of the live interface to them, and a second build makes no request", async () => {

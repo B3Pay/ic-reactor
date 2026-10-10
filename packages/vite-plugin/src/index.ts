@@ -139,7 +139,7 @@ export interface IcReactorPluginOptions {
       outDir?: string
       canisterId?: string
       network?: "ic" | "local" | { host: string }
-      methods?: string[]
+      methods?: readonly string[]
       verify?: "live"
     }
   >
