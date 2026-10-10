@@ -234,11 +234,39 @@ render is cancelled once.
 
 ## Update methods
 
-An update method is not a read. `queryOptions` throws a `TypeError` for one: a
-query refetches on mount, on focus and on reconnect, and every refetch would
-run the update again. Use `useMutation` with `client.mutationOptions`, see
-[Writes](/v4/guides/writes/). A method that returns nothing is also refused
-(`TypeError`): there is nothing to cache, so call it directly.
+An update method is not a read: a query refetches on mount, on focus and on
+reconnect, and every refetch would run the update again. Use `useMutation`
+with `client.mutationOptions`, see [Writes](/v4/guides/writes/). A oneway
+method is not a read either: it has no reply to cache.
+
+The generated `Actor` says each method's mode, so `queryOptions` with an
+update or a oneway method does not compile:
+
+```tsx
+import { useClient } from "@ic-reactor/react"
+import { useMutation } from "@tanstack/react-query"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1"
+
+export function Send({ arg }: { arg: TransferArg }) {
+  const client = useClient()
+  const ledger = client.canister<Actor>(actor, {
+    id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+  })
+  // @ts-expect-error No overload matches this call: Argument of type
+  // '"icrc1_transfer"' is not assignable to parameter of type 'ReadMethod<Actor>'.
+  client.queryOptions(ledger, "icrc1_transfer", arg)
+  // A write is a mutation.
+  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  return <button onClick={() => transfer.mutate(arg)}>Send</button>
+}
+```
+
+`ReadMethod<Actor>` is the methods a read may be built from: the `query` and
+`composite_query` methods. An `Actor` you write by hand says no mode, so every
+one of its methods compiles here; `queryOptions` then checks the mode when it
+builds the read, and throws a `TypeError` for an update or a oneway. A method
+that returns nothing is refused the same way (`TypeError`), whatever its mode:
+there is nothing to cache, so call it directly.
 
 One case is different. Some update methods give the same answer however often
 they run. The ckBTC minter's `get_btc_address` is one: it is an update call,
@@ -277,7 +305,10 @@ runs once more, as a replicated call. That is safe for an idempotent method but
 it is a cost. To keep the read cached across writes, list the reads a write
 changes in `invalidates`, see [Writes](/v4/guides/writes/).
 
-Do not use `{ update: "idempotent" }` for a method that changes state.
+Do not use `{ update: "idempotent" }` for a method that changes state. The
+option opts in an update only: a oneway method does not compile even with it,
+and the variables come before it, `undefined` for a method without
+arguments.
 
 ## Certified reads
 
@@ -306,7 +337,8 @@ the client verifies the certificate of the reply. Its keys end in
 different reads in the cache. There is no composite query on a certified
 canister: a `composite_query` method has no certified path. Calling it
 directly rejects `invalid_args` with code `no_certified_path`, and
-`queryOptions` throws a `TypeError`.
+`queryOptions` throws a `TypeError`. That one is checked only when the code
+runs: the type of a canister object does not say whether it is certified.
 
 A certified read is slower than a plain query, as a replicated call is. Use it
 for the values you must be able to trust, and plain reads for the rest.
