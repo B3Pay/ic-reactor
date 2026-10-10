@@ -15,7 +15,61 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+It requires the candid-core pair published on 2026-10-10, both pinned
+exactly, where beta.4 required `0.3.0` and `0.2.0`:
+
+- `@ic-reactor/core`: peer `@candid-core/schema` at exactly `0.4.0`;
+- `@ic-reactor/vite-plugin`: peer `@candid-core/cli` at exactly `0.3.0`, the
+  version its install hints now name.
+
+No `@ic-reactor/*` export is added or removed, and no call, key or error
+changes. ic-reactor makes no use yet of what the pair adds. Schema 0.4.0's
+JavaScript is 0.3.0's but for one header comment, so an app's bundle does not
+change.
+
+What an app on beta.4 does:
+
+1. Upgrade the pair together, in the same step as the `@ic-reactor/*`
+   packages. npm refuses a mismatched pair (`ERESOLVE could not resolve`):
+   CLI 0.3.0 peers schema exactly `0.4.0`, CLI 0.2.0 peers exactly `0.3.0`,
+   and core peers the schema exactly.
+
+   ```sh
+   npm install --save-exact @candid-core/schema@0.4.0
+   npm install --save-dev --save-exact @candid-core/cli@0.3.0
+   ```
+
+   Keep one copy of the schema. A second one left at `0.3.0`, beside core's
+   `0.4.0`, makes its `Principal` another type than core's, and passing one
+   for the other fails with `TS2322` or `TS2345` ("Property
+   '[principalBrand]' is missing").
+
+2. Regenerate every committed module with `candid-core-cli gen` (the Vite
+   plugin does it when it starts). Until then `gen --check` reports each
+   module CLI 0.2.0 wrote as `drifted` and exits 1; the `.envelope.json`
+   beside it does not change. A module CLI 0.2.0 wrote still compiles against
+   schema 0.4.0, but a module CLI 0.3.0 writes does not compile against
+   `0.3.0` (`TS2694`, "has no exported member 'WithMode'", once per method).
+
+3. Code that imports the generated names compiles unchanged. Two things in
+   the module change what the compiler shows:
+   - Each type is declared under its Candid name, `export type Account = …`,
+     so a type error names `Account` where it named `$Account`. A name that
+     cannot be a type keeps the `$`: the globals `Array`, `Promise`, `Record`
+     and `Uint8Array`, and words TypeScript refuses as a type's name, such as
+     `delete` or `string`.
+   - Each method of `type Actor` is its call signature intersected with
+     `$.WithMode<"query" | "composite_query" | "update" | "oneway">`.
+     `Parameters<>`, `ReturnType<>`, `keyof Actor` and a plain async function
+     that implements a method are unchanged, and so is what
+     `client.canister<Actor>()` returns. A type test that compares a method
+     type of `Actor` for exact equality with its bare signature now fails.
+
+Every module this repository generates (core's test fixtures, the e2e
+`hello_actor`, the snippet checker's modules) is regenerated with CLI 0.3.0,
+and core's and react's type tests compile against them unchanged. The four
+examples move to the new pair and regenerated modules with the release that
+publishes this, since beta.4 peers the old pair.
 
 ## core, react, vite-plugin 4.0.0-beta.4
 
