@@ -97,16 +97,16 @@ error is not that call's: it can still be of any `kind`.
 
 ## The eight kinds
 
-| `kind`            | Meaning                                                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `invalid_args`    | the arguments could not be encoded, or the target canister id could not be resolved. Nothing was sent                    |
-| `unauthenticated` | an update was attempted while nobody is signed in. Nothing was sent                                                      |
-| `not_delivered`   | nothing that matters ran: the request was refused or never taken in, or it was a query that got no answer                |
-| `outcome_unknown` | an update went out and no trustworthy answer came back, so the canister may or may not have run it                       |
-| `rejected`        | the IC or the canister rejected the call; `rejectCode` says which                                                        |
-| `invalid_reply`   | a reply arrived but did not decode as the method's result                                                                |
-| `canister_err`    | the canister ran the call and answered with the `Err` arm of its result; `err` is typed                                  |
-| `cancelled`       | the caller abandoned the call: an aborted call, a read whose caller is no longer current, or a call on a disposed client |
+| `kind`            | Meaning                                                                                                                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `invalid_args`    | the arguments could not be encoded, the target canister id could not be resolved, or an offered re-send's argument was changed since it was sent (`arg_changed`). Nothing was sent                          |
+| `unauthenticated` | an update was attempted while nobody is signed in. Nothing was sent                                                                                                                                         |
+| `not_delivered`   | nothing that matters ran: the request was refused or never taken in, or it was a query that got no answer                                                                                                   |
+| `outcome_unknown` | an update went out and no trustworthy answer came back, so the canister may or may not have run it                                                                                                          |
+| `rejected`        | the IC or the canister rejected the call; `rejectCode` says which                                                                                                                                           |
+| `invalid_reply`   | a reply arrived but did not decode as the method's result                                                                                                                                                   |
+| `canister_err`    | the canister ran the call and answered with the `Err` arm of its result; `err` is typed                                                                                                                     |
+| `cancelled`       | the caller abandoned the call: an aborted call, a read whose caller is no longer current, a call on a disposed client, or an offered re-send that would go to another canister or method (`target_changed`) |
 
 ## `mayHaveExecuted`
 
@@ -165,7 +165,7 @@ simpler:
 
 ### Codes
 
-`code` narrows a kind. The client sets exactly these eight. Only
+`code` narrows a kind. The client sets exactly these ten. Only
 `canister_not_found` comes from the IC's answer; the client decides the others
 itself:
 
@@ -174,9 +174,11 @@ itself:
 | `canister_id_unresolved`        | `invalid_args`                                   | a `{ name }` target the `ic_env` cookie cannot give: on a server, an untrusted host, or no such entry                                                                                                                                                                                                             |
 | `no_certified_path`             | `invalid_args`                                   | a `composite_query` called on a `certified: true` canister                                                                                                                                                                                                                                                        |
 | `effective_canister_id_unknown` | `invalid_args`                                   | a management canister call that cannot be routed from its arguments                                                                                                                                                                                                                                               |
+| `arg_changed`                   | `invalid_args`                                   | a mutation given an argument `client.resendOf()` offered, which was changed after the write it re-sends went out                                                                                                                                                                                                  |
 | `anonymous_write`               | `unauthenticated`                                | an update or oneway method by a caller who is not signed in                                                                                                                                                                                                                                                       |
 | `identity_unavailable`          | `unauthenticated`                                | the auth's `getIdentity()` rejected                                                                                                                                                                                                                                                                               |
 | `caller_changed`                | `cancelled`                                      | the call was made for a principal that is no longer current                                                                                                                                                                                                                                                       |
+| `target_changed`                | `cancelled`                                      | a mutation given an argument `client.resendOf()` offered would send it to another method or canister than the write it re-sends: a `{ name }` the `ic_env` cookie maps elsewhere since                                                                                                                            |
 | `client_disposed`               | `cancelled`                                      | a call on a disposed client                                                                                                                                                                                                                                                                                       |
 | `canister_not_found`            | `not_delivered`, `rejected` or `outcome_unknown` | the IC answered that the canister does not exist: a boundary node's HTTP 400 `canister_not_found` (an id outside every subnet's range), or a replica's reject 3 with IC error code `IC0301` (an id inside a range that holds no canister). A write the IC may already hold keeps the code under `outcome_unknown` |
 
@@ -184,16 +186,25 @@ An aborted call is `cancelled` with no code.
 
 ## What to do for each kind
 
-| `kind`            | What to do                                                                                                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `invalid_args`    | Fix the input or the target. Read `issues` for the field and the reason. Nothing was sent.                                                                                |
-| `unauthenticated` | Ask the user to sign in, then send again. `anonymous_write` means nobody is signed in. `identity_unavailable` means the auth could not hand over an identity.             |
-| `not_delivered`   | It is safe to try again. The client already retried a read, and sent an update again where that was proven safe, so this is the end of what it will do alone.             |
-| `outcome_unknown` | Say the outcome is unknown. Read the state back before anything else. Never send again blindly.                                                                           |
-| `rejected`        | Read `rejectCode`. Code 4 is a reject the canister chose, and code 5 is a trap. If `mayHaveExecuted` is `true`, read the state back before sending again.                 |
-| `invalid_reply`   | The generated module and the canister disagree about the method's result: regenerate the module from the canister's current `.did`. For an update, it did run.            |
-| `canister_err`    | Show or act on the typed `err`. The canister's answer is final. Sending again is a new decision. A mutation has already refreshed its reads.                              |
-| `cancelled`       | Usually ignore it: the caller moved on. A `caller_changed` read lands nowhere, and the component reads the new caller's key. Ignore it in a global error handler as well. |
+| `kind`            | What to do                                                                                                                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `invalid_args`    | Fix the input or the target. Read `issues` for the field and the reason. Nothing was sent. `arg_changed` has no `issues`: see the note below the table.                                                                                                |
+| `unauthenticated` | Ask the user to sign in, then send again. `anonymous_write` means nobody is signed in. `identity_unavailable` means the auth could not hand over an identity.                                                                                          |
+| `not_delivered`   | It is safe to try again. The client already retried a read, and sent an update again where that was proven safe, so this is the end of what it will do alone.                                                                                          |
+| `outcome_unknown` | Say the outcome is unknown. Read the state back before anything else. Never send again blindly.                                                                                                                                                        |
+| `rejected`        | Read `rejectCode`. Code 4 is a reject the canister chose, and code 5 is a trap. If `mayHaveExecuted` is `true`, read the state back before sending again.                                                                                              |
+| `invalid_reply`   | The generated module and the canister disagree about the method's result: regenerate the module from the canister's current `.did`. For an update, it did run.                                                                                         |
+| `canister_err`    | Show or act on the typed `err`. The canister's answer is final. Sending again is a new decision. A mutation has already refreshed its reads.                                                                                                           |
+| `cancelled`       | Usually ignore it: the caller moved on. A `caller_changed` read lands nowhere, and the component reads the new caller's key. Ignore it in a global error handler as well, except `target_changed` and a refused re-send: see the note below the table. |
+
+**A refused re-send is not the end of the write.** `target_changed`,
+`arg_changed`, and a `caller_changed` from a mutation given an argument
+`client.resendOf()` offered, each mean the re-send was refused and nothing was
+sent. The write it re-sends still has an unknown outcome. The refusal replaces
+the mutation's `outcome_unknown` error, so `client.resendOf(mutation.error)` is
+`undefined` from then on, and an app that ignores the refusal drops a write
+that may have run. Do not ignore it: read the state back, as for
+`outcome_unknown`.
 
 For every `mayHaveExecuted: true` failure of a write, a mutation has already
 invalidated the canister's reads, so the page shows what the canister holds
@@ -274,14 +285,15 @@ what happened. Two ways to know:
   and `memo` included, is answered `Duplicate`, which means the first one
   went through. Give each transfer its own `memo`, or two different
   transfers of the same amount made in the same millisecond look like one,
-  and the second is reported as done when it never ran. The client does not
-  do this for you. It is the ledger's feature, and the
-  [Vite wallet example](/v4/examples/vite-wallet/) uses it as its recipe.
+  and the second is reported as done when it never ran. It is the ledger's
+  feature: `client.resendOf()` offers the re-send only for a key you say the
+  canister deduplicates on, and only to the account that sent it (see
+  [Writes](/v4/guides/writes/#sending-the-same-write-again)).
 
 ```ts
 import { isReactorError } from "@ic-reactor/core"
 import type { Account } from "./generated/icrc1"
-import { ledger } from "./ledger"
+import { client, ledger } from "./ledger"
 
 /** Sends a transfer, and after an unknown outcome sends the same argument once more. */
 export async function transferOnce(to: Account, amount: bigint) {
@@ -297,9 +309,13 @@ export async function transferOnce(to: Account, amount: bigint) {
   try {
     return await ledger.icrc1_transfer(arg)
   } catch (error) {
-    if (!isReactorError(error) || !error.mayHaveExecuted) throw error
+    // Offered only after an unknown outcome, while its sender is the caller.
+    const again = client.resendOf(error, ledger, "icrc1_transfer", {
+      dedupedBy: (sent) => sent.created_at_time,
+    })
+    if (again === undefined) throw error
     try {
-      return await ledger.icrc1_transfer(arg) // the identical argument
+      return await again.send() // the identical argument, as the same sender
     } catch (second) {
       if (
         isReactorError(second, ledger, "icrc1_transfer") &&

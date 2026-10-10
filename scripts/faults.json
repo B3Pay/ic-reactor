@@ -1304,8 +1304,8 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "          caller: internals.current(),\n          values: valuesOf(prepared, vars),\n",
-        "replace": "          caller: current(),\n          values: valuesOf(prepared, vars),\n"
+        "search": "          caller: again?.caller ?? internals.current(),\n          values: valuesOf(prepared, vars),\n",
+        "replace": "          caller: again?.caller ?? current(),\n          values: valuesOf(prepared, vars),\n"
       },
       {
         "file": "src/client.ts",
@@ -2720,6 +2720,130 @@
     "replace": "if (canister && isReactorError(error)) {"
   },
   {
+    "id": "ir850-nothing-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers the attempt's own argument after a lost reply, and the re-send answers Duplicate",
+    "why": "a write whose outcome is unknown is not kept with its error, so resendOf has nothing to offer after a lost reply",
+    "file": "src/call.ts",
+    "search": "      UNKNOWN_WRITES.set(error, request)\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-copy-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers the attempt's own argument after a lost reply, and the re-send answers Duplicate",
+    "why": "the offer carries a copy of the argument, not the object the attempt sent, so the mutation cannot tell it is a re-send and holds it to no sender",
+    "file": "src/options.ts",
+    "search": "    return {\n      arg,\n",
+    "replace": "    return {\n      arg: { ...arg },\n"
+  },
+  {
+    "id": "ir850-known-outcome-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing after a failure whose outcome is known",
+    "why": "every failed write is kept for a re-send, so a canister_err or a request turned away (whose outcome is known) is offered to send again",
+    "file": "src/call.ts",
+    "search": "      error.mayHaveExecuted &&\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-another-sender-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing after a sign-out, nor to another account, and again once the sender signs back in",
+    "why": "the offer no longer checks that its sender is the caller now, so after a sign-out or a switch of account the same argument is offered as a new write",
+    "file": "src/options.ts",
+    "search": "      // The sender, and no one else, may send it again.\n      internals.current().principal !== caller.principal ||\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-mutation-resends-as-whoever",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "sends an offered argument only as its sender, by send() or by the mutation",
+    "why": "a mutation given an offered argument sends it as whoever is the caller when it runs, so another account pays the same transfer again",
+    "file": "src/options.ts",
+    "search": "caller: again?.caller ?? internals.current(),",
+    "replace": "caller: internals.current(),"
+  },
+  {
+    "id": "ir850-send-as-whoever",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "sends an offered argument only as its sender, by send() or by the mutation",
+    "why": "the offer's send() goes out as the caller current when it is pressed, not as the attempt's sender",
+    "file": "src/options.ts",
+    "search": "send: () => invoke(internals, attempt),",
+    "replace": "send: () => invoke(internals, { ...attempt, caller: internals.current() }),"
+  },
+  {
+    "id": "ir850-no-dedupe-key-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing for an argument with no dedupe key, and needs dedupedBy",
+    "why": "dedupedBy is not asked, so an argument whose dedupe key is null (a transfer without created_at_time, which the ledger does not deduplicate) is offered",
+    "file": "src/options.ts",
+    "search": "      (dedupedBy(arg) ?? null) === null\n",
+    "replace": "      false\n"
+  },
+  {
+    "id": "ir850-primitive-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing for an argument that is not an object",
+    "why": "an argument that is not an object is offered, although a mutation cannot hold it to its sender",
+    "file": "src/options.ts",
+    "search": "      typeof arg !== \"object\" ||\n      arg === null ||\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-other-canister-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing for another method's or canister object's error",
+    "why": "the attempt's canister object is not compared, so the error of a call on one canister object is offered as a re-send on another",
+    "file": "src/options.ts",
+    "search": "if (attempt === undefined || attempt.canister !== canister) {",
+    "replace": "if (attempt === undefined) {"
+  },
+  {
+    "id": "ir850-other-method-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "refuses an offered argument given to a mutation of another method that takes the same type, and offers it for none",
+    "why": "the method of a re-send is not compared with the one the write called, so a lost stop_canister is offered as a start_canister re-send, and its argument given to a start_canister mutation runs start_canister",
+    "file": "src/call.ts",
+    "search": "  method.name !== sent.method.name ||\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-view-answers-for-its-pin",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "answers for the live caller on a view pinned to another principal",
+    "why": "a view pinned to a principal answers for its pin, not for the live caller a write goes out as, so a page that hydrates as anonymous offers nothing to the signed-in sender",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "      internals.current().principal !== caller.principal ||\n",
+        "replace": "      current().principal !== caller.principal ||\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "      const { queryKey, queryOptions } = createBuilders(",
+        "replace": "      const { queryKey, queryOptions, resendOf } = createBuilders("
+      },
+      {
+        "file": "src/client.ts",
+        "search": "          queryOptions: { value: queryOptions },\n",
+        "replace": "          queryOptions: { value: queryOptions },\n          resendOf: { value: resendOf },\n"
+      }
+    ]
+  },
+  {
     "id": "did-fetch-failed-refetch-recorded",
     "package": "vite-plugin",
     "test": "tests/fetch.test.ts",
@@ -2929,5 +3053,85 @@
     "file": "src/index.ts",
     "search": "            label: `${JSON.stringify(network)} (not a network)`,\n",
     "replace": "            label: \"?\",\n"
+  },
+  {
+    "id": "ir850-c1-send-reencodes",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "sends the bytes the attempt sent, whatever became of its argument since, and offers nothing once it changed",
+    "why": "send() encodes the attempt's argument objects again instead of sending the bytes the attempt sent, so an argument the app changed since goes out with a new dedupe key and the ledger runs the transfer a second time",
+    "file": "src/options.ts",
+    "search": "send: () => invoke(internals, attempt),",
+    "replace": "send: () => invoke(internals, { ...attempt, encoded: undefined }),"
+  },
+  {
+    "id": "ir850-c1-offered-after-change",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "sends the bytes the attempt sent, whatever became of its argument since, and offers nothing once it changed",
+    "why": "resendOf compares the attempt's bytes with themselves, not with the argument as it is now, so an argument changed since it was sent is still offered as the same transfer",
+    "file": "src/options.ts",
+    "search": "differs(attempt, prepared, record.resolve(), encodeArgs(args, values))",
+    "replace": "differs(attempt, prepared, record.resolve(), attempt.encoded!)"
+  },
+  {
+    "id": "ir850-c1-mutation-not-held",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
+    "why": "a mutation given an offered argument does not carry the write it re-sends, so nothing compares the argument with what was sent and a changed one goes out as a new transfer",
+    "file": "src/options.ts",
+    "search": "          canister: canister as object,\n          again,\n",
+    "replace": "          canister: canister as object,\n"
+  },
+  {
+    "id": "ir850-c1-arg-not-compared",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
+    "why": "the bytes of a re-send are not compared with the bytes the write sent, so a mutation of an argument changed since it was sent goes out as a new transfer",
+    "file": "src/call.ts",
+    "search": "      ? \"arg\"\n      : undefined",
+    "replace": "      ? undefined\n      : undefined"
+  },
+  {
+    "id": "ir850-c1-target-not-compared",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps a { name } canister's re-send on the canister the write went to after the name moves",
+    "why": "the canister id of a re-send is not compared with the one the write went to, so after the ic_env cookie maps the name elsewhere the mutation sends the transfer to a ledger that has never seen it, which runs it",
+    "file": "src/call.ts",
+    "search": "  !target.ok ||\n  target.id !== (sent.target as { id: string }).id\n",
+    "replace": "  false\n"
+  },
+  {
+    "id": "ir850-c1-offer-follows-name",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps a { name } canister's re-send on the canister the write went to after the name moves",
+    "why": "resendOf compares the attempt's canister id with itself, not with where the canister object resolves now, so it keeps offering the re-send after the name moved to another canister",
+    "file": "src/options.ts",
+    "search": "differs(attempt, prepared, record.resolve(), encodeArgs(args, values))",
+    "replace": "differs(attempt, prepared, attempt.target, encodeArgs(args, values))"
+  },
+  {
+    "id": "ir850-c1-send-follows-name",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps a { name } canister's re-send on the canister the write went to after the name moves",
+    "why": "send() resolves the canister object again, so after the ic_env cookie maps the name elsewhere it sends the transfer to a ledger that has never seen it",
+    "file": "src/options.ts",
+    "search": "send: () => invoke(internals, attempt),",
+    "replace": "send: () => invoke(internals, { ...attempt, target: record.resolve() }),"
+  },
+  {
+    "id": "ir850-c1-effective-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "routes a management write's re-send by the effective canister id its write went out with",
+    "why": "run derives a management call's effective canister id from the argument objects every time, so send() of a kept write whose argument was changed since routes its original bytes by another canister",
+    "file": "src/call.ts",
+    "search": "if (management && !request.effective) {",
+    "replace": "if (management) {"
   }
 ]

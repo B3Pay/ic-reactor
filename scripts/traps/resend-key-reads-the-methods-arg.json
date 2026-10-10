@@ -1,0 +1,5 @@
+{
+  "file": "src/client.ts",
+  "search": "    options: ResendOptions<VarsOf<A, M>>\n",
+  "replace": "    options: ResendOptions<any>\n"
+}
