@@ -62,8 +62,9 @@ npx candid-core-cli gen icrc1.did -o src/generated
 The module is named after the `.did` file: this writes `src/generated/icrc1.ts`
 and, beside it, `src/generated/icrc1.envelope.json`. Do not edit either. The
 module exports a TypeScript type and a schema for each Candid type, the
-service schema `actor`, and `type Actor`, which lists each method as
-`(arg0: ...) => Promise<...>`.
+service schema `actor`, and `type Actor`, which types each method as its call
+signature, `(arg0: ...) => Promise<...>`, marked with its mode
+(`& $.WithMode<"query">`).
 
 Several files can be generated at once:
 `npx candid-core-cli gen a.did b.did -o src/canisters`.

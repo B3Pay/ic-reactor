@@ -67,7 +67,9 @@ What an app on beta.4 does:
 
 Every module this repository generates (core's test fixtures, the e2e
 `hello_actor`, the snippet checker's modules) is regenerated with CLI 0.3.0,
-and core's and react's type tests compile against them unchanged. The four
+and core's type tests compile against them unchanged. React's type tests
+write their own stand-in for a generated `Actor`; it now marks each method
+with `WithMode`, as CLI 0.3.0 does, and compiles. The four
 examples move to the new pair and regenerated modules with the release that
 publishes this, since beta.4 peers the old pair.
 
