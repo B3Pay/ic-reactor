@@ -866,6 +866,55 @@ describe("the live check", () => {
     expect(ic.requests).toHaveLength(4)
   })
 
+  // Only a check that ran and passed clears a failure: a restart that fails
+  // the canister before its check (here, its file lacks a name of its
+  // `methods`) leaves it standing, so restoring that file does not serve
+  // bindings known not to match the canister.
+  it("that failed under vite dev stands through a restart that fails the canister before its check", async () => {
+    const ic = await fakeIc({
+      [LEDGER_ID]: { candid: liveWith(["  put : (nat) -> ();\n", ""]) },
+    })
+    const app = newApp({ "did/item.did": WRITTEN })
+    const options = checked(ic.host)
+    options.canisters!.item = {
+      ...options.canisters!.item,
+      methods: ["get", "put", "maybe"],
+    }
+    const running = await startDev(app.root, options)
+    closers.push(running.close)
+    const failure =
+      `item (did/item.did): the live check found ${LEDGER_ID} on ${ic.host} ` +
+      `incompatible with did/item.did (1 error)`
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors()).toHaveLength(1)
+    expect(errors()[0]).toContain(failure)
+    expect(ic.requests).toHaveLength(2)
+
+    // The file loses put, and the same server restarts: the methods
+    // comparison fails the canister, so its live check does not run.
+    const file = path.join(app.root, "did/item.did")
+    fs.writeFileSync(file, liveWith(["  put : (nat) -> ();\n", ""]))
+    await running.server.restart()
+    expect(errors()).toHaveLength(2)
+    expect(errors()[1]).not.toContain(failure)
+    expect(errors()[1]).toContain(
+      "item (did/item.did): methods names put, which did/item.did does not hold (it holds get, maybe)"
+    )
+    expect(ic.requests).toHaveLength(2)
+
+    // put is restored and saved: the live failure still stands.
+    fs.writeFileSync(file, WRITTEN)
+    running.server.watcher.emit("change", file)
+    await vi.waitFor(() => expect(errors()).toHaveLength(3))
+    expect(errors()[2]).toContain(failure)
+    expect(
+      running.lines.filter((line) => line.includes("changed, regenerating"))
+    ).toEqual([])
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    expect(ic.requests).toHaveLength(2)
+  })
+
   it("that cannot read the canister fails it, and says how to turn the check off", async () => {
     const ic = await fakeIc({ [LEDGER_ID]: { private: true } })
     const app = newApp({ "did/item.did": WRITTEN })

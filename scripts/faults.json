@@ -3395,6 +3395,16 @@
     "replace": ""
   },
   {
+    "id": "did-verify-restart-clears-unchecked",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that failed under vite dev stands through a restart that fails the canister before its check",
+    "why": "a restart clears the live failure of every canister, also one it failed before its check (in the methods comparison or the fetch), so a later save regenerates bindings known not to match the canister though no check passed",
+    "file": "src/index.ts",
+    "search": "        for (const { name } of checking) liveFailures.delete(name)\n",
+    "replace": "        for (const { name } of generated) liveFailures.delete(name)\n"
+  },
+  {
     "id": "did-save-queued-after-close-runs",
     "package": "vite-plugin",
     "test": "tests/close.test.ts",
