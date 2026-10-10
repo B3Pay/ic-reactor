@@ -3343,5 +3343,15 @@
     "file": "src/index.ts",
     "search": "    const invalid = members.flatMap((canister) => {",
     "replace": "    const invalid = fetchable.flatMap((canister) => {"
+  },
+  {
+    "id": "did-project-shared-refetch-unchecked",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a canister with no canisterId count when it shares a missing didFile: no methods is the whole interface, and nothing is fetched",
+    "why": "the lists of the entries that share a didFile not compared when IC_REACTOR_FETCH names one of them while the file is on disk, so the file is rewritten as the projection of the entry that names methods, and the entry that wants the whole interface silently generates the narrowed one",
+    "file": "src/index.ts",
+    "search": "        const conflict = conflictOf(members, fetchable)",
+    "replace": "        const conflict =\n          again && members.some(({ methods }) => methods)\n            ? undefined\n            : conflictOf(members, fetchable)"
   }
 ]

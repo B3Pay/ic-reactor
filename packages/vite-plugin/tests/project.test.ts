@@ -265,6 +265,16 @@ describe("methods", () => {
       )
     )
     expect(read(app, "src/whole/ledger.ts")).toContain("icrc1_name")
+
+    // Named by IC_REACTOR_FETCH while on disk, the file is to be fetched
+    // again: the lists are compared before the request, as for a missing one.
+    vi.stubEnv("IC_REACTOR_FETCH", "transfer")
+    const again = await buildError(app, options)
+    expect(again.message).toContain(
+      `- transfer (did/ledger.did), ledger (did/ledger.did): ${refusal}`
+    )
+    expect(ic.requests).toEqual([])
+    expect(read(app, "did/ledger.did")).toBe(LEDGER)
   })
 
   it("of a canister with no canisterId that names another list for a shared missing didFile refuse the fetch, naming each list", async () => {
