@@ -154,7 +154,8 @@ does not change. The reads guide, the writes guide and the guide
   is compared with the list, with no network access, and a name the file
   does not hold fails the canister, while a method the file holds that the
   list does not name is a warning. Both say to fetch it again with
-  `IC_REACTOR_FETCH`. Canisters that name one `didFile` share its fetch only
+  `IC_REACTOR_FETCH`. A file whose methods cannot be listed fails the
+  canister. Canisters that name one `didFile` share its fetch only
   when they name one list, entries with no `canisterId` included (no
   `methods` is the whole interface): with different lists, or a list that
   cannot be projected to, nothing is fetched, before any request. A shared
@@ -171,7 +172,8 @@ does not change. The reads guide, the writes guide and the guide
   change is a warning: `special_opt_rule` findings, and a change to the types
   of the file's methods, told by the identities of the two projections to
   them. A check that cannot be made fails the canister, and says to build
-  with `IC_REACTOR_VERIFY=0`.
+  with `IC_REACTOR_VERIFY=0`. Under `vite dev` a failed check stands after a
+  save, whatever it changed, until a check passes when the server restarts.
 - Both run the app's `candid-core-cli` in a child process, as `gen` does, and
   never the library in the Vite process. No export is added; the two fields
   are new keys of `IcReactorPluginOptions["canisters"]`.
