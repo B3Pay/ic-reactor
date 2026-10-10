@@ -73,6 +73,54 @@ with `WithMode`, as CLI 0.3.0 does, and compiles. The four
 examples move to the new pair and regenerated modules with the release that
 publishes this, since beta.4 peers the old pair.
 
+### @ic-reactor/vite-plugin
+
+#### Added
+
+- `methods` on a canister entry (#852, phase 2): a `didFile` fetched from its
+  `canisterId` is written as the projection of the live interface to those
+  methods and every type they reach (`candid-core-cli project`), so the
+  generated module has only them. A name the canister does not have fails the
+  canister, naming it and listing the canister's methods, and nothing is
+  written. A `didFile` on disk is never fetched for a change of `methods`: it
+  is compared with the list, with no network access, and a name the file
+  does not hold fails the canister, while a method the file holds that the
+  list does not name is a warning. Both say to fetch it again with
+  `IC_REACTOR_FETCH`. Canisters that name one `didFile` share its fetch only
+  when they name one list.
+- The live check: `verify: "live"` on an entry, or `IC_REACTOR_VERIFY=1` (or
+  `all`, or canister names separated by commas) for every entry with a
+  `canisterId`. When a build or dev server starts, the plugin fetches the
+  certified interface and checks the `didFile` on disk against it
+  (`candid-core-cli check`). A method that is missing (`method_missing`),
+  changed mode (`mode_changed`) or is no longer compatible
+  (`method_incompatible`, with the path into its type) fails the canister,
+  naming the canister and each method, under `failOnError`. A compatible
+  change is a warning: `special_opt_rule` findings, and a change to the types
+  of the file's methods, told by the identities of the two projections to
+  them. A check that cannot be made fails the canister, and says how to turn
+  the check off.
+- Both run the app's `candid-core-cli` in a child process, as `gen` does, and
+  never the library in the Vite process. No export is added; the two fields
+  are new keys of `IcReactorPluginOptions["canisters"]`.
+
+### Docs
+
+- The Vite plugin guide has two new sections, "Only the methods the app calls"
+  and "The live check", and says how the plugin runs candid-core for them.
+  Getting started points at `methods`.
+
+### Examples (not published)
+
+- `icrc-ledger`'s `icp_ledger.did` and `ckbtc_minter.did`, and `vite-wallet`'s
+  `ledger.did`, were trimmed by hand. Each is now the projection the plugin
+  wrote from the mainnet canister, and its entry names the `canisterId` and
+  `methods` it came from. The files stay committed, so the examples build
+  offline, and `IC_REACTOR_VERIFY=1` checks them against mainnet. The ICP
+  ledger's projection names its transfer error `Icrc1TransferError`, so
+  `vite-wallet` imports it by that name. `icp_ledger.envelope.json` does not
+  change; the minter's argument record is inline, as the canister declares it.
+
 ## core, react, vite-plugin 4.0.0-beta.4
 
 Prepared on 2026-10-10. It goes out under npm's `beta` dist-tag, as

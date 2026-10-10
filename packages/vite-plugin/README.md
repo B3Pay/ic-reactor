@@ -78,6 +78,8 @@ Each entry of `canisters` takes:
 | `outDir`     | `"src/canisters"` | Where the generator writes, relative to the Vite root                                                                  |
 | `canisterId` | none              | A fixed ID for the cookie, which wins over the one `icp` reports, and the canister a missing `didFile` is fetched from |
 | `network`    | `"ic"`            | Where that canister is, for the fetch: `"ic"`, `"local"` or `{ host }`                                                 |
+| `methods`    | none              | The methods the app calls: a fetched `didFile` is written as the projection of the interface to them                   |
+| `verify`     | none              | `"live"` checks the `didFile` against the live canister at each build and dev server start                             |
 
 Canisters that share one interface share one module. An ICP ledger and a ckBTC
 ledger both on `icrc1.did` are two entries, so that the `ic_env` cookie carries
@@ -167,6 +169,65 @@ export default defineConfig({
   fails with `did_source_not_found`. Name the file as it is on disk in each
   entry.
 - `canisterId` is also the ID the `ic_env` cookie carries under `vite dev`.
+
+### Only the methods the app calls
+
+With `methods`, the fetched `didFile` holds only those methods and every type
+they reach: the projection of the live interface, written by
+`candid-core-cli project`, so the generated module has only them.
+
+```ts
+// vite.config.ts
+import { defineConfig } from "vite"
+import { icReactor } from "@ic-reactor/vite-plugin"
+
+export default defineConfig({
+  plugins: [
+    icReactor({
+      canisters: {
+        ledger: {
+          didFile: "did/icp_ledger.did", // the projection: commit it
+          canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+          methods: ["icrc1_balance_of", "icrc1_fee", "icrc1_transfer"],
+        },
+      },
+    }),
+  ],
+})
+```
+
+- A name the live interface does not have fails the canister, naming it and
+  listing the methods the canister has, and nothing is written.
+- A `didFile` on disk is not fetched again when `methods` changes. The plugin
+  compares the two with no network access: a name of `methods` that the file
+  does not hold fails the canister, and a method the file holds that `methods`
+  does not name is a warning. Both say to fetch the file again with
+  `IC_REACTOR_FETCH=<name>`, which writes the projection to the new list.
+- Canisters that name one `didFile` must name one list to share its fetch.
+
+### The live check
+
+`verify: "live"` on an entry, or `IC_REACTOR_VERIFY=1 vite build` (or `all`,
+or canister names separated by commas) for every entry with a `canisterId`,
+checks the `didFile` on disk against the live canister's certified interface
+with `candid-core-cli check`, at the start of each build and dev server. Each
+check is a network request, so `verify: "live"` makes every build need the
+network; `IC_REACTOR_VERIFY=1` in CI keeps other builds offline.
+
+- A method of the file that the canister no longer has (`method_missing`),
+  whose mode changed (`mode_changed`), or whose types are no longer compatible
+  (`method_incompatible`, with the path into the type) fails the canister,
+  which is not generated, and the failure follows `failOnError`.
+- A compatible change is a warning, and the canister generates: one Candid
+  accepts only by reading a value as `null` (`special_opt_rule`), and one that
+  changed the types of the file's methods compatibly. Methods the file does
+  not hold are not checked.
+- A check that cannot read the canister (the network, a private interface)
+  fails the canister too: a check that was asked for and did not run does not
+  pass.
+- A file the build just fetched is the live interface, and is not checked. A
+  check that passed is not repeated for the same text by a later rebuild, and
+  a save under `vite dev` never makes a request.
 
 ## Generation
 
