@@ -275,7 +275,13 @@ bytes, so `IC_REACTOR_FETCH` rewrites the file only when the canister changed.
   it. Both say to run `IC_REACTOR_FETCH=<name>`, which writes the projection to
   the new list.
 - Canisters that name one `didFile` share its fetch only when they name one
-  list. With different lists, nothing is fetched and each fails.
+  list. Every one of them generates from the file, so an entry with no
+  `canisterId` counts as much as the one it is fetched for: its `methods`, or
+  the whole interface when it names none. With different lists, or a list
+  that cannot be projected to, nothing is fetched and no request is made:
+  each fails with one message naming the entries, their lists and the file.
+  A `didFile` on disk that nobody asked to fetch again is read by them all,
+  and compared with the list of each as above.
 - `methods` is a list of names: an empty list, or a name with a comma (which
   `candid-core-cli project` cannot take), fails the canister before any
   request.

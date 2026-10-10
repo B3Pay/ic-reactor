@@ -191,10 +191,9 @@ describe("methods", () => {
       },
     })
     expect(message).toContain(
-      `"a", "b", "c" name did/ledger.did but not one canister to fetch it from (` +
-        `a: ${LEDGER_ID} on ${ic.host} projected to icrc1_fee, icrc1_transfer; ` +
-        `b: ${LEDGER_ID} on ${ic.host} projected to icrc1_fee, icrc1_transfer; ` +
-        `c: ${LEDGER_ID} on ${ic.host} projected to icrc1_fee)`
+      `"a", "b", "c" name did/ledger.did but not one list of methods to project it to (` +
+        `a: icrc1_fee, icrc1_transfer; b: icrc1_fee, icrc1_transfer; c: icrc1_fee): ` +
+        `the file holds one projection, which every one of them generates from, so it is not fetched.`
     )
     expect(ic.requests).toEqual([])
     expect(exists(app, "did/ledger.did")).toBe(false)
@@ -220,6 +219,110 @@ describe("methods", () => {
     await result
     expect(ic.requests).toHaveLength(2)
     expect(read(app, "did/ledger.did")).not.toContain("icrc1_name")
+  })
+
+  it("of a canister with no canisterId count when it shares a missing didFile: no methods is the whole interface, and nothing is fetched", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = newApp({})
+    const options: IcReactorPluginOptions = {
+      canisters: {
+        // Only this entry can fetch the file, for one method.
+        transfer: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network: { host: ic.host },
+          methods: ["icrc1_transfer"],
+        },
+        // It reads the same file, and wants the whole interface.
+        ledger: { didFile: "did/ledger.did", outDir: "src/whole" },
+      },
+    }
+    const { message } = await buildError(app, options)
+    const refusal =
+      `"transfer", "ledger" name did/ledger.did but not one list of methods to project it to (` +
+      `transfer: icrc1_transfer; ledger: no methods, the whole interface): ` +
+      `the file holds one projection, which every one of them generates from, so it is not fetched. ` +
+      `Give them one list, or give each list a didFile of its own.`
+    // One message for both, on one line.
+    expect(message).toContain(
+      `- transfer (did/ledger.did), ledger (did/ledger.did): ${refusal}`
+    )
+    expect(ic.requests).toEqual([])
+    expect(exists(app, "did/ledger.did")).toBe(false)
+    expect(exists(app, "src/canisters/transfer.ts")).toBe(false)
+    expect(exists(app, "src/whole/ledger.ts")).toBe(false)
+
+    // A file on disk is read by both, with no request, and still compared
+    // with each list: the whole interface holds more than icrc1_transfer.
+    fs.mkdirSync(path.join(app.root, "did"), { recursive: true })
+    fs.writeFileSync(path.join(app.root, "did/ledger.did"), LEDGER)
+    const onDisk = runBuild(app.root, options)
+    await onDisk.result
+    expect(ic.requests).toEqual([])
+    expect(onDisk.lines).toContainEqual(
+      expect.stringContaining(
+        "ic-reactor: transfer: did/ledger.did also holds icrc1_balance_of,"
+      )
+    )
+    expect(read(app, "src/whole/ledger.ts")).toContain("icrc1_name")
+  })
+
+  it("of a canister with no canisterId that names another list for a shared missing didFile refuse the fetch, naming each list", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = newApp({})
+    const { message } = await buildError(app, {
+      canisters: {
+        transfer: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network: { host: ic.host },
+          methods: ["icrc1_transfer", "icrc1_fee"],
+        },
+        balance: {
+          didFile: "did/ledger.did",
+          outDir: "src/balance",
+          methods: ["icrc1_balance_of"],
+        },
+      },
+    })
+    const refusal =
+      `"transfer", "balance" name did/ledger.did but not one list of methods to project it to (` +
+      `transfer: icrc1_fee, icrc1_transfer; balance: icrc1_balance_of)`
+    // One message for both, on one line.
+    expect(message).toContain(
+      `- transfer (did/ledger.did), balance (did/ledger.did): ${refusal}`
+    )
+    expect(ic.requests).toEqual([])
+    expect(exists(app, "did/ledger.did")).toBe(false)
+  })
+
+  it("of a canister with no canisterId that cannot be projected to refuse a shared missing didFile's fetch", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = newApp({})
+    const { message } = await buildError(app, {
+      canisters: {
+        transfer: {
+          didFile: "did/ledger.did",
+          canisterId: LEDGER_ID,
+          network: { host: ic.host },
+          methods: ["icrc1_transfer"],
+        },
+        broken: {
+          didFile: "did/ledger.did",
+          outDir: "src/broken",
+          methods: ["icrc1_transfer,icrc1_fee"],
+        },
+      },
+    })
+    const refusal =
+      `"transfer", "broken" name did/ledger.did, which is not fetched, since a list of methods cannot be projected to ` +
+      `(broken: methods names "icrc1_transfer,icrc1_fee", which has a comma`
+    // One message for both, on one line.
+    expect(message).toContain(
+      `- transfer (did/ledger.did), broken (did/ledger.did): ${refusal}`
+    )
+    expect(ic.requests).toEqual([])
+    expect(exists(app, "did/ledger.did")).toBe(false)
   })
 
   it("refuses an empty list and a name with a comma, with no request", async () => {

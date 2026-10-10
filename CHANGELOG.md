@@ -87,7 +87,10 @@ publishes this, since beta.4 peers the old pair.
   does not hold fails the canister, while a method the file holds that the
   list does not name is a warning. Both say to fetch it again with
   `IC_REACTOR_FETCH`. Canisters that name one `didFile` share its fetch only
-  when they name one list.
+  when they name one list, entries with no `canisterId` included (no
+  `methods` is the whole interface): with different lists, or a list that
+  cannot be projected to, nothing is fetched, before any request. A shared
+  `didFile` on disk is read by them all and compared with each list.
 - The live check: `verify: "live"` on an entry, or `IC_REACTOR_VERIFY=1` (or
   `true`, `all`, or canister names separated by commas) for every entry with a
   `canisterId`; `IC_REACTOR_VERIFY=0` (or `false`) turns it off for a run,

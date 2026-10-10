@@ -117,7 +117,10 @@ export interface IcReactorPluginOptions {
    *   `didFile` on disk is not fetched again for a change of `methods`: one
    *   that lacks a name of `methods` fails the canister, and one that holds a
    *   method `methods` does not name is generated with a warning. Both say to
-   *   fetch it again with `IC_REACTOR_FETCH`.
+   *   fetch it again with `IC_REACTOR_FETCH`. Canisters that name one
+   *   `didFile` to be fetched must name one list, those with no `canisterId`
+   *   included (no `methods` is the whole interface): otherwise none is
+   *   fetched and each fails, before any request.
    * - `verify`: `"live"` checks the `didFile` on disk against the live
    *   canister's certified interface at the start of each build and dev
    *   server (`candid-core-cli check`). `IC_REACTOR_VERIFY=1` (or `true`,
@@ -552,41 +555,25 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
 
   /**
    * Why the canisters that name one file (`members`) cannot have it fetched,
-   * or `undefined` when they can: the ones that name a `canisterId`
+   * or `undefined` when they can. Asked only when the file is to be fetched,
+   * and before any request: a file on disk that nobody asked to fetch again
+   * is read by them all, whatever their `canisterId`s and `methods` (two
+   * ICRC-1 ledgers on one `icrc1.did`), and `compareMethods` compares it with
+   * the list of each.
+   *
+   * In this order: the `methods` of a member, with a `canisterId` or not, is
+   * not a list that can be projected to; the members that name a `canisterId`
    * (`fetchable`) name different canisters, or one canister on different
-   * networks, so whose interface the file is cannot be told. Asked only when
-   * the file is to be fetched: a file on disk that nobody asked to fetch again
-   * is read by them all, whatever their `canisterId`s (two ICRC-1 ledgers
-   * on one `icrc1.did`).
+   * networks, so whose interface the file is cannot be told; or the members
+   * name different projections (no `methods` is the whole interface), so
+   * which one the file holds cannot be told. Every member generates from the
+   * one file, so a member with no `canisterId` counts as much as the one it
+   * is fetched for.
    */
   const conflictOf = (
     members: Generated[],
     fetchable: Generated[]
   ): string | undefined => {
-    const sourceOf = ({ canisterId, network, methods }: Generated) => {
-      const resolved = resolveNetwork(network)
-      // One file holds one projection: canisters that project it to other
-      // methods name other files.
-      const projection = Array.isArray(methods)
-        ? {
-            key: JSON.stringify(methodList(methods)),
-            label: ` projected to ${listNames(methodList(methods))}`,
-          }
-        : { key: "", label: "" }
-      // A network that is not one is named as given, so the conflict does
-      // not hide what is wrong with it.
-      return typeof resolved === "string"
-        ? {
-            key: `${canisterId}\0${JSON.stringify(network)}\0${projection.key}`,
-            label: `${JSON.stringify(network)} (not a network)${projection.label}`,
-          }
-        : {
-            key: `${canisterId}\0${resolved.host}\0${resolved.fetchRootKey}\0${projection.key}`,
-            label: `${resolved.label}${projection.label}`,
-          }
-    }
-    const sources = new Set(fetchable.map((canister) => sourceOf(canister).key))
-    if (sources.size < 2) return undefined
     const spellings = [
       ...new Set(members.map((canister) => relativeToRoot(didPath(canister)))),
     ]
@@ -594,16 +581,70 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       spellings.length === 1
         ? spellings[0]
         : `${spellings.join(" and ")}, which are one file,`
-    const fetches = fetchable
-      .map(
-        (canister) =>
-          `${canister.name}: ${canister.canisterId} on ${sourceOf(canister).label}`
+    const names = quoteNames(members.map(({ name }) => name))
+
+    const invalid = members.flatMap((canister) => {
+      const problem = methodsProblem(canister.methods)
+      return problem ? [`${canister.name}: ${problem}`] : []
+    })
+    // A list that cannot be projected to costs no request.
+    if (invalid.length > 0) {
+      if (members.length === 1) return methodsProblem(members[0].methods)
+      return (
+        `${names} name ${file}, which is not fetched, since a list of methods cannot be projected to ` +
+        `(${invalid.join("; ")}). Correct methods and build again.`
       )
+    }
+
+    const sourceOf = ({ canisterId, network }: Generated) => {
+      const resolved = resolveNetwork(network)
+      // A network that is not one is named as given, so the conflict does
+      // not hide what is wrong with it.
+      return typeof resolved === "string"
+        ? {
+            key: `${canisterId}\0${JSON.stringify(network)}`,
+            label: `${JSON.stringify(network)} (not a network)`,
+          }
+        : {
+            key: `${canisterId}\0${resolved.host}\0${resolved.fetchRootKey}`,
+            label: resolved.label,
+          }
+    }
+    const sources = new Set(fetchable.map((canister) => sourceOf(canister).key))
+    if (sources.size > 1) {
+      const fetches = fetchable
+        .map(
+          (canister) =>
+            `${canister.name}: ${canister.canisterId} on ${sourceOf(canister).label}`
+        )
+        .join("; ")
+      return (
+        `${names} name ${file} but not one canister to fetch it from ` +
+        `(${fetches}): which one's interface the file holds cannot be told, so it is not fetched. ` +
+        `Give each canister a didFile of its own, or write ${spellings[0]} yourself and the plugin reads it instead of fetching.`
+      )
+    }
+
+    // One file holds one projection, read by every member: the lists of the
+    // members with no canisterId count too.
+    const projectionOf = ({ methods }: Generated) =>
+      methods
+        ? {
+            key: JSON.stringify(methodList(methods)),
+            label: listNames(methodList(methods)),
+          }
+        : { key: "", label: "no methods, the whole interface" }
+    const projections = new Set(
+      members.map((canister) => projectionOf(canister).key)
+    )
+    if (projections.size < 2) return undefined
+    const lists = members
+      .map((canister) => `${canister.name}: ${projectionOf(canister).label}`)
       .join("; ")
     return (
-      `${quoteNames(members.map(({ name }) => name))} name ${file} but not one canister to fetch it from ` +
-      `(${fetches}): which one's interface the file holds cannot be told, so it is not fetched. ` +
-      `Give each canister a didFile of its own, or write ${spellings[0]} yourself and the plugin reads it instead of fetching.`
+      `${names} name ${file} but not one list of methods to project it to (${lists}): ` +
+      `the file holds one projection, which every one of them generates from, so it is not fetched. ` +
+      `Give them one list, or give each list a didFile of its own.`
     )
   }
 
@@ -620,7 +661,8 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * not on disk, from the live canister's certified `candid:service`, and
    * each one `IC_REACTOR_FETCH` names. Canisters that name one `.did`, under
    * any spelling of it, share one fetch when they name one canister on one
-   * network, and fail with no fetch when they name more (see `conflictOf`).
+   * network and one list of `methods`, and fail with no request when they
+   * name more, or a list that cannot be projected to (see `conflictOf`).
    * A `didFile` on disk that nobody asked to fetch again costs no network
    * request, and `@icp-sdk/core` is not even loaded.
    *
@@ -686,14 +728,6 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         if (conflict) {
           for (const canister of members) {
             failures.push({ canister, message: conflict })
-          }
-          return []
-        }
-        // A list that cannot be projected to costs no request.
-        const problem = methodsProblem(source.methods)
-        if (problem) {
-          for (const canister of members) {
-            failures.push({ canister, message: problem })
           }
           return []
         }

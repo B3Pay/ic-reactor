@@ -203,7 +203,13 @@ export default defineConfig({
   does not hold fails the canister, and a method the file holds that `methods`
   does not name is a warning. Both say to fetch the file again with
   `IC_REACTOR_FETCH=<name>`, which writes the projection to the new list.
-- Canisters that name one `didFile` must name one list to share its fetch.
+- Canisters that name one `didFile` to be fetched must name one list to share
+  its fetch, and an entry with no `canisterId` counts too, since it generates
+  from the same file: its `methods`, or the whole interface when it names
+  none. With different lists, or a list that cannot be projected to, nothing
+  is fetched and no request is made: each fails with one message naming the
+  entries, their lists and the file. A `didFile` on disk that is not fetched
+  again is read by them all, and compared with the list of each as above.
 
 ### The live check
 

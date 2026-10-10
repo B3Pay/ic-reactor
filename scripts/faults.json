@@ -2938,8 +2938,8 @@
     "testName": "are refused with no fetch, and share the file once it is on disk",
     "why": "one canister on two networks taken for one source, so the file is fetched from whichever network comes first",
     "file": "src/index.ts",
-    "search": "key: `${canisterId}\\0${resolved.host}\\0${resolved.fetchRootKey}\\0${projection.key}`,",
-    "replace": "key: `${canisterId}\\0${projection.key}`,"
+    "search": "key: `${canisterId}\\0${resolved.host}\\0${resolved.fetchRootKey}`,",
+    "replace": "key: `${canisterId}`,"
   },
   {
     "id": "did-fetch-conflict-on-disk",
@@ -3051,7 +3051,7 @@
     "testName": "are refused with no fetch, and share the file once it is on disk",
     "why": "a canister whose network is not one shown as on ? in a conflict, which hides what is wrong with its network",
     "file": "src/index.ts",
-    "search": "            label: `${JSON.stringify(network)} (not a network)${projection.label}`,\n",
+    "search": "            label: `${JSON.stringify(network)} (not a network)`,\n",
     "replace": "            label: \"?\",\n"
   },
   {
@@ -3311,7 +3311,37 @@
     "testName": "of canisters that share a missing didFile must be one list, or nothing is fetched",
     "why": "canisters that share a didFile but name other methods taken for one source, so the file holds the projection of whichever comes first",
     "file": "src/index.ts",
-    "search": "key: `${canisterId}\\0${resolved.host}\\0${resolved.fetchRootKey}\\0${projection.key}`,",
-    "replace": "key: `${canisterId}\\0${resolved.host}\\0${resolved.fetchRootKey}`,"
+    "search": "    if (projections.size < 2) return undefined\n",
+    "replace": "    if (projections.size >= 0) return undefined\n"
+  },
+  {
+    "id": "did-project-shared-whole-not-counted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a canister with no canisterId count when it shares a missing didFile: no methods is the whole interface, and nothing is fetched",
+    "why": "an entry with no methods taken to agree with any list, so a shared missing didFile is fetched as the projection of the entry that names methods, and the entry that wants the whole interface silently generates the narrowed one",
+    "file": "src/index.ts",
+    "search": "      members.map((canister) => projectionOf(canister).key)",
+    "replace": "      members\n        .filter(({ methods }) => methods)\n        .map((canister) => projectionOf(canister).key)"
+  },
+  {
+    "id": "did-project-shared-list-fetchable-only",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a canister with no canisterId that names another list for a shared missing didFile refuse the fetch, naming each list",
+    "why": "only the lists of the entries with a canisterId compared, so a shared missing didFile is fetched and written as their projection, and an entry with no canisterId that names another list generates from it",
+    "file": "src/index.ts",
+    "search": "      members.map((canister) => projectionOf(canister).key)",
+    "replace": "      fetchable.map((canister) => projectionOf(canister).key)"
+  },
+  {
+    "id": "did-project-shared-invalid-unchecked",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a canister with no canisterId that cannot be projected to refuse a shared missing didFile's fetch",
+    "why": "only the methods of the entries with a canisterId validated before the fetch, so an invalid list on an entry that shares the file is not reported as one",
+    "file": "src/index.ts",
+    "search": "    const invalid = members.flatMap((canister) => {",
+    "replace": "    const invalid = fetchable.flatMap((canister) => {"
   }
 ]
