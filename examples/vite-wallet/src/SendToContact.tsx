@@ -17,8 +17,7 @@ import { useAuth, useClient } from "@ic-reactor/react"
 import { useMutation, useQuery } from "@tanstack/react-query"
 import { useState, type FormEvent } from "react"
 import type { Contact } from "./canisters/backend.ts"
-import type { TransferArg } from "./canisters/ledger.ts"
-import { Outcome } from "./SendIcp.tsx"
+import { dedupedBy, Outcome } from "./SendIcp.tsx"
 import { showAmount, useToken } from "./token.ts"
 import { readTransferForm } from "./transfer.ts"
 import { useCanisters } from "./use-canisters.ts"
@@ -35,16 +34,11 @@ export function SendToContact({ contact }: { contact: Contact }) {
     })
   )
   const pay = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  const again = client.resendOf(pay.error, ledger, "icrc1_transfer", {
+    dedupedBy,
+  })
   const [amount, setAmount] = useState("")
   const [refusal, setRefusal] = useState<string>()
-  const [sent, setSent] = useState<{ arg: TransferArg; from: string }>()
-
-  const send = (arg: TransferArg) => {
-    const from = client.caller()
-    if (from !== caller) return
-    setSent({ arg, from })
-    pay.mutate(arg)
-  }
 
   const onPay = (event: FormEvent) => {
     event.preventDefault()
@@ -52,7 +46,8 @@ export function SendToContact({ contact }: { contact: Contact }) {
     const read = readTransferForm({ to: contact.owner, amount }, token)
     if (!read.ok) return setRefusal(read.reason)
     setRefusal(undefined)
-    send(read.arg)
+    if (client.caller() !== caller) return
+    pay.mutate(read.arg)
   }
 
   return (
@@ -93,15 +88,14 @@ export function SendToContact({ contact }: { contact: Contact }) {
           </p>
         )}
       </form>
-      {sent && token && (
+      {pay.variables && token && (
         <Outcome
-          attempt={sent}
-          caller={caller}
+          arg={pay.variables}
           token={token}
           isPending={pay.isPending}
           block={pay.data}
           error={pay.error}
-          onSendAgain={() => send(sent.arg)}
+          onSendAgain={again && (() => pay.mutate(again.arg))}
         />
       )}
     </div>

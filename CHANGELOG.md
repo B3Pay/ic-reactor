@@ -15,6 +15,67 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+Nothing yet.
+
+## core, react, vite-plugin 4.0.0-beta.4
+
+Prepared on 2026-10-10. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.3.
+
+An app on beta.3 upgrades by bumping all three packages to `4.0.0-beta.4`.
+Nothing in this release breaks code written for beta.3: no export is added or
+removed (core 13, `@ic-reactor/core/testing` 2, react 4, vite-plugin 2), no
+error kind or code is removed, no required peer changed, and a module
+generated for beta.3 need not be regenerated. The one exception is code that
+writes its own object of the `Client` type, such as a hand-made fake: the type
+gains `resendOf`, so that object no longer compiles until it has one (a client
+from `createClient` or `createTestClient` has it). Three things are new, as
+core's and the Vite plugin's entries below say:
+
+- `isReactorError(error, canister, method)` narrows a direct call's error to
+  that method's `Err` arm, so `err` is typed after `kind === "canister_err"`
+  without a cast. The one-argument form is unchanged.
+- `client.resendOf(error, canister, method, { dedupedBy })` offers to send a
+  write again exactly as it was sent, after a failure that left its outcome
+  unknown, and only for a method the app says deduplicates (an ICRC-1
+  transfer with `created_at_time`).
+- The Vite plugin writes a canister's missing `didFile` from the live
+  canister's certified `candid:service`, when the entry names a `canisterId`.
+  The entry's new `network` field says where the canister is, and
+  `IC_REACTOR_FETCH` fetches a file on disk again.
+
+Two of these change what some setups see:
+
+- The Vite plugin lists `@icp-sdk/core` `^6.1.0` as an optional peer. An app
+  on `@ic-reactor/core` has it already, at the range core asks for, and npm
+  installs nothing for an optional peer. A project that installs the plugin
+  next to an `@icp-sdk/core` outside `^6.1.0` gets a peer conflict from its
+  package manager.
+- A canister entry with a `canisterId` whose `didFile` is not on disk is
+  fetched from `network` (mainnet by default) and the file is written, where
+  beta.3 failed that canister's generation for want of the file. A project
+  that writes such a `.did` in another step (a local canister's build, say)
+  writes it before Vite starts, or gives that entry `network: "local"` so
+  the fetch reads the deployed local canister.
+
+The guide (`llms.txt`) and the skill now say they apply to 4.0.0-beta.4, use
+`isReactorError(error, canister, method)` after a direct call, and teach
+`client.resendOf` as the one safe re-send. The four examples pin
+`^4.0.0-beta.4`, and `vite-wallet` offers its re-send through
+`client.resendOf`. The size limits are tighter in CI only, which affects
+pull requests to this repository, not apps.
+
+It requires the stable candid-core pair, both pinned exactly, as in beta.3:
+
+- `@ic-reactor/core`: peer `@candid-core/schema` at exactly `0.3.0`;
+- `@ic-reactor/vite-plugin`: peer `@candid-core/cli` at exactly `0.2.0`.
+
+```sh
+npm install --save-exact @candid-core/schema@0.3.0
+npm install --save-dev --save-exact @candid-core/cli@0.2.0
+```
+
 ### @ic-reactor/core
 
 #### Added
@@ -61,6 +122,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   measured, +508 B for `resendOf`), and the app checks to 90 kB (89,949 B,
   +465 B) and 91.2 kB (91,155 B, +463 B). React's own code is unchanged.
 
+### @ic-reactor/react
+
+- No change but the version. Its peer `@ic-reactor/core` is packed as
+  exactly `4.0.0-beta.4`, so the two move together.
+
 ### @ic-reactor/vite-plugin
 
 #### Added
@@ -96,6 +162,17 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   checks; its duplicate-transfer recipe and the writes guide's direct
   transfer read the typed `err` instead of casting it. The consumer guide
   (`llms.txt`) and the skill say to use it after a direct call.
+- The writes guide has a section, "Sending the same write again", on
+  `client.resendOf` (#850): when a re-send is safe, what `dedupedBy` states,
+  that the offer goes out only as its sender, and the refusals
+  `caller_changed`, `target_changed` and `arg_changed`, each of which leaves
+  the write's outcome unknown. The errors guide lists the two new codes,
+  `target_changed` under `cancelled` and `arg_changed` under `invalid_args`,
+  says not to ignore a refused re-send as another `cancelled`, and its
+  duplicate-transfer recipe offers the re-send with `client.resendOf`. The
+  core reference page shows the three-argument `isReactorError` signature and
+  `resendOf` on `Client`, and the Vite plugin reference page lists the
+  optional `@icp-sdk/core` peer and when it is loaded.
 - Getting started has a section on keeping the IC stack (the client,
   `AuthClient` and the generated module) out of an app's first load with
   `React.lazy`, with no change to the library (#855). Measured on the Vite
@@ -124,6 +201,20 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 - Core's size limit is raised to 14.5 kB: the guard's canister check adds
   102 B (14,449 B measured). The app checks measure 89,484 B (+121 B) and
   90,692 B (+126 B), still under their limits.
+
+### Examples (not published)
+
+- The four examples pin `^4.0.0-beta.4`.
+- `vite-wallet`'s "Send the same transfer again" is `client.resendOf`'s offer,
+  in `SendIcp.tsx` and `SendToContact.tsx`, in place of the attempt and its
+  sender the page tracked by hand. The offer is made only while the account
+  that sent the transfer is the caller, and a new test checks it is withdrawn
+  on a sign-out and made again once the same account signs back in. Its
+  `vite.config.ts` says when the plugin would fetch `ledger.did`: never while
+  the trimmed, committed file is on disk, unless `IC_REACTOR_FETCH=ledger`
+  asks. These edits waited for this release because each example installs
+  the published packages, which carry `resendOf` and the fetch from
+  4.0.0-beta.4 on.
 
 ## core, react, vite-plugin 4.0.0-beta.3
 

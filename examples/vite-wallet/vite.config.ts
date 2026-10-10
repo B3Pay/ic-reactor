@@ -16,6 +16,11 @@ export default defineConfig({
         // asks `icp` for its id and puts it in the cookie.
         backend: { didFile: "backend/backend.did" },
         // Not a project canister, so its id is given: `icp` has none to report.
+        // ledger.did is the part of the ledger's interface the wallet calls,
+        // trimmed by hand and committed, so the plugin reads it and fetches
+        // nothing. Were it missing, the plugin would write the ledger's whole
+        // interface from mainnet (`network` defaults to "ic"), and
+        // `IC_REACTOR_FETCH=ledger` does that on purpose.
         ledger: {
           didFile: "ledger.did",
           canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",

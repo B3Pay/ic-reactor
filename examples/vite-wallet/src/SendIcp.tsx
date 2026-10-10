@@ -9,14 +9,17 @@
 // - `mayHaveExecuted` (a lost reply, a reject after the canister ran): the
 //   page says the outcome is unknown. It does not re-read anything itself:
 //   the client's onSettled already refetched the ledger's reads, the balance
-//   included. It offers "Send the same transfer again" only while the sender
-//   is still the caller, and sends the attempt's own argument: the same
-//   `memo` and `created_at_time`. The same argument from the same account is
-//   deduplicated (`Duplicate` if the first one went through); from another
-//   account it would be a new transfer, paid in full. Each press of Send reads
-//   the form again, so a new transfer gets a new memo, and is never taken for
-//   the duplicate of another one of the same amount made in the same
-//   millisecond.
+//   included. "Send the same transfer again" is `client.resendOf`'s offer:
+//   made only after such a failure, only while the account that sent it is
+//   still the caller, and only because the argument has a `created_at_time`
+//   (`dedupedBy`), which is what the ledger deduplicates on. Pressed, it sends
+//   the attempt's own argument, the same `memo` and `created_at_time`, through
+//   the same mutation, as that account, to the same ledger and unchanged, or
+//   not at all: the ledger answers `Duplicate` if the first one went through.
+//   From another account, or to another ledger, it would be a new transfer,
+//   paid in full. Each press of Send reads the form again into a new
+//   argument, so a new transfer gets a new memo, and is never taken for the
+//   duplicate of another one of the same amount made in the same millisecond.
 // - No `retry` is added: the client re-sends an update only when the failure
 //   proves it never arrived, and any other re-send could pay twice.
 import type { ReactorError } from "@ic-reactor/core"
@@ -33,12 +36,8 @@ import {
 } from "./transfer.ts"
 import { useCanisters } from "./use-canisters.ts"
 
-/** One press of Send: what was sent, and who signed it. */
-interface Attempt {
-  readonly arg: TransferArg
-  /** The principal the client signed it as, read from the client when sent. */
-  readonly from: string
-}
+/** What the ledger deduplicates a transfer on: absent, a re-send could pay twice. */
+export const dedupedBy = (arg: TransferArg) => arg.created_at_time
 
 export function SendIcp() {
   const client = useClient()
@@ -46,20 +45,14 @@ export function SendIcp() {
   const { status, principal: caller } = useAuth()
   const token = useToken()
   const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  // Read on every render: `useAuth()` re-renders this on a switch of account,
+  // and the offer follows the caller.
+  const again = client.resendOf(transfer.error, ledger, "icrc1_transfer", {
+    dedupedBy,
+  })
   const [form, setForm] = useState<TransferForm>({ to: "", amount: "" })
   const [refusal, setRefusal] = useState<{ field: string; reason: string }>()
-  const [attempt, setAttempt] = useState<Attempt>()
   const signedIn = status === "signed-in"
-
-  const send = (arg: TransferArg) => {
-    // The client signs with whoever is signed in when the mutation runs:
-    // `client.caller()` now, which a switch this render has not caught up
-    // with can make differ from `caller`. Send nothing then.
-    const from = client.caller()
-    if (from !== caller) return
-    setAttempt({ arg, from })
-    transfer.mutate(arg)
-  }
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault()
@@ -67,7 +60,11 @@ export function SendIcp() {
     const read = readTransferForm(form, token)
     if (!read.ok) return setRefusal(read)
     setRefusal(undefined)
-    send(read.arg)
+    // The client signs with whoever is signed in when the mutation runs:
+    // `client.caller()` now, which a switch this render has not caught up
+    // with can make differ from `caller`. Send nothing then.
+    if (client.caller() !== caller) return
+    transfer.mutate(read.arg)
   }
 
   return (
@@ -116,15 +113,14 @@ export function SendIcp() {
           </p>
         )}
       </form>
-      {attempt && token && (
+      {transfer.variables && token && (
         <Outcome
-          attempt={attempt}
-          caller={caller}
+          arg={transfer.variables}
           token={token}
           isPending={transfer.isPending}
           block={transfer.data}
           error={transfer.error}
-          onSendAgain={() => send(attempt.arg)}
+          onSendAgain={again && (() => transfer.mutate(again.arg))}
         />
       )}
     </section>
@@ -133,28 +129,27 @@ export function SendIcp() {
 
 /** What became of the last transfer. */
 export function Outcome(props: {
-  attempt: Attempt
-  /** Who calls now: maybe no longer who sent the attempt. */
-  caller: string
+  /** The argument the last transfer sent. */
+  arg: TransferArg
   token: Token
   isPending: boolean
   block: bigint | undefined
   error: ReactorError<TransferError> | null
-  onSendAgain: () => void
+  /** Sends the same transfer again: present only while `client.resendOf` offers it. */
+  onSendAgain: (() => void) | undefined
 }) {
-  const { attempt, caller, token, error } = props
+  const { arg, token, error } = props
   if (props.isPending) {
     return (
       <p className="muted" data-testid="outcome">
-        Sending {showAmount(attempt.arg.amount, token)}…
+        Sending {showAmount(arg.amount, token)}…
       </p>
     )
   }
   if (error === null) {
     return (
       <p className="ok" data-testid="outcome">
-        Sent {showAmount(attempt.arg.amount, token)}: block{" "}
-        {props.block?.toString()}.
+        Sent {showAmount(arg.amount, token)}: block {props.block?.toString()}.
       </p>
     )
   }
@@ -168,10 +163,11 @@ export function Outcome(props: {
             : undefined
         }
       />
-      {/* Only to the account that sent it: the ledger deduplicates per
-          sender, and the same argument from another account would be a
-          new transfer, paid in full. */}
-      {error.mayHaveExecuted && caller === attempt.from && (
+      {/* Offered by client.resendOf: only after an unknown outcome, and only
+          to the account that sent it, since the ledger deduplicates per
+          sender and the same argument from another account would be a new
+          transfer, paid in full. */}
+      {props.onSendAgain && (
         <p>
           <button type="button" onClick={props.onSendAgain}>
             Send the same transfer again

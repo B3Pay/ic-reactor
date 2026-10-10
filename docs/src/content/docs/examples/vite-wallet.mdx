@@ -26,8 +26,9 @@ backend canister of the example's own.
   `refetchInterval`, so a top-up from the example's faucet shows by itself;
   ICP transfers with `parseUnits`, the fee, deduplication by `created_at_time`
   and a `memo` per transfer, typed ledger errors and the
-  unknown-outcome path; a profile write refused before sending while signed
-  out.
+  unknown-outcome path, where `client.resendOf` offers the same transfer
+  again to its sender only; a profile write refused before sending while
+  signed out.
 - **Optimistic updates:** an address book whose adds and removes show at once
   and roll back on a refusal or a failure, while the client's own
   invalidation still runs; paying a contact refreshes both balances and not
