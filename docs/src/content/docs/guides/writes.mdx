@@ -160,7 +160,8 @@ can run the write twice. Two rules follow.
   5xx. The write then runs twice.
 - **Never call an update from `useQuery`.** TanStack Query may run a query
   function again whenever it refetches. Call update methods from `useMutation`
-  or directly. `queryOptions` throws for an update to stop you; see
+  or directly. `queryOptions` does not compile for an update of a generated
+  `Actor`, and throws for one at run time, to stop you; see
   [Reads](/v4/guides/reads/#update-methods) for the one exception.
 
 The client itself sends an update again in exactly two cases, because only

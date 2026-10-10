@@ -200,10 +200,18 @@ across keys (`placeholderData: keepPreviousData`, cross-key `initialData`).
 Reads retry transient failures (never on a server). Spread to add options:
 `{ ...client.queryOptions(...), staleTime }`.
 
-`queryOptions` throws for an update method; one that answers the same however
-often it runs (ckBTC's `get_btc_address`) opts in with a fourth argument,
-`{ update: "idempotent" }`. The target `{ id, certified: true }` certifies
-`query` replies.
+`queryOptions` with an update or oneway method of a generated `Actor` does
+not compile (an `Actor` written by hand says no mode: it throws at run time).
+An update that answers the same however often it runs (ckBTC's
+`get_btc_address`) opts in with a fourth argument, `{ update: "idempotent" }`,
+after the arguments (`undefined` when it takes none); a oneway never compiles.
+A method TypeScript cannot tell is a read does not compile: a type parameter
+(`M extends keyof A & string`), a union that may name an update
+(`keyof Actor & string`), or any method of a `Canister<A>` with a generic `A`.
+Give the type arguments,
+`client.queryOptions<A, any>(canister, method, vars)`, which keeps the
+run-time check and types the data `unknown`.
+The target `{ id, certified: true }` certifies `query` replies.
 
 ## Writes
 

@@ -388,7 +388,10 @@ describe("the ckBTC deposit address, an update read with { update: 'idempotent' 
 
   it("is refused by queryOptions without the opt-in, since a refetch would run the update again", () => {
     const { client, minter } = setup()
+    // The generated Actor says get_btc_address is an update, so this line
+    // does not compile; the client refuses it at run time as well.
     expect(() =>
+      // @ts-expect-error an update is read only with { update: "idempotent" }
       client.queryOptions(minter, "get_btc_address", ownAddress)
     ).toThrow(TypeError)
   })

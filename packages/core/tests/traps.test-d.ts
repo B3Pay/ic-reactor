@@ -330,6 +330,75 @@ useSuspenseQuery(client.queryOptions(braces, "braces", skipToken))
 useSuspenseQuery(client.queryOptions(gen, "empty_record", skipToken))
 
 // ---------------------------------------------------------------------------
+// Reads: a query refetches, so an update or a oneway is not a read
+// ---------------------------------------------------------------------------
+//
+// The generated Actor says each method's mode (`$.WithMode<"update">`), and
+// `queryOptions` reads it: every refetch of a read built from an update would
+// run the update again, and a oneway has no reply to cache.
+
+// trap: query-options-refuses-update
+// @ts-expect-error icrc1_transfer is an update: every refetch would transfer again; use client.mutationOptions(ledger, "icrc1_transfer")
+client.queryOptions(ledger, "icrc1_transfer", transferArg)
+// trap: query-options-refuses-update
+// @ts-expect-error an update is not a read while its variables load either; use client.mutationOptions for a write
+client.queryOptions(shapesCanister, "bump", skipToken)
+
+// trap: query-options-refuses-oneway
+// @ts-expect-error fire is a oneway method: it has no reply to cache; call it directly, or through client.mutationOptions
+client.queryOptions(shapesCanister, "fire", "x")
+// trap: query-options-refuses-oneway
+// @ts-expect-error { update: "idempotent" } opts in an update, not a oneway, which has no reply to cache whatever the options say
+client.queryOptions(shapesCanister, "fire", "x", { update: "idempotent" })
+
+// Each of these compiles. A query and a composite query are reads (a
+// composite query of a certified canister is refused at run time: no type
+// says a canister is certified).
+export const queryRead = client.queryOptions(shapesCanister, "one", 1n)
+export const compositeRead = client.queryOptions(
+  shapesCanister,
+  "composite",
+  1n
+)
+// An update that answers the same however often it runs is read with the
+// opt-in, its variables first, even `undefined` for a method without
+// arguments. Its options are a suspense read's like any other, and may wait
+// for their variables like any other.
+useSuspenseQuery(
+  client.queryOptions(shapesCanister, "three", undefined, {
+    update: "idempotent",
+  })
+)
+export const idempotentRead = client.queryOptions(
+  shapesCanister,
+  "address",
+  "seed",
+  { update: "idempotent" }
+)
+export const idempotentWhileLoading = client.queryOptions(
+  shapesCanister,
+  "address",
+  ready ? "seed" : skipToken,
+  { update: "idempotent" }
+)
+// An Actor written by hand says no mode: each of its methods may be read, and
+// the client refuses an update or a oneway at run time instead
+// (tests/traps/update-as-query.test.ts reads the ledger through one).
+type HandWrittenLedger = {
+  icrc1_fee: () => Promise<bigint>
+  icrc1_transfer: (arg: icrc1.TransferArg) => Promise<icrc1.TransferResult>
+}
+const handWritten = client.canister<HandWrittenLedger>(icrc1.actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+export const handWrittenFee = client.queryOptions(handWritten, "icrc1_fee")
+export const handWrittenTransfer = client.queryOptions(
+  handWritten,
+  "icrc1_transfer",
+  transferArg
+)
+
+// ---------------------------------------------------------------------------
 // The test client: handlers answer in the generated Actor's domain values
 // ---------------------------------------------------------------------------
 

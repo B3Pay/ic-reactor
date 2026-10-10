@@ -23,9 +23,10 @@ exactly, where beta.4 required `0.3.0` and `0.2.0`:
   version its install hints now name.
 
 No `@ic-reactor/*` export is added or removed, and no call, key or error
-changes. ic-reactor makes no use yet of what the pair adds. Schema 0.4.0's
-JavaScript is 0.3.0's but for one header comment, so an app's bundle does not
-change.
+changes at run time. What the pair adds, each method's mode in the generated
+`Actor`, is read by `client.queryOptions` at compile time only (below).
+Schema 0.4.0's JavaScript is 0.3.0's but for one header comment, so an app's
+bundle does not change.
 
 What an app on beta.4 does:
 
@@ -72,6 +73,73 @@ write their own stand-in for a generated `Actor`; it now marks each method
 with `WithMode`, as CLI 0.3.0 does, and compiles. The four
 examples move to the new pair and regenerated modules with the release that
 publishes this, since beta.4 peers the old pair.
+
+### `queryOptions` refuses an update or a oneway method at compile time (#851)
+
+`client.queryOptions(canister, method, …)` reads the mode each method of a
+generated `Actor` carries (`$.WithMode<mode>`, from `candid-core-cli gen`
+0.3.0), and its `method` takes only a method a read may be built from:
+
+| The method's mode in the `Actor`  | Without the fourth argument | With `{ update: "idempotent" }` |
+| --------------------------------- | --------------------------- | ------------------------------- |
+| `query`, `composite_query`        | compiles                    | compiles                        |
+| `update`                          | **does not compile**        | compiles                        |
+| `oneway`                          | **does not compile**        | **does not compile**            |
+| none (an `Actor` written by hand) | compiles                    | compiles                        |
+
+This is a compile-time break for code that names an update method of a
+generated `Actor` without a fourth argument whose type is
+`{ update: "idempotent" }`, or that names a oneway method with or without it.
+The error is `TS2769` ("No overload matches this call"), saying that the
+method `is not assignable to parameter of type 'ReadMethod<Actor>'`, or
+`'OptInMethod<Actor>'` for a oneway with the opt-in. Use
+`client.mutationOptions` for a write, or call it directly; pass
+`{ update: "idempotent" }` only for an update that answers the same however
+often it runs.
+
+Such a call with the method's name written out compiled on beta.4 and threw a
+`TypeError` when it ran. Two kinds of call compiled on beta.4, could run
+without a `TypeError`, and no longer compile:
+
+- **A fourth argument that may be `undefined`.** Its type, such as that of an
+  `opts?: QueryOptionsOptions` a wrapper passes on, does not say it is the
+  opt-in, so for an update method the call does not compile, though it
+  ran whenever the value was defined. Pass `{ update: "idempotent" }`, or a
+  value whose type is `QueryOptionsOptions`. For a query it compiles as
+  before.
+- **A method whose type is not one name the `Actor` marks as a read.** The
+  call compiles only when TypeScript can tell that the method is a
+  `ReadMethod<A>`. It cannot for three kinds of method, each of which compiled
+  on beta.4 and is valid at run time whenever the value names a query:
+  - a type parameter: in
+    `function read<A, M extends keyof A & string>(c: Canister<A>, method: M, vars: …)`,
+    `client.queryOptions(c, method, vars)`;
+  - a union that may name an update, such as a method picker typed
+    `keyof Actor & string` or `"icrc1_name" | "icrc1_transfer"` (a union of
+    queries compiles);
+  - any method of a canister whose `Actor` type is generic: in
+    `function fee<A extends { icrc1_fee: () => Promise<bigint> }>(c: Canister<A>)`,
+    `client.queryOptions(c, "icrc1_fee", …)`, with or without the opt-in.
+
+  `ReadMethod` is not exported for a function to constrain its types with.
+  The escape is explicit type arguments,
+  `client.queryOptions<A, any>(c, method, vars)`: it compiles, the run-time
+  check still refuses an update or a oneway, and the options' data is
+  `unknown`, for the caller to state. (A wrapper that passed `...args: any[]`,
+  or no variables, did not compile on beta.4 either.)
+
+An `Actor` written by hand is unchanged: its methods say no mode, every one of
+them compiles as before, and the run-time check refuses an update or a oneway
+as before.
+
+Nothing changes at run time: every check `queryOptions` made, it still
+makes, and it is the only check for an `Actor` written by hand and for a
+composite query of a certified canister (the type of a canister object does
+not say it is certified). A call that compiled and did not throw builds the
+same options, with the same types. No export is added (`ReadMethod` and
+`OptInMethod` are named in compiler messages, not exported), and the bundle
+does not change. The reads guide, the writes guide and the guide
+(`llms.txt`) say so.
 
 ### @ic-reactor/vite-plugin
 
