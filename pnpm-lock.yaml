@@ -159,8 +159,8 @@ importers:
   examples/icrc-ledger:
     dependencies:
       '@candid-core/schema':
-        specifier: 0.3.0
-        version: 0.3.0
+        specifier: 0.4.0
+        version: 0.4.0
       '@ic-reactor/core':
         specifier: ^4.0.0-beta.4
         version: link:../../packages/core
@@ -184,8 +184,8 @@ importers:
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@candid-core/cli':
-        specifier: 0.2.0
-        version: 0.2.0(@candid-core/schema@0.3.0)
+        specifier: 0.3.0
+        version: 0.3.0(@candid-core/schema@0.4.0)
       '@ic-reactor/vite-plugin':
         specifier: ^4.0.0-beta.4
         version: link:../../packages/vite-plugin
@@ -223,8 +223,8 @@ importers:
   examples/next-ssr:
     dependencies:
       '@candid-core/schema':
-        specifier: 0.3.0
-        version: 0.3.0
+        specifier: 0.4.0
+        version: 0.4.0
       '@ic-reactor/core':
         specifier: ^4.0.0-beta.4
         version: link:../../packages/core
@@ -251,8 +251,8 @@ importers:
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@candid-core/cli':
-        specifier: 0.2.0
-        version: 0.2.0(@candid-core/schema@0.3.0)
+        specifier: 0.3.0
+        version: 0.3.0(@candid-core/schema@0.4.0)
       '@noble/curves':
         specifier: ^2.2.0
         version: 2.3.0
@@ -290,8 +290,8 @@ importers:
   examples/node-agent-tool:
     dependencies:
       '@candid-core/schema':
-        specifier: 0.3.0
-        version: 0.3.0
+        specifier: 0.4.0
+        version: 0.4.0
       '@ic-reactor/core':
         specifier: ^4.0.0-beta.4
         version: link:../../packages/core
@@ -306,8 +306,8 @@ importers:
         version: 5.102.8
     devDependencies:
       '@candid-core/cli':
-        specifier: 0.2.0
-        version: 0.2.0(@candid-core/schema@0.3.0)
+        specifier: 0.3.0
+        version: 0.3.0(@candid-core/schema@0.4.0)
       '@icp-sdk/icp-cli':
         specifier: 1.2.0
         version: 1.2.0
@@ -324,8 +324,8 @@ importers:
   examples/vite-wallet:
     dependencies:
       '@candid-core/schema':
-        specifier: 0.3.0
-        version: 0.3.0
+        specifier: 0.4.0
+        version: 0.4.0
       '@ic-reactor/core':
         specifier: ^4.0.0-beta.4
         version: link:../../packages/core
@@ -349,8 +349,8 @@ importers:
         version: 19.3.0(react@19.3.0)
     devDependencies:
       '@candid-core/cli':
-        specifier: 0.2.0
-        version: 0.2.0(@candid-core/schema@0.3.0)
+        specifier: 0.3.0
+        version: 0.3.0(@candid-core/schema@0.4.0)
       '@ic-reactor/vite-plugin':
         specifier: ^4.0.0-beta.4
         version: link:../../packages/vite-plugin
@@ -724,15 +724,6 @@ packages:
   '@cacheable/utils@2.5.0':
     resolution: {integrity: sha512-buipgOVDkkPXNR5+xBpDw7Zk2n1EvU7qBJCNUcL7rhQ//kfpOXPAvQ511Os0vpLYJ1pZnvudNytkQt2hst3wqA==}
 
-  '@candid-core/cli@0.2.0':
-    resolution: {integrity: sha512-7YkBSKesUA+OxbGkfQQffuJXw2jrlNsUbqt2TY9yoxYPiAYFdF52DCfuCPt5U2ScNE+7zqu06wbo/bXAQ5aQCA==}
-    hasBin: true
-    peerDependencies:
-      '@candid-core/schema': 0.3.0
-    peerDependenciesMeta:
-      '@candid-core/schema':
-        optional: true
-
   '@candid-core/cli@0.3.0':
     resolution: {integrity: sha512-WlhRoFylI0CbtBLlWwYVfHdewiTnKNJCXYSDDz/EvRANV+HpGVo/DDdQ4RtW6H06nQH5Ytl89GEtjJ28z5tV+g==}
     hasBin: true
@@ -741,9 +732,6 @@ packages:
     peerDependenciesMeta:
       '@candid-core/schema':
         optional: true
-
-  '@candid-core/schema@0.3.0':
-    resolution: {integrity: sha512-4dvVrkIcU/YXFQv8VOcrs9DwIGwXVQQcBmbkr3ujDqtLsXcdvBFWQhmck0MgiA1niR8KWOj1VbLZETjEiyjheA==}
 
   '@candid-core/schema@0.4.0':
     resolution: {integrity: sha512-0g/z/gW5MbXxd+0jMfOgF1EPBocnGUIXAQ2b91Xg3BzaKkhNqshQtCet1R6H4ifyzG5kAxzah/cSchleCb5mVQ==}
@@ -4862,15 +4850,9 @@ snapshots:
       hashery: 1.5.1
       keyv: 5.6.0
 
-  '@candid-core/cli@0.2.0(@candid-core/schema@0.3.0)':
-    optionalDependencies:
-      '@candid-core/schema': 0.3.0
-
   '@candid-core/cli@0.3.0(@candid-core/schema@0.4.0)':
     optionalDependencies:
       '@candid-core/schema': 0.4.0
-
-  '@candid-core/schema@0.3.0': {}
 
   '@candid-core/schema@0.4.0': {}
 
