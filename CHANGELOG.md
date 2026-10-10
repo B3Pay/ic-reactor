@@ -173,7 +173,8 @@ does not change. The reads guide, the writes guide and the guide
   of the file's methods, told by the identities of the two projections to
   them. A check that cannot be made fails the canister, and says to build
   with `IC_REACTOR_VERIFY=0`. Under `vite dev` a failed check stands after a
-  save, whatever it changed, until a check passes when the server restarts.
+  save, whatever it changed, until a restart checks it again and it passes,
+  fetches the file again, or runs with the check off.
 - Both run the app's `candid-core-cli` in a child process, as `gen` does, and
   never the library in the Vite process. No export is added; the two fields
   are new keys of `IcReactorPluginOptions["canisters"]`.

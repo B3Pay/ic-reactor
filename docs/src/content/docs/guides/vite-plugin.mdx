@@ -335,9 +335,11 @@ run does not pass. A
 file the same build just fetched is the live interface, and is not checked. A
 check that passed is not made again for the same text by a later
 `buildStart`, and a save under `vite dev` never makes a request. So under
-`vite dev` a canister whose check failed stays failed after a save, whatever
-the save changed, and is not generated: only a check that passes clears it.
-Restart the dev server (`r` and Enter in its terminal) to check again.
+`vite dev` a canister whose check failed (or could not be made, as with the
+network down) stays failed after a save, whatever the save changed, and is
+not generated, until a start checks it again and the check passes, fetches
+the file again (`IC_REACTOR_FETCH`), or runs with the check off. Restart the
+dev server (`r` and Enter in its terminal) to check again.
 
 ### How the plugin runs candid-core
 

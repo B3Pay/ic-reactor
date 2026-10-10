@@ -239,8 +239,10 @@ over `verify: "live"`.
 - A file the build just fetched is the live interface, and is not checked. A
   check that passed is not repeated for the same text by a later rebuild, and
   a save under `vite dev` never makes a request. So a canister whose check
-  failed stays failed after a save under `vite dev`, whatever the save
-  changed, and is not generated, until a check passes: restart the dev server
+  failed (or could not be made, as with the network down) stays failed after
+  a save under `vite dev`, whatever the save changed, and is not generated,
+  until a start checks it again and the check passes, fetches the file again
+  (`IC_REACTOR_FETCH`), or runs with the check off: restart the dev server
   (`r` and Enter in its terminal) to check again.
 
 ## Generation
