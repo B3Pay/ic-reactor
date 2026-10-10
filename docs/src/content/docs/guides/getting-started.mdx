@@ -26,7 +26,7 @@ The core packages and the runtime they sit on:
 
 ```sh
 npm install @ic-reactor/core@beta @icp-sdk/core @tanstack/query-core
-npm install --save-exact @candid-core/schema@0.3.0
+npm install --save-exact @candid-core/schema@0.4.0
 ```
 
 For React, add the provider and TanStack's React bindings. For Internet
@@ -40,7 +40,7 @@ npm install @icp-sdk/auth
 The generator is a development tool:
 
 ```sh
-npm install --save-dev --save-exact @candid-core/cli@0.2.0
+npm install --save-dev --save-exact @candid-core/cli@0.3.0
 ```
 
 `@candid-core/schema` and `@candid-core/cli` are installed exactly
@@ -62,8 +62,9 @@ npx candid-core-cli gen icrc1.did -o src/generated
 The module is named after the `.did` file: this writes `src/generated/icrc1.ts`
 and, beside it, `src/generated/icrc1.envelope.json`. Do not edit either. The
 module exports a TypeScript type and a schema for each Candid type, the
-service schema `actor`, and `type Actor`, which lists each method as
-`(arg0: ...) => Promise<...>`.
+service schema `actor`, and `type Actor`, which types each method as its call
+signature, `(arg0: ...) => Promise<...>`, marked with its mode
+(`& $.WithMode<"query">`).
 
 Several files can be generated at once:
 `npx candid-core-cli gen a.did b.did -o src/canisters`.

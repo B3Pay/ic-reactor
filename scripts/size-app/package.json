@@ -8,7 +8,7 @@
     "size": "size-limit"
   },
   "dependencies": {
-    "@candid-core/schema": "0.3.0",
+    "@candid-core/schema": "0.4.0",
     "@ic-reactor/core": "workspace:*",
     "@ic-reactor/react": "workspace:*",
     "@icp-sdk/core": "^6.1.0",

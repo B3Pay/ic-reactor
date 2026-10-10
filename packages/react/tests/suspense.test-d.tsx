@@ -7,7 +7,7 @@
  * `skipToken` keep it, and the suspense hooks refuse them, here and as a trap
  * of `packages/core/tests/traps.test-d.ts` that `pnpm verify:traps` proves.
  */
-import type { Principal } from "@candid-core/schema"
+import type { Principal, WithMode } from "@candid-core/schema"
 import type { Canister, Client, ReactorError } from "@ic-reactor/core"
 import {
   QueryClient,
@@ -21,25 +21,31 @@ import {
 import { expectTypeOf } from "vitest"
 
 type Account = { owner: Principal; subaccount: Uint8Array | null }
-/** What a generated module's `Actor` type looks like, cut down. */
+type Query = WithMode<"query">
+/**
+ * What a generated module's `Actor` type looks like, cut down: each method is
+ * its call signature marked with its mode, as `candid-core-cli gen` 0.3.0
+ * writes it.
+ */
 type Ledger = {
-  icrc1_fee: () => Promise<bigint>
-  icrc1_balance_of: (account: Account) => Promise<bigint>
-  icrc1_name: () => Promise<string>
-  outcome: (
+  icrc1_fee: (() => Promise<bigint>) & Query
+  icrc1_balance_of: ((account: Account) => Promise<bigint>) & Query
+  icrc1_name: (() => Promise<string>) & Query
+  outcome: ((
     n: bigint
-  ) => Promise<{ tag: "Ok"; value: bigint } | { tag: "Err"; value: string }>
-  pair: (left: bigint, right: string) => Promise<string>
+  ) => Promise<{ tag: "Ok"; value: bigint } | { tag: "Err"; value: string }>) &
+    Query
+  pair: ((left: bigint, right: string) => Promise<string>) & Query
   /** A Candid `reserved` argument, which a generated module types `unknown`. */
-  anything: (value: unknown) => Promise<bigint>
+  anything: ((value: unknown) => Promise<bigint>) & Query
   /** `record {}`, as `candid-core-cli gen` writes it. */
-  empty: (value: Record<string, never>) => Promise<bigint>
+  empty: ((value: Record<string, never>) => Promise<bigint>) & Query
   /** A record of opts alone, an opt and `null`, as the generator writes them. */
-  options: (value: { limit: bigint | null }) => Promise<bigint>
-  maybeNat: (value: bigint | null) => Promise<bigint>
-  nothing: (value: null) => Promise<bigint>
+  options: ((value: { limit: bigint | null }) => Promise<bigint>) & Query
+  maybeNat: ((value: bigint | null) => Promise<bigint>) & Query
+  nothing: ((value: null) => Promise<bigint>) & Query
   /** `record {}` written `{}`, as other generators write it. */
-  braces: (value: {}) => Promise<bigint>
+  braces: ((value: {}) => Promise<bigint>) & Query
 }
 
 declare const client: Client

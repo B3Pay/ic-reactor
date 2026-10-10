@@ -7,8 +7,8 @@
  * and an app never names them: it reads them off a call, such as
  * `client.queryOptions(...)`.
  *
- * Nothing here carries a method's mode. A generated `Actor` type says what a
- * method takes and returns, not whether it is a query or an update, so mode
+ * A generated `Actor` type (from `candid-core-cli gen` 0.3.0) carries each
+ * method's mode as `$.WithMode<mode>`, but nothing here reads it yet, so mode
  * rules (a read built from an update, a certified composite query) are checked
  * when the client builds the call, at run time.
  *

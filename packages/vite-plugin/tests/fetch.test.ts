@@ -476,7 +476,7 @@ describe("one didFile under two paths", () => {
     )
     const network = { host: ic.host }
     vi.stubEnv("IC_REACTOR_FETCH", "all")
-    // @candid-core/cli 0.2.0 reads no .did through a symlink to a file, so
+    // @candid-core/cli 0.3.0 reads no .did through a symlink to a file, so
     // "a" fails to generate, loudly, with did_source_not_found, as it would
     // with no fetch at all: failOnError is off to look past it.
     const { result, lines } = runBuild(app.root, {
@@ -569,7 +569,7 @@ describe("one didFile under two paths", () => {
       const network = { host: ic.host }
 
       // One canister: one fetch, written once. (The generator itself, at
-      // @candid-core/cli 0.2.0, reads a .did by its exact case, so the entry
+      // @candid-core/cli 0.3.0, reads a .did by its exact case, so the entry
       // that spells it in another case fails to generate, loudly, with
       // did_source_not_found: failOnError is off to look past it.)
       const app = newApp({})
@@ -943,7 +943,7 @@ describe("IC_REACTOR_FETCH", () => {
     )
     vi.stubEnv("IC_REACTOR_FETCH", "ledger")
     const { buildStart, context } = oneBuildPlugin(app, ic.host)
-    // The fetch and the write succeed. @candid-core/cli 0.2.0 then reads no
+    // The fetch and the write succeed. @candid-core/cli 0.3.0 then reads no
     // .did through a symlink to a file (did_source_not_found), as with no
     // fetch at all: that is the only error allowed.
     const onlyTheCliFailed = () => {
