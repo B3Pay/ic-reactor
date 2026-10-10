@@ -390,10 +390,13 @@ export interface Client {
    * method, but a cost. To keep it cached across writes, name the reads a
    * write changes in `invalidates`.
    *
-   * A function generic over the method name (`M extends keyof A & string`)
-   * cannot pass it on, since no type says such an `M` is a `ReadMethod<A>`:
-   * give the type arguments, `queryOptions<A, any>(canister, method, vars)`,
-   * which keeps the run-time check and types the data `unknown`.
+   * A method TypeScript cannot tell is a `ReadMethod<A>` does not compile,
+   * even when every value of it names a query: a type parameter
+   * (`M extends keyof A & string`), a union that may name an update
+   * (`keyof Actor & string`), or any method of a `Canister<A>` whose `A` is
+   * itself generic. Give the type arguments,
+   * `queryOptions<A, any>(canister, method, vars)`, which keeps the run-time
+   * check and types the data `unknown`.
    *
    * A method without results (`() -> () query`) has nothing to cache: its
    * call resolves `undefined`, which TanStack Query takes for a failed read.

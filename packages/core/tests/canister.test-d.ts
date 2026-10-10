@@ -177,11 +177,12 @@ expectTypeOf(ledger.icrc1_transfer).toEqualTypeOf<
   (arg0: icrc1.TransferArg) => Promise<bigint>
 >()
 
-// Two calls that compiled on beta.4 and no longer do, though each may run
+// Calls that compiled on beta.4 and no longer do, though each may run
 // without a TypeError (the CHANGELOG's Unreleased entry says so).
 //
-// A wrapper generic over the method name: TypeScript cannot tell that a
-// method `M extends keyof A & string` is a ReadMethod<A>, whatever M is.
+// A method whose type is not one name the Actor marks as a read. First, a
+// wrapper generic over the method name: TypeScript cannot tell that a method
+// `M extends keyof A & string` is a ReadMethod<A>, whatever M is.
 export function readOf<A, M extends keyof A & string>(
   canister: Canister<A>,
   method: M,
@@ -203,6 +204,31 @@ export function readOfAny<A, M extends keyof A & string>(
 expectTypeOf(readOfAny(ledger, "icrc1_fee", undefined as never)).toEqualTypeOf<
   CanisterQueryOptions<unknown, never, never>
 >()
+// A union that may name an update, such as a method picker typed
+// `keyof Actor & string`: it runs whenever the value names a query, but its
+// type is not a ReadMethod. A union of queries compiles.
+declare const picked: "icrc1_name" | "icrc1_transfer"
+// @ts-expect-error the union may name an update: not a ReadMethod<Actor>
+client.queryOptions(ledger, picked, undefined as never)
+expectTypeOf(
+  client.queryOptions<icrc1.Actor, any>(ledger, picked, undefined as never)
+).toEqualTypeOf<CanisterQueryOptions<unknown, never, never>>()
+declare const pickedRead: "icrc1_name" | "icrc1_symbol"
+client.queryOptions(ledger, pickedRead)
+// A function generic over the Actor type, with the method's name written out:
+// TypeScript cannot relate a generic A to ReadMethod<A>, so even a name every
+// such A marks as a query does not compile. The escape is the same.
+export function feeOf<A extends { icrc1_fee: () => Promise<bigint> }>(
+  canister: Canister<A>
+) {
+  // @ts-expect-error A is generic: "icrc1_fee" is not known to be a ReadMethod<A>
+  return client.queryOptions(canister, "icrc1_fee", undefined as never)
+}
+export function feeOfAny<A extends { icrc1_fee: () => Promise<bigint> }>(
+  canister: Canister<A>
+) {
+  return client.queryOptions<A, any>(canister, "icrc1_fee", undefined as never)
+}
 // An opt-in that may be undefined: an update without `{ update: "idempotent" }`
 // throws at run time, so a fourth argument the type does not know is the
 // opt-in does not compile for an update. For a query it compiles as before.

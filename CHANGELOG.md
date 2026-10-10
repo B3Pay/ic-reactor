@@ -107,16 +107,26 @@ without a `TypeError`, and no longer compile:
   ran whenever the value was defined. Pass `{ update: "idempotent" }`, or a
   value whose type is `QueryOptionsOptions`. For a query it compiles as
   before.
-- **A wrapper generic over the method name.** In
-  `function read<A, M extends keyof A & string>(c: Canister<A>, method: M, vars: …)`,
-  `client.queryOptions(c, method, vars)` compiled on beta.4, and is valid at
-  run time whenever `method` names a query. TypeScript cannot tell that such
-  an `M` is a `ReadMethod<A>`, and `ReadMethod` is not exported for a wrapper
-  to constrain `M` with, so the call does not compile. The escape is explicit
-  type arguments, `client.queryOptions<A, any>(c, method, vars)`: it compiles,
-  the run-time check still refuses an update or a oneway, and the options'
-  data is `unknown`, for the wrapper to state. (A wrapper that passed
-  `...args: any[]`, or no variables, did not compile on beta.4 either.)
+- **A method whose type is not one name the `Actor` marks as a read.** The
+  call compiles only when TypeScript can tell that the method is a
+  `ReadMethod<A>`. It cannot for three kinds of method, each of which compiled
+  on beta.4 and is valid at run time whenever the value names a query:
+  - a type parameter: in
+    `function read<A, M extends keyof A & string>(c: Canister<A>, method: M, vars: …)`,
+    `client.queryOptions(c, method, vars)`;
+  - a union that may name an update, such as a method picker typed
+    `keyof Actor & string` or `"icrc1_name" | "icrc1_transfer"` (a union of
+    queries compiles);
+  - any method of a canister whose `Actor` type is generic: in
+    `function fee<A extends { icrc1_fee: () => Promise<bigint> }>(c: Canister<A>)`,
+    `client.queryOptions(c, "icrc1_fee", …)`, with or without the opt-in.
+
+  `ReadMethod` is not exported for a function to constrain its types with.
+  The escape is explicit type arguments,
+  `client.queryOptions<A, any>(c, method, vars)`: it compiles, the run-time
+  check still refuses an update or a oneway, and the options' data is
+  `unknown`, for the caller to state. (A wrapper that passed `...args: any[]`,
+  or no variables, did not compile on beta.4 either.)
 
 An `Actor` written by hand is unchanged: its methods say no mode, every one of
 them compiles as before, and the run-time check refuses an update or a oneway

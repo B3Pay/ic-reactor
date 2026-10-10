@@ -268,10 +268,12 @@ builds the read, and throws a `TypeError` for an update or a oneway. A method
 that returns nothing is refused the same way (`TypeError`), whatever its mode:
 there is nothing to cache, so call it directly.
 
-A function generic over the method name, `M extends keyof A & string`, cannot
-pass its `method` on to `queryOptions`: TypeScript cannot tell that such an `M`
-is a `ReadMethod<A>`, even when every call of the function names a query, so
-the call does not compile. Give the type arguments yourself,
+A method whose type is not one name the `Actor` marks as a read does not
+compile either, even when every value of it names a query: a type parameter
+`M extends keyof A & string`, a union that may name an update (a method picker
+typed `keyof Actor & string`), or any method of a canister whose `Actor` type
+is itself generic (`Canister<A>` in a function generic over `A`). TypeScript
+cannot tell that such a method is a `ReadMethod<A>`. Give the type arguments yourself,
 `client.queryOptions<A, any>(canister, method, vars)`: the call compiles, the
 mode is checked at run time as for an `Actor` written by hand, and the data of
 the options is `unknown`, for your function to state. The same goes for an
