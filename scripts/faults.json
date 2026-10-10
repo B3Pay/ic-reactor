@@ -3275,6 +3275,16 @@
     "replace": ""
   },
   {
+    "id": "did-verify-off-ignored",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "is off for IC_REACTOR_VERIFY=0, over verify: live, with no request",
+    "why": "IC_REACTOR_VERIFY=0 read as a canister name, so a project with verify: \"live\" cannot build offline",
+    "file": "src/index.ts",
+    "search": "    if (off !== undefined) {",
+    "replace": "    if (false) {"
+  },
+  {
     "id": "did-verify-hint-for-fetch",
     "package": "vite-plugin",
     "test": "tests/project.test.ts",

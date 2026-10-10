@@ -285,12 +285,14 @@ bytes, so `IC_REACTOR_FETCH` rewrites the file only when the canister changed.
 A committed `didFile` is what the app was compiled against. To find out
 whether the live canister still answers it, ask for the live check:
 `verify: "live"` on an entry, or the variable `IC_REACTOR_VERIFY` for a run:
-`1` (or `all`) for every entry with a `canisterId`, or canister names
-separated by commas. The plugin fetches the certified interface as above and
-checks the `didFile` on disk against it (`candid-core-cli check`) when a build
-or the dev server starts. Each check is a network request, so `verify: "live"`
-makes every build need the network. `IC_REACTOR_VERIFY=1 vite build` in CI
-keeps the other builds offline.
+`1` (or `true`, or `all`) for every entry with a `canisterId`, or canister
+names separated by commas. The plugin fetches the certified interface as above
+and checks the `didFile` on disk against it (`candid-core-cli check`) when a
+build or the dev server starts. Each check is a network request, so
+`verify: "live"` makes every build need the network. `IC_REACTOR_VERIFY=1 vite
+build` in CI keeps the other builds offline, and `IC_REACTOR_VERIFY=0` (or
+`false`) turns the check off for a run, `verify: "live"` included, so a
+project that checks every build can still build offline.
 
 The check asks whether every method of the file is still in the live service,
 with the same mode, its arguments accepted and its results readable. Methods
@@ -319,7 +321,8 @@ A canister that fails the check is not generated, and the failure follows
 `failOnError` as a failed fetch does. A check that cannot be made (the network
 cannot be reached, the canister keeps its interface private, a side does not
 compile) fails the canister too, with the fetch's own message and how to turn
-the check off: a check that was asked for and did not run does not pass. A
+the check off (`IC_REACTOR_VERIFY=0`): a check that was asked for and did not
+run does not pass. A
 file the same build just fetched is the live interface, and is not checked. A
 check that passed is not made again for the same text by a later
 `buildStart`, and a save under `vite dev` never makes a request.

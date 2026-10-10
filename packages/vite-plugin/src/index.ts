@@ -120,9 +120,10 @@ export interface IcReactorPluginOptions {
    *   fetch it again with `IC_REACTOR_FETCH`.
    * - `verify`: `"live"` checks the `didFile` on disk against the live
    *   canister's certified interface at the start of each build and dev
-   *   server (`candid-core-cli check`). `IC_REACTOR_VERIFY=1` (or `all`, or
-   *   canister names separated by commas) does the same for the canisters
-   *   with a `canisterId`. A method of the file that the canister no longer
+   *   server (`candid-core-cli check`). `IC_REACTOR_VERIFY=1` (or `true`,
+   *   `all`, or canister names separated by commas) does the same for the
+   *   canisters with a `canisterId`, and `IC_REACTOR_VERIFY=0` (or `false`)
+   *   turns the check off for the run, `verify: "live"` included. A method of the file that the canister no longer
    *   has, whose mode changed, or whose types are no longer compatible fails
    *   the canister, under `failOnError`; a compatible change is logged as a
    *   warning. A check that cannot read the canister fails it too.
@@ -190,6 +191,12 @@ const FETCH_VARIABLE = "IC_REACTOR_FETCH"
 
 /** The environment variable that asks for the live check. */
 const VERIFY_VARIABLE = "IC_REACTOR_VERIFY"
+
+/** The values of `IC_REACTOR_VERIFY` that check every canister. */
+const VERIFY_ALL = ["1", "true", "all"]
+
+/** The values of `IC_REACTOR_VERIFY` that check none, over `verify`. */
+const VERIFY_OFF = ["0", "false"]
 
 /**
  * Why `methods` cannot be projected to, or `undefined` when it can. The
@@ -971,7 +978,18 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     signal: AbortSignal
   ): Promise<Failure[] | undefined> => {
     const failures: Failure[] = []
-    const { names: asked, all } = namesIn(VERIFY_VARIABLE, ["1", "all"])
+    const { names: asked, all } = namesIn(VERIFY_VARIABLE, VERIFY_ALL)
+    // `0` turns the check off for the run, over `verify: "live"`: a project
+    // that checks every build can still build offline.
+    const off = asked.find((name) => VERIFY_OFF.includes(name))
+    if (off !== undefined) {
+      if (asked.length > 1) {
+        log.warn(
+          `ic-reactor: ${VERIFY_VARIABLE} is "${asked.join(",")}", and ${off} turns the live check off: no canister is checked`
+        )
+      }
+      return failures
+    }
     for (const name of all ? [] : asked) {
       const canister = generated.find((entry) => entry.name === name)
       if (!canister) {

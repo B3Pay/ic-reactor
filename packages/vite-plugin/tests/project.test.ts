@@ -536,6 +536,32 @@ describe("the live check", () => {
     )
   })
 
+  it("is off for IC_REACTOR_VERIFY=0, over verify: live, with no request", async () => {
+    // Incompatible, so a check that ran would fail the build.
+    const ic = await fakeIc({
+      [LEDGER_ID]: { candid: liveWith(["  put : (nat) -> ();\n", ""]) },
+    })
+    const app = newApp({ "did/item.did": WRITTEN })
+
+    for (const value of ["0", "false"]) {
+      vi.stubEnv("IC_REACTOR_VERIFY", value)
+      const { result, lines } = runBuild(app.root, checked(ic.host))
+      await result
+      expect(lines.filter((line) => !line.startsWith("info:"))).toEqual([])
+      expect(exists(app, "src/canisters/item.ts")).toBe(true)
+    }
+    expect(ic.requests).toEqual([])
+
+    // A name next to 0 is not checked either, and the run says so.
+    vi.stubEnv("IC_REACTOR_VERIFY", "0,item")
+    const { result, lines } = runBuild(app.root, checked(ic.host))
+    await result
+    expect(lines).toContain(
+      'warn: ic-reactor: IC_REACTOR_VERIFY is "0,item", and 0 turns the live check off: no canister is checked'
+    )
+    expect(ic.requests).toEqual([])
+  })
+
   it("that cannot read the canister fails it, and says how to turn the check off", async () => {
     const ic = await fakeIc({ [LEDGER_ID]: { private: true } })
     const app = newApp({ "did/item.did": WRITTEN })
@@ -544,7 +570,7 @@ describe("the live check", () => {
       `item (did/item.did): ${ic.host} refused to read the candid:service of ${LEDGER_ID} (HTTP 403`
     )
     expect(lineOf(message, "item")).toContain(
-      "the live check cannot read it, so turn it off for did/item.did (verify, IC_REACTOR_VERIFY)."
+      'the live check cannot read it, so build with IC_REACTOR_VERIFY=0, and stop asking for the check of did/item.did (remove its verify: "live", or its name from IC_REACTOR_VERIFY).'
     )
     expect(read(app, "did/item.did")).toBe(WRITTEN)
   })

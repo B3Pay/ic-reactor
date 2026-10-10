@@ -89,8 +89,9 @@ publishes this, since beta.4 peers the old pair.
   `IC_REACTOR_FETCH`. Canisters that name one `didFile` share its fetch only
   when they name one list.
 - The live check: `verify: "live"` on an entry, or `IC_REACTOR_VERIFY=1` (or
-  `all`, or canister names separated by commas) for every entry with a
-  `canisterId`. When a build or dev server starts, the plugin fetches the
+  `true`, `all`, or canister names separated by commas) for every entry with a
+  `canisterId`; `IC_REACTOR_VERIFY=0` (or `false`) turns it off for a run,
+  `verify: "live"` included. When a build or dev server starts, the plugin fetches the
   certified interface and checks the `didFile` on disk against it
   (`candid-core-cli check`). A method that is missing (`method_missing`),
   changed mode (`mode_changed`) or is no longer compatible
@@ -98,8 +99,8 @@ publishes this, since beta.4 peers the old pair.
   naming the canister and each method, under `failOnError`. A compatible
   change is a warning: `special_opt_rule` findings, and a change to the types
   of the file's methods, told by the identities of the two projections to
-  them. A check that cannot be made fails the canister, and says how to turn
-  the check off.
+  them. A check that cannot be made fails the canister, and says to build
+  with `IC_REACTOR_VERIFY=0`.
 - Both run the app's `candid-core-cli` in a child process, as `gen` does, and
   never the library in the Vite process. No export is added; the two fields
   are new keys of `IcReactorPluginOptions["canisters"]`.

@@ -160,7 +160,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
       ? canisterId
       : `${canisterId} on ${network.label}`
   const ownFile = verify
-    ? `or turn the live check of ${didFile} off (verify, IC_REACTOR_VERIFY)`
+    ? `or set IC_REACTOR_VERIFY=0 to build without the live check of ${didFile}`
     : `or write ${didFile} yourself, and the plugin reads it instead of fetching`
 
   let sdk: {
@@ -276,7 +276,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
             `${network.host} refused to read the candid:service of ${where} (HTTP ${status}: ${answer}). ` +
             `The canister keeps its interface private, and only its controllers can read it: ` +
             (verify
-              ? `the live check cannot read it, so turn it off for ${didFile} (verify, IC_REACTOR_VERIFY).`
+              ? `the live check cannot read it, so build with IC_REACTOR_VERIFY=0, and stop asking for the check of ${didFile} (remove its verify: "live", or its name from IC_REACTOR_VERIFY).`
               : `get the .did from the canister's developers and save it as ${didFile}.`),
         }
       }

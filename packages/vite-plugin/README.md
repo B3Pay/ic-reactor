@@ -207,12 +207,14 @@ export default defineConfig({
 
 ### The live check
 
-`verify: "live"` on an entry, or `IC_REACTOR_VERIFY=1 vite build` (or `all`,
-or canister names separated by commas) for every entry with a `canisterId`,
-checks the `didFile` on disk against the live canister's certified interface
-with `candid-core-cli check`, at the start of each build and dev server. Each
-check is a network request, so `verify: "live"` makes every build need the
-network; `IC_REACTOR_VERIFY=1` in CI keeps other builds offline.
+`verify: "live"` on an entry, or `IC_REACTOR_VERIFY=1 vite build` (or `true`,
+`all`, or canister names separated by commas) for every entry with a
+`canisterId`, checks the `didFile` on disk against the live canister's
+certified interface with `candid-core-cli check`, at the start of each build
+and dev server. Each check is a network request, so `verify: "live"` makes
+every build need the network; `IC_REACTOR_VERIFY=1` in CI keeps other builds
+offline. `IC_REACTOR_VERIFY=0` (or `false`) turns the check off for a run,
+over `verify: "live"`.
 
 - A method of the file that the canister no longer has (`method_missing`),
   whose mode changed (`mode_changed`), or whose types are no longer compatible
@@ -223,8 +225,8 @@ network; `IC_REACTOR_VERIFY=1` in CI keeps other builds offline.
   changed the types of the file's methods compatibly. Methods the file does
   not hold are not checked.
 - A check that cannot read the canister (the network, a private interface)
-  fails the canister too: a check that was asked for and did not run does not
-  pass.
+  fails the canister too, and says to build with `IC_REACTOR_VERIFY=0`: a
+  check that was asked for and did not run does not pass.
 - A file the build just fetched is the live interface, and is not checked. A
   check that passed is not repeated for the same text by a later rebuild, and
   a save under `vite dev` never makes a request.
