@@ -279,7 +279,8 @@ bytes, so `IC_REACTOR_FETCH` rewrites the file only when the canister changed.
   `canisterId` counts as much as the one it is fetched for: its `methods`, or
   the whole interface when it names none. With different lists, or a list
   that cannot be projected to, nothing is fetched and no request is made:
-  each fails with one message naming the entries, their lists and the file.
+  each fails with one message naming the entries and the file, and their
+  lists when they differ, or the list that cannot be projected to.
   A `didFile` on disk that nobody asked to fetch again is read by them all,
   and compared with the list of each as above.
 - `methods` is a list of names: an empty list, or a name with a comma (which

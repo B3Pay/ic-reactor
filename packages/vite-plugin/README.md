@@ -208,7 +208,8 @@ export default defineConfig({
   from the same file: its `methods`, or the whole interface when it names
   none. With different lists, or a list that cannot be projected to, nothing
   is fetched and no request is made: each fails with one message naming the
-  entries, their lists and the file. A `didFile` on disk that is not fetched
+  entries and the file, and their lists when they differ, or the list that
+  cannot be projected to. A `didFile` on disk that is not fetched
   again is read by them all, and compared with the list of each as above.
 
 ### The live check
