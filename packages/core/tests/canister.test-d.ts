@@ -18,6 +18,12 @@ import {
   type CanisterTarget,
   type ReactorError,
 } from "../src/index.js"
+import type {
+  CanisterQueryOptions,
+  OptInMethod,
+  QueryOptionsOptions,
+  ReadMethod,
+} from "../src/types.js"
 import * as archive from "./fixtures/archive.js"
 import * as icrc1 from "./fixtures/icrc1.js"
 import * as shapes from "./fixtures/shapes.js"
@@ -97,11 +103,141 @@ const address = client.queryOptions(service, "address", "seed", {
 expectTypeOf(client.queryClient.getQueryData(address.queryKey)).toEqualTypeOf<
   string | undefined
 >()
+// The opt-in read's options are those of any read: variables that cannot be
+// skipped give a queryFn that is never skipToken, and variables that may be
+// skipped keep it.
+expectTypeOf(address).toEqualTypeOf<
+  CanisterQueryOptions<string, never, never>
+>()
+expectTypeOf(
+  client.queryOptions(service, "address", skipToken, { update: "idempotent" })
+).toEqualTypeOf<CanisterQueryOptions<string, never>>()
+expectTypeOf(
+  client.queryOptions(service, "three", undefined, { update: "idempotent" })
+).toEqualTypeOf<CanisterQueryOptions<shapes.Three, never, never>>()
+// A query may pass the opt-in too, as before modes were read.
+expectTypeOf(
+  client.queryOptions(ledger, "icrc1_fee", undefined, { update: "idempotent" })
+).toEqualTypeOf<CanisterQueryOptions<bigint, never, never>>()
 // A result read keeps its error type.
 const outcome = client.queryOptions(service, "outcome", 1n)
 expectTypeOf(
   new QueryObserver(client.queryClient, outcome).getCurrentResult().error
 ).toEqualTypeOf<ReactorError<string> | null>()
+
+// ---------------------------------------------------------------------------
+// The methods a read is built from, by the mode the generated Actor says
+// ---------------------------------------------------------------------------
+
+// Without the opt-in: the queries and the composite query, never an update or
+// the oneway. tests/traps.test-d.ts proves that queryOptions refuses the rest.
+expectTypeOf<ReadMethod<shapes.Actor>>().toEqualTypeOf<
+  | "one"
+  | "who"
+  | "maybe"
+  | "composite"
+  | "many"
+  | "pair"
+  | "nothing"
+  | "lookup"
+  | "small"
+  | "bytes"
+  | "outcome"
+>()
+// With { update: "idempotent" }: the updates too, still never the oneway.
+expectTypeOf<OptInMethod<shapes.Actor>>().toEqualTypeOf<
+  Exclude<keyof shapes.Actor, "fire">
+>()
+expectTypeOf<ReadMethod<icrc1.Actor>>().toEqualTypeOf<
+  Exclude<keyof icrc1.Actor, "icrc1_transfer">
+>()
+// An Actor written by hand says no mode: every method passes, and the client
+// checks the mode at run time.
+type HandWritten = {
+  fee: () => Promise<bigint>
+  transfer: (arg: icrc1.TransferArg) => Promise<bigint>
+  notify: (text: string) => Promise<void>
+}
+expectTypeOf<ReadMethod<HandWritten>>().toEqualTypeOf<
+  "fee" | "transfer" | "notify"
+>()
+expectTypeOf<OptInMethod<HandWritten>>().toEqualTypeOf<
+  "fee" | "transfer" | "notify"
+>()
+// A generated Actor with methods added by hand: the generated update is
+// refused, the added method is not.
+expectTypeOf<
+  ReadMethod<icrc1.Actor & { icrc2_approve: (arg: unknown) => Promise<bigint> }>
+>().toEqualTypeOf<
+  Exclude<keyof icrc1.Actor, "icrc1_transfer"> | "icrc2_approve"
+>()
+// The mode does not reach the canister's methods: a direct call of an update
+// is a plain async function.
+expectTypeOf(ledger.icrc1_transfer).toEqualTypeOf<
+  (arg0: icrc1.TransferArg) => Promise<bigint>
+>()
+
+// Calls that compiled on beta.4 and no longer do, though each may run
+// without a TypeError (the CHANGELOG's Unreleased entry says so).
+//
+// A method whose type is not one name the Actor marks as a read. First, a
+// wrapper generic over the method name: TypeScript cannot tell that a method
+// `M extends keyof A & string` is a ReadMethod<A>, whatever M is.
+export function readOf<A, M extends keyof A & string>(
+  canister: Canister<A>,
+  method: M,
+  vars: never
+) {
+  // @ts-expect-error M may be an update of a generated Actor: not a ReadMethod<A>
+  return client.queryOptions(canister, method, vars)
+}
+// Its escape: explicit type arguments, with `any` for the method. The call
+// compiles, and the run-time check still refuses an update or a oneway.
+export function readOfAny<A, M extends keyof A & string>(
+  canister: Canister<A>,
+  method: M,
+  vars: never
+) {
+  return client.queryOptions<A, any>(canister, method, vars)
+}
+// Its data is unknown, and its error type never: the wrapper states both.
+expectTypeOf(readOfAny(ledger, "icrc1_fee", undefined as never)).toEqualTypeOf<
+  CanisterQueryOptions<unknown, never, never>
+>()
+// A union that may name an update, such as a method picker typed
+// `keyof Actor & string`: it runs whenever the value names a query, but its
+// type is not a ReadMethod. A union of queries compiles.
+declare const picked: "icrc1_name" | "icrc1_transfer"
+// @ts-expect-error the union may name an update: not a ReadMethod<Actor>
+client.queryOptions(ledger, picked, undefined as never)
+expectTypeOf(
+  client.queryOptions<icrc1.Actor, any>(ledger, picked, undefined as never)
+).toEqualTypeOf<CanisterQueryOptions<unknown, never, never>>()
+declare const pickedRead: "icrc1_name" | "icrc1_symbol"
+client.queryOptions(ledger, pickedRead)
+// A function generic over the Actor type, with the method's name written out:
+// TypeScript cannot relate a generic A to ReadMethod<A>, so even a name every
+// such A marks as a query does not compile. The escape is the same.
+export function feeOf<A extends { icrc1_fee: () => Promise<bigint> }>(
+  canister: Canister<A>
+) {
+  // @ts-expect-error A is generic: "icrc1_fee" is not known to be a ReadMethod<A>
+  return client.queryOptions(canister, "icrc1_fee", undefined as never)
+}
+export function feeOfAny<A extends { icrc1_fee: () => Promise<bigint> }>(
+  canister: Canister<A>
+) {
+  return client.queryOptions<A, any>(canister, "icrc1_fee", undefined as never)
+}
+// An opt-in that may be undefined: an update without `{ update: "idempotent" }`
+// throws at run time, so a fourth argument the type does not know is the
+// opt-in does not compile for an update. For a query it compiles as before.
+declare const maybeOptIn: QueryOptionsOptions | undefined
+// @ts-expect-error the opt-in may be undefined, and an update without it throws
+client.queryOptions(ledger, "icrc1_transfer", transferArg, maybeOptIn)
+expectTypeOf(
+  client.queryOptions(ledger, "icrc1_fee", undefined, maybeOptIn)
+).toEqualTypeOf<CanisterQueryOptions<bigint, never, never>>()
 
 // ---------------------------------------------------------------------------
 // mutationOptions: the variables, the data and the typed Err

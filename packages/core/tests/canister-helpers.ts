@@ -41,6 +41,19 @@ export interface CallContext {
   readonly caller: string
 }
 
+/**
+ * `A` as an `Actor` written by hand: the same call signatures, without the
+ * mode `candid-core-cli gen` marks each method with (`$.WithMode<mode>`).
+ * Its methods' modes are unknown to the types, so `queryOptions` compiles for
+ * an update or a oneway method of it, and the run-time check is what refuses
+ * them: a test of that check reads through this.
+ */
+export type HandWritten<A> = {
+  [K in keyof A]: A[K] extends (...args: infer P) => Promise<infer R>
+    ? (...args: P) => Promise<R>
+    : never
+}
+
 /** A fake method: the decoded arguments in, the reply (before any unwrapping) out. */
 export type Handlers<A> = {
   readonly [K in keyof A]?: (

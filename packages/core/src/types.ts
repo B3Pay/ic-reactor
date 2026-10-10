@@ -8,12 +8,17 @@
  * `client.queryOptions(...)`.
  *
  * A generated `Actor` type (from `candid-core-cli gen` 0.3.0) carries each
- * method's mode as `$.WithMode<mode>`, but nothing here reads it yet, so mode
- * rules (a read built from an update, a certified composite query) are checked
- * when the client builds the call, at run time.
+ * method's mode as `$.WithMode<mode>`. {@link ReadMethod} and
+ * {@link OptInMethod} read it, so that `client.queryOptions()` refuses an
+ * update or a oneway method at compile time. A method whose mode the type does
+ * not say (an `Actor` written by hand) passes, and the client still checks
+ * every mode rule when it builds the call, at run time: that check is the only
+ * one for such a method, and for a composite query of a certified canister,
+ * which no type tells apart.
  *
  * @module
  */
+import type { ModeOf } from "@candid-core/schema"
 import type {
   DataTag,
   MutationKey,
@@ -101,6 +106,32 @@ export type Vars<P extends readonly unknown[]> = P extends readonly []
 
 /** The variables of method `M` of `A`. */
 export type VarsOf<A, M extends keyof A> = Vars<ArgsOf<A[M]>>
+
+/**
+ * The methods of `A` a read may be built from with `{ update: "idempotent" }`:
+ * every one not known to be a `oneway`, which has no reply to cache whatever
+ * the options say.
+ *
+ * A method of a generated `Actor` carries its mode (`$.WithMode<"query">`).
+ * One written by hand carries none, and `ModeOf` reads it as any of the four,
+ * which passes here and is checked at run time.
+ */
+export type OptInMethod<A> = {
+  [K in keyof A & string]: [ModeOf<A[K]>] extends ["oneway"] ? never : K
+}[keyof A & string]
+
+/**
+ * The methods of `A` a read may be built from without the opt-in: the
+ * methods of {@link OptInMethod} not known to be an `update`. For a generated
+ * `Actor`, its `query` and `composite_query` methods.
+ */
+export type ReadMethod<A> = {
+  [K in keyof A & string]: K extends OptInMethod<A>
+    ? [ModeOf<A[K]>] extends ["update"]
+      ? never
+      : K
+    : never
+}[keyof A & string]
 
 /** What method `M` of `A` resolves with. */
 export type DataOf<A, M extends keyof A> = Unwrap<ReplyOf<A[M]>>
@@ -336,6 +367,18 @@ export type QueryArgs<A, M extends keyof A, S extends SkipToken = SkipToken> = [
         : VarsOf<A, M> | S,
       options?: QueryOptionsOptions,
     ]
+
+/**
+ * The arguments of `client.queryOptions()` after the method, for a read that
+ * opts in with `{ update: "idempotent" }`: the variables of {@link QueryArgs},
+ * required, even `undefined` for a method without arguments, then the
+ * options.
+ */
+export type OptInQueryArgs<
+  A,
+  M extends keyof A,
+  S extends SkipToken = SkipToken,
+> = [vars: QueryArgs<A, M, S>[0], options: QueryOptionsOptions]
 
 /** The fourth argument of `client.queryOptions()`. */
 export interface QueryOptionsOptions {

@@ -46,7 +46,8 @@ in the same millisecond are two transfers, and neither is taken for the
 other's `Duplicate`.
 
 The Sandbox also has a mocked ckBTC minter. `get_btc_address` is an update
-method, which `client.queryOptions` refuses unless told it is idempotent:
+method, which `client.queryOptions` refuses (the call does not compile)
+unless told it is idempotent:
 `client.queryOptions(minter, "get_btc_address", arg, { update: "idempotent" })`
 fetches each caller's deposit address once and keeps it (hide and show it, or
 send a transfer: no new call reaches the minter). The smoke script asks
