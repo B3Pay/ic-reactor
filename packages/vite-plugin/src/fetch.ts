@@ -108,6 +108,12 @@ export interface FetchRequest {
   network: CanisterNetwork | undefined
   /** The `didFile` as messages name it, relative to the Vite root. */
   didFile: string
+  /**
+   * Read for the live check of a `didFile` on disk, not to write a missing
+   * one: the messages then say how to turn the check off, where they say to
+   * write the file.
+   */
+  verify?: boolean
   timeoutMs?: number
   /** Aborting it stops the fetch, which then resolves as stopped. */
   signal?: AbortSignal
@@ -137,7 +143,7 @@ function firstLine(text: string): string {
  * Never rejects.
  */
 export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
-  const { canisterId, didFile, signal } = request
+  const { canisterId, didFile, signal, verify = false } = request
   const timeoutMs = request.timeoutMs ?? FETCH_TIMEOUT_MS
   const stopped: FetchResult = {
     ok: false,
@@ -153,7 +159,9 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
     network.label === network.host
       ? canisterId
       : `${canisterId} on ${network.label}`
-  const ownFile = `or write ${didFile} yourself, and the plugin reads it instead of fetching`
+  const ownFile = verify
+    ? `or turn the live check of ${didFile} off (verify, IC_REACTOR_VERIFY)`
+    : `or write ${didFile} yourself, and the plugin reads it instead of fetching`
 
   let sdk: {
     agent: typeof import("@icp-sdk/core/agent")
@@ -169,7 +177,9 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
     return {
       ok: false,
       message:
-        `${didFile} does not exist, and fetching it from ${where} needs @icp-sdk/core, which could not be loaded ` +
+        (verify
+          ? `the live check of ${didFile} reads the interface of ${where}, which needs @icp-sdk/core, and it could not be loaded `
+          : `${didFile} does not exist, and fetching it from ${where} needs @icp-sdk/core, which could not be loaded `) +
         `(${firstLine(error instanceof Error ? error.message : String(error))}). ` +
         `Install it next to @ic-reactor/core (npm install @icp-sdk/core), ${ownFile}.`,
     }
@@ -224,9 +234,11 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
       return {
         ok: false,
         message:
-          `${canisterId} on ${network.label} publishes no candid:service metadata, so it has no interface to fetch. ` +
-          `Get its .did from the canister's developers and save it as ${didFile}, ` +
-          `or check that canisterId and network name the canister you mean.`,
+          `${canisterId} on ${network.label} publishes no candid:service metadata, so it has no interface to ` +
+          (verify
+            ? `check ${didFile} against. Check that canisterId and network name the canister you mean, ${ownFile}.`
+            : `fetch. Get its .did from the canister's developers and save it as ${didFile}, ` +
+              `or check that canisterId and network name the canister you mean.`),
       }
     }
     return { ok: true, did, network: network.label }
@@ -251,7 +263,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
         ok: false,
         message:
           `could not reach ${network.host} to read the candid:service of ${where} ` +
-          `(${firstLine(describeCause(cause))}).${local} Or write ${didFile} yourself, and the plugin reads it instead of fetching.`,
+          `(${firstLine(describeCause(cause))}).${local} O${ownFile.slice(1)}.`,
       }
     }
     if (error instanceof AgentError && error.code instanceof HttpErrorCode) {
@@ -263,7 +275,9 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
           message:
             `${network.host} refused to read the candid:service of ${where} (HTTP ${status}: ${answer}). ` +
             `The canister keeps its interface private, and only its controllers can read it: ` +
-            `get the .did from the canister's developers and save it as ${didFile}.`,
+            (verify
+              ? `the live check cannot read it, so turn it off for ${didFile} (verify, IC_REACTOR_VERIFY).`
+              : `get the .did from the canister's developers and save it as ${didFile}.`),
         }
       }
       if (/canister_not_found/.test(bodyText)) {

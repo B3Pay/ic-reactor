@@ -127,7 +127,7 @@ export function resolveCliBin(root: string): string {
   return path.resolve(path.dirname(manifestPath), bin)
 }
 
-interface ProcessResult {
+export interface ProcessResult {
   stdout: string
   stderr: string
   code: number | null
@@ -140,21 +140,25 @@ interface ProcessResult {
   stopped?: boolean
 }
 
-const keep = (text: string, chunk: string) =>
-  text.length >= MAX_OUTPUT_BYTES ? text : text + chunk
+const keep = (text: string, chunk: string, limit: number) =>
+  text.length >= limit ? text : text + chunk
 
 /**
  * Run `node <bin> ...args` in `cwd` and settle with what it did. Never
  * rejects. Aborting `signal` kills the process, and a signal that is already
  * aborted starts none.
+ *
+ * @param maxOutputBytes - The most kept of each stream. A report larger than
+ * this is cut, so it no longer parses.
  */
-function runProcess(
+export function runProcess(
   bin: string,
   args: string[],
   cwd: string,
   timeoutMs: number,
   signal?: AbortSignal,
-  onStderrLine?: (line: string) => void
+  onStderrLine?: (line: string) => void,
+  maxOutputBytes = MAX_OUTPUT_BYTES
 ): Promise<ProcessResult> {
   return new Promise((resolve) => {
     let stdout = ""
@@ -230,9 +234,12 @@ function runProcess(
 
     child.stdout.setEncoding("utf-8")
     child.stderr.setEncoding("utf-8")
-    child.stdout.on("data", (chunk: string) => (stdout = keep(stdout, chunk)))
+    child.stdout.on(
+      "data",
+      (chunk: string) => (stdout = keep(stdout, chunk, maxOutputBytes))
+    )
     child.stderr.on("data", (chunk: string) => {
-      stderr = keep(stderr, chunk)
+      stderr = keep(stderr, chunk, maxOutputBytes)
       // Past the last line that is logged there is nothing left to assemble.
       if (settled || !onStderrLine || passed > MAX_STREAMED_LINES) return
       const pieces = chunk.split(/\r?\n/)
@@ -264,7 +271,7 @@ function runProcess(
 }
 
 /** How a process that produced no usable report ended, with its stderr. */
-function describeProcess(run: ProcessResult, reason?: string): string {
+export function describeProcess(run: ProcessResult, reason?: string): string {
   const ending =
     run.problem ??
     (run.signal
@@ -321,7 +328,7 @@ function parseReport(stdout: string, count: number): ReportEntry[] | undefined {
 }
 
 /** One line (plus its notes) for a compiler diagnostic. */
-function formatDiagnostic(diagnostic: unknown): string {
+export function formatDiagnostic(diagnostic: unknown): string {
   const { code, message, notes } = (diagnostic ?? {}) as {
     code?: unknown
     message?: unknown

@@ -3133,5 +3133,165 @@
     "file": "src/call.ts",
     "search": "if (management && !request.effective) {",
     "replace": "if (management) {"
+  },
+  {
+    "id": "did-project-not-projected",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "writes a missing didFile as the projection of the live interface to them, and a second build makes no request",
+    "why": "methods ignored by the fetch, so the whole live interface is written to didFile",
+    "file": "src/index.ts",
+    "search": "    if (!source.methods) return { ok: true, did: result.did, from }",
+    "replace": "    if (source.methods || !source.methods) return { ok: true, did: result.did, from }"
+  },
+  {
+    "id": "did-project-every-build",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "writes a missing didFile as the projection of the live interface to them, and a second build makes no request",
+    "why": "a didFile with methods fetched again on every build to keep the projection current, so a second build makes a request",
+    "file": "src/index.ts",
+    "search": "again ?? (fs.existsSync(file) ? undefined : fetchable[0])",
+    "replace": "again ?? (fs.existsSync(file) && !fetchable[0]?.methods ? undefined : fetchable[0])"
+  },
+  {
+    "id": "did-project-unknown-falls-back",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "with a name the live interface lacks fails, naming it and the canister's methods, and writes nothing",
+    "why": "a name the live interface lacks falls back to writing the whole interface, so the build passes on a typo",
+    "file": "src/index.ts",
+    "search": "    return {\n      ok: false,\n      message: describeProjectionFailure(projection, asked, where, didFile),\n    }",
+    "replace": "    return { ok: true, did: result.did, from }"
+  },
+  {
+    "id": "did-project-unknown-not-told",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "with a name the live interface lacks fails, naming it and the canister's methods, and writes nothing",
+    "why": "an unknown method reported as the CLI's raw diagnostics, without the missing name, the canister or its methods",
+    "file": "src/index.ts",
+    "search": "    if (first?.code === \"unknown_method\" && Array.isArray(first.notes)) {",
+    "replace": "    if (false) {"
+  },
+  {
+    "id": "did-project-empty-list-accepted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "refuses an empty list and a name with a comma, with no request",
+    "why": "an empty methods list goes to the network and to candid-core-cli instead of being refused first",
+    "file": "src/index.ts",
+    "search": "  if (methods.length === 0) {",
+    "replace": "  if (methods.length < 0) {"
+  },
+  {
+    "id": "did-project-lacking-not-failed",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a didFile on disk are compared with it, with no request: a name it lacks fails, and a method it has too is a warning",
+    "why": "a didFile on disk that lacks a name of methods generates a module without that method, and the build passes",
+    "file": "src/index.ts",
+    "search": "      if (lacking.length > 0) {",
+    "replace": "      if (false) {"
+  },
+  {
+    "id": "did-project-extra-not-warned",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a didFile on disk are compared with it, with no request: a name it lacks fails, and a method it has too is a warning",
+    "why": "a didFile on disk with methods that methods does not name is generated with no word that it is not the projection",
+    "file": "src/index.ts",
+    "search": "      } else if (extra.length > 0) {",
+    "replace": "      } else if (false) {"
+  },
+  {
+    "id": "did-verify-incompatible-passes",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build on a method that is missing, changed mode or became incompatible, naming the canister and each method",
+    "why": "the live check's errors ignored, so an incompatible canister passes the build",
+    "file": "src/index.ts",
+    "search": "      if (!report.compatible || errors.length > 0) {",
+    "replace": "      if (false) {"
+  },
+  {
+    "id": "did-verify-failure-dropped",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "follows failOnError: logged, and the other canisters generated",
+    "why": "a failed live check only warned about, so neither the build nor the dev server reports it as an error",
+    "file": "src/index.ts",
+    "search": "        failures.push({ canister, message: outcome.message })",
+    "replace": "        log.warn(outcome.message)"
+  },
+  {
+    "id": "did-verify-changed-not-told",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "warns on a compatible change, and generates",
+    "why": "a compatible change of the file's methods reported as merely compatible, with no word that the canister changed",
+    "file": "src/index.ts",
+    "search": "      if (changed === true) {",
+    "replace": "      if (false) {"
+  },
+  {
+    "id": "did-verify-opt-warning-dropped",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "warns on a compatible change, and generates",
+    "why": "special_opt_rule warnings dropped, so a value that now decodes as null goes unmentioned",
+    "file": "src/index.ts",
+    "search": "      if (warnings.length > 0) {",
+    "replace": "      if (false) {"
+  },
+  {
+    "id": "did-verify-every-build",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "passes when the live interface is unchanged, and is made once for one text",
+    "why": "the live check made again at every buildStart for a text it passed, one request each",
+    "file": "src/index.ts",
+    "search": "      if (verified.get(canister.name) === text) continue\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-unchanged-reported-changed",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "passes when the live interface is unchanged, and is made once for one text",
+    "why": "an unchanged interface reported as a compatible change on every check",
+    "file": "src/index.ts",
+    "search": "    return written.projection.interface_id !== current.projection.interface_id",
+    "replace": "    return true"
+  },
+  {
+    "id": "did-verify-env-ignored",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "runs for IC_REACTOR_VERIFY, and without it or verify nothing is fetched",
+    "why": "IC_REACTOR_VERIFY=1 checks nothing, so CI's live check silently passes",
+    "file": "src/index.ts",
+    "search": "        (all && !!canister.canisterId) ||\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-hint-for-fetch",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that cannot read the canister fails it, and says how to turn the check off",
+    "why": "a live check that cannot read the canister says to write the didFile, which is on disk, instead of how to turn the check off",
+    "file": "src/index.ts",
+    "search": "        verify: true,\n",
+    "replace": ""
+  },
+  {
+    "id": "did-project-save-not-compared",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "are compared with a didFile saved under vite dev, with no request",
+    "why": "a save under vite dev regenerates a methods canister without comparing the file with methods, so a file that lost a method generates a module without it",
+    "file": "src/index.ts",
+    "search": "      const mismatched = await compareMethods(affected, signal)",
+    "replace": "      const mismatched: Failure[] = []"
   }
 ]

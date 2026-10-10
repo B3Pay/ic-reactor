@@ -9,8 +9,11 @@
  *   wrapper files, hooks or reactors are generated.
  * - Fetching: a `didFile` that is not on disk is written from the live
  *   canister's certified `candid:service` before it is generated, when the
- *   canister names a `canisterId` (see fetch.ts). Nothing is fetched for a
+ *   canister names a `canisterId` (see fetch.ts), projected to its `methods`
+ *   when it names some (see interface.ts). Nothing is fetched for a
  *   `didFile` that exists, unless `IC_REACTOR_FETCH` asks for it.
+ * - The live check: with `verify: "live"` or `IC_REACTOR_VERIFY`, a `didFile`
+ *   on disk is checked against the live canister's interface (interface.ts).
  * - Environment: under `vite dev` and `vite preview` it sets the `ic_env`
  *   cookie and proxies `/api` to the local IC network (see dev-environment.ts).
  */
@@ -44,6 +47,15 @@ import {
   generate,
   resolveCliBin,
 } from "./generate.js"
+import {
+  check,
+  describeFinding,
+  firstLines,
+  listMethods,
+  project,
+  type CliContext,
+  type Projection,
+} from "./interface.js"
 
 const PLUGIN_NAME = "ic-reactor-plugin"
 
@@ -97,6 +109,23 @@ export interface IcReactorPluginOptions {
    *   `{ host }`, any other replica, whose root key is fetched only when the
    *   host is local (`localhost`, `*.localhost` or a loopback address) and is
    *   mainnet's otherwise. Only a fetch reads it. Default: `"ic"`.
+   * - `methods`: the methods of the canister the app calls. A `didFile`
+   *   fetched from `canisterId` is written as the projection of the live
+   *   interface to these methods and every type they reach
+   *   (`candid-core-cli project`), so its module has only them. A name the
+   *   live interface lacks fails the canister and writes nothing. A
+   *   `didFile` on disk is not fetched again for a change of `methods`: one
+   *   that lacks a name of `methods` fails the canister, and one that holds a
+   *   method `methods` does not name is generated with a warning. Both say to
+   *   fetch it again with `IC_REACTOR_FETCH`.
+   * - `verify`: `"live"` checks the `didFile` on disk against the live
+   *   canister's certified interface at the start of each build and dev
+   *   server (`candid-core-cli check`). `IC_REACTOR_VERIFY=1` (or `all`, or
+   *   canister names separated by commas) does the same for the canisters
+   *   with a `canisterId`. A method of the file that the canister no longer
+   *   has, whose mode changed, or whose types are no longer compatible fails
+   *   the canister, under `failOnError`; a compatible change is logged as a
+   *   warning. A check that cannot read the canister fails it too.
    *
    * The generator is the `@candid-core/cli` the app has installed, run as a
    * child process so that a failure on one `.did` stops that process and not
@@ -109,6 +138,8 @@ export interface IcReactorPluginOptions {
       outDir?: string
       canisterId?: string
       network?: "ic" | "local" | { host: string }
+      methods?: string[]
+      verify?: "live"
     }
   >
   /**
@@ -149,10 +180,69 @@ interface Generated {
   /** The live canister its `didFile` is fetched from when it is not on disk. */
   canisterId?: string
   network?: CanisterNetwork
+  /** The methods a fetched `didFile` is projected to. */
+  methods?: readonly string[]
+  verify?: "live"
 }
 
 /** The environment variable that asks for a `didFile` to be fetched again. */
 const FETCH_VARIABLE = "IC_REACTOR_FETCH"
+
+/** The environment variable that asks for the live check. */
+const VERIFY_VARIABLE = "IC_REACTOR_VERIFY"
+
+/**
+ * Why `methods` cannot be projected to, or `undefined` when it can. The
+ * plugin's options come from a config file that TypeScript may not check.
+ */
+function methodsProblem(methods: unknown): string | undefined {
+  if (methods === undefined) return undefined
+  if (!Array.isArray(methods)) {
+    return `methods is ${JSON.stringify(methods)}, not a list of method names`
+  }
+  if (methods.length === 0) {
+    return "methods is empty: name the methods the app calls, or remove methods for the whole interface"
+  }
+  for (const name of methods as unknown[]) {
+    if (typeof name !== "string" || name === "") {
+      return `methods holds ${JSON.stringify(name)}, which is not a method name`
+    }
+    if (name.includes(",")) {
+      return `methods names "${name}", which has a comma: candid-core-cli project takes the names separated by commas, so it cannot be projected to`
+    }
+  }
+  return undefined
+}
+
+/** `methods` once each, in name order (code point), as `project` lists them. */
+function methodList(methods: readonly string[]): string[] {
+  return [...new Set(methods)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+}
+
+/** `a, b and 3 more`: names as messages list them, at most `max` of them. */
+function listNames(names: readonly string[], max = 30): string {
+  if (names.length === 0) return "none"
+  const shown = names.slice(0, max).join(", ")
+  return names.length > max ? `${shown} and ${names.length - max} more` : shown
+}
+
+/** The names an environment variable lists, and whether it says `all`. */
+function namesIn(
+  variable: string,
+  all: string[]
+): {
+  names: string[]
+  all: boolean
+} {
+  const names = (process.env[variable] ?? "")
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean)
+  return {
+    names,
+    all: names.some((name) => all.includes(name)),
+  }
+}
 
 /** A canister that did not generate, and why. */
 interface Failure {
@@ -241,10 +331,12 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       outDir = DEFAULT_OUT_DIR,
       canisterId,
       network,
+      methods,
+      verify,
     } = canisters[name]
     return didFile === undefined
       ? []
-      : [{ name, didFile, outDir, canisterId, network }]
+      : [{ name, didFile, outDir, canisterId, network, methods, verify }]
   })
 
   // Vite resolves relative project paths against the resolved `config.root`,
@@ -464,18 +556,26 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     members: Generated[],
     fetchable: Generated[]
   ): string | undefined => {
-    const sourceOf = ({ canisterId, network }: Generated) => {
+    const sourceOf = ({ canisterId, network, methods }: Generated) => {
       const resolved = resolveNetwork(network)
+      // One file holds one projection: canisters that project it to other
+      // methods name other files.
+      const projection = Array.isArray(methods)
+        ? {
+            key: JSON.stringify(methodList(methods)),
+            label: ` projected to ${listNames(methodList(methods))}`,
+          }
+        : { key: "", label: "" }
       // A network that is not one is named as given, so the conflict does
       // not hide what is wrong with it.
       return typeof resolved === "string"
         ? {
-            key: `${canisterId}\0${JSON.stringify(network)}`,
-            label: `${JSON.stringify(network)} (not a network)`,
+            key: `${canisterId}\0${JSON.stringify(network)}\0${projection.key}`,
+            label: `${JSON.stringify(network)} (not a network)${projection.label}`,
           }
         : {
-            key: `${canisterId}\0${resolved.host}\0${resolved.fetchRootKey}`,
-            label: resolved.label,
+            key: `${canisterId}\0${resolved.host}\0${resolved.fetchRootKey}\0${projection.key}`,
+            label: `${resolved.label}${projection.label}`,
           }
     }
     const sources = new Set(fetchable.map((canister) => sourceOf(canister).key))
@@ -521,20 +621,23 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * of `vite build --watch`, or another Vite environment's) tries it again,
    * so a network that comes back is used without restarting Vite.
    *
+   * A canister with `methods` has the projection of the live interface to
+   * them written instead of the whole interface. A name of `methods` that the
+   * interface lacks fails its canisters, and nothing is written.
+   *
    * Resolves with the canisters that cannot be generated, since their fetch
-   * failed, or `undefined` when `signal` was aborted first. Never rejects.
+   * failed, and the files (by `identify`) this run wrote or found matching
+   * the canister, or `undefined` when `signal` was aborted first. Never
+   * rejects.
    */
   const fetchMissing = async (
     signal: AbortSignal
-  ): Promise<Failure[] | undefined> => {
+  ): Promise<{ failures: Failure[]; fetched: Set<string> } | undefined> => {
     if (signal.aborted) return undefined
     const failures: Failure[] = []
+    const fetched = new Set<string>()
     try {
-      const wanted = (process.env[FETCH_VARIABLE] ?? "")
-        .split(",")
-        .map((name) => name.trim())
-        .filter(Boolean)
-      const all = wanted.includes("all")
+      const { names: wanted, all } = namesIn(FETCH_VARIABLE, ["all"])
       const asked = (canister: Generated) =>
         all || wanted.includes(canister.name)
 
@@ -579,31 +682,34 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
           }
           return []
         }
+        // A list that cannot be projected to costs no request.
+        const problem = methodsProblem(source.methods)
+        if (problem) {
+          for (const canister of members) {
+            failures.push({ canister, message: problem })
+          }
+          return []
+        }
         return [{ key, file, members, source, again: !!again }]
       })
-      if (jobs.length === 0) return dedupe(failures)
+      if (jobs.length === 0) return { failures: dedupe(failures), fetched }
 
       const results = await Promise.all(
         jobs.map(async (job) => ({
           ...job,
-          result: await fetchCandid({
-            canisterId: job.source.canisterId as string,
-            network: job.source.network,
-            didFile: relativeToRoot(job.file),
-            signal,
-          }),
+          result: await fetchProjected(job.source, job.file, signal),
         }))
       )
       if (signal.aborted) return undefined
 
-      for (const { key, file, members, source, again, result } of results) {
+      for (const { key, file, members, again, result } of results) {
         if (!result.ok) {
           for (const canister of members) {
             failures.push({ canister, message: result.message })
           }
           continue
         }
-        const from = `the certified candid:service of ${source.canisterId} on ${result.network}`
+        const { from } = result
         // Read and written through every symlink: a write to a symlinked
         // spelling would replace the symlink with a file of its own, and leave
         // the target, which the other spellings read, as it was.
@@ -617,6 +723,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         if (before === result.did) {
           log.info(`ic-reactor: ${relativeToRoot(file)} matches ${from}`)
           if (again) refetched.add(key)
+          fetched.add(key)
           continue
         }
         // Only a dev server's watcher reports the write and clears the entry.
@@ -638,22 +745,423 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         }
         // Recorded only now: a fetch or a write that failed is tried again.
         if (again) refetched.add(key)
+        fetched.add(key)
         log.info(
           `ic-reactor: ${before === undefined ? "wrote" : "rewrote"} ${relativeToRoot(file)} from ${from} ` +
             `(${Buffer.byteLength(result.did)} bytes): commit it with the app`
         )
       }
-      return dedupe(failures)
+      return { failures: dedupe(failures), fetched }
     } catch (error) {
       if (signal.aborted) return undefined
       const failed = new Set(failures.map(({ canister }) => canister))
-      return [
-        ...failures,
-        ...generated
-          .filter((canister) => !failed.has(canister))
-          .map((canister) => ({ canister, message: describe(error) })),
-      ]
+      return {
+        failures: [
+          ...failures,
+          ...generated
+            .filter((canister) => !failed.has(canister))
+            .map((canister) => ({ canister, message: describe(error) })),
+        ],
+        fetched,
+      }
     }
+  }
+
+  /** The CLI's context for `project` and `check`, or why there is none. */
+  const cliContext = (signal: AbortSignal): CliContext | string => {
+    try {
+      return { cli: resolveCliBin(projectRoot), root: projectRoot, signal }
+    } catch (error) {
+      return describe(error)
+    }
+  }
+
+  /**
+   * The certified `candid:service` of `source`'s canister, projected to its
+   * `methods` when it names some, with how the log names where it came from.
+   * Never rejects.
+   */
+  const fetchProjected = async (
+    source: Generated,
+    file: string,
+    signal: AbortSignal
+  ): Promise<
+    { ok: true; did: string; from: string } | { ok: false; message: string }
+  > => {
+    const didFile = relativeToRoot(file)
+    const result = await fetchCandid({
+      canisterId: source.canisterId as string,
+      network: source.network,
+      didFile,
+      signal,
+    })
+    if (!result.ok) return result
+    const where = `${source.canisterId} on ${result.network}`
+    const from = `the certified candid:service of ${where}`
+    if (!source.methods) return { ok: true, did: result.did, from }
+
+    const context = cliContext(signal)
+    if (typeof context === "string") {
+      return {
+        ok: false,
+        message: `fetched ${from}, but cannot project it to methods: ${context}`,
+      }
+    }
+    const asked = methodList(source.methods)
+    const projection = await project(context, { text: result.did }, asked)
+    if (projection.ok) {
+      return {
+        ok: true,
+        did: projection.did,
+        from: `${from}, projected to ${listNames(projection.methods)}`,
+      }
+    }
+    return {
+      ok: false,
+      message: describeProjectionFailure(projection, asked, where, didFile),
+    }
+  }
+
+  /** Why the live interface of `where` could not be projected to `asked`. */
+  const describeProjectionFailure = (
+    projection: Extract<Projection, { ok: false }>,
+    asked: string[],
+    where: string,
+    didFile: string
+  ): string => {
+    const [first] = projection.diagnostics ?? []
+    if (first?.code === "unknown_method" && Array.isArray(first.notes)) {
+      const has = first.notes.map(String)
+      const lacking = asked.filter((name) => !has.includes(name))
+      return (
+        `methods names ${listNames(lacking)}, which the live interface of ${where} does not have, ` +
+        `so ${didFile} is not written. It has ${has.length} method${has.length === 1 ? "" : "s"}: ` +
+        `${listNames(has)}. Correct methods and build again.`
+      )
+    }
+    return (
+      `the certified candid:service of ${where} could not be projected to methods, ` +
+      `so ${didFile} is not written: ${projection.message}`
+    )
+  }
+
+  /**
+   * The outcome of comparing each `methods` canister's `didFile` with its
+   * `methods`, by canister name, for the text and the list it compared: the
+   * file is compared again only when either changes, and a mismatch that is
+   * only a warning is logged once.
+   */
+  const comparedMethods = new Map<
+    string,
+    { text: string; methods: string; failure?: string }
+  >()
+
+  /**
+   * Compare the `didFile` of each canister of `wanted` that names `methods`
+   * with them, with no network access: a file that lacks a name of `methods`
+   * fails the canister, since its module would lack the method, and a file
+   * that holds a method `methods` does not name is generated, with a warning.
+   * Either way the file was written for other methods, and the message says to
+   * fetch it again. A file is never fetched for it: only `IC_REACTOR_FETCH`
+   * fetches a file on disk. A file this run just fetched is compared too: a
+   * canister that shares it may name another list.
+   *
+   * A file that cannot be listed (it does not compile) is left to the
+   * generator, which reports it. Resolves with the canisters that cannot be
+   * generated, or `undefined` when `signal` was aborted first. Never rejects.
+   */
+  const compareMethods = async (
+    wanted: Generated[],
+    signal: AbortSignal
+  ): Promise<Failure[] | undefined> => {
+    const failures: Failure[] = []
+    const jobs = wanted.flatMap((canister) => {
+      if (!canister.methods) return []
+      const problem = methodsProblem(canister.methods)
+      if (problem) {
+        failures.push({ canister, message: problem })
+        return []
+      }
+      const text = readDid(canister)
+      // A missing file is the generator's to report.
+      if (text === undefined) return []
+      const methods = methodList(canister.methods)
+      const key = JSON.stringify(methods)
+      const known = comparedMethods.get(canister.name)
+      if (known && known.text === text && known.methods === key) {
+        if (known.failure) failures.push({ canister, message: known.failure })
+        return []
+      }
+      return [{ canister, text, methods, key }]
+    })
+    if (jobs.length === 0) return failures
+
+    const context = cliContext(signal)
+    // No CLI: the generator's run says so for every canister.
+    if (typeof context === "string") return failures
+    const results = await Promise.all(
+      jobs.map(async (job) => ({
+        ...job,
+        listed: await listMethods(context, { file: didPath(job.canister) }),
+      }))
+    )
+    if (signal.aborted) return undefined
+
+    for (const { canister, text, methods, key, listed } of results) {
+      if (!listed.ok) continue
+      const file = relativeToRoot(didPath(canister))
+      const lacking = methods.filter((name) => !listed.methods.includes(name))
+      const extra = listed.methods.filter((name) => !methods.includes(name))
+      const fix = canister.canisterId
+        ? `Fetch it again with ${FETCH_VARIABLE}=${canister.name} to write the projection to methods`
+        : `Write the projection to methods with candid-core-cli project, or give the canister a canisterId to fetch it from`
+      let failure: string | undefined
+      if (lacking.length > 0) {
+        failure =
+          `methods names ${listNames(lacking)}, which ${file} does not hold (it holds ${listNames(listed.methods)}): ` +
+          `the file was written for other methods, and its module would lack ${lacking.length === 1 ? "it" : "them"}. ` +
+          `${fix}, or take ${lacking.length === 1 ? "the name" : "the names"} out of methods.`
+      } else if (extra.length > 0) {
+        log.warn(
+          `ic-reactor: ${canister.name}: ${file} also holds ${listNames(extra)}, which methods does not name, ` +
+            `so its module has ${extra.length === 1 ? "it" : "them"} too. ${fix}.`
+        )
+      }
+      comparedMethods.set(canister.name, { text, methods: key, failure })
+      if (failure) failures.push({ canister, message: failure })
+    }
+    return failures
+  }
+
+  /**
+   * The text of each `didFile` the live check passed, by canister name. The
+   * next `buildStart` (a rebuild of `vite build --watch`, or another Vite
+   * environment's) checks it again only when the text changed. A check that
+   * failed is not remembered, and runs again.
+   */
+  const verified = new Map<string, string>()
+
+  /**
+   * The live check: fetch the certified interface of each canister of
+   * `wanted` that asks for it (`verify: "live"`, or `IC_REACTOR_VERIFY`) and
+   * check its `didFile` against it with `candid-core-cli check`. Canisters
+   * that name one file and one canister on one network share one fetch and
+   * one check.
+   *
+   * - A written method that the live canister no longer has, whose mode
+   *   changed, or whose types are no longer compatible fails the canister,
+   *   which is not generated, as one whose fetch failed: the failure follows
+   *   `failOnError`.
+   * - A compatible change is logged as a warning, and the canister generates:
+   *   one that Candid accepts only by reading a value as `null`
+   *   (`special_opt_rule`), and one that changed the types of the file's
+   *   methods compatibly (the projections of the two interfaces to the file's
+   *   methods have other identities).
+   * - A check that cannot be made (the network, the canister, a side that does
+   *   not compile) fails the canister: a check that was asked for and did not
+   *   run must not pass for one that did.
+   *
+   * Files `fetched` (by `identify`) were just read from the live canister, and
+   * are not checked. Resolves with the canisters that cannot be generated, or
+   * `undefined` when `signal` was aborted first. Never rejects.
+   */
+  const verifyLive = async (
+    wanted: Generated[],
+    fetched: Set<string>,
+    signal: AbortSignal
+  ): Promise<Failure[] | undefined> => {
+    const failures: Failure[] = []
+    const { names: asked, all } = namesIn(VERIFY_VARIABLE, ["1", "all"])
+    for (const name of all ? [] : asked) {
+      const canister = generated.find((entry) => entry.name === name)
+      if (!canister) {
+        log.warn(
+          `ic-reactor: ${VERIFY_VARIABLE} names "${name}", which is not a canister with a didFile in this plugin's options`
+        )
+      } else if (!canister.canisterId && wanted.includes(canister)) {
+        failures.push({
+          canister,
+          message: `${VERIFY_VARIABLE} asks for its live check, but it names no canisterId to check its didFile against`,
+        })
+      }
+    }
+
+    const byTarget = new Map<string, Generated[]>()
+    for (const canister of wanted) {
+      const live =
+        canister.verify === "live" ||
+        (all && !!canister.canisterId) ||
+        asked.includes(canister.name)
+      if (!live) continue
+      if (!canister.canisterId) {
+        if (canister.verify === "live") {
+          failures.push({
+            canister,
+            message: `verify is "live", but it names no canisterId to check its didFile against`,
+          })
+        }
+        continue
+      }
+      const key = identify(didPath(canister))
+      const text = readDid(canister)
+      // A file just fetched is the live interface; one that is missing is
+      // the generator's to report.
+      if (fetched.has(key) || text === undefined) continue
+      if (verified.get(canister.name) === text) continue
+      const target = JSON.stringify([
+        key,
+        canister.canisterId,
+        resolveNetwork(canister.network),
+      ])
+      byTarget.set(target, [...(byTarget.get(target) ?? []), canister])
+    }
+    if (byTarget.size === 0) return failures
+
+    const outcomes = await Promise.all(
+      [...byTarget.values()].map(async (members) => ({
+        members,
+        outcome: await checkLive(members[0], signal),
+      }))
+    )
+    if (signal.aborted) return undefined
+    for (const { members, outcome } of outcomes) {
+      if (outcome.ok) {
+        for (const canister of members)
+          verified.set(canister.name, outcome.text)
+        continue
+      }
+      for (const canister of members) {
+        failures.push({ canister, message: outcome.message })
+      }
+    }
+    return failures
+  }
+
+  /**
+   * The live check of one canister: what failed, or the text it passed. Logs
+   * a compatible change. Never rejects.
+   */
+  const checkLive = async (
+    canister: Generated,
+    signal: AbortSignal
+  ): Promise<{ ok: true; text: string } | { ok: false; message: string }> => {
+    try {
+      const file = didPath(canister)
+      const didFile = relativeToRoot(file)
+      // Read before the fetch: what passes is the text that was checked.
+      const text = readDid(canister)
+      if (text === undefined)
+        return { ok: false, message: `${didFile} is gone` }
+      const live = await fetchCandid({
+        canisterId: canister.canisterId as string,
+        network: canister.network,
+        didFile,
+        signal,
+        verify: true,
+      })
+      if (!live.ok) return live
+      const where = `${canister.canisterId} on ${live.network}`
+      const fetchAgain = `fetch ${didFile} again with ${FETCH_VARIABLE}=${canister.name}`
+
+      const context = cliContext(signal)
+      if (typeof context === "string") {
+        return {
+          ok: false,
+          message: `the live check of ${didFile} cannot run: ${context}`,
+        }
+      }
+      const report = await check(context, file, live.did)
+      if (!report.ok) {
+        const side =
+          report.input === "live"
+            ? `the live interface of ${where} does not compile`
+            : report.input === "written"
+              ? `${didFile} does not compile`
+              : `candid-core-cli check failed`
+        return {
+          ok: false,
+          message: `the live check of ${didFile} against ${where} could not run: ${side}:\n${report.message}`,
+        }
+      }
+      const errors = report.diagnostics.filter(
+        ({ severity }) => severity !== "warning"
+      )
+      const warnings = report.diagnostics.filter(
+        ({ severity }) => severity === "warning"
+      )
+      if (!report.compatible || errors.length > 0) {
+        const count = errors.length
+        return {
+          ok: false,
+          message:
+            `the live check found ${where} incompatible with ${didFile} ` +
+            `(${count} error${count === 1 ? "" : "s"}):\n` +
+            firstLines(errors.map(describeFinding)).join("\n") +
+            `\nThe generated module no longer matches the canister for these methods: ` +
+            `${fetchAgain}, regenerate, and fix the calls the type checker then reports.`,
+        }
+      }
+      const label = `ic-reactor: ${canister.name}:`
+      if (warnings.length > 0) {
+        const count = warnings.length
+        log.warn(
+          `${label} ${where} is compatible with ${didFile}, with ${count} warning${count === 1 ? "" : "s"} ` +
+            `(a value at each path now decodes as null):\n` +
+            firstLines(warnings.map(describeFinding))
+              .map((line) => `  ${line}`)
+              .join("\n") +
+            `\nTo take the change, ${fetchAgain}.`
+        )
+        return { ok: true, text }
+      }
+
+      // Compatible with no finding: unchanged for the file's methods, or
+      // changed compatibly (an added optional field, an added variant arm in
+      // an argument). The projections of both sides to the file's methods have
+      // one identity exactly when the methods are unchanged.
+      const changed = await changedFor(context, file, live.did)
+      if (signal.aborted) return { ok: false, message: "was stopped" }
+      if (changed === true) {
+        log.warn(
+          `${label} ${where} changed compatibly for the methods of ${didFile}: its module still works. ` +
+            `To take the change, ${fetchAgain}.`
+        )
+      } else if (changed === false) {
+        log.info(`${label} ${didFile} matches the live interface of ${where}`)
+      } else {
+        log.info(
+          `${label} ${didFile} is compatible with the live interface of ${where}`
+        )
+      }
+      return { ok: true, text }
+    } catch (error) {
+      return { ok: false, message: describe(error) }
+    }
+  }
+
+  /**
+   * Whether the live interface `live` differs from the `.did` at `file` for
+   * the methods the file holds, `undefined` when that cannot be told.
+   */
+  const changedFor = async (
+    context: CliContext,
+    file: string,
+    live: string
+  ): Promise<boolean | undefined> => {
+    const listed = await listMethods(context, { file })
+    if (
+      !listed.ok ||
+      listed.methods.length === 0 ||
+      listed.methods.some((name) => name.includes(","))
+    ) {
+      return undefined
+    }
+    const [written, current] = await Promise.all([
+      project(context, { file }, listed.methods),
+      project(context, { text: live }, listed.methods),
+    ])
+    if (!written.ok || !current.ok) return undefined
+    return written.projection.interface_id !== current.projection.interface_id
   }
 
   /**
@@ -769,8 +1277,16 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     const { signal } = stopper
     void serially(async () => {
       queued.delete(key)
-      const failures = await generateNow(affected, true, signal)
-      if (failures) publish(affected, failures)
+      // No live check here: a save is never a network request.
+      const mismatched = await compareMethods(affected, signal)
+      if (!mismatched) return
+      const failed = new Set(mismatched.map(({ canister }) => canister))
+      const failures = await generateNow(
+        affected.filter((canister) => !failed.has(canister)),
+        true,
+        signal
+      )
+      if (failures) publish(affected, [...mismatched, ...failures])
     })
   }
 
@@ -954,15 +1470,24 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       const failures = await serially(async () => {
         // A canister whose `.did` could not be fetched has nothing to
         // generate from: it fails with the reason, and the others generate.
-        const unfetched = await fetchMissing(signal)
-        if (!unfetched) return undefined
-        const failed = new Set(unfetched.map(({ canister }) => canister))
-        const failures = await generateNow(
-          generated.filter((canister) => !failed.has(canister)),
-          false,
-          signal
-        )
-        return failures && [...unfetched, ...failures]
+        // So does one whose file lacks a name of its `methods`, and one that
+        // failed its live check.
+        const fetchedNow = await fetchMissing(signal)
+        if (!fetchedNow) return undefined
+        const { fetched } = fetchedNow
+        const failures = [...fetchedNow.failures]
+        const remaining = () => {
+          const failed = new Set(failures.map(({ canister }) => canister))
+          return generated.filter((canister) => !failed.has(canister))
+        }
+        const mismatched = await compareMethods(remaining(), signal)
+        if (!mismatched) return undefined
+        failures.push(...mismatched)
+        const unverified = await verifyLive(remaining(), fetched, signal)
+        if (!unverified) return undefined
+        failures.push(...unverified)
+        const generation = await generateNow(remaining(), false, signal)
+        return generation && dedupe([...failures, ...generation])
       })
       if (!failures) return
       if (failures.length > 0 && (failOnError ?? command === "build")) {
