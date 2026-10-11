@@ -345,7 +345,8 @@ bytes, so `IC_REACTOR_FETCH` rewrites the file only when the canister changed.
   request. Only an omitted `methods` is the whole interface: any other value
   a JavaScript config gives (`null`, `false`, `0`, `""`) fails the canister
   too. Likewise only an omitted `canisterId` is none: one given as `""` or
-  `null`, or as text with a letter wrong (its checksum tells), fails the
+  `null`, or as text with a letter wrong (its checksum tells) or of more than
+  63 characters (a principal of the IC is at most 29 bytes), fails the
   canister, whether or not a fetch or a check would use it, and is left out of
   the `ic_env` cookie with a warning (see [Options](#options)).
 

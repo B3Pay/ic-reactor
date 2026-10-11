@@ -38,6 +38,21 @@ describe("isPrincipalText", () => {
     }
   })
 
+  // `Principal.fromText` takes a text of any length; a principal of the IC
+  // is at most 29 bytes, and a canister ID longer than that is a mistake.
+  it("refuses the text of a principal of more than 29 bytes, which Principal.fromText takes", () => {
+    for (const length of [29, 30, 31, 60]) {
+      const text = Principal.fromUint8Array(
+        Uint8Array.from({ length }, (_, index) => index)
+      ).toText()
+      expect([length, takes(text), isPrincipalText(text)]).toEqual([
+        length,
+        true,
+        length <= 29,
+      ])
+    }
+  })
+
   // Every principal of 0 to 29 bytes, its text, and texts one edit away
   // from it: the two decide each alike.
   it("decides as Principal.fromText does", () => {

@@ -253,7 +253,7 @@ export function canisterIdProblem(canisterId: unknown): string | undefined {
   if (isPrincipalText(canisterId)) return undefined
   return (
     `canisterId is ${describeValue(canisterId)}, not a canister ID: it is not the text of a principal, ` +
-    `which is lowercase, in groups of five joined by dashes, with a checksum. ` +
+    `which is lowercase, in groups of five joined by dashes, with a checksum, and at most 63 characters. ` +
     `Give the canister's ID as it is printed, or remove canisterId`
   )
 }

@@ -10,7 +10,13 @@
  * when the principal it decodes to is spelled as that text again, which is
  * how `Principal.fromText` decides it too. That also refuses capital letters,
  * a dash out of place, and a last character whose unused bits are not zero.
+ *
+ * A principal of the IC is at most 29 bytes, so 33 with its checksum, and a
+ * text of more is refused here, which `Principal.fromText` does not do.
  */
+
+/** The most bytes a principal of the IC has. */
+const MAX_PRINCIPAL_BYTES = 29
 
 /** The base32 alphabet of RFC 4648, as a principal's text writes it. */
 const ALPHABET = "abcdefghijklmnopqrstuvwxyz234567"
@@ -85,6 +91,8 @@ function principalText(bytes: Uint8Array): string {
 export function isPrincipalText(text: string): boolean {
   if (!/^[a-z2-7-]+$/.test(text)) return false
   const decoded = decode(text.replace(/-/g, ""))
-  if (decoded.length < 4) return false
+  if (decoded.length < 4 || decoded.length > 4 + MAX_PRINCIPAL_BYTES) {
+    return false
+  }
   return principalText(decoded.subarray(4)) === text
 }

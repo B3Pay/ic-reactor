@@ -2637,7 +2637,7 @@ describe("options given a value of the wrong kind", () => {
     const cli = hookCli(app)
     const wrong = (text: string) =>
       `canisterId is ${JSON.stringify(text)}, not a canister ID: it is not the text of a principal, ` +
-      `which is lowercase, in groups of five joined by dashes, with a checksum. ` +
+      `which is lowercase, in groups of five joined by dashes, with a checksum, and at most 63 characters. ` +
       `Give the canister's ID as it is printed, or remove canisterId`
     const { result, lines } = runBuild(app.root, {
       failOnError: false,

@@ -267,9 +267,10 @@ export default defineConfig({
   that is not a list of method names (`null`, `false`, `""`, an empty list,
   or a name with a comma) fails the canister before any request. Likewise
   only an omitted `canisterId` is none: one given as `""` or `null`, or as
-  text with a letter wrong (its checksum tells), fails the canister, whether
-  or not a fetch or a check would use it, and is left out of the `ic_env`
-  cookie with a warning (see [Options](#options)).
+  text with a letter wrong (its checksum tells) or of more than 63
+  characters (a principal of the IC is at most 29 bytes), fails the canister,
+  whether or not a fetch or a check would use it, and is left out of the
+  `ic_env` cookie with a warning (see [Options](#options)).
 
 ### The live check
 

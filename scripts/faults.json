@@ -4032,6 +4032,16 @@
     "replace": "  return true\n"
   },
   {
+    "id": "principal-text-length-unbounded",
+    "package": "vite-plugin",
+    "test": "src/principal-text.test.ts",
+    "testName": "refuses the text of a principal of more than 29 bytes, which Principal.fromText takes",
+    "why": "a principal's text of more than 29 bytes taken for a canister ID, as Principal.fromText takes it, though no principal of the IC is that long",
+    "file": "src/principal-text.ts",
+    "search": "  if (decoded.length < 4 || decoded.length > 4 + MAX_PRINCIPAL_BYTES) {\n",
+    "replace": "  if (decoded.length < 4) {\n"
+  },
+  {
     "id": "describe-error-dom-exception-lost",
     "package": "vite-plugin",
     "test": "src/describe-value.test.ts",
