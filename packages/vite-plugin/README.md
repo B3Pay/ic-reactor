@@ -57,7 +57,8 @@ export default defineConfig({
 On `vite dev` and `vite build` this writes `src/canisters/ledger.ts`, the
 generated module (it exports `actor` and the type `Actor`), and
 `src/canisters/ledger.envelope.json` next to it. The generator names its output
-after the `.did` file, not after the key in `canisters`.
+after the `.did` file, its name without the final `.did`, not after the key in
+`canisters`, and it reads only a file whose name ends in `.did`.
 
 The first line the plugin logs says where an agent reads how to use the
 library: `ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt`.
@@ -96,8 +97,12 @@ Under `vite dev`, a save of its file, and the file's deletion, leave it failed
 for the same reason and run nothing for it. Such a canister is still named in
 the `ic_env` cookie, as every entry is, and under `vite dev` `icp` is still
 asked for its ID: the app may still call it. A `canisters`,
-`injectEnvironment` or `failOnError` that is not one throws when the config
-loads.
+`injectEnvironment` or `failOnError` that is not one, `null` included, throws
+when the config loads: only an omitted option takes its default.
+
+An entry's key is the canister's name, whatever the text: `__proto__` or
+`constructor` (from a JSON config, or a computed key) names a canister, and
+the cookie carries its ID, as for any other name.
 
 Canisters that share one interface share one module. An ICP ledger and a ckBTC
 ledger both on `icrc1.did` are two entries, so that the `ic_env` cookie carries

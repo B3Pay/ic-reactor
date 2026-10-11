@@ -56,7 +56,9 @@ export default defineConfig({
 On `vite dev` and `vite build` this writes `src/canisters/icrc1.ts`, the
 generated module (it exports `actor` and the type `Actor`), and
 `src/canisters/icrc1.envelope.json` beside it. The generator names its output
-after the `.did` file, not after the key in `canisters`. The app imports it:
+after the `.did` file, its name without the final `.did`, not after the key in
+`canisters`, and it reads only a file whose name ends in `.did`. The app
+imports it:
 
 ```ts
 import { createClient } from "@ic-reactor/core"
@@ -95,8 +97,10 @@ Each entry of `canisters` takes:
 | `verify`     | none              | `"live"`: [check](#the-live-check) the `didFile` against the live canister when a build or dev server starts                                                |
 
 The key of an entry is the canister's name in the `icp` project, and it is the
-name the cookie carries its id under. A canister without a `didFile` generates
-nothing and is only named in the cookie.
+name the cookie carries its id under, whatever the text: `__proto__` or
+`constructor` (from a JSON config, or a computed key) is a name as any other. A
+canister without a `didFile` generates nothing and is only named in the
+cookie.
 
 Every value given is checked when the plugin is made, on every canister (one
 without a `didFile` included) and whether or not a build would use it: only an
@@ -114,7 +118,8 @@ save of its file, and the file's deletion, leave it failed for the same reason
 and run nothing for it. Such a canister is still named in the cookie, as every
 entry is, and under `vite dev` `icp` is still asked for its id: the app may
 still call it. A `canisters`, `injectEnvironment` or `failOnError` that is not
-one throws when the config loads.
+one, `null` included, throws when the config loads: only an omitted option
+takes its default.
 
 ### Canisters that share an interface
 

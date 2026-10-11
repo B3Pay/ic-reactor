@@ -210,8 +210,9 @@ does not change. The reads guide, the writes guide and the guide
   takes it for fixed. Each is still named in the `ic_env` cookie; a
   `canisterId` that is not one is left out of it, with a warning.
   `failOnError` and `injectEnvironment` take `true` or `false`, and
-  `canisters` an object: any other value throws when the config loads,
-  instead of being read by truthiness.
+  `canisters` an object: any other value, `null` included, throws when the
+  config loads, instead of being read by truthiness or taken for none. Every
+  default is taken for an omitted option alone.
 - A dev server restarted with the same plugin object (an inline config, as
   `server.restart()` keeps it) has runs of its own: the old server's close,
   which Vite runs after the new server started, stops only the old server's.
@@ -220,6 +221,23 @@ does not change. The reads guide, the writes guide and the guide
 - Both run the app's `candid-core-cli` in a child process, as `gen` does, and
   never the library in the Vite process. No export is added; the two fields
   are new keys of `IcReactorPluginOptions["canisters"]`.
+
+#### Fixed
+
+- A canister's name is any text, and is kept by name as given. One named
+  `__proto__` (from a JSON config, or a computed key) lost the ID `icp`
+  reported for it to `Object.prototype`'s setter, so the `ic_env` cookie
+  carried none; and one named after another member of `Object.prototype`
+  (`constructor`, `toString`, `hasOwnProperty`) with no ID found that member
+  and was never missing: no warning, no page load asked `icp` again, and the
+  cookie never carried its ID.
+- The generator names its module and envelope after the `.did`'s file name
+  with a final `.did` cut off, and nothing else, and reads only a file whose
+  name ends in `.did`. The plugin's check of two canisters writing one module
+  cut any extension, so a `didFile` such as `a/api.candid`, which the
+  generator cannot read, claimed `api.ts`, and a canister after it on
+  `c/api.did` was refused. The plugin now names these files by the
+  generator's rule, which a test compares with what the CLI reports.
 
 ### Docs
 
