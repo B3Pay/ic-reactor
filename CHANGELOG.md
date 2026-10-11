@@ -183,11 +183,14 @@ does not change. The reads guide, the writes guide and the guide
 - A run (the start of a build or dev server, or a save's regeneration) reads
   each `didFile` once, and again after each step that runs `candid-core-cli`
   on it (listing its methods, the live check, generation), since each reads
-  the file itself. A file written before the run is done with it is not
-  taken: `vite build` fails the canister (`changed during the build`) and
-  puts back a module the generator wrote meanwhile, and `vite dev` queues the
-  file again, as a save. A check that passed while the file was written
-  records no pass and clears no failed check.
+  the file itself. A file written before the run is done with it, even saved
+  back, is not taken, and the run reports nothing its steps found of it.
+  `vite build` fails the canister for that reason alone
+  (`changed during the build`) and puts back a module the generator wrote
+  meanwhile; `vite dev` queues the file again, as a save, and says nothing of
+  the canister until that run does. A check of a file written before the
+  check was done, passed or failed, records no pass and neither sets nor
+  clears a failed check.
 - Only an omitted `methods` or `canisterId` counts as not given: `null`,
   `false`, `0` or `""` from a JavaScript config fails the canister (for
   `canisterId`, the fetch or check that would use it, and it is left out of

@@ -249,10 +249,12 @@ over `verify: "live"`.
   is not repeated for the same text by a rebuild (`vite build --watch`) or by
   another Vite environment, until a check of that canister fails or cannot be
   made, or a fetch of its file fails or reads another interface: restoring a
-  text that passed earlier then checks it again. A file saved while its
-  check runs (even saved back) records no pass and clears no failure, and is
-  not taken by that run: a build fails it, and `vite dev` queues it again as
-  a save, which makes no request (see [Generation](#generation)). Each build
+  text that passed earlier then checks it again. The check of a file saved
+  before the check is done (even saved back) counts for nothing, passed or
+  failed: it records no pass, neither sets nor clears a failure that stands,
+  and that run does not take the file: a build fails it, and `vite dev`
+  queues it again as a save, which makes no request (see
+  [Generation](#generation)). Each build
   and each start of the dev server, a restart included, checks every
   canister again, so a restart finds a canister that changed since its last
   check.
@@ -302,12 +304,13 @@ affected.
   each `didFile` once, and again after each step that runs `candid-core-cli`
   on it (listing its methods, the live check, generation), since each of those
   reads the file itself. A file written before the run is done with it (even
-  saved back) is not taken: the run does not generate it, and puts back a
-  module the generator wrote while the file was written. Under `vite build`
-  the canister fails
+  saved back) is not taken: the run does not generate it, reports nothing its
+  steps found of it, and puts back a module the generator wrote while the file
+  was written. Under `vite build` the canister fails for that reason alone
   (`did/ledger.did changed during the build, after the build read it: … Build again.`);
-  under `vite dev` the file is queued again, as a save is. Only the `didFile`
-  is read again, not a `.did` it imports from its directory.
+  under `vite dev` the file is queued again, as a save is, and until that run
+  reports it the overlay is left as it was. Only the `didFile` is read again,
+  not a `.did` it imports from its directory.
 - Deleting a `.did` under `vite dev` fails the canisters that name it at once,
   in the log and the overlay: the module it generated is still on disk, and
   would otherwise look current. Putting the file back regenerates them.

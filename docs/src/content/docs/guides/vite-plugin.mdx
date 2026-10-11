@@ -346,9 +346,10 @@ same text by a rebuild (`vite build --watch`) or by another Vite environment.
 A check of that canister that fails, or cannot be made, drops the pass, and
 so does a fetch of its file that fails or reads another interface. Restoring
 a text that passed earlier then checks it again rather than standing in for a
-check. What passes is the text the run read when it began: a file saved while
-its check runs (even saved back) records no pass and clears no failure, and
-that run does not generate it (see
+check. What passes or fails is the text the run read when it began: the check
+of a file saved before the check is done (even saved back) counts for nothing,
+passed or failed. It records no pass, neither sets nor clears a failure that
+stands, and that run does not generate the file (see
 [A .did saved while the plugin reads it](#a-did-saved-while-the-plugin-reads-it)).
 Each build and each start of the dev server, a restart included, checks every
 canister again, so a restart finds a canister that changed since its last
@@ -384,15 +385,22 @@ different one. So a run (the start of a build or dev server, or the
 regeneration a save starts) reads each `didFile` once, when its steps start,
 and reads it again after each step. A file written before the run is done
 with it (even saved back as it was) is not taken: the run does not generate
-it, and a module the generator wrote while the file was written is put back
-as it was. Then:
+it, reports nothing its steps found of it, and puts back a module the
+generator wrote while the file was written. Then:
 
-- Under `vite build`, the canister fails, and follows `failOnError`:
+- Under `vite build`, the canister fails for that reason alone, and follows
+  `failOnError`:
   `did/icp_ledger.did changed during the build, after the build read it: … Build again.`
 - Under `vite dev`, the file is queued again, as a save is, and that run
-  reports the file as it is then. Like any save it makes no request: a text
-  saved while the start's live check ran is not checked, and a check that
-  passed while the file was written clears no failure that stands.
+  reports the file as it is then. Until it does, the overlay is left as it
+  was: the run that took nothing says nothing of the canister, not even that
+  it is fixed. Like any save, the queued run makes no request, so a text saved
+  while the start's live check ran is not checked.
+
+A live check whose file was saved before the check was done counts for
+nothing, passed or failed: it records no pass, and under `vite dev` it neither
+sets nor clears a failure that stands. One that read the file before it was
+saved keeps its result, as for a save made just after the run.
 
 Only the `didFile` itself is read again. `candid-core-cli` also reads every
 `.did` beneath its directory, for the files it imports; a change to one of
