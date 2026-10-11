@@ -15,35 +15,63 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-It requires the candid-core pair published on 2026-10-10, both pinned
-exactly, where beta.4 required `0.3.0` and `0.2.0`:
+Nothing yet.
+
+## core, react, vite-plugin 4.0.0-beta.5
+
+Prepared on 2026-10-11. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.4.
+
+This release moves ic-reactor 4 onto the candid-core pair published on
+2026-10-10. Both are pinned exactly, where beta.4 required `0.3.0` and
+`0.2.0`:
 
 - `@ic-reactor/core`: peer `@candid-core/schema` at exactly `0.4.0`;
 - `@ic-reactor/vite-plugin`: peer `@candid-core/cli` at exactly `0.3.0`, the
   version its install hints now name.
 
-No `@ic-reactor/*` export is added or removed, and no call, key or error
-changes at run time. What the pair adds, each method's mode in the generated
-`Actor`, is read by `client.queryOptions` at compile time only (below).
+Three things are new, as core's and the Vite plugin's entries below say:
+
+- `client.queryOptions` reads the mode each method of a generated `Actor`
+  now carries, and an update or a oneway method does not compile there
+  (#851).
+- The Vite plugin's `methods` on a canister entry: a fetched `didFile` is
+  written as the projection of the live interface to the methods the app
+  calls, so the generated module has only them (#852, phase 2).
+- The Vite plugin's live check: `verify: "live"` on an entry, or
+  `IC_REACTOR_VERIFY`, checks a `didFile` on disk against the live canister's
+  certified interface when a build or dev server starts.
+
+No `@ic-reactor/*` export is added or removed (core 13,
+`@ic-reactor/core/testing` 2, react 4, vite-plugin 2). The pair itself changes
+no call, key or error at run time: what it adds, each method's mode in the
+generated `Actor`, is read by `client.queryOptions` at compile time only.
 Schema 0.4.0's JavaScript is 0.3.0's but for one header comment, so an app's
 bundle does not change.
 
 What an app on beta.4 does:
 
-1. Upgrade the pair together, in the same step as the `@ic-reactor/*`
-   packages. npm refuses a mismatched pair (`ERESOLVE could not resolve`):
-   CLI 0.3.0 peers schema exactly `0.4.0`, CLI 0.2.0 peers exactly `0.3.0`,
-   and core peers the schema exactly.
+1. Bump all three `@ic-reactor/*` packages to `4.0.0-beta.5` and the pair to
+   `0.4.0` and `0.3.0`, in one `npm install`. npm does not resolve a partial
+   upgrade cleanly: core 4.0.0-beta.5 peers schema exactly
+   `0.4.0` and core 4.0.0-beta.4 exactly `0.3.0`; the Vite plugin
+   4.0.0-beta.5 peers CLI exactly `0.3.0` and 4.0.0-beta.4 exactly `0.2.0`;
+   and CLI 0.3.0 peers schema exactly `0.4.0`, CLI 0.2.0 exactly `0.3.0`. So
+   a command that moves only some of them meets the others' peers: with npm
+   11, the CLI alone fails with `ERESOLVE`, and the schema alone installs
+   with an `ERESOLVE overriding peer dependency` warning, leaving core's peer
+   unmet. One command moves them all, and keeps each package in the section
+   of `package.json` it is in (`dependencies` or `devDependencies`):
 
    ```sh
-   npm install --save-exact @candid-core/schema@0.4.0
-   npm install --save-dev --save-exact @candid-core/cli@0.3.0
+   npm install --save-exact @ic-reactor/core@4.0.0-beta.5 @ic-reactor/react@4.0.0-beta.5 @ic-reactor/vite-plugin@4.0.0-beta.5 @candid-core/schema@0.4.0 @candid-core/cli@0.3.0
    ```
 
-   Keep one copy of the schema. A second one left at `0.3.0`, beside core's
-   `0.4.0`, makes its `Principal` another type than core's, and passing one
-   for the other fails with `TS2322` or `TS2345` ("Property
-   '[principalBrand]' is missing").
+   Name only the packages the app has. Keep one copy of the schema. A second
+   one left at `0.3.0`, beside core's `0.4.0`, makes its `Principal` another
+   type than core's, and passing one for the other fails with `TS2322` or
+   `TS2345` ("Property '[principalBrand]' is missing").
 
 2. Regenerate every committed module with `candid-core-cli gen` (the Vite
    plugin does it when it starts). Until then `gen --check` reports each
@@ -52,8 +80,9 @@ What an app on beta.4 does:
    schema 0.4.0, but a module CLI 0.3.0 writes does not compile against
    `0.3.0` (`TS2694`, "has no exported member 'WithMode'", once per method).
 
-3. Code that imports the generated names compiles unchanged. Two things in
-   the module change what the compiler shows:
+3. Code that imports the generated names compiles unchanged, but for the
+   `queryOptions` calls of step 4. Two things in the module change what the
+   compiler shows:
    - Each type is declared under its Candid name, `export type Account = …`,
      so a type error names `Account` where it named `$Account`. A name that
      cannot be a type keeps the `$`: the globals `Array`, `Promise`, `Record`
@@ -66,15 +95,35 @@ What an app on beta.4 does:
      `client.canister<Actor>()` returns. A type test that compares a method
      type of `Actor` for exact equality with its bare signature now fails.
 
-Every module this repository generates (core's test fixtures, the e2e
-`hello_actor`, the snippet checker's modules) is regenerated with CLI 0.3.0,
-and core's type tests compile against them unchanged. React's type tests
-write their own stand-in for a generated `Actor`; it now marks each method
-with `WithMode`, as CLI 0.3.0 does, and compiles. The four
-examples move to the new pair and regenerated modules with the release that
-publishes this, since beta.4 peers the old pair.
+4. Expect the compile errors of `client.queryOptions` listed under
+   `@ic-reactor/core` below: `TS2769` ("No overload matches this call") for
+   an update or a oneway method of a generated `Actor`, and for some calls
+   that ran without a `TypeError` on beta.4: an update's fourth argument whose
+   type may be `undefined`, and a method TypeScript cannot tell is a read (a
+   type parameter, a union that may name an update, any method of a generic
+   `Actor`). A write goes through `client.mutationOptions`; an update that
+   answers the same however often it runs takes `{ update: "idempotent" }`;
+   and a generic wrapper gives the type arguments,
+   `client.queryOptions<A, any>(…)`. Nothing changes at run time.
 
-### `queryOptions` refuses an update or a oneway method at compile time (#851)
+5. Check the Vite plugin's options. It now refuses what beta.4 read without a
+   word, as its entries below say: a key that is no option (a misspelled
+   `didfile` or `canisterID`), a value given that is not one (`null`
+   included), a `failOnError` or `injectEnvironment` other than `true` or
+   `false`, and options, `canisters` or an entry that is not a plain object.
+   A key or value of a canister entry fails that canister, under
+   `failOnError`; one of the options themselves throws when the config loads.
+   Each message names the option or quotes the value.
+
+### @ic-reactor/core
+
+#### Changed
+
+- Its peer `@candid-core/schema` is exactly `0.4.0`, where it was `0.3.0`
+  (#866). Core's types read its `ModeOf` for the check below; core's
+  JavaScript does not change but for its version string.
+
+#### `queryOptions` refuses an update or a oneway method at compile time (#851)
 
 `client.queryOptions(canister, method, …)` reads the mode each method of a
 generated `Actor` carries (`$.WithMode<mode>`, from `candid-core-cli gen`
@@ -102,11 +151,11 @@ Such a call with the method's name written out compiled on beta.4 and threw a
 without a `TypeError`, and no longer compile:
 
 - **A fourth argument that may be `undefined`.** Its type, such as that of an
-  `opts?: QueryOptionsOptions` a wrapper passes on, does not say it is the
+  optional options parameter a wrapper passes on, does not say it is the
   opt-in, so for an update method the call does not compile, though it
   ran whenever the value was defined. Pass `{ update: "idempotent" }`, or a
-  value whose type is `QueryOptionsOptions`. For a query it compiles as
-  before.
+  value typed `{ readonly update: "idempotent" }` (the type is not
+  exported). For a query it compiles as before.
 - **A method whose type is not one name the `Actor` marks as a read.** The
   call compiles only when TypeScript can tell that the method is a
   `ReadMethod<A>`. It cannot for three kinds of method, each of which compiled
@@ -141,7 +190,21 @@ same options, with the same types. No export is added (`ReadMethod` and
 does not change. The reads guide, the writes guide and the guide
 (`llms.txt`) say so.
 
+### @ic-reactor/react
+
+- No change but the version. Its peer `@ic-reactor/core` is packed as
+  exactly `4.0.0-beta.5`, so the two move together.
+
 ### @ic-reactor/vite-plugin
+
+#### Changed
+
+- Its peer `@candid-core/cli` is exactly `0.3.0`, where it was `0.2.0`
+  (#866), and the install hints the plugin prints name it. The plugin
+  generates with it as before; `methods` and the live check also run its
+  `project` and `check` commands, which 0.3.0 adds.
+- Its optional peer `@icp-sdk/core` is loaded for the live check too, as for
+  a fetch.
 
 #### Added
 
@@ -268,12 +331,43 @@ does not change. The reads guide, the writes guide and the guide
 
 ### Docs
 
-- The Vite plugin guide has two new sections, "Only the methods the app calls"
-  and "The live check", and says how the plugin runs candid-core for them.
-  Getting started points at `methods`.
+- The guide (`llms.txt`), react's guide and the skill say they apply to
+  4.0.0-beta.5 (#866).
+- Every install line and peer table names `@candid-core/schema` `0.4.0` and
+  `@candid-core/cli` `0.3.0`: getting started, the Vite plugin guide, the
+  core, react and Vite plugin pages, and the root and package READMEs.
+  Getting started says that each method of `type Actor` is its call
+  signature marked with its mode (`& $.WithMode<"query">`) (#866).
+- The reads guide's "Update methods" shows that `queryOptions` with an update
+  method of a generated `Actor` does not compile, says what `ReadMethod<Actor>`
+  is, that an `Actor` written by hand is checked at run time, which methods
+  TypeScript cannot tell are reads and the escape `queryOptions<A, any>`, and
+  that `{ update: "idempotent" }` opts in an update only, after the variables.
+  It also says that a composite query of a certified canister is refused at
+  run time only. The writes guide says `queryOptions` does not compile for an
+  update of a generated `Actor`, and the guide (`llms.txt`) says the same in
+  its reads section (#851).
+- The Vite plugin guide has four new sections, "Only the methods the app
+  calls", "The live check", "How the plugin runs candid-core" and "A .did
+  saved while the plugin reads it", and its options section says which values
+  and keys are refused, that the options are plain objects, and that a
+  canister's name is kept as given. The plugin's README has the first two
+  sections and the same options text.
+  Getting started points at `methods` (#852, phase 2).
 
 ### Examples (not published)
 
+- The four examples pin `^4.0.0-beta.5`, `@candid-core/schema` `0.4.0` and
+  `@candid-core/cli` `0.3.0`, and their seven generated modules are
+  regenerated with CLI 0.3.0. They moved in #866, ahead of this release: an
+  example on schema `0.4.0` cannot install beta.4, whose core peers `0.3.0`.
+  Until this release is on npm, their check against the published packages
+  waits for it.
+- `icrc-ledger`'s Sandbox test marks
+  `client.queryOptions(minter, "get_btc_address", ownAddress)` with
+  `@ts-expect-error`, since that call no longer compiles, and still expects
+  its `TypeError` at run time. The README says the call does not compile
+  (#851).
 - `icrc-ledger`'s `icp_ledger.did` and `ckbtc_minter.did`, and `vite-wallet`'s
   `ledger.did`, were trimmed by hand. Each is now the projection the plugin
   wrote from the mainnet canister, and its entry names the `canisterId` and
@@ -282,6 +376,26 @@ does not change. The reads guide, the writes guide and the guide
   ledger's projection names its transfer error `Icrc1TransferError`, so
   `vite-wallet` imports it by that name. `icp_ledger.envelope.json` does not
   change; the minter's argument record is inline, as the canister declares it.
+
+### CI (not published)
+
+- Every module this repository generates (core's test fixtures, the e2e
+  `hello_actor`, the snippet checker's modules) is regenerated with CLI 0.3.0,
+  and core's type tests compile against them unchanged. React's type tests
+  write their own stand-in for a generated `Actor`; it now marks each method
+  with `WithMode`, as CLI 0.3.0 does, and compiles. The root, `e2e/`,
+  `scripts/size-app/` and the export budget's schema pin move to the new pair
+  (#866).
+- `pnpm verify:traps` has two new traps, `query-options-refuses-update` and
+  `query-options-refuses-oneway`, which weaken `ReadMethod` and `OptInMethod`
+  and show that the `@ts-expect-error` lines of `traps.test-d.ts` that refuse
+  an update and a oneway then stop biting; `options-method-unknown` follows
+  the new signatures. Core's type tests add the calls that compiled on beta.4
+  and no longer do (#851).
+- `scripts/faults.json` grows from 298 to 417 entries, for the Vite plugin's
+  new tests (#852, phase 2).
+- No size limit moves: core 14.96 kB of 15 kB, react 1.28 kB of 1.28 kB, and
+  the app checks 89.95 kB of 90 kB and 91.16 kB of 91.2 kB, as at beta.4.
 
 ## core, react, vite-plugin 4.0.0-beta.4
 
