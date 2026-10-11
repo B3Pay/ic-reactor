@@ -3440,9 +3440,9 @@
     "test": "tests/project.test.ts",
     "testName": "given as null, false, 0 or an empty string fail the canister of a didFile on disk, with no request",
     "why": "methods given as null, false, 0 or \"\" by a JavaScript config is taken for no methods, so the whole interface is generated without a word",
-    "file": "src/index.ts",
-    "search": "      if (canister.methods === undefined) return []\n",
-    "replace": "      if (!canister.methods) return []\n"
+    "file": "src/options.ts",
+    "search": "  let methods = value(\"methods\")\n",
+    "replace": "  let methods = value(\"methods\") || undefined\n"
   },
   {
     "id": "did-verify-invalid-unchecked",
