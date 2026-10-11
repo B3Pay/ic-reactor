@@ -18,6 +18,7 @@
 
 import fs from "node:fs"
 import path from "node:path"
+import { describeValue } from "./describe-value.js"
 
 /**
  * Where a canister to fetch is: `"ic"` (mainnet, checked against the mainnet
@@ -71,7 +72,7 @@ function isLocalHostname(hostname: string): boolean {
 
 /**
  * `network` with its host and root key decided, or a message that says why it
- * is not a network.
+ * is not a network. Never throws, whatever `network` is.
  */
 export function resolveNetwork(
   network: CanisterNetwork | undefined
@@ -82,18 +83,19 @@ export function resolveNetwork(
   if (network === "local") {
     return { label: "local", host: LOCAL_HOST, fetchRootKey: true }
   }
-  const host =
-    typeof network === "object" && network !== null
-      ? (network as { host?: unknown }).host
-      : undefined
   let url: URL | undefined
+  let host: unknown
   try {
+    host =
+      typeof network === "object" && network !== null
+        ? (network as { host?: unknown }).host
+        : undefined
     url = typeof host === "string" ? new URL(host) : undefined
   } catch {
     url = undefined
   }
   if (!url || (url.protocol !== "http:" && url.protocol !== "https:")) {
-    return `network ${JSON.stringify(network)} is not "ic", "local" or { host: "<http or https URL>" }`
+    return `network ${describeValue(network)} is not "ic", "local" or { host: "<http or https URL>" }`
   }
   return {
     label: host as string,
@@ -152,12 +154,13 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
   }
   if (signal?.aborted) return stopped
 
-  // A JavaScript config can give any value: one that is not text is no
-  // canister ID, and costs no request.
+  // The plugin's options refuse one first (options.ts), but a fetch still
+  // never throws: a value that is not text is no canister ID, and costs no
+  // request.
   if (typeof canisterId !== "string" || canisterId === "") {
     return {
       ok: false,
-      message: `canisterId is ${JSON.stringify(canisterId)}, not a canister ID: give the canister's principal as text, or remove canisterId`,
+      message: `canisterId is ${describeValue(canisterId)}, not a canister ID: give the canister's principal as text, or remove canisterId`,
     }
   }
   const network = resolveNetwork(request.network)
@@ -207,7 +210,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
   } catch (error) {
     return {
       ok: false,
-      message: `canisterId "${canisterId}" is not a canister ID: ${firstLine(error instanceof Error ? error.message : String(error))}`,
+      message: `canisterId ${describeValue(canisterId)} is not a canister ID: ${firstLine(error instanceof Error ? error.message : String(error))}`,
     }
   }
 

@@ -326,7 +326,7 @@ describe("methods", () => {
       },
     })
     const refusal =
-      `"transfer", "broken" name did/ledger.did, which is not fetched, since a list of methods cannot be projected to ` +
+      `"transfer", "broken" name did/ledger.did, which is not fetched, since "broken" cannot be generated ` +
       `(broken: methods names "icrc1_transfer,icrc1_fee", which has a comma`
     // One message for both, on one line.
     expect(message).toContain(
@@ -557,7 +557,16 @@ const fs = require("node:fs")
 const path = require("node:path")
 
 const args = process.argv.slice(2)
-fs.appendFileSync(path.join(__dirname, "runs.log"), JSON.stringify(args) + "\\n")
+const runs = path.join(__dirname, "runs.log")
+fs.appendFileSync(runs, JSON.stringify(args) + "\\n")
+// Held, from the process the test names on, while block.json is there.
+const block = path.join(__dirname, "block.json")
+try {
+  const { from } = JSON.parse(fs.readFileSync(block, "utf-8"))
+  const count = fs.readFileSync(runs, "utf-8").split("\\n").filter(Boolean).length
+  const pause = new Int32Array(new SharedArrayBuffer(4))
+  while (count >= from && fs.existsSync(block)) Atomics.wait(pause, 0, 0, 20)
+} catch {}
 // A projection to the empty name lists a file's methods.
 const step = args[0] === "project" && args[3] === "," ? "list" : args[0]
 const hook = path.join(__dirname, "hook.json")
@@ -589,7 +598,9 @@ process.exit(run.status === null ? 1 : run.status)
  * it ended, before the process exits. With `back`, the process then writes
  * `back` too, once the real CLI ended: a file saved and saved back holds its
  * text again, with another stamp. The plugin sees those writes as soon as the
- * process is done. `commands` names the command each process ran.
+ * process is done. `commands` names the command each process ran. `hold`
+ * keeps each process from the `from`th one on (counted from the first)
+ * waiting before the real CLI starts, until `release`.
  */
 function hookCli(app: App) {
   const installed = path.join(app.root, "node_modules", "@candid-core", "cli")
@@ -627,6 +638,13 @@ function hookCli(app: App) {
         JSON.stringify({ step, when, file, text, back })
       ),
     commands: () => app.runs().map(([command]) => command),
+    hold: (from: number) =>
+      fs.writeFileSync(
+        path.join(installed, "block.json"),
+        JSON.stringify({ from })
+      ),
+    release: () =>
+      fs.rmSync(path.join(installed, "block.json"), { force: true }),
   }
 }
 
@@ -1838,9 +1856,9 @@ describe("options given a value of the wrong kind", () => {
     expect(asked).toEqual([])
   })
 
-  it("canisterId given as an empty string or null is no canister ID: the fetch and the check that would use it fail, with no request", async () => {
+  it("canisterId given as an empty string or null is no canister ID: it fails the canister with no request, whether or not a fetch or a check would use it", async () => {
     const asked = refuseNetwork()
-    const app = newApp({ "did/item.did": WRITTEN })
+    const app = newApp({ "did/item.did": WRITTEN, "did/ping.did": PING_DID })
     const { message } = await buildError(app, {
       canisters: {
         // Missing, so it would be fetched.
@@ -1851,15 +1869,433 @@ describe("options given a value of the wrong kind", () => {
           canisterId: null as never,
           verify: "live",
         },
+        // On disk, neither fetched nor checked: only generated.
+        unused: { didFile: "did/ping.did", canisterId: "" },
       },
     })
-    expect(lineOf(message, "fetched")).toContain(
-      'fetched (did/fetched.did): canisterId is "", not a canister ID'
+    expect(message).toContain("could not generate 3 of 3 canisters")
+    // One reason, so one line.
+    expect(message).toContain(
+      '- fetched (did/fetched.did), unused (did/ping.did): canisterId is "", not a canister ID'
     )
     expect(lineOf(message, "checked")).toContain(
       "checked (did/item.did): canisterId is null, not a canister ID"
     )
     expect(exists(app, "did/fetched.did")).toBe(false)
+    expect(exists(app, "src/canisters/ping.ts")).toBe(false)
     expect(asked).toEqual([])
   })
+
+  // JSON.stringify throws on a bigint: a message built with it threw out of
+  // the run, past failOnError, so a dev server that keeps serving failed its
+  // start instead, with no log and no overlay.
+  it("methods given as 1n or [1n] fails the canister cleanly under failOnError: false, in the log and the overlay, and nothing runs for it", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({
+      "did/a.did": PING_DID,
+      "did/b.did": PING_DID,
+      "did/ping.did": PING_DID,
+    })
+    const cli = hookCli(app)
+    const { connections, plugin } = spyOnConnections()
+    const running = await startDev(
+      app.root,
+      {
+        failOnError: false,
+        canisters: {
+          bigint: { didFile: "did/a.did", methods: 1n as never },
+          listed: { didFile: "did/b.did", methods: [1n] as never },
+          ping: { didFile: "did/ping.did" },
+        },
+      },
+      { before: [plugin] }
+    )
+    closers.push(running.close)
+    const errors = running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toContain("could not generate 2 of 3 canisters")
+    expect(lineOf(errors[0], "bigint")).toContain(
+      "bigint (did/a.did): methods is 1n, not a list of method names"
+    )
+    expect(lineOf(errors[0], "listed")).toContain(
+      "listed (did/b.did): methods holds 1n, which is not a method name"
+    )
+    // A browser that connects is handed both.
+    const client = { send: vi.fn() }
+    connections[0](client)
+    const shown = JSON.parse(client.send.mock.calls[0][0] as string) as {
+      err: { message: string }
+    }
+    expect(shown.err.message).toContain("methods is 1n")
+    expect(shown.err.message).toContain("methods holds 1n")
+    // Nothing ran for them: no listing, and one generator, for ping alone.
+    expect(cli.commands()).toEqual(["gen"])
+    expect(app.runs()[0]).toContain(path.join(app.root, "did/ping.did"))
+    expect(app.runs()[0]).not.toContain(path.join(app.root, "did/a.did"))
+    expect(app.runs()[0]).not.toContain(path.join(app.root, "did/b.did"))
+    expect(exists(app, "src/canisters/ping.ts")).toBe(true)
+    expect(asked).toEqual([])
+  })
+
+  // Each kind of value a JavaScript config can give, quoted as it was given:
+  // none throws its message out of the run, no getter of it runs, and none
+  // costs a process.
+  it("of any kind is quoted as given, fails only its canister, and runs no getter of it", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({
+      "did/a.did": PING_DID,
+      "did/b.did": PING_DID,
+      "did/c.did": PING_DID,
+      "did/d.did": PING_DID,
+      "did/e.did": PING_DID,
+      "did/ping.did": PING_DID,
+    })
+    const cli = hookCli(app)
+    const cyclic: Record<string, unknown> = { name: "a" }
+    cyclic.self = cyclic
+    let read = 0
+    const { result, lines } = runBuild(app.root, {
+      failOnError: false,
+      canisters: {
+        symbol: { didFile: "did/a.did", verify: Symbol("live") as never },
+        cycle: { didFile: "did/b.did", methods: [cyclic] as never },
+        fn: {
+          didFile: "did/c.did",
+          canisterId: (() => LEDGER_ID) as never,
+        },
+        throwing: {
+          didFile: "did/d.did",
+          get outDir(): string {
+            throw new Error("no outDir today")
+          },
+        },
+        accessor: {
+          didFile: "did/e.did",
+          methods: [
+            {
+              get name() {
+                read += 1
+                return "get"
+              },
+            },
+          ] as never,
+        },
+        nul: { didFile: "did/f.did\0" },
+        nil: null as never,
+        ping: { didFile: "did/ping.did" },
+      },
+    })
+    await result
+    const errors = lines.filter((line) => line.startsWith("error:"))
+    expect(errors).toHaveLength(1)
+    const [message] = errors
+    expect(message).toContain("could not generate 7 of 8 canisters")
+    expect(lineOf(message, "symbol")).toContain(
+      'symbol (did/a.did): verify is Symbol(live), not "live"'
+    )
+    expect(lineOf(message, "cycle")).toContain(
+      'cycle (did/b.did): methods holds {"name":"a","self":[circular]}, which is not a method name'
+    )
+    expect(lineOf(message, "fn")).toContain(
+      "fn (did/c.did): canisterId is a function, not a canister ID"
+    )
+    expect(lineOf(message, "throwing")).toContain(
+      "throwing (did/d.did): outDir could not be read: no outDir today"
+    )
+    expect(lineOf(message, "accessor")).toContain(
+      'accessor (did/e.did): methods holds {"name":[getter]}, which is not a method name'
+    )
+    expect(message).toContain(
+      '- nul: didFile is "did/f.did\\u0000", not a path'
+    )
+    expect(message).toContain(
+      "- nil: its options are null, not an object of options"
+    )
+    expect(read).toBe(0)
+    expect(cli.commands()).toEqual(["gen"])
+    expect(app.runs()[0]).toContain(path.join(app.root, "did/ping.did"))
+    expect(exists(app, "src/canisters/ping.ts")).toBe(true)
+    expect(asked).toEqual([])
+  })
+
+  // Each option is checked when the plugin is made, whether or not a step of
+  // the run would use it: a file on disk that is neither fetched nor checked
+  // reads no canisterId and no network, and still fails for one that is not.
+  it("didFile, outDir or network that is not one fails the canister of a file on disk that nothing fetches or checks", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/a.did": PING_DID, "did/ping.did": PING_DID })
+    const cli = hookCli(app)
+    const { message } = await buildError(app, {
+      canisters: {
+        path: { didFile: 1 as never },
+        empty: { didFile: "" },
+        out: { didFile: "did/a.did", outDir: "" },
+        network: { didFile: "did/a.did", network: "mainnet" as never },
+        ping: { didFile: "did/ping.did" },
+      },
+    })
+    expect(message).toContain("could not generate 4 of 5 canisters")
+    expect(message).toContain("- path: didFile is 1, not a path")
+    expect(message).toContain('- empty: didFile is "", not a path')
+    expect(lineOf(message, "out")).toContain(
+      'out (did/a.did): outDir is "", not a path'
+    )
+    expect(lineOf(message, "network")).toContain(
+      'network (did/a.did): network "mainnet" is not "ic", "local" or { host: "<http or https URL>" }'
+    )
+    expect(cli.commands()).toEqual(["gen"])
+    expect(app.runs()[0]).not.toContain(path.join(app.root, "did/a.did"))
+    expect(exists(app, "src/canisters/a.ts")).toBe(false)
+    expect(asked).toEqual([])
+  })
+
+  // The live check read verify, after the fetch: a verify that is not one
+  // made the request and wrote the file, and only then failed the canister.
+  it("verify that is not live fails the canister before its didFile is fetched: no request, and nothing written", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: WRITTEN } })
+    const app = newApp({ "did/committed.did": WITHOUT_PUT })
+    const network = { host: ic.host }
+
+    // Missing, so it would be fetched.
+    const missing = await buildError(app, {
+      canisters: {
+        missing: {
+          didFile: "did/missing.did",
+          canisterId: LEDGER_ID,
+          network,
+          verify: true as never,
+        },
+      },
+    })
+    expect(lineOf(missing.message, "missing")).toContain(
+      'missing (did/missing.did): verify is true, not "live"'
+    )
+    expect(exists(app, "did/missing.did")).toBe(false)
+
+    // Asked for again by IC_REACTOR_FETCH: the committed file is not
+    // rewritten.
+    vi.stubEnv("IC_REACTOR_FETCH", "committed")
+    const again = await buildError(app, {
+      canisters: {
+        committed: {
+          didFile: "did/committed.did",
+          canisterId: LEDGER_ID,
+          network,
+          verify: "Live" as never,
+        },
+      },
+    })
+    expect(lineOf(again.message, "committed")).toContain(
+      'committed (did/committed.did): verify is "Live", not "live"'
+    )
+    expect(read(app, "did/committed.did")).toBe(WITHOUT_PUT)
+    vi.unstubAllEnvs()
+
+    // Shared with a canister that could fetch it: not fetched for either.
+    const shared = await buildError(app, {
+      canisters: {
+        fetcher: { didFile: "did/shared.did", canisterId: LEDGER_ID, network },
+        typo: {
+          didFile: "did/shared.did",
+          outDir: "src/typo",
+          verify: "yes" as never,
+        },
+      },
+    })
+    expect(shared.message).toContain(
+      `- fetcher (did/shared.did), typo (did/shared.did): "fetcher", "typo" name did/shared.did, which is not fetched, ` +
+        `since "typo" cannot be generated (typo: verify is "yes", not "live"`
+    )
+    expect(exists(app, "did/shared.did")).toBe(false)
+    expect(ic.requests).toEqual([])
+  })
+
+  // IC_REACTOR_VERIFY was read by the live check, after the methods of the
+  // canister were listed: a canister it names that cannot be checked costs
+  // nothing either.
+  it("IC_REACTOR_VERIFY or IC_REACTOR_FETCH naming a canister with no canisterId fails it before the run does anything for it", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/item.did": WRITTEN })
+    const cli = hookCli(app)
+    const options: IcReactorPluginOptions = {
+      canisters: {
+        item: { didFile: "did/item.did", methods: ["get", "maybe", "put"] },
+      },
+    }
+    for (const [variable, message] of [
+      [
+        "IC_REACTOR_VERIFY",
+        "item (did/item.did): IC_REACTOR_VERIFY asks for its live check, but it names no canisterId",
+      ],
+      [
+        "IC_REACTOR_FETCH",
+        "item (did/item.did): IC_REACTOR_FETCH asks to fetch its didFile again, but it names no canisterId",
+      ],
+    ]) {
+      vi.unstubAllEnvs()
+      vi.stubEnv(variable, "item")
+      const failed = await buildError(app, options)
+      expect(lineOf(failed.message, "item")).toContain(message)
+      expect(cli.commands()).toEqual([])
+    }
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    expect(asked).toEqual([])
+  })
+})
+
+/**
+ * A plugin, ahead of the plugin under test, whose `closeBundle` holds each
+ * server close, once armed, until `until` passes: the plugin's own
+ * `closeBundle` runs after it (`sequential`), as for a server whose close
+ * comes late.
+ */
+function holdCloses(until: () => boolean) {
+  let armed = false
+  const plugin: Plugin = {
+    name: "hold-closes",
+    enforce: "pre",
+    closeBundle: {
+      sequential: true,
+      async handler() {
+        if (!armed) return
+        await vi.waitFor(() => expect(until()).toBe(true), {
+          timeout: 10_000,
+          interval: 10,
+        })
+      },
+    },
+  }
+  return {
+    plugin,
+    arm: () => (armed = true),
+    disarm: () => (armed = false),
+  }
+}
+
+// `server.restart()` of an inline config keeps the plugin object, and Vite
+// resolves the new config, and starts the new server, before it closes the
+// old one. Each server's runs are its own: the old server's close stops only
+// its own, and the plugin keeps what it knows of the files.
+describe("a dev server restarted with the same plugin object", () => {
+  const listed = (): IcReactorPluginOptions => ({
+    canisters: {
+      item: {
+        didFile: "did/item.did",
+        canisterId: LEDGER_ID,
+        methods: ["get", "maybe", "put"],
+      },
+    },
+  })
+  const lacksPut =
+    "item (did/item.did): methods names put, which did/item.did does not hold (it holds get, maybe)"
+
+  // The run the restart queues for a file saved during its listing has to
+  // list the text saved, a process of its own. The old server's close comes
+  // once that process runs, and is held until then; the process is held in
+  // turn while the test looks at the restarted server.
+  it("keeps the run its start queues for a file saved during its listing when the old server closes after that start, and the overlay as it was until that run reports", async () => {
+    const asked = refuseNetwork()
+    // put, which methods names, is not in the file: the start fails it.
+    const app = newApp({ "did/item.did": WITHOUT_PUT })
+    const cli = hookCli(app)
+    const hold = holdCloses(() => cli.commands().length >= 3)
+    const { connections, plugin } = spyOnConnections()
+    const running = await startDev(app.root, listed(), {
+      before: [hold.plugin, plugin],
+    })
+    closers.push(async () => {
+      cli.release()
+      await running.close()
+    })
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors()).toHaveLength(1)
+    expect(errors()[0]).toContain(lacksPut)
+
+    // An edit that adds put is written, and the same server restarts. Once
+    // the restart's run listed the edit, a text without put that no run
+    // listed is saved: the run queued for it lists it again, in the third
+    // process, which waits.
+    const file = path.join(app.root, "did/item.did")
+    fs.writeFileSync(file, `// Edited.\n${WRITTEN}`)
+    cli.save("list", "after", file, `// Saved again.\n${WITHOUT_PUT}`)
+    cli.hold(3)
+    hold.arm()
+    await running.server.restart()
+    hold.disarm()
+    expect(cli.commands()).toEqual(["project", "project", "project"])
+    expect(errors()).toHaveLength(1)
+    // The restart's run took nothing of the file: a browser that connects to
+    // the restarted server is handed the failure the overlay showed.
+    const client = { send: vi.fn() }
+    connections[connections.length - 1](client)
+    const shown = JSON.parse(client.send.mock.calls[0][0] as string) as {
+      err: { message: string }
+    }
+    expect(shown.err.message).toContain(lacksPut)
+
+    // The queued run, which the old server's close did not stop, reports the
+    // text saved.
+    cli.release()
+    await vi.waitFor(() => expect(errors()).toHaveLength(2), {
+      timeout: 10_000,
+    })
+    expect(errors()[1]).toContain(lacksPut)
+    expect(cli.commands()).toEqual(["project", "project", "project"])
+    expect(asked).toEqual([])
+  }, 30_000)
+
+  it("lists and generates nothing again that it did, shows what still fails, and regenerates on a save", async () => {
+    const asked = refuseNetwork()
+    // put, which methods names, is not in item's file: the start fails it.
+    const app = newApp({
+      "did/item.did": WITHOUT_PUT,
+      "did/ping.did": PING_DID,
+    })
+    const cli = hookCli(app)
+    const { connections, plugin } = spyOnConnections()
+    const running = await startDev(
+      app.root,
+      {
+        canisters: {
+          ...listed().canisters,
+          ping: { didFile: "did/ping.did" },
+        },
+      },
+      { before: [plugin] }
+    )
+    closers.push(running.close)
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors()).toHaveLength(1)
+    expect(errors()[0]).toContain(lacksPut)
+    expect(cli.commands()).toEqual(["project", "gen"])
+
+    await running.server.restart()
+    // Nothing changed: no process runs again, and the failure is told again.
+    expect(cli.commands()).toEqual(["project", "gen"])
+    expect(errors()).toHaveLength(2)
+    expect(errors()[1]).toContain(lacksPut)
+    // A browser that connects to the restarted server is handed it.
+    const client = { send: vi.fn() }
+    connections[connections.length - 1](client)
+    const shown = JSON.parse(client.send.mock.calls[0][0] as string) as {
+      err: { message: string }
+    }
+    expect(shown.err.message).toContain(lacksPut)
+
+    // put is saved back: the restarted server lists and generates item.
+    const file = path.join(app.root, "did/item.did")
+    fs.writeFileSync(file, WRITTEN)
+    running.server.watcher.emit("change", file)
+    await vi.waitFor(
+      () => expect(exists(app, "src/canisters/item.ts")).toBe(true),
+      {
+        timeout: 10_000,
+      }
+    )
+    expect(cli.commands()).toEqual(["project", "gen", "project", "gen"])
+    expect(errors()).toHaveLength(2)
+    expect(asked).toEqual([])
+  }, 30_000)
 })

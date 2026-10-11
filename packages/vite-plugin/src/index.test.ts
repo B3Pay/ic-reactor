@@ -455,6 +455,34 @@ describe("icReactor", () => {
         )
       })
 
+      // A restart of an inline config runs the config hook again with the
+      // same plugin object, for a new server with a proxy of its own.
+      it("should move only its own server's /api proxy when a server of the same plugin object detects a network", async () => {
+        vi.spyOn(console, "warn").mockImplementation(() => {})
+        vi.spyOn(console, "log").mockImplementation(() => {})
+        answerIcp({}, new Error("no local network is running"))
+        const plugin = createVitePlugin(mockOptions)
+        const proxyOf = (config: any) => {
+          const apiEntry = config.server.proxy["/api"]
+          const proxyOptions = { ...apiEntry }
+          apiEntry.configure({}, proxyOptions)
+          return proxyOptions
+        }
+        const first = await serveWithEnvironment(plugin)
+        const firstProxy = proxyOf(first.config)
+        const second = await serveWithEnvironment(plugin)
+        const secondProxy = proxyOf(second.config)
+
+        // A page load of the first server finds the network.
+        answerIcp(
+          { test_canister: "bkyz2-fmaaa-aaaaa-qaaaq-cai" },
+          { root_key: "fresh-root-key", api_url: "http://127.0.0.1:8080" }
+        )
+        await request(first.middleware)
+        expect(firstProxy.target).toBe("http://127.0.0.1:8080")
+        expect(secondProxy.target).toBe("http://127.0.0.1:8000")
+      })
+
       it("should not run icp for a request that is not a page load", async () => {
         vi.spyOn(console, "warn").mockImplementation(() => {})
         answerIcp({})
