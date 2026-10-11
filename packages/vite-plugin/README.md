@@ -92,10 +92,12 @@ writes, runs and requests nothing to generate it, nor fetches a `didFile` it
 shares with other canisters, and the others build as they would. So does a
 canister whose module a canister before it writes (below), and one that
 `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but that has no `canisterId`.
-Such a canister is still named in the `ic_env` cookie, as every entry is, and
-under `vite dev` `icp` is still asked for its ID: the app may still call it. A
-`canisters`, `injectEnvironment` or `failOnError` that is not one throws when
-the config loads.
+Under `vite dev`, a save of its file, and the file's deletion, leave it failed
+for the same reason and run nothing for it. Such a canister is still named in
+the `ic_env` cookie, as every entry is, and under `vite dev` `icp` is still
+asked for its ID: the app may still call it. A `canisters`,
+`injectEnvironment` or `failOnError` that is not one throws when the config
+loads.
 
 Canisters that share one interface share one module. An ICP ledger and a ckBTC
 ledger both on `icrc1.did` are two entries, so that the `ic_env` cookie carries

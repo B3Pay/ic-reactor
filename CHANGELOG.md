@@ -203,13 +203,15 @@ does not change. The reads guide, the writes guide and the guide
   anything to generate it or a `didFile` it shares; the other canisters
   build. So does a canister whose module a canister before it writes (two
   `.did` files of one name in one `outDir`), at the start of each run, and a
-  save of its file does not generate it over the other's module, and so does
-  a canister `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names with no
-  `canisterId`. Each is still named in the `ic_env` cookie; a `canisterId`
-  that is not one is left out of it, with a warning. `failOnError` and
-  `injectEnvironment` take `true` or `false`, and `canisters` an object: any
-  other value throws when the config loads, instead of being read by
-  truthiness.
+  canister `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names with no
+  `canisterId`. Under `vite dev` a save of the file of any of these, or its
+  deletion, leaves the canister failed for the same reason and runs nothing
+  for it: a save neither generates it, over another's module or not, nor
+  takes it for fixed. Each is still named in the `ic_env` cookie; a
+  `canisterId` that is not one is left out of it, with a warning.
+  `failOnError` and `injectEnvironment` take `true` or `false`, and
+  `canisters` an object: any other value throws when the config loads,
+  instead of being read by truthiness.
 - A dev server restarted with the same plugin object (an inline config, as
   `server.restart()` keeps it) has runs of its own: the old server's close,
   which Vite runs after the new server started, stops only the old server's.
