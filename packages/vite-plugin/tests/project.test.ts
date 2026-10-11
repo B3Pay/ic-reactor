@@ -620,7 +620,8 @@ describe("the live check", () => {
   // A rebuild of `vite build --watch` is the same run, so it may reuse a
   // pass. Not after a check of the canister failed: restoring the text that
   // passed must not stand in for a check, whether the network is down or the
-  // canister changed.
+  // canister changed. Each refused check retries with the agent's backoff,
+  // which takes about 5 s, past vitest's default timeout on a loaded machine.
   it("checks a text that passed again once a check of the canister failed, so restoring it is no pass", async () => {
     const canisters: Record<string, Canister> = {
       [LEDGER_ID]: { candid: WRITTEN },
@@ -673,7 +674,7 @@ describe("the live check", () => {
     expect(ic.requests).toHaveLength(8)
     expect(context.error).toHaveBeenCalledTimes(4)
     expect(lastError()).toContain(incompatible)
-  })
+  }, 30_000)
 
   it("warns on a compatible change, and generates", async () => {
     const ic = await fakeIc({
