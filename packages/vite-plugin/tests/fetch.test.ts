@@ -658,7 +658,8 @@ describe("canisters that name one didFile and different canisters", () => {
     )
     expect(ic.requests).toEqual([])
 
-    // A network that is not one is named as given.
+    // A network that is not one refuses its canister, and the fetch of the
+    // file it shares, naming the network as given.
     const invalid = await buildError(app, {
       canisters: {
         icp: { didFile: "icrc1.did", canisterId: LEDGER_ID, network },
@@ -670,7 +671,8 @@ describe("canisters that name one didFile and different canisters", () => {
       },
     })
     expect(invalid).toContain(
-      `icp_typo: ${LEDGER_ID} on "mainnet" (not a network))`
+      `- icp (icrc1.did), icp_typo (icrc1.did): "icp", "icp_typo" name icrc1.did, which is not fetched, ` +
+        `since "icp_typo" cannot be generated (icp_typo: network "mainnet" is not "ic", "local" or { host: "<http or https URL>" })`
     )
     expect(ic.requests).toEqual([])
 
@@ -1114,6 +1116,28 @@ describe("fetchCandid", () => {
       ok: false,
       message: `network "mainnet" is not "ic", "local" or { host: "<http or https URL>" }`,
     })
+    expect(asked).toEqual([])
+  })
+
+  // The plugin's options refuse such a value first; a fetch still says what
+  // it is rather than hand it to Principal.fromText, and never throws.
+  it("refuses a canisterId that is not text, or is empty, before any request", async () => {
+    const asked = refuseNetwork()
+    for (const [canisterId, shown] of [
+      [null, "null"],
+      ["", '""'],
+      [1n, "1n"],
+    ] as const) {
+      const result = await fetchCandid({
+        ...request,
+        canisterId: canisterId as never,
+        network: "ic",
+      })
+      expect(result).toEqual({
+        ok: false,
+        message: `canisterId is ${shown}, not a canister ID: give the canister's principal as text, or remove canisterId`,
+      })
+    }
     expect(asked).toEqual([])
   })
 

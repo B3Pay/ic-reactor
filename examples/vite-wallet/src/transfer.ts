@@ -3,7 +3,7 @@
 // `Err` of the ledger means.
 import { isPrincipal, principal } from "@candid-core/schema"
 import { parseUnits } from "@ic-reactor/core"
-import type { TransferArg, TransferError } from "./canisters/ledger.ts"
+import type { TransferArg, Icrc1TransferError } from "./canisters/ledger.ts"
 import { showAmount, type Token } from "./token.ts"
 
 export interface TransferForm {
@@ -86,7 +86,7 @@ export function newMemo(): Uint8Array {
 
 /** What the ledger's `Err` means, in a sentence. */
 export function describeTransferError(
-  err: TransferError,
+  err: Icrc1TransferError,
   token: Token
 ): string {
   switch (err.tag) {

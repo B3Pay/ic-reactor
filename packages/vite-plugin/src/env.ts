@@ -6,12 +6,18 @@
  */
 
 import { execFile } from "child_process"
+import { describeError } from "./describe-value.js"
 
 export interface IcEnvironment {
   environment: string
   rootKey: string
   proxyTarget: string
-  canisterIds: Record<string, string>
+  /**
+   * Each canister ID `icp` reported, by canister name. A `Map`: a name is any
+   * text, and `__proto__` or `constructor` is kept as given, where a plain
+   * object would reach `Object.prototype`.
+   */
+  canisterIds: Map<string, string>
   internetIdentityProvider?: string
 }
 
@@ -103,7 +109,7 @@ export async function getIcEnvironmentInfo(
       return { environment: null, diagnostics }
     }
 
-    const canisterIds: Record<string, string> = {}
+    const canisterIds = new Map<string, string>()
 
     // One at a time, as icp is run from a terminal. Each command reads the
     // project's state, and these are not known to be safe to run at once.
@@ -111,25 +117,28 @@ export async function getIcEnvironmentInfo(
       try {
         const canisterId = (
           await runIcp(
-            ["canister", "status", name, "-e", networkName, "-i"],
+            // `--` ends icp's options, so that a name that begins with `-`,
+            // which icp allows, is read as the canister's name and not as a
+            // flag: `--help` would print icp's help, and exit 0, for an ID.
+            ["canister", "status", "-e", networkName, "-i", "--", name],
             projectRoot
           )
         ).trim()
 
         if (canisterId) {
-          canisterIds[name] = canisterId
+          canisterIds.set(name, canisterId)
         }
       } catch (error) {
         // Canister might not exist or be deployed yet — expected for
         // internet_identity, which is added to the lookup list unconditionally.
         diagnostics.push(
-          `\`icp canister status ${name} -e ${networkName}\` failed: ${describeExecError(error)}`
+          `\`icp canister status -e ${networkName} -i -- ${name}\` failed: ${describeExecError(error)}`
         )
       }
     }
 
     const internetIdentityProvider =
-      !canisterIds.internet_identity &&
+      !canisterIds.get("internet_identity") &&
       isLocalhostGateway(proxyTarget) &&
       networkName !== "ic"
         ? localInternetIdentityProvider(proxyTarget)
@@ -155,17 +164,40 @@ export async function getIcEnvironmentInfo(
 }
 
 /**
+ * Whether the `ic_env` cookie can carry the canister `name`. The cookie joins
+ * its `<key>=<value>` entries with `&` and URI-encodes them as one text, as
+ * the asset canister writes it, and `@icp-sdk/core` reads it back by
+ * splitting that text at each `&`, and each entry at its first `=`. A name
+ * that holds `&` or `=` is read back as another key, and can take the place
+ * of another canister's entry or of the root key; text with a lone surrogate
+ * cannot be URI-encoded at all. Every name `icp` gives a canister (ASCII
+ * letters, digits, `_` and `-`) is one the cookie carries.
+ */
+export function cookieCarries(name: string): boolean {
+  if (name.includes("&") || name.includes("=")) return false
+  try {
+    encodeURIComponent(name)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Build the `ic_env` cookie string.
  * Format: `ic_root_key=<key>&PUBLIC_CANISTER_ID:<name>=<id>&...`
+ *
+ * @param canisterIds - Each canister's ID, by canister name, in the order the
+ * cookie lists them. Every name is one it can carry (`cookieCarries`).
  */
 export function buildIcEnvCookie(
-  canisterIds: Record<string, string>,
+  canisterIds: ReadonlyMap<string, string>,
   rootKey?: string,
   internetIdentityProvider?: string
 ): string {
   const parts = rootKey ? [`ic_root_key=${rootKey}`] : []
 
-  for (const [name, id] of Object.entries(canisterIds)) {
+  for (const [name, id] of canisterIds) {
     parts.push(`PUBLIC_CANISTER_ID:${name}=${id}`)
   }
 
@@ -192,7 +224,7 @@ function describeExecError(error: unknown): string {
     return trimmed
   }
 
-  return error instanceof Error ? error.message : String(error)
+  return describeError(error)
 }
 
 function isLocalhostGateway(proxyTarget: string): boolean {

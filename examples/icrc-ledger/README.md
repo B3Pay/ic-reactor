@@ -68,6 +68,12 @@ pnpm --filter icrc-ledger gen:check  # fails if src/canisters/ is stale
 ledger's block reads, `icp_ledger.did`; the minter's `ckbtc_minter.did`) by
 `@ic-reactor/vite-plugin` on every `vite dev` and `vite build` (`pnpm gen` runs
 `candid-core-cli gen` by hand). It is committed, and never edited.
+`icp_ledger.did` and `ckbtc_minter.did` are projections of the mainnet
+canisters' interfaces to the methods the app calls (`methods` in
+`vite.config.ts`), as the plugin wrote them from the live canisters. They are
+committed, so builds read them and make no request. `IC_REACTOR_FETCH=<name>`
+writes one again, and `IC_REACTOR_VERIFY=1 pnpm build` checks both against the
+live canisters.
 
 ## Before and after
 

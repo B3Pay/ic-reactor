@@ -141,6 +141,148 @@ same options, with the same types. No export is added (`ReadMethod` and
 does not change. The reads guide, the writes guide and the guide
 (`llms.txt`) say so.
 
+### @ic-reactor/vite-plugin
+
+#### Added
+
+- `methods` on a canister entry (#852, phase 2): a `didFile` fetched from its
+  `canisterId` is written as the projection of the live interface to those
+  methods and every type they reach (`candid-core-cli project`), so the
+  generated module has only them. A name the canister does not have fails the
+  canister, naming it and listing the canister's methods, and nothing is
+  written. A `didFile` on disk is never fetched for a change of `methods`: it
+  is compared with the list, with no network access, and a name the file
+  does not hold fails the canister, while a method the file holds that the
+  list does not name is a warning. Both say to fetch it again with
+  `IC_REACTOR_FETCH`. A file whose methods cannot be listed fails the
+  canister. Canisters that name one `didFile` share its fetch only
+  when they name one list, entries with no `canisterId` included (no
+  `methods` is the whole interface): with different lists, or a list that
+  cannot be projected to, nothing is fetched, before any request. A shared
+  `didFile` on disk is read by them all and compared with each list.
+- The live check: `verify: "live"` on an entry, or `IC_REACTOR_VERIFY=1` (or
+  `true`, `all`, or canister names separated by commas) for every entry with a
+  `canisterId`; `IC_REACTOR_VERIFY=0` (or `false`) turns it off for a run,
+  `verify: "live"` included. When a build or dev server starts, the plugin fetches the
+  certified interface and checks the `didFile` on disk against it
+  (`candid-core-cli check`). A method that is missing (`method_missing`),
+  changed mode (`mode_changed`) or is no longer compatible
+  (`method_incompatible`, with the path into its type) fails the canister,
+  naming the canister and each method, under `failOnError`. A compatible
+  change is a warning: `special_opt_rule` findings, and a change to the types
+  of the file's methods, told by the identities of the two projections to
+  them. A check that cannot be made fails the canister, and says to build
+  with `IC_REACTOR_VERIFY=0`. Under `vite dev` a failed check stands after a
+  save, whatever it changed, until a restart checks it again and it passes,
+  fetches the file again, or runs with the check off. A pass is reused only
+  within one build or dev server (a rebuild, another Vite environment), and
+  only until a check of that canister fails or cannot be made, or a fetch of
+  its file fails or reads another interface: a restart, or the next build of
+  the same plugin object, checks every canister again. `verify` takes only `"live"`, and any other
+  value fails the canister.
+- A run (the start of a build or dev server, or a save's regeneration) reads
+  each `didFile` once, and again after each step that runs `candid-core-cli`
+  on it (listing its methods, the live check, generation), since each reads
+  the file itself. A file written before the run is done with it, even saved
+  back, is not taken, and the run reports nothing its steps found of it.
+  `vite build` fails the canister for that reason alone
+  (`changed during the build`) and puts back a module the generator wrote
+  meanwhile; `vite dev` queues the file again, as a save, and says nothing of
+  the canister until that run does. A check of a file written before the
+  check was done, passed or failed, records no pass and neither sets nor
+  clears a failed check.
+- Every option value given is checked when the plugin is made, on every
+  canister, one without a `didFile` included, and whether or not a build
+  would use it: only an omitted one counts as not given. A canister whose
+  entry is not a plain object, or whose value is not one (`null`, `false`,
+  `0` or `""` from a JavaScript config, a `didFile` or `outDir` that is not a
+  path, a `canisterId` that is not the text of a principal, a `network`,
+  `methods` or `verify` that is none of their values, `verify: "live"` with
+  no `canisterId`, a getter that throws) fails, quoted as given whatever its
+  kind (a bigint, a symbol, an object that holds itself), before the plugin
+  fetches, writes, runs or requests anything to generate it or a `didFile` it
+  shares; the other canisters build. So does a canister whose module a
+  canister before it writes (two `.did` files of one name in one `outDir`), at
+  the start of each run, and a canister `IC_REACTOR_FETCH` or
+  `IC_REACTOR_VERIFY` names with no `canisterId`. Under `vite dev` a save of
+  the file of any of these, or its deletion, leaves the canister failed for
+  the same reason and runs nothing for it: a save neither generates it, over
+  another's module or not, nor takes it for fixed. Each is still named in the
+  `ic_env` cookie, but one whose name the cookie cannot carry (below); a
+  `canisterId` that is not one is left out of it, with a warning.
+  `failOnError` and `injectEnvironment` take `true` or `false`, and
+  `canisters` a plain object: any other value, `null` included, throws when
+  the config loads, instead of being read by truthiness or taken for none.
+  Every default is taken for an omitted option alone. Every key is checked
+  too, whatever its value: a key of an entry that is none of its fields (a
+  misspelled `didfile` or `canisterID`), or of a `network` of `{ host }`
+  other than `host`, fails the canister, and a key of the options that is
+  none of `canisters`, `injectEnvironment` and `failOnError` throws when the
+  config loads; the message names the option the key may misspell.
+- A dev server restarted with the same plugin object (an inline config, as
+  `server.restart()` keeps it) has runs of its own: the old server's close,
+  which Vite runs after the new server started, stops only the old server's.
+  The new server's overlay starts as the old one's, and a failed live check
+  still stands through the restart until a check of it passes.
+- Both run the app's `candid-core-cli` in a child process, as `gen` does, and
+  never the library in the Vite process. No export is added; the two fields
+  are new keys of `IcReactorPluginOptions["canisters"]`.
+
+#### Fixed
+
+- A canister's name is kept as given. One named `__proto__` (from a JSON
+  config, or a computed key) with no `canisterId` of its own lost the ID `icp`
+  reported for it to `Object.prototype`'s setter, so the `ic_env` cookie
+  carried none; and one named after a member of `Object.prototype`
+  (`__proto__`, `constructor`, `toString`, `hasOwnProperty`) with no ID found
+  that member and was never missing: no warning, no page load asked `icp`
+  again, and the cookie never carried its ID. A name that begins with `-`,
+  which `icp` allows, was handed to `icp canister status` where `icp` reads a
+  flag: it refused `-x`, and for `--help` printed its help, which the cookie
+  carried as the canister's ID. A name that holds `&` or `=`, which no name
+  `icp` gives a canister does, is left out of the cookie, with a warning: the
+  cookie joins its entries with them, so it was read back as other keys, one
+  of which could take the root key's place, and the app read no environment.
+- The options, `canisters`, each entry and a `network` of `{ host }` are read
+  only as plain objects. A `Map` or a `Promise` of canisters (a loader that
+  was not awaited) was read for its own keys, none, so the plugin started
+  with no canister without a word, and an entry given so was taken for a
+  canister only named in the cookie. Each is now refused, as any value that
+  is not one, and so is an instance of a class, which was read through its
+  class, or an object that inherits from another.
+- A key that is no option was never read, without a word. A misspelled
+  `canisters` started the plugin with no canister; a misspelled `didFile`
+  took its canister for one only named in the cookie, so nothing was
+  generated and the module of the last run stayed; a misspelled `canisterId`
+  generated it without its ID; and a `rootKey` beside a network's `host` was
+  read as nothing. Each is now refused, naming the option the key may
+  misspell: a key of the options throws when the config loads, and a key of
+  an entry or of its network fails the canister.
+- The generator names its module and envelope after the `.did`'s file name
+  with a final `.did` cut off, and nothing else, and reads only a file whose
+  name ends in `.did`. The plugin's check of two canisters writing one module
+  cut any extension, so a `didFile` such as `a/api.candid`, which the
+  generator cannot read, claimed `api.ts`, and a canister after it on
+  `c/api.did` was refused. The plugin now names these files by the
+  generator's rule, which a test compares with what the CLI reports.
+
+### Docs
+
+- The Vite plugin guide has two new sections, "Only the methods the app calls"
+  and "The live check", and says how the plugin runs candid-core for them.
+  Getting started points at `methods`.
+
+### Examples (not published)
+
+- `icrc-ledger`'s `icp_ledger.did` and `ckbtc_minter.did`, and `vite-wallet`'s
+  `ledger.did`, were trimmed by hand. Each is now the projection the plugin
+  wrote from the mainnet canister, and its entry names the `canisterId` and
+  `methods` it came from. The files stay committed, so the examples build
+  offline, and `IC_REACTOR_VERIFY=1` checks them against mainnet. The ICP
+  ledger's projection names its transfer error `Icrc1TransferError`, so
+  `vite-wallet` imports it by that name. `icp_ledger.envelope.json` does not
+  change; the minter's argument record is inline, as the canister declares it.
+
 ## core, react, vite-plugin 4.0.0-beta.4
 
 Prepared on 2026-10-10. It goes out under npm's `beta` dist-tag, as

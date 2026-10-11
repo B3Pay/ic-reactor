@@ -149,6 +149,9 @@ fetch it again, run `IC_REACTOR_FETCH=icp_ledger npx vite build` (names
 separated by commas, or `all`). The plugin needs `@icp-sdk/core` for the
 fetch, which the install above has already added. See
 [The Vite plugin](/v4/guides/vite-plugin/#fetch-a-did-from-a-live-canister).
+To keep only the methods the app calls, list them in `methods`, and the plugin
+writes the [projection](/v4/guides/vite-plugin/#only-the-methods-the-app-calls)
+of the interface to them.
 
 Without Vite, this script reads the same metadata and saves it to a file:
 

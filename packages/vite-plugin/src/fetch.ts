@@ -18,6 +18,7 @@
 
 import fs from "node:fs"
 import path from "node:path"
+import { describeError, describeValue } from "./describe-value.js"
 
 /**
  * Where a canister to fetch is: `"ic"` (mainnet, checked against the mainnet
@@ -71,7 +72,7 @@ function isLocalHostname(hostname: string): boolean {
 
 /**
  * `network` with its host and root key decided, or a message that says why it
- * is not a network.
+ * is not a network. Never throws, whatever `network` is.
  */
 export function resolveNetwork(
   network: CanisterNetwork | undefined
@@ -82,18 +83,19 @@ export function resolveNetwork(
   if (network === "local") {
     return { label: "local", host: LOCAL_HOST, fetchRootKey: true }
   }
-  const host =
-    typeof network === "object" && network !== null
-      ? (network as { host?: unknown }).host
-      : undefined
   let url: URL | undefined
+  let host: unknown
   try {
+    host =
+      typeof network === "object" && network !== null
+        ? (network as { host?: unknown }).host
+        : undefined
     url = typeof host === "string" ? new URL(host) : undefined
   } catch {
     url = undefined
   }
   if (!url || (url.protocol !== "http:" && url.protocol !== "https:")) {
-    return `network ${JSON.stringify(network)} is not "ic", "local" or { host: "<http or https URL>" }`
+    return `network ${describeValue(network)} is not "ic", "local" or { host: "<http or https URL>" }`
   }
   return {
     label: host as string,
@@ -108,6 +110,12 @@ export interface FetchRequest {
   network: CanisterNetwork | undefined
   /** The `didFile` as messages name it, relative to the Vite root. */
   didFile: string
+  /**
+   * Read for the live check of a `didFile` on disk, not to write a missing
+   * one: the messages then say how to turn the check off, where they say to
+   * write the file.
+   */
+  verify?: boolean
   timeoutMs?: number
   /** Aborting it stops the fetch, which then resolves as stopped. */
   signal?: AbortSignal
@@ -137,7 +145,7 @@ function firstLine(text: string): string {
  * Never rejects.
  */
 export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
-  const { canisterId, didFile, signal } = request
+  const { canisterId, didFile, signal, verify = false } = request
   const timeoutMs = request.timeoutMs ?? FETCH_TIMEOUT_MS
   const stopped: FetchResult = {
     ok: false,
@@ -146,6 +154,15 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
   }
   if (signal?.aborted) return stopped
 
+  // The plugin's options refuse one first (options.ts), but a fetch still
+  // never throws: a value that is not text is no canister ID, and costs no
+  // request.
+  if (typeof canisterId !== "string" || canisterId === "") {
+    return {
+      ok: false,
+      message: `canisterId is ${describeValue(canisterId)}, not a canister ID: give the canister's principal as text, or remove canisterId`,
+    }
+  }
   const network = resolveNetwork(request.network)
   if (typeof network === "string") return { ok: false, message: network }
   // A network named by its host is named once, where the host is.
@@ -153,7 +170,9 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
     network.label === network.host
       ? canisterId
       : `${canisterId} on ${network.label}`
-  const ownFile = `or write ${didFile} yourself, and the plugin reads it instead of fetching`
+  const ownFile = verify
+    ? `or set IC_REACTOR_VERIFY=0 to build without the live check of ${didFile}`
+    : `or write ${didFile} yourself, and the plugin reads it instead of fetching`
 
   let sdk: {
     agent: typeof import("@icp-sdk/core/agent")
@@ -169,8 +188,10 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
     return {
       ok: false,
       message:
-        `${didFile} does not exist, and fetching it from ${where} needs @icp-sdk/core, which could not be loaded ` +
-        `(${firstLine(error instanceof Error ? error.message : String(error))}). ` +
+        (verify
+          ? `the live check of ${didFile} reads the interface of ${where}, which needs @icp-sdk/core, and it could not be loaded `
+          : `${didFile} does not exist, and fetching it from ${where} needs @icp-sdk/core, which could not be loaded `) +
+        `(${firstLine(describeError(error))}). ` +
         `Install it next to @ic-reactor/core (npm install @icp-sdk/core), ${ownFile}.`,
     }
   }
@@ -189,7 +210,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
   } catch (error) {
     return {
       ok: false,
-      message: `canisterId "${canisterId}" is not a canister ID: ${firstLine(error instanceof Error ? error.message : String(error))}`,
+      message: `canisterId ${describeValue(canisterId)} is not a canister ID: ${firstLine(describeError(error))}`,
     }
   }
 
@@ -224,9 +245,11 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
       return {
         ok: false,
         message:
-          `${canisterId} on ${network.label} publishes no candid:service metadata, so it has no interface to fetch. ` +
-          `Get its .did from the canister's developers and save it as ${didFile}, ` +
-          `or check that canisterId and network name the canister you mean.`,
+          `${canisterId} on ${network.label} publishes no candid:service metadata, so it has no interface to ` +
+          (verify
+            ? `check ${didFile} against. Check that canisterId and network name the canister you mean, ${ownFile}.`
+            : `fetch. Get its .did from the canister's developers and save it as ${didFile}, ` +
+              `or check that canisterId and network name the canister you mean.`),
       }
     }
     return { ok: true, did, network: network.label }
@@ -251,7 +274,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
         ok: false,
         message:
           `could not reach ${network.host} to read the candid:service of ${where} ` +
-          `(${firstLine(describeCause(cause))}).${local} Or write ${didFile} yourself, and the plugin reads it instead of fetching.`,
+          `(${firstLine(describeCause(cause))}).${local} O${ownFile.slice(1)}.`,
       }
     }
     if (error instanceof AgentError && error.code instanceof HttpErrorCode) {
@@ -263,7 +286,9 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
           message:
             `${network.host} refused to read the candid:service of ${where} (HTTP ${status}: ${answer}). ` +
             `The canister keeps its interface private, and only its controllers can read it: ` +
-            `get the .did from the canister's developers and save it as ${didFile}.`,
+            (verify
+              ? `the live check cannot read it, so build with IC_REACTOR_VERIFY=0, and stop asking for the check of ${didFile} (remove its verify: "live", or its name from IC_REACTOR_VERIFY).`
+              : `get the .did from the canister's developers and save it as ${didFile}.`),
         }
       }
       if (/canister_not_found/.test(bodyText)) {
@@ -281,9 +306,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
           `Build again later, ${ownFile}.`,
       }
     }
-    const reason = firstLine(
-      error instanceof Error ? error.message : String(error)
-    )
+    const reason = firstLine(describeError(error))
     if (error instanceof TrustError) {
       return {
         ok: false,
@@ -315,13 +338,14 @@ function rootKeyOf(network: ResolvedNetwork): string {
 
 /** What `fetch` threw, with the network error Node keeps in its `cause`. */
 function describeCause(cause: unknown): string {
-  if (!(cause instanceof Error)) return String(cause)
+  if (!(cause instanceof Error)) return describeError(cause)
   const inner = (cause as Error & { cause?: unknown }).cause
-  const detail =
+  const detail: unknown =
     inner instanceof Error
-      ? ((inner as Error & { code?: unknown }).code ?? inner.message)
+      ? ((inner as Error & { code?: unknown }).code ?? describeError(inner))
       : undefined
-  return detail ? `${cause.message}: ${String(detail)}` : cause.message
+  if (!detail) return describeError(cause)
+  return `${describeError(cause)}: ${typeof detail === "string" ? detail : describeValue(detail)}`
 }
 
 /**

@@ -43,9 +43,14 @@ if (args[0] === "network" && args[1] === "status") {
   }
   process.stdout.write(JSON.stringify(state.network))
 } else if (args[0] === "canister" && args[1] === "status") {
-  const id = state.ids[args[2]]
+  // The canister: the argument after --, which ends the options.
+  const name = args[args.indexOf("--") + 1]
+  // Its own entries only: a canister named toString is one it does not know.
+  const id = args.includes("--") && Object.prototype.hasOwnProperty.call(state.ids, name)
+    ? state.ids[name]
+    : undefined
   if (!id) {
-    process.stderr.write("Error: canister " + args[2] + " is not deployed\\n")
+    process.stderr.write("Error: canister " + name + " is not deployed\\n")
     process.exit(1)
   }
   process.stdout.write(id + "\\n")

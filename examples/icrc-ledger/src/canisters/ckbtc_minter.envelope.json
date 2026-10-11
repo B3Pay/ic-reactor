@@ -5,16 +5,11 @@
       "service": 0
     },
     "canonicalization_profile": "candid-core-canon-1",
-    "declarations": [
-      {
-        "name": "GetBtcAddressArgs",
-        "type": 2
-      }
-    ],
+    "declarations": [],
     "format": "candid-core",
     "format_version": 1,
     "identities": {
-      "contract": "candid-core:contract:v1:sha256:bbcd88132eec890fee400a01272346372737ab06ccbf39e152f0540f3889565b",
+      "contract": "candid-core:contract:v1:sha256:318c534f5de259c21358bce29c6828838cd201f792f313e2e8fb35952d726491",
       "interface": "candid-core:interface:v1:sha256:9f403605107d9e4adddd8a85c4b7b87d0fa5528c74c303ee31a3676c509d6132"
     },
     "producer": {
