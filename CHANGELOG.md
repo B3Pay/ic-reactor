@@ -151,11 +151,11 @@ Such a call with the method's name written out compiled on beta.4 and threw a
 without a `TypeError`, and no longer compile:
 
 - **A fourth argument that may be `undefined`.** Its type, such as that of an
-  `opts?: QueryOptionsOptions` a wrapper passes on, does not say it is the
+  optional options parameter a wrapper passes on, does not say it is the
   opt-in, so for an update method the call does not compile, though it
   ran whenever the value was defined. Pass `{ update: "idempotent" }`, or a
-  value whose type is `QueryOptionsOptions`. For a query it compiles as
-  before.
+  value typed `{ readonly update: "idempotent" }` (the type is not
+  exported). For a query it compiles as before.
 - **A method whose type is not one name the `Actor` marks as a read.** The
   call compiles only when TypeScript can tell that the method is a
   `ReadMethod<A>`. It cannot for three kinds of method, each of which compiled

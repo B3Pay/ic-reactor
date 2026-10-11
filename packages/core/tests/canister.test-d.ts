@@ -178,7 +178,7 @@ expectTypeOf(ledger.icrc1_transfer).toEqualTypeOf<
 >()
 
 // Calls that compiled on beta.4 and no longer do, though each may run
-// without a TypeError (the CHANGELOG's Unreleased entry says so).
+// without a TypeError (the CHANGELOG's 4.0.0-beta.5 entry says so).
 //
 // A method whose type is not one name the Actor marks as a read. First, a
 // wrapper generic over the method name: TypeScript cannot tell that a method
