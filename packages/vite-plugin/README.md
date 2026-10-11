@@ -204,7 +204,9 @@ export default defineConfig({
   does not name is a warning. Both say to fetch the file again with
   `IC_REACTOR_FETCH=<name>`, which writes the projection to the new list. A
   file whose methods cannot be listed (it does not compile, or
-  `candid-core-cli` fails) fails the canister.
+  `candid-core-cli` fails) fails the canister. A file saved after its methods
+  were listed, before its module is generated, is not taken by that run (see
+  [Generation](#generation)).
 - Canisters that name one `didFile` to be fetched must name one list to share
   its fetch, and an entry with no `canisterId` counts too, since it generates
   from the same file: its `methods`, or the whole interface when it names
@@ -248,10 +250,12 @@ over `verify: "live"`.
   another Vite environment, until a check of that canister fails or cannot be
   made, or a fetch of its file fails or reads another interface: restoring a
   text that passed earlier then checks it again. A file saved while its
-  check runs (even saved back) records no pass, and the next rebuild checks
-  it. Each build and each start of the dev server, a restart included,
-  checks every canister again, so a restart finds a canister that changed
-  since its last check.
+  check runs (even saved back) records no pass and clears no failure, and is
+  not taken by that run: a build fails it, and `vite dev` queues it again as
+  a save, which makes no request (see [Generation](#generation)). Each build
+  and each start of the dev server, a restart included, checks every
+  canister again, so a restart finds a canister that changed since its last
+  check.
 - A save under `vite dev` never makes a request. So a canister whose check
   failed (or could not be made, as with the network down) stays failed after
   a save, whatever the save changed, and is not generated, until a start
@@ -294,6 +298,16 @@ affected.
 - Editing a `.did` regenerates only the canisters that name it. Saves that
   arrive while it runs collapse into one more run. `vite build --watch`
   regenerates a canister only when its `.did` text changed.
+- A run (the start of a build or dev server, or a save's regeneration) reads
+  each `didFile` once, and again after each step that runs `candid-core-cli`
+  on it (listing its methods, the live check, generation), since each of those
+  reads the file itself. A file written before the run is done with it (even
+  saved back) is not taken: the run does not generate it, and puts back a
+  module the generator wrote while the file was written. Under `vite build`
+  the canister fails
+  (`did/ledger.did changed during the build, after the build read it: … Build again.`);
+  under `vite dev` the file is queued again, as a save is. Only the `didFile`
+  is read again, not a `.did` it imports from its directory.
 - Deleting a `.did` under `vite dev` fails the canisters that name it at once,
   in the log and the overlay: the module it generated is still on disk, and
   would otherwise look current. Putting the file back regenerates them.
