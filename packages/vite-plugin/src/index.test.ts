@@ -75,6 +75,32 @@ describe("icReactor", () => {
     expect((plugin as any).config).toBeDefined()
   })
 
+  // A JavaScript config is not type-checked: read by truthiness, `0`, `""`
+  // or `null` would turn the option off and `"false"` would turn it on.
+  it("should refuse a failOnError that is not true or false", () => {
+    for (const value of [null, 0, "", "false"]) {
+      expect(() => createVitePlugin({ failOnError: value })).toThrow(
+        `[ic-reactor] failOnError is ${JSON.stringify(value)}, not true or false: ` +
+          "set it to true or false, or remove it for the default"
+      )
+    }
+    for (const value of [undefined, true, false]) {
+      expect(() => createVitePlugin({ failOnError: value })).not.toThrow()
+    }
+  })
+
+  it("should refuse an injectEnvironment that is not true or false", () => {
+    for (const value of [null, 0, "", "false"]) {
+      expect(() => createVitePlugin({ injectEnvironment: value })).toThrow(
+        `[ic-reactor] injectEnvironment is ${JSON.stringify(value)}, not true or false: ` +
+          "set it to true or false, or remove it for the default"
+      )
+    }
+    for (const value of [undefined, true, false]) {
+      expect(() => createVitePlugin({ injectEnvironment: value })).not.toThrow()
+    }
+  })
+
   describe("config", () => {
     /** Every canister id `icp` reports, by canister name. */
     type Deployed = Record<string, string>

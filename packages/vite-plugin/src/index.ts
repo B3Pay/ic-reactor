@@ -137,7 +137,8 @@ export interface IcReactorPluginOptions {
    *   the canister, under `failOnError`; a compatible change is logged as a
    *   warning. A check that cannot read the canister fails it too. Within
    *   one build or dev server, a rebuild or another Vite environment does not
-   *   check a text that passed again, until a check of that canister fails;
+   *   check a text that passed again, nor a file it just fetched, until a
+   *   check or a fetch of that canister fails or reads another interface;
    *   each new build or dev server, a restart included, checks again. Any
    *   value other than `"live"`, `false` included, fails the canister: remove
    *   `verify` for no check.
@@ -171,7 +172,8 @@ export interface IcReactorPluginOptions {
    *
    * Never injected in mode `"test"` (Vitest's), where `icp` is not run at all.
    *
-   * Default: true
+   * Default: true. Any value given other than `true` or `false` (`null`,
+   * `0`, `"false"`) throws when the config loads.
    */
   injectEnvironment?: boolean
   /**
@@ -182,7 +184,8 @@ export interface IcReactorPluginOptions {
    * worse than no build at all, while a dev server has to survive the broken
    * intermediate states of a `.did` file being edited: there the failure is
    * logged and shown in the browser's error overlay, and the server keeps
-   * serving.
+   * serving. Any value given other than `true` or `false` (`null`, `0`,
+   * `"false"`) throws when the config loads.
    */
   failOnError?: boolean
 }
@@ -242,6 +245,19 @@ function methodsProblem(methods: unknown): string | undefined {
 function verifyProblem(verify: unknown): string | undefined {
   if (verify === undefined || verify === "live") return undefined
   return `verify is ${JSON.stringify(verify)}, not "live": set it to "live" for the live check, or remove it for none`
+}
+
+/**
+ * Why a boolean option is not one, or `undefined` when it is omitted or a
+ * boolean. Read by truthiness, `0`, `""` or `null` would turn the option off
+ * and `"false"` would turn it on, without a word.
+ */
+function booleanProblem(name: string, value: unknown): string | undefined {
+  if (value === undefined || typeof value === "boolean") return undefined
+  return (
+    `[ic-reactor] ${name} is ${JSON.stringify(value) ?? String(value)}, not true or false: ` +
+    `set it to true or false, or remove it for the default`
+  )
 }
 
 /** `methods` once each, in name order (code point), as `project` lists them. */
@@ -344,6 +360,13 @@ const consoleLog: PluginLog = {
  * ```
  */
 export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
+  // Thrown, so that the config does not load: the option is the whole
+  // plugin's, and either value read by guess could ship stale bindings or
+  // drop the local environment.
+  const optionProblem =
+    booleanProblem("injectEnvironment", options.injectEnvironment) ??
+    booleanProblem("failOnError", options.failOnError)
+  if (optionProblem) throw new Error(optionProblem)
   const { canisters = {}, injectEnvironment = true, failOnError } = options
   const names = Object.keys(canisters)
 
@@ -1028,12 +1051,14 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * resolves the config again for each build and each dev server, a restart
    * (`r` and Enter, or `server.restart()`) included, which keeps this plugin
    * object for an inline config. So a restart checks every canister again,
-   * and finds a canister that changed since. A check of the run before that
-   * ends after the restart writes to that run's map, which nothing reads.
+   * and finds a canister that changed since. A fetch or a check of the run
+   * before that ends after the restart writes to that run's map (each
+   * `buildStart` takes the map when it is called), which nothing reads.
    *
-   * A check that failed, or could not be made, drops the canister's entry: a
-   * text that passed before is checked again, so restoring it cannot stand in
-   * for a check that passes now.
+   * A file this run fetched is the live interface, and passes as fetched. A
+   * check that failed, or could not be made, and a fetch that failed, drop
+   * the canister's entry: a text that passed before is checked again, so
+   * restoring it cannot stand in for a check that passes now.
    */
   let verified = new Map<string, string>()
 
@@ -1073,17 +1098,17 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    *   run must not pass for one that did.
    *
    * Files `fetched` (by `identify`) were just read from the live canister, and
-   * are not checked. Resolves with the canisters that cannot be generated, or
-   * `undefined` when `signal` was aborted first. Never rejects.
+   * are not checked. `passed` is the run's `verified`, read and written.
+   * Resolves with the canisters that cannot be generated, or `undefined`
+   * when `signal` was aborted first. Never rejects.
    */
   const verifyLive = async (
     wanted: Generated[],
     fetched: Set<string>,
+    passed: Map<string, string>,
     signal: AbortSignal
   ): Promise<Failure[] | undefined> => {
     const failures: Failure[] = []
-    // This run's map, even when a restart replaces it while the check runs.
-    const passed = verified
     // A canister that fails here passed no check now: what passed before is
     // checked again.
     const forget = (failed: Failure[]): Failure[] => {
@@ -1641,6 +1666,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       for (const canister of generated) this.addWatchFile(didPath(canister))
 
       const { signal } = stopper
+      // This run's passes, taken now: a restart starts another run (and
+      // replaces `verified`) before the old server closes, so a fetch or a
+      // check of this run that ends after it writes only to this run's map.
+      const passed = verified
       const failures = await serially(async () => {
         // A canister whose `.did` could not be fetched has nothing to
         // generate from: it fails with the reason, and the others generate.
@@ -1650,6 +1679,18 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         if (!fetchedNow) return undefined
         const { fetched } = fetchedNow
         const failures = [...fetchedNow.failures]
+        // A file just fetched is the live interface: it passes for the
+        // canisters that name it. A fetch that failed (or was refused) read
+        // nothing, so what passed before is checked again: restoring it
+        // cannot stand in for a fetch that showed another interface, or for
+        // a check that cannot be made.
+        for (const canister of generated) {
+          if (!fetched.has(identify(didPath(canister)))) continue
+          const text = readDid(canister)
+          if (text === undefined) passed.delete(canister.name)
+          else passed.set(canister.name, text)
+        }
+        for (const { canister } of failures) passed.delete(canister.name)
         const remaining = () => {
           const failed = new Set(failures.map(({ canister }) => canister))
           return generated.filter((canister) => !failed.has(canister))
@@ -1658,7 +1699,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         if (!mismatched) return undefined
         failures.push(...mismatched)
         const checking = remaining()
-        const unverified = await verifyLive(checking, fetched, signal)
+        const unverified = await verifyLive(checking, fetched, passed, signal)
         if (!unverified) return undefined
         for (const { name } of checking) liveFailures.delete(name)
         for (const failure of unverified) {

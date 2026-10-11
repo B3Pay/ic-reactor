@@ -3483,5 +3483,65 @@
     "file": "src/index.ts",
     "search": "    if (canisterId === undefined) continue\n    if (typeof canisterId === \"string\" && canisterId !== \"\") {\n",
     "replace": "    if (!canisterId) continue\n    if (canisterId) {\n"
+  },
+  {
+    "id": "did-verify-fetch-keeps-pass",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "checks a text that passed again once a fetch of its didFile read another interface",
+    "why": "a fetch that read another interface (the canister lost a method) leaves the canister's earlier pass cached, so restoring the text that passed skips the check and generates a method the plugin has just seen the canister no longer has",
+    "file": "src/index.ts",
+    "search": "          else passed.set(canister.name, text)\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-fetch-failure-keeps-pass",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "checks a text that passed again once a fetch of its didFile failed",
+    "why": "a fetch that failed (the network down) leaves the canister's earlier pass cached, so restoring the text that passed skips the check and generates it with no check made",
+    "file": "src/index.ts",
+    "search": "        for (const { canister } of failures) passed.delete(canister.name)\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-reset-dev-only",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that passed in one build runs again in the next build of the same plugin object",
+    "why": "the passes of the live check are reset only when a dev server starts, so a second build of one plugin object reuses the first build's pass and generates against a canister that changed since",
+    "file": "src/index.ts",
+    "search": "      verified = new Map()\n    },\n\n    configureServer(server) {\n      devServer = server\n",
+    "replace": "    },\n\n    configureServer(server) {\n      devServer = server\n      verified = new Map()\n"
+  },
+  {
+    "id": "did-verify-old-run-writes-new",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a run that ends after a restart started another passes nothing for the new run",
+    "why": "a check of the old run writes its pass to whichever map is current when it ends, so a check that ends after a restart's configResolved passes for the new run, whose buildStart then skips the check of a canister that changed",
+    "file": "src/index.ts",
+    "search": "        for (const canister of members) passed.set(canister.name, outcome.text)\n",
+    "replace": "        for (const canister of members) verified.set(canister.name, outcome.text)\n"
+  },
+  {
+    "id": "opt-fail-on-error-not-boolean",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse a failOnError that is not true or false",
+    "why": "failOnError read by truthiness: 0 or \"\" under vite build ships stale bindings with exit 0, \"false\" aborts, and null counts as omitted",
+    "file": "src/index.ts",
+    "search": " ??\n    booleanProblem(\"failOnError\", options.failOnError)\n",
+    "replace": "\n"
+  },
+  {
+    "id": "opt-inject-environment-not-boolean",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse an injectEnvironment that is not true or false",
+    "why": "injectEnvironment read by truthiness: null, 0 or \"\" turns the ic_env cookie and /api proxy off without a word",
+    "file": "src/index.ts",
+    "search": "    booleanProblem(\"injectEnvironment\", options.injectEnvironment) ??\n",
+    "replace": ""
   }
 ]

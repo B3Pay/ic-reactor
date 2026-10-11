@@ -336,13 +336,15 @@ cannot be reached, the canister keeps its interface private, a side does not
 compile) fails the canister too, with the fetch's own message and how to turn
 the check off (`IC_REACTOR_VERIFY=0`): a check that was asked for and did not
 run does not pass. A
-file the same build just fetched is the live interface, and is not checked.
+file the same build just fetched is the live interface: it is not checked, and
+passes as fetched.
 
 Within one build or dev server, a check that passed is not made again for the
 same text by a rebuild (`vite build --watch`) or by another Vite environment.
-A check of that canister that fails, or cannot be made, drops the pass, so
-restoring a text that passed earlier checks it again rather than standing in
-for a check. Each build and each start of the dev server, a restart included,
+A check of that canister that fails, or cannot be made, drops the pass, and
+so does a fetch of its file that fails or reads another interface. Restoring
+a text that passed earlier then checks it again rather than standing in for a
+check. Each build and each start of the dev server, a restart included,
 checks every canister again, so a restart finds a canister that changed since
 its last check.
 
@@ -407,7 +409,9 @@ A failed canister costs that canister, and nothing else:
   update, so a canister that is still broken can drop out of the overlay after
   you save another file. Its error stays in the terminal log, and a full
   reload shows the overlay again.
-- `failOnError` overrides either default.
+- `failOnError` overrides either default. It takes `true` or `false`: any
+  other value (`null`, `0`, `"false"`) throws when the config loads, as does
+  one for `injectEnvironment`.
 
 ### In CI
 

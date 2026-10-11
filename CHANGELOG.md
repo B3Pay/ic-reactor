@@ -176,13 +176,17 @@ does not change. The reads guide, the writes guide and the guide
   save, whatever it changed, until a restart checks it again and it passes,
   fetches the file again, or runs with the check off. A pass is reused only
   within one build or dev server (a rebuild, another Vite environment), and
-  only until a check of that canister fails or cannot be made: a restart
-  checks every canister again. `verify` takes only `"live"`, and any other
+  only until a check of that canister fails or cannot be made, or a fetch of
+  its file fails or reads another interface: a restart, or the next build of
+  the same plugin object, checks every canister again. `verify` takes only `"live"`, and any other
   value fails the canister.
 - Only an omitted `methods` or `canisterId` counts as not given: `null`,
   `false`, `0` or `""` from a JavaScript config fails the canister (for
   `canisterId`, the fetch or check that would use it, and it is left out of
   the `ic_env` cookie with a warning) instead of being read as omitted.
+  `failOnError` and `injectEnvironment` take `true` or `false`: any other
+  value (`null`, `0`, `"false"`) throws when the config loads, instead of
+  being read by truthiness.
 - Both run the app's `candid-core-cli` in a child process, as `gen` does, and
   never the library in the Vite process. No export is added; the two fields
   are new keys of `IcReactorPluginOptions["canisters"]`.

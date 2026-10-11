@@ -563,7 +563,39 @@ function spyOnConnections() {
   return { connections, plugin }
 }
 
-/** A plugin for one canister checked live, whose buildStart the test calls. */
+/**
+ * A `fetch` that answers as the network does, but holds the answer to the
+ * first `read_state` until `release` is called: a live check under way.
+ * `reached` resolves once that answer is held, read from the canister as it
+ * was then.
+ */
+function holdFirstReadState() {
+  const real = globalThis.fetch
+  let release!: () => void
+  const released = new Promise<void>((resolve) => (release = resolve))
+  let reach!: () => void
+  const reached = new Promise<void>((resolve) => (reach = resolve))
+  let holding = true
+  vi.stubGlobal(
+    "fetch",
+    async (input: string | URL | Request, init?: RequestInit) => {
+      const response = await real(input, init)
+      const url = input instanceof Request ? input.url : String(input)
+      if (holding && url.includes("/read_state")) {
+        holding = false
+        reach()
+        await released
+      }
+      return response
+    }
+  )
+  return { reached, release }
+}
+
+/**
+ * A plugin for one canister checked live, whose buildStart the test calls.
+ * `newRun` resolves the config again, as the next build or a restart does.
+ */
 function verifyingPlugin(app: App, host: string) {
   const plugin = icReactor({
     canisters: {
@@ -579,9 +611,16 @@ function verifyingPlugin(app: App, host: string) {
     buildStart: (this: unknown) => Promise<void>
   }
   const { logger, lines } = recordingLogger()
-  plugin.configResolved({ root: app.root, command: "build", logger })
+  const newRun = () =>
+    plugin.configResolved({ root: app.root, command: "build", logger })
+  newRun()
   const context = { addWatchFile: vi.fn(), error: vi.fn() }
-  return { buildStart: () => plugin.buildStart.call(context), context, lines }
+  return {
+    buildStart: () => plugin.buildStart.call(context),
+    newRun,
+    context,
+    lines,
+  }
 }
 
 describe("the live check", () => {
@@ -675,6 +714,135 @@ describe("the live check", () => {
     expect(context.error).toHaveBeenCalledTimes(4)
     expect(lastError()).toContain(incompatible)
   }, 30_000)
+
+  // A fetch reads the live interface, as a check does: a text that passed
+  // before must not stand for a canister the plugin has just read without
+  // it, nor for one it could not read.
+  it("checks a text that passed again once a fetch of its didFile read another interface", async () => {
+    const canisters: Record<string, Canister> = {
+      [LEDGER_ID]: { candid: WRITTEN },
+    }
+    const ic = await fakeIc(canisters)
+    const app = newApp({ "did/item.did": WRITTEN })
+    const { buildStart, context } = verifyingPlugin(app, ic.host)
+    const file = path.join(app.root, "did/item.did")
+    const withoutPut = liveWith(["  put : (nat) -> ();\n", ""])
+
+    await buildStart()
+    expect(context.error).not.toHaveBeenCalled()
+    expect(ic.requests).toHaveLength(2)
+
+    // The canister loses put, and the file is deleted: fetched, without put.
+    canisters[LEDGER_ID] = { candid: withoutPut }
+    fs.rmSync(file)
+    await buildStart()
+    expect(context.error).not.toHaveBeenCalled()
+    expect(read(app, "did/item.did")).toBe(withoutPut)
+    expect(ic.requests).toHaveLength(4)
+
+    // The text that passed, with put, is restored: checked again, it fails.
+    fs.writeFileSync(file, WRITTEN)
+    await buildStart()
+    expect(ic.requests).toHaveLength(6)
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(String(context.error.mock.lastCall?.[0])).toContain(
+      `item (did/item.did): the live check found ${LEDGER_ID} on ${ic.host} incompatible with did/item.did (1 error)`
+    )
+
+    // Fetched again, it passes as fetched: the next rebuild checks nothing.
+    fs.rmSync(file)
+    await buildStart()
+    expect(ic.requests).toHaveLength(8)
+    await buildStart()
+    expect(ic.requests).toHaveLength(8)
+    expect(context.error).toHaveBeenCalledTimes(1)
+  })
+
+  // Each refused fetch or check retries with the agent's backoff, about 5 s.
+  it("checks a text that passed again once a fetch of its didFile failed", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: WRITTEN } })
+    const app = newApp({ "did/item.did": WRITTEN })
+    const { buildStart, context } = verifyingPlugin(app, ic.host)
+    const file = path.join(app.root, "did/item.did")
+    const lastError = () => String(context.error.mock.lastCall?.[0])
+
+    await buildStart()
+    expect(context.error).not.toHaveBeenCalled()
+    expect(ic.requests).toHaveLength(2)
+
+    // The network goes down, and the file is deleted: the fetch fails.
+    const asked = refuseNetwork()
+    fs.rmSync(file)
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(lastError()).toContain(`could not reach ${ic.host}`)
+    const refused = asked.length
+    expect(refused).toBeGreaterThan(0)
+
+    // The text that passed is restored with the network still down: checked
+    // again, and still not made.
+    fs.writeFileSync(file, WRITTEN)
+    await buildStart()
+    expect(asked.length).toBeGreaterThan(refused)
+    expect(context.error).toHaveBeenCalledTimes(2)
+    expect(lastError()).toContain(`could not reach ${ic.host}`)
+  }, 30_000)
+
+  // Two builds of one plugin object (a programmatic build() called twice, or
+  // a framework's server build then client build) are two runs.
+  it("that passed in one build runs again in the next build of the same plugin object", async () => {
+    const canisters: Record<string, Canister> = {
+      [LEDGER_ID]: { candid: WRITTEN },
+    }
+    const ic = await fakeIc(canisters)
+    const app = newApp({ "did/item.did": WRITTEN })
+    const { buildStart, newRun, context } = verifyingPlugin(app, ic.host)
+
+    await buildStart()
+    expect(context.error).not.toHaveBeenCalled()
+    expect(ic.requests).toHaveLength(2)
+
+    // The canister loses put, the .did is unchanged, and the next build
+    // resolves its config.
+    canisters[LEDGER_ID] = { candid: liveWith(["  put : (nat) -> ();\n", ""]) }
+    newRun()
+    await buildStart()
+    expect(ic.requests).toHaveLength(4)
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(String(context.error.mock.lastCall?.[0])).toContain(
+      `incompatible with did/item.did (1 error)`
+    )
+  })
+
+  // Vite's restart resolves the new config, and runs the new server's
+  // buildStart, before it closes the old server: a check of the old run that
+  // ends after that must not pass for the new run.
+  it("of a run that ends after a restart started another passes nothing for the new run", async () => {
+    const canisters: Record<string, Canister> = {
+      [LEDGER_ID]: { candid: WRITTEN },
+    }
+    const ic = await fakeIc(canisters)
+    const app = newApp({ "did/item.did": WRITTEN })
+    const { buildStart, newRun, context } = verifyingPlugin(app, ic.host)
+    const { reached, release } = holdFirstReadState()
+
+    const before = buildStart()
+    // The old run read the canister as it was, and its check is under way.
+    await reached
+    canisters[LEDGER_ID] = { candid: liveWith(["  put : (nat) -> ();\n", ""]) }
+    newRun()
+    const after = buildStart()
+    release()
+    await before
+    await after
+
+    // The old run's check passed; the new run's checked again, and failed.
+    expect(ic.requests).toHaveLength(4)
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(String(context.error.mock.lastCall?.[0])).toContain(
+      `incompatible with did/item.did (1 error)`
+    )
+  })
 
   it("warns on a compatible change, and generates", async () => {
     const ic = await fakeIc({

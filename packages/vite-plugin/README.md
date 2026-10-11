@@ -242,11 +242,12 @@ over `verify: "live"`.
 - A check that cannot read the canister (the network, a private interface)
   fails the canister too, and says to build with `IC_REACTOR_VERIFY=0`: a
   check that was asked for and did not run does not pass.
-- A file the build just fetched is the live interface, and is not checked.
-  Within one build or dev server, a check that passed is not repeated for the
-  same text by a rebuild (`vite build --watch`) or by another Vite
-  environment, until a check of that canister fails or cannot be made:
-  restoring a text that passed earlier then checks it again. Each build and
+- A file the build just fetched is the live interface: it is not checked,
+  and passes as fetched. Within one build or dev server, a check that passed
+  is not repeated for the same text by a rebuild (`vite build --watch`) or by
+  another Vite environment, until a check of that canister fails or cannot be
+  made, or a fetch of its file fails or reads another interface: restoring a
+  text that passed earlier then checks it again. Each build and
   each start of the dev server, a restart included, checks every canister
   again, so a restart finds a canister that changed since its last check.
 - A save under `vite dev` never makes a request. So a canister whose check
@@ -309,7 +310,9 @@ A failed canister costs that canister, and nothing else:
   update, as it does for Vite's own errors, so a canister that is still broken
   can drop out of the browser's overlay after you save some other file. Its
   error stays in the terminal log, and a full reload shows the overlay again.
-- `failOnError` overrides either default.
+- `failOnError` overrides either default. It takes `true` or `false`: any
+  other value (`null`, `0`, `"false"`) throws when the config loads, as does
+  one for `injectEnvironment`.
 
 ### In CI
 
