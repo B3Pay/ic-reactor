@@ -53,8 +53,8 @@ bundle does not change.
 What an app on beta.4 does:
 
 1. Bump all three `@ic-reactor/*` packages to `4.0.0-beta.5` and the pair to
-   `0.4.0` and `0.3.0`, in one `npm install`. npm refuses a mismatched pair
-   (`ERESOLVE could not resolve`): core 4.0.0-beta.5 peers schema exactly
+   `0.4.0` and `0.3.0`, in one `npm install`. npm does not resolve a partial
+   upgrade cleanly: core 4.0.0-beta.5 peers schema exactly
    `0.4.0` and core 4.0.0-beta.4 exactly `0.3.0`; the Vite plugin
    4.0.0-beta.5 peers CLI exactly `0.3.0` and 4.0.0-beta.4 exactly `0.2.0`;
    and CLI 0.3.0 peers schema exactly `0.4.0`, CLI 0.2.0 exactly `0.3.0`. So
@@ -331,6 +331,8 @@ does not change. The reads guide, the writes guide and the guide
 
 ### Docs
 
+- The guide (`llms.txt`), react's guide and the skill say they apply to
+  4.0.0-beta.5 (#866).
 - Every install line and peer table names `@candid-core/schema` `0.4.0` and
   `@candid-core/cli` `0.3.0`: getting started, the Vite plugin guide, the
   core, react and Vite plugin pages, and the root and package READMEs.
