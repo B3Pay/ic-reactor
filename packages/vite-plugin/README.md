@@ -213,6 +213,12 @@ export default defineConfig({
   entries and the file, and their lists when they differ, or the list that
   cannot be projected to. A `didFile` on disk that is not fetched
   again is read by them all, and compared with the list of each as above.
+- Only an omitted `methods` is the whole interface. Any other value given
+  that is not a list of method names (`null`, `false`, `""`, an empty list,
+  or a name with a comma) fails the canister before any request. Likewise
+  only an omitted `canisterId` is none: one given as `""` or `null` fails the
+  fetch or check that would use it, and is left out of the `ic_env` cookie
+  with a warning.
 
 ### The live check
 
@@ -236,14 +242,21 @@ over `verify: "live"`.
 - A check that cannot read the canister (the network, a private interface)
   fails the canister too, and says to build with `IC_REACTOR_VERIFY=0`: a
   check that was asked for and did not run does not pass.
-- A file the build just fetched is the live interface, and is not checked. A
-  check that passed is not repeated for the same text by a later rebuild, and
-  a save under `vite dev` never makes a request. So a canister whose check
+- A file the build just fetched is the live interface, and is not checked.
+  Within one build or dev server, a check that passed is not repeated for the
+  same text by a rebuild (`vite build --watch`) or by another Vite
+  environment, until a check of that canister fails or cannot be made:
+  restoring a text that passed earlier then checks it again. Each build and
+  each start of the dev server, a restart included, checks every canister
+  again, so a restart finds a canister that changed since its last check.
+- A save under `vite dev` never makes a request. So a canister whose check
   failed (or could not be made, as with the network down) stays failed after
-  a save under `vite dev`, whatever the save changed, and is not generated,
-  until a start checks it again and the check passes, fetches the file again
+  a save, whatever the save changed, and is not generated, until a start
+  checks it again and the check passes, fetches the file again
   (`IC_REACTOR_FETCH`), or runs with the check off: restart the dev server
   (`r` and Enter in its terminal) to check again.
+- `verify` takes only `"live"`: any other value, `true` or `false` included,
+  fails the canister. Remove `verify` for no check.
 
 ## Generation
 
