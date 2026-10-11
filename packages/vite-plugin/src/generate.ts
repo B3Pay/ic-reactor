@@ -507,7 +507,7 @@ export function foldsCase(dir: string): boolean | undefined {
 /**
  * Each pair of `.did` and `outDir` of `canisters` once, as one generation,
  * and the generations refused, each with the one before it that writes its
- * module (`owner`). The CLI names a module after its `.did`, so
+ * module (`owner`). The CLI names a module after its `.did` (`outputsOf`), so
  * `a/ledger.did` and `b/ledger.did` in one `outDir` write one `ledger.ts`:
  * the first in the order of `canisters` keeps it. Whether `A.did` and `a.did`
  * collide depends on the filesystem of the `outDir`, which `folds` is asked
@@ -646,10 +646,48 @@ export async function generate(
   }
 }
 
-/** The module the CLI writes for `unit`: it names it after the `.did`. */
+/** The files `candid-core-cli gen` writes for one `.did`, as it names them. */
+export interface Outputs {
+  /** The `.did`'s file name without a final `.did`: `ledger` for `a/ledger.did`. */
+  stem: string
+  /** `<stem>.ts` in the output directory: the generated module. */
+  module: string
+  /** `<stem>.envelope.json` beside it: the contract envelope. */
+  envelope: string
+}
+
+/**
+ * The files `candid-core-cli gen` writes for the `.did` at `didFile` into
+ * `outDir`, named as the CLI names them: after the file's name with a final
+ * `.did` cut off, exactly, and nothing else cut. `a/ledger.did` writes
+ * `ledger.ts` and `ledger.envelope.json`, `ledger.v2.did` writes
+ * `ledger.v2.ts`, and a file named `.did` writes `.ts`. A name that does not
+ * end in `.did` (`api.candid`, `api.DID`) keeps its whole name
+ * (`api.candid.ts`), and the CLI reads no such file: it fails its entry
+ * (`did_source_not_found`) and writes nothing.
+ *
+ * The plugin's one rule for these names: the modules canisters would write
+ * (`moduleCollisions`, `generate`) and the files a run puts back when it takes
+ * nothing of a `.did` written while the generator read it are both named by
+ * it. The rule is the CLI's own (its `stemOf`), and a test compares it with
+ * the paths the CLI reports.
+ */
+export function outputsOf({
+  didFile,
+  outDir,
+}: {
+  didFile: string
+  outDir: string
+}): Outputs {
+  const stem = path.basename(didFile).replace(/\.did$/, "")
+  return {
+    stem,
+    module: path.join(outDir, `${stem}.ts`),
+    envelope: path.join(outDir, `${stem}.envelope.json`),
+  }
+}
+
+/** The module the CLI writes for `unit` (see `outputsOf`). */
 function moduleOf(unit: Unit): string {
-  return path.join(
-    unit.outDir,
-    path.basename(unit.didFile, path.extname(unit.didFile)) + ".ts"
-  )
+  return outputsOf(unit).module
 }

@@ -12,7 +12,12 @@ export interface IcEnvironment {
   environment: string
   rootKey: string
   proxyTarget: string
-  canisterIds: Record<string, string>
+  /**
+   * Each canister ID `icp` reported, by canister name. A `Map`: a name is any
+   * text, and `__proto__` or `constructor` is kept as given, where a plain
+   * object would reach `Object.prototype`.
+   */
+  canisterIds: Map<string, string>
   internetIdentityProvider?: string
 }
 
@@ -104,7 +109,7 @@ export async function getIcEnvironmentInfo(
       return { environment: null, diagnostics }
     }
 
-    const canisterIds: Record<string, string> = {}
+    const canisterIds = new Map<string, string>()
 
     // One at a time, as icp is run from a terminal. Each command reads the
     // project's state, and these are not known to be safe to run at once.
@@ -118,7 +123,7 @@ export async function getIcEnvironmentInfo(
         ).trim()
 
         if (canisterId) {
-          canisterIds[name] = canisterId
+          canisterIds.set(name, canisterId)
         }
       } catch (error) {
         // Canister might not exist or be deployed yet — expected for
@@ -130,7 +135,7 @@ export async function getIcEnvironmentInfo(
     }
 
     const internetIdentityProvider =
-      !canisterIds.internet_identity &&
+      !canisterIds.get("internet_identity") &&
       isLocalhostGateway(proxyTarget) &&
       networkName !== "ic"
         ? localInternetIdentityProvider(proxyTarget)
@@ -158,15 +163,18 @@ export async function getIcEnvironmentInfo(
 /**
  * Build the `ic_env` cookie string.
  * Format: `ic_root_key=<key>&PUBLIC_CANISTER_ID:<name>=<id>&...`
+ *
+ * @param canisterIds - Each canister's ID, by canister name, in the order the
+ * cookie lists them.
  */
 export function buildIcEnvCookie(
-  canisterIds: Record<string, string>,
+  canisterIds: ReadonlyMap<string, string>,
   rootKey?: string,
   internetIdentityProvider?: string
 ): string {
   const parts = rootKey ? [`ic_root_key=${rootKey}`] : []
 
-  for (const [name, id] of Object.entries(canisterIds)) {
+  for (const [name, id] of canisterIds) {
     parts.push(`PUBLIC_CANISTER_ID:${name}=${id}`)
   }
 

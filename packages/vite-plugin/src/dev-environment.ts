@@ -58,8 +58,11 @@ export interface LocalEnvironmentState {
 export interface LocalEnvironmentOptions {
   /** The configured canisters' names. */
   canisterNames: string[]
-  /** IDs set in the plugin config. They win over detected ones. */
-  configuredCanisterIds: Record<string, string>
+  /**
+   * IDs set in the plugin config, by canister name. They win over detected
+   * ones.
+   */
+  configuredCanisterIds: ReadonlyMap<string, string>
   /** The directory `icp` runs in. */
   projectRoot: string
   /** Receives each line that explains why an `icp` command failed. */
@@ -109,12 +112,16 @@ export function createLocalEnvironment(
   const toState = (
     environment: IcEnvironment | null
   ): LocalEnvironmentState => {
-    const canisterIds = {
-      ...environment?.canisterIds,
+    // By name in a `Map`, as everywhere a canister's name is a key: a canister
+    // named `__proto__` keeps its ID, and one named `toString` or
+    // `constructor` without one is missing, where a plain object would find
+    // `Object.prototype`'s.
+    const canisterIds = new Map([
+      ...(environment?.canisterIds ?? []),
       ...configuredCanisterIds,
-    }
+    ])
     const missingCanisterIds = requiredNames.filter(
-      (name) => !canisterIds[name]
+      (name) => !canisterIds.get(name)
     )
 
     let cookie: string | undefined
@@ -128,7 +135,7 @@ export function createLocalEnvironment(
       // Env-only mode: there are no canister IDs to carry, but the app can
       // still sign in with icp-cli's built-in Internet Identity.
       cookie = buildIcEnvCookie(
-        {},
+        new Map(),
         undefined,
         DEFAULT_INTERNET_IDENTITY_PROVIDER
       )
@@ -200,13 +207,13 @@ function mergeDetections(
 ): IcEnvironment | null {
   if (!next) return previous
   if (!previous || previous.rootKey !== next.rootKey) return next
-  const canisterIds = { ...previous.canisterIds, ...next.canisterIds }
+  const canisterIds = new Map([...previous.canisterIds, ...next.canisterIds])
   return {
     ...next,
     canisterIds,
     // The built-in provider stands in only for a project that has no
     // internet_identity canister, as getIcEnvironmentInfo decides it.
-    internetIdentityProvider: canisterIds.internet_identity
+    internetIdentityProvider: canisterIds.get("internet_identity")
       ? undefined
       : next.internetIdentityProvider,
   }

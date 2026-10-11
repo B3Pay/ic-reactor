@@ -3483,8 +3483,8 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "  } else if (canisterId !== undefined && canisterIdWrong === undefined) {\n    read.configuredCanisterIds[name] = canisterId as string\n",
-        "replace": "  } else if (canisterId) {\n    read.configuredCanisterIds[name] = canisterId as string\n"
+        "search": "  } else if (canisterId !== undefined && canisterIdWrong === undefined) {\n    read.configuredCanisterIds.set(name, canisterId as string)\n",
+        "replace": "  } else if (canisterId) {\n    read.configuredCanisterIds.set(name, canisterId as string)\n"
       },
       {
         "file": "src/options.ts",
@@ -3590,7 +3590,7 @@
     "testName": "fails the build when saved as the generator starts, and puts the module back as it was",
     "why": "a module generated while its didFile was written is left as the generator wrote it, from a text the run never read",
     "file": "src/index.ts",
-    "search": "          putBack(before, outputsOf(members[0]))\n",
+    "search": "          putBack(before, outputFiles(members[0]))\n",
     "replace": ""
   },
   {
@@ -4008,8 +4008,8 @@
     "testName": "should leave a configured canisterId that is not one to icp, and warn",
     "why": "the cookie takes any text for a configured canister ID, so text that is no principal is handed to the app over the ID icp reports",
     "file": "src/options.ts",
-    "search": "  } else if (canisterId !== undefined && canisterIdWrong === undefined) {\n    read.configuredCanisterIds[name] = canisterId as string\n",
-    "replace": "  } else if (typeof canisterId === \"string\" && canisterId !== \"\") {\n    read.configuredCanisterIds[name] = canisterId as string\n"
+    "search": "  } else if (canisterId !== undefined && canisterIdWrong === undefined) {\n    read.configuredCanisterIds.set(name, canisterId as string)\n",
+    "replace": "  } else if (typeof canisterId === \"string\" && canisterId !== \"\") {\n    read.configuredCanisterIds.set(name, canisterId as string)\n"
   },
   {
     "id": "principal-text-no-round-trip",
@@ -4050,5 +4050,172 @@
     "file": "src/describe-value.ts",
     "search": "      const text = domExceptionMessage?.call(error)\n",
     "replace": "      const text = (error as Error).message\n"
+  },
+  {
+    "id": "opt-canisters-null-defaulted",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse canisters, or the options, given as null or any value that is not an object, and take only an omitted one for none",
+    "why": "canisters given as null taken for none by a nullish default, so the plugin starts with no canister: nothing generated, none in the ic_env cookie, and the bindings of the last run left as they were",
+    "file": "src/options.ts",
+    "search": "  const canisters = givenCanisters === undefined ? {} : givenCanisters\n",
+    "replace": "  const canisters = givenCanisters ?? {}\n"
+  },
+  {
+    "id": "opt-options-null-defaulted",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse canisters, or the options, given as null or any value that is not an object, and take only an omitted one for none",
+    "why": "icReactor(null) taken for no options by a nullish default, instead of refused as options that are not an object",
+    "file": "src/options.ts",
+    "search": "  const options = given === undefined ? {} : given\n",
+    "replace": "  const options = given ?? {}\n"
+  },
+  {
+    "id": "opt-did-file-null-omitted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "null given for any option of a canister fails it, naming the option, and only an omitted option takes its default",
+    "why": "a didFile given as null read as omitted, so its canister is taken for one only named in the cookie, and not refused",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "  const hasDidFile = didFile !== undefined || didFileThrew\n",
+        "replace": "  const hasDidFile = didFile != null || didFileThrew\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "  if (didFile !== undefined && !isPath(didFile)) {\n",
+        "replace": "  if (didFile != null && !isPath(didFile)) {\n"
+      }
+    ]
+  },
+  {
+    "id": "opt-out-dir-null-defaulted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "null given for any option of a canister fails it, naming the option, and only an omitted option takes its default",
+    "why": "an outDir given as null read as omitted, by a nullish default, so its canister generates into src/canisters instead of being refused",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "  if (outDir !== undefined && !isPath(outDir)) {\n",
+        "replace": "  if (outDir != null && !isPath(outDir)) {\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "    outDir: outDir === undefined ? DEFAULT_OUT_DIR : (outDir as string),\n",
+        "replace": "    outDir: (outDir as string | null | undefined) ?? DEFAULT_OUT_DIR,\n"
+      }
+    ]
+  },
+  {
+    "id": "opt-network-null-defaulted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "null given for any option of a canister fails it, naming the option, and only an omitted option takes its default",
+    "why": "a network given as null read as omitted, so its canister generates as one on mainnet instead of being refused",
+    "file": "src/options.ts",
+    "search": "  if (network !== undefined) {\n    const resolved = resolveNetwork(network)\n",
+    "replace": "  if (network != null) {\n    const resolved = resolveNetwork(network)\n"
+  },
+  {
+    "id": "env-configured-id-by-assignment",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should give a canister named __proto__ or constructor its configured canisterId over the one icp reports",
+    "why": "the canister IDs merged into a plain object by assignment on their way to the cookie, so a canister named __proto__ loses its configured ID to the prototype's setter, and the cookie carries none for it",
+    "file": "src/dev-environment.ts",
+    "search": "    const canisterIds = new Map([\n      ...(environment?.canisterIds ?? []),\n      ...configuredCanisterIds,\n    ])\n",
+    "replace": "    const merged: Record<string, string> = {}\n    for (const [name, id] of [\n      ...(environment?.canisterIds ?? []),\n      ...configuredCanisterIds,\n    ]) {\n      merged[name] = id\n    }\n    const canisterIds = new Map(Object.entries(merged))\n"
+  },
+  {
+    "id": "env-inherited-name-not-missing",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should ask icp for a canister named __proto__, constructor, toString or hasOwnProperty until it has an ID, and give the cookie the one icp reports",
+    "why": "a canister's ID looked up in a plain object, so a canister named __proto__, constructor, toString or hasOwnProperty finds Object.prototype's member and is never missing: no warning, and no page load asks icp again",
+    "file": "src/dev-environment.ts",
+    "search": "      (name) => !canisterIds.get(name)\n",
+    "replace": "      (name) => !Object.fromEntries(canisterIds)[name]\n"
+  },
+  {
+    "id": "env-detected-id-by-assignment",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should ask icp for a canister named __proto__, constructor, toString or hasOwnProperty until it has an ID, and give the cookie the one icp reports",
+    "why": "the IDs icp reports collected in a plain object by assignment, so the ID of a canister named __proto__ goes to the prototype's setter and never reaches the cookie",
+    "edits": [
+      {
+        "file": "src/env.ts",
+        "search": "    const canisterIds = new Map<string, string>()\n",
+        "replace": "    const found: Record<string, string> = {}\n"
+      },
+      {
+        "file": "src/env.ts",
+        "search": "          canisterIds.set(name, canisterId)\n",
+        "replace": "          found[name] = canisterId\n"
+      },
+      {
+        "file": "src/env.ts",
+        "search": "      !canisterIds.get(\"internet_identity\") &&\n",
+        "replace": "      !found.internet_identity &&\n"
+      },
+      {
+        "file": "src/env.ts",
+        "search": "        rootKey,\n        proxyTarget,\n        canisterIds,\n",
+        "replace": "        rootKey,\n        proxyTarget,\n        canisterIds: new Map(Object.entries(found)),\n"
+      }
+    ]
+  },
+  {
+    "id": "putback-own-name-rule",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved as the generator starts, and puts back the files the generator names, whatever the file's name",
+    "why": "the put-back names the module and envelope by a rule of its own, which does not cut a .did that is the whole file name, so for a didFile named .did it puts back .did.ts and leaves the .ts the generator wrote from a text the run never read",
+    "file": "src/index.ts",
+    "search": "    const { module, envelope } = outputsOf(generationOf(canister))\n    return [module, envelope]\n",
+    "replace": "    const outDir = path.resolve(projectRoot, canister.outDir)\n    const stem = path.basename(didPath(canister), \".did\")\n    return [\n      path.join(outDir, `${stem}.ts`),\n      path.join(outDir, `${stem}.envelope.json`),\n    ]\n"
+  },
+  {
+    "id": "collision-own-name-rule",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "is told by the module the generator names: a file whose name does not end in .did claims no module of a .did's, and fails with the generator's own message",
+    "why": "the plan of the modules names one by a rule of its own that cuts any extension, so a/api.candid, which the generator cannot read, claims api.ts, and the canisters of b/api.DID and c/api.did are refused for it",
+    "file": "src/generate.ts",
+    "search": "function moduleOf(unit: Unit): string {\n  return outputsOf(unit).module\n}\n",
+    "replace": "function moduleOf(unit: Unit): string {\n  return path.join(\n    unit.outDir,\n    path.basename(unit.didFile, path.extname(unit.didFile)) + \".ts\"\n  )\n}\n"
+  },
+  {
+    "id": "outputs-stem-extname",
+    "package": "vite-plugin",
+    "test": "tests/output-collision.test.ts",
+    "testName": "are named as candid-core-cli gen names them, whatever the file's name",
+    "why": "the generator's output named after the .did's name with any extension cut, where the CLI cuts only a final .did: api.candid named api.ts, and .did named .did.ts",
+    "file": "src/generate.ts",
+    "search": "  const stem = path.basename(didFile).replace(/\\.did$/, \"\")\n",
+    "replace": "  const stem = path.basename(didFile, path.extname(didFile))\n"
+  },
+  {
+    "id": "outputs-stem-whole-name-kept",
+    "package": "vite-plugin",
+    "test": "tests/output-collision.test.ts",
+    "testName": "are named as candid-core-cli gen names them, whatever the file's name",
+    "why": "the generator's output named with path.basename's suffix, which does not cut a .did that is the whole file name: .did named .did.ts, where the CLI writes .ts",
+    "file": "src/generate.ts",
+    "search": "  const stem = path.basename(didFile).replace(/\\.did$/, \"\")\n",
+    "replace": "  const stem = path.basename(didFile, \".did\")\n"
+  },
+  {
+    "id": "opt-canisters-copied-by-assignment",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "is any text: canisters named __proto__, constructor, toString or hasOwnProperty are read, generated and reported as any other",
+    "why": "the canisters copied by assignment before they are listed, so a canister named __proto__ goes to the copy's prototype setter and is never read: not generated, and not reported",
+    "file": "src/options.ts",
+    "search": "    keys = Object.keys(canisters)\n",
+    "replace": "    keys = Object.keys(Object.assign({}, canisters))\n"
   }
 ]

@@ -43,7 +43,10 @@ if (args[0] === "network" && args[1] === "status") {
   }
   process.stdout.write(JSON.stringify(state.network))
 } else if (args[0] === "canister" && args[1] === "status") {
-  const id = state.ids[args[2]]
+  // Its own entries only: a canister named toString is one it does not know.
+  const id = Object.prototype.hasOwnProperty.call(state.ids, args[2])
+    ? state.ids[args[2]]
+    : undefined
   if (!id) {
     process.stderr.write("Error: canister " + args[2] + " is not deployed\\n")
     process.exit(1)

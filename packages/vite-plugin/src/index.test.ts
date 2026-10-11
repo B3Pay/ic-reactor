@@ -107,8 +107,44 @@ describe("icReactor", () => {
     }
   })
 
+  // Only an omitted option takes its default. `canisters: null` read as none
+  // started the plugin with no canister: nothing generated, none in the
+  // cookie, and the bindings of the last run left as they were.
+  it("should refuse canisters, or the options, given as null or any value that is not an object, and take only an omitted one for none", () => {
+    const given: Array<[unknown, string]> = [
+      [null, "null"],
+      [0, "0"],
+      ["", '""'],
+      ["ledger", '"ledger"'],
+      [false, "false"],
+      [[], "[]"],
+      [() => ({}), "a function"],
+      [1n, "1n"],
+    ]
+    for (const [value, quoted] of given) {
+      expect(() => createVitePlugin({ canisters: value })).toThrow(
+        `[ic-reactor] canisters is ${quoted}, not an object of canisters by name: ` +
+          "give each canister's options under its name, or remove canisters"
+      )
+    }
+    expect(() => createVitePlugin(null)).toThrow(
+      "[ic-reactor] the options are null, not an object: give icReactor() an object of options, or none"
+    )
+    for (const options of [
+      undefined,
+      {},
+      { canisters: undefined },
+      { canisters: {} },
+    ]) {
+      expect(() => createVitePlugin(options)).not.toThrow()
+    }
+  })
+
   describe("config", () => {
-    /** Every canister id `icp` reports, by canister name. */
+    /**
+     * Every canister id `icp` reports, by canister name: its own properties
+     * only, so that a canister named `toString` is one `icp` does not know.
+     */
     type Deployed = Record<string, string>
 
     /**
@@ -127,7 +163,9 @@ describe("icReactor", () => {
         if (args[0] === "network") {
           return network instanceof Error ? network : JSON.stringify(network)
         }
-        return deployed[args[2]] ?? new Error(`canister ${args[2]} not found`)
+        return Object.prototype.hasOwnProperty.call(deployed, args[2])
+          ? deployed[args[2]]
+          : new Error(`canister ${args[2]} not found`)
       })
 
     /** How many `icp` commands the plugin has run. */
@@ -224,6 +262,74 @@ describe("icReactor", () => {
         "PUBLIC_CANISTER_ID%3Atest_canister%3Dyq4ns-hyaaa-aaaap-akbna-cai"
       )
       expect(cookie).not.toContain("local-cli-canister-id")
+    })
+
+    // A canister's name is any text, and a JSON config can name one
+    // __proto__. Kept by name in a plain object, its configured ID went to
+    // the prototype's setter instead, and the cookie carried no ID for it.
+    it("should give a canister named __proto__ or constructor its configured canisterId over the one icp reports", async () => {
+      answerIcp(
+        Object.fromEntries([
+          ["__proto__", "icp-proto-id"],
+          ["constructor", "icp-constructor-id"],
+        ])
+      )
+
+      const plugin = createVitePlugin({
+        canisters: JSON.parse(
+          '{"__proto__": {"canisterId": "ryjl3-tyaaa-aaaaa-aaaba-cai"},' +
+            ' "constructor": {"canisterId": "mqygn-kiaaa-aaaar-qaadq-cai"}}'
+        ),
+      })
+      const { middleware } = await serveWithEnvironment(plugin)
+
+      const cookie = await request(middleware)
+      expect(cookie).toContain(
+        "PUBLIC_CANISTER_ID%3A__proto__%3Dryjl3-tyaaa-aaaaa-aaaba-cai"
+      )
+      expect(cookie).toContain(
+        "PUBLIC_CANISTER_ID%3Aconstructor%3Dmqygn-kiaaa-aaaar-qaadq-cai"
+      )
+      expect(cookie).not.toContain("icp-proto-id")
+      expect(cookie).not.toContain("icp-constructor-id")
+    })
+
+    // Looked up in a plain object, a canister named after a member of
+    // Object.prototype found that member, so it was never missing: no
+    // warning, no page load asked icp again, and the cookie never carried its
+    // ID. __proto__'s ID, which icp reported, went to the prototype's setter.
+    it("should ask icp for a canister named __proto__, constructor, toString or hasOwnProperty until it has an ID, and give the cookie the one icp reports", async () => {
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {})
+      vi.spyOn(console, "log").mockImplementation(() => {})
+      const names = ["__proto__", "constructor", "toString", "hasOwnProperty"]
+      answerIcp({})
+      const plugin = createVitePlugin({
+        canisters: JSON.parse(
+          '{"__proto__": {}, "constructor": {}, "toString": {}, "hasOwnProperty": {}}'
+        ),
+      })
+      const { middleware } = await serveWithEnvironment(plugin)
+
+      expect(consoleWarnSpy).toHaveBeenCalledOnce()
+      expect(consoleWarnSpy.mock.calls[0][0]).toContain(
+        'no canister ID could be resolved for "__proto__", "constructor", "toString", "hasOwnProperty"'
+      )
+      expect(await request(middleware)).not.toContain("PUBLIC_CANISTER_ID")
+
+      // Deployed: the next page load asks icp, and the cookie carries each ID.
+      answerIcp(
+        Object.fromEntries(
+          names.map((name, index) => [name, `icp-id-${index}`])
+        )
+      )
+      const cookie = await request(middleware)
+      names.forEach((name, index) =>
+        expect(cookie).toContain(
+          `PUBLIC_CANISTER_ID%3A${name}%3Dicp-id-${index}`
+        )
+      )
     })
 
     // A JavaScript config is not type-checked: a configured canisterId that

@@ -1611,6 +1611,81 @@ describe("a didFile written while a run reads it", () => {
     expect(module()).toMatch(/\bput\b/)
   })
 
+  // The run put back files a rule of its own named, where the generator
+  // names its output after the file's name with a final `.did` cut off, and
+  // nothing else (`outputsOf`). For a file named `.did` the generator writes
+  // `.ts`, and the rule named `.did.ts`: the module of the text saved stayed.
+  // The generator reads no file whose name does not end in `.did`
+  // (`api.candid`, `api.DID`), and writes nothing for it: what was there,
+  // under its name or under a name with the whole extension cut, stays.
+  it("fails the build when saved as the generator starts, and puts back the files the generator names, whatever the file's name", async () => {
+    const withoutMaybe = liveWith(["  maybe : () -> (opt nat) query;\n", ""])
+    const names = [
+      ["did/.did", ""],
+      ["did/api.candid", "api.candid"],
+      ["did/api.DID", "api.DID"],
+    ] as const
+    for (const [didFile, stem] of names) {
+      const app = newApp({ [didFile]: WRITTEN })
+      const cli = hookCli(app)
+      const { buildStart, context } = drivenPlugin(app, {
+        canisters: { item: { didFile } },
+      })
+      const file = path.join(app.root, didFile)
+      const outputs = [
+        `src/canisters/${stem}.ts`,
+        `src/canisters/${stem}.envelope.json`,
+      ]
+      const lastError = () => String(context.error.mock.lastCall?.[0])
+
+      await buildStart()
+      if (stem === "") {
+        expect(context.error).not.toHaveBeenCalled()
+        expect(read(app, outputs[0])).toMatch(/\bmaybe\b/)
+      } else {
+        // The generator's own refusal, which writes nothing: files of an
+        // earlier run are made here, under its names and under the names
+        // that cut the whole extension.
+        expect(lastError()).toContain(
+          `did_source_not_found: cannot read ${file}: no such .did file`
+        )
+        for (const output of [
+          ...outputs,
+          "src/canisters/api.ts",
+          "src/canisters/api.envelope.json",
+        ]) {
+          fs.mkdirSync(path.join(app.root, "src/canisters"), {
+            recursive: true,
+          })
+          fs.writeFileSync(path.join(app.root, output), `// ${output}\n`)
+        }
+      }
+      const outDir = path.join(app.root, "src/canisters")
+      const before = new Map(
+        fs
+          .readdirSync(outDir)
+          .map((name) => [name, read(app, `src/canisters/${name}`)])
+      )
+
+      // An edit without maybe is read by the run; once it is, a text
+      // without put is saved, just before the generator reads the file.
+      fs.writeFileSync(file, withoutMaybe)
+      cli.save("gen", "before", file, WITHOUT_PUT)
+      await buildStart()
+      expect(lastError()).toContain(
+        `item (${didFile}): ${didFile} changed during the build, after the build read it`
+      )
+      expect(cli.commands()).toEqual(["gen", "gen"])
+      expect(
+        new Map(
+          fs
+            .readdirSync(outDir)
+            .map((name) => [name, read(app, `src/canisters/${name}`)])
+        )
+      ).toEqual(before)
+    }
+  })
+
   // A save's run lists the file and generates it with no request: saved
   // again in between, it is listed again, as the save it is, and the save's
   // own run says nothing of it. Each dev test here has room past its wait,
@@ -1828,9 +1903,108 @@ describe("a didFile written while a run reads it", () => {
   }, 30_000)
 })
 
+describe("a canister's name", () => {
+  // A JSON config can name a canister after a member of Object.prototype.
+  // Each is read, generated, compared and refused as any other name is.
+  it("is any text: canisters named __proto__, constructor, toString or hasOwnProperty are read, generated and reported as any other", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({
+      "did/a.did": PING_DID,
+      "did/b.did": PING_DID,
+      "did/c.did": PING_DID,
+    })
+    const { message, lines } = await buildError(app, {
+      canisters: JSON.parse(
+        `{
+          "__proto__": { "didFile": "did/a.did" },
+          "constructor": { "didFile": "did/b.did", "methods": ["nope"] },
+          "toString": { "didFile": "did/c.did", "verify": "maybe" },
+          "hasOwnProperty": {}
+        }`
+      ),
+    })
+    expect(message).toContain("could not generate 2 of 3 canisters")
+    expect(lineOf(message, "constructor")).toContain(
+      "constructor (did/b.did): methods names nope, which did/b.did does not hold (it holds ping)"
+    )
+    expect(lineOf(message, "toString")).toContain(
+      'toString (did/c.did): verify is "maybe", not "live"'
+    )
+    expect(lines).toContain(
+      "info: ic-reactor: generated __proto__ into src/canisters/a.ts"
+    )
+    expect(exists(app, "src/canisters/a.ts")).toBe(true)
+    expect(exists(app, "src/canisters/b.ts")).toBe(false)
+    expect(asked).toEqual([])
+  })
+})
+
 // A JavaScript config is not type-checked: only an omitted option is one
 // not given, and every value given is checked.
 describe("options given a value of the wrong kind", () => {
+  // Only an omitted option takes its default. null, which a JSON config or a
+  // `?? null` gives, is a value given, and none of these options takes it:
+  // read as omitted, it would generate with the default instead (outDir,
+  // network), or take the canister for one only named in the cookie
+  // (didFile).
+  it("null given for any option of a canister fails it, naming the option, and only an omitted option takes its default", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/a.did": PING_DID, "did/ping.did": PING_DID })
+    const cli = hookCli(app)
+    const { message } = await buildError(app, {
+      canisters: {
+        file: { didFile: null as never },
+        out: { didFile: "did/a.did", outDir: null as never },
+        id: { didFile: "did/a.did", canisterId: null as never },
+        network: { didFile: "did/a.did", network: null as never },
+        methods: { didFile: "did/a.did", methods: null as never },
+        verify: { didFile: "did/a.did", verify: null as never },
+        entry: null as never,
+        omitted: {
+          didFile: "did/ping.did",
+          outDir: undefined,
+          canisterId: undefined,
+          network: undefined,
+          methods: undefined,
+          verify: undefined,
+        },
+      },
+    })
+    expect(message).toContain("could not generate 7 of 8 canisters")
+    expect(message).toContain("- file: didFile is null, not a path")
+    expect(lineOf(message, "out")).toContain(
+      "out (did/a.did): outDir is null, not a path"
+    )
+    expect(lineOf(message, "id")).toContain(
+      "id (did/a.did): canisterId is null, not a canister ID"
+    )
+    expect(lineOf(message, "network")).toContain(
+      'network (did/a.did): network null is not "ic", "local" or { host: "<http or https URL>" }'
+    )
+    expect(lineOf(message, "methods")).toContain(
+      "methods (did/a.did): methods is null, not a list of method names"
+    )
+    expect(lineOf(message, "verify")).toContain(
+      'verify (did/a.did): verify is null, not "live"'
+    )
+    expect(message).toContain(
+      "- entry: its options are null, not an object of options"
+    )
+    expect(message).not.toContain("- omitted (")
+    // The omitted options' defaults: generated into src/canisters.
+    expect(cli.commands()).toEqual(["gen"])
+    expect(app.runs()[0]).toEqual([
+      "gen",
+      path.join(app.root, "did/ping.did"),
+      "-o",
+      path.join(app.root, "src/canisters"),
+      "--json",
+    ])
+    expect(exists(app, "src/canisters/ping.ts")).toBe(true)
+    expect(exists(app, "src/canisters/a.ts")).toBe(false)
+    expect(asked).toEqual([])
+  })
+
   it("verify other than live (true, false, null, a typo) fails the canister with no request, under IC_REACTOR_VERIFY=0 too", async () => {
     const asked = refuseNetwork()
     const app = newApp({ "did/item.did": WRITTEN })
@@ -2429,6 +2603,52 @@ describe("a canister whose module a canister before it writes", () => {
     expect(errors()[2]).not.toContain("was deleted")
     expect(asked).toEqual([])
   }, 30_000)
+
+  // The plan named a module by a rule of its own, which cut the whole
+  // extension (`api.candid` meant `api.ts`), where the generator cuts only a
+  // final `.did` (`outputsOf`): a canister whose file the generator cannot
+  // even read claimed the module of the canisters after it, which were
+  // refused for it.
+  it("is told by the module the generator names: a file whose name does not end in .did claims no module of a .did's, and fails with the generator's own message", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({
+      "a/api.candid": PING_DID,
+      "b/api.DID": PING_DID,
+      "c/api.did": PING_DID,
+    })
+    const cli = hookCli(app)
+    const { message } = await buildError(app, {
+      canisters: {
+        candid: { didFile: "a/api.candid" },
+        upper: { didFile: "b/api.DID" },
+        plain: { didFile: "c/api.did" },
+      },
+    })
+    expect(message).toContain("could not generate 2 of 3 canisters")
+    for (const [name, file] of [
+      ["candid", "a/api.candid"],
+      ["upper", "b/api.DID"],
+    ]) {
+      expect(lineOf(message, name)).toContain(
+        `${name} (${file}): did_source_not_found: cannot read ${path.join(app.root, file)}: no such .did file`
+      )
+    }
+    expect(message).not.toContain("already writes")
+    expect(message).not.toContain("- plain (")
+    expect(read(app, "src/canisters/api.ts")).toMatch(/\bping\b/)
+    // One generator, given the three files.
+    expect(cli.commands()).toEqual(["gen"])
+    expect(app.runs()[0]).toEqual([
+      "gen",
+      path.join(app.root, "a/api.candid"),
+      path.join(app.root, "b/api.DID"),
+      path.join(app.root, "c/api.did"),
+      "-o",
+      path.join(app.root, "src/canisters"),
+      "--json",
+    ])
+    expect(asked).toEqual([])
+  })
 })
 
 /**

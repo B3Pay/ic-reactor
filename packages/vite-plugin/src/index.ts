@@ -42,6 +42,7 @@ import {
   foldsCase,
   generate,
   moduleCollisions,
+  outputsOf,
   resolveCliBin,
   type GenerateCanister,
 } from "./generate.js"
@@ -70,20 +71,26 @@ const GUIDE_LINE =
 export interface IcReactorPluginOptions {
   /**
    * The app's canisters, by name: the canister's name in the `icp` project,
-   * which is also the name the `ic_env` cookie carries its ID under.
+   * which is also the name the `ic_env` cookie carries its ID under. Any text
+   * names a canister, `__proto__` and `constructor` included, as a JSON
+   * config or a computed key (`["__proto__"]: { … }`) gives it; the literal
+   * `__proto__: { … }` of a JavaScript object sets the object's prototype
+   * instead, and names no canister.
    *
    * - `didFile`: the canister's Candid interface, relative to the Vite root.
    *   The plugin runs `candid-core-cli gen` on it at the start of a build or
    *   dev server and again each time the file changes, regenerating only the
    *   canisters that name the file that changed. The generator names its
-   *   output after the file, so `didFile: "../backend/ledger.did"` writes `ledger.ts` (the
-   *   module: it exports `actor` and the type `Actor`) and
-   *   `ledger.envelope.json` into `outDir`. Canisters that name the same
-   *   `didFile` and `outDir` share that one module, which is generated once.
-   *   Different `.did` files that would write the same module are refused:
-   *   the canister later in `canisters` fails at the start of each run,
-   *   before anything is fetched, run or written for it, and a save of its
-   *   file does not generate it either. Give one an `outDir` of its own. A
+   *   output after the file's name without its `.did`, so
+   *   `didFile: "../backend/ledger.did"` writes `ledger.ts` (the module: it
+   *   exports `actor` and the type `Actor`) and `ledger.envelope.json` into
+   *   `outDir`. It reads only a file whose name ends in `.did`, in lowercase:
+   *   `api.candid` or `api.DID` fails its canister. Canisters that name the
+   *   same `didFile` and `outDir` share that one module, which is generated
+   *   once. Different `.did` files that would write the same module are
+   *   refused: the canister later in `canisters` fails at the start of each
+   *   run, before anything is fetched, run or written for it, and a save of
+   *   its file does not generate it either. Give one an `outDir` of its own. A
    *   canister without a `didFile` generates nothing and is only named in
    *   the cookie, its other options checked all the same. A run (the start of
    *   a build or dev server, or a save's regeneration) reads each `didFile`
@@ -158,7 +165,9 @@ export interface IcReactorPluginOptions {
    *
    * Every value given is checked when the plugin is made, on every canister,
    * one without a `didFile` included, and whether or not a run would use it:
-   * only an omitted option is one not given. A canister whose options hold a
+   * only an omitted option is one not given, and takes its default.
+   * `canisters` itself that is not an object of canisters, `null` included,
+   * throws when the config loads. A canister whose options hold a
    * value that is not one (a `didFile` or `outDir` that is not a path, any of
    * the values above, or an option whose getter throws) is refused: each run
    * fails it with every reason, under `failOnError`, before the run does
@@ -688,14 +697,13 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     )
   }
 
-  /** The files `gen` writes for `canister`: its module and its envelope. */
-  const outputsOf = (canister: Generated): string[] => {
-    const outDir = path.resolve(projectRoot, canister.outDir)
-    const stem = path.basename(didPath(canister), ".did")
-    return [
-      path.join(outDir, `${stem}.ts`),
-      path.join(outDir, `${stem}.envelope.json`),
-    ]
+  /**
+   * The files `gen` writes for `canister`: its module and its envelope, named
+   * by the one rule generation names them by (`outputsOf` of generate.ts).
+   */
+  const outputFiles = (canister: Generated): string[] => {
+    const { module, envelope } = outputsOf(generationOf(canister))
+    return [module, envelope]
   }
 
   const readBytes = (file: string): Buffer | undefined => {
@@ -771,7 +779,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       // Each module and envelope as it is before the generator writes it.
       const before = new Map<string, Buffer | undefined>()
       for (const canister of stale) {
-        for (const file of outputsOf(canister)) {
+        for (const file of outputFiles(canister)) {
           if (!before.has(file)) before.set(file, readBytes(file))
         }
       }
@@ -802,7 +810,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         // They share one file: written while the generator ran, it may have
         // been read as another text than the run's.
         if (members.length > 0 && !run.asRead(members[0])) {
-          putBack(before, outputsOf(members[0]))
+          putBack(before, outputFiles(members[0]))
           continue
         }
         const names = members.map(({ name }) => name).join(", ")
@@ -2182,9 +2190,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
           })),
         ]
       }
+      // Only an omitted `failOnError` takes the default (options.ts).
       if (
         failures.length > 0 &&
-        (failOnError ?? lifetime.command === "build")
+        (failOnError === undefined ? lifetime.command === "build" : failOnError)
       ) {
         // A build that exits 0 would ship whatever stale bindings are still on
         // disk, which no longer match the canister.

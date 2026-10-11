@@ -20,6 +20,17 @@
  *
  * Each option is read once, here: a getter runs once, and one that throws
  * refuses its canister. What the plugin keeps is a copy of what was read.
+ *
+ * Only `undefined` selects an option's default: every default here is chosen
+ * by `=== undefined`, never by `??` or `||`, which would take `null` (or `0`,
+ * `""`, `false`) for an option not given. Each value but `undefined` is
+ * checked first, and one that is not a value of the option is refused.
+ *
+ * A canister's name is any text: `__proto__`, `constructor` and `toString`
+ * name canisters as any other text does. What the plugin keeps by canister
+ * name is kept in a `Map`, never in a plain object, where such a name would
+ * reach `Object.prototype` (an assignment to `__proto__` sets the prototype,
+ * and a lookup of `toString` finds a function).
  */
 
 import { describeError, describeValue } from "./describe-value.js"
@@ -62,8 +73,11 @@ export interface ReadOptions {
   failOnError: boolean | undefined
   /** Every canister an entry names, which the `ic_env` cookie carries. */
   names: string[]
-  /** The cookie's ID of each canister whose `canisterId` is one. */
-  configuredCanisterIds: Record<string, string>
+  /**
+   * The cookie's ID of each canister whose `canisterId` is one, by canister
+   * name: a `Map`, so that any name is kept as given.
+   */
+  configuredCanisterIds: Map<string, string>
   /** `name: value` for each `canisterId` given that is not one. */
   notCanisterIds: string[]
   /** The canisters with a `didFile` whose options are all values. */
@@ -196,7 +210,10 @@ export function readOptions(given: unknown): ReadOptions {
     booleanProblem("failOnError", failOnError)
   if (problem) throw new Error(problem)
 
-  const canisters = top("canisters") ?? {}
+  // Only an omitted `canisters` is none: `null` is refused below, as any other
+  // value that is not an object of canisters is.
+  const givenCanisters = top("canisters")
+  const canisters = givenCanisters === undefined ? {} : givenCanisters
   if (!isOptionsObject(canisters)) {
     throw new Error(
       `[ic-reactor] canisters is ${describeValue(canisters)}, not an object of canisters by name: ` +
@@ -213,10 +230,12 @@ export function readOptions(given: unknown): ReadOptions {
   }
 
   const read: ReadOptions = {
-    injectEnvironment: (injectEnvironment as boolean | undefined) ?? true,
+    // Checked above: `undefined` or a boolean.
+    injectEnvironment:
+      injectEnvironment === undefined ? true : (injectEnvironment as boolean),
     failOnError: failOnError as boolean | undefined,
     names: [],
-    configuredCanisterIds: {},
+    configuredCanisterIds: new Map(),
     notCanisterIds: [],
     generated: [],
     refused: [],
@@ -279,7 +298,7 @@ function readCanister(
       `${name}: could not be read (${canisterIdRead.threw})`
     )
   } else if (canisterId !== undefined && canisterIdWrong === undefined) {
-    read.configuredCanisterIds[name] = canisterId as string
+    read.configuredCanisterIds.set(name, canisterId as string)
   } else if (canisterId !== undefined) {
     read.notCanisterIds.push(`${name}: ${describeValue(canisterId)}`)
   }
@@ -360,7 +379,8 @@ function readCanister(
   read.generated.push({
     name,
     didFile: didFile as string,
-    outDir: (outDir as string | undefined) ?? DEFAULT_OUT_DIR,
+    // Checked above: `undefined` or a path.
+    outDir: outDir === undefined ? DEFAULT_OUT_DIR : (outDir as string),
     canisterId: canisterId as string | undefined,
     network,
     methods: methods as readonly string[] | undefined,

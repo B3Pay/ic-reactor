@@ -39,7 +39,10 @@ if (sources.some((source) => source.includes("TRAP"))) {
   fs.appendFileSync(path.join(__dirname, "hang.pids"), process.pid + "\n")
   setInterval(() => {}, 1000)
 } else {
-  const stem = (entry) => path.basename(entry, path.extname(entry))
+  // Named as the real CLI names its output: a final ".did" cut off, and
+  // nothing else (src/generate.ts's outputsOf, which a test compares with the
+  // real CLI).
+  const stem = (entry) => path.basename(entry).replace(/\.did$/, "")
   const newer = sources.some((source) => source.includes("NEWER"))
   if (sources.some((source) => source.includes("NOISY"))) {
     process.stderr.write("warning: first (fake)\nwarning: second (fake)")
