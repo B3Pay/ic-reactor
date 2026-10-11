@@ -225,12 +225,13 @@ does not change. The reads guide, the writes guide and the guide
 #### Fixed
 
 - A canister's name is any text, and is kept by name as given. One named
-  `__proto__` (from a JSON config, or a computed key) lost the ID `icp`
-  reported for it to `Object.prototype`'s setter, so the `ic_env` cookie
-  carried none; and one named after another member of `Object.prototype`
-  (`constructor`, `toString`, `hasOwnProperty`) with no ID found that member
-  and was never missing: no warning, no page load asked `icp` again, and the
-  cookie never carried its ID.
+  `__proto__` (from a JSON config, or a computed key) with no `canisterId` of
+  its own lost the ID `icp` reported for it to `Object.prototype`'s setter, so
+  the `ic_env` cookie carried none; and one named after a member of
+  `Object.prototype` (`__proto__`, `constructor`, `toString`,
+  `hasOwnProperty`) with no ID found that member and was never missing: no
+  warning, no page load asked `icp` again, and the cookie never carried its
+  ID.
 - The generator names its module and envelope after the `.did`'s file name
   with a final `.did` cut off, and nothing else, and reads only a file whose
   name ends in `.did`. The plugin's check of two canisters writing one module
