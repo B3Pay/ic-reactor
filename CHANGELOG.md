@@ -194,25 +194,26 @@ does not change. The reads guide, the writes guide and the guide
 - Every option value given is checked when the plugin is made, on every
   canister, one without a `didFile` included, and whether or not a build
   would use it: only an omitted one counts as not given. A canister whose
-  value is not one (`null`, `false`, `0` or `""` from a JavaScript config, a
-  `didFile` or `outDir` that is not a path, a `canisterId` that is not the
-  text of a principal, a `network`, `methods` or `verify` that is none of
-  their values, `verify: "live"` with no `canisterId`, a getter that throws)
-  fails, quoted as given whatever its kind (a bigint, a symbol, an object
-  that holds itself), before the plugin fetches, writes, runs or requests
-  anything to generate it or a `didFile` it shares; the other canisters
-  build. So does a canister whose module a canister before it writes (two
-  `.did` files of one name in one `outDir`), at the start of each run, and a
-  canister `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names with no
-  `canisterId`. Under `vite dev` a save of the file of any of these, or its
-  deletion, leaves the canister failed for the same reason and runs nothing
-  for it: a save neither generates it, over another's module or not, nor
-  takes it for fixed. Each is still named in the `ic_env` cookie; a
+  entry is not a plain object, or whose value is not one (`null`, `false`,
+  `0` or `""` from a JavaScript config, a `didFile` or `outDir` that is not a
+  path, a `canisterId` that is not the text of a principal, a `network`,
+  `methods` or `verify` that is none of their values, `verify: "live"` with
+  no `canisterId`, a getter that throws) fails, quoted as given whatever its
+  kind (a bigint, a symbol, an object that holds itself), before the plugin
+  fetches, writes, runs or requests anything to generate it or a `didFile` it
+  shares; the other canisters build. So does a canister whose module a
+  canister before it writes (two `.did` files of one name in one `outDir`), at
+  the start of each run, and a canister `IC_REACTOR_FETCH` or
+  `IC_REACTOR_VERIFY` names with no `canisterId`. Under `vite dev` a save of
+  the file of any of these, or its deletion, leaves the canister failed for
+  the same reason and runs nothing for it: a save neither generates it, over
+  another's module or not, nor takes it for fixed. Each is still named in the
+  `ic_env` cookie, but one whose name the cookie cannot carry (below); a
   `canisterId` that is not one is left out of it, with a warning.
   `failOnError` and `injectEnvironment` take `true` or `false`, and
-  `canisters` an object: any other value, `null` included, throws when the
-  config loads, instead of being read by truthiness or taken for none. Every
-  default is taken for an omitted option alone.
+  `canisters` a plain object: any other value, `null` included, throws when
+  the config loads, instead of being read by truthiness or taken for none.
+  Every default is taken for an omitted option alone.
 - A dev server restarted with the same plugin object (an inline config, as
   `server.restart()` keeps it) has runs of its own: the old server's close,
   which Vite runs after the new server started, stops only the old server's.
@@ -224,14 +225,26 @@ does not change. The reads guide, the writes guide and the guide
 
 #### Fixed
 
-- A canister's name is any text, and is kept by name as given. One named
-  `__proto__` (from a JSON config, or a computed key) with no `canisterId` of
-  its own lost the ID `icp` reported for it to `Object.prototype`'s setter, so
-  the `ic_env` cookie carried none; and one named after a member of
-  `Object.prototype` (`__proto__`, `constructor`, `toString`,
-  `hasOwnProperty`) with no ID found that member and was never missing: no
-  warning, no page load asked `icp` again, and the cookie never carried its
-  ID.
+- A canister's name is kept as given. One named `__proto__` (from a JSON
+  config, or a computed key) with no `canisterId` of its own lost the ID `icp`
+  reported for it to `Object.prototype`'s setter, so the `ic_env` cookie
+  carried none; and one named after a member of `Object.prototype`
+  (`__proto__`, `constructor`, `toString`, `hasOwnProperty`) with no ID found
+  that member and was never missing: no warning, no page load asked `icp`
+  again, and the cookie never carried its ID. A name that begins with `-`,
+  which `icp` allows, was handed to `icp canister status` where `icp` reads a
+  flag: it refused `-x`, and for `--help` printed its help, which the cookie
+  carried as the canister's ID. A name that holds `&` or `=`, which no name
+  `icp` gives a canister does, is left out of the cookie, with a warning: the
+  cookie joins its entries with them, so it was read back as other keys, one
+  of which could take the root key's place, and the app read no environment.
+- The options, `canisters`, each entry and a `network` of `{ host }` are read
+  only as plain objects. A `Map` or a `Promise` of canisters (a loader that
+  was not awaited) was read for its own keys, none, so the plugin started
+  with no canister without a word, and an entry given so was taken for a
+  canister only named in the cookie. Each is now refused, as any value that
+  is not one, and so is an instance of a class, which was read through its
+  class, or an object that inherits from another.
 - The generator names its module and envelope after the `.did`'s file name
   with a final `.did` cut off, and nothing else, and reads only a file whose
   name ends in `.did`. The plugin's check of two canisters writing one module

@@ -84,25 +84,37 @@ Each entry of `canisters` takes:
 
 Every value given is checked when the plugin is made, on every canister (one
 without a `didFile` included) and whether or not a build would use it: only an
-omitted field is one not given. A canister whose field holds a value that is
-not one (a `didFile` or `outDir` that is not a path, a `canisterId` that is not
-the text of a principal, a `network`, `methods` or `verify` that is none of the
-values above, or a getter that throws) fails, under `failOnError`, with a
-message that quotes the value as given, whatever its kind. The plugin fetches,
-writes, runs and requests nothing to generate it, nor fetches a `didFile` it
-shares with other canisters, and the others build as they would. So does a
-canister whose module a canister before it writes (below), and one that
-`IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but that has no `canisterId`.
-Under `vite dev`, a save of its file, and the file's deletion, leave it failed
-for the same reason and run nothing for it. Such a canister is still named in
-the `ic_env` cookie, as every entry is, and under `vite dev` `icp` is still
-asked for its ID: the app may still call it. A `canisters`,
-`injectEnvironment` or `failOnError` that is not one, `null` included, throws
-when the config loads: only an omitted option takes its default.
+omitted field is one not given. A canister whose entry is not a plain object,
+or whose field holds a value that is not one (a `didFile` or `outDir` that is
+not a path, a `canisterId` that is not the text of a principal, a `network`,
+`methods` or `verify` that is none of the values above, or a getter that
+throws) fails, under `failOnError`, with a message that quotes the value as
+given, whatever its kind. The plugin fetches, writes, runs and requests
+nothing to generate it, nor fetches a `didFile` it shares with other
+canisters, and the others build as they would. So does a canister whose
+module a canister before it writes (below), and one that `IC_REACTOR_FETCH` or
+`IC_REACTOR_VERIFY` names but that has no `canisterId`. Under `vite dev`, a
+save of its file, and the file's deletion, leave it failed for the same reason
+and run nothing for it. Such a canister is still named in the `ic_env` cookie,
+as every entry is (but one whose name the cookie cannot carry, below), and
+under `vite dev` `icp` is still asked for its ID: the app may still call it. A
+`canisters`, `injectEnvironment` or `failOnError` that is not one, `null`
+included, throws when the config loads: only an omitted option takes its
+default.
 
-An entry's key is the canister's name, whatever the text: `__proto__` or
-`constructor` (from a JSON config, or a computed key) names a canister, and
-the cookie carries its ID, as for any other name.
+The options, `canisters`, each entry and a `network` of `{ host }` are plain
+objects: written `{ … }`, or made by `JSON.parse`, `Object.fromEntries` or
+`Object.create(null)`. A `Map`, a `Promise` (a loader that was not awaited),
+an instance of a class or an object that inherits from another is refused as
+any other value that is not one: read for its keys, it would be read as none.
+
+An entry's key is the canister's name in the `icp` project, kept as given:
+`__proto__` or `constructor` (from a JSON config, or a computed key) names a
+canister as any other name does, and so does a name that begins with `-`. The
+cookie joins its entries with `&` and each name to its ID with `=`, as the
+asset canister writes it, so a name that holds either, which no name `icp`
+gives a canister does, is left out of the cookie, with a warning under
+`vite dev`; such a canister is generated as any other.
 
 Canisters that share one interface share one module. An ICP ledger and a ckBTC
 ledger both on `icrc1.did` are two entries, so that the `ic_env` cookie carries
