@@ -194,6 +194,35 @@ describe("icReactor", () => {
       expect(cookie).not.toContain("local-cli-canister-id")
     })
 
+    // A JavaScript config is not type-checked: a configured canisterId that
+    // is not text, or is empty, is neither put in the cookie nor dropped
+    // without a word.
+    it("should leave a configured canisterId that is not one to icp, and warn", async () => {
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {})
+      answerIcp({ empty: "icp-empty", nil: "icp-nil", number: "icp-number" })
+
+      const plugin = createVitePlugin({
+        canisters: {
+          empty: { canisterId: "" },
+          nil: { canisterId: null },
+          number: { canisterId: 123 },
+        },
+      })
+      const { middleware } = await serveWithEnvironment(plugin)
+
+      const cookie = await request(middleware)
+      expect(cookie).toContain("PUBLIC_CANISTER_ID%3Aempty%3Dicp-empty")
+      expect(cookie).toContain("PUBLIC_CANISTER_ID%3Anil%3Dicp-nil")
+      expect(cookie).toContain("PUBLIC_CANISTER_ID%3Anumber%3Dicp-number")
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[ic-reactor] canisterId is not a canister ID (empty: ""; nil: null; number: 123), ' +
+          "so the ic_env cookie takes the ID of those canisters from icp. " +
+          "Give the canister's principal as text, or remove canisterId."
+      )
+    })
+
     it("should inject built-in local Internet Identity provider when no project II canister is found", async () => {
       answerIcp(
         { test_canister: "mock-canister-id" },

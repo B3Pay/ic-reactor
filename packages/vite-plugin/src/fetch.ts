@@ -152,6 +152,14 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
   }
   if (signal?.aborted) return stopped
 
+  // A JavaScript config can give any value: one that is not text is no
+  // canister ID, and costs no request.
+  if (typeof canisterId !== "string" || canisterId === "") {
+    return {
+      ok: false,
+      message: `canisterId is ${JSON.stringify(canisterId)}, not a canister ID: give the canister's principal as text, or remove canisterId`,
+    }
+  }
   const network = resolveNetwork(request.network)
   if (typeof network === "string") return { ok: false, message: network }
   // A network named by its host is named once, where the host is.

@@ -3413,5 +3413,75 @@
     "file": "src/index.ts",
     "search": "      // Dropped when the server closed while it waited.\n      if (signal.aborted) return\n",
     "replace": ""
+  },
+  {
+    "id": "did-verify-failure-keeps-pass",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "checks a text that passed again once a check of the canister failed, so restoring it is no pass",
+    "why": "a failed live check (the network down, or the canister changed) leaves the canister's earlier pass cached, so restoring the text that passed skips the check, clears the standing failure and generates bindings no check passed",
+    "file": "src/index.ts",
+    "search": "      for (const { canister } of failed) passed.delete(canister.name)\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-restart-keeps-pass",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that passed under vite dev runs again when the same server restarts, and finds a canister that changed since",
+    "why": "the passes of the live check outlive the run, so a restart of the dev server (which keeps the plugin object) skips the check of an unchanged .did and generates it against a canister that changed incompatibly",
+    "file": "src/index.ts",
+    "search": "      verified = new Map()\n",
+    "replace": ""
+  },
+  {
+    "id": "did-methods-falsy-omitted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "given as null, false, 0 or an empty string fail the canister of a didFile on disk, with no request",
+    "why": "methods given as null, false, 0 or \"\" by a JavaScript config is taken for no methods, so the whole interface is generated without a word",
+    "file": "src/index.ts",
+    "search": "      if (canister.methods === undefined) return []\n",
+    "replace": "      if (!canister.methods) return []\n"
+  },
+  {
+    "id": "did-verify-invalid-unchecked",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "verify other than live (true, false, null, a typo) fails the canister with no request, under IC_REACTOR_VERIFY=0 too",
+    "why": "a verify that is not \"live\" (true, a typo) is taken for no live check, so a project that meant to check its canister builds unchecked",
+    "file": "src/index.ts",
+    "search": "      const problem = verifyProblem(canister.verify)\n",
+    "replace": "      const problem = undefined as string | undefined\n"
+  },
+  {
+    "id": "did-canister-id-empty-omitted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "canisterId given as an empty string or null is no canister ID: the fetch and the check that would use it fail, with no request",
+    "why": "a canisterId given as \"\" is taken for no canisterId, so a missing didFile is not fetched and the failure names no canisterId at all",
+    "file": "src/index.ts",
+    "search": "          ({ canisterId }) => canisterId !== undefined\n",
+    "replace": "          ({ canisterId }) => canisterId\n"
+  },
+  {
+    "id": "did-canister-id-not-text-reaches-sdk",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "canisterId given as an empty string or null is no canister ID: the fetch and the check that would use it fail, with no request",
+    "why": "a canisterId that is not text, or is empty, reaches Principal.fromText, whose message names the management canister or a property of null and not the option",
+    "file": "src/fetch.ts",
+    "search": "  if (typeof canisterId !== \"string\" || canisterId === \"\") {\n",
+    "replace": "  if (false as boolean) {\n"
+  },
+  {
+    "id": "env-canister-id-not-text-silent",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should leave a configured canisterId that is not one to icp, and warn",
+    "why": "a configured canisterId tested by truthiness puts a truthy non-string (123) in the ic_env cookie over icp's ID, and drops \"\" or null without a word",
+    "file": "src/index.ts",
+    "search": "    if (canisterId === undefined) continue\n    if (typeof canisterId === \"string\" && canisterId !== \"\") {\n",
+    "replace": "    if (!canisterId) continue\n    if (canisterId) {\n"
   }
 ]

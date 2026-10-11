@@ -361,6 +361,25 @@ describe("methods", () => {
     expect(asked).toEqual([])
   })
 
+  // A JavaScript config is not type-checked: only an omitted list is the
+  // whole interface, and every value given is checked as a list.
+  it("given as null, false, 0 or an empty string fail the canister of a didFile on disk, with no request", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/ping.did": PING_DID })
+    for (const methods of [null, false, 0, ""]) {
+      const { message } = await buildError(app, {
+        canisters: {
+          ping: { didFile: "did/ping.did", methods: methods as never },
+        },
+      })
+      expect(lineOf(message, "ping")).toContain(
+        `ping (did/ping.did): methods is ${JSON.stringify(methods)}, not a list of method names`
+      )
+    }
+    expect(exists(app, "src/canisters/ping.ts")).toBe(false)
+    expect(asked).toEqual([])
+  })
+
   it("of a didFile on disk are compared with it, with no request: a name it lacks fails, and a method it has too is a warning", async () => {
     const asked = refuseNetwork()
     const app = newApp({ "did/ledger.did": LEDGER })
@@ -596,6 +615,64 @@ describe("the live check", () => {
     // Vite 6+'s second buildStart, or a rebuild of `vite build --watch`.
     await buildStart()
     expect(ic.requests).toHaveLength(2)
+  })
+
+  // A rebuild of `vite build --watch` is the same run, so it may reuse a
+  // pass. Not after a check of the canister failed: restoring the text that
+  // passed must not stand in for a check, whether the network is down or the
+  // canister changed.
+  it("checks a text that passed again once a check of the canister failed, so restoring it is no pass", async () => {
+    const canisters: Record<string, Canister> = {
+      [LEDGER_ID]: { candid: WRITTEN },
+    }
+    const ic = await fakeIc(canisters)
+    const app = newApp({ "did/item.did": WRITTEN })
+    const { buildStart, context } = verifyingPlugin(app, ic.host)
+    const file = path.join(app.root, "did/item.did")
+    const edited = `// Edited.\n${WRITTEN}`
+    const lastError = () => String(context.error.mock.lastCall?.[0])
+
+    await buildStart()
+    expect(context.error).not.toHaveBeenCalled()
+    expect(ic.requests).toHaveLength(2)
+
+    // The network goes down, and an edit's check cannot be made.
+    const asked = refuseNetwork()
+    fs.writeFileSync(file, edited)
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(lastError()).toContain(`could not reach ${ic.host}`)
+    const refused = asked.length
+    expect(refused).toBeGreaterThan(0)
+
+    // The text that passed is restored: checked again, and still not made.
+    fs.writeFileSync(file, WRITTEN)
+    await buildStart()
+    expect(asked.length).toBeGreaterThan(refused)
+    expect(context.error).toHaveBeenCalledTimes(2)
+    expect(lastError()).toContain(`could not reach ${ic.host}`)
+
+    // The network is back: it passes.
+    vi.unstubAllGlobals()
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(2)
+    expect(ic.requests).toHaveLength(4)
+
+    // The canister loses put, and an edit's check fails.
+    canisters[LEDGER_ID] = { candid: liveWith(["  put : (nat) -> ();\n", ""]) }
+    fs.writeFileSync(file, edited)
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(3)
+    expect(ic.requests).toHaveLength(6)
+    const incompatible = `incompatible with did/item.did (1 error)`
+    expect(lastError()).toContain(incompatible)
+
+    // The text that passed is restored: checked again, and it fails.
+    fs.writeFileSync(file, WRITTEN)
+    await buildStart()
+    expect(ic.requests).toHaveLength(8)
+    expect(context.error).toHaveBeenCalledTimes(4)
+    expect(lastError()).toContain(incompatible)
   })
 
   it("warns on a compatible change, and generates", async () => {
@@ -866,6 +943,35 @@ describe("the live check", () => {
     expect(ic.requests).toHaveLength(4)
   })
 
+  // The restart keeps the plugin object, and with it what passed: a pass of
+  // the server before must not stand for the canister now.
+  it("that passed under vite dev runs again when the same server restarts, and finds a canister that changed since", async () => {
+    const canisters: Record<string, Canister> = {
+      [LEDGER_ID]: { candid: WRITTEN },
+    }
+    const ic = await fakeIc(canisters)
+    const app = newApp({ "did/item.did": WRITTEN })
+    const running = await startDev(app.root, checked(ic.host))
+    closers.push(running.close)
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors()).toEqual([])
+    expect(running.lines).toContainEqual(
+      `info: ic-reactor: item: did/item.did matches the live interface of ${LEDGER_ID} on ${ic.host}`
+    )
+    // One check for the server, whatever the number of its environments.
+    expect(ic.requests).toHaveLength(2)
+
+    // The canister loses put, the .did is unchanged, and the server restarts.
+    canisters[LEDGER_ID] = { candid: liveWith(["  put : (nat) -> ();\n", ""]) }
+    await running.server.restart()
+    expect(ic.requests).toHaveLength(4)
+    expect(errors()).toHaveLength(1)
+    expect(errors()[0]).toContain(
+      `item (did/item.did): the live check found ${LEDGER_ID} on ${ic.host} incompatible with did/item.did (1 error)`
+    )
+  })
+
   // Only a check that ran and passed clears a failure: a restart that fails
   // the canister before its check (here, its file lacks a name of its
   // `methods`) leaves it standing, so restoring that file does not serve
@@ -926,5 +1032,59 @@ describe("the live check", () => {
       'the live check cannot read it, so build with IC_REACTOR_VERIFY=0, and stop asking for the check of did/item.did (remove its verify: "live", or its name from IC_REACTOR_VERIFY).'
     )
     expect(read(app, "did/item.did")).toBe(WRITTEN)
+  })
+})
+
+// A JavaScript config is not type-checked: only an omitted option is one
+// not given, and every value given is checked.
+describe("options given a value of the wrong kind", () => {
+  it("verify other than live (true, false, null, a typo) fails the canister with no request, under IC_REACTOR_VERIFY=0 too", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/item.did": WRITTEN })
+    const options = (verify: unknown): IcReactorPluginOptions => ({
+      canisters: {
+        item: {
+          didFile: "did/item.did",
+          canisterId: LEDGER_ID,
+          verify: verify as never,
+        },
+      },
+    })
+    for (const verify of [true, false, null, "Live"]) {
+      const { message } = await buildError(app, options(verify))
+      expect(lineOf(message, "item")).toContain(
+        `item (did/item.did): verify is ${JSON.stringify(verify)}, not "live": set it to "live" for the live check, or remove it for none`
+      )
+    }
+    vi.stubEnv("IC_REACTOR_VERIFY", "0")
+    const { message } = await buildError(app, options(true))
+    expect(lineOf(message, "item")).toContain('verify is true, not "live"')
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    expect(asked).toEqual([])
+  })
+
+  it("canisterId given as an empty string or null is no canister ID: the fetch and the check that would use it fail, with no request", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/item.did": WRITTEN })
+    const { message } = await buildError(app, {
+      canisters: {
+        // Missing, so it would be fetched.
+        fetched: { didFile: "did/fetched.did", canisterId: "" },
+        // On disk, and checked live.
+        checked: {
+          didFile: "did/item.did",
+          canisterId: null as never,
+          verify: "live",
+        },
+      },
+    })
+    expect(lineOf(message, "fetched")).toContain(
+      'fetched (did/fetched.did): canisterId is "", not a canister ID'
+    )
+    expect(lineOf(message, "checked")).toContain(
+      "checked (did/item.did): canisterId is null, not a canister ID"
+    )
+    expect(exists(app, "did/fetched.did")).toBe(false)
+    expect(asked).toEqual([])
   })
 })

@@ -103,6 +103,10 @@ export interface IcReactorPluginOptions {
    *   Canisters that name one file, under any path to it, share one fetch;
    *   when they name different canisters (or networks) to fetch it from, none
    *   is fetched and each fails, since whose interface it is cannot be told.
+   *   Only an omitted `canisterId` is none: any other value that is not a
+   *   canister ID (`""`, or `null` from a JavaScript config) fails the fetch
+   *   or check that would use it, and is left out of the cookie with a
+   *   warning.
    * - `network`: where the canister to fetch is. `"ic"`, mainnet, checked
    *   against the mainnet root key; `"local"`, icp-cli's local network on
    *   `http://127.0.0.1:8000`, whose root key is fetched from it; or
@@ -120,7 +124,9 @@ export interface IcReactorPluginOptions {
    *   fetch it again with `IC_REACTOR_FETCH`. Canisters that name one
    *   `didFile` to be fetched must name one list, those with no `canisterId`
    *   included (no `methods` is the whole interface): otherwise none is
-   *   fetched and each fails, before any request.
+   *   fetched and each fails, before any request. Only an omitted `methods`
+   *   is the whole interface: any other value that is not a list of method
+   *   names (`null`, `false`, `""`) fails the canister.
    * - `verify`: `"live"` checks the `didFile` on disk against the live
    *   canister's certified interface at the start of each build and dev
    *   server (`candid-core-cli check`). `IC_REACTOR_VERIFY=1` (or `true`,
@@ -129,7 +135,12 @@ export interface IcReactorPluginOptions {
    *   turns the check off for the run, `verify: "live"` included. A method of the file that the canister no longer
    *   has, whose mode changed, or whose types are no longer compatible fails
    *   the canister, under `failOnError`; a compatible change is logged as a
-   *   warning. A check that cannot read the canister fails it too.
+   *   warning. A check that cannot read the canister fails it too. Within
+   *   one build or dev server, a rebuild or another Vite environment does not
+   *   check a text that passed again, until a check of that canister fails;
+   *   each new build or dev server, a restart included, checks again. Any
+   *   value other than `"live"`, `false` included, fails the canister: remove
+   *   `verify` for no check.
    *
    * The generator is the `@candid-core/cli` the app has installed, run as a
    * child process so that a failure on one `.did` stops that process and not
@@ -222,6 +233,15 @@ function methodsProblem(methods: unknown): string | undefined {
     }
   }
   return undefined
+}
+
+/**
+ * Why `verify` is not an option value, or `undefined` when it is: omitted, or
+ * `"live"`.
+ */
+function verifyProblem(verify: unknown): string | undefined {
+  if (verify === undefined || verify === "live") return undefined
+  return `verify is ${JSON.stringify(verify)}, not "live": set it to "live" for the live check, or remove it for none`
 }
 
 /** `methods` once each, in name order (code point), as `project` lists them. */
@@ -327,12 +347,21 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   const { canisters = {}, injectEnvironment = true, failOnError } = options
   const names = Object.keys(canisters)
 
-  const configuredCanisterIds = Object.fromEntries(
-    names.flatMap((name) => {
-      const { canisterId } = canisters[name]
-      return canisterId ? [[name, canisterId]] : []
-    })
-  )
+  // A configured ID is the cookie's for its canister, over the one `icp`
+  // reports. Only text can be one: any other value given (`""`, or `null`
+  // from a JavaScript config) is left to `icp`, with a warning, rather than
+  // put in the cookie or taken for no canisterId without a word.
+  const configuredCanisterIds: Record<string, string> = {}
+  const notCanisterIds: string[] = []
+  for (const name of names) {
+    const { canisterId } = canisters[name]
+    if (canisterId === undefined) continue
+    if (typeof canisterId === "string" && canisterId !== "") {
+      configuredCanisterIds[name] = canisterId
+    } else {
+      notCanisterIds.push(`${name}: ${JSON.stringify(canisterId)}`)
+    }
+  }
 
   /** The canisters that have a `.did` to generate from. */
   const generated: Generated[] = names.flatMap((name) => {
@@ -628,7 +657,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     // One file holds one projection, read by every member: the lists of the
     // members with no canisterId count too.
     const projectionOf = ({ methods }: Generated) =>
-      methods
+      methods !== undefined
         ? {
             key: JSON.stringify(methodList(methods)),
             label: listNames(methodList(methods)),
@@ -696,7 +725,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
           log.warn(
             `ic-reactor: ${FETCH_VARIABLE} names "${name}", which is not a canister with a didFile in this plugin's options`
           )
-        } else if (!canister.canisterId) {
+        } else if (canister.canisterId === undefined) {
           failures.push({
             canister,
             message: `${FETCH_VARIABLE} asks to fetch its didFile again, but it names no canisterId to fetch it from`,
@@ -718,7 +747,11 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       const jobs = [...byFile].flatMap(([key, members]) => {
         // Named in messages by the first spelling.
         const file = didPath(members[0])
-        const fetchable = members.filter(({ canisterId }) => canisterId)
+        // Any canisterId given, `""` included: the fetch says what is wrong
+        // with one that is not a canister ID.
+        const fetchable = members.filter(
+          ({ canisterId }) => canisterId !== undefined
+        )
         const again = refetched.has(key)
           ? undefined
           : fetchable.find((canister) => asked(canister))
@@ -839,7 +872,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     if (!result.ok) return result
     const where = `${source.canisterId} on ${result.network}`
     const from = `the certified candid:service of ${where}`
-    if (!source.methods) return { ok: true, did: result.did, from }
+    if (source.methods === undefined) return { ok: true, did: result.did, from }
 
     const context = cliContext(signal)
     if (typeof context === "string") {
@@ -918,7 +951,9 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   ): Promise<Failure[] | undefined> => {
     const failures: Failure[] = []
     const jobs = wanted.flatMap((canister) => {
-      if (!canister.methods) return []
+      // Only an omitted list is the whole interface: any other value, `null`
+      // or `false` from a JavaScript config, is checked.
+      if (canister.methods === undefined) return []
       const problem = methodsProblem(canister.methods)
       if (problem) {
         failures.push({ canister, message: problem })
@@ -961,9 +996,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       }
       const lacking = methods.filter((name) => !listed.methods.includes(name))
       const extra = listed.methods.filter((name) => !methods.includes(name))
-      const fix = canister.canisterId
-        ? `Fetch it again with ${FETCH_VARIABLE}=${canister.name} to write the projection to methods`
-        : `Write the projection to methods with candid-core-cli project, or give the canister a canisterId to fetch it from`
+      const fix =
+        canister.canisterId !== undefined
+          ? `Fetch it again with ${FETCH_VARIABLE}=${canister.name} to write the projection to methods`
+          : `Write the projection to methods with candid-core-cli project, or give the canister a canisterId to fetch it from`
       let failure: string | undefined
       if (lacking.length > 0) {
         failure =
@@ -983,12 +1019,23 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   }
 
   /**
-   * The text of each `didFile` the live check passed, by canister name. The
-   * next `buildStart` (a rebuild of `vite build --watch`, or another Vite
-   * environment's) checks it again only when the text changed. A check that
-   * failed is not remembered, and runs again.
+   * The text of each `didFile` the live check passed, by canister name, for
+   * one run: one build, or one dev server. The next `buildStart` of the run (a
+   * rebuild of `vite build --watch`, or another Vite environment's) checks it
+   * again only when the text changed.
+   *
+   * A new run starts empty: `configResolved` replaces the map, and Vite
+   * resolves the config again for each build and each dev server, a restart
+   * (`r` and Enter, or `server.restart()`) included, which keeps this plugin
+   * object for an inline config. So a restart checks every canister again,
+   * and finds a canister that changed since. A check of the run before that
+   * ends after the restart writes to that run's map, which nothing reads.
+   *
+   * A check that failed, or could not be made, drops the canister's entry: a
+   * text that passed before is checked again, so restoring it cannot stand in
+   * for a check that passes now.
    */
-  const verified = new Map<string, string>()
+  let verified = new Map<string, string>()
 
   /**
    * The failure of each canister whose last live check failed (or could not
@@ -999,7 +1046,9 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * `buildStart` (the dev server's restart, which keeps this plugin object
    * for an inline config) clears it when it checks the canister and the check
    * passes, when it fetched the file, or when the check is off for it
-   * (`IC_REACTOR_VERIFY=0`).
+   * (`IC_REACTOR_VERIFY=0`). A pass that `verified` holds from before the
+   * failure cannot clear it: the failure dropped it, and a restart starts
+   * with none.
    */
   const liveFailures = new Map<string, Failure>()
 
@@ -1033,6 +1082,23 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     signal: AbortSignal
   ): Promise<Failure[] | undefined> => {
     const failures: Failure[] = []
+    // This run's map, even when a restart replaces it while the check runs.
+    const passed = verified
+    // A canister that fails here passed no check now: what passed before is
+    // checked again.
+    const forget = (failed: Failure[]): Failure[] => {
+      for (const { canister } of failed) passed.delete(canister.name)
+      return failed
+    }
+    // Only an omitted `verify` asks for no check: any other value but
+    // "live" (`true`, `false`, a typo) fails the canister, under
+    // `IC_REACTOR_VERIFY=0` too, rather than build it unchecked or checked
+    // by a guess.
+    const valid = wanted.filter((canister) => {
+      const problem = verifyProblem(canister.verify)
+      if (problem) failures.push({ canister, message: problem })
+      return !problem
+    })
     const { names: asked, all } = namesIn(VERIFY_VARIABLE, VERIFY_ALL)
     // `0` turns the check off for the run, over `verify: "live"`: a project
     // that checks every build can still build offline.
@@ -1051,7 +1117,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         log.warn(
           `ic-reactor: ${VERIFY_VARIABLE} names "${name}", which is not a canister with a didFile in this plugin's options`
         )
-      } else if (!canister.canisterId && wanted.includes(canister)) {
+      } else if (
+        canister.canisterId === undefined &&
+        valid.includes(canister)
+      ) {
         failures.push({
           canister,
           message: `${VERIFY_VARIABLE} asks for its live check, but it names no canisterId to check its didFile against`,
@@ -1060,13 +1129,13 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     }
 
     const byTarget = new Map<string, Generated[]>()
-    for (const canister of wanted) {
+    for (const canister of valid) {
       const live =
         canister.verify === "live" ||
-        (all && !!canister.canisterId) ||
+        (all && canister.canisterId !== undefined) ||
         asked.includes(canister.name)
       if (!live) continue
-      if (!canister.canisterId) {
+      if (canister.canisterId === undefined) {
         if (canister.verify === "live") {
           failures.push({
             canister,
@@ -1080,7 +1149,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       // A file just fetched is the live interface; one that is missing is
       // the generator's to report.
       if (fetched.has(key) || text === undefined) continue
-      if (verified.get(canister.name) === text) continue
+      if (passed.get(canister.name) === text) continue
       const target = JSON.stringify([
         key,
         canister.canisterId,
@@ -1088,7 +1157,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       ])
       byTarget.set(target, [...(byTarget.get(target) ?? []), canister])
     }
-    if (byTarget.size === 0) return failures
+    if (byTarget.size === 0) return forget(failures)
 
     const outcomes = await Promise.all(
       [...byTarget.values()].map(async (members) => ({
@@ -1099,15 +1168,14 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     if (signal.aborted) return undefined
     for (const { members, outcome } of outcomes) {
       if (outcome.ok) {
-        for (const canister of members)
-          verified.set(canister.name, outcome.text)
+        for (const canister of members) passed.set(canister.name, outcome.text)
         continue
       }
       for (const canister of members) {
         failures.push({ canister, message: outcome.message })
       }
     }
-    return failures
+    return forget(failures)
   }
 
   /**
@@ -1413,7 +1481,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             canister,
             message:
               "the .did file was deleted; its module is not regenerated until the file comes back" +
-              (canister.canisterId
+              (canister.canisterId !== undefined
                 ? `, or until the dev server restarts and fetches it from ${canister.canisterId}`
                 : ""),
           }))
@@ -1454,6 +1522,14 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       }
 
       // ── Local Development Proxy & Cookies ────────────────────────────────
+
+      if (notCanisterIds.length > 0) {
+        console.warn(
+          `[ic-reactor] canisterId is not a canister ID (${notCanisterIds.join("; ")}), ` +
+            `so the ic_env cookie takes the ID of ${notCanisterIds.length === 1 ? "that canister" : "those canisters"} from icp. ` +
+            `Give the canister's principal as text, or remove canisterId.`
+        )
+      }
 
       // The plugin's own `/api` entry, unless the Vite config has one.
       const ownsApiProxy = !userConfig.server?.proxy?.["/api"]
@@ -1514,6 +1590,9 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       projectRoot = config.root
       command = config.command
       log = config.logger
+      // A new run: a build, or a dev server, a restart's included. Its live
+      // checks start again (see `verified`).
+      verified = new Map()
     },
 
     configureServer(server) {
