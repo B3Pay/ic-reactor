@@ -9,6 +9,7 @@
  * port, which signs its certificates with a root key of its own.
  */
 import fs from "node:fs"
+import { createRequire } from "node:module"
 import path from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { Plugin } from "vite"
@@ -542,6 +543,89 @@ service : {
 const liveWith = (...edits: Array<[string, string]>) =>
   edits.reduce((text, [from, to]) => text.replace(from, to), WRITTEN)
 
+/** `WRITTEN` without `put`. */
+const WITHOUT_PUT = liveWith(["  put : (nat) -> ();\n", ""])
+
+/**
+ * The bin of a candid-core-cli that runs the real one, whose bin script is
+ * `real`, and writes a file once around one process (see `hookCli`). Every
+ * process appends its arguments to runs.log beside it, as the fake CLI does.
+ */
+function hookedBin(real: string): string {
+  return `const { spawnSync } = require("node:child_process")
+const fs = require("node:fs")
+const path = require("node:path")
+
+const args = process.argv.slice(2)
+fs.appendFileSync(path.join(__dirname, "runs.log"), JSON.stringify(args) + "\\n")
+// A projection to the empty name lists a file's methods.
+const step = args[0] === "project" && args[3] === "," ? "list" : args[0]
+const hook = path.join(__dirname, "hook.json")
+let save
+try {
+  const armed = JSON.parse(fs.readFileSync(hook, "utf-8"))
+  if (armed.step === step) {
+    // Taken by one process alone.
+    fs.renameSync(hook, hook + "." + process.pid)
+    save = armed
+  }
+} catch {}
+if (save && save.when === "before") fs.writeFileSync(save.file, save.text)
+const run = spawnSync(process.execPath, [${JSON.stringify(real)}, ...args], {
+  stdio: "inherit",
+})
+if (save && save.when === "after") fs.writeFileSync(save.file, save.text)
+process.exit(run.status === null ? 1 : run.status)
+`
+}
+
+/**
+ * Install in `app` a candid-core-cli that runs the real one, in place of the
+ * link to it, so that a test can write a `.did` at a moment it cannot time
+ * otherwise: `save` writes `text` to `file` once, around the first process
+ * that runs `step` (`"list"`, the projection that lists a file's methods,
+ * `"check"` or `"gen"`), either `"before"` the real CLI starts or `"after"`
+ * it ended, before the process exits. The plugin sees that write as soon as
+ * the process is done. `commands` names the command each process ran.
+ */
+function hookCli(app: App) {
+  const installed = path.join(app.root, "node_modules", "@candid-core", "cli")
+  const manifest = createRequire(import.meta.url).resolve(
+    "@candid-core/cli/package.json"
+  )
+  const { version, bin } = JSON.parse(fs.readFileSync(manifest, "utf-8")) as {
+    version: string
+    bin: Record<string, string>
+  }
+  fs.unlinkSync(installed)
+  fs.mkdirSync(installed)
+  fs.writeFileSync(
+    path.join(installed, "package.json"),
+    JSON.stringify({
+      name: "@candid-core/cli",
+      version,
+      bin: { "candid-core-cli": "./bin.js" },
+    })
+  )
+  fs.writeFileSync(
+    path.join(installed, "bin.js"),
+    hookedBin(path.join(path.dirname(manifest), bin["candid-core-cli"]))
+  )
+  return {
+    save: (
+      step: "list" | "check" | "gen",
+      when: "before" | "after",
+      file: string,
+      text: string
+    ) =>
+      fs.writeFileSync(
+        path.join(installed, "hook.json"),
+        JSON.stringify({ step, when, file, text })
+      ),
+    commands: () => app.runs().map(([command]) => command),
+  }
+}
+
 /**
  * Capture what the plugin registers on the WebSocket server. A listener is
  * handed the connecting client as Vite hands it: a socket with `send`.
@@ -593,20 +677,12 @@ function holdFirstReadState() {
 }
 
 /**
- * A plugin for one canister checked live, whose buildStart the test calls.
- * `newRun` resolves the config again, as the next build or a restart does.
+ * A plugin of `options` under `vite build`, whose buildStart the test calls,
+ * as each rebuild of `vite build --watch` does. `newRun` resolves the config
+ * again, as the next build or a restart does.
  */
-function verifyingPlugin(app: App, host: string) {
-  const plugin = icReactor({
-    canisters: {
-      item: {
-        didFile: "did/item.did",
-        canisterId: LEDGER_ID,
-        network: { host },
-        verify: "live",
-      },
-    },
-  }) as Plugin & {
+function drivenPlugin(app: App, options: IcReactorPluginOptions) {
+  const plugin = icReactor(options) as Plugin & {
     configResolved: (config: unknown) => void
     buildStart: (this: unknown) => Promise<void>
   }
@@ -622,6 +698,22 @@ function verifyingPlugin(app: App, host: string) {
     lines,
   }
 }
+
+/** The options of one canister, `item`, checked live against `host`. */
+const checkedLive = (host: string): IcReactorPluginOptions => ({
+  canisters: {
+    item: {
+      didFile: "did/item.did",
+      canisterId: LEDGER_ID,
+      network: { host },
+      verify: "live",
+    },
+  },
+})
+
+/** A plugin for one canister checked live, as `drivenPlugin`. */
+const verifyingPlugin = (app: App, host: string) =>
+  drivenPlugin(app, checkedLive(host))
 
 describe("the live check", () => {
   const checked = (host: string): IcReactorPluginOptions => ({
@@ -845,37 +937,37 @@ describe("the live check", () => {
   })
 
   // candid-core-cli reads the file itself, after the fetch: a save while the
-  // fetch is under way is what it checks, not the text read before. The text
+  // fetch is under way is what it checks, not the text the run read. The text
   // read first, which no check saw, must not pass when it is restored.
   it("records no pass for a didFile saved while its check ran, so restoring the text read first is checked", async () => {
-    const withoutPut = liveWith(["  put : (nat) -> ();\n", ""])
-    const ic = await fakeIc({ [LEDGER_ID]: { candid: withoutPut } })
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: WITHOUT_PUT } })
     // Incompatible: the file has put, which the canister lacks.
     const app = newApp({ "did/item.did": WRITTEN })
     const { buildStart, context } = verifyingPlugin(app, ic.host)
     const file = path.join(app.root, "did/item.did")
+    const lastError = () => String(context.error.mock.lastCall?.[0])
     const { reached, release } = holdFirstReadState()
 
     const run = buildStart()
     await reached
     // Saved to the canister's interface while the fetch is held.
-    fs.writeFileSync(file, withoutPut)
+    fs.writeFileSync(file, WITHOUT_PUT)
     release()
     await run
-    // The saved text was checked, and passed.
-    expect(context.error).not.toHaveBeenCalled()
+    // The saved text was checked, and passed; but the build had read the
+    // file before, so it takes nothing of it.
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(lastError()).toContain("did/item.did changed during the build")
     expect(ic.requests).toHaveLength(2)
-    expect(read(app, "src/canisters/item.ts")).not.toMatch(/\bput\b/)
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
 
     // The text read first is restored: checked, and it fails.
     fs.writeFileSync(file, WRITTEN)
     await buildStart()
     expect(ic.requests).toHaveLength(4)
-    expect(context.error).toHaveBeenCalledTimes(1)
-    expect(String(context.error.mock.lastCall?.[0])).toContain(
-      `incompatible with did/item.did (1 error)`
-    )
-    expect(read(app, "src/canisters/item.ts")).not.toMatch(/\bput\b/)
+    expect(context.error).toHaveBeenCalledTimes(2)
+    expect(lastError()).toContain(`incompatible with did/item.did (1 error)`)
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
   })
 
   it("warns on a compatible change, and generates", async () => {
@@ -1236,6 +1328,212 @@ describe("the live check", () => {
     )
     expect(read(app, "did/item.did")).toBe(WRITTEN)
   })
+})
+
+// A run reads each didFile once, when its steps start, and candid-core-cli
+// reads it again for each step (the methods listing, the live check,
+// generation). A file written in between must not pass one step for a text
+// another step read: the run takes nothing of it. A build fails it, and a dev
+// server queues it again, as a save does. Each save here is made by the
+// CLI's own process (`hookCli`), at the moment the test names.
+describe("a didFile written while a run reads it", () => {
+  // A file on disk that is only compared with its methods: no request.
+  const listed = (): IcReactorPluginOptions => ({
+    canisters: {
+      item: {
+        didFile: "did/item.did",
+        canisterId: LEDGER_ID,
+        methods: ["get", "maybe", "put"],
+      },
+    },
+  })
+  const changed =
+    "item (did/item.did): did/item.did changed during the build, after the build read it"
+
+  // The check passes the text it read; the text saved after it must not be
+  // generated as if it had been checked.
+  it("fails the build when saved after the live check read it, and generates nothing of the saved text", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: WITHOUT_PUT } })
+    // Compatible: the canister's own interface.
+    const app = newApp({ "did/item.did": WITHOUT_PUT })
+    const cli = hookCli(app)
+    const { buildStart, context } = verifyingPlugin(app, ic.host)
+    const file = path.join(app.root, "did/item.did")
+    const lastError = () => String(context.error.mock.lastCall?.[0])
+
+    // put, which the canister lacks, is saved once check has read the file.
+    cli.save("check", "after", file, WRITTEN)
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(lastError()).toContain(changed)
+    expect(cli.commands()).not.toContain("gen")
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    expect(ic.requests).toHaveLength(2)
+
+    // The next build checks the text saved, and it fails.
+    await buildStart()
+    expect(ic.requests).toHaveLength(4)
+    expect(context.error).toHaveBeenCalledTimes(2)
+    expect(lastError()).toContain("incompatible with did/item.did (1 error)")
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+  })
+
+  // The listing approves the text it read; the text saved after it, which
+  // lacks a method the list names, must not be generated as if listed.
+  it("fails the build when saved after its methods were listed, and generates nothing of the saved text", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/item.did": WRITTEN })
+    const cli = hookCli(app)
+
+    // Saved without put, which methods names, once the file was listed.
+    cli.save("list", "after", path.join(app.root, "did/item.did"), WITHOUT_PUT)
+    const { message } = await buildError(app, listed())
+    expect(lineOf(message, "item")).toContain(changed)
+    expect(cli.commands()).toEqual(["project"])
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+
+    // The next build lists the text saved, which lacks put.
+    const again = await buildError(app, listed())
+    expect(lineOf(again.message, "item")).toContain(
+      "item (did/item.did): methods names put, which did/item.did does not hold (it holds get, maybe)"
+    )
+    expect(asked).toEqual([])
+  })
+
+  // The listing read the file after the run did: what it found is not the
+  // run's text, and must not be recorded for it.
+  it("records no listing for the text read first when saved before its methods were listed, so restoring that text is listed again", async () => {
+    const asked = refuseNetwork()
+    // put, which methods names, is not in the file: the canister fails.
+    const app = newApp({ "did/item.did": WITHOUT_PUT })
+    const cli = hookCli(app)
+    const { buildStart, context } = drivenPlugin(app, listed())
+    const file = path.join(app.root, "did/item.did")
+    const lastError = () => String(context.error.mock.lastCall?.[0])
+
+    // Saved with put once the run read the file, before the CLI lists it.
+    cli.save("list", "before", file, WRITTEN)
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(lastError()).toContain(changed)
+
+    // The text read first is restored: listed again, it lacks put.
+    fs.writeFileSync(file, WITHOUT_PUT)
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(2)
+    expect(lastError()).toContain(
+      "item (did/item.did): methods names put, which did/item.did does not hold (it holds get, maybe)"
+    )
+    expect(cli.commands()).toEqual(["project", "project"])
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    expect(asked).toEqual([])
+  })
+
+  // The generator read the file after the run did: the module it wrote may
+  // be of a text the run never read.
+  it("fails the build when saved as the generator starts, and puts the module back as it was", async () => {
+    const app = newApp({ "did/item.did": WRITTEN })
+    const cli = hookCli(app)
+    const { buildStart, context } = drivenPlugin(app, {
+      canisters: { item: { didFile: "did/item.did" } },
+    })
+    const file = path.join(app.root, "did/item.did")
+    const module = () => read(app, "src/canisters/item.ts")
+
+    await buildStart()
+    expect(context.error).not.toHaveBeenCalled()
+    const first = module()
+    expect(first).toMatch(/\bmaybe\b/)
+
+    // An edit without maybe is read by the run; once it is, a text without
+    // put is saved, just before the generator reads the file.
+    const withoutMaybe = liveWith(["  maybe : () -> (opt nat) query;\n", ""])
+    fs.writeFileSync(file, withoutMaybe)
+    cli.save("gen", "before", file, WITHOUT_PUT)
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(String(context.error.mock.lastCall?.[0])).toContain(changed)
+    expect(cli.commands()).toEqual(["gen", "gen"])
+    expect(module()).toBe(first)
+
+    // The edit is saved again: generated now, since the run before took
+    // nothing of it.
+    fs.writeFileSync(file, withoutMaybe)
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(module()).not.toMatch(/\bmaybe\b/)
+    expect(module()).toMatch(/\bput\b/)
+  })
+
+  // A save's run lists the file and generates it with no request: saved
+  // again in between, it is listed again, as the save it is. Each dev test
+  // here has room past its wait, so that what it waits for fails by the
+  // wait's own assertion.
+  it("under vite dev, is queued again as a save is when saved after a save's run listed it", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/item.did": WRITTEN })
+    const cli = hookCli(app)
+    const running = await startDev(app.root, listed())
+    closers.push(running.close)
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors()).toEqual([])
+
+    // An edit that keeps put is saved; once the save's run listed it, a text
+    // without put is saved.
+    const file = path.join(app.root, "did/item.did")
+    cli.save("list", "after", file, WITHOUT_PUT)
+    fs.writeFileSync(file, `// Edited.\n${WRITTEN}`)
+    running.server.watcher.emit("change", file)
+    await vi.waitFor(() => expect(errors()).toHaveLength(1), {
+      timeout: 10_000,
+    })
+    expect(errors()[0]).toContain(
+      "item (did/item.did): methods names put, which did/item.did does not hold (it holds get, maybe)"
+    )
+    // The save's run, which took nothing, and the run it queued.
+    expect(
+      running.lines.filter(
+        (line) =>
+          line === "info: ic-reactor: did/item.did changed, regenerating item"
+      )
+    ).toHaveLength(2)
+    expect(asked).toEqual([])
+  }, 30_000)
+
+  // A check that passed what it read, while the file was saved, is no pass
+  // of the file: a failure that stands is not cleared by it.
+  it("under vite dev, leaves a failed check standing when saved after a restart's check passed the text it read", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: WITHOUT_PUT } })
+    // put, which the canister lacks: the check fails.
+    const app = newApp({ "did/item.did": WRITTEN })
+    const cli = hookCli(app)
+    const running = await startDev(app.root, checkedLive(ic.host))
+    closers.push(running.close)
+    const failure =
+      `item (did/item.did): the live check found ${LEDGER_ID} on ${ic.host} ` +
+      `incompatible with did/item.did (1 error)`
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors()).toHaveLength(1)
+    expect(errors()[0]).toContain(failure)
+
+    // The file loses put, and the same server restarts; once the restart's
+    // check has read the file, put is saved back.
+    const file = path.join(app.root, "did/item.did")
+    fs.writeFileSync(file, WITHOUT_PUT)
+    cli.save("check", "after", file, WRITTEN)
+    await running.server.restart()
+    await vi.waitFor(() => expect(errors()).toHaveLength(2), {
+      timeout: 10_000,
+    })
+    expect(errors()[1]).toContain(failure)
+    expect(errors()[1]).toContain(
+      "did/item.did was saved, and a save makes no request: this stands until a live check passes"
+    )
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    expect(ic.requests).toHaveLength(4)
+  }, 30_000)
 })
 
 // A JavaScript config is not type-checked: only an omitted option is one

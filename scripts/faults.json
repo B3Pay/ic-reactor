@@ -2496,8 +2496,8 @@
     "testName": "follows failOnError: logged, and the other canisters generated",
     "why": "a failed fetch is dropped: the canister is neither generated nor reported",
     "file": "src/index.ts",
-    "search": "        return generation && dedupe([...failures, ...generation])",
-    "replace": "        return generation && dedupe([...failures.filter((failure) => !fetchedNow.failures.includes(failure)), ...generation])"
+    "search": "          failures: dedupe([...failures, ...generation]),\n",
+    "replace": "          failures: dedupe([...failures.filter((failure) => !fetchedNow.failures.includes(failure)), ...generation]),\n"
   },
   {
     "id": "did-fetch-variable-ignored",
@@ -3301,7 +3301,7 @@
     "testName": "are compared with a didFile saved under vite dev, with no request",
     "why": "a save under vite dev regenerates a methods canister without comparing the file with methods, so a file that lost a method generates a module without it",
     "file": "src/index.ts",
-    "search": "      const mismatched = await compareMethods(open, signal)",
+    "search": "      const mismatched = await compareMethods(open, run, signal)",
     "replace": "      const mismatched: Failure[] = []"
   },
   {
@@ -3391,7 +3391,7 @@
     "testName": "that failed under vite dev is cleared by a check that passes when the same server restarts, and a save then regenerates",
     "why": "a live check that passes when the dev server restarts with the same plugin object leaves the canister's earlier failure in place, so every later save still fails it and serves no bindings, though the check passed",
     "file": "src/index.ts",
-    "search": "        for (const { name } of checking) liveFailures.delete(name)\n",
+    "search": "        for (const canister of checking) {\n          if (!live.unsure.has(canister)) liveFailures.delete(canister.name)\n        }\n",
     "replace": ""
   },
   {
@@ -3401,8 +3401,8 @@
     "testName": "that failed under vite dev stands through a restart that fails the canister before its check",
     "why": "a restart clears the live failure of every canister, also one it failed before its check (in the methods comparison or the fetch), so a later save regenerates bindings known not to match the canister though no check passed",
     "file": "src/index.ts",
-    "search": "        for (const { name } of checking) liveFailures.delete(name)\n",
-    "replace": "        for (const { name } of generated) liveFailures.delete(name)\n"
+    "search": "        for (const canister of checking) {\n          if (!live.unsure.has(canister)) liveFailures.delete(canister.name)\n        }\n",
+    "replace": "        for (const canister of generated) {\n          if (!live.unsure.has(canister)) liveFailures.delete(canister.name)\n        }\n"
   },
   {
     "id": "did-save-queued-after-close-runs",
@@ -3521,18 +3521,88 @@
     "testName": "of a run that ends after a restart started another passes nothing for the new run",
     "why": "a check of the old run writes its pass to whichever map is current when it ends, so a check that ends after a restart's configResolved passes for the new run, whose buildStart then skips the check of a canister that changed",
     "file": "src/index.ts",
-    "search": "          else passed.set(canister.name, outcome.text)\n",
-    "replace": "          else verified.set(canister.name, outcome.text)\n"
+    "search": "          } else passed.set(canister.name, outcome.text)\n",
+    "replace": "          } else verified.set(canister.name, outcome.text)\n"
   },
   {
     "id": "did-verify-saved-during-check",
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
     "testName": "records no pass for a didFile saved while its check ran, so restoring the text read first is checked",
-    "why": "the pass is recorded for the text read before the fetch, though candid-core-cli checked the file as it was saved while the fetch ran, so restoring that unchecked text skips the check and generates a method the canister lacks",
+    "why": "the pass is recorded for the text the run read, though candid-core-cli checked the file as it was saved while the fetch ran, so restoring that unchecked text skips the check",
     "file": "src/index.ts",
-    "search": "        const after = snapshot(canister)\n        return after?.text === before.text && after.stamp === before.stamp\n",
-    "replace": "        const after = before\n        return after?.text === before.text && after.stamp === before.stamp\n"
+    "search": "      const passedText = (): string | undefined =>\n        run.asRead(canister) ? text : undefined\n",
+    "replace": "      const passedText = (): string | undefined => text\n"
+  },
+  {
+    "id": "did-run-written-during-check-taken",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved after the live check read it, and generates nothing of the saved text",
+    "why": "the end of a run takes no notice of a didFile written since it read it, so a build whose file was saved after the live check read it passes, with nothing generated or failed for the canister",
+    "file": "src/index.ts",
+    "search": "    canisters.filter((canister) => !run.asRead(canister))\n",
+    "replace": "    canisters.filter(() => false)\n"
+  },
+  {
+    "id": "did-run-written-after-listing-taken",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved after its methods were listed, and generates nothing of the saved text",
+    "why": "the end of a run takes no notice of a didFile written since it read it, so a build whose file was saved after its methods were listed passes",
+    "file": "src/index.ts",
+    "search": "    canisters.filter((canister) => !run.asRead(canister))\n",
+    "replace": "    canisters.filter(() => false)\n"
+  },
+  {
+    "id": "did-run-listed-then-generated",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved after its methods were listed, and generates nothing of the saved text",
+    "why": "generation runs for a didFile the run already found written after it listed its methods, so the generator reads a text no listing saw",
+    "file": "src/index.ts",
+    "search": "      const ready = wanted.filter((canister) => run.asRead(canister))\n",
+    "replace": "      const ready = wanted\n"
+  },
+  {
+    "id": "did-project-listing-of-saved-recorded",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "records no listing for the text read first when saved before its methods were listed, so restoring that text is listed again",
+    "why": "the methods listing is recorded for the text the run read though the CLI listed the file as it was saved before, so restoring the text read first, which lacks a method of methods, passes with no listing",
+    "file": "src/index.ts",
+    "search": "      if (ofText) {\n",
+    "replace": "      if (ofText || true) {\n"
+  },
+  {
+    "id": "did-run-written-module-kept",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved as the generator starts, and puts the module back as it was",
+    "why": "a module generated while its didFile was written is left as the generator wrote it, from a text the run never read",
+    "file": "src/index.ts",
+    "search": "          putBack(before, outputsOf(members[0]))\n",
+    "replace": ""
+  },
+  {
+    "id": "did-run-written-not-requeued",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, is queued again as a save is when saved after a save's run listed it",
+    "why": "under a dev server a run that took nothing of a didFile written while it read it does not queue the file again, so the text saved is never listed or reported",
+    "file": "src/index.ts",
+    "search": "      regenerate(\n        didPath(canister),\n        key,\n        generated.filter((other) => identify(didPath(other)) === key)\n      )\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-unsure-clears-failure",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, leaves a failed check standing when saved after a restart's check passed the text it read",
+    "why": "a check that passed while its didFile was written clears the failure that stood, so the save it queues generates a text no check saw",
+    "file": "src/index.ts",
+    "search": "          if (!live.unsure.has(canister)) liveFailures.delete(canister.name)\n",
+    "replace": "          liveFailures.delete(canister.name)\n"
   },
   {
     "id": "opt-fail-on-error-not-boolean",
