@@ -3,6 +3,7 @@ import * as vitePluginModule from "./index.js"
 import type { IcReactorPluginOptions } from "./index.js"
 import path from "node:path"
 import { execFile } from "child_process"
+import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { resolveConfig as resolveViteConfig } from "vite"
 
 const createVitePlugin =
@@ -123,12 +124,12 @@ describe("icReactor", () => {
     ]
     for (const [value, quoted] of given) {
       expect(() => createVitePlugin({ canisters: value })).toThrow(
-        `[ic-reactor] canisters is ${quoted}, not an object of canisters by name: ` +
+        `[ic-reactor] canisters is ${quoted}, not a plain object of canisters by name: ` +
           "give each canister's options under its name, or remove canisters"
       )
     }
     expect(() => createVitePlugin(null)).toThrow(
-      "[ic-reactor] the options are null, not an object: give icReactor() an object of options, or none"
+      "[ic-reactor] the options are null, not a plain object: give icReactor() an object of options, or none"
     )
     for (const options of [
       undefined,
@@ -140,12 +141,81 @@ describe("icReactor", () => {
     }
   })
 
+  // An object that is not a plain one is no object of canisters: its keys
+  // are not the canisters it holds. Read for them, a Map of canisters, a
+  // Promise of them (an async loader not awaited) or the canisters a
+  // prototype holds were none, and the plugin started with no canister,
+  // without a word, as for canisters: null.
+  it("should refuse canisters, or the options, given as an object that is not a plain one, and take one with no prototype", () => {
+    class Canisters {
+      ledger = { didFile: "did/ledger.did" }
+    }
+    const canisters = { ledger: { didFile: "did/ledger.did" } }
+    const given: Array<[unknown, string]> = [
+      [new Map(Object.entries(canisters)), "Map {}"],
+      [Promise.resolve(canisters), "Promise {}"],
+      [new Canisters(), 'Canisters {"ledger":{"didFile":"did/ledger.did"}}'],
+      [Object.create(canisters), "{} (an object that inherits from another)"],
+      [new Date(0), "Date {}"],
+      [new Number(1), "Number {}"],
+    ]
+    for (const [value, quoted] of given) {
+      expect(() => createVitePlugin({ canisters: value })).toThrow(
+        `[ic-reactor] canisters is ${quoted}, not a plain object of canisters by name: ` +
+          "give each canister's options under its name, or remove canisters"
+      )
+    }
+    const options = { canisters }
+    for (const [value, quoted] of [
+      [new Map(Object.entries(options)), "Map {}"],
+      [Promise.resolve(options), "Promise {}"],
+    ] as const) {
+      expect(() => createVitePlugin(value)).toThrow(
+        `[ic-reactor] the options are ${quoted}, not a plain object: give icReactor() an object of options, or none`
+      )
+    }
+    // An object with no prototype, as Object.create(null) makes, is plain.
+    const bare = Object.assign(Object.create(null), canisters)
+    expect(() => createVitePlugin({ canisters: bare })).not.toThrow()
+    expect(() =>
+      createVitePlugin(Object.assign(Object.create(null), { canisters: bare }))
+    ).not.toThrow()
+  })
+
   describe("config", () => {
     /**
      * Every canister id `icp` reports, by canister name: its own properties
      * only, so that a canister named `toString` is one `icp` does not know.
      */
     type Deployed = Record<string, string>
+
+    /**
+     * `icp canister status`'s answer to its arguments `args`, read as icp's
+     * parser reads them: `-e` takes a value, `-i` none, `--` ends the
+     * options, and the first other argument is the canister. Before `--`,
+     * an argument that begins with `-` is a flag: `--help` prints the help,
+     * with exit 0, and any other unknown one is refused.
+     */
+    const statusOf = (args: string[], deployed: Deployed): string | Error => {
+      let name: string | undefined
+      for (let index = 0; index < args.length; index++) {
+        const arg = args[index]
+        if (arg === "--") {
+          name ??= args[index + 1]
+          break
+        }
+        if (arg === "-e") index += 1
+        else if (arg === "-h" || arg === "--help") {
+          return "Show the status of canister(s).\n\nUsage: icp canister status [OPTIONS] [CANISTER]\n"
+        } else if (arg.startsWith("-") && arg !== "-i") {
+          return new Error(`error: unexpected argument '${arg}' found`)
+        } else if (arg !== "-i") name ??= arg
+      }
+      return name !== undefined &&
+        Object.prototype.hasOwnProperty.call(deployed, name)
+        ? deployed[name]
+        : new Error(`canister ${name} not found`)
+    }
 
     /**
      * Answer each `icp` command the plugin runs: the network status, or
@@ -163,9 +233,7 @@ describe("icReactor", () => {
         if (args[0] === "network") {
           return network instanceof Error ? network : JSON.stringify(network)
         }
-        return Object.prototype.hasOwnProperty.call(deployed, args[2])
-          ? deployed[args[2]]
-          : new Error(`canister ${args[2]} not found`)
+        return statusOf(args.slice(2), deployed)
       })
 
     /** How many `icp` commands the plugin has run. */
@@ -207,6 +275,19 @@ describe("icReactor", () => {
       )
       const cookie = headers.get("set-cookie")
       return cookie === undefined ? undefined : String(cookie)
+    }
+
+    /**
+     * The `ic_env` cookie of a `Set-Cookie` header as the app reads it, with
+     * `@icp-sdk/core`'s `getCanisterEnv`, as a page does.
+     */
+    const readBack = (setCookie: string | undefined) => {
+      vi.stubGlobal("document", { cookie: String(setCookie).split(";")[0] })
+      try {
+        return getCanisterEnv()
+      } finally {
+        vi.unstubAllGlobals()
+      }
     }
 
     it("should set up the API proxy and the cookie when icp-cli is available", async () => {
@@ -264,7 +345,7 @@ describe("icReactor", () => {
       expect(cookie).not.toContain("local-cli-canister-id")
     })
 
-    // A canister's name is any text, and a JSON config can name one
+    // A canister's name is kept as given, and a JSON config can name one
     // __proto__. Kept by name in a plain object, its configured ID went to
     // the prototype's setter instead, and the cookie carried no ID for it.
     it("should give a canister named __proto__ or constructor its configured canisterId over the one icp reports", async () => {
@@ -329,6 +410,100 @@ describe("icReactor", () => {
         expect(cookie).toContain(
           `PUBLIC_CANISTER_ID%3A${name}%3Dicp-id-${index}`
         )
+      )
+    })
+
+    // icp gives a canister a name of ASCII letters, digits, _ and -, which
+    // may begin with -. Handed to icp before its options ended, such a name
+    // was read as a flag: icp refused it, or printed its help for --help,
+    // with exit 0, which the cookie then carried as the canister's ID.
+    it("should ask icp for a canister whose name begins with - by that name, and give the cookie the ID it reports", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {})
+      answerIcp({ "-x": "icp-dash-id", "--help": "icp-help-id" })
+
+      const plugin = createVitePlugin({ canisters: { "-x": {}, "--help": {} } })
+      const { middleware } = await serveWithEnvironment(plugin)
+
+      const cookie = await request(middleware)
+      expect(cookie).toContain("PUBLIC_CANISTER_ID%3A-x%3Dicp-dash-id")
+      expect(cookie).toContain("PUBLIC_CANISTER_ID%3A--help%3Dicp-help-id")
+      expect(cookie).not.toContain("Show%20the%20status")
+    })
+
+    // The cookie joins its entries with & and each name to its ID with =, as
+    // the asset canister writes it, and @icp-sdk/core reads it back so. A
+    // name that held either was read back as other keys, one of which could
+    // take the place of another canister's entry or of the root key: the app
+    // then read no environment at all.
+    it("should leave a canister whose name holds & or = out of the cookie, with a warning, and the app reads back every other name as given", async () => {
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {})
+      answerIcp(
+        {
+          "-x": "icp-dash-id",
+          "a=b": "icp-equals-id",
+          "x&ic_root_key=00": "icp-amp-id",
+        },
+        { root_key: "ab".repeat(133), port: 4943 }
+      )
+
+      const plugin = createVitePlugin({
+        canisters: JSON.parse(`{
+          "__proto__": { "canisterId": "ryjl3-tyaaa-aaaaa-aaaba-cai" },
+          "-x": {},
+          "a b": { "canisterId": "bkyz2-fmaaa-aaaaa-qaaaq-cai" },
+          "a=b": {},
+          "x&ic_root_key=00": { "canisterId": "mqygn-kiaaa-aaaar-qaadq-cai" }
+        }`),
+      })
+      const { middleware } = await serveWithEnvironment(plugin)
+
+      expect(readBack(await request(middleware))).toEqual({
+        IC_ROOT_KEY: new Uint8Array(133).fill(0xab),
+        "PUBLIC_CANISTER_ID:__proto__": "ryjl3-tyaaa-aaaaa-aaaba-cai",
+        "PUBLIC_CANISTER_ID:-x": "icp-dash-id",
+        "PUBLIC_CANISTER_ID:a b": "bkyz2-fmaaa-aaaaa-qaaaq-cai",
+        INTERNET_IDENTITY_PROVIDER: "http://id.ai.localhost:4943/authorize",
+      })
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[ic-reactor] The ic_env cookie cannot carry the canisters "a=b", "x&ic_root_key=00": ' +
+          'it joins its entries with "&" and each name to its ID with "=", so a name that holds either, ' +
+          "or that is not well-formed text, would be read back as another. They are left out of the cookie, " +
+          'and icp is not asked for their IDs. Name the canister as icp does: ASCII letters, digits, "_" and "-".'
+      )
+      const asked = (execFile as any).mock.calls.map(
+        ([, args]: [string, string[]]) => args[args.length - 1]
+      )
+      expect(asked).toContain("-x")
+      expect(asked).not.toContain("a=b")
+      expect(asked).not.toContain("x&ic_root_key=00")
+    })
+
+    // Text that is not well-formed, a lone surrogate as a JSON config can
+    // hold, cannot be URI-encoded: the cookie threw as it was built, and no
+    // cookie was set for any canister.
+    it("should leave a canister whose name is not well-formed text out of the cookie, with a warning, and set the cookie for the others", async () => {
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {})
+      answerIcp({ "-x": "icp-dash-id" })
+
+      const plugin = createVitePlugin({
+        canisters: JSON.parse(
+          '{ "-x": {}, "\\ud800": { "canisterId": "yq4ns-hyaaa-aaaap-akbna-cai" } }'
+        ),
+      })
+      const { middleware } = await serveWithEnvironment(plugin)
+
+      const cookie = await request(middleware)
+      expect(cookie).toBeDefined()
+      expect(cookie).toContain("PUBLIC_CANISTER_ID%3A-x%3Dicp-dash-id")
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        '[ic-reactor] The ic_env cookie cannot carry the canister "\\ud800": ' +
+          'it joins its entries with "&" and each name to its ID with "=", so a name that holds either, ' +
+          "or that is not well-formed text, would be read back as another. It is left out of the cookie, " +
+          'and icp is not asked for its ID. Name the canister as icp does: ASCII letters, digits, "_" and "-".'
       )
     })
 

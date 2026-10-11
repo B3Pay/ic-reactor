@@ -3483,13 +3483,13 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "  } else if (canisterId !== undefined && canisterIdWrong === undefined) {\n    read.configuredCanisterIds.set(name, canisterId as string)\n",
-        "replace": "  } else if (canisterId) {\n    read.configuredCanisterIds.set(name, canisterId as string)\n"
+        "search": "    } else if (canisterId !== undefined && canisterIdWrong === undefined) {\n      read.configuredCanisterIds.set(name, canisterId as string)\n",
+        "replace": "    } else if (canisterId) {\n      read.configuredCanisterIds.set(name, canisterId as string)\n"
       },
       {
         "file": "src/options.ts",
-        "search": "  } else if (canisterId !== undefined) {\n    read.notCanisterIds.push(",
-        "replace": "  } else if (false as boolean) {\n    read.notCanisterIds.push("
+        "search": "    } else if (canisterId !== undefined) {\n      read.notCanisterIds.push(",
+        "replace": "    } else if (false as boolean) {\n      read.notCanisterIds.push("
       }
     ]
   },
@@ -4008,8 +4008,8 @@
     "testName": "should leave a configured canisterId that is not one to icp, and warn",
     "why": "the cookie takes any text for a configured canister ID, so text that is no principal is handed to the app over the ID icp reports",
     "file": "src/options.ts",
-    "search": "  } else if (canisterId !== undefined && canisterIdWrong === undefined) {\n    read.configuredCanisterIds.set(name, canisterId as string)\n",
-    "replace": "  } else if (typeof canisterId === \"string\" && canisterId !== \"\") {\n    read.configuredCanisterIds.set(name, canisterId as string)\n"
+    "search": "    } else if (canisterId !== undefined && canisterIdWrong === undefined) {\n      read.configuredCanisterIds.set(name, canisterId as string)\n",
+    "replace": "    } else if (typeof canisterId === \"string\" && canisterId !== \"\") {\n      read.configuredCanisterIds.set(name, canisterId as string)\n"
   },
   {
     "id": "principal-text-no-round-trip",
@@ -4212,10 +4212,80 @@
     "id": "opt-canisters-copied-by-assignment",
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
-    "testName": "is any text: canisters named __proto__, constructor, toString or hasOwnProperty are read, generated and reported as any other",
+    "testName": "is kept as given: canisters named __proto__, constructor, toString or hasOwnProperty are read, generated and reported as any other",
     "why": "the canisters copied by assignment before they are listed, so a canister named __proto__ goes to the copy's prototype setter and is never read: not generated, and not reported",
     "file": "src/options.ts",
     "search": "    keys = Object.keys(canisters)\n",
     "replace": "    keys = Object.keys(Object.assign({}, canisters))\n"
+  },
+  {
+    "id": "opt-canisters-not-plain-read",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse canisters, or the options, given as an object that is not a plain one, and take one with no prototype",
+    "why": "any object but a list taken for an object of options, as before: canisters given as a Map, a Promise (an async loader not awaited) or an object whose canisters its prototype holds are read for their own keys, none, so the plugin starts with no canister without a word, as for canisters: null",
+    "file": "src/options.ts",
+    "search": "    if (typeof value !== \"object\" || value === null || Array.isArray(value)) {\n      return false\n    }\n    const prototype: unknown = Object.getPrototypeOf(value)\n    return prototype === Object.prototype || prototype === null\n",
+    "replace": "    return typeof value === \"object\" && value !== null && !Array.isArray(value)\n"
+  },
+  {
+    "id": "opt-entry-not-plain-read",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "an entry, or its network, that is not a plain object fails the canister, quoted as given, and one with no prototype is generated",
+    "why": "any object but a list taken for an object of options, as before: an entry given as a Map or a Promise reads no didFile and is taken for a canister only named in the cookie, without a word, and an instance of a class is generated through its class",
+    "file": "src/options.ts",
+    "search": "    if (typeof value !== \"object\" || value === null || Array.isArray(value)) {\n      return false\n    }\n    const prototype: unknown = Object.getPrototypeOf(value)\n    return prototype === Object.prototype || prototype === null\n",
+    "replace": "    return typeof value === \"object\" && value !== null && !Array.isArray(value)\n"
+  },
+  {
+    "id": "opt-network-instance-taken",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "an entry, or its network, that is not a plain object fails the canister, quoted as given, and one with no prototype is generated",
+    "why": "a network that is an object of a class handed to the fetch as it is, so an instance with a host is taken for { host }, read again through its class at each use",
+    "file": "src/options.ts",
+    "search": "  } else if (typeof givenNetwork === \"object\" && givenNetwork !== null) {\n",
+    "replace": "  } else if (false as boolean) {\n"
+  },
+  {
+    "id": "opt-inherited-quoted-as-plain",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "an entry, or its network, that is not a plain object fails the canister, quoted as given, and one with no prototype is generated",
+    "why": "an object that inherits from one with no class quoted as a plain object, {}, so the message refuses what looks like a plain object of options without saying why",
+    "file": "src/options.ts",
+    "search": "  return quoted.startsWith(\"{\")\n    ? `${quoted} (an object that inherits from another)`\n    : quoted\n",
+    "replace": "  return quoted\n"
+  },
+  {
+    "id": "env-name-read-as-flag",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should ask icp for a canister whose name begins with - by that name, and give the cookie the ID it reports",
+    "why": "the canister's name handed to icp before its options end, as before, so a name that begins with - is read as a flag: icp refuses -x, and prints its help for --help, with exit 0, which the cookie carries as the canister's ID",
+    "file": "src/env.ts",
+    "search": "            [\"canister\", \"status\", \"-e\", networkName, \"-i\", \"--\", name],\n",
+    "replace": "            [\"canister\", \"status\", name, \"-e\", networkName, \"-i\"],\n"
+  },
+  {
+    "id": "env-uncarried-name-in-cookie",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should leave a canister whose name holds & or = out of the cookie, with a warning, and the app reads back every other name as given",
+    "why": "every name put in the ic_env cookie, as before: a name that holds & or = is read back as other keys, one of which takes the root key's place, so the app reads no environment at all, and no warning says why",
+    "file": "src/options.ts",
+    "search": "    const carried = cookieCarries(name)\n",
+    "replace": "    const carried = true as boolean\n"
+  },
+  {
+    "id": "env-unencodable-name-in-cookie",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should leave a canister whose name is not well-formed text out of the cookie, with a warning, and set the cookie for the others",
+    "why": "a name with a lone surrogate taken for one the cookie carries, since it holds neither & nor =: encodeURIComponent throws on it as the cookie is built, so no cookie is set for any canister",
+    "file": "src/env.ts",
+    "search": "  try {\n    encodeURIComponent(name)\n    return true\n  } catch {\n    return false\n  }\n",
+    "replace": "  return true\n"
   }
 ]

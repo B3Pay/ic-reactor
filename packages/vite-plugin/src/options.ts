@@ -26,14 +26,25 @@
  * `""`, `false`) for an option not given. Each value but `undefined` is
  * checked first, and one that is not a value of the option is refused.
  *
- * A canister's name is any text: `__proto__`, `constructor` and `toString`
- * name canisters as any other text does. What the plugin keeps by canister
- * name is kept in a `Map`, never in a plain object, where such a name would
- * reach `Object.prototype` (an assignment to `__proto__` sets the prototype,
- * and a lookup of `toString` finds a function).
+ * Every object of options (the options, `canisters`, each canister's entry,
+ * a `network` of `{ host }`) is a plain object: one whose prototype is
+ * `Object.prototype` or `null`. A `Map`, a `Promise`, an instance of a class
+ * or an object that inherits from another is refused as any other value that
+ * is not one: read for its keys, a `Map` of canisters or a `Promise` of
+ * options would be read as none.
+ *
+ * A canister's name is its name in the `icp` project, kept as given:
+ * `__proto__`, `constructor` and `toString` name canisters as any other name
+ * does. What the plugin keeps by canister name is kept in a `Map`, never in a
+ * plain object, where such a name would reach `Object.prototype` (an
+ * assignment to `__proto__` sets the prototype, and a lookup of `toString`
+ * finds a function). A name the `ic_env` cookie cannot carry
+ * (`cookieCarries`: every name `icp` gives a canister is one it carries) is
+ * left out of the cookie, with a warning.
  */
 
 import { describeError, describeValue } from "./describe-value.js"
+import { cookieCarries } from "./env.js"
 import { resolveNetwork, type CanisterNetwork } from "./fetch.js"
 import { isPrincipalText } from "./principal-text.js"
 
@@ -71,8 +82,17 @@ export interface Refused {
 export interface ReadOptions {
   injectEnvironment: boolean
   failOnError: boolean | undefined
-  /** Every canister an entry names, which the `ic_env` cookie carries. */
+  /**
+   * Every canister an entry names, which the `ic_env` cookie carries: all but
+   * those of `uncarriedNames`.
+   */
   names: string[]
+  /**
+   * The canisters an entry names that the cookie cannot carry
+   * (`cookieCarries`), which it leaves out, with a warning. They are
+   * generated, and refused, as any other.
+   */
+  uncarriedNames: string[]
   /**
    * The cookie's ID of each canister whose `canisterId` is one, by canister
    * name: a `Map`, so that any name is kept as given.
@@ -89,14 +109,42 @@ export interface ReadOptions {
   refused: Refused[]
 }
 
-/** An object of options: not `null`, a list or a function. Never throws. */
+/**
+ * An object of options, as the options, `canisters`, each canister's entry
+ * and a `network` of `{ host }` are: a plain object, whose prototype is
+ * `Object.prototype` or `null`, as an object written `{ … }` and those that
+ * `JSON.parse`, `Object.fromEntries` and `Object.create(null)` make are. Not
+ * `null`, a list or a function, nor an object of a class (a `Map`, a
+ * `Promise`, a `Date`, a boxed string, a class's instance) or one that
+ * inherits from another object: read as options, a `Map`'s entries and a
+ * `Promise`'s value are none, so its canisters or its options would be left
+ * out without a word. Never throws: a proxy is asked for its prototype, and
+ * one that throws (a revoked one) is not a plain object.
+ */
 function isOptionsObject(value: unknown): value is Record<string, unknown> {
   try {
-    return typeof value === "object" && value !== null && !Array.isArray(value)
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      return false
+    }
+    const prototype: unknown = Object.getPrototypeOf(value)
+    return prototype === Object.prototype || prototype === null
   } catch {
-    // A revoked proxy.
+    // A revoked proxy, or a proxy's trap that throws.
     return false
   }
+}
+
+/**
+ * `value`, which is not a plain object, as a message quotes it.
+ * `describeValue` names an object's class (`Map {}`, `Promise {}`,
+ * `Ledger {…}`), but quotes one whose prototype has no class to name as it
+ * quotes a plain object, `{…}`: the quote then says that it inherits.
+ */
+function describeNotPlain(value: unknown): string {
+  const quoted = describeValue(value)
+  return quoted.startsWith("{")
+    ? `${quoted} (an object that inherits from another)`
+    : quoted
 }
 
 /** `value` as a path to read or write, relative to the Vite root. */
@@ -189,7 +237,7 @@ export function readOptions(given: unknown): ReadOptions {
   const options = given === undefined ? {} : given
   if (!isOptionsObject(options)) {
     throw new Error(
-      `[ic-reactor] the options are ${describeValue(options)}, not an object: give icReactor() an object of options, or none`
+      `[ic-reactor] the options are ${describeNotPlain(options)}, not a plain object: give icReactor() an object of options, or none`
     )
   }
   const top = (key: string): unknown => {
@@ -211,12 +259,13 @@ export function readOptions(given: unknown): ReadOptions {
   if (problem) throw new Error(problem)
 
   // Only an omitted `canisters` is none: `null` is refused below, as any other
-  // value that is not an object of canisters is.
+  // value that is not a plain object of canisters is, a `Map` or a `Promise`
+  // of them included.
   const givenCanisters = top("canisters")
   const canisters = givenCanisters === undefined ? {} : givenCanisters
   if (!isOptionsObject(canisters)) {
     throw new Error(
-      `[ic-reactor] canisters is ${describeValue(canisters)}, not an object of canisters by name: ` +
+      `[ic-reactor] canisters is ${describeNotPlain(canisters)}, not a plain object of canisters by name: ` +
         `give each canister's options under its name, or remove canisters`
     )
   }
@@ -235,6 +284,7 @@ export function readOptions(given: unknown): ReadOptions {
       injectEnvironment === undefined ? true : (injectEnvironment as boolean),
     failOnError: failOnError as boolean | undefined,
     names: [],
+    uncarriedNames: [],
     configuredCanisterIds: new Map(),
     notCanisterIds: [],
     generated: [],
@@ -244,28 +294,35 @@ export function readOptions(given: unknown): ReadOptions {
     const entry = readKey(canisters, name)
     // Omitted, as a conditional entry of a JavaScript config is.
     if (entry.threw === undefined && entry.value === undefined) continue
-    read.names.push(name)
+    // The cookie names every canister an entry names, but one whose name it
+    // cannot carry: read back, that one would be another key.
+    const carried = cookieCarries(name)
+    ;(carried ? read.names : read.uncarriedNames).push(name)
     if (entry.threw !== undefined || !isOptionsObject(entry.value)) {
       read.refused.push({
         name,
         problem:
           entry.threw !== undefined
             ? `its options could not be read: ${entry.threw}`
-            : `its options are ${describeValue(entry.value)}, not an object of options (didFile, canisterId, …)`,
+            : `its options are ${describeNotPlain(entry.value)}, not a plain object of options (didFile, canisterId, …)`,
         givesCanisterId: false,
       })
       continue
     }
-    readCanister(name, entry.value, read)
+    readCanister(name, entry.value, read, carried)
   }
   return read
 }
 
-/** Read and check the options of the canister `name`, into `read`. */
+/**
+ * Read and check the options of the canister `name`, into `read`. `carried`:
+ * whether the cookie carries its name, and so its `canisterId`.
+ */
 function readCanister(
   name: string,
   entry: Record<string, unknown>,
-  read: ReadOptions
+  read: ReadOptions,
+  carried: boolean
 ): void {
   const problems: string[] = []
   /** The value of `key`, `undefined` with a problem when reading it threw. */
@@ -292,15 +349,19 @@ function readCanister(
 
   // The cookie's: a configured ID wins over the one `icp` reports. Only a
   // principal's text can be one: any other value given is left to `icp`, with
-  // a warning, rather than put in the cookie or taken for no canisterId.
-  if (canisterIdRead.threw !== undefined) {
-    read.notCanisterIds.push(
-      `${name}: could not be read (${canisterIdRead.threw})`
-    )
-  } else if (canisterId !== undefined && canisterIdWrong === undefined) {
-    read.configuredCanisterIds.set(name, canisterId as string)
-  } else if (canisterId !== undefined) {
-    read.notCanisterIds.push(`${name}: ${describeValue(canisterId)}`)
+  // a warning, rather than put in the cookie or taken for no canisterId. A
+  // canister the cookie cannot carry is in neither, and has the warning of
+  // its name; its `canisterId` is checked below all the same.
+  if (carried) {
+    if (canisterIdRead.threw !== undefined) {
+      read.notCanisterIds.push(
+        `${name}: could not be read (${canisterIdRead.threw})`
+      )
+    } else if (canisterId !== undefined && canisterIdWrong === undefined) {
+      read.configuredCanisterIds.set(name, canisterId as string)
+    } else if (canisterId !== undefined) {
+      read.notCanisterIds.push(`${name}: ${describeValue(canisterId)}`)
+    }
   }
 
   if (didFile !== undefined && !isPath(didFile)) {
@@ -323,7 +384,8 @@ function readCanister(
   }
 
   // A copy: `{ host }` read once, so that no getter of the object given runs
-  // again when the network is resolved.
+  // again when the network is resolved. Any other object (a `URL`, a `Map`,
+  // a `Promise`, a list) is not a network, whatever its `host`.
   const givenNetwork = value("network")
   let network: CanisterNetwork | undefined
   if (isOptionsObject(givenNetwork)) {
@@ -333,6 +395,10 @@ function readCanister(
     } else {
       network = { host: host.value } as CanisterNetwork
     }
+  } else if (typeof givenNetwork === "object" && givenNetwork !== null) {
+    problems.push(
+      `network ${describeNotPlain(givenNetwork)} is not "ic", "local" or a plain object { host: "<http or https URL>" }`
+    )
   } else {
     network = givenNetwork as CanisterNetwork | undefined
   }

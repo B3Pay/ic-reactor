@@ -117,7 +117,10 @@ export async function getIcEnvironmentInfo(
       try {
         const canisterId = (
           await runIcp(
-            ["canister", "status", name, "-e", networkName, "-i"],
+            // `--` ends icp's options, so that a name that begins with `-`,
+            // which icp allows, is read as the canister's name and not as a
+            // flag: `--help` would print icp's help, and exit 0, for an ID.
+            ["canister", "status", "-e", networkName, "-i", "--", name],
             projectRoot
           )
         ).trim()
@@ -129,7 +132,7 @@ export async function getIcEnvironmentInfo(
         // Canister might not exist or be deployed yet — expected for
         // internet_identity, which is added to the lookup list unconditionally.
         diagnostics.push(
-          `\`icp canister status ${name} -e ${networkName}\` failed: ${describeExecError(error)}`
+          `\`icp canister status -e ${networkName} -i -- ${name}\` failed: ${describeExecError(error)}`
         )
       }
     }
@@ -161,11 +164,31 @@ export async function getIcEnvironmentInfo(
 }
 
 /**
+ * Whether the `ic_env` cookie can carry the canister `name`. The cookie joins
+ * its `<key>=<value>` entries with `&` and URI-encodes them as one text, as
+ * the asset canister writes it, and `@icp-sdk/core` reads it back by
+ * splitting that text at each `&`, and each entry at its first `=`. A name
+ * that holds `&` or `=` is read back as another key, and can take the place
+ * of another canister's entry or of the root key; text with a lone surrogate
+ * cannot be URI-encoded at all. Every name `icp` gives a canister (ASCII
+ * letters, digits, `_` and `-`) is one the cookie carries.
+ */
+export function cookieCarries(name: string): boolean {
+  if (name.includes("&") || name.includes("=")) return false
+  try {
+    encodeURIComponent(name)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
  * Build the `ic_env` cookie string.
  * Format: `ic_root_key=<key>&PUBLIC_CANISTER_ID:<name>=<id>&...`
  *
  * @param canisterIds - Each canister's ID, by canister name, in the order the
- * cookie lists them.
+ * cookie lists them. Every name is one it can carry (`cookieCarries`).
  */
 export function buildIcEnvCookie(
   canisterIds: ReadonlyMap<string, string>,

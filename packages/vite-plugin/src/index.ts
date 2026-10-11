@@ -28,7 +28,7 @@ import type {
   UserConfig,
   ViteDevServer,
 } from "vite"
-import { describeError } from "./describe-value.js"
+import { describeError, describeValue } from "./describe-value.js"
 import {
   createLocalEnvironment,
   icEnvMiddleware,
@@ -71,11 +71,16 @@ const GUIDE_LINE =
 export interface IcReactorPluginOptions {
   /**
    * The app's canisters, by name: the canister's name in the `icp` project,
-   * which is also the name the `ic_env` cookie carries its ID under. Any text
-   * names a canister, `__proto__` and `constructor` included, as a JSON
-   * config or a computed key (`["__proto__"]: { … }`) gives it; the literal
-   * `__proto__: { … }` of a JavaScript object sets the object's prototype
-   * instead, and names no canister.
+   * which is also the name the `ic_env` cookie carries its ID under. A name
+   * is kept as given: `__proto__` and `constructor` name canisters as any
+   * other name does, as a JSON config or a computed key
+   * (`["__proto__"]: { … }`) gives them, and so does a name that begins with
+   * `-`. (The literal `__proto__: { … }` of a JavaScript object sets the
+   * object's prototype instead, which makes it no plain object: see below.)
+   * The cookie joins its entries with `&` and each name to its ID with `=`,
+   * so a name that holds either, which no name `icp` gives a canister does,
+   * is left out of it, with a warning under `vite dev`, and `icp` is not
+   * asked for its ID; the canister is generated as any other.
    *
    * - `didFile`: the canister's Candid interface, relative to the Vite root.
    *   The plugin runs `candid-core-cli gen` on it at the start of a build or
@@ -165,21 +170,28 @@ export interface IcReactorPluginOptions {
    *
    * Every value given is checked when the plugin is made, on every canister,
    * one without a `didFile` included, and whether or not a run would use it:
-   * only an omitted option is one not given, and takes its default.
-   * `canisters` itself that is not an object of canisters, `null` included,
-   * throws when the config loads. A canister whose options hold a
-   * value that is not one (a `didFile` or `outDir` that is not a path, any of
-   * the values above, or an option whose getter throws) is refused: each run
-   * fails it with every reason, under `failOnError`, before the run does
-   * anything for it. Nothing is fetched, written, run or requested for it,
-   * nor fetched for a `didFile` it shares with other canisters, and the
-   * others run as they would. The same holds for a canister whose module a
-   * canister before it writes (see `didFile`), and for one that
-   * `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but that has no
-   * `canisterId`. Under `vite dev`, a save of its file, and the file's
-   * deletion, leave it failed for the same reason and run nothing for it. A
-   * refused canister is still named in the cookie, as every entry is: under
-   * `vite dev`, `icp` is asked for its ID, since the app may still call it.
+   * only an omitted option is one not given, and takes its default. The
+   * options, `canisters`, each entry and a `network` of `{ host }` are plain
+   * objects, whose prototype is `Object.prototype` or `null`: written
+   * `{ … }`, or made by `JSON.parse`, `Object.fromEntries` or
+   * `Object.create(null)`. A `Map`, a `Promise`, an instance of a class and
+   * an object that inherits from another are not, and are refused as any
+   * other value that is not one: read for their keys, they would be read as
+   * none. `canisters` itself that is not a plain object, `null` included,
+   * throws when the config loads, as the options do. A canister whose options
+   * are not one, or hold a value that is not one (a `didFile` or `outDir`
+   * that is not a path, any of the values above, or an option whose getter
+   * throws) is refused: each run fails it with every reason, under
+   * `failOnError`, before the run does anything for it. Nothing is fetched,
+   * written, run or requested for it, nor fetched for a `didFile` it shares
+   * with other canisters, and the others run as they would. The same holds
+   * for a canister whose module a canister before it writes (see `didFile`),
+   * and for one that `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but
+   * that has no `canisterId`. Under `vite dev`, a save of its file, and the
+   * file's deletion, leave it failed for the same reason and run nothing for
+   * it. A refused canister is still named in the cookie, as every entry is
+   * (but one whose name the cookie cannot carry): under `vite dev`, `icp` is
+   * asked for its ID, since the app may still call it.
    * Messages quote each value as it was given, whatever its kind (a bigint,
    * a symbol, an object that holds itself).
    *
@@ -480,6 +492,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     injectEnvironment,
     failOnError,
     names,
+    uncarriedNames,
     configuredCanisterIds,
     notCanisterIds,
     generated,
@@ -1943,6 +1956,18 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
           `[ic-reactor] canisterId is not a canister ID (${notCanisterIds.join("; ")}), ` +
             `so the ic_env cookie takes the ID of ${notCanisterIds.length === 1 ? "that canister" : "those canisters"} from icp. ` +
             `Give the canister's principal as text, or remove canisterId.`
+        )
+      }
+
+      if (uncarriedNames.length > 0) {
+        const one = uncarriedNames.length === 1
+        console.warn(
+          `[ic-reactor] The ic_env cookie cannot carry the canister${one ? "" : "s"} ` +
+            `${uncarriedNames.map((name) => describeValue(name)).join(", ")}: it joins its entries with "&" ` +
+            `and each name to its ID with "=", so a name that holds either, or that is not well-formed text, ` +
+            `would be read back as another. ${one ? "It is" : "They are"} left out of the cookie, and icp is ` +
+            `not asked for ${one ? "its ID" : "their IDs"}. Name the canister as icp does: ASCII letters, ` +
+            `digits, "_" and "-".`
         )
       }
 

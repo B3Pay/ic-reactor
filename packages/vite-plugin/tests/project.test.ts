@@ -1618,6 +1618,10 @@ describe("a didFile written while a run reads it", () => {
   // The generator reads no file whose name does not end in `.did`
   // (`api.candid`, `api.DID`), and writes nothing for it: what was there,
   // under its name or under a name with the whole extension cut, stays.
+  // candid-core-cli 0.3.0 writes nothing for those two, so no fault of the
+  // put-back fails them: they guard against a CLI that reads such a file and
+  // writes under another name than the one the plugin puts back. The test
+  // bites through `.did`.
   it("fails the build when saved as the generator starts, and puts back the files the generator names, whatever the file's name", async () => {
     const withoutMaybe = liveWith(["  maybe : () -> (opt nat) query;\n", ""])
     const names = [
@@ -1906,7 +1910,7 @@ describe("a didFile written while a run reads it", () => {
 describe("a canister's name", () => {
   // A JSON config can name a canister after a member of Object.prototype.
   // Each is read, generated, compared and refused as any other name is.
-  it("is any text: canisters named __proto__, constructor, toString or hasOwnProperty are read, generated and reported as any other", async () => {
+  it("is kept as given: canisters named __proto__, constructor, toString or hasOwnProperty are read, generated and reported as any other", async () => {
     const asked = refuseNetwork()
     const app = newApp({
       "did/a.did": PING_DID,
@@ -1988,7 +1992,7 @@ describe("options given a value of the wrong kind", () => {
       'verify (did/a.did): verify is null, not "live"'
     )
     expect(message).toContain(
-      "- entry: its options are null, not an object of options"
+      "- entry: its options are null, not a plain object of options"
     )
     expect(message).not.toContain("- omitted (")
     // The omitted options' defaults: generated into src/canisters.
@@ -2183,12 +2187,81 @@ describe("options given a value of the wrong kind", () => {
       '- nul: didFile is "did/f.did\\u0000", not a path'
     )
     expect(message).toContain(
-      "- nil: its options are null, not an object of options"
+      "- nil: its options are null, not a plain object of options"
     )
     expect(read).toBe(0)
     expect(cli.commands()).toEqual(["gen"])
     expect(app.runs()[0]).toContain(path.join(app.root, "did/ping.did"))
     expect(exists(app, "src/canisters/ping.ts")).toBe(true)
+    expect(asked).toEqual([])
+  })
+
+  // An object of options is a plain one. Read for its keys, a Map's entries
+  // or a Promise's value were none, so the canister was taken for one only
+  // named in the cookie, and nothing was generated for it without a word,
+  // and an instance of a class was read through its class: a network of one
+  // with a host took that host.
+  it("an entry, or its network, that is not a plain object fails the canister, quoted as given, and one with no prototype is generated", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({
+      "did/a.did": PING_DID,
+      "did/b.did": PING_DID,
+      "did/c.did": PING_DID,
+      "did/d.did": PING_DID,
+      "did/e.did": PING_DID,
+      "did/f.did": PING_DID,
+      "did/ping.did": PING_DID,
+    })
+    const cli = hookCli(app)
+    class Options {
+      didFile = "did/c.did"
+    }
+    class Network {
+      host = "http://127.0.0.1:4943"
+    }
+    const { message } = await buildError(app, {
+      canisters: {
+        map: new Map([["didFile", "did/a.did"]]) as never,
+        promise: Promise.resolve({ didFile: "did/b.did" }) as never,
+        instance: new Options(),
+        inherits: Object.create({ didFile: "did/d.did" }),
+        url: {
+          didFile: "did/e.did",
+          network: new URL("http://127.0.0.1:4943") as never,
+        },
+        host: { didFile: "did/f.did", network: new Network() },
+        bare: Object.assign(Object.create(null), {
+          didFile: "did/ping.did",
+        }),
+      },
+    })
+    expect(message).toContain("could not generate 6 of 7 canisters")
+    const notOptions = "not a plain object of options (didFile, canisterId, …)"
+    expect(message).toContain(`- map: its options are Map {}, ${notOptions}`)
+    expect(message).toContain(
+      `- promise: its options are Promise {}, ${notOptions}`
+    )
+    expect(message).toContain(
+      `- instance: its options are Options {"didFile":"did/c.did"}, ${notOptions}`
+    )
+    expect(message).toContain(
+      `- inherits: its options are {} (an object that inherits from another), ${notOptions}`
+    )
+    const notNetwork =
+      'is not "ic", "local" or a plain object { host: "<http or https URL>" }'
+    expect(lineOf(message, "url")).toContain(
+      `url (did/e.did): network URL {} ${notNetwork}`
+    )
+    expect(lineOf(message, "host")).toContain(
+      `host (did/f.did): network Network {"host":"http://127.0.0.1:4943"} ${notNetwork}`
+    )
+    expect(message).not.toContain("- bare")
+    expect(cli.commands()).toEqual(["gen"])
+    expect(app.runs()[0]).toContain(path.join(app.root, "did/ping.did"))
+    expect(exists(app, "src/canisters/ping.ts")).toBe(true)
+    for (const stem of ["a", "b", "c", "d", "e", "f"]) {
+      expect(exists(app, `src/canisters/${stem}.ts`)).toBe(false)
+    }
     expect(asked).toEqual([])
   })
 
