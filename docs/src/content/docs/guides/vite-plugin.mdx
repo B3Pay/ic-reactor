@@ -98,6 +98,18 @@ The key of an entry is the canister's name in the `icp` project, and it is the
 name the cookie carries its id under. A canister without a `didFile` generates
 nothing and is only named in the cookie.
 
+Every value given is checked when the plugin is made, whether or not a build
+would use it: only an omitted field is one not given. A canister whose field
+holds a value that is not one (a `didFile` or `outDir` that is not a path, a
+`canisterId` that is not text, a `network`, `methods` or `verify` that is none
+of the values above, or a getter that throws) fails, under `failOnError`, with
+a message that quotes the value as given, whatever its kind. The plugin
+fetches, writes, runs and requests nothing for it, nor fetches a `didFile` it
+shares with other canisters, and the others build as they would. So does a
+canister that `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but that has no
+`canisterId`. A `canisters`, `injectEnvironment` or `failOnError` that is not
+one throws when the config loads.
+
 ### Canisters that share an interface
 
 An ICP ledger and a ckBTC ledger can both use `icrc1.did`. They are two
@@ -281,19 +293,21 @@ bytes, so `IC_REACTOR_FETCH` rewrites the file only when the canister changed.
 - Canisters that name one `didFile` share its fetch only when they name one
   list. Every one of them generates from the file, so an entry with no
   `canisterId` counts as much as the one it is fetched for: its `methods`, or
-  the whole interface when it names none. With different lists, or a list
-  that cannot be projected to, nothing is fetched and no request is made:
-  each fails with one message naming the entries and the file, and their
-  lists when they differ, or the list that cannot be projected to.
-  A `didFile` on disk that nobody asked to fetch again is read by them all,
-  and compared with the list of each as above.
+  the whole interface when it names none. With different lists, or when one
+  of them fails for a value of its own (a list that cannot be projected to,
+  say), nothing is fetched and no request is made: each fails with one
+  message naming the entries and the file, and their lists when they differ,
+  or the reasons of the one that fails. A `didFile` on disk that nobody asked
+  to fetch again is read by them all, and compared with the list of each as
+  above.
 - `methods` is a list of names: an empty list, or a name with a comma (which
   `candid-core-cli project` cannot take), fails the canister before any
   request. Only an omitted `methods` is the whole interface: any other value
   a JavaScript config gives (`null`, `false`, `0`, `""`) fails the canister
   too. Likewise only an omitted `canisterId` is none: one given as `""` or
-  `null` fails the fetch or check that would use it, and is left out of the
-  `ic_env` cookie with a warning.
+  `null` fails the canister, whether or not a fetch or a check would use it,
+  and is left out of the `ic_env` cookie with a warning (see
+  [Options](#options)).
 
 ### The live check
 
@@ -363,8 +377,9 @@ start checks it again and the check passes, fetches the file again
 and Enter in its terminal) to check again.
 
 `verify` takes only `"live"`: any other value, `true` or `false` included,
-fails the canister, under `IC_REACTOR_VERIFY=0` too. Remove `verify` for no
-check.
+fails the canister, under `IC_REACTOR_VERIFY=0` too, before anything is
+fetched for it, and so does `"live"` with no `canisterId`. Remove `verify` for
+no check.
 
 ### How the plugin runs candid-core
 
@@ -426,6 +441,13 @@ affected. The command it runs is
 - A declaration the generator cannot represent is left out of the module, and
   the plugin logs each one as a warning, for example
   `ic-reactor: ledger: omitted declaration Bad (reserved_field_name)`.
+- Closing the dev server (or restarting it, as a `vite.config` edit does)
+  kills a generator of that server that is still running and drops its runs
+  still waiting, so none outlives the server it belonged to or runs beside the
+  next one. A server restarted with the same plugin object (an inline config,
+  which `server.restart()` keeps) has runs of its own: Vite starts it before
+  it closes the old one, and the old server's close does not stop them. Its
+  overlay starts as the old one's, and its runs change it.
 - Editing a `.did` regenerates only the canisters that name it. Under
   `vite build --watch`, a canister is regenerated only when its `.did` text
   changed.

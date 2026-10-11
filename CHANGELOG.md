@@ -191,13 +191,25 @@ does not change. The reads guide, the writes guide and the guide
   the canister until that run does. A check of a file written before the
   check was done, passed or failed, records no pass and neither sets nor
   clears a failed check.
-- Only an omitted `methods` or `canisterId` counts as not given: `null`,
-  `false`, `0` or `""` from a JavaScript config fails the canister (for
-  `canisterId`, the fetch or check that would use it, and it is left out of
-  the `ic_env` cookie with a warning) instead of being read as omitted.
-  `failOnError` and `injectEnvironment` take `true` or `false`: any other
-  value (`null`, `0`, `"false"`) throws when the config loads, instead of
-  being read by truthiness.
+- Every option value given is checked when the plugin is made, whether or
+  not a build would use it: only an omitted one counts as not given. A
+  canister whose value is not one (`null`, `false`, `0` or `""` from a
+  JavaScript config, a `didFile` or `outDir` that is not a path, a
+  `canisterId` that is not text, a `network`, `methods` or `verify` that is
+  none of their values, `verify: "live"` with no `canisterId`, a getter that
+  throws) fails, quoted as given whatever its kind (a bigint, a symbol, an
+  object that holds itself), before the plugin fetches, writes, runs or
+  requests anything for it or for a `didFile` it shares; the other canisters
+  build. So does a canister `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names
+  with no `canisterId`. A `canisterId` that is not text is also left out of
+  the `ic_env` cookie, with a warning. `failOnError` and `injectEnvironment`
+  take `true` or `false`, and `canisters` an object: any other value throws
+  when the config loads, instead of being read by truthiness.
+- A dev server restarted with the same plugin object (an inline config, as
+  `server.restart()` keeps it) has runs of its own: the old server's close,
+  which Vite runs after the new server started, stops only the old server's.
+  The new server's overlay starts as the old one's, and a failed live check
+  still stands through the restart until a check of it passes.
 - Both run the app's `candid-core-cli` in a child process, as `gen` does, and
   never the library in the Vite process. No export is added; the two fields
   are new keys of `IcReactorPluginOptions["canisters"]`.

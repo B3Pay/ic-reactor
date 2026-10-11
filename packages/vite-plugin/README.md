@@ -81,6 +81,18 @@ Each entry of `canisters` takes:
 | `methods`    | none              | The methods the app calls: a fetched `didFile` is written as the projection of the interface to them                   |
 | `verify`     | none              | `"live"` checks the `didFile` against the live canister at each build and dev server start                             |
 
+Every value given is checked when the plugin is made, whether or not a build
+would use it: only an omitted field is one not given. A canister whose field
+holds a value that is not one (a `didFile` or `outDir` that is not a path, a
+`canisterId` that is not text, a `network`, `methods` or `verify` that is none
+of the values above, or a getter that throws) fails, under `failOnError`, with
+a message that quotes the value as given, whatever its kind. The plugin
+fetches, writes, runs and requests nothing for it, nor fetches a `didFile` it
+shares with other canisters, and the others build as they would. So does a
+canister that `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but that has no
+`canisterId`. A `canisters`, `injectEnvironment` or `failOnError` that is not
+one throws when the config loads.
+
 Canisters that share one interface share one module. An ICP ledger and a ckBTC
 ledger both on `icrc1.did` are two entries, so that the `ic_env` cookie carries
 each ID, and one generated module:
@@ -210,17 +222,18 @@ export default defineConfig({
 - Canisters that name one `didFile` to be fetched must name one list to share
   its fetch, and an entry with no `canisterId` counts too, since it generates
   from the same file: its `methods`, or the whole interface when it names
-  none. With different lists, or a list that cannot be projected to, nothing
-  is fetched and no request is made: each fails with one message naming the
-  entries and the file, and their lists when they differ, or the list that
-  cannot be projected to. A `didFile` on disk that is not fetched
-  again is read by them all, and compared with the list of each as above.
+  none. With different lists, or when one of them fails for a value of its
+  own (a list that cannot be projected to, say), nothing is fetched and no
+  request is made: each fails with one message naming the entries and the
+  file, and their lists when they differ, or the reasons of the one that
+  fails. A `didFile` on disk that is not fetched again is read by them all,
+  and compared with the list of each as above.
 - Only an omitted `methods` is the whole interface. Any other value given
   that is not a list of method names (`null`, `false`, `""`, an empty list,
   or a name with a comma) fails the canister before any request. Likewise
   only an omitted `canisterId` is none: one given as `""` or `null` fails the
-  fetch or check that would use it, and is left out of the `ic_env` cookie
-  with a warning.
+  canister, whether or not a fetch or a check would use it, and is left out
+  of the `ic_env` cookie with a warning (see [Options](#options)).
 
 ### The live check
 
@@ -265,7 +278,8 @@ over `verify: "live"`.
   (`IC_REACTOR_FETCH`), or runs with the check off: restart the dev server
   (`r` and Enter in its terminal) to check again.
 - `verify` takes only `"live"`: any other value, `true` or `false` included,
-  fails the canister. Remove `verify` for no check.
+  fails the canister before anything is fetched for it, and so does `"live"`
+  with no `canisterId`. Remove `verify` for no check.
 
 ## Generation
 
@@ -292,8 +306,12 @@ affected.
   lines from one process the rest is not logged, so a runaway generator does
   not flood the terminal.
 - Closing the dev server (or restarting it, as a `vite.config` edit does) kills
-  a generator that is still running and drops the runs still waiting, so none
-  outlives the server it belonged to or runs beside the next one.
+  a generator of that server that is still running and drops its runs still
+  waiting, so none outlives the server it belonged to or runs beside the next
+  one. A server restarted with the same plugin object (an inline config, which
+  `server.restart()` keeps) has runs of its own: Vite starts it before it
+  closes the old one, and the old server's close does not stop them. Its
+  overlay starts as the old one's, and its runs change it.
 - A declaration the generator cannot represent is left out of the module, and
   the plugin logs each one as a warning, for example
   `ic-reactor: ledger: omitted declaration Bad (reserved_field_name)`.
