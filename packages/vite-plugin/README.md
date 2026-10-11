@@ -81,17 +81,21 @@ Each entry of `canisters` takes:
 | `methods`    | none              | The methods the app calls: a fetched `didFile` is written as the projection of the interface to them                   |
 | `verify`     | none              | `"live"` checks the `didFile` against the live canister at each build and dev server start                             |
 
-Every value given is checked when the plugin is made, whether or not a build
-would use it: only an omitted field is one not given. A canister whose field
-holds a value that is not one (a `didFile` or `outDir` that is not a path, a
-`canisterId` that is not text, a `network`, `methods` or `verify` that is none
-of the values above, or a getter that throws) fails, under `failOnError`, with
-a message that quotes the value as given, whatever its kind. The plugin
-fetches, writes, runs and requests nothing for it, nor fetches a `didFile` it
+Every value given is checked when the plugin is made, on every canister (one
+without a `didFile` included) and whether or not a build would use it: only an
+omitted field is one not given. A canister whose field holds a value that is
+not one (a `didFile` or `outDir` that is not a path, a `canisterId` that is not
+the text of a principal, a `network`, `methods` or `verify` that is none of the
+values above, or a getter that throws) fails, under `failOnError`, with a
+message that quotes the value as given, whatever its kind. The plugin fetches,
+writes, runs and requests nothing to generate it, nor fetches a `didFile` it
 shares with other canisters, and the others build as they would. So does a
-canister that `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but that has no
-`canisterId`. A `canisters`, `injectEnvironment` or `failOnError` that is not
-one throws when the config loads.
+canister whose module a canister before it writes (below), and one that
+`IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but that has no `canisterId`.
+Such a canister is still named in the `ic_env` cookie, as every entry is, and
+under `vite dev` `icp` is still asked for its ID: the app may still call it. A
+`canisters`, `injectEnvironment` or `failOnError` that is not one throws when
+the config loads.
 
 Canisters that share one interface share one module. An ICP ledger and a ckBTC
 ledger both on `icrc1.did` are two entries, so that the `ic_env` cookie carries
@@ -118,11 +122,14 @@ The generator is given `icrc1.did` once, writes `src/canisters/icrc1.ts` once,
 and a save of the file regenerates it once. (Naming a canister without a
 `didFile` is the same thing when only the cookie is wanted.) Different `.did`
 files that name the same module cannot share an `outDir`: `a/ledger.did` and
-`b/ledger.did` both mean `ledger.ts`, and the second is refused with a message
-naming both. Give one an `outDir` of its own. Names that differ only in case
-(`Ledger.did` and `ledger.did`) collide only where the filesystem of the
-`outDir` ignores case, as macOS and Windows do by default: the plugin checks
-the filesystem and does not refuse them where it tells them apart.
+`b/ledger.did` both mean `ledger.ts`. The entry later in `canisters` fails,
+with a message naming both, at the start of each build and dev server and
+before anything is fetched, run or written for it, and a save of its file
+does not generate it either. Give one an `outDir` of its own. Names that
+differ only in case (`Ledger.did` and `ledger.did`) collide only where the
+filesystem of the `outDir` ignores case, as macOS and Windows do by default:
+the plugin checks the filesystem and does not refuse them where it tells them
+apart.
 
 ## Fetch a .did from a live canister
 
@@ -231,9 +238,10 @@ export default defineConfig({
 - Only an omitted `methods` is the whole interface. Any other value given
   that is not a list of method names (`null`, `false`, `""`, an empty list,
   or a name with a comma) fails the canister before any request. Likewise
-  only an omitted `canisterId` is none: one given as `""` or `null` fails the
-  canister, whether or not a fetch or a check would use it, and is left out
-  of the `ic_env` cookie with a warning (see [Options](#options)).
+  only an omitted `canisterId` is none: one given as `""` or `null`, or as
+  text with a letter wrong (its checksum tells), fails the canister, whether
+  or not a fetch or a check would use it, and is left out of the `ic_env`
+  cookie with a warning (see [Options](#options)).
 
 ### The live check
 

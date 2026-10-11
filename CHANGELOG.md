@@ -191,20 +191,25 @@ does not change. The reads guide, the writes guide and the guide
   the canister until that run does. A check of a file written before the
   check was done, passed or failed, records no pass and neither sets nor
   clears a failed check.
-- Every option value given is checked when the plugin is made, whether or
-  not a build would use it: only an omitted one counts as not given. A
-  canister whose value is not one (`null`, `false`, `0` or `""` from a
-  JavaScript config, a `didFile` or `outDir` that is not a path, a
-  `canisterId` that is not text, a `network`, `methods` or `verify` that is
-  none of their values, `verify: "live"` with no `canisterId`, a getter that
-  throws) fails, quoted as given whatever its kind (a bigint, a symbol, an
-  object that holds itself), before the plugin fetches, writes, runs or
-  requests anything for it or for a `didFile` it shares; the other canisters
-  build. So does a canister `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names
-  with no `canisterId`. A `canisterId` that is not text is also left out of
-  the `ic_env` cookie, with a warning. `failOnError` and `injectEnvironment`
-  take `true` or `false`, and `canisters` an object: any other value throws
-  when the config loads, instead of being read by truthiness.
+- Every option value given is checked when the plugin is made, on every
+  canister, one without a `didFile` included, and whether or not a build
+  would use it: only an omitted one counts as not given. A canister whose
+  value is not one (`null`, `false`, `0` or `""` from a JavaScript config, a
+  `didFile` or `outDir` that is not a path, a `canisterId` that is not the
+  text of a principal, a `network`, `methods` or `verify` that is none of
+  their values, `verify: "live"` with no `canisterId`, a getter that throws)
+  fails, quoted as given whatever its kind (a bigint, a symbol, an object
+  that holds itself), before the plugin fetches, writes, runs or requests
+  anything to generate it or a `didFile` it shares; the other canisters
+  build. So does a canister whose module a canister before it writes (two
+  `.did` files of one name in one `outDir`), at the start of each run, and a
+  save of its file does not generate it over the other's module, and so does
+  a canister `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names with no
+  `canisterId`. Each is still named in the `ic_env` cookie; a `canisterId`
+  that is not one is left out of it, with a warning. `failOnError` and
+  `injectEnvironment` take `true` or `false`, and `canisters` an object: any
+  other value throws when the config loads, instead of being read by
+  truthiness.
 - A dev server restarted with the same plugin object (an inline config, as
   `server.restart()` keeps it) has runs of its own: the old server's close,
   which Vite runs after the new server started, stops only the old server's.
