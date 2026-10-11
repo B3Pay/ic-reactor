@@ -102,6 +102,15 @@ under `vite dev` `icp` is still asked for its ID: the app may still call it. A
 included, throws when the config loads: only an omitted option takes its
 default.
 
+Every key is checked too, whatever its value, `undefined` included. A key of
+an entry that is none of the fields above (a misspelled `didfile` or
+`canisterID`), or a key of a `network` of `{ host }` other than `host`, fails
+its canister, and a key of the options that is none of `canisters`,
+`injectEnvironment` and `failOnError` throws when the config loads. The
+message names the option the key may misspell. Never read, a misspelled key
+would leave a canister ungenerated, or generated without its ID, without a
+word.
+
 The options, `canisters`, each entry and a `network` of `{ host }` are plain
 objects: written `{ … }`, or made by `JSON.parse`, `Object.fromEntries` or
 `Object.create(null)`. A `Map`, a `Promise` (a loader that was not awaited),

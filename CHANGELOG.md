@@ -213,7 +213,12 @@ does not change. The reads guide, the writes guide and the guide
   `failOnError` and `injectEnvironment` take `true` or `false`, and
   `canisters` a plain object: any other value, `null` included, throws when
   the config loads, instead of being read by truthiness or taken for none.
-  Every default is taken for an omitted option alone.
+  Every default is taken for an omitted option alone. Every key is checked
+  too, whatever its value: a key of an entry that is none of its fields (a
+  misspelled `didfile` or `canisterID`), or of a `network` of `{ host }`
+  other than `host`, fails the canister, and a key of the options that is
+  none of `canisters`, `injectEnvironment` and `failOnError` throws when the
+  config loads; the message names the option the key may misspell.
 - A dev server restarted with the same plugin object (an inline config, as
   `server.restart()` keeps it) has runs of its own: the old server's close,
   which Vite runs after the new server started, stops only the old server's.
@@ -245,6 +250,14 @@ does not change. The reads guide, the writes guide and the guide
   canister only named in the cookie. Each is now refused, as any value that
   is not one, and so is an instance of a class, which was read through its
   class, or an object that inherits from another.
+- A key that is no option was never read, without a word. A misspelled
+  `canisters` started the plugin with no canister; a misspelled `didFile`
+  took its canister for one only named in the cookie, so nothing was
+  generated and the module of the last run stayed; a misspelled `canisterId`
+  generated it without its ID; and a `rootKey` beside a network's `host` was
+  read as nothing. Each is now refused, naming the option the key may
+  misspell: a key of the options throws when the config loads, and a key of
+  an entry or of its network fails the canister.
 - The generator names its module and envelope after the `.did`'s file name
   with a final `.did` cut off, and nothing else, and reads only a file whose
   name ends in `.did`. The plugin's check of two canisters writing one module
