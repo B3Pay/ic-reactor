@@ -65,7 +65,13 @@ describe("a generator that is running when the dev server closes", () => {
       // Not at the 60 s timeout: now.
       await vi.waitFor(() => expect(alive(pid)).toBe(false), { timeout: 3000 })
       await new Promise((resolve) => setTimeout(resolve, 200))
-      expect(running.lines.slice(lines)).toEqual([])
+      // The plugin's own lines: Vite may log that its dependency scan was cut
+      // short by the close.
+      expect(
+        running.lines
+          .slice(lines)
+          .filter((line) => line.includes(" ic-reactor: "))
+      ).toEqual([])
       expect(send).not.toHaveBeenCalled()
       // The queued save did not start a generator of its own: the run at
       // startup, and the one that hung.
@@ -101,9 +107,9 @@ describe("a generator that is running when the dev server closes", () => {
       expect(second.lines).toContain(
         "info: ic-reactor: generated a into src/canisters/a.ts"
       )
-      expect(second.lines.filter((line) => line.startsWith("error:"))).toEqual(
-        []
-      )
+      expect(
+        second.lines.filter((line) => line.startsWith("error: ic-reactor:"))
+      ).toEqual([])
     } finally {
       await second.close()
     }
