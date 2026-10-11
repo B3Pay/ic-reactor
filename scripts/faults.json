@@ -3141,8 +3141,8 @@
     "testName": "writes a missing didFile as the projection of the live interface to them, and a second build makes no request",
     "why": "methods ignored by the fetch, so the whole live interface is written to didFile",
     "file": "src/index.ts",
-    "search": "    if (!source.methods) return { ok: true, did: result.did, from }",
-    "replace": "    if (source.methods || !source.methods) return { ok: true, did: result.did, from }"
+    "search": "    if (source.methods === undefined) return { ok: true, did: result.did, from }",
+    "replace": "    if (source.methods === undefined || source.methods) return { ok: true, did: result.did, from }"
   },
   {
     "id": "did-project-every-build",
@@ -3251,7 +3251,7 @@
     "testName": "passes when the live interface is unchanged, and is made once for one text",
     "why": "the live check made again at every buildStart for a text it passed, one request each",
     "file": "src/index.ts",
-    "search": "      if (verified.get(canister.name) === text) continue\n",
+    "search": "      if (passed.get(canister.name) === text) continue\n",
     "replace": ""
   },
   {
@@ -3271,7 +3271,7 @@
     "testName": "runs for IC_REACTOR_VERIFY, and without it or verify nothing is fetched",
     "why": "IC_REACTOR_VERIFY=1 checks nothing, so CI's live check silently passes",
     "file": "src/index.ts",
-    "search": "        (all && !!canister.canisterId) ||\n",
+    "search": "        (all && canister.canisterId !== undefined) ||\n",
     "replace": ""
   },
   {
