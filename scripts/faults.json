@@ -3665,6 +3665,16 @@
     "replace": "        requeue(written)\n"
   },
   {
+    "id": "did-run-written-save-asked-before-gen",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, is queued again as a save is when saved as a save's generator starts, and that run says nothing of it",
+    "why": "a save's run asks which of its files were written before its generator runs, not after it, so a file saved as the generator starts is not queued again: the run puts the module back, then publishes the canister as fixed (a full reload, the overlay cleared), and the text saved is never listed or reported",
+    "file": "src/index.ts",
+    "search": "      const failures = await generateNow(\n        open.filter((canister) => !failed.has(canister)),\n        true,\n        run,\n        signal\n      )\n      if (!failures) return\n      const written = writtenSince(run, open)\n",
+    "replace": "      const early = writtenSince(run, open)\n      const failures = await generateNow(\n        open.filter((canister) => !failed.has(canister)),\n        true,\n        run,\n        signal\n      )\n      if (!failures) return\n      const written = early\n"
+  },
+  {
     "id": "did-verify-unsure-failure-stands",
     "package": "vite-plugin",
     "test": "tests/project.test.ts",

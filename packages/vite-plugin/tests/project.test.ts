@@ -1639,6 +1639,59 @@ describe("a didFile written while a run reads it", () => {
     expect(asked).toEqual([])
   }, 30_000)
 
+  // The generator of a save's run read the file after the run did, so the
+  // module it wrote may be of a text the run never read: the run puts the
+  // module back, says nothing of the file, and queues it again. It can know
+  // only once the generator is done.
+  it("under vite dev, is queued again as a save is when saved as a save's generator starts, and that run says nothing of it", async () => {
+    const asked = refuseNetwork()
+    // put, which methods names, is not in the file: the start fails it.
+    const app = newApp({ "did/item.did": WITHOUT_PUT })
+    const cli = hookCli(app)
+    const sends = recordSends()
+    const running = await startDev(app.root, listed(), {
+      before: [sends.plugin],
+    })
+    closers.push(running.close)
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors()).toHaveLength(1)
+    expect(errors()[0]).toContain(lacksPut)
+    const sentAtStart = sends.sent().length
+
+    // An edit that adds put is saved, and the save's run lists it; just
+    // before the run's generator reads the file, the text without put is
+    // saved again.
+    const file = path.join(app.root, "did/item.did")
+    cli.save("gen", "before", file, WITHOUT_PUT)
+    fs.writeFileSync(file, `// Edited.\n${WRITTEN}`)
+    running.server.watcher.emit("change", file)
+    await vi.waitFor(() => expect(errors()).toHaveLength(2), {
+      timeout: 10_000,
+    })
+    expect(errors()[1]).toContain(lacksPut)
+    // The start's listing, the save's listing and generator, and the queued
+    // run's listing of the text saved.
+    expect(cli.commands()).toEqual(["project", "project", "gen", "project"])
+    expect(
+      running.lines.filter(
+        (line) =>
+          line === "info: ic-reactor: did/item.did changed, regenerating item"
+      )
+    ).toHaveLength(2)
+    // The save's run neither showed a failure nor reloaded the page as for a
+    // canister fixed, nor logged a module: only the queued run's overlay was
+    // sent, and the module of the text saved was put back.
+    const sent = sends.sent().slice(sentAtStart)
+    expect(sent).not.toContainEqual({ type: "full-reload" })
+    expect(overlays(sent)).toHaveLength(1)
+    expect(
+      running.lines.filter((line) => line.includes("ic-reactor: generated"))
+    ).toEqual([])
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    expect(asked).toEqual([])
+  }, 30_000)
+
   // A restart keeps the plugin object, and the failures it shows: a
   // restart's run that took nothing of a file says nothing of it, not even
   // that the canister is fixed, and the run it queues reports it.
