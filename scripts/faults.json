@@ -3521,8 +3521,8 @@
     "testName": "of a run that ends after a restart started another passes nothing for the new run",
     "why": "a check of the old run writes its pass to whichever map is current when it ends, so a check that ends after a restart's configResolved passes for the new run, whose buildStart then skips the check of a canister that changed",
     "file": "src/index.ts",
-    "search": "          } else passed.set(canister.name, outcome.text)\n",
-    "replace": "          } else verified.set(canister.name, outcome.text)\n"
+    "search": "        if (ofText && text !== undefined) passed.set(canister.name, text)\n",
+    "replace": "        if (ofText && text !== undefined) verified.set(canister.name, text)\n"
   },
   {
     "id": "did-verify-saved-during-check",
@@ -3531,8 +3531,8 @@
     "testName": "records no pass for a didFile saved while its check ran, so restoring the text read first is checked",
     "why": "the pass is recorded for the text the run read, though candid-core-cli checked the file as it was saved while the fetch ran, so restoring that unchecked text skips the check",
     "file": "src/index.ts",
-    "search": "      const passedText = (): string | undefined =>\n        run.asRead(canister) ? text : undefined\n",
-    "replace": "      const passedText = (): string | undefined => text\n"
+    "search": "        if (ofText && text !== undefined) passed.set(canister.name, text)\n",
+    "replace": "        if (text !== undefined) passed.set(canister.name, text)\n"
   },
   {
     "id": "did-run-written-during-check-taken",
@@ -3558,8 +3558,8 @@
     "id": "did-run-listed-then-generated",
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
-    "testName": "fails the build when saved after its methods were listed, and generates nothing of the saved text",
-    "why": "generation runs for a didFile the run already found written after it listed its methods, so the generator reads a text no listing saw",
+    "testName": "fails the build when saved while another canister's methods were listed, and runs no generator on it",
+    "why": "the generator runs for a didFile the run already found written, so it reads a text the run never read and writes its module only for it to be put back",
     "file": "src/index.ts",
     "search": "      const ready = wanted.filter((canister) => run.asRead(canister))\n",
     "replace": "      const ready = wanted\n"
@@ -3569,10 +3569,10 @@
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
     "testName": "records no listing for the text read first when saved before its methods were listed, so restoring that text is listed again",
-    "why": "the methods listing is recorded for the text the run read though the CLI listed the file as it was saved before, so restoring the text read first, which lacks a method of methods, passes with no listing",
+    "why": "a listing made while the file was written is recorded for the text the run read, whatever the CLI listed, so restoring the text read first, which lacks a method of methods, passes with no listing",
     "file": "src/index.ts",
-    "search": "      if (ofText) {\n",
-    "replace": "      if (ofText || true) {\n"
+    "search": "      if (!ofText) {\n",
+    "replace": "      if (!ofText && false) {\n"
   },
   {
     "id": "did-run-written-module-kept",
@@ -3588,7 +3588,7 @@
     "id": "did-run-written-not-requeued",
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
-    "testName": "under vite dev, is queued again as a save is when saved after a save's run listed it",
+    "testName": "under vite dev, is queued again as a save is when saved after a save's run listed it, and that run says nothing of it",
     "why": "under a dev server a run that took nothing of a didFile written while it read it does not queue the file again, so the text saved is never listed or reported",
     "file": "src/index.ts",
     "search": "      regenerate(\n        didPath(canister),\n        key,\n        generated.filter((other) => identify(didPath(other)) === key)\n      )\n",
@@ -3603,6 +3603,86 @@
     "file": "src/index.ts",
     "search": "          if (!live.unsure.has(canister)) liveFailures.delete(canister.name)\n",
     "replace": "          liveFailures.delete(canister.name)\n"
+  },
+  {
+    "id": "did-run-saved-back-during-check-taken",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved and saved back while the live check read it, and records no pass",
+    "why": "a didFile saved and saved back while check read it is taken as unwritten, since its text is the run's again: the pass of the text check never read is recorded, and the build generates put, which the canister lacks",
+    "file": "src/index.ts",
+    "search": "          : now.text === was.text && now.stamp === was.stamp\n",
+    "replace": "          : now.text === was.text\n"
+  },
+  {
+    "id": "did-run-saved-back-during-listing-taken",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved and saved back while its methods were listed, for that reason alone, and lists the file again",
+    "why": "a didFile saved and saved back while its methods were listed is taken as unwritten: the listing of the other text, which lacks put, is recorded for the file, which holds put, and fails it",
+    "file": "src/index.ts",
+    "search": "          : now.text === was.text && now.stamp === was.stamp\n",
+    "replace": "          : now.text === was.text\n"
+  },
+  {
+    "id": "did-run-written-failures-reported",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved and saved back while its methods were listed, for that reason alone, and lists the file again",
+    "why": "a build reports the failures its steps found for a didFile written while it read it, which may be of another text, beside the changed failure",
+    "file": "src/index.ts",
+    "search": "      let failures = outcome.failures.filter(({ canister }) =>\n        taken.includes(canister)\n      )\n",
+    "replace": "      let failures = outcome.failures\n"
+  },
+  {
+    "id": "did-run-written-failures-reported-dev",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, says nothing of a file saved during a restart's listing, and the run it queues reports it",
+    "why": "under vite dev a run reports the failures its steps found for a didFile written while it read it, before the run it queued reports the file",
+    "file": "src/index.ts",
+    "search": "      let failures = outcome.failures.filter(({ canister }) =>\n        taken.includes(canister)\n      )\n",
+    "replace": "      let failures = outcome.failures\n"
+  },
+  {
+    "id": "did-run-written-dev-fixed",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, says nothing of a file saved during a restart's listing, and the run it queues reports it",
+    "why": "under vite dev a run that took nothing of a didFile still counts its canister as attempted, so a failure that stood is cleared and the page reloaded before the queued run reports the file",
+    "file": "src/index.ts",
+    "search": "      publish(devServer ? taken : generated, failures)\n",
+    "replace": "      publish(generated, failures)\n"
+  },
+  {
+    "id": "did-run-written-save-published",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, is queued again as a save is when saved after a save's run listed it, and that run says nothing of it",
+    "why": "a save's run that took nothing of its didFile publishes what it found anyway, before the run it queued reports the file",
+    "file": "src/index.ts",
+    "search": "        requeue(written)\n        return\n",
+    "replace": "        requeue(written)\n"
+  },
+  {
+    "id": "did-verify-unsure-failure-stands",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, sets no failed check when saved and saved back while the start's check read it, and the queued save generates",
+    "why": "a check that failed while its didFile was written sets a failure that stands, though what it failed may be another text, so the save it queues does not generate the file",
+    "file": "src/index.ts",
+    "search": "          if (!live.unsure.has(failure.canister)) {\n            liveFailures.set(failure.canister.name, failure)\n          }\n",
+    "replace": "          liveFailures.set(failure.canister.name, failure)\n"
+  },
+  {
+    "id": "did-verify-unsure-notes-logged",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved and saved back while the live check read it, and records no pass",
+    "why": "what a check found while its didFile was written is logged, though it may be of another text",
+    "file": "src/index.ts",
+    "search": "      if (outcome.ok && ofText) {\n",
+    "replace": "      if (outcome.ok) {\n"
   },
   {
     "id": "opt-fail-on-error-not-boolean",

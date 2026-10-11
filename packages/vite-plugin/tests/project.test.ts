@@ -548,7 +548,7 @@ const WITHOUT_PUT = liveWith(["  put : (nat) -> ();\n", ""])
 
 /**
  * The bin of a candid-core-cli that runs the real one, whose bin script is
- * `real`, and writes a file once around one process (see `hookCli`). Every
+ * `real`, and writes a file around one process (see `hookCli`). Every
  * process appends its arguments to runs.log beside it, as the fake CLI does.
  */
 function hookedBin(real: string): string {
@@ -575,6 +575,7 @@ const run = spawnSync(process.execPath, [${JSON.stringify(real)}, ...args], {
   stdio: "inherit",
 })
 if (save && save.when === "after") fs.writeFileSync(save.file, save.text)
+if (save && save.back !== undefined) fs.writeFileSync(save.file, save.back)
 process.exit(run.status === null ? 1 : run.status)
 `
 }
@@ -585,8 +586,10 @@ process.exit(run.status === null ? 1 : run.status)
  * otherwise: `save` writes `text` to `file` once, around the first process
  * that runs `step` (`"list"`, the projection that lists a file's methods,
  * `"check"` or `"gen"`), either `"before"` the real CLI starts or `"after"`
- * it ended, before the process exits. The plugin sees that write as soon as
- * the process is done. `commands` names the command each process ran.
+ * it ended, before the process exits. With `back`, the process then writes
+ * `back` too, once the real CLI ended: a file saved and saved back holds its
+ * text again, with another stamp. The plugin sees those writes as soon as the
+ * process is done. `commands` names the command each process ran.
  */
 function hookCli(app: App) {
   const installed = path.join(app.root, "node_modules", "@candid-core", "cli")
@@ -616,15 +619,44 @@ function hookCli(app: App) {
       step: "list" | "check" | "gen",
       when: "before" | "after",
       file: string,
-      text: string
+      text: string,
+      { back }: { back?: string } = {}
     ) =>
       fs.writeFileSync(
         path.join(installed, "hook.json"),
-        JSON.stringify({ step, when, file, text })
+        JSON.stringify({ step, when, file, text, back })
       ),
     commands: () => app.runs().map(([command]) => command),
   }
 }
+
+/**
+ * Record what the plugin sends the browsers, through each server it is
+ * handed: the first, and the one each restart creates, which Vite hands the
+ * plugin before the restart's buildStart.
+ */
+function recordSends() {
+  const spies: Array<{ mock: { calls: unknown[][] } }> = []
+  const plugin: Plugin = {
+    name: "record-sends",
+    enforce: "pre",
+    configureServer(server) {
+      spies.push(vi.spyOn(server.ws, "send"))
+    },
+  }
+  return {
+    plugin,
+    /** Every payload sent, in order. */
+    sent: () =>
+      spies.flatMap((spy) => spy.mock.calls.map(([payload]) => payload)),
+  }
+}
+
+/** The error overlays among `payloads`. */
+const overlays = (payloads: unknown[]) =>
+  payloads.filter(
+    (payload) => (payload as { type?: string } | undefined)?.type === "error"
+  )
 
 /**
  * Capture what the plugin registers on the WebSocket server. A listener is
@@ -1349,6 +1381,8 @@ describe("a didFile written while a run reads it", () => {
   })
   const changed =
     "item (did/item.did): did/item.did changed during the build, after the build read it"
+  const lacksPut =
+    "item (did/item.did): methods names put, which did/item.did does not hold (it holds get, maybe)"
 
   // The check passes the text it read; the text saved after it must not be
   // generated as if it had been checked.
@@ -1378,6 +1412,39 @@ describe("a didFile written while a run reads it", () => {
     expect(exists(app, "src/canisters/item.ts")).toBe(false)
   })
 
+  // The stamp, and not the text alone, tells a file saved and saved back:
+  // check reads a text the build never read, and once check is done the
+  // file holds the build's text again.
+  it("fails the build when saved and saved back while the live check read it, and records no pass", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: WITHOUT_PUT } })
+    // Incompatible: the file has put, which the canister lacks.
+    const app = newApp({ "did/item.did": WRITTEN })
+    const cli = hookCli(app)
+    const { buildStart, context, lines } = verifyingPlugin(app, ic.host)
+    const file = path.join(app.root, "did/item.did")
+    const lastError = () => String(context.error.mock.lastCall?.[0])
+
+    // put is taken out just before check reads the file, and saved back once
+    // check is done: check passes the text without it.
+    cli.save("check", "before", file, WITHOUT_PUT, { back: WRITTEN })
+    await buildStart()
+    expect(read(app, "did/item.did")).toBe(WRITTEN)
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(lastError()).toContain(changed)
+    expect(cli.commands()).not.toContain("gen")
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    // What that check found is not logged either.
+    expect(lines.filter((line) => line.includes("live interface"))).toEqual([])
+    expect(ic.requests).toHaveLength(2)
+
+    // The next build checks the file, and it fails.
+    await buildStart()
+    expect(ic.requests).toHaveLength(4)
+    expect(context.error).toHaveBeenCalledTimes(2)
+    expect(lastError()).toContain("incompatible with did/item.did (1 error)")
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+  })
+
   // The listing approves the text it read; the text saved after it, which
   // lacks a method the list names, must not be generated as if listed.
   it("fails the build when saved after its methods were listed, and generates nothing of the saved text", async () => {
@@ -1394,9 +1461,72 @@ describe("a didFile written while a run reads it", () => {
 
     // The next build lists the text saved, which lacks put.
     const again = await buildError(app, listed())
-    expect(lineOf(again.message, "item")).toContain(
-      "item (did/item.did): methods names put, which did/item.did does not hold (it holds get, maybe)"
+    expect(lineOf(again.message, "item")).toContain(lacksPut)
+    expect(asked).toEqual([])
+  })
+
+  // Saved and saved back around the listing, the file lacked put only for
+  // the CLI: the build fails it as changed, for that reason alone, and does
+  // not report what the CLI listed of the other text.
+  it("fails the build when saved and saved back while its methods were listed, for that reason alone, and lists the file again", async () => {
+    const asked = refuseNetwork()
+    // The file holds every method of methods.
+    const app = newApp({ "did/item.did": WRITTEN })
+    const cli = hookCli(app)
+    const { buildStart, context } = drivenPlugin(app, listed())
+    const file = path.join(app.root, "did/item.did")
+    const lastError = () => String(context.error.mock.lastCall?.[0])
+
+    // put is taken out just before the CLI lists the file, and saved back
+    // once it is done.
+    cli.save("list", "before", file, WITHOUT_PUT, { back: WRITTEN })
+    await buildStart()
+    expect(read(app, "did/item.did")).toBe(WRITTEN)
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(lastError()).toContain("could not generate 1 of 1 canisters")
+    expect(lineOf(lastError(), "item")).toContain(changed)
+    expect(lastError()).not.toContain("methods names put")
+    expect(cli.commands()).toEqual(["project"])
+
+    // The next build lists the file again: it holds put, and generates.
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(cli.commands()).toEqual(["project", "project", "gen"])
+    expect(read(app, "src/canisters/item.ts")).toMatch(/\bput\b/)
+    expect(asked).toEqual([])
+  })
+
+  // A file found written before generation is not handed to the generator,
+  // which would write its module (a hot update, under vite dev) only for it
+  // to be put back.
+  it("fails the build when saved while another canister's methods were listed, and runs no generator on it", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/item.did": WRITTEN, "did/ping.did": PING_DID })
+    const cli = hookCli(app)
+    const { buildStart, context } = drivenPlugin(app, {
+      canisters: {
+        ...listed().canisters,
+        ping: { didFile: "did/ping.did" },
+      },
+    })
+
+    // ping's file is saved once item's methods were listed.
+    const ping = path.join(app.root, "did/ping.did")
+    cli.save("list", "after", ping, `// Saved.\n${PING_DID}`)
+    await buildStart()
+    expect(context.error).toHaveBeenCalledTimes(1)
+    const message = String(context.error.mock.lastCall?.[0])
+    expect(message).toContain("could not generate 1 of 2 canisters")
+    expect(lineOf(message, "ping")).toContain(
+      "ping (did/ping.did): did/ping.did changed during the build, after the build read it"
     )
+    // One generator, for item alone.
+    const generators = app.runs().filter(([command]) => command === "gen")
+    expect(generators).toHaveLength(1)
+    expect(generators[0]).toContain(path.join(app.root, "did/item.did"))
+    expect(generators[0]).not.toContain(ping)
+    expect(exists(app, "src/canisters/item.ts")).toBe(true)
+    expect(exists(app, "src/canisters/ping.ts")).toBe(false)
     expect(asked).toEqual([])
   })
 
@@ -1421,9 +1551,7 @@ describe("a didFile written while a run reads it", () => {
     fs.writeFileSync(file, WITHOUT_PUT)
     await buildStart()
     expect(context.error).toHaveBeenCalledTimes(2)
-    expect(lastError()).toContain(
-      "item (did/item.did): methods names put, which did/item.did does not hold (it holds get, maybe)"
-    )
+    expect(lastError()).toContain(lacksPut)
     expect(cli.commands()).toEqual(["project", "project"])
     expect(exists(app, "src/canisters/item.ts")).toBe(false)
     expect(asked).toEqual([])
@@ -1466,31 +1594,35 @@ describe("a didFile written while a run reads it", () => {
   })
 
   // A save's run lists the file and generates it with no request: saved
-  // again in between, it is listed again, as the save it is. Each dev test
-  // here has room past its wait, so that what it waits for fails by the
-  // wait's own assertion.
-  it("under vite dev, is queued again as a save is when saved after a save's run listed it", async () => {
+  // again in between, it is listed again, as the save it is, and the save's
+  // own run says nothing of it. Each dev test here has room past its wait,
+  // so that what it waits for fails by the wait's own assertion.
+  it("under vite dev, is queued again as a save is when saved after a save's run listed it, and that run says nothing of it", async () => {
     const asked = refuseNetwork()
-    const app = newApp({ "did/item.did": WRITTEN })
+    // put, which methods names, is not in the file: the start fails it.
+    const app = newApp({ "did/item.did": WITHOUT_PUT })
     const cli = hookCli(app)
-    const running = await startDev(app.root, listed())
+    const sends = recordSends()
+    const running = await startDev(app.root, listed(), {
+      before: [sends.plugin],
+    })
     closers.push(running.close)
     const errors = () =>
       running.lines.filter((line) => line.startsWith("error:"))
-    expect(errors()).toEqual([])
+    expect(errors()).toHaveLength(1)
+    expect(errors()[0]).toContain(lacksPut)
+    const sentAtStart = sends.sent().length
 
-    // An edit that keeps put is saved; once the save's run listed it, a text
-    // without put is saved.
+    // An edit that adds put is saved; once the save's run listed it, the
+    // text without put is saved again.
     const file = path.join(app.root, "did/item.did")
     cli.save("list", "after", file, WITHOUT_PUT)
     fs.writeFileSync(file, `// Edited.\n${WRITTEN}`)
     running.server.watcher.emit("change", file)
-    await vi.waitFor(() => expect(errors()).toHaveLength(1), {
+    await vi.waitFor(() => expect(errors()).toHaveLength(2), {
       timeout: 10_000,
     })
-    expect(errors()[0]).toContain(
-      "item (did/item.did): methods names put, which did/item.did does not hold (it holds get, maybe)"
-    )
+    expect(errors()[1]).toContain(lacksPut)
     // The save's run, which took nothing, and the run it queued.
     expect(
       running.lines.filter(
@@ -1498,7 +1630,96 @@ describe("a didFile written while a run reads it", () => {
           line === "info: ic-reactor: did/item.did changed, regenerating item"
       )
     ).toHaveLength(2)
+    // The save's run neither showed a failure nor reloaded the page as for a
+    // canister fixed: only the queued run's overlay was sent.
+    const sent = sends.sent().slice(sentAtStart)
+    expect(sent).not.toContainEqual({ type: "full-reload" })
+    expect(overlays(sent)).toHaveLength(1)
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
     expect(asked).toEqual([])
+  }, 30_000)
+
+  // A restart keeps the plugin object, and the failures it shows: a
+  // restart's run that took nothing of a file says nothing of it, not even
+  // that the canister is fixed, and the run it queues reports it.
+  it("under vite dev, says nothing of a file saved during a restart's listing, and the run it queues reports it", async () => {
+    const asked = refuseNetwork()
+    // put, which methods names, is not in the file: the start fails it.
+    const app = newApp({ "did/item.did": WITHOUT_PUT })
+    const cli = hookCli(app)
+    const sends = recordSends()
+    const running = await startDev(app.root, listed(), {
+      before: [sends.plugin],
+    })
+    closers.push(running.close)
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error:"))
+    expect(errors()).toHaveLength(1)
+    expect(errors()[0]).toContain(lacksPut)
+    const sentAtStart = sends.sent().length
+
+    // An edit that adds put is written, and the same server restarts; once
+    // the restart's run listed the edit, the text without put is saved
+    // again. The start listed that text, so the run queued for it needs no
+    // process: the plugin object outlives the restart of an inline config,
+    // and the old server's close would stop one.
+    const file = path.join(app.root, "did/item.did")
+    fs.writeFileSync(file, `// Edited.\n${WRITTEN}`)
+    cli.save("list", "after", file, WITHOUT_PUT)
+    await running.server.restart()
+    await vi.waitFor(() => expect(errors()).toHaveLength(2), {
+      timeout: 10_000,
+    })
+    expect(errors()[1]).toContain(lacksPut)
+    expect(
+      running.lines.filter(
+        (line) =>
+          line === "info: ic-reactor: did/item.did changed, regenerating item"
+      )
+    ).toHaveLength(1)
+    // The restart's run neither showed a failure nor reloaded the page as
+    // for a canister fixed: only the queued run's overlay was sent.
+    const sent = sends.sent().slice(sentAtStart)
+    expect(sent).not.toContainEqual({ type: "full-reload" })
+    expect(overlays(sent)).toHaveLength(1)
+    expect(cli.commands()).toEqual(["project", "project"])
+    expect(asked).toEqual([])
+  }, 30_000)
+
+  // A check that failed what it read, while the file was saved and saved
+  // back, is no failure of the file: it sets no failure that stands, and the
+  // save the start queued generates the file.
+  it("under vite dev, sets no failed check when saved and saved back while the start's check read it, and the queued save generates", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: WITHOUT_PUT } })
+    // Compatible: the canister's own interface.
+    const app = newApp({ "did/item.did": WITHOUT_PUT })
+    const cli = hookCli(app)
+    // put, which the canister lacks, is saved just before the start's check
+    // reads the file, and the file is saved back once check is done.
+    const file = path.join(app.root, "did/item.did")
+    cli.save("check", "before", file, WRITTEN, { back: WITHOUT_PUT })
+    const running = await startDev(app.root, checkedLive(ic.host))
+    closers.push(running.close)
+    const generated =
+      "info: ic-reactor: generated item into src/canisters/item.ts"
+    await vi.waitFor(
+      () =>
+        expect(
+          running.lines.some(
+            (line) => line === generated || line.startsWith("error:")
+          )
+        ).toBe(true),
+      { timeout: 10_000 }
+    )
+    expect(running.lines.filter((line) => line.startsWith("error:"))).toEqual(
+      []
+    )
+    expect(running.lines).toContain(
+      "info: ic-reactor: did/item.did changed, regenerating item"
+    )
+    expect(read(app, "src/canisters/item.ts")).not.toMatch(/\bput\b/)
+    // The start's check; a save makes no request.
+    expect(ic.requests).toHaveLength(2)
   }, 30_000)
 
   // A check that passed what it read, while the file was saved, is no pass

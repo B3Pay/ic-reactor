@@ -88,12 +88,14 @@ export interface IcReactorPluginOptions {
    *   give one an `outDir` of its own. A canister without a `didFile`
    *   generates nothing and is only named in the cookie. A run (the start of
    *   a build or dev server, or a save's regeneration) reads each `didFile`
-   *   once, and takes nothing of one written before it is done with it: the
-   *   methods comparison, the live check and generation read the file again,
-   *   and might each read another text. The run does not generate such a
-   *   canister, and puts back a module the generator wrote while the file
-   *   was written. A build fails it ("changed during the build"); under
-   *   `vite dev` it is queued again, as a save is.
+   *   once, and takes nothing of one written before it is done with it, even
+   *   saved back as it was: the methods comparison, the live check and
+   *   generation read the file again, and might each read another text. The
+   *   run does not generate such a canister, reports none of the failures
+   *   its steps found for it, and puts back a module the generator wrote
+   *   while the file was written. A build fails it, for that reason alone
+   *   ("changed during the build"); under `vite dev` it is queued again, as a
+   *   save is, and that run reports it.
    * - `outDir`: where the generator writes, relative to the Vite root.
    *   Default: `"src/canisters"`.
    * - `canisterId`: the canister's ID. Under `vite dev` and `vite preview` the
@@ -146,11 +148,12 @@ export interface IcReactorPluginOptions {
    *   cannot read the canister fails it too. Within one build or dev server,
    *   a rebuild or another Vite environment does not check a text that passed
    *   again, nor a file it just fetched, until a check or a fetch of that
-   *   canister fails or reads another interface. A file saved while its check
-   *   ran records no pass, and clears no failed check (see `didFile` for the
-   *   rest of that run). Each new build or dev server, a restart included,
-   *   checks again. Any value other than `"live"`, `false` included, fails
-   *   the canister: remove `verify` for no check.
+   *   canister fails or reads another interface. The check of a file saved
+   *   before the check was done (even saved back) counts for nothing: it
+   *   records no pass, and neither sets nor clears a failed check (see
+   *   `didFile` for the rest of that run). Each new build or dev server, a
+   *   restart included, checks again. Any value other than `"live"`, `false`
+   *   included, fails the canister: remove `verify` for no check.
    *
    * The generator is the `@candid-core/cli` the app has installed, run as a
    * child process so that a failure on one `.did` stops that process and not
@@ -302,6 +305,12 @@ function namesIn(
 /** A canister that did not generate, and why. */
 interface Failure {
   canister: Generated
+  message: string
+}
+
+/** A line to log, held until it is known to be of the text a run read. */
+interface Note {
+  level: "info" | "warn"
   message: string
 }
 
@@ -568,8 +577,11 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   /**
    * The canisters of `canisters` whose `didFile` was written since `run`
    * read it: what the run's steps compared, checked and generated of it may
-   * not be one text, so the run takes none of it. Asked when the run is done
-   * with the files, after generation, the last step that reads them.
+   * not be one text, so the run takes none of it. It reports neither the
+   * failures its steps found for such a canister nor a success: a build fails
+   * it as changed during the build, and a dev server queues it again. Asked
+   * when the run is done with the files, after generation, the last step
+   * that reads them.
    */
   const writtenSince = (run: Run, canisters: Generated[]): Generated[] =>
     canisters.filter((canister) => !run.asRead(canister))
@@ -1107,10 +1119,13 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * for one that did. Resolves with the canisters that cannot be generated,
    * or `undefined` when `signal` was aborted first. Never rejects.
    *
-   * The comparison is recorded for the text `run` read, and only when the
-   * file is still that text once the CLI listed it: the CLI reads the file
-   * itself, so a save before or while it ran would record another text's
-   * methods for this one.
+   * The comparison is of the text `run` read, and only when the file is still
+   * as the run read it once the CLI listed it: the CLI reads the file itself,
+   * so after a save before or while it ran, what it listed may be another
+   * text's. Such a listing is neither recorded, nor reported, nor warned
+   * about. The canister fails here only so that no later step of the run
+   * (the live check, generation) reads the file: the end of the run takes
+   * nothing of it, that failure included (see `writtenSince`).
    */
   const compareMethods = async (
     wanted: Generated[],
@@ -1155,6 +1170,13 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     for (const { canister, text, methods, key, listed } of results) {
       const file = relativeToRoot(didPath(canister))
       const ofText = run.asRead(canister)
+      if (!ofText) {
+        failures.push({
+          canister,
+          message: `${file} was written while its methods were listed`,
+        })
+        continue
+      }
       if (!listed.ok) {
         // Not remembered: the next save or buildStart lists it again.
         failures.push({
@@ -1181,10 +1203,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             `so its module has ${extra.length === 1 ? "it" : "them"} too. ${fix}.`
         )
       }
-      // Recorded for the run's text only when the CLI listed that text.
-      if (ofText) {
-        comparedMethods.set(canister.name, { text, methods: key, failure })
-      }
+      comparedMethods.set(canister.name, { text, methods: key, failure })
       if (failure) failures.push({ canister, message: failure })
     }
     return failures
@@ -1228,8 +1247,14 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * passes, when it fetched the file, or when the check is off for it
    * (`IC_REACTOR_VERIFY=0`). A pass that `verified` holds from before the
    * failure cannot clear it: the failure dropped it, and a restart starts
-   * with none. Nor can a check that passed while the file was written: what
-   * it passed is not known to be the file's text.
+   * with none.
+   *
+   * Only a check of the text the run read counts, failed or passed: one
+   * whose file was written before the check was done (even saved back) may
+   * have read another text, so it neither sets nor clears a failure here (see
+   * `verifyLive`'s `unsure`). A check that read the run's text keeps its
+   * verdict when the file is written after it, as for a save made just after
+   * the run.
    */
   const liveFailures = new Map<string, Failure>()
 
@@ -1256,10 +1281,16 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * Files `fetched` (by `identify`) were just read from the live canister, and
    * are not checked while `run` read the text fetched. `passed` is the run's
    * `verified`, read and written.
-   * Resolves with the canisters that cannot be generated, and those whose
-   * check passed while their file was written (`unsure`: what passed is not
-   * known to be the run's text), or `undefined` when `signal` was aborted
-   * first. Never rejects.
+   *
+   * The CLI reads the file itself, after the fetch, so a check is of the
+   * run's text only if the file is still as the run read it once the check is
+   * done. A canister whose file was written before that is `unsure`, whether
+   * its check passed or failed: what the check found may be of another text.
+   * Its pass is not recorded, and its verdict neither sets nor clears a
+   * failure that stands (see `liveFailures`).
+   *
+   * Resolves with the canisters that cannot be generated, and the `unsure`
+   * ones, or `undefined` when `signal` was aborted first. Never rejects.
    */
   const verifyLive = async (
     wanted: Generated[],
@@ -1346,54 +1377,51 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     if (byTarget.size === 0) return forget(failures)
 
     const outcomes = await Promise.all(
-      [...byTarget.values()].map(async (members) => ({
-        members,
-        outcome: await checkLive(members[0], run, signal),
-      }))
+      [...byTarget.values()].map(async (members) => {
+        const outcome = await checkLive(members[0], run, signal)
+        // Read again as soon as this check is done.
+        return { members, outcome, ofText: run.asRead(members[0]) }
+      })
     )
     if (signal.aborted) return undefined
-    for (const { members, outcome } of outcomes) {
-      if (outcome.ok) {
-        for (const canister of members) {
-          // Written while it was checked: what passed is not known to be the
-          // run's text, so nothing is recorded, and the next buildStart
-          // checks the file again.
-          if (outcome.text === undefined) {
-            passed.delete(canister.name)
-            unsure.add(canister)
-          } else passed.set(canister.name, outcome.text)
-        }
-        continue
+    for (const { members, outcome, ofText } of outcomes) {
+      // What a check of another text found is not logged either.
+      if (outcome.ok && ofText) {
+        for (const { level, message } of outcome.notes) log[level](message)
       }
       for (const canister of members) {
-        failures.push({ canister, message: outcome.message })
+        if (!ofText) unsure.add(canister)
+        if (!outcome.ok) {
+          failures.push({ canister, message: outcome.message })
+          continue
+        }
+        // Not recorded for a file written while it was checked: the next
+        // buildStart checks it again.
+        const text = run.textOf(canister)
+        if (ofText && text !== undefined) passed.set(canister.name, text)
+        else passed.delete(canister.name)
       }
     }
     return forget(failures)
   }
 
   /**
-   * The live check of one canister: what failed, or the text it passed, which
-   * is `undefined` when the file was written since `run` read it. Logs a
-   * compatible change. Never rejects.
+   * The live check of one canister: whether it passed, with the lines it has
+   * to log (a compatible change, or a match), or what failed. Whether what the
+   * CLI read is the text `run` read is for the caller to tell, once the check
+   * is done, so the lines are only returned. Never rejects.
    */
   const checkLive = async (
     canister: Generated,
     run: Run,
     signal: AbortSignal
-  ): Promise<
-    { ok: true; text: string | undefined } | { ok: false; message: string }
-  > => {
+  ): Promise<{ ok: true; notes: Note[] } | { ok: false; message: string }> => {
+    const notes: Note[] = []
     try {
       const file = didPath(canister)
       const didFile = relativeToRoot(file)
-      const text = run.textOf(canister)
-      if (text === undefined)
+      if (run.textOf(canister) === undefined)
         return { ok: false, message: `${didFile} is gone` }
-      // The CLI reads the file itself, after the fetch: a save before it was
-      // done would pass a text it never checked for the run's.
-      const passedText = (): string | undefined =>
-        run.asRead(canister) ? text : undefined
       const live = await fetchCandid({
         canisterId: canister.canisterId as string,
         network: canister.network,
@@ -1446,15 +1474,17 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       const label = `ic-reactor: ${canister.name}:`
       if (warnings.length > 0) {
         const count = warnings.length
-        log.warn(
-          `${label} ${where} is compatible with ${didFile}, with ${count} warning${count === 1 ? "" : "s"} ` +
+        notes.push({
+          level: "warn",
+          message:
+            `${label} ${where} is compatible with ${didFile}, with ${count} warning${count === 1 ? "" : "s"} ` +
             `(a value at each path now decodes as null):\n` +
             firstLines(warnings.map(describeFinding))
               .map((line) => `  ${line}`)
               .join("\n") +
-            `\nTo take the change, ${fetchAgain}.`
-        )
-        return { ok: true, text: passedText() }
+            `\nTo take the change, ${fetchAgain}.`,
+        })
+        return { ok: true, notes }
       }
 
       // Compatible with no finding: unchanged for the file's methods, or
@@ -1464,18 +1494,24 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       const changed = await changedFor(context, file, live.did)
       if (signal.aborted) return { ok: false, message: "was stopped" }
       if (changed === true) {
-        log.warn(
-          `${label} ${where} changed compatibly for the methods of ${didFile}: its module still works. ` +
-            `To take the change, ${fetchAgain}.`
-        )
+        notes.push({
+          level: "warn",
+          message:
+            `${label} ${where} changed compatibly for the methods of ${didFile}: its module still works. ` +
+            `To take the change, ${fetchAgain}.`,
+        })
       } else if (changed === false) {
-        log.info(`${label} ${didFile} matches the live interface of ${where}`)
+        notes.push({
+          level: "info",
+          message: `${label} ${didFile} matches the live interface of ${where}`,
+        })
       } else {
-        log.info(
-          `${label} ${didFile} is compatible with the live interface of ${where}`
-        )
+        notes.push({
+          level: "info",
+          message: `${label} ${didFile} is compatible with the live interface of ${where}`,
+        })
       }
-      return { ok: true, text: passedText() }
+      return { ok: true, notes }
     } catch (error) {
       return { ok: false, message: describe(error) }
     }
@@ -1622,7 +1658,8 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    *
    * The run reads the file once, when it starts (see {@link Run}). A file
    * written again before it is done is queued once more, and this run takes
-   * nothing of it: the run after it reports the file as it is then.
+   * nothing of it: it publishes nothing, neither a failure nor that a
+   * canister is fixed, and the run after it reports the file as it is then.
    */
   const regenerate = (
     saved: string,
@@ -1921,11 +1958,15 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         const checking = remaining()
         const live = await verifyLive(checking, fetched, passed, run, signal)
         if (!live) return undefined
+        // Only a check of the text the run read sets or clears a failure
+        // that stands, whether it passed or failed (see `liveFailures`).
         for (const canister of checking) {
           if (!live.unsure.has(canister)) liveFailures.delete(canister.name)
         }
         for (const failure of live.failures) {
-          liveFailures.set(failure.canister.name, failure)
+          if (!live.unsure.has(failure.canister)) {
+            liveFailures.set(failure.canister.name, failure)
+          }
         }
         failures.push(...live.failures)
         const generation = await generateNow(remaining(), false, run, signal)
@@ -1937,17 +1978,19 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       })
       if (!outcome) return
       // A canister whose file was written while this run read it takes
-      // nothing of the run (see `writtenSince`). A dev server queues it
-      // again, as a save does, and that run reports it: this one says no
-      // success for it. A build fails it.
+      // nothing of the run (see `writtenSince`): none of the failures its
+      // steps found, which may be of another text, and no success.
       const { written } = outcome
-      let { failures } = outcome
-      let attempted = generated
-      if (written.length > 0 && devServer) {
+      const taken = generated.filter((canister) => !written.includes(canister))
+      let failures = outcome.failures.filter(({ canister }) =>
+        taken.includes(canister)
+      )
+      if (devServer) {
+        // Queued again, as a save is: that run reports it.
         requeue(written)
-        attempted = generated.filter((canister) => !written.includes(canister))
-      } else if (written.length > 0) {
-        failures = dedupe([
+      } else {
+        // A build fails it, for this reason alone.
+        failures = [
           ...failures,
           ...written.map((canister) => ({
             canister,
@@ -1956,14 +1999,16 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
               `the steps that read it (listing its methods, the live check, generation) may each have read ` +
               `another text, so the build takes none of them. Build again.`,
           })),
-        ])
+        ]
       }
       if (failures.length > 0 && (failOnError ?? command === "build")) {
         // A build that exits 0 would ship whatever stale bindings are still on
         // disk, which no longer match the canister.
         this.error(describeFailures(failures))
       }
-      publish(attempted, failures)
+      // Under a dev server, nothing is said of a written canister here, not
+      // even that it is fixed: the run queued for it reports it.
+      publish(devServer ? taken : generated, failures)
     },
 
     // The end of a build, and the close of a dev server, which Vite reports
