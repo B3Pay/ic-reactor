@@ -2188,6 +2188,9 @@ describe("a dev server restarted with the same plugin object", () => {
   })
   const lacksPut =
     "item (did/item.did): methods names put, which did/item.did does not hold (it holds get, maybe)"
+  // The errors below are the plugin's own: Vite 8.0.0 also logs one when a
+  // restart cuts short the old server's dependency scan ("The server is being
+  // restarted or closed").
 
   // The run the restart queues for a file saved during its listing has to
   // list the text saved, a process of its own. The old server's close comes
@@ -2208,7 +2211,7 @@ describe("a dev server restarted with the same plugin object", () => {
       await running.close()
     })
     const errors = () =>
-      running.lines.filter((line) => line.startsWith("error:"))
+      running.lines.filter((line) => line.startsWith("error: ic-reactor:"))
     expect(errors()).toHaveLength(1)
     expect(errors()[0]).toContain(lacksPut)
 
@@ -2266,7 +2269,7 @@ describe("a dev server restarted with the same plugin object", () => {
     )
     closers.push(running.close)
     const errors = () =>
-      running.lines.filter((line) => line.startsWith("error:"))
+      running.lines.filter((line) => line.startsWith("error: ic-reactor:"))
     expect(errors()).toHaveLength(1)
     expect(errors()[0]).toContain(lacksPut)
     expect(cli.commands()).toEqual(["project", "gen"])
