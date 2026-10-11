@@ -17,6 +17,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http"
+import { describeError } from "./describe-value.js"
 import {
   buildIcEnvCookie,
   getIcEnvironmentInfo,
@@ -157,9 +158,7 @@ export function createLocalEnvironment(
       // getIcEnvironmentInfo reports failures in its result. This is for
       // anything else, which must not fail the page request that waits here.
       onDiagnostic(
-        `Detecting the local IC environment failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`
+        `Detecting the local IC environment failed: ${describeError(error)}`
       )
       state = previous ?? toState(null)
     }
@@ -168,9 +167,7 @@ export function createLocalEnvironment(
       onUpdate?.(previous, state)
     } catch (error) {
       onDiagnostic(
-        `Applying the detected IC environment failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`
+        `Applying the detected IC environment failed: ${describeError(error)}`
       )
     }
     return state

@@ -56,6 +56,12 @@ describe("icReactor", () => {
     middlewares: {
       use: vi.fn(),
     },
+    // A refused canister, with a didFile or not, is replayed to each browser
+    // that connects.
+    ws: {
+      on: vi.fn(),
+      send: vi.fn(),
+    },
     restart: vi.fn(),
   }
 
@@ -222,18 +228,26 @@ describe("icReactor", () => {
 
     // A JavaScript config is not type-checked: a configured canisterId that
     // is not text, or is empty, is neither put in the cookie nor dropped
-    // without a word.
+    // without a word. Neither is text that is no principal, which the cookie
+    // would hand the app as the canister's ID.
     it("should leave a configured canisterId that is not one to icp, and warn", async () => {
       const consoleWarnSpy = vi
         .spyOn(console, "warn")
         .mockImplementation(() => {})
-      answerIcp({ empty: "icp-empty", nil: "icp-nil", number: "icp-number" })
+      answerIcp({
+        empty: "icp-empty",
+        nil: "icp-nil",
+        number: "icp-number",
+        text: "icp-text",
+      })
 
       const plugin = createVitePlugin({
         canisters: {
           empty: { canisterId: "" },
           nil: { canisterId: null },
           number: { canisterId: 123 },
+          // yq4ns-hyaaa-aaaap-akbna-cai with its last letter changed.
+          text: { canisterId: "yq4ns-hyaaa-aaaap-akbna-caj" },
         },
       })
       const { middleware } = await serveWithEnvironment(plugin)
@@ -242,8 +256,10 @@ describe("icReactor", () => {
       expect(cookie).toContain("PUBLIC_CANISTER_ID%3Aempty%3Dicp-empty")
       expect(cookie).toContain("PUBLIC_CANISTER_ID%3Anil%3Dicp-nil")
       expect(cookie).toContain("PUBLIC_CANISTER_ID%3Anumber%3Dicp-number")
+      expect(cookie).toContain("PUBLIC_CANISTER_ID%3Atext%3Dicp-text")
+      expect(cookie).not.toContain("akbna-caj")
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        '[ic-reactor] canisterId is not a canister ID (empty: ""; nil: null; number: 123), ' +
+        '[ic-reactor] canisterId is not a canister ID (empty: ""; nil: null; number: 123; text: "yq4ns-hyaaa-aaaap-akbna-caj"), ' +
           "so the ic_env cookie takes the ID of those canisters from icp. " +
           "Give the canister's principal as text, or remove canisterId."
       )

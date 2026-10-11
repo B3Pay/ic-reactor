@@ -41,7 +41,9 @@ import {
   GENERATE_TIMEOUT_MS,
   foldsCase,
   generate,
+  moduleCollisions,
   resolveCliBin,
+  type GenerateCanister,
 } from "./generate.js"
 import {
   check,
@@ -79,8 +81,11 @@ export interface IcReactorPluginOptions {
    *   `ledger.envelope.json` into `outDir`. Canisters that name the same
    *   `didFile` and `outDir` share that one module, which is generated once.
    *   Different `.did` files that would write the same module are refused:
-   *   give one an `outDir` of its own. A canister without a `didFile`
-   *   generates nothing and is only named in the cookie. A run (the start of
+   *   the canister later in `canisters` fails at the start of each run,
+   *   before anything is fetched, run or written for it, and a save of its
+   *   file does not generate it either. Give one an `outDir` of its own. A
+   *   canister without a `didFile` generates nothing and is only named in
+   *   the cookie, its other options checked all the same. A run (the start of
    *   a build or dev server, or a save's regeneration) reads each `didFile`
    *   once, and takes nothing of one written before it is done with it, even
    *   saved back as it was: the methods comparison, the live check and
@@ -106,10 +111,10 @@ export interface IcReactorPluginOptions {
    *   Canisters that name one file, under any path to it, share one fetch;
    *   when they name different canisters (or networks) to fetch it from, none
    *   is fetched and each fails, since whose interface it is cannot be told.
-   *   Only an omitted `canisterId` is none: any other value that is not text
-   *   (`""`, or `null` from a JavaScript config) fails the canister, and is
-   *   left out of the cookie with a warning. Whether text is a principal is
-   *   told by the fetch or check that uses it, before any request.
+   *   Only an omitted `canisterId` is none: any other value that is not the
+   *   text of a principal (`""`, `null` from a JavaScript config, or text
+   *   with a letter wrong, which its checksum tells) fails the canister when
+   *   the plugin is made, and is left out of the cookie with a warning.
    * - `network`: where the canister to fetch is. `"ic"`, mainnet, checked
    *   against the mainnet root key; `"local"`, icp-cli's local network on
    *   `http://127.0.0.1:8000`, whose root key is fetched from it; or
@@ -151,17 +156,21 @@ export interface IcReactorPluginOptions {
    *   included, fails the canister, and so does `"live"` with no
    *   `canisterId`: remove `verify` for no check.
    *
-   * Every value given is checked when the plugin is made, whether or not a
-   * run would use it: only an omitted option is one not given. A canister
-   * whose options hold a value that is not one (a `didFile` or `outDir` that
-   * is not a path, any of the values above, or an option whose getter
-   * throws) is refused: each run fails it with every reason, under
-   * `failOnError`, before the run does anything for it. Nothing is fetched,
-   * written, run or requested for it, nor fetched for a `didFile` it shares
-   * with other canisters, and the others run as they would. The same holds
-   * for a canister that `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but
-   * that has no `canisterId`. Messages quote each value as it was given,
-   * whatever its kind (a bigint, a symbol, an object that holds itself).
+   * Every value given is checked when the plugin is made, on every canister,
+   * one without a `didFile` included, and whether or not a run would use it:
+   * only an omitted option is one not given. A canister whose options hold a
+   * value that is not one (a `didFile` or `outDir` that is not a path, any of
+   * the values above, or an option whose getter throws) is refused: each run
+   * fails it with every reason, under `failOnError`, before the run does
+   * anything for it. Nothing is fetched, written, run or requested for it,
+   * nor fetched for a `didFile` it shares with other canisters, and the
+   * others run as they would. The same holds for a canister whose module a
+   * canister before it writes (see `didFile`), and for one that
+   * `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but that has no
+   * `canisterId`. A refused canister is still named in the cookie, as every
+   * entry is: under `vite dev`, `icp` is asked for its ID, since the app may
+   * still call it. Messages quote each value as it was given, whatever its
+   * kind (a bigint, a symbol, an object that holds itself).
    *
    * The generator is the `@candid-core/cli` the app has installed, run as a
    * child process so that a failure on one `.did` stops that process and not
@@ -644,6 +653,38 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   const writtenSince = (run: Run, canisters: Generated[]): Generated[] =>
     canisters.filter((canister) => !run.asRead(canister))
 
+  /** `canister` as the generator is given it: its paths resolved against the root. */
+  const generationOf = (canister: Generated): GenerateCanister => ({
+    name: canister.name,
+    didFile: didPath(canister),
+    outDir: path.resolve(projectRoot, canister.outDir),
+  })
+
+  /**
+   * Each canister whose module a canister before it in the options writes,
+   * with why it cannot be generated. The generator names a module after its
+   * `.did`, so `a/ping.did` and `b/ping.did` in one `outDir` write one
+   * `ping.ts`, and so do `Ping.did` and `ping.did` where the filesystem of the
+   * `outDir` ignores case: the first canister keeps the module.
+   *
+   * Asked at the start of each run, of every canister with valid options, so
+   * that the answer is the same whichever canisters the run generates: it
+   * depends on the Vite root and on the filesystem, so it cannot be told when
+   * the plugin is made. Such a canister fails as a refused one does, before
+   * the run fetches, writes, runs or requests anything for it, and a save of
+   * its file generates nothing for it. `generate` refuses one among the
+   * canisters of one run too, which is the check of last resort. Never throws.
+   */
+  const collisions = (): Map<Generated, string> => {
+    const byName = moduleCollisions(generated.map(generationOf), projectRoot)
+    return new Map(
+      generated.flatMap((canister) => {
+        const failure = byName.get(canister.name)
+        return failure === undefined ? [] : [[canister, failure] as const]
+      })
+    )
+  }
+
   /** The files `gen` writes for `canister`: its module and its envelope. */
   const outputsOf = (canister: Generated): string[] => {
     const outDir = path.resolve(projectRoot, canister.outDir)
@@ -745,11 +786,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             `ic-reactor: candid-core-cli (${didFiles.map((file) => relativeToRoot(file)).join(", ")}): ${line}`
           )
         },
-        canisters: stale.map((canister) => ({
-          name: canister.name,
-          didFile: didPath(canister),
-          outDir: path.resolve(projectRoot, canister.outDir),
-        })),
+        canisters: stale.map(generationOf),
       })
 
       if (signal.aborted) return undefined
@@ -1660,7 +1697,16 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       // not when the save is queued: a check in flight may still set it.
       const standing: Failure[] = []
       const open: Generated[] = []
+      // A canister whose module another writes is not generated by a save
+      // either, which would write that module over the other's: the run of
+      // one file sees only the canisters that name it.
+      const collided = collisions()
       for (const canister of affected) {
+        const collision = collided.get(canister)
+        if (collision !== undefined) {
+          standing.push({ canister, message: collision })
+          continue
+        }
         const failure = lifetime.liveFailures.get(canister.name)
         if (!failure) {
           open.push(canister)
@@ -1740,16 +1786,20 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         // Back already, and the run its `add` queued regenerates it.
         if (signal.aborted || fs.existsSync(removed)) return
         for (const { name } of affected) generatedFrom.delete(name)
+        // A canister whose module another writes keeps that reason: the file
+        // coming back would not generate it either.
+        const collided = collisions()
         publish(
           lifetime,
           affected,
           affected.map((canister) => ({
             canister,
             message:
+              collided.get(canister) ??
               "the .did file was deleted; its module is not regenerated until the file comes back" +
-              (canister.canisterId !== undefined
-                ? `, or until the dev server restarts and fetches it from ${canister.canisterId}`
-                : ""),
+                (canister.canisterId !== undefined
+                  ? `, or until the dev server restarts and fetches it from ${canister.canisterId}`
+                  : ""),
           }))
         )
       } catch (error) {
@@ -1995,10 +2045,18 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       const outcome = await serially(async () => {
         // Every canister that cannot be run fails first, before the run
         // fetches, writes, runs or requests anything for it: one whose
-        // options hold a value that is not one, and one that a variable asks
-        // of what it cannot do (see `readRequests`).
+        // options hold a value that is not one, one whose module another
+        // canister writes (see `collisions`), and one that a variable asks of
+        // what it cannot do (see `readRequests`).
         const requests = readRequests()
-        const problems = [...refusals, ...requests.failures]
+        const problems = [
+          ...refusals,
+          ...[...collisions()].map(([canister, message]) => ({
+            canister,
+            message,
+          })),
+          ...requests.failures,
+        ]
         const blocked = new Map<Generated | Refused, string>()
         for (const { canister, message } of problems) {
           if (!blocked.has(canister)) blocked.set(canister, message)

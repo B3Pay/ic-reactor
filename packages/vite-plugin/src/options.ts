@@ -4,8 +4,9 @@
  *
  * A JavaScript config is not type-checked, so an option can hold a value of
  * any kind. Only an omitted option (`undefined`) is one not given: every
- * value given is checked, whether or not a run would use it, and quoted in a
- * message by `describeValue`, which never throws.
+ * value given is checked, on every canister, with a `didFile` or not, and
+ * whether or not a run would use it, and quoted in a message by
+ * `describeValue`, which never throws.
  *
  * - An option of the whole plugin (`canisters`, `injectEnvironment`,
  *   `failOnError`) that is not one throws when the config loads: read by a
@@ -13,7 +14,9 @@
  * - A canister whose options hold a value that is not one is refused. Every
  *   run fails it, with the reasons, before the run does anything else: it
  *   fetches nothing, writes nothing, runs no `candid-core-cli` process and
- *   makes no request for it, and the other canisters run as they would.
+ *   makes no request for it, and the other canisters run as they would. Its
+ *   name is still in the `ic_env` cookie, which carries every canister an
+ *   entry names: the app may still call it.
  *
  * Each option is read once, here: a getter runs once, and one that throws
  * refuses its canister. What the plugin keeps is a copy of what was read.
@@ -21,6 +24,7 @@
 
 import { describeError, describeValue } from "./describe-value.js"
 import { resolveNetwork, type CanisterNetwork } from "./fetch.js"
+import { isPrincipalText } from "./principal-text.js"
 
 /** Where a canister's module goes when it sets no `outDir`. */
 export const DEFAULT_OUT_DIR = "src/canisters"
@@ -64,7 +68,10 @@ export interface ReadOptions {
   notCanisterIds: string[]
   /** The canisters with a `didFile` whose options are all values. */
   generated: Generated[]
-  /** The canisters with a `didFile` (or no readable options) that are refused. */
+  /**
+   * The canisters that are refused: one whose options hold a value that is
+   * not one, with a `didFile` or not, and one whose options cannot be read.
+   */
   refused: Refused[]
 }
 
@@ -125,6 +132,26 @@ export function methodsProblem(methods: unknown): string | undefined {
 export function verifyProblem(verify: unknown): string | undefined {
   if (verify === undefined || verify === "live") return undefined
   return `verify is ${describeValue(verify)}, not "live": set it to "live" for the live check, or remove it for none`
+}
+
+/**
+ * Why `canisterId` is not a canister ID, or `undefined` when it is one or is
+ * omitted. A canister ID is the text of a principal, which is told here, and
+ * not only by the fetch or the check that reads it: those load
+ * `@icp-sdk/core`, and a canister with `methods` would have its methods
+ * listed, by a `candid-core-cli` process, before its check found the ID wrong.
+ */
+export function canisterIdProblem(canisterId: unknown): string | undefined {
+  if (canisterId === undefined) return undefined
+  if (typeof canisterId !== "string" || canisterId === "") {
+    return `canisterId is ${describeValue(canisterId)}, not a canister ID: give the canister's principal as text, or remove canisterId`
+  }
+  if (isPrincipalText(canisterId)) return undefined
+  return (
+    `canisterId is ${describeValue(canisterId)}, not a canister ID: it is not the text of a principal, ` +
+    `which is lowercase, in groups of five joined by dashes, with a checksum. ` +
+    `Give the canister's ID as it is printed, or remove canisterId`
+  )
 }
 
 /** A read of one option: its value, or what reading it threw. */
@@ -232,28 +259,32 @@ function readCanister(
 
   const didFile = value("didFile")
   const didFileThrew = problems.length > 0
+  // A canister with no `didFile` generates nothing, and is only named in the
+  // cookie. Its other options are checked all the same: a value that is not
+  // one refuses it too.
+  const hasDidFile = didFile !== undefined || didFileThrew
   const canisterIdRead = readKey(entry, "canisterId")
   const canisterId =
     canisterIdRead.threw === undefined ? canisterIdRead.value : undefined
+  const canisterIdWrong =
+    canisterIdRead.threw === undefined
+      ? canisterIdProblem(canisterId)
+      : undefined
 
-  // The cookie's: a configured ID wins over the one `icp` reports. Only text
-  // can be one: any other value given is left to `icp`, with a warning,
-  // rather than put in the cookie or taken for no canisterId.
+  // The cookie's: a configured ID wins over the one `icp` reports. Only a
+  // principal's text can be one: any other value given is left to `icp`, with
+  // a warning, rather than put in the cookie or taken for no canisterId.
   if (canisterIdRead.threw !== undefined) {
     read.notCanisterIds.push(
       `${name}: could not be read (${canisterIdRead.threw})`
     )
-  } else if (typeof canisterId === "string" && canisterId !== "") {
-    read.configuredCanisterIds[name] = canisterId
+  } else if (canisterId !== undefined && canisterIdWrong === undefined) {
+    read.configuredCanisterIds[name] = canisterId as string
   } else if (canisterId !== undefined) {
     read.notCanisterIds.push(`${name}: ${describeValue(canisterId)}`)
   }
 
-  // A canister with no `didFile` generates nothing, and is only named in the
-  // cookie.
-  if (didFile === undefined && !didFileThrew) return
-
-  if (!didFileThrew && !isPath(didFile)) {
+  if (didFile !== undefined && !isPath(didFile)) {
     problems.push(
       `didFile is ${describeValue(didFile)}, not a path: give the canister's .did file relative to the Vite root, ` +
         `or remove didFile for a canister that is only named in the ic_env cookie`
@@ -268,13 +299,8 @@ function readCanister(
   }
   if (canisterIdRead.threw !== undefined) {
     problems.push(`canisterId could not be read: ${canisterIdRead.threw}`)
-  } else if (
-    canisterId !== undefined &&
-    !(typeof canisterId === "string" && canisterId !== "")
-  ) {
-    problems.push(
-      `canisterId is ${describeValue(canisterId)}, not a canister ID: give the canister's principal as text, or remove canisterId`
-    )
+  } else if (canisterIdWrong !== undefined) {
+    problems.push(canisterIdWrong)
   }
 
   // A copy: `{ host }` read once, so that no getter of the object given runs
@@ -311,7 +337,9 @@ function readCanister(
   const verifyWrong = verifyProblem(verify)
   if (verifyWrong) {
     problems.push(verifyWrong)
-  } else if (verify === "live" && canisterId === undefined) {
+  } else if (verify === "live" && hasDidFile && canisterId === undefined) {
+    // With no `didFile`, there is nothing to check: `"live"` is a value, and
+    // unused.
     if (canisterIdRead.threw === undefined) {
       problems.push(
         `verify is "live", but it names no canisterId to check its didFile against`
@@ -328,6 +356,7 @@ function readCanister(
     })
     return
   }
+  if (!hasDidFile) return
   read.generated.push({
     name,
     didFile: didFile as string,

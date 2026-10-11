@@ -6,6 +6,7 @@
  */
 
 import { execFile } from "child_process"
+import { describeError } from "./describe-value.js"
 
 export interface IcEnvironment {
   environment: string
@@ -192,7 +193,7 @@ function describeExecError(error: unknown): string {
     return trimmed
   }
 
-  return error instanceof Error ? error.message : String(error)
+  return describeError(error)
 }
 
 function isLocalhostGateway(proxyTarget: string): boolean {

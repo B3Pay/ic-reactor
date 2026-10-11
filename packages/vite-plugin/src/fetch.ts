@@ -18,7 +18,7 @@
 
 import fs from "node:fs"
 import path from "node:path"
-import { describeValue } from "./describe-value.js"
+import { describeError, describeValue } from "./describe-value.js"
 
 /**
  * Where a canister to fetch is: `"ic"` (mainnet, checked against the mainnet
@@ -191,7 +191,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
         (verify
           ? `the live check of ${didFile} reads the interface of ${where}, which needs @icp-sdk/core, and it could not be loaded `
           : `${didFile} does not exist, and fetching it from ${where} needs @icp-sdk/core, which could not be loaded `) +
-        `(${firstLine(error instanceof Error ? error.message : String(error))}). ` +
+        `(${firstLine(describeError(error))}). ` +
         `Install it next to @ic-reactor/core (npm install @icp-sdk/core), ${ownFile}.`,
     }
   }
@@ -210,7 +210,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
   } catch (error) {
     return {
       ok: false,
-      message: `canisterId ${describeValue(canisterId)} is not a canister ID: ${firstLine(error instanceof Error ? error.message : String(error))}`,
+      message: `canisterId ${describeValue(canisterId)} is not a canister ID: ${firstLine(describeError(error))}`,
     }
   }
 
@@ -306,9 +306,7 @@ export async function fetchCandid(request: FetchRequest): Promise<FetchResult> {
           `Build again later, ${ownFile}.`,
       }
     }
-    const reason = firstLine(
-      error instanceof Error ? error.message : String(error)
-    )
+    const reason = firstLine(describeError(error))
     if (error instanceof TrustError) {
       return {
         ok: false,
@@ -340,13 +338,14 @@ function rootKeyOf(network: ResolvedNetwork): string {
 
 /** What `fetch` threw, with the network error Node keeps in its `cause`. */
 function describeCause(cause: unknown): string {
-  if (!(cause instanceof Error)) return String(cause)
+  if (!(cause instanceof Error)) return describeError(cause)
   const inner = (cause as Error & { cause?: unknown }).cause
-  const detail =
+  const detail: unknown =
     inner instanceof Error
-      ? ((inner as Error & { code?: unknown }).code ?? inner.message)
+      ? ((inner as Error & { code?: unknown }).code ?? describeError(inner))
       : undefined
-  return detail ? `${cause.message}: ${String(detail)}` : cause.message
+  if (!detail) return describeError(cause)
+  return `${describeError(cause)}: ${typeof detail === "string" ? detail : describeValue(detail)}`
 }
 
 /**

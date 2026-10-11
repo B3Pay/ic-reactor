@@ -29,9 +29,29 @@ export function describeValue(value: unknown): string {
 }
 
 /**
+ * Node's own getter of a `DOMException`'s `message`, which the class keeps
+ * behind it rather than on the error: an `AbortError`'s, a `TimeoutError`'s.
+ * It reads the message of a `DOMException` and throws for anything else.
+ */
+const domExceptionMessage = ((): ((this: unknown) => unknown) | undefined => {
+  try {
+    const { get } =
+      Object.getOwnPropertyDescriptor(
+        globalThis.DOMException?.prototype ?? {},
+        "message"
+      ) ?? {}
+    return typeof get === "function" ? get : undefined
+  } catch {
+    return undefined
+  }
+})()
+
+/**
  * What was thrown, in words fit for a message: an `Error`'s message, or the
  * value itself as `describeValue` quotes it. Never throws, and runs no code
- * of the value's.
+ * of the value's: the message is an `Error`'s own, or a `DOMException`'s,
+ * read by Node's own getter. One that a class of the error's own makes a
+ * getter is not read, and the error is quoted as `describeValue` quotes it.
  */
 export function describeError(error: unknown): string {
   try {
@@ -40,6 +60,9 @@ export function describeError(error: unknown): string {
       if (message && "value" in message && typeof message.value === "string") {
         return message.value
       }
+      // Throws for an error that is not a DOMException.
+      const text = domExceptionMessage?.call(error)
+      if (typeof text === "string") return text
     }
   } catch {
     // Quoted below.

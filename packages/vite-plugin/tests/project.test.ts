@@ -2141,6 +2141,197 @@ describe("options given a value of the wrong kind", () => {
     expect(exists(app, "src/canisters/item.ts")).toBe(false)
     expect(asked).toEqual([])
   })
+
+  // A canister with no didFile generates nothing, and its options were read
+  // no further than its canisterId: methods: 1n, verify: "nope", network: 5
+  // or outDir: 3 on it were taken without a word. One whose values are all
+  // values is only named in the cookie, whatever they are.
+  it("of a canister with no didFile are checked as any canister's: one that is not one fails it, with no request and nothing run", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/ping.did": PING_DID })
+    const cli = hookCli(app)
+    const { result, lines } = runBuild(app.root, {
+      failOnError: false,
+      canisters: {
+        typo: {
+          canisterId: LEDGER_ID,
+          outDir: 3 as never,
+          network: 5 as never,
+          methods: 1n as never,
+          verify: "nope" as never,
+        },
+        empty: { canisterId: "" },
+        // Values all, so none fails it, though nothing reads them.
+        named: {
+          canisterId: LEDGER_ID,
+          outDir: "src/named",
+          network: "ic",
+          methods: ["icrc1_fee"],
+          verify: "live",
+        },
+        ping: { didFile: "did/ping.did" },
+      },
+    })
+    await result
+    const errors = lines.filter((line) => line.startsWith("error:"))
+    expect(errors).toHaveLength(1)
+    const [message] = errors
+    expect(message).toContain("could not generate 2 of 3 canisters")
+    expect(message).toContain(
+      '- typo: outDir is 3, not a path: give the directory relative to the Vite root, or remove outDir for "src/canisters"; ' +
+        'network 5 is not "ic", "local" or { host: "<http or https URL>" }; ' +
+        "methods is 1n, not a list of method names; " +
+        'verify is "nope", not "live": set it to "live" for the live check, or remove it for none'
+    )
+    expect(message).toContain(
+      '- empty: canisterId is "", not a canister ID: give the canister\'s principal as text, or remove canisterId'
+    )
+    expect(message).not.toContain("named")
+    expect(cli.commands()).toEqual(["gen"])
+    expect(exists(app, "src/canisters/ping.ts")).toBe(true)
+    expect(exists(app, "src/named")).toBe(false)
+    expect(asked).toEqual([])
+  })
+
+  // Whether text is a principal was told only by the fetch or the check that
+  // read it, so a canister with methods and verify: "live" had its methods
+  // listed by a candid-core-cli process before its check failed.
+  it("canisterId text that is no principal fails the canister when the plugin is made, before any process or request", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "did/item.did": WRITTEN, "did/ping.did": PING_DID })
+    const cli = hookCli(app)
+    const wrong = (text: string) =>
+      `canisterId is ${JSON.stringify(text)}, not a canister ID: it is not the text of a principal, ` +
+      `which is lowercase, in groups of five joined by dashes, with a checksum. ` +
+      `Give the canister's ID as it is printed, or remove canisterId`
+    const { result, lines } = runBuild(app.root, {
+      failOnError: false,
+      canisters: {
+        // The ledger's ID with its last letter changed: no checksum matches.
+        checksum: {
+          didFile: "did/item.did",
+          canisterId: "ryjl3-tyaaa-aaaaa-aaaba-caj",
+          methods: ["get", "maybe", "put"],
+          verify: "live",
+        },
+        upper: {
+          didFile: "did/item.did",
+          outDir: "src/upper",
+          canisterId: "RYJL3-TYAAA-AAAAA-AAABA-CAI",
+          verify: "live",
+        },
+        words: { canisterId: "the ledger" },
+        ping: { didFile: "did/ping.did" },
+      },
+    })
+    await result
+    const errors = lines.filter((line) => line.startsWith("error:"))
+    expect(errors).toHaveLength(1)
+    const [message] = errors
+    expect(message).toContain("could not generate 3 of 4 canisters")
+    expect(lineOf(message, "checksum")).toContain(
+      `checksum (did/item.did): ${wrong("ryjl3-tyaaa-aaaaa-aaaba-caj")}`
+    )
+    expect(lineOf(message, "upper")).toContain(
+      `upper (did/item.did): ${wrong("RYJL3-TYAAA-AAAAA-AAABA-CAI")}`
+    )
+    expect(message).toContain(`- words: ${wrong("the ledger")}`)
+    // No listing and no check: one generator, for ping alone.
+    expect(cli.commands()).toEqual(["gen"])
+    expect(exists(app, "src/canisters/item.ts")).toBe(false)
+    expect(asked).toEqual([])
+  })
+})
+
+// The generator names a module after its .did, so two files of one name in
+// one outDir write one module, which the first canister in the options
+// keeps. The second was refused only by the generator's run, after the run
+// had fetched, projected, listed and checked its file; and a save of its file
+// under vite dev, whose run sees only the canisters that name the file,
+// generated it over the first one's module.
+describe("a canister whose module a canister before it writes", () => {
+  const collision =
+    'a (a/ping.did): would write src/canisters/ping.ts, which "b" already writes. ' +
+    "The generator names a module after its .did file: rename one file or give one canister its own outDir"
+
+  it("fails before the run does anything for it, its file missing or on disk: no request, no process, nothing written", async () => {
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+    const app = newApp({ "b/ping.did": PING_DID })
+    const cli = hookCli(app)
+    const a = {
+      didFile: "a/ping.did",
+      canisterId: LEDGER_ID,
+      network: { host: ic.host },
+      methods: ["icrc1_fee"],
+    }
+
+    // Missing, so it would be fetched and projected.
+    const missing = runBuild(app.root, {
+      failOnError: false,
+      canisters: { b: { didFile: "b/ping.did" }, a },
+    })
+    await missing.result
+    const errors = missing.lines.filter((line) => line.startsWith("error:"))
+    expect(errors).toHaveLength(1)
+    expect(lineOf(errors[0], "a")).toContain(collision)
+    expect(exists(app, "a/ping.did")).toBe(false)
+    expect(read(app, "src/canisters/ping.ts")).not.toContain("icrc1_fee")
+
+    // On disk, with methods to compare it with and the live check asked for.
+    fs.mkdirSync(path.join(app.root, "a"))
+    fs.writeFileSync(path.join(app.root, "a/ping.did"), LEDGER)
+    const checked = await buildError(app, {
+      canisters: { b: { didFile: "b/ping.did" }, a: { ...a, verify: "live" } },
+    })
+    expect(lineOf(checked.message, "a")).toContain(collision)
+
+    // One generator for each build, for b alone.
+    expect(cli.commands()).toEqual(["gen", "gen"])
+    const aFile = path.join(app.root, "a/ping.did")
+    expect(app.runs().filter((args) => args.includes(aFile))).toEqual([])
+    expect(ic.requests).toEqual([])
+  })
+
+  it("is not generated by a save of its file under vite dev, which leaves the module as it was, nor taken for deleted with its file", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({ "a/ping.did": WRITTEN, "b/ping.did": PING_DID })
+    const cli = hookCli(app)
+    const running = await startDev(app.root, {
+      canisters: {
+        b: { didFile: "b/ping.did" },
+        a: { didFile: "a/ping.did" },
+      },
+    })
+    closers.push(running.close)
+    const errors = () =>
+      running.lines.filter((line) => line.startsWith("error: ic-reactor:"))
+    expect(errors()).toHaveLength(1)
+    expect(lineOf(errors()[0], "a")).toContain(collision)
+    const module = read(app, "src/canisters/ping.ts")
+    expect(module).not.toContain("maybe")
+
+    // A save of a's file alone: a is refused again, and nothing runs for it.
+    const file = path.join(app.root, "a/ping.did")
+    fs.writeFileSync(file, `// Saved.\n${WRITTEN}`)
+    running.server.watcher.emit("change", file)
+    await vi.waitFor(() => expect(errors()).toHaveLength(2), {
+      timeout: 10_000,
+    })
+    expect(lineOf(errors()[1], "a")).toContain(collision)
+    expect(read(app, "src/canisters/ping.ts")).toBe(module)
+    expect(cli.commands()).toEqual(["gen"])
+
+    // Deleted: still refused for the module, which the file coming back
+    // would not generate either.
+    fs.rmSync(file)
+    running.server.watcher.emit("unlink", file)
+    await vi.waitFor(() => expect(errors()).toHaveLength(3), {
+      timeout: 10_000,
+    })
+    expect(lineOf(errors()[2], "a")).toContain(collision)
+    expect(errors()[2]).not.toContain("was deleted")
+    expect(asked).toEqual([])
+  }, 30_000)
 })
 
 /**

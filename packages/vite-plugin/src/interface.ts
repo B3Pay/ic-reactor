@@ -25,6 +25,7 @@
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
+import { describeError } from "./describe-value.js"
 import { describeProcess, formatDiagnostic, runProcess } from "./generate.js"
 
 /** How long one `project` or `check` process may run before it is killed. */
@@ -125,7 +126,7 @@ export type Source = { file: string } | { text: string }
 const stopped: Unfinished = { ok: false, stopped: true, message: "was stopped" }
 
 function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+  return describeError(error)
 }
 
 /**
