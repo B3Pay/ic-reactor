@@ -1964,10 +1964,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         console.warn(
           `[ic-reactor] The ic_env cookie cannot carry the canister${one ? "" : "s"} ` +
             `${uncarriedNames.map((name) => describeValue(name)).join(", ")}: it joins its entries with "&" ` +
-            `and each name to its ID with "=", so a name that holds either, or that is not well-formed text, ` +
-            `would be read back as another. ${one ? "It is" : "They are"} left out of the cookie, and icp is ` +
-            `not asked for ${one ? "its ID" : "their IDs"}. Name the canister as icp does: ASCII letters, ` +
-            `digits, "_" and "-".`
+            `and each name to its ID with "=", so a name that holds either would be read back as other keys, ` +
+            `and it cannot encode text that is not well-formed. ${one ? "It is" : "They are"} left out of the ` +
+            `cookie, and icp is not asked for ${one ? "its ID" : "their IDs"}. Name the canister as icp does: ` +
+            `ASCII letters, digits, "_" and "-".`
         )
       }
 
