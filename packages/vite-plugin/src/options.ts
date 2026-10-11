@@ -3,20 +3,26 @@
  * before the plugin does anything with it.
  *
  * A JavaScript config is not type-checked, so an option can hold a value of
- * any kind. Only an omitted option (`undefined`) is one not given: every
- * value given is checked, on every canister, with a `didFile` or not, and
- * whether or not a run would use it, and quoted in a message by
- * `describeValue`, which never throws.
+ * any kind, and an object of options a key of any name. Only an omitted
+ * option (`undefined`) is one not given: every value given is checked, on
+ * every canister, with a `didFile` or not, and whether or not a run would use
+ * it, and quoted in a message by `describeValue`, which never throws. So is
+ * every key: one that is no option (a misspelled `canister`, `didfile` or
+ * `canisterID`) is refused whatever its value, `undefined` included, and the
+ * message names the option it may misspell. Never read, it would start the
+ * plugin with no canister, take a canister for one only named in the cookie,
+ * or generate one without its ID, without a word.
  *
  * - An option of the whole plugin (`canisters`, `injectEnvironment`,
- *   `failOnError`) that is not one throws when the config loads: read by a
- *   guess, it could ship stale bindings or drop the local environment.
- * - A canister whose options hold a value that is not one is refused. Every
- *   run fails it, with the reasons, before the run does anything else: it
- *   fetches nothing, writes nothing, runs no `candid-core-cli` process and
- *   makes no request for it, and the other canisters run as they would. Its
- *   name is still in the `ic_env` cookie, which carries every canister an
- *   entry names: the app may still call it.
+ *   `failOnError`) that is not one throws when the config loads, and so does
+ *   a key of the options that is none of them: read by a guess, the options
+ *   could ship stale bindings or drop the local environment.
+ * - A canister whose options hold a value that is not one, or a key that is
+ *   no option, is refused. Every run fails it, with the reasons, before the
+ *   run does anything else: it fetches nothing, writes nothing, runs no
+ *   `candid-core-cli` process and makes no request for it, and the other
+ *   canisters run as they would. Its name is still in the `ic_env` cookie,
+ *   which carries every canister an entry names: the app may still call it.
  *
  * Each option is read once, here: a getter runs once, and one that throws
  * refuses its canister. What the plugin keeps is a copy of what was read.
@@ -31,7 +37,10 @@
  * `Object.prototype` or `null`. A `Map`, a `Promise`, an instance of a class
  * or an object that inherits from another is refused as any other value that
  * is not one: read for its keys, a `Map` of canisters or a `Promise` of
- * options would be read as none.
+ * options would be read as none. Its keys are its own enumerable string keys,
+ * as `Object.keys` lists them (which runs no getter): each key of the
+ * options, of an entry and of a network is one of its type's options, and
+ * each key of `canisters` a canister's name.
  *
  * A canister's name is its name in the `icp` project, kept as given:
  * `__proto__`, `constructor` and `toString` name canisters as any other name
@@ -46,10 +55,40 @@
 import { describeError, describeValue } from "./describe-value.js"
 import { cookieCarries } from "./env.js"
 import { resolveNetwork, type CanisterNetwork } from "./fetch.js"
+import type { IcReactorPluginOptions } from "./index.js"
 import { isPrincipalText } from "./principal-text.js"
 
 /** Where a canister's module goes when it sets no `outDir`. */
 export const DEFAULT_OUT_DIR = "src/canisters"
+
+/** A canister's entry, as the options' type gives it. */
+type CanisterEntry = NonNullable<IcReactorPluginOptions["canisters"]>[string]
+
+/**
+ * The options of `icReactor()`, of a canister's entry and of a `network` of
+ * `{ host }`, in the order of their types. Each is checked against its type
+ * (`satisfies`): an option the type gains, or loses, fails the type check
+ * until it is listed here, so no option the type allows is refused.
+ */
+const PLUGIN_OPTIONS = Object.keys({
+  canisters: true,
+  injectEnvironment: true,
+  failOnError: true,
+} satisfies Record<keyof IcReactorPluginOptions, true>)
+const CANISTER_OPTIONS = Object.keys({
+  didFile: true,
+  outDir: true,
+  canisterId: true,
+  network: true,
+  methods: true,
+  verify: true,
+} satisfies Record<keyof CanisterEntry, true>)
+const NETWORK_OPTIONS = Object.keys({
+  host: true,
+} satisfies Record<
+  keyof Extract<NonNullable<CanisterEntry["network"]>, object>,
+  true
+>)
 
 /** A canister with a `.did` to generate from: its options, every one checked. */
 export interface Generated {
@@ -67,7 +106,10 @@ export interface Generated {
 /** A canister whose options cannot be used, and why. */
 export interface Refused {
   name: string
-  /** Every reason, in the order of the options. */
+  /**
+   * Every reason: a key of its entry that is no option first, then each
+   * option's, in the order of the options.
+   */
   problem: string
   /**
    * Its `didFile`, when that is a path. Canisters that share a `didFile` to
@@ -229,15 +271,116 @@ function readKey(object: Record<string, unknown>, key: string): Read {
 }
 
 /**
+ * The keys of `object`, its own enumerable ones, or what listing them threw
+ * (a proxy's trap). Runs no getter. Never throws.
+ */
+function listKeys(
+  object: Record<string, unknown>
+): { keys: string[]; threw?: undefined } | { threw: string } {
+  try {
+    return { keys: Object.keys(object) }
+  } catch (error) {
+    return { threw: describeError(error) }
+  }
+}
+
+/** `a`, `a and b`, `a, b and c`. */
+function listAnd(items: readonly string[]): string {
+  return items.length < 2
+    ? items.join("")
+    : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`
+}
+
+/**
+ * How many single letters must be added, removed or replaced to turn `a`
+ * into `b`.
+ */
+function editDistance(a: string, b: string): number {
+  let row = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i]
+    for (let j = 1; j <= b.length; j++) {
+      next.push(
+        Math.min(
+          row[j] + 1,
+          next[j - 1] + 1,
+          row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+        )
+      )
+    }
+    row = next
+  }
+  return row[b.length]
+}
+
+/**
+ * The option of `options` that `key` may misspell: the nearest, case aside,
+ * within two letters (`canister`, `didfile`, `canisterID`); `undefined` when
+ * none is that near.
+ */
+function misspelt(key: string, options: readonly string[]): string | undefined {
+  let nearest: string | undefined
+  let distance = 3
+  for (const option of options) {
+    // More than two letters apart by their lengths alone.
+    if (Math.abs(key.length - option.length) >= distance) continue
+    const apart = editDistance(key.toLowerCase(), option.toLowerCase())
+    if (apart < distance) {
+      nearest = option
+      distance = apart
+    }
+  }
+  return nearest
+}
+
+/**
+ * Why `keys`, the keys of an object of options, are not all among its
+ * `options`, or `undefined` when they are: each key that is none, quoted as
+ * given, with the option it may misspell. A key is refused whatever its
+ * value, `undefined` included: the key is what is wrong, and a misspelled
+ * `canisterID: process.env.LEDGER_ID` is so whether the variable is set or
+ * not.
+ */
+function unknownKeysProblem(
+  keys: readonly string[],
+  options: readonly string[]
+): string | undefined {
+  const unknown = keys.filter((key) => !options.includes(key))
+  if (unknown.length === 0) return undefined
+  const quoted = unknown.map((key) => {
+    const meant = misspelt(key, options)
+    return meant === undefined
+      ? describeValue(key)
+      : `${describeValue(key)} (did you mean ${meant}?)`
+  })
+  return `${listAnd(quoted)} ${unknown.length === 1 ? "is not an option" : "are not options"}`
+}
+
+/**
  * The plugin's options, read and checked. Throws an `Error` that says what to
- * change for an option of the whole plugin that is not one; a canister's
- * options never throw, and refuse that canister instead.
+ * change for an option of the whole plugin that is not one, or a key of the
+ * options that is no option; a canister's options never throw, and refuse
+ * that canister instead.
  */
 export function readOptions(given: unknown): ReadOptions {
   const options = given === undefined ? {} : given
   if (!isOptionsObject(options)) {
     throw new Error(
       `[ic-reactor] the options are ${describeNotPlain(options)}, not a plain object: give icReactor() an object of options, or none`
+    )
+  }
+  // Every key is an option: a misspelled `canister`, never read, would start
+  // the plugin with no canister, without a word.
+  const listed = listKeys(options)
+  if (listed.threw !== undefined) {
+    throw new Error(
+      `[ic-reactor] the options could not be listed: ${listed.threw}`
+    )
+  }
+  const unknown = unknownKeysProblem(listed.keys, PLUGIN_OPTIONS)
+  if (unknown !== undefined) {
+    throw new Error(
+      `[ic-reactor] ${unknown} of icReactor(): its options are ${listAnd(PLUGIN_OPTIONS)}`
     )
   }
   const top = (key: string): unknown => {
@@ -325,6 +468,20 @@ function readCanister(
   carried: boolean
 ): void {
   const problems: string[] = []
+  // Every key is an option, whatever its value: a misspelled `didfile`, never
+  // read, would take the canister for one only named in the cookie, and a
+  // misspelled `canisterID` would generate it without its ID.
+  const listed = listKeys(entry)
+  if (listed.threw !== undefined) {
+    problems.push(`its options could not be listed: ${listed.threw}`)
+  } else {
+    const unknown = unknownKeysProblem(listed.keys, CANISTER_OPTIONS)
+    if (unknown !== undefined) {
+      problems.push(
+        `${unknown} of a canister: its options are ${listAnd(CANISTER_OPTIONS)}`
+      )
+    }
+  }
   /** The value of `key`, `undefined` with a problem when reading it threw. */
   const value = (key: string): unknown => {
     const result = readKey(entry, key)
@@ -333,8 +490,9 @@ function readCanister(
     return undefined
   }
 
+  const problemsBefore = problems.length
   const didFile = value("didFile")
-  const didFileThrew = problems.length > 0
+  const didFileThrew = problems.length > problemsBefore
   // A canister with no `didFile` generates nothing, and is only named in the
   // cookie. Its other options are checked all the same: a value that is not
   // one refuses it too.
@@ -385,10 +543,23 @@ function readCanister(
 
   // A copy: `{ host }` read once, so that no getter of the object given runs
   // again when the network is resolved. Any other object (a `URL`, a `Map`,
-  // a `Promise`, a list) is not a network, whatever its `host`.
+  // a `Promise`, a list) is not a network, whatever its `host`, and `{ host }`
+  // holds no other key: the plugin takes the root key from the host, so a
+  // `rootKey` or `fetchRootKey` would be read as nothing.
   const givenNetwork = value("network")
   let network: CanisterNetwork | undefined
   if (isOptionsObject(givenNetwork)) {
+    const networkKeys = listKeys(givenNetwork)
+    if (networkKeys.threw !== undefined) {
+      problems.push(`network's keys could not be listed: ${networkKeys.threw}`)
+    } else {
+      const unknown = unknownKeysProblem(networkKeys.keys, NETWORK_OPTIONS)
+      if (unknown !== undefined) {
+        problems.push(
+          `${unknown} of network { host }: give the network as { host: "<http or https URL>" } alone`
+        )
+      }
+    }
     const host = readKey(givenNetwork, "host")
     if (host.threw !== undefined) {
       problems.push(`network.host could not be read: ${host.threw}`)

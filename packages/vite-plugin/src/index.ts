@@ -66,7 +66,9 @@ const GUIDE_LINE =
 /**
  * The options of {@link icReactor}. Every one is optional: with none, the
  * plugin generates nothing and, under `vite dev`, only injects the local IC
- * environment, for no canister of the app's.
+ * environment, for no canister of the app's. A key that is none of these
+ * three (a misspelled `canister`) throws when the config loads, whatever its
+ * value, and the message names the option it may misspell.
  */
 export interface IcReactorPluginOptions {
   /**
@@ -170,30 +172,36 @@ export interface IcReactorPluginOptions {
    *
    * Every value given is checked when the plugin is made, on every canister,
    * one without a `didFile` included, and whether or not a run would use it:
-   * only an omitted option is one not given, and takes its default. The
-   * options, `canisters`, each entry and a `network` of `{ host }` are plain
-   * objects, whose prototype is `Object.prototype` or `null`: written
-   * `{ … }`, or made by `JSON.parse`, `Object.fromEntries` or
-   * `Object.create(null)`. A `Map`, a `Promise`, an instance of a class and
-   * an object that inherits from another are not, and are refused as any
-   * other value that is not one: read for their keys, they would be read as
-   * none. `canisters` itself that is not a plain object, `null` included,
-   * throws when the config loads, as the options do. A canister whose options
-   * are not one, or hold a value that is not one (a `didFile` or `outDir`
-   * that is not a path, any of the values above, or an option whose getter
-   * throws) is refused: each run fails it with every reason, under
-   * `failOnError`, before the run does anything for it. Nothing is fetched,
-   * written, run or requested for it, nor fetched for a `didFile` it shares
-   * with other canisters, and the others run as they would. The same holds
-   * for a canister whose module a canister before it writes (see `didFile`),
-   * and for one that `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but
-   * that has no `canisterId`. Under `vite dev`, a save of its file, and the
-   * file's deletion, leave it failed for the same reason and run nothing for
-   * it. A refused canister is still named in the cookie, as every entry is
-   * (but one whose name the cookie cannot carry): under `vite dev`, `icp` is
-   * asked for its ID, since the app may still call it.
-   * Messages quote each value as it was given, whatever its kind (a bigint,
-   * a symbol, an object that holds itself).
+   * only an omitted option is one not given, and takes its default. So is
+   * every key: a key of an entry that is none of the six above (a misspelled
+   * `didfile` or `canisterID`), or a key of a `network` of `{ host }` other
+   * than `host`, refuses the canister whatever its value, `undefined`
+   * included, and the message names the option it may misspell. Never read,
+   * it would take the canister for one only named in the cookie, or generate
+   * it without its ID, without a word. The options, `canisters`, each entry
+   * and a `network` of `{ host }` are plain objects, whose prototype is
+   * `Object.prototype` or `null`: written `{ … }`, or made by `JSON.parse`,
+   * `Object.fromEntries` or `Object.create(null)`. A `Map`, a `Promise`, an
+   * instance of a class and an object that inherits from another are not,
+   * and are refused as any other value that is not one: read for their keys,
+   * they would be read as none. `canisters` itself that is not a plain
+   * object, `null` included, throws when the config loads, as the options do.
+   * A canister whose options are not one, or hold a value that is not one (a
+   * `didFile` or `outDir` that is not a path, any of the values above, or an
+   * option whose getter throws), or a key that is no option, is refused:
+   * each run fails it with every reason, under `failOnError`, before the run
+   * does anything for it. Nothing is fetched, written, run or requested for
+   * it, nor fetched for a `didFile` it shares with other canisters, and the
+   * others run as they would. The same holds for a canister whose module a
+   * canister before it writes (see `didFile`), and for one that
+   * `IC_REACTOR_FETCH` or `IC_REACTOR_VERIFY` names but that has no
+   * `canisterId`. Under `vite dev`, a save of its file, and the file's
+   * deletion, leave it failed for the same reason and run nothing for it. A
+   * refused canister is still named in the cookie, as every entry is (but one
+   * whose name the cookie cannot carry): under `vite dev`, `icp` is asked for
+   * its ID, since the app may still call it. Messages quote each value as it
+   * was given, whatever its kind (a bigint, a symbol, an object that holds
+   * itself).
    *
    * The generator is the `@candid-core/cli` the app has installed, run as a
    * child process so that a failure on one `.did` stops that process and not
@@ -485,9 +493,10 @@ const consoleLog: PluginLog = {
  * ```
  */
 export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
-  // Every option read once, and every value checked, before anything else
-  // (see options.ts). An option of the whole plugin that is not one throws
-  // here, so that the config does not load.
+  // Every option read once, and every value and key checked, before anything
+  // else (see options.ts). An option of the whole plugin that is not one, or
+  // a key of the options that is no option, throws here, so that the config
+  // does not load.
   const {
     injectEnvironment,
     failOnError,

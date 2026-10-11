@@ -4287,5 +4287,95 @@
     "file": "src/env.ts",
     "search": "  try {\n    encodeURIComponent(name)\n    return true\n  } catch {\n    return false\n  }\n",
     "replace": "  return true\n"
+  },
+  {
+    "id": "opt-unknown-option-ignored",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse a key of the options that is not an option, whatever its value, and name the option it may misspell",
+    "why": "a key of the options that is no option never read, as before: a misspelled canisters starts the plugin with no canister, and a misspelled failOnError leaves a build to ship stale bindings, without a word",
+    "file": "src/options.ts",
+    "search": "  const unknown = unknownKeysProblem(listed.keys, PLUGIN_OPTIONS)\n  if (unknown !== undefined) {\n    throw new Error(\n      `[ic-reactor] ${unknown} of icReactor(): its options are ${listAnd(PLUGIN_OPTIONS)}`\n    )\n  }\n",
+    "replace": ""
+  },
+  {
+    "id": "opt-unknown-key-unbounded-hint",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse a key of the options that is not an option, whatever its value, and name the option it may misspell",
+    "why": "the option a key may misspell taken as the nearest at any distance, so a key that misspells none (outDir, verbose) is told it means an option it has nothing to do with",
+    "file": "src/options.ts",
+    "search": "  let distance = 3\n",
+    "replace": "  let distance = Infinity\n"
+  },
+  {
+    "id": "opt-unknown-key-case-counted",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse a key of the options that is not an option, whatever its value, and name the option it may misspell",
+    "why": "a key compared with the options letter for letter, case included, so CANISTERS, nine letters from canisters, is not told it misspells it",
+    "file": "src/options.ts",
+    "search": "    const apart = editDistance(key.toLowerCase(), option.toLowerCase())\n",
+    "replace": "    const apart = editDistance(key, option)\n"
+  },
+  {
+    "id": "opt-options-keys-unguarded",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse a key of the options that is not an option, whatever its value, and name the option it may misspell",
+    "why": "the keys of the options listed with no guard, so a proxy whose trap throws throws its own error out of icReactor(), which does not say that the options could not be listed",
+    "file": "src/options.ts",
+    "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
+    "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "opt-unknown-canister-key-ignored",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run",
+    "why": "a key of a canister's entry that is no option never read, as before: a misspelled didFile takes the canister for one only named in the cookie, leaving the last run's module, and a misspelled canisterId generates it without its ID, without a word",
+    "file": "src/options.ts",
+    "search": "    const unknown = unknownKeysProblem(listed.keys, CANISTER_OPTIONS)\n    if (unknown !== undefined) {\n      problems.push(\n        `${unknown} of a canister: its options are ${listAnd(CANISTER_OPTIONS)}`\n      )\n    }\n",
+    "replace": ""
+  },
+  {
+    "id": "opt-unknown-network-key-ignored",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run",
+    "why": "a key of a network of { host } other than host never read, so a rootKey given with it is read as nothing, and the canister generates without a word",
+    "file": "src/options.ts",
+    "search": "      const unknown = unknownKeysProblem(networkKeys.keys, NETWORK_OPTIONS)\n      if (unknown !== undefined) {\n        problems.push(\n          `${unknown} of network { host }: give the network as { host: \"<http or https URL>\" } alone`\n        )\n      }\n",
+    "replace": ""
+  },
+  {
+    "id": "opt-unknown-key-undefined-skipped",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run",
+    "why": "a key given undefined taken for no key, so a misspelled canisterID: process.env.LEDGER_ID passes while the variable is unset, and is told only once it is set",
+    "file": "src/options.ts",
+    "search": "    return { keys: Object.keys(object) }\n",
+    "replace": "    return {\n      keys: Object.keys(object).filter((key) => object[key] !== undefined),\n    }\n"
+  },
+  {
+    "id": "opt-unknown-key-not-named",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run",
+    "why": "a key that is no option refused without the option it may misspell, so didfile and canisterID are not told they mean didFile and canisterId",
+    "file": "src/options.ts",
+    "search": "  return nearest\n",
+    "replace": "  return undefined\n"
+  },
+  {
+    "id": "opt-entry-keys-unguarded",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run",
+    "why": "the keys of a canister's entry listed with no guard, so a proxy whose trap throws throws out of icReactor() and the config does not load, instead of refusing that canister",
+    "file": "src/options.ts",
+    "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
+    "replace": "  return { keys: Object.keys(object) }\n"
   }
 ]

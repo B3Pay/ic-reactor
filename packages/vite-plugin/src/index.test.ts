@@ -182,6 +182,67 @@ describe("icReactor", () => {
     ).not.toThrow()
   })
 
+  // A key that is no option was never read: a misspelled canisters started
+  // the plugin with no canister, without a word, as canisters: null did, and
+  // a misspelled failOnError left a build to ship stale bindings.
+  it("should refuse a key of the options that is not an option, whatever its value, and name the option it may misspell", () => {
+    const canisters = { ledger: { didFile: "did/ledger.did" } }
+    const given: Array<[unknown, string]> = [
+      [
+        { canister: canisters },
+        '"canister" (did you mean canisters?) is not an option',
+      ],
+      [
+        { canisters, FailOnError: true },
+        '"FailOnError" (did you mean failOnError?) is not an option',
+      ],
+      // Nine letters from canisters, case and all, and none with case aside.
+      [
+        { CANISTERS: canisters },
+        '"CANISTERS" (did you mean canisters?) is not an option',
+      ],
+      // No option is near enough to name.
+      [
+        { canisters, outDir: "src/declarations", verbose: true },
+        '"outDir" and "verbose" are not options',
+      ],
+      // The key is what is wrong, whatever its value.
+      [
+        { canisters, failOnErorr: undefined },
+        '"failOnErorr" (did you mean failOnError?) is not an option',
+      ],
+      // A JSON config's own key, as any other.
+      [
+        JSON.parse('{ "__proto__": {}, "canisters": {} }'),
+        '"__proto__" is not an option',
+      ],
+    ]
+    for (const [value, refused] of given) {
+      expect(() => createVitePlugin(value)).toThrow(
+        `[ic-reactor] ${refused} of icReactor(): ` +
+          "its options are canisters, injectEnvironment and failOnError"
+      )
+    }
+    const unlisted = new Proxy(
+      { canisters },
+      {
+        ownKeys() {
+          throw new Error("no keys today")
+        },
+      }
+    )
+    expect(() => createVitePlugin(unlisted)).toThrow(
+      "[ic-reactor] the options could not be listed: no keys today"
+    )
+    for (const known of [
+      {},
+      { canisters, injectEnvironment: true, failOnError: false },
+      { canisters: undefined, injectEnvironment: undefined },
+    ]) {
+      expect(() => createVitePlugin(known)).not.toThrow()
+    }
+  })
+
   describe("config", () => {
     /**
      * Every canister id `icp` reports, by canister name: its own properties

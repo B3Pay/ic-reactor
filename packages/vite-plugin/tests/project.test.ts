@@ -2265,6 +2265,97 @@ describe("options given a value of the wrong kind", () => {
     expect(asked).toEqual([])
   })
 
+  // A key that is no option was never read: a misspelled didFile took the
+  // canister for one only named in the cookie, so nothing was generated and
+  // the module of the last run stayed, a misspelled canisterId generated it
+  // without its ID, and a network's rootKey was read as nothing. None said a
+  // word.
+  it("a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run", async () => {
+    const asked = refuseNetwork()
+    const app = newApp({
+      "did/b.did": PING_DID,
+      "did/c.did": PING_DID,
+      "did/d.did": PING_DID,
+      "did/e.did": PING_DID,
+      "did/f.did": PING_DID,
+      "did/g.did": PING_DID,
+      "did/ping.did": PING_DID,
+      // The module of the last run, which a misspelled didFile left as it was.
+      "src/canisters/a.ts": "// The last run's module.\n",
+    })
+    const cli = hookCli(app)
+    const { result, lines } = runBuild(app.root, {
+      failOnError: false,
+      canisters: {
+        typo: { didfile: "did/a.did" } as never,
+        id: { didFile: "did/b.did", canisterID: LEDGER_ID } as never,
+        unset: { didFile: "did/c.did", canisterID: undefined } as never,
+        extra: { didFile: "did/d.did", decimals: 8, Methods: ["x"] } as never,
+        net: {
+          didFile: "did/e.did",
+          network: { host: "http://127.0.0.1:4943", rootKey: "00" } as never,
+        },
+        unlisted: new Proxy(
+          { didFile: "did/f.did" },
+          {
+            ownKeys() {
+              throw new Error("no keys today")
+            },
+          }
+        ),
+        hidden: {
+          didFile: "did/g.did",
+          network: new Proxy(
+            { host: "http://127.0.0.1:4943" },
+            {
+              ownKeys() {
+                throw new Error("no keys today")
+              },
+            }
+          ),
+        },
+        ping: { didFile: "did/ping.did" },
+      },
+    })
+    await result
+    const errors = lines.filter((line) => line.startsWith("error:"))
+    expect(errors).toHaveLength(1)
+    const [message] = errors
+    expect(message).toContain("could not generate 7 of 8 canisters")
+    const options =
+      "its options are didFile, outDir, canisterId, network, methods and verify"
+    expect(message).toContain(
+      `- typo: "didfile" (did you mean didFile?) is not an option of a canister: ${options}`
+    )
+    // One reason, so one line.
+    expect(message).toContain(
+      '- id (did/b.did), unset (did/c.did): "canisterID" (did you mean canisterId?) ' +
+        `is not an option of a canister: ${options}`
+    )
+    expect(lineOf(message, "extra")).toContain(
+      `extra (did/d.did): "decimals" and "Methods" (did you mean methods?) are not options of a canister: ${options}`
+    )
+    expect(lineOf(message, "net")).toContain(
+      'net (did/e.did): "rootKey" is not an option of network { host }: ' +
+        'give the network as { host: "<http or https URL>" } alone'
+    )
+    expect(lineOf(message, "unlisted")).toContain(
+      "unlisted (did/f.did): its options could not be listed: no keys today"
+    )
+    expect(lineOf(message, "hidden")).toContain(
+      "hidden (did/g.did): network's keys could not be listed: no keys today"
+    )
+    // Nothing ran for them: one generator, for ping alone.
+    expect(cli.commands()).toEqual(["gen"])
+    expect(app.runs()[0]).toContain(path.join(app.root, "did/ping.did"))
+    expect(exists(app, "src/canisters/ping.ts")).toBe(true)
+    for (const stem of ["b", "c", "d", "e", "f", "g"]) {
+      expect(exists(app, `src/canisters/${stem}.ts`)).toBe(false)
+    }
+    expect(read(app, "src/canisters/a.ts")).toBe("// The last run's module.\n")
+    expect(asked).toEqual([])
+  })
+
   // Each option is checked when the plugin is made, whether or not a step of
   // the run would use it: a file on disk that is neither fetched nor checked
   // reads no canisterId and no network, and still fails for one that is not.
