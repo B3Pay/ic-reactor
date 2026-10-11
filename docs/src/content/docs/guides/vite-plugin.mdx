@@ -344,9 +344,11 @@ same text by a rebuild (`vite build --watch`) or by another Vite environment.
 A check of that canister that fails, or cannot be made, drops the pass, and
 so does a fetch of its file that fails or reads another interface. Restoring
 a text that passed earlier then checks it again rather than standing in for a
-check. Each build and each start of the dev server, a restart included,
-checks every canister again, so a restart finds a canister that changed since
-its last check.
+check. What passes is the text the check read: a file saved while its check
+runs (even saved back) records no pass, and the next rebuild checks it. Each
+build and each start of the dev server, a restart included, checks every
+canister again, so a restart finds a canister that changed since its last
+check.
 
 A save under `vite dev` never makes a request. So under `vite dev` a canister
 whose check failed (or could not be made, as with the network down) stays

@@ -247,9 +247,11 @@ over `verify: "live"`.
   is not repeated for the same text by a rebuild (`vite build --watch`) or by
   another Vite environment, until a check of that canister fails or cannot be
   made, or a fetch of its file fails or reads another interface: restoring a
-  text that passed earlier then checks it again. Each build and
-  each start of the dev server, a restart included, checks every canister
-  again, so a restart finds a canister that changed since its last check.
+  text that passed earlier then checks it again. A file saved while its
+  check runs (even saved back) records no pass, and the next rebuild checks
+  it. Each build and each start of the dev server, a restart included,
+  checks every canister again, so a restart finds a canister that changed
+  since its last check.
 - A save under `vite dev` never makes a request. So a canister whose check
   failed (or could not be made, as with the network down) stays failed after
   a save, whatever the save changed, and is not generated, until a start

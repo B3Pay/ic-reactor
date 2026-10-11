@@ -2869,8 +2869,8 @@
     "testName": "is served once when the fetch matches the file on disk",
     "why": "an IC_REACTOR_FETCH re-fetch that matches the didFile on disk is not recorded as served, so every later buildStart of the same plugin fetches it again",
     "file": "src/index.ts",
-    "search": "          if (again) refetched.add(key)\n          fetched.add(key)\n          continue\n",
-    "replace": "          fetched.add(key)\n          continue\n"
+    "search": "          if (again) refetched.add(key)\n          fetched.set(key, result.did)\n          continue\n",
+    "replace": "          fetched.set(key, result.did)\n          continue\n"
   },
   {
     "id": "did-fetch-failed-write-recorded",
@@ -3491,7 +3491,7 @@
     "testName": "checks a text that passed again once a fetch of its didFile read another interface",
     "why": "a fetch that read another interface (the canister lost a method) leaves the canister's earlier pass cached, so restoring the text that passed skips the check and generates a method the plugin has just seen the canister no longer has",
     "file": "src/index.ts",
-    "search": "          else passed.set(canister.name, text)\n",
+    "search": "          if (did !== undefined) passed.set(canister.name, did)\n",
     "replace": ""
   },
   {
@@ -3521,8 +3521,18 @@
     "testName": "of a run that ends after a restart started another passes nothing for the new run",
     "why": "a check of the old run writes its pass to whichever map is current when it ends, so a check that ends after a restart's configResolved passes for the new run, whose buildStart then skips the check of a canister that changed",
     "file": "src/index.ts",
-    "search": "        for (const canister of members) passed.set(canister.name, outcome.text)\n",
-    "replace": "        for (const canister of members) verified.set(canister.name, outcome.text)\n"
+    "search": "          else passed.set(canister.name, outcome.text)\n",
+    "replace": "          else verified.set(canister.name, outcome.text)\n"
+  },
+  {
+    "id": "did-verify-saved-during-check",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "records no pass for a didFile saved while its check ran, so restoring the text read first is checked",
+    "why": "the pass is recorded for the text read before the fetch, though candid-core-cli checked the file as it was saved while the fetch ran, so restoring that unchecked text skips the check and generates a method the canister lacks",
+    "file": "src/index.ts",
+    "search": "        const after = snapshot(canister)\n        return after?.text === before.text && after.stamp === before.stamp\n",
+    "replace": "        const after = before\n        return after?.text === before.text && after.stamp === before.stamp\n"
   },
   {
     "id": "opt-fail-on-error-not-boolean",

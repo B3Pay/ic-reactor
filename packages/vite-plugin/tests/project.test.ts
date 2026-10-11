@@ -844,6 +844,40 @@ describe("the live check", () => {
     )
   })
 
+  // candid-core-cli reads the file itself, after the fetch: a save while the
+  // fetch is under way is what it checks, not the text read before. The text
+  // read first, which no check saw, must not pass when it is restored.
+  it("records no pass for a didFile saved while its check ran, so restoring the text read first is checked", async () => {
+    const withoutPut = liveWith(["  put : (nat) -> ();\n", ""])
+    const ic = await fakeIc({ [LEDGER_ID]: { candid: withoutPut } })
+    // Incompatible: the file has put, which the canister lacks.
+    const app = newApp({ "did/item.did": WRITTEN })
+    const { buildStart, context } = verifyingPlugin(app, ic.host)
+    const file = path.join(app.root, "did/item.did")
+    const { reached, release } = holdFirstReadState()
+
+    const run = buildStart()
+    await reached
+    // Saved to the canister's interface while the fetch is held.
+    fs.writeFileSync(file, withoutPut)
+    release()
+    await run
+    // The saved text was checked, and passed.
+    expect(context.error).not.toHaveBeenCalled()
+    expect(ic.requests).toHaveLength(2)
+    expect(read(app, "src/canisters/item.ts")).not.toMatch(/\bput\b/)
+
+    // The text read first is restored: checked, and it fails.
+    fs.writeFileSync(file, WRITTEN)
+    await buildStart()
+    expect(ic.requests).toHaveLength(4)
+    expect(context.error).toHaveBeenCalledTimes(1)
+    expect(String(context.error.mock.lastCall?.[0])).toContain(
+      `incompatible with did/item.did (1 error)`
+    )
+    expect(read(app, "src/canisters/item.ts")).not.toMatch(/\bput\b/)
+  })
+
   it("warns on a compatible change, and generates", async () => {
     const ic = await fakeIc({
       // A field added to a result and a method added: compatible.
