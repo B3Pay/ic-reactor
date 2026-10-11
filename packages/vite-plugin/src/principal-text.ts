@@ -8,8 +8,8 @@
  * characters joined by dashes: `ryjl3-tyaaa-aaaaa-aaaba-cai`. The text of a
  * principal is the one spelling of it, so a text is a principal's exactly
  * when the principal it decodes to is spelled as that text again, which is
- * how `Principal.fromText` decides it too. That also refuses another case, a
- * dash out of place, and a last character whose unused bits are not zero.
+ * how `Principal.fromText` decides it too. That also refuses capital letters,
+ * a dash out of place, and a last character whose unused bits are not zero.
  */
 
 /** The base32 alphabet of RFC 4648, as a principal's text writes it. */
