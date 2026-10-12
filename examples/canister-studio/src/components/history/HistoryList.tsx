@@ -264,12 +264,14 @@ function HistoryRow({ entry }: { entry: HistoryEntry }): ReactElement {
             }}
             className="btn btn-sm"
             title={
-              isRead
-                ? "Open the method and read it again with these arguments"
-                : "Open the method with these arguments; writes are never sent from a link"
+              !fits
+                ? "Open the method: these arguments are too long for a link, so the form starts empty"
+                : isRead
+                  ? "Open the method and read it again with these arguments"
+                  : "Open the method with these arguments; writes are never sent from a link"
             }
           >
-            {isRead ? "Replay" : "Open"}
+            {fits && isRead ? "Replay" : "Open"}
           </Link>
           <CopyButton text={shareUrl} label="Copy shared link" iconOnly />
         </div>

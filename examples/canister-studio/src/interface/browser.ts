@@ -21,16 +21,17 @@ let cli: Promise<CandidCli> | undefined
 // In a browser, `init()` with no argument fetches the WASM from the URL the
 // bundler gave it.
 function browserCli(): Promise<CandidCli> {
-  cli ??= import("@candid-core/cli").then(
-    async (lib) => {
+  // A failed import or init (an interrupted WASM download) is not kept:
+  // the next call tries again instead of failing until a reload.
+  cli ??= import("@candid-core/cli")
+    .then(async (lib) => {
       await lib.init()
       return lib
-    },
-    (error: unknown) => {
+    })
+    .catch((error: unknown) => {
       cli = undefined
       throw error
-    }
-  )
+    })
   return cli
 }
 
