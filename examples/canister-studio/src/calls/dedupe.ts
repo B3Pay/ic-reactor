@@ -175,6 +175,9 @@ export function resendLeftOpen(error: unknown): string {
   if (!isReactorError(error)) {
     return "the re-send failed, which says nothing about the first send"
   }
+  if (error.kind === "canister_err" && isDuplicateErr(error.err)) {
+    return `the canister answered the re-send ${String(duplicateTagIn(error.err))}, but it is not known to deduplicate, so that answer does not prove the first send ran`
+  }
   if (error.kind === "canister_err") {
     const err: unknown = error.err
     const tag = isObject(err) && typeof err.tag === "string" ? err.tag : "Err"

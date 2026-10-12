@@ -36,3 +36,7 @@ export async function serverResult<T extends { ok: boolean }>(
   }
   return result as T
 }
+
+/** An interface without its .did's hash cannot name the version a tool must use. */
+export const NO_DID_HASH =
+  "This interface has no .did hash to pin the tool to. Reload the page."

@@ -30,10 +30,17 @@ const canisterIdText = z.string().max(64)
 
 const canisterInput = z.object({ canisterId: canisterIdText })
 
+// The interface tools work on the .did the page shows, named by its SHA-256:
+// a live canister may have been upgraded since the page loaded it.
+const didSha256Text = z.string().regex(/^[0-9a-f]{64}$/)
+
+const moduleInput = canisterInput.extend({ didSha256: didSha256Text })
+
 // The Project tab keeps within these, so a request past them is not the
 // app's: the validator refuses it before the handler runs.
 const projectInput = z.object({
   canisterId: canisterIdText,
+  didSha256: didSha256Text,
   methods: z
     .array(z.string().max(MAX_METHOD_NAME_LENGTH))
     .min(1)
@@ -88,13 +95,13 @@ export const fetchInterface = createServerFn({ method: "GET" })
  * src/canisters/), for any other the .did it publishes.
  */
 export const generateModule = createServerFn({ method: "GET" })
-  .validator(canisterInput)
+  .validator(moduleInput)
   .handler(async ({ data }): Promise<GenerateModuleResult> => {
     const id = checkCanisterId(data.canisterId)
     if (!id.ok) return { ok: false, message: id.message }
     try {
       const server = await import("./live-candid.server.ts")
-      const did = await didOf(id.id, server.liveDid)
+      const did = await didForTool(id.id, data.didSha256, server.liveDid)
       return did.ok ? await server.moduleForDid(did.did) : did
     } catch (error) {
       return { ok: false, message: failureText("generateModule", error) }
@@ -113,7 +120,7 @@ export const projectInterface = createServerFn({ method: "POST" })
     if (!id.ok) return { ok: false, message: id.message }
     try {
       const server = await import("./live-candid.server.ts")
-      const did = await didOf(id.id, server.liveDid)
+      const did = await didForTool(id.id, data.didSha256, server.liveDid)
       return did.ok ? await server.projectionForDid(did.did, data.methods) : did
     } catch (error) {
       return { ok: false, message: failureText("projectInterface", error) }
@@ -153,17 +160,31 @@ export const checkLiveCompatibility = createServerFn({ method: "GET" })
     }
   })
 
-// A registry canister's committed .did, or the live one.
-async function didOf(
+/** What a tool says when the live .did is no longer the one on the page. */
+export const INTERFACE_CHANGED =
+  "This canister's interface changed since the page loaded it (an upgrade). Reload the page to use the current interface."
+
+// A registry canister's committed .did (fixed, so any hash the page sends
+// is its own), or the live one, refused unless it is still the .did the page
+// shows: a module or projection of another interface would not match the
+// methods on screen.
+export async function didForTool(
   canisterId: string,
+  didSha256: string,
   liveDid: (
     id: string
-  ) => Promise<{ ok: true; did: string } | { ok: false; message: string }>
+  ) => Promise<
+    | { ok: true; did: string; didSha256: string }
+    | { ok: false; message: string }
+  >
 ): Promise<{ ok: true; did: string } | { ok: false; message: string }> {
   const entry = registryEntry(canisterId)
-  return entry === undefined
-    ? liveDid(canisterId)
-    : { ok: true, did: entry.did }
+  if (entry !== undefined) return { ok: true, did: entry.did }
+  const live = await liveDid(canisterId)
+  if (!live.ok) return live
+  return live.didSha256 === didSha256
+    ? { ok: true, did: live.did }
+    : { ok: false, message: INTERFACE_CHANGED }
 }
 
 // Only an unexpected failure gets here (a compiler that cannot run, a

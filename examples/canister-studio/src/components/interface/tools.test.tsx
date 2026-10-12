@@ -41,6 +41,8 @@ function method(name: string): MethodInfo {
   return { name, mode: "query", args: [], results: [] }
 }
 
+const DID_SHA256 = "ab".repeat(32)
+
 function liveInterface(names: readonly string[]): CanisterInterface {
   const methods = names.map(method)
   const byName = new Map(methods.map((m) => [m.name, m]))
@@ -52,6 +54,7 @@ function liveInterface(names: readonly string[]): CanisterInterface {
     method: (name) => byName.get(name),
     source: { kind: "metadata", certified: true, moduleHash: null },
     did: "service : {}",
+    didSha256: DID_SHA256,
     omitted: [],
   }
 }
@@ -123,7 +126,11 @@ describe("ProjectTab", () => {
     fireEvent.click(screen.getByRole("button", { name: /Project 1 method/ }))
     expect(await screen.findByText(NO_RESULT)).toBeTruthy()
     expect(projectInterface).toHaveBeenCalledWith({
-      data: { canisterId: SOME_CANISTER, methods: ["greet"] },
+      data: {
+        canisterId: SOME_CANISTER,
+        didSha256: DID_SHA256,
+        methods: ["greet"],
+      },
     })
     expect(screen.queryByText(/reading 'ok'/)).toBeNull()
   })

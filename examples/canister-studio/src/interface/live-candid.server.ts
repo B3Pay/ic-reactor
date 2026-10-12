@@ -49,10 +49,12 @@ export function loadLiveInterface(
  */
 export async function liveDid(
   canisterId: string
-): Promise<{ ok: true; did: string } | { ok: false; message: string }> {
+): Promise<
+  { ok: true; did: string; didSha256: string } | { ok: false; message: string }
+> {
   const payload = await loadLiveInterface(canisterId)
   return payload.ok
-    ? { ok: true, did: payload.did }
+    ? { ok: true, did: payload.did, didSha256: payload.didSha256 }
     : { ok: false, message: payload.message }
 }
 

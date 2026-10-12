@@ -332,6 +332,58 @@ describe("after a write whose outcome is unknown", () => {
   })
 })
 
+describe("a Duplicate answer from a canister not known to deduplicate", () => {
+  it("is shown as the canister's own word and leaves the first send unknown", async () => {
+    const id = "qoctq-giaaa-aaaaa-aaaea-cai"
+    const actor = c.service({
+      post: c.func(
+        [c.record({ body: c.text, created_at_time: c.opt(c.nat64) })],
+        [c.variant({ Ok: c.nat, Err: c.variant({ Duplicate: c.null }) })],
+        "update"
+      ),
+    })
+    const client = createTestLedger().test
+    let runs = 0
+    // Answers Duplicate to every re-send, whatever happened: a tag, not proof.
+    client.mock<{
+      post(arg: {
+        body: string
+        created_at_time: bigint | null
+      }): Promise<
+        | { tag: "Ok"; value: bigint }
+        | { tag: "Err"; value: { tag: "Duplicate" } }
+      >
+    }>(actor, id, {
+      post: () => {
+        runs += 1
+        return runs === 1
+          ? { tag: "Ok", value: 1n }
+          : { tag: "Err", value: { tag: "Duplicate" } }
+      },
+    })
+    renderRunner(client, runtimeInterface(id, actor), "post")
+    await sendLosingTheReply(client, {
+      body: "hello",
+      created_at_time: null,
+    })
+    const offer = screen.getByRole("region", { name: "Safe re-send" })
+    fireEvent.click(
+      within(offer).getByRole("button", { name: "Re-send the same bytes" })
+    )
+    await screen.findByText(
+      "Duplicate: the canister says it had already run this",
+      {},
+      patiently
+    )
+    expect(screen.queryByText("Duplicate: it had already executed")).toBeNull()
+    expect(
+      screen.getByText(/that answer does not prove the first send ran/)
+    ).toBeTruthy()
+    // Nothing proved what the first send did: the form stays held.
+    expect(reviewButton().getAttribute("aria-disabled")).toBe("true")
+  })
+})
+
 describe("the confirm step after a write was set aside", () => {
   const dedupeSwitch = () =>
     screen.getByRole("checkbox", { name: "Deduplicate with created_at_time" })

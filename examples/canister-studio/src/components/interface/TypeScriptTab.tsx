@@ -1,7 +1,7 @@
 import { useEffect, type ReactElement } from "react"
 import { generateModule } from "../../interface/functions.ts"
 import { typedModuleText } from "../../interface/load.ts"
-import { serverResult } from "../../interface/server-result.ts"
+import { NO_DID_HASH, serverResult } from "../../interface/server-result.ts"
 import type { CanisterInterface } from "../../interface/types.ts"
 import { Code } from "../Code.tsx"
 import { safeFileName } from "../download.ts"
@@ -29,6 +29,7 @@ export function TypeScriptTab({
   const { run } = task
   const typedModule =
     iface.source.kind === "typed" ? iface.source.module : undefined
+  const didSha256 = iface.didSha256
 
   useEffect(() => {
     run(async () => {
@@ -39,8 +40,9 @@ export function TypeScriptTab({
           committed: true,
         }
       }
+      if (didSha256 === undefined) throw new Error(NO_DID_HASH)
       const result = await serverResult(
-        generateModule({ data: { canisterId: iface.canisterId } })
+        generateModule({ data: { canisterId: iface.canisterId, didSha256 } })
       )
       if (!result.ok) throw new Error(result.message)
       return {
@@ -49,7 +51,7 @@ export function TypeScriptTab({
         committed: false,
       }
     })
-  }, [run, typedModule, iface.canisterId])
+  }, [run, typedModule, iface.canisterId, didSha256])
 
   const fileName = `${safeFileName(iface.registry?.module ?? iface.registry?.slug ?? iface.name)}.ts`
   const state = task.state

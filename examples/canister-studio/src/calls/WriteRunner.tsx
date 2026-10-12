@@ -82,9 +82,10 @@ const isDuplicateAnswer = (error: unknown): boolean =>
 /**
  * The unresolved writes once `attempt` settled with `result`. A write that
  * may have executed joins them (again, if it was set aside). Sending the
- * same write again settles it only by proving what happened: a duplicate
- * answer (it had run), or a success on a canister known to deduplicate (it
- * had not). Any other answer is about the new send alone.
+ * same write again settles it only by proving what happened, and only on a
+ * canister known to deduplicate: a duplicate answer (it had run) or a
+ * success (it had not). Elsewhere an Err named Duplicate is the canister's
+ * own word, not proof. Any other answer is about the new send alone.
  */
 function afterSettled(
   current: readonly Unresolved[],
@@ -93,7 +94,7 @@ function afterSettled(
   known: boolean
 ): readonly Unresolved[] {
   const failure = result.ok ? undefined : result.error
-  const proves = result.ok ? known : isDuplicateAnswer(failure)
+  const proves = known && (result.ok || isDuplicateAnswer(failure))
   if (proves) return current.filter((u) => !sameWrite(u.sent, attempt))
   if (!isReactorError(failure) || !failure.mayHaveExecuted) return current
   return current.some((u) => sameWrite(u.sent, attempt))
@@ -249,7 +250,8 @@ export function WriteRunner(
   const settledNow =
     sent !== undefined &&
     !mutation.isPending &&
-    (mutation.isSuccess ? known : isDuplicateAnswer(error))
+    known &&
+    (mutation.isSuccess || isDuplicateAnswer(error))
   const open =
     settledNow && sent !== undefined
       ? unresolved.filter((u) => !sameWrite(u.sent, sent))
@@ -257,7 +259,7 @@ export function WriteRunner(
   const holding = unknown || open.some((u) => !u.setAside)
   // The outcome on screen answers the same write sent again (a re-send),
   // and that write is still unknown: an Err such as TooOld, a refusal, or a
-  // success on a canister not known to deduplicate.
+  // success or duplicate answer from a canister not known to deduplicate.
   const openAfterResend =
     sent !== undefined &&
     !mutation.isPending &&
@@ -473,7 +475,19 @@ export function WriteRunner(
           />
         ) : error !== null ? (
           <div className="stack-sm">
-            {duplicate !== undefined && (
+            {duplicate !== undefined && !known && (
+              <div className="notice notice-warn" role="status">
+                <p className="notice-title">
+                  {duplicate}: the canister says it had already run this
+                </p>
+                <p>
+                  This canister is not known to deduplicate on created_at_time,
+                  so the studio cannot tell what {duplicate} means here. Treat
+                  the first send as unknown and read the state back.
+                </p>
+              </div>
+            )}
+            {duplicate !== undefined && known && (
               <div className="notice notice-success" role="status">
                 <p className="notice-title">
                   {duplicate}: it had already executed

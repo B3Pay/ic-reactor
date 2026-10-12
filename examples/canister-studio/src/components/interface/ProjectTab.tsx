@@ -4,7 +4,7 @@ import {
   MAX_PROJECT_METHODS,
   projectInterface,
 } from "../../interface/functions.ts"
-import { serverResult } from "../../interface/server-result.ts"
+import { NO_DID_HASH, serverResult } from "../../interface/server-result.ts"
 import type { CanisterInterface } from "../../interface/types.ts"
 import { groupDigits } from "../../lib/format.ts"
 import { ActionButton } from "../ActionButton.tsx"
@@ -67,9 +67,13 @@ export function ProjectTab({
     const methods = iface.methods
       .map((method) => method.name)
       .filter((name) => chosen.has(name))
+    const didSha256 = iface.didSha256
     task.run(async () => {
+      if (didSha256 === undefined) throw new Error(NO_DID_HASH)
       const result = await serverResult(
-        projectInterface({ data: { canisterId: iface.canisterId, methods } })
+        projectInterface({
+          data: { canisterId: iface.canisterId, didSha256, methods },
+        })
       )
       if (!result.ok) throw new Error(result.message)
       return { did: result.did, methods: result.methods }
