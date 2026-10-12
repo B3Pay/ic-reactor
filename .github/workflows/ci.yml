@@ -277,6 +277,9 @@ jobs:
         run: pnpm build
 
       - name: Check package sizes
+        # Core's and react's own code (their peers left out), and what an app
+        # pays with the peers included (scripts/size-app). Every limit is
+        # tight: a change that moves one states its delta and raises it.
         run: pnpm size
 
       - name: Verify published artifacts

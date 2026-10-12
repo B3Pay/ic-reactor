@@ -1,0 +1,5 @@
+{
+  "file": "src/types.ts",
+  "search": "  [K in keyof A & string]: K extends OptInMethod<A>\n    ? [ModeOf<A[K]>] extends [\"update\"]\n      ? never\n      : K\n    : never",
+  "replace": "  [K in keyof A & string]: K extends OptInMethod<A> ? K : never"
+}

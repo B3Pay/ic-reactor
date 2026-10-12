@@ -49,7 +49,7 @@ docs/src/content/docs/libs/
 
 # Rewritten by the TanStack Router plugin on every dev/build run; its own header
 # tells you to exclude it from linters and formatters.
-examples/tanstack-router/src/routeTree.gen.ts
+examples/canister-studio/src/routeTree.gen.ts
 
 # pnpm rewrites the lockfile on every install.
 pnpm-lock.yaml
@@ -95,6 +95,12 @@ examples/vite-wallet/src/canisters/ledger.ts
 examples/vite-wallet/src/canisters/ledger.envelope.json
 examples/node-agent-tool/src/canisters/icrc1.ts
 examples/node-agent-tool/src/canisters/icrc1.envelope.json
+examples/canister-studio/src/canisters/icrc1.ts
+examples/canister-studio/src/canisters/icrc1.envelope.json
+examples/canister-studio/src/canisters/icp_ledger.ts
+examples/canister-studio/src/canisters/icp_ledger.envelope.json
+examples/canister-studio/src/canisters/ckbtc_minter.ts
+examples/canister-studio/src/canisters/ckbtc_minter.envelope.json
 
 # e2e/src/declarations/: the module and Contract envelope `candid-core-cli gen`
 # writes from e2e/src/actor/hello_actor.did (`pnpm gen` in e2e/), kept byte for

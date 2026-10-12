@@ -104,10 +104,12 @@ describe("the pins", () => {
       copies.map(({ peer, installAs, version }) => [peer, installAs, version]),
       VITE_FLOORS.map((floor) => ["vite", `vite-${floor[0]}`, floor])
     )
-    // The exact generator peer is pinned to itself, and vite is not
+    // The exact generator peer is pinned to itself, the optional
+    // `@icp-sdk/core` peer of the fetch to its floor, and vite is not
     // overridden: an override would move every copy to one version.
     assert.deepEqual(overrides, {
       "@candid-core/cli": PLUGIN_MANIFEST.peerDependencies["@candid-core/cli"],
+      "@icp-sdk/core": "6.1.0",
     })
   })
 

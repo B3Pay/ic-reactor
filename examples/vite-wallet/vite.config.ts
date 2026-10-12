@@ -16,9 +16,23 @@ export default defineConfig({
         // asks `icp` for its id and puts it in the cookie.
         backend: { didFile: "backend/backend.did" },
         // Not a project canister, so its id is given: `icp` has none to report.
+        // ledger.did is the projection of the mainnet ledger's interface
+        // (`network` defaults to "ic") to the methods the wallet calls, and
+        // every type they reach. It is committed, so the plugin reads it and
+        // fetches nothing: builds work offline. Were it missing, the plugin
+        // would fetch and project it again, and `IC_REACTOR_FETCH=ledger` does
+        // that on purpose. `IC_REACTOR_VERIFY=ledger` checks it against the
+        // live ledger.
         ledger: {
           didFile: "ledger.did",
           canisterId: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+          methods: [
+            "icrc1_balance_of",
+            "icrc1_decimals",
+            "icrc1_fee",
+            "icrc1_symbol",
+            "icrc1_transfer",
+          ],
         },
       },
       // On by default, written out: set the ic_env cookie on every page load

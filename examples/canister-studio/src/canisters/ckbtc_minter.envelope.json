@@ -1,0 +1,4228 @@
+{
+  "contract": {
+    "actor": {
+      "class": 0,
+      "kind": "class"
+    },
+    "canonicalization_profile": "candid-core-canon-1",
+    "declarations": [
+      {
+        "name": "Account",
+        "type": 21
+      },
+      {
+        "name": "BitcoinAddress",
+        "type": 91
+      },
+      {
+        "name": "BtcNetwork",
+        "type": 16
+      },
+      {
+        "name": "BurnMemo",
+        "type": 43
+      },
+      {
+        "name": "CanisterStatusResponse",
+        "type": 26
+      },
+      {
+        "name": "CanisterStatusType",
+        "type": 29
+      },
+      {
+        "name": "DecodeLedgerMemoArgs",
+        "type": 37
+      },
+      {
+        "name": "DecodeLedgerMemoError",
+        "type": 55
+      },
+      {
+        "name": "DecodeLedgerMemoResult",
+        "type": 39
+      },
+      {
+        "name": "DecodedMemo",
+        "type": 41
+      },
+      {
+        "name": "DefiniteCanisterSettings",
+        "type": 31
+      },
+      {
+        "name": "Event",
+        "type": 73
+      },
+      {
+        "name": "EventType",
+        "type": 74
+      },
+      {
+        "name": "Icrc10StandardRecord",
+        "type": 133
+      },
+      {
+        "name": "Icrc21ConsentInfo",
+        "type": 150
+      },
+      {
+        "name": "Icrc21ConsentMessage",
+        "type": 151
+      },
+      {
+        "name": "Icrc21ConsentMessageMetadata",
+        "type": 144
+      },
+      {
+        "name": "Icrc21ConsentMessageRequest",
+        "type": 142
+      },
+      {
+        "name": "Icrc21ConsentMessageSpec",
+        "type": 143
+      },
+      {
+        "name": "Icrc21DeviceSpec",
+        "type": 148
+      },
+      {
+        "name": "Icrc21Error",
+        "type": 159
+      },
+      {
+        "name": "Icrc21ErrorInfo",
+        "type": 161
+      },
+      {
+        "name": "Icrc21FieldsDisplay",
+        "type": 152
+      },
+      {
+        "name": "Icrc21Value",
+        "type": 155
+      },
+      {
+        "name": "InitArgs",
+        "type": 14
+      },
+      {
+        "name": "InvalidTransactionError",
+        "type": 95
+      },
+      {
+        "name": "LogVisibility",
+        "type": 34
+      },
+      {
+        "name": "MemoType",
+        "type": 38
+      },
+      {
+        "name": "MemoryMetrics",
+        "type": 27
+      },
+      {
+        "name": "MintMemo",
+        "type": 50
+      },
+      {
+        "name": "MinterArg",
+        "type": 1
+      },
+      {
+        "name": "MinterInfo",
+        "type": 19
+      },
+      {
+        "name": "Mode",
+        "type": 9
+      },
+      {
+        "name": "PendingUtxo",
+        "type": 129
+      },
+      {
+        "name": "QueryStats",
+        "type": 35
+      },
+      {
+        "name": "ReimbursedDeposit",
+        "type": 69
+      },
+      {
+        "name": "ReimbursementReason",
+        "type": 67
+      },
+      {
+        "name": "ReimbursementRequest",
+        "type": 66
+      },
+      {
+        "name": "ReplacedReason",
+        "type": 101
+      },
+      {
+        "name": "RetrieveBtcArgs",
+        "type": 112
+      },
+      {
+        "name": "RetrieveBtcError",
+        "type": 114
+      },
+      {
+        "name": "RetrieveBtcOk",
+        "type": 57
+      },
+      {
+        "name": "RetrieveBtcStatus",
+        "type": 58
+      },
+      {
+        "name": "RetrieveBtcStatusV2",
+        "type": 65
+      },
+      {
+        "name": "RetrieveBtcWithApprovalArgs",
+        "type": 137
+      },
+      {
+        "name": "RetrieveBtcWithApprovalError",
+        "type": 139
+      },
+      {
+        "name": "Status",
+        "type": 47
+      },
+      {
+        "name": "SuspendedReason",
+        "type": 89
+      },
+      {
+        "name": "SuspendedUtxo",
+        "type": 126
+      },
+      {
+        "name": "Timestamp",
+        "type": 5
+      },
+      {
+        "name": "UpdateBalanceError",
+        "type": 122
+      },
+      {
+        "name": "UpgradeArgs",
+        "type": 3
+      },
+      {
+        "name": "Utxo",
+        "type": 77
+      },
+      {
+        "name": "UtxoStatus",
+        "type": 120
+      },
+      {
+        "name": "WithdrawalFee",
+        "type": 84
+      },
+      {
+        "name": "WithdrawalReimbursementReason",
+        "type": 94
+      },
+      {
+        "name": "environment_variable",
+        "type": 33
+      }
+    ],
+    "format": "candid-core",
+    "format_version": 1,
+    "identities": {
+      "contract": "candid-core:contract:v1:sha256:3e066fa05a705d724235b7ee173b531eaa5f00a7e6e793a26d05b1f5b4828937",
+      "interface": "candid-core:interface:v1:sha256:016771da7550e4ea05ac5d294670d32f156d698e9e713344f60427a19a622200"
+    },
+    "producer": {
+      "candid_parser_version": "0.4.0",
+      "candid_version": "0.10.30",
+      "name": "candid-core",
+      "version": "0.1.0-beta.3"
+    },
+    "semantics_profile": "candid-1",
+    "types": [
+      {
+        "init": [
+          1
+        ],
+        "kind": "class",
+        "service": 17
+      },
+      {
+        "fields": [
+          {
+            "id": 813882492,
+            "type": 2
+          },
+          {
+            "id": 815032112,
+            "type": 14
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 3,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 123445559,
+            "type": 4
+          },
+          {
+            "id": 224831733,
+            "type": 6
+          },
+          {
+            "id": 1214305123,
+            "type": 8
+          },
+          {
+            "id": 1351523382,
+            "type": 4
+          },
+          {
+            "id": 1694820756,
+            "type": 4
+          },
+          {
+            "id": 2295586446,
+            "type": 4
+          },
+          {
+            "id": 2820644879,
+            "type": 4
+          },
+          {
+            "id": 2858244678,
+            "type": 4
+          },
+          {
+            "id": 2867915375,
+            "type": 4
+          },
+          {
+            "id": 3107569974,
+            "type": 6
+          },
+          {
+            "id": 3131344497,
+            "type": 12
+          },
+          {
+            "id": 3426457933,
+            "type": 4
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 5,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat64"
+      },
+      {
+        "inner": 7,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "principal"
+      },
+      {
+        "inner": 9,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 126622998,
+            "type": 10
+          },
+          {
+            "id": 767200267,
+            "type": 10
+          },
+          {
+            "id": 1264327682,
+            "type": 11
+          },
+          {
+            "id": 1405503491,
+            "type": 11
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 7,
+        "kind": "vec"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "null"
+      },
+      {
+        "inner": 13,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat32"
+      },
+      {
+        "fields": [
+          {
+            "id": 123445559,
+            "type": 4
+          },
+          {
+            "id": 224831733,
+            "type": 6
+          },
+          {
+            "id": 731747510,
+            "type": 15
+          },
+          {
+            "id": 1214305123,
+            "type": 9
+          },
+          {
+            "id": 1351523382,
+            "type": 5
+          },
+          {
+            "id": 1694820756,
+            "type": 4
+          },
+          {
+            "id": 1862220785,
+            "type": 7
+          },
+          {
+            "id": 2295586446,
+            "type": 5
+          },
+          {
+            "id": 2645825920,
+            "type": 16
+          },
+          {
+            "id": 2820644879,
+            "type": 4
+          },
+          {
+            "id": 2858244678,
+            "type": 4
+          },
+          {
+            "id": 2867915375,
+            "type": 4
+          },
+          {
+            "id": 3107569974,
+            "type": 6
+          },
+          {
+            "id": 3131344497,
+            "type": 12
+          },
+          {
+            "id": 3426457933,
+            "type": 4
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "text"
+      },
+      {
+        "fields": [
+          {
+            "id": 145680804,
+            "type": 11
+          },
+          {
+            "id": 1328219014,
+            "type": 11
+          },
+          {
+            "id": 2334895915,
+            "type": 11
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "kind": "service",
+        "methods": [
+          {
+            "function": 18,
+            "id": 36352501,
+            "name": "get_minter_info"
+          },
+          {
+            "function": 20,
+            "id": 93328620,
+            "name": "get_withdrawal_account"
+          },
+          {
+            "function": 25,
+            "id": 135317665,
+            "name": "get_canister_status"
+          },
+          {
+            "function": 36,
+            "id": 226881151,
+            "name": "decode_ledger_memo"
+          },
+          {
+            "function": 56,
+            "id": 594058947,
+            "name": "retrieve_btc_status"
+          },
+          {
+            "function": 60,
+            "id": 1280551148,
+            "name": "retrieve_btc_status_v2_by_account"
+          },
+          {
+            "function": 70,
+            "id": 2263989986,
+            "name": "get_events"
+          },
+          {
+            "function": 107,
+            "id": 2621213491,
+            "name": "estimate_withdrawal_fee"
+          },
+          {
+            "function": 109,
+            "id": 2716106269,
+            "name": "get_btc_address"
+          },
+          {
+            "function": 111,
+            "id": 2727481294,
+            "name": "retrieve_btc"
+          },
+          {
+            "function": 117,
+            "id": 3099471270,
+            "name": "update_balance"
+          },
+          {
+            "function": 130,
+            "id": 3201555772,
+            "name": "get_deposit_fee"
+          },
+          {
+            "function": 131,
+            "id": 3471358896,
+            "name": "icrc10_supported_standards"
+          },
+          {
+            "function": 134,
+            "id": 3489791544,
+            "name": "get_known_utxos"
+          },
+          {
+            "function": 135,
+            "id": 3732617784,
+            "name": "retrieve_btc_status_v2"
+          },
+          {
+            "function": 136,
+            "id": 3736643627,
+            "name": "retrieve_btc_with_approval"
+          },
+          {
+            "function": 141,
+            "id": 3846931876,
+            "name": "icrc21_canister_call_consent_message"
+          }
+        ]
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          19
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1351523382,
+            "type": 5
+          },
+          {
+            "id": 1694820756,
+            "type": 4
+          },
+          {
+            "id": 3131344497,
+            "type": 13
+          },
+          {
+            "id": 3426457933,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          21
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 947296307,
+            "type": 7
+          },
+          {
+            "id": 1349681965,
+            "type": 22
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 23,
+        "kind": "opt"
+      },
+      {
+        "inner": 24,
+        "kind": "vec"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat8"
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          26
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 58798021,
+            "type": 27
+          },
+          {
+            "id": 100394802,
+            "type": 29
+          },
+          {
+            "id": 1054895615,
+            "type": 28
+          },
+          {
+            "id": 1614520508,
+            "type": 30
+          },
+          {
+            "id": 2096228120,
+            "type": 5
+          },
+          {
+            "id": 2190693645,
+            "type": 28
+          },
+          {
+            "id": 2336062691,
+            "type": 31
+          },
+          {
+            "id": 2642624104,
+            "type": 35
+          },
+          {
+            "id": 2733945392,
+            "type": 28
+          },
+          {
+            "id": 2928387969,
+            "type": 22
+          },
+          {
+            "id": 4090107140,
+            "type": 28
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 4264996,
+            "type": 28
+          },
+          {
+            "id": 197078956,
+            "type": 28
+          },
+          {
+            "id": 1646009124,
+            "type": 28
+          },
+          {
+            "id": 1710030651,
+            "type": 28
+          },
+          {
+            "id": 1777917585,
+            "type": 28
+          },
+          {
+            "id": 3598099748,
+            "type": 28
+          },
+          {
+            "id": 3776075235,
+            "type": 28
+          },
+          {
+            "id": 4108871332,
+            "type": 28
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat"
+      },
+      {
+        "fields": [
+          {
+            "id": 1130484237,
+            "type": 11
+          },
+          {
+            "id": 2990082932,
+            "type": 11
+          },
+          {
+            "id": 3949555199,
+            "type": 11
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "bool"
+      },
+      {
+        "fields": [
+          {
+            "id": 238856128,
+            "type": 28
+          },
+          {
+            "id": 241629288,
+            "type": 28
+          },
+          {
+            "id": 356749323,
+            "type": 32
+          },
+          {
+            "id": 570880087,
+            "type": 10
+          },
+          {
+            "id": 1095112320,
+            "type": 28
+          },
+          {
+            "id": 2033331437,
+            "type": 34
+          },
+          {
+            "id": 3380736376,
+            "type": 28
+          },
+          {
+            "id": 3844961758,
+            "type": 28
+          },
+          {
+            "id": 4174053672,
+            "type": 28
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 33,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 834174833,
+            "type": 15
+          },
+          {
+            "id": 1224700491,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 570880087,
+            "type": 11
+          },
+          {
+            "id": 1727234217,
+            "type": 11
+          },
+          {
+            "id": 2235716810,
+            "type": 10
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 813120577,
+            "type": 28
+          },
+          {
+            "id": 1563534595,
+            "type": 28
+          },
+          {
+            "id": 2783848481,
+            "type": 28
+          },
+          {
+            "id": 4195608591,
+            "type": 28
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          37
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          39
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 2014013343,
+            "type": 38
+          },
+          {
+            "id": 3663207499,
+            "type": 23
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 737755247,
+            "type": 11
+          },
+          {
+            "id": 859142850,
+            "type": 11
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 17724,
+            "type": 40
+          },
+          {
+            "id": 3456837,
+            "type": 54
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 41,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 737755247,
+            "type": 42
+          },
+          {
+            "id": 859142850,
+            "type": 49
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 43,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 1572086505,
+            "type": 44
+          },
+          {
+            "id": 3894093267,
+            "type": 45
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 834174833,
+            "type": 5
+          },
+          {
+            "id": 2616050985,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 100394802,
+            "type": 46
+          },
+          {
+            "id": 2634772916,
+            "type": 48
+          },
+          {
+            "id": 3426457933,
+            "type": 4
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 47,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 165650715,
+            "type": 11
+          },
+          {
+            "id": 2234891166,
+            "type": 11
+          },
+          {
+            "id": 2714335623,
+            "type": 11
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 15,
+        "kind": "opt"
+      },
+      {
+        "inner": 50,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 3756774,
+            "type": 11
+          },
+          {
+            "id": 1692295375,
+            "type": 51
+          },
+          {
+            "id": 2298651620,
+            "type": 52
+          },
+          {
+            "id": 3894093267,
+            "type": 53
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1030693029,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 100394802,
+            "type": 46
+          },
+          {
+            "id": 739088507,
+            "type": 4
+          },
+          {
+            "id": 3426457933,
+            "type": 4
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1292380767,
+            "type": 22
+          },
+          {
+            "id": 1314115032,
+            "type": 12
+          },
+          {
+            "id": 3426457933,
+            "type": 4
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 55,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 2493197105,
+            "type": 15
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "args": [
+          57
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          58
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 624086880,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 238659749,
+            "type": 11
+          },
+          {
+            "id": 1768822079,
+            "type": 59
+          },
+          {
+            "id": 1979589754,
+            "type": 59
+          },
+          {
+            "id": 2371993208,
+            "type": 11
+          },
+          {
+            "id": 2932624234,
+            "type": 11
+          },
+          {
+            "id": 3397977243,
+            "type": 59
+          },
+          {
+            "id": 4181573687,
+            "type": 11
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1292380767,
+            "type": 23
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          61
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          62
+        ]
+      },
+      {
+        "inner": 21,
+        "kind": "opt"
+      },
+      {
+        "inner": 63,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 624086880,
+            "type": 5
+          },
+          {
+            "id": 2055446825,
+            "type": 64
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 65,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 238659749,
+            "type": 11
+          },
+          {
+            "id": 1768822079,
+            "type": 59
+          },
+          {
+            "id": 1979589754,
+            "type": 59
+          },
+          {
+            "id": 2371993208,
+            "type": 11
+          },
+          {
+            "id": 2844710472,
+            "type": 66
+          },
+          {
+            "id": 2932624234,
+            "type": 11
+          },
+          {
+            "id": 3397977243,
+            "type": 59
+          },
+          {
+            "id": 3556399978,
+            "type": 69
+          },
+          {
+            "id": 4181573687,
+            "type": 11
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 2707029165,
+            "type": 21
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          },
+          {
+            "id": 4238151620,
+            "type": 67
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 165650715,
+            "type": 11
+          },
+          {
+            "id": 3195844013,
+            "type": 68
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 3426457933,
+            "type": 5
+          },
+          {
+            "id": 4038180042,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 2707029165,
+            "type": 21
+          },
+          {
+            "id": 3081058051,
+            "type": 5
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          },
+          {
+            "id": 4238151620,
+            "type": 67
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          71
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          72
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 2215343202,
+            "type": 5
+          },
+          {
+            "id": 2668074214,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 73,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 2781795542,
+            "type": 4
+          },
+          {
+            "id": 3979722638,
+            "type": 74
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 181709247,
+            "type": 75
+          },
+          {
+            "id": 572248943,
+            "type": 79
+          },
+          {
+            "id": 891765047,
+            "type": 80
+          },
+          {
+            "id": 959394289,
+            "type": 86
+          },
+          {
+            "id": 1169898256,
+            "type": 14
+          },
+          {
+            "id": 1664201884,
+            "type": 3
+          },
+          {
+            "id": 1765448999,
+            "type": 87
+          },
+          {
+            "id": 2086365242,
+            "type": 88
+          },
+          {
+            "id": 2210717622,
+            "type": 90
+          },
+          {
+            "id": 2224881774,
+            "type": 92
+          },
+          {
+            "id": 2468771862,
+            "type": 93
+          },
+          {
+            "id": 2693579479,
+            "type": 97
+          },
+          {
+            "id": 2915290333,
+            "type": 57
+          },
+          {
+            "id": 2987481022,
+            "type": 59
+          },
+          {
+            "id": 3074211215,
+            "type": 98
+          },
+          {
+            "id": 3296785773,
+            "type": 103
+          },
+          {
+            "id": 3297470627,
+            "type": 104
+          },
+          {
+            "id": 3497894750,
+            "type": 103
+          },
+          {
+            "id": 3753528096,
+            "type": 105
+          },
+          {
+            "id": 4041241649,
+            "type": 106
+          },
+          {
+            "id": 4270050954,
+            "type": 106
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1937583785,
+            "type": 21
+          },
+          {
+            "id": 2251467868,
+            "type": 4
+          },
+          {
+            "id": 2867465885,
+            "type": 76
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 77,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 38537191,
+            "type": 13
+          },
+          {
+            "id": 834174833,
+            "type": 5
+          },
+          {
+            "id": 4129575170,
+            "type": 78
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1292380767,
+            "type": 23
+          },
+          {
+            "id": 1314115032,
+            "type": 13
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 2358332464,
+            "type": 5
+          },
+          {
+            "id": 2707029165,
+            "type": 21
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          },
+          {
+            "id": 4238151620,
+            "type": 67
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 5094982,
+            "type": 4
+          },
+          {
+            "id": 242982192,
+            "type": 81
+          },
+          {
+            "id": 1292380767,
+            "type": 23
+          },
+          {
+            "id": 1482808135,
+            "type": 22
+          },
+          {
+            "id": 2211129916,
+            "type": 83
+          },
+          {
+            "id": 2867465885,
+            "type": 76
+          },
+          {
+            "id": 2948499012,
+            "type": 85
+          },
+          {
+            "id": 4103843127,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 82,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 834174833,
+            "type": 5
+          },
+          {
+            "id": 1314115032,
+            "type": 13
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 84,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 351439446,
+            "type": 5
+          },
+          {
+            "id": 2148148005,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 5,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 624086880,
+            "type": 5
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          },
+          {
+            "id": 4038180042,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 624086880,
+            "type": 5
+          },
+          {
+            "id": 947296307,
+            "type": 7
+          },
+          {
+            "id": 1303321147,
+            "type": 15
+          },
+          {
+            "id": 2634772916,
+            "type": 15
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          },
+          {
+            "id": 4038180042,
+            "type": 7
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1303274774,
+            "type": 77
+          },
+          {
+            "id": 2707029165,
+            "type": 21
+          },
+          {
+            "id": 4238151620,
+            "type": 89
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 299927044,
+            "type": 11
+          },
+          {
+            "id": 3681715606,
+            "type": 11
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 183783569,
+            "type": 5
+          },
+          {
+            "id": 624086880,
+            "type": 5
+          },
+          {
+            "id": 2634772916,
+            "type": 91
+          },
+          {
+            "id": 3437121702,
+            "type": 61
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          },
+          {
+            "id": 4038180042,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 903246607,
+            "type": 23
+          },
+          {
+            "id": 1163532634,
+            "type": 23
+          },
+          {
+            "id": 1244543703,
+            "type": 23
+          },
+          {
+            "id": 1926338401,
+            "type": 23
+          },
+          {
+            "id": 2655190411,
+            "type": 23
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1213952393,
+            "type": 30
+          },
+          {
+            "id": 1303274774,
+            "type": 77
+          },
+          {
+            "id": 1303321147,
+            "type": 15
+          },
+          {
+            "id": 4038180042,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 2358332464,
+            "type": 5
+          },
+          {
+            "id": 2707029165,
+            "type": 21
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          },
+          {
+            "id": 4238151620,
+            "type": 94
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1928069462,
+            "type": 95
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 26123934,
+            "type": 96
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1664428605,
+            "type": 5
+          },
+          {
+            "id": 1832119618,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 2358332464,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 5094982,
+            "type": 5
+          },
+          {
+            "id": 242982192,
+            "type": 82
+          },
+          {
+            "id": 804105790,
+            "type": 99
+          },
+          {
+            "id": 1404497975,
+            "type": 23
+          },
+          {
+            "id": 2211129916,
+            "type": 83
+          },
+          {
+            "id": 2419464670,
+            "type": 23
+          },
+          {
+            "id": 4103843127,
+            "type": 5
+          },
+          {
+            "id": 4238151620,
+            "type": 100
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 76,
+        "kind": "opt"
+      },
+      {
+        "inner": 101,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 2297302782,
+            "type": 102
+          },
+          {
+            "id": 3579482724,
+            "type": 11
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 4238151620,
+            "type": 94
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1303274774,
+            "type": 77
+          },
+          {
+            "id": 2707029165,
+            "type": 21
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1303274774,
+            "type": 77
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 183783569,
+            "type": 5
+          },
+          {
+            "id": 624086880,
+            "type": 5
+          },
+          {
+            "id": 2634772916,
+            "type": 91
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 2358332464,
+            "type": 5
+          },
+          {
+            "id": 3081058051,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          108
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          84
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 3573748184,
+            "type": 4
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          110
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          15
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 947296307,
+            "type": 6
+          },
+          {
+            "id": 1349681965,
+            "type": 22
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          112
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          113
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 2634772916,
+            "type": 15
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 17724,
+            "type": 57
+          },
+          {
+            "id": 3456837,
+            "type": 114
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 146146265,
+            "type": 15
+          },
+          {
+            "id": 260448849,
+            "type": 115
+          },
+          {
+            "id": 658180290,
+            "type": 15
+          },
+          {
+            "id": 1113989995,
+            "type": 11
+          },
+          {
+            "id": 2371993208,
+            "type": 5
+          },
+          {
+            "id": 4206284395,
+            "type": 116
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1389388560,
+            "type": 15
+          },
+          {
+            "id": 3601615940,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 596483356,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          110
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          118
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 17724,
+            "type": 119
+          },
+          {
+            "id": 3456837,
+            "type": 122
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "inner": 120,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 299927044,
+            "type": 77
+          },
+          {
+            "id": 734639713,
+            "type": 77
+          },
+          {
+            "id": 2275116961,
+            "type": 121
+          },
+          {
+            "id": 3765820167,
+            "type": 77
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 3600918,
+            "type": 5
+          },
+          {
+            "id": 624086880,
+            "type": 5
+          },
+          {
+            "id": 1303274774,
+            "type": 77
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 260448849,
+            "type": 115
+          },
+          {
+            "id": 658180290,
+            "type": 15
+          },
+          {
+            "id": 1113989995,
+            "type": 11
+          },
+          {
+            "id": 3041074078,
+            "type": 123
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1402981113,
+            "type": 124
+          },
+          {
+            "id": 1790128894,
+            "type": 13
+          },
+          {
+            "id": 1812679029,
+            "type": 127
+          },
+          {
+            "id": 1987561304,
+            "type": 12
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 125,
+        "kind": "opt"
+      },
+      {
+        "inner": 126,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 1303274774,
+            "type": 77
+          },
+          {
+            "id": 1698860156,
+            "type": 5
+          },
+          {
+            "id": 4238151620,
+            "type": 89
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 128,
+        "kind": "opt"
+      },
+      {
+        "inner": 129,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 60991774,
+            "type": 13
+          },
+          {
+            "id": 834174833,
+            "type": 5
+          },
+          {
+            "id": 4129575170,
+            "type": 78
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          5
+        ]
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          132
+        ]
+      },
+      {
+        "inner": 133,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 5843823,
+            "type": 15
+          },
+          {
+            "id": 1224700491,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          110
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          76
+        ]
+      },
+      {
+        "args": [
+          57
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          65
+        ]
+      },
+      {
+        "args": [
+          137
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          138
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 1835347746,
+            "type": 22
+          },
+          {
+            "id": 2634772916,
+            "type": 15
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 17724,
+            "type": 57
+          },
+          {
+            "id": 3456837,
+            "type": 139
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 146146265,
+            "type": 15
+          },
+          {
+            "id": 260448849,
+            "type": 115
+          },
+          {
+            "id": 658180290,
+            "type": 15
+          },
+          {
+            "id": 879144245,
+            "type": 140
+          },
+          {
+            "id": 1113989995,
+            "type": 11
+          },
+          {
+            "id": 2371993208,
+            "type": 5
+          },
+          {
+            "id": 4206284395,
+            "type": 116
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 3230440920,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "args": [
+          142
+        ],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          149
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 4849238,
+            "type": 23
+          },
+          {
+            "id": 156956385,
+            "type": 15
+          },
+          {
+            "id": 2904537988,
+            "type": 143
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1075439471,
+            "type": 144
+          },
+          {
+            "id": 1534901700,
+            "type": 147
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1502369582,
+            "type": 145
+          },
+          {
+            "id": 2047967320,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 146,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "int16"
+      },
+      {
+        "inner": 148,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 1750070539,
+            "type": 11
+          },
+          {
+            "id": 2715993257,
+            "type": 11
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 17724,
+            "type": 150
+          },
+          {
+            "id": 3456837,
+            "type": 159
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1075439471,
+            "type": 144
+          },
+          {
+            "id": 1763119074,
+            "type": 151
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 124612638,
+            "type": 152
+          },
+          {
+            "id": 4082495484,
+            "type": 15
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 2156826233,
+            "type": 153
+          },
+          {
+            "id": 2659612252,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 154,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 0,
+            "type": 15
+          },
+          {
+            "id": 1,
+            "type": 155
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 936573133,
+            "type": 156
+          },
+          {
+            "id": 1289986449,
+            "type": 157
+          },
+          {
+            "id": 2826488937,
+            "type": 158
+          },
+          {
+            "id": 4208601451,
+            "type": 158
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 427265337,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 308955842,
+            "type": 24
+          },
+          {
+            "id": 3573748184,
+            "type": 5
+          },
+          {
+            "id": 4007505752,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 3573748184,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 260448849,
+            "type": 160
+          },
+          {
+            "id": 752613667,
+            "type": 161
+          },
+          {
+            "id": 1019593370,
+            "type": 161
+          },
+          {
+            "id": 4060111587,
+            "type": 161
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 1595738364,
+            "type": 15
+          },
+          {
+            "id": 3601615940,
+            "type": 28
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 1595738364,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      }
+    ]
+  },
+  "extensions": {
+    "org.candid-core.field-names/v1": [
+      [
+        1,
+        813882492,
+        "Upgrade"
+      ],
+      [
+        1,
+        815032112,
+        "Init"
+      ],
+      [
+        3,
+        123445559,
+        "get_utxos_cache_expiration_seconds"
+      ],
+      [
+        3,
+        224831733,
+        "kyt_principal"
+      ],
+      [
+        3,
+        1214305123,
+        "mode"
+      ],
+      [
+        3,
+        1351523382,
+        "retrieve_btc_min_amount"
+      ],
+      [
+        3,
+        1694820756,
+        "deposit_btc_min_amount"
+      ],
+      [
+        3,
+        2295586446,
+        "max_time_in_queue_nanos"
+      ],
+      [
+        3,
+        2820644879,
+        "check_fee"
+      ],
+      [
+        3,
+        2858244678,
+        "max_num_inputs_in_transaction"
+      ],
+      [
+        3,
+        2867915375,
+        "utxo_consolidation_threshold"
+      ],
+      [
+        3,
+        3107569974,
+        "btc_checker_principal"
+      ],
+      [
+        3,
+        3131344497,
+        "min_confirmations"
+      ],
+      [
+        3,
+        3426457933,
+        "kyt_fee"
+      ],
+      [
+        9,
+        126622998,
+        "RestrictedTo"
+      ],
+      [
+        9,
+        767200267,
+        "DepositsRestrictedTo"
+      ],
+      [
+        9,
+        1264327682,
+        "ReadOnly"
+      ],
+      [
+        9,
+        1405503491,
+        "GeneralAvailability"
+      ],
+      [
+        14,
+        123445559,
+        "get_utxos_cache_expiration_seconds"
+      ],
+      [
+        14,
+        224831733,
+        "kyt_principal"
+      ],
+      [
+        14,
+        731747510,
+        "ecdsa_key_name"
+      ],
+      [
+        14,
+        1214305123,
+        "mode"
+      ],
+      [
+        14,
+        1351523382,
+        "retrieve_btc_min_amount"
+      ],
+      [
+        14,
+        1694820756,
+        "deposit_btc_min_amount"
+      ],
+      [
+        14,
+        1862220785,
+        "ledger_id"
+      ],
+      [
+        14,
+        2295586446,
+        "max_time_in_queue_nanos"
+      ],
+      [
+        14,
+        2645825920,
+        "btc_network"
+      ],
+      [
+        14,
+        2820644879,
+        "check_fee"
+      ],
+      [
+        14,
+        2858244678,
+        "max_num_inputs_in_transaction"
+      ],
+      [
+        14,
+        2867915375,
+        "utxo_consolidation_threshold"
+      ],
+      [
+        14,
+        3107569974,
+        "btc_checker_principal"
+      ],
+      [
+        14,
+        3131344497,
+        "min_confirmations"
+      ],
+      [
+        14,
+        3426457933,
+        "kyt_fee"
+      ],
+      [
+        16,
+        145680804,
+        "Mainnet"
+      ],
+      [
+        16,
+        1328219014,
+        "Regtest"
+      ],
+      [
+        16,
+        2334895915,
+        "Testnet"
+      ],
+      [
+        19,
+        1351523382,
+        "retrieve_btc_min_amount"
+      ],
+      [
+        19,
+        1694820756,
+        "deposit_btc_min_amount"
+      ],
+      [
+        19,
+        3131344497,
+        "min_confirmations"
+      ],
+      [
+        19,
+        3426457933,
+        "kyt_fee"
+      ],
+      [
+        21,
+        947296307,
+        "owner"
+      ],
+      [
+        21,
+        1349681965,
+        "subaccount"
+      ],
+      [
+        26,
+        58798021,
+        "memory_metrics"
+      ],
+      [
+        26,
+        100394802,
+        "status"
+      ],
+      [
+        26,
+        1054895615,
+        "memory_size"
+      ],
+      [
+        26,
+        1614520508,
+        "ready_for_migration"
+      ],
+      [
+        26,
+        2096228120,
+        "version"
+      ],
+      [
+        26,
+        2190693645,
+        "cycles"
+      ],
+      [
+        26,
+        2336062691,
+        "settings"
+      ],
+      [
+        26,
+        2642624104,
+        "query_stats"
+      ],
+      [
+        26,
+        2733945392,
+        "idle_cycles_burned_per_day"
+      ],
+      [
+        26,
+        2928387969,
+        "module_hash"
+      ],
+      [
+        26,
+        4090107140,
+        "reserved_cycles"
+      ],
+      [
+        27,
+        4264996,
+        "wasm_binary_size"
+      ],
+      [
+        27,
+        197078956,
+        "wasm_chunk_store_size"
+      ],
+      [
+        27,
+        1646009124,
+        "canister_history_size"
+      ],
+      [
+        27,
+        1710030651,
+        "stable_memory_size"
+      ],
+      [
+        27,
+        1777917585,
+        "snapshots_size"
+      ],
+      [
+        27,
+        3598099748,
+        "wasm_memory_size"
+      ],
+      [
+        27,
+        3776075235,
+        "global_memory_size"
+      ],
+      [
+        27,
+        4108871332,
+        "custom_sections_size"
+      ],
+      [
+        29,
+        1130484237,
+        "stopped"
+      ],
+      [
+        29,
+        2990082932,
+        "stopping"
+      ],
+      [
+        29,
+        3949555199,
+        "running"
+      ],
+      [
+        31,
+        238856128,
+        "freezing_threshold"
+      ],
+      [
+        31,
+        241629288,
+        "wasm_memory_threshold"
+      ],
+      [
+        31,
+        356749323,
+        "environment_variables"
+      ],
+      [
+        31,
+        570880087,
+        "controllers"
+      ],
+      [
+        31,
+        1095112320,
+        "reserved_cycles_limit"
+      ],
+      [
+        31,
+        2033331437,
+        "log_visibility"
+      ],
+      [
+        31,
+        3380736376,
+        "wasm_memory_limit"
+      ],
+      [
+        31,
+        3844961758,
+        "memory_allocation"
+      ],
+      [
+        31,
+        4174053672,
+        "compute_allocation"
+      ],
+      [
+        33,
+        834174833,
+        "value"
+      ],
+      [
+        33,
+        1224700491,
+        "name"
+      ],
+      [
+        34,
+        570880087,
+        "controllers"
+      ],
+      [
+        34,
+        1727234217,
+        "public"
+      ],
+      [
+        34,
+        2235716810,
+        "allowed_viewers"
+      ],
+      [
+        35,
+        813120577,
+        "response_payload_bytes_total"
+      ],
+      [
+        35,
+        1563534595,
+        "num_instructions_total"
+      ],
+      [
+        35,
+        2783848481,
+        "num_calls_total"
+      ],
+      [
+        35,
+        4195608591,
+        "request_payload_bytes_total"
+      ],
+      [
+        37,
+        2014013343,
+        "memo_type"
+      ],
+      [
+        37,
+        3663207499,
+        "encoded_memo"
+      ],
+      [
+        38,
+        737755247,
+        "Burn"
+      ],
+      [
+        38,
+        859142850,
+        "Mint"
+      ],
+      [
+        39,
+        17724,
+        "Ok"
+      ],
+      [
+        39,
+        3456837,
+        "Err"
+      ],
+      [
+        41,
+        737755247,
+        "Burn"
+      ],
+      [
+        41,
+        859142850,
+        "Mint"
+      ],
+      [
+        43,
+        1572086505,
+        "Consolidate"
+      ],
+      [
+        43,
+        3894093267,
+        "Convert"
+      ],
+      [
+        44,
+        834174833,
+        "value"
+      ],
+      [
+        44,
+        2616050985,
+        "inputs"
+      ],
+      [
+        45,
+        100394802,
+        "status"
+      ],
+      [
+        45,
+        2634772916,
+        "address"
+      ],
+      [
+        45,
+        3426457933,
+        "kyt_fee"
+      ],
+      [
+        47,
+        165650715,
+        "CallFailed"
+      ],
+      [
+        47,
+        2234891166,
+        "Rejected"
+      ],
+      [
+        47,
+        2714335623,
+        "Accepted"
+      ],
+      [
+        50,
+        3756774,
+        "Kyt"
+      ],
+      [
+        50,
+        1692295375,
+        "ReimburseWithdrawal"
+      ],
+      [
+        50,
+        2298651620,
+        "KytFail"
+      ],
+      [
+        50,
+        3894093267,
+        "Convert"
+      ],
+      [
+        51,
+        1030693029,
+        "withdrawal_id"
+      ],
+      [
+        52,
+        100394802,
+        "status"
+      ],
+      [
+        52,
+        739088507,
+        "associated_burn_index"
+      ],
+      [
+        52,
+        3426457933,
+        "kyt_fee"
+      ],
+      [
+        53,
+        1292380767,
+        "txid"
+      ],
+      [
+        53,
+        1314115032,
+        "vout"
+      ],
+      [
+        53,
+        3426457933,
+        "kyt_fee"
+      ],
+      [
+        55,
+        2493197105,
+        "InvalidMemo"
+      ],
+      [
+        57,
+        624086880,
+        "block_index"
+      ],
+      [
+        58,
+        238659749,
+        "Signing"
+      ],
+      [
+        58,
+        1768822079,
+        "Confirmed"
+      ],
+      [
+        58,
+        1979589754,
+        "Sending"
+      ],
+      [
+        58,
+        2371993208,
+        "AmountTooLow"
+      ],
+      [
+        58,
+        2932624234,
+        "Unknown"
+      ],
+      [
+        58,
+        3397977243,
+        "Submitted"
+      ],
+      [
+        58,
+        4181573687,
+        "Pending"
+      ],
+      [
+        59,
+        1292380767,
+        "txid"
+      ],
+      [
+        63,
+        624086880,
+        "block_index"
+      ],
+      [
+        63,
+        2055446825,
+        "status_v2"
+      ],
+      [
+        65,
+        238659749,
+        "Signing"
+      ],
+      [
+        65,
+        1768822079,
+        "Confirmed"
+      ],
+      [
+        65,
+        1979589754,
+        "Sending"
+      ],
+      [
+        65,
+        2371993208,
+        "AmountTooLow"
+      ],
+      [
+        65,
+        2844710472,
+        "WillReimburse"
+      ],
+      [
+        65,
+        2932624234,
+        "Unknown"
+      ],
+      [
+        65,
+        3397977243,
+        "Submitted"
+      ],
+      [
+        65,
+        3556399978,
+        "Reimbursed"
+      ],
+      [
+        65,
+        4181573687,
+        "Pending"
+      ],
+      [
+        66,
+        2707029165,
+        "account"
+      ],
+      [
+        66,
+        3573748184,
+        "amount"
+      ],
+      [
+        66,
+        4238151620,
+        "reason"
+      ],
+      [
+        67,
+        165650715,
+        "CallFailed"
+      ],
+      [
+        67,
+        3195844013,
+        "TaintedDestination"
+      ],
+      [
+        68,
+        3426457933,
+        "kyt_fee"
+      ],
+      [
+        68,
+        4038180042,
+        "kyt_provider"
+      ],
+      [
+        69,
+        2707029165,
+        "account"
+      ],
+      [
+        69,
+        3081058051,
+        "mint_block_index"
+      ],
+      [
+        69,
+        3573748184,
+        "amount"
+      ],
+      [
+        69,
+        4238151620,
+        "reason"
+      ],
+      [
+        71,
+        2215343202,
+        "start"
+      ],
+      [
+        71,
+        2668074214,
+        "length"
+      ],
+      [
+        73,
+        2781795542,
+        "timestamp"
+      ],
+      [
+        73,
+        3979722638,
+        "payload"
+      ],
+      [
+        74,
+        181709247,
+        "received_utxos"
+      ],
+      [
+        74,
+        572248943,
+        "schedule_deposit_reimbursement"
+      ],
+      [
+        74,
+        891765047,
+        "sent_transaction"
+      ],
+      [
+        74,
+        959394289,
+        "distributed_kyt_fee"
+      ],
+      [
+        74,
+        1169898256,
+        "init"
+      ],
+      [
+        74,
+        1664201884,
+        "upgrade"
+      ],
+      [
+        74,
+        1765448999,
+        "retrieve_btc_kyt_failed"
+      ],
+      [
+        74,
+        2086365242,
+        "suspended_utxo"
+      ],
+      [
+        74,
+        2210717622,
+        "accepted_retrieve_btc_request"
+      ],
+      [
+        74,
+        2224881774,
+        "checked_utxo"
+      ],
+      [
+        74,
+        2468771862,
+        "schedule_withdrawal_reimbursement"
+      ],
+      [
+        74,
+        2693579479,
+        "quarantined_withdrawal_reimbursement"
+      ],
+      [
+        74,
+        2915290333,
+        "removed_retrieve_btc_request"
+      ],
+      [
+        74,
+        2987481022,
+        "confirmed_transaction"
+      ],
+      [
+        74,
+        3074211215,
+        "replaced_transaction"
+      ],
+      [
+        74,
+        3296785773,
+        "checked_utxo_v2"
+      ],
+      [
+        74,
+        3297470627,
+        "ignored_utxo"
+      ],
+      [
+        74,
+        3497894750,
+        "checked_utxo_mint_unknown"
+      ],
+      [
+        74,
+        3753528096,
+        "created_consolidate_utxos_request"
+      ],
+      [
+        74,
+        4041241649,
+        "reimbursed_failed_deposit"
+      ],
+      [
+        74,
+        4270050954,
+        "reimbursed_withdrawal"
+      ],
+      [
+        75,
+        1937583785,
+        "to_account"
+      ],
+      [
+        75,
+        2251467868,
+        "mint_txid"
+      ],
+      [
+        75,
+        2867465885,
+        "utxos"
+      ],
+      [
+        77,
+        38537191,
+        "height"
+      ],
+      [
+        77,
+        834174833,
+        "value"
+      ],
+      [
+        77,
+        4129575170,
+        "outpoint"
+      ],
+      [
+        78,
+        1292380767,
+        "txid"
+      ],
+      [
+        78,
+        1314115032,
+        "vout"
+      ],
+      [
+        79,
+        2358332464,
+        "burn_block_index"
+      ],
+      [
+        79,
+        2707029165,
+        "account"
+      ],
+      [
+        79,
+        3573748184,
+        "amount"
+      ],
+      [
+        79,
+        4238151620,
+        "reason"
+      ],
+      [
+        80,
+        5094982,
+        "fee"
+      ],
+      [
+        80,
+        242982192,
+        "change_output"
+      ],
+      [
+        80,
+        1292380767,
+        "txid"
+      ],
+      [
+        80,
+        1482808135,
+        "signed_tx"
+      ],
+      [
+        80,
+        2211129916,
+        "withdrawal_fee"
+      ],
+      [
+        80,
+        2867465885,
+        "utxos"
+      ],
+      [
+        80,
+        2948499012,
+        "requests"
+      ],
+      [
+        80,
+        4103843127,
+        "submitted_at"
+      ],
+      [
+        82,
+        834174833,
+        "value"
+      ],
+      [
+        82,
+        1314115032,
+        "vout"
+      ],
+      [
+        84,
+        351439446,
+        "minter_fee"
+      ],
+      [
+        84,
+        2148148005,
+        "bitcoin_fee"
+      ],
+      [
+        86,
+        624086880,
+        "block_index"
+      ],
+      [
+        86,
+        3573748184,
+        "amount"
+      ],
+      [
+        86,
+        4038180042,
+        "kyt_provider"
+      ],
+      [
+        87,
+        624086880,
+        "block_index"
+      ],
+      [
+        87,
+        947296307,
+        "owner"
+      ],
+      [
+        87,
+        1303321147,
+        "uuid"
+      ],
+      [
+        87,
+        2634772916,
+        "address"
+      ],
+      [
+        87,
+        3573748184,
+        "amount"
+      ],
+      [
+        87,
+        4038180042,
+        "kyt_provider"
+      ],
+      [
+        88,
+        1303274774,
+        "utxo"
+      ],
+      [
+        88,
+        2707029165,
+        "account"
+      ],
+      [
+        88,
+        4238151620,
+        "reason"
+      ],
+      [
+        89,
+        299927044,
+        "ValueTooSmall"
+      ],
+      [
+        89,
+        3681715606,
+        "Quarantined"
+      ],
+      [
+        90,
+        183783569,
+        "received_at"
+      ],
+      [
+        90,
+        624086880,
+        "block_index"
+      ],
+      [
+        90,
+        2634772916,
+        "address"
+      ],
+      [
+        90,
+        3437121702,
+        "reimbursement_account"
+      ],
+      [
+        90,
+        3573748184,
+        "amount"
+      ],
+      [
+        90,
+        4038180042,
+        "kyt_provider"
+      ],
+      [
+        91,
+        903246607,
+        "p2wsh_v0"
+      ],
+      [
+        91,
+        1163532634,
+        "p2tr_v1"
+      ],
+      [
+        91,
+        1244543703,
+        "p2sh"
+      ],
+      [
+        91,
+        1926338401,
+        "p2wpkh_v0"
+      ],
+      [
+        91,
+        2655190411,
+        "p2pkh"
+      ],
+      [
+        92,
+        1213952393,
+        "clean"
+      ],
+      [
+        92,
+        1303274774,
+        "utxo"
+      ],
+      [
+        92,
+        1303321147,
+        "uuid"
+      ],
+      [
+        92,
+        4038180042,
+        "kyt_provider"
+      ],
+      [
+        93,
+        2358332464,
+        "burn_block_index"
+      ],
+      [
+        93,
+        2707029165,
+        "account"
+      ],
+      [
+        93,
+        3573748184,
+        "amount"
+      ],
+      [
+        93,
+        4238151620,
+        "reason"
+      ],
+      [
+        94,
+        1928069462,
+        "invalid_transaction"
+      ],
+      [
+        95,
+        26123934,
+        "too_many_inputs"
+      ],
+      [
+        96,
+        1664428605,
+        "max_num_inputs"
+      ],
+      [
+        96,
+        1832119618,
+        "num_inputs"
+      ],
+      [
+        97,
+        2358332464,
+        "burn_block_index"
+      ],
+      [
+        98,
+        5094982,
+        "fee"
+      ],
+      [
+        98,
+        242982192,
+        "change_output"
+      ],
+      [
+        98,
+        804105790,
+        "new_utxos"
+      ],
+      [
+        98,
+        1404497975,
+        "old_txid"
+      ],
+      [
+        98,
+        2211129916,
+        "withdrawal_fee"
+      ],
+      [
+        98,
+        2419464670,
+        "new_txid"
+      ],
+      [
+        98,
+        4103843127,
+        "submitted_at"
+      ],
+      [
+        98,
+        4238151620,
+        "reason"
+      ],
+      [
+        101,
+        2297302782,
+        "to_cancel"
+      ],
+      [
+        101,
+        3579482724,
+        "to_retry"
+      ],
+      [
+        102,
+        4238151620,
+        "reason"
+      ],
+      [
+        103,
+        1303274774,
+        "utxo"
+      ],
+      [
+        103,
+        2707029165,
+        "account"
+      ],
+      [
+        104,
+        1303274774,
+        "utxo"
+      ],
+      [
+        105,
+        183783569,
+        "received_at"
+      ],
+      [
+        105,
+        624086880,
+        "block_index"
+      ],
+      [
+        105,
+        2634772916,
+        "address"
+      ],
+      [
+        105,
+        3573748184,
+        "amount"
+      ],
+      [
+        106,
+        2358332464,
+        "burn_block_index"
+      ],
+      [
+        106,
+        3081058051,
+        "mint_block_index"
+      ],
+      [
+        108,
+        3573748184,
+        "amount"
+      ],
+      [
+        110,
+        947296307,
+        "owner"
+      ],
+      [
+        110,
+        1349681965,
+        "subaccount"
+      ],
+      [
+        112,
+        2634772916,
+        "address"
+      ],
+      [
+        112,
+        3573748184,
+        "amount"
+      ],
+      [
+        113,
+        17724,
+        "Ok"
+      ],
+      [
+        113,
+        3456837,
+        "Err"
+      ],
+      [
+        114,
+        146146265,
+        "MalformedAddress"
+      ],
+      [
+        114,
+        260448849,
+        "GenericError"
+      ],
+      [
+        114,
+        658180290,
+        "TemporarilyUnavailable"
+      ],
+      [
+        114,
+        1113989995,
+        "AlreadyProcessing"
+      ],
+      [
+        114,
+        2371993208,
+        "AmountTooLow"
+      ],
+      [
+        114,
+        4206284395,
+        "InsufficientFunds"
+      ],
+      [
+        115,
+        1389388560,
+        "error_message"
+      ],
+      [
+        115,
+        3601615940,
+        "error_code"
+      ],
+      [
+        116,
+        596483356,
+        "balance"
+      ],
+      [
+        118,
+        17724,
+        "Ok"
+      ],
+      [
+        118,
+        3456837,
+        "Err"
+      ],
+      [
+        120,
+        299927044,
+        "ValueTooSmall"
+      ],
+      [
+        120,
+        734639713,
+        "Tainted"
+      ],
+      [
+        120,
+        2275116961,
+        "Minted"
+      ],
+      [
+        120,
+        3765820167,
+        "Checked"
+      ],
+      [
+        121,
+        3600918,
+        "minted_amount"
+      ],
+      [
+        121,
+        624086880,
+        "block_index"
+      ],
+      [
+        121,
+        1303274774,
+        "utxo"
+      ],
+      [
+        122,
+        260448849,
+        "GenericError"
+      ],
+      [
+        122,
+        658180290,
+        "TemporarilyUnavailable"
+      ],
+      [
+        122,
+        1113989995,
+        "AlreadyProcessing"
+      ],
+      [
+        122,
+        3041074078,
+        "NoNewUtxos"
+      ],
+      [
+        123,
+        1402981113,
+        "suspended_utxos"
+      ],
+      [
+        123,
+        1790128894,
+        "required_confirmations"
+      ],
+      [
+        123,
+        1812679029,
+        "pending_utxos"
+      ],
+      [
+        123,
+        1987561304,
+        "current_confirmations"
+      ],
+      [
+        126,
+        1303274774,
+        "utxo"
+      ],
+      [
+        126,
+        1698860156,
+        "earliest_retry"
+      ],
+      [
+        126,
+        4238151620,
+        "reason"
+      ],
+      [
+        129,
+        60991774,
+        "confirmations"
+      ],
+      [
+        129,
+        834174833,
+        "value"
+      ],
+      [
+        129,
+        4129575170,
+        "outpoint"
+      ],
+      [
+        133,
+        5843823,
+        "url"
+      ],
+      [
+        133,
+        1224700491,
+        "name"
+      ],
+      [
+        137,
+        1835347746,
+        "from_subaccount"
+      ],
+      [
+        137,
+        2634772916,
+        "address"
+      ],
+      [
+        137,
+        3573748184,
+        "amount"
+      ],
+      [
+        138,
+        17724,
+        "Ok"
+      ],
+      [
+        138,
+        3456837,
+        "Err"
+      ],
+      [
+        139,
+        146146265,
+        "MalformedAddress"
+      ],
+      [
+        139,
+        260448849,
+        "GenericError"
+      ],
+      [
+        139,
+        658180290,
+        "TemporarilyUnavailable"
+      ],
+      [
+        139,
+        879144245,
+        "InsufficientAllowance"
+      ],
+      [
+        139,
+        1113989995,
+        "AlreadyProcessing"
+      ],
+      [
+        139,
+        2371993208,
+        "AmountTooLow"
+      ],
+      [
+        139,
+        4206284395,
+        "InsufficientFunds"
+      ],
+      [
+        140,
+        3230440920,
+        "allowance"
+      ],
+      [
+        142,
+        4849238,
+        "arg"
+      ],
+      [
+        142,
+        156956385,
+        "method"
+      ],
+      [
+        142,
+        2904537988,
+        "user_preferences"
+      ],
+      [
+        143,
+        1075439471,
+        "metadata"
+      ],
+      [
+        143,
+        1534901700,
+        "device_spec"
+      ],
+      [
+        144,
+        1502369582,
+        "utc_offset_minutes"
+      ],
+      [
+        144,
+        2047967320,
+        "language"
+      ],
+      [
+        148,
+        1750070539,
+        "GenericDisplay"
+      ],
+      [
+        148,
+        2715993257,
+        "FieldsDisplay"
+      ],
+      [
+        149,
+        17724,
+        "Ok"
+      ],
+      [
+        149,
+        3456837,
+        "Err"
+      ],
+      [
+        150,
+        1075439471,
+        "metadata"
+      ],
+      [
+        150,
+        1763119074,
+        "consent_message"
+      ],
+      [
+        151,
+        124612638,
+        "FieldsDisplayMessage"
+      ],
+      [
+        151,
+        4082495484,
+        "GenericDisplayMessage"
+      ],
+      [
+        152,
+        2156826233,
+        "fields"
+      ],
+      [
+        152,
+        2659612252,
+        "intent"
+      ],
+      [
+        155,
+        936573133,
+        "Text"
+      ],
+      [
+        155,
+        1289986449,
+        "TokenAmount"
+      ],
+      [
+        155,
+        2826488937,
+        "TimestampSeconds"
+      ],
+      [
+        155,
+        4208601451,
+        "DurationSeconds"
+      ],
+      [
+        156,
+        427265337,
+        "content"
+      ],
+      [
+        157,
+        308955842,
+        "decimals"
+      ],
+      [
+        157,
+        3573748184,
+        "amount"
+      ],
+      [
+        157,
+        4007505752,
+        "symbol"
+      ],
+      [
+        158,
+        3573748184,
+        "amount"
+      ],
+      [
+        159,
+        260448849,
+        "GenericError"
+      ],
+      [
+        159,
+        752613667,
+        "InsufficientPayment"
+      ],
+      [
+        159,
+        1019593370,
+        "UnsupportedCanisterCall"
+      ],
+      [
+        159,
+        4060111587,
+        "ConsentMessageUnavailable"
+      ],
+      [
+        160,
+        1595738364,
+        "description"
+      ],
+      [
+        160,
+        3601615940,
+        "error_code"
+      ],
+      [
+        161,
+        1595738364,
+        "description"
+      ]
+    ]
+  }
+}

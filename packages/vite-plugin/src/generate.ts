@@ -16,6 +16,7 @@ import { spawn } from "node:child_process"
 import fs from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
+import { describeError } from "./describe-value.js"
 
 /**
  * The `@candid-core/cli` release this plugin is built against. The package
@@ -23,7 +24,7 @@ import path from "node:path"
  * install the generator that pairs with the `@candid-core/schema` runtime its
  * generated modules import.
  */
-export const CANDID_CORE_CLI_VERSION = "0.2.0"
+export const CANDID_CORE_CLI_VERSION = "0.3.0"
 
 /** The `schemaVersion` of the `--json` document this module understands. */
 const REPORT_SCHEMA_VERSION = 1
@@ -127,7 +128,7 @@ export function resolveCliBin(root: string): string {
   return path.resolve(path.dirname(manifestPath), bin)
 }
 
-interface ProcessResult {
+export interface ProcessResult {
   stdout: string
   stderr: string
   code: number | null
@@ -140,21 +141,25 @@ interface ProcessResult {
   stopped?: boolean
 }
 
-const keep = (text: string, chunk: string) =>
-  text.length >= MAX_OUTPUT_BYTES ? text : text + chunk
+const keep = (text: string, chunk: string, limit: number) =>
+  text.length >= limit ? text : text + chunk
 
 /**
  * Run `node <bin> ...args` in `cwd` and settle with what it did. Never
  * rejects. Aborting `signal` kills the process, and a signal that is already
  * aborted starts none.
+ *
+ * @param maxOutputBytes - The most kept of each stream. A report larger than
+ * this is cut, so it no longer parses.
  */
-function runProcess(
+export function runProcess(
   bin: string,
   args: string[],
   cwd: string,
   timeoutMs: number,
   signal?: AbortSignal,
-  onStderrLine?: (line: string) => void
+  onStderrLine?: (line: string) => void,
+  maxOutputBytes = MAX_OUTPUT_BYTES
 ): Promise<ProcessResult> {
   return new Promise((resolve) => {
     let stdout = ""
@@ -230,9 +235,12 @@ function runProcess(
 
     child.stdout.setEncoding("utf-8")
     child.stderr.setEncoding("utf-8")
-    child.stdout.on("data", (chunk: string) => (stdout = keep(stdout, chunk)))
+    child.stdout.on(
+      "data",
+      (chunk: string) => (stdout = keep(stdout, chunk, maxOutputBytes))
+    )
     child.stderr.on("data", (chunk: string) => {
-      stderr = keep(stderr, chunk)
+      stderr = keep(stderr, chunk, maxOutputBytes)
       // Past the last line that is logged there is nothing left to assemble.
       if (settled || !onStderrLine || passed > MAX_STREAMED_LINES) return
       const pieces = chunk.split(/\r?\n/)
@@ -264,7 +272,7 @@ function runProcess(
 }
 
 /** How a process that produced no usable report ended, with its stderr. */
-function describeProcess(run: ProcessResult, reason?: string): string {
+export function describeProcess(run: ProcessResult, reason?: string): string {
   const ending =
     run.problem ??
     (run.signal
@@ -321,7 +329,7 @@ function parseReport(stdout: string, count: number): ReportEntry[] | undefined {
 }
 
 /** One line (plus its notes) for a compiler diagnostic. */
-function formatDiagnostic(diagnostic: unknown): string {
+export function formatDiagnostic(diagnostic: unknown): string {
   const { code, message, notes } = (diagnostic ?? {}) as {
     code?: unknown
     message?: unknown
@@ -389,7 +397,7 @@ async function runGroup(
       // A process that crashed says so by its exit and its stderr.
       if (!entries && run.code === 0) reason = "it printed no report"
     } catch (error) {
-      reason = error instanceof Error ? error.message : String(error)
+      reason = describeError(error)
     }
   }
 
@@ -497,34 +505,19 @@ export function foldsCase(dir: string): boolean | undefined {
 }
 
 /**
- * Generate `canisters` with the CLI at `cli`: one process for each output
- * directory, run side by side. Never rejects. Aborting `signal` kills the
- * processes that are running, and their canisters fail as stopped.
- *
- * Canisters that name the same `.did` and the same `outDir` are one
- * generation: the CLI gets the file once, and its outcome belongs to each of
- * them. That is the case of many canisters with one interface (two ICRC-1
- * ledgers on `icrc1.did`), which share one module.
- *
- * Different `.did` files that would write the same module (the CLI names an
- * output after its `.did`, so `a/ledger.did` and `b/ledger.did` in one
- * `outDir` collide) are refused here, naming both. The CLI would otherwise
- * refuse the whole run with a usage error. Whether `A.did` and `a.did` collide
- * depends on the filesystem of the `outDir`: they do where it ignores case
- * (macOS and Windows by default) and write two modules where it does not.
+ * Each pair of `.did` and `outDir` of `canisters` once, as one generation,
+ * and the generations refused, each with the one before it that writes its
+ * module (`owner`). The CLI names a module after its `.did` (`outputsOf`), so
+ * `a/ledger.did` and `b/ledger.did` in one `outDir` write one `ledger.ts`:
+ * the first in the order of `canisters` keeps it. Whether `A.did` and `a.did`
+ * collide depends on the filesystem of the `outDir`, which `folds` is asked
+ * once for each: they do where it ignores case (macOS and Windows by default)
+ * and write two modules where it does not, or where it cannot be told.
  */
-export async function generate(
-  request: Context & {
-    canisters: GenerateCanister[]
-    /**
-     * Whether the filesystem that holds an `outDir` ignores case, `undefined`
-     * when unknown, which is taken as a filesystem that does not. For tests,
-     * which cannot rely on the filesystem of the machine they run on.
-     */
-    foldsCase?: (outDir: string) => boolean | undefined
-  }
-): Promise<GenerateResult> {
-  const { root } = request
+function planGenerations(
+  canisters: GenerateCanister[],
+  folds: (outDir: string) => boolean | undefined
+): { units: Unit[]; refused: Map<Unit, Unit> } {
   // Each pair of .did and outDir once, and the module each would write.
   const units = new Map<string, Unit>()
   const claimed = new Map<string, Unit>()
@@ -533,15 +526,15 @@ export async function generate(
   // The probe runs once for each outDir.
   const folding = new Map<string, boolean>()
   const targetOf = (unit: Unit): string => {
-    let folds = folding.get(unit.outDir)
-    if (folds === undefined) {
-      folds = (request.foldsCase ?? foldsCase)(unit.outDir) ?? false
-      folding.set(unit.outDir, folds)
+    let folded = folding.get(unit.outDir)
+    if (folded === undefined) {
+      folded = folds(unit.outDir) ?? false
+      folding.set(unit.outDir, folded)
     }
-    return folds ? moduleOf(unit).toLowerCase() : moduleOf(unit)
+    return folded ? moduleOf(unit).toLowerCase() : moduleOf(unit)
   }
 
-  for (const canister of request.canisters) {
+  for (const canister of canisters) {
     const key = JSON.stringify([canister.didFile, canister.outDir])
     const same = units.get(key)
     if (same) {
@@ -559,21 +552,89 @@ export async function generate(
     if (owner) refused.set(unit, owner)
     else claimed.set(target, unit)
   }
+  return { units: [...units.values()], refused }
+}
+
+/** Why `unit` is not generated: it would write the module `owner` writes. */
+function collisionFailure(unit: Unit, owner: Unit, root: string): string {
+  return (
+    `would write ${path.relative(root, moduleOf(unit))}, which ${quoteNames(owner.names)} already writes` +
+    (moduleOf(unit) === moduleOf(owner)
+      ? ". "
+      : ` as ${path.relative(root, moduleOf(owner))}: the filesystem does not tell the two names apart. `) +
+    `The generator names a module after its .did file: rename one file or give one canister its own outDir`
+  )
+}
+
+/**
+ * The canisters of `canisters` that cannot be generated because one before
+ * them writes their module, by name, each with why: the canisters `generate`
+ * would refuse if it were given them all. The plugin asks it of every
+ * canister it generates before a run does anything, so that such a canister
+ * is refused before anything is fetched, run or written for it, whichever
+ * canisters the run then generates. Never throws.
+ *
+ * @param folds - Whether the filesystem of an `outDir` ignores case: by
+ * default, the `foldsCase` probe.
+ */
+export function moduleCollisions(
+  canisters: GenerateCanister[],
+  root: string,
+  folds: (outDir: string) => boolean | undefined = foldsCase
+): Map<string, string> {
+  const failures = new Map<string, string>()
+  for (const [unit, owner] of planGenerations(canisters, folds).refused) {
+    const failure = collisionFailure(unit, owner, root)
+    for (const name of unit.names) failures.set(name, failure)
+  }
+  return failures
+}
+
+/**
+ * Generate `canisters` with the CLI at `cli`: one process for each output
+ * directory, run side by side. Never rejects. Aborting `signal` kills the
+ * processes that are running, and their canisters fail as stopped.
+ *
+ * Canisters that name the same `.did` and the same `outDir` are one
+ * generation: the CLI gets the file once, and its outcome belongs to each of
+ * them. That is the case of many canisters with one interface (two ICRC-1
+ * ledgers on `icrc1.did`), which share one module.
+ *
+ * Different `.did` files that would write the same module (the CLI names an
+ * output after its `.did`, so `a/ledger.did` and `b/ledger.did` in one
+ * `outDir` collide) are refused here, naming both. The CLI would otherwise
+ * refuse the whole run with a usage error. Whether `A.did` and `a.did` collide
+ * depends on the filesystem of the `outDir`: they do where it ignores case
+ * (macOS and Windows by default) and write two modules where it does not. The
+ * plugin refuses such a canister before its run does anything for it (see
+ * `moduleCollisions`), so for the plugin this is the check of last resort.
+ */
+export async function generate(
+  request: Context & {
+    canisters: GenerateCanister[]
+    /**
+     * Whether the filesystem that holds an `outDir` ignores case, `undefined`
+     * when unknown, which is taken as a filesystem that does not. For tests,
+     * which cannot rely on the filesystem of the machine they run on.
+     */
+    foldsCase?: (outDir: string) => boolean | undefined
+  }
+): Promise<GenerateResult> {
+  const { root } = request
+  const { units, refused } = planGenerations(
+    request.canisters,
+    request.foldsCase ?? foldsCase
+  )
 
   const outcomes: Outcome[] = [...refused].map(([unit, owner]) => ({
     names: unit.names,
     status: "failed",
     omitted: [],
-    failure:
-      `would write ${path.relative(root, moduleOf(unit))}, which ${quoteNames(owner.names)} already writes` +
-      (moduleOf(unit) === moduleOf(owner)
-        ? ". "
-        : ` as ${path.relative(root, moduleOf(owner))}: the filesystem does not tell the two names apart. `) +
-      `The generator names a module after its .did file: rename one file or give one canister its own outDir`,
+    failure: collisionFailure(unit, owner, root),
   }))
 
   const groups = new Map<string, Unit[]>()
-  for (const unit of units.values()) {
+  for (const unit of units) {
     if (refused.has(unit)) continue
     groups.set(unit.outDir, [...(groups.get(unit.outDir) ?? []), unit])
   }
@@ -585,10 +646,48 @@ export async function generate(
   }
 }
 
-/** The module the CLI writes for `unit`: it names it after the `.did`. */
+/** The files `candid-core-cli gen` writes for one `.did`, as it names them. */
+export interface Outputs {
+  /** The `.did`'s file name without a final `.did`: `ledger` for `a/ledger.did`. */
+  stem: string
+  /** `<stem>.ts` in the output directory: the generated module. */
+  module: string
+  /** `<stem>.envelope.json` beside it: the contract envelope. */
+  envelope: string
+}
+
+/**
+ * The files `candid-core-cli gen` writes for the `.did` at `didFile` into
+ * `outDir`, named as the CLI names them: after the file's name with a final
+ * `.did` cut off, exactly, and nothing else cut. `a/ledger.did` writes
+ * `ledger.ts` and `ledger.envelope.json`, `ledger.v2.did` writes
+ * `ledger.v2.ts`, and a file named `.did` writes `.ts`. A name that does not
+ * end in `.did` (`api.candid`, `api.DID`) keeps its whole name
+ * (`api.candid.ts`), and the CLI reads no such file: it fails its entry
+ * (`did_source_not_found`) and writes nothing.
+ *
+ * The plugin's one rule for these names: the modules canisters would write
+ * (`moduleCollisions`, `generate`) and the files a run puts back when it takes
+ * nothing of a `.did` written while the generator read it are both named by
+ * it. The rule is the CLI's own (its `stemOf`), and a test compares it with
+ * the paths the CLI reports.
+ */
+export function outputsOf({
+  didFile,
+  outDir,
+}: {
+  didFile: string
+  outDir: string
+}): Outputs {
+  const stem = path.basename(didFile).replace(/\.did$/, "")
+  return {
+    stem,
+    module: path.join(outDir, `${stem}.ts`),
+    envelope: path.join(outDir, `${stem}.envelope.json`),
+  }
+}
+
+/** The module the CLI writes for `unit` (see `outputsOf`). */
 function moduleOf(unit: Unit): string {
-  return path.join(
-    unit.outDir,
-    path.basename(unit.didFile, path.extname(unit.didFile)) + ".ts"
-  )
+  return outputsOf(unit).module
 }

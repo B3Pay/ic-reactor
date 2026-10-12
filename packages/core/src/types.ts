@@ -7,13 +7,18 @@
  * and an app never names them: it reads them off a call, such as
  * `client.queryOptions(...)`.
  *
- * Nothing here carries a method's mode. A generated `Actor` type says what a
- * method takes and returns, not whether it is a query or an update, so mode
- * rules (a read built from an update, a certified composite query) are checked
- * when the client builds the call, at run time.
+ * A generated `Actor` type (from `candid-core-cli gen` 0.3.0) carries each
+ * method's mode as `$.WithMode<mode>`. {@link ReadMethod} and
+ * {@link OptInMethod} read it, so that `client.queryOptions()` refuses an
+ * update or a oneway method at compile time. A method whose mode the type does
+ * not say (an `Actor` written by hand) passes, and the client still checks
+ * every mode rule when it builds the call, at run time: that check is the only
+ * one for such a method, and for a composite query of a certified canister,
+ * which no type tells apart.
  *
  * @module
  */
+import type { ModeOf } from "@candid-core/schema"
 import type {
   DataTag,
   MutationKey,
@@ -101,6 +106,32 @@ export type Vars<P extends readonly unknown[]> = P extends readonly []
 
 /** The variables of method `M` of `A`. */
 export type VarsOf<A, M extends keyof A> = Vars<ArgsOf<A[M]>>
+
+/**
+ * The methods of `A` a read may be built from with `{ update: "idempotent" }`:
+ * every one not known to be a `oneway`, which has no reply to cache whatever
+ * the options say.
+ *
+ * A method of a generated `Actor` carries its mode (`$.WithMode<"query">`).
+ * One written by hand carries none, and `ModeOf` reads it as any of the four,
+ * which passes here and is checked at run time.
+ */
+export type OptInMethod<A> = {
+  [K in keyof A & string]: [ModeOf<A[K]>] extends ["oneway"] ? never : K
+}[keyof A & string]
+
+/**
+ * The methods of `A` a read may be built from without the opt-in: the
+ * methods of {@link OptInMethod} not known to be an `update`. For a generated
+ * `Actor`, its `query` and `composite_query` methods.
+ */
+export type ReadMethod<A> = {
+  [K in keyof A & string]: K extends OptInMethod<A>
+    ? [ModeOf<A[K]>] extends ["update"]
+      ? never
+      : K
+    : never
+}[keyof A & string]
 
 /** What method `M` of `A` resolves with. */
 export type DataOf<A, M extends keyof A> = Unwrap<ReplyOf<A[M]>>
@@ -337,6 +368,18 @@ export type QueryArgs<A, M extends keyof A, S extends SkipToken = SkipToken> = [
       options?: QueryOptionsOptions,
     ]
 
+/**
+ * The arguments of `client.queryOptions()` after the method, for a read that
+ * opts in with `{ update: "idempotent" }`: the variables of {@link QueryArgs},
+ * required, even `undefined` for a method without arguments, then the
+ * options.
+ */
+export type OptInQueryArgs<
+  A,
+  M extends keyof A,
+  S extends SkipToken = SkipToken,
+> = [vars: QueryArgs<A, M, S>[0], options: QueryOptionsOptions]
+
 /** The fourth argument of `client.queryOptions()`. */
 export interface QueryOptionsOptions {
   /**
@@ -345,6 +388,45 @@ export interface QueryOptionsOptions {
    * ckBTC's `get_btc_address`.
    */
   readonly update: "idempotent"
+}
+
+/** The fourth argument of `client.resendOf()`. */
+export interface ResendOptions<V> {
+  /**
+   * What makes the canister answer this argument at most once, read from it:
+   * `(arg) => arg.created_at_time` for an ICRC-1 transfer. `undefined` or
+   * `null` means the argument carries no such key, and nothing is offered.
+   * The client cannot check that the canister deduplicates on it: the app
+   * states it.
+   */
+  readonly dedupedBy: (arg: V) => unknown
+}
+
+/**
+ * What `client.resendOf()` offers: a write whose outcome is unknown, to send
+ * again exactly as it was sent (the same bytes, to the same canister id), and
+ * only as whoever sent it.
+ */
+export interface Resend<V, D> {
+  /**
+   * The argument the attempt sent: the very object `mutate` or the call was
+   * given (the list, for several arguments). `mutate(resend.arg)` sends it
+   * again through a mutation, as the same write or not at all: as `from`
+   * (else `cancelled`, `caller_changed`), to the method and canister id the
+   * attempt went to (else `cancelled`, `target_changed`), and while it still
+   * encodes to the bytes the attempt sent (else `invalid_args`,
+   * `arg_changed`). Do not change it: build a new argument for a new write.
+   */
+  readonly arg: V
+  /** The principal that sent the attempt, as text: the only caller a re-send goes out as. */
+  readonly from: string
+  /**
+   * Sends again now the bytes the attempt sent, to the canister id it went
+   * to (for `aaaaa-aa`, routed by the same effective canister id), as `from`, whatever became of `arg` or of a `{ name }` since. If
+   * someone else is the caller by then, it rejects `cancelled`
+   * (`caller_changed`) and sends nothing. Settles as a direct call does.
+   */
+  send(): Promise<D>
 }
 
 /** A read to invalidate after a write: every read of a canister, or of one of its methods. */

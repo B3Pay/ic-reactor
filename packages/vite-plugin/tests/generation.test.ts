@@ -658,8 +658,11 @@ describe("generation under vite build", () => {
       path.join(app.root, "src/canisters/icrc1.ts"),
       "utf-8"
     )
-    expect(module).toContain("export { $actor as actor, type $Actor as Actor }")
-    expect(module).toContain("icrc1_transfer")
+    expect(module).toContain("export { $actor as actor }")
+    expect(module).toContain("export type Actor = {")
+    expect(module).toContain(
+      `icrc1_transfer: ((arg0: TransferArg) => Promise<TransferResult>) & $.WithMode<"update">`
+    )
     const envelope = JSON.parse(
       fs.readFileSync(
         path.join(app.root, "src/canisters/icrc1.envelope.json"),
@@ -726,7 +729,7 @@ describe("generation under vite build", () => {
     })
 
     await expect(result).rejects.toThrow(
-      /its report has schemaVersion 2, and this plugin reads 1; install @candid-core\/cli@0\.2\.0(?![-.\w])/
+      /its report has schemaVersion 2, and this plugin reads 1; install @candid-core\/cli@0\.3\.0(?![-.\w])/
     )
   })
 
@@ -836,7 +839,7 @@ describe("generation under vite build", () => {
 
       // Both canisters fail for one reason, which is said once.
       await expect(result).rejects.toThrow(
-        /could not generate 2 of 2 canisters:\n {2}- a \(did\/a\.did\), b \(did\/b\.did\): cannot find @candid-core\/cli from .*npm install --save-dev --save-exact @candid-core\/cli@0\.2\.0(?![-.\w])/s
+        /could not generate 2 of 2 canisters:\n {2}- a \(did\/a\.did\), b \(did\/b\.did\): cannot find @candid-core\/cli from .*npm install --save-dev --save-exact @candid-core\/cli@0\.3\.0(?![-.\w])/s
       )
     })
     expect(generatorRuns()).toEqual([])

@@ -8,12 +8,18 @@
  * that gives the answer is checked against what the machine does, and the
  * plugin against the probe.
  */
+import { spawnSync } from "node:child_process"
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { foldsCase, generate, resolveCliBin } from "../src/generate.js"
-import { createApp, runBuild, type App } from "./support.js"
+import {
+  foldsCase,
+  generate,
+  outputsOf,
+  resolveCliBin,
+} from "../src/generate.js"
+import { createApp, PING_DID, runBuild, type App } from "./support.js"
 
 const apps: App[] = []
 const directories: string[] = []
@@ -237,5 +243,83 @@ describe("the probe of the filesystem", () => {
       line.includes("the filesystem does not tell the two names apart")
     )
     expect(refused).toBe(expected)
+  })
+})
+
+// The plugin names the files the generator writes by one rule, `outputsOf`:
+// the modules canisters would write, and the files a run puts back. It is the
+// CLI's own, and the CLI reports what it names, even for a file it fails.
+describe("the files the generator writes for a .did", () => {
+  it("are named as candid-core-cli gen names them, whatever the file's name", () => {
+    const names = [
+      "api.did",
+      "api.v2.did",
+      "api.did.did",
+      ".did",
+      "..did",
+      "api.candid",
+      "api.DID",
+      "api",
+    ]
+    const app = createApp(
+      Object.fromEntries(
+        names.map((name, index) => [`in${index}/${name}`, PING_DID])
+      ),
+      "real"
+    )
+    apps.push(app)
+    const cli = resolveCliBin(app.root)
+
+    // What the CLI reports and writes for each, beside what the plugin names.
+    const runs = names.map((name, index) => {
+      const didFile = path.join(app.root, `in${index}`, name)
+      const outDir = path.join(app.root, `out${index}`)
+      const run = spawnSync(
+        process.execPath,
+        [cli, "gen", didFile, "-o", outDir, "--json"],
+        { cwd: app.root, encoding: "utf-8" }
+      )
+      const [entry] = (
+        JSON.parse(run.stdout) as {
+          entries: Array<{ status: string; module: string; envelope: string }>
+        }
+      ).entries
+      const written = fs.existsSync(outDir) ? fs.readdirSync(outDir) : []
+      return { name, didFile, outDir, entry, written: written.sort() }
+    })
+    expect(
+      runs.map(({ name, didFile, outDir }) => {
+        const { module, envelope } = outputsOf({ didFile, outDir })
+        return { name, module, envelope }
+      })
+    ).toEqual(
+      runs.map(({ name, entry }) => ({
+        name,
+        module: entry.module,
+        envelope: entry.envelope,
+      }))
+    )
+    // Written where it is named, or nothing written at all.
+    for (const { entry, written } of runs) {
+      expect(written).toEqual(
+        entry.status === "written"
+          ? [path.basename(entry.envelope), path.basename(entry.module)].sort()
+          : []
+      )
+    }
+    const named = runs.map(
+      ({ name, entry }) =>
+        `${name} ${entry.status} ${path.basename(entry.module)}`
+    )
+    expect(named).toEqual([
+      "api.did written api.ts",
+      "api.v2.did written api.v2.ts",
+      "api.did.did written api.did.ts",
+      ".did written .ts",
+      "..did written ..ts",
+      "api.candid failed api.candid.ts",
+      "api.DID failed api.DID.ts",
+      "api failed api.ts",
+    ])
   })
 })

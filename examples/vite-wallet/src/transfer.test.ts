@@ -6,7 +6,7 @@ import {
   actor as ledgerActor,
   type Actor as Ledger,
   type TransferArg,
-  type TransferError,
+  type Icrc1TransferError,
 } from "./canisters/ledger.ts"
 import {
   BOB,
@@ -102,7 +102,7 @@ describe("reading the transfer form", () => {
 })
 
 describe("the ledger's refusals, worded", () => {
-  const cases: [string, TransferError, string][] = [
+  const cases: [string, Icrc1TransferError, string][] = [
     [
       "InsufficientFunds",
       { tag: "InsufficientFunds", value: { balance: 50_000_000n } },

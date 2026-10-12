@@ -17,6 +17,7 @@ publicHoistPattern:
 packages:
   - "packages/*"
   - "e2e"
+  - "scripts/size-app"
   - "docs"
   - "examples/*"
   - "examples/*/*"

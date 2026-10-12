@@ -8,10 +8,13 @@
  * a component mounts again, after an invalidation, when it retries. Each run
  * is another transfer.
  *
- * The guarantee: `client.queryOptions` throws a `TypeError` for an update (or
- * oneway) method at the line that builds the read, which says to use
- * `mutationOptions`, and sends nothing. The one case where an update is a read,
- * a method that answers the same however often it runs (ckBTC's
+ * The guarantee: for a generated `Actor`, which says each method's mode,
+ * `client.queryOptions` with an update (or oneway) method does not compile
+ * (`tests/traps.test-d.ts`). For an `Actor` written by hand, which does not,
+ * it throws a `TypeError` at the line that builds the read, which says to use
+ * `mutationOptions`, and sends nothing: that run-time check is what this file
+ * proves, through the ledger typed by hand. The one case where an update is a
+ * read, a method that answers the same however often it runs (ckBTC's
  * `get_btc_address`), is a written-out opt-in, `{ update: "idempotent" }`,
  * which is bounded: the read runs once per caller, and focus, reconnect and
  * remount do not run it again.
@@ -22,10 +25,13 @@ import {
   onlineManager,
 } from "@tanstack/query-core"
 import { afterAll, afterEach, describe, expect, it, vi } from "vitest"
+import type { HandWritten } from "../canister-helpers.js"
+import * as icrc1 from "../fixtures/icrc1.js"
 import * as shapes from "../fixtures/shapes.js"
 import {
   ALICE,
   BOB,
+  LEDGER,
   SIGNED_CALLS_TIMEOUT_MS,
   disposeAll,
   eventually,
@@ -96,12 +102,18 @@ async function triggerRefetches(
 describe("a read built for an update method", () => {
   it("is refused when it is built, and nothing is sent", () => {
     const l = setupLedger()
+    // The same ledger, typed by an Actor written by hand: no mode says that
+    // icrc1_transfer is an update, so the read compiles and only the check at
+    // run time stands between it and a transfer on every refetch.
+    const ledger = l.client.canister<HandWritten<icrc1.Actor>>(icrc1.actor, {
+      id: LEDGER,
+    })
 
     expect(() =>
-      l.client.queryOptions(l.ledger, "icrc1_transfer", transferArg(500n))
+      l.client.queryOptions(ledger, "icrc1_transfer", transferArg(500n))
     ).toThrow(TypeError)
     expect(() =>
-      l.client.queryOptions(l.ledger, "icrc1_transfer", transferArg(500n))
+      l.client.queryOptions(ledger, "icrc1_transfer", transferArg(500n))
     ).toThrow(/mutationOptions/)
     expect(l.sent()).toEqual([])
     expect(l.executed()).toBe(0)

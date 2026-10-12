@@ -177,6 +177,33 @@ describe("sending ICP", () => {
     ).toBeNull()
   })
 
+  it("withdraws the offer on a sign-out, and makes it again once the same account signs back in", async () => {
+    const made = await renderSend()
+    made.dropNextReply()
+    send(BOB, "1")
+    const again = { name: "Send the same transfer again" }
+    await screen.findByRole("button", again, patiently)
+
+    await act(async () => {
+      await made.auth.signOut()
+    })
+    await screen.findByText("Sign in to send.", {}, patiently)
+    expect(screen.queryByRole("button", again)).toBeNull()
+
+    await act(async () => {
+      await made.auth.signIn()
+    })
+    fireEvent.click(await screen.findByRole("button", again, patiently))
+    await waitFor(
+      () =>
+        expect(outcome()).toBe(
+          "Refused by the canister: Duplicate of block 0: this exact transfer went through already, and was not made twice."
+        ),
+      patiently
+    )
+    expect(made.balanceOf(BOB)).toBe(1n * ICP)
+  })
+
   it("after a reject from the canister, says it may have executed, and the re-read shows nothing moved", async () => {
     const made = await renderSend()
     made.failNext("icrc1_transfer", "reject-4")

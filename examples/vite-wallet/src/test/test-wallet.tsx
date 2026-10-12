@@ -23,7 +23,7 @@ import {
   type Account,
   type Actor as Ledger,
   type TransferArg,
-  type TransferError,
+  type Icrc1TransferError,
 } from "../canisters/ledger.ts"
 import { ICP_LEDGER } from "../use-canisters.ts"
 
@@ -177,7 +177,7 @@ export function createTestWallet(
   }
 
   function transfer(arg: TransferArg, caller: Principal) {
-    const err = (value: TransferError) => ({ tag: "Err" as const, value })
+    const err = (value: Icrc1TransferError) => ({ tag: "Err" as const, value })
     const txKey = transferKey(caller, arg)
     if (arg.created_at_time !== null) {
       const now = BigInt(Date.now()) * 1_000_000n

@@ -1,0 +1,5 @@
+{
+  "file": "src/types.ts",
+  "search": "export type OptInMethod<A> = {\n  [K in keyof A & string]: [ModeOf<A[K]>] extends [\"oneway\"] ? never : K\n}[keyof A & string]",
+  "replace": "export type OptInMethod<A> = keyof A & string"
+}

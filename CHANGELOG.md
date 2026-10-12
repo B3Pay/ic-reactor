@@ -15,7 +15,606 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### Examples (not published)
+
+- A fifth example, `canister-studio`: a TanStack Start app, rendered on the
+  server, that gives every method of any mainnet canister an automatic form
+  and calls it with ic-reactor's rules in view. The ICP, ckBTC and ckETH
+  ledgers and the ckBTC minter are typed by three generated modules; any
+  other canister's interface is read from its certified `candid:service`
+  metadata, compiled on the server by `@candid-core/cli` and rebuilt in the
+  browser with `schemaFromContract`, and an interface from the uncertified
+  fallback query is labelled so. It shows one client per request and per
+  tab, reads hydrated without a refetch, shared query links rendered on the
+  server, writes confirmed with their sender and exact bytes, `resendOf`
+  after an unknown outcome, certified reads, an idempotent update read as a
+  query (ckBTC's `get_btc_address`), a Safety lab of ten scenarios over
+  `createTestClient()` in the browser, and a playground that compiles a
+  pasted `.did` in the browser. Its tests run offline; its `smoke` script
+  checks its `.did` files and reads against mainnet. It pins
+  `^4.0.0-beta.5`, `@candid-core/schema` `0.4.0` and `@candid-core/cli`
+  `0.3.0`, a runtime dependency here, and has a page in the examples docs.
+  The root README, the docs' home page and Getting started now say five
+  examples.
+
+## core, react, vite-plugin 4.0.0-beta.5
+
+Prepared on 2026-10-11. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.4.
+
+This release moves ic-reactor 4 onto the candid-core pair published on
+2026-10-10. Both are pinned exactly, where beta.4 required `0.3.0` and
+`0.2.0`:
+
+- `@ic-reactor/core`: peer `@candid-core/schema` at exactly `0.4.0`;
+- `@ic-reactor/vite-plugin`: peer `@candid-core/cli` at exactly `0.3.0`, the
+  version its install hints now name.
+
+Three things are new, as core's and the Vite plugin's entries below say:
+
+- `client.queryOptions` reads the mode each method of a generated `Actor`
+  now carries, and an update or a oneway method does not compile there
+  (#851).
+- The Vite plugin's `methods` on a canister entry: a fetched `didFile` is
+  written as the projection of the live interface to the methods the app
+  calls, so the generated module has only them (#852, phase 2).
+- The Vite plugin's live check: `verify: "live"` on an entry, or
+  `IC_REACTOR_VERIFY`, checks a `didFile` on disk against the live canister's
+  certified interface when a build or dev server starts.
+
+No `@ic-reactor/*` export is added or removed (core 13,
+`@ic-reactor/core/testing` 2, react 4, vite-plugin 2). The pair itself changes
+no call, key or error at run time: what it adds, each method's mode in the
+generated `Actor`, is read by `client.queryOptions` at compile time only.
+Schema 0.4.0's JavaScript is 0.3.0's but for one header comment, so an app's
+bundle does not change.
+
+What an app on beta.4 does:
+
+1. Bump all three `@ic-reactor/*` packages to `4.0.0-beta.5` and the pair to
+   `0.4.0` and `0.3.0`, in one `npm install`. npm does not resolve a partial
+   upgrade cleanly: core 4.0.0-beta.5 peers schema exactly
+   `0.4.0` and core 4.0.0-beta.4 exactly `0.3.0`; the Vite plugin
+   4.0.0-beta.5 peers CLI exactly `0.3.0` and 4.0.0-beta.4 exactly `0.2.0`;
+   and CLI 0.3.0 peers schema exactly `0.4.0`, CLI 0.2.0 exactly `0.3.0`. So
+   a command that moves only some of them meets the others' peers: with npm
+   11, the CLI alone fails with `ERESOLVE`, and the schema alone installs
+   with an `ERESOLVE overriding peer dependency` warning, leaving core's peer
+   unmet. One command moves them all, and keeps each package in the section
+   of `package.json` it is in (`dependencies` or `devDependencies`):
+
+   ```sh
+   npm install --save-exact @ic-reactor/core@4.0.0-beta.5 @ic-reactor/react@4.0.0-beta.5 @ic-reactor/vite-plugin@4.0.0-beta.5 @candid-core/schema@0.4.0 @candid-core/cli@0.3.0
+   ```
+
+   Name only the packages the app has. Keep one copy of the schema. A second
+   one left at `0.3.0`, beside core's `0.4.0`, makes its `Principal` another
+   type than core's, and passing one for the other fails with `TS2322` or
+   `TS2345` ("Property '[principalBrand]' is missing").
+
+2. Regenerate every committed module with `candid-core-cli gen` (the Vite
+   plugin does it when it starts). Until then `gen --check` reports each
+   module CLI 0.2.0 wrote as `drifted` and exits 1; the `.envelope.json`
+   beside it does not change. A module CLI 0.2.0 wrote still compiles against
+   schema 0.4.0, but a module CLI 0.3.0 writes does not compile against
+   `0.3.0` (`TS2694`, "has no exported member 'WithMode'", once per method).
+
+3. Code that imports the generated names compiles unchanged, but for the
+   `queryOptions` calls of step 4. Two things in the module change what the
+   compiler shows:
+   - Each type is declared under its Candid name, `export type Account = …`,
+     so a type error names `Account` where it named `$Account`. A name that
+     cannot be a type keeps the `$`: the globals `Array`, `Promise`, `Record`
+     and `Uint8Array`, and words TypeScript refuses as a type's name, such as
+     `delete` or `string`.
+   - Each method of `type Actor` is its call signature intersected with
+     `$.WithMode<"query" | "composite_query" | "update" | "oneway">`.
+     `Parameters<>`, `ReturnType<>`, `keyof Actor` and a plain async function
+     that implements a method are unchanged, and so is what
+     `client.canister<Actor>()` returns. A type test that compares a method
+     type of `Actor` for exact equality with its bare signature now fails.
+
+4. Expect the compile errors of `client.queryOptions` listed under
+   `@ic-reactor/core` below: `TS2769` ("No overload matches this call") for
+   an update or a oneway method of a generated `Actor`, and for some calls
+   that ran without a `TypeError` on beta.4: an update's fourth argument whose
+   type may be `undefined`, and a method TypeScript cannot tell is a read (a
+   type parameter, a union that may name an update, any method of a generic
+   `Actor`). A write goes through `client.mutationOptions`; an update that
+   answers the same however often it runs takes `{ update: "idempotent" }`;
+   and a generic wrapper gives the type arguments,
+   `client.queryOptions<A, any>(…)`. Nothing changes at run time.
+
+5. Check the Vite plugin's options. It now refuses what beta.4 read without a
+   word, as its entries below say: a key that is no option (a misspelled
+   `didfile` or `canisterID`), a value given that is not one (`null`
+   included), a `failOnError` or `injectEnvironment` other than `true` or
+   `false`, and options, `canisters` or an entry that is not a plain object.
+   A key or value of a canister entry fails that canister, under
+   `failOnError`; one of the options themselves throws when the config loads.
+   Each message names the option or quotes the value.
+
+### @ic-reactor/core
+
+#### Changed
+
+- Its peer `@candid-core/schema` is exactly `0.4.0`, where it was `0.3.0`
+  (#866). Core's types read its `ModeOf` for the check below; core's
+  JavaScript does not change but for its version string.
+
+#### `queryOptions` refuses an update or a oneway method at compile time (#851)
+
+`client.queryOptions(canister, method, …)` reads the mode each method of a
+generated `Actor` carries (`$.WithMode<mode>`, from `candid-core-cli gen`
+0.3.0), and its `method` takes only a method a read may be built from:
+
+| The method's mode in the `Actor`  | Without the fourth argument | With `{ update: "idempotent" }` |
+| --------------------------------- | --------------------------- | ------------------------------- |
+| `query`, `composite_query`        | compiles                    | compiles                        |
+| `update`                          | **does not compile**        | compiles                        |
+| `oneway`                          | **does not compile**        | **does not compile**            |
+| none (an `Actor` written by hand) | compiles                    | compiles                        |
+
+This is a compile-time break for code that names an update method of a
+generated `Actor` without a fourth argument whose type is
+`{ update: "idempotent" }`, or that names a oneway method with or without it.
+The error is `TS2769` ("No overload matches this call"), saying that the
+method `is not assignable to parameter of type 'ReadMethod<Actor>'`, or
+`'OptInMethod<Actor>'` for a oneway with the opt-in. Use
+`client.mutationOptions` for a write, or call it directly; pass
+`{ update: "idempotent" }` only for an update that answers the same however
+often it runs.
+
+Such a call with the method's name written out compiled on beta.4 and threw a
+`TypeError` when it ran. Two kinds of call compiled on beta.4, could run
+without a `TypeError`, and no longer compile:
+
+- **A fourth argument that may be `undefined`.** Its type, such as that of an
+  optional options parameter a wrapper passes on, does not say it is the
+  opt-in, so for an update method the call does not compile, though it
+  ran whenever the value was defined. Pass `{ update: "idempotent" }`, or a
+  value typed `{ readonly update: "idempotent" }` (the type is not
+  exported). For a query it compiles as before.
+- **A method whose type is not one name the `Actor` marks as a read.** The
+  call compiles only when TypeScript can tell that the method is a
+  `ReadMethod<A>`. It cannot for three kinds of method, each of which compiled
+  on beta.4 and is valid at run time whenever the value names a query:
+  - a type parameter: in
+    `function read<A, M extends keyof A & string>(c: Canister<A>, method: M, vars: …)`,
+    `client.queryOptions(c, method, vars)`;
+  - a union that may name an update, such as a method picker typed
+    `keyof Actor & string` or `"icrc1_name" | "icrc1_transfer"` (a union of
+    queries compiles);
+  - any method of a canister whose `Actor` type is generic: in
+    `function fee<A extends { icrc1_fee: () => Promise<bigint> }>(c: Canister<A>)`,
+    `client.queryOptions(c, "icrc1_fee", …)`, with or without the opt-in.
+
+  `ReadMethod` is not exported for a function to constrain its types with.
+  The escape is explicit type arguments,
+  `client.queryOptions<A, any>(c, method, vars)`: it compiles, the run-time
+  check still refuses an update or a oneway, and the options' data is
+  `unknown`, for the caller to state. (A wrapper that passed `...args: any[]`,
+  or no variables, did not compile on beta.4 either.)
+
+An `Actor` written by hand is unchanged: its methods say no mode, every one of
+them compiles as before, and the run-time check refuses an update or a oneway
+as before.
+
+Nothing changes at run time: every check `queryOptions` made, it still
+makes, and it is the only check for an `Actor` written by hand and for a
+composite query of a certified canister (the type of a canister object does
+not say it is certified). A call that compiled and did not throw builds the
+same options, with the same types. No export is added (`ReadMethod` and
+`OptInMethod` are named in compiler messages, not exported), and the bundle
+does not change. The reads guide, the writes guide and the guide
+(`llms.txt`) say so.
+
+### @ic-reactor/react
+
+- No change but the version. Its peer `@ic-reactor/core` is packed as
+  exactly `4.0.0-beta.5`, so the two move together.
+
+### @ic-reactor/vite-plugin
+
+#### Changed
+
+- Its peer `@candid-core/cli` is exactly `0.3.0`, where it was `0.2.0`
+  (#866), and the install hints the plugin prints name it. The plugin
+  generates with it as before; `methods` and the live check also run its
+  `project` and `check` commands, which 0.3.0 adds.
+- Its optional peer `@icp-sdk/core` is loaded for the live check too, as for
+  a fetch.
+
+#### Added
+
+- `methods` on a canister entry (#852, phase 2): a `didFile` fetched from its
+  `canisterId` is written as the projection of the live interface to those
+  methods and every type they reach (`candid-core-cli project`), so the
+  generated module has only them. A name the canister does not have fails the
+  canister, naming it and listing the canister's methods, and nothing is
+  written. A `didFile` on disk is never fetched for a change of `methods`: it
+  is compared with the list, with no network access, and a name the file
+  does not hold fails the canister, while a method the file holds that the
+  list does not name is a warning. Both say to fetch it again with
+  `IC_REACTOR_FETCH`. A file whose methods cannot be listed fails the
+  canister. Canisters that name one `didFile` share its fetch only
+  when they name one list, entries with no `canisterId` included (no
+  `methods` is the whole interface): with different lists, or a list that
+  cannot be projected to, nothing is fetched, before any request. A shared
+  `didFile` on disk is read by them all and compared with each list.
+- The live check: `verify: "live"` on an entry, or `IC_REACTOR_VERIFY=1` (or
+  `true`, `all`, or canister names separated by commas) for every entry with a
+  `canisterId`; `IC_REACTOR_VERIFY=0` (or `false`) turns it off for a run,
+  `verify: "live"` included. When a build or dev server starts, the plugin fetches the
+  certified interface and checks the `didFile` on disk against it
+  (`candid-core-cli check`). A method that is missing (`method_missing`),
+  changed mode (`mode_changed`) or is no longer compatible
+  (`method_incompatible`, with the path into its type) fails the canister,
+  naming the canister and each method, under `failOnError`. A compatible
+  change is a warning: `special_opt_rule` findings, and a change to the types
+  of the file's methods, told by the identities of the two projections to
+  them. A check that cannot be made fails the canister, and says to build
+  with `IC_REACTOR_VERIFY=0`. Under `vite dev` a failed check stands after a
+  save, whatever it changed, until a restart checks it again and it passes,
+  fetches the file again, or runs with the check off. A pass is reused only
+  within one build or dev server (a rebuild, another Vite environment), and
+  only until a check of that canister fails or cannot be made, or a fetch of
+  its file fails or reads another interface: a restart, or the next build of
+  the same plugin object, checks every canister again. `verify` takes only `"live"`, and any other
+  value fails the canister.
+- A run (the start of a build or dev server, or a save's regeneration) reads
+  each `didFile` once, and again after each step that runs `candid-core-cli`
+  on it (listing its methods, the live check, generation), since each reads
+  the file itself. A file written before the run is done with it, even saved
+  back, is not taken, and the run reports nothing its steps found of it.
+  `vite build` fails the canister for that reason alone
+  (`changed during the build`) and puts back a module the generator wrote
+  meanwhile; `vite dev` queues the file again, as a save, and says nothing of
+  the canister until that run does. A check of a file written before the
+  check was done, passed or failed, records no pass and neither sets nor
+  clears a failed check.
+- Every option value given is checked when the plugin is made, on every
+  canister, one without a `didFile` included, and whether or not a build
+  would use it: only an omitted one counts as not given. A canister whose
+  entry is not a plain object, or whose value is not one (`null`, `false`,
+  `0` or `""` from a JavaScript config, a `didFile` or `outDir` that is not a
+  path, a `canisterId` that is not the text of a principal, a `network`,
+  `methods` or `verify` that is none of their values, `verify: "live"` with
+  no `canisterId`, a getter that throws) fails, quoted as given whatever its
+  kind (a bigint, a symbol, an object that holds itself), before the plugin
+  fetches, writes, runs or requests anything to generate it or a `didFile` it
+  shares; the other canisters build. So does a canister whose module a
+  canister before it writes (two `.did` files of one name in one `outDir`), at
+  the start of each run, and a canister `IC_REACTOR_FETCH` or
+  `IC_REACTOR_VERIFY` names with no `canisterId`. Under `vite dev` a save of
+  the file of any of these, or its deletion, leaves the canister failed for
+  the same reason and runs nothing for it: a save neither generates it, over
+  another's module or not, nor takes it for fixed. Each is still named in the
+  `ic_env` cookie, but one whose name the cookie cannot carry (below); a
+  `canisterId` that is not one is left out of it, with a warning.
+  `failOnError` and `injectEnvironment` take `true` or `false`, and
+  `canisters` a plain object: any other value, `null` included, throws when
+  the config loads, instead of being read by truthiness or taken for none.
+  Every default is taken for an omitted option alone. Every key is checked
+  too, whatever its value: a key of an entry that is none of its fields (a
+  misspelled `didfile` or `canisterID`), or of a `network` of `{ host }`
+  other than `host`, fails the canister, and a key of the options that is
+  none of `canisters`, `injectEnvironment` and `failOnError` throws when the
+  config loads; the message names the option the key may misspell.
+- A dev server restarted with the same plugin object (an inline config, as
+  `server.restart()` keeps it) has runs of its own: the old server's close,
+  which Vite runs after the new server started, stops only the old server's.
+  The new server's overlay starts as the old one's, and a failed live check
+  still stands through the restart until a check of it passes.
+- Both run the app's `candid-core-cli` in a child process, as `gen` does, and
+  never the library in the Vite process. No export is added; the two fields
+  are new keys of `IcReactorPluginOptions["canisters"]`.
+
+#### Fixed
+
+- A canister's name is kept as given. One named `__proto__` (from a JSON
+  config, or a computed key) with no `canisterId` of its own lost the ID `icp`
+  reported for it to `Object.prototype`'s setter, so the `ic_env` cookie
+  carried none; and one named after a member of `Object.prototype`
+  (`__proto__`, `constructor`, `toString`, `hasOwnProperty`) with no ID found
+  that member and was never missing: no warning, no page load asked `icp`
+  again, and the cookie never carried its ID. A name that begins with `-`,
+  which `icp` allows, was handed to `icp canister status` where `icp` reads a
+  flag: it refused `-x`, and for `--help` printed its help, which the cookie
+  carried as the canister's ID. A name that holds `&` or `=`, which no name
+  `icp` gives a canister does, is left out of the cookie, with a warning: the
+  cookie joins its entries with them, so it was read back as other keys, one
+  of which could take the root key's place, and the app read no environment.
+- The options, `canisters`, each entry and a `network` of `{ host }` are read
+  only as plain objects. A `Map` or a `Promise` of canisters (a loader that
+  was not awaited) was read for its own keys, none, so the plugin started
+  with no canister without a word, and an entry given so was taken for a
+  canister only named in the cookie. Each is now refused, as any value that
+  is not one, and so is an instance of a class, which was read through its
+  class, or an object that inherits from another.
+- A key that is no option was never read, without a word. A misspelled
+  `canisters` started the plugin with no canister; a misspelled `didFile`
+  took its canister for one only named in the cookie, so nothing was
+  generated and the module of the last run stayed; a misspelled `canisterId`
+  generated it without its ID; and a `rootKey` beside a network's `host` was
+  read as nothing. Each is now refused, naming the option the key may
+  misspell: a key of the options throws when the config loads, and a key of
+  an entry or of its network fails the canister.
+- The generator names its module and envelope after the `.did`'s file name
+  with a final `.did` cut off, and nothing else, and reads only a file whose
+  name ends in `.did`. The plugin's check of two canisters writing one module
+  cut any extension, so a `didFile` such as `a/api.candid`, which the
+  generator cannot read, claimed `api.ts`, and a canister after it on
+  `c/api.did` was refused. The plugin now names these files by the
+  generator's rule, which a test compares with what the CLI reports.
+
+### Docs
+
+- The guide (`llms.txt`), react's guide and the skill say they apply to
+  4.0.0-beta.5 (#866).
+- Every install line and peer table names `@candid-core/schema` `0.4.0` and
+  `@candid-core/cli` `0.3.0`: getting started, the Vite plugin guide, the
+  core, react and Vite plugin pages, and the root and package READMEs.
+  Getting started says that each method of `type Actor` is its call
+  signature marked with its mode (`& $.WithMode<"query">`) (#866).
+- The reads guide's "Update methods" shows that `queryOptions` with an update
+  method of a generated `Actor` does not compile, says what `ReadMethod<Actor>`
+  is, that an `Actor` written by hand is checked at run time, which methods
+  TypeScript cannot tell are reads and the escape `queryOptions<A, any>`, and
+  that `{ update: "idempotent" }` opts in an update only, after the variables.
+  It also says that a composite query of a certified canister is refused at
+  run time only. The writes guide says `queryOptions` does not compile for an
+  update of a generated `Actor`, and the guide (`llms.txt`) says the same in
+  its reads section (#851).
+- The Vite plugin guide has four new sections, "Only the methods the app
+  calls", "The live check", "How the plugin runs candid-core" and "A .did
+  saved while the plugin reads it", and its options section says which values
+  and keys are refused, that the options are plain objects, and that a
+  canister's name is kept as given. The plugin's README has the first two
+  sections and the same options text.
+  Getting started points at `methods` (#852, phase 2).
+
+### Examples (not published)
+
+- The four examples pin `^4.0.0-beta.5`, `@candid-core/schema` `0.4.0` and
+  `@candid-core/cli` `0.3.0`, and their seven generated modules are
+  regenerated with CLI 0.3.0. They moved in #866, ahead of this release: an
+  example on schema `0.4.0` cannot install beta.4, whose core peers `0.3.0`.
+  Until this release is on npm, their check against the published packages
+  waits for it.
+- `icrc-ledger`'s Sandbox test marks
+  `client.queryOptions(minter, "get_btc_address", ownAddress)` with
+  `@ts-expect-error`, since that call no longer compiles, and still expects
+  its `TypeError` at run time. The README says the call does not compile
+  (#851).
+- `icrc-ledger`'s `icp_ledger.did` and `ckbtc_minter.did`, and `vite-wallet`'s
+  `ledger.did`, were trimmed by hand. Each is now the projection the plugin
+  wrote from the mainnet canister, and its entry names the `canisterId` and
+  `methods` it came from. The files stay committed, so the examples build
+  offline, and `IC_REACTOR_VERIFY=1` checks them against mainnet. The ICP
+  ledger's projection names its transfer error `Icrc1TransferError`, so
+  `vite-wallet` imports it by that name. `icp_ledger.envelope.json` does not
+  change; the minter's argument record is inline, as the canister declares it.
+
+### CI (not published)
+
+- Every module this repository generates (core's test fixtures, the e2e
+  `hello_actor`, the snippet checker's modules) is regenerated with CLI 0.3.0,
+  and core's type tests compile against them unchanged. React's type tests
+  write their own stand-in for a generated `Actor`; it now marks each method
+  with `WithMode`, as CLI 0.3.0 does, and compiles. The root, `e2e/`,
+  `scripts/size-app/` and the export budget's schema pin move to the new pair
+  (#866).
+- `pnpm verify:traps` has two new traps, `query-options-refuses-update` and
+  `query-options-refuses-oneway`, which weaken `ReadMethod` and `OptInMethod`
+  and show that the `@ts-expect-error` lines of `traps.test-d.ts` that refuse
+  an update and a oneway then stop biting; `options-method-unknown` follows
+  the new signatures. Core's type tests add the calls that compiled on beta.4
+  and no longer do (#851).
+- `scripts/faults.json` grows from 298 to 417 entries, for the Vite plugin's
+  new tests (#852, phase 2).
+- No size limit moves: core 14.96 kB of 15 kB, react 1.28 kB of 1.28 kB, and
+  the app checks 89.95 kB of 90 kB and 91.16 kB of 91.2 kB, as at beta.4.
+
+## core, react, vite-plugin 4.0.0-beta.4
+
+Prepared on 2026-10-10. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.3.
+
+An app on beta.3 upgrades by bumping all three packages to `4.0.0-beta.4`.
+Nothing in this release breaks code written for beta.3: no export is added or
+removed (core 13, `@ic-reactor/core/testing` 2, react 4, vite-plugin 2), no
+error kind or code is removed, no required peer changed, and a module
+generated for beta.3 need not be regenerated. The one exception is code that
+writes its own object of the `Client` type, such as a hand-made fake: the type
+gains `resendOf`, so that object no longer compiles until it has one (a client
+from `createClient` or `createTestClient` has it). Three things are new, as
+core's and the Vite plugin's entries below say:
+
+- `isReactorError(error, canister, method)` narrows a direct call's error to
+  that method's `Err` arm, so `err` is typed after `kind === "canister_err"`
+  without a cast. The one-argument form is unchanged.
+- `client.resendOf(error, canister, method, { dedupedBy })` offers to send a
+  write again exactly as it was sent, after a failure that left its outcome
+  unknown, and only for a method the app says deduplicates (an ICRC-1
+  transfer with `created_at_time`).
+- The Vite plugin writes a canister's missing `didFile` from the live
+  canister's certified `candid:service`, when the entry names a `canisterId`.
+  The entry's new `network` field says where the canister is, and
+  `IC_REACTOR_FETCH` fetches a file on disk again.
+
+Two of these change what some setups see:
+
+- The Vite plugin lists `@icp-sdk/core` `^6.1.0` as an optional peer. An app
+  on `@ic-reactor/core` has it already, at the range core asks for, and npm
+  installs nothing for an optional peer. A project that installs the plugin
+  next to an `@icp-sdk/core` outside `^6.1.0` gets a peer conflict from its
+  package manager.
+- A canister entry with a `canisterId` whose `didFile` is not on disk is
+  fetched from `network` (mainnet by default) and the file is written, where
+  beta.3 failed that canister's generation for want of the file. A project
+  that writes such a `.did` in another step (a local canister's build, say)
+  writes it before Vite starts, or gives that entry `network: "local"` so
+  the fetch reads the deployed local canister.
+
+The guide (`llms.txt`) and the skill now say they apply to 4.0.0-beta.4, use
+`isReactorError(error, canister, method)` after a direct call, and teach
+`client.resendOf` as the one safe re-send. The four examples pin
+`^4.0.0-beta.4`, and `vite-wallet` offers its re-send through
+`client.resendOf`. The size limits are tighter in CI only, which affects
+pull requests to this repository, not apps.
+
+It requires the stable candid-core pair, both pinned exactly, as in beta.3:
+
+- `@ic-reactor/core`: peer `@candid-core/schema` at exactly `0.3.0`;
+- `@ic-reactor/vite-plugin`: peer `@candid-core/cli` at exactly `0.2.0`.
+
+```sh
+npm install --save-exact @candid-core/schema@0.3.0
+npm install --save-dev --save-exact @candid-core/cli@0.2.0
+```
+
+### @ic-reactor/core
+
+#### Added
+
+- `isReactorError(error, canister, method)` narrows a direct call's error to
+  `ReactorError<E>`, where `E` is that method's `Err` arm, so `err` is typed
+  after `kind === "canister_err"` without a cast; for a method without an `Err`
+  arm, `err` stays `undefined` (#849). The guard checks at run time: every
+  error a call rejects with (a direct call, a query function or a mutation
+  function built from the canister) carries the canister object it was made
+  on, under an internal symbol, and the guard is `true` only for an error of
+  that method on that canister object. An error of another method, of another
+  canister object (the `certified: true` one, or the same canister of another
+  client) or of a `client.func` call is `false`, and a `false` result leaves
+  every `kind` possible. The one-argument form is unchanged, including
+  point-free use: `errors.filter(isReactorError)` is still typed
+  `ReactorError<unknown>[]`, because the one-argument signature is listed last.
+  It is an overload of an existing export: core still has 13 names.
+- `client.resendOf(error, canister, method, { dedupedBy })` offers to send a
+  write again exactly as it was sent, after a failure that left its outcome
+  unknown, and only for a method the app says deduplicates (#850). It returns
+  `undefined` unless `error` is a write of that method on that canister with
+  `mayHaveExecuted: true`, its argument is an object in which `dedupedBy`
+  finds a key (`(arg) => arg.created_at_time` for an ICRC-1 transfer; `null`
+  or `undefined` offers nothing), and the principal that sent it is the
+  caller now: nothing after a sign-out or a sign-in as another account, the
+  offer again once the sender signs back in, and on a view pinned to a
+  principal (hydration) the live caller decides. It also offers nothing once
+  the argument object was changed since it was sent, or once the canister
+  object resolves to another canister id than the write went to (a `{ name }`
+  the `ic_env` cookie maps elsewhere). The offer's `arg` is the attempt's own
+  argument, and goes out only as the same write. `send()` sends the bytes
+  the attempt sent, to the canister id it went to (a management call routed
+  by the effective canister id it went out with). `mutate(arg)`, on any
+  mutation of this client, sends it only to that method and canister id, and
+  only while it encodes to those bytes. Each refusal sends nothing: `cancelled`
+  (`caller_changed`) once someone else is the caller, `cancelled`
+  (`target_changed`) for another method or canister id, and `invalid_args`
+  (`arg_changed`) for an argument changed since. Once offered, that object
+  stays held to that write, so a new write needs a new argument object. The
+  client cannot check that a canister deduplicates: a method without such a
+  key has no safe re-send. It is a method of `Client`, not a new export: core
+  still has 13 names. Core's size limit is raised to 15 kB (14,957 B
+  measured, +508 B for `resendOf`), and the app checks to 90 kB (89,949 B,
+  +465 B) and 91.2 kB (91,155 B, +463 B). React's own code is unchanged.
+
+### @ic-reactor/react
+
+- No change but the version. Its peer `@ic-reactor/core` is packed as
+  exactly `4.0.0-beta.4`, so the two move together.
+
+### @ic-reactor/vite-plugin
+
+#### Added
+
+- A canister entry with a `canisterId` has its `didFile` fetched from the live
+  canister when the file is not on disk (#852, phase 1). The plugin reads
+  `candid:service` from certified state with `HttpAgent.readState`, checked
+  against the network's root key, writes it to `didFile`, and generates the
+  module from it; the file is committed with the app. A `didFile` on disk
+  costs no network request, under `vite build` and `vite dev`, and is fetched
+  again only on request: `IC_REACTOR_FETCH=<name>` (names separated by
+  commas, or `all`). The new `network` field says where the canister is:
+  `"ic"` (mainnet's root key, the default), `"local"` (icp-cli's
+  `http://127.0.0.1:8000`, its root key fetched) or `{ host }` (its root key
+  fetched only when the host is local, as `createClient` decides). An
+  unreachable network, a refused read (private metadata), absent metadata, a
+  canister that does not exist, a certificate that does not verify (naming
+  the root key it was checked against) and no answer within 30 seconds each
+  fail with their own message, naming the canister and what to do next, under
+  `failOnError` as generation does. A `didFile` that cannot be written fails
+  only the canisters that name it.
+  No export is added.
+- `@icp-sdk/core` `^6.1.0` is an optional peer, loaded only for a fetch.
+  Every app on `@ic-reactor/core` has it already.
+
+### Docs
+
+- Getting started's "Get a canister's .did" leads with the plugin's
+  `canisterId`, and keeps the script for an app without Vite. The Vite plugin
+  guide has a section on the fetch: when it happens, `network` and its root
+  keys, `IC_REACTOR_FETCH`, and its four failures.
+- The errors guide shows `isReactorError(error, canister, method)` and what it
+  checks; its duplicate-transfer recipe and the writes guide's direct
+  transfer read the typed `err` instead of casting it. The consumer guide
+  (`llms.txt`) and the skill say to use it after a direct call.
+- The writes guide has a section, "Sending the same write again", on
+  `client.resendOf` (#850): when a re-send is safe, what `dedupedBy` states,
+  that the offer goes out only as its sender, and the refusals
+  `caller_changed`, `target_changed` and `arg_changed`, each of which leaves
+  the write's outcome unknown. The errors guide lists the two new codes,
+  `target_changed` under `cancelled` and `arg_changed` under `invalid_args`,
+  says not to ignore a refused re-send as another `cancelled`, and its
+  duplicate-transfer recipe offers the re-send with `client.resendOf`. The
+  core reference page shows the three-argument `isReactorError` signature and
+  `resendOf` on `Client`, and the Vite plugin reference page lists the
+  optional `@icp-sdk/core` peer and when it is loaded.
+- Getting started has a section on keeping the IC stack (the client,
+  `AuthClient` and the generated module) out of an app's first load with
+  `React.lazy`, with no change to the library (#855). Measured on the Vite
+  wallet with Vite 8.3.0, the first load drops from 622.46 kB (193.56 kB
+  gzipped) to 222.30 kB (69.90 kB gzipped), and 401.79 kB (126.21 kB gzipped)
+  moves to chunks loaded asynchronously. It says what a route guard sees meanwhile:
+  `AuthState.status` keeps its four members, with none for "not loaded yet",
+  so a guard lives inside the lazy tree and the `Suspense` fallback stands for
+  "not known yet". It also says that the boundaries for `useSuspenseQuery`
+  reads and lazy routes go below the `ReactorProvider`: with only the entry's
+  boundary above it, a suspending read rebuilds the client on every attempt
+  and never renders. The Auth guide links to it.
+
+### CI (not published)
+
+- Core's size limit was set to 14.4 kB gzipped, just above its measured 14,347 B,
+  where it was 50 kB, as react's 1.28 kB already sits at its size. Two new
+  checks measure what an app pays with the peers included, which the
+  packages' own checks never see: `{ createClient }` (89,363 B against
+  89.5 kB) and `createClient` with `ReactorProvider` and `useClient`, React
+  itself left out (90,566 B against 90.7 kB). They run in `pnpm size`, CI's
+  "Check package sizes" step, from `scripts/size-app/`. A pull request that
+  moves a size states the delta and raises its limit deliberately
+  (CONTRIBUTING.md, "Size budget"). Core's config moved from its
+  `package.json` to `packages/core/.size-limit.js`, which is not published.
+- Core's size limit is raised to 14.5 kB: the guard's canister check adds
+  102 B (14,449 B measured). The app checks measure 89,484 B (+121 B) and
+  90,692 B (+126 B), still under their limits.
+
+### Examples (not published)
+
+- The four examples pin `^4.0.0-beta.4`.
+- `vite-wallet`'s "Send the same transfer again" is `client.resendOf`'s offer,
+  in `SendIcp.tsx` and `SendToContact.tsx`, in place of the attempt and its
+  sender the page tracked by hand. The offer is made only while the account
+  that sent the transfer is the caller, and a new test checks it is withdrawn
+  on a sign-out and made again once the same account signs back in. Its
+  `vite.config.ts` says when the plugin would fetch `ledger.did`: never while
+  the trimmed, committed file is on disk, unless `IC_REACTOR_FETCH=ledger`
+  asks. These edits waited for this release because each example installs
+  the published packages, which carry `resendOf` and the fetch from
+  4.0.0-beta.4 on.
 
 ## core, react, vite-plugin 4.0.0
 

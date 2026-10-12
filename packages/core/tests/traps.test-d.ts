@@ -68,7 +68,12 @@ import {
   type QueryObserverOptions,
   type SkipToken,
 } from "@tanstack/query-core"
-import { createClient, formatUnits, parseUnits } from "../src/index.js"
+import {
+  createClient,
+  formatUnits,
+  isReactorError,
+  parseUnits,
+} from "../src/index.js"
 import type { Canister, Network, ReactorError } from "../src/index.js"
 import { createTestClient, type TestHandlers } from "../src/testing/index.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
@@ -202,6 +207,65 @@ void ledger.icrc1_balance_of({ owner: "aaaaa-aa", subaccount: null })
 // @ts-expect-error pair takes two arguments: pass them as the tuple [left, right]
 client.queryOptions(shapesCanister, "pair", 1n)
 
+// ---------------------------------------------------------------------------
+// The typed guard: `err` is the Err arm of the method it names, not another's
+// ---------------------------------------------------------------------------
+
+// An ICRC-2 ledger: icrc2_approve has an Err arm of its own, which has no
+// BadBurn; that is icrc1_transfer's.
+type ApproveError =
+  | { tag: "AllowanceChanged"; value: { current_allowance: bigint } }
+  | { tag: "Expired"; value: { ledger_time: bigint } }
+  | { tag: "InsufficientFunds"; value: { balance: bigint } }
+declare const icrc2Ledger: Canister<
+  icrc1.Actor & {
+    icrc2_approve: (
+      arg: unknown
+    ) => Promise<
+      { tag: "Ok"; value: bigint } | { tag: "Err"; value: ApproveError }
+    >
+  }
+>
+
+export const readAnotherMethodsErr = (error: unknown) => {
+  if (
+    isReactorError(error, icrc2Ledger, "icrc2_approve") &&
+    error.kind === "canister_err"
+  ) {
+    // trap: guard-err-is-the-methods
+    // @ts-expect-error an approve cannot fail with BadBurn, a transfer's Err: the guard types `err` by the method named, so name the one that was called
+    return error.err.tag === "BadBurn"
+  }
+  return undefined
+}
+
+// A false three-argument guard means only "not this call's error". The error
+// can still be of any kind, even once the one-argument guard has narrowed it.
+export const readAnotherCallsKind = (error: unknown) => {
+  if (!isReactorError(error)) throw error
+  if (isReactorError(error, ledger, "icrc1_transfer")) return undefined
+  // trap: guard-false-keeps-every-kind
+  // @ts-expect-error another call's error can be of any kind, not only canister_err: check kind before reading err
+  const kind: "canister_err" = error.kind
+  return kind
+}
+
+// ---------------------------------------------------------------------------
+// Re-sending: only a write the app says the canister deduplicates
+// ---------------------------------------------------------------------------
+
+export const resendWithoutAKey = (error: unknown) =>
+  // trap: resend-states-its-dedupe-key
+  // @ts-expect-error re-sending is safe only for a write the canister deduplicates: state what it deduplicates on with { dedupedBy }
+  client.resendOf(error, ledger, "icrc1_transfer")
+
+export const resendByAFieldItLacks = (error: unknown) =>
+  client.resendOf(error, ledger, "icrc1_transfer", {
+    // trap: resend-key-reads-the-methods-arg
+    // @ts-expect-error dedupedBy reads the method's own argument, and a TransferArg has no nonce: name the field the canister deduplicates on
+    dedupedBy: (arg) => arg.nonce,
+  })
+
 // What `useSuspenseQuery` of `@tanstack/react-query` takes, written over
 // query-core: the options of a `QueryObserver`, without the ones a suspense
 // read has no use for, and a `queryFn` that is never `skipToken`, since a
@@ -264,6 +328,75 @@ useSuspenseQuery(client.queryOptions(braces, "braces", skipToken))
 // trap: suspense-refuses-argument-skip
 // @ts-expect-error skipToken is for useQuery; a suspense read always runs
 useSuspenseQuery(client.queryOptions(gen, "empty_record", skipToken))
+
+// ---------------------------------------------------------------------------
+// Reads: a query refetches, so an update or a oneway is not a read
+// ---------------------------------------------------------------------------
+//
+// The generated Actor says each method's mode (`$.WithMode<"update">`), and
+// `queryOptions` reads it: every refetch of a read built from an update would
+// run the update again, and a oneway has no reply to cache.
+
+// trap: query-options-refuses-update
+// @ts-expect-error icrc1_transfer is an update: every refetch would transfer again; use client.mutationOptions(ledger, "icrc1_transfer")
+client.queryOptions(ledger, "icrc1_transfer", transferArg)
+// trap: query-options-refuses-update
+// @ts-expect-error an update is not a read while its variables load either; use client.mutationOptions for a write
+client.queryOptions(shapesCanister, "bump", skipToken)
+
+// trap: query-options-refuses-oneway
+// @ts-expect-error fire is a oneway method: it has no reply to cache; call it directly, or through client.mutationOptions
+client.queryOptions(shapesCanister, "fire", "x")
+// trap: query-options-refuses-oneway
+// @ts-expect-error { update: "idempotent" } opts in an update, not a oneway, which has no reply to cache whatever the options say
+client.queryOptions(shapesCanister, "fire", "x", { update: "idempotent" })
+
+// Each of these compiles. A query and a composite query are reads (a
+// composite query of a certified canister is refused at run time: no type
+// says a canister is certified).
+export const queryRead = client.queryOptions(shapesCanister, "one", 1n)
+export const compositeRead = client.queryOptions(
+  shapesCanister,
+  "composite",
+  1n
+)
+// An update that answers the same however often it runs is read with the
+// opt-in, its variables first, even `undefined` for a method without
+// arguments. Its options are a suspense read's like any other, and may wait
+// for their variables like any other.
+useSuspenseQuery(
+  client.queryOptions(shapesCanister, "three", undefined, {
+    update: "idempotent",
+  })
+)
+export const idempotentRead = client.queryOptions(
+  shapesCanister,
+  "address",
+  "seed",
+  { update: "idempotent" }
+)
+export const idempotentWhileLoading = client.queryOptions(
+  shapesCanister,
+  "address",
+  ready ? "seed" : skipToken,
+  { update: "idempotent" }
+)
+// An Actor written by hand says no mode: each of its methods may be read, and
+// the client refuses an update or a oneway at run time instead
+// (tests/traps/update-as-query.test.ts reads the ledger through one).
+type HandWrittenLedger = {
+  icrc1_fee: () => Promise<bigint>
+  icrc1_transfer: (arg: icrc1.TransferArg) => Promise<icrc1.TransferResult>
+}
+const handWritten = client.canister<HandWrittenLedger>(icrc1.actor, {
+  id: "ryjl3-tyaaa-aaaaa-aaaba-cai",
+})
+export const handWrittenFee = client.queryOptions(handWritten, "icrc1_fee")
+export const handWrittenTransfer = client.queryOptions(
+  handWritten,
+  "icrc1_transfer",
+  transferArg
+)
 
 // ---------------------------------------------------------------------------
 // The test client: handlers answer in the generated Actor's domain values

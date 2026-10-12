@@ -2,25 +2,25 @@
 import * as $ from "@candid-core/schema";
 
 /** A result whose ok arm carries nothing. */
-type $Flag = { tag: "ok" } | { tag: "err"; value: string };
+export type Flag = { tag: "ok" } | { tag: "err"; value: string };
 /** A result whose ok arm carries nothing. */
-const $Flag: $.Schema<$Flag> = $.c.rec(() => $.c.variant({ ok: $.c.null, err: $.c.text }));
+const $Flag: $.Schema<Flag> = $.c.rec(() => $.c.variant({ ok: $.c.null, err: $.c.text }));
 export { $Flag as Flag };
 
 /** A result spelled in lower case. */
-type $Outcome = { tag: "ok"; value: bigint } | { tag: "err"; value: string };
+export type Outcome = { tag: "ok"; value: bigint } | { tag: "err"; value: string };
 /** A result spelled in lower case. */
-const $Outcome: $.Schema<$Outcome> = $.c.rec(() => $.c.variant({ ok: $.c.nat64, err: $.c.text }));
+const $Outcome: $.Schema<Outcome> = $.c.rec(() => $.c.variant({ ok: $.c.nat64, err: $.c.text }));
 export { $Outcome as Outcome };
 
-type $Pair = { left: bigint; right: string };
-const $Pair: $.Schema<$Pair> = $.c.rec(() => $.c.record({ left: $.c.nat, right: $.c.text }));
+export type Pair = { left: bigint; right: string };
+const $Pair: $.Schema<Pair> = $.c.rec(() => $.c.record({ left: $.c.nat, right: $.c.text }));
 export { $Pair as Pair };
 
 /** Ok, Err and a third arm: not a result, so it is never unwrapped. */
-type $Three = { tag: "Ok"; value: bigint } | { tag: "Err"; value: string } | { tag: "Pending" };
+export type Three = { tag: "Ok"; value: bigint } | { tag: "Err"; value: string } | { tag: "Pending" };
 /** Ok, Err and a third arm: not a result, so it is never unwrapped. */
-const $Three: $.Schema<$Three> = $.c.rec(() => $.c.variant({ Ok: $.c.nat, Err: $.c.text, Pending: $.c.null }));
+const $Three: $.Schema<Three> = $.c.rec(() => $.c.variant({ Ok: $.c.nat, Err: $.c.text, Pending: $.c.null }));
 export { $Three as Three };
 
 /**
@@ -34,23 +34,23 @@ const $actor: $.Schema<$.Principal> = $.c.rec(() => $.c.service({ one: $.c.func(
  * update, a oneway, a composite query, and the values whose JavaScript form
  * differs (nat8 as number, a collapsing opt, a blob, a principal).
  */
-type $Actor = {
-  one: (arg0: bigint) => Promise<bigint>;
-  who: () => Promise<$.Principal>;
-  maybe: (arg0: { some: bigint | null } | null) => Promise<{ some: bigint | null } | null>;
-  three: () => Promise<$Three>;
-  composite: (arg0: bigint) => Promise<bigint>;
-  bump: (arg0: bigint) => Promise<$Outcome>;
-  fire: (arg0: string) => Promise<void>;
-  flag: (arg0: boolean) => Promise<$Flag>;
-  many: () => Promise<[bigint, string, boolean]>;
-  note: (arg0: string) => Promise<void>;
-  pair: (arg0: bigint, arg1: string) => Promise<$Pair>;
-  nothing: () => Promise<void>;
-  lookup: (arg0: $.Principal) => Promise<string | null>;
-  small: (arg0: number) => Promise<number>;
-  address: (arg0: string) => Promise<string>;
-  bytes: (arg0: Uint8Array) => Promise<Uint8Array>;
-  outcome: (arg0: bigint) => Promise<$Outcome>;
+export type Actor = {
+  one: ((arg0: bigint) => Promise<bigint>) & $.WithMode<"query">;
+  who: (() => Promise<$.Principal>) & $.WithMode<"query">;
+  maybe: ((arg0: { some: bigint | null } | null) => Promise<{ some: bigint | null } | null>) & $.WithMode<"query">;
+  three: (() => Promise<Three>) & $.WithMode<"update">;
+  composite: ((arg0: bigint) => Promise<bigint>) & $.WithMode<"composite_query">;
+  bump: ((arg0: bigint) => Promise<Outcome>) & $.WithMode<"update">;
+  fire: ((arg0: string) => Promise<void>) & $.WithMode<"oneway">;
+  flag: ((arg0: boolean) => Promise<Flag>) & $.WithMode<"update">;
+  many: (() => Promise<[bigint, string, boolean]>) & $.WithMode<"query">;
+  note: ((arg0: string) => Promise<void>) & $.WithMode<"update">;
+  pair: ((arg0: bigint, arg1: string) => Promise<Pair>) & $.WithMode<"query">;
+  nothing: (() => Promise<void>) & $.WithMode<"query">;
+  lookup: ((arg0: $.Principal) => Promise<string | null>) & $.WithMode<"query">;
+  small: ((arg0: number) => Promise<number>) & $.WithMode<"query">;
+  address: ((arg0: string) => Promise<string>) & $.WithMode<"update">;
+  bytes: ((arg0: Uint8Array) => Promise<Uint8Array>) & $.WithMode<"query">;
+  outcome: ((arg0: bigint) => Promise<Outcome>) & $.WithMode<"query">;
 };
-export { $actor as actor, type $Actor as Actor };
+export { $actor as actor };
