@@ -80,16 +80,34 @@ export function utcInputToNanos(text: string): bigint | undefined {
   const match = INPUT_TEXT.exec(text)
   if (match === null) return undefined
   const [, y, mo, d, h, mi, s = "0", ms = "0"] = match
-  const millis = Date.UTC(
-    Number(y),
-    Number(mo) - 1,
-    Number(d),
-    Number(h),
-    Number(mi),
-    Number(s),
-    Number(ms.padEnd(3, "0"))
-  )
-  if (!Number.isFinite(millis)) return undefined
+  const parts = [y, mo, d, h, mi, s, ms.padEnd(3, "0")].map(Number) as [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ]
+  const [year, month, day, hour, minute, second, milli] = parts
+  // Not Date.UTC: it reads years 0-99 as 1900-1999. The setters take the
+  // year as given, and the round trip refuses a day or time that rolls
+  // over (February 30, 24:00).
+  const date = new Date(0)
+  date.setUTCFullYear(year, month - 1, day)
+  date.setUTCHours(hour, minute, second, milli)
+  const millis = date.getTime()
+  if (
+    !Number.isFinite(millis) ||
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day ||
+    date.getUTCHours() !== hour ||
+    date.getUTCMinutes() !== minute ||
+    date.getUTCSeconds() !== second
+  ) {
+    return undefined
+  }
   return BigInt(millis) * NANOS_PER_MILLI
 }
 

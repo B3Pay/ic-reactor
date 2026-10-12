@@ -1,3 +1,4 @@
+import { retryInterface } from "../../interface/load.ts"
 import { Link, useRouter } from "@tanstack/react-router"
 import { useState, type ReactElement } from "react"
 import type {
@@ -104,6 +105,8 @@ export function CanisterLoadFailure({
 
   const retry = (): void => {
     setRetrying(true)
+    // Past the server's (or the browser's) remembered failure: a real read.
+    retryInterface(payload.canisterId)
     router.invalidate().finally(() => setRetrying(false))
   }
 

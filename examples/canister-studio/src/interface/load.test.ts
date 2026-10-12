@@ -15,6 +15,7 @@ import { fetchInterface } from "./functions.ts"
 import {
   interfaceFromPayload,
   loadInterfacePayload,
+  retryInterface,
   loadLivePayload,
   useCanisterInterface,
 } from "./load.ts"
@@ -110,8 +111,25 @@ describe("loadInterfacePayload", () => {
     fetchMock.mockResolvedValue(payload)
     expect(await loadInterfacePayload(SOME_CANISTER)).toBe(payload)
     expect(fetchMock).toHaveBeenCalledWith({
-      data: { canisterId: SOME_CANISTER },
+      data: { canisterId: SOME_CANISTER, retry: false },
     })
+  })
+
+  it("passes an explicit retry to the server once, for that load only", async () => {
+    const payload = {
+      ok: false as const,
+      canisterId: SOME_CANISTER,
+      code: "network" as const,
+      message: "down",
+    }
+    fetchMock.mockResolvedValue(payload)
+    retryInterface(SOME_CANISTER)
+    await loadInterfacePayload(SOME_CANISTER)
+    await loadInterfacePayload(SOME_CANISTER)
+    expect(fetchMock.mock.calls.map((c) => c[0])).toEqual([
+      { data: { canisterId: SOME_CANISTER, retry: true } },
+      { data: { canisterId: SOME_CANISTER, retry: false } },
+    ])
   })
 
   it("passes a failure the server returns through, without a browser read", async () => {
@@ -134,7 +152,7 @@ describe("loadInterfacePayload", () => {
     fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))
     browserMock.mockResolvedValue(fromBrowser)
     expect(await loadInterfacePayload(SOME_CANISTER)).toBe(fromBrowser)
-    expect(browserMock).toHaveBeenCalledWith(SOME_CANISTER)
+    expect(browserMock).toHaveBeenCalledWith(SOME_CANISTER, { retry: false })
   })
 
   it("reports a failed call during SSR instead of reading from the server's 'browser'", async () => {
@@ -157,7 +175,7 @@ describe("loadInterfacePayload", () => {
     fetchMock.mockResolvedValue(undefined as unknown as InterfacePayload)
     browserMock.mockResolvedValue(fromBrowser)
     expect(await loadInterfacePayload(SOME_CANISTER)).toBe(fromBrowser)
-    expect(browserMock).toHaveBeenCalledWith(SOME_CANISTER)
+    expect(browserMock).toHaveBeenCalledWith(SOME_CANISTER, { retry: false })
   })
 
   it("reports a call with no result during SSR as a failed payload", async () => {
@@ -178,7 +196,9 @@ describe("loadLivePayload", () => {
     const payload = await runtimePayload(ICP_LEDGER)
     fetchMock.mockResolvedValue(payload)
     expect(await loadLivePayload(ICP_LEDGER)).toBe(payload)
-    expect(fetchMock).toHaveBeenCalledWith({ data: { canisterId: ICP_LEDGER } })
+    expect(fetchMock).toHaveBeenCalledWith({
+      data: { canisterId: ICP_LEDGER, retry: false },
+    })
   })
 
   it("falls back to the browser when the server gives no result", async () => {

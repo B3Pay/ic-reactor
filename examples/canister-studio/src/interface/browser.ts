@@ -137,14 +137,15 @@ let loader: LiveLoader | undefined
  * reached; the payload says `compiledIn: "browser"`. Never throws.
  */
 export function readInterfaceInBrowser(
-  canisterId: string
+  canisterId: string,
+  options?: { retry?: boolean }
 ): Promise<InterfacePayload> {
   loader ??= createLiveInterfaceLoader({
     source: agentCandidSource(createMetadataAgent()),
     compile: async (did) => compileInterface(await browserCli(), did),
     compiledIn: "browser",
   })
-  return loader.load(canisterId)
+  return loader.load(canisterId, options)
 }
 
 function messageOf(error: unknown): string {

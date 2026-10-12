@@ -37,9 +37,10 @@ function serverLoader(): LiveLoader {
  * module hash. Never throws.
  */
 export function loadLiveInterface(
-  canisterId: string
+  canisterId: string,
+  options?: { retry?: boolean }
 ): Promise<InterfacePayload> {
-  return serverLoader().load(canisterId)
+  return serverLoader().load(canisterId, options)
 }
 
 /**

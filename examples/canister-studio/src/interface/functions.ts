@@ -34,6 +34,10 @@ const canisterInput = z.object({ canisterId: canisterIdText })
 // a live canister may have been upgraded since the page loaded it.
 const didSha256Text = z.string().regex(/^[0-9a-f]{64}$/)
 
+// `retry`: an explicit "Try again", which may skip a remembered transient
+// failure (see RETRY_MIN_MS).
+const fetchInput = canisterInput.extend({ retry: z.boolean().optional() })
+
 const moduleInput = canisterInput.extend({ didSha256: didSha256Text })
 
 // The Project tab keeps within these, so a request past them is not the
@@ -65,7 +69,7 @@ export type LiveCompatibilityResult =
  * comes from `loadInterfacePayload`, which needs no server).
  */
 export const fetchInterface = createServerFn({ method: "GET" })
-  .validator(canisterInput)
+  .validator(fetchInput)
   .handler(async ({ data }): Promise<InterfacePayload> => {
     const id = checkCanisterId(data.canisterId)
     if (!id.ok) {
@@ -78,7 +82,7 @@ export const fetchInterface = createServerFn({ method: "GET" })
     }
     try {
       const { loadLiveInterface } = await import("./live-candid.server.ts")
-      return await loadLiveInterface(id.id)
+      return await loadLiveInterface(id.id, { retry: data.retry === true })
     } catch (error) {
       return {
         ok: false,

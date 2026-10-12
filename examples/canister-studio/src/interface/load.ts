@@ -41,6 +41,15 @@ export async function loadInterfacePayload(
   }
 }
 
+// Canisters whose next live load is an explicit retry: set by "Try again"
+// just before it re-runs the route loader, taken by that load.
+const retryNext = new Set<string>()
+
+/** Makes the next live load of this canister skip a remembered transient failure. */
+export function retryInterface(canisterId: string): void {
+  retryNext.add(canisterId)
+}
+
 /**
  * The live interface payload of any canister, registry canisters included:
  * through the `fetchInterface` server function. In the browser, when that
@@ -56,8 +65,11 @@ export async function loadLivePayload(
   if (!id.ok) {
     return { ok: false, canisterId, code: id.code, message: id.message }
   }
+  const retry = retryNext.delete(id.id)
   try {
-    return await serverResult(fetchInterface({ data: { canisterId: id.id } }))
+    return await serverResult(
+      fetchInterface({ data: { canisterId: id.id, retry } })
+    )
   } catch (error) {
     if (import.meta.env.SSR) {
       return {
@@ -70,7 +82,7 @@ export async function loadLivePayload(
   }
   try {
     const { readInterfaceInBrowser } = await import("./browser.ts")
-    return await readInterfaceInBrowser(id.id)
+    return await readInterfaceInBrowser(id.id, { retry })
   } catch (error) {
     return { ok: false, canisterId, code: "network", message: messageOf(error) }
   }

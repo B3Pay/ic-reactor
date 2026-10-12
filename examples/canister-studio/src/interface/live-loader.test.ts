@@ -22,6 +22,7 @@ import {
   CANISTER_TTL_MS,
   createLiveInterfaceLoader,
   FAILURE_TTL_MS,
+  RETRY_MIN_MS,
   TRANSIENT_FAILURE_TTL_MS,
 } from "./live-loader.ts"
 import type { CandidSource } from "./read-candid.ts"
@@ -429,6 +430,32 @@ describe("fallbacks and failures", () => {
     t.advance(1)
     t.canisters[CKBTC_LEDGER] = { did: icrc1Did }
     expect((await t.loader.load(CKBTC_LEDGER)).ok).toBe(true)
+  })
+
+  it("lets an explicit retry read again past a remembered transient failure, not before a second", async () => {
+    const network = TransportError.fromCode(
+      new HttpFetchErrorCode(new TypeError("fetch failed"))
+    )
+    const t = setup({ [CKBTC_LEDGER]: { metadataError: network } })
+    await t.loader.load(CKBTC_LEDGER)
+    t.canisters[CKBTC_LEDGER] = { did: icrc1Did }
+    // A plain load, or a retry within RETRY_MIN_MS, answers the cached failure.
+    expect((await t.loader.load(CKBTC_LEDGER)).ok).toBe(false)
+    expect((await t.loader.load(CKBTC_LEDGER, { retry: true })).ok).toBe(false)
+    expect(t.reads.candidAndHash).toBe(1)
+    t.advance(RETRY_MIN_MS)
+    expect((await t.loader.load(CKBTC_LEDGER, { retry: true })).ok).toBe(true)
+    expect(t.reads.candidAndHash).toBe(2)
+  })
+
+  it("does not let a retry skip a definitive failure", async () => {
+    const t = setup({ [CAP_ROUTER]: { did: null } })
+    expect(await t.loader.load(CAP_ROUTER)).toMatchObject({
+      code: "no_interface",
+    })
+    t.advance(RETRY_MIN_MS)
+    await t.loader.load(CAP_ROUTER, { retry: true })
+    expect(t.reads.candidAndHash).toBe(1)
   })
 
   it("keeps a compiler failure's text (server paths) in the log: server_error", async () => {

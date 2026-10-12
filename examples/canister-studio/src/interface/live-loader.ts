@@ -39,7 +39,10 @@ export interface LiveLoader {
    * the uncertified tmp hack query when it publishes none, compiled. Never
    * throws, and never reads a canister id `checkCanisterId` refuses.
    */
-  load(canisterId: string): Promise<InterfacePayload>
+  load(
+    canisterId: string,
+    options?: { retry?: boolean }
+  ): Promise<InterfacePayload>
 }
 
 /** How long a canister's (module hash, did) answer is used before re-checking. */
@@ -52,6 +55,12 @@ export const FAILURE_TTL_MS = 5 * 60_000
  * burst of reloads, short enough not to lock a canister out.
  */
 export const TRANSIENT_FAILURE_TTL_MS = 15_000
+/**
+ * How old a remembered transient failure must be before an explicit retry
+ * ("Try again") reads the canister again: a retry is real, but a burst of
+ * clicks cannot turn into a burst of reads and compiles.
+ */
+export const RETRY_MIN_MS = 1_000
 /** The bound on one load (see `LiveLoaderOptions.timeoutMs`). */
 export const LOAD_TIMEOUT_MS = 15_000
 
@@ -82,7 +91,7 @@ type CanisterEntry = {
 
 type DidEntry = { did: string; compiled: CompiledInterface }
 
-type FailureEntry = { until: number; payload: FailedPayload }
+type FailureEntry = { at: number; until: number; payload: FailedPayload }
 
 const encoder = new TextEncoder()
 
@@ -301,11 +310,19 @@ export function createLiveInterfaceLoader(
     }
   }
 
-  function load(canisterId: string): Promise<InterfacePayload> {
+  function load(
+    canisterId: string,
+    options: { retry?: boolean } = {}
+  ): Promise<InterfacePayload> {
     const id = checkCanisterId(canisterId)
     if (!id.ok) return Promise.resolve(failed(canisterId, id.code, id.message))
     const known = failures.get(canisterId)
-    if (known !== undefined && known.until > now())
+    const retried =
+      options.retry === true &&
+      known !== undefined &&
+      TRANSIENT.has(known.payload.code) &&
+      now() - known.at >= RETRY_MIN_MS
+    if (known !== undefined && known.until > now() && !retried)
       return Promise.resolve(known.payload)
     const running = inflight.get(canisterId)
     if (running !== undefined) return running
@@ -322,7 +339,7 @@ export function createLiveInterfaceLoader(
           const ttl = TRANSIENT.has(payload.code)
             ? TRANSIENT_FAILURE_TTL_MS
             : FAILURE_TTL_MS
-          failures.set(canisterId, { until: now() + ttl, payload })
+          failures.set(canisterId, { at: now(), until: now() + ttl, payload })
         }
         return payload
       })

@@ -143,6 +143,13 @@ describe("timestamps", () => {
       1_760_236_265_123_000_000n
     )
     expect(utcInputToNanos("2025-10-12T02:31")).toBe(1_760_236_260_000_000_000n)
+    // Years 0000-0099 are not read as 1900-1999 (Date.UTC's rule).
+    expect(utcInputToNanos("0070-01-01T00:00")).toBe(
+      -59_958_144_000_000_000_000n
+    )
+    // A day or time that rolls over is refused, not moved.
+    expect(utcInputToNanos("2025-02-30T00:00")).toBeUndefined()
+    expect(utcInputToNanos("2025-10-12T24:00")).toBeUndefined()
     expect(nanosToUtcInput(0n)).toBe("1970-01-01T00:00:00")
     expect(utcInputToNanos("not a date")).toBeUndefined()
   })
