@@ -718,8 +718,8 @@ describe("moduleImports", () => {
       `  b,`,
       `} from "/src/lib/ab.ts?t=123";`,
       `import "/src/index.css";`,
-      `export { c } from "./c.ts";`,
-      `export * from "../shared/d.ts";`,
+      `export { c } from "/src/c.ts";`,
+      `export * from "/shared/d.ts";`,
       `const Lazy = lazy(() => import("/src/Lazy.tsx"));`,
       `import { ext } from "https://cdn.example.com/x.js";`,
       `import { pkg } from "@ic-reactor/core";`,
@@ -733,6 +733,36 @@ describe("moduleImports", () => {
       "http://localhost:5173/shared/d.ts",
       "http://localhost:5173/src/index.css",
       "http://localhost:5173/src/Lazy.tsx",
+    ])
+  })
+
+  it("takes a statement Vite joined onto the line of its HMR preamble", () => {
+    // The first line of canister-studio's routes/safety.tsx?tsr-split=component,
+    // as `vite dev` serves it.
+    const code = [
+      `import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/routes/safety.tsx?tsr-split=component");const _jsxDEV = __vite__cjsImport1_react_jsxDevRuntime["jsxDEV"];import { SafetyLab } from "/src/safety/SafetyLab.tsx";`,
+      `import __vite__cjsImport1_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=1";`,
+      `import { FEATURED } from "/src/routes/index.tsx?tsr-shared=1";import "/src/side-effect.ts";`,
+    ].join("\n")
+    assert.deepEqual(moduleImports(code, url), [
+      "http://localhost:5173/src/safety/SafetyLab.tsx",
+      "http://localhost:5173/src/routes/index.tsx?tsr-shared=1",
+      "http://localhost:5173/src/side-effect.ts",
+    ])
+  })
+
+  it("leaves out a relative specifier: Vite serves every import it resolved root-relative", () => {
+    // canister-studio's safety/scenarios.ts shows its setup as code, in a
+    // template literal that `vite dev` serves as written.
+    const code = [
+      `import { actor as icrc1Actor } from "/src/canisters/icrc1.ts";`,
+      'export const LAB_SETUP = `import { createTestClient } from "@ic-reactor/core/testing"',
+      `import { actor, type Actor, type TransferArg } from "./canisters/icrc1"`,
+      `export * from "../shared/d.ts"`,
+      "`;",
+    ].join("\n")
+    assert.deepEqual(moduleImports(code, url), [
+      "http://localhost:5173/src/canisters/icrc1.ts",
     ])
   })
 })

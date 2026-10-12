@@ -691,12 +691,18 @@ export function pageScripts(html, pageUrl) {
 }
 
 /**
- * The app modules an ES module served by a dev server imports, as absolute
- * URLs: its static `import`/`export ... from` and string `import()`
- * specifiers on its own origin. Pre-bundled dependencies (`/node_modules/`)
- * and the dev server's own modules (`/@vite/client`, `/@id/...`) are left out:
- * they are not the example's code, and a dependency re-optimisation could
- * answer them 504 while it runs.
+ * The app modules an ES module served by a Vite dev server imports, as
+ * absolute URLs: its static `import`/`export ... from` and string `import()`
+ * specifiers on its own origin. A statement starts a line or follows a `;`:
+ * Vite joins its HMR preamble and the module's first statement onto one line
+ * (`... from "/@vite/client";import { A } from "/src/A.tsx";`). Only
+ * root-relative specifiers are taken: Vite serves every import it resolved as
+ * one (`/src/...`), so a relative one left in served code is text in a string
+ * or a comment (a code sample in a template literal), not an import.
+ * Pre-bundled dependencies (`/node_modules/`) and the dev server's own modules
+ * (`/@vite/client`, `/@id/...`, `/@fs/...`) are left out: they are not the
+ * example's code, and a dependency re-optimisation could answer them 504
+ * while it runs.
  *
  * @param {string} code
  * @param {string} moduleUrl
@@ -706,14 +712,14 @@ export function moduleImports(code, moduleUrl) {
   const origin = new URL(moduleUrl).origin
   const specifiers = [
     ...code.matchAll(
-      /^[ \t]*(?:import|export)[ \t\n{*][^'"`;]*?\bfrom[ \t]*["']([^"'\n]+)["']/gm
+      /(?:^|;)[ \t]*(?:import|export)[ \t\n{*][^'"`;]*?\bfrom[ \t]*["']([^"'\n]+)["']/gm
     ),
-    ...code.matchAll(/^[ \t]*import[ \t]*["']([^"'\n]+)["']/gm),
+    ...code.matchAll(/(?:^|;)[ \t]*import[ \t]*["']([^"'\n]+)["']/gm),
     ...code.matchAll(/\bimport\([ \t]*["']([^"'\n]+)["'][ \t]*\)/g),
   ].map((match) => match[1])
   const urls = new Set()
   for (const specifier of specifiers) {
-    if (!/^(?:\/|\.\.?\/)/.test(specifier)) continue
+    if (!specifier.startsWith("/")) continue
     const url = new URL(specifier, moduleUrl)
     if (url.origin !== origin) continue
     if (/^\/(?:node_modules\/|@)/.test(url.pathname)) continue
