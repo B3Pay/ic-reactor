@@ -15,6 +15,7 @@ type ModeFilter = "all" | MethodMode
 
 const OUTCOME_LABEL: Readonly<Record<HistoryEntry["outcome"], string>> = {
   ok: "Ok",
+  sent: "Sent (no outcome)",
   canister_err: "Canister Err",
   error: "Failed",
 }
@@ -95,7 +96,7 @@ export function HistoryList(): ReactElement {
             }
           >
             <option value="all">All</option>
-            {(["ok", "canister_err", "error"] as const).map((value) => (
+            {(["ok", "sent", "canister_err", "error"] as const).map((value) => (
               <option key={value} value={value}>
                 {OUTCOME_LABEL[value]}
               </option>
@@ -230,9 +231,11 @@ function HistoryRow({ entry }: { entry: HistoryEntry }): ReactElement {
               tone={
                 entry.outcome === "ok"
                   ? "ok"
-                  : entry.outcome === "canister_err"
-                    ? "warn"
-                    : "err"
+                  : entry.outcome === "sent"
+                    ? "neutral"
+                    : entry.outcome === "canister_err"
+                      ? "warn"
+                      : "err"
               }
             >
               {OUTCOME_LABEL[entry.outcome]}

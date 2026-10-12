@@ -22,6 +22,8 @@ import type { LedgerToken } from "./LedgerSummary.tsx"
 interface Draft {
   value: TransferArg
   bytes: Uint8Array
+  /** The sender the confirm step showed when it opened. */
+  reviewedAs?: string
 }
 
 /** A clause as a sentence: its first letter upper-cased. */
@@ -70,6 +72,8 @@ export function SendPanel({
   // Set once a re-send of a may-have-executed transfer was asked for: if
   // that re-send is refused, the first transfer's outcome is still unknown.
   const [resent, setResent] = useState(false)
+  // Set when Send found another sender than the confirm step had shown.
+  const [senderChanged, setSenderChanged] = useState(false)
   // The account a read-back reads: the one the unknown transfer spent from,
   // its sender's, never the current caller's (who may have switched since).
   const [readBackOf, setReadBackOf] = useState<Account | undefined>(undefined)
@@ -288,25 +292,44 @@ export function SendPanel({
 
   if (draft !== undefined) {
     return (
-      <ConfirmWrite
-        iface={iface}
-        method={method}
-        values={[draft.value]}
-        bytes={draft.bytes}
-        caller={auth.principal}
-        earlierUnknown={setAside}
-        onConfirm={() => {
-          const caller = client.caller()
-          setSent({ ...draft, caller })
-          send(draft.value, draft.bytes, caller, false)
-        }}
-        onCancel={() => {
-          setPrefill(draft.value)
-          setDraft(undefined)
-          setFormKey((k) => k + 1)
-          refocus.current = true
-        }}
-      />
+      <div className="stack">
+        {senderChanged && (
+          <Notice tone="warn" title="The sender changed">
+            <p>
+              The signed-in principal changed while this step was open. Check
+              the sender below, then send again: nothing was sent.
+            </p>
+          </Notice>
+        )}
+        <ConfirmWrite
+          iface={iface}
+          method={method}
+          values={[draft.value]}
+          bytes={draft.bytes}
+          caller={auth.principal}
+          earlierUnknown={setAside}
+          onConfirm={() => {
+            const caller = client.caller()
+            if (caller !== (draft.reviewedAs ?? caller)) {
+              // The step was confirmed for another sender: show it again with
+              // the one the transfer would go out as, and send nothing.
+              setDraft({ ...draft, reviewedAs: caller })
+              setSenderChanged(true)
+              return
+            }
+            setSenderChanged(false)
+            setSent({ ...draft, caller })
+            send(draft.value, draft.bytes, caller, false)
+          }}
+          onCancel={() => {
+            setSenderChanged(false)
+            setPrefill(draft.value)
+            setDraft(undefined)
+            setFormKey((k) => k + 1)
+            refocus.current = true
+          }}
+        />
+      </div>
     )
   }
 
@@ -321,7 +344,9 @@ export function SendPanel({
         submitLabel="Review transfer"
         disabledReason={signedIn ? undefined : SIGN_IN_REASON}
         submitRef={submitRef}
-        onSubmit={(value, bytes) => setDraft({ value, bytes })}
+        onSubmit={(value, bytes) =>
+          setDraft({ value, bytes, reviewedAs: client.caller() })
+        }
       />
       <p className="text-xs muted">
         The ledger charges{" "}

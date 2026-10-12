@@ -1375,6 +1375,21 @@ function mapDraft(
         ? draft
         : { k: "tuple", items }
     }
+    case "vec": {
+      if (draft.k !== "vec") return draft
+      let changed = false
+      const items = draft.items.map((item, i) => {
+        const next = mapDraft(
+          { schema: node.inner, draft: item.draft, path: childPath(path, i) },
+          visit
+        )
+        if (next === item.draft) return item
+        changed = true
+        // The same id: the item keeps its React identity and its focus.
+        return { id: item.id, draft: next }
+      })
+      return changed ? { k: "vec", items } : draft
+    }
     case "variant": {
       if (draft.k !== "variant") return draft
       const arm = armOf(node, draft.tag)

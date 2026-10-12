@@ -15,7 +15,8 @@ export interface HistoryEntry {
   caller: string
   /** The encoded argument bytes as hex (never JSON). */
   argsHex: string
-  outcome: "ok" | "canister_err" | "error"
+  /** "sent": a oneway call went out; it has no reply and no outcome. */
+  outcome: "ok" | "sent" | "canister_err" | "error"
   /** The ReactorError kind, for an error. */
   kind?: string
   mayHaveExecuted?: boolean
@@ -41,7 +42,12 @@ const MODES: ReadonlySet<string> = new Set([
   "update",
   "oneway",
 ])
-const OUTCOMES: ReadonlySet<string> = new Set(["ok", "canister_err", "error"])
+const OUTCOMES: ReadonlySet<string> = new Set([
+  "ok",
+  "sent",
+  "canister_err",
+  "error",
+])
 
 const isText = (value: unknown, max = MAX_TEXT): value is string =>
   typeof value === "string" && value.length <= max

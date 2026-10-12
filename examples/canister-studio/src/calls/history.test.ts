@@ -169,6 +169,27 @@ describe("history", () => {
   })
 })
 
+describe("a oneway call in the history", () => {
+  it("is recorded as sent, never as an Ok outcome", () => {
+    const oneway = { ...transfer, mode: "oneway" as const }
+    const e = historyEntryOf(
+      {
+        iface,
+        method: oneway,
+        caller: SEED_1,
+        bytes: new Uint8Array([0x44, 0x49, 0x44, 0x4c]),
+        result: { ok: true, reply: undefined },
+      },
+      1,
+      "oneway-1"
+    )
+    expect(e.outcome).toBe("sent")
+    expect(e.summary).not.toMatch(/^ok/)
+    // It survives a round trip through storage.
+    expect(parseHistory(JSON.stringify([e]))).toEqual([e])
+  })
+})
+
 describe("history shared by tabs", () => {
   // A fresh module per test: an earlier test leaves this one's copy in its
   // storage-failed mode.

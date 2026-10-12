@@ -69,7 +69,8 @@ export function shortValue(value: unknown, max = 160): string {
   return clip(out, max)
 }
 
-function summaryOf(result: CallResult): string {
+function summaryOf(result: CallResult, oneway: boolean): string {
+  if (result.ok && oneway) return "sent: a oneway call has no reply or outcome"
   if (result.ok) return `ok: ${shortValue(result.reply)}`
   const { error } = result
   if (isReactorError(error) && error.kind === "canister_err") {
@@ -91,7 +92,7 @@ export function historyEntryOf(
   const keepArgs = call.bytes.length <= HISTORY_ARGS_MAX_BYTES
   const summary = [
     call.note,
-    summaryOf(result),
+    summaryOf(result, method.mode === "oneway"),
     keepArgs ? undefined : "(arguments too large to keep)",
   ]
     .filter((part): part is string => part !== undefined)
@@ -108,7 +109,9 @@ export function historyEntryOf(
     caller: call.caller,
     argsHex: keepArgs ? toHex(call.bytes) : "",
     outcome: result.ok
-      ? "ok"
+      ? method.mode === "oneway"
+        ? "sent"
+        : "ok"
       : failure?.kind === "canister_err"
         ? "canister_err"
         : "error",

@@ -153,6 +153,24 @@ describe("SendPanel", () => {
     await waitFor(() => expect(read.textContent).toContain("0.0000089 ckBTC"))
   })
 
+  it("asks again, sending nothing, when the sender changed while the confirm step was open", async () => {
+    const made = createTestLedger()
+    made.setBalance(SEED_1, 1_000n)
+    made.setBalance(SEED_2, 1_000n)
+    renderSendPanel(made)
+    formDouble.next = [stamped(100n, 1n)]
+    click("Review transfer")
+    act(() => made.test.auth.switchTo(2))
+    click("Send update")
+    expect(await screen.findByText("The sender changed")).toBeTruthy()
+    expect(made.transfers).toHaveLength(0)
+    // Confirmed again, now for the sender it goes out as.
+    click("Send update")
+    await waitFor(() => expect(history()).toHaveLength(1), patiently)
+    expect(made.transfers).toHaveLength(1)
+    expect(history()[0]).toMatchObject({ caller: SEED_2, outcome: "ok" })
+  })
+
   it("records a transfer that settles after the panel is gone (another tab, another page)", async () => {
     const made = createTestLedger()
     made.setBalance(SEED_1, 1_000n)

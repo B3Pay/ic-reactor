@@ -137,6 +137,32 @@ describe.each(MODULES)("every method of %s", (_name, envelope, actor) => {
   })
 })
 
+describe("mapDrafts", () => {
+  it("visits the fields of vec items, at their indexed paths, keeping item ids", () => {
+    const arg = c.vec(c.record({ created_at_time: c.opt(c.nat64) }))
+    const draft = draftFromValue(arg, [
+      { created_at_time: null },
+      { created_at_time: null },
+    ])
+    const seen: string[] = []
+    const [next] = mapDrafts([arg], [draft], (at) => {
+      if (!at.path.endsWith(".created_at_time")) return undefined
+      seen.push(at.path)
+      return fillNanos(at.schema, at.draft, 7n)
+    })
+    expect(seen).toEqual([
+      "$args[0][0].created_at_time",
+      "$args[0][1].created_at_time",
+    ])
+    const check = checkCall([arg], [next!])
+    expect(check.values).toEqual([
+      [{ created_at_time: 7n }, { created_at_time: 7n }],
+    ])
+    if (draft.k !== "vec" || next?.k !== "vec") throw new Error("not a vec")
+    expect(next.items.map((i) => i.id)).toEqual(draft.items.map((i) => i.id))
+  })
+})
+
 describe("drafts and values", () => {
   const transfer: TransferArgValue = {
     to: {
