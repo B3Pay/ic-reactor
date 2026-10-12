@@ -39,6 +39,7 @@ import {
   requiredScriptFindings,
   scopePackageNames,
   stackblitzStartCommand,
+  startEntrySeeds,
   startScriptFindings,
   staticFindings,
   trackedConfigFindings,
@@ -733,6 +734,73 @@ describe("moduleImports", () => {
       "http://localhost:5173/src/index.css",
       "http://localhost:5173/src/Lazy.tsx",
     ])
+  })
+})
+
+describe("startEntrySeeds", () => {
+  const files = [
+    "package.json",
+    "src/router.tsx",
+    "src/router.test.ts",
+    "src/routeTree.gen.ts",
+    "src/routes/__root.tsx",
+  ]
+
+  it("starts the walk from the router and route tree too when the page's script is TanStack Start's dev entry", () => {
+    // What canister-studio's `vite dev` serves: the entry's only imports are
+    // /@react-refresh and @tanstack/react-start's client under /@fs/.
+    const html = `<!doctype html><html><head></head><body>
+      <script type="module" async="" src="/@id/virtual:tanstack-start-dev-client-entry"></script>
+    </body></html>`
+    const scripts = pageScripts(html, "http://localhost:3410/")
+    const entry = [
+      `import { injectIntoGlobalHook } from "/@react-refresh";`,
+      `await import("/@fs/app/node_modules/@tanstack/react-start/dist/plugin/default-entry/client.tsx")`,
+    ].join("\n")
+    assert.deepEqual(moduleImports(entry, scripts[0].url), [])
+    assert.deepEqual(startEntrySeeds(scripts, files), {
+      seeds: [
+        "http://localhost:3410/src/router.tsx",
+        "http://localhost:3410/src/routeTree.gen.ts",
+      ],
+    })
+  })
+
+  it("seeds only the entry files the example tracks", () => {
+    const scripts = [
+      {
+        url: "http://localhost:3410/@id/virtual:tanstack-start-dev-client-entry",
+        module: true,
+      },
+    ]
+    assert.deepEqual(startEntrySeeds(scripts, ["src/router.ts"]), {
+      seeds: ["http://localhost:3410/src/router.ts"],
+    })
+  })
+
+  it("fails when the page is TanStack Start's and nothing is there to seed", () => {
+    const scripts = [
+      {
+        url: "http://localhost:3410/@id/virtual:tanstack-start-dev-client-entry",
+        module: true,
+      },
+    ]
+    const { seeds, finding } = startEntrySeeds(scripts, ["app/router.tsx"])
+    assert.deepEqual(seeds, [])
+    assert.match(finding, /TanStack Start's dev entry/)
+    assert.match(finding, /src\/router\.tsx/)
+  })
+
+  it("seeds nothing for any other page, a Vite one with its own /@id/ module included", () => {
+    const html = `<!doctype html><html><head>
+      <script type="module" src="/@vite/client"></script>
+      <script type="module" src="/@id/virtual:other-entry"></script>
+      <script type="module" src="/src/main.tsx"></script>
+    </head></html>`
+    assert.deepEqual(
+      startEntrySeeds(pageScripts(html, "http://localhost:5173/"), files),
+      { seeds: [] }
+    )
   })
 })
 
