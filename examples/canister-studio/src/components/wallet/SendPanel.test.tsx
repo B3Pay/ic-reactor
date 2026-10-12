@@ -6,6 +6,7 @@ import { principal } from "@candid-core/schema"
 import { encodeArgs } from "@candid-core/schema/codec"
 import { ReactorProvider } from "@ic-reactor/react"
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -25,6 +26,7 @@ import {
   CKBTC_LEDGER,
   CKBTC_MINTER,
   SEED_1,
+  SEED_2,
   createTestLedger,
   transferArg,
   type TestLedger,
@@ -79,14 +81,7 @@ function renderWith(made: TestLedger, child: ReactElement): void {
 
 function renderSendPanel(made: TestLedger): void {
   expect(WALLET_LEDGERS.ckbtc.id).toBe(CKBTC_LEDGER)
-  renderWith(
-    made,
-    <SendPanel
-      entry={WALLET_LEDGERS.ckbtc}
-      token={TOKEN}
-      onReadBack={() => undefined}
-    />
-  )
+  renderWith(made, <SendPanel entry={WALLET_LEDGERS.ckbtc} token={TOKEN} />)
 }
 
 const history = () => parseHistory(localStorage.getItem(HISTORY_STORAGE_KEY))
@@ -142,6 +137,20 @@ describe("SendPanel", () => {
       outcome: "canister_err",
       summary: 're-send: Err: {tag: "Duplicate", value: {duplicate_of: 0}}',
     })
+  })
+
+  it("reads back the sender's account, not the new caller's, after a switch", async () => {
+    const made = createTestLedger()
+    made.setBalance(SEED_1, 1_000n)
+    made.setBalance(SEED_2, 5_000n)
+    renderSendPanel(made)
+    await sendLosingTheReply(made)
+    act(() => made.test.auth.switchTo(2))
+    click("Read the balance back")
+    const read = await screen.findByRole("status", { name: "Sender balance" })
+    expect(read.textContent).toContain(`${SEED_1}, the transfer's sender`)
+    // 1,000 - 100 - fee 10: the sender's balance after the first transfer.
+    await waitFor(() => expect(read.textContent).toContain("0.0000089 ckBTC"))
   })
 
   it("records a transfer that settles after the panel is gone (another tab, another page)", async () => {

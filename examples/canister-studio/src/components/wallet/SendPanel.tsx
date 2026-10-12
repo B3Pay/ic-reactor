@@ -1,7 +1,8 @@
 import { useAuth, useClient } from "@ic-reactor/react"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import { useEffect, useMemo, useRef, useState, type ReactElement } from "react"
-import { TransferArg } from "../../canisters/icrc1.ts"
+import { principal } from "@candid-core/schema"
+import { TransferArg, type Account } from "../../canisters/icrc1.ts"
 import { ConfirmWrite, type EarlierSend } from "../../calls/ConfirmWrite.tsx"
 import { resendLeftOpen } from "../../calls/dedupe.ts"
 import { ErrorPanel } from "../../calls/ErrorPanel.tsx"
@@ -44,12 +45,9 @@ const sentence = (clause: string): string =>
 export function SendPanel({
   entry,
   token,
-  onReadBack,
 }: {
   entry: RegistryEntry
   token: LedgerToken
-  /** Re-reads the caller's balance (after an unknown outcome). */
-  onReadBack(): void
 }): ReactElement {
   const auth = useAuth()
   const client = useClient()
@@ -72,6 +70,20 @@ export function SendPanel({
   // Set once a re-send of a may-have-executed transfer was asked for: if
   // that re-send is refused, the first transfer's outcome is still unknown.
   const [resent, setResent] = useState(false)
+  // The account a read-back reads: the one the unknown transfer spent from,
+  // its sender's, never the current caller's (who may have switched since).
+  const [readBackOf, setReadBackOf] = useState<Account | undefined>(undefined)
+  const onReadBack = (): void => {
+    if (sent === undefined) return
+    const account: Account = {
+      owner: principal(sent.caller),
+      subaccount: sent.value.from_subaccount,
+    }
+    setReadBackOf(account)
+    void client.queryClient.invalidateQueries({
+      queryKey: client.queryKey(ledger, "icrc1_balance_of", account),
+    })
+  }
   const units = useMemo(
     () => ({ decimals: token.decimals, symbol: token.symbol }),
     [token.decimals, token.symbol]
@@ -138,6 +150,7 @@ export function SendPanel({
     }
     setPrefill(keepArgument ? draft?.value : undefined)
     setResent(false)
+    setReadBackOf(undefined)
     transfer.reset()
     setDraft(undefined)
     setSent(undefined)
@@ -252,6 +265,14 @@ export function SendPanel({
             </button>
           </Notice>
         )}
+        {readBackOf !== undefined && (
+          <SenderBalance
+            entry={entry}
+            account={readBackOf}
+            units={units}
+            caller={auth.principal}
+          />
+        )}
         <button
           type="button"
           className="btn btn-ghost"
@@ -307,6 +328,51 @@ export function SendPanel({
         {formatTokens(token.fee, token.decimals, token.symbol)} per transfer
         (leave the fee empty to accept it).
       </p>
+    </div>
+  )
+}
+
+/**
+ * The balance of the account an unknown transfer spent from: its sender's
+ * (and subaccount), read whoever is signed in now, since a balance is
+ * public. Reading the current caller's instead would check the wrong
+ * account after a switch.
+ */
+function SenderBalance({
+  entry,
+  account,
+  units,
+  caller,
+}: {
+  entry: RegistryEntry
+  account: Account
+  units: { decimals: number; symbol: string }
+  caller: string
+}): ReactElement {
+  const client = useClient()
+  const ledger = ledgerCanister(client, entry.id)
+  const balance = useQuery(
+    client.queryOptions(ledger, "icrc1_balance_of", account)
+  )
+  const whose =
+    account.owner === caller
+      ? "your account"
+      : `${account.owner}, the transfer's sender (not the current caller)`
+  return (
+    <div className="kv" role="status" aria-label="Sender balance">
+      <span className="text-sm muted">
+        Balance of {whose}
+        {account.subaccount === null ? "" : ", from its subaccount"}
+      </span>
+      <span className="tabular">
+        {balance.data !== undefined ? (
+          formatTokens(balance.data, units.decimals, units.symbol)
+        ) : balance.isError ? (
+          balance.error.message
+        ) : (
+          <Spinner size="sm" label="Reading the balance" />
+        )}
+      </span>
     </div>
   )
 }

@@ -121,15 +121,6 @@ function WalletPage(): ReactElement {
   const client = useClient()
   const signedIn = auth.status === "signed-in"
 
-  const readBack = (): void => {
-    void client.queryClient.invalidateQueries({
-      queryKey: client.queryKey(
-        ledgerCanister(client, entry.id),
-        "icrc1_balance_of"
-      ),
-    })
-  }
-
   return (
     <div className="page wallet">
       <header className="page-header">
@@ -199,12 +190,7 @@ function WalletPage(): ReactElement {
                 headingLevel={2}
               >
                 {/* Server-rendered too: disabled until a caller signs in. */}
-                <SendPanel
-                  key={entry.id}
-                  entry={entry}
-                  token={token}
-                  onReadBack={readBack}
-                />
+                <SendPanel key={entry.id} entry={entry} token={token} />
               </Card>
             </div>
           )}
