@@ -27,6 +27,24 @@ describe("ProvenanceBadge", () => {
     expect(uncertified.className).toContain("badge-err")
     expect(uncertified.getAttribute("title")).toMatch(/nobody certified/)
   })
+
+  it("never says a private canister has no metadata", () => {
+    render(
+      <ProvenanceBadge
+        source={{
+          kind: "tmp_hack",
+          certified: false,
+          moduleHash: null,
+          reason: "private",
+        }}
+      />
+    )
+    const title = screen.getByText("UNCERTIFIED").getAttribute("title") ?? ""
+    expect(title).toMatch(
+      /^Its candid:service metadata is readable by its controllers only/
+    )
+    expect(title).not.toMatch(/No metadata|No public/)
+  })
 })
 
 describe("ModeBadge", () => {

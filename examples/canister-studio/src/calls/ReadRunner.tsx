@@ -1,7 +1,15 @@
 import { isReactorError } from "@ic-reactor/core"
 import { useAuth, useClient } from "@ic-reactor/react"
 import { skipToken, useQuery } from "@tanstack/react-query"
-import { useCallback, useId, useState, type JSX } from "react"
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type JSX,
+} from "react"
+import { ActionButton } from "../components/ActionButton.tsx"
 import { issuesFromReactorError, type CallCheck } from "../forms/engine.ts"
 import { MethodForm } from "../forms/MethodForm.tsx"
 import { CallPreview } from "../values/CallPreview.tsx"
@@ -11,7 +19,7 @@ import { ErrorPanel } from "./ErrorPanel.tsx"
 import { SIGN_IN_REASON, submitLabelOf, type CallKind } from "./kinds.ts"
 import { prepareCall, type PreparedCall } from "./prepare.ts"
 import { readQueryOptions } from "./query-options.ts"
-import { readNow } from "./read.ts"
+import { readNow, recordRead } from "./read.ts"
 import type { MethodRunnerProps } from "./MethodRunner.tsx"
 import { ShareLink } from "./ShareLink.tsx"
 import { canisterOf } from "./useCanisterHandle.ts"
@@ -49,6 +57,10 @@ export function ReadRunner(
   )
   const [check, setCheck] = useState<CallCheck>()
   const certifiedId = useId()
+  // A read run at once (a shared link, a quick read, a replay) goes through
+  // `useQuery`, not `readNow`: it is recorded once, when its first answer is
+  // on screen in the browser, unless the reader ran another read first.
+  const autoRecord = useRef(submitted !== undefined)
 
   const signedIn = auth.status === "signed-in"
   const blocked = idempotent && !signedIn
@@ -62,7 +74,24 @@ export function ReadRunner(
   )
   const read = useQuery(options)
 
+  // Effects never run on the server, so a server render records nothing.
+  useEffect(() => {
+    if (!autoRecord.current || submitted === undefined) return
+    if (read.status === "pending") return
+    autoRecord.current = false
+    recordRead(
+      iface,
+      method,
+      client.caller(),
+      submitted,
+      read.status === "success"
+        ? { ok: true, reply: read.data }
+        : { ok: false, error: read.error }
+    )
+  }, [read.status, read.data, read.error, submitted, iface, method, client])
+
   const run = (call: PreparedCall, twin = certified) => {
+    autoRecord.current = false
     setSubmitted(call)
     readNow(client, canisterOf(client, iface, twin), iface, method, call, {
       idempotent,
@@ -148,23 +177,29 @@ export function ReadRunner(
         </details>
       )}
       <div className="row row-between">
+        {/* The result's own arguments once there is one, whatever the
+            form holds since; before that, the form's. */}
         <ShareLink
           canisterId={iface.canisterId}
           method={method.name}
-          bytes={preview?.bytes ?? submitted?.bytes}
+          bytes={submitted?.bytes ?? preview?.bytes}
           run={!idempotent}
           certified={certified}
+          label={
+            submitted === undefined && !idempotent
+              ? "Copy link to run these arguments"
+              : undefined
+          }
           onShare={onShare}
         />
         {submitted !== undefined && (
-          <button
-            type="button"
+          <ActionButton
             className="btn btn-sm"
-            disabled={read.isFetching || blocked}
+            unavailable={read.isFetching || blocked}
             onClick={() => run(submitted)}
           >
             Refetch
-          </button>
+          </ActionButton>
         )}
       </div>
       <CacheKeyPanel

@@ -26,3 +26,7 @@ export function prepareCall(
     ? { values, vars: toVars(values), bytes: encoded.bytes }
     : undefined
 }
+
+/** Whether two argument messages are the same bytes. */
+export const sameBytes = (a: Uint8Array, b: Uint8Array): boolean =>
+  a.length === b.length && a.every((byte, i) => byte === b[i])

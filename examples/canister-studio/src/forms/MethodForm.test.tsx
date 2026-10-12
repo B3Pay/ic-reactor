@@ -202,10 +202,8 @@ describe("MethodForm", () => {
         onSubmit={() => {}}
       />
     )
-    const button = screen.getByRole("button", {
-      name: "Send",
-    }) as HTMLButtonElement
-    expect(button.disabled).toBe(true)
+    const button = screen.getByRole("button", { name: "Send" })
+    expect(button.getAttribute("aria-disabled")).toBe("true")
     expect(screen.getByText("Sign in to send writes")).toBeTruthy()
     rerender(
       <MethodForm
@@ -216,9 +214,8 @@ describe("MethodForm", () => {
       />
     )
     expect(
-      (screen.getByRole("button", { name: "Send" }) as HTMLButtonElement)
-        .disabled
-    ).toBe(true)
+      screen.getByRole("button", { name: "Send" }).getAttribute("aria-disabled")
+    ).toBe("true")
     // A disabled fieldset disables every control inside it.
     expect(
       screen.getByRole("combobox", { name: "owner" }).matches(":disabled")
@@ -252,11 +249,11 @@ describe("MethodForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add 25" }))
     expect(screen.getByText("25 items")).toBeTruthy()
     expect(
-      screen.getAllByRole("button", { name: /^Remove arg1 / }).length
+      screen.getAllByRole("button", { name: /^Remove argument 2\[/ }).length
     ).toBe(20)
     fireEvent.click(screen.getByRole("button", { name: /Show 5 more/ }))
     expect(
-      screen.getAllByRole("button", { name: /^Remove arg1 / }).length
+      screen.getAllByRole("button", { name: /^Remove argument 2\[/ }).length
     ).toBe(25)
     fireEvent.click(screen.getByRole("button", { name: "Call" }))
     const [{ values }] = onSubmit.mock.calls[0] as [{ values: unknown[] }]
@@ -274,10 +271,8 @@ describe("MethodForm", () => {
       />
     )
     expect(screen.getByText(/No value exists for this type/)).toBeTruthy()
-    const button = screen.getByRole("button", {
-      name: "Call",
-    }) as HTMLButtonElement
-    expect(button.disabled).toBe(true)
+    const button = screen.getByRole("button", { name: "Call" })
+    expect(button.getAttribute("aria-disabled")).toBe("true")
     expect(
       screen.getByText(
         "This method cannot be called: an argument's type has no values."

@@ -23,7 +23,11 @@ export const formDouble: {
 
 export function MethodForm(props: MethodFormProps): JSX.Element {
   formDouble.last = props
+  // As the real form: aria-disabled, never disabled, so it can hold the
+  // focus a parent hands back to it (`submitRef`).
+  const blocked = props.disabledReason !== undefined || props.busy === true
   const submit = () => {
+    if (blocked) return
     const values = [...formDouble.next]
     const encoded = encodeArgs(props.method.args, values)
     props.onSubmit({
@@ -41,13 +45,35 @@ export function MethodForm(props: MethodFormProps): JSX.Element {
         {(props.externalIssues ?? []).map((issue) => issue.path).join(" ")}
       </p>
       <button
+        ref={props.submitRef}
         type="button"
-        disabled={props.disabledReason !== undefined || props.busy === true}
+        aria-disabled={blocked || undefined}
         onClick={submit}
       >
         {props.submitLabel}
       </button>
     </div>
+  )
+}
+
+/**
+ * Hands the last rendered form's `onChange` the check of `values`, as the
+ * real form does on every edit. Call it inside `act()`.
+ */
+export function changeForm(values: readonly unknown[]): void {
+  const props = formDouble.last
+  if (props === undefined) throw new Error("No form was rendered")
+  const encoded = encodeArgs(props.method.args, [...values])
+  props.onChange?.(
+    encoded.ok
+      ? {
+          ok: true,
+          values: [...values],
+          vars: toVars(values),
+          bytes: encoded.bytes,
+          issues: [],
+        }
+      : { ok: false, issues: [] }
   )
 }
 

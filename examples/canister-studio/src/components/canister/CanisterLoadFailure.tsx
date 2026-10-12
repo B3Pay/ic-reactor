@@ -4,6 +4,7 @@ import type {
   InterfaceErrorCode,
   InterfacePayload,
 } from "../../interface/types.ts"
+import { ActionButton } from "../ActionButton.tsx"
 import { Notice } from "../Notice.tsx"
 
 type FailedPayload = Extract<InterfacePayload, { ok: false }>
@@ -52,7 +53,7 @@ const EXPLAIN: Readonly<
   },
   too_large: {
     title: "The interface is too large",
-    text: "The studio compiles interfaces up to 256 KiB on its server; this one is larger.",
+    text: "The studio loads interfaces of at most 256 KiB and 1,000 methods; this one is past a limit (below).",
     tone: "warn",
     retry: false,
   },
@@ -69,14 +70,20 @@ const EXPLAIN: Readonly<
     retry: true,
   },
   timeout: {
-    title: "Reading the interface took too long",
-    text: "The server gave up waiting. Try again; a second read is usually cached.",
+    title: "Loading the interface took too long",
+    text: "The server stopped waiting for mainnet, or stopped a compile that ran past its deadline (below). Try again in a moment. An interface whose compile ran too long is refused for a short while; if it keeps failing, paste its .did in the playground.",
     tone: "warn",
     retry: true,
   },
   trust_error: {
     title: "The certificate did not verify",
     text: "The answer was signed wrongly. The studio never falls back to an uncertified read after that, so it shows nothing.",
+    tone: "danger",
+    retry: true,
+  },
+  server_error: {
+    title: "The studio's server failed",
+    text: "Not the canister and not mainnet: the server could not finish loading this interface, and its log says why. Try again; if it keeps failing, paste the .did in the playground.",
     tone: "danger",
     retry: true,
   },
@@ -131,14 +138,13 @@ export function CanisterLoadFailure({
       )}
       <div className="row">
         {explain.retry && (
-          <button
-            type="button"
+          <ActionButton
             className="btn btn-primary"
             onClick={retry}
-            disabled={retrying}
+            unavailable={retrying}
           >
             {retrying ? "Trying again…" : "Try again"}
-          </button>
+          </ActionButton>
         )}
         <Link
           to="/playground"

@@ -23,9 +23,9 @@ export interface RouterContext {
  * TanStack Start calls this once per request on the server and once per tab
  * in the browser, so the client made here has exactly the lifetime ic-reactor
  * asks for: one per request, one per tab, never shared, never per render.
+ * Start passes nothing; a test passes a `createTestClient()` client.
  */
-export function getRouter() {
-  const reactor = createAppClient()
+export function getRouter(reactor: Client = createAppClient()) {
   const queryClient = reactor.queryClient
 
   const router = createRouter({
@@ -52,23 +52,72 @@ export function getRouter() {
     wrapQueryClient: false,
     dehydrateOptions: { shouldDehydrateQuery: shouldDehydrateRead },
   })
+  if (typeof document === "undefined") {
+    boundServerReads(queryClient, SERVER_READ_DEADLINE_MS)
+  }
 
   return router
 }
 
 /**
- * Which reads the server sends to the browser: successful ones, and ones
- * still in flight (they stream as they settle). Never a failed read: the
- * router's serializer sends an Error as `new Error(message)`, so it would
- * reach the browser without its kind, code or mayHaveExecuted, and
- * `isReactorError()` false. Left out, the browser reads it again and gets the
- * real ReactorError.
+ * How long a server render lets any one read run. ic-reactor sets no
+ * timeout on a query, and a suspended section holds the response open until
+ * its read settles: for a bot, which gets nothing before the whole page is
+ * ready, one hung read would be a blank page. Longer than a shared link's
+ * own budget (SHARED_READ_BUDGET_MS), which ends its read first.
+ */
+export const SERVER_READ_DEADLINE_MS = 5_000
+
+/**
+ * Cancels every read of `queryClient` still in flight `deadlineMs` after it
+ * started, where it stands (`revert: false`): the query ends in an error.
+ * Reverted instead, it would be pending again, and the suspended section's
+ * next server render would start the same unbounded read once more. The
+ * error is never dehydrated (see {@link shouldDehydrateRead}), so the
+ * browser renders that section and reads it itself. Returns the unsubscribe.
+ */
+export function boundServerReads(
+  queryClient: QueryClient,
+  deadlineMs: number
+): () => void {
+  const timers = new Map<string, ReturnType<typeof setTimeout>>()
+  return queryClient.getQueryCache().subscribe((event) => {
+    const { query } = event
+    const hash = query.queryHash
+    if (event.type === "removed" || query.state.fetchStatus === "idle") {
+      clearTimeout(timers.get(hash))
+      timers.delete(hash)
+    } else if (!timers.has(hash)) {
+      timers.set(
+        hash,
+        setTimeout(() => {
+          timers.delete(hash)
+          void queryClient.cancelQueries(
+            { queryKey: query.queryKey, exact: true },
+            { revert: false }
+          )
+        }, deadlineMs)
+      )
+    }
+  })
+}
+
+/**
+ * Which reads the server sends to the browser: successful ones only. A read
+ * still in flight when the router dehydrates is sent once it succeeds: the
+ * integration offers each later change of the cache to this filter again
+ * while the page streams, before the section that waited for it.
+ *
+ * Never a failed read, and never a promise that may still fail: the router's
+ * serializer sends an Error as `new Error(message)`, and a dehydrated promise
+ * that rejects reaches the browser as `Error("redacted")`. Either way
+ * `isReactorError()` is false, so ic-reactor would not retry it and the
+ * section would show that error. Left out, the read is the browser's: the
+ * section the server could not finish renders there, reads again, and shows
+ * the real ReactorError only if that read fails too.
  */
 export function shouldDehydrateRead(query: Query): boolean {
-  return (
-    query.state.status === "success" ||
-    (query.state.status === "pending" && query.state.fetchStatus === "fetching")
-  )
+  return query.state.status === "success"
 }
 
 declare module "@tanstack/react-router" {

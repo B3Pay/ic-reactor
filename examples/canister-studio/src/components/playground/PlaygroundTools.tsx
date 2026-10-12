@@ -5,12 +5,13 @@ import {
   moduleInBrowser,
   projectInBrowser,
 } from "../../interface/browser.ts"
-import { fetchInterface } from "../../interface/functions.ts"
+import { loadLivePayload } from "../../interface/load.ts"
 import type {
   CanisterInterface,
   InterfaceSource,
 } from "../../interface/types.ts"
 import { groupDigits } from "../../lib/format.ts"
+import { ActionButton } from "../ActionButton.tsx"
 import { ModeBadge } from "../Badge.tsx"
 import { Code } from "../Code.tsx"
 import { CompatReport } from "../interface/CompatReport.tsx"
@@ -109,10 +110,9 @@ export function PlaygroundProject({
         </ul>
       </fieldset>
       <div className="row">
-        <button
-          type="button"
+        <ActionButton
           className="btn btn-primary"
-          disabled={chosen.size === 0 || state.status === "running"}
+          unavailable={chosen.size === 0 || state.status === "running"}
           onClick={() =>
             task.run(async () => {
               const names = iface.methods
@@ -125,7 +125,7 @@ export function PlaygroundProject({
           }
         >
           Project
-        </button>
+        </ActionButton>
         {state.status === "running" && <Spinner size="sm" label="Projecting" />}
       </div>
       {state.status === "failed" && (
@@ -154,8 +154,8 @@ interface LiveCheck {
 
 /**
  * The pasted .did against the target canister's live interface (read on the
- * server, checked in the browser): can an app written against the paste
- * call this canister?
+ * server, or in the browser where server functions cannot run; checked in
+ * the browser): can an app written against the paste call this canister?
  */
 export function PlaygroundCompat({
   did,
@@ -177,15 +177,12 @@ export function PlaygroundCompat({
   return (
     <div className="stack">
       <div className="row">
-        <button
-          type="button"
+        <ActionButton
           className="btn btn-primary"
-          disabled={state.status === "running"}
+          unavailable={state.status === "running"}
           onClick={() =>
             task.run(async () => {
-              const live = await fetchInterface({
-                data: { canisterId: target },
-              })
+              const live = await loadLivePayload(target)
               if (!live.ok) throw new Error(`${live.code}: ${live.message}`)
               const report = await checkCompatibleInBrowser(did, live.did)
               if (!report.ok) throw new Error(report.message)
@@ -194,7 +191,7 @@ export function PlaygroundCompat({
           }
         >
           Check against <span className="mono">{target}</span>
-        </button>
+        </ActionButton>
         {state.status === "running" && (
           <Spinner size="sm" label="Checking compatibility" />
         )}

@@ -1,5 +1,5 @@
 import { useClient } from "@ic-reactor/react"
-import { useSuspenseQuery } from "@tanstack/react-query"
+import { useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query"
 import { Link } from "@tanstack/react-router"
 import type { ReactElement, ReactNode } from "react"
 import { formatTokens, groupDigits } from "../../lib/format.ts"
@@ -69,10 +69,17 @@ export function FeaturedLedger({
 function LedgerStats({ id }: { id: string }): ReactElement {
   const client = useClient()
   const reads = ledgerReads(client, id)
-  const symbol = useSuspenseQuery(reads.symbol).data
-  const decimals = useSuspenseQuery(reads.decimals).data
-  const supply = useSuspenseQuery(reads.totalSupply).data
-  const fee = useSuspenseQuery(reads.fee).data
+  // Together, not one `useSuspenseQuery` after another: a card the browser
+  // renders itself (its server read failed) would otherwise read the four
+  // one at a time, each waiting for the one before to resume it.
+  const [
+    { data: symbol },
+    { data: decimals },
+    { data: supply },
+    { data: fee },
+  ] = useSuspenseQueries({
+    queries: [reads.symbol, reads.decimals, reads.totalSupply, reads.fee],
+  })
   return (
     <Stats>
       <Stat

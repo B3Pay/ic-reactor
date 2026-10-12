@@ -39,11 +39,12 @@ const LEDGER_LABEL: Readonly<Record<WalletLedgerKey, string>> = {
 }
 
 // How long a server render waits for the ledger's metadata. Past it, the
-// page streams it in instead.
+// page streams it in instead, until the router's deadline for any server read
+// (SERVER_READ_DEADLINE_MS) cancels what is still in flight.
 const METADATA_BUDGET_MS = 3_000
 
-// Never fails: a read that fails here is read again by the browser, which
-// shows the real error.
+// Never fails: a read that fails here is never sent to the browser, which
+// reads it again and shows the real error.
 const settle = (pending: Promise<unknown>): Promise<unknown> =>
   pending.catch(() => undefined)
 
@@ -54,21 +55,25 @@ export const Route = createFileRoute("/wallet")({
   // The ledger's public metadata is the same for everyone, and the whole
   // page needs it (amounts are parsed with the ledger's own decimals): the
   // server waits for it, briefly, so it is in the first HTML; past the
-  // budget it streams. Balances need a caller, which a server never has, so
-  // they load in the browser after hydration.
+  // budget it streams. The minter's limits are public too, and waited for
+  // with it: their panel reads without suspending, so nothing would hold the
+  // stream open for them. Balances need a caller, which a server never has,
+  // so they load in the browser after hydration.
   loader: async ({ context: { reactor, queryClient }, deps }) => {
     const entry = WALLET_LEDGERS[deps.ledger]
     const reads = ledgerMetaReads(reactor, entry.id)
-    const metadata = Promise.all([
+    const pending = [
       settle(queryClient.query(reads.name)),
       settle(queryClient.query(reads.symbol)),
       settle(queryClient.query(reads.decimals)),
       settle(queryClient.query(reads.fee)),
-    ])
+    ]
     if (deps.ledger === "ckbtc") {
-      void settle(
-        queryClient.query(
-          reactor.queryOptions(minterCanister(reactor), "get_minter_info")
+      pending.push(
+        settle(
+          queryClient.query(
+            reactor.queryOptions(minterCanister(reactor), "get_minter_info")
+          )
         )
       )
     }
@@ -76,7 +81,7 @@ export const Route = createFileRoute("/wallet")({
     if (typeof document !== "undefined") return
     let timer: ReturnType<typeof setTimeout> | undefined
     await Promise.race([
-      metadata,
+      Promise.all(pending),
       new Promise((resolve) => {
         timer = setTimeout(resolve, METADATA_BUDGET_MS)
       }),
@@ -143,7 +148,10 @@ function WalletPage(): ReactElement {
             to="/wallet"
             search={{ ledger: key }}
             className="wallet-ledger-link"
-            aria-current={key === ledger ? "page" : undefined}
+            // The router marks the current one aria-current="page". Exact:
+            // the ICP link's search is stripped to {}, which a partial match
+            // finds in every ledger's search.
+            activeOptions={{ exact: true }}
             activeProps={{}}
           >
             {LEDGER_LABEL[key]}

@@ -8,9 +8,11 @@ import {
   type KeyboardEvent,
   type ReactElement,
 } from "react"
+import { Segmented } from "../forms/fields/Segmented.tsx"
 import type { MethodInfo } from "../interface/types.ts"
 import { groupDigits } from "../lib/format.ts"
 import { Badge } from "./Badge.tsx"
+import { movesThisPage } from "./canister/workspace-key.ts"
 import { MODE_LABEL, MODE_ORDER } from "./modes.ts"
 
 export interface MethodListProps {
@@ -22,6 +24,8 @@ export interface MethodListProps {
   idempotent?: readonly string[]
   /** Kept in the links, so switching methods keeps the certified choice. */
   certified?: boolean
+  /** Called as a method is picked in this page, before the page moves to it. */
+  onPick?(target: { method: string; certified?: boolean }): void
 }
 
 type ModeFilter = "all" | MethodMode
@@ -44,6 +48,7 @@ export function MethodList({
   selected,
   idempotent = [],
   certified,
+  onPick,
 }: MethodListProps): ReactElement {
   const navigate = useNavigate()
   const ids = useId()
@@ -93,11 +98,16 @@ export function MethodList({
     all[next]?.focus()
   }
 
+  // Picking a method keeps the page where it is (`resetScroll: false`): the
+  // workspace brings the method into view itself when it is not, as on a
+  // phone, where the list sits above it.
   const open = (name: string): void => {
+    onPick?.({ method: name, certified })
     void navigate({
       to: "/canister/$canisterId",
       params: { canisterId },
       search: { method: name, certified },
+      resetScroll: false,
     })
   }
 
@@ -111,7 +121,7 @@ export function MethodList({
           id={`${ids}-search`}
           className="input"
           type="search"
-          placeholder={`Search ${groupDigits(methods.length)} methods`}
+          placeholder={`Search ${groupDigits(methods.length)} ${methods.length === 1 ? "method" : "methods"}`}
           autoComplete="off"
           spellCheck={false}
           value={query}
@@ -129,22 +139,19 @@ export function MethodList({
           aria-controls={`${ids}-list`}
         />
         {presentModes.length > 1 && (
-          <div
-            className="segmented method-list-modes"
-            role="radiogroup"
-            aria-label="Filter by mode"
-          >
-            {(["all", ...presentModes] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="radio"
-                aria-checked={mode === m}
-                onClick={() => setMode(m)}
-              >
-                {m === "all" ? "All" : MODE_LABEL[m]}
-              </button>
-            ))}
+          <div className="method-list-modes">
+            <Segmented<ModeFilter>
+              label="Filter by mode"
+              options={[
+                { value: "all", label: "All" },
+                ...presentModes.map((m) => ({
+                  value: m,
+                  label: MODE_LABEL[m],
+                })),
+              ]}
+              value={mode}
+              onChange={setMode}
+            />
           </div>
         )}
         <p className="sr-only" role="status" aria-live="polite">
@@ -179,12 +186,18 @@ export function MethodList({
             <ul className="list-plain">
               {group.items.map((method) => {
                 const isSelected = method.name === selected
+                const arity = `${method.args.length} ${method.args.length === 1 ? "argument" : "arguments"}, ${method.results.length} ${method.results.length === 1 ? "result" : "results"}`
                 return (
                   <li key={method.name}>
                     <Link
                       to="/canister/$canisterId"
                       params={{ canisterId }}
                       search={{ method: method.name, certified }}
+                      resetScroll={false}
+                      onClick={(event) => {
+                        if (movesThisPage(event))
+                          onPick?.({ method: method.name, certified })
+                      }}
                       className="method-list-item"
                       data-method-link=""
                       aria-current={isSelected ? "true" : undefined}
@@ -192,7 +205,11 @@ export function MethodList({
                       // The workspace's own page: never "active" by path.
                       activeProps={{}}
                     >
-                      <span className="mono truncate method-list-name">
+                      {/* Cut to the column: the title shows a long name whole. */}
+                      <span
+                        className="mono truncate method-list-name"
+                        title={method.name}
+                      >
                         {method.name}
                       </span>
                       <span className="row-sm row-nowrap shrink-0">
@@ -204,12 +221,15 @@ export function MethodList({
                             idempotent
                           </Badge>
                         )}
+                        {/* Read out as words, not "1 rightwards arrow 1". */}
                         <span
                           className="subtle text-xs tabular"
-                          title={`${method.args.length} ${method.args.length === 1 ? "argument" : "arguments"}, ${method.results.length} ${method.results.length === 1 ? "result" : "results"}`}
+                          title={arity}
+                          aria-hidden="true"
                         >
                           {method.args.length}→{method.results.length}
                         </span>
+                        <span className="sr-only">, {arity}</span>
                       </span>
                     </Link>
                   </li>

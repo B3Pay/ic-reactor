@@ -9,6 +9,7 @@ import {
   compatibilityOf,
   compileInterface,
   MAX_DID_BYTES,
+  MAX_METHODS,
   moduleOf,
   projectionOf,
   tooLarge,
@@ -80,6 +81,21 @@ describe("compileInterface", () => {
     const fits = "é".repeat(MAX_DID_BYTES / 2)
     expect(tooLarge(fits)).toBeUndefined()
     expect(tooLarge(`${fits}x`)).toMatchObject({ code: "too_large" })
+  })
+
+  it("refuses an interface of more than MAX_METHODS methods as too large", async () => {
+    const service = (n: number) =>
+      `service : {${Array.from({ length: n }, (_, i) => `m${i} : () -> ();`).join("")}}`
+    expect(
+      await compileInterface(serverCli, service(MAX_METHODS))
+    ).toMatchObject({ ok: true })
+    expect(
+      await compileInterface(serverCli, service(MAX_METHODS + 1))
+    ).toMatchObject({
+      ok: false,
+      code: "too_large",
+      message: `The interface has ${MAX_METHODS + 1} methods; the studio loads at most ${MAX_METHODS}.`,
+    })
   })
 
   it("keeps a hostile method name as data", async () => {

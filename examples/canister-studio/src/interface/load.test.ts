@@ -15,6 +15,7 @@ import { fetchInterface } from "./functions.ts"
 import {
   interfaceFromPayload,
   loadInterfacePayload,
+  loadLivePayload,
   useCanisterInterface,
 } from "./load.ts"
 import type { CanisterInterface, InterfacePayload } from "./types.ts"
@@ -144,6 +145,50 @@ describe("loadInterfacePayload", () => {
       code: "network",
     })
     expect(browserMock).not.toHaveBeenCalled()
+  })
+
+  // StackBlitz: the server answers a plain 500, and TanStack Start's client
+  // resolves the call with undefined instead of rejecting.
+  it("reads from the browser when the server function resolves with no result", async () => {
+    vi.stubEnv("SSR", false)
+    const fromBrowser = await runtimePayload(SOME_CANISTER, {
+      compiledIn: "browser",
+    })
+    fetchMock.mockResolvedValue(undefined as unknown as InterfacePayload)
+    browserMock.mockResolvedValue(fromBrowser)
+    expect(await loadInterfacePayload(SOME_CANISTER)).toBe(fromBrowser)
+    expect(browserMock).toHaveBeenCalledWith(SOME_CANISTER)
+  })
+
+  it("reports a call with no result during SSR as a failed payload", async () => {
+    vi.stubEnv("SSR", true)
+    fetchMock.mockResolvedValue(undefined as unknown as InterfacePayload)
+    expect(await loadInterfacePayload(SOME_CANISTER)).toMatchObject({
+      ok: false,
+      canisterId: SOME_CANISTER,
+      code: "network",
+      message: expect.stringMatching(/studio's server/),
+    })
+    expect(browserMock).not.toHaveBeenCalled()
+  })
+})
+
+describe("loadLivePayload", () => {
+  it("reads a registry canister live too, for a check against its committed .did", async () => {
+    const payload = await runtimePayload(ICP_LEDGER)
+    fetchMock.mockResolvedValue(payload)
+    expect(await loadLivePayload(ICP_LEDGER)).toBe(payload)
+    expect(fetchMock).toHaveBeenCalledWith({ data: { canisterId: ICP_LEDGER } })
+  })
+
+  it("falls back to the browser when the server gives no result", async () => {
+    vi.stubEnv("SSR", false)
+    const fromBrowser = await runtimePayload(ICP_LEDGER, {
+      compiledIn: "browser",
+    })
+    fetchMock.mockResolvedValue({} as InterfacePayload)
+    browserMock.mockResolvedValue(fromBrowser)
+    expect(await loadLivePayload(ICP_LEDGER)).toBe(fromBrowser)
   })
 })
 

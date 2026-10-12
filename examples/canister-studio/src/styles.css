@@ -30,7 +30,9 @@
  *               --space-6 (24px), --space-8 (32px), --space-10 (40px),
  *               --space-12 (48px), --space-16 (64px)
  *   Radius      --radius-xs, -sm, -md, -lg, -xl, -full
- *   Shadow      --shadow-xs, -sm, -md, -lg, --ring (focus ring box-shadow)
+ *   Shadow      --shadow-xs, -sm, -md, -lg, --ring (focus ring box-shadow,
+ *               outside the element), --ring-inset (inside it: for controls
+ *               in a container that clips, such as a segmented control)
  *   Type        --font-sans, --font-mono; --text-2xs … --text-4xl;
  *               --leading-tight, -snug, -normal; --weight-normal, -medium,
  *               -semibold, -bold
@@ -41,7 +43,7 @@
  * Layout
  *   .app, .skip-link, .app-header (sticky), .app-header-inner, .brand,
  *   .brand-mark, .brand-name, .app-nav, .app-nav-link(.active),
- *   .app-header-tools, .app-header-slot, .app-main, .app-footer
+ *   .app-header-tools, .app-main, .app-footer
  *   .page, .page-header, .page-title, .page-subtitle, .page-actions
  *   .section, .section-header, .section-title, .lead
  *   .layout-sidebar > .sidebar + .content   (sidebar + main grid; one column
@@ -49,14 +51,13 @@
  *
  * Components
  *   Buttons     .btn (+ .btn-primary, .btn-ghost, .btn-danger, .btn-sm,
- *               .btn-lg, .btn-icon, .btn-block); disabled via [disabled] or
+ *               .btn-lg, .btn-icon); disabled via [disabled] or
  *               [aria-disabled="true"]
  *   Controls    .input, .select, .textarea (+ .mono for principals, hex);
  *               invalid via [aria-invalid="true"]; .input-group (control +
  *               button side by side), .input-addon
- *   Field       .field > .field-label (+ .field-required) + control +
- *               .field-hint + .field-error; .field-inline (label beside),
- *               .fieldset (+ legend), .field-actions
+ *   Field       .field > .field-label + control + .field-hint +
+ *               .field-error; .fieldset (+ legend)
  *   Switch      input[type="checkbox"].switch or button[role="switch"].switch
  *               ([aria-checked]); .switch-label wraps a switch and its text
  *   Segmented   .segmented > button[aria-pressed] (or [aria-checked])
@@ -78,19 +79,18 @@
  *   Key/value   dl.kv > dt + dd (two columns, stacks on narrow screens);
  *               .kv-compact
  *   Disclosure  details.disclosure > summary + .disclosure-body
- *   Misc        .chip (constant value), .kbd, .divider, .spinner (+
+ *   Misc        .chip (constant value), .kbd, .spinner (+
  *               .spinner-sm), .skeleton, .empty-state (+ -code, -detail),
  *               .list-plain, .dot (+ tone modifiers via color)
  *
  * Helpers
  *   .stack (vertical flow; .stack-xs/-sm/-lg/-xl are stacks with another gap)
- *   .row (horizontal, wraps, centered; .row-sm/-lg are rows with another
- *   gap; modifiers .row-between, .row-end, .row-start, .row-nowrap)
- *   .grid (auto-fill columns, min width --grid-min, default 260px;
- *   .grid-2, .grid-3, .grid-4 fixed columns that collapse on narrow screens)
- *   .grow, .shrink-0, .muted, .subtle, .text-xs, .text-sm, .text-lg,
- *   .text-right, .tabular, .nowrap, .truncate, .sr-only, .visually-hidden
- *   (alias), .w-full
+ *   .row (horizontal, wraps, centered; .row-sm is a row with a smaller gap;
+ *   modifiers .row-between, .row-end, .row-nowrap)
+ *   .grid (auto-fill columns, min width --grid-min, default 260px; .grid-2
+ *   two fixed columns that collapse on narrow screens)
+ *   .grow, .shrink-0, .muted, .subtle, .text-xs, .text-sm, .tabular,
+ *   .nowrap, .truncate, .sr-only
  *
  * Focus: every interactive element gets a visible ring on :focus-visible.
  */
@@ -112,7 +112,8 @@
   --color-border-strong: #c9ced7;
   --color-text: #151920;
   --color-text-muted: #545d6b;
-  --color-text-subtle: #858e9c;
+  /* At least 4.5:1 on every surface and tone background (AA, small text). */
+  --color-text-subtle: #646d7b;
   --color-code-bg: #f4f6f8;
   --color-overlay: rgb(15 18 24 / 0.45);
 
@@ -187,7 +188,10 @@
     0 4px 8px -2px rgb(16 24 40 / 0.08), 0 2px 4px -2px rgb(16 24 40 / 0.04);
   --shadow-lg:
     0 12px 24px -6px rgb(16 24 40 / 0.12), 0 4px 8px -4px rgb(16 24 40 / 0.05);
-  --ring: 0 0 0 3px color-mix(in srgb, var(--color-focus) 28%, transparent);
+  /* Solid, at least 3:1 against what surrounds it in both themes (WCAG
+     1.4.11): a surface-colored gap, then the focus color. */
+  --ring: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-focus);
+  --ring-inset: inset 0 0 0 2px var(--color-focus);
 
   /* Type */
   --font-sans:
@@ -243,12 +247,13 @@
     --color-border-strong: #353c48;
     --color-text: #e7e9ee;
     --color-text-muted: #a0a8b6;
-    --color-text-subtle: #6e7787;
+    --color-text-subtle: #8a93a3;
     --color-code-bg: #0f1217;
     --color-overlay: rgb(0 0 0 / 0.6);
 
     --color-accent: #a5b4fc;
-    --color-accent-solid: #6366f1;
+    /* White on it is 4.97:1 (AA); #6366f1 was 4.47:1. */
+    --color-accent-solid: #5b5ee9;
     --color-accent-hover: #4f46e5;
     --color-accent-soft: rgb(99 102 241 / 0.16);
     --color-on-accent: #ffffff;
@@ -581,10 +586,6 @@ ol {
   gap: var(--space-2);
 }
 
-.app-header-slot:empty {
-  display: none;
-}
-
 .app-main {
   width: 100%;
   max-width: var(--content-max);
@@ -795,10 +796,6 @@ ol {
   width: 26px;
 }
 
-.btn-block {
-  width: 100%;
-}
-
 /* ------------------------------------------------------------------------ */
 /* Form controls                                                             */
 /* ------------------------------------------------------------------------ */
@@ -850,7 +847,9 @@ ol {
 .input[aria-invalid="true"]:focus-visible,
 .select[aria-invalid="true"]:focus-visible,
 .textarea[aria-invalid="true"]:focus-visible {
-  box-shadow: 0 0 0 3px var(--tone-err-bg);
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px var(--tone-err-text);
 }
 
 .input:disabled,
@@ -951,12 +950,6 @@ ol {
   font-weight: var(--weight-medium);
 }
 
-.field-required::after {
-  content: "*";
-  margin-left: 2px;
-  color: var(--tone-err-text);
-}
-
 .field-hint {
   color: var(--color-text-muted);
   font-size: var(--text-xs);
@@ -969,29 +962,6 @@ ol {
   color: var(--tone-err-text);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
-}
-
-.field-inline {
-  display: grid;
-  grid-template-columns: minmax(120px, 200px) minmax(0, 1fr);
-  align-items: start;
-  gap: var(--space-1) var(--space-3);
-}
-
-.field-inline > .field-label {
-  min-height: 34px;
-}
-
-.field-inline > .field-hint,
-.field-inline > .field-error {
-  grid-column: 2;
-}
-
-.field-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .fieldset {
@@ -1117,7 +1087,7 @@ ol {
 
 .segmented > button:focus-visible {
   outline: none;
-  box-shadow: var(--ring);
+  box-shadow: var(--ring-inset);
 }
 
 /* ------------------------------------------------------------------------ */
@@ -1361,7 +1331,7 @@ a.card-interactive:hover {
 .tab:focus-visible {
   outline: none;
   border-radius: var(--radius-xs) var(--radius-xs) 0 0;
-  box-shadow: var(--ring);
+  box-shadow: var(--ring-inset);
 }
 
 .tab-panel {
@@ -1609,7 +1579,7 @@ code.code-inline {
 
 .disclosure > summary:focus-visible {
   outline: none;
-  box-shadow: var(--ring);
+  box-shadow: var(--ring-inset);
 }
 
 .disclosure-body {
@@ -1653,13 +1623,6 @@ code.code-inline {
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
-}
-
-.divider {
-  height: 1px;
-  margin: var(--space-2) 0;
-  border: 0;
-  background: var(--color-border);
 }
 
 .dot {
@@ -1784,8 +1747,7 @@ code.code-inline {
 }
 
 .row,
-.row-sm,
-.row-lg {
+.row-sm {
   display: flex;
   min-width: 0;
   flex-wrap: wrap;
@@ -1797,20 +1759,12 @@ code.code-inline {
   gap: var(--space-1);
 }
 
-.row-lg {
-  gap: var(--space-4);
-}
-
 .row-between {
   justify-content: space-between;
 }
 
 .row-end {
   justify-content: flex-end;
-}
-
-.row-start {
-  align-items: flex-start;
 }
 
 .row-nowrap {
@@ -1830,14 +1784,6 @@ code.code-inline {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.grid-3 {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.grid-4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
 .grow {
   min-width: 0;
   flex: 1 1 auto;
@@ -1845,10 +1791,6 @@ code.code-inline {
 
 .shrink-0 {
   flex-shrink: 0;
-}
-
-.w-full {
-  width: 100%;
 }
 
 .muted {
@@ -1867,14 +1809,6 @@ code.code-inline {
   font-size: var(--text-sm);
 }
 
-.text-lg {
-  font-size: var(--text-lg);
-}
-
-.text-right {
-  text-align: right;
-}
-
 .tabular {
   font-variant-numeric: tabular-nums;
 }
@@ -1890,8 +1824,7 @@ code.code-inline {
   white-space: nowrap;
 }
 
-.sr-only,
-.visually-hidden {
+.sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1907,16 +1840,6 @@ code.code-inline {
 /* ------------------------------------------------------------------------ */
 /* Responsive                                                                */
 /* ------------------------------------------------------------------------ */
-
-@media (max-width: 1024px) {
-  .grid-4 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .grid-3 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 
 @media (max-width: 960px) {
   .layout-sidebar {
@@ -1957,23 +1880,8 @@ code.code-inline {
     font-size: var(--text-2xl);
   }
 
-  .grid-2,
-  .grid-3,
-  .grid-4 {
+  .grid-2 {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .field-inline {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .field-inline > .field-label {
-    min-height: 0;
-  }
-
-  .field-inline > .field-hint,
-  .field-inline > .field-error {
-    grid-column: 1;
   }
 
   .kv {
@@ -2309,7 +2217,6 @@ code.code-inline {
 /* The reply viewer, its Candid and JSON views, and the call preview
    (src/values). Classes: .value-* and .call-preview-*. */
 
-.value-view,
 .value-inspector,
 .value-body {
   min-width: 0;
@@ -2348,6 +2255,20 @@ code.code-inline {
 
 .value-record > dd {
   min-width: 0;
+}
+
+/* Two columns (they stack below 720px, as every .kv does): the names take
+   at most 14rem and wrap past it (overflow-wrap above), so one long field
+   name cannot squeeze every value, nested records most, into a sliver. The
+   floor is .kv's, so short names still line their values up. */
+@media (min-width: 721px) {
+  .value-record {
+    grid-template-columns: fit-content(14rem) minmax(0, 1fr);
+  }
+
+  .value-record > dt {
+    min-width: 6rem;
+  }
 }
 
 .value-record .value-record,
@@ -3199,12 +3120,12 @@ pre.value-text-block {
   background: var(--color-surface);
 }
 
-.method-list-modes {
+.method-list-modes > .segmented {
   display: flex;
   width: 100%;
 }
 
-.method-list-modes > button {
+.method-list-modes > .segmented > button {
   flex: 1 1 auto;
 }
 
@@ -3258,7 +3179,7 @@ pre.value-text-block {
 
 .method-list-item:focus-visible {
   outline: none;
-  box-shadow: var(--ring);
+  box-shadow: var(--ring-inset);
 }
 
 .method-list-name {
@@ -3391,7 +3312,7 @@ pre.value-text-block {
 
 .wallet-ledgers > a:focus-visible {
   outline: none;
-  box-shadow: var(--ring);
+  box-shadow: var(--ring-inset);
 }
 
 .wallet-grid {

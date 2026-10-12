@@ -92,8 +92,10 @@ describe("writes", () => {
       SIGN_IN_REASON
     )
     expect(
-      screen.getByRole("button", { name: "Review update…" })
-    ).toHaveProperty("disabled", true)
+      screen
+        .getByRole("button", { name: "Review update…" })
+        .getAttribute("aria-disabled")
+    ).toBe("true")
     expect(made.callsOf("icrc1_transfer")).toBe(0)
   })
 

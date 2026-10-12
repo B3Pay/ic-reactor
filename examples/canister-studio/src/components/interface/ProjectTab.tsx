@@ -1,7 +1,13 @@
 import { useId, useState, type ReactElement } from "react"
-import { projectInterface } from "../../interface/functions.ts"
+import {
+  MAX_METHOD_NAME_LENGTH,
+  MAX_PROJECT_METHODS,
+  projectInterface,
+} from "../../interface/functions.ts"
+import { serverResult } from "../../interface/server-result.ts"
 import type { CanisterInterface } from "../../interface/types.ts"
 import { groupDigits } from "../../lib/format.ts"
+import { ActionButton } from "../ActionButton.tsx"
 import { ModeBadge } from "../Badge.tsx"
 import { Code } from "../Code.tsx"
 import { safeFileName } from "../download.ts"
@@ -17,8 +23,8 @@ interface Projection {
 /**
  * Pick methods, get a self-contained .did with exactly those methods and
  * every type they reach (`projectDid` on the server, from the canister's
- * live interface): the written side of a compatibility check, or the input
- * of a small generated module.
+ * live interface, or a typed canister's committed one): the written side
+ * of a compatibility check, or the input of a small generated module.
  */
 export function ProjectTab({
   iface,
@@ -62,13 +68,24 @@ export function ProjectTab({
       .map((method) => method.name)
       .filter((name) => chosen.has(name))
     task.run(async () => {
-      const result = await projectInterface({
-        data: { canisterId: iface.canisterId, methods },
-      })
+      const result = await serverResult(
+        projectInterface({ data: { canisterId: iface.canisterId, methods } })
+      )
       if (!result.ok) throw new Error(result.message)
       return { did: result.did, methods: result.methods }
     })
   }
+
+  // The server function's validator refuses a request past these, so the
+  // button says why instead of sending one.
+  const refusal =
+    chosen.size === 0
+      ? "Choose at least one method."
+      : chosen.size > MAX_PROJECT_METHODS
+        ? `A projection takes at most ${groupDigits(MAX_PROJECT_METHODS)} methods.`
+        : [...chosen].some((name) => name.length > MAX_METHOD_NAME_LENGTH)
+          ? `A projection takes method names of at most ${groupDigits(MAX_METHOD_NAME_LENGTH)} characters.`
+          : undefined
 
   const state = task.state
   return (
@@ -122,7 +139,9 @@ export function ProjectTab({
                     toggle(method.name, event.target.checked)
                   }
                 />
-                <span className="mono truncate grow">{method.name}</span>
+                <span className="mono truncate grow" title={method.name}>
+                  {method.name}
+                </span>
                 <ModeBadge mode={method.mode} />
               </label>
             </li>
@@ -130,18 +149,22 @@ export function ProjectTab({
         </ul>
       </fieldset>
       <div className="row">
-        <button
-          type="button"
+        <ActionButton
           className="btn btn-primary"
           onClick={project}
-          disabled={chosen.size === 0 || state.status === "running"}
+          unavailable={refusal !== undefined || state.status === "running"}
+          aria-describedby={
+            refusal === undefined ? undefined : `${ids}-refusal`
+          }
         >
           {state.status === "running"
             ? "Projecting…"
             : `Project ${groupDigits(chosen.size)} ${chosen.size === 1 ? "method" : "methods"}`}
-        </button>
-        {chosen.size === 0 && (
-          <span className="text-sm muted">Choose at least one method.</span>
+        </ActionButton>
+        {refusal !== undefined && (
+          <span id={`${ids}-refusal`} className="text-sm muted">
+            {refusal}
+          </span>
         )}
         {state.status === "running" && (
           <Spinner size="sm" label="Projecting the interface" />

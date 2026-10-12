@@ -1,4 +1,10 @@
-import { useState, type ReactNode } from "react"
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from "react"
 import { toHex } from "../../lib/hex.ts"
 import { useFormContext, type EditorProps } from "../context.ts"
 import { SUBACCOUNT_BYTES, subaccountFromNumber } from "../convert.ts"
@@ -26,6 +32,14 @@ const FORMATS: readonly { value: BytesFormat; label: string }[] = [
 type BytesDraft = Extract<Draft, { k: "bytes" }>
 
 /**
+ * Long text, or any line break, needs the multi-line box: an <input> would
+ * show the text without its line breaks, and the next keystroke would store
+ * that.
+ */
+const needsTextarea = (text: string): boolean =>
+  text.length > LONG_BYTES_TEXT || /[\r\n]/.test(text)
+
+/**
  * A blob: typed as hex, UTF-8 text or base64, with its byte count. Switching
  * the format rewrites the same bytes in the new one, and a format that cannot
  * hold them (text, for bytes that are not UTF-8) is not offered. A memo
@@ -37,17 +51,36 @@ export function BytesField(props: EditorProps): ReactNode {
   const memo = hint?.widget === "memo-text"
   const subaccount = hint?.widget === "subaccount"
   const d: BytesDraft =
-    props.draft.k === "bytes"
-      ? props.draft
-      : { k: "bytes", text: "", format: "hex" }
-  // An empty memo is typed as text; any other blob keeps its draft's format.
-  const format: BytesFormat = memo && d.text === "" ? "utf8" : d.format
+    props.draft.k === "bytes" ? props.draft : { k: "bytes", text: "" }
+  // The draft's format, once anyone picked one (even for an empty memo);
+  // until then a memo is typed as text. Every write below stores the format
+  // shown, so what is shown is what the engine parses.
+  const format: BytesFormat =
+    d.format ?? (memo && d.text === "" ? "utf8" : "hex")
   const parsed = parseBytes(d.text, format)
   const bytes = typeof parsed === "string" ? undefined : parsed
 
   const switchFormat = (next: BytesFormat) => {
     const text = bytes === undefined ? d.text : formatBytes(bytes, next)
     if (text !== undefined) onChange({ k: "bytes", text, format: next })
+  }
+  const long = needsTextarea(d.text)
+  // Typing across the length limit swaps the <input> and the <textarea>: the
+  // caret moves to the new one, at the end, rather than dropping to the page.
+  const control = useRef<HTMLInputElement & HTMLTextAreaElement>(null)
+  const refocus = useRef(false)
+  useEffect(() => {
+    const el = control.current
+    if (!refocus.current || el === null) return
+    refocus.current = false
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length)
+  }, [long])
+  const type = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const text = e.target.value
+    refocus.current =
+      needsTextarea(text) !== long && document.activeElement === e.target
+    onChange({ k: "bytes", text, format })
   }
 
   const meta: ReactNode[] = []
@@ -61,7 +94,6 @@ export function BytesField(props: EditorProps): ReactNode {
       meta.push(`hex ${toHex(bytes)}`)
   }
 
-  const long = d.text.length > LONG_BYTES_TEXT
   return (
     <FieldShell
       path={path}
@@ -90,19 +122,19 @@ export function BytesField(props: EditorProps): ReactNode {
           {long ? (
             <textarea
               {...a11y}
+              ref={control}
               className={
                 format === "utf8" ? "textarea" : "textarea mono break-all"
               }
               value={d.text}
               spellCheck={false}
-              onChange={(e) =>
-                onChange({ k: "bytes", text: e.target.value, format })
-              }
+              onChange={type}
               onBlur={() => form.touch(path)}
             />
           ) : (
             <input
               {...a11y}
+              ref={control}
               className={format === "utf8" ? "input" : "input mono"}
               value={d.text}
               autoComplete="off"
@@ -115,9 +147,7 @@ export function BytesField(props: EditorProps): ReactNode {
                     ? "text"
                     : "base64")
               }
-              onChange={(e) =>
-                onChange({ k: "bytes", text: e.target.value, format })
-              }
+              onChange={type}
               onBlur={() => form.touch(path)}
             />
           )}

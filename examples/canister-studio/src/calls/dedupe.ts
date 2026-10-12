@@ -1,6 +1,7 @@
 import { resolveSchema, type AnyFieldSchema } from "@candid-core/schema"
+import { isReactorError } from "@ic-reactor/core"
 import type { HintResolver } from "../forms/hints.ts"
-import type { MethodInfo } from "../interface/types.ts"
+import type { CanisterInterface, MethodInfo } from "../interface/types.ts"
 import { prepareCall, type PreparedCall } from "./prepare.ts"
 
 // ICRC-1 ledgers (and the ICP ledger's own `transfer`) run a transaction at
@@ -8,7 +9,8 @@ import { prepareCall, type PreparedCall } from "./prepare.ts"
 // `created_at_time`: the same bytes from the same sender answer `Duplicate`.
 // That is the only thing that makes re-sending a write with an unknown
 // outcome safe, so the studio fills the field by default and offers
-// `client.resendOf()` only through it.
+// `client.resendOf()` only through it. The field's shape only says a
+// canister may deduplicate: the registry names the methods known to.
 
 const FIELD = "created_at_time"
 
@@ -119,9 +121,66 @@ export const hideDedupeField: HintResolver = (ctx) =>
   ctx.path === DEDUPE_PATH ? { hidden: true, nowByDefault: false } : undefined
 
 /**
- * Whether a re-send was answered `Duplicate`: the ledger had already run the
- * first one, exactly once. `err` is a `canister_err` payload.
+ * Whether the canister is known to run this method at most once per sender
+ * and argument carrying `created_at_time` (the registry's `dedupedMethods`).
+ * A runtime or pasted interface never is: on those the studio words the
+ * re-send as conditional, since nothing proves the canister deduplicates.
  */
-export function isDuplicateErr(err: unknown): boolean {
-  return isObject(err) && err.tag === "Duplicate"
+export function knownDeduplicating(
+  iface: CanisterInterface,
+  method: MethodInfo
+): boolean {
+  return (
+    dedupeShapeOf(method) !== undefined &&
+    iface.registry?.dedupedMethods?.includes(method.name) === true
+  )
+}
+
+/**
+ * The Err tag a deduplicating canister answers to the same bytes again:
+ * ICRC-1 and ICRC-2 say `Duplicate`; the ICP ledger's own `transfer`, the
+ * timestamp shape, says `TxDuplicate`.
+ */
+export function duplicateTagOf(
+  shape: DedupeShape
+): "Duplicate" | "TxDuplicate" {
+  return shape === "timestamp" ? "TxDuplicate" : "Duplicate"
+}
+
+/**
+ * The tag of a canister_err payload that says the write had already run:
+ * `Duplicate` (ICRC-1, ICRC-2) or `TxDuplicate` (the ICP ledger's
+ * `transfer`); `undefined` for any other payload.
+ */
+export function duplicateTagIn(
+  err: unknown
+): "Duplicate" | "TxDuplicate" | undefined {
+  if (!isObject(err)) return undefined
+  return err.tag === "Duplicate" || err.tag === "TxDuplicate"
+    ? err.tag
+    : undefined
+}
+
+/** Whether a canister_err payload says the write had already run. */
+export const isDuplicateErr = (err: unknown): boolean =>
+  duplicateTagIn(err) !== undefined
+
+/**
+ * Why a re-send that failed leaves the first send's outcome unknown, as a
+ * clause. An Err other than a duplicate answers only the re-send: an ICRC-1
+ * ledger checks the fee and the time window (`BadFee`, `TooOld`) before it
+ * looks for a duplicate. A re-send that never ran says nothing either.
+ */
+export function resendLeftOpen(error: unknown): string {
+  if (!isReactorError(error)) {
+    return "the re-send failed, which says nothing about the first send"
+  }
+  if (error.kind === "canister_err") {
+    const err: unknown = error.err
+    const tag = isObject(err) && typeof err.tag === "string" ? err.tag : "Err"
+    return `the canister answered the re-send ${tag}, which says nothing about the first send: a ledger checks the fee and the time window before it looks for a duplicate`
+  }
+  const kind =
+    error.code === undefined ? error.kind : `${error.kind}/${error.code}`
+  return `the re-send did not run (${kind}), so it says nothing about the first send`
 }

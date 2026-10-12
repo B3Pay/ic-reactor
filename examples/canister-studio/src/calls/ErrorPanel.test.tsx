@@ -83,6 +83,28 @@ describe("ErrorPanel", () => {
     ).toBeNull()
   })
 
+  it("never says a re-send that did not run settled anything, and keeps the read-back", async () => {
+    const onReadBack = vi.fn()
+    render(
+      <ErrorPanel
+        error={await rejectedWith(3)}
+        method={transfer}
+        earlierUnknown
+        onReadBack={onReadBack}
+      />
+    )
+    expect(
+      screen.getByText("The re-send certainly did not execute")
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/the first send, which may still have executed/)
+    ).toBeTruthy()
+    expect(screen.queryByText("Certainly not executed")).toBeNull()
+    expect(screen.queryByText(/fix what is wrong and send again/)).toBeNull()
+    fireEvent.click(screen.getByRole("button", { name: "Read the state back" }))
+    expect(onReadBack).toHaveBeenCalledOnce()
+  })
+
   it("shows anything else as an unexpected error, as text", () => {
     render(<ErrorPanel error={new TypeError("<b>not markup</b>")} />)
     expect(screen.getByText("Unexpected error")).toBeTruthy()

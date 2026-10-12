@@ -289,6 +289,7 @@ describe("fallbacks and failures", () => {
       kind: "tmp_hack",
       certified: false,
       moduleHash: "a1".repeat(32),
+      reason: "absent",
     })
     expect(t.reads).toEqual({ candidAndHash: 1, moduleHash: 0, tmpHack: 1 })
   })
@@ -321,7 +322,13 @@ describe("fallbacks and failures", () => {
       kind: "tmp_hack",
       certified: false,
       moduleHash: "b2".repeat(32),
+      reason: "private",
     })
+    // The reason survives the cache.
+    t.advance(CANISTER_TTL_MS)
+    const again = ok(await t.loader.load(LIFELINE))
+    expect(again.cache).toBe("hit")
+    expect(again.source).toMatchObject({ reason: "private" })
   })
 
   it("never falls back after a certificate that does not verify", async () => {
@@ -413,6 +420,43 @@ describe("fallbacks and failures", () => {
     t.advance(1)
     t.canisters[CKBTC_LEDGER] = { did: icrc1Did }
     expect((await t.loader.load(CKBTC_LEDGER)).ok).toBe(true)
+  })
+
+  it("keeps a compiler failure's text (server paths) in the log: server_error", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    const { source } = fakeSource({ [CKBTC_LEDGER]: { did: icrc1Did } })
+    const loader = createLiveInterfaceLoader({
+      source,
+      compile: async () => {
+        throw new Error(
+          "ENOENT: no such file or directory, open '/srv/deploy/releases/2026-10-12/wasm/candid.wasm'"
+        )
+      },
+      compiledIn: "server",
+    })
+    const p = await loader.load(CKBTC_LEDGER)
+    expect(p).toMatchObject({ ok: false, code: "server_error" })
+    expect(JSON.stringify(p)).not.toContain("/srv/")
+    expect(logged).toHaveBeenCalledOnce()
+    logged.mockRestore()
+  })
+
+  it("reports a compiler that could not load in a browser as a network failure", async () => {
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    const { source } = fakeSource({ [CKBTC_LEDGER]: { did: icrc1Did } })
+    const loader = createLiveInterfaceLoader({
+      source,
+      compile: async () => {
+        throw new TypeError("Failed to fetch dynamically imported module")
+      },
+      compiledIn: "browser",
+    })
+    expect(await loader.load(CKBTC_LEDGER)).toMatchObject({
+      ok: false,
+      code: "network",
+      message: expect.stringMatching(/in this browser: Failed to fetch/),
+    })
+    logged.mockRestore()
   })
 
   it("bounds a load with its timeout", async () => {

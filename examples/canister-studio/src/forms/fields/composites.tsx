@@ -13,6 +13,7 @@ import {
   getOwn,
   initialDraft,
   isOptional,
+  isUninhabited,
   isUnsetTime,
   orderFields,
   selectArm,
@@ -58,8 +59,11 @@ export function OptField(
   const switchId = `${form.idFor(path)}-present`
   const bodyId = `${form.idFor(path)}-some`
   const innerDraft = d.inner ?? initialDraft(inner)
+  // `opt Loop` with `Loop = record { x : Loop }`: only null exists.
+  const onlyNull = !d.present && isUninhabited(inner)
 
   const toggle = (on: boolean) => {
+    if (on && onlyNull) return
     if (on && hint?.nowByDefault === true && isUnsetTime(innerDraft)) {
       onChange(fillNanos(schema, d, nowNanos()))
       form.setAutoNow(path, true)
@@ -78,6 +82,8 @@ export function OptField(
             role="switch"
             className="switch"
             checked={d.present}
+            disabled={onlyNull}
+            title={onlyNull ? "No value exists for this type" : undefined}
             aria-controls={d.present ? bodyId : undefined}
             onChange={(e) => toggle(e.target.checked)}
           />

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useId, useMemo, useState, type ReactElement } from "react"
 import { z } from "zod"
+import { ActionButton } from "../components/ActionButton.tsx"
 import { Card } from "../components/Card.tsx"
 import { useCanisterIdInput } from "../components/canister-id-input.ts"
 import { Notice } from "../components/Notice.tsx"
@@ -31,6 +32,10 @@ const searchSchema = z.object({
 type ToolTab = "forms" | "typescript" | "project" | "compatibility"
 
 const encoder = new TextEncoder()
+
+/** A message ended as a sentence, so another can follow it. */
+const asSentence = (text: string): string =>
+  /[.!?]$/.test(text) ? text : `${text}.`
 
 export const Route = createFileRoute("/playground")({
   validateSearch: searchSchema,
@@ -101,14 +106,13 @@ function PlaygroundPage(): ReactElement {
             </p>
           </div>
           <div className="row">
-            <button
-              type="button"
+            <ActionButton
               className="btn btn-primary"
               onClick={runCompile}
-              disabled={did.trim() === "" || state.status === "running"}
+              unavailable={did.trim() === "" || state.status === "running"}
             >
               {state.status === "running" ? "Compiling…" : "Compile"}
-            </button>
+            </ActionButton>
             <button
               type="button"
               className="btn btn-ghost"
@@ -145,6 +149,11 @@ function PlaygroundPage(): ReactElement {
               list={`${ids}-known`}
               value={target.text}
               onChange={(event) => target.setText(event.target.value)}
+              // Leaving the field is when a mistyped id is said to be one:
+              // it is dropped otherwise, and the forms only encode.
+              onBlur={() => {
+                if (target.text.trim() !== "") target.attempt()
+              }}
               aria-invalid={target.showProblem}
               aria-describedby={`${ids}-target-hint`}
             />
@@ -159,8 +168,10 @@ function PlaygroundPage(): ReactElement {
               id={`${ids}-target-hint`}
               className={target.showProblem ? "field-error" : "field-hint"}
             >
-              {target.showProblem && target.verdict.state === "invalid"
-                ? target.verdict.message
+              {target.verdict.state === "invalid"
+                ? target.showProblem
+                  ? `${asSentence(target.verdict.message)} Until it is a canister id, forms only encode.`
+                  : "Not a canister id yet: forms only encode."
                 : targetId !== undefined
                   ? "Forms call this canister on mainnet."
                   : "Without one, a form shows the exact Candid message it would send."}

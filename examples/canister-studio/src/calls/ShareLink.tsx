@@ -9,13 +9,15 @@ export interface ShareLinkProps {
   /** Whether the link runs the read when opened (reads only). */
   run: boolean
   certified?: boolean
+  /** The button's text, when the default ("Copy link to this result") would not be true. */
+  label?: string
   /** Given: handed the link (a path). Absent: the absolute URL is copied. */
   onShare?(url: string): void
 }
 
 /** "Copy link": the call as a URL, so someone else opens it filled in (and run, for a read). */
 export function ShareLink(props: ShareLinkProps): JSX.Element {
-  const { canisterId, method, bytes, run, certified, onShare } = props
+  const { canisterId, method, bytes, run, certified, label, onShare } = props
   const [status, setStatus] = useState<string>()
   const tooLarge = bytes !== undefined && !argsFitInUrl(bytes)
 
@@ -45,7 +47,7 @@ export function ShareLink(props: ShareLinkProps): JSX.Element {
         disabled={bytes === undefined}
         onClick={() => void share()}
       >
-        {run ? "Copy link to this result" : "Copy link to this call"}
+        {label ?? (run ? "Copy link to this result" : "Copy link to this call")}
       </button>
       <span className="text-xs muted" role="status" aria-live="polite">
         {tooLarge

@@ -4,6 +4,7 @@
 import { formatUnits, parseUnits } from "@ic-reactor/core"
 import { formatNanos, type TokenUnits } from "../lib/format.ts"
 import { fromHex } from "../lib/hex.ts"
+import { parseBigInt } from "./engine.ts"
 
 export type Parsed<T> =
   | { readonly ok: true; readonly value: T }
@@ -34,15 +35,18 @@ export function parseTokenAmount(
 
 /**
  * Base-units text (a leaf draft) as a decimal in the token's units, or
- * `undefined` when the text is not a whole number.
+ * `undefined` when the text is not a whole number. It reads the text as the
+ * engine does (`1,000,000`, `0x5f5e100`), so the decimal shown is the amount
+ * the call sends, never the raw text beside the token's symbol.
  */
 export function tokenAmountText(
   raw: string,
   units: TokenUnits
 ): string | undefined {
-  const t = raw.trim()
-  if (!/^-?\d+$/.test(t)) return undefined
-  return formatUnits(BigInt(t), units.decimals)
+  const value = parseBigInt(raw)
+  return typeof value === "bigint"
+    ? formatUnits(value, units.decimals)
+    : undefined
 }
 
 /** Now, in nanoseconds since the Unix epoch. Event handlers and effects only. */
@@ -97,19 +101,13 @@ export const SUBACCOUNT_BYTES = 32
  * and wallets use for "subaccount 1, 2, …".
  */
 export function subaccountFromNumber(text: string): Parsed<Uint8Array> {
-  const t = text.trim().replace(/[_,\s]/g, "")
-  if (!/^\d+$/.test(t))
+  // The engine's reading: "1,5" is refused, not taken for subaccount 15.
+  const n = parseBigInt(text)
+  if (typeof n === "string" || n < 0n)
     return { ok: false, message: "enter a whole number ≥ 0" }
-  const hex = BigInt(t)
-    .toString(16)
-    .padStart(SUBACCOUNT_BYTES * 2, "0")
+  const hex = n.toString(16).padStart(SUBACCOUNT_BYTES * 2, "0")
   const bytes = hex.length === SUBACCOUNT_BYTES * 2 ? fromHex(hex) : undefined
   if (bytes === undefined)
     return { ok: false, message: "too large for 32 bytes" }
   return { ok: true, value: bytes }
-}
-
-/** The number of UTF-8 bytes of a text. */
-export function utf8Length(text: string): number {
-  return new TextEncoder().encode(text).length
 }

@@ -1,5 +1,5 @@
 import type { Schema } from "@candid-core/schema"
-import { useMemo, type JSX } from "react"
+import { useMemo, type JSX, type Ref } from "react"
 import type { MethodInfo } from "../interface/types.ts"
 import type { CallCheck, FieldIssue } from "./engine.ts"
 import type { HintResolver } from "./hints.ts"
@@ -20,6 +20,8 @@ export interface TypedFormProps<T> {
   onChange?(check: CallCheck): void
   /** Offers "Use mine" on principal fields. */
   callerPrincipal?: string
+  /** The submit button, for a parent that hands the focus back to it. */
+  submitRef?: Ref<HTMLButtonElement>
 }
 
 /**

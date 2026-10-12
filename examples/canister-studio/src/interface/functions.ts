@@ -3,26 +3,41 @@
 // (or a registry canister's committed one). Each returns a result object and
 // never throws, because an Error crosses the server function boundary as its
 // message alone. Server-only code is imported inside the handlers, so the
-// client bundle never sees it.
+// client bundle never sees it. Call them through `serverResult`
+// (server-result.ts).
 import type { CompatibilityReport } from "@candid-core/cli"
 import { createServerFn } from "@tanstack/react-start"
 import { z } from "zod"
 import { checkCanisterId } from "../lib/ids.ts"
 import { registryEntry } from "../lib/registry.ts"
+import { MAX_METHODS } from "./compile.ts"
 import type {
   CanisterInterface,
   InterfacePayload,
   InterfaceSource,
 } from "./types.ts"
 
+/**
+ * The most methods one projection takes: every method of the largest
+ * interface the studio loads, so "Choose all" always fits.
+ */
+export const MAX_PROJECT_METHODS = MAX_METHODS
+/** The longest method name a projection takes, in UTF-16 code units. */
+export const MAX_METHOD_NAME_LENGTH = 1024
+
 // The longest canonical principal text is 63 characters.
 const canisterIdText = z.string().max(64)
 
 const canisterInput = z.object({ canisterId: canisterIdText })
 
+// The Project tab keeps within these, so a request past them is not the
+// app's: the validator refuses it before the handler runs.
 const projectInput = z.object({
   canisterId: canisterIdText,
-  methods: z.array(z.string().min(1).max(1024)).min(1).max(1000),
+  methods: z
+    .array(z.string().max(MAX_METHOD_NAME_LENGTH))
+    .min(1)
+    .max(MAX_PROJECT_METHODS),
 })
 
 export type GenerateModuleResult =
@@ -61,8 +76,8 @@ export const fetchInterface = createServerFn({ method: "GET" })
       return {
         ok: false,
         canisterId: data.canisterId,
-        code: "network",
-        message: failureText(error),
+        code: "server_error",
+        message: failureText("fetchInterface", error),
       }
     }
   })
@@ -82,7 +97,7 @@ export const generateModule = createServerFn({ method: "GET" })
       const did = await didOf(id.id, server.liveDid)
       return did.ok ? await server.moduleForDid(did.did) : did
     } catch (error) {
-      return { ok: false, message: failureText(error) }
+      return { ok: false, message: failureText("generateModule", error) }
     }
   })
 
@@ -101,7 +116,7 @@ export const projectInterface = createServerFn({ method: "POST" })
       const did = await didOf(id.id, server.liveDid)
       return did.ok ? await server.projectionForDid(did.did, data.methods) : did
     } catch (error) {
-      return { ok: false, message: failureText(error) }
+      return { ok: false, message: failureText("projectInterface", error) }
     }
   })
 
@@ -131,7 +146,10 @@ export const checkLiveCompatibility = createServerFn({ method: "GET" })
       const report = await server.compatibilityForDids(entry.did, live.did)
       return report.ok ? { ok: true, report, source: live.source } : report
     } catch (error) {
-      return { ok: false, message: failureText(error) }
+      return {
+        ok: false,
+        message: failureText("checkLiveCompatibility", error),
+      }
     }
   })
 
@@ -148,7 +166,10 @@ async function didOf(
     : { ok: true, did: entry.did }
 }
 
-function failureText(error: unknown): string {
-  const text = error instanceof Error ? error.message : String(error)
-  return `The server could not complete this: ${text.slice(0, 300)}`
+// Only an unexpected failure gets here (a compiler that cannot run, a
+// server module that does not load), and its text can carry the server's
+// file paths: the error goes to the log, the browser gets a fixed text.
+function failureText(name: string, error: unknown): string {
+  console.error(`The ${name} server function failed:`, error)
+  return "The studio's server failed while doing this; its log has the details."
 }

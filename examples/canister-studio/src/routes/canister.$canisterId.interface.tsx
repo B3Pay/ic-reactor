@@ -58,7 +58,10 @@ function InterfacePage(): ReactElement {
             params={{ canisterId }}
             search={{ tab: item.key }}
             className="tab"
-            aria-current={item.key === tab ? "page" : undefined}
+            // The router marks the current one aria-current="page". Exact:
+            // the Candid link's search is stripped to {}, which a partial
+            // match finds in every tab's search.
+            activeOptions={{ exact: true }}
             activeProps={{}}
             replace
           >

@@ -211,7 +211,12 @@ describe("drafts and values", () => {
   it("names fields by their path for people", () => {
     expect(pathLabel("$args[0].to.owner", 1)).toBe("to.owner")
     expect(pathLabel("$args[0]", 1)).toBe("argument")
-    expect(pathLabel("$args[1][0]", 2)).toBe("arg1[0]")
+    expect(pathLabel("$args[0][3]", 1)).toBe("argument[3]")
+    expect(pathLabel("$args[1][0]", 2)).toBe("argument 2[0]")
+    expect(pathLabel("$args[1]", 2, ["from", "to"])).toBe("to")
+    expect(pathLabel("$args[0]", 1, ["sequence_number"])).toBe(
+      "sequence_number"
+    )
     expect(pathLabel("$", 2)).toBe("arguments")
   })
 

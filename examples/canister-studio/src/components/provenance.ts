@@ -16,7 +16,8 @@ export function provenanceText(source: InterfaceSource): string {
     case "metadata":
       return "The canister's candid:service metadata, read with a certified read_state: the subnet signed it."
     case "tmp_hack":
-      return "No metadata: read from the __get_candid_interface_tmp_hack query, one replica's answer that nobody certified. The canister could be lying about its interface."
+      // A private canister has metadata, readable by its controllers only.
+      return `${source.reason === "private" ? "Its candid:service metadata is readable by its controllers only, so this interface was read" : "No public candid:service metadata: read"} from the __get_candid_interface_tmp_hack query, one replica's answer that nobody certified. The canister could be lying about its interface.`
     case "pasted":
       return "A .did pasted here: nothing ties it to any canister."
   }

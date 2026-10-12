@@ -1,14 +1,14 @@
 import type { CompatibilityReport } from "@candid-core/cli"
 import { useId, useState, type ReactElement } from "react"
 import { checkCompatibleInBrowser } from "../../interface/browser.ts"
-import {
-  checkLiveCompatibility,
-  fetchInterface,
-} from "../../interface/functions.ts"
+import { checkLiveCompatibility } from "../../interface/functions.ts"
+import { loadLivePayload } from "../../interface/load.ts"
+import { serverResult } from "../../interface/server-result.ts"
 import type {
   CanisterInterface,
   InterfaceSource,
 } from "../../interface/types.ts"
+import { ActionButton } from "../ActionButton.tsx"
 import { Notice } from "../Notice.tsx"
 import { ProvenanceBadge } from "../ProvenanceBadge.tsx"
 import { Spinner } from "../Spinner.tsx"
@@ -22,8 +22,8 @@ interface Checked {
 
 /**
  * The live interface, for a check: the page's own for a canister read live,
- * a fresh read through the server function for a typed one (whose page
- * shows the committed .did).
+ * a fresh live read for a typed one (whose page shows the committed .did),
+ * from the browser when the server function cannot run.
  */
 async function liveInterface(
   iface: CanisterInterface
@@ -31,9 +31,7 @@ async function liveInterface(
   if (iface.source.kind !== "typed" && iface.did !== undefined) {
     return { did: iface.did, source: iface.source }
   }
-  const payload = await fetchInterface({
-    data: { canisterId: iface.canisterId },
-  })
+  const payload = await loadLivePayload(iface.canisterId)
   if (!payload.ok) throw new Error(`${payload.code}: ${payload.message}`)
   return { did: payload.did, source: payload.source }
 }
@@ -51,9 +49,9 @@ async function checkPasted(
 
 /** A typed canister's committed .did against the live one, checked on the server. */
 async function checkCommitted(iface: CanisterInterface): Promise<Checked> {
-  const result = await checkLiveCompatibility({
-    data: { canisterId: iface.canisterId },
-  })
+  const result = await serverResult(
+    checkLiveCompatibility({ data: { canisterId: iface.canisterId } })
+  )
   if (!result.ok) throw new Error(result.message)
   return { report: result.report, liveSource: result.source }
 }
@@ -97,14 +95,13 @@ function CommittedCheck({ iface }: { iface: CanisterInterface }): ReactElement {
         the typed module was generated from still describes it.
       </p>
       <div className="row">
-        <button
-          type="button"
+        <ActionButton
           className="btn btn-primary"
-          disabled={state.status === "running"}
+          unavailable={state.status === "running"}
           onClick={() => task.run(() => checkCommitted(iface))}
         >
           {state.status === "done" ? "Check again" : "Check against mainnet"}
-        </button>
+        </ActionButton>
         {state.status === "running" && (
           <Spinner size="sm" label="Checking compatibility" />
         )}
@@ -146,14 +143,13 @@ function PastedCheck({ iface }: { iface: CanisterInterface }): ReactElement {
         </p>
       </div>
       <div className="row">
-        <button
-          type="button"
+        <ActionButton
           className="btn btn-primary"
-          disabled={written.trim() === "" || state.status === "running"}
+          unavailable={written.trim() === "" || state.status === "running"}
           onClick={() => task.run(() => checkPasted(written, iface))}
         >
           Check
-        </button>
+        </ActionButton>
         {state.status === "running" && (
           <Spinner size="sm" label="Checking compatibility" />
         )}

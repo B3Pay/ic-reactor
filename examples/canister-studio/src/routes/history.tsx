@@ -27,10 +27,12 @@ function HistoryPage(): ReactElement {
       <header className="page-header">
         <h1 className="page-title">History</h1>
         <p className="page-subtitle">
-          Every call made in this browser, newest first, with its arguments as
-          the exact Candid bytes that were sent (never re-serialized JSON).
-          Replay a read, reopen a write prefilled, or copy a link that renders
-          the read’s result on the server.
+          Every call you ran or sent in this browser, newest first, with its
+          arguments as the exact Candid bytes that were sent (never
+          re-serialized JSON). The reads a page makes by itself, such as
+          balances and token metadata, are not kept. Replay a read, reopen a
+          write prefilled, or copy a link that renders the read’s result on the
+          server.
         </p>
       </header>
       {/* The history lives in this browser's storage: nothing to render on a

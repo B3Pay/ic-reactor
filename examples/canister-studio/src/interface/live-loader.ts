@@ -24,7 +24,12 @@ export interface LiveLoaderOptions {
   compiledIn: "server" | "browser"
   /** The clock, for tests. */
   now?: () => number
-  /** The bound on one whole load, the reads and the compile included. */
+  /**
+   * The bound on one load, as a timer: it covers the reads, and the compile
+   * when that runs off the thread (the server's worker, with a deadline of
+   * its own). A compile on this thread (the browser's) holds the timer
+   * back until it returns.
+   */
   timeoutMs?: number
 }
 
@@ -47,7 +52,7 @@ export const FAILURE_TTL_MS = 5 * 60_000
  * burst of reloads, short enough not to lock a canister out.
  */
 export const TRANSIENT_FAILURE_TTL_MS = 15_000
-/** The bound on one load. */
+/** The bound on one load (see `LiveLoaderOptions.timeoutMs`). */
 export const LOAD_TIMEOUT_MS = 15_000
 
 const MAX_CANISTERS = 1_000
@@ -61,6 +66,7 @@ const TRANSIENT: ReadonlySet<InterfaceErrorCode> = new Set([
   "network",
   "timeout",
   "trust_error",
+  "server_error",
 ])
 
 type CanisterEntry = {
@@ -70,6 +76,8 @@ type CanisterEntry = {
   moduleHash: string
   didSha256: string
   source: "metadata" | "tmp_hack"
+  /** For the tmp hack: why the metadata was not used. */
+  reason?: "absent" | "private"
 }
 
 type DidEntry = { did: string; compiled: CompiledInterface }
@@ -118,7 +126,12 @@ export function createLiveInterfaceLoader(
     source:
       entry.source === "metadata"
         ? { kind: "metadata", certified: true, moduleHash: entry.moduleHash }
-        : { kind: "tmp_hack", certified: false, moduleHash: entry.moduleHash },
+        : {
+            kind: "tmp_hack",
+            certified: false,
+            moduleHash: entry.moduleHash,
+            reason: entry.reason ?? "absent",
+          },
     did,
     didSha256: entry.didSha256,
     envelopeJson: compiled.envelopeJson,
@@ -250,6 +263,9 @@ export function createLiveInterfaceLoader(
       moduleHash: toHex(moduleHash),
       didSha256,
       source: kind,
+      ...(kind === "tmp_hack"
+        ? { reason: isPrivate ? ("private" as const) : ("absent" as const) }
+        : {}),
     }
     remember(canisterId, entry)
     return payloadOf(canisterId, entry, didEntry, "miss")
@@ -259,12 +275,24 @@ export function createLiveInterfaceLoader(
     try {
       return (await fromCache(canisterId)) ?? (await readFresh(canisterId))
     } catch (error) {
-      // The compiler or a cache step threw: report it, never reject.
+      // The reads never throw past classifyReadError, so this is the
+      // compiler that could not run (its WASM missing, or not downloaded)
+      // or a bug.
+      console.error(`Loading the interface of ${canisterId} failed:`, error)
+      if (compiledIn === "server") {
+        // Its text can carry the server's file paths: it stays in the log.
+        return failed(
+          canisterId,
+          "server_error",
+          "The studio's server failed while loading this interface; its log has the details."
+        )
+      }
+      // In a browser, most likely the compiler's download.
       const message = error instanceof Error ? error.message : String(error)
       return failed(
         canisterId,
         "network",
-        `Loading the interface failed: ${message}`
+        `Loading the interface failed in this browser: ${message.slice(0, 300)}`
       )
     }
   }

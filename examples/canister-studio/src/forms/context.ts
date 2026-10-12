@@ -16,6 +16,11 @@ export interface FormContextValue {
   issuesAt(path: string): readonly FieldIssue[]
   /** Whether a shown issue sits at `path` or below it (collapsed sections). */
   hasIssueBelow(path: string): boolean
+  /**
+   * The highest index of the vec at `path` whose item has a shown issue at
+   * or below it, or -1: a paged list keeps that item on screen.
+   */
+  lastItemWithIssue(path: string): number
   touch(path: string): void
   /** A submit was attempted: every issue shows, and sections holding one open. */
   readonly showAll: boolean

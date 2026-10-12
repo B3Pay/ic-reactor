@@ -24,9 +24,13 @@ export function Group(props: GroupProps): ReactNode {
   const form = useFormContext()
   const { path, label, className = "" } = props
   const [collapsed, setCollapsed] = useState(false)
+  // The frame carries the path's id, so an issue at the value itself (a
+  // record's, a vec's) has a place to take the focus to: its first control.
+  const id = form.idFor(path)
   if (label === undefined) {
     return (
       <div
+        id={id}
         className={`form-group ${className}`}
         role="group"
         aria-label={props.a11yLabel}
@@ -36,11 +40,15 @@ export function Group(props: GroupProps): ReactNode {
       </div>
     )
   }
-  const bodyId = `${form.idFor(path)}-body`
+  const bodyId = `${id}-body`
   const issueInside = form.hasIssueBelow(path)
   const hidden = collapsed && !(form.showAll && issueInside)
   return (
-    <fieldset className={`fieldset form-group ${className}`} data-path={path}>
+    <fieldset
+      id={id}
+      className={`fieldset form-group ${className}`}
+      data-path={path}
+    >
       <legend className="form-legend">
         <button
           type="button"

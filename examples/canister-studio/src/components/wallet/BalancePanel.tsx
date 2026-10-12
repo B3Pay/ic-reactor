@@ -5,6 +5,7 @@ import { useId, useState, type ReactElement } from "react"
 import { CacheKeyPanel } from "../../calls/CacheKeyPanel.tsx"
 import { formatTokens } from "../../lib/format.ts"
 import type { RegistryEntry } from "../../lib/registry.ts"
+import { ActionButton } from "../ActionButton.tsx"
 import { Notice } from "../Notice.tsx"
 import { Skeleton, Spinner } from "../Spinner.tsx"
 import { ledgerCanister } from "./ledgers.ts"
@@ -79,15 +80,14 @@ export function BalancePanel({
             />
             Certified
           </label>
-          <button
-            type="button"
+          <ActionButton
             className="btn btn-sm"
             onClick={() => void balance.refetch()}
-            disabled={balance.isFetching}
+            unavailable={balance.isFetching}
           >
             {balance.isFetching ? <Spinner size="sm" label="Reading" /> : null}
             Refetch
-          </button>
+          </ActionButton>
         </div>
       </div>
       {balance.isError && (

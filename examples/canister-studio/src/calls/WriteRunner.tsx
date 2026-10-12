@@ -1,7 +1,15 @@
 import { isReactorError } from "@ic-reactor/core"
 import { useAuth, useClient } from "@ic-reactor/react"
 import { useMutation } from "@tanstack/react-query"
-import { useCallback, useId, useMemo, useState, type JSX } from "react"
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type JSX,
+} from "react"
 import { nowNanos } from "../forms/convert.ts"
 import { issuesFromReactorError, type CallCheck } from "../forms/engine.ts"
 import { combineHints } from "../forms/hints.ts"
@@ -15,9 +23,13 @@ import {
   createdAtNanos,
   createdAtTimeOf,
   dedupeShapeOf,
+  duplicateTagIn,
+  duplicateTagOf,
   hasCreatedAtTime,
   hideDedupeField,
   isDuplicateErr,
+  knownDeduplicating,
+  resendLeftOpen,
   stampCreatedAtTime,
   type DedupeShape,
 } from "./dedupe.ts"
@@ -29,7 +41,7 @@ import {
   submitLabelOf,
   type CallKind,
 } from "./kinds.ts"
-import type { PreparedCall } from "./prepare.ts"
+import { sameBytes, type PreparedCall } from "./prepare.ts"
 import { historyEntryOf, type CallResult } from "./record.ts"
 import { readNow } from "./read.ts"
 import { suggestReadBack, type ReadBack } from "./readback.ts"
@@ -44,6 +56,56 @@ interface Sent {
   readonly caller: string
   readonly resend: boolean
 }
+
+/**
+ * A write whose outcome is unknown. Until the reader settles it (a re-send
+ * that proves what happened) or sets it aside ("Start a new, different
+ * write"), it holds the form: a new review would stamp a new
+ * created_at_time, which no canister deduplicates against it. Set aside, it
+ * is still named on every confirm step.
+ */
+interface Unresolved {
+  readonly sent: Sent
+  readonly setAside: boolean
+}
+
+/** The same write: the same bytes from the same sender (a re-send of it). */
+const sameWrite = (a: Sent, b: Sent): boolean =>
+  a.caller === b.caller && sameBytes(a.call.bytes, b.call.bytes)
+
+/** Whether a failure is the canister's own duplicate answer. */
+const isDuplicateAnswer = (error: unknown): boolean =>
+  isReactorError(error) &&
+  error.kind === "canister_err" &&
+  isDuplicateErr(error.err)
+
+/**
+ * The unresolved writes once `attempt` settled with `result`. A write that
+ * may have executed joins them (again, if it was set aside). Sending the
+ * same write again settles it only by proving what happened: a duplicate
+ * answer (it had run), or a success on a canister known to deduplicate (it
+ * had not). Any other answer is about the new send alone.
+ */
+function afterSettled(
+  current: readonly Unresolved[],
+  attempt: Sent,
+  result: CallResult,
+  known: boolean
+): readonly Unresolved[] {
+  const failure = result.ok ? undefined : result.error
+  const proves = result.ok ? known : isDuplicateAnswer(failure)
+  if (proves) return current.filter((u) => !sameWrite(u.sent, attempt))
+  if (!isReactorError(failure) || !failure.mayHaveExecuted) return current
+  return current.some((u) => sameWrite(u.sent, attempt))
+    ? current.map((u) =>
+        sameWrite(u.sent, attempt) ? { ...u, setAside: false } : u
+      )
+    : [...current, { sent: attempt, setAside: false }]
+}
+
+/** Why the form is held while a write's outcome is unknown. */
+const HOLD_REASON =
+  "The last write may have executed. Re-send it or read the state back below; to send anything else, start a new, different write first."
 
 /** Why `resendOf` offers nothing after a write whose outcome is unknown. */
 function noResendReason(
@@ -63,6 +125,20 @@ function noResendReason(
   return "the argument or the canister changed since it was sent."
 }
 
+/** What a write sent after "Start a new, different write" is to the unknown one. */
+function startOverHint(
+  shape: DedupeShape | undefined,
+  dedupe: boolean
+): string {
+  if (shape === undefined) {
+    return "This method has no created_at_time, so nothing tells a new write from the unknown one: if that one ran, the next runs as well."
+  }
+  if (dedupe) {
+    return "A new write gets its own created_at_time, so the canister does not take it for a re-send of the unknown one: if that one ran, the next runs as well."
+  }
+  return "With deduplication off, the next write carries the created_at_time the form has: left empty, the canister has nothing to deduplicate on, so if the unknown one ran, the next runs as well."
+}
+
 /**
  * A write: an `update` or a `oneway`, confirmed first and sent once through
  * `useMutation(client.mutationOptions(…))`, whose `retry: false` is never
@@ -79,6 +155,8 @@ export function WriteRunner(
   const auth = useAuth()
   const can = useCanisterHandle(iface)
   const shape = dedupeShapeOf(method)
+  const known = knownDeduplicating(iface, method)
+  const duplicateTag = shape === undefined ? "Duplicate" : duplicateTagOf(shape)
   // A replayed call that carries its own created_at_time keeps it: sent
   // again within the ledger's window, the same bytes answer Duplicate.
   const [dedupe, setDedupe] = useState(
@@ -90,9 +168,25 @@ export function WriteRunner(
     caller: string
   }>()
   const [sent, setSent] = useState<Sent>()
+  // Oldest first. Kept for the runner's life: setting one aside settles
+  // nothing about it.
+  const [unresolved, setUnresolved] = useState<readonly Unresolved[]>([])
   const [readBackOpen, setReadBackOpen] = useState(false)
   const [notice, setNotice] = useState<string>()
   const dedupeId = useId()
+  // The confirm step, the re-send offer and "Start a new, different write"
+  // go away once used, taking the focus with them: it comes back to the
+  // form's button once the page has settled.
+  const submitRef = useRef<HTMLButtonElement>(null)
+  const refocus = useRef(false)
+  const backToForm = () => {
+    refocus.current = true
+  }
+  useEffect(() => {
+    if (!refocus.current) return
+    refocus.current = false
+    submitRef.current?.focus()
+  })
 
   const mutation = useMutation(
     client.mutationOptions(
@@ -120,7 +214,10 @@ export function WriteRunner(
   const onChange = useCallback((next: CallCheck) => setCheck(next), [])
 
   const send = async (call: PreparedCall, caller: string, resend: boolean) => {
-    setSent({ call, caller, resend })
+    const attempt: Sent = { call, caller, resend }
+    setSent(attempt)
+    // Whatever was being confirmed is not what goes out now.
+    setPending(undefined)
     setReadBackOpen(false)
     setNotice(undefined)
     let result: CallResult
@@ -129,6 +226,7 @@ export function WriteRunner(
     } catch (failure) {
       result = { ok: false, error: failure }
     }
+    setUnresolved((current) => afterSettled(current, attempt, result, known))
     addHistoryEntry(
       historyEntryOf(
         {
@@ -145,7 +243,29 @@ export function WriteRunner(
     )
   }
 
+  const unknown = isReactorError(error) && error.mayHaveExecuted
+  // Read from the mutation as well as from `unresolved`, which catches up
+  // only once the send's own await resumes.
+  const settledNow =
+    sent !== undefined &&
+    !mutation.isPending &&
+    (mutation.isSuccess ? known : isDuplicateAnswer(error))
+  const open =
+    settledNow && sent !== undefined
+      ? unresolved.filter((u) => !sameWrite(u.sent, sent))
+      : unresolved
+  const holding = unknown || open.some((u) => !u.setAside)
+  // The outcome on screen answers the same write sent again (a re-send),
+  // and that write is still unknown: an Err such as TooOld, a refusal, or a
+  // success on a canister not known to deduplicate.
+  const openAfterResend =
+    sent !== undefined &&
+    !mutation.isPending &&
+    !unknown &&
+    open.some((u) => sameWrite(u.sent, sent))
+
   const onSubmit = (submitted: PreparedCall) => {
+    if (holding) return
     setNotice(undefined)
     let call = submitted
     if (shape !== undefined && dedupe) {
@@ -172,6 +292,7 @@ export function WriteRunner(
     if (!signedIn) {
       setPending(undefined)
       setNotice("Signed out before sending: nothing was sent.")
+      backToForm()
       return
     }
     if (caller !== pending.caller) {
@@ -183,7 +304,7 @@ export function WriteRunner(
       )
       return
     }
-    setPending(undefined)
+    backToForm()
     void send(pending.call, caller, false)
   }
 
@@ -191,14 +312,39 @@ export function WriteRunner(
     if (again === undefined || sent === undefined) return
     // `again.arg` is the very object first sent: the mutation sends it only
     // as that write (its bytes, its canister, its sender), or refuses.
+    backToForm()
     void send({ ...sent.call, vars: again.arg }, again.from, true)
+  }
+
+  // As the wallet's "Start a new, different transfer": the explicit step
+  // before a write that is not the unknown one. It sends nothing, and the
+  // unknown writes stay named on the confirm step.
+  const startOver = () => {
+    setUnresolved((current) =>
+      current.map((u) => (u.setAside ? u : { ...u, setAside: true }))
+    )
+    mutation.reset()
+    setSent(undefined)
+    setPending(undefined)
+    setReadBackOpen(false)
+    setNotice(undefined)
+    backToForm()
   }
 
   const readBack =
     sent === undefined
       ? undefined
       : suggestReadBack(iface, method, sent.call.values, sent.caller)
-  const unknown = isReactorError(error) && error.mayHaveExecuted
+  // Read as "it had already run" only for a write that carried
+  // created_at_time: elsewhere an Err named Duplicate may mean anything.
+  const duplicate =
+    shape !== undefined &&
+    sent !== undefined &&
+    createdAtTimeOf(sent.call.vars) !== null &&
+    isReactorError(error) &&
+    error.kind === "canister_err"
+      ? duplicateTagIn(error.err)
+      : undefined
 
   const openReadBack = (suggestion: ReadBack) => {
     setReadBackOpen(true)
@@ -226,9 +372,11 @@ export function WriteRunner(
             Deduplicate with created_at_time
           </label>
           <p id={dedupeId} className="field-hint">
-            {dedupe
-              ? "Set to the current time when you review the call, so a lost reply can be re-sent safely: the canister answers Duplicate to the same bytes from the same sender."
-              : "Off: created_at_time is sent as the form below has it. Left empty, a lost reply has no safe re-send."}
+            {!dedupe
+              ? "Off: created_at_time is sent as the form below has it. Left empty, a lost reply has no safe re-send."
+              : known
+                ? `Set to the current time when you review the call, so a lost reply can be re-sent safely: the canister answers ${duplicateTag} to the same bytes from the same sender.`
+                : `Set to the current time when you review the call. If this canister deduplicates on it, as ICRC-1 ledgers do, a lost reply can be re-sent: it answers ${duplicateTag} to the same bytes from the same sender. Nothing here proves that it does.`}
           </p>
         </div>
       )}
@@ -240,9 +388,11 @@ export function WriteRunner(
         disabledReason={
           gated
             ? SIGN_IN_REASON
-            : pending !== undefined
-              ? "Confirm or cancel the call below first."
-              : undefined
+            : holding
+              ? HOLD_REASON
+              : pending !== undefined
+                ? "Confirm or cancel the call below first."
+                : undefined
         }
         busy={mutation.isPending}
         externalIssues={
@@ -251,6 +401,7 @@ export function WriteRunner(
         onSubmit={onSubmit}
         onChange={onChange}
         callerPrincipal={signedIn ? auth.principal : undefined}
+        submitRef={submitRef}
       />
       {notice !== undefined && (
         <p className="notice notice-warn" role="status">
@@ -289,8 +440,16 @@ export function WriteRunner(
           values={pending.call.values}
           bytes={pending.call.bytes}
           caller={pending.caller}
+          earlierUnknown={open.map((u) => ({
+            bytes: u.sent.call.bytes,
+            caller: u.sent.caller,
+          }))}
+          busy={mutation.isPending}
           onConfirm={onConfirm}
-          onCancel={() => setPending(undefined)}
+          onCancel={() => {
+            setPending(undefined)
+            backToForm()
+          }}
         />
       )}
       <div className="call-outcome" aria-live="polite">
@@ -309,31 +468,30 @@ export function WriteRunner(
             method={method}
             reply={mutation.data}
             resend={sent?.resend === true}
+            known={known}
             units={units}
           />
         ) : error !== null ? (
           <div className="stack-sm">
-            {sent?.resend === true &&
-              isReactorError(error) &&
-              error.kind === "canister_err" &&
-              isDuplicateErr(error.err) && (
-                <div className="notice notice-success" role="status">
-                  <p className="notice-title">
-                    Duplicate: it had already executed
-                  </p>
-                  <p>
-                    The first send ran. The canister recognised the same bytes
-                    from the same sender and ran nothing more: the write
-                    happened exactly once.
-                  </p>
-                </div>
-              )}
+            {duplicate !== undefined && (
+              <div className="notice notice-success" role="status">
+                <p className="notice-title">
+                  {duplicate}: it had already executed
+                </p>
+                <p>
+                  {sent?.resend === true
+                    ? "The first send ran. The canister recognised the same bytes from the same sender and ran nothing more."
+                    : "The canister had already run a write of these exact bytes from this sender, and ran nothing now."}
+                </p>
+              </div>
+            )}
             <ErrorPanel
               error={error}
               method={method}
               units={units}
+              earlierUnknown={openAfterResend}
               onReadBack={
-                unknown && readBack !== undefined
+                (unknown || openAfterResend) && readBack !== undefined
                   ? () => openReadBack(readBack)
                   : undefined
               }
@@ -342,18 +500,48 @@ export function WriteRunner(
               <ResendPanel
                 from={again.from}
                 createdAt={createdAtNanos(createdAtTimeOf(again.arg))}
+                known={known}
+                duplicateTag={duplicateTag}
                 busy={mutation.isPending}
                 onResend={onResend}
               />
             ) : (
-              unknown && (
+              (unknown || openAfterResend) && (
                 <NoResendNotice
-                  reason={noResendReason(shape, sent, auth.principal)}
+                  reason={
+                    openAfterResend
+                      ? `${resendLeftOpen(error)}.`
+                      : noResendReason(shape, sent, auth.principal)
+                  }
                 />
               )
             )}
           </div>
         ) : null}
+        {mutation.isSuccess && openAfterResend && (
+          <NoResendNotice
+            reason="this canister is not known to deduplicate on created_at_time, so the re-send that ran says nothing about the first send: if it does not deduplicate, both ran."
+            onReadBack={
+              readBack === undefined ? undefined : () => openReadBack(readBack)
+            }
+          />
+        )}
+        {holding && !mutation.isPending && (
+          <div className="stack-xs">
+            <div className="row">
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={startOver}
+              >
+                Start a new, different write
+              </button>
+            </div>
+            <p className="text-xs muted">
+              Sends nothing: it frees the form. {startOverHint(shape, dedupe)}
+            </p>
+          </div>
+        )}
         {readBackOpen && readBack !== undefined && (
           <ReadBackPanel iface={iface} readBack={readBack} units={units} />
         )}
@@ -367,6 +555,8 @@ function WriteSuccess(props: {
   method: MethodInfo
   reply: unknown
   resend: boolean
+  /** Whether the canister is known to deduplicate the method. */
+  known: boolean
   units: TokenUnits | undefined
 }): JSX.Element {
   if (props.kind === "oneway") {
@@ -392,12 +582,18 @@ function WriteSuccess(props: {
     <div className="stack-sm call-reply">
       <div className="notice notice-success" role="status">
         <p className="notice-title">
-          {props.resend ? "Re-sent: it executed now, once" : "Executed"}
+          {!props.resend
+            ? "Executed"
+            : props.known
+              ? "Re-sent: it executed now, once"
+              : "Re-sent: it executed"}
         </p>
         <p>
-          {props.resend
-            ? "The canister had not run the first send, so it ran this one. "
-            : ""}
+          {!props.resend
+            ? ""
+            : props.known
+              ? "The canister had not run the first send, so it ran this one. "
+              : "If this canister deduplicates on created_at_time, the first send had not run; if it does not, the first one may have run too. "}
           Reads of this canister were invalidated for every caller, so balances
           and other reads refresh.
         </p>

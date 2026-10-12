@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, type JSX } from "react"
+import { ActionButton } from "../components/ActionButton.tsx"
 import { loadLabRuntime } from "./mock-ledger.ts"
 import { ScenarioCard, type RunState } from "./ScenarioCard.tsx"
 import { LAB_SETUP, SCENARIOS, type Scenario } from "./scenarios.ts"
@@ -89,17 +90,16 @@ export function SafetyLab(): JSX.Element {
             </div>
           </details>
           <div className="row row-between">
-            <button
-              type="button"
+            <ActionButton
               className="btn btn-primary"
-              disabled={busy}
+              unavailable={busy}
               onClick={() => void runScenarios(SCENARIOS)}
             >
               {busy && (
                 <span className="spinner spinner-sm" aria-hidden="true" />
               )}
               {busy ? "Running…" : "Run all scenarios"}
-            </button>
+            </ActionButton>
             <p className="safety-tally" aria-live="polite">
               {done.length === 0
                 ? `${SCENARIOS.length} scenarios, none run yet`

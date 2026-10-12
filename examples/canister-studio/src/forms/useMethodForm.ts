@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import type { MethodInfo } from "../interface/types.ts"
 import { nowNanos } from "./convert.ts"
 import {
+  argPath,
   checkCall,
   draftFromValue,
   fillNanos,
@@ -13,6 +14,7 @@ import {
   mapDrafts,
   type CallCheck,
   type Draft,
+  type DraftNote,
 } from "./engine.ts"
 import type { HintResolver } from "./hints.ts"
 
@@ -42,13 +44,14 @@ const NO_PATHS: ReadonlySet<string> = new Set()
 
 function freshState(
   method: MethodInfo,
-  values: readonly unknown[] | undefined
+  values: readonly unknown[] | undefined,
+  notes?: DraftNote[]
 ): FormState {
   return {
     args: method.args,
     drafts: method.args.map((schema, i) =>
       values !== undefined && values[i] !== undefined
-        ? draftFromValue(schema, values[i])
+        ? draftFromValue(schema, values[i], { notes, path: argPath(i) })
         : initialDraft(schema)
     ),
     touched: NO_PATHS,
@@ -199,9 +202,14 @@ export function useMethodForm(
         return { ...s, autoNow: auto }
       })
     },
-    /** Values from outside (JSON import): fresh drafts, issues hidden again. */
-    load(values: readonly unknown[]) {
-      setState(freshState(method, values))
+    /**
+     * Values from outside (JSON import): fresh drafts, issues hidden again.
+     * Returns what could not be used as given, and was replaced.
+     */
+    load(values: readonly unknown[]): DraftNote[] {
+      const notes: DraftNote[] = []
+      setState(freshState(method, values, notes))
+      return notes
     },
     reset() {
       setState(freshState(method, initialValues))

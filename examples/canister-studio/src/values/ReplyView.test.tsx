@@ -1,4 +1,9 @@
-import { c, principal, serviceMethods } from "@candid-core/schema"
+import {
+  c,
+  principal,
+  serviceMethods,
+  type AnyFieldSchema,
+} from "@candid-core/schema"
 import {
   cleanup,
   fireEvent,
@@ -12,10 +17,10 @@ import { actor as icpActor } from "../canisters/icp_ledger.ts"
 import { actor as icrc1Actor } from "../canisters/icrc1.ts"
 import type { MethodInfo } from "../interface/types.ts"
 import { ErrValueView } from "./ErrValueView.tsx"
+import { utf8Preview } from "./leaves.tsx"
 import { ReplyView } from "./ReplyView.tsx"
 import { renderInRouter } from "./test-router.tsx"
 import { showsAmounts } from "./tree.tsx"
-import { ValueView } from "./ValueView.tsx"
 
 afterEach(cleanup)
 
@@ -28,6 +33,14 @@ function method(actor: typeof icrc1Actor, name: string): MethodInfo {
   return found
 }
 const icrc1 = (name: string): MethodInfo => method(icrc1Actor, name)
+
+/** One value of `schema`, as a reply of one result: how every page views a value. */
+const one = (schema: AnyFieldSchema, value: unknown) => (
+  <ReplyView
+    method={{ name: "value", mode: "query", args: [], results: [schema] }}
+    reply={value}
+  />
+)
 
 function view(name: "Tree" | "Candid" | "JSON"): void {
   fireEvent.click(screen.getByRole("button", { name }))
@@ -146,7 +159,7 @@ describe("ReplyView", () => {
           method={icrc1("icrc1_minting_account")}
           reply={{ owner: principal(LEDGER_ID), subaccount: null }}
         />
-        <ValueView schema={c.principal} value={principal("2vxsx-fae")} />
+        {one(c.principal, principal("2vxsx-fae"))}
       </>
     )
     const link = await screen.findByRole("link", {
@@ -286,18 +299,20 @@ describe("ErrValueView", () => {
   })
 })
 
-describe("ValueView", () => {
+describe("one value", () => {
   it("shows a blob's length, hex and printable UTF-8", () => {
-    render(
-      <ValueView schema={c.blob()} value={new TextEncoder().encode("hello")} />
-    )
+    render(one(c.blob(), new TextEncoder().encode("hello")))
     expect(screen.getByText("5 bytes")).toBeTruthy()
     expect(screen.getByText("68656c6c6f")).toBeTruthy()
     expect(screen.getByText("hello")).toBeTruthy()
   })
 
+  it("keeps a byte order mark in a blob's UTF-8 text", () => {
+    expect(utf8Preview(Uint8Array.of(0xef, 0xbb, 0xbf, 0x41))).toBe("\uFEFFA")
+  })
+
   it("marks an all-zero subaccount and shortens long blobs", () => {
-    render(<ValueView schema={c.blob()} value={new Uint8Array(100)} />)
+    render(one(c.blob(), new Uint8Array(100)))
     expect(screen.getByText("100 bytes")).toBeTruthy()
     expect(screen.getByText("all zero")).toBeTruthy()
     fireEvent.click(screen.getByRole("button", { name: "Show all 100 bytes" }))
@@ -306,20 +321,18 @@ describe("ValueView", () => {
 
   it("adds the UTC date to an IC timestamp", () => {
     render(
-      <ValueView
-        schema={c.record({ created_at_time: c.opt(c.nat64) })}
-        value={{ created_at_time: 1_760_000_000_000_000_000n }}
-      />
+      one(c.record({ created_at_time: c.opt(c.nat64) }), {
+        created_at_time: 1_760_000_000_000_000_000n,
+      })
     )
     expect(screen.getByText("2025-10-09 08:53:20 UTC")).toBeTruthy()
   })
 
   it("shows variants as tag badges and unnamed fields by number", () => {
     render(
-      <ValueView
-        schema={c.record({ _7_: c.variant({ Ready: c.null, Busy: c.nat8 }) })}
-        value={{ _7_: { tag: "Busy", value: 3 } }}
-      />
+      one(c.record({ _7_: c.variant({ Ready: c.null, Busy: c.nat8 }) }), {
+        _7_: { tag: "Busy", value: 3 },
+      })
     )
     expect(screen.getByText("#7")).toBeTruthy()
     expect(screen.getByText("Busy").className).toContain("badge")

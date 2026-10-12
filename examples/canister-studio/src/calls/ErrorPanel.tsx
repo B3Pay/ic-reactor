@@ -16,8 +16,16 @@ import {
 export interface ErrorPanelProps {
   error: unknown
   method?: MethodInfo
-  /** Offered when a write's outcome is unknown and no safe re-send exists. */
+  /**
+   * Offered while a write's outcome is unknown: this error's
+   * (`mayHaveExecuted`), or an earlier send's (`earlierUnknown`).
+   */
   onReadBack?(): void
+  /**
+   * The error answers a re-send of a write whose outcome is still unknown:
+   * whatever it says, it says it about the re-send only.
+   */
+  earlierUnknown?: boolean
   /** Token units for amounts in a canister_err payload (InsufficientFunds, BadFee). */
   units?: TokenUnits
 }
@@ -51,7 +59,7 @@ const VERDICTS: Readonly<
  * the canister's Err payload and what the error means.
  */
 export function ErrorPanel(props: ErrorPanelProps): JSX.Element {
-  const { error, method, onReadBack, units } = props
+  const { error, method, onReadBack, units, earlierUnknown } = props
   if (!isReactorError(error)) {
     // Not a call failure: a bug, or a TypeError the client threw at build time.
     const message = error instanceof Error ? error.message : String(error)
@@ -68,8 +76,27 @@ export function ErrorPanel(props: ErrorPanelProps): JSX.Element {
       method={method}
       onReadBack={onReadBack}
       units={units}
+      earlierUnknown={earlierUnknown === true}
     />
   )
+}
+
+// After a re-send, an answer about the re-send is not one about the first
+// send, which may still have executed: nothing about that is settled.
+const AFTER_RESEND: typeof VERDICTS = {
+  may_have_executed: VERDICTS.may_have_executed,
+  answered_err: {
+    label: "The re-send ran and answered Err",
+    badge: "badge badge-lg badge-warn",
+    advice:
+      "This answers the re-send only: the first send may still have executed. Read the state back.",
+  },
+  not_executed: {
+    label: "The re-send certainly did not execute",
+    badge: "badge badge-lg badge-warn",
+    advice:
+      "It says nothing about the first send, which may still have executed. Read the state back.",
+  },
 }
 
 function ReactorErrorPanel(props: {
@@ -77,18 +104,22 @@ function ReactorErrorPanel(props: {
   method: MethodInfo | undefined
   onReadBack: (() => void) | undefined
   units: TokenUnits | undefined
+  earlierUnknown: boolean
 }): JSX.Element {
-  const { error, method, onReadBack, units } = props
+  const { error, method, onReadBack, units, earlierUnknown } = props
   const info = KIND_INFO[error.kind]
   const verdict = verdictOf(error)
-  const shown = VERDICTS[verdict]
+  const shown = (earlierUnknown ? AFTER_RESEND : VERDICTS)[verdict]
   const cause = causeDetails(error)
   const write =
     method !== undefined &&
     (method.mode === "update" || method.mode === "oneway")
   const codeText =
     error.code === undefined ? undefined : codeMeaning(error.code)
-  const tone = verdict === "answered_err" ? "notice-warn" : "notice-danger"
+  const tone =
+    verdict === "answered_err" && !earlierUnknown
+      ? "notice-warn"
+      : "notice-danger"
   return (
     <div
       className={`notice ${tone} call-error`}
@@ -164,13 +195,14 @@ function ReactorErrorPanel(props: {
           </>
         )}
       </dl>
-      {onReadBack !== undefined && error.mayHaveExecuted && (
-        <div className="row">
-          <button type="button" className="btn btn-sm" onClick={onReadBack}>
-            Read the state back
-          </button>
-        </div>
-      )}
+      {onReadBack !== undefined &&
+        (error.mayHaveExecuted || earlierUnknown) && (
+          <div className="row">
+            <button type="button" className="btn btn-sm" onClick={onReadBack}>
+              Read the state back
+            </button>
+          </div>
+        )}
       <details className="disclosure">
         <summary>Full message</summary>
         <div className="disclosure-body">

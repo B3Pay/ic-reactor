@@ -173,7 +173,7 @@ describe("arguments as JSON", () => {
     const json = argsToJson([transfer])
     expect(json).toContain('"amount": "1208925819614629174706176"')
     expect(json).toContain('"memo": "0102"')
-    const parsed = parseArgsJson(json, 1)
+    const parsed = parseArgsJson(json, [TransferArg])
     if (!parsed.ok) throw new Error(parsed.message)
     const check = checkCall(
       [TransferArg],
@@ -192,7 +192,7 @@ describe("arguments as JSON", () => {
     )
     const parsed = parseArgsJson(
       '[{"to": {"owner": "aaaaa-aa", "subaccount": null}, "fee": null, "memo": null, "from_subaccount": null, "created_at_time": null, "amount": 12345678901234567890}]',
-      1
+      [TransferArg]
     )
     if (!parsed.ok) throw new Error(parsed.message)
     const values = draftValues(
@@ -203,12 +203,16 @@ describe("arguments as JSON", () => {
   })
 
   it("takes a bare value for one argument and says what is wrong otherwise", () => {
-    expect(parseArgsJson("5", 1)).toEqual({ ok: true, values: [5] })
-    expect(parseArgsJson("[1, 2]", 1)).toEqual({ ok: true, values: [[1, 2]] })
-    expect(parseArgsJson("[1]", 2)).toEqual({
+    const vecNat = [c.vec(c.nat)]
+    expect(parseArgsJson("5", [c.nat])).toEqual({ ok: true, values: [5] })
+    expect(parseArgsJson("[1, 2]", vecNat)).toEqual({
+      ok: true,
+      values: [[1, 2]],
+    })
+    expect(parseArgsJson("[1]", [c.nat, c.nat])).toEqual({
       ok: false,
       message: "Expected 2 argument values, got 1.",
     })
-    expect(parseArgsJson("{", 1).ok).toBe(false)
+    expect(parseArgsJson("{", [c.nat]).ok).toBe(false)
   })
 })

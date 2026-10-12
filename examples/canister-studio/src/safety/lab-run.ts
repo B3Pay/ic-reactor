@@ -44,6 +44,11 @@ export interface ScenarioVerdict {
 export interface LabeledError {
   readonly label: string
   readonly error: unknown
+  /**
+   * The failure answers a re-send while the first send's outcome was still
+   * unknown: whatever it says, it says nothing about that one.
+   */
+  readonly afterResend?: boolean
 }
 
 export interface ScenarioReply {

@@ -18,13 +18,18 @@ export function TextField(props: EditorProps): ReactNode {
   const form = useFormContext()
   const { path, hint, onChange } = props
   const text = leafText(props)
-  // Chosen once: switching the element while typing would drop the focus.
+  // Chosen once for length: switching the element while typing would drop
+  // the focus.
   const [multiline, setMultiline] = useState(
-    () =>
-      hint?.widget === "textarea" ||
-      text.length > LONG_TEXT ||
-      text.includes("\n")
+    () => hint?.widget === "textarea" || text.length > LONG_TEXT
   )
+  // A line break always needs the multi-line box: an <input> shows the text
+  // without it and stores that on the next keystroke. Only a value from
+  // outside (a JSON import, a prefill) brings one, as an <input> takes none;
+  // the box then stays, so deleting the break does not swap the element.
+  const breaks = /[\r\n]/.test(text)
+  if (breaks && !multiline) setMultiline(true)
+  const multi = multiline || breaks
   return (
     <FieldShell
       path={path}
@@ -37,15 +42,20 @@ export function TextField(props: EditorProps): ReactNode {
         <button
           type="button"
           className="btn btn-ghost btn-sm"
-          aria-pressed={multiline}
-          onClick={() => setMultiline((m) => !m)}
+          aria-pressed={multi}
+          // aria-disabled, not disabled: the button keeps the focus.
+          aria-disabled={breaks || undefined}
+          title={breaks ? "The text has line breaks" : undefined}
+          onClick={() => {
+            if (!breaks) setMultiline((m) => !m)
+          }}
         >
           Multi-line
         </button>
       }
     >
       {(a11y) =>
-        multiline ? (
+        multi ? (
           <textarea
             {...a11y}
             className="textarea"

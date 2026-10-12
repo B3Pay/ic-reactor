@@ -7,9 +7,9 @@ import type { MethodInfo } from "../../interface/types.ts"
 import { toHex } from "../../lib/hex.ts"
 import {
   decodeSharedArgs,
-  isReadMode,
   MAX_SHARED_ARGS_BYTES,
   methodSearchSchema,
+  readsAtOnce,
   readWithin,
 } from "./shared-call.ts"
 
@@ -107,12 +107,20 @@ describe("decodeSharedArgs", () => {
   })
 })
 
-describe("isReadMode", () => {
-  it("is true for the modes queryOptions reads", () => {
-    expect(isReadMode("query")).toBe(true)
-    expect(isReadMode("composite_query")).toBe(true)
-    expect(isReadMode("update")).toBe(false)
-    expect(isReadMode("oneway")).toBe(false)
+describe("readsAtOnce", () => {
+  it("reads at once a query with results, and a composite one only uncertified", () => {
+    const query = { kind: "read", certifiable: true } as const
+    const composite = { kind: "read", certifiable: false } as const
+    expect(readsAtOnce(query, false)).toBe(true)
+    expect(readsAtOnce(query, true)).toBe(true)
+    expect(readsAtOnce(composite, false)).toBe(true)
+    expect(readsAtOnce(composite, true)).toBe(false)
+  })
+
+  it("never runs a write, an idempotent update or a query without results", () => {
+    for (const kind of ["update", "oneway", "idempotent", "call"] as const) {
+      expect(readsAtOnce({ kind }, false)).toBe(false)
+    }
   })
 })
 

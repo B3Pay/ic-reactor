@@ -636,7 +636,9 @@ await again.send() // canister_err Duplicate: it ran once`,
       r.same("The ledger ran it exactly once", lab.mock.executed, 1)
       return {
         error: readError,
-        moreErrors: [{ label: "The re-send as seed 2", error: refused }],
+        moreErrors: [
+          { label: "The re-send as seed 2", error: refused, afterResend: true },
+        ],
       }
     }),
 }

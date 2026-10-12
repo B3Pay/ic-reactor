@@ -17,11 +17,12 @@ Candid, and calls it with every rule of ic-reactor 4 in view:
   them through the generated types, with no cast.
 - **Any canister, read live.** Open any mainnet canister id: a server function
   reads its `candid:service` metadata and module hash in one certified
-  `read_state`, compiles the interface with `@candid-core/cli`, and caches it
-  by module hash. The browser rebuilds the actor from the compiled envelope
-  with `schemaFromContract`. An interface read from the uncertified
-  `__get_candid_interface_tmp_hack` query is labelled so, and a certificate
-  that fails to verify is never followed by a fallback.
+  `read_state`, compiles the interface with `@candid-core/cli` in a worker
+  thread with a deadline, and caches it by module hash. The browser rebuilds
+  the actor from the compiled envelope with `schemaFromContract`. An
+  interface read from the uncertified `__get_candid_interface_tmp_hack` query
+  is labelled so, and a certificate that fails to verify, or leaves the
+  metadata unproven, is never followed by a fallback.
 - **Automatic forms.** A field per Candid type: amounts in token units read
   with `parseUnits`, principals checked as you type, blobs as hex, text or
   base64, and variants, options, vectors and records, with `created_at_time`
@@ -73,9 +74,12 @@ StackBlitz installs the example from npm and starts its dev server
 reads, because its loader calls no server function. TanStack Start's server
 functions do not run there: they keep each request in Node's
 `AsyncLocalStorage`, which StackBlitz does not implement. The typed canisters
-need none. Any other canister opened from inside the app is read and compiled
-in the browser instead, with the compiler's lazily loaded WASM. Clone the
-repository to run the server path.
+need none to load and to call. Any other canister opened from inside the app
+is read and compiled in the browser instead, with the compiler's lazily
+loaded WASM, and so is the live side of a pasted `.did` check. A projection,
+the TypeScript module of a canister read live and the check of a typed
+canister's committed `.did` run on the studio's server only, and say so
+there. Clone the repository to run the server path.
 
 <CardGrid>
   <LinkCard

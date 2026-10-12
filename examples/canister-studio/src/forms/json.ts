@@ -1,18 +1,31 @@
 // Arguments as loose JSON, for export and import. Export writes what
 // `draftFromValue` reads back: bigints as decimal strings, blobs as hex,
 // principals as text, variants as { tag, value }, opts as null or the value
-// ({ some } when boxed). It is lossless for the form, not a Candid encoding.
+// ({ some } when boxed), and the floats JSON has no number for (NaN,
+// ±Infinity, -0) as strings. It is lossless for the form, not a Candid
+// encoding.
+import type { AnyFieldSchema } from "@candid-core/schema"
 import { toHex } from "../lib/hex.ts"
-import { isBytes } from "./engine.ts"
+import { draftFromValue, isBytes, type DraftNote } from "./engine.ts"
 
 /** The argument values as pretty JSON: always an array, one entry per argument. */
 export function argsToJson(values: readonly unknown[]): string {
-  return JSON.stringify(
-    values,
-    (_key, v: unknown) =>
-      typeof v === "bigint" ? v.toString() : isBytes(v) ? toHex(v) : v,
-    2
-  )
+  return JSON.stringify(values, jsonValue, 2)
+}
+
+function jsonValue(_key: string, v: unknown): unknown {
+  if (typeof v === "bigint") return v.toString()
+  if (isBytes(v)) return toHex(v)
+  if (typeof v === "number") {
+    // JSON.stringify writes NaN and ±Infinity as null and -0 as 0, which
+    // read back as "required" and as other bytes; the float field reads
+    // these strings.
+    if (Number.isNaN(v)) return "NaN"
+    if (v === Infinity) return "Infinity"
+    if (v === -Infinity) return "-Infinity"
+    if (Object.is(v, -0)) return "-0"
+  }
+  return v
 }
 
 export type ParsedArgs =
@@ -24,7 +37,11 @@ export type ParsedArgs =
  * one-argument method also takes the bare value. Integer literals past 2^53
  * are read as strings, so their digits survive `JSON.parse`.
  */
-export function parseArgsJson(text: string, argCount: number): ParsedArgs {
+export function parseArgsJson(
+  text: string,
+  args: readonly AnyFieldSchema[]
+): ParsedArgs {
+  const argCount = args.length
   let parsed: unknown
   try {
     parsed = JSON.parse(quoteUnsafeIntegers(text))
@@ -32,8 +49,19 @@ export function parseArgsJson(text: string, argCount: number): ParsedArgs {
     const message = error instanceof Error ? error.message : String(error)
     return { ok: false, message: `Not valid JSON: ${message}` }
   }
-  if (Array.isArray(parsed) && parsed.length === argCount)
+  const [only] = args
+  if (Array.isArray(parsed) && parsed.length === argCount) {
+    // `["abc"]` for a lone `vec text` is that list, not the argument "abc":
+    // the bare reading wins when only it fits the argument's type.
+    if (
+      only !== undefined &&
+      argCount === 1 &&
+      notesFor(only, parsed[0]).length > 0 &&
+      notesFor(only, parsed).length === 0
+    )
+      return { ok: true, values: [parsed] }
     return { ok: true, values: parsed }
+  }
   // Anything else is the bare value of a one-argument method, `[1, 2]` for a
   // `vec nat` included; the export always writes the list form, `[[1, 2]]`.
   if (argCount === 1) return { ok: true, values: [parsed] }
@@ -44,6 +72,13 @@ export function parseArgsJson(text: string, argCount: number): ParsedArgs {
       ? `Expected ${expected}, got ${parsed.length}.`
       : `Expected an array of ${expected}.`,
   }
+}
+
+/** What `draftFromValue` could not use as given, reading `value` for `schema`. */
+function notesFor(schema: AnyFieldSchema, value: unknown): DraftNote[] {
+  const notes: DraftNote[] = []
+  draftFromValue(schema, value, { notes })
+  return notes
 }
 
 /**

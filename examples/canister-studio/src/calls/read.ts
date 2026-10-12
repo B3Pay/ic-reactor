@@ -6,6 +6,23 @@ import type { PreparedCall } from "./prepare.ts"
 import { readQueryOptions } from "./query-options.ts"
 import { historyEntryOf, type CallResult } from "./record.ts"
 
+/** Records a settled read in the history. */
+export function recordRead(
+  iface: CanisterInterface,
+  method: MethodInfo,
+  caller: string,
+  call: PreparedCall,
+  result: CallResult
+): void {
+  addHistoryEntry(
+    historyEntryOf(
+      { iface, method, caller, bytes: call.bytes, result },
+      Date.now(),
+      newHistoryId()
+    )
+  )
+}
+
 /**
  * Reads now, never from the cache (a click asks for the canister's answer),
  * into the very key `useQuery(readQueryOptions(…))` observes, and records
@@ -22,13 +39,7 @@ export function readNow(
   const caller = client.caller()
   const options = readQueryOptions(client, can, method, call.vars, opts)
   const record = (result: CallResult) =>
-    addHistoryEntry(
-      historyEntryOf(
-        { iface, method, caller, bytes: call.bytes, result },
-        Date.now(),
-        newHistoryId()
-      )
-    )
+    recordRead(iface, method, caller, call, result)
   client.queryClient.fetchQuery({ ...options, staleTime: 0 }).then(
     (reply) => record({ ok: true, reply }),
     (error: unknown) => record({ ok: false, error })

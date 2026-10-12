@@ -9,9 +9,16 @@ export type InterfaceSource =
   | { kind: "metadata"; certified: true; moduleHash: string | null }
   /**
    * The `__get_candid_interface_tmp_hack` query: one replica's answer, NOT
-   * certified. The UI labels it so.
+   * certified. The UI labels it so. Used only when the certificate proves
+   * the metadata absent (`reason: "absent"`) or the metadata is readable by
+   * the canister's controllers only (`"private"`, a 403).
    */
-  | { kind: "tmp_hack"; certified: false; moduleHash: string | null }
+  | {
+      kind: "tmp_hack"
+      certified: false
+      moduleHash: string | null
+      reason?: "absent" | "private"
+    }
   /** A .did the user pasted (the playground). */
   | { kind: "pasted"; certified: false }
 
@@ -110,3 +117,5 @@ export type InterfaceErrorCode =
   | "network"
   | "trust_error"
   | "timeout"
+  /** The server failed on its side (its log says why); never mainnet's fault. */
+  | "server_error"

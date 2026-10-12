@@ -16,9 +16,11 @@ export interface SectionBoundaryProps {
  * A Suspense boundary with its own error boundary, so one failed read
  * shows an inline message with a retry instead of failing the whole page.
  *
- * On the server, a read that fails inside renders the fallback; the browser
- * then reads again itself (failed reads are never dehydrated) and only shows
- * the error if that read fails too, with the real ReactorError.
+ * On the server, a read that fails inside, or that the router cancels at its
+ * deadline, leaves the section to the browser: React sends the fallback and
+ * renders the section there, where the read runs again (only successful
+ * reads are dehydrated). The error shows only if that read fails too, as the
+ * real ReactorError.
  */
 export function SectionBoundary({
   label,

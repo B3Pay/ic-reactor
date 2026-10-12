@@ -1,12 +1,13 @@
 import { Link } from "@tanstack/react-router"
-import { useMemo, type ReactElement } from "react"
+import { useEffect, useMemo, useRef, type ReactElement } from "react"
+import { callKindOf, type CallKind } from "../../calls/kinds.ts"
 import { MethodRunner } from "../../calls/MethodRunner.tsx"
 import { heuristicHints } from "../../forms/hints.ts"
 import type { CanisterInterface, MethodInfo } from "../../interface/types.ts"
 import { Badge, ModeBadge } from "../Badge.tsx"
 import { EmptyState } from "../EmptyState.tsx"
 import { Notice } from "../Notice.tsx"
-import { decodeSharedArgs, isReadMode } from "./shared-call.ts"
+import { decodeSharedArgs, readsAtOnce } from "./shared-call.ts"
 import { registryUnits } from "./use-canister-page.ts"
 
 export interface MethodWorkspaceProps {
@@ -14,11 +15,33 @@ export interface MethodWorkspaceProps {
   /** The `?method=` text, even when no such method exists. */
   methodName: string
   method: MethodInfo | undefined
-  /** A shared link's argument bytes (hex). */
+  /** A link's argument bytes (hex): shared, a quick read, a replay. */
   argsHex?: string
-  /** A shared link asks to read at once. */
+  /** The link asks to read at once. */
   run: boolean
   certified: boolean
+  /**
+   * Asked once, as the workspace mounts: whether the reader just picked this
+   * method on the page. If so and its heading is out of view or low on the
+   * screen (on a phone the list sits above the workspace), the workspace
+   * scrolls the heading up and moves focus there.
+   */
+  wasPicked?(): boolean
+}
+
+/** Room left above a heading scrolled to, below the sticky header. */
+const HEADING_GAP_PX = 16
+
+/** Why a link that asks to run a method only fills its form. */
+const NOT_RUN: Readonly<Record<CallKind["kind"], string>> = {
+  read: "A composite query has no certified path, so it is not read at once from a certified link: the form holds the link’s arguments.",
+  idempotent:
+    "The form holds the link’s arguments. An idempotent update still goes through consensus as you: links never send one, so send it yourself.",
+  update:
+    "The form holds the link’s arguments. Links never send a write: review it, then send it yourself.",
+  oneway:
+    "The form holds the link’s arguments. Links never send a write: review it, then send it yourself.",
+  call: "The form holds the link’s arguments. A query without results is called, not read at once: press Call to send it.",
 }
 
 /**
@@ -33,6 +56,7 @@ export function MethodWorkspace({
   argsHex,
   run,
   certified,
+  wasPicked,
 }: MethodWorkspaceProps): ReactElement {
   const units = useMemo(() => registryUnits(iface.registry), [iface.registry])
   const hints = useMemo(
@@ -50,6 +74,23 @@ export function MethodWorkspace({
     [method, argsHex]
   )
 
+  const heading = useRef<HTMLHeadingElement>(null)
+  // Once per mount, on purpose: the page keys the workspace by method.
+  useEffect(() => {
+    const picked = wasPicked?.() === true
+    const element = heading.current
+    if (!picked || element === null) return
+    // Measured, not assumed: the sticky header wraps to two rows on a phone.
+    const header =
+      document.querySelector(".app-header")?.getBoundingClientRect().bottom ?? 0
+    // Left alone in the upper half of the screen, where the form below it
+    // shows too; moved up from anywhere else, out of view included.
+    const { top } = element.getBoundingClientRect()
+    if (top >= header && top <= window.innerHeight / 2) return
+    window.scrollTo({ top: window.scrollY + top - header - HEADING_GAP_PX })
+    element.focus({ preventScroll: true })
+  }, [])
+
   if (method === undefined) {
     return (
       <EmptyState title="No such method">
@@ -63,21 +104,24 @@ export function MethodWorkspace({
   }
 
   const initialValues = shared?.ok === true ? shared.values : undefined
-  const isRead = isReadMode(method.mode)
-  const idempotent =
-    iface.registry?.idempotentUpdates?.includes(method.name) === true
-  // Shared links run reads only: a write always waits for its sender.
+  const kind = callKindOf(iface, method)
+  const idempotent = kind.kind === "idempotent"
+  // The same rule as the route's loader, so the runner reads at once exactly
+  // what the server prefetched: a write always waits for its sender.
   const autoRun =
-    run &&
-    isRead &&
-    initialValues !== undefined &&
-    !(certified && method.mode === "composite_query")
+    run && initialValues !== undefined && readsAtOnce(kind, certified)
 
   return (
     <div className="stack-lg">
       <header className="method-heading">
         <div className="row">
-          <h2 className="method-heading-name mono break-all">{method.name}</h2>
+          <h2
+            ref={heading}
+            className="method-heading-name mono break-all"
+            tabIndex={-1}
+          >
+            {method.name}
+          </h2>
           <ModeBadge mode={method.mode} size="lg" />
           {idempotent && (
             <Badge
@@ -100,24 +144,32 @@ export function MethodWorkspace({
           <p>The form starts from its defaults instead.</p>
         </Notice>
       )}
-      {shared?.ok === true && run && !isRead && (
-        <Notice tone="info" title="Opened from a shared link">
-          <p>
-            The form holds the link’s arguments. Shared links never send a
-            write: review it, then send it yourself.
-          </p>
+      {shared?.ok === true && run && !autoRun && (
+        <Notice tone="info" title="Not run from the link">
+          <p>{NOT_RUN[kind.kind]}</p>
         </Notice>
       )}
+      {/* The same link comes from a shared URL, a quick read or a replay, so
+          it says what happened, not where it came from. */}
       {shared?.ok === true && autoRun && (
         <p className="text-xs muted" role="note">
-          Opened from a shared link: read at once with the link’s arguments.{" "}
-          <Link
-            to="/canister/$canisterId"
-            params={{ canisterId: iface.canisterId }}
-            search={{ method: method.name }}
-          >
-            Start from an empty form
-          </Link>
+          {method.args.length === 0 ? (
+            "Read at once: it takes no arguments."
+          ) : (
+            <>
+              Read at once with the link’s arguments.{" "}
+              <Link
+                to="/canister/$canisterId"
+                params={{ canisterId: iface.canisterId }}
+                search={{
+                  method: method.name,
+                  certified: certified ? true : undefined,
+                }}
+              >
+                Start from an empty form
+              </Link>
+            </>
+          )}
         </p>
       )}
 

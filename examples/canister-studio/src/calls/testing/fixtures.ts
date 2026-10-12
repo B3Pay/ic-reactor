@@ -1,7 +1,11 @@
 // Test-only: a typed interface built straight from a registry entry, and an
 // ICRC-1 ledger and a ckBTC minter mocked at their real mainnet ids on
 // `createTestClient()`'s in-memory replica. Nothing here reaches the app.
-import { serviceMethods, type Principal } from "@candid-core/schema"
+import {
+  serviceMethods,
+  type AnySchema,
+  type Principal,
+} from "@candid-core/schema"
 import { createTestClient } from "@ic-reactor/core/testing"
 import type { Actor as Minter } from "../../canisters/ckbtc_minter.ts"
 import type { Actor as Ledger, TransferArg } from "../../canisters/icrc1.ts"
@@ -48,6 +52,30 @@ export function typedInterface(id: string): CanisterInterface {
     did: registry.did,
     omitted: [],
     registry,
+  }
+}
+
+/**
+ * A canister the registry does not know, as a pasted .did gives it: nothing
+ * is known about how it behaves beyond its interface.
+ */
+export function runtimeInterface(
+  id: string,
+  actor: AnySchema
+): CanisterInterface {
+  const methods: MethodInfo[] = [...serviceMethods(actor).values()].map(
+    (m) => ({ name: m.name, mode: m.mode, args: m.args, results: m.results })
+  )
+  const byName = new Map(methods.map((m) => [m.name, m]))
+  return {
+    canisterId: id,
+    name: "Pasted canister",
+    actor,
+    methods,
+    method: (name) => byName.get(name),
+    source: { kind: "pasted", certified: false },
+    didSha256: `test-${id}`,
+    omitted: [],
   }
 }
 

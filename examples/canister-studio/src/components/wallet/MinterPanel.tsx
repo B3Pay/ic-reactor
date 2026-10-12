@@ -3,12 +3,16 @@ import { useAuth, useClient } from "@ic-reactor/react"
 import { skipToken, useQuery } from "@tanstack/react-query"
 import { useId, useState, type ReactElement } from "react"
 import { CacheKeyPanel } from "../../calls/CacheKeyPanel.tsx"
+import { addHistoryEntry, newHistoryId } from "../../calls/history.ts"
+import { prepareCall } from "../../calls/prepare.ts"
+import { historyEntryOf, type CallResult } from "../../calls/record.ts"
 import { formatTokens } from "../../lib/format.ts"
+import { ActionButton } from "../ActionButton.tsx"
 import { Card } from "../Card.tsx"
 import { CopyButton } from "../CopyButton.tsx"
 import { Notice } from "../Notice.tsx"
 import { Skeleton, Spinner } from "../Spinner.tsx"
-import { CKBTC_MINTER, minterCanister } from "./ledgers.ts"
+import { CKBTC_MINTER, minterCanister, minterInterface } from "./ledgers.ts"
 
 // Bitcoin amounts on the minter are satoshis.
 const BTC_DECIMALS = 8
@@ -57,6 +61,38 @@ function DepositAddress(): ReactElement {
     )
   )
 
+  // Each ask is an update through consensus, so it goes into the history.
+  // `fetchQuery` shares the fetch the observer starts for the same key, and
+  // the idempotent options (stale time Infinity) never refetch an answer by
+  // themselves, so an error stays until the reader tries again.
+  const ask = (): void => {
+    setAsked(true)
+    const caller = client.caller()
+    const iface = minterInterface()
+    const method = iface.method("get_btc_address")
+    const call = method === undefined ? undefined : prepareCall(method, [arg])
+    const record = (result: CallResult): void => {
+      if (method === undefined || call === undefined) return
+      addHistoryEntry(
+        historyEntryOf(
+          { iface, method, caller, bytes: call.bytes, result },
+          Date.now(),
+          newHistoryId()
+        )
+      )
+    }
+    void client.queryClient
+      .fetchQuery(
+        client.queryOptions(minter, "get_btc_address", arg, {
+          update: "idempotent",
+        })
+      )
+      .then(
+        (reply) => record({ ok: true, reply }),
+        (error: unknown) => record({ ok: false, error })
+      )
+  }
+
   return (
     <section className="stack-sm" aria-labelledby="deposit-title">
       <h3 id="deposit-title" className="text-sm wallet-minter-title">
@@ -85,13 +121,21 @@ function DepositAddress(): ReactElement {
       ) : address.isError ? (
         <Notice tone="danger" title="No address">
           <p className="break-all">{address.error.message}</p>
+          <div className="row">
+            <ActionButton
+              className="btn btn-sm"
+              onClick={ask}
+              unavailable={address.isFetching}
+            >
+              {address.isFetching ? "Asking the minter…" : "Try again"}
+            </ActionButton>
+          </div>
         </Notice>
       ) : (
-        <button
-          type="button"
+        <ActionButton
           className="btn btn-sm"
-          onClick={() => setAsked(true)}
-          disabled={address.isFetching}
+          onClick={ask}
+          unavailable={address.isFetching}
         >
           {address.isFetching && (
             <Spinner size="sm" label="Asking the minter" />
@@ -99,7 +143,7 @@ function DepositAddress(): ReactElement {
           {address.isFetching
             ? "Asking the minter…"
             : "Show my deposit address"}
-        </button>
+        </ActionButton>
       )}
     </section>
   )

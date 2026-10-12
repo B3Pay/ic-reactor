@@ -167,7 +167,10 @@ function ScenarioOutcome(props: {
       {result.moreErrors?.map((more) => (
         <section key={more.label} className="stack-sm" aria-label={more.label}>
           <h3 className="safety-subtitle">{more.label}</h3>
-          <LabErrorPanel error={more.error} />
+          <LabErrorPanel
+            error={more.error}
+            afterResend={more.afterResend === true}
+          />
         </section>
       ))}
 
@@ -221,11 +224,21 @@ function StepItem(props: { readonly step: ScenarioStep }): JSX.Element {
 }
 
 /** ErrorPanel with the mock ledger's method, so a canister_err shows its typed Err payload. */
-function LabErrorPanel(props: { readonly error: unknown }): JSX.Element {
+function LabErrorPanel(props: {
+  readonly error: unknown
+  readonly afterResend?: boolean
+}): JSX.Element {
   const method = isReactorError(props.error)
     ? labMethod(props.error.method)
     : undefined
-  return <ErrorPanel error={props.error} method={method} units={LAB_UNITS} />
+  return (
+    <ErrorPanel
+      error={props.error}
+      method={method}
+      units={LAB_UNITS}
+      earlierUnknown={props.afterResend}
+    />
+  )
 }
 
 function LabReply(props: {

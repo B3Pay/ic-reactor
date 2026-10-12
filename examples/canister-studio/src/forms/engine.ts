@@ -74,18 +74,36 @@ export function argPath(index: number, path = "$"): string {
 }
 
 /**
- * A path for people: `$args[0].to.owner` → "to.owner" for a one-argument
- * method, "arg1.to.owner" for `$args[1]…` of several.
+ * An argument for people: its name in the .did when it has one
+ * (`(sequence_number : nat)`), "argument" when it is the only one, else
+ * "argument 2" (counted from 1).
  */
-export function pathLabel(path: string, argCount: number): string {
+export function argLabel(
+  index: number,
+  argCount: number,
+  names?: readonly (string | undefined)[]
+): string {
+  const name = names?.[index]
+  if (name !== undefined && name !== "") return name
+  return argCount === 1 ? "argument" : `argument ${index + 1}`
+}
+
+/**
+ * A path for people, named like the form's labels: `$args[0].to.owner` →
+ * "to.owner" for a one-argument method, "argument 2.to.owner" for
+ * `$args[1]…` of several, "argument[3]" for an item of a lone vec.
+ */
+export function pathLabel(
+  path: string,
+  argCount: number,
+  names?: readonly (string | undefined)[]
+): string {
   const match = /^\$args\[(\d+)\](.*)$/.exec(path)
   if (match === null) return path === "$" ? "arguments" : path
-  const [, index, rest = ""] = match
-  if (argCount === 1) {
-    const tail = rest.startsWith(".") ? rest.slice(1) : rest
-    return tail === "" ? "argument" : tail
-  }
-  return `arg${index}${rest}`
+  const [, index = "0", rest = ""] = match
+  const arg = argLabel(Number(index), argCount, names)
+  if (argCount === 1 && rest.startsWith(".")) return rest.slice(1)
+  return `${arg}${rest}`
 }
 
 // ---------------------------------------------------------------------------
@@ -373,13 +391,19 @@ export type BytesFormat = "hex" | "utf8" | "base64"
  * The editable state of one value: JSON-serializable, mirrors the schema.
  * Leaves hold raw text; an opt keeps its inner draft while toggled off; a
  * variant keeps one payload draft per arm visited; vec items carry stable ids
- * (React keys).
+ * (React keys). A blob's `format` is absent until someone picks one: the
+ * editor then shows its own default (text for a memo, hex otherwise), and a
+ * format the user picked holds even while the text is empty.
  */
 export type Draft =
   | { readonly k: "leaf"; readonly text: string }
   | { readonly k: "bool"; readonly value: boolean }
   | { readonly k: "fixed" }
-  | { readonly k: "bytes"; readonly text: string; readonly format: BytesFormat }
+  | {
+      readonly k: "bytes"
+      readonly text: string
+      readonly format?: BytesFormat
+    }
   | { readonly k: "opt"; readonly present: boolean; readonly inner?: Draft }
   | {
       readonly k: "vec"
@@ -405,30 +429,66 @@ export function initialDraft(
   schema: AnyFieldSchema,
   opts: DefaultOptions = {}
 ): Draft {
-  return draftFromValue(schema, defaultValue(schema, opts), opts)
+  return fromValue(schema, defaultValue(schema, opts), opts, "$", undefined)
 }
 
 const BIG_PRIMITIVES = new Set(["nat", "int", "nat64", "int64"])
 
+/** A value `draftFromValue` did not use as given, and what it used instead. */
+export interface DraftNote {
+  readonly path: string
+  readonly message: string
+}
+
+export interface FromValueOptions extends DefaultOptions {
+  /**
+   * Collects a note wherever the value is not used as given (a misspelled
+   * tag, a key the record does not have, a list that is not an array), so a
+   * JSON import can say what it replaced rather than stage another call.
+   */
+  readonly notes?: DraftNote[]
+  /** The value's path, for the notes (`$args[0]`); `$` by default. */
+  readonly path?: string
+}
+
+type Note = ((path: string, message: string) => void) | undefined
+
 /**
  * A draft from any value, tolerantly: a domain value (prefill, history,
  * resendOf) or loose JSON: digit strings for bigints, hex strings or
- * `number[]` for blobs, `{ Tag: payload }` variants, `[]`/`[v]` opts,
- * objects with `toText()` for principals. Anything unusable at a node falls
- * back to that node's default.
+ * `number[]` for blobs, `{ Tag: payload }` variants, agent-js `[]`/`[v]`
+ * opts (boxed ones too), `[principal, method]` func references, objects with
+ * `toText()` or `__principal__` for principals. Anything unusable at a node
+ * falls back to that node's default, with a note when `notes` is given. A
+ * type with no values never gets a draft that holds one: an opt of it stays
+ * off, a vec of it empty, and a variant leaves such an arm for its default.
  */
 export function draftFromValue(
   schema: AnyFieldSchema,
   value: unknown,
-  opts: DefaultOptions = {}
+  opts: FromValueOptions = {}
 ): Draft {
-  if (value === UNINHABITED) return { k: "uninhabited" }
+  const { notes, path = "$", ...defaults } = opts
+  const note: Note =
+    notes === undefined
+      ? undefined
+      : (at, message) => notes.push({ path: at, message })
+  return fromValue(schema, value, defaults, path, note)
+}
+
+function fromValue(
+  schema: AnyFieldSchema,
+  value: unknown,
+  opts: DefaultOptions,
+  path: string,
+  note: Note
+): Draft {
+  if (value === UNINHABITED || isUninhabited(schema))
+    return { k: "uninhabited" }
   const node = resolve(schema)
-  const fallback = (): Draft => {
-    const d = defaultValue(schema, opts)
-    return d === UNINHABITED || d === value
-      ? { k: "uninhabited" }
-      : draftFromValue(schema, d, opts)
+  const fallback = (message: string): Draft => {
+    note?.(path, message)
+    return initialDraft(schema, opts)
   }
   switch (node.kind) {
     case "primitive":
@@ -436,148 +496,204 @@ export function draftFromValue(
         case "null":
         case "reserved":
           return { k: "fixed" }
-        case "empty":
-          return { k: "uninhabited" }
         case "bool":
+          if (
+            typeof value !== "boolean" &&
+            value !== "true" &&
+            value !== "false"
+          )
+            note?.(
+              path,
+              `${missingOr(value, "expected true or false")}; set to false`
+            )
           return { k: "bool", value: value === true || value === "true" }
         case "principal":
-          return { k: "leaf", text: principalText(value) }
+          return { k: "leaf", text: principalFrom(value, path, note) }
         default:
-          return { k: "leaf", text: leafText(node.primitive, value) }
+          return {
+            k: "leaf",
+            text: leafFrom(node.primitive, value, path, note),
+          }
       }
     case "blob":
-      if (isBytes(value))
-        return { k: "bytes", text: toHex(value), format: "hex" }
+      if (isBytes(value)) return bytesDraft(toHex(value))
       if (Array.isArray(value) && value.every(isByte))
-        return {
-          k: "bytes",
-          text: toHex(Uint8Array.from(value)),
-          format: "hex",
-        }
-      return {
-        k: "bytes",
-        text: typeof value === "string" ? value : "",
-        format: "hex",
-      }
+        return bytesDraft(toHex(Uint8Array.from(value)))
+      if (typeof value === "string") return bytesDraft(value)
+      note?.(
+        path,
+        `${missingOr(value, "expected hex text or a byte array")}; left empty`
+      )
+      return bytesDraft("")
     case "unit":
       return { k: "fixed" }
     case "opt": {
       if (value === null || value === undefined)
         return { k: "opt", present: false }
-      if (isBoxedOpt(node)) {
-        const some =
-          typeof value === "object" && Object.hasOwn(value, "some")
-            ? (value as { some: unknown }).some
-            : value
-        return {
-          k: "opt",
-          present: true,
-          inner: draftFromValue(node.inner, some, opts),
-        }
-      }
-      // agent-js writes an opt as [] or [value]. Only read it so when the
-      // inner type cannot itself be an array.
-      if (Array.isArray(value) && !holdsArray(node.inner)) {
+      const boxed = isBoxedOpt(node)
+      let some: unknown = value
+      if (boxed && typeof value === "object" && Object.hasOwn(value, "some")) {
+        some = (value as { some: unknown }).some
+      } else if (Array.isArray(value) && (boxed || !holdsArray(node.inner))) {
+        // agent-js writes an opt as [] or [value]: an unboxed one only when
+        // its inner type cannot itself be an array, a boxed one (whose own
+        // value is { some } or null, never an array) always.
         if (value.length === 0) return { k: "opt", present: false }
-        return {
-          k: "opt",
-          present: true,
-          inner: draftFromValue(node.inner, value[0], opts),
-        }
+        if (value.length > 1)
+          note?.(
+            path,
+            `expected [] or [value]; the first of ${value.length} values is used`
+          )
+        some = value[0]
+      }
+      if (isUninhabited(node.inner)) {
+        note?.(path, "this type has no values; left out (null)")
+        return { k: "opt", present: false }
       }
       return {
         k: "opt",
         present: true,
-        inner: draftFromValue(node.inner, value, opts),
+        inner: fromValue(
+          node.inner,
+          some,
+          opts,
+          boxed ? childPath(path, "some") : path,
+          note
+        ),
       }
     }
-    case "vec":
+    case "vec": {
+      if (!Array.isArray(value)) {
+        note?.(
+          path,
+          `${missingOr(value, "expected a list (an array)")}; left empty`
+        )
+        return { k: "vec", items: [] }
+      }
+      if (value.length > 0 && isUninhabited(node.inner)) {
+        note?.(
+          path,
+          `the item type has no values; ${value.length} ${value.length === 1 ? "item" : "items"} left out`
+        )
+        return { k: "vec", items: [] }
+      }
       return {
         k: "vec",
-        items: Array.isArray(value)
-          ? value.map((v) => ({
-              id: newItemId(),
-              draft: draftFromValue(node.inner, v, opts),
-            }))
-          : [],
+        items: value.map((v, i) => ({
+          id: newItemId(),
+          draft: fromValue(node.inner, v, opts, childPath(path, i), note),
+        })),
       }
+    }
     case "record": {
-      if (typeof value !== "object" || value === null) return fallback()
+      if (typeof value !== "object" || value === null || Array.isArray(value))
+        return fallback(
+          `${missingOr(value, "expected a record (an object)")}; the default is used`
+        )
       const src = value as Record<string, unknown>
       const fields: Record<string, Draft> = {}
+      const known = new Set<string>()
       for (const [key, field] of fieldsOf(node)) {
-        setOwn(
-          fields,
-          key,
-          Object.hasOwn(src, key)
-            ? draftFromValue(field, src[key], opts)
-            : initialDraft(field, opts)
-        )
+        known.add(key)
+        const at = childPath(path, key)
+        if (Object.hasOwn(src, key)) {
+          setOwn(fields, key, fromValue(field, src[key], opts, at, note))
+        } else {
+          // A missing opt field is null, as in Candid; anything else is not.
+          if (!isOptional(field)) note?.(at, "missing; set to the default")
+          setOwn(fields, key, initialDraft(field, opts))
+        }
       }
+      if (note !== undefined)
+        for (const key of Object.keys(src))
+          if (!known.has(key))
+            note(childPath(path, key), "not a field of this record; ignored")
       return { k: "record", fields }
     }
     case "tuple": {
-      if (!Array.isArray(value)) return fallback()
+      if (!Array.isArray(value))
+        return fallback(
+          `${missingOr(value, "expected a tuple (an array)")}; the default is used`
+        )
+      const elements = elementsOf(node)
+      if (value.length > elements.length)
+        note?.(
+          path,
+          `${value.length - elements.length} extra ${value.length - elements.length === 1 ? "value" : "values"} ignored`
+        )
       return {
         k: "tuple",
-        items: elementsOf(node).map((el, i) =>
-          i < value.length
-            ? draftFromValue(el, value[i], opts)
-            : initialDraft(el, opts)
-        ),
+        items: elements.map((el, i) => {
+          const at = childPath(path, i)
+          if (i < value.length) return fromValue(el, value[i], opts, at, note)
+          if (!isOptional(el)) note?.(at, "missing; set to the default")
+          return initialDraft(el, opts)
+        }),
       }
     }
     case "variant": {
       const picked = variantOf(node, value)
-      if (picked === undefined) return fallback()
+      if (picked === undefined)
+        return fallback(`${variantMiss(value)}; the default arm is used`)
       const [tag, payload, armSchema] = picked
+      if (isUninhabited(armSchema))
+        return fallback(
+          `the arm ${JSON.stringify(tag)} has no values; the default arm is used`
+        )
       if (isTagOnly(armSchema)) return { k: "variant", tag, payloads: {} }
+      const at = childPath(path, "value")
+      if (payload === undefined) note?.(at, "missing; set to the default")
       const payloads: Record<string, Draft> = {}
       setOwn(
         payloads,
         tag,
         payload === undefined
           ? initialDraft(armSchema, opts)
-          : draftFromValue(armSchema, payload, opts)
+          : fromValue(armSchema, payload, opts, at, note)
       )
       return { k: "variant", tag, payloads }
     }
     case "func": {
-      const f = (typeof value === "object" && value !== null ? value : {}) as {
-        principal?: unknown
-        method?: unknown
-      }
+      // { principal, method }, or agent-js's [principal, method].
+      const parts = Array.isArray(value)
+        ? { principal: value[0], method: value[1] }
+        : typeof value === "object" && value !== null
+          ? (value as { principal?: unknown; method?: unknown })
+          : undefined
+      if (parts === undefined)
+        note?.(
+          path,
+          `${missingOr(value, "expected { principal, method }")}; left empty`
+        )
+      else if (typeof parts.method !== "string")
+        note?.(
+          childPath(path, "method"),
+          `${missingOr(parts.method, "expected text")}; left empty`
+        )
       return {
         k: "func",
-        principal: principalText(f.principal),
-        method: typeof f.method === "string" ? f.method : "",
+        principal:
+          parts === undefined
+            ? ""
+            : principalFrom(
+                parts.principal,
+                childPath(path, "principal"),
+                note
+              ),
+        method: typeof parts?.method === "string" ? parts.method : "",
       }
     }
     case "service":
-      return { k: "leaf", text: principalText(value) }
+      return { k: "leaf", text: principalFrom(value, path, note) }
   }
 }
 
-const isByte = (b: unknown): b is number =>
-  typeof b === "number" && Number.isInteger(b) && b >= 0 && b < 256
+/** An empty blob has no format yet: the editor shows its default. */
+const bytesDraft = (text: string): Draft =>
+  text === "" ? { k: "bytes", text } : { k: "bytes", text, format: "hex" }
 
-function holdsArray(schema: AnyFieldSchema): boolean {
-  const kind = resolve(schema).kind
-  return kind === "vec" || kind === "tuple" || kind === "blob" || kind === "opt"
-}
-
-function leafText(primitive: string, value: unknown): string {
-  if (typeof value === "string") return value
-  if (typeof value === "bigint") return value.toString()
-  if (typeof value === "number") {
-    // A JSON number past 2^53 already lost digits: leave the field empty
-    // rather than show a different amount.
-    if (BIG_PRIMITIVES.has(primitive))
-      return Number.isSafeInteger(value) ? String(value) : ""
-    return String(value)
-  }
-  return ""
-}
+const missingOr = (value: unknown, expected: string): string =>
+  value === null || value === undefined ? "missing" : expected
 
 /** The `[tag, payload, armSchema]` of a `{ tag, value }` or `{ Tag: payload }` value. */
 function variantOf(
@@ -599,14 +715,69 @@ function variantOf(
   return undefined
 }
 
-function principalText(value: unknown): string {
+/** Why a value picked no arm, for the note. */
+function variantMiss(value: unknown): string {
+  if (typeof value !== "object" || value === null || Array.isArray(value))
+    return missingOr(value, `expected a variant ({ "Tag": value })`)
+  const v = value as Record<string, unknown>
+  if (typeof v.tag === "string")
+    return `unknown variant tag ${JSON.stringify(v.tag)}`
+  const keys = Object.keys(v)
+  return keys.length === 1
+    ? `unknown variant tag ${JSON.stringify(keys[0])}`
+    : `expected one tag, got ${keys.length} keys`
+}
+
+const isByte = (b: unknown): b is number =>
+  typeof b === "number" && Number.isInteger(b) && b >= 0 && b < 256
+
+function holdsArray(schema: AnyFieldSchema): boolean {
+  const kind = resolve(schema).kind
+  return kind === "vec" || kind === "tuple" || kind === "blob" || kind === "opt"
+}
+
+function leafFrom(
+  primitive: string,
+  value: unknown,
+  path: string,
+  note: Note
+): string {
   if (typeof value === "string") return value
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { toText?: unknown }).toText === "function"
+  if (typeof value === "bigint") return value.toString()
+  if (typeof value === "number") {
+    // A JSON number past 2^53 already lost digits: leave the field empty
+    // rather than show a different amount.
+    if (
+      BIG_PRIMITIVES.has(primitive) &&
+      Number.isInteger(value) &&
+      !Number.isSafeInteger(value)
+    ) {
+      note?.(
+        path,
+        "a number past 2^53 has lost digits (write it as a string); left empty"
+      )
+      return ""
+    }
+    // String(-0) is "0": a float64 -0.0 is other bytes than 0.0.
+    return Object.is(value, -0) ? "-0" : String(value)
+  }
+  note?.(
+    path,
+    `${missingOr(value, primitive === "text" ? "expected text" : "expected a number")}; left empty`
   )
-    return String((value as { toText(): unknown }).toText())
+  return ""
+}
+
+function principalFrom(value: unknown, path: string, note: Note): string {
+  if (typeof value === "string") return value
+  if (typeof value === "object" && value !== null) {
+    if (typeof (value as { toText?: unknown }).toText === "function")
+      return String((value as { toText(): unknown }).toText())
+    // agent-js writes a Principal to JSON as { "__principal__": text }.
+    const text = getOwn(value as Record<string, unknown>, "__principal__")
+    if (typeof text === "string") return text
+  }
+  note?.(path, `${missingOr(value, "expected principal text")}; left empty`)
   return ""
 }
 
@@ -654,6 +825,17 @@ export function draftToValue(
   path: string,
   issues: FieldIssue[]
 ): unknown {
+  // Before anything else: an opt, vec item or arm of a type with no values
+  // would otherwise stand in for its missing draft with initialDraft(), which
+  // is { k: "uninhabited" } again, and recurse forever.
+  if (draft.k === "uninhabited" || isUninhabited(schema)) {
+    issues.push({
+      path,
+      code: "uninhabited_type",
+      message: "this type has no values",
+    })
+    return null
+  }
   const node = resolve(schema)
   const parse = (message: string): void => {
     issues.push({ path, code: "parse", message })
@@ -662,10 +844,6 @@ export function draftToValue(
     case "primitive": {
       const p = node.primitive
       if (p === "null" || p === "reserved") return null
-      if (p === "empty") {
-        parse("this type has no values")
-        return null
-      }
       if (p === "bool") return draft.k === "bool" ? draft.value : false
       const text = draft.k === "leaf" ? draft.text : ""
       if (p === "text") return text
@@ -679,18 +857,18 @@ export function draftToValue(
         return parsed
       }
       if (FIXED[p] !== undefined) {
-        const t = text.trim().replace(/[_,\s]/g, "")
-        if (!/^[+-]?\d+$/.test(t)) {
-          parse(t === "" ? "required" : "enter a whole number")
+        const t = integerText(text)
+        if (!t.ok || t.text.startsWith("0x")) {
+          parse(t.ok ? "enter a whole number" : t.message)
           return text
         }
-        return Number(t) // the range is validate's out_of_range, with exact bounds
+        return Number(t.text) // the range is validate's out_of_range, with exact bounds
       }
       return parseFloatLeaf(text, p === "float32", parse)
     }
     case "blob": {
       if (draft.k !== "bytes") return new Uint8Array(0)
-      const bytes = parseBytes(draft.text, draft.format)
+      const bytes = parseBytes(draft.text, draft.format ?? "hex")
       if (typeof bytes === "string") {
         parse(bytes)
         return draft.text
@@ -804,27 +982,30 @@ function principalOrIssue(
   return t
 }
 
+// Decimal notation only: Number() also reads "0x1A", "0b11" and "", which a
+// float field should not take for a decimal.
+const DECIMAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i
+
 function parseFloatLeaf(
   text: string,
   float32: boolean,
   parse: (message: string) => void
 ): number | string {
   const t = text.trim()
-  const x =
-    t === "NaN"
-      ? NaN
-      : t === "Infinity" || t === "+Infinity"
-        ? Infinity
-        : t === "-Infinity"
-          ? -Infinity
-          : t === ""
-            ? NaN
-            : Number(t)
-  if (Number.isNaN(x) && t !== "NaN") {
+  if (t === "NaN") return NaN
+  if (t === "Infinity" || t === "+Infinity") return Infinity
+  if (t === "-Infinity") return -Infinity
+  if (!DECIMAL.test(t)) {
     parse(t === "" ? "required" : "enter a number")
     return text
   }
-  if (float32 && !Number.isNaN(x) && Math.fround(x) !== x) {
+  const x = Number(t)
+  if (!Number.isFinite(x)) {
+    // "1e400" overflows to Infinity: say so, never send Infinity for it.
+    parse("too large for a float64 (type Infinity for infinity)")
+    return text
+  }
+  if (float32 && Math.fround(x) !== x) {
     // encode would refuse it too (unrepresentable_float32): say why, here.
     parse(`not exactly representable as float32 (nearest is ${Math.fround(x)})`)
     return x
@@ -832,13 +1013,44 @@ function parseFloatLeaf(
   return x
 }
 
-/** A bigint from typed text (`_`, `,` and spaces ignored; `0x` hex), or why not. */
+type IntegerText =
+  | { readonly ok: true; readonly text: string }
+  | { readonly ok: false; readonly message: string }
+
+const GROUP_SPACE = /[ \u00a0\u202f]/g
+
+/**
+ * Typed integer text as BigInt() reads it, or why not. `_` may sit between
+ * digits (Candid's own `1_000_000`); `,` and spaces only between groups of
+ * three, so a decimal comma ("1,5") is refused rather than read as 15.
+ */
+function integerText(text: string): IntegerText {
+  const t = text.trim()
+  if (t === "") return { ok: false, message: "required" }
+  if (/^[+-]?\d+(?:_\d+)*$/.test(t))
+    return { ok: true, text: t.replaceAll("_", "") }
+  if (/^[+-]?\d{1,3}(?:,\d{3})+$/.test(t))
+    return { ok: true, text: t.replaceAll(",", "") }
+  if (/^[+-]?\d{1,3}(?:[ \u00a0\u202f]\d{3})+$/.test(t))
+    return { ok: true, text: t.replace(GROUP_SPACE, "") }
+  if (/^0x[0-9a-f]+(?:_[0-9a-f]+)*$/i.test(t))
+    return { ok: true, text: t.replaceAll("_", "") }
+  if (/^[+-]?[\d,_\s\u00a0\u202f]+$/.test(t))
+    return {
+      ok: false,
+      message:
+        'enter a whole number ("," and spaces only separate groups of 3 digits)',
+    }
+  return { ok: false, message: "enter a whole number" }
+}
+
+/**
+ * A bigint from typed text, or why not: decimal digits (with `_` between
+ * them, or `,`/spaces between groups of three) or `0x` hex.
+ */
 export function parseBigInt(text: string): bigint | string {
-  const t = text.trim().replace(/[_,\s]/g, "")
-  if (t === "") return "required"
-  if (/^[+-]?\d+$/.test(t)) return BigInt(t)
-  if (/^0x[0-9a-f]+$/i.test(t)) return BigInt(t)
-  return "enter a whole number"
+  const t = integerText(text)
+  return t.ok ? BigInt(t.text) : t.message
 }
 
 /** Bytes from text in a format, or why not. Hex allows `0x` and separators. */
@@ -883,11 +1095,21 @@ export function formatBytes(
     for (const b of bytes) bin += String.fromCharCode(b)
     return btoa(bin)
   }
+  let text: string
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes)
+    // ignoreBOM: a leading EF BB BF is three of the bytes, not a marker to
+    // drop, or switching to text would send three bytes fewer.
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+      bytes
+    )
   } catch {
     return undefined
   }
+  // Only a text that encodes back to the very same bytes may stand for them.
+  const back = new TextEncoder().encode(text)
+  return back.length === bytes.length && back.every((b, i) => b === bytes[i])
+    ? text
+    : undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -1001,13 +1223,6 @@ export function isAtOrBelow(issuePath: string, path: string): boolean {
     issuePath.startsWith(path + ".") ||
     issuePath.startsWith(path + "[")
   )
-}
-
-export function hasIssueBelow(
-  issues: readonly FieldIssue[],
-  path: string
-): boolean {
-  return issues.some((issue) => isAtOrBelow(issue.path, path))
 }
 
 /**

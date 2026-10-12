@@ -17,7 +17,7 @@ both.
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | Automatic forms for the typed canisters: a field per Candid type (amounts in token units, principals checked as you type, `created_at_time` set to now), required fields first, and a submit button that names what is wrong | `src/forms/engine.ts`, `src/forms/hints.ts`, `src/forms/MethodForm.tsx`, `src/forms/TypedForm.tsx`, `src/lib/registry.ts` | `/canister/ryjl3-tyaaa-aaaaa-aaaba-cai`: pick any of the ICP ledger's methods; `/wallet`: Send is the typed form of `icrc1_transfer`                            |
 | 2   | Any mainnet canister from its certified metadata: `candid:service` and `module_hash` in one certified `read_state`, compiled on the server, cached by module hash; the uncertified fallback is labelled                      | `src/interface/live-candid.server.ts`, `src/interface/functions.ts`, `src/interface/load.ts`                              | `/canister/rrkah-fqaaa-aaaaa-aaaaq-cai` (NNS governance: "Certified metadata"); `/canister/lj532-6iaaa-aaaah-qcc7a-cai` (no metadata: "UNCERTIFIED")            |
-| 3   | SSR with hydrated mainnet reads: one client per request and one per tab, loaders that prefetch and never throw, no refetch on hydration, and no failed read sent to the browser                                              | `src/router.tsx`, `src/lib/reactor.ts`, `src/routes/index.tsx`                                                            | `/` with the network panel open: the ledgers' supply and fee are in the HTML, and nothing is read again on load                                                 |
+| 3   | SSR with hydrated mainnet reads: one client per request and one per tab, loaders that prefetch and never throw, no refetch on hydration, no failed read sent to the browser, and no server read held past 5 s                | `src/router.tsx`, `src/lib/reactor.ts`, `src/routes/index.tsx`                                                            | `/` with the network panel open: the ledgers' supply and fee are in the HTML, and nothing is read again on load                                                 |
 | 4   | Shared query links rendered on the server: the loader decodes the link's hex Candid arguments and prefetches with the options the runner uses, so the result is in the HTML                                                  | `src/calls/share.ts`, `src/calls/query-options.ts`, `src/routes/canister.$canisterId.index.tsx`                           | run a query, copy its share link, and open it with JavaScript off; `/canister/ryjl3-tyaaa-aaaaa-aaaba-cai?method=icrc1_total_supply&args=4449444c0000&run=true` |
 | 5   | Safe writes: signed out, a write is disabled and says why; signed in, a confirm step shows the sender, the target, the method, the Candid text and the size and sha256 of the exact argument bytes; sent once, never retried | `src/calls/WriteRunner.tsx`, `src/calls/ConfirmWrite.tsx`, `src/values/CallPreview.tsx`                                   | sign in, open a ledger's `icrc1_transfer`, press Review: the confirm step (Cancel sends nothing)                                                                |
 | 6   | Unknown outcomes and `resendOf`: `mayHaveExecuted` read on every failed write; a re-send only through `client.resendOf`, deduplicated by `created_at_time`, or else "read the state back first"                              | `src/calls/WriteRunner.tsx`, `src/calls/ResendPanel.tsx`, `src/calls/ErrorPanel.tsx`                                      | `/safety`, scenario 3: a lost reply, then its re-send answered `Duplicate` (mainnet loses no reply on demand)                                                   |
@@ -28,7 +28,7 @@ both.
 | 11  | The playground: a pasted `.did` compiled in the browser by the lazily loaded WASM of `@candid-core/cli`, forms for its methods and calls to a target canister, its TypeScript module, a projection and a compatibility check | `src/interface/browser.ts`, `src/routes/playground.tsx`, `src/components/playground/`                                     | `/playground`: the sample compiles; give it a target canister id                                                                                                |
 | 12  | Interface tools: the Candid text (copy, download), the TypeScript module (`didToModule`), a projection to chosen methods (`projectDid`), and a written `.did` checked against the live one (`checkCompatible`)               | `src/routes/canister.$canisterId.interface.tsx`, `src/interface/functions.ts`, `src/interface/browser.ts`                 | `/canister/mqygn-kiaaa-aaaar-qaadq-cai/interface`                                                                                                               |
 
-`/history` lists the calls made in this browser, each with its arguments as
+`/history` lists the calls you ran or sent in this browser, each with its arguments as
 the hex of their encoded bytes (never JSON) and a link that replays it
 (`src/calls/history.ts`, `src/routes/history.tsx`).
 
@@ -47,16 +47,30 @@ id and nothing else: no server route accepts `.did` text. It:
   certified `read_state`, with the agent's retries off. A 403 means the
   interface is private;
 - falls back to the `__get_candid_interface_tmp_hack` query only when the
-  metadata is absent, and labels that interface UNCERTIFIED. It never falls
-  back after a certificate fails to verify;
-- refuses a `.did` over 256 KiB, and bounds the whole load with a timeout;
-- compiles with `@candid-core/cli` (`CANDID_CORE_WASM` points it at another
-  copy of its WASM) and caches: canister to module hash and `.did` hash for
-  60 s, then re-checks the module hash alone; `.did` hash to the compiled
-  envelope in an LRU of 200 entries. Loads in flight are shared, and a canister is
-  compiled again only when its module hash changes. A failure that will not
-  change soon (no interface, a private one, a compile error) is cached for 5
-  minutes, a network failure or timeout for 15 s.
+  certificate proves the metadata absent, or when the metadata is readable
+  by the canister's controllers only (the 403, which is not signed), and
+  labels that interface UNCERTIFIED. It never falls back after a certificate
+  fails to verify, or when it leaves the path unproven (a pruned branch);
+- refuses a `.did` over 256 KiB, and an interface of more than 1,000
+  methods (Internet Identity, the largest on mainnet, has 113);
+- compiles with `@candid-core/cli` in a worker thread
+  (`src/interface/compile.server.ts`; `CANDID_CORE_WASM` points it at
+  another copy of its WASM), one call at a time, each stopped after 2 s by
+  terminating the worker. Real interfaces compile in 1 to 30 ms, but the
+  size cap alone does not bound the time: a hostile `.did` at the cap takes
+  2.5 s to compile, 5 s with its docs, and 4.7 s to project. In the worker
+  that never holds the server's event loop, and the 15 s timeout of a load
+  covers the compile too;
+- caches: canister to module hash and `.did` hash for 60 s, then re-checks
+  the module hash alone; `.did` hash to the compiled envelope in an LRU of
+  200 entries (64 MB). Loads in flight are shared, and a canister is
+  compiled again only when its module hash changes. The TypeScript module,
+  a projection (by its set of methods) and the committed `.did` check are
+  cached by `.did` hash in an LRU of 500 entries (32 MB), so each is
+  compiled once, not on every request. A failure that will not change soon
+  (no interface, a private one, a compile error) is cached for 5 minutes; a
+  network failure, a timeout or a server error for 15 s, and a `.did`
+  whose compile hit the 2 s deadline is not compiled again for 15 s.
 
 The browser gets the envelope's JSON and rebuilds the actor with
 `schemaFromContract`. The compiler's 1.9 MB WASM is loaded in the browser only
@@ -80,16 +94,21 @@ corepack pnpm preview  # Start's server over dist/: http://localhost:4173
 ```
 
 The app uses no Nitro: `vite preview` runs Start's server bundle, which
-imports its dependencies from `node_modules`.
+imports its dependencies from `node_modules`, and the compiler's worker
+loads `@candid-core/cli` from there too.
 
 StackBlitz runs `npm run dev`. `/` renders there on the server with its
 mainnet reads, because its loader calls no server function. Server functions
 do not run there: TanStack Start keeps each request in Node's
 `AsyncLocalStorage`, which StackBlitz's WebContainer does not implement. The
-typed canisters need none. For any other canister, opened from inside the app
-(or with Try again on a page loaded directly, whose server render reports the
-failure), the browser reads the certified metadata itself and compiles it with
-the lazily loaded WASM.
+typed canisters need none to load and to call. For any other canister,
+opened from inside the app (or with Try again on a page loaded directly,
+whose server render reports the failure), the browser reads the certified
+metadata itself and compiles it with the lazily loaded WASM; so does the
+check of a pasted `.did` against a canister's live interface. Three
+interface tools run on the studio's server only, and say so there: a
+projection, the TypeScript module of a canister read live, and the check of
+a typed canister's committed `.did`.
 
 ## Test it
 
@@ -116,9 +135,12 @@ interface loader takes an injected fetcher, so nothing reaches the network:
 - `src/calls/`: an anonymous write refused with no request sent; an unknown
   outcome, its `resendOf` and the `Duplicate`; `canister_err` and
   `invalid_args` shown; the query key carries the caller; history stores hex.
-- `src/interface/`: bad ids, the management canister, a 403, the size cap,
-  the uncertified fallback, a cache hit by module hash, compile diagnostics,
-  method docs.
+- `src/interface/`: bad ids, the management canister, a 403, the size and
+  method caps, the uncertified fallback (and none after a pruned
+  certificate), a cache hit by module hash, compile diagnostics, method
+  docs, the worker's deadline over a hostile 19,516-method `.did`, the
+  cached module and projections, and a server function that gives no
+  result.
 - `src/safety/`: the verdict of each Safety lab scenario, run headless.
 - `src/components/`: the shared-link search params and decoding, the wallet's
   ledgers, and the UI primitives.
@@ -154,7 +176,8 @@ The app keeps each of these rules, which come from `@ic-reactor/core`'s
    through `resendOf`.
 7. Names and strings from a canister are rendered as text, never as HTML.
 8. The server function fetches only from the IC API host, checks the id, caps
-   the `.did`, and bounds its compile time and its caches.
+   the `.did` and its methods, bounds each compile with a worker deadline,
+   and bounds its caches.
 9. An uncertified interface is labelled, and a failed certificate is never
    followed by a fallback.
 10. A write shows its sender, target, method and exact bytes before it is

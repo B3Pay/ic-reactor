@@ -8,6 +8,7 @@ import { CURATED, registryEntry, type RegistryEntry } from "../lib/registry.ts"
 import { Lru } from "./cache.ts"
 import { docFor } from "./docs.ts"
 import { fetchInterface } from "./functions.ts"
+import { serverResult } from "./server-result.ts"
 import { typedPayload } from "./typed.ts"
 import type {
   CanisterInterface,
@@ -21,12 +22,8 @@ type OkPayload = Extract<InterfacePayload, { ok: true }>
 
 /**
  * The interface payload of a canister, on either side: a registry canister
- * gives its typed payload (no network), any other canister goes through the
- * `fetchInterface` server function. In the browser, when that call itself
- * fails (StackBlitz, where server functions cannot run), the browser reads
- * the canister's certified metadata and compiles it with a lazily loaded
- * compiler instead (`compiledIn: "browser"`). Never throws: failures are
- * `{ ok: false }` payloads.
+ * gives its typed payload (no network), any other canister its live one
+ * (`loadLivePayload`). Never throws: failures are `{ ok: false }` payloads.
  */
 export async function loadInterfacePayload(
   canisterId: string
@@ -36,11 +33,33 @@ export async function loadInterfacePayload(
     return { ok: false, canisterId, code: id.code, message: id.message }
   }
   const entry = registryEntry(id.id)
+  if (entry === undefined) return loadLivePayload(id.id)
   try {
-    if (entry !== undefined) return await typedPayload(entry)
-    return await fetchInterface({ data: { canisterId: id.id } })
+    return await typedPayload(entry)
   } catch (error) {
-    if (entry !== undefined || import.meta.env.SSR) {
+    return { ok: false, canisterId, code: "network", message: messageOf(error) }
+  }
+}
+
+/**
+ * The live interface payload of any canister, registry canisters included:
+ * through the `fetchInterface` server function. In the browser, when that
+ * call fails or gives no result (StackBlitz, where server functions cannot
+ * run), the browser reads the canister's certified metadata and compiles it
+ * with a lazily loaded compiler instead (`compiledIn: "browser"`). Never
+ * throws.
+ */
+export async function loadLivePayload(
+  canisterId: string
+): Promise<InterfacePayload> {
+  const id = checkCanisterId(canisterId)
+  if (!id.ok) {
+    return { ok: false, canisterId, code: id.code, message: id.message }
+  }
+  try {
+    return await serverResult(fetchInterface({ data: { canisterId: id.id } }))
+  } catch (error) {
+    if (import.meta.env.SSR) {
       return {
         ok: false,
         canisterId,

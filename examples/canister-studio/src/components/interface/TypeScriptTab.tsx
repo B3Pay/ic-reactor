@@ -1,6 +1,7 @@
 import { useEffect, type ReactElement } from "react"
 import { generateModule } from "../../interface/functions.ts"
 import { typedModuleText } from "../../interface/load.ts"
+import { serverResult } from "../../interface/server-result.ts"
 import type { CanisterInterface } from "../../interface/types.ts"
 import { Code } from "../Code.tsx"
 import { safeFileName } from "../download.ts"
@@ -38,9 +39,9 @@ export function TypeScriptTab({
           committed: true,
         }
       }
-      const result = await generateModule({
-        data: { canisterId: iface.canisterId },
-      })
+      const result = await serverResult(
+        generateModule({ data: { canisterId: iface.canisterId } })
+      )
       if (!result.ok) throw new Error(result.message)
       return {
         module: result.module,

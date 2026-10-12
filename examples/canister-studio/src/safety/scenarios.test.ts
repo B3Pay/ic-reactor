@@ -90,6 +90,15 @@ describe("what the scenarios hand the page", () => {
     })
   })
 
+  it("caller changed: the refused re-send is shown as one, so it never reads as settling the transfer", async () => {
+    const result = await scenario("caller-changed").run()
+    const [refused] = result.moreErrors ?? []
+    expect(isReactorError(refused?.error) && refused.error.code).toBe(
+      "caller_changed"
+    )
+    expect(refused?.afterResend).toBe(true)
+  })
+
   it("429: two calls in the log, the first refused, and the block index", async () => {
     const result = await scenario("http-429").run()
     const transfers = result.requests.filter(

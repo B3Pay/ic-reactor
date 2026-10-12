@@ -76,7 +76,7 @@ const FEATURES = [
   {
     to: "/history",
     title: "History and shared links",
-    text: "Every call is kept in this browser with its exact argument bytes. A shared query link renders its result on the server.",
+    text: "Every call you run or send is kept in this browser with its exact argument bytes. A shared query link renders its result on the server.",
     cta: "See your calls",
   },
 ] as const

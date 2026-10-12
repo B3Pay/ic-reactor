@@ -7,7 +7,6 @@ import { formatNanos, groupDigits, shortPrincipal } from "../../lib/format.ts"
 import { fromHex } from "../../lib/hex.ts"
 import { Badge, ModeBadge } from "../Badge.tsx"
 import { MODE_LABEL, MODE_ORDER } from "../modes.ts"
-import { isReadMode } from "../canister/shared-call.ts"
 import { CopyButton } from "../CopyButton.tsx"
 import { EmptyState } from "../EmptyState.tsx"
 
@@ -60,7 +59,7 @@ export function HistoryList(): ReactElement {
         }
       >
         <p>
-          Every call you make in this browser lands here, with its exact
+          Every call you run or send in this browser lands here, with its exact
           argument bytes, so you can replay it or share it.
         </p>
       </EmptyState>
@@ -192,7 +191,11 @@ export function HistoryList(): ReactElement {
 }
 
 function HistoryRow({ entry }: { entry: HistoryEntry }): ReactElement {
-  const isRead = isReadMode(entry.mode)
+  // An entry keeps the method's mode, not its results, so a query without
+  // results is offered as a replay too. The page reads at once only what it
+  // can read (`readsAtOnce`) and opens the rest prefilled, so this guess
+  // costs a label, never a call.
+  const isRead = entry.mode === "query" || entry.mode === "composite_query"
   // Empty bytes: arguments too large to keep, so the link opens the method
   // unfilled (and runs nothing).
   const bytes = fromHex(entry.argsHex) ?? new Uint8Array()

@@ -1,50 +1,67 @@
 import type { AnyFieldSchema } from "@candid-core/schema"
 import { useState, type ReactNode } from "react"
-import { draftValues, type Draft } from "./engine.ts"
+import { draftValues, pathLabel, type Draft, type DraftNote } from "./engine.ts"
 import { argsToJson, parseArgsJson } from "./json.ts"
 
 interface JsonPanelProps {
   readonly id: string
   readonly args: readonly AnyFieldSchema[]
+  /** The .did's argument names, for the paths in the notes. */
+  readonly argNames?: readonly (string | undefined)[]
   readonly drafts: readonly Draft[]
-  readonly onLoad: (values: unknown[]) => void
+  /** Loads the values; returns what could not be used as given. */
+  readonly onLoad: (values: unknown[]) => readonly DraftNote[]
 }
+
+/** Replaced values listed after a load, at most. */
+const NOTE_LIMIT = 8
+
+type Status =
+  | { readonly kind: "error" | "ok"; readonly message: string }
+  | { readonly kind: "replaced"; readonly notes: readonly DraftNote[] }
 
 /**
  * The arguments as JSON: opened, it shows the form's values (bigints as
  * strings, blobs as hex); edited or pasted JSON loads back into the form,
- * read as tolerantly as a prefill.
+ * read as tolerantly as a prefill. What it could not read as given (a
+ * misspelled tag or key, a list that is not an array) is listed with what
+ * replaced it, so a load never stages another call in silence.
  */
 export function JsonPanel({
   id,
   args,
+  argNames,
   drafts,
   onLoad,
 }: JsonPanelProps): ReactNode {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState("")
-  const [status, setStatus] = useState<{ error: boolean; message: string }>()
+  const [status, setStatus] = useState<Status>()
 
   const refresh = () => {
     setText(argsToJson(draftValues(args, drafts)))
     setStatus(undefined)
   }
   const load = () => {
-    const parsed = parseArgsJson(text, args.length)
+    const parsed = parseArgsJson(text, args)
     if (!parsed.ok) {
-      setStatus({ error: true, message: parsed.message })
+      setStatus({ kind: "error", message: parsed.message })
       return
     }
-    onLoad(parsed.values)
-    setStatus({ error: false, message: "Loaded into the form." })
+    const notes = onLoad(parsed.values)
+    setStatus(
+      notes.length === 0
+        ? { kind: "ok", message: "Loaded into the form." }
+        : { kind: "replaced", notes }
+    )
   }
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text)
-      setStatus({ error: false, message: "Copied." })
+      setStatus({ kind: "ok", message: "Copied." })
     } catch {
       setStatus({
-        error: true,
+        kind: "error",
         message: "The clipboard is not available here.",
       })
     }
@@ -97,15 +114,43 @@ export function JsonPanel({
           >
             Copy
           </button>
-          {status !== undefined && (
+          {status !== undefined && status.kind !== "replaced" && (
             <span
-              className={status.error ? "field-error" : "muted text-sm"}
-              role={status.error ? "alert" : "status"}
+              className={
+                status.kind === "error" ? "field-error" : "muted text-sm"
+              }
+              role={status.kind === "error" ? "alert" : "status"}
             >
               {status.message}
             </span>
           )}
         </div>
+        {status?.kind === "replaced" && (
+          <div className="notice notice-warn" role="status">
+            <p className="notice-title">
+              Loaded, but {status.notes.length}{" "}
+              {status.notes.length === 1
+                ? "value was not read as given"
+                : "values were not read as given"}
+              : check these fields before sending.
+            </p>
+            <ul className="list-plain stack-xs">
+              {status.notes.slice(0, NOTE_LIMIT).map((note, i) => (
+                <li key={i} className="text-sm">
+                  <span className="mono">
+                    {pathLabel(note.path, args.length, argNames)}
+                  </span>
+                  : {note.message}
+                </li>
+              ))}
+              {status.notes.length > NOTE_LIMIT && (
+                <li className="text-sm muted">
+                  and {status.notes.length - NOTE_LIMIT} more
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
       </div>
     </details>
   )

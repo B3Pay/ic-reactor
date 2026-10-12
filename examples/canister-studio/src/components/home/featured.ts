@@ -32,9 +32,11 @@ export function minterReads(client: Client, id: string) {
   return { info: client.queryOptions(minter, "get_minter_info") }
 }
 
-// Starts a read without waiting for it, and never fails: a read still in
-// flight when the page renders streams in (its card suspends), and a failed
-// one is read again by the browser, which shows the real error.
+// Starts a read without waiting for it, and never fails. On the server, a
+// read still in flight when the page renders streams in as it lands (its card
+// suspends). One that fails, or that the router cancels at its deadline
+// (SERVER_READ_DEADLINE_MS), is never sent: the browser renders that card,
+// reads again, and shows the real error only if its own read fails.
 const start = (pending: Promise<unknown>): void => {
   pending.catch(() => undefined)
 }

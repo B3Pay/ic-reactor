@@ -65,29 +65,42 @@ export function minterCanister(client: Client) {
 
 const INTERFACES = new Map<string, CanisterInterface>()
 
-/**
- * A wallet ledger's interface over the icrc1 module, for the shared
- * components (the confirm step, the error panel, the reply viewer). Built
- * once per ledger from the generated service schema: plain data, the same
- * object every time.
- */
-export function ledgerInterface(entry: RegistryEntry): CanisterInterface {
+function typedInterface(
+  entry: RegistryEntry,
+  actor: CanisterInterface["actor"],
+  module: RegistryEntry["module"]
+): CanisterInterface {
   const cached = INTERFACES.get(entry.id)
   if (cached !== undefined) return cached
-  const methods = methodsOf(icrc1Actor)
+  const methods = methodsOf(actor)
   const byName = new Map(methods.map((method) => [method.name, method]))
   const iface: CanisterInterface = {
     canisterId: entry.id,
     name: entry.name,
-    actor: icrc1Actor,
+    actor,
     methods,
     method: (name) => byName.get(name),
-    source: { kind: "typed", module: "icrc1" },
+    source: { kind: "typed", module },
     omitted: [],
     registry: entry,
   }
   INTERFACES.set(entry.id, iface)
   return iface
+}
+
+/**
+ * A wallet ledger's interface over the icrc1 module, for the shared
+ * components (the confirm step, the error panel, the reply viewer, the
+ * history). Built once per ledger from the generated service schema: plain
+ * data, the same object every time.
+ */
+export function ledgerInterface(entry: RegistryEntry): CanisterInterface {
+  return typedInterface(entry, icrc1Actor, "icrc1")
+}
+
+/** The ckBTC minter's interface, built the same way (for the history). */
+export function minterInterface(): CanisterInterface {
+  return typedInterface(CKBTC_MINTER, minterActor, "ckbtc_minter")
 }
 
 /** `icrc1_transfer` of a wallet ledger's interface. */

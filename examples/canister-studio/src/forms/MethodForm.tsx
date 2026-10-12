@@ -7,17 +7,20 @@ import {
   useState,
   type FormEvent,
   type JSX,
+  type Ref,
 } from "react"
 import type { MethodInfo } from "../interface/types.ts"
 import { formatByteSize } from "../lib/format.ts"
 import { KNOWN_CANISTERS } from "../lib/registry.ts"
 import { FormContext, type FormContextValue } from "./context.ts"
 import {
+  argLabel,
   argPath,
   checkCall,
   isAtOrBelow,
   issuesByPath,
   pathLabel,
+  resolve,
   type CallCheck,
   type Draft,
   type FieldIssue,
@@ -28,7 +31,12 @@ import { JsonPanel } from "./JsonPanel.tsx"
 import { useMethodForm } from "./useMethodForm.ts"
 
 export interface MethodFormProps {
-  method: MethodInfo
+  /**
+   * The method, with the .did's argument names where the interface knows
+   * them (`acknowledge_entries : (sequence_number : nat)`): they label the
+   * arguments; unnamed ones read "argument 1", "argument 2".
+   */
+  method: MethodInfo & { readonly argNames?: readonly (string | undefined)[] }
   hints?: HintResolver
   /** Prefill: history, a shared link, typed defaults. */
   initialValues?: readonly unknown[]
@@ -42,6 +50,11 @@ export interface MethodFormProps {
   onChange?(check: CallCheck): void
   /** Offers "Use mine" on principal fields. */
   callerPrincipal?: string
+  /**
+   * The submit button, for a parent that must hand the focus back to it
+   * (after a confirm step it opened is cancelled or sent).
+   */
+  submitRef?: Ref<HTMLButtonElement>
 }
 
 /** Issues listed in the summary after a failed submit, at most. */
@@ -88,12 +101,14 @@ export function MethodForm(props: MethodFormProps): JSX.Element {
     onSubmit,
     onChange,
     callerPrincipal,
+    submitRef,
   } = props
   const baseId = useId()
   const form = useMethodForm(method, initialValues, hints)
   const { state } = form
   const args = method.args
   const argCount = args.length
+  const names = method.argNames
 
   // Typing in a big argument stays responsive: the check runs on a deferred
   // copy (drafts and their schemas together), and submit re-checks the
@@ -164,6 +179,18 @@ export function MethodForm(props: MethodFormProps): JSX.Element {
       for (const key of external.keys()) if (isAtOrBelow(key, path)) return true
       return false
     },
+    lastItemWithIssue(path) {
+      let last = -1
+      const see = (key: string) => {
+        const index =
+          key.startsWith(path) && /^\[(\d+)\]/.exec(key.slice(path.length))
+        if (index) last = Math.max(last, Number(index[1]))
+      }
+      for (const key of issues.keys())
+        if (state.showAll || state.touched.has(key)) see(key)
+      for (const key of external.keys()) see(key)
+      return last
+    },
     touch: form.touch,
     showAll: state.showAll,
     callerPrincipal,
@@ -174,13 +201,23 @@ export function MethodForm(props: MethodFormProps): JSX.Element {
 
   const blocked =
     busy || disabledReason !== undefined || check.uninhabited === true
+  // The button is aria-disabled, never disabled: a disabled button that has
+  // the focus (Enter on "Run query") drops it to the page.
+  const submitButton = useRef<HTMLButtonElement | null>(null)
+  const fields = useRef<HTMLFieldSetElement>(null)
+  const setSubmitButton = (el: HTMLButtonElement | null) => {
+    submitButton.current = el
+    if (typeof submitRef === "function") submitRef(el)
+    else if (submitRef) submitRef.current = el
+  }
+
   const first = check.issues[0]
   const reason =
     disabledReason ??
     (check.uninhabited === true
       ? "This method cannot be called: an argument's type has no values."
       : first !== undefined
-        ? `${pathLabel(first.path, argCount)}: ${first.message}${
+        ? `${pathLabel(first.path, argCount, names)}: ${first.message}${
             check.issues.length > 1
               ? ` (and ${check.issues.length - 1} more)`
               : ""
@@ -193,12 +230,24 @@ export function MethodForm(props: MethodFormProps): JSX.Element {
     event.preventDefault()
     if (blocked) return
     const result = form.submit()
-    if (result.ok && result.values !== undefined && result.bytes !== undefined)
+    if (
+      result.ok &&
+      result.values !== undefined &&
+      result.bytes !== undefined
+    ) {
+      // Enter in a field submits from it, and a call in flight disables the
+      // fields. The browser drops the focus of a field the moment its
+      // fieldset is disabled, before any effect could move it: it goes to
+      // the button now, where a click would have left it.
+      const active = document.activeElement
+      if (active !== null && fields.current?.contains(active))
+        submitButton.current?.focus()
       onSubmit({
         values: result.values,
         vars: result.vars,
         bytes: result.bytes,
       })
+    }
   }
 
   const summary = state.showAll ? check.issues : []
@@ -219,21 +268,30 @@ export function MethodForm(props: MethodFormProps): JSX.Element {
             </option>
           ))}
         </datalist>
-        <fieldset className="form-fields" disabled={busy}>
+        <fieldset ref={fields} className="form-fields" disabled={busy}>
           {argCount === 0 && (
             <p className="muted text-sm">This method takes no arguments.</p>
           )}
-          {args.map((schema, i) => (
-            <Field
-              key={i}
-              schema={schema}
-              draft={state.drafts[i] ?? { k: "uninhabited" }}
-              path={argPath(i)}
-              label={argCount > 1 ? `arg${i}` : undefined}
-              a11yLabel={argCount === 1 ? "Argument" : undefined}
-              onChange={(draft) => edit(i, draft)}
-            />
-          ))}
+          {args.map((schema, i) => {
+            // Every argument is labelled, with its type beside the label; a
+            // lone unnamed record goes without a frame, as its fields are
+            // the labels.
+            const bare =
+              argCount === 1 &&
+              names?.[0] === undefined &&
+              resolve(schema).kind === "record"
+            return (
+              <Field
+                key={i}
+                schema={schema}
+                draft={state.drafts[i] ?? { k: "uninhabited" }}
+                path={argPath(i)}
+                label={bare ? undefined : argLabel(i, argCount, names)}
+                a11yLabel={bare ? "Argument" : undefined}
+                onChange={(draft) => edit(i, draft)}
+              />
+            )
+          })}
         </fieldset>
         {listed.length > 0 && (
           <div className="notice notice-danger form-summary" role="alert">
@@ -250,7 +308,7 @@ export function MethodForm(props: MethodFormProps): JSX.Element {
                     className="form-summary-link mono"
                     onClick={() => form.focusOn(issue.path)}
                   >
-                    {pathLabel(issue.path, argCount)}
+                    {pathLabel(issue.path, argCount, names)}
                   </button>
                   : {issue.message}
                 </li>
@@ -261,9 +319,10 @@ export function MethodForm(props: MethodFormProps): JSX.Element {
         <div className="form-footer">
           <div className="row form-submit-row">
             <button
+              ref={setSubmitButton}
               type="submit"
               className="btn btn-primary"
-              disabled={blocked}
+              aria-disabled={blocked || undefined}
               aria-describedby={
                 reason === undefined ? undefined : `${baseId}-reason`
               }
@@ -290,6 +349,7 @@ export function MethodForm(props: MethodFormProps): JSX.Element {
             <JsonPanel
               id={`${baseId}-json`}
               args={args}
+              argNames={names}
               drafts={state.drafts}
               onLoad={form.load}
             />

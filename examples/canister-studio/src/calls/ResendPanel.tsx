@@ -1,6 +1,7 @@
 import { useClient } from "@ic-reactor/react"
 import { useQuery } from "@tanstack/react-query"
 import type { JSX } from "react"
+import { ActionButton } from "../components/ActionButton.tsx"
 import type { CanisterInterface } from "../interface/types.ts"
 import type { TokenUnits } from "../lib/format.ts"
 import { formatNanos } from "../lib/format.ts"
@@ -16,6 +17,14 @@ export interface ResendPanelProps {
   from: string
   /** The write's `created_at_time`, in nanoseconds. */
   createdAt?: bigint
+  /**
+   * Whether the canister is known to deduplicate this method
+   * (`knownDeduplicating`). Otherwise the offer is worded as conditional:
+   * a `created_at_time` field alone proves nothing.
+   */
+  known: boolean
+  /** The Err tag a duplicate is answered with (`duplicateTagOf`). */
+  duplicateTag: string
   busy?: boolean
   onResend(): void
 }
@@ -25,45 +34,77 @@ export interface ResendPanelProps {
  * as the same sender, which a deduplicating canister runs at most once.
  */
 export function ResendPanel(props: ResendPanelProps): JSX.Element {
+  const tag = <code className="code-inline">{props.duplicateTag}</code>
+  const sender = <span className="mono break-all">{props.from}</span>
   return (
     <div
       className="notice notice-info call-resend"
       role="region"
       aria-label="Safe re-send"
     >
-      <p className="notice-title">Re-send safely</p>
+      <p className="notice-title">
+        {props.known
+          ? "Re-send safely"
+          : "Re-send, if the canister deduplicates"}
+      </p>
       <p>
         The write carries <code className="code-inline">created_at_time</code>
         {props.createdAt !== undefined && (
           <> ({formatNanos(props.createdAt)})</>
         )}
-        , and the canister runs a transaction at most once per sender. Sending
-        the same bytes again as{" "}
-        <span className="mono break-all">{props.from}</span> either runs it now,
-        if the first send never ran, or answers{" "}
-        <code className="code-inline">Duplicate</code>, if it already did.
-        Either way it runs exactly once.
+        {props.known ? (
+          <>
+            , and this canister runs a transaction at most once per sender.
+            Sending the same bytes again as {sender} either runs it now, if the
+            first send never ran, or answers {tag}, if it already did: it never
+            runs twice. Past the canister&apos;s deduplication window (a day on
+            most ledgers) the re-send is refused as too old, which says nothing
+            about the first send.
+          </>
+        ) : (
+          <>
+            . If this canister deduplicates on it, as ICRC-1 ledgers do, sending
+            the same bytes again as {sender} either runs it now, if the first
+            send never ran, or answers {tag}, if it already did. Nothing here
+            proves that it does: if it does not, this runs the call a second
+            time. Read the state back first when unsure.
+          </>
+        )}
       </p>
       <div className="row">
-        <button
-          type="button"
+        <ActionButton
           className="btn btn-primary btn-sm"
-          disabled={props.busy === true}
+          unavailable={props.busy === true}
           onClick={props.onResend}
         >
           {props.busy === true ? "Re-sending…" : "Re-send the same bytes"}
-        </button>
+        </ActionButton>
       </div>
     </div>
   )
 }
 
-/** Why no safe re-send is offered after an unknown outcome. */
-export function NoResendNotice(props: { reason: string }): JSX.Element {
+/** Why no safe re-send is offered while a write's outcome is unknown. */
+export function NoResendNotice(props: {
+  reason: string
+  /** Given when nothing else on the page offers the read-back. */
+  onReadBack?(): void
+}): JSX.Element {
   return (
     <div className="notice notice-warn call-no-resend" role="note">
       <p className="notice-title">Outcome unknown: read the state back first</p>
       <p>No safe re-send: {props.reason}</p>
+      {props.onReadBack !== undefined && (
+        <div className="row">
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={props.onReadBack}
+          >
+            Read the state back
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -93,16 +134,15 @@ export function ReadBackPanel(props: ReadBackPanelProps): JSX.Element {
         <h4 className="card-title">
           Read back: <span className="mono">{readBack.method.name}</span>
         </h4>
-        <button
-          type="button"
+        <ActionButton
           className="btn btn-sm btn-ghost"
-          disabled={read.isFetching}
+          unavailable={read.isFetching}
           onClick={() =>
             readNow(client, can, iface, readBack.method, readBack.call)
           }
         >
           {read.isFetching ? "Reading…" : "Read again"}
-        </button>
+        </ActionButton>
       </div>
       <div className="card-body stack-sm">
         <p className="muted text-sm">{readBack.label}</p>

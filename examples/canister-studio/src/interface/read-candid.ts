@@ -7,9 +7,12 @@ import {
   HttpAgent,
   HttpErrorCode,
   HttpFetchErrorCode,
+  LookupPathStatus,
   RejectError,
   StatePaths,
   TrustError,
+  type KnownPath,
+  type ReadStateResponse,
 } from "@icp-sdk/core/agent"
 import { Principal } from "@icp-sdk/core/principal"
 import type { InterfaceErrorCode } from "./types.ts"
@@ -33,19 +36,32 @@ export interface CandidSource {
   /**
    * One certified `read_state` of `candid:service` and `module_hash`: a
    * `null` value means the certificate proves the path absent (no such
-   * metadata section, or no module installed).
+   * metadata section, or no module installed). A path the certificate
+   * neither shows nor proves absent throws an `UnprovenPathError`.
    */
   readCandidAndHash(canisterId: string): Promise<{
     did: string | null
     moduleHash: Uint8Array | null
   }>
-  /** A certified `read_state` of `module_hash` alone. */
+  /** A certified `read_state` of `module_hash` alone, read the same way. */
   readModuleHash(canisterId: string): Promise<Uint8Array | null>
   /**
    * The canister's `__get_candid_interface_tmp_hack` query: the answer of
    * one replica, not certified.
    */
   readTmpHack(canisterId: string): Promise<string>
+}
+
+/**
+ * A path a verified certificate leaves unproven: its tree holds neither the
+ * value nor a proof that there is none, only a pruned branch. An honest
+ * replica answers every path it was asked; a party between it and the
+ * server (a boundary node) can prune a genuine certificate without breaking
+ * its signature. `classifyReadError` reports it as `trust_error`, so the
+ * loader never takes it for an absence and falls back.
+ */
+export class UnprovenPathError extends Error {
+  override name = "UnprovenPathError"
 }
 
 /** A `CandidSource` over an agent. Paths are built from the parsed principal. */
@@ -55,20 +71,23 @@ export function agentCandidSource(agent: HttpAgent): CandidSource {
       const id = Principal.fromText(canisterId)
       const candid = StatePaths.canisterCandid(id)
       const hash = StatePaths.canisterModuleHash(id)
-      const { values } = await agent.readState(
+      const response = await agent.readState(
         { canisterId: id },
         { paths: [candid, hash] }
       )
-      return { did: values.get(candid), moduleHash: values.get(hash) }
+      return {
+        did: provenValue(response, candid, "candid:service"),
+        moduleHash: provenValue(response, hash, "module_hash"),
+      }
     },
     async readModuleHash(canisterId) {
       const id = Principal.fromText(canisterId)
       const hash = StatePaths.canisterModuleHash(id)
-      const { values } = await agent.readState(
+      const response = await agent.readState(
         { canisterId: id },
         { paths: [hash] }
       )
-      return values.get(hash)
+      return provenValue(response, hash, "module_hash")
     },
     async readTmpHack(canisterId) {
       const service = Actor.createActor<{
@@ -86,6 +105,27 @@ export function agentCandidSource(agent: HttpAgent): CandidSource {
       )
       return service.__get_candid_interface_tmp_hack()
     },
+  }
+}
+
+// The value at `path`, `null` only when the certificate proves it absent.
+// The agent's `values` map gives null for an unproven path too, so this
+// asks the verified certificate itself.
+function provenValue<T>(
+  response: ReadStateResponse,
+  path: KnownPath<T>,
+  label: string
+): T | null {
+  const found = response.verifiedCertificate.lookup_path(path.path)
+  switch (found.status) {
+    case LookupPathStatus.Found:
+      return path.decode(found.value)
+    case LookupPathStatus.Absent:
+      return null
+    default:
+      throw new UnprovenPathError(
+        `The certificate neither shows nor rules out the canister's ${label}.`
+      )
   }
 }
 
@@ -126,11 +166,13 @@ export type ReadError =
 
 /**
  * Sorts an error thrown by a `CandidSource` read. A `TrustError` (a
- * certificate or signature that did not verify) is always `trust_error`,
- * at every stage, so the loader never falls back past it.
+ * certificate or signature that did not verify) and an `UnprovenPathError`
+ * are always `trust_error`, at every stage, so the loader never falls back
+ * past them. A 403 at the metadata stage is `private`: it is not signed,
+ * so it only ever leads to the labelled, uncertified tmp hack.
  */
 export function classifyReadError(error: unknown, stage: ReadStage): ReadError {
-  if (error instanceof TrustError) {
+  if (error instanceof TrustError || error instanceof UnprovenPathError) {
     return {
       kind: "failed",
       code: "trust_error",

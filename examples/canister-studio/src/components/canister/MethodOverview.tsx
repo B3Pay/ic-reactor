@@ -4,6 +4,7 @@ import type { ReactElement } from "react"
 import type { CanisterInterface, MethodInfo } from "../../interface/types.ts"
 import { toHex } from "../../lib/hex.ts"
 import { ModeBadge } from "../Badge.tsx"
+import { movesThisPage, type WorkspaceTarget } from "./workspace-key.ts"
 
 const QUICK_READS = 8
 
@@ -30,12 +31,15 @@ function quickReads(methods: readonly MethodInfo[]): MethodInfo[] {
  * The workspace before a method is picked: how the page works, and the
  * canister's argument-free reads as links that run at once. Each link is a
  * shared-call URL, so opening it in a new tab renders its result on the
- * server.
+ * server; clicked here, the page stays where it is.
  */
 export function MethodOverview({
   iface,
+  onPick,
 }: {
   iface: CanisterInterface
+  /** Called as a quick read is picked in this page, before the page moves to it. */
+  onPick?(target: WorkspaceTarget): void
 }): ReactElement {
   const reads = quickReads(iface.methods)
   return (
@@ -46,11 +50,11 @@ export function MethodOverview({
             Pick a method
           </h2>
           <p className="text-sm muted">
-            Each method gets a form built from its Candid types. Queries read at
-            once; updates and oneway calls need you signed in, and show the
-            sender, the target and the exact argument bytes before they are
-            sent. Every call lands in your <Link to="/history">history</Link>{" "}
-            with a link to share it.
+            Each method gets a form built from its Candid types. Queries run as
+            soon as you ask, signed in or not; updates and oneway calls need you
+            signed in, and show the sender, the target and the exact argument
+            bytes before they are sent. Every call you run or send lands in your{" "}
+            <Link to="/history">history</Link> with a link to share it.
           </p>
         </div>
       </section>
@@ -67,9 +71,16 @@ export function MethodOverview({
                   to="/canister/$canisterId"
                   params={{ canisterId: iface.canisterId }}
                   search={{ method: method.name, args: NO_ARGS_HEX, run: true }}
+                  resetScroll={false}
+                  onClick={(event) => {
+                    if (movesThisPage(event))
+                      onPick?.({ method: method.name, args: NO_ARGS_HEX })
+                  }}
                   className="card card-interactive method-quick-read"
                 >
-                  <span className="mono truncate">{method.name}</span>
+                  <span className="mono truncate" title={method.name}>
+                    {method.name}
+                  </span>
                   <ModeBadge mode={method.mode} />
                 </Link>
               </li>

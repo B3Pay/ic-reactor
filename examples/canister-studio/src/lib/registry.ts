@@ -35,6 +35,15 @@ export interface RegistryEntry {
    * `client.queryOptions(c, m, vars, { update: "idempotent" })`.
    */
   idempotentUpdates?: readonly string[]
+  /**
+   * Update methods this canister is known to run at most once per sender
+   * and argument within its window when the argument carries
+   * `created_at_time`, answering `Duplicate` (`TxDuplicate` for the ICP
+   * ledger's own `transfer`) to the same bytes again. Only these get the
+   * unconditional "re-send safely" wording: a field named `created_at_time`
+   * proves nothing on its own.
+   */
+  dedupedMethods?: readonly string[]
   /** Shown on the home page with live stats. */
   featured?: boolean
 }
@@ -52,6 +61,12 @@ export const REGISTRY: readonly RegistryEntry[] = [
     module: "icp_ledger",
     actor: icpLedgerActor,
     did: icpLedgerDid,
+    dedupedMethods: [
+      "transfer",
+      "icrc1_transfer",
+      "icrc2_approve",
+      "icrc2_transfer_from",
+    ],
     featured: true,
   },
   {
@@ -66,6 +81,7 @@ export const REGISTRY: readonly RegistryEntry[] = [
     module: "icrc1",
     actor: icrc1Actor,
     did: icrc1Did,
+    dedupedMethods: ["icrc1_transfer"],
     featured: true,
   },
   {
@@ -79,6 +95,7 @@ export const REGISTRY: readonly RegistryEntry[] = [
     module: "icrc1",
     actor: icrc1Actor,
     did: icrc1Did,
+    dedupedMethods: ["icrc1_transfer"],
     featured: true,
   },
   {

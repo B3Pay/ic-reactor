@@ -1,7 +1,7 @@
 import { decodeArgs } from "@candid-core/schema/codec"
-import type { MethodMode } from "@candid-core/schema"
 import type { QueryClient, QueryKey } from "@tanstack/react-query"
 import { z } from "zod"
+import type { CallKind } from "../../calls/kinds.ts"
 import type { MethodInfo } from "../../interface/types.ts"
 import { fromHex } from "../../lib/hex.ts"
 
@@ -54,9 +54,17 @@ export const methodSearchSchema = z.object({
   certified: flag.optional().catch(undefined),
 })
 
-/** Whether a method can be read through `queryOptions` (and so prefetched). */
-export function isReadMode(mode: MethodMode): boolean {
-  return mode === "query" || mode === "composite_query"
+/**
+ * Whether a link's `run` reads the method at once (and the server prefetches
+ * it): only a read as `callKindOf` decides it, a query or composite query
+ * with results, and a composite query only off the certified twin, which it
+ * does not have. Anything else opens prefilled and waits for a click: a write
+ * is never sent from a link, an idempotent update needs a signed-in caller,
+ * and a query without results is called, not cached (`queryOptions` refuses
+ * it).
+ */
+export function readsAtOnce(kind: CallKind, certified: boolean): boolean {
+  return kind.kind === "read" && (kind.certifiable || !certified)
 }
 
 export type SharedArgs =

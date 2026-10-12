@@ -230,7 +230,11 @@ export function BlobValue({
 export function utf8Preview(bytes: Uint8Array): string | undefined {
   let text: string
   try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes)
+    // ignoreBOM: a leading EF BB BF is part of the bytes, kept in the text
+    // (U+FEFF), as the form's text mode keeps it.
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(
+      bytes
+    )
   } catch {
     return undefined
   }
