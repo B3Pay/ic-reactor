@@ -215,12 +215,15 @@ jobs:
 
   # The examples against the packages this run just published, from the tagged
   # commit: the green run of examples-published.yml that counts for a release.
-  # The release PR's own run of that workflow is expected to fail when its
-  # examples use the API this release publishes.
+  # The release PR's own run of that workflow, and the push that merges it,
+  # defer while the examples pin only this unpublished version (awaitsRelease
+  # in scripts/test-examples-published.mjs): this run is the one that tests them.
   # The publish job's matrix runs one package at a time (core, react,
   # vite-plugin), so --wait-for waits for every one of them, not only core.
+  # The script tests the dist-tag the tag's version publishes under: `beta`
+  # for a prerelease, `latest` for a stable version.
   examples-published:
-    name: Examples on the published beta
+    name: Examples on the published packages
     needs: release
     permissions:
       contents: read

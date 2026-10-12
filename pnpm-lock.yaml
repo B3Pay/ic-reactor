@@ -165,10 +165,10 @@ importers:
         specifier: 0.4.0
         version: 0.4.0
       '@ic-reactor/core':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/core
       '@ic-reactor/react':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^10.0.1
@@ -202,7 +202,7 @@ importers:
         version: 4.6.2
     devDependencies:
       '@ic-reactor/vite-plugin':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/vite-plugin
       '@testing-library/dom':
         specifier: ^10.4.1
@@ -241,10 +241,10 @@ importers:
         specifier: 0.4.0
         version: 0.4.0
       '@ic-reactor/core':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/core
       '@ic-reactor/react':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/react
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -266,7 +266,7 @@ importers:
         specifier: 0.3.0
         version: 0.3.0(@candid-core/schema@0.4.0)
       '@ic-reactor/vite-plugin':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/vite-plugin
       '@testing-library/dom':
         specifier: ^10.4.1
@@ -305,10 +305,10 @@ importers:
         specifier: 0.4.0
         version: 0.4.0
       '@ic-reactor/core':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/core
       '@ic-reactor/react':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^10.0.1
@@ -372,7 +372,7 @@ importers:
         specifier: 0.4.0
         version: 0.4.0
       '@ic-reactor/core':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/core
       '@icp-sdk/core':
         specifier: ^6.1.0
@@ -406,10 +406,10 @@ importers:
         specifier: 0.4.0
         version: 0.4.0
       '@ic-reactor/core':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/core
       '@ic-reactor/react':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/react
       '@icp-sdk/auth':
         specifier: ^10.0.1
@@ -431,7 +431,7 @@ importers:
         specifier: 0.3.0
         version: 0.3.0(@candid-core/schema@0.4.0)
       '@ic-reactor/vite-plugin':
-        specifier: ^4.0.0-beta.5
+        specifier: ^4.0.0
         version: link:../../packages/vite-plugin
       '@icp-sdk/icp-cli':
         specifier: 1.2.0
