@@ -77,6 +77,7 @@ export default defineConfig({
             { label: "Next.js SSR", slug: "examples/next-ssr" },
             { label: "Vite wallet", slug: "examples/vite-wallet" },
             { label: "Node agent tool", slug: "examples/node-agent-tool" },
+            { label: "Canister Studio", slug: "examples/canister-studio" },
           ],
         },
         { label: "Migrating from 3.x", slug: "migrating-from-3" },

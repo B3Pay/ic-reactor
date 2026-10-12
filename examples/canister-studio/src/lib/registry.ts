@@ -199,3 +199,23 @@ export const CURATED: readonly { id: string; name: string; note: string }[] = [
     note: "No metadata: its interface comes from an uncertified query, and is labelled so.",
   },
 ]
+
+/**
+ * Every canister the studio knows by name, registry first, then the curated
+ * list without the registry's: suggestions for canister id inputs.
+ */
+export const KNOWN_CANISTERS: readonly { id: string; name: string }[] = [
+  ...REGISTRY.map(({ id, name }) => ({ id, name })),
+  ...CURATED.filter(({ id }) => registryEntry(id) === undefined).map(
+    ({ id, name }) => ({ id, name })
+  ),
+]
+
+const KNOWN_NAMES: ReadonlyMap<string, string> = new Map(
+  KNOWN_CANISTERS.map(({ id, name }) => [id, name])
+)
+
+/** The name of a canister the studio knows, or `undefined`. */
+export function knownCanisterName(id: string): string | undefined {
+  return KNOWN_NAMES.get(id)
+}

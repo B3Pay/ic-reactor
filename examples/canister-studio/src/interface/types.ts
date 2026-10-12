@@ -61,11 +61,34 @@ export type InterfacePayload =
       didSha256: string
       /** The compact `didToContract` envelope JSON; absent for typed canisters. */
       envelopeJson?: string
-      /** Method docs by method name. */
+      /**
+       * Method docs by method name (read them with `Object.hasOwn`: the
+       * names are canister text).
+       */
       docs: Record<string, string>
-      /** When the server read it (ms since the epoch); 0 for typed canisters. */
+      /**
+       * When the interface was last confirmed against the canister (ms since
+       * the epoch): read, or its module hash re-checked unchanged. 0 for
+       * typed and pasted interfaces.
+       */
       fetchedAt: number
+      /**
+       * `"hit"`: answered from the loader's cache (at most a module-hash
+       * re-check); `"miss"`: read from the canister now; `"typed"`: a
+       * registry canister, from the committed .did.
+       */
       cache: "hit" | "miss" | "typed"
+      /**
+       * The compiled interface's identity (`candid-core:interface:v1:…`):
+       * equal ids, the same interface. Absent for typed canisters.
+       */
+      interfaceId?: string
+      /**
+       * Where the .did was compiled: on the server, or in the browser (a
+       * pasted .did, or a live read when server functions were unavailable).
+       * Absent for typed canisters.
+       */
+      compiledIn?: "server" | "browser"
     }
   | {
       ok: false

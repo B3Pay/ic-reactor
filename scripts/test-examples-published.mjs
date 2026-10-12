@@ -115,7 +115,7 @@ export const REQUIRED_SCRIPTS = ["typecheck", "test", "build"]
 
 /**
  * Examples allowed to lack one of REQUIRED_SCRIPTS: { example: { script:
- * reason } }. Empty: all four have all three.
+ * reason } }. Empty: all five have all three.
  */
 export const SCRIPT_EXCEPTIONS = {}
 

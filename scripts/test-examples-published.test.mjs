@@ -1043,6 +1043,7 @@ describe("scopePackageNames", () => {
 
   it("covers every package the examples on this branch declare", () => {
     const manifests = [
+      "canister-studio",
       "icrc-ledger",
       "next-ssr",
       "node-agent-tool",

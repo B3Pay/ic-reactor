@@ -31,6 +31,20 @@ export default defineConfig({
     // Must come after tanstackStart().
     react(),
   ],
+  // Imported only lazily (the Safety lab's @ic-reactor/core/testing, the
+  // interface loaders): without them here, `vite dev` discovers them on the
+  // first click and reloads the page, losing that click.
+  optimizeDeps: {
+    include: [
+      "@icp-sdk/core/identity",
+      "@noble/curves/bls12-381.js",
+      "@noble/curves/ed25519.js",
+      "@noble/curves/nist.js",
+      "@noble/curves/secp256k1.js",
+      "@candid-core/schema/contract",
+      "zod",
+    ],
+  },
   // The IC agent, with its BLS certificate check, is most of the main chunk.
   build: { chunkSizeWarningLimit: 900 },
 })
