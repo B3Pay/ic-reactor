@@ -32,8 +32,8 @@ exactly to published stable releases.
 Not in this tree: `@ic-reactor/parser`, `@ic-reactor/codegen` and
 `@ic-reactor/cli` (replaced by `candid-core-cli gen`), and
 `@ic-reactor/candid` (frozen at 3.x, published from `main`). The 3.x example
-apps are on `main`; the four v4 examples are in `examples/` (`icrc-ledger`,
-`vite-wallet`, `next-ssr`, `node-agent-tool`).
+apps are on `main`; the five v4 examples are in `examples/` (`icrc-ledger`,
+`vite-wallet`, `next-ssr`, `node-agent-tool`, `canister-studio`).
 
 ## AI context
 

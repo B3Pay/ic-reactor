@@ -15,7 +15,27 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### Examples (not published)
+
+- A fifth example, `canister-studio`: a TanStack Start app, rendered on the
+  server, that gives every method of any mainnet canister an automatic form
+  and calls it with ic-reactor's rules in view. The ICP, ckBTC and ckETH
+  ledgers and the ckBTC minter are typed by three generated modules; any
+  other canister's interface is read from its certified `candid:service`
+  metadata, compiled on the server by `@candid-core/cli` and rebuilt in the
+  browser with `schemaFromContract`, and an interface from the uncertified
+  fallback query is labelled so. It shows one client per request and per
+  tab, reads hydrated without a refetch, shared query links rendered on the
+  server, writes confirmed with their sender and exact bytes, `resendOf`
+  after an unknown outcome, certified reads, an idempotent update read as a
+  query (ckBTC's `get_btc_address`), a Safety lab of ten scenarios over
+  `createTestClient()` in the browser, and a playground that compiles a
+  pasted `.did` in the browser. Its tests run offline; its `smoke` script
+  checks its `.did` files and reads against mainnet. It pins
+  `^4.0.0-beta.5`, `@candid-core/schema` `0.4.0` and `@candid-core/cli`
+  `0.3.0`, a runtime dependency here, and has a page in the examples docs.
+  The root README, the docs' home page and Getting started now say five
+  examples.
 
 ## core, react, vite-plugin 4.0.0-beta.5
 

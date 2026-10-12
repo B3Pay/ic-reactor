@@ -69,7 +69,7 @@ are documented at [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/).
 
 ## Examples
 
-Four apps in [`examples/`](examples/), each with its own tests, and a page in
+Five apps in [`examples/`](examples/), each with its own tests, and a page in
 the [examples docs](https://ic-reactor.b3pay.net/v4/examples/):
 
 - [`icrc-ledger`](examples/icrc-ledger/): mainnet ICP ledger reads, archive
@@ -82,6 +82,10 @@ the [examples docs](https://ic-reactor.b3pay.net/v4/examples/):
 - [`node-agent-tool`](examples/node-agent-tool/): a command-line tool for
   people and AI agents, with identities, certified reads, safe re-sends and
   JSON output.
+- [`canister-studio`](examples/canister-studio/): a TanStack Start app that
+  gives every method of any mainnet canister an automatic form, with
+  interfaces read live from certified metadata, server-rendered reads and
+  shared query links, confirmed writes, and a safety lab.
 
 The 3.x examples are on `main`.
 
