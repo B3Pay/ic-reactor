@@ -160,6 +160,10 @@ export function createLiveInterfaceLoader(
     if (now() - hit.checkedAt < CANISTER_TTL_MS) {
       return payloadOf(canisterId, hit, didEntry, "hit")
     }
+    // An uncertified tmp-hack answer is a query's reply, which may change
+    // with the canister's state, not only on an upgrade: past its TTL it is
+    // read again rather than renewed by an unchanged module hash.
+    if (hit.source === "tmp_hack") return undefined
     let moduleHash: Uint8Array | null
     try {
       moduleHash = await source.readModuleHash(canisterId)

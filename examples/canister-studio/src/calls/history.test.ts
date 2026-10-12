@@ -169,6 +169,43 @@ describe("history", () => {
   })
 })
 
+describe("history shared by tabs", () => {
+  // A fresh module per test: an earlier test leaves this one's copy in its
+  // storage-failed mode.
+  const fresh = async () => {
+    vi.resetModules()
+    return import("./history.ts")
+  }
+
+  it("puts back an entry of this tab that another tab's stale write dropped", async () => {
+    const { addHistoryEntry } = await fresh()
+    addHistoryEntry(entry("mine", { at: 2, mayHaveExecuted: true }))
+    // Another tab read the store before "mine" landed and wrote its own.
+    const theirs = JSON.stringify([entry("theirs", { at: 3 })])
+    localStorage.setItem(HISTORY_STORAGE_KEY, theirs)
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: HISTORY_STORAGE_KEY,
+        newValue: theirs,
+      })
+    )
+    const ids = parseHistory(localStorage.getItem(HISTORY_STORAGE_KEY)).map(
+      (e) => e.id
+    )
+    expect(ids).toEqual(["theirs", "mine"])
+  })
+
+  it("does not bring entries back after another tab cleared the history", async () => {
+    const { addHistoryEntry } = await fresh()
+    addHistoryEntry(entry("mine"))
+    localStorage.setItem(HISTORY_STORAGE_KEY, "[]")
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: HISTORY_STORAGE_KEY, newValue: "[]" })
+    )
+    expect(parseHistory(localStorage.getItem(HISTORY_STORAGE_KEY))).toEqual([])
+  })
+})
+
 describe("shared call links", () => {
   const account = { owner: principal(SEED_1), subaccount: null }
   const call = prepareCall(balanceOf, [account])

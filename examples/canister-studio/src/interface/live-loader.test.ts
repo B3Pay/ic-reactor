@@ -325,10 +325,19 @@ describe("fallbacks and failures", () => {
       reason: "private",
     })
     // The reason survives the cache.
-    t.advance(CANISTER_TTL_MS)
+    t.advance(CANISTER_TTL_MS - 1)
     const again = ok(await t.loader.load(LIFELINE))
     expect(again.cache).toBe("hit")
     expect(again.source).toMatchObject({ reason: "private" })
+  })
+
+  it("reads a tmp-hack interface again past its TTL, even with the same module hash", async () => {
+    const t = setup({ [CAP_ROUTER]: { did: null, tmpHack: DOC_DID } })
+    ok(await t.loader.load(CAP_ROUTER))
+    t.advance(CANISTER_TTL_MS)
+    // An uncertified query reply may change without an upgrade.
+    ok(await t.loader.load(CAP_ROUTER))
+    expect(t.reads.tmpHack).toBe(2)
   })
 
   it("never falls back after a certificate that does not verify", async () => {

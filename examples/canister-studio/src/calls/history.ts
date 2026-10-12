@@ -170,6 +170,47 @@ function write(entries: HistoryEntry[]): void {
   notify()
 }
 
+// The entries this tab added since it loaded. Tabs do not lock the shared
+// store, and a tab may read a stale copy of it, so two tabs settling calls
+// at once can each write a history without the other's newest entry. Each
+// tab therefore puts its own entries back when another tab's write drops
+// them: an unknown-outcome write never vanishes from the history.
+const own = new Map<string, HistoryEntry>()
+
+/** Both lists by id, newest first, at most {@link HISTORY_LIMIT}. */
+function merged(
+  stored: readonly HistoryEntry[],
+  added: Iterable<HistoryEntry>
+): HistoryEntry[] {
+  // Added first, so an entry from the same millisecond sorts above the
+  // stored ones (the sort is stable).
+  const fresh = [...added]
+  const ids = new Set(fresh.map((e) => e.id))
+  return [...fresh, ...stored.filter((e) => !ids.has(e.id))]
+    .sort((a, b) => b.at - a.at)
+    .slice(0, HISTORY_LIMIT)
+}
+
+// Listens for as long as the tab lives once it added an entry, whether or
+// not a history view is mounted.
+let restoring = false
+
+function restoreOwn(event: StorageEvent): void {
+  if (event.key !== HISTORY_STORAGE_KEY && event.key !== null) return
+  const stored = getSnapshot()
+  if (stored.length === 0) {
+    // Cleared in another tab: this tab's entries go too.
+    own.clear()
+    return
+  }
+  const kept = new Set(stored.map((e) => e.id))
+  const oldest = stored.length < HISTORY_LIMIT ? -Infinity : stored.at(-1)!.at
+  const dropped = [...own.values()].filter(
+    (e) => !kept.has(e.id) && e.at >= oldest
+  )
+  if (dropped.length > 0) write(merged(stored, dropped))
+}
+
 function onStorage(event: StorageEvent): void {
   // Another tab wrote the history (or cleared all site data: key null).
   if (event.key === HISTORY_STORAGE_KEY || event.key === null) notify()
@@ -190,13 +231,19 @@ function subscribe(listener: () => void): () => void {
 
 /** Adds an entry (newest first), keeping at most {@link HISTORY_LIMIT}. */
 export function addHistoryEntry(entry: HistoryEntry): void {
-  const current = getSnapshot()
-  write(
-    [entry, ...current.filter((e) => e.id !== entry.id)].slice(0, HISTORY_LIMIT)
-  )
+  own.delete(entry.id)
+  own.set(entry.id, entry)
+  // At most as many as the store keeps: older ones would be cut anyway.
+  if (own.size > HISTORY_LIMIT) own.delete(own.keys().next().value!)
+  if (!restoring && typeof window !== "undefined") {
+    restoring = true
+    window.addEventListener("storage", restoreOwn)
+  }
+  write(merged(getSnapshot(), [entry]))
 }
 
 export function clearHistory(): void {
+  own.clear()
   write(EMPTY)
 }
 
