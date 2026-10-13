@@ -386,6 +386,7 @@ describe("a client pinned to a principal", () => {
       "dispose",
       "canister",
       "mutationOptions",
+      "resendOf",
       "func",
     ] as const) {
       expect(view[member]).toBe(client[member])

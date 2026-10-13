@@ -46,7 +46,8 @@ in the same millisecond are two transfers, and neither is taken for the
 other's `Duplicate`.
 
 The Sandbox also has a mocked ckBTC minter. `get_btc_address` is an update
-method, which `client.queryOptions` refuses unless told it is idempotent:
+method, which `client.queryOptions` refuses (the call does not compile)
+unless told it is idempotent:
 `client.queryOptions(minter, "get_btc_address", arg, { update: "idempotent" })`
 fetches each caller's deposit address once and keeps it (hide and show it, or
 send a transfer: no new call reaches the minter). The smoke script asks
@@ -67,6 +68,12 @@ pnpm --filter icrc-ledger gen:check  # fails if src/canisters/ is stale
 ledger's block reads, `icp_ledger.did`; the minter's `ckbtc_minter.did`) by
 `@ic-reactor/vite-plugin` on every `vite dev` and `vite build` (`pnpm gen` runs
 `candid-core-cli gen` by hand). It is committed, and never edited.
+`icp_ledger.did` and `ckbtc_minter.did` are projections of the mainnet
+canisters' interfaces to the methods the app calls (`methods` in
+`vite.config.ts`), as the plugin wrote them from the live canisters. They are
+committed, so builds read them and make no request. `IC_REACTOR_FETCH=<name>`
+writes one again, and `IC_REACTOR_VERIFY=1 pnpm build` checks both against the
+live canisters.
 
 ## Before and after
 

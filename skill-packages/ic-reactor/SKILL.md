@@ -24,9 +24,9 @@ earlier ic-reactor versions (their names are gone in 4).
 
 This skill describes these versions:
 
-- `@ic-reactor/core`: `4.0.0-beta.3`
-- `@ic-reactor/react`: `4.0.0-beta.3`
-- `@ic-reactor/vite-plugin`: `4.0.0-beta.3`
+- `@ic-reactor/core`: `4.0.0-beta.5`
+- `@ic-reactor/react`: `4.0.0-beta.5`
+- `@ic-reactor/vite-plugin`: `4.0.0-beta.5`
 
 ## Workflow
 
@@ -82,7 +82,11 @@ This skill describes these versions:
    a write nor data carried across keys.
 7. **Handle failures** by `isReactorError(error)`, then `kind` and
    `mayHaveExecuted`: when it is `true`, tell the user the outcome is unknown
-   and re-read; never re-send.
+   and re-read; never re-send by hand. Only a method the canister
+   deduplicates (an ICRC-1 transfer with `created_at_time`) may offer the
+   same argument again, through `client.resendOf(error, canister, method, { dedupedBy })`.
+   After a direct call, use
+   `isReactorError(error, canister, method)` to read a typed `err`; never cast it.
 8. **Test** through `createTestClient()` from `@ic-reactor/core/testing`, a
    real client over an in-memory replica, not with stubbed calls; then run the
    app's type check and tests.

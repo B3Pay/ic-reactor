@@ -1,0 +1,95 @@
+---
+title: "Canister Studio"
+description: Automatic forms and safe calls for any mainnet canister, server-rendered with TanStack Start, on ic-reactor 4 and candid-core
+editUrl: false
+---
+
+import { CardGrid, LinkCard } from "@astrojs/starlight/components"
+
+A TanStack Start app, rendered on the server, built on `@ic-reactor/core`,
+`@ic-reactor/react` and `@ic-reactor/vite-plugin` with TanStack Query's own
+hooks. It gives every method of any canister on mainnet a form built from its
+Candid, and calls it with every rule of ic-reactor 4 in view:
+
+- **Typed canisters.** The ICP ledger, the ckBTC and ckETH ledgers and the
+  ckBTC minter come from three modules that the Vite plugin generates from
+  committed `.did` files with `candid-core-cli gen`. The wallet page calls
+  them through the generated types, with no cast.
+- **Any canister, read live.** Open any mainnet canister id: a server function
+  reads its `candid:service` metadata and module hash in one certified
+  `read_state`, compiles the interface with `@candid-core/cli` in a worker
+  thread with a deadline, and caches it by module hash. The browser rebuilds
+  the actor from the compiled envelope with `schemaFromContract`. An
+  interface read from the uncertified `__get_candid_interface_tmp_hack` query
+  is labelled so, and a certificate that fails to verify, or leaves the
+  metadata unproven, is never followed by a fallback.
+- **Automatic forms.** A field per Candid type: amounts in token units read
+  with `parseUnits`, principals checked as you type, blobs as hex, text or
+  base64, and variants, options, vectors and records, with `created_at_time`
+  set to now for ICRC deduplication. The submit button names what is wrong,
+  and the issues of an `invalid_args` refusal land on their fields.
+- **Server rendering.** One client per request on the server and one per tab,
+  made by the router. Loaders prefetch mainnet reads and never throw, the
+  browser hydrates them without reading again, and a failed read is never
+  sent to the browser, which reads it itself and gets the full
+  `ReactorError`. A shared query link, a method and its arguments as hex
+  Candid, renders its result in the server's HTML.
+- **Safe writes.** Signed out, a write is disabled and says why. Signed in, a
+  confirm step shows the sender, the target, the method, the Candid text and
+  the sha256 of the exact argument bytes. A write is sent once and never
+  retried. A failure shows its `kind`, its code and whether it may have
+  executed, and after an unknown outcome `client.resendOf` offers the same
+  call again, deduplicated by `created_at_time`.
+- **Reads.** Certified reads under keys of their own, the live query key with
+  its caller segment, and the ckBTC minter's `get_btc_address`, an update,
+  read once per caller through `{ update: "idempotent" }`.
+- **The Safety lab.** Ten scenarios that `createTestClient()` runs in the
+  browser against a mocked ICRC-1 ledger: an anonymous write refused before
+  sending, arguments that do not encode, a lost reply and its deduplicated
+  re-send, an HTTP 429 the client sends again by itself, canister rejects, a
+  typed `Err`, a caller that changes, cache isolation and certified reads.
+  Each shows its request log and the error's fields.
+- **The playground and the interface tools.** Paste a `.did` and compile it
+  in the browser with the compiler's lazily loaded WASM; for any canister, get
+  its Candid, its TypeScript module, a projection to the methods you choose,
+  and a check of a written `.did` against the live one.
+
+The guides it shows at work: [The client](/v4/guides/client/) and
+[SSR and hydration](/v4/guides/ssr/) (a client per request, prefetch and
+hydration), [Reads](/v4/guides/reads/), [Writes](/v4/guides/writes/) and
+[Errors and mayHaveExecuted](/v4/guides/errors/) (every call),
+[Values and units](/v4/guides/values/) (the forms and the replies),
+[Auth](/v4/guides/auth/) (Internet Identity), [Testing](/v4/guides/testing/)
+(the Safety lab and the tests) and [The Vite plugin](/v4/guides/vite-plugin/)
+(the typed modules).
+
+The tests run the real client on `createTestClient()` from
+`@ic-reactor/core/testing`, with each canister mocked at its mainnet id and
+the interface loader given a fetcher of the test's own, and never reach
+mainnet. The app itself calls mainnet: sign-in is mainnet's Internet
+Identity, and a transfer you confirm moves real tokens.
+
+StackBlitz installs the example from npm and starts its dev server
+(`npm run dev`). The home page renders there on the server with its mainnet
+reads, because its loader calls no server function. TanStack Start's server
+functions do not run there: they keep each request in Node's
+`AsyncLocalStorage`, which StackBlitz does not implement. The typed canisters
+need none to load and to call. Any other canister opened from inside the app
+is read and compiled in the browser instead, with the compiler's lazily
+loaded WASM, and so is the live side of a pasted `.did` check. A projection,
+the TypeScript module of a canister read live and the check of a typed
+canister's committed `.did` run on the studio's server only, and say so
+there. Clone the repository to run the server path.
+
+<CardGrid>
+  <LinkCard
+    title="Open in StackBlitz"
+    description="Edit and run in your browser"
+    href="https://stackblitz.com/github/b3pay/ic-reactor/tree/main/examples/canister-studio?file=src/routes/index.tsx"
+  />
+  <LinkCard
+    title="View on GitHub"
+    description="Browse the source code"
+    href="https://github.com/b3pay/ic-reactor/tree/main/examples/canister-studio"
+  />
+</CardGrid>

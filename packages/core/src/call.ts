@@ -16,7 +16,10 @@
  *    rejects `unauthenticated` (`anonymous_write`);
  * 4. the arguments: Candid-encoded with the method's schemas, or
  *    `invalid_args` with the codec's `$`-rooted issues; a call to `aaaaa-aa`
- *    also needs a row of the effective canister id table (`management.ts`);
+ *    also needs a row of the effective canister id table (`management.ts`).
+ *    A mutation that re-sends a write `client.resendOf()` offered must be
+ *    that write: the same method, canister id and bytes, or it rejects
+ *    `cancelled` (`target_changed`) or `invalid_args` (`arg_changed`);
  * 5. the send, as the caller's own agent: `agent.query` for a read,
  *    `agent.call` for an update, a oneway and a certified read. Every failure
  *    is classified (`classifyError`), and a call re-sends itself only when
@@ -86,11 +89,14 @@ import {
   UPDATE_RESEND_DELAYS_MS,
   classifyError,
   createReactorError,
+  fromCanister,
   invalidReplyError,
+  isReactorError,
   isRetryable,
   retryUpdate,
   type CallMode,
 } from "./errors.js"
+import { toHex } from "./keys.js"
 import {
   MANAGEMENT_CANISTER,
   effectiveCanisterId,
@@ -172,8 +178,25 @@ export interface CallRequest {
   readonly caller: Caller
   /** The arguments, as a list. */
   readonly values: readonly unknown[]
-  /** Their encoding, when the builder already made it for the key. */
-  readonly encoded?: EncodeResult
+  /**
+   * Their encoding: made by the builder for the key, or by `run` when it
+   * encodes them, which sets it here. A write kept in {@link UNKNOWN_WRITES}
+   * therefore holds the bytes it sent, and `client.resendOf()` sends those
+   * again, whatever became of the argument objects since.
+   */
+  encoded?: EncodeResult
+  /**
+   * The effective canister id a call to `aaaaa-aa` is routed by: derived from
+   * the arguments by `run` the first time, which sets it here, so a kept
+   * write is routed where its bytes went, as {@link encoded} is.
+   */
+  effective?: string
+  /**
+   * The write this call sends again: set by a mutation given an argument
+   * `client.resendOf()` offered. The call is refused, and nothing sent,
+   * unless it is that write ({@link differs}).
+   */
+  readonly again?: CallRequest
   /**
    * The signal of a query function. Once it aborts, the call is not sent, or
    * stops polling for its answer, and rejects `cancelled`.
@@ -192,14 +215,68 @@ export interface CallRequest {
    * re-sent after any failure the classifier marks retryable, at most twice.
    */
   readonly resend: boolean
+  /**
+   * The canister object the call is made on, absent for a func reference.
+   * Every error the call rejects with is marked with it (`fromCanister`), so
+   * that `isReactorError(error, canister, method)` can tell its own call's
+   * errors from any other's.
+   */
+  readonly canister?: object
 }
+
+/**
+ * The request of each write that failed with `mayHaveExecuted: true`, by the
+ * error it rejected with: what `client.resendOf()` offers to send again, as
+ * the same caller, to the same canister, with the same arguments.
+ */
+export const UNKNOWN_WRITES = new WeakMap<object, CallRequest>()
+
+/**
+ * What makes a call of `method` to `target` with `encoded` arguments another
+ * write than `sent`, a write that went out: `"target"` for another method or
+ * canister id (a `{ name }` the `ic_env` cookie now maps elsewhere),
+ * `"arg"` for other bytes (an argument changed after it was sent), and
+ * `undefined` when it is the same write. A re-send of another write is a new
+ * write that no dedupe key has been seen for.
+ */
+export const differs = (
+  sent: CallRequest,
+  method: PreparedMethod,
+  target: ResolvedTarget,
+  encoded: EncodeResult
+): "target" | "arg" | undefined =>
+  method.name !== sent.method.name ||
+  !target.ok ||
+  target.id !== (sent.target as { id: string }).id
+    ? "target"
+    : !encoded.ok ||
+        toHex(encoded.bytes) !==
+          toHex((sent.encoded as { bytes: Uint8Array }).bytes)
+      ? "arg"
+      : undefined
 
 /**
  * Runs one call through the steps of this module. Resolves with the reply as
  * the generated `Actor` types it (unwrapped), and rejects with a
- * `ReactorError`.
+ * `ReactorError`, marked with the request's canister when it has one. A write
+ * whose outcome is unknown is kept in {@link UNKNOWN_WRITES}.
  */
-export async function invoke(
+export const invoke = (
+  internals: ClientInternals,
+  request: CallRequest
+): Promise<unknown> =>
+  run(internals, request).catch((error: unknown) => {
+    if (
+      isReactorError(error) &&
+      error.mayHaveExecuted &&
+      isWrite(request.method.mode)
+    ) {
+      UNKNOWN_WRITES.set(error, request)
+    }
+    throw fromCanister(error, request.canister)
+  })
+
+async function run(
   internals: ClientInternals,
   request: CallRequest
 ): Promise<unknown> {
@@ -242,7 +319,7 @@ export async function invoke(
   if (management && !isRoutable(name)) {
     throw unroutable(where, effectiveCanisterId(name, request.values))
   }
-  const encoded = request.encoded ?? encodeArgs(method.args, request.values)
+  const encoded = (request.encoded ??= encodeArgs(method.args, request.values))
   if (!encoded.ok) {
     const [first] = encoded.issues
     throw createReactorError("invalid_args", {
@@ -253,11 +330,29 @@ export async function invoke(
       issues: encoded.issues,
     })
   }
-  let effective = target.id
-  if (management) {
+  // A re-send of an offered write goes out only as that write: anything else
+  // would be a new write, which the canister has seen no dedupe key for.
+  const sent = request.again
+  if (sent) {
+    const change = differs(sent, method, target, encoded)
+    if (change) {
+      throw createReactorError(
+        change === "arg" ? "invalid_args" : "cancelled",
+        {
+          ...where,
+          code: `${change}_changed`,
+          reason:
+            change === "arg"
+              ? "the argument was changed after the write it re-sends went out; it was not sent"
+              : `the write it re-sends went to ${sent.method.name} on ${(sent.target as { id: string }).id}; it was not sent`,
+        }
+      )
+    }
+  }
+  if (management && !request.effective) {
     const routed = effectiveCanisterId(name, request.values)
     if (!routed.ok) throw unroutable(where, routed)
-    effective = routed.id
+    request.effective = routed.id
   }
 
   const mode: CallMode = write ? "update" : "query"
@@ -269,7 +364,7 @@ export async function invoke(
         : "query"
   const call: Outgoing = {
     canisterId: target.id,
-    effective,
+    effective: request.effective ?? target.id,
     methodName: name,
     arg: encoded.bytes,
     mode,

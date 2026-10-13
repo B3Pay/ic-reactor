@@ -40,8 +40,10 @@
  *      lacks (WEBCONTAINER_MODEL: no global `Iterator`, and an
  *      AsyncLocalStorage that keeps no store past the synchronous part of
  *      `run()`): `npm run dev [-- <args>]` is started, its first page fetched
- *      with every same-origin script on it and every app module those import,
- *      and the server stopped (a Next example with `NEXT_TEST_WASM=1`, so Next
+ *      with every same-origin script on it and every app module those import
+ *      (a TanStack Start example's from its router and route tree as well:
+ *      `startEntrySeeds`), and the server stopped (a Next example with
+ *      `NEXT_TEST_WASM=1`, so Next
  *      loads the WebAssembly bindings a WebContainer loads); any other command
  *      must exit 0, a script step 5 already ran on plain Node included.
  *
@@ -115,7 +117,7 @@ export const REQUIRED_SCRIPTS = ["typecheck", "test", "build"]
 
 /**
  * Examples allowed to lack one of REQUIRED_SCRIPTS: { example: { script:
- * reason } }. Empty: all four have all three.
+ * reason } }. Empty: all five have all three.
  */
 export const SCRIPT_EXCEPTIONS = {}
 
@@ -689,12 +691,18 @@ export function pageScripts(html, pageUrl) {
 }
 
 /**
- * The app modules an ES module served by a dev server imports, as absolute
- * URLs: its static `import`/`export ... from` and string `import()`
- * specifiers on its own origin. Pre-bundled dependencies (`/node_modules/`)
- * and the dev server's own modules (`/@vite/client`, `/@id/...`) are left out:
- * they are not the example's code, and a dependency re-optimisation could
- * answer them 504 while it runs.
+ * The app modules an ES module served by a Vite dev server imports, as
+ * absolute URLs: its static `import`/`export ... from` and string `import()`
+ * specifiers on its own origin. A statement starts a line or follows a `;`:
+ * Vite joins its HMR preamble and the module's first statement onto one line
+ * (`... from "/@vite/client";import { A } from "/src/A.tsx";`). Only
+ * root-relative specifiers are taken: Vite serves every import it resolved as
+ * one (`/src/...`), so a relative one left in served code is text in a string
+ * or a comment (a code sample in a template literal), not an import.
+ * Pre-bundled dependencies (`/node_modules/`) and the dev server's own modules
+ * (`/@vite/client`, `/@id/...`, `/@fs/...`) are left out: they are not the
+ * example's code, and a dependency re-optimisation could answer them 504
+ * while it runs.
  *
  * @param {string} code
  * @param {string} moduleUrl
@@ -704,20 +712,62 @@ export function moduleImports(code, moduleUrl) {
   const origin = new URL(moduleUrl).origin
   const specifiers = [
     ...code.matchAll(
-      /^[ \t]*(?:import|export)[ \t\n{*][^'"`;]*?\bfrom[ \t]*["']([^"'\n]+)["']/gm
+      /(?:^|;)[ \t]*(?:import|export)[ \t\n{*][^'"`;]*?\bfrom[ \t]*["']([^"'\n]+)["']/gm
     ),
-    ...code.matchAll(/^[ \t]*import[ \t]*["']([^"'\n]+)["']/gm),
+    ...code.matchAll(/(?:^|;)[ \t]*import[ \t]*["']([^"'\n]+)["']/gm),
     ...code.matchAll(/\bimport\([ \t]*["']([^"'\n]+)["'][ \t]*\)/g),
   ].map((match) => match[1])
   const urls = new Set()
   for (const specifier of specifiers) {
-    if (!/^(?:\/|\.\.?\/)/.test(specifier)) continue
+    if (!specifier.startsWith("/")) continue
     const url = new URL(specifier, moduleUrl)
     if (url.origin !== origin) continue
     if (/^\/(?:node_modules\/|@)/.test(url.pathname)) continue
     urls.add(url.href)
   }
   return [...urls]
+}
+
+/**
+ * The app's own entry modules of a TanStack Start example, from which the walk
+ * also starts: its router (what `#tanstack-router-entry` resolves to) and the
+ * route tree TanStack Router generates. Each is seeded only when the example
+ * tracks it.
+ */
+export const START_ENTRY_FILES = [
+  "src/router.tsx",
+  "src/router.ts",
+  "src/router.jsx",
+  "src/router.js",
+  "src/routeTree.gen.ts",
+]
+
+/**
+ * The modules the walk also starts from when the page's scripts are a TanStack
+ * Start dev entry (a `/@id/virtual:tanstack-start-*` URL): that entry reaches
+ * the app only through @tanstack/react-start's own modules under `/@fs/`,
+ * which `moduleImports` leaves out, so without a seed not one module of the
+ * example's would be fetched. The seeds are START_ENTRY_FILES the example
+ * tracks, as URLs on the page's origin; a finding when it tracks none. No
+ * seeds for any other page.
+ *
+ * @param {{ url: string }[]} scripts the page's scripts (`pageScripts`)
+ * @param {string[]} files the example's tracked files, relative to it
+ * @returns {{ seeds: string[], finding?: string }}
+ */
+export function startEntrySeeds(scripts, files) {
+  const entry = scripts.find(({ url }) =>
+    new URL(url).pathname.startsWith("/@id/virtual:tanstack-start-")
+  )
+  if (!entry) return { seeds: [] }
+  const seeds = START_ENTRY_FILES.filter((file) => files.includes(file)).map(
+    (file) => new URL(`/${file}`, entry.url).href
+  )
+  if (seeds.length > 0) return { seeds }
+  return {
+    seeds,
+    finding: `the page's script ${entry.url} is TanStack Start's dev entry, which reaches the app only through /@fs/, and the example tracks none of ${START_ENTRY_FILES.join(", ")} to start the walk from`,
+  }
 }
 
 /** `npm view <spec> <field> --json`, from the registry; undefined on E404. */
@@ -855,13 +905,21 @@ async function killGroup(child) {
 const MODULE_LIMIT = 500
 
 /**
- * Fetches the page's scripts and, from each ES module among them, every app
- * module it imports, transitively: a Vite dev server compiles a module only
- * when it is requested, so a module below the entry that fails to transform
- * (an unresolvable import, say) answers 500 only when fetched.
+ * Fetches the page's scripts and the `seeds` (`startEntrySeeds`) and, from
+ * each ES module among them, every app module it imports, transitively: a
+ * Vite dev server compiles a module only when it is requested, so a module
+ * below the entry that fails to transform (an unresolvable import, say)
+ * answers 500 only when fetched.
  */
-async function loadScripts(scripts, deadline) {
-  const queue = scripts.map((s) => ({ ...s, from: "the page" }))
+async function loadScripts(scripts, deadline, seeds = []) {
+  const queue = [
+    ...scripts.map((s) => ({ ...s, from: "the page" })),
+    ...seeds.map((url) => ({
+      url,
+      module: true,
+      from: "TanStack Start's dev entry, through /@fs/ (seeded)",
+    })),
+  ]
   const seen = new Set(queue.map((s) => s.url))
   const broken = []
   let modules = 0
@@ -883,16 +941,27 @@ async function loadScripts(scripts, deadline) {
       queue.push({ url: next, module: true, from: url })
     }
   }
-  return { broken, fetched: seen.size, modules }
+  const app = [...seen].filter((url) =>
+    new URL(url).pathname.startsWith("/src/")
+  ).length
+  return { broken, fetched: seen.size, modules, app }
 }
 
 /**
  * Starts `npm run dev -- <args> --port N` on a free port, fetches its first
  * page and what that page loads, and stops it. The port is passed as
  * `--port`, which both Vite and Next take, so a server already on the
- * example's own port on this machine does not fail the run.
+ * example's own port on this machine does not fail the run. `files`, the
+ * example's tracked files, are where a TanStack Start example's entry modules
+ * are found (`startEntrySeeds`).
  */
-async function smokeDevServer(cwd, env, extraArgs, timeoutMs = 4 * MINUTE) {
+async function smokeDevServer(
+  cwd,
+  env,
+  extraArgs,
+  files,
+  timeoutMs = 4 * MINUTE
+) {
   const port = await freePort()
   const url = `http://localhost:${port}/`
   const args = ["run", "dev", "--", ...extraArgs, "--port", String(port)]
@@ -934,14 +1003,23 @@ async function smokeDevServer(cwd, env, extraArgs, timeoutMs = 4 * MINUTE) {
         // its scripts, and the modules they import, are what the dev server
         // compiles on request.
         const scripts = pageScripts(body, url)
-        const loaded = await loadScripts(scripts, deadline)
+        const { seeds, finding } = startEntrySeeds(scripts, files)
+        if (finding) {
+          failure = finding
+          break
+        }
+        const loaded = await loadScripts(scripts, deadline, seeds)
         if (loaded.broken.length > 0) {
           failure = `what the page loads did not load: ${loaded.broken.join(", ")}`
           break
         }
         const ms = Date.now() - started
+        const what =
+          seeds.length > 0
+            ? `its ${scripts.length} script(s), TanStack Start's dev entry among them, the app's entry modules that entry reaches only through /@fs/ (${seeds.map((s) => new URL(s).pathname).join(", ")}), and the app modules they import loaded (${loaded.fetched} fetched, ${loaded.app} under /src/, ${loaded.modules} ES modules)`
+            : `its ${scripts.length} script(s) and the app modules they import loaded (${loaded.fetched} fetched, ${loaded.modules} ES modules)`
         console.log(
-          `  ✓ ${url} answered ${response.status} with ${body.length} bytes of HTML; its ${scripts.length} script(s) and the app modules they import loaded (${loaded.fetched} fetched, ${loaded.modules} ES modules), after ${seconds(ms)}`
+          `  ✓ ${url} answered ${response.status} with ${body.length} bytes of HTML; ${what}, after ${seconds(ms)}`
         )
         return { ok: true, ms }
       }
@@ -1046,7 +1124,7 @@ async function testExample(name, { betaVersion, workDir, preload }) {
     // A WebContainer has no native binary: Next loads its WebAssembly
     // bindings there, and NEXT_TEST_WASM makes it do the same here.
     const devEnv = isNext ? { ...modelEnv, NEXT_TEST_WASM: "1" } : modelEnv
-    steps.start = await smokeDevServer(dir, devEnv, parsed.args)
+    steps.start = await smokeDevServer(dir, devEnv, parsed.args, files)
   } else {
     const [command, ...args] = start.command.split(/\s+/)
     steps.start = runStep(

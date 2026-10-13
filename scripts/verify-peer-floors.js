@@ -85,7 +85,9 @@ export const PER_MAJOR = {
  * not a peer of the bindings (the library never imports it), but its tests
  * render with it, and it is released with react: it follows react's floor.
  * vite-plugin's `vite` peer is in PER_MAJOR; its exact `@candid-core/cli` peer
- * has one version, which the lockfile already holds. `withoutOverrides` drops
+ * has one version, which the lockfile already holds, and its optional
+ * `@icp-sdk/core` peer (the fetch of a missing `.did`) is pinned to its floor
+ * like any other. `withoutOverrides` drops
  * root `pnpm.overrides` that would move a floor's own dependencies off the
  * versions an app on that floor installs.
  */

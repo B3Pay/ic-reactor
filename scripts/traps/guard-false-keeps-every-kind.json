@@ -1,0 +1,5 @@
+{
+  "file": "src/errors.ts",
+  "search": "): error is ReactorError<ErrorOf<A, M>> & { readonly method: M }",
+  "replace": "): error is ReactorError<ErrorOf<A, M>>"
+}

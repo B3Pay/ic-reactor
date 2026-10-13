@@ -5,78 +5,105 @@ import * as $ from "@candid-core/schema";
  * AccountIdentifier is a 32-byte array.
  * The first 4 bytes is big-endian encoding of a CRC32 checksum of the last 28 bytes.
  */
-type $AccountIdentifier = Uint8Array;
+export type AccountIdentifier = Uint8Array;
 /**
  * AccountIdentifier is a 32-byte array.
  * The first 4 bytes is big-endian encoding of a CRC32 checksum of the last 28 bytes.
  */
-const $AccountIdentifier: $.Schema<$AccountIdentifier> = $.c.rec(() => $.c.blob());
+const $AccountIdentifier: $.Schema<AccountIdentifier> = $.c.rec(() => $.c.blob());
 export { $AccountIdentifier as AccountIdentifier };
 
-type $ArchivedBlocksRange = {
-  /** The function that should be called to fetch the archived blocks. */
-  callback: $QueryArchiveFn;
+export type ArchivedBlocksRange = {
+  /**
+   * The function that should be called to fetch the archived blocks.
+   * The range of the blocks accessible using this function is given by [from]
+   * and [len] fields above.
+   */
+  callback: QueryArchiveFn;
   /** The index of the first archived block that can be fetched using the callback. */
   start: bigint;
   /** The number of blocks that can be fetch using the callback. */
   length: bigint;
 };
-const $ArchivedBlocksRange: $.Schema<$ArchivedBlocksRange> = $.c.rec(() => $.c.record({ callback: $QueryArchiveFn, start: $.c.nat64, length: $.c.nat64 }));
+const $ArchivedBlocksRange: $.Schema<ArchivedBlocksRange> = $.c.rec(() => $.c.record({ callback: $QueryArchiveFn, start: $.c.nat64, length: $.c.nat64 }));
 export { $ArchivedBlocksRange as ArchivedBlocksRange };
 
-type $Block = { transaction: $Transaction; timestamp: $TimeStamp; parent_hash: $AccountIdentifier | null };
-const $Block: $.Schema<$Block> = $.c.rec(() => $.c.record({ transaction: $Transaction, timestamp: $TimeStamp, parent_hash: $.c.opt($AccountIdentifier) }));
+export type Block = { transaction: Transaction; timestamp: TimeStamp; parent_hash: AccountIdentifier | null };
+const $Block: $.Schema<Block> = $.c.rec(() => $.c.record({ transaction: $Transaction, timestamp: $TimeStamp, parent_hash: $.c.opt($AccountIdentifier) }));
 export { $Block as Block };
 
 /** Sequence number of a block produced by the ledger. */
-type $BlockIndex = bigint;
+export type BlockIndex = bigint;
 /** Sequence number of a block produced by the ledger. */
-const $BlockIndex: $.Schema<$BlockIndex> = $.c.rec(() => $.c.nat64);
+const $BlockIndex: $.Schema<BlockIndex> = $.c.rec(() => $.c.nat64);
 export { $BlockIndex as BlockIndex };
 
 /** A prefix of the block range specified in the [GetBlocksArgs] request. */
-type $BlockRange = { blocks: Array<$Block> };
+export type BlockRange = {
+  /**
+   * A prefix of the requested block range.
+   * The index of the first block is equal to [GetBlocksArgs.from].
+   *
+   * Note that the number of blocks might be less than the requested
+   * [GetBlocksArgs.len] for various reasons, for example:
+   *
+   * 1. The query might have hit the replica with an outdated state
+   * that doesn't have the full block range yet.
+   * 2. The requested range is too large to fit into a single reply.
+   *
+   * NOTE: the list of blocks can be empty if:
+   * 1. [GetBlocksArgs.len] was zero.
+   * 2. [GetBlocksArgs.from] was larger than the last block known to the canister.
+   */
+  blocks: Array<Block>;
+};
 /** A prefix of the block range specified in the [GetBlocksArgs] request. */
-const $BlockRange: $.Schema<$BlockRange> = $.c.rec(() => $.c.record({ blocks: $.c.vec($Block) }));
+const $BlockRange: $.Schema<BlockRange> = $.c.rec(() => $.c.record({ blocks: $.c.vec($Block) }));
 export { $BlockRange as BlockRange };
 
-type $GetBlocksArgs = {
+export type GetBlocksArgs = {
   /** The index of the first block to fetch. */
   start: bigint;
   /** Max number of blocks to fetch. */
   length: bigint;
 };
-const $GetBlocksArgs: $.Schema<$GetBlocksArgs> = $.c.rec(() => $.c.record({ start: $.c.nat64, length: $.c.nat64 }));
+const $GetBlocksArgs: $.Schema<GetBlocksArgs> = $.c.rec(() => $.c.record({ start: $.c.nat64, length: $.c.nat64 }));
 export { $GetBlocksArgs as GetBlocksArgs };
 
-/** An arbitrary number associated with a transaction. */
-type $Memo = bigint;
-/** An arbitrary number associated with a transaction. */
-const $Memo: $.Schema<$Memo> = $.c.rec(() => $.c.nat64);
+/**
+ * An arbitrary number associated with a transaction.
+ * The caller can set it in a `transfer` call as a correlation identifier.
+ */
+export type Memo = bigint;
+/**
+ * An arbitrary number associated with a transaction.
+ * The caller can set it in a `transfer` call as a correlation identifier.
+ */
+const $Memo: $.Schema<Memo> = $.c.rec(() => $.c.nat64);
 export { $Memo as Memo };
 
-type $Operation =
+export type Operation =
   | {
       tag: "Approve";
       value: {
-        fee: $Tokens;
-        from: $AccountIdentifier;
+        fee: Tokens;
+        from: AccountIdentifier;
         /** This field is deprecated and should not be used. */
         allowance_e8s: bigint;
-        allowance: $Tokens;
-        expected_allowance: $Tokens | null;
-        expires_at: $TimeStamp | null;
-        spender: $AccountIdentifier;
+        allowance: Tokens;
+        expected_allowance: Tokens | null;
+        expires_at: TimeStamp | null;
+        spender: AccountIdentifier;
       };
     }
-  | { tag: "Burn"; value: { from: $AccountIdentifier; amount: $Tokens; spender: $AccountIdentifier | null } }
-  | { tag: "Mint"; value: { to: $AccountIdentifier; amount: $Tokens } }
-  | { tag: "Transfer"; value: { to: $AccountIdentifier; fee: $Tokens; from: $AccountIdentifier; amount: $Tokens; spender: $AccountIdentifier | null } };
-const $Operation: $.Schema<$Operation> = $.c.rec(() => $.c.variant({ Approve: $.c.record({ fee: $Tokens, from: $AccountIdentifier, allowance_e8s: $.c.int, allowance: $Tokens, expected_allowance: $.c.opt($Tokens), expires_at: $.c.opt($TimeStamp), spender: $AccountIdentifier }), Burn: $.c.record({ from: $AccountIdentifier, amount: $Tokens, spender: $.c.opt($AccountIdentifier) }), Mint: $.c.record({ to: $AccountIdentifier, amount: $Tokens }), Transfer: $.c.record({ to: $AccountIdentifier, fee: $Tokens, from: $AccountIdentifier, amount: $Tokens, spender: $.c.opt($AccountIdentifier) }) }));
+  | { tag: "Burn"; value: { from: AccountIdentifier; amount: Tokens; spender: AccountIdentifier | null } }
+  | { tag: "Mint"; value: { to: AccountIdentifier; amount: Tokens } }
+  | { tag: "Transfer"; value: { to: AccountIdentifier; fee: Tokens; from: AccountIdentifier; amount: Tokens; spender: AccountIdentifier | null } };
+const $Operation: $.Schema<Operation> = $.c.rec(() => $.c.variant({ Approve: $.c.record({ fee: $Tokens, from: $AccountIdentifier, allowance_e8s: $.c.int, allowance: $Tokens, expected_allowance: $.c.opt($Tokens), expires_at: $.c.opt($TimeStamp), spender: $AccountIdentifier }), Burn: $.c.record({ from: $AccountIdentifier, amount: $Tokens, spender: $.c.opt($AccountIdentifier) }), Mint: $.c.record({ to: $AccountIdentifier, amount: $Tokens }), Transfer: $.c.record({ to: $AccountIdentifier, fee: $Tokens, from: $AccountIdentifier, amount: $Tokens, spender: $.c.opt($AccountIdentifier) }) }));
 export { $Operation as Operation };
 
 /** An error indicating that the arguments passed to [QueryArchiveFn] were invalid. */
-type $QueryArchiveError =
+export type QueryArchiveError =
   | {
       /**
        * [GetBlocksArgs.from] argument was smaller than the first block
@@ -91,41 +118,55 @@ type $QueryArchiveError =
       value: { error_message: string; error_code: bigint };
     };
 /** An error indicating that the arguments passed to [QueryArchiveFn] were invalid. */
-const $QueryArchiveError: $.Schema<$QueryArchiveError> = $.c.rec(() => $.c.variant({ BadFirstBlockIndex: $.c.record({ requested_index: $.c.nat64, first_valid_index: $.c.nat64 }), Other: $.c.record({ error_message: $.c.text, error_code: $.c.nat64 }) }));
+const $QueryArchiveError: $.Schema<QueryArchiveError> = $.c.rec(() => $.c.variant({ BadFirstBlockIndex: $.c.record({ requested_index: $.c.nat64, first_valid_index: $.c.nat64 }), Other: $.c.record({ error_message: $.c.text, error_code: $.c.nat64 }) }));
 export { $QueryArchiveError as QueryArchiveError };
 
 /** A function that is used for fetching archived ledger blocks. */
-type $QueryArchiveFn = { principal: $.Principal; method: string };
+export type QueryArchiveFn = { principal: $.Principal; method: string };
 /** A function that is used for fetching archived ledger blocks. */
-const $QueryArchiveFn: $.Schema<$QueryArchiveFn> = $.c.rec(() => $.c.func([$GetBlocksArgs], [$QueryArchiveResult], "query"));
+const $QueryArchiveFn: $.Schema<QueryArchiveFn> = $.c.rec(() => $.c.func([$GetBlocksArgs], [$QueryArchiveResult], "query"));
 export { $QueryArchiveFn as QueryArchiveFn };
 
-type $QueryArchiveResult =
+export type QueryArchiveResult =
   | {
       /** Successfully fetched zero or more blocks. */
       tag: "Ok";
-      value: $BlockRange;
+      value: BlockRange;
     }
   | {
       /** The [GetBlocksArgs] request was invalid. */
       tag: "Err";
-      value: $QueryArchiveError;
+      value: QueryArchiveError;
     };
-const $QueryArchiveResult: $.Schema<$QueryArchiveResult> = $.c.rec(() => $.c.variant({ Ok: $BlockRange, Err: $QueryArchiveError }));
+const $QueryArchiveResult: $.Schema<QueryArchiveResult> = $.c.rec(() => $.c.variant({ Ok: $BlockRange, Err: $QueryArchiveError }));
 export { $QueryArchiveResult as QueryArchiveResult };
 
 /**
- * The result of a "query_blocks" call: the blocks the ledger still holds,
- * and a callback per range that lives in an archive canister.
+ * The result of a "query_blocks" call.
+ *
+ * The structure of the result is somewhat complicated because the main ledger canister might
+ * not have all the blocks that the caller requested: One or more "archive" canisters might
+ * store some of the requested blocks.
+ *
+ * Note: as of Q4 2021 when this interface is authored, the IC doesn't support making nested
+ * query calls within a query call.
  */
-type $QueryBlocksResponse = {
+export type QueryBlocksResponse = {
   /**
    * System certificate for the hash of the latest block in the chain.
    * Only present if `query_blocks` is called in a non-replicated query context.
    */
-  certificate: $AccountIdentifier | null;
-  /** List of blocks that were available in the ledger when it processed the call. */
-  blocks: Array<$Block>;
+  certificate: AccountIdentifier | null;
+  /**
+   * List of blocks that were available in the ledger when it processed the call.
+   *
+   * The blocks form a contiguous range, with the first block having index
+   * [first_block_index] (see below), and the last block having index
+   * [first_block_index] + len(blocks) - 1.
+   *
+   * The block range can be an arbitrary sub-range of the originally requested range.
+   */
+  blocks: Array<Block>;
   /**
    * The total number of blocks in the chain.
    * If the chain length is positive, the index of the last block is `chain_len - 1`.
@@ -139,35 +180,44 @@ type $QueryBlocksResponse = {
   /**
    * Encoding of instructions for fetching archived blocks whose indices fall into the
    * requested range.
+   *
+   * For each entry `e` in [archived_blocks], `[e.from, e.from + len)` is a sub-range
+   * of the originally requested block range.
    */
-  archived_blocks: Array<$ArchivedBlocksRange>;
+  archived_blocks: Array<ArchivedBlocksRange>;
 };
 /**
- * The result of a "query_blocks" call: the blocks the ledger still holds,
- * and a callback per range that lives in an archive canister.
+ * The result of a "query_blocks" call.
+ *
+ * The structure of the result is somewhat complicated because the main ledger canister might
+ * not have all the blocks that the caller requested: One or more "archive" canisters might
+ * store some of the requested blocks.
+ *
+ * Note: as of Q4 2021 when this interface is authored, the IC doesn't support making nested
+ * query calls within a query call.
  */
-const $QueryBlocksResponse: $.Schema<$QueryBlocksResponse> = $.c.rec(() => $.c.record({ certificate: $.c.opt($AccountIdentifier), blocks: $.c.vec($Block), chain_length: $.c.nat64, first_block_index: $.c.nat64, archived_blocks: $.c.vec($ArchivedBlocksRange) }));
+const $QueryBlocksResponse: $.Schema<QueryBlocksResponse> = $.c.rec(() => $.c.record({ certificate: $.c.opt($AccountIdentifier), blocks: $.c.vec($Block), chain_length: $.c.nat64, first_block_index: $.c.nat64, archived_blocks: $.c.vec($ArchivedBlocksRange) }));
 export { $QueryBlocksResponse as QueryBlocksResponse };
 
 /** Number of nanoseconds from the UNIX epoch in UTC timezone. */
-type $TimeStamp = { timestamp_nanos: bigint };
+export type TimeStamp = { timestamp_nanos: bigint };
 /** Number of nanoseconds from the UNIX epoch in UTC timezone. */
-const $TimeStamp: $.Schema<$TimeStamp> = $.c.rec(() => $.c.record({ timestamp_nanos: $.c.nat64 }));
+const $TimeStamp: $.Schema<TimeStamp> = $.c.rec(() => $.c.record({ timestamp_nanos: $.c.nat64 }));
 export { $TimeStamp as TimeStamp };
 
 /** Amount of tokens, measured in 10^-8 of a token. */
-type $Tokens = { e8s: bigint };
+export type Tokens = { e8s: bigint };
 /** Amount of tokens, measured in 10^-8 of a token. */
-const $Tokens: $.Schema<$Tokens> = $.c.rec(() => $.c.record({ e8s: $.c.nat64 }));
+const $Tokens: $.Schema<Tokens> = $.c.rec(() => $.c.record({ e8s: $.c.nat64 }));
 export { $Tokens as Tokens };
 
-type $Transaction = { memo: bigint; icrc1_memo: $AccountIdentifier | null; operation: $Operation | null; created_at_time: $TimeStamp };
-const $Transaction: $.Schema<$Transaction> = $.c.rec(() => $.c.record({ memo: $.c.nat64, icrc1_memo: $.c.opt($AccountIdentifier), operation: $.c.opt($Operation), created_at_time: $TimeStamp }));
+export type Transaction = { memo: bigint; icrc1_memo: AccountIdentifier | null; operation: Operation | null; created_at_time: TimeStamp };
+const $Transaction: $.Schema<Transaction> = $.c.rec(() => $.c.record({ memo: $.c.nat64, icrc1_memo: $.c.opt($AccountIdentifier), operation: $.c.opt($Operation), created_at_time: $TimeStamp }));
 export { $Transaction as Transaction };
 
 const $actor: $.Schema<$.Principal> = $.c.rec(() => $.c.service({ query_blocks: $.c.func([$GetBlocksArgs], [$QueryBlocksResponse], "query") }));
-type $Actor = {
+export type Actor = {
   /** Queries blocks in the specified range. */
-  query_blocks: (arg0: $GetBlocksArgs) => Promise<$QueryBlocksResponse>;
+  query_blocks: ((arg0: GetBlocksArgs) => Promise<QueryBlocksResponse>) & $.WithMode<"query">;
 };
-export { $actor as actor, type $Actor as Actor };
+export { $actor as actor };

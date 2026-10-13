@@ -21,7 +21,7 @@ It works in a browser, in Node and on a server. For React, add
 
 ```sh
 npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
-npm install --save-exact @candid-core/schema@0.3.0
+npm install --save-exact @candid-core/schema@0.4.0
 npm install @icp-sdk/auth   # for Internet Identity
 ```
 
@@ -29,7 +29,7 @@ The generator is a separate dev dependency, pinned to the version that pairs
 with `@candid-core/schema`:
 
 ```sh
-npm install --save-dev --save-exact @candid-core/cli@0.2.0
+npm install --save-dev --save-exact @candid-core/cli@0.3.0
 ```
 
 See [Getting started](/v4/guides/getting-started/) for the first read and write.
@@ -40,7 +40,7 @@ Node `>=18`.
 
 | Peer                   | Range                                                                                                      |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `@candid-core/schema`  | exactly `0.3.0`: the module `candid-core-cli gen` writes imports it                                        |
+| `@candid-core/schema`  | exactly `0.4.0`: the module `candid-core-cli gen` writes imports it                                        |
 | `@icp-sdk/core`        | `^6.1.0`                                                                                                   |
 | `@tanstack/query-core` | `^5.62.0`                                                                                                  |
 | `@noble/curves`        | `^2.2.0`, optional: only `@ic-reactor/core/testing` signs with it, and `@icp-sdk/core` installs it already |
@@ -57,10 +57,10 @@ it at 13.
 | Export             | Kind    | What it is                                                                                                                                                                         |
 | ------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `createClient`     | runtime | Builds a client from a network and a caller. See [The client](/v4/guides/client/).                                                                                                 |
-| `isReactorError`   | runtime | Tests whether a thrown value is a `ReactorError`. See [Errors](/v4/guides/errors/).                                                                                                |
+| `isReactorError`   | runtime | Tests whether a thrown value is a `ReactorError`; with a canister and a method, one of that call's, its `err` typed. See [Errors](/v4/guides/errors/).                             |
 | `parseUnits`       | runtime | Text to base units: `parseUnits("1.5", 8)` is `150000000n`. See [Values and units](/v4/guides/values/).                                                                            |
 | `formatUnits`      | runtime | Base units to text, without losing digits. See [Values and units](/v4/guides/values/).                                                                                             |
-| `Client`           | type    | What `createClient` returns: `canister`, `queryOptions`, `mutationOptions`, `queryKey`, `func`, `signIn`, `signOut`, `caller`, `authState`, `subscribe`, `queryClient`, `dispose`. |
+| `Client`           | type    | A client offers: `canister`, `queryOptions`, `mutationOptions`, `resendOf`, `queryKey`, `func`, `signIn`, `signOut`, `caller`, `authState`, `subscribe`, `queryClient`, `dispose`. |
 | `ClientOptions`    | type    | The argument of `createClient`: a `network`, and exactly one of `identity` and `auth`.                                                                                             |
 | `Network`          | type    | `"ic"`, `"local"`, `"env"`, or `{ host, rootKey?, name?, fetchRootKey? }`.                                                                                                         |
 | `AuthLike`         | type    | What `auth` must be: the shape of an `@icp-sdk/auth` 10 `AuthClient`. See [Auth](/v4/guides/auth/).                                                                                |
@@ -103,6 +103,11 @@ type AuthNetwork = {
 }
 
 function isReactorError(error: unknown): error is ReactorError<unknown>
+function isReactorError<A, M extends keyof A & string>(
+  error: unknown,
+  canister: Canister<A>,
+  method: M
+): error is ReactorError<ErrorOf<A, M>> & { readonly method: M } // ErrorOf: the method's Err arm, or never
 
 function parseUnits(
   text: string,

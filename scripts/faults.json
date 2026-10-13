@@ -1304,8 +1304,8 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "          caller: internals.current(),\n          values: valuesOf(prepared, vars),\n",
-        "replace": "          caller: current(),\n          values: valuesOf(prepared, vars),\n"
+        "search": "          caller: again?.caller ?? internals.current(),\n          values: valuesOf(prepared, vars),\n",
+        "replace": "          caller: again?.caller ?? current(),\n          values: valuesOf(prepared, vars),\n"
       },
       {
         "file": "src/client.ts",
@@ -2408,5 +2408,1984 @@
     "file": "src/client.ts",
     "search": "    const handed = { agentOptions }",
     "replace": "    const handed = { agentOptions: resolution.network.agentOptions }"
+  },
+  {
+    "id": "did-fetch-on-disk-fetched",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is generated with no network request under vite build and vite dev",
+    "why": "a didFile on disk fetched all the same, so a build needs the network and can rewrite the committed file",
+    "file": "src/index.ts",
+    "search": "again ?? (fs.existsSync(file) ? undefined : fetchable[0])",
+    "replace": "again ?? fetchable[0]"
+  },
+  {
+    "id": "did-fetch-not-written",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is written from the certified candid:service and generated, and a second build makes no request",
+    "why": "the fetched interface is not written to didFile, so there is nothing to generate from",
+    "file": "src/index.ts",
+    "search": "          writeDid(target, result.did)\n",
+    "replace": ""
+  },
+  {
+    "id": "did-fetch-every-build",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is written from the certified candid:service and generated, and a second build makes no request",
+    "why": "every build fetches the interface again, though the first one wrote didFile",
+    "file": "src/index.ts",
+    "search": "again ?? (fs.existsSync(file) ? undefined : fetchable[0])",
+    "replace": "again ?? fetchable[0]"
+  },
+  {
+    "id": "did-fetch-shared-file-fetched-twice",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is fetched once for the entries that share it and name one canister",
+    "why": "entries that name one didFile and one canister each fetch it, and each writes the same file",
+    "file": "src/index.ts",
+    "search": "        return [\n          { key, file, members, source: source as Generated, again: !!again },\n        ]\n",
+    "replace": "        return fetchable.map((source) => ({ key, file, members, source: source as Generated, again: !!again }))\n"
+  },
+  {
+    "id": "did-fetch-watcher-regenerates-own-write",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is written and generated once under vite dev, though the watcher reports the write",
+    "why": "the watcher's event for the plugin's own write of a fetched didFile starts a second generator run",
+    "file": "src/index.ts",
+    "search": "        if (fs.readFileSync(saved, \"utf-8\") === fetched) return\n",
+    "replace": ""
+  },
+  {
+    "id": "did-fetch-403-not-refused",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a read refused with HTTP 403 (private metadata) reported as any other HTTP answer, without saying the interface is private",
+    "file": "src/fetch.ts",
+    "search": "if (status === 401 || status === 403) {",
+    "replace": "if (status === 401) {"
+  },
+  {
+    "id": "did-fetch-unreachable-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a network that cannot be reached reported as an unknown agent error, without saying what to do",
+    "file": "src/fetch.ts",
+    "search": "if (error instanceof AgentError && error.hasCode(HttpFetchErrorCode)) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-not-found-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a canister that does not exist on the network reported as any other HTTP answer, without naming canisterId and network",
+    "file": "src/fetch.ts",
+    "search": "if (/canister_not_found/.test(bodyText)) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-failure-dropped",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "follows failOnError: logged, and the other canisters generated",
+    "why": "a failed fetch is dropped: the canister is neither generated nor reported",
+    "file": "src/index.ts",
+    "search": "          failures: dedupe([...failures, ...generation]),\n",
+    "replace": "          failures: dedupe([...failures.filter((failure) => !fetchedNow.failures.includes(failure)), ...generation]),\n"
+  },
+  {
+    "id": "did-fetch-variable-ignored",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is the only thing that rewrites a didFile on disk",
+    "why": "IC_REACTOR_FETCH is ignored, so nothing fetches a didFile on disk again",
+    "file": "src/index.ts",
+    "search": "    const fetch = namesIn(FETCH_VARIABLE, [\"all\"])",
+    "replace": "    const fetch = namesIn(\"IC_REACTOR_FETCH_IGNORED\", [\"all\"])"
+  },
+  {
+    "id": "did-fetch-all-ignored",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "takes all, and fails a named canister that has no canisterId",
+    "why": "IC_REACTOR_FETCH=all read as a canister named all, so nothing is fetched again",
+    "file": "src/index.ts",
+    "search": "    const fetch = namesIn(FETCH_VARIABLE, [\"all\"])",
+    "replace": "    const fetch = namesIn(FETCH_VARIABLE, [])"
+  },
+  {
+    "id": "did-fetch-absent-read-as-interface",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says which of unreachable, refused, absent and not found it was, naming the canister",
+    "why": "a certificate without candid:service read as an interface, so the canister fails with a write error instead of saying it publishes none",
+    "file": "src/fetch.ts",
+    "search": "if (did === null || did === undefined) {",
+    "replace": "if (did === undefined) {"
+  },
+  {
+    "id": "did-fetch-root-key-from-any-host",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is fetched only from a local host",
+    "why": "the root key fetched from any host, so a host that is not local hands over its own key and its certificates are no longer checked against mainnet's",
+    "file": "src/fetch.ts",
+    "search": "fetchRootKey: isLocalHostname(url.hostname),",
+    "replace": "fetchRootKey: true,"
+  },
+  {
+    "id": "did-fetch-root-key-from-remote-host",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "of a host that is not local is mainnet's, so its own certificate fails and nothing is written",
+    "why": "the root key fetched from a host that is not local, so a certificate it signs with its own key is accepted and written to didFile",
+    "file": "src/fetch.ts",
+    "search": "fetchRootKey: isLocalHostname(url.hostname),",
+    "replace": "fetchRootKey: true,"
+  },
+  {
+    "id": "did-fetch-certificate-unverified",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "signed with another key than the root key fails the canister, and nothing is written",
+    "why": "the certificate's signature not checked, so a forged candid:service is written to didFile and generated",
+    "file": "src/fetch.ts",
+    "search": "{ paths: [candidPath] }",
+    "replace": "{ paths: [candidPath], blsVerify: async () => true }"
+  },
+  {
+    "id": "did-fetch-trust-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "signed with another key than the root key fails the canister, and nothing is written",
+    "why": "a certificate that does not verify reported as an unknown agent error, without naming the root key it was checked against",
+    "file": "src/fetch.ts",
+    "search": "if (error instanceof TrustError) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-write-error-fails-all",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "fails its own canisters only, naming the file, and the others generate",
+    "why": "a didFile that cannot be written fails every canister, including those that would have generated",
+    "file": "src/index.ts",
+    "search": "} catch (writeError) {",
+    "replace": "} catch (writeError) {\n          throw writeError"
+  },
+  {
+    "id": "did-fetch-unknown-network-read-as-ic",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "refuses a network that is not ic, local or a host, before any request",
+    "why": "a misspelt network read as mainnet, so the fetch goes to a network the user did not name",
+    "file": "src/fetch.ts",
+    "search": "if (network === undefined || network === \"ic\") {",
+    "replace": "if (network === undefined || network !== \"local\" && typeof network === \"string\") {"
+  },
+  {
+    "id": "did-fetch-bad-canister-id-throws",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "refuses a canisterId that is not a canister ID, before any request",
+    "why": "a canisterId that is not a principal throws out of the fetch instead of failing the canister with a message",
+    "file": "src/fetch.ts",
+    "search": "principal = sdk.principal.Principal.fromText(canisterId)\n  } catch (error) {\n",
+    "replace": "principal = sdk.principal.Principal.fromText(canisterId)\n  } catch (error) {\n    throw error\n"
+  },
+  {
+    "id": "did-fetch-timeout-not-told",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "gives up when the network does not answer within the deadline",
+    "why": "a network that does not answer within the deadline reported as an unknown error, without saying it timed out",
+    "file": "src/fetch.ts",
+    "search": "if (timedOut) {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "did-fetch-local-hint-dropped",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "says to start the local network when local cannot be reached",
+    "why": "an unreachable local network reported without saying to start it with icp network start",
+    "file": "src/fetch.ts",
+    "search": "network.label === \"local\"",
+    "replace": "false"
+  },
+  {
+    "id": "did-fetch-sdk-missing-throws",
+    "package": "vite-plugin",
+    "test": "tests/fetch-sdk.test.ts",
+    "testName": "says to install @icp-sdk/core when it cannot be loaded",
+    "why": "a missing @icp-sdk/core throws out of the fetch instead of saying to install it or write the didFile",
+    "file": "src/fetch.ts",
+    "search": "    sdk = { agent, principal }\n  } catch (error) {\n",
+    "replace": "    sdk = { agent, principal }\n  } catch (error) {\n    throw error\n"
+  },
+  {
+    "id": "ir849-direct-call-error-unmarked",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "is true for an error of that method on that canister, with the Err arm in err",
+    "why": "a direct call no longer marks its errors with its canister, so the guard refuses the call's own error",
+    "file": "src/canister.ts",
+    "search": "            resend: true,\n            canister,\n",
+    "replace": "            resend: true,\n"
+  },
+  {
+    "id": "ir849-guard-ignores-the-method",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "is false for an error of another method of the same canister",
+    "why": "the guard checks the canister only, so an error of another method is narrowed to this method's Err arm",
+    "file": "src/errors.ts",
+    "search": "!!canister && own[CANISTER] === canister && own.method === method",
+    "replace": "!!canister && own[CANISTER] === canister"
+  },
+  {
+    "id": "ir849-guard-ignores-the-canister",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "is false for an error of the same method called through another canister object or a func reference",
+    "why": "the guard checks the method name only, so an error of another canister, or of a func reference, is narrowed to this canister's Err arm",
+    "file": "src/errors.ts",
+    "search": "!!canister && own[CANISTER] === canister && own.method === method",
+    "replace": "!!canister && own.method === method"
+  },
+  {
+    "id": "ir849-read-error-unmarked",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "is true for the errors of a read's query function and a mutation function built from the canister",
+    "why": "a read's query function no longer marks its errors with the canister it was built from",
+    "file": "src/options.ts",
+    "search": "          resend: false,\n          canister: canister as object,\n",
+    "replace": "          resend: false,\n"
+  },
+  {
+    "id": "ir849-mutation-error-unmarked",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "is true for the errors of a read's query function and a mutation function built from the canister",
+    "why": "a mutation function no longer marks its errors with the canister it was built from",
+    "file": "src/options.ts",
+    "search": "          resend: true,\n          canister: canister as object,\n",
+    "replace": "          resend: true,\n"
+  },
+  {
+    "id": "ir849-method-without-canister",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "is false when only one of the canister and the method is given",
+    "why": "a method given without a canister falls back to the one-argument guard and narrows any ReactorError",
+    "file": "src/errors.ts",
+    "search": "(typeof canister === \"object\" || typeof method === \"string\"",
+    "replace": "(typeof canister === \"object\""
+  },
+  {
+    "id": "ir849-unmarked-matches-a-missing-canister",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "is false when only one of the canister and the method is given",
+    "why": "a method given without a canister is compared with an unmarked error, whose missing mark equals the missing canister, so an error of a func reference is narrowed",
+    "file": "src/errors.ts",
+    "search": "? !!canister && own[CANISTER]",
+    "replace": "? own[CANISTER]"
+  },
+  {
+    "id": "ir849-point-free-takes-the-checked-form",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "stays the one-argument guard when passed point-free to an array method",
+    "why": "any second argument selects the checked form, so errors.filter(isReactorError) drops every ReactorError, as the index and array are not its canister and method",
+    "file": "src/errors.ts",
+    "search": "(typeof canister === \"object\" || typeof method === \"string\"",
+    "replace": "(canister !== undefined || method !== undefined"
+  },
+  {
+    "id": "ir849-mark-overwritten",
+    "package": "core",
+    "test": "tests/error-guard.test.ts",
+    "testName": "keeps the first canister an error was marked with",
+    "why": "an error is marked again although it already names its canister, which throws on the non-configurable mark",
+    "file": "src/errors.ts",
+    "search": "if (canister && isReactorError(error) && !(CANISTER in error)) {",
+    "replace": "if (canister && isReactorError(error)) {"
+  },
+  {
+    "id": "ir850-nothing-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers the attempt's own argument after a lost reply, and the re-send answers Duplicate",
+    "why": "a write whose outcome is unknown is not kept with its error, so resendOf has nothing to offer after a lost reply",
+    "file": "src/call.ts",
+    "search": "      UNKNOWN_WRITES.set(error, request)\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-copy-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers the attempt's own argument after a lost reply, and the re-send answers Duplicate",
+    "why": "the offer carries a copy of the argument, not the object the attempt sent, so the mutation cannot tell it is a re-send and holds it to no sender",
+    "file": "src/options.ts",
+    "search": "    return {\n      arg,\n",
+    "replace": "    return {\n      arg: { ...arg },\n"
+  },
+  {
+    "id": "ir850-known-outcome-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing after a failure whose outcome is known",
+    "why": "every failed write is kept for a re-send, so a canister_err or a request turned away (whose outcome is known) is offered to send again",
+    "file": "src/call.ts",
+    "search": "      error.mayHaveExecuted &&\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-another-sender-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing after a sign-out, nor to another account, and again once the sender signs back in",
+    "why": "the offer no longer checks that its sender is the caller now, so after a sign-out or a switch of account the same argument is offered as a new write",
+    "file": "src/options.ts",
+    "search": "      // The sender, and no one else, may send it again.\n      internals.current().principal !== caller.principal ||\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-mutation-resends-as-whoever",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "sends an offered argument only as its sender, by send() or by the mutation",
+    "why": "a mutation given an offered argument sends it as whoever is the caller when it runs, so another account pays the same transfer again",
+    "file": "src/options.ts",
+    "search": "caller: again?.caller ?? internals.current(),",
+    "replace": "caller: internals.current(),"
+  },
+  {
+    "id": "ir850-send-as-whoever",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "sends an offered argument only as its sender, by send() or by the mutation",
+    "why": "the offer's send() goes out as the caller current when it is pressed, not as the attempt's sender",
+    "file": "src/options.ts",
+    "search": "send: () => invoke(internals, attempt),",
+    "replace": "send: () => invoke(internals, { ...attempt, caller: internals.current() }),"
+  },
+  {
+    "id": "ir850-no-dedupe-key-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing for an argument with no dedupe key, and needs dedupedBy",
+    "why": "dedupedBy is not asked, so an argument whose dedupe key is null (a transfer without created_at_time, which the ledger does not deduplicate) is offered",
+    "file": "src/options.ts",
+    "search": "      (dedupedBy(arg) ?? null) === null\n",
+    "replace": "      false\n"
+  },
+  {
+    "id": "ir850-primitive-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing for an argument that is not an object",
+    "why": "an argument that is not an object is offered, although a mutation cannot hold it to its sender",
+    "file": "src/options.ts",
+    "search": "      typeof arg !== \"object\" ||\n      arg === null ||\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-other-canister-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "offers nothing for another method's or canister object's error",
+    "why": "the attempt's canister object is not compared, so the error of a call on one canister object is offered as a re-send on another",
+    "file": "src/options.ts",
+    "search": "if (attempt === undefined || attempt.canister !== canister) {",
+    "replace": "if (attempt === undefined) {"
+  },
+  {
+    "id": "ir850-other-method-offered",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "refuses an offered argument given to a mutation of another method that takes the same type, and offers it for none",
+    "why": "the method of a re-send is not compared with the one the write called, so a lost stop_canister is offered as a start_canister re-send, and its argument given to a start_canister mutation runs start_canister",
+    "file": "src/call.ts",
+    "search": "  method.name !== sent.method.name ||\n",
+    "replace": ""
+  },
+  {
+    "id": "ir850-view-answers-for-its-pin",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "answers for the live caller on a view pinned to another principal",
+    "why": "a view pinned to a principal answers for its pin, not for the live caller a write goes out as, so a page that hydrates as anonymous offers nothing to the signed-in sender",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "      internals.current().principal !== caller.principal ||\n",
+        "replace": "      current().principal !== caller.principal ||\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "      const { queryKey, queryOptions } = createBuilders(",
+        "replace": "      const { queryKey, queryOptions, resendOf } = createBuilders("
+      },
+      {
+        "file": "src/client.ts",
+        "search": "          queryOptions: { value: queryOptions },\n",
+        "replace": "          queryOptions: { value: queryOptions },\n          resendOf: { value: resendOf },\n"
+      }
+    ]
+  },
+  {
+    "id": "did-fetch-failed-refetch-recorded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is tried again at the next buildStart when it failed, and served once it succeeds",
+    "why": "an IC_REACTOR_FETCH re-fetch recorded as served before its result is checked, so after a transient failure the next buildStart keeps the stale didFile instead of trying again",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "        if (!result.ok) {\n",
+        "replace": "        if (again) refetched.add(key)\n        if (!result.ok) {\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "        // Recorded only now: a fetch or a write that failed is tried again.\n        if (again) refetched.add(key)\n",
+        "replace": ""
+      }
+    ]
+  },
+  {
+    "id": "did-fetch-matching-refetch-not-recorded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is served once when the fetch matches the file on disk",
+    "why": "an IC_REACTOR_FETCH re-fetch that matches the didFile on disk is not recorded as served, so every later buildStart of the same plugin fetches it again",
+    "file": "src/index.ts",
+    "search": "          if (again) refetched.add(key)\n          fetched.set(key, result.did)\n          continue\n",
+    "replace": "          fetched.set(key, result.did)\n          continue\n"
+  },
+  {
+    "id": "did-fetch-failed-write-recorded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is tried again at the next buildStart when the write failed",
+    "why": "an IC_REACTOR_FETCH re-fetch recorded as served before its write, so after a failed write the next buildStart keeps the stale didFile instead of trying again",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "        if (lifetime.server) lifetime.justFetched.set(key, result.did)\n",
+        "replace": "        if (again) refetched.add(key)\n        if (lifetime.server) lifetime.justFetched.set(key, result.did)\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "        // Recorded only now: a fetch or a write that failed is tried again.\n        if (again) refetched.add(key)\n",
+        "replace": ""
+      }
+    ]
+  },
+  {
+    "id": "did-fetch-symlink-two-files",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlinked directory is fetched once, and refused when its canisters differ",
+    "why": "fetches grouped by the didFile as written, so one file named through a symlinked directory is fetched once for each name, and two canisters' interfaces race to be the file both generate from",
+    "file": "src/index.ts",
+    "search": "        const key = identify(didPath(canister as Generated))\n",
+    "replace": "        const key = didPath(canister as Generated)\n"
+  },
+  {
+    "id": "did-fetch-watcher-by-spelling",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlinked directory regenerates every entry when the watcher reports either name",
+    "why": "the watcher's event matched against the didFile as written, so a save reported under one name of the file regenerates only the entries that spell it that way",
+    "file": "src/index.ts",
+    "search": "    const affected = generated.filter(\n      (canister) => identify(didPath(canister)) === key\n    )\n    if (affected.length === 0 || lifetime.queued.has(key)) return\n",
+    "replace": "    const affected = generated.filter(\n      (canister) => didPath(canister) === saved\n    )\n    if (affected.length === 0 || lifetime.queued.has(key)) return\n"
+  },
+  {
+    "id": "did-fetch-case-not-folded",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is one key for every spelling of a file, before and after it exists",
+    "why": "a name in another case not folded where the filesystem ignores case, so did/Ledger.did and did/ledger.did are two fetches of one file, and a missing file's key changes once it is written",
+    "file": "src/file-identity.ts",
+    "search": "  return folds(dir) === true ? real.toLowerCase() : real\n",
+    "replace": "  return real\n"
+  },
+  {
+    "id": "did-fetch-conflict-fetched",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "are refused with no fetch, and share the file once it is on disk",
+    "why": "canisters that name one missing didFile and different canisters fetch it from the first of them, and the others generate from that canister's interface",
+    "file": "src/index.ts",
+    "search": "        const conflict = conflictOf(members, blocked)\n",
+    "replace": "        const conflict = undefined as string | undefined\n"
+  },
+  {
+    "id": "did-fetch-conflict-network-ignored",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "are refused with no fetch, and share the file once it is on disk",
+    "why": "one canister on two networks taken for one source, so the file is fetched from whichever network comes first",
+    "file": "src/index.ts",
+    "search": "key: `${canisterId}\\0${resolved.host}\\0${resolved.fetchRootKey}`,",
+    "replace": "key: `${canisterId}`,"
+  },
+  {
+    "id": "did-fetch-conflict-on-disk",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "are refused with no fetch, and share the file once it is on disk",
+    "why": "canisters that share a didFile on disk refused for naming different canisters though nothing is fetched, so two ICRC-1 ledgers on one committed icrc1.did no longer build",
+    "file": "src/index.ts",
+    "search": "        if (!source) return []\n",
+    "replace": "        if (!source && fetchable.length < 2) return []\n"
+  },
+  {
+    "id": "did-fetch-symlink-written-over",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlink to a file is written through it, so an entry that names the target generates from the fetch",
+    "why": "a fetched didFile written at the spelling of the first entry, so a didFile that is a symlink to a file is replaced by a file of its own, and the entry that names the target generates from its old interface",
+    "file": "src/index.ts",
+    "search": "        const target = realFile(file)\n",
+    "replace": "        const target = file\n"
+  },
+  {
+    "id": "did-fetch-symlink-refetched-every-build",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is served once for a didFile that is a symlink, which it writes through",
+    "why": "a re-fetched didFile that is a symlink replaced by a file of its own, whose key then differs from the one recorded as served, so IC_REACTOR_FETCH fetches it again at every buildStart",
+    "file": "src/index.ts",
+    "search": "        const target = realFile(file)\n",
+    "replace": "        const target = file\n"
+  },
+  {
+    "id": "did-fetch-dangling-directory-symlink",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a directory symlink whose target is not made yet is one file, and refused when its canisters differ",
+    "why": "a symlink whose target does not exist yet taken for a missing name, so a directory symlink to a directory not made yet is a second file: two canisters on it are both fetched into one file, and one generates from the other's interface",
+    "file": "src/file-identity.ts",
+    "search": "      if (links++ < MAX_LINKS) {\n",
+    "replace": "      if (links++ < 0) {\n"
+  },
+  {
+    "id": "did-fetch-identity-dangling-not-followed",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "is one key for every spelling of a file, before and after it exists",
+    "why": "fileIdentity stops at a symlink whose target does not exist yet, so the symlink and its target are two keys until the target is made",
+    "file": "src/file-identity.ts",
+    "search": "      if (links++ < MAX_LINKS) {\n",
+    "replace": "      if (links++ < 0) {\n"
+  },
+  {
+    "id": "did-fetch-just-fetched-by-spelling",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlinked directory starts no run when the watcher reports the fetched write under the other name",
+    "why": "the plugin's own write of a fetched file recorded and looked up by the path as written, so the watcher's event for it under another name of the file starts a second generator run",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "        if (lifetime.server) lifetime.justFetched.set(key, result.did)\n",
+        "replace": "        if (lifetime.server) lifetime.justFetched.set(file, result.did)\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "    const fetched = lifetime.justFetched.get(key)\n    if (fetched !== undefined) {\n      lifetime.justFetched.delete(key)\n",
+        "replace": "    const fetched = lifetime.justFetched.get(saved)\n    if (fetched !== undefined) {\n      lifetime.justFetched.delete(saved)\n"
+      }
+    ]
+  },
+  {
+    "id": "did-fetch-removed-by-spelling",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlinked directory fails every entry when the watcher reports the file deleted under either name",
+    "why": "a deleted file matched against the didFile as written, so a deletion reported under one name of the file fails only the entries that spell it that way, and the others go on looking current",
+    "file": "src/index.ts",
+    "search": "    const removed = path.normalize(file)\n    const key = identify(removed)\n    const affected = generated.filter(\n      (canister) => identify(didPath(canister)) === key\n    )\n",
+    "replace": "    const removed = path.normalize(file)\n    const affected = generated.filter(\n      (canister) => didPath(canister) === removed\n    )\n"
+  },
+  {
+    "id": "did-fetch-queued-by-spelling",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "through a symlinked directory starts one run for two saves reported under each name",
+    "why": "the saves waiting for a run recorded by the path as written, so two saves of one file reported under two names start two generator runs",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "    if (affected.length === 0 || lifetime.queued.has(key)) return\n",
+        "replace": "    if (affected.length === 0 || lifetime.queued.has(saved)) return\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "    lifetime.queued.add(key)\n",
+        "replace": "    lifetime.queued.add(saved)\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "      lifetime.queued.delete(key)\n",
+        "replace": "      lifetime.queued.delete(saved)\n"
+      }
+    ]
+  },
+  {
+    "id": "did-fetch-conflict-network-unnamed",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "are refused with no fetch, and share the file once it is on disk",
+    "why": "a canister refused for a network that is not one refuses the fetch of the file it shares without its reason, which hides what is wrong with its network",
+    "file": "src/index.ts",
+    "search": "        `(${reasons.map(({ canister, reason }) => `${canister.name}: ${reason}`).join(\"; \")}). ` +\n",
+    "replace": "        `. ` +\n"
+  },
+  {
+    "id": "ir850-c1-send-reencodes",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "sends the bytes the attempt sent, whatever became of its argument since, and offers nothing once it changed",
+    "why": "send() encodes the attempt's argument objects again instead of sending the bytes the attempt sent, so an argument the app changed since goes out with a new dedupe key and the ledger runs the transfer a second time",
+    "file": "src/options.ts",
+    "search": "send: () => invoke(internals, attempt),",
+    "replace": "send: () => invoke(internals, { ...attempt, encoded: undefined }),"
+  },
+  {
+    "id": "ir850-c1-offered-after-change",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "sends the bytes the attempt sent, whatever became of its argument since, and offers nothing once it changed",
+    "why": "resendOf compares the attempt's bytes with themselves, not with the argument as it is now, so an argument changed since it was sent is still offered as the same transfer",
+    "file": "src/options.ts",
+    "search": "differs(attempt, prepared, record.resolve(), encodeArgs(args, values))",
+    "replace": "differs(attempt, prepared, record.resolve(), attempt.encoded!)"
+  },
+  {
+    "id": "ir850-c1-mutation-not-held",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
+    "why": "a mutation given an offered argument does not carry the write it re-sends, so nothing compares the argument with what was sent and a changed one goes out as a new transfer",
+    "file": "src/options.ts",
+    "search": "          canister: canister as object,\n          again,\n",
+    "replace": "          canister: canister as object,\n"
+  },
+  {
+    "id": "ir850-c1-arg-not-compared",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
+    "why": "the bytes of a re-send are not compared with the bytes the write sent, so a mutation of an argument changed since it was sent goes out as a new transfer",
+    "file": "src/call.ts",
+    "search": "      ? \"arg\"\n      : undefined",
+    "replace": "      ? undefined\n      : undefined"
+  },
+  {
+    "id": "ir850-c1-target-not-compared",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps a { name } canister's re-send on the canister the write went to after the name moves",
+    "why": "the canister id of a re-send is not compared with the one the write went to, so after the ic_env cookie maps the name elsewhere the mutation sends the transfer to a ledger that has never seen it, which runs it",
+    "file": "src/call.ts",
+    "search": "  !target.ok ||\n  target.id !== (sent.target as { id: string }).id\n",
+    "replace": "  false\n"
+  },
+  {
+    "id": "ir850-c1-offer-follows-name",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps a { name } canister's re-send on the canister the write went to after the name moves",
+    "why": "resendOf compares the attempt's canister id with itself, not with where the canister object resolves now, so it keeps offering the re-send after the name moved to another canister",
+    "file": "src/options.ts",
+    "search": "differs(attempt, prepared, record.resolve(), encodeArgs(args, values))",
+    "replace": "differs(attempt, prepared, attempt.target, encodeArgs(args, values))"
+  },
+  {
+    "id": "ir850-c1-send-follows-name",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps a { name } canister's re-send on the canister the write went to after the name moves",
+    "why": "send() resolves the canister object again, so after the ic_env cookie maps the name elsewhere it sends the transfer to a ledger that has never seen it",
+    "file": "src/options.ts",
+    "search": "send: () => invoke(internals, attempt),",
+    "replace": "send: () => invoke(internals, { ...attempt, target: record.resolve() }),"
+  },
+  {
+    "id": "ir850-c1-effective-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "routes a management write's re-send by the effective canister id its write went out with",
+    "why": "run derives a management call's effective canister id from the argument objects every time, so send() of a kept write whose argument was changed since routes its original bytes by another canister",
+    "file": "src/call.ts",
+    "search": "if (management && !request.effective) {",
+    "replace": "if (management) {"
+  },
+  {
+    "id": "did-project-not-projected",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "writes a missing didFile as the projection of the live interface to them, and a second build makes no request",
+    "why": "methods ignored by the fetch, so the whole live interface is written to didFile",
+    "file": "src/index.ts",
+    "search": "    if (source.methods === undefined) return { ok: true, did: result.did, from }",
+    "replace": "    if (source.methods === undefined || source.methods) return { ok: true, did: result.did, from }"
+  },
+  {
+    "id": "did-project-every-build",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "writes a missing didFile as the projection of the live interface to them, and a second build makes no request",
+    "why": "a didFile with methods fetched again on every build to keep the projection current, so a second build makes a request",
+    "file": "src/index.ts",
+    "search": "again ?? (fs.existsSync(file) ? undefined : fetchable[0])",
+    "replace": "again ?? (fs.existsSync(file) && !fetchable[0]?.methods ? undefined : fetchable[0])"
+  },
+  {
+    "id": "did-project-unknown-falls-back",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "with a name the live interface lacks fails, naming it and the canister's methods, and writes nothing",
+    "why": "a name the live interface lacks falls back to writing the whole interface, so the build passes on a typo",
+    "file": "src/index.ts",
+    "search": "    return {\n      ok: false,\n      message: describeProjectionFailure(projection, asked, where, didFile),\n    }",
+    "replace": "    return { ok: true, did: result.did, from }"
+  },
+  {
+    "id": "did-project-unknown-not-told",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "with a name the live interface lacks fails, naming it and the canister's methods, and writes nothing",
+    "why": "an unknown method reported as the CLI's raw diagnostics, without the missing name, the canister or its methods",
+    "file": "src/index.ts",
+    "search": "    if (first?.code === \"unknown_method\" && Array.isArray(first.notes)) {",
+    "replace": "    if (false) {"
+  },
+  {
+    "id": "did-project-empty-list-accepted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "refuses an empty list and a name with a comma, with no request",
+    "why": "an empty methods list goes to the network and to candid-core-cli instead of being refused first",
+    "file": "src/options.ts",
+    "search": "  if (methods.length === 0) {",
+    "replace": "  if (methods.length < 0) {"
+  },
+  {
+    "id": "did-project-lacking-not-failed",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a didFile on disk are compared with it, with no request: a name it lacks fails, and a method it has too is a warning",
+    "why": "a didFile on disk that lacks a name of methods generates a module without that method, and the build passes",
+    "file": "src/index.ts",
+    "search": "      if (lacking.length > 0) {",
+    "replace": "      if (false) {"
+  },
+  {
+    "id": "did-project-extra-not-warned",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a didFile on disk are compared with it, with no request: a name it lacks fails, and a method it has too is a warning",
+    "why": "a didFile on disk with methods that methods does not name is generated with no word that it is not the projection",
+    "file": "src/index.ts",
+    "search": "      } else if (extra.length > 0) {",
+    "replace": "      } else if (false) {"
+  },
+  {
+    "id": "did-verify-incompatible-passes",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build on a method that is missing, changed mode or became incompatible, naming the canister and each method",
+    "why": "the live check's errors ignored, so an incompatible canister passes the build",
+    "file": "src/index.ts",
+    "search": "      if (!report.compatible || errors.length > 0) {",
+    "replace": "      if (false) {"
+  },
+  {
+    "id": "did-verify-failure-dropped",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "follows failOnError: logged, and the other canisters generated",
+    "why": "a failed live check only warned about, so neither the build nor the dev server reports it as an error",
+    "file": "src/index.ts",
+    "search": "        failures.push({ canister, message: outcome.message })",
+    "replace": "        log.warn(outcome.message)"
+  },
+  {
+    "id": "did-verify-changed-not-told",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "warns on a compatible change, and generates",
+    "why": "a compatible change of the file's methods reported as merely compatible, with no word that the canister changed",
+    "file": "src/index.ts",
+    "search": "      if (changed === true) {",
+    "replace": "      if (false) {"
+  },
+  {
+    "id": "did-verify-opt-warning-dropped",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "warns on a compatible change, and generates",
+    "why": "special_opt_rule warnings dropped, so a value that now decodes as null goes unmentioned",
+    "file": "src/index.ts",
+    "search": "      if (warnings.length > 0) {",
+    "replace": "      if (false) {"
+  },
+  {
+    "id": "did-verify-every-build",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "passes when the live interface is unchanged, and is made once for one text",
+    "why": "the live check made again at every buildStart for a text it passed, one request each",
+    "file": "src/index.ts",
+    "search": "      if (passed.get(canister.name) === text) continue\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-unchanged-reported-changed",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "passes when the live interface is unchanged, and is made once for one text",
+    "why": "an unchanged interface reported as a compatible change on every check",
+    "file": "src/index.ts",
+    "search": "    return written.projection.interface_id !== current.projection.interface_id",
+    "replace": "    return true"
+  },
+  {
+    "id": "did-verify-env-ignored",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "runs for IC_REACTOR_VERIFY, and without it or verify nothing is fetched",
+    "why": "IC_REACTOR_VERIFY=1 checks nothing, so CI's live check silently passes",
+    "file": "src/index.ts",
+    "search": "              (verify.all && canister.canisterId !== undefined) ||\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-off-ignored",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "is off for IC_REACTOR_VERIFY=0, over verify: live, with no request",
+    "why": "IC_REACTOR_VERIFY=0 read as a canister name, so a project with verify: \"live\" cannot build offline",
+    "file": "src/index.ts",
+    "search": "        off !== undefined\n          ? \"off\"\n",
+    "replace": "        false\n          ? \"off\"\n"
+  },
+  {
+    "id": "did-verify-hint-for-fetch",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that cannot read the canister fails it, and says how to turn the check off",
+    "why": "a live check that cannot read the canister says to write the didFile, which is on disk, instead of how to turn the check off",
+    "file": "src/index.ts",
+    "search": "        verify: true,\n",
+    "replace": ""
+  },
+  {
+    "id": "did-project-save-not-compared",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "are compared with a didFile saved under vite dev, with no request",
+    "why": "a save under vite dev regenerates a methods canister without comparing the file with methods, so a file that lost a method generates a module without it",
+    "file": "src/index.ts",
+    "search": "      const mismatched = await compareMethods(open, run, signal)",
+    "replace": "      const mismatched: Failure[] = []"
+  },
+  {
+    "id": "did-project-conflict-list-ignored",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of canisters that share a missing didFile must be one list, or nothing is fetched",
+    "why": "canisters that share a didFile but name other methods taken for one source, so the file holds the projection of whichever comes first",
+    "file": "src/index.ts",
+    "search": "    if (projections.size < 2) return undefined\n",
+    "replace": "    if (projections.size >= 0) return undefined\n"
+  },
+  {
+    "id": "did-project-shared-whole-not-counted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a canister with no canisterId count when it shares a missing didFile: no methods is the whole interface, and nothing is fetched",
+    "why": "an entry with no methods taken to agree with any list, so a shared missing didFile is fetched as the projection of the entry that names methods, and the entry that wants the whole interface silently generates the narrowed one",
+    "file": "src/index.ts",
+    "search": "      usable.map((canister) => projectionOf(canister).key)",
+    "replace": "      usable\n        .filter(({ methods }) => methods)\n        .map((canister) => projectionOf(canister).key)"
+  },
+  {
+    "id": "did-project-shared-list-fetchable-only",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a canister with no canisterId that names another list for a shared missing didFile refuse the fetch, naming each list",
+    "why": "only the lists of the entries with a canisterId compared, so a shared missing didFile is fetched and written as their projection, and an entry with no canisterId that names another list generates from it",
+    "file": "src/index.ts",
+    "search": "      usable.map((canister) => projectionOf(canister).key)",
+    "replace": "      fetchable.map((canister) => projectionOf(canister).key)"
+  },
+  {
+    "id": "did-project-shared-invalid-unchecked",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a canister with no canisterId that cannot be projected to refuse a shared missing didFile's fetch",
+    "why": "only the entries with a canisterId looked at for a refusal before the fetch, so an entry that shares the file and is refused for its methods is not named as the reason the file is not fetched",
+    "file": "src/index.ts",
+    "search": "    const reasons = members.flatMap((canister) => {",
+    "replace": "    const reasons = members.filter(givesCanisterId).flatMap((canister) => {"
+  },
+  {
+    "id": "did-project-shared-refetch-unchecked",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a canister with no canisterId count when it shares a missing didFile: no methods is the whole interface, and nothing is fetched",
+    "why": "the lists of the entries that share a didFile not compared when IC_REACTOR_FETCH names one of them while the file is on disk, so the file is rewritten as the projection of the entry that names methods, and the entry that wants the whole interface silently generates the narrowed one",
+    "file": "src/index.ts",
+    "search": "        const conflict = conflictOf(members, blocked)",
+    "replace": "        const conflict =\n          again && members.some(({ methods }) => methods)\n            ? undefined\n            : conflictOf(members, blocked)"
+  },
+  {
+    "id": "did-project-list-probe-collides",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a didFile are compared with it whatever its methods are named",
+    "why": "the methods of a didFile listed by projecting to a name a service can have, so a service with a method of that name cannot be listed and is not compared with methods",
+    "file": "src/interface.ts",
+    "search": "const NO_METHOD = [\"\", \"\"] as const",
+    "replace": "const NO_METHOD = [\"ic-reactor list methods\"] as const"
+  },
+  {
+    "id": "did-project-list-failure-skipped",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a didFile whose methods cannot be listed fail the canister, which is not generated",
+    "why": "a didFile whose methods cannot be listed skipped by the comparison, so a methods list naming a method the file lacks generates a module without it",
+    "file": "src/index.ts",
+    "search": "      if (!listed.ok) {\n",
+    "replace": "      if (!listed.ok) continue\n      if (false) {\n"
+  },
+  {
+    "id": "did-verify-save-clears-failure",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that failed under vite dev stands when the .did is saved, changed or not, until a check passes at the next start",
+    "why": "a save under vite dev regenerates a canister whose live check failed and clears its failure from the log and the overlay, though no check ran, so bindings known not to match the canister are served",
+    "file": "src/index.ts",
+    "search": "        const failure = lifetime.liveFailures.get(canister.name)\n",
+    "replace": "        const failure = undefined as Failure | undefined\n"
+  },
+  {
+    "id": "did-verify-restart-keeps-failure",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that failed under vite dev is cleared by a check that passes when the same server restarts, and a save then regenerates",
+    "why": "a live check that passes when the dev server restarts with the same plugin object leaves the canister's earlier failure in place, so every later save still fails it and serves no bindings, though the check passed",
+    "file": "src/index.ts",
+    "search": "        for (const canister of checking) {\n          if (!live.unsure.has(canister)) {\n            lifetime.liveFailures.delete(canister.name)\n          }\n        }\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-restart-clears-unchecked",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that failed under vite dev stands through a restart that fails the canister before its check",
+    "why": "a restart clears the live failure of every canister, also one it failed before its check (in the methods comparison or the fetch), so a later save regenerates bindings known not to match the canister though no check passed",
+    "file": "src/index.ts",
+    "search": "        for (const canister of checking) {\n          if (!live.unsure.has(canister)) {\n            lifetime.liveFailures.delete(canister.name)\n          }\n        }\n",
+    "replace": "        for (const canister of generated) {\n          if (!live.unsure.has(canister)) {\n            lifetime.liveFailures.delete(canister.name)\n          }\n        }\n"
+  },
+  {
+    "id": "did-save-queued-after-close-runs",
+    "package": "vite-plugin",
+    "test": "tests/close.test.ts",
+    "testName": "is killed with the server, and nothing is reported for it",
+    "why": "a save queued behind a run when the dev server closes still starts after the close, and reports that it regenerates a canister of a server that is gone",
+    "file": "src/index.ts",
+    "search": "      // Dropped when the server closed while it waited.\n      if (signal.aborted) return\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-failure-keeps-pass",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "checks a text that passed again once a check of the canister failed, so restoring it is no pass",
+    "why": "a failed live check (the network down, or the canister changed) leaves the canister's earlier pass cached, so restoring the text that passed skips the check, clears the standing failure and generates bindings no check passed",
+    "file": "src/index.ts",
+    "search": "      for (const { canister } of failed) passed.delete(canister.name)\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-restart-keeps-pass",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that passed under vite dev runs again when the same server restarts, and finds a canister that changed since",
+    "why": "the passes of the live check carried into the next lifetime, so a restart of the dev server (which keeps the plugin object) skips the check of an unchanged .did and generates it against a canister that changed incompatibly",
+    "file": "src/index.ts",
+    "search": "    verified: new Map(),\n",
+    "replace": "    verified: previous?.verified ?? new Map(),\n"
+  },
+  {
+    "id": "did-methods-falsy-omitted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "given as null, false, 0 or an empty string fail the canister of a didFile on disk, with no request",
+    "why": "methods given as null, false, 0 or \"\" by a JavaScript config is taken for no methods, so the whole interface is generated without a word",
+    "file": "src/options.ts",
+    "search": "  let methods = value(\"methods\")\n",
+    "replace": "  let methods = value(\"methods\") || undefined\n"
+  },
+  {
+    "id": "did-verify-invalid-unchecked",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "verify other than live (true, false, null, a typo) fails the canister with no request, under IC_REACTOR_VERIFY=0 too",
+    "why": "a verify that is not \"live\" (true, a typo) is taken for no live check, so a project that meant to check its canister builds unchecked",
+    "file": "src/options.ts",
+    "search": "  const verifyWrong = verifyProblem(verify)\n",
+    "replace": "  const verifyWrong = undefined as string | undefined\n"
+  },
+  {
+    "id": "did-canister-id-empty-omitted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "canisterId given as an empty string or null is no canister ID: it fails the canister with no request, whether or not a fetch or a check would use it",
+    "why": "a canisterId given as \"\" or null is taken for no canisterId when the plugin is made, so a didFile on disk that nothing fetches or checks generates with it, and the fetch or check that would use it says only what fetchCandid says",
+    "file": "src/options.ts",
+    "search": "  } else if (canisterIdWrong !== undefined) {\n    problems.push(canisterIdWrong)\n",
+    "replace": "  } else if (canisterIdWrong !== undefined && !!canisterId) {\n    problems.push(canisterIdWrong)\n"
+  },
+  {
+    "id": "did-canister-id-not-text-reaches-sdk",
+    "package": "vite-plugin",
+    "test": "tests/fetch.test.ts",
+    "testName": "refuses a canisterId that is not text, or is empty, before any request",
+    "why": "a canisterId that is not text, or is empty, reaches Principal.fromText, whose message names the management canister or a property of null and not the option",
+    "file": "src/fetch.ts",
+    "search": "  if (typeof canisterId !== \"string\" || canisterId === \"\") {\n",
+    "replace": "  if (false as boolean) {\n"
+  },
+  {
+    "id": "env-canister-id-not-text-silent",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should leave a configured canisterId that is not one to icp, and warn",
+    "why": "a configured canisterId tested by truthiness puts a truthy non-string (123) in the ic_env cookie over icp's ID, and drops \"\" or null without a word",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "    } else if (canisterId !== undefined && canisterIdWrong === undefined) {\n      read.configuredCanisterIds.set(name, canisterId as string)\n",
+        "replace": "    } else if (canisterId) {\n      read.configuredCanisterIds.set(name, canisterId as string)\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "    } else if (canisterId !== undefined) {\n      read.notCanisterIds.push(",
+        "replace": "    } else if (false as boolean) {\n      read.notCanisterIds.push("
+      }
+    ]
+  },
+  {
+    "id": "did-verify-fetch-keeps-pass",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "checks a text that passed again once a fetch of its didFile read another interface",
+    "why": "a fetch that read another interface (the canister lost a method) leaves the canister's earlier pass cached, so restoring the text that passed skips the check and generates a method the plugin has just seen the canister no longer has",
+    "file": "src/index.ts",
+    "search": "          if (did !== undefined) passed.set(canister.name, did)\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-fetch-failure-keeps-pass",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "checks a text that passed again once a fetch of its didFile failed",
+    "why": "a fetch that failed (the network down) leaves the canister's earlier pass cached, so restoring the text that passed skips the check and generates it with no check made",
+    "file": "src/index.ts",
+    "search": "        for (const { canister } of failures) passed.delete(canister.name)\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-reset-dev-only",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that passed in one build runs again in the next build of the same plugin object",
+    "why": "a new lifetime, and with it new passes of the live check, made only when a dev server starts, so a second build of one plugin object reuses the first build's pass and generates against a canister that changed since",
+    "file": "src/index.ts",
+    "search": "      current = lifetimeAfter(current, config.command)\n",
+    "replace": "      if (config.command === \"serve\") {\n        current = lifetimeAfter(current, config.command)\n      }\n"
+  },
+  {
+    "id": "did-verify-old-run-writes-new",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a run that ends after a restart started another passes nothing for the new run",
+    "why": "a check of the old run writes its pass to whichever map is current when it ends, so a check that ends after a restart's configResolved passes for the new run, whose buildStart then skips the check of a canister that changed",
+    "file": "src/index.ts",
+    "search": "        if (ofText && text !== undefined) passed.set(canister.name, text)\n",
+    "replace": "        if (ofText && text !== undefined) verified.set(canister.name, text)\n"
+  },
+  {
+    "id": "did-verify-saved-during-check",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "records no pass for a didFile saved while its check ran, so restoring the text read first is checked",
+    "why": "the pass is recorded for the text the run read, though candid-core-cli checked the file as it was saved while the fetch ran, so restoring that unchecked text skips the check",
+    "file": "src/index.ts",
+    "search": "        if (ofText && text !== undefined) passed.set(canister.name, text)\n",
+    "replace": "        if (text !== undefined) passed.set(canister.name, text)\n"
+  },
+  {
+    "id": "did-run-written-during-check-taken",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved after the live check read it, and generates nothing of the saved text",
+    "why": "the end of a run takes no notice of a didFile written since it read it, so a build whose file was saved after the live check read it passes, with nothing generated or failed for the canister",
+    "file": "src/index.ts",
+    "search": "    canisters.filter((canister) => !run.asRead(canister))\n",
+    "replace": "    canisters.filter(() => false)\n"
+  },
+  {
+    "id": "did-run-written-after-listing-taken",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved after its methods were listed, and generates nothing of the saved text",
+    "why": "the end of a run takes no notice of a didFile written since it read it, so a build whose file was saved after its methods were listed passes",
+    "file": "src/index.ts",
+    "search": "    canisters.filter((canister) => !run.asRead(canister))\n",
+    "replace": "    canisters.filter(() => false)\n"
+  },
+  {
+    "id": "did-run-listed-then-generated",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved while another canister's methods were listed, and runs no generator on it",
+    "why": "the generator runs for a didFile the run already found written, so it reads a text the run never read and writes its module only for it to be put back",
+    "file": "src/index.ts",
+    "search": "      const ready = wanted.filter((canister) => run.asRead(canister))\n",
+    "replace": "      const ready = wanted\n"
+  },
+  {
+    "id": "did-project-listing-of-saved-recorded",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "records no listing for the text read first when saved before its methods were listed, so restoring that text is listed again",
+    "why": "a listing made while the file was written is recorded for the text the run read, whatever the CLI listed, so restoring the text read first, which lacks a method of methods, passes with no listing",
+    "file": "src/index.ts",
+    "search": "      if (!ofText) {\n",
+    "replace": "      if (!ofText && false) {\n"
+  },
+  {
+    "id": "did-run-written-module-kept",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved as the generator starts, and puts the module back as it was",
+    "why": "a module generated while its didFile was written is left as the generator wrote it, from a text the run never read",
+    "file": "src/index.ts",
+    "search": "          putBack(before, outputFiles(members[0]))\n",
+    "replace": ""
+  },
+  {
+    "id": "did-run-written-not-requeued",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, is queued again as a save is when saved after a save's run listed it, and that run says nothing of it",
+    "why": "under a dev server a run that took nothing of a didFile written while it read it does not queue the file again, so the text saved is never listed or reported",
+    "file": "src/index.ts",
+    "search": "      regenerate(\n        lifetime,\n        didPath(canister),\n        key,\n        generated.filter((other) => identify(didPath(other)) === key)\n      )\n",
+    "replace": ""
+  },
+  {
+    "id": "did-verify-unsure-clears-failure",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, leaves a failed check standing when saved after a restart's check passed the text it read",
+    "why": "a check that passed while its didFile was written clears the failure that stood, so the save it queues generates a text no check saw",
+    "file": "src/index.ts",
+    "search": "          if (!live.unsure.has(canister)) {\n            lifetime.liveFailures.delete(canister.name)\n          }\n",
+    "replace": "          lifetime.liveFailures.delete(canister.name)\n"
+  },
+  {
+    "id": "did-run-saved-back-during-check-taken",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved and saved back while the live check read it, and records no pass",
+    "why": "a didFile saved and saved back while check read it is taken as unwritten, since its text is the run's again: the pass of the text check never read is recorded, and the build generates put, which the canister lacks",
+    "file": "src/index.ts",
+    "search": "          : now.text === was.text && now.stamp === was.stamp\n",
+    "replace": "          : now.text === was.text\n"
+  },
+  {
+    "id": "did-run-saved-back-during-listing-taken",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved and saved back while its methods were listed, for that reason alone, and lists the file again",
+    "why": "a didFile saved and saved back while its methods were listed is taken as unwritten: the listing of the other text, which lacks put, is recorded for the file, which holds put, and fails it",
+    "file": "src/index.ts",
+    "search": "          : now.text === was.text && now.stamp === was.stamp\n",
+    "replace": "          : now.text === was.text\n"
+  },
+  {
+    "id": "did-run-written-failures-reported",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved and saved back while its methods were listed, for that reason alone, and lists the file again",
+    "why": "a build reports the failures its steps found for a didFile written while it read it, which may be of another text, beside the changed failure",
+    "file": "src/index.ts",
+    "search": "      let failures = outcome.failures.filter(\n        ({ canister }) => !wasWritten.has(canister)\n      )\n",
+    "replace": "      let failures = outcome.failures\n"
+  },
+  {
+    "id": "did-run-written-failures-reported-dev",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, says nothing of a file saved during a restart's listing, and the run it queues reports it",
+    "why": "under vite dev a run reports the failures its steps found for a didFile written while it read it, before the run it queued reports the file",
+    "file": "src/index.ts",
+    "search": "      let failures = outcome.failures.filter(\n        ({ canister }) => !wasWritten.has(canister)\n      )\n",
+    "replace": "      let failures = outcome.failures\n"
+  },
+  {
+    "id": "did-run-written-dev-fixed",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, says nothing of a file saved during a restart's listing, and the run it queues reports it",
+    "why": "under vite dev a run that took nothing of a didFile still counts its canister as attempted, so a failure that stood is cleared and the page reloaded before the queued run reports the file",
+    "file": "src/index.ts",
+    "search": "      publish(lifetime, lifetime.server ? taken : configured, failures)\n",
+    "replace": "      publish(lifetime, configured, failures)\n"
+  },
+  {
+    "id": "did-run-written-save-published",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, is queued again as a save is when saved after a save's run listed it, and that run says nothing of it",
+    "why": "a save's run that took nothing of its didFile publishes what it found anyway, before the run it queued reports the file",
+    "file": "src/index.ts",
+    "search": "        requeue(lifetime, written)\n        return\n",
+    "replace": "        requeue(lifetime, written)\n"
+  },
+  {
+    "id": "did-run-written-save-asked-before-gen",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, is queued again as a save is when saved as a save's generator starts, and that run says nothing of it",
+    "why": "a save's run asks which of its files were written before its generator runs, not after it, so a file saved as the generator starts is not queued again: the run puts the module back, then publishes the canister as fixed (a full reload, the overlay cleared), and the text saved is never listed or reported",
+    "file": "src/index.ts",
+    "search": "      const failures = await generateNow(\n        open.filter((canister) => !failed.has(canister)),\n        true,\n        run,\n        signal\n      )\n      if (!failures) return\n      const written = writtenSince(run, open)\n",
+    "replace": "      const early = writtenSince(run, open)\n      const failures = await generateNow(\n        open.filter((canister) => !failed.has(canister)),\n        true,\n        run,\n        signal\n      )\n      if (!failures) return\n      const written = early\n"
+  },
+  {
+    "id": "did-verify-unsure-failure-stands",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "under vite dev, sets no failed check when saved and saved back while the start's check read it, and the queued save generates",
+    "why": "a check that failed while its didFile was written sets a failure that stands, though what it failed may be another text, so the save it queues does not generate the file",
+    "file": "src/index.ts",
+    "search": "          if (!live.unsure.has(failure.canister as Generated)) {\n            lifetime.liveFailures.set(failure.canister.name, failure)\n          }\n",
+    "replace": "          lifetime.liveFailures.set(failure.canister.name, failure)\n"
+  },
+  {
+    "id": "did-verify-unsure-notes-logged",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved and saved back while the live check read it, and records no pass",
+    "why": "what a check found while its didFile was written is logged, though it may be of another text",
+    "file": "src/index.ts",
+    "search": "      if (outcome.ok && ofText) {\n",
+    "replace": "      if (outcome.ok) {\n"
+  },
+  {
+    "id": "opt-fail-on-error-not-boolean",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse a failOnError that is not true or false",
+    "why": "failOnError read by truthiness: 0 or \"\" under vite build ships stale bindings with exit 0, \"false\" aborts, and null counts as omitted",
+    "file": "src/options.ts",
+    "search": " ??\n    booleanProblem(\"failOnError\", failOnError)\n",
+    "replace": "\n"
+  },
+  {
+    "id": "opt-inject-environment-not-boolean",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse an injectEnvironment that is not true or false",
+    "why": "injectEnvironment read by truthiness: null, 0 or \"\" turns the ic_env cookie and /api proxy off without a word",
+    "file": "src/options.ts",
+    "search": "    booleanProblem(\"injectEnvironment\", injectEnvironment) ??\n",
+    "replace": ""
+  },
+  {
+    "id": "opt-methods-bigint-throws",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "methods given as 1n or [1n] fails the canister cleanly under failOnError: false, in the log and the overlay, and nothing runs for it",
+    "why": "methods quoted with JSON.stringify, which throws on a bigint, so methods: 1n throws out of the plugin instead of failing its canister under failOnError: false",
+    "file": "src/options.ts",
+    "search": "    return `methods is ${describeValue(methods)}, not a list of method names`",
+    "replace": "    return `methods is ${JSON.stringify(methods)}, not a list of method names`"
+  },
+  {
+    "id": "opt-methods-item-bigint-throws",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "methods given as 1n or [1n] fails the canister cleanly under failOnError: false, in the log and the overlay, and nothing runs for it",
+    "why": "a name of methods quoted with JSON.stringify, which throws on a bigint, so methods: [1n] throws out of the plugin instead of failing its canister under failOnError: false",
+    "file": "src/options.ts",
+    "search": "      return `methods holds ${describeValue(name)}, which is not a method name`",
+    "replace": "      return `methods holds ${JSON.stringify(name)}, which is not a method name`"
+  },
+  {
+    "id": "opt-value-cycle-unseen",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of any kind is quoted as given, fails only its canister, and runs no getter of it",
+    "why": "an option value that holds itself is not told as [circular], so its message repeats the object to the depth limit instead of naming the cycle",
+    "file": "src/describe-value.ts",
+    "search": "    if (within.includes(object)) return \"[circular]\"\n",
+    "replace": ""
+  },
+  {
+    "id": "opt-value-getter-run",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of any kind is quoted as given, fails only its canister, and runs no getter of it",
+    "why": "an option value is quoted by reading its properties, so a getter of the config's runs while its message is built, and one that throws turns into [unreadable]",
+    "file": "src/describe-value.ts",
+    "search": "    if (!(\"value\" in property)) return \"[getter]\"\n    return describe(property.value, within, depth)\n",
+    "replace": "    return describe((object as Record<string, unknown>)[key], within, depth)\n"
+  },
+  {
+    "id": "opt-read-unguarded",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of any kind is quoted as given, fails only its canister, and runs no getter of it",
+    "why": "a canister's options read with no guard, so a getter that throws throws out of icReactor() and the config does not load, instead of refusing that canister",
+    "file": "src/options.ts",
+    "search": "  try {\n    return { value: object[key] }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
+    "replace": "  return { value: object[key] }\n"
+  },
+  {
+    "id": "opt-entry-not-object-read",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of any kind is quoted as given, fails only its canister, and runs no getter of it",
+    "why": "a canister's options read as an object whatever they are, so an entry given as null is refused for a didFile that could not be read rather than for not being options",
+    "file": "src/options.ts",
+    "search": "    if (entry.threw !== undefined || !isOptionsObject(entry.value)) {",
+    "replace": "    if (entry.threw !== undefined) {"
+  },
+  {
+    "id": "opt-path-empty-accepted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "didFile, outDir or network that is not one fails the canister of a file on disk that nothing fetches or checks",
+    "why": "an empty didFile or outDir taken for a path, which resolves to the Vite root, so the generator is run on the root or writes into it instead of the canister being refused",
+    "file": "src/options.ts",
+    "search": "  typeof value === \"string\" && value !== \"\" && !value.includes(\"\\0\")",
+    "replace": "  typeof value === \"string\""
+  },
+  {
+    "id": "opt-network-checked-for-fetch-only",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "didFile, outDir or network that is not one fails the canister of a file on disk that nothing fetches or checks",
+    "why": "a network that is not one checked only for a canister that names a canisterId, so a misspelt network on a didFile on disk is read by nothing and the canister generates without a word",
+    "file": "src/options.ts",
+    "search": "  if (network !== undefined) {",
+    "replace": "  if (network !== undefined && canisterId !== undefined) {"
+  },
+  {
+    "id": "did-verify-invalid-fetched",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "verify that is not live fails the canister before its didFile is fetched: no request, and nothing written",
+    "why": "verify not checked when the plugin is made, so a verify that is not live lets a missing didFile be fetched and written, and a committed one rewritten under IC_REACTOR_FETCH, before anything says the value is wrong",
+    "file": "src/options.ts",
+    "search": "  const verifyWrong = verifyProblem(verify)\n",
+    "replace": "  const verifyWrong = undefined as string | undefined\n"
+  },
+  {
+    "id": "opt-refused-file-fetched",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "verify that is not live fails the canister before its didFile is fetched: no request, and nothing written",
+    "why": "a refused canister forgets its didFile, so a file it shares with a canister that names a canisterId is fetched and written for the other, though the refused one may need another list",
+    "file": "src/options.ts",
+    "search": "      didFile: isPath(didFile) ? didFile : undefined,",
+    "replace": "      didFile: undefined,"
+  },
+  {
+    "id": "did-request-checked-late",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "IC_REACTOR_VERIFY or IC_REACTOR_FETCH naming a canister with no canisterId fails it before the run does anything for it",
+    "why": "a canister IC_REACTOR_VERIFY or IC_REACTOR_FETCH names with no canisterId failed only after the methods comparison, so its file is listed by a candid-core-cli process first",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "          ...requests.failures,\n        ]\n",
+        "replace": "        ]\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "        failures.push(...mismatched)\n",
+        "replace": "        failures.push(...mismatched, ...requests.failures)\n"
+      }
+    ]
+  },
+  {
+    "id": "restart-close-stops-newest",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "keeps the run its start queues for a file saved during its listing when the old server closes after that start, and the overlay as it was until that run reports",
+    "why": "a close stops the newest lifetime, as one stopper shared by every server did, so the old server's close after a restart kills the run the new server's start queued, and the file saved during the restart is never reported",
+    "file": "src/index.ts",
+    "search": "      const lifetime = lifetimeOf(this) ?? open.values().next().value ?? current\n",
+    "replace": "      const lifetime = current\n"
+  },
+  {
+    "id": "restart-close-by-order-only",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "keeps the run its start queues for a file saved during its listing when the old server closes after that start, and the overlay as it was until that run reports",
+    "why": "a close takes the oldest open lifetime even where the environment names its server, so the second environment's close of the old server (Vite 6 and later) stops the new server's queued run",
+    "file": "src/index.ts",
+    "search": "      const lifetime = lifetimeOf(this) ?? open.values().next().value ?? current\n",
+    "replace": "      const lifetime = open.values().next().value ?? current\n"
+  },
+  {
+    "id": "restart-forgets-generated",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "lists and generates nothing again that it did, shows what still fails, and regenerates on a save",
+    "why": "what each canister last generated from is dropped with each new lifetime, so a restart runs the generator again on every .did, though nothing changed",
+    "file": "src/index.ts",
+    "search": "      byConfig.set(config, current)\n",
+    "replace": "      byConfig.set(config, current)\n      generatedFrom.clear()\n"
+  },
+  {
+    "id": "restart-forgets-listed",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "lists and generates nothing again that it did, shows what still fails, and regenerates on a save",
+    "why": "the methods comparisons of the files are dropped with each new lifetime, so a restart lists every methods canister's .did again in a candid-core-cli process, though nothing changed",
+    "file": "src/index.ts",
+    "search": "      byConfig.set(config, current)\n",
+    "replace": "      byConfig.set(config, current)\n      comparedMethods.clear()\n"
+  },
+  {
+    "id": "restart-live-failures-dropped",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "that failed under vite dev stands through a restart that fails the canister before its check",
+    "why": "a new lifetime starts with no failed live check, so a restart that fails the canister before its check drops the failure that stood, and a later save generates bindings known not to match the canister",
+    "file": "src/index.ts",
+    "search": "    liveFailures: new Map(previous?.liveFailures),\n",
+    "replace": "    liveFailures: new Map(),\n"
+  },
+  {
+    "id": "env-proxy-shared-between-servers",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should move only its own server's /api proxy when a server of the same plugin object detects a network",
+    "why": "the /api proxy options of every server of one plugin object kept in one set, so the detection of one server (the one a restart replaces) moves another server's proxy",
+    "edits": [
+      {
+        "file": "src/index.ts",
+        "search": "  let localEnvironment: LocalEnvironment | undefined\n",
+        "replace": "  let localEnvironment: LocalEnvironment | undefined\n  const everyProxy = new Set<ProxyOptions>()\n"
+      },
+      {
+        "file": "src/index.ts",
+        "search": "      const apiProxyOptions = new Set<ProxyOptions>()\n",
+        "replace": "      const apiProxyOptions = everyProxy\n"
+      }
+    ]
+  },
+  {
+    "id": "restart-overlay-dropped",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "keeps the run its start queues for a file saved during its listing when the old server closes after that start, and the overlay as it was until that run reports",
+    "why": "a new lifetime starts with an empty overlay, so a browser that connects to a restarted server is shown nothing of a canister whose file the restart's run took nothing of, until the run it queued reports it",
+    "file": "src/index.ts",
+    "search": "    unfixed: new Map(previous?.unfixed),\n",
+    "replace": "    unfixed: new Map(),\n"
+  },
+  {
+    "id": "collision-checked-at-generation",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails before the run does anything for it, its file missing or on disk: no request, no process, nothing written",
+    "why": "a canister whose module a canister before it writes refused only by the generator's run, so its missing didFile is fetched, projected and written, and its methods listed, before the run says the module is taken",
+    "file": "src/index.ts",
+    "search": "          ...[...collisions()].map(([canister, message]) => ({\n            canister,\n            message,\n          })),\n",
+    "replace": ""
+  },
+  {
+    "id": "collision-save-generates",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "is not generated by a save of its file under vite dev, which leaves the module as it was, nor taken for deleted with its file",
+    "why": "a save's run sees only the canisters that name the saved file, so a save of the file of a canister whose module another writes generates it over that module, and reports it fixed",
+    "file": "src/index.ts",
+    "search": "    const reasons = collisions()\n    for (const { canister, message } of readRequests(false).failures) {\n",
+    "replace": "    const reasons = new Map<Generated, string>()\n    for (const { canister, message } of readRequests(false).failures) {\n"
+  },
+  {
+    "id": "collision-deleted-reported",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "is not generated by a save of its file under vite dev, which leaves the module as it was, nor taken for deleted with its file",
+    "why": "a canister whose module another writes reported deleted with its file, as if its return would generate it",
+    "file": "src/index.ts",
+    "search": "        const refusedNow = runRefusals()\n        publish(\n",
+    "replace": "        const refusedNow = new Map<Generated, string>()\n        publish(\n"
+  },
+  {
+    "id": "did-request-save-generates",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "IC_REACTOR_VERIFY or IC_REACTOR_FETCH naming a canister with no canisterId leaves it failed through a save of its file under vite dev, which runs nothing for it, and through its deletion",
+    "why": "a save's run asks only whether another canister writes the module of the canisters that name the saved file, so a canister IC_REACTOR_VERIFY or IC_REACTOR_FETCH names with no canisterId, which each start refuses, has its methods listed and is generated by a save of its file, and is published as fixed, out of the log and the overlay",
+    "file": "src/index.ts",
+    "search": "    for (const { canister, message } of readRequests(false).failures) {\n      if (!reasons.has(canister)) reasons.set(canister, message)\n    }\n",
+    "replace": ""
+  },
+  {
+    "id": "did-request-deleted-reported",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "IC_REACTOR_VERIFY or IC_REACTOR_FETCH naming a canister with no canisterId leaves it failed through a save of its file under vite dev, which runs nothing for it, and through its deletion",
+    "why": "the deletion of the didFile of a canister IC_REACTOR_VERIFY names with no canisterId keeps only a collision's reason, so the canister is reported deleted, as if the file coming back would generate it",
+    "file": "src/index.ts",
+    "search": "        const refusedNow = runRefusals()\n        publish(\n",
+    "replace": "        const refusedNow = collisions()\n        publish(\n"
+  },
+  {
+    "id": "did-request-save-warns-again",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "IC_REACTOR_VERIFY or IC_REACTOR_FETCH naming a canister with no canisterId leaves it failed through a save of its file under vite dev, which runs nothing for it, and through its deletion",
+    "why": "a save's run reads IC_REACTOR_VERIFY and IC_REACTOR_FETCH as a start does, warnings included, so every save and every deletion of a didFile warns again of a name the start already warned is no canister",
+    "file": "src/index.ts",
+    "search": "    for (const { canister, message } of readRequests(false).failures) {\n",
+    "replace": "    for (const { canister, message } of readRequests().failures) {\n"
+  },
+  {
+    "id": "opt-no-did-file-unchecked",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "of a canister with no didFile are checked as any canister's: one that is not one fails it, with no request and nothing run",
+    "why": "a canister with no didFile read no further than its canisterId, so methods: 1n, verify: \"nope\", network: 5 or outDir: 3 on it, or a canisterId of \"\", is taken without a word",
+    "file": "src/options.ts",
+    "search": "  if (didFile !== undefined && !isPath(didFile)) {\n",
+    "replace": "  if (!hasDidFile) return\n  if (didFile !== undefined && !isPath(didFile)) {\n"
+  },
+  {
+    "id": "opt-principal-checked-late",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "canisterId text that is no principal fails the canister when the plugin is made, before any process or request",
+    "why": "any text taken for a canister ID when the plugin is made, so text that is no principal is told only by the fetch or check that reads it, after a candid-core-cli process listed the canister's methods",
+    "file": "src/options.ts",
+    "search": "  if (isPrincipalText(canisterId)) return undefined\n",
+    "replace": "  if (canisterId.length > 0) return undefined\n"
+  },
+  {
+    "id": "env-canister-id-not-principal-in-cookie",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should leave a configured canisterId that is not one to icp, and warn",
+    "why": "the cookie takes any text for a configured canister ID, so text that is no principal is handed to the app over the ID icp reports",
+    "file": "src/options.ts",
+    "search": "    } else if (canisterId !== undefined && canisterIdWrong === undefined) {\n      read.configuredCanisterIds.set(name, canisterId as string)\n",
+    "replace": "    } else if (typeof canisterId === \"string\" && canisterId !== \"\") {\n      read.configuredCanisterIds.set(name, canisterId as string)\n"
+  },
+  {
+    "id": "principal-text-no-round-trip",
+    "package": "vite-plugin",
+    "test": "src/principal-text.test.ts",
+    "testName": "decides as Principal.fromText does",
+    "why": "text of the base32 letters taken for a principal without spelling the principal it decodes to again, so a wrong checksum, a dash out of place or a truncated ID passes",
+    "file": "src/principal-text.ts",
+    "search": "  return principalText(decoded.subarray(4)) === text\n",
+    "replace": "  return true\n"
+  },
+  {
+    "id": "principal-text-near-miss-taken",
+    "package": "vite-plugin",
+    "test": "src/principal-text.test.ts",
+    "testName": "takes a canister's ID and the management canister's, and nothing else spelled near them",
+    "why": "text of the base32 letters taken for a principal without its checksum, so the ledger's ID with a letter changed passes for one",
+    "file": "src/principal-text.ts",
+    "search": "  return principalText(decoded.subarray(4)) === text\n",
+    "replace": "  return true\n"
+  },
+  {
+    "id": "principal-text-length-unbounded",
+    "package": "vite-plugin",
+    "test": "src/principal-text.test.ts",
+    "testName": "refuses the text of a principal of more than 29 bytes, which Principal.fromText takes",
+    "why": "a principal's text of more than 29 bytes taken for a canister ID, as Principal.fromText takes it, though no principal of the IC is that long",
+    "file": "src/principal-text.ts",
+    "search": "  if (decoded.length < 4 || decoded.length > 4 + MAX_PRINCIPAL_BYTES) {\n",
+    "replace": "  if (decoded.length < 4) {\n"
+  },
+  {
+    "id": "describe-error-dom-exception-lost",
+    "package": "vite-plugin",
+    "test": "src/describe-value.test.ts",
+    "testName": "gives the message of a DOMException, as an abort or a timeout throws it",
+    "why": "only an own message read, so an AbortError or a TimeoutError, whose class keeps its message behind a getter, is quoted as DOMException {}",
+    "file": "src/describe-value.ts",
+    "search": "      const text = domExceptionMessage?.call(error)\n      if (typeof text === \"string\") return text\n",
+    "replace": ""
+  },
+  {
+    "id": "describe-error-getter-run",
+    "package": "vite-plugin",
+    "test": "src/describe-value.test.ts",
+    "testName": "runs no getter that a class of the error's own makes of its message, and quotes the error instead",
+    "why": "a message read through the error, which runs a getter that a class of the error's own makes of it: code of the value's",
+    "file": "src/describe-value.ts",
+    "search": "      const text = domExceptionMessage?.call(error)\n",
+    "replace": "      const text = (error as Error).message\n"
+  },
+  {
+    "id": "opt-canisters-null-defaulted",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse canisters, or the options, given as null or any value that is not an object, and take only an omitted one for none",
+    "why": "canisters given as null taken for none by a nullish default, so the plugin starts with no canister: nothing generated, none in the ic_env cookie, and the bindings of the last run left as they were",
+    "file": "src/options.ts",
+    "search": "  const canisters = givenCanisters === undefined ? {} : givenCanisters\n",
+    "replace": "  const canisters = givenCanisters ?? {}\n"
+  },
+  {
+    "id": "opt-options-null-defaulted",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse canisters, or the options, given as null or any value that is not an object, and take only an omitted one for none",
+    "why": "icReactor(null) taken for no options by a nullish default, instead of refused as options that are not an object",
+    "file": "src/options.ts",
+    "search": "  const options = given === undefined ? {} : given\n",
+    "replace": "  const options = given ?? {}\n"
+  },
+  {
+    "id": "opt-did-file-null-omitted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "null given for any option of a canister fails it, naming the option, and only an omitted option takes its default",
+    "why": "a didFile given as null read as omitted, so its canister is taken for one only named in the cookie, and not refused",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "  const hasDidFile = didFile !== undefined || didFileThrew\n",
+        "replace": "  const hasDidFile = didFile != null || didFileThrew\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "  if (didFile !== undefined && !isPath(didFile)) {\n",
+        "replace": "  if (didFile != null && !isPath(didFile)) {\n"
+      }
+    ]
+  },
+  {
+    "id": "opt-out-dir-null-defaulted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "null given for any option of a canister fails it, naming the option, and only an omitted option takes its default",
+    "why": "an outDir given as null read as omitted, by a nullish default, so its canister generates into src/canisters instead of being refused",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "  if (outDir !== undefined && !isPath(outDir)) {\n",
+        "replace": "  if (outDir != null && !isPath(outDir)) {\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "    outDir: outDir === undefined ? DEFAULT_OUT_DIR : (outDir as string),\n",
+        "replace": "    outDir: (outDir as string | null | undefined) ?? DEFAULT_OUT_DIR,\n"
+      }
+    ]
+  },
+  {
+    "id": "opt-network-null-defaulted",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "null given for any option of a canister fails it, naming the option, and only an omitted option takes its default",
+    "why": "a network given as null read as omitted, so its canister generates as one on mainnet instead of being refused",
+    "file": "src/options.ts",
+    "search": "  if (network !== undefined) {\n    const resolved = resolveNetwork(network)\n",
+    "replace": "  if (network != null) {\n    const resolved = resolveNetwork(network)\n"
+  },
+  {
+    "id": "env-configured-id-by-assignment",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should give a canister named __proto__ or constructor its configured canisterId over the one icp reports",
+    "why": "the canister IDs merged into a plain object by assignment on their way to the cookie, so a canister named __proto__ loses its configured ID to the prototype's setter, and the cookie carries none for it",
+    "file": "src/dev-environment.ts",
+    "search": "    const canisterIds = new Map([\n      ...(environment?.canisterIds ?? []),\n      ...configuredCanisterIds,\n    ])\n",
+    "replace": "    const merged: Record<string, string> = {}\n    for (const [name, id] of [\n      ...(environment?.canisterIds ?? []),\n      ...configuredCanisterIds,\n    ]) {\n      merged[name] = id\n    }\n    const canisterIds = new Map(Object.entries(merged))\n"
+  },
+  {
+    "id": "env-inherited-name-not-missing",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should ask icp for a canister named __proto__, constructor, toString or hasOwnProperty until it has an ID, and give the cookie the one icp reports",
+    "why": "a canister's ID looked up in a plain object, so a canister named __proto__, constructor, toString or hasOwnProperty finds Object.prototype's member and is never missing: no warning, and no page load asks icp again",
+    "file": "src/dev-environment.ts",
+    "search": "      (name) => !canisterIds.get(name)\n",
+    "replace": "      (name) => !Object.fromEntries(canisterIds)[name]\n"
+  },
+  {
+    "id": "env-detected-id-by-assignment",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should ask icp for a canister named __proto__, constructor, toString or hasOwnProperty until it has an ID, and give the cookie the one icp reports",
+    "why": "the IDs icp reports collected in a plain object by assignment, so the ID of a canister named __proto__ goes to the prototype's setter and never reaches the cookie",
+    "edits": [
+      {
+        "file": "src/env.ts",
+        "search": "    const canisterIds = new Map<string, string>()\n",
+        "replace": "    const found: Record<string, string> = {}\n"
+      },
+      {
+        "file": "src/env.ts",
+        "search": "          canisterIds.set(name, canisterId)\n",
+        "replace": "          found[name] = canisterId\n"
+      },
+      {
+        "file": "src/env.ts",
+        "search": "      !canisterIds.get(\"internet_identity\") &&\n",
+        "replace": "      !found.internet_identity &&\n"
+      },
+      {
+        "file": "src/env.ts",
+        "search": "        rootKey,\n        proxyTarget,\n        canisterIds,\n",
+        "replace": "        rootKey,\n        proxyTarget,\n        canisterIds: new Map(Object.entries(found)),\n"
+      }
+    ]
+  },
+  {
+    "id": "putback-own-name-rule",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "fails the build when saved as the generator starts, and puts back the files the generator names, whatever the file's name",
+    "why": "the put-back names the module and envelope by a rule of its own, which does not cut a .did that is the whole file name, so for a didFile named .did it puts back .did.ts and leaves the .ts the generator wrote from a text the run never read",
+    "file": "src/index.ts",
+    "search": "    const { module, envelope } = outputsOf(generationOf(canister))\n    return [module, envelope]\n",
+    "replace": "    const outDir = path.resolve(projectRoot, canister.outDir)\n    const stem = path.basename(didPath(canister), \".did\")\n    return [\n      path.join(outDir, `${stem}.ts`),\n      path.join(outDir, `${stem}.envelope.json`),\n    ]\n"
+  },
+  {
+    "id": "collision-own-name-rule",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "is told by the module the generator names: a file whose name does not end in .did claims no module of a .did's, and fails with the generator's own message",
+    "why": "the plan of the modules names one by a rule of its own that cuts any extension, so a/api.candid, which the generator cannot read, claims api.ts, and the canisters of b/api.DID and c/api.did are refused for it",
+    "file": "src/generate.ts",
+    "search": "function moduleOf(unit: Unit): string {\n  return outputsOf(unit).module\n}\n",
+    "replace": "function moduleOf(unit: Unit): string {\n  return path.join(\n    unit.outDir,\n    path.basename(unit.didFile, path.extname(unit.didFile)) + \".ts\"\n  )\n}\n"
+  },
+  {
+    "id": "outputs-stem-extname",
+    "package": "vite-plugin",
+    "test": "tests/output-collision.test.ts",
+    "testName": "are named as candid-core-cli gen names them, whatever the file's name",
+    "why": "the generator's output named after the .did's name with any extension cut, where the CLI cuts only a final .did: api.candid named api.ts, and .did named .did.ts",
+    "file": "src/generate.ts",
+    "search": "  const stem = path.basename(didFile).replace(/\\.did$/, \"\")\n",
+    "replace": "  const stem = path.basename(didFile, path.extname(didFile))\n"
+  },
+  {
+    "id": "outputs-stem-whole-name-kept",
+    "package": "vite-plugin",
+    "test": "tests/output-collision.test.ts",
+    "testName": "are named as candid-core-cli gen names them, whatever the file's name",
+    "why": "the generator's output named with path.basename's suffix, which does not cut a .did that is the whole file name: .did named .did.ts, where the CLI writes .ts",
+    "file": "src/generate.ts",
+    "search": "  const stem = path.basename(didFile).replace(/\\.did$/, \"\")\n",
+    "replace": "  const stem = path.basename(didFile, \".did\")\n"
+  },
+  {
+    "id": "opt-canisters-copied-by-assignment",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "is kept as given: canisters named __proto__, constructor, toString or hasOwnProperty are read, generated and reported as any other",
+    "why": "the canisters copied by assignment before they are listed, so a canister named __proto__ goes to the copy's prototype setter and is never read: not generated, and not reported",
+    "file": "src/options.ts",
+    "search": "    keys = Object.keys(canisters)\n",
+    "replace": "    keys = Object.keys(Object.assign({}, canisters))\n"
+  },
+  {
+    "id": "opt-canisters-not-plain-read",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse canisters, or the options, given as an object that is not a plain one, and take one with no prototype",
+    "why": "any object but a list taken for an object of options, as before: canisters given as a Map, a Promise (an async loader not awaited) or an object whose canisters its prototype holds are read for their own keys, none, so the plugin starts with no canister without a word, as for canisters: null",
+    "file": "src/options.ts",
+    "search": "    if (typeof value !== \"object\" || value === null || Array.isArray(value)) {\n      return false\n    }\n    const prototype: unknown = Object.getPrototypeOf(value)\n    return prototype === Object.prototype || prototype === null\n",
+    "replace": "    return typeof value === \"object\" && value !== null && !Array.isArray(value)\n"
+  },
+  {
+    "id": "opt-entry-not-plain-read",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "an entry, or its network, that is not a plain object fails the canister, quoted as given, and one with no prototype is generated",
+    "why": "any object but a list taken for an object of options, as before: an entry given as a Map or a Promise reads no didFile and is taken for a canister only named in the cookie, without a word, and an instance of a class is generated through its class",
+    "file": "src/options.ts",
+    "search": "    if (typeof value !== \"object\" || value === null || Array.isArray(value)) {\n      return false\n    }\n    const prototype: unknown = Object.getPrototypeOf(value)\n    return prototype === Object.prototype || prototype === null\n",
+    "replace": "    return typeof value === \"object\" && value !== null && !Array.isArray(value)\n"
+  },
+  {
+    "id": "opt-network-instance-taken",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "an entry, or its network, that is not a plain object fails the canister, quoted as given, and one with no prototype is generated",
+    "why": "a network that is an object of a class handed to the fetch as it is, so an instance with a host is taken for { host }, read again through its class at each use",
+    "file": "src/options.ts",
+    "search": "  } else if (typeof givenNetwork === \"object\" && givenNetwork !== null) {\n",
+    "replace": "  } else if (false as boolean) {\n"
+  },
+  {
+    "id": "opt-inherited-quoted-as-plain",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "an entry, or its network, that is not a plain object fails the canister, quoted as given, and one with no prototype is generated",
+    "why": "an object that inherits from one with no class quoted as a plain object, {}, so the message refuses what looks like a plain object of options without saying why",
+    "file": "src/options.ts",
+    "search": "  return quoted.startsWith(\"{\")\n    ? `${quoted} (an object that inherits from another)`\n    : quoted\n",
+    "replace": "  return quoted\n"
+  },
+  {
+    "id": "env-name-read-as-flag",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should ask icp for a canister whose name begins with - by that name, and give the cookie the ID it reports",
+    "why": "the canister's name handed to icp before its options end, as before, so a name that begins with - is read as a flag: icp refuses -x, and prints its help for --help, with exit 0, which the cookie carries as the canister's ID",
+    "file": "src/env.ts",
+    "search": "            [\"canister\", \"status\", \"-e\", networkName, \"-i\", \"--\", name],\n",
+    "replace": "            [\"canister\", \"status\", name, \"-e\", networkName, \"-i\"],\n"
+  },
+  {
+    "id": "env-uncarried-name-in-cookie",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should leave a canister whose name holds & or = out of the cookie, with a warning, and the app reads back every other name as given",
+    "why": "every name put in the ic_env cookie, as before: a name that holds & or = is read back as other keys, one of which takes the root key's place, so the app reads no environment at all, and no warning says why",
+    "file": "src/options.ts",
+    "search": "    const carried = cookieCarries(name)\n",
+    "replace": "    const carried = true as boolean\n"
+  },
+  {
+    "id": "env-unencodable-name-in-cookie",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should leave a canister whose name is not well-formed text out of the cookie, with a warning, and set the cookie for the others",
+    "why": "a name with a lone surrogate taken for one the cookie carries, since it holds neither & nor =: encodeURIComponent throws on it as the cookie is built, so no cookie is set for any canister",
+    "file": "src/env.ts",
+    "search": "  try {\n    encodeURIComponent(name)\n    return true\n  } catch {\n    return false\n  }\n",
+    "replace": "  return true\n"
+  },
+  {
+    "id": "opt-unknown-option-ignored",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse a key of the options that is not an option, whatever its value, and name the option it may misspell",
+    "why": "a key of the options that is no option never read, as before: a misspelled canisters starts the plugin with no canister, and a misspelled failOnError leaves a build to ship stale bindings, without a word",
+    "file": "src/options.ts",
+    "search": "  const unknown = unknownKeysProblem(listed.keys, PLUGIN_OPTIONS)\n  if (unknown !== undefined) {\n    throw new Error(\n      `[ic-reactor] ${unknown} of icReactor(): its options are ${listAnd(PLUGIN_OPTIONS)}`\n    )\n  }\n",
+    "replace": ""
+  },
+  {
+    "id": "opt-unknown-key-unbounded-hint",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse a key of the options that is not an option, whatever its value, and name the option it may misspell",
+    "why": "the option a key may misspell taken as the nearest at any distance, so a key that misspells none (outDir, verbose) is told it means an option it has nothing to do with",
+    "file": "src/options.ts",
+    "search": "  let distance = 3\n",
+    "replace": "  let distance = Infinity\n"
+  },
+  {
+    "id": "opt-unknown-key-case-counted",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse a key of the options that is not an option, whatever its value, and name the option it may misspell",
+    "why": "a key compared with the options letter for letter, case included, so CANISTERS, nine letters from canisters, is not told it misspells it",
+    "file": "src/options.ts",
+    "search": "    const apart = editDistance(key.toLowerCase(), option.toLowerCase())\n",
+    "replace": "    const apart = editDistance(key, option)\n"
+  },
+  {
+    "id": "opt-options-keys-unguarded",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should refuse a key of the options that is not an option, whatever its value, and name the option it may misspell",
+    "why": "the keys of the options listed with no guard, so a proxy whose trap throws throws its own error out of icReactor(), which does not say that the options could not be listed",
+    "file": "src/options.ts",
+    "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
+    "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "opt-unknown-canister-key-ignored",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run",
+    "why": "a key of a canister's entry that is no option never read, as before: a misspelled didFile takes the canister for one only named in the cookie, leaving the last run's module, and a misspelled canisterId generates it without its ID, without a word",
+    "file": "src/options.ts",
+    "search": "    const unknown = unknownKeysProblem(listed.keys, CANISTER_OPTIONS)\n    if (unknown !== undefined) {\n      problems.push(\n        `${unknown} of a canister: its options are ${listAnd(CANISTER_OPTIONS)}`\n      )\n    }\n",
+    "replace": ""
+  },
+  {
+    "id": "opt-unknown-network-key-ignored",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run",
+    "why": "a key of a network of { host } other than host never read, so a rootKey given with it is read as nothing, and the canister generates without a word",
+    "file": "src/options.ts",
+    "search": "      const unknown = unknownKeysProblem(networkKeys.keys, NETWORK_OPTIONS)\n      if (unknown !== undefined) {\n        problems.push(\n          `${unknown} of network { host }: give the network as { host: \"<http or https URL>\" } alone`\n        )\n      }\n",
+    "replace": ""
+  },
+  {
+    "id": "opt-unknown-key-undefined-skipped",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run",
+    "why": "a key given undefined taken for no key, so a misspelled canisterID: process.env.LEDGER_ID passes while the variable is unset, and is told only once it is set",
+    "file": "src/options.ts",
+    "search": "    return { keys: Object.keys(object) }\n",
+    "replace": "    return {\n      keys: Object.keys(object).filter((key) => object[key] !== undefined),\n    }\n"
+  },
+  {
+    "id": "opt-unknown-key-not-named",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run",
+    "why": "a key that is no option refused without the option it may misspell, so didfile and canisterID are not told they mean didFile and canisterId",
+    "file": "src/options.ts",
+    "search": "  return nearest\n",
+    "replace": "  return undefined\n"
+  },
+  {
+    "id": "opt-entry-keys-unguarded",
+    "package": "vite-plugin",
+    "test": "tests/project.test.ts",
+    "testName": "a key that is not an option fails the canister, whatever its value, naming the option it may misspell, with no request and nothing run",
+    "why": "the keys of a canister's entry listed with no guard, so a proxy whose trap throws throws out of icReactor() and the config does not load, instead of refusing that canister",
+    "file": "src/options.ts",
+    "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
+    "replace": "  return { keys: Object.keys(object) }\n"
   }
 ]

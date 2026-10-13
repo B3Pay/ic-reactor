@@ -47,7 +47,12 @@ import type {
   DataOf,
   ErrorOf,
   MutationOptionsOptions,
+  OptInMethod,
+  OptInQueryArgs,
   QueryArgs,
+  ReadMethod,
+  Resend,
+  ResendOptions,
   VarsOf,
 } from "./types.js"
 
@@ -367,20 +372,31 @@ export interface Client {
    * `retry` retries only a failure that proves the call was not delivered, at
    * most 3 times, and never on a server.
    *
-   * No type says whether a method is a query or an update, so this checks at
-   * run time and throws a `TypeError` for an update or a oneway method: a
-   * query refetches, and every refetch would run the update again. Use
-   * {@link Client.mutationOptions} for a write. An update that returns the
-   * same answer however often it runs (ckBTC's `get_btc_address`) can be read
-   * with `{ update: "idempotent" }` as the fourth argument: it is fetched once
-   * per key and caller (`staleTime: Infinity`, no refetch on mount, focus or
-   * reconnect), needs a signed-in caller like any update, and is retried only
-   * after a failure that proves it never got in (DECISIONS Q2). It is still a
-   * read of its canister, so a write to that canister through
-   * {@link Client.mutationOptions} invalidates it by default and it runs once
-   * more, as a replicated call: safe for an idempotent method, but a cost. To
-   * keep it cached across writes, name the reads a write changes in
-   * `invalidates`.
+   * An update or a oneway method of a generated `Actor` does not compile
+   * here (`method` is a `ReadMethod<A>`): a query refetches, and every
+   * refetch would run the update again. Use {@link Client.mutationOptions}
+   * for a write. The generated `Actor` says each method's mode; a method of
+   * an `Actor` written by hand says none and compiles, and this checks it at
+   * run time instead, throwing a `TypeError` for an update or a oneway. An
+   * update that returns the same answer however often it runs (ckBTC's
+   * `get_btc_address`) can be read with `{ update: "idempotent" }` as the
+   * fourth argument (the third signature; a oneway does not compile even
+   * then): it is fetched once per key and caller (`staleTime: Infinity`, no
+   * refetch on mount, focus or reconnect), needs a signed-in caller like any
+   * update, and is retried only after a failure that proves it never got in
+   * (DECISIONS Q2). It is still a read of its canister, so a write to that
+   * canister through {@link Client.mutationOptions} invalidates it by default
+   * and it runs once more, as a replicated call: safe for an idempotent
+   * method, but a cost. To keep it cached across writes, name the reads a
+   * write changes in `invalidates`.
+   *
+   * A method TypeScript cannot tell is a `ReadMethod<A>` does not compile,
+   * even when every value of it names a query: a type parameter
+   * (`M extends keyof A & string`), a union that may name an update
+   * (`keyof Actor & string`), or any method of a `Canister<A>` whose `A` is
+   * itself generic. Give the type arguments,
+   * `queryOptions<A, any>(canister, method, vars)`, which keeps the run-time
+   * check and types the data `unknown`.
    *
    * A method without results (`() -> () query`) has nothing to cache: its
    * call resolves `undefined`, which TanStack Query takes for a failed read.
@@ -397,9 +413,11 @@ export interface Client {
    * @throws TypeError for an update or oneway method without the opt-in, a
    * method without results, a composite query of a certified canister, a
    * canister of another client, a method the service does not have, or a
-   * fourth argument other than `{ update: "idempotent" }`.
+   * fourth argument other than `{ update: "idempotent" }`. An update or a
+   * oneway reaches this check only through an `Actor` that does not say the
+   * method's mode.
    */
-  queryOptions<A, M extends keyof A & string>(
+  queryOptions<A, M extends ReadMethod<A>>(
     canister: Canister<A>,
     method: M,
     ...args: QueryArgs<A, M, never>
@@ -413,10 +431,44 @@ export interface Client {
    *
    * @throws TypeError as the call with variables that cannot be skipped.
    */
-  queryOptions<A, M extends keyof A & string>(
+  queryOptions<A, M extends ReadMethod<A>>(
     canister: Canister<A>,
     method: M,
     ...args: QueryArgs<A, M>
+  ): CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>>
+  /**
+   * TanStack Query options for an update read like a query, with
+   * `{ update: "idempotent" }`: only for an update that returns the same
+   * answer however often it runs, such as ckBTC's `get_btc_address`.
+   *
+   * ```ts
+   * useQuery(client.queryOptions(minter, "get_btc_address", arg, { update: "idempotent" }))
+   * ```
+   *
+   * The variables come first, even `undefined` for a method without
+   * arguments. A oneway method does not compile here either (`method` is an
+   * `OptInMethod<A>`): it has no reply to cache. The read is fetched once per
+   * key and caller; see the first signature for the rules every read
+   * follows.
+   *
+   * @throws TypeError as the call without the opt-in, except for an update.
+   */
+  queryOptions<A, M extends OptInMethod<A>>(
+    canister: Canister<A>,
+    method: M,
+    ...args: OptInQueryArgs<A, M, never>
+  ): CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>, never>
+  /**
+   * The opt-in read of an update, with variables that may be `skipToken`:
+   * its `queryFn` is `skipToken` for a skipped read. Otherwise the same as
+   * the opt-in call with variables that cannot be skipped.
+   *
+   * @throws TypeError as the call without the opt-in, except for an update.
+   */
+  queryOptions<A, M extends OptInMethod<A>>(
+    canister: Canister<A>,
+    method: M,
+    ...args: OptInQueryArgs<A, M>
   ): CanisterQueryOptions<DataOf<A, M>, ErrorOf<A, M>>
 
   /**
@@ -468,6 +520,70 @@ export interface Client {
     method: M,
     options?: MutationOptionsOptions
   ): CanisterMutationOptions<VarsOf<A, M>, DataOf<A, M>, ErrorOf<A, M>>
+
+  /**
+   * The write `error` reports, offered to send again exactly as it was sent,
+   * by whoever sent it, when its outcome is unknown; `undefined` when there
+   * is nothing to offer.
+   *
+   * Only for a method that deduplicates: one that runs the same argument
+   * from the same sender at most once, as an ICRC-1 ledger does for a
+   * transfer with `created_at_time` set (it answers `Duplicate` the second
+   * time). Sending again a write that does not deduplicate can run it twice:
+   * there, read the state back instead. `dedupedBy` states what the canister
+   * deduplicates on, read from the argument:
+   *
+   * ```ts
+   * const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+   * const again = client.resendOf(transfer.error, ledger, "icrc1_transfer", {
+   *   dedupedBy: (arg) => arg.created_at_time,
+   * })
+   * // again && <button onClick={() => transfer.mutate(again.arg)}>Send the same transfer again</button>
+   * ```
+   *
+   * It offers a re-send only when all of these hold, and is read again on
+   * every call, so read it during render, in a component that re-renders
+   * when the caller changes (one that calls `useAuth()`):
+   *
+   * - `error` is one a write of `method` on `canister` rejected with (a
+   *   direct call, or a mutation function built from the canister), with
+   *   `mayHaveExecuted: true`. Any other failure proves the outcome, and a
+   *   success needs no re-send.
+   * - Its argument is an object: a record or a variant, or the list of
+   *   several arguments.
+   * - `dedupedBy(arg)` is neither `undefined` nor `null`.
+   * - The argument still encodes to the bytes the attempt sent: an argument
+   *   object changed since then is not offered.
+   * - `canister` still resolves to the canister id the attempt went to: a
+   *   `{ name }` the `ic_env` cookie maps elsewhere since is not offered.
+   * - The principal that sent it is the caller now. After a sign-out, or a
+   *   sign-in as another principal, nothing is offered: the same argument
+   *   from another sender is a new write. Signing in again as the sender
+   *   offers it again. A view of the client pinned to a principal (what
+   *   `useClient()` returns while a page hydrates) answers for the live
+   *   caller, whom a write goes out as.
+   *
+   * The offer goes out only as the same write. `send()` sends the bytes the
+   * attempt sent, to the canister id it went to. `mutate(arg)`, on the
+   * mutation that failed (which keeps its pending state and invalidation) or
+   * any other of this client, sends `arg` only to the method and canister id
+   * the attempt went to, and only while it encodes to the same bytes. Either
+   * one goes out only as `from`. Each refusal sends nothing: `cancelled`
+   * (`caller_changed`) once someone else is the caller, `cancelled`
+   * (`target_changed`) for another method or canister id, and `invalid_args`
+   * (`arg_changed`) for an argument changed since it was sent. Once
+   * offered, that object stays held to that write: build a new argument for
+   * a new write, rather than change this one or send it from another account.
+   *
+   * @throws TypeError for a canister of another client, a method the service
+   * does not have, or no `dedupedBy` function.
+   */
+  resendOf<A, M extends keyof A & string>(
+    error: unknown,
+    canister: Canister<A>,
+    method: M,
+    options: ResendOptions<VarsOf<A, M>>
+  ): Resend<VarsOf<A, M>, DataOf<A, M>> | undefined
 
   /**
    * An async function for a func reference a reply carried, such as an ICRC

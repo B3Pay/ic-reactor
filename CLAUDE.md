@@ -28,15 +28,15 @@ exactly to published stable releases.
 
 | Package                   | Directory              | State on `main`                                                                                                                            |
 | ------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@ic-reactor/core`        | `packages/core`        | `4.0.0-beta.3`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient`      |
-| `@ic-reactor/react`       | `packages/react`       | `4.0.0-beta.3`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                                   |
-| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0-beta.3`; generates the candid-core module with `@candid-core/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy |
+| `@ic-reactor/core`        | `packages/core`        | `4.0.0-beta.5`; `createClient`, `ReactorError`, the units helpers and their types (13 names), and `./testing` with `createTestClient`      |
+| `@ic-reactor/react`       | `packages/react`       | `4.0.0-beta.5`; `ReactorProvider`, `useClient`, `useAuth` and `ReactorProviderProps`, over a core client                                   |
+| `@ic-reactor/vite-plugin` | `packages/vite-plugin` | `4.0.0-beta.5`; generates the candid-core module with `@candid-core/cli` in a child process, and sets the `ic_env` cookie and `/api` proxy |
 
 Not in this tree: `@ic-reactor/parser`, `@ic-reactor/codegen` and
 `@ic-reactor/cli` (replaced by `candid-core-cli gen`), and
 `@ic-reactor/candid` (frozen at 3.x, published from `v3`). The 3.x example
-apps are on `v3`; the four ic-reactor 4 examples are in `examples/` (`icrc-ledger`,
-`vite-wallet`, `next-ssr`, `node-agent-tool`).
+apps are on `v3`; the five ic-reactor 4 examples are in `examples/` (`icrc-ledger`,
+`vite-wallet`, `next-ssr`, `node-agent-tool`, `canister-studio`).
 
 ## AI context
 
@@ -70,6 +70,7 @@ The docs site in `docs/` is served under `/v4/` (`base` in
 pnpm install          # pnpm is pinned by packageManager; corepack picks it up
 pnpm build            # Build the packages
 pnpm test             # Run the package tests
+pnpm size             # Tight size limits, peers left out and included (CI gate; build first)
 pnpm typecheck        # Type-check every package and e2e/ (CI gate)
 pnpm lint             # ESLint over packages/*/src and tests (CI gate; build first)
 pnpm format:check     # Prettier over the repo (CI gate)
