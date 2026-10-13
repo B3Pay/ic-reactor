@@ -510,8 +510,9 @@ for (const entry of readdirSync(join(rootDir, SKILLS_DIR), {
 }
 
 // ── 7. The Claude Code plugin marketplace ────────────────────────────────────
-// `/plugin marketplace add B3Pay/ic-reactor` reads CLAUDE_MARKETPLACE from the
-// default branch; each relative `source` is a plugin directory holding
+// `/plugin marketplace add B3Pay/ic-reactor#v3` reads CLAUDE_MARKETPLACE from
+// this branch, not from the default branch (ic-reactor 4, which lists no 3.x
+// plugin); each relative `source` is a plugin directory holding
 // `.claude-plugin/plugin.json` and its skills. `claude plugin validate .`
 // checks the same shape, but it is not installed in CI.
 const currentReact = currentVersions.get("@ic-reactor/react")

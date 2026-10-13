@@ -15,9 +15,9 @@ guide for its own API at `node_modules/@ic-reactor/<package>/llms.txt`,
 written for the version installed.
 
 The rules below also ship as the `ic-reactor` Agent Skill. In Claude Code:
-`/plugin marketplace add B3Pay/ic-reactor`, then
+`/plugin marketplace add B3Pay/ic-reactor#v3`, then
 `/plugin install ic-reactor@ic-reactor`. For other agents:
-`npx skills add B3Pay/ic-reactor --skill ic-reactor`.
+`npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor`.
 
 Package versions this guide describes:
 

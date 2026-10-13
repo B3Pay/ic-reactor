@@ -276,7 +276,7 @@ pnpm commands and CI notes out of these):
 - `skill-packages/ic-reactor/` — the consumer Agent Skill, which is also the
   Claude Code plugin listed in `.claude-plugin/marketplace.json`; apps install
   it with `/plugin install ic-reactor@ic-reactor` or
-  `npx skills add B3Pay/ic-reactor --skill ic-reactor`
+  `npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor`
 
 ## Adding a package
 

@@ -35,14 +35,14 @@ focused on workflow and link to `references/` for concrete examples.
 listed by the marketplace at the repository root (`.claude-plugin/marketplace.json`):
 
 ```text
-/plugin marketplace add B3Pay/ic-reactor
+/plugin marketplace add B3Pay/ic-reactor#v3
 /plugin install ic-reactor@ic-reactor
 ```
 
 Other agents install the same folder with the `skills` CLI:
 
 ```bash
-npx skills add B3Pay/ic-reactor --skill ic-reactor
+npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor
 ```
 
 The folder is the only copy of the skill. It refers only to the published

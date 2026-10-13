@@ -465,10 +465,11 @@ errors, token amounts, testing and the mistakes to avoid, with type-checked
 examples. It sends the agent to the installed packages' `llms.txt` first, so
 it follows the app's version.
 
-In Claude Code, this repository is a plugin marketplace:
+In Claude Code, this repository is a plugin marketplace. Name its `v3` branch
+(`#v3`), because the default branch is ic-reactor 4:
 
 ```text
-/plugin marketplace add B3Pay/ic-reactor
+/plugin marketplace add B3Pay/ic-reactor#v3
 /plugin install ic-reactor@ic-reactor
 ```
 
@@ -476,7 +477,7 @@ For Codex, Cursor, GitHub Copilot, Gemini CLI and other agents, install it
 with the [`skills`](https://github.com/vercel-labs/skills) CLI:
 
 ```bash
-npx skills add B3Pay/ic-reactor --skill ic-reactor
+npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor
 ```
 
 Then ask for it by name, or let the agent pick it up:

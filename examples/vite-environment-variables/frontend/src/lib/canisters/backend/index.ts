@@ -11,8 +11,8 @@
  *
  * Do not edit `index.generated.ts`; it is regenerated on each codegen run.
  * AI guide: https://ic-reactor.b3pay.net/llms-full.txt
- * Agent skill: in Claude Code, /plugin marketplace add B3Pay/ic-reactor then
+ * Agent skill: in Claude Code, /plugin marketplace add B3Pay/ic-reactor#v3 then
  * /plugin install ic-reactor@ic-reactor; for other agents,
- * npx skills add B3Pay/ic-reactor --skill ic-reactor
+ * npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor
  */
 export * from "./index.generated"

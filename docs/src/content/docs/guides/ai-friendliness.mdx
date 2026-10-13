@@ -103,10 +103,11 @@ loads only when a task needs them. It starts by sending the agent to the
 load it on their own when a task matches, or when you ask for it by name.
 
 In Claude Code, add the IC Reactor repository as a plugin marketplace and
-install the plugin:
+install the plugin. Name its `v3` branch (`#v3`), because the default branch is
+ic-reactor 4:
 
 ```text
-/plugin marketplace add B3Pay/ic-reactor
+/plugin marketplace add B3Pay/ic-reactor#v3
 /plugin install ic-reactor@ic-reactor
 ```
 
@@ -120,7 +121,7 @@ read skill folders, install it from your app's root with the
 [`skills`](https://github.com/vercel-labs/skills) CLI:
 
 ```bash
-npx skills add B3Pay/ic-reactor --skill ic-reactor
+npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor
 ```
 
 It copies the skill into each agent's skills folder, such as

@@ -13,14 +13,15 @@ the app has installed.
 
 ### Claude Code
 
-This repository is a Claude Code plugin marketplace. In a session:
+This repository is a Claude Code plugin marketplace. Name its `v3` branch
+(`#v3`), because the default branch is ic-reactor 4. In a session:
 
 ```text
-/plugin marketplace add B3Pay/ic-reactor
+/plugin marketplace add B3Pay/ic-reactor#v3
 /plugin install ic-reactor@ic-reactor
 ```
 
-Or from a shell: `claude plugin marketplace add B3Pay/ic-reactor`, then
+Or from a shell: `claude plugin marketplace add B3Pay/ic-reactor#v3`, then
 `claude plugin install ic-reactor@ic-reactor`. The plugin's `version` follows
 `@ic-reactor/react`, so an installed copy changes when a release bumps it:
 turn on auto-update for the marketplace in `/plugin` (**Marketplaces** tab),
@@ -32,7 +33,7 @@ With the [`skills`](https://github.com/vercel-labs/skills) CLI, from the
 app's root:
 
 ```bash
-npx skills add B3Pay/ic-reactor --skill ic-reactor
+npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor
 ```
 
 It copies this folder into each selected agent's skills directory (for

@@ -61,14 +61,14 @@ this repository. For an app that installs the packages, use the consumer
 skill, [`ic-reactor`](../ic-reactor/), instead. In Claude Code:
 
 ```text
-/plugin marketplace add B3Pay/ic-reactor
+/plugin marketplace add B3Pay/ic-reactor#v3
 /plugin install ic-reactor@ic-reactor
 ```
 
 With the `skills` CLI (Codex, Cursor, Copilot and other agents):
 
 ```bash
-npx skills add B3Pay/ic-reactor --skill ic-reactor
+npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor
 ```
 
 Use `llms-full.txt` alongside this skill for the complete consumer API guide

@@ -41,7 +41,7 @@ A skill is a set of local instructions to follow that is stored in a `SKILL.md` 
 
 The consumer skill, for apps that install the packages (not for work in this repository):
 
-- `ic-reactor`: Setup choices, queries and mutations, invalidation, server rendering, sign-in, errors, token amounts, testing and anti-patterns for app code. It is the Claude Code plugin that `.claude-plugin/marketplace.json` lists, and other agents install it with `npx skills add B3Pay/ic-reactor --skill ic-reactor`. Update it when public API guidance changes, as you would `llms-full.txt`. (file: `skill-packages/ic-reactor/SKILL.md`)
+- `ic-reactor`: Setup choices, queries and mutations, invalidation, server rendering, sign-in, errors, token amounts, testing and anti-patterns for app code. It is the Claude Code plugin that `.claude-plugin/marketplace.json` lists, and other agents install it with `npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor`. Update it when public API guidance changes, as you would `llms-full.txt`. (file: `skill-packages/ic-reactor/SKILL.md`)
 
 Contributor skills, for work in this repository:
 
