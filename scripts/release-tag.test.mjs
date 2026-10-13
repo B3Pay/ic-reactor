@@ -208,16 +208,25 @@ describe("release.yml as it uses release-tag.mjs", () => {
   })
 
   it("takes the GitHub Release's prerelease and Latest badge from preflight", () => {
-    const release = job("release")
+    const githubRelease = job("github-release")
     assert.ok(
       has(
-        release,
+        githubRelease,
         "prerelease: ${{ needs.preflight.outputs.prerelease == 'true' }}"
       )
     )
     assert.ok(
-      has(release, "make_latest: ${{ needs.preflight.outputs.make_latest }}")
+      has(
+        githubRelease,
+        "make_latest: ${{ needs.preflight.outputs.make_latest }}"
+      )
     )
+  })
+
+  it("creates the GitHub Release only after every package has published", () => {
+    assert.ok(has(job("github-release"), "needs: [preflight, release]"))
+    assert.ok(!job("release").includes("action-gh-release"))
+    assert.ok(has(job("release"), "contents: read"))
   })
 })
 

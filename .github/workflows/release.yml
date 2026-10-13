@@ -133,7 +133,7 @@ jobs:
     timeout-minutes: 30
     environment: npm-release
     permissions:
-      contents: write
+      contents: read
       id-token: write
     strategy:
       max-parallel: 1
@@ -216,19 +216,6 @@ jobs:
           # Publish the tarball (npm for OIDC support)
           npm publish "$TARBALL" --access public --tag "$TAG"
 
-      - name: Create GitHub Release
-        if: matrix.workspace == 'packages/core'
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
-        with:
-          generate_release_notes: true
-          draft: false
-          prerelease: ${{ needs.preflight.outputs.prerelease == 'true' }}
-          # The "Latest" badge goes to a stable 4.x release only, never to a
-          # prerelease (and v3's lanes set it to false).
-          make_latest: ${{ needs.preflight.outputs.make_latest }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   # The examples against the packages this run just published, from the tagged
   # commit: the green run of examples-published.yml that counts for a release.
   # The release PR's own run of that workflow is expected to fail when its
@@ -243,3 +230,26 @@ jobs:
     uses: ./.github/workflows/examples-published.yml
     with:
       wait-for: ${{ github.ref_name }}
+
+  # The GitHub Release, once all three packages are on npm. Created from the
+  # core leg, a stable tag's release was marked Latest before react and
+  # vite-plugin had published, and stayed Latest if one of them then failed.
+  github-release:
+    name: GitHub Release
+    needs: [preflight, release]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ needs.preflight.outputs.prerelease == 'true' }}
+          # The "Latest" badge goes to a stable 4.x release only, never to a
+          # prerelease (and v3's lanes set it to false).
+          make_latest: ${{ needs.preflight.outputs.make_latest }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
