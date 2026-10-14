@@ -286,6 +286,31 @@ export function SendOnce({ arg }: { arg: TransferArg }) {
 }
 ```
 
+`again.bytes` is the Candid bytes the attempt sent, the ones `send()` sends
+again: a copy on every read, for an audit log or a consent screen.
+
+## The bytes a write sends
+
+`client.encode(canister, method, vars)` returns the Candid bytes a call of
+`method` with `vars` sends, as a `Uint8Array`. It uses the call path's own
+encoder and variables rule, so the bytes are the ones that go out, not a
+second encoding of the same value. Pass them where the exact argument is
+wanted, such as the `arg` of an ICRC-21 consent request:
+
+```ts
+import { client, ledger } from "./ledger"
+import type { TransferArg } from "./generated/icrc1"
+
+export function consentArg(transfer: TransferArg): Uint8Array {
+  return client.encode(ledger, "icrc1_transfer", transfer)
+}
+```
+
+It sends nothing and needs no canister id, so it works for a `{ name }` the
+`ic_env` cookie does not resolve yet. It checks only the variables, not the
+caller or the canister id. Variables that do not encode throw `invalid_args`
+with the `issues` a call of them rejects with.
+
 ## Typed errors
 
 The mutation's `error` is `ReactorError<E> | null`, where `E` is the method's
