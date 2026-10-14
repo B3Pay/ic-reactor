@@ -37,6 +37,13 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
 
 `client.canister()` returns the same object each time: safe in render.
 
+With React, install `@tanstack/query-core` at the exact version your
+`@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
+dependencies`), and check that `npm ls @tanstack/query-core` shows one copy.
+With two copies, core and the hooks each have their own `skipToken`:
+`client.queryOptions()` throws a `TypeError` for the hooks' one, and in
+development `ReactorProvider` throws when it is handed such a client.
+
 `network` and the root key:
 
 - `"ic"`: mainnet (`https://icp-api.io`) and its built-in root key.

@@ -29,6 +29,13 @@ npm install --save-exact @candid-core/schema@0.4.0
 `candid-core-cli gen` writes imports it, so the generator
 (`@candid-core/cli@0.3.0`) has to pair with it too.
 
+With React, install `@tanstack/query-core` at the exact version your
+`@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
+dependencies`), and check that `npm ls @tanstack/query-core` shows one copy.
+With two copies, core and the hooks each have their own `skipToken`:
+`client.queryOptions()` throws a `TypeError` for the hooks' one, and in
+development `ReactorProvider` throws when it is handed such a client.
+
 ## 3.x
 
 The released 3.x package is documented at https://ic-reactor.b3pay.net/v3/packages/core. Its source and
