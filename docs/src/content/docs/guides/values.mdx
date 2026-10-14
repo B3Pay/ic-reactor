@@ -183,7 +183,11 @@ It refuses anything it would have to guess at:
 | `decimals` outside 0 to 255                            | `RangeError` |
 
 `"0.123456789"` at 8 decimals is no amount of e8s, and rounding it would send
-something other than what was typed, so it is refused. In a form, catch both
+something other than what was typed, so it is refused. Fraction digits past
+`decimals` that are all zeros are not significant, so `"1.000000000"` at 8
+decimals is `100000000n`; `"5."`, `".5"` and whitespace around the number are
+accepted too. Validate the field with `parseUnits` itself, so that the form
+and the amount sent never disagree. In a form, catch both
 errors, show the message, and send nothing:
 
 ```ts

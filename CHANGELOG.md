@@ -15,6 +15,20 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### Docs
+
+- The consumer guide (`packages/core/llms.txt`) and the Reads, Writes, Values
+  and Client pages say five things that already worked (#879): a read with
+  `{ update: "idempotent" }` is still an update, refused for a signed-out or
+  `"anonymous"` client, and an ICRC-21 consent message is read as the caller
+  who will send the write; after a `canister_err` the canister calls
+  temporary, send the same argument object again; `parseUnits` accepts
+  trailing zeros, `"5."` and `".5"`, and refuses only significant excess
+  fraction digits; a kept `resendOf` offer is typed
+  `NonNullable<ReturnType<typeof client.resendOf<A, "method">>>`; and a client
+  made outside a provider, or kept across its unmount, is the app's to release
+  with `client.dispose()`.
+
 ### Examples (not published)
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the
