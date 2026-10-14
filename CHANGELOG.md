@@ -15,6 +15,25 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+#### Fixed
+
+- With the method given as `any` (`client.queryOptions<A, any>(canister,
+method, vars)` for a method named by data), the variables of
+  `queryOptions`, `queryKey`, `mutationOptions` (its `mutationFn`) and
+  `resendOf` (its `dedupedBy` and `arg`) follow the run-time rule: the value
+  for a one-argument method, a tuple for several, `undefined` or `[]` for
+  none (#874). They were typed `unknown[]`, so a one-argument call compiled
+  only as `[arg]`, the shape the client refuses with `invalid_args`. They are
+  now any value but a symbol, so a read with a real value keeps
+  `CanisterQueryOptions<unknown, never, never>`. `[arg]` still compiles (an
+  array is a value too) and the client still refuses it with `invalid_args`.
+  Migration: code that wrote `[arg]` (or cast `arg as never`) on this path
+  writes `arg`; a `dedupedBy` that read `arg[0]` reads `arg`. Inside a
+  function generic over the `Actor`, only `queryOptions` gets the wider type;
+  `mutationOptions`, `queryKey` and `resendOf` still need a cast there.
+
 ### Examples (not published)
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the

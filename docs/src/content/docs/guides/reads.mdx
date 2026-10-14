@@ -276,7 +276,14 @@ is itself generic (`Canister<A>` in a function generic over `A`). TypeScript
 cannot tell that such a method is a `ReadMethod<A>`. Give the type arguments yourself,
 `client.queryOptions<A, any>(canister, method, vars)`: the call compiles, the
 mode is checked at run time as for an `Actor` written by hand, and the data of
-the options is `unknown`, for your function to state. The same goes for an
+the options is `unknown`, for your function to state. The variables keep the
+rule of every other read, and are checked against the method's schemas at run
+time: the value itself for a method with one argument, a tuple for several,
+and `undefined` or `[]` for none. `[arg]` for a one-argument method compiles,
+since an array is a value too, and is refused `invalid_args`. `mutationOptions`,
+`queryKey` and `resendOf` take `<A, any>` the same way; inside a function
+generic over `A`, only `queryOptions` widens the variables, so cast them for the
+other three. The same goes for an
 `{ update: "idempotent" }` that may be `undefined`: for an update, pass a value
 whose type says it is the opt-in.
 
