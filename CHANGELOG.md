@@ -15,6 +15,20 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+#### Added
+
+- `createTestClient().dropNextReply({ method, canister, times })`
+  (`@ic-reactor/core/testing`): loses the replies of the next `times` call
+  requests that name `method` and are addressed to `canister`, with
+  `refuseNext`'s matching rules and checks, and lets every other request
+  through (#882). A test can aim a lost reply at its write while a certified
+  read or an ICRC-21 consent read before it is answered. `dropNextReply()`
+  with no argument is unchanged: it loses the reply of whatever call request
+  comes next, certified reads included, as its JSDoc and the testing page now
+  say. No new export.
+
 ### Examples (not published)
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the
