@@ -14,9 +14,10 @@
  * or generate one without its ID, without a word.
  *
  * - An option of the whole plugin (`canisters`, `injectEnvironment`,
- *   `failOnError`) that is not one throws when the config loads, and so does
- *   a key of the options that is none of them: read by a guess, the options
- *   could ship stale bindings or drop the local environment.
+ *   `failOnError`, `onGenerated`) that is not one throws when the config
+ *   loads, and so does a key of the options that is none of them: read by a
+ *   guess, the options could ship stale bindings or drop the local
+ *   environment.
  * - A canister whose options hold a value that is not one, or a key that is
  *   no option, is refused. Every run fails it, with the reasons, before the
  *   run does anything else: it fetches nothing, writes nothing, runs no
@@ -74,6 +75,7 @@ const PLUGIN_OPTIONS = Object.keys({
   canisters: true,
   injectEnvironment: true,
   failOnError: true,
+  onGenerated: true,
 } satisfies Record<keyof IcReactorPluginOptions, true>)
 const CANISTER_OPTIONS = Object.keys({
   didFile: true,
@@ -124,6 +126,8 @@ export interface Refused {
 export interface ReadOptions {
   injectEnvironment: boolean
   failOnError: boolean | undefined
+  /** Called after each module a run generates; checked to be a function. */
+  onGenerated: IcReactorPluginOptions["onGenerated"]
   /**
    * Every canister an entry names, which the `ic_env` cookie carries: all but
    * those of `uncarriedNames`.
@@ -400,6 +404,15 @@ export function readOptions(given: unknown): ReadOptions {
     booleanProblem("injectEnvironment", injectEnvironment) ??
     booleanProblem("failOnError", failOnError)
   if (problem) throw new Error(problem)
+  // Thrown too: a hook that is not a function would fail every run, or, read
+  // by truthiness, be skipped without a word.
+  const onGenerated = top("onGenerated")
+  if (onGenerated !== undefined && typeof onGenerated !== "function") {
+    throw new Error(
+      `[ic-reactor] onGenerated is ${describeValue(onGenerated)}, not a function: ` +
+        `give it a function to call after each generated module, or remove it`
+    )
+  }
 
   // Only an omitted `canisters` is none: `null` is refused below, as any other
   // value that is not a plain object of canisters is, a `Map` or a `Promise`
@@ -426,6 +439,8 @@ export function readOptions(given: unknown): ReadOptions {
     injectEnvironment:
       injectEnvironment === undefined ? true : (injectEnvironment as boolean),
     failOnError: failOnError as boolean | undefined,
+    // Checked above: `undefined` or a function.
+    onGenerated: onGenerated as IcReactorPluginOptions["onGenerated"],
     names: [],
     uncarriedNames: [],
     configuredCanisterIds: new Map(),
