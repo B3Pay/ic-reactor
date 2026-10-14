@@ -4387,5 +4387,45 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "877-encode-own-arity",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "gives the bytes the replica receives",
+    "why": "client.encode() wraps the variables in a list of its own instead of the call's arity rule, so a call of no or several arguments sends other bytes",
+    "file": "src/options.ts",
+    "search": "    const prepared = methodOf(record, method, call)\n    const encoded = encodeArgs(prepared.args, valuesOf(prepared, vars))\n    if (!encoded.ok) {\n      // Marked",
+    "replace": "    const prepared = methodOf(record, method, call)\n    const encoded = encodeArgs(prepared.args, [vars])\n    if (!encoded.ok) {\n      // Marked"
+  },
+  {
+    "id": "877-encode-error-unmarked",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "throws the invalid_args a call rejects with",
+    "why": "the invalid_args of client.encode() is not marked with its canister, so isReactorError(error, canister, method) is false for it",
+    "file": "src/options.ts",
+    "search": "      throw fromCanister(\n        notEncoded(\n          { method: prepared.name, canisterId: slotOf(record.resolve()) },\n          encoded\n        ),\n        canister as object\n      )",
+    "replace": "      throw notEncoded(\n        { method: prepared.name, canisterId: slotOf(record.resolve()) },\n        encoded\n      )"
+  },
+  {
+    "id": "877-resend-bytes-shared",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "is what the lost attempt sent",
+    "why": "Resend.bytes hands out the attempt's own bytes, so changing them changes what send() sends",
+    "file": "src/options.ts",
+    "search": "        return sent.slice()",
+    "replace": "        return sent"
+  },
+  {
+    "id": "877-encode-error-names-no-canister",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "throws the invalid_args a call rejects with",
+    "why": "the invalid_args of client.encode() names no canister, unlike a call's",
+    "file": "src/options.ts",
+    "search": "{ method: prepared.name, canisterId: slotOf(record.resolve()) },\n          encoded\n        ),",
+    "replace": "{ method: prepared.name, canisterId: \"\" },\n          encoded\n        ),"
   }
 ]
