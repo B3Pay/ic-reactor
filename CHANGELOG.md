@@ -15,6 +15,24 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+#### Added
+
+- `client.time(canister)`: the IC's time in nanoseconds since the epoch, as a
+  `bigint`, the unit of an ICRC-1 `created_at_time` (#876). It reads the
+  `time` path with a `read_state` routed by the canister's subnet and verifies
+  the certificate against the network's root key, as every reply is; a
+  certificate that does not verify rejects `not_delivered`. The certificate's
+  age is not compared with the host's clock, the clock this member replaces.
+  It needs no signed-in caller. It is a `Client` member: the export budget is
+  unchanged.
+
+### Docs
+
+- The guide, Writes and Errors stamp `created_at_time` from
+  `client.time(ledger)` instead of `Date.now()` (#876).
+
 ### Examples (not published)
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the

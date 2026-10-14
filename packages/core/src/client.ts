@@ -611,6 +611,32 @@ export interface Client {
     funcSchema: Schema<FuncValue>,
     ref: FuncValue
   ): F
+
+  /**
+   * The IC's time, in nanoseconds since the epoch (the unit of an ICRC-1
+   * `created_at_time`), from a certified `read_state` of the `time` path,
+   * routed by `canister`'s subnet. Stamp a deduplication key with it rather
+   * than with the host's clock, which a ledger checks against its own.
+   *
+   * ```ts
+   * const created_at_time = await client.time(ledger)
+   * ```
+   *
+   * The IC's time moves about once a second (once per round), so two writes
+   * stamped close together can carry the same time: give each its own
+   * `memo` as well.
+   *
+   * The certificate is verified against the network's root key, as every
+   * reply is; its age is not compared with the host's clock, which may be the
+   * clock that is wrong. A certificate that does not verify rejects
+   * `not_delivered` with `mayHaveExecuted: false`, and its time is never
+   * returned. It needs no signed-in caller, and is sent by the caller's
+   * agent, as a read does. A `{ name }` the `ic_env` cookie
+   * does not resolve rejects `invalid_args` (`canister_id_unresolved`), and a
+   * disposed client rejects `cancelled` (`client_disposed`); nothing is sent
+   * then.
+   */
+  time(canister: Canister<object>): Promise<bigint>
 }
 
 // ---------------------------------------------------------------------------

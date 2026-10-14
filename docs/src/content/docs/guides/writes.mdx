@@ -192,7 +192,13 @@ Sending the same argument again after `mayHaveExecuted: true` is safe only
 when the canister deduplicates it: it runs the same argument from the same
 sender at most once. The ICRC-1 ledger does, for a transfer with
 `created_at_time` set: the second one is answered `Duplicate`, which means the
-first went through. Most methods do not deduplicate. For them a second send
+first went through. Stamp `created_at_time` with `await client.time(ledger)`:
+the IC's time in nanoseconds, from a certificate verified against the
+network's root key, so a host clock that is wrong does not make the ledger
+answer `TooOld` or `CreatedInFuture`. That time moves about once a second, so
+two transfers stamped in the same second need their own `memo` each, or the
+second is answered `Duplicate` without running. Most methods do not
+deduplicate. For them a second send
 can run the write twice, so read the state back instead.
 
 `client.resendOf(error, canister, method, { dedupedBy })` offers that re-send.
