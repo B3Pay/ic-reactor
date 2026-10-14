@@ -4387,5 +4387,35 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "878-expiry-lost-call-request",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "for a call request lost in transport",
+    "why": "the ingress expiry the agent puts on its error is not read, so a write whose call request was lost carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "      recordExpiry(sent, error.code.requestContext?.ingressExpiry)\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-accepted-call",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "when the call was accepted but its polls never answered",
+    "why": "the ingress expiry of an accepted call request is not read, so a write whose polls never answered carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    recordExpiry(sent, submitted.requestDetails?.ingress_expiry)\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-on-answered-write",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "is absent on an answered write",
+    "why": "expiresAt put on every write error, an answered canister_err included, where the read-back is already conclusive",
+    "file": "src/errors.ts",
+    "search": "    error.mayHaveExecuted &&\n    (error.kind === \"outcome_unknown\" || error.kind === \"cancelled\")",
+    "replace": "    true"
   }
 ]
