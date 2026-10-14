@@ -65,7 +65,9 @@ import {
 import { isResultSchema } from "@candid-core/schema/validate"
 import {
   Certificate,
+  AgentError,
   CertifiedRejectErrorCode,
+  Expiry,
   QueryResponseStatus,
   RejectError,
   UncertifiedRejectErrorCode,
@@ -90,6 +92,7 @@ import {
   classifyError,
   createReactorError,
   fromCanister,
+  withExpiry,
   invalidReplyError,
   isReactorError,
   isRetryable,
@@ -372,6 +375,9 @@ async function run(
   }
 
   let reply: Uint8Array | undefined
+  // The latest ingress expiry among this call's sends, for a write that ends
+  // with no answer (`expiresAt`).
+  const sends: Sent = {}
   for (let resends = 0; ; resends += 1) {
     try {
       if (request.signal?.aborted) {
@@ -393,7 +399,7 @@ async function run(
           reason: "the client was disposed before the call was sent",
         })
       }
-      reply = await dispatch(agent, send, call)
+      reply = await dispatch(agent, send, call, sends)
       break
     } catch (error) {
       const resend =
@@ -401,7 +407,7 @@ async function run(
         (write
           ? !management && retryUpdate(error, resends)
           : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))
-      if (!resend) throw error
+      if (!resend) throw write ? withExpiry(error, sends.expiresAt) : error
       await sleep(UPDATE_RESEND_DELAYS_MS[resends])
     }
   }
@@ -440,14 +446,32 @@ interface Outgoing {
   readonly signal?: AbortSignal
 }
 
+/** What the sends of one call record: the latest ingress expiry they were signed with. */
+interface Sent {
+  expiresAt?: bigint
+}
+
+/** Records the ingress expiry a send was signed with, keeping the latest. */
+function recordExpiry(sent: Sent, expiry: unknown): void {
+  if (!Expiry.isExpiry(expiry)) return
+  const value = expiry.toBigInt()
+  if (sent.expiresAt === undefined || value > sent.expiresAt) {
+    sent.expiresAt = value
+  }
+}
+
 /**
  * Sends one attempt and returns the reply bytes (`undefined` for a oneway).
- * Rejects with the classified failure.
+ * Rejects with the classified failure. Records the ingress expiry of a call
+ * request in `sent`: from the request the agent returns, or, when the agent
+ * throws on the request itself (a lost connection, an HTTP error), from the
+ * request context it puts on its error.
  */
 async function dispatch(
   agent: HttpAgent,
   send: Send,
-  call: Outgoing
+  call: Outgoing,
+  sent: Sent
 ): Promise<Uint8Array | undefined> {
   const effectiveTarget = { canisterId: call.effective }
   // Whether the request may be in the IC: only once `agent.call` returned,
@@ -484,6 +508,7 @@ async function dispatch(
       ...(send === "oneway" ? { callSync: false } : {}),
     })
     accepted = true
+    recordExpiry(sent, submitted.requestDetails?.ingress_expiry)
     const { body } = submitted.response
     if (isV2ResponseBody(body)) {
       throw RejectError.fromCode(
@@ -498,6 +523,9 @@ async function dispatch(
     if (send === "oneway") return undefined
     return await settle(agent, submitted, call)
   } catch (error) {
+    if (send !== "query" && !accepted && error instanceof AgentError) {
+      recordExpiry(sent, error.code.requestContext?.ingressExpiry)
+    }
     throw classifyError(
       error,
       call.mode === "update"
