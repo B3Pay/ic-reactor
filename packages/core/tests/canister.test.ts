@@ -927,6 +927,8 @@ describe("a certified canister", () => {
     await expect(
       queryFn({ signal: controller.signal } as QueryFunctionContext)
     ).rejects.toMatchObject({ kind: "cancelled", mayHaveExecuted: false })
+    // A poll started and then abandoned would still go out: give it the time.
+    await new Promise((resolve) => setTimeout(resolve, 50))
     expect(requestsFor(replica, "one")).toHaveLength(1)
     expect(later.polls()).toBe(0)
   })
