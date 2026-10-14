@@ -626,6 +626,10 @@ export interface Client {
    * stamped close together can carry the same time: give each its own
    * `memo` as well.
    *
+   * Its request carries an ingress expiry from the host's clock, as every
+   * request does: a host clock so far off that the IC refuses its requests
+   * gets `not_delivered` here too.
+   *
    * The certificate is verified against the network's root key, as every
    * reply is; its age is not compared with the host's clock, which may be the
    * clock that is wrong. A certificate that does not verify rejects

@@ -194,8 +194,10 @@ sender at most once. The ICRC-1 ledger does, for a transfer with
 `created_at_time` set: the second one is answered `Duplicate`, which means the
 first went through. Stamp `created_at_time` with `await client.time(ledger)`:
 the IC's time in nanoseconds, from a certificate verified against the
-network's root key, so a host clock that is wrong does not make the ledger
-answer `TooOld` or `CreatedInFuture`. That time moves about once a second, so
+network's root key, rather than the host's clock. Its request is signed with
+an ingress expiry taken from the host's clock, as every request is: a host
+clock so far off that the IC refuses its requests cannot read the time
+either, and no call works until that clock is fixed. That time moves about once a second, so
 two transfers stamped in the same second need their own `memo` each, or the
 second is answered `Duplicate` without running. Most methods do not
 deduplicate. For them a second send
