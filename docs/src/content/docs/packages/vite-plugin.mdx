@@ -25,10 +25,10 @@ npm install --save-dev @ic-reactor/vite-plugin@beta
 The package has one entry, `@ic-reactor/vite-plugin`, in ESM and CommonJS. It
 exports two names, and there is no other subpath:
 
-| Name                     | Kind     | What it is                                                   |
-| ------------------------ | -------- | ------------------------------------------------------------ |
-| `icReactor`              | function | `icReactor(options?)` returns the Vite plugin                |
-| `IcReactorPluginOptions` | type     | The options: `canisters`, `injectEnvironment`, `failOnError` |
+| Name                     | Kind     | What it is                                                                  |
+| ------------------------ | -------- | --------------------------------------------------------------------------- |
+| `icReactor`              | function | `icReactor(options?)` returns the Vite plugin                               |
+| `IcReactorPluginOptions` | type     | The options: `canisters`, `injectEnvironment`, `failOnError`, `onGenerated` |
 
 ```ts
 import { icReactor, type IcReactorPluginOptions } from "@ic-reactor/vite-plugin"
