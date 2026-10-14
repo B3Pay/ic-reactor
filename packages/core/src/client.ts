@@ -33,10 +33,12 @@ import { KEY_ROOT } from "./keys.js"
 import {
   agentOptionsFor,
   authNetworkFor,
+  resolveCanisterId,
   resolveNetwork,
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
+import { readTarget } from "./canister.js"
 import { createBuilders } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
 import type {
@@ -315,6 +317,43 @@ export interface Client {
    * principal text.
    */
   canister<A>(service: Schema<Principal>, target: CanisterTarget): Canister<A>
+
+  /**
+   * The canister id a target resolves to now, by the same resolver the calls
+   * of `client.canister(service, target)` use, without making a call.
+   *
+   * ```ts
+   * const backend = client.canisterId({ name: "backend" })
+   * if (!backend.ok && backend.reason === "untrusted_host") showSetupHint()
+   * ```
+   *
+   * `{ id }` gives that id. `{ name }` is read from the `ic_env` cookie, as a
+   * call reads it, and gives the id or one of three reasons, each with its
+   * own fix:
+   *
+   * - `no_browser`: there is no page, so no cookie to read (a server render,
+   *   a web worker).
+   * - `untrusted_host`: the cookie is not trusted for this network, so it was
+   *   not read.
+   * - `absent`: the cookie was read and has no principal text under that
+   *   name.
+   *
+   * `message` is the text a call on that target would reject with. The
+   * answer is not kept: each call reads the cookie again, as each call of a
+   * `{ name }` canister does. It sends nothing, and a `certified` flag in the
+   * target is ignored. An id it gives is the one the cookie names; whether a
+   * canister answers there is not checked.
+   *
+   * @throws TypeError for a target that is not one of the allowed shapes or
+   * whose `id` is not principal text.
+   */
+  canisterId(target: CanisterTarget):
+    | { readonly ok: true; readonly id: string }
+    | {
+        readonly ok: false
+        readonly reason: "no_browser" | "untrusted_host" | "absent"
+        readonly message: string
+      }
 
   /**
    * The query key of a read, or the prefix of a group of reads, for
@@ -1421,6 +1460,11 @@ export function createClientWith(
     ...createBuilders(internals, () => client),
     network: network.keySegment,
     queryClient,
+    canisterId: (target) =>
+      resolveCanisterId(
+        readTarget(target, "client.canisterId()").target,
+        network
+      ),
     caller: () => current().principal,
     authState: refresh,
     subscribe(listener: () => void): () => void {

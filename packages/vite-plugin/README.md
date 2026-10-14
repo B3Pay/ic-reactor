@@ -433,9 +433,13 @@ canister has an ID. Until then the plugin asks `icp` again on each page load,
 and that page gets the answer: start `vite dev` first, then run
 `icp network start` and `icp deploy`, and reload the page. The `/api` proxy
 moves to the network `icp` reports, the fallback included. Once detection is
-complete, page loads run no further `icp` commands, so redeploying into a
-fresh network, with new canister IDs and a new root key, needs a dev server
-restart. A configured canister you never deploy locally keeps detection
+complete, page loads run no further `icp` commands, so any network restart
+(`icp network stop`, then `start` and `icp deploy`) needs a dev server
+restart, even when the root key stays the same. icp-cli 1.2.0's managed
+network kept its root key across starts while a new deploy gave the names
+other canister IDs, and until the dev server restarts its cookie keeps
+naming the old ones. A page loaded before stays on its old cookie too: reload it after
+the restart. A configured canister you never deploy locally keeps detection
 incomplete, so every page load runs `icp` for it; set its `canisterId` and it
 counts as resolved. If you never run a local network, set
 `injectEnvironment: false` and page loads run no `icp`.
