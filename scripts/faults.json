@@ -4387,5 +4387,35 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "875-read-waits-for-http-answer",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "a read whose request gets no HTTP answer",
+    "why": "a replicated call's request awaited without its signal (a certified read, or an update read with { update: \"idempotent\" }), so one whose request gets no HTTP answer keeps waiting after TanStack cancels it",
+    "file": "src/call.ts",
+    "search": "        ...(send === \"oneway\" ? { callSync: false } : {}),\n      }),\n      call.signal\n    )",
+    "replace": "        ...(send === \"oneway\" ? { callSync: false } : {}),\n      }),\n      undefined\n    )"
+  },
+  {
+    "id": "875-query-waits-for-http-answer",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "a read whose request gets no HTTP answer",
+    "why": "a query awaited without its signal, so a query whose request gets no HTTP answer keeps waiting after TanStack cancels it",
+    "file": "src/call.ts",
+    "search": "          effectiveTarget,\n        }),\n        call.signal\n      )",
+    "replace": "          effectiveTarget,\n        }),\n        undefined\n      )"
+  },
+  {
+    "id": "875-poll-waits-for-read-state-answer",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "ends the wait for a certified read's poll once its signal aborts",
+    "why": "a poll's read_state awaited without the signal, so a read whose poll gets no HTTP answer keeps waiting after TanStack cancels it",
+    "file": "src/call.ts",
+    "search": "          strategy,\n        }),\n        signal\n      )",
+    "replace": "          strategy,\n        }),\n        undefined\n      )"
   }
 ]
