@@ -299,6 +299,11 @@ Afterwards every call on the client rejects as `cancelled` with code
 direct call, a query function, a mutation function and a func reference. A
 direct call that was already sent settles as the replica answers.
 
+A client a `ReactorProvider` built from its factory is disposed when the
+provider unmounts. A client made outside a provider, or kept across its
+unmount, is the app's to dispose when it is done with it. A client that lives
+as long as the page needs none.
+
 ## One client per tab, one per request
 
 - In a browser, build one client per tab.
