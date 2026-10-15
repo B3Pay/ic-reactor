@@ -638,6 +638,16 @@ export function createBuilders(
         reason: target.message,
       })
     }
+    // A read_state is routed by a canister in a subnet's range, and the
+    // management canister is in none: the IC would refuse it.
+    if (target.id === "aaaaa-aa") {
+      throw createReactorError("invalid_args", {
+        method,
+        canisterId: target.id,
+        code: "management_canister",
+        reason: "the management canister routes no read_state",
+      })
+    }
     const where = { method, canisterId: target.id }
     const agent = await internals.agentFor(internals.current().principal, where)
     // As in the call path: a dispose() in the microtask after agentFor's own

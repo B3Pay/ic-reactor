@@ -85,6 +85,21 @@ describe("client.time()", () => {
     expect(replica.requests).toHaveLength(before)
   })
 
+  it("refuses the management canister, which routes no read_state, sending nothing", async () => {
+    const replica = replicaAt()
+    const client = clientAs(replica, "anonymous")
+    await expect(
+      client.time(shapesOf(client, "aaaaa-aa"))
+    ).rejects.toMatchObject({
+      kind: "invalid_args",
+      code: "management_canister",
+      mayHaveExecuted: false,
+      method: "read_state",
+      canisterId: "aaaaa-aa",
+    })
+    expect(replica.requests).toEqual([])
+  })
+
   it("rejects cancelled on a disposed client, sending nothing", async () => {
     const replica = replicaAt()
     const client = clientAs(replica, "anonymous")

@@ -4417,5 +4417,15 @@
     "file": "src/options.ts",
     "search": "{ paths: [TIME_PATH], disableTimeVerification: true }",
     "replace": "{ paths: [TIME_PATH] }"
+  },
+  {
+    "id": "876-time-management-canister-sent",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "refuses the management canister, which routes no read_state, sending nothing",
+    "why": "client.time() sends a read_state routed by aaaaa-aa, which the IC refuses, instead of refusing the target with nothing sent",
+    "file": "src/options.ts",
+    "search": "    if (target.id === \"aaaaa-aa\") {",
+    "replace": "    if (false) {"
   }
 ]

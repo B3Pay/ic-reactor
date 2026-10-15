@@ -25,8 +25,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   the certificate against the network's root key, as every reply is; a
   certificate that does not verify rejects `not_delivered`. The certificate's
   age is not compared with the host's clock, the clock this member replaces.
-  It needs no signed-in caller. It is a `Client` member: the export budget is
-  unchanged.
+  It needs no signed-in caller. The management canister `aaaaa-aa` routes no
+  `read_state`, so it is refused `invalid_args` (`management_canister`) with
+  nothing sent. It is a `Client` member: the export budget is unchanged.
 
 ### Docs
 

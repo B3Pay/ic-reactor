@@ -636,9 +636,10 @@ export interface Client {
    * `not_delivered` with `mayHaveExecuted: false`, and its time is never
    * returned. It needs no signed-in caller, and is sent by the caller's
    * agent, as a read does. A `{ name }` the `ic_env` cookie
-   * does not resolve rejects `invalid_args` (`canister_id_unresolved`), and a
-   * disposed client rejects `cancelled` (`client_disposed`); nothing is sent
-   * then.
+   * does not resolve rejects `invalid_args` (`canister_id_unresolved`), as
+   * does the management canister `aaaaa-aa` (`management_canister`), which no
+   * `read_state` is routed by, and a disposed client rejects `cancelled`
+   * (`client_disposed`); nothing is sent then.
    */
   time(canister: Canister<object>): Promise<bigint>
 }
