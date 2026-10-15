@@ -120,6 +120,7 @@ describe("createClient options", () => {
       "signIn",
       "signOut",
       "subscribe",
+      "time",
     ])
     expect(Object.isFrozen(client)).toBe(true)
     expect(() => internalsOf({ ...client })).toThrow(

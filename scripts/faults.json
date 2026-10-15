@@ -4387,5 +4387,45 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "876-time-from-host-clock",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "resolves the time the replica certifies",
+    "why": "client.time() answers the host's clock instead of the certified time",
+    "file": "src/options.ts",
+    "search": "      return readLeb128(raw)",
+    "replace": "      return BigInt(Date.now()) * 1_000_000n"
+  },
+  {
+    "id": "876-time-failure-unclassified",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "rejects not_delivered for a certificate that does not verify",
+    "why": "a certificate that does not verify rejects with the agent's error instead of not_delivered",
+    "file": "src/options.ts",
+    "search": "      throw classifyError(error, { ...where, mode: \"query\" })",
+    "replace": "      throw error"
+  },
+  {
+    "id": "876-time-checked-against-host-clock",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "resolves the time the replica certifies",
+    "why": "the certificate's age checked against the host's clock, so a host clock off by years makes the agent re-sync before the time is read",
+    "file": "src/options.ts",
+    "search": "{ paths: [TIME_PATH], disableTimeVerification: true }",
+    "replace": "{ paths: [TIME_PATH] }"
+  },
+  {
+    "id": "876-time-management-canister-sent",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "refuses the management canister, which routes no read_state, sending nothing",
+    "why": "client.time() sends a read_state routed by aaaaa-aa, which the IC refuses, instead of refusing the target with nothing sent",
+    "file": "src/options.ts",
+    "search": "    if (target.id === \"aaaaa-aa\") {",
+    "replace": "    if (false) {"
   }
 ]
