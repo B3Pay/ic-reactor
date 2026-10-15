@@ -338,8 +338,8 @@ export interface Client {
    * - `absent`: the cookie was read and has no principal text under that
    *   name.
    *
-   * `message` is the text a call on that target would reject with. The
-   * answer is not kept: each call reads the cookie again, as each call of a
+   * `message` is the resolver's reason, the text a call on that target puts
+   * in its error after the method and target. The answer is not kept: each call reads the cookie again, as each call of a
    * `{ name }` canister does. It sends nothing, and a `certified` flag in the
    * target is ignored. An id it gives is the one the cookie names; whether a
    * canister answers there is not checked.

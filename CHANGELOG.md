@@ -20,8 +20,8 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 - `client.canisterId(target)` gives what a target resolves to now, from the
   resolver the calls use, without a call: `{ ok: true, id }`, or
   `{ ok: false, reason, message }` with `reason` `"no_browser"`,
-  `"untrusted_host"` or `"absent"`, and the message a call on that target
-  would reject with. It reads the `ic_env` cookie on each call. A `Client`
+  `"untrusted_host"` or `"absent"`, and the resolver's reason text, which a
+  call on that target includes in its error. It reads the `ic_env` cookie on each call. A `Client`
   member, so the export budget is unchanged (#881).
 
 ### @ic-reactor/vite-plugin
