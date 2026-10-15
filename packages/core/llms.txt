@@ -48,6 +48,10 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
 - `"env"`: the page's network. Canisters can be named, `{ name: "backend" }`,
   from the `ic_env` cookie, believed only on a local replica or with
   `allowEnvConfig: true`. A server has no cookie: use `{ id }` there.
+  `client.canisterId({ name })` says, without a call, what a name resolves
+  to: `{ ok: true, id }`, or `{ ok: false, reason, message }` with `reason`
+  `"no_browser"`, `"untrusted_host"` or `"absent"`, and the resolver's reason
+  text, which a call's error includes after the method and target.
 
 Who calls (exactly one):
 
