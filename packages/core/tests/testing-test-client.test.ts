@@ -927,6 +927,8 @@ describe("a refusal aimed at one method or canister", () => {
       ["icrc1_fee", false],
       ["icrc1_transfer", false],
     ])
+    // The read is not an update: its handler ran for both requests.
+    expect(test.runs).toMatchObject({ fee: 2, transfer: 1 })
   })
 })
 

@@ -361,7 +361,9 @@ export function createTestClient(
    * With no argument it matches whatever call request comes next, and that
    * includes a certified read (a `query` method on a `certified: true`
    * canister) and an update read with `{ update: "idempotent" }`, which go
-   * out as calls. Given options, it loses the replies of the next `times`
+   * out as calls. Such a read is not an update: the client sends it again
+   * as a new request, which can be answered, so its handler runs again.
+   * Given options, it loses the replies of the next `times`
    * call requests that name `method` and are addressed to `canister` (each
    * one that is given), and lets every other request through, as
    * `refuseNext(status, options)` does: `dropNextReply({ method:
