@@ -121,7 +121,13 @@ const test = createTestClient()
 expectTypeOf(test.client).toEqualTypeOf<Client>()
 expectTypeOf(test.auth).toEqualTypeOf<TestAuth>()
 expectTypeOf(test.requests).toEqualTypeOf<readonly FakeReplicaRequest[]>()
-expectTypeOf(test.dropNextReply).toEqualTypeOf<() => void>()
+expectTypeOf(test.dropNextReply).toEqualTypeOf<
+  (options?: {
+    readonly method?: string
+    readonly canister?: string
+    readonly times?: number
+  }) => void
+>()
 // Two forms: the published count, and the aimed one. The count is the last
 // overload, so `Parameters` still reads it as it did in 4.0.0-beta.1.
 expectTypeOf<Parameters<typeof test.refuseNext>>().toEqualTypeOf<

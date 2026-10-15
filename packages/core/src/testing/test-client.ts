@@ -353,12 +353,33 @@ export function createTestClient(
    */
   reject(code: 1 | 2 | 3 | 4 | 5 | 6, message?: string): never
   /**
-   * Loses the reply to the next update call: the canister runs, but the client
-   * sees a network failure instead of the answer, so the call ends as
+   * Loses the reply to the next call request: the canister runs, but the
+   * client sees a network failure instead of the answer, so an update ends as
    * `outcome_unknown` with `mayHaveExecuted: true`. The same request is never
    * run twice: the fake keeps its reply lost whenever it is asked again.
+   *
+   * With no argument it matches whatever call request comes next, and that
+   * includes a certified read (a `query` method on a `certified: true`
+   * canister) and an update read with `{ update: "idempotent" }`, which go
+   * out as calls. Such a read is not an update: the client sends it again
+   * as a new request, which can be answered, so its handler runs again.
+   * Given options, it loses the replies of the next `times`
+   * call requests that name `method` and are addressed to `canister` (each
+   * one that is given), and lets every other request through, as
+   * `refuseNext(status, options)` does: `dropNextReply({ method:
+   * "icrc1_transfer" })` loses the transfer's reply while the reads around it
+   * are answered. A request that several drops match uses up the one armed
+   * first.
+   *
+   * @throws RangeError for a `times` that is not a count of at least 1;
+   * TypeError for options that are not an object, an option that does not
+   * exist, an empty `method`, or a `canister` that is not a canister id.
    */
-  dropNextReply(): void
+  dropNextReply(options?: {
+    readonly method?: string
+    readonly canister?: string
+    readonly times?: number
+  }): void
   /**
    * Answers the next `times` canister requests that name `method` and are
    * addressed to `canister` (each one that is given) with an HTTP error
