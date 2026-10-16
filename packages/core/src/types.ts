@@ -302,26 +302,40 @@ export interface CanisterMutationOptions<V, D, E> {
    * into yours: `{ ...options.onMutate(variables, context), previous }`.
    * One that replaces this one instead (TanStack's optimistic-update recipe
    * as written) leaves the resolving to `mutationFn`, which keeps the write
-   * and its invalidation together only from 5.89 on.
+   * and its invalidation together only from 5.89 on. It keeps the caller on
+   * the client's own `queryClient` either way (see `mutationFn`).
    */
   readonly onMutate: (variables: V, context?: unknown) => MutationTargets
   /**
-   * Calls the method as the caller current when `mutate()` was called (the
-   * one `onMutate` read for this run), or not at all: when someone else is
-   * current by the time it is sent (TanStack held the write back offline, or
-   * behind another mutation of its `scope`, and the account was switched
-   * meanwhile), it rejects with `kind: "cancelled"`, `code:
-   * "caller_changed"`, `mayHaveExecuted: false`, and sends nothing. It calls
-   * at the canister `onMutate` resolved for this run.
+   * Calls the method as the caller current when `mutate()` was called, or
+   * not at all: when someone else is current by the time it is sent
+   * (TanStack held the write back offline, or behind another mutation of its
+   * `scope`, or retried it, and the account was switched meanwhile), it
+   * rejects with `kind: "cancelled"`, `code: "caller_changed"`,
+   * `mayHaveExecuted: false`, and sends nothing. It calls at the canister
+   * `onMutate` resolved for this run.
+   *
+   * On the client's own `queryClient`, the caller of each run is read by its
+   * `MutationCache` when `mutate()` starts the run, whatever the options'
+   * `onMutate` is, so an `onMutate` of the app's that replaces this one
+   * keeps the rule. On another `QueryClient` it is the one this `onMutate`
+   * read. Refused the same way, because the caller of the run is not known:
+   * a mutation TanStack restored from a persister (it runs no `onMutate` for
+   * one; call `mutate()` again), a run on another `QueryClient` whose
+   * `onMutate` replaced this one (5.89 and later), and, without a context,
+   * a run that cannot be told apart from another pending run of the same
+   * argument that started as someone else. Exceptions, which go out as the
+   * caller current when they are sent: a call by hand (no context, and no
+   * `onMutate` of this one ever ran for the method), and, before 5.89, a run
+   * on another `QueryClient` whose `onMutate` replaced this one, or one
+   * restored there.
    *
    * It finds that run through `context`, which TanStack Query passes from
    * 5.89 on. When `onMutate` resolved nothing for that context (an
    * `onMutate` of the app's replaced this one), it resolves the run when it
    * starts and keeps it for `onSettled`, which gets the same context.
    * Without a context (TanStack Query before 5.89, a direct call) it
-   * takes the caller `onMutate` read for the same argument (the one current
-   * now when no `onMutate` of this one ran) and resolves the canister when
-   * it starts. Before 5.89 that leaves a gap: a
+   * resolves the canister when it starts. Before 5.89 that leaves a gap: a
    * `{ name }` whose cookie entry is rewritten between `onMutate` and
    * `mutationFn` is written to at the new canister while `onSettled`
    * invalidates the old one's reads. TanStack runs the two back to back,

@@ -1304,8 +1304,8 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "      caller: internals.current(),\n      target: record.resolve(),\n",
-        "replace": "      caller: current(),\n      target: record.resolve(),\n"
+        "search": "      const caller = again?.caller ?? callerOf(vars, key, run)",
+        "replace": "      const caller = again?.caller ?? current()"
       },
       {
         "file": "src/client.ts",
@@ -2766,8 +2766,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "a mutation given an offered argument sends it as whoever is the caller when it runs, so another account pays the same transfer again",
     "file": "src/options.ts",
-    "search": "caller: again?.caller ?? caller,",
-    "replace": "caller,"
+    "search": "      const caller = again?.caller ?? callerOf(vars, key, run)",
+    "replace": "      const caller = callerOf(vars, key, run)"
   },
   {
     "id": "ir850-send-as-whoever",
@@ -4395,8 +4395,8 @@
     "testName": "refuses a write paused offline when the account is switched before it is sent, and sends nothing",
     "why": "a write TanStack paused offline goes out as whoever is signed in when it resumes, not as the caller current when mutate() was called (#893)",
     "file": "src/options.ts",
-    "search": "          caller: again?.caller ?? caller,",
-    "replace": "          caller: again?.caller ?? internals.current(),"
+    "search": "      const caller = again?.caller ?? callerOf(vars, key, run)",
+    "replace": "      const caller = again?.caller ?? internals.current()"
   },
   {
     "id": "893-write-caller-read-when-sent-scope",
@@ -4405,27 +4405,86 @@
     "testName": "refuses a write queued behind its scope when the account is switched before its turn, and sends nothing",
     "why": "a write queued behind its mutation scope goes out as whoever is signed in at its turn (#893)",
     "file": "src/options.ts",
-    "search": "          caller: again?.caller ?? caller,",
-    "replace": "          caller: again?.caller ?? internals.current(),"
+    "search": "      const caller = again?.caller ?? callerOf(vars, key, run)",
+    "replace": "      const caller = again?.caller ?? internals.current()"
   },
   {
     "id": "893-write-caller-no-context-fallback",
     "package": "core",
     "test": "tests/options.test.ts",
     "testName": "refuses a write whose mutationFn gets no run context",
-    "why": "without a run context (TanStack before 5.89) mutationFn ignores the caller onMutate read and sends as whoever is current (#893)",
+    "why": "without a run context (TanStack before 5.89, another QueryClient), a run whose kept caller another run took is sent as whoever is current, not refused (#893)",
     "file": "src/options.ts",
-    "search": "          (key === undefined ? takeCaller(prepared, vars) : undefined) ??\n",
-    "replace": ""
+    "search": "      return queuedMethods.has(prepared) ? undefined : live\n",
+    "replace": "      return live\n"
   },
   {
     "id": "893-write-caller-no-context-newest-first",
     "package": "core",
     "test": "tests/options.test.ts",
-    "testName": "refuses a write whose mutationFn gets no run context",
+    "testName": "never sends a write with no run context as the caller of a run whose mutationFn never ran",
     "why": "without a run context, mutationFn takes the newest caller kept for its argument instead of the oldest, pairing a run with another run's caller (#893)",
     "file": "src/options.ts",
-    "search": "    const caller = kept.shift()",
-    "replace": "    const caller = kept.pop()"
+    "search": "    kept.shift()\n",
+    "replace": "    kept.pop()\n"
+  },
+  {
+    "id": "893-write-caller-retry-read-when-sent",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses the retry of a write when the account is switched after the first attempt failed",
+    "why": "an app's TanStack retry of a write goes out as whoever is signed in when it retries (#893)",
+    "file": "src/options.ts",
+    "search": "      const caller = again?.caller ?? callerOf(vars, key, run)",
+    "replace": "      const caller = again?.caller ?? internals.current()"
+  },
+  {
+    "id": "893-write-caller-replaced-onmutate-sent-as-current",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write paused offline across an account switch when an onMutate of the app's replaces the given one",
+    "why": "the caller of a run is read only by the given onMutate, so a write whose onMutate the app replaced (TanStack's optimistic-update recipe) goes out as whoever is signed in when it runs (#893)",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "          mutationCallers.set(context, caller)\n",
+        "replace": ""
+      },
+      {
+        "file": "src/options.ts",
+        "search": "        return internals.mutationCallers.get(key) ?? run?.caller\n",
+        "replace": "        return (\n          internals.mutationCallers.get(key) ?? run?.caller ?? internals.current()\n        )\n"
+      }
+    ]
+  },
+  {
+    "id": "893-write-caller-replaced-onmutate-not-captured",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "sends a write paused offline as its caller when an onMutate of the app's replaces the given one",
+    "why": "the client's MutationCache no longer reads the caller of each run, so a write whose onMutate the app replaced is refused though nobody switched (#893)",
+    "file": "src/client.ts",
+    "search": "          mutationCallers.set(context, caller)\n",
+    "replace": ""
+  },
+  {
+    "id": "893-write-caller-restored-sent-as-current",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write TanStack restored from a persister",
+    "why": "a mutation restored from a persister, for which TanStack runs no onMutate, goes out as whoever is signed in when it resumes (#893)",
+    "file": "src/options.ts",
+    "search": "        return internals.mutationCallers.get(key) ?? run?.caller\n",
+    "replace": "        return (\n          internals.mutationCallers.get(key) ?? run?.caller ?? internals.current()\n        )\n"
+  },
+  {
+    "id": "893-write-caller-leftover-taken",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "never sends a write with no run context as the caller of a run whose mutationFn never ran",
+    "why": "without a run context, mutationFn takes the oldest kept caller even when the callers kept for its argument disagree, so a run is sent as the caller of an abandoned one (#893)",
+    "file": "src/options.ts",
+    "search": "        return kept.every((one) => one.principal === live.principal)\n          ? live\n          : undefined\n",
+    "replace": "        return kept[0]\n"
   }
 ]

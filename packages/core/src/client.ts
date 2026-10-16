@@ -26,7 +26,7 @@ import {
   type Identity,
 } from "@icp-sdk/core/agent"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
-import { QueryClient, type QueryKey } from "@tanstack/query-core"
+import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
 import { createReactorError, retryQuery } from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
@@ -480,7 +480,12 @@ export interface Client {
    * `mutate()` was called (read in `onMutate`), or not at all: a write that
    * TanStack Query holds back (offline, or behind another mutation of its
    * `scope`) while the account changes rejects `cancelled`, code
-   * `caller_changed`, `mayHaveExecuted: false`, and sends nothing. An update
+   * `caller_changed`, `mayHaveExecuted: false`, and sends nothing; so does a
+   * mutation restored from a persister, whose caller is not known. The
+   * client's own `queryClient` reads each run's caller in its
+   * `MutationCache`, so this holds with an `onMutate` of the app's that
+   * replaces this one; see {@link CanisterMutationOptions.mutationFn} for a
+   * run on another `QueryClient`. An update
    * by a caller who is not signed in rejects `unauthenticated` before
    * anything is sent. `retry` is `false`: an update
    * re-sends itself only when the failure proves the first attempt never got
@@ -655,6 +660,16 @@ export interface ClientInternals {
    * and a write would otherwise be refused as `unauthenticated`.
    */
   disposed(): boolean
+  /**
+   * The caller current when each mutation run of the client's `queryClient`
+   * started, by its `Mutation` and (TanStack Query 5.89 and later) by the
+   * function context TanStack made for the run. Read by the `MutationCache`'s
+   * own `onMutate`, which `mutate()` runs before the mutation's `onMutate`
+   * and which a mutation's options cannot replace. Weak, so an entry lives as
+   * long as its mutation. A restored mutation (hydrated from a persister) has
+   * none: TanStack runs no `onMutate` for it.
+   */
+  readonly mutationCallers: WeakMap<object, Caller>
   /**
    * The agent that signs as `principal`, and only as `principal`. It is the
    * one place the client enforces "a call goes out as the principal it was
@@ -1039,7 +1054,18 @@ export function createClientWith(
       ? undefined
       : (input: RequestInfo | URL, init?: RequestInit) => userFetch(input, init)
 
+  const mutationCallers = new WeakMap<object, Caller>()
   const queryClient = new QueryClient({
+    mutationCache: new MutationCache({
+      // Before 5.89 TanStack passes no context.
+      onMutate: (_vars: unknown, mutation: object, context?: unknown) => {
+        const caller = current()
+        mutationCallers.set(mutation, caller)
+        if (typeof context === "object" && context !== null) {
+          mutationCallers.set(context, caller)
+        }
+      },
+    }),
     defaultOptions: {
       queries: { retry: retryQuery },
       dehydrate: { serializeData },
@@ -1343,6 +1369,7 @@ export function createClientWith(
     maxDepth,
     current,
     disposed: () => disposed,
+    mutationCallers,
     agentFor,
   })
 

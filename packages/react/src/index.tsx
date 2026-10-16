@@ -482,10 +482,10 @@ const anonymous = (): string => ANONYMOUS
  * the page finds what the server prefetched and dehydrated and matches its
  * HTML; everything else (canisters, `mutationOptions`, `signIn`, `signOut`,
  * the `QueryClient`) is the client's own, and a write signs as the caller
- * current when `mutate()` is called. Right after hydrating, React renders the component
- * again with the client itself, for the user: a read with none of the user's
- * data yet shows its loading state, and a `useSuspenseQuery` read its
- * boundary's fallback, until that data arrives. A client built with
+ * current when `mutate()` is called. Right after hydrating, React renders the
+ * component again with the client itself, for the user: a read with none of
+ * the user's data yet shows its loading state, and a `useSuspenseQuery` read
+ * its boundary's fallback, until that data arrives. A client built with
  * `identity` keeps its caller for good and is always returned as it is.
  *
  * Three consequences of that move on a signed-in reload:

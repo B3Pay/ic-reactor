@@ -42,7 +42,12 @@ import {
   type CanisterRecord,
 } from "./canister.js"
 import type { Caller, Client, ClientInternals } from "./client.js"
-import { isReactorError, retryQuery } from "./errors.js"
+import {
+  createReactorError,
+  fromCanister,
+  isReactorError,
+  retryQuery,
+} from "./errors.js"
 import {
   CERTIFIED,
   INVALID,
@@ -122,7 +127,8 @@ const mayHaveChanged = (error: unknown): boolean =>
  * canister.
  */
 interface MutationRun {
-  readonly caller: Caller
+  /** Read by our `onMutate`; none for a run it did not start. */
+  readonly caller?: Caller
   readonly target: ResolvedTarget
   readonly invalidates: readonly {
     readonly slots: readonly string[]
@@ -136,6 +142,12 @@ interface MutationRun {
  * it when an app's own `onMutate` spreads this one's result into its own.
  */
 const RUN = Symbol("ic-reactor.mutationRun")
+
+/**
+ * The method each `mutationFn` of `mutationOptions` calls, by the function:
+ * how a `mutationFn` finds its own runs in the client's `MutationCache`.
+ */
+const MUTATION_METHODS = new WeakMap<object, object>()
 
 /** The run carried by what `onMutate` returned, if it carries one. */
 const runIn = (onMutateResult: unknown): MutationRun | undefined =>
@@ -218,15 +230,22 @@ export function createBuilders(
   const runsByContext = new WeakMap<object, MutationRun>()
 
   /**
-   * Where TanStack Query (before 5.89) passes `mutationFn` no context: the
-   * callers `onMutate` read, by method and then by argument, oldest first.
-   * A `mutationFn` takes the oldest one kept for its argument, so a write
-   * held back (offline, or by its `scope`) still goes out as the caller
-   * current when it started, or is refused.
+   * For a mutation run on a `QueryClient` other than the client's, where
+   * TanStack Query (before 5.89) passes `mutationFn` no context: the callers
+   * our `onMutate` read, by method and then by argument, oldest first. Only
+   * there: a run of the client's own `queryClient` is found by its
+   * `Mutation`. An entry whose `mutationFn` never runs (the mutation was
+   * removed) is taken by the next run of that method and argument, which a
+   * disagreeing caller then refuses: it costs a refusal, never a write as
+   * the wrong caller.
    */
   const callersByArg = new WeakMap<object, Map<unknown, Caller[]>>()
 
+  /** The methods whose `onMutate` kept a caller in `callersByArg`. */
+  const queuedMethods = new WeakSet<object>()
+
   const keepCaller = (method: object, vars: unknown, caller: Caller): void => {
+    queuedMethods.add(method)
     let byArg = callersByArg.get(method)
     if (byArg === undefined) {
       byArg = new Map()
@@ -237,14 +256,36 @@ export function createBuilders(
     else kept.push(caller)
   }
 
-  const takeCaller = (method: object, vars: unknown): Caller | undefined => {
+  /** Takes the oldest caller kept for the argument, and returns every one kept for it until now. */
+  const takeCallers = (
+    method: object,
+    vars: unknown
+  ): readonly Caller[] | undefined => {
     const byArg = callersByArg.get(method)
     const kept = byArg?.get(vars)
     if (byArg === undefined || kept === undefined) return undefined
-    const caller = kept.shift()
+    const all = [...kept]
+    kept.shift()
     if (kept.length === 0) byArg.delete(vars)
-    return caller
+    return all
   }
+
+  /**
+   * The pending runs of the client's own `queryClient` that call `method`
+   * with `vars`, waiting ones included (TanStack 5.62 leaves a resumed run
+   * marked paused when it calls `mutationFn`): where a `mutationFn` given no
+   * context (before 5.89) finds its run, among them.
+   */
+  const runsInCache = (method: object, vars: unknown): readonly object[] =>
+    owner()
+      .queryClient.getMutationCache()
+      .getAll()
+      .filter(
+        ({ state, options }) =>
+          state.status === "pending" &&
+          Object.is(state.variables, vars) &&
+          MUTATION_METHODS.get(options.mutationFn as object) === method
+      )
 
   /**
    * The argument of each re-send `resendOf` offered, and the write it was
@@ -447,14 +488,114 @@ export function createBuilders(
     // One synchronous step, so that every `{ name }` here (the canister
     // written to, and any listed in `invalidates`) is read from the same
     // cookie.
-    const resolveRun = (): MutationRun => ({
-      caller: internals.current(),
+    const resolveRun = (caller?: Caller): MutationRun => ({
+      caller,
       target: record.resolve(),
       invalidates: invalidates.map(({ record: listed, method: only }) => ({
         slots: listed.slots(),
         method: only,
       })),
     })
+
+    /**
+     * The caller a run of this write goes out as: the one current when
+     * `mutate()` started it, or `undefined` when that is not known, which
+     * refuses the write. Found, in order:
+     *
+     * - by the run's context (5.89 and later): what the client's
+     *   `MutationCache` read for it, which no option replaces, else what our
+     *   `onMutate` read (a run on another `QueryClient`). Neither, for a run
+     *   TanStack restored from a persister (it runs no `onMutate` for one),
+     *   or one on another `QueryClient` whose `onMutate` replaced ours.
+     * - without a context (before 5.89, or a call by hand): by the run's
+     *   `Mutation` in the client's cache, among its pending runs of this
+     *   method and argument, when they all started as one caller; else by
+     *   the callers our `onMutate` kept for the argument (another
+     *   `QueryClient`), when they all are the live one. Only when no
+     *   `onMutate` of ours ever kept one for this method is this a call by
+     *   hand, made as the caller current now.
+     */
+    const callerOf = (
+      vars: unknown,
+      key: object | undefined,
+      run: MutationRun | undefined
+    ): Caller | undefined => {
+      if (key !== undefined) {
+        return internals.mutationCallers.get(key) ?? run?.caller
+      }
+      const runs = runsInCache(prepared, vars)
+      if (runs.length > 0) {
+        const callers = runs.map((one) => internals.mutationCallers.get(one))
+        const [first] = callers
+        return first !== undefined &&
+          callers.every((one) => one?.principal === first.principal)
+          ? first
+          : undefined
+      }
+      const live = internals.current()
+      const kept = takeCallers(prepared, vars)
+      if (kept !== undefined) {
+        return kept.every((one) => one.principal === live.principal)
+          ? live
+          : undefined
+      }
+      return queuedMethods.has(prepared) ? undefined : live
+    }
+
+    // The write goes out as the caller current when `mutate()` started it
+    // (`callerOf`), or not at all: `agentFor` refuses it (`caller_changed`,
+    // nothing sent) while someone else is current, as when TanStack held it
+    // back offline or behind its `scope` and the account was switched
+    // meanwhile, and a caller not known is refused here. A re-send
+    // `resendOf` offered goes out as its first sender, to the canister id it
+    // went to, with the bytes it had, or not at all (`run` checks the rest).
+    // The target is the one onMutate resolved for this run where TanStack
+    // passes the run's context (5.89 and later), and is resolved now
+    // otherwise.
+    const mutationFn = (vars: unknown, context?: unknown) => {
+      // TanStack hands a pending mutation the options of a later render
+      // only when their mutationKey is the same (another key detaches the
+      // observer instead), so a run found here was made by options for the
+      // same canister and method.
+      let run = keptRun(context)
+      const key = runKey(context)
+      if (run === undefined && key !== undefined) {
+        // An onMutate of the app's replaced ours, so nothing is resolved
+        // for this run yet: resolve it now, and keep it for onSettled,
+        // which TanStack hands the same context.
+        run = resolveRun()
+        runsByContext.set(key, run)
+      }
+      const target = run?.target ?? record.resolve()
+      const again = offered.get(vars as object)
+      const caller = again?.caller ?? callerOf(vars, key, run)
+      // A disposed client cancels every call itself (`client_disposed`).
+      if (caller === undefined && !internals.disposed()) {
+        return Promise.reject(
+          fromCanister(
+            createReactorError("cancelled", {
+              method: prepared.name,
+              canisterId: target.ok ? target.id : target.slot,
+              code: "caller_changed",
+              reason: "who started this write is not known; it was not sent",
+            }),
+            canister as object
+          )
+        )
+      }
+      return invoke(internals, {
+        method: prepared,
+        target,
+        certified: record.certified,
+        caller: caller ?? internals.current(),
+        values: valuesOf(prepared, vars),
+        resend: true,
+        canister: canister as object,
+        again,
+      })
+    }
+    MUTATION_METHODS.set(mutationFn, prepared)
+
     return {
       mutationKey: [
         KEY_ROOT,
@@ -463,55 +604,20 @@ export function createBuilders(
         prepared.name,
       ] as const,
       // TanStack runs this first, before mutationFn, and hands what it
-      // returns to onSettled.
+      // returns to onSettled. The caller it reads matters only on a
+      // `QueryClient` other than the client's, whose own `MutationCache`
+      // reads it otherwise.
       onMutate: (vars: unknown, context?: unknown): object => {
-        const run = resolveRun()
+        const caller = internals.current()
+        const run = resolveRun(caller)
         const key = runKey(context)
         if (key !== undefined) runsByContext.set(key, run)
-        else keepCaller(prepared, vars, run.caller)
+        else if (runsInCache(prepared, vars).length === 0) {
+          keepCaller(prepared, vars, caller)
+        }
         return { [RUN]: run }
       },
-      // The write goes out as the caller onMutate read, or not at all:
-      // `agentFor` refuses it (`caller_changed`, nothing sent) while someone
-      // else is current, as when TanStack held it back offline or behind its
-      // `scope` and the account was switched meanwhile. A re-send `resendOf`
-      // offered goes out as its first sender, to the canister id it went to,
-      // with the bytes it had, or not at all (`run` checks the rest). The run
-      // is found by its context where TanStack passes one (5.89 and later);
-      // before that, the target is resolved now, and the caller is the one
-      // onMutate read for this argument. Only where no onMutate of ours ran
-      // (an app's replaced it, or mutationFn is called by hand) is the
-      // caller the one current now.
-      mutationFn: (vars: unknown, context?: unknown) => {
-        // TanStack hands a pending mutation the options of a later render
-        // only when their mutationKey is the same (another key detaches the
-        // observer instead), so a run found here was made by options for the
-        // same canister and method.
-        let run = keptRun(context)
-        const key = runKey(context)
-        if (run === undefined && key !== undefined) {
-          // An onMutate of the app's replaced ours, so nothing is resolved
-          // for this run yet: resolve it now, and keep it for onSettled,
-          // which TanStack hands the same context.
-          run = resolveRun()
-          runsByContext.set(key, run)
-        }
-        const again = offered.get(vars as object)
-        const caller =
-          run?.caller ??
-          (key === undefined ? takeCaller(prepared, vars) : undefined) ??
-          internals.current()
-        return invoke(internals, {
-          method: prepared,
-          target: run?.target ?? record.resolve(),
-          certified: record.certified,
-          caller: again?.caller ?? caller,
-          values: valuesOf(prepared, vars),
-          resend: true,
-          canister: canister as object,
-          again,
-        })
-      },
+      mutationFn,
       retry: false as const,
       onSettled: async (
         _data: unknown,

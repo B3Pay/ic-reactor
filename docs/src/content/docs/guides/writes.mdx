@@ -42,12 +42,19 @@ Its `mutationKey` is `["ic-reactor", network, canisterId, method]`.
 
 A write calls as the caller current **when `mutate()` was called**, or not at
 all; not the one current when the options were built. TanStack Query can run a
-write later: paused while the browser is offline, or queued behind another
-mutation of its `scope`. If someone else is current by the time it is sent,
-the client refuses it: kind `cancelled`, code `caller_changed`,
-`mayHaveExecuted: false`, and nothing is sent. A write needs a signed-in caller. If nobody is signed
-in, or the client was built with `identity: "anonymous"`, the client refuses
-it before sending anything: kind `unauthenticated`, code `anonymous_write`,
+write later: paused while the browser is offline, queued behind another
+mutation of its `scope`, or retried by a `retry` of the app's. If someone else
+is current by the time it is sent, the client refuses it: kind `cancelled`,
+code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. A
+mutation restored from a persister is refused the same way whoever is signed
+in, since TanStack runs no `onMutate` for it and who started it is not known:
+call `mutate()` again. A write run on a `QueryClient` other than
+`client.queryClient` keeps the rule only through the client's `onMutate` (see
+`onMutate` below).
+
+A write needs a signed-in caller. If nobody is signed in, or the client was
+built with `identity: "anonymous"`, the client refuses it before sending
+anything: kind `unauthenticated`, code `anonymous_write`,
 `mayHaveExecuted: false`.
 
 Disable the button for a caller who is not signed in, and send as the caller
@@ -388,7 +395,11 @@ the result to `onSettled`, which is how the client finds the reads to
 invalidate. An `onMutate` that replaces the client's, as TanStack's own
 optimistic recipe is written, keeps the write and its invalidation together
 only from TanStack Query 5.89 on (`@ic-reactor/react` needs 5.90.2 or newer).
-The spread form works everywhere.
+The spread form works everywhere. Either form keeps the caller on the client's
+own `queryClient`: its `MutationCache` reads who started each run. On another
+`QueryClient`, only the client's `onMutate` reads it, so from 5.89 on a write
+whose `onMutate` replaced it there is refused (`caller_changed`), and before
+5.89 it goes out as the caller current when it is sent.
 
 This example shows a new name at once and puts the old one back on failure.
 The client's `onSettled` then re-reads the profile, so the page ends with what

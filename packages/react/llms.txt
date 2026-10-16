@@ -39,11 +39,11 @@ hydrating render gets a view of the client whose `queryKey`, `queryOptions`,
 `caller()` and `authState()` are the anonymous caller's. It finds what the
 server prefetched and dehydrated, matches the server's HTML and sends nothing.
 Canisters, writes, `signIn`, `signOut` and the `QueryClient` are the client's
-own, and a write signs as the caller current when `mutate()` is called. Right after
-hydrating, React renders the component again with the session, and each read
-loads the user's keys once: until the user's data arrives, a read shows its
-loading state, and a `useSuspenseQuery` read its boundary's fallback. A tab
-whose caller is anonymous anyway (no session,
+own, and a write signs as the caller current when `mutate()` is called.
+Right after hydrating, React renders the component again with the session,
+and each read loads the user's keys once: until the user's data arrives, a
+read shows its loading state, and a `useSuspenseQuery` read its boundary's
+fallback. A tab whose caller is anonymous anyway (no session,
 or one that expired or is signed in elsewhere) renders no `useClient()`
 component again, and a client built with `identity` is always returned as it
 is.
