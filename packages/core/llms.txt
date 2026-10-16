@@ -235,6 +235,8 @@ export function Send({ arg }: { arg: TransferArg }) {
   names the reads to invalidate instead (name the written canister too if
   its reads change); `[]`, none. To add an `onSettled`, call the client's
   from yours.
+- A write that timed out (`timeoutMs`, below in Errors) whose request went
+  out is `outcome_unknown`: never send it again blindly.
 - Do not retry a write. `retry` is `false`; keep it. The client itself
   re-sends an update, at most twice, only after a failure proving the canister
   never got it (reject code 2, status 429); any other failure is final.
@@ -292,6 +294,19 @@ waiting at any point when TanStack Query cancels it
 (`queryClient.cancelQueries(...)`, or its last observer unmounts), and
 rejects `cancelled` (with `mayHaveExecuted: true` for an update read with
 `{ update: "idempotent" }` whose request went out).
+
+To bound the wait, give the canister target `timeoutMs`:
+`client.canister<Actor>(actor, { id, timeoutMs: 15_000 })` bounds each of its
+direct calls, `queryOptions` reads and mutations, counted from the call.
+`client.mutationOptions(ledger, "icrc1_transfer", { timeoutMs: 15_000 })`
+bounds that mutation's runs instead (1 to 2147483647 ms; anything else
+throws). When it passes, the call stops waiting and rejects with
+`code: "timeout"`: `cancelled`, `mayHaveExecuted: false`, for a read and for a
+write that had not gone out; `outcome_unknown`, `mayHaveExecuted: true`, for a
+write whose request went out. That write may still execute: it is an unknown
+outcome to reconcile like any other (read the state back, or `resendOf` for a
+method that deduplicates), never one to send again blindly. Nothing is sent
+again for a timeout, and the request is not torn down.
 
 ## Outside React
 

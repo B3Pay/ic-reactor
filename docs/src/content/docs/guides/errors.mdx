@@ -173,6 +173,34 @@ last observer unmounts), and rejects `cancelled`. Its `mayHaveExecuted` is
 request had gone out: that one may have run. The request itself is not torn
 down; nobody waits for its answer.
 
+To stop waiting sooner, give a call a bound with `timeoutMs`, in milliseconds
+(1 to 2147483647):
+
+- on the canister target, `client.canister(actor, { id, timeoutMs })`, it
+  bounds every call made through that canister object: its direct calls, its
+  reads made with `queryOptions`, and its mutations;
+- in the third argument of `client.mutationOptions()`,
+  `{ invalidates, timeoutMs }`, it bounds that mutation's runs in place of the
+  canister's.
+
+The bound counts from the moment the call is made, the wait for the caller's
+identity included. When it passes, the call stops waiting at whatever point it
+is, and rejects with `code: "timeout"`:
+
+| When the bound passed                                                  | `kind`            | `mayHaveExecuted` |
+| ---------------------------------------------------------------------- | ----------------- | ----------------- |
+| a read, at any point                                                   | `cancelled`       | `false`           |
+| a write before its request went out (or while it waited to be re-sent) | `cancelled`       | `false`           |
+| a write whose request went out, while it waits for the answer or polls | `outcome_unknown` | `true`            |
+
+A write that timed out after its request went out may still execute, or may
+have executed already. Treat it as any other unknown outcome: read the state
+back, or offer the same write again with `client.resendOf()` when the method
+deduplicates it. Never send it again blindly: that can run the write twice.
+The client sends nothing again for a timeout, and, as with an abort, the
+request itself is not torn down. An update read with `{ update: "idempotent" }`
+counts as a write here.
+
 The errors the client makes itself, without an agent error to classify, are
 simpler:
 
@@ -184,7 +212,7 @@ simpler:
 
 ### Codes
 
-`code` narrows a kind. The client sets exactly these ten. Only
+`code` narrows a kind. The client sets exactly these eleven. Only
 `canister_not_found` comes from the IC's answer; the client decides the others
 itself:
 
@@ -199,6 +227,7 @@ itself:
 | `caller_changed`                | `cancelled`                                      | the call was made for a principal that is no longer current                                                                                                                                                                                                                                                       |
 | `target_changed`                | `cancelled`                                      | a mutation given an argument `client.resendOf()` offered would send it to another method or canister than the write it re-sends: a `{ name }` the `ic_env` cookie maps elsewhere since                                                                                                                            |
 | `client_disposed`               | `cancelled`                                      | a call on a disposed client                                                                                                                                                                                                                                                                                       |
+| `timeout`                       | `cancelled` or `outcome_unknown`                 | the call's `timeoutMs` passed: `outcome_unknown` for a write whose request went out, `cancelled` otherwise (see How long a call waits)                                                                                                                                                                            |
 | `canister_not_found`            | `not_delivered`, `rejected` or `outcome_unknown` | the IC answered that the canister does not exist: a boundary node's HTTP 400 `canister_not_found` (an id outside every subnet's range), or a replica's reject 3 with IC error code `IC0301` (an id inside a range that holds no canister). A write the IC may already hold keeps the code under `outcome_unknown` |
 
 An aborted call is `cancelled` with no code.

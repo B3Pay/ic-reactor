@@ -17,6 +17,25 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### @ic-reactor/core
 
+#### Added
+
+- `timeoutMs` bounds how long a call waits for its answer (#875). On the
+  canister target, `client.canister(actor, { id, timeoutMs })`, it bounds every
+  direct call, `queryOptions` read and mutation made through that canister
+  object; in `client.mutationOptions()`' third argument, `{ timeoutMs }`, it
+  bounds that mutation's runs instead. When it passes, the call rejects with
+  `code: "timeout"`: `cancelled` with `mayHaveExecuted: false` for a read and
+  for a write that had not gone out, and `outcome_unknown` with
+  `mayHaveExecuted: true` for a write whose request went out, which
+  `client.resendOf()` offers like any other unknown outcome. Such a write is to
+  be reconciled, never sent again blindly. Nothing is re-sent for a timeout,
+  and the request is not torn down. Without `timeoutMs`, nothing changes. A
+  read's abort signal now also ends its wait for the caller's identity, so a
+  read aborted then sends nothing.
+- Core's size limit is raised to 15.34 kB for `timeoutMs` (15,298 B, +338 B),
+  and the app checks with the peers included to 90.36 kB (90,304 B, +356 B)
+  and 91.55 kB (91,506 B, +350 B).
+
 #### Fixed
 
 - A read made with `queryOptions` stops waiting for the HTTP answer to its

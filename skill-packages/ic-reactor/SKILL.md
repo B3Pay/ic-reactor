@@ -82,7 +82,8 @@ This skill describes these versions:
    a write nor data carried across keys.
 7. **Handle failures** by `isReactorError(error)`, then `kind` and
    `mayHaveExecuted`: when it is `true`, tell the user the outcome is unknown
-   and re-read; never re-send by hand. Only a method the canister
+   and re-read; never re-send by hand. A write that timed out (`timeoutMs`,
+   code `"timeout"`) after its request went out is such an unknown outcome. Only a method the canister
    deduplicates (an ICRC-1 transfer with `created_at_time`) may offer the
    same argument again, through `client.resendOf(error, canister, method, { dedupedBy })`.
    After a direct call, use
