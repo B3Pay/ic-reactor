@@ -4437,5 +4437,15 @@
     "file": "src/call.ts",
     "search": "      limits.maxElements + reply.length,",
     "replace": "      Math.max(limits.maxElements, reply.length),"
+  },
+  {
+    "id": "899-mock-reply-budget",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "return as many values as the maxElements the test client was given",
+    "why": "a mock encodes its reply with candid-core's default element budget, so a test client given a larger maxElements still cannot return a reply past 1,000,000 values",
+    "file": "src/testing/test-client.ts",
+    "search": "        maxDepth,\n        maxElements,\n      })",
+    "replace": "        maxDepth,\n      })"
   }
 ]

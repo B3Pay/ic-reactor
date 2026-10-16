@@ -199,6 +199,7 @@ function mockCanister(
       })
       const encoded = encodeArgs(method.results, resultValues(method, reply), {
         maxDepth,
+        maxElements,
       })
       if (!encoded.ok) {
         throw new Error(
