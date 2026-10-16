@@ -139,7 +139,7 @@ import { createClient } from "@ic-reactor/core"
 import { actor, type Actor } from "./generated/backend"
 
 const id = process.env.NEXT_PUBLIC_BACKEND_ID
-if (!id) throw new Error("NEXT_PUBLIC_BACKEND_ID is not set: see .env.local")
+if (!id) throw new Error("NEXT_PUBLIC_BACKEND_ID is not set")
 
 export const client = createClient({
   network: process.env.NODE_ENV === "production" ? "ic" : "local",
@@ -148,23 +148,29 @@ export const client = createClient({
 export const backend = client.canister<Actor>(actor, { id })
 ```
 
-Write the local id into `.env.local` after each `icp deploy` (icp-cli prints
-the id of a named canister with `icp canister status -e local -i <name>`):
+Write the local id into `.env.development.local` after each `icp deploy`
+(icp-cli prints the id of a named canister with
+`icp canister status -e local -i <name>`). Next.js reads that file only under
+`next dev`, so a `next build` never inlines a local id beside `"ic"`. The
+command replaces the file, so keep it for these ids alone:
 
 ```sh
-echo "NEXT_PUBLIC_BACKEND_ID=$(icp canister status -e local -i backend)" > .env.local
+echo "NEXT_PUBLIC_BACKEND_ID=$(icp canister status -e local -i backend)" > .env.development.local
 ```
 
 A production build reads the mainnet id from its own environment instead
-(`NEXT_PUBLIC_BACKEND_ID` set where the app is built for mainnet). Next.js
-reads `.env.local` when `next dev` starts, so restart it after a redeploy that
-changed the id.
+(`NEXT_PUBLIC_BACKEND_ID` set where the app is built for mainnet). `next dev`
+watches the file and picks up a changed id without a restart, unless the
+variable is also set in the shell, which wins over the file.
 
 To keep `"env"` instead, the page must answer `/api` as the plugin's proxy
-does. In Next.js, a rewrite of `/api/v2/:path*` and `/api/v3/:path*` (and no
-other `/api` path) to `http://127.0.0.1:8000` does that. The page is local,
-so the client fetches the root key through the rewrite. It still gives no
-cookie, so the canisters still need `{ id }`.
+does. In Next.js, a rewrite of `/api/v2/:path*`, `/api/v3/:path*` and
+`/api/v4/:path*` to `http://127.0.0.1:8000` does that (the agent sends
+updates to v4 first, queries and status reads to v3 and v2). The page is
+local, so the client fetches the root key through the rewrite. It still gives
+no cookie, so the canisters still need `{ id }`, and a server render has no
+page origin: run `next dev` with `ICP_NETWORK=local`, or the server's `"env"`
+is mainnet.
 
 ## Who calls
 

@@ -52,7 +52,8 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
   `/api` proxy, so `"env"` and `{ name }` do not work on a local network. Use
   `network: "local"` with `{ id }` from a build-time variable
   (`NEXT_PUBLIC_BACKEND_ID`, written from
-  `icp canister status -e local -i backend` into `.env.local`).
+  `icp canister status -e local -i backend` into
+  `.env.development.local`, which only `next dev` reads).
 
 Who calls (exactly one):
 
