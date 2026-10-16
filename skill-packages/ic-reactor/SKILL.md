@@ -83,9 +83,11 @@ This skill describes these versions:
 7. **Handle failures** by `isReactorError(error)`, then `kind` and
    `mayHaveExecuted`: when it is `true`, tell the user the outcome is unknown
    and re-read; never re-send by hand. A write that timed out (`timeoutMs`,
-   code `"timeout"`) after its request went out is such an unknown outcome. Only a method the canister
-   deduplicates (an ICRC-1 transfer with `created_at_time`) may offer the
-   same argument again, through `client.resendOf(error, canister, method, { dedupedBy })`.
+   code `"timeout"`) after its request went out is such an unknown outcome,
+   and a `cancelled` with that code is a real timeout to show, not ignore.
+   Only a method the canister deduplicates (an ICRC-1 transfer with
+   `created_at_time`) may offer the same argument again, through
+   `client.resendOf(error, canister, method, { dedupedBy })`.
    After a direct call, use
    `isReactorError(error, canister, method)` to read a typed `err`; never cast it.
 8. **Test** through `createTestClient()` from `@ic-reactor/core/testing`, a

@@ -97,16 +97,16 @@ error is not that call's: it can still be of any `kind`.
 
 ## The eight kinds
 
-| `kind`            | Meaning                                                                                                                                                                                                     |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `invalid_args`    | the arguments could not be encoded, the target canister id could not be resolved, or an offered re-send's argument was changed since it was sent (`arg_changed`). Nothing was sent                          |
-| `unauthenticated` | an update was attempted while nobody is signed in. Nothing was sent                                                                                                                                         |
-| `not_delivered`   | nothing that matters ran: the request was refused or never taken in, or it was a query that got no answer                                                                                                   |
-| `outcome_unknown` | an update went out and no trustworthy answer came back, so the canister may or may not have run it                                                                                                          |
-| `rejected`        | the IC or the canister rejected the call; `rejectCode` says which                                                                                                                                           |
-| `invalid_reply`   | a reply arrived but did not decode as the method's result                                                                                                                                                   |
-| `canister_err`    | the canister ran the call and answered with the `Err` arm of its result; `err` is typed                                                                                                                     |
-| `cancelled`       | the caller abandoned the call: an aborted call, a read whose caller is no longer current, a call on a disposed client, or an offered re-send that would go to another canister or method (`target_changed`) |
+| `kind`            | Meaning                                                                                                                                                                                                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `invalid_args`    | the arguments could not be encoded, the target canister id could not be resolved, or an offered re-send's argument was changed since it was sent (`arg_changed`). Nothing was sent                                                                                       |
+| `unauthenticated` | an update was attempted while nobody is signed in. Nothing was sent                                                                                                                                                                                                      |
+| `not_delivered`   | nothing that matters ran: the request was refused or never taken in, or it was a query that got no answer                                                                                                                                                                |
+| `outcome_unknown` | an update went out and no trustworthy answer came back, so the canister may or may not have run it                                                                                                                                                                       |
+| `rejected`        | the IC or the canister rejected the call; `rejectCode` says which                                                                                                                                                                                                        |
+| `invalid_reply`   | a reply arrived but did not decode as the method's result                                                                                                                                                                                                                |
+| `canister_err`    | the canister ran the call and answered with the `Err` arm of its result; `err` is typed                                                                                                                                                                                  |
+| `cancelled`       | the caller abandoned the call: an aborted call, a read whose caller is no longer current, a call on a disposed client, an offered re-send that would go to another canister or method (`target_changed`), or a read or unsent write whose `timeoutMs` passed (`timeout`) |
 
 ## `mayHaveExecuted`
 
@@ -156,8 +156,8 @@ Two rules sit behind the table.
 
 ### How long a call waits
 
-Neither the client nor the agent puts a timeout on an HTTP request. A request
-that gets no HTTP answer, from a proxy that holds it say, waits as long as the
+Unless the call has a `timeoutMs` (below), neither the client nor the agent
+puts a timeout on an HTTP request. A request that gets no HTTP answer, from a proxy that holds it say, waits as long as the
 `fetch` in use waits. That holds for the call or query request, and for each
 `read_state` request that polls for an accepted call's answer.
 
@@ -189,8 +189,9 @@ is, and rejects with `code: "timeout"`:
 
 | When the bound passed                                                  | `kind`            | `mayHaveExecuted` |
 | ---------------------------------------------------------------------- | ----------------- | ----------------- |
-| a read, at any point                                                   | `cancelled`       | `false`           |
+| a read, at any point (an `{ update: "idempotent" }` read: as a write)  | `cancelled`       | `false`           |
 | a write before its request went out (or while it waited to be re-sent) | `cancelled`       | `false`           |
+| a re-send of a write `client.resendOf()` offered, at any point         | `outcome_unknown` | `true`            |
 | a write whose request went out, while it waits for the answer or polls | `outcome_unknown` | `true`            |
 
 A write that timed out after its request went out may still execute, or may
@@ -200,6 +201,15 @@ deduplicates it. Never send it again blindly: that can run the write twice.
 The client sends nothing again for a timeout, and, as with an abort, the
 request itself is not torn down. An update read with `{ update: "idempotent" }`
 counts as a write here.
+
+`client.resendOf()` and `isReactorError(error, canister, method)` need the
+canister object the call was made on, and a target with another `timeoutMs`
+is another canister object: pass the one the write went through.
+
+Canister objects that differ only in `timeoutMs` share query keys, so their
+reads share one cache entry. When two observers read the same key through
+canisters with different bounds, a fetch is bounded by the options TanStack
+Query was given last.
 
 The errors the client makes itself, without an agent error to classify, are
 simpler:
@@ -234,16 +244,16 @@ An aborted call is `cancelled` with no code.
 
 ## What to do for each kind
 
-| `kind`            | What to do                                                                                                                                                                                                                                             |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `invalid_args`    | Fix the input or the target. Read `issues` for the field and the reason. Nothing was sent. `arg_changed` has no `issues`: see the note below the table.                                                                                                |
-| `unauthenticated` | Ask the user to sign in, then send again. `anonymous_write` means nobody is signed in. `identity_unavailable` means the auth could not hand over an identity.                                                                                          |
-| `not_delivered`   | It is safe to try again. The client already retried a read, and sent an update again where that was proven safe, so this is the end of what it will do alone.                                                                                          |
-| `outcome_unknown` | Say the outcome is unknown. Read the state back before anything else. Never send again blindly.                                                                                                                                                        |
-| `rejected`        | Read `rejectCode`. Code 4 is a reject the canister chose, and code 5 is a trap. If `mayHaveExecuted` is `true`, read the state back before sending again.                                                                                              |
-| `invalid_reply`   | The generated module and the canister disagree about the method's result: regenerate the module from the canister's current `.did`. For an update, it did run.                                                                                         |
-| `canister_err`    | Show or act on the typed `err`. The canister's answer is final. Sending again is a new decision. A mutation has already refreshed its reads.                                                                                                           |
-| `cancelled`       | Usually ignore it: the caller moved on. A `caller_changed` read lands nowhere, and the component reads the new caller's key. Ignore it in a global error handler as well, except `target_changed` and a refused re-send: see the note below the table. |
+| `kind`            | What to do                                                                                                                                                                                                                                                                                                                      |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `invalid_args`    | Fix the input or the target. Read `issues` for the field and the reason. Nothing was sent. `arg_changed` has no `issues`: see the note below the table.                                                                                                                                                                         |
+| `unauthenticated` | Ask the user to sign in, then send again. `anonymous_write` means nobody is signed in. `identity_unavailable` means the auth could not hand over an identity.                                                                                                                                                                   |
+| `not_delivered`   | It is safe to try again. The client already retried a read, and sent an update again where that was proven safe, so this is the end of what it will do alone.                                                                                                                                                                   |
+| `outcome_unknown` | Say the outcome is unknown. Read the state back before anything else. Never send again blindly.                                                                                                                                                                                                                                 |
+| `rejected`        | Read `rejectCode`. Code 4 is a reject the canister chose, and code 5 is a trap. If `mayHaveExecuted` is `true`, read the state back before sending again.                                                                                                                                                                       |
+| `invalid_reply`   | The generated module and the canister disagree about the method's result: regenerate the module from the canister's current `.did`. For an update, it did run.                                                                                                                                                                  |
+| `canister_err`    | Show or act on the typed `err`. The canister's answer is final. Sending again is a new decision. A mutation has already refreshed its reads.                                                                                                                                                                                    |
+| `cancelled`       | Usually ignore it: the caller moved on. A `caller_changed` read lands nowhere, and the component reads the new caller's key. Ignore it in a global error handler as well, except `target_changed`, a refused re-send (see the note below the table) and code `timeout`: that is a real timeout the user waited for, so show it. |
 
 **A refused re-send is not the end of the write.** `target_changed`,
 `arg_changed`, and a `caller_changed` from a mutation given an argument
@@ -253,6 +263,12 @@ the mutation's `outcome_unknown` error, so `client.resendOf(mutation.error)` is
 `undefined` from then on, and an app that ignores the refusal drops a write
 that may have run. Do not ignore it: read the state back, as for
 `outcome_unknown`.
+
+A timeout is not such a refusal. A re-send of an offered write that times out
+before it goes out (while it waits for the caller's identity, or to be sent
+again after a 429) rejects `outcome_unknown` with `mayHaveExecuted: true` and
+code `timeout`, like one that timed out after going out: the earlier attempt
+may have run, and `client.resendOf()` offers the write again.
 
 For every `mayHaveExecuted: true` failure of a write, a mutation has already
 invalidated the canister's reads, so the page shows what the canister holds
@@ -414,7 +430,9 @@ tell a refusal that passes (429, 408, 5xx) from one that stands (any other
 
 A read built by one caller can be cancelled when another becomes current. If
 you log errors in one place, such as a listener on
-`client.queryClient.getQueryCache()`, skip the `cancelled` kind there. A
+`client.queryClient.getQueryCache()`, skip the `cancelled` kind there, except
+one with code `timeout`: that read timed out after `timeoutMs`, and is worth
+showing. A
 component that reads with `useQuery` never shows it: it renders again under
 the new caller's key. The
 [SSR page](/v4/guides/ssr/#a-read-the-hydrating-render-built-may-be-cancelled-once)
