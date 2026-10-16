@@ -17,6 +17,33 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### @ic-reactor/core
 
+#### Added
+
+- `timeoutMs` bounds how long a call waits for its answer (#875). On the
+  canister target, `client.canister(actor, { id, timeoutMs })`, it bounds every
+  direct call, `queryOptions` read and mutation made through that canister
+  object; in `client.mutationOptions()`' third argument, `{ timeoutMs }`, it
+  bounds that mutation's runs instead. When it passes, the call rejects with
+  `code: "timeout"`: `cancelled` with `mayHaveExecuted: false` for a read and
+  for a write that had not gone out, and `outcome_unknown` with
+  `mayHaveExecuted: true` for a write whose request went out (an
+  `{ update: "idempotent" }` read's included) and for a re-send of a write
+  `client.resendOf()` offered, at any point, which `client.resendOf()` offers
+  like any other unknown outcome when given the canister object the write went
+  through (another `timeoutMs` is another object). Such a write is to be
+  reconciled, never sent again blindly. Nothing is re-sent for a timeout, and
+  the request is not torn down. Canister objects that differ only in
+  `timeoutMs` share query keys. Without `timeoutMs`, nothing changes, except
+  for the next entry.
+- A read aborted while it waits for its caller's identity now rejects
+  `cancelled` at once, with no code, and sends nothing. It used to wait for the
+  identity, then reject `caller_changed`, `client_disposed` or
+  `unauthenticated` (`identity_unavailable`) when one of those applied, and
+  otherwise send the read nobody waited for. The abort now comes first.
+- Core's size limit is raised to 15.36 kB for `timeoutMs` (15,321 B, +361 B),
+  and the app checks with the peers included to 90.38 kB (90,331 B, +383 B)
+  and 91.58 kB (91,535 B, +379 B).
+
 #### Fixed
 
 - A read made with `queryOptions` stops waiting for the HTTP answer to its
@@ -30,8 +57,8 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### Docs
 
-- The guide's Errors section says how long a call waits: an HTTP request has
-  no timeout in the client or the agent, an accepted update polls for about
+- The guide's Errors section says how long a call waits: unless the call has
+  a `timeoutMs`, an HTTP request has no timeout in the client or the agent, an accepted update polls for about
   five minutes (a deadline checked when a poll is answered) before `outcome_unknown`, and
   a cancelled read stops waiting (part of #875).
 

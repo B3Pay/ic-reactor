@@ -42,8 +42,10 @@ import type { Canister, ErrorOf } from "./types.js"
  * - `cancelled`: the caller abandoned the call (an aborted query, a key whose
  *   principal is no longer current, a call on a disposed client
  *   (`client_disposed`), a re-send that would go to another method or
- *   canister id than the write it re-sends (`target_changed`), or an update
- *   aborted in flight).
+ *   canister id than the write it re-sends (`target_changed`), a read or an
+ *   unsent write whose `timeoutMs` passed (`timeout`), or an update aborted
+ *   in flight). A write whose `timeoutMs` passed after its request went out
+ *   is `outcome_unknown` (`timeout`) instead.
  *   `mayHaveExecuted` is `false` when nothing was sent, and `true` for an
  *   update aborted after its request may already have been delivered.
  */
@@ -362,6 +364,27 @@ export function createReactorError(
     err,
   })
 }
+
+/**
+ * The error of a call whose `timeoutMs` passed (code `"timeout"`). `sent` is
+ * whether a write (an update or a oneway, or an update read with
+ * `{ update: "idempotent" }`) may have been delivered: an attempt of it was
+ * out, or it re-sends a write `client.resendOf()` offered, whose earlier
+ * attempt may have run. Then `outcome_unknown` with `mayHaveExecuted: true`,
+ * as when the polling bound passes. Otherwise `cancelled`, with nothing
+ * executed: nothing was out, or the call was a plain read.
+ */
+export const timedOutError = (
+  where: { readonly method: string; readonly canisterId: string },
+  sent: boolean
+): ReactorError =>
+  build({
+    ...where,
+    kind: sent ? "outcome_unknown" : "cancelled",
+    mayHaveExecuted: sent,
+    code: "timeout",
+    reason: `timeoutMs passed${sent ? " with no answer; the write may have executed" : ""}`,
+  })
 
 /**
  * Creates the `invalid_reply` error for a reply that did not decode as the
