@@ -245,10 +245,13 @@ account.
 
 ### Wallets that sign each call
 
-A wallet that speaks ICRC-25, ICRC-27 and ICRC-49 (OISY, Plug, an NFID
-account) never hands the app an `Identity`: the user approves each call in the
-wallet, which signs and sends it. Such a wallet is not an `AuthLike`, and the client cannot
-send as it. Keep the client for reads, anonymous (a ledger's balances are
+A wallet used through ICRC-25, ICRC-27 and ICRC-49 (OISY, Plug, an NFID
+account) signs each call: the user approves it in the wallet, which signs and
+sends it, and the app never holds an `Identity`. Used this way, the wallet is
+not an `AuthLike`, and the client cannot send as it. (A wallet that also
+speaks ICRC-34 can hand the app a delegation instead, from
+`signer.requestDelegation()`; a `DelegationIdentity` made from it is an
+`Identity`, and an `AuthLike` can hold it as for Internet Identity above.) Keep the client for reads, anonymous (a ledger's balances are
 public; `SignerAgent` would send each read to the wallet for approval too),
 and send the wallet's writes through `SignerAgent` from `@icp-sdk/signer`,
 then invalidate the reads yourself:
@@ -269,9 +272,17 @@ const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"
 export const client = createClient({ network: "ic", identity: "anonymous" })
 export const ledger = client.canister<Actor>(actor, { id: LEDGER })
 
+type Account = Awaited<ReturnType<Signer["getAccounts"]>>[number]
+
 // The wallet's window may open only in a click handler: call connect()
 // straight from a "Connect" button's onClick, before any await.
-export async function connect() {
+export async function connect(
+  // A wallet may share several accounts (NFID does): let the user pick one.
+  choose: (
+    accounts: Account[]
+  ) => Account | undefined | Promise<Account | undefined> = (accounts) =>
+    accounts[0]
+) {
   const signer = new Signer({
     transport: new PostMessageTransport({ url: "https://oisy.com/sign" }),
     // Keep the channel open between the requests of one session.
@@ -279,15 +290,17 @@ export async function connect() {
   })
   // ICRC-27: the accounts the user shares. A wallet that lacks it cannot
   // be used this way; signer.getSupportedStandards() says which it has.
-  const [account] = await signer.getAccounts()
+  const account = await choose(await signer.getAccounts())
   if (!account) throw new Error("the wallet shared no account")
   const agent = await SignerAgent.create({ signer, account: account.owner })
   const wallet = IcrcLedgerCanister.create({
     agent,
     canisterId: Principal.fromText(LEDGER),
   })
-  // The whole account: its subaccount, if any, is the one to debit.
-  return { account, wallet }
+  // The whole account: its subaccount, if any, is the one to debit. Call
+  // disconnect() when the session ends, or before connecting again: it
+  // closes the wallet's window, which stays open otherwise.
+  return { account, wallet, disconnect: () => signer.closeChannel() }
 }
 
 // Writes: through the wallet, which shows each call to the user.

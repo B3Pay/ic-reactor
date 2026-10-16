@@ -371,6 +371,7 @@ declare module "@icp-sdk/signer" {
   export class Signer<T extends Transport = Transport> {
     constructor(options: { transport: T; autoCloseTransportChannel?: boolean })
     getAccounts(): Promise<Array<{ owner: Principal; subaccount?: Uint8Array }>>
+    closeChannel(): Promise<void>
   }
 }
 
