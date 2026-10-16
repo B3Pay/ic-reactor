@@ -70,6 +70,136 @@ describe("createClient options", () => {
     )
   })
 
+  it("refuses an option it does not have, in the options or a network object", () => {
+    const build = (options: object) => () =>
+      createClient(options as unknown as ClientOptions)
+
+    // The 3.x habit: a host beside the network talked to port 8000.
+    expect(
+      build({
+        network: "local",
+        identity: "anonymous",
+        host: "http://127.0.0.1:4943",
+      })
+    ).toThrow(
+      new TypeError(
+        "[ic-reactor] createClient() has no option host. Its options: network, identity, auth, allowEnvConfig, fetch, maxDepth."
+      )
+    )
+    expect(
+      build({ network: "ic", identity: "anonymous", allowEnvconfig: true })
+    ).toThrow(/^\[ic-reactor\] createClient\(\) has no option allowEnvconfig\./)
+    expect(
+      build({
+        network: "ic",
+        identity: "anonymous",
+        verifyQuerySignatures: false,
+      })
+    ).toThrow(/has no option verifyQuerySignatures\./)
+    for (const key of ["rootkey", "fetchRootkey"]) {
+      expect(
+        build({
+          network: { host: "https://example.com", [key]: true },
+          identity: "anonymous",
+        })
+      ).toThrow(
+        new TypeError(
+          `[ic-reactor] a network object has no option ${key}. Its options: host, rootKey, name, fetchRootKey.`
+        )
+      )
+    }
+  })
+
+  it("refuses a boolean option that is not a boolean, such as an environment variable's text", () => {
+    // On a page, where "false" read as truthy believed the ic_env cookie.
+    onPage()
+    for (const value of ["false", "true", 0, 1, null]) {
+      expect(() =>
+        createClient({
+          network: "ic",
+          identity: "anonymous",
+          allowEnvConfig: value as never,
+        })
+      ).toThrow(
+        new TypeError(
+          `[ic-reactor] allowEnvConfig is true or false, got ${JSON.stringify(value)}.`
+        )
+      )
+      // "false" read as truthy fetched the root key from a remote host.
+      expect(() =>
+        createClient({
+          network: {
+            host: "https://example.com",
+            fetchRootKey: value as never,
+          },
+          identity: "anonymous",
+        })
+      ).toThrow(
+        new TypeError(
+          `[ic-reactor] fetchRootKey is true or false, got ${JSON.stringify(value)}.`
+        )
+      )
+    }
+    for (const allowEnvConfig of [true, false, undefined]) {
+      expect(
+        createClient({ network: "ic", identity: "anonymous", allowEnvConfig })
+          .network
+      ).toBe("ic")
+    }
+    expect(
+      internalsOf(
+        createClient({
+          network: { host: "https://example.com", fetchRootKey: false },
+          identity: "anonymous",
+        })
+      ).network.fetchRootKey
+    ).toBe(false)
+  })
+
+  it("refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function", () => {
+    const network = (extra: object) =>
+      ({ host: "https://example.com", ...extra }) as never
+
+    // The agent's own IC_ROOT_KEY export is hex text: decode it first.
+    expect(() =>
+      createClient({
+        network: network({ rootKey: "ab" }),
+        identity: "anonymous",
+      })
+    ).toThrow(
+      new TypeError(
+        '[ic-reactor] rootKey is a Uint8Array of 133 bytes (decode hex first), got "ab".'
+      )
+    )
+    expect(() =>
+      createClient({
+        network: network({ rootKey: new Uint8Array(96) }),
+        identity: "anonymous",
+      })
+    ).toThrow(/rootKey is a Uint8Array of 133 bytes .*, got 96 bytes\.$/)
+    expect(() =>
+      createClient({
+        network: network({ rootKey: null }),
+        identity: "anonymous",
+      })
+    ).toThrow(/rootKey is a Uint8Array of 133 bytes .*, got null\.$/)
+    expect(() =>
+      createClient({
+        network: "ic",
+        identity: "anonymous",
+        fetch: "fetch" as never,
+      })
+    ).toThrow("[ic-reactor] fetch is a function, got string.")
+    expect(
+      internalsOf(
+        createClient({
+          network: network({ rootKey: new Uint8Array(133).fill(5) }),
+          identity: "anonymous",
+        })
+      ).network.rootKey
+    ).toHaveLength(133)
+  })
+
   it("refuses a network host the agent cannot read when the client is built", () => {
     expect(() =>
       createClient({ network: { host: "not a url" }, identity: "anonymous" })

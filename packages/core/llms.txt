@@ -49,6 +49,11 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
   from the `ic_env` cookie, believed only on a local replica or with
   `allowEnvConfig: true`. A server has no cookie: use `{ id }` there.
 
+`createClient` throws a `TypeError` for an option it does not have (`host`
+goes inside `network`), an `allowEnvConfig` or `fetchRootKey` that is not a
+boolean (environment text: `=== "true"`), and a `rootKey` that is not 133
+bytes in a `Uint8Array` (decode hex first).
+
 Who calls (exactly one):
 
 - `identity`: a fixed `Identity` (scripts, servers, tests), or `"anonymous"`,
