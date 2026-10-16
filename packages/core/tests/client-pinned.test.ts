@@ -9,7 +9,8 @@
  * already the user. The view builds keys and read options for the principal
  * it was pinned to, with the client's own options otherwise, and is the
  * client's own for everything else. A read it builds still goes out as its
- * key's principal or not at all (D20), and a write through it signs as
+ * key's principal or not at all (D20), and so does a write through its
+ * `mutationOptions` (#894); a direct call through a canister signs as
  * whoever is current when it runs.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -352,20 +353,89 @@ describe("a client pinned to a principal", () => {
     expect(sent("stamp")).toEqual([])
   })
 
-  it("writes as the caller current when the write runs", async () => {
-    const { client, who, sent } = signedIn()
-    const view = pin(client, ANONYMOUS)
+  it("writes only as its principal: a write through it while someone else is current is refused and sends nothing", async () => {
+    const { client, auth, who, sent } = signedIn()
+    const nobody = pin(client, ANONYMOUS)
+    const user = pin(client, SEED_1)
 
-    expect(view.mutationOptions).toBe(client.mutationOptions)
-    const write = new MutationObserver(
+    expect(user.mutationOptions).not.toBe(client.mutationOptions)
+    const own = client.mutationOptions(who, "stamp")
+    const viewed = user.mutationOptions(who, "stamp")
+    expect(viewed.mutationKey).toEqual(own.mutationKey)
+    expect(viewed.retry).toBe(own.retry)
+    // The live caller's view writes as them.
+    await expect(
+      new MutationObserver(client.queryClient, viewed).mutate()
+    ).resolves.toBe(`written by ${SEED_1}`)
+
+    // A view of someone who is not current sends nothing.
+    const refused = new MutationObserver(
       client.queryClient,
-      view.mutationOptions(who, "stamp")
+      nobody.mutationOptions(who, "stamp")
+    ).mutate()
+    await expect(refused).rejects.toMatchObject({
+      kind: "cancelled",
+      code: "caller_changed",
+      mayHaveExecuted: false,
+      method: "stamp",
+      canisterId: CANISTER,
+    })
+    // Options built while seed 1 was current, run after a switch: refused.
+    auth.switchTo(2)
+    await expect(
+      new MutationObserver(client.queryClient, viewed).mutate()
+    ).rejects.toMatchObject({ kind: "cancelled", code: "caller_changed" })
+    expect(sent("stamp")).toEqual([SEED_1])
+    // The client's own options, and a direct call through a canister the
+    // view made, follow the live caller.
+    const second = client.caller()
+    await expect(
+      new MutationObserver(client.queryClient, own).mutate()
+    ).resolves.toBe(`written by ${second}`)
+    const direct = user.canister<Who>(WHO, { id: CANISTER })
+    await expect(direct.stamp()).resolves.toBe(`written by ${second}`)
+    expect(sent("stamp")).toEqual([SEED_1, second, second])
+  })
+
+  it("keeps a write pressed as one caller refused after a switch, even once a later render's options are handed to the run", async () => {
+    const { client, auth, who, sent } = signedIn()
+    const observer = new MutationObserver(
+      client.queryClient,
+      pin(client, SEED_1).mutationOptions(who, "stamp")
     )
-    await expect(write.mutate()).resolves.toBe(`written by ${SEED_1}`)
-    // A direct call through a canister the view made follows the live caller too.
-    const direct = view.canister<Who>(WHO, { id: CANISTER })
-    await expect(direct.stamp()).resolves.toBe(`written by ${SEED_1}`)
-    expect(sent("stamp")).toEqual([SEED_1, SEED_1])
+    // The press is handled by the render from before the switch.
+    auth.switchTo(2)
+    const run = observer.mutate()
+    // What useMutation does once the render that shows the switch commits:
+    // TanStack hands the pending run that render's options (same key).
+    observer.setOptions(
+      pin(client, client.caller()).mutationOptions(who, "stamp")
+    )
+
+    await expect(run).rejects.toMatchObject({
+      kind: "cancelled",
+      code: "caller_changed",
+      mayHaveExecuted: false,
+    })
+    expect(sent("stamp")).toEqual([])
+  })
+
+  it("says the client's own state while its principal is the live caller, an expired session included", () => {
+    const { client, auth } = signedIn()
+
+    expect(pin(client, SEED_1).authState()).toBe(client.authState())
+    auth.expire()
+    const nobody = pin(client, ANONYMOUS)
+    expect(nobody.authState()).toBe(client.authState())
+    expect(nobody.authState()).toEqual({
+      status: "expired",
+      principal: ANONYMOUS,
+    })
+    // A view of someone who is not current says who it was made for.
+    expect(pin(client, SEED_1).authState()).toEqual({
+      status: "signed-in",
+      principal: SEED_1,
+    })
   })
 
   it("is the client's own for everything but its keys, its reads and who it says calls", () => {
@@ -385,7 +455,6 @@ describe("a client pinned to a principal", () => {
       "signOut",
       "dispose",
       "canister",
-      "mutationOptions",
       "resendOf",
       "func",
     ] as const) {

@@ -1296,28 +1296,14 @@
     "replace": "        authenticated: true,\n"
   },
   {
-    "id": "ir6b-view-writes-as-pinned-caller",
+    "id": "i894-view-writes-as-live-caller",
     "package": "core",
     "test": "tests/client-pinned.test.ts",
-    "testName": "writes as the caller current when the write runs",
-    "why": "a view's mutationOptions sign as the principal it is pinned to, so a write made from a hydrating render is refused or sent as the wrong principal",
-    "edits": [
-      {
-        "file": "src/options.ts",
-        "search": "          caller: again?.caller ?? internals.current(),\n          values: valuesOf(prepared, vars),\n",
-        "replace": "          caller: again?.caller ?? current(),\n          values: valuesOf(prepared, vars),\n"
-      },
-      {
-        "file": "src/client.ts",
-        "search": "      const { queryKey, queryOptions } = createBuilders(",
-        "replace": "      const { queryKey, queryOptions, mutationOptions } = createBuilders("
-      },
-      {
-        "file": "src/client.ts",
-        "search": "          queryOptions: { value: queryOptions },\n",
-        "replace": "          queryOptions: { value: queryOptions },\n          mutationOptions: { value: mutationOptions },\n"
-      }
-    ]
+    "testName": "writes only as its principal",
+    "why": "a view's mutationOptions are the client's own, so a write from a render that a switch has not reached yet is signed by the new caller",
+    "file": "src/client.ts",
+    "search": "          mutationOptions: { value: mutationOptions },\n",
+    "replace": ""
   },
   {
     "id": "ir6b-view-options-held",
@@ -1366,7 +1352,7 @@
     "testName": "renders the server's keys, sends nothing during hydration",
     "why": "useClient() returns the client whatever caller the render shows, so a page hydrating with a stored session builds the user's keys: React reports a mismatch and the prefetched read is sent again",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1376,7 +1362,7 @@
     "testName": "hydrates a late boundary below no component that renders with the caller",
     "why": "useClient() returns the client whatever caller the render shows, so a boundary that hydrates after the root moved on to the session misses the server's data",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1386,7 +1372,7 @@
     "testName": "hydrates a component that renders the fetch state of a stale read the server prefetched",
     "why": "useClient() returns the client whatever caller the render shows, so a component that renders a prefetched read's fetch state hydrates another markup than the server's",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1396,7 +1382,7 @@
     "testName": "is cancelled when an effect of the hydrating render runs it",
     "why": "useClient() returns the client whatever caller the render shows, so an effect of the hydrating render fetches the user's key instead of the server's",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1406,7 +1392,7 @@
     "testName": "is never shown as an error by a component that hydrated",
     "why": "useClient() returns the client whatever caller the render shows, so a suspense reader hydrating with a stored session renders the user's answer over the server's HTML",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1423,20 +1409,20 @@
     "id": "ir6b-useclient-always-a-view",
     "package": "react",
     "test": "tests/caller-keys.test.tsx",
-    "testName": "returns the provider's client object itself once the caller React renders is the live one",
-    "why": "useClient() returns a view in the steady state too, so the object a component gets is not the provider's client",
+    "testName": "returns one object per caller",
+    "why": "useClient() returns the anonymous caller's view whatever caller the render shows, so a signed-in tab builds the anonymous caller's keys and its reads are cancelled",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return view\n"
   },
   {
     "id": "ir6b-hydrated-tree-keeps-the-view",
     "package": "react",
     "test": "tests/caller-keys.test.tsx",
-    "testName": "returns the client itself after a hydration",
-    "why": "useClient() keeps returning the hydrating render's view after hydration, so the steady state never gets the provider's client back",
+    "testName": "returns a view per caller after a hydration too",
+    "why": "useClient() keeps returning the hydrating render's view after hydration, so the steady state never gets the user's view",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return view\n"
   },
   {
@@ -1736,7 +1722,7 @@
     "testName": "leaves a value kept from the hydrating render (state, ref, module variable) the anonymous view for good",
     "why": "the hydrating render gets the client itself rather than the anonymous view, which changes what a value kept from that render is (documented as the anonymous view) along with the hydrating markup",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -4387,5 +4373,45 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "i894-useclient-client-for-live-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "rebuilds what a component memoizes on the client after a switch",
+    "why": "useClient() returns the provider's client object for every live caller, so a useMemo, an effect or React Compiler's cache keyed on it keeps the previous caller's options and shows that caller's data after a switch",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-useclient-same-object-every-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "returns one object per caller",
+    "why": "useClient() returns the provider's client object for every live caller, so its identity does not change on a sign-in, a switch or a sign-out",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-view-run-takes-later-options",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "keeps a write pressed as one caller refused after a switch",
+    "why": "a run pressed before a switch is checked against the options TanStack hands it from the later render, so it is signed by the new caller",
+    "file": "src/client.ts",
+    "search": "                ? runsAs.get(context)\n",
+    "replace": "                ? undefined\n"
+  },
+  {
+    "id": "i894-view-state-not-live",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "says the client's own state while its principal is the live caller",
+    "why": "the live caller's view reports the state it was made with, so useClient().authState() says anonymous for an expired session and is another object than the client's",
+    "file": "src/client.ts",
+    "search": "              return live.principal === principal ? live : state\n",
+    "replace": "              return state\n"
   }
 ]

@@ -48,10 +48,11 @@ const disposedClients = new WeakSet<Client>()
  * count once it was made as its serial, and a getter that says whether it
  * was disposed. Each client also carries a method that, called with the
  * client as `this` and a principal's text, returns a frozen view of the
- * client whose keys, read options, `caller()` and `authState()` are that
- * principal's (the client itself for one built with `identity`): what
- * {@link useClient} returns while it renders with a caller that is not the
- * live one. Each such view carries the client it was made over, which
+ * client whose keys, read options, write options, `caller()` and
+ * `authState()` are that principal's (the client itself for one built with
+ * `identity`), the same one for the same principal while it is kept: what
+ * {@link useClient} returns for the caller each render shows. Each such view
+ * carries the client it was made over, which
  * {@link hold} keeps in its place. `Symbol.for` keys and a count on `globalThis`, so that this
  * module reads them from whichever copy of core made the client, and imports
  * nothing of core at run time.
@@ -454,38 +455,50 @@ const anonymous = (): string => ANONYMOUS
  * The client of the nearest {@link ReactorProvider}: the one object that
  * builds canister handles and query options, and that signs users in and out.
  *
+ * What it returns is a view of the client for the caller the render shows:
+ * one object per caller, a new one after a sign-in, a switch of account or a
+ * sign-out, and the same one on every render while the caller stays. Its
+ * `queryKey`, `queryOptions`, `caller()` and `authState()` are that caller's
+ * (`authState()` is the client's own while that caller is the live one, an
+ * expired session included), and its `mutationOptions` send only as that
+ * caller: a write pressed before a switch reached the render is refused
+ * (`kind` `"cancelled"`, `code` `"caller_changed"`, `mayHaveExecuted:
+ * false`) and sends nothing, so a handler needs no check of its own. A
+ * canister's direct calls, `func` and `resendOf`'s `send` sign as the caller
+ * current when they run. Everything else (canisters, `signIn`, `signOut`,
+ * `subscribe`, `dispose`, the `QueryClient`) is the client's own. It is
+ * never the provider's client object: to tell two clients apart, compare
+ * their `queryClient`.
+ *
  * Call it in the body of each component that builds keys or options, on
  * every render, and build them from what it returns there, never from a
  * client held at module scope: they are built for the caller this render
- * shows. Do not keep what it returns past the render: while a page hydrates
- * it is a view for the anonymous caller, and a view never moves on. An effect
- * or a callback that uses it closes over its render's value and lists it in
- * its dependencies (`react-hooks/exhaustive-deps`), so that it runs again with
- * the client after hydrating. Kept from the hydrating render anywhere else
- * (`useState(client)`, `useRef(client)`, a `useMemo` or `useCallback` with
- * `[]`, a module variable), it stays that view: the component shows the
- * anonymous caller's data, a read it starts while the user is signed in is
- * cancelled, and a write through it still signs as the live caller. Nothing
+ * shows. List it in the dependencies of whatever is built from it
+ * (`useMemo(() => client.queryOptions(...), [client])`, an effect or a
+ * callback, as `react-hooks/exhaustive-deps` asks), and React Compiler does
+ * the same: since the object changes with the caller, what is memoized on it
+ * is built again for the new one. Do not keep what it returns past the
+ * render: a view never moves on. Kept anywhere else (`useState(client)`,
+ * `useRef(client)`, a `useMemo` or `useCallback` with `[]`, a module
+ * variable), it stays the view of the caller it was taken for: the component
+ * shows that caller's data, a read it starts while someone else is signed in
+ * is cancelled, and a write through its `mutationOptions` is refused. Nothing
  * warns about it. A nested {@link ReactorProvider} given it
  * (`client={() => client}`) holds the client the view was made over.
  * It follows the client's caller with `useSyncExternalStore`, so a
  * component that calls it renders again when the caller changes (a sign-in, a
  * switch of account, a sign-out) and never otherwise: a change of status that
  * leaves the caller as it is (a session that expired, or one signed in
- * elsewhere, both call as the anonymous principal) renders nothing. In the
- * steady state it returns the provider's client object itself.
+ * elsewhere, both call as the anonymous principal) renders nothing, and
+ * returns the same object.
  *
  * On a server, and while a page hydrates, the caller is the anonymous one, as
  * for {@link useAuth}. In a browser that holds a session, the hydrating render
- * gets a view of the client for the anonymous caller: its `queryKey`,
- * `queryOptions`, `caller()` and `authState()` are the anonymous caller's, so
- * the page finds what the server prefetched and dehydrated and matches its
- * HTML; everything else (canisters, `mutationOptions`, `signIn`, `signOut`,
- * the `QueryClient`) is the client's own, and a write signs as the caller
- * current when it runs. Right after hydrating, React renders the component
- * again with the client itself, for the user: a read with none of the user's
- * data yet shows its loading state, and a `useSuspenseQuery` read its
- * boundary's fallback, until that data arrives. A client built with
+ * gets the anonymous caller's view, so the page finds what the server
+ * prefetched and dehydrated and matches its HTML. Right after hydrating,
+ * React renders the component again with the user's view: a read with none
+ * of the user's data yet shows its loading state, and a `useSuspenseQuery`
+ * read its boundary's fallback, until that data arrives. A client built with
  * `identity` keeps its caller for good and is always returned as it is.
  *
  * Three consequences of that move on a signed-in reload:
@@ -527,18 +540,22 @@ const anonymous = (): string => ANONYMOUS
  */
 export function useClient(): Client {
   const client = useProvided()
+  const viewAs = (client as Stamped)[CLIENT_AS]
   // The view for the server's caller. A client with one caller for good is
   // its own view and its own server snapshot: it has nothing to move on to
   // after hydrating.
-  const view = (client as Stamped)[CLIENT_AS]?.call(client, ANONYMOUS) ?? client
+  const view = viewAs?.call(client, ANONYMOUS) ?? client
   const principal = useSyncExternalStore(
     client.subscribe,
     client.caller,
     view === client ? client.caller : anonymous
   )
-  // Only the server snapshot differs from the live caller, and only while a
-  // component hydrates.
-  return principal === client.caller() ? client : view
+  // The view for the caller this render shows, the live one included: one
+  // object per caller, so that what a component memoizes on it (`useMemo`,
+  // an effect's dependencies, React Compiler's cache) is built again when
+  // the caller changes, and kept while it does not (#894).
+  const shown = principal === ANONYMOUS ? view : viewAs?.call(client, principal)
+  return shown ?? view
 }
 
 /**

@@ -26,6 +26,7 @@ import { StrictMode, Suspense, useEffect, type ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   bindingsWith,
+  clientOf,
   clientWithAuth,
   fakeFinalizationRegistry,
   macrotask,
@@ -65,14 +66,17 @@ function setup(bindings: Awaited<ReturnType<typeof bindingsWith>>) {
   /** The auth of a client the factory built. */
   const authOf = (client: Client): TestAuth =>
     auths[tracked.made.indexOf(tracked.trackOf(client))] as TestAuth
-  /** The clients a committed `Probe` read: an effect runs only on commit. */
+  /**
+   * The clients a committed `Probe` was given views of: an effect runs only
+   * on commit.
+   */
   const committed = new Set<Client>()
 
   function Probe() {
     const client = useClient()
     const { status } = useAuth()
     useEffect(() => {
-      committed.add(client)
+      committed.add(clientOf(client))
     }, [client])
     return <p data-testid="status">{status}</p>
   }
@@ -133,7 +137,7 @@ describe("a client the provider owns, and the registry that backs its disposal",
     const { factory, made, trackOf, authOf, committed, Probe } = setup(bindings)
     const standingWhileRendering: boolean[] = []
     function Witness() {
-      const client = useClient()
+      const client = clientOf(useClient())
       standingWhileRendering.push(
         registry.live.some((entry) => entry.held === client)
       )

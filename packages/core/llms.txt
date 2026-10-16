@@ -86,7 +86,11 @@ One client per browser tab, or per request on a server. In React,
 `<ReactorProvider client={() => createClient(...)}>` builds it once per
 mounted tree and disposes it on unmount; a module-scope client passed as
 `client={() => client}` is borrowed, never disposed. Inside, `useClient()`
-returns it (as anonymous while hydrating) and `useAuth()` returns
+returns a view of it for the caller the render shows (anonymous while
+hydrating): a new object after each sign-in, switch or sign-out, the same one
+while the caller stays, whose `mutationOptions` send only as that caller (a
+write pressed before a switch reaches the render is refused `cancelled`,
+`caller_changed`, and sends nothing). `useAuth()` returns
 `{ status, principal, signIn, signOut }`, `"anonymous"` on a server and in a
 hydrating page's first render.
 
@@ -193,8 +197,10 @@ Keys are `["ic-reactor", network, caller, canisterId, method, args]`, so one
 principal's cached answer is never served to another: after a sign-in,
 sign-out or switch, the new caller's key is empty (`data` is `undefined`)
 until it loads, and a read made for the previous caller never lands in it.
-Keep it so: build the options in render, and add nothing that carries data
-across keys (`placeholderData: keepPreviousData`, cross-key `initialData`).
+Keep it so: build the options in render from that render's `useClient()`,
+listing it in the dependencies of any `useMemo` or effect built from it
+(React Compiler does), and add nothing that carries data across keys
+(`placeholderData: keepPreviousData`, cross-key `initialData`).
 `client.queryKey(ledger, method?, args?)` gives keys for the cache.
 
 Reads retry transient failures (never on a server). Spread to add options:

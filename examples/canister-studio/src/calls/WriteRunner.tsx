@@ -214,6 +214,13 @@ export function WriteRunner(
   )
   const onChange = useCallback((next: CallCheck) => setCheck(next), [])
 
+  // The caller the latest render shows. The client `useClient()` returns
+  // sends only as its own render's caller: a press handled before a switch
+  // reached this component is refused (`caller_changed`), nothing is sent,
+  // and the step comes back with the sender shown since.
+  const shownCaller = useRef(client.caller())
+  shownCaller.current = client.caller()
+
   const send = async (call: PreparedCall, caller: string, resend: boolean) => {
     const attempt: Sent = { call, caller, resend }
     setSent(attempt)
@@ -225,6 +232,20 @@ export function WriteRunner(
     try {
       result = { ok: true, reply: await mutation.mutateAsync(call.vars) }
     } catch (failure) {
+      if (
+        !resend &&
+        isReactorError(failure) &&
+        failure.code === "caller_changed" &&
+        shownCaller.current !== caller
+      ) {
+        mutation.reset()
+        setSent(undefined)
+        setPending({ call, caller: shownCaller.current })
+        setNotice(
+          "The signed-in principal changed: check the sender, then send again."
+        )
+        return
+      }
       result = { ok: false, error: failure }
     }
     setUnresolved((current) => afterSettled(current, attempt, result, known))

@@ -40,14 +40,17 @@ Its `mutationKey` is `["ic-reactor", network, canisterId, method]`.
 
 ## Who signs
 
-The mutation function calls as the caller current **when it runs**, not when
-the options were built. A write needs a signed-in caller. If nobody is signed
-in, or the client was built with `identity: "anonymous"`, the client refuses
-it before sending anything: kind `unauthenticated`, code `anonymous_write`,
+A write needs a signed-in caller. If nobody is signed in, or the client was
+built with `identity: "anonymous"`, the client refuses it before sending
+anything: kind `unauthenticated`, code `anonymous_write`,
 `mayHaveExecuted: false`.
 
-Disable the button for a caller who is not signed in, and send as the caller
-the page shows:
+Built from the `useClient()` of a render, the options send only as the caller
+that render shows. A press handled before an account switch reached the
+render (the switch and the click in one batch) is refused: kind `cancelled`,
+code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. The
+handler needs no check of its own; disable the button for a caller who is not
+signed in:
 
 ```tsx
 import { useAuth, useClient } from "@ic-reactor/react"
@@ -62,23 +65,20 @@ export function SendAsShown({ arg }: { arg: TransferArg }) {
   })
   const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
 
-  const send = () => {
-    // The write signs as whoever is signed in now. If an account switch has
-    // not reached this render yet, send nothing.
-    if (client.caller() !== shown) return
-    transfer.mutate(arg)
-  }
-
   return (
     <button
       disabled={status !== "signed-in" || transfer.isPending}
-      onClick={send}
+      onClick={() => transfer.mutate(arg)}
     >
-      Send
+      Send as {shown}
     </button>
   )
 }
 ```
+
+A direct call on a canister (`await ledger.icrc1_transfer(arg)`) is not held
+to a render: it signs as whoever is signed in when it runs. In a component,
+send writes through `mutationOptions`.
 
 See [Auth](/v4/guides/auth/) for sign-in and caller changes.
 
@@ -217,9 +217,8 @@ all of these hold:
 - Whoever sent it is the caller now. After a sign-out, or a sign-in as
   another account, nothing is offered: the same argument from another sender
   is a new transfer, paid in full. Signing back in as the sender offers it
-  again. While a page hydrates, `useClient()` may return a view pinned to the
-  server's caller; the offer still follows the live caller, whom a write goes
-  out as.
+  again. `useClient()` returns a view pinned to the caller its render shows;
+  the offer still follows the live caller, whom the write goes out as.
 
 The offer's `arg` is the attempt's own argument, the object `mutate` was
 given, and `from` is its sender. Send it with `mutate(again.arg)` on the same
