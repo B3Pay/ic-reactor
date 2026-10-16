@@ -484,8 +484,8 @@ export interface Client {
    * mutation restored from a persister, whose caller is not known. The
    * client's own `queryClient` reads each run's caller in its
    * `MutationCache`, so this holds with an `onMutate` of the app's that
-   * replaces this one; see {@link CanisterMutationOptions.mutationFn} for a
-   * run on another `QueryClient`. An update
+   * replaces this one; the JSDoc of the returned `mutationFn` covers a run on
+   * another `QueryClient`. An update
    * by a caller who is not signed in rejects `unauthenticated` before
    * anything is sent. `retry` is `false`: an update
    * re-sends itself only when the failure proves the first attempt never got
