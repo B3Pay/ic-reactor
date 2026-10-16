@@ -19,7 +19,7 @@ cd examples/node-agent-tool
 node src/cli.ts info --ledger ckbtc   # mainnet, anonymous
 node src/cli.ts balance rkp4c-7iaaa-aaaaa-aaaca-cai --certified --json
 node src/cli.ts transfer rkp4c-7iaaa-aaaaa-aaaca-cai 1   # refused: exit 4, the write is never sent
-node src/cli.ts whoami --pem me.pem   # icp identity export <name> > me.pem
+node src/cli.ts whoami --pem ~/.config/icp-agent-tool.pem   # see "Which identity" below
 node src/cli.ts watch rkp4c-7iaaa-aaaaa-aaaca-cai --interval 2000   # Ctrl-C stops
 node src/cli.ts --help
 pnpm test        # every scenario, on createTestClient(): no network
@@ -32,11 +32,29 @@ type-stripping warning (and, with `--silent`, without pnpm's banner on
 stdout). `src/canisters/icrc1.ts` is generated from `icrc1.did` by `pnpm gen`
 (`candid-core-cli gen`), committed, and never edited.
 
+## Which identity
+
+Give the tool, and any agent that runs it, an identity of its own that holds
+little and controls nothing, never your default identity or one that controls
+a canister. Keep its key outside the project, readable by you alone:
+
+```sh
+icp identity new agent-tool
+icp identity export agent-tool > ~/.config/icp-agent-tool.pem
+chmod 600 ~/.config/icp-agent-tool.pem
+```
+
+A key exported into the project is one `git add .` away from being published;
+the example's `.gitignore` ignores `*.pem`, but a copy of the example made
+another way may not. An agent's process can read its own environment, so
+`NODE_AGENT_TOOL_SEED` is no more private from the agent than a key file it
+can open: whatever the tool can sign with, the agent can too.
+
 ## Scenarios
 
 | Scenario                                                                                                                                                                                                                               | File                                              | See it                                                                            | Tests                                                                                 |
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 1. **Identity**: `--pem` (Ed25519 or secp256k1, dfx's form too), else the hex seed in `NODE_AGENT_TOOL_SEED`, else `identity: "anonymous"`, whose writes the client refuses                                                            | `src/identity.ts`, `src/commands/whoami.ts`       | `whoami`, `whoami --pem me.pem`, an anonymous `transfer`                          | `src/identity.test.ts`                                                                |
+| 1. **Identity**: `--pem` (Ed25519 or secp256k1, dfx's form too), else the hex seed in `NODE_AGENT_TOOL_SEED`, else `identity: "anonymous"`, whose writes the client refuses                                                            | `src/identity.ts`, `src/commands/whoami.ts`       | `whoami`, `whoami --pem <file>`, an anonymous `transfer`                          | `src/identity.test.ts`                                                                |
 | 2. **Networks**: `--network ic\|local\|<url>`; a root key is fetched only from this machine, a remote URL needs `--root-key <hex>`                                                                                                     | `src/network.ts`                                  | `info --network https://example.org` (refused), `--network http://127.0.0.1:8001` | `src/network.test.ts`                                                                 |
 | 3. **Many ledgers, one interface**: `--ledger icp\|ckbtc\|cketh\|<id>`, each `client.canister<Actor>(actor, { id })`                                                                                                                   | `src/ledgers.ts`                                  | `info --ledger cketh`                                                             | `src/ledgers.test.ts`                                                                 |
 | 4. **Direct calls**: `info` (five reads in parallel) and `balance`; `--certified` reads through `{ id, certified: true }` and says which reads were certified                                                                          | `src/commands/info.ts`, `src/commands/balance.ts` | `info --certified`, `balance <p> --certified`                                     | `src/commands/reads.test.ts`                                                          |
@@ -117,7 +135,7 @@ mainnet id) on port 8001; icp-cli is a devDependency, pinned at 1.2.0.
 ```sh
 pnpm exec icp network start -d
 pnpm exec icp token transfer 100 <your principal> --identity anonymous   # icp-cli seeds the anonymous account
-node src/cli.ts transfer <principal> 1.5 --pem me.pem --network http://127.0.0.1:8001
+node src/cli.ts transfer <principal> 1.5 --pem ~/.config/icp-agent-tool.pem --network http://127.0.0.1:8001
 node src/cli.ts watch <principal> --network http://127.0.0.1:8001 --interval 1000
 pnpm exec icp network stop
 ```
