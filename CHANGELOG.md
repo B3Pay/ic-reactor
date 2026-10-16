@@ -15,13 +15,29 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-### core, react, vite-plugin
+### @ic-reactor/core
 
 #### Fixed
 
-- Each package's tarball now ships the MIT `LICENSE` its manifest names, and
-  the repository has a root `LICENSE` again. `pnpm verify:packages` fails a
-  tarball that has none, or one that is not a copy of the root file (#898).
+- The tarball now ships the MIT `LICENSE` the manifest names; the repository
+  has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
+  has none or one that is not a copy of the root file (#898).
+
+### @ic-reactor/react
+
+#### Fixed
+
+- The tarball now ships the MIT `LICENSE` the manifest names; the repository
+  has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
+  has none or one that is not a copy of the root file (#898).
+
+### @ic-reactor/vite-plugin
+
+#### Fixed
+
+- The tarball now ships the MIT `LICENSE` the manifest names; the repository
+  has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
+  has none or one that is not a copy of the root file (#898).
 
 ### Examples (not published)
 

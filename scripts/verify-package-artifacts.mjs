@@ -118,7 +118,7 @@ try {
     const tgz = readdirSync(scratch).find(
       (f) => f.endsWith(".tgz") && !tarballs.some((t) => t.file === f)
     )
-    if (!tgz) throw new Error(`npm pack produced no tarball for ${rel}`)
+    if (!tgz) throw new Error(`pnpm pack produced no tarball for ${rel}`)
     tarballs.push({ name: manifest.name, file: tgz, manifest, dir })
     console.log(`packed ${manifest.name} -> ${tgz}`)
   }
