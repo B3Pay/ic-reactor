@@ -357,6 +357,14 @@ describe("the handlers' values", () => {
     })
   })
 
+  it("take and return a blob over a million bytes, as a wasm upload and download do", async () => {
+    const chunk = new Uint8Array(2_000_000).fill(9)
+    const { canister } = withShapes({ bytes: (bytes) => bytes })
+    const reply = await canister.bytes(chunk)
+    // Byte by byte, toEqual takes seconds on two million entries.
+    expect(Buffer.from(reply).equals(Buffer.from(chunk))).toBe(true)
+  })
+
   it("make a void update that returns whatever it likes a method with no results", async () => {
     const seen: string[] = []
     const { canister } = withShapes({

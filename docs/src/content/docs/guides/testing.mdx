@@ -93,6 +93,7 @@ const { client, auth, mock, reject, dropNextReply, refuseNext, requests } =
 | `network`        | the network the client believes it is on, for the key segment and the host. Give the host with a scheme. The root key is always the fake's                                              |
 | `allowEnvConfig` | as for `createClient`. Only a test that resolves `{ name }` canisters from an `ic_env` cookie needs it, and a `{ name }` resolves only on a page (jsdom or happy-dom), never in Node    |
 | `maxDepth`       | how deep a decoded value may nest, for the client and the mocks. Default 256                                                                                                            |
+| `maxElements`    | how many values a decoded value may hold beyond one per byte, for the client and the mocks. Default 1,000,000                                                                           |
 
 `createTestClient` throws a `TypeError` for an option that does not exist or
 cannot be used.

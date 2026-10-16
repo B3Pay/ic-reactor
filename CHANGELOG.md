@@ -15,6 +15,20 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+#### Fixed
+
+- A reply over about a million bytes decodes. candid-core charges a blob one
+  element per byte against its 1,000,000-element budget, so an SNS wasm from
+  SNS-W's `get_wasm`, the ICPSwap factory's `getActiveWasm` or a large asset
+  chunk rejected `invalid_reply` (`value_elements limit 1000000 exceeded`), and
+  an update with such a reply rejected after it ran. A reply may now hold as
+  many values as it has bytes; the budget bounds only values that take no
+  bytes, such as a long `vec null`. A new `maxElements` option of
+  `createClient` and `createTestClient` sets that budget, and a mock decodes
+  its arguments the same way, so a test can upload a large chunk.
+
 ### Examples (not published)
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the

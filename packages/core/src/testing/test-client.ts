@@ -21,6 +21,7 @@ import {
 } from "@candid-core/schema"
 import {
   DEFAULT_MAX_DEPTH,
+  DEFAULT_MAX_ELEMENTS,
   decodeArgs,
   encodeArgs,
 } from "@candid-core/schema/codec"
@@ -79,6 +80,7 @@ const OPTION_NAMES = [
   "network",
   "allowEnvConfig",
   "maxDepth",
+  "maxElements",
 ] as const
 
 /** The first issue of a codec failure, and how many there were, for a message. */
@@ -117,7 +119,8 @@ type Handler = (...args: unknown[]) => unknown
 function mockCanister(
   service: Schema<Principal>,
   handlers: unknown,
-  maxDepth: number
+  maxDepth: number,
+  maxElements: number
 ): FakeCanister {
   if (typeof handlers !== "object" || handlers === null) {
     throw new TypeError(
@@ -177,7 +180,12 @@ function mockCanister(
           `the test gave no handler for ${name}; add it to the handlers of mock()`
         )
       }
-      const decoded = decodeArgs(method.args, arg, { maxDepth })
+      // As the client decodes a reply: as many values as the argument has
+      // bytes, so a large blob argument (an upload chunk) decodes.
+      const decoded = decodeArgs(method.args, arg, {
+        maxDepth,
+        maxElements: Math.max(maxElements, arg.length),
+      })
       if (!decoded.ok) {
         throw new Error(
           `the arguments of ${name} do not decode with the mocked service: ${firstIssue(decoded.issues)}`
@@ -288,6 +296,11 @@ export function createTestClient(
     allowEnvConfig?: boolean
     /** How deep a decoded value may nest, for the client and for the mocks. Defaults to 256. */
     maxDepth?: number
+    /**
+     * How many values a decoded value may hold beyond one per byte, for the
+     * client and for the mocks. Defaults to 1,000,000.
+     */
+    maxElements?: number
   } = {}
 ): {
   /**
@@ -437,7 +450,8 @@ export function createTestClient(
       `[ic-reactor] createTestClient() has no option ${unknown.join(", ")}. Its options: ${OPTION_NAMES.join(", ")}.`
     )
   }
-  const { identity, signedIn, network, allowEnvConfig, maxDepth } = options
+  const { identity, signedIn, network, allowEnvConfig, maxDepth, maxElements } =
+    options
   // `typeof null` is "object": without this, `identity: null` from untyped
   // code would reach the test auth as no identity and sign in as seed 1.
   if (
@@ -485,16 +499,18 @@ export function createTestClient(
       auth: () => auth,
       allowEnvConfig,
       maxDepth,
+      maxElements,
     },
     { authOnServer: true }
   )
   const limit = maxDepth ?? DEFAULT_MAX_DEPTH
+  const elements = maxElements ?? DEFAULT_MAX_ELEMENTS
 
   return Object.freeze({
     client,
     auth,
     mock<A>(service: Schema<Principal>, id: string, handlers: TestHandlers<A>) {
-      const canister = mockCanister(service, handlers, limit)
+      const canister = mockCanister(service, handlers, limit, elements)
       try {
         replica.addCanister(id, canister)
       } catch {
