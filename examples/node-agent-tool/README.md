@@ -39,16 +39,23 @@ little and controls nothing, never your default identity or one that controls
 a canister. Keep its key outside the project, readable by you alone:
 
 ```sh
-icp identity new agent-tool
-icp identity export agent-tool > ~/.config/icp-agent-tool.pem
-chmod 600 ~/.config/icp-agent-tool.pem
+pnpm exec icp identity new agent-tool   # on a machine without a keyring: --storage password
+mkdir -p ~/.config
+(umask 077 && pnpm exec icp identity export agent-tool > ~/.config/icp-agent-tool.pem)
 ```
+
+`icp identity new` prints the identity's seed phrase; keep it out of an
+agent's context too (`--output-seed <file>` writes it to a file instead). The
+subshell's `umask 077` creates the key file readable by you alone from the
+start.
 
 A key exported into the project is one `git add .` away from being published;
 the example's `.gitignore` ignores `*.pem`, but a copy of the example made
 another way may not. An agent's process can read its own environment, so
 `NODE_AGENT_TOOL_SEED` is no more private from the agent than a key file it
-can open: whatever the tool can sign with, the agent can too.
+can open: whatever the tool can sign with, the agent can too. That variable is
+a raw Ed25519 seed in hex, not an icp-cli identity or seed phrase; for the
+identity above, pass `--pem`.
 
 ## Scenarios
 
