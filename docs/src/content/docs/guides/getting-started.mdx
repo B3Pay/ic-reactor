@@ -10,7 +10,8 @@ the ICRC-1 ledger interface (`icrc1.did`) and the ICP ledger on mainnet.
 
 `icrc1.did` is the file of the same name in the repository's
 [`examples/icrc-ledger`](https://github.com/B3Pay/ic-reactor/tree/v4/examples/icrc-ledger)
-directory. Copy it to your project's root. To work with another canister,
+directory. Copy it to your project's root once step 0 has made the project.
+To work with another canister,
 save its interface from the canister itself (see
 [Get a canister's .did](#get-a-canisters-did) below). The generator names a
 module after its file, so a saved `icp_ledger.did` gives
@@ -22,7 +23,7 @@ Start in an empty directory. For a React app, make it with Vite's `react-ts`
 template, which steps 5 and 6 assume:
 
 ```sh
-npm create vite@latest my-app -- --template react-ts
+npm create vite@latest my-app -- --template react-ts --no-interactive
 cd my-app
 ```
 
@@ -34,12 +35,13 @@ npm init -y
 npm pkg set type=module
 ```
 
-Both give a `package.json` with `"type": "module"`. That matters: the
-`@ic-reactor/*` packages are ES modules only, and the scripts on this page use
-top-level `await`, which `npx tsx` refuses in a CommonJS package ("Top-level
-await is currently not supported with the "cjs" output format"). An empty
-directory's `npm install`, and `npm init -y` alone, write no `"type"` (or
-`"commonjs"` on newer npm). See [ES modules only](#es-modules-only) below.
+Both give a `package.json` with `"type": "module"`. That matters:
+`@ic-reactor/core` and `@ic-reactor/react` are ES modules only, and the
+scripts on this page use top-level `await`, which `npx tsx` refuses in a
+CommonJS package with "Top-level await is currently not supported with the
+'cjs' output format". `npm install` in an empty directory writes no `"type"`,
+and `npm init -y` writes none (npm 10) or `"commonjs"` (npm 11); both fail.
+See [ES modules only](#es-modules-only) below.
 
 ## 1. Install
 
@@ -260,9 +262,9 @@ bundler's imports leave out.
 
 The imports on this page are written for a bundler, or for TypeScript's
 `moduleResolution: "bundler"`. Under `moduleResolution: "nodenext"` (a Node
-project compiled by `tsc`, as the Node agent tool example is), TypeScript
-wants the extension of the file it compiles to (error TS2835), so write
-`./generated/icrc1.js` and `./ledger.js`:
+project compiled by `tsc`), TypeScript wants the extension of the file it
+compiles to (error TS2835), so write `./generated/icrc1.js` and
+`./ledger.js`:
 
 ```ts nocheck
 // src/ledger.ts, under "moduleResolution": "nodenext"
@@ -588,8 +590,9 @@ which handles either.
 
 From CommonJS:
 
-- Plain Node can `require()` them from Node 22.12 on, and an `import()` works
-  in any CommonJS module.
+- Plain Node can `require()` them from Node 20.19 (on Node 20) or 22.12 on.
+  An `import()` works in a CommonJS module Node runs as written; TypeScript
+  compiled with `module: "commonjs"` turns it into a `require()`.
 - A TypeScript runner or build that compiles your own files to CommonJS can
   fail on a dependency instead: `npx tsx` in a package without
   `"type": "module"` stops with `ERR_PACKAGE_PATH_NOT_EXPORTED` naming a
