@@ -239,6 +239,56 @@ jobs:
       - name: Test at the oldest supported peers and TypeScript
         run: pnpm verify:peer-floors
 
+  # Every other job runs on Linux. The Vite plugin starts child processes
+  # (`icp`, `candid-core-cli`) and handles paths, where Windows differs: an
+  # npm-installed icp-cli is `icp.cmd` there, which execFile cannot start
+  # (#905). This runs the tests of how the plugin starts `icp` on Windows.
+  # The whole suite is not run here yet: on its first Windows run, tests that
+  # compare messages naming `did/ledger.did` got `did\ledger.did`, and a temp
+  # directory cleanup hit EBUSY. Widen this to the whole suite once those pass.
+  vite-plugin-windows:
+    name: Vite plugin on Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+          pnpm --version
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Test how the Vite plugin starts icp
+        run: pnpm --filter @ic-reactor/vite-plugin exec vitest run tests/icp-command.test.ts
+
   build:
     name: Build
     runs-on: ubuntu-latest
