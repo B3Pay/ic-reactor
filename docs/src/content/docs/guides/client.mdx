@@ -164,13 +164,28 @@ watches the file and picks up a changed id without a restart, unless the
 variable is also set in the shell, which wins over the file.
 
 To keep `"env"` instead, the page must answer `/api` as the plugin's proxy
-does. In Next.js, a rewrite of `/api/v2/:path*`, `/api/v3/:path*` and
-`/api/v4/:path*` to `http://127.0.0.1:8000` does that (the agent sends
-updates to v4 first, queries and status reads to v3 and v2). The page is
-local, so the client fetches the root key through the rewrite. It still gives
-no cookie, so the canisters still need `{ id }`, and a server render has no
-page origin: run `next dev` with `ICP_NETWORK=local`, or the server's `"env"`
-is mainnet.
+does. In Next.js, rewrite `/api/v2`, `/api/v3` and `/api/v4` to the same
+paths on the local network (the agent sends updates to v4 first, queries and
+status reads to v3 and v2). Each destination names its path again: Next.js
+does not append the matched path to a destination that has none.
+
+```ts
+// next.config.ts
+const nextConfig = {
+  async rewrites() {
+    return ["v2", "v3", "v4"].map((version) => ({
+      source: `/api/${version}/:path*`,
+      destination: `http://127.0.0.1:8000/api/${version}/:path*`,
+    }))
+  },
+}
+export default nextConfig
+```
+
+The page is local, so the client fetches the root key through the rewrite. It
+still gives no cookie, so the canisters still need `{ id }`, and a server
+render has no page origin: run `next dev` with `ICP_NETWORK=local`, or the
+server's `"env"` is mainnet.
 
 ## Who calls
 
