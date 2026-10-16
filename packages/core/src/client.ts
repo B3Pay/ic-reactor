@@ -87,11 +87,19 @@ export interface AuthLike {
   getPrincipal(): { toText(): string } | undefined
   /**
    * Who is signed in. Only `"signed-in"` makes the client call as
-   * {@link AuthLike.getPrincipal}; every other state calls anonymously.
+   * {@link AuthLike.getPrincipal}; every other state calls anonymously. The
+   * four named states are `@icp-sdk/auth` 10's; any other string, such as a
+   * state a later `@icp-sdk/auth` adds, is accepted and reads as
+   * `"anonymous"` in {@link AuthState}, so an upgrade of the auth library
+   * does not stop an app compiling.
    */
   getStatus(): {
     readonly state:
-      "signed-in" | "signed-in-elsewhere" | "expired" | "signed-out"
+      | "signed-in"
+      | "signed-in-elsewhere"
+      | "expired"
+      | "signed-out"
+      | (string & {})
   }
   /** The identity to sign calls with while signed in. */
   getIdentity(): Promise<Identity>
@@ -122,8 +130,9 @@ export interface AuthLike {
  */
 export interface AuthState {
   /**
-   * - `anonymous`: nobody is signed in (the auth says `signed-out`), the client
-   *   runs on a server, or it was built anonymous.
+   * - `anonymous`: nobody is signed in (the auth says `signed-out`, or a state
+   *   the client does not know), the client runs on a server, or it was built
+   *   anonymous.
    * - `signed-in`: calls are signed by `principal`.
    * - `expired`: the session ended; calls are anonymous until a sign-in.
    * - `signed-in-elsewhere`: someone is signed in on this domain but this
@@ -952,9 +961,11 @@ function stateOf(auth: AuthLike): AuthState {
   if (caller.authenticated) {
     return { status: "signed-in", principal: caller.principal }
   }
+  // A state the client does not know, such as one a later @icp-sdk/auth
+  // adds, is anonymous.
   const { state } = auth.getStatus()
   return state === "expired" || state === "signed-in-elsewhere"
-    ? { status: state, principal: ANONYMOUS }
+    ? { status: state as AuthState["status"], principal: ANONYMOUS }
     : ANONYMOUS_STATE
 }
 
