@@ -15,22 +15,22 @@
 // with the packages' own checks; run `pnpm build` first.
 export default [
   {
-    // Measured 90,000 B with the maxElements option and a reply's element
-    // budget raised to its byte length (89,949 B before that, +51 B, with
+    // Measured 90,023 B with the maxElements option and a reply's element
+    // budget raised to its byte length (89,949 B before that, +74 B, with
     // client.resendOf() held to the bytes and the canister ids a write went
     // out with; 89,746 B before that; 89,484 B before resendOf; 89,363 B on
-    // 4.0.0-beta.3): the limit leaves 50 B.
+    // 4.0.0-beta.3): the limit leaves 27 B.
     name: "App: { createClient } from @ic-reactor/core, peers included",
     path: "core.js",
     limit: "90.05 kB",
     gzip: true,
   },
   {
-    // Measured 91,217 B with the maxElements option and a reply's element
-    // budget raised to its byte length (91,155 B before that, +62 B, with
+    // Measured 91,239 B with the maxElements option and a reply's element
+    // budget raised to its byte length (91,155 B before that, +84 B, with
     // client.resendOf() held to the bytes and the canister ids a write went
     // out with; 90,960 B before that; 90,692 B before resendOf; 90,566 B on
-    // 4.0.0-beta.3): the limit leaves 53 B. React itself is left out: the app ships it with or without
+    // 4.0.0-beta.3): the limit leaves 31 B. React itself is left out: the app ships it with or without
     // ic-reactor.
     name: "App: createClient, ReactorProvider and useClient, peers included, React left out",
     path: "react.js",

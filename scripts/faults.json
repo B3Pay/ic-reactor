@@ -4395,8 +4395,8 @@
     "testName": "decodes a blob reply over a million bytes with the default options",
     "why": "decodeReply keeps candid-core's 1,000,000-element budget, so a blob reply over a million bytes (an SNS wasm) rejects invalid_reply",
     "file": "src/call.ts",
-    "search": "maxElements: Math.max(limits.maxElements, reply.length),",
-    "replace": "maxElements: limits.maxElements,"
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      limits.maxElements,"
   },
   {
     "id": "899-reply-budget-unbounded",
@@ -4405,8 +4405,8 @@
     "testName": "still refuses a reply whose values take no bytes past the element budget",
     "why": "decodeReply lifts the element budget altogether, so a few-byte reply of a million skipped nulls decodes",
     "file": "src/call.ts",
-    "search": "maxElements: Math.max(limits.maxElements, reply.length),",
-    "replace": "maxElements: Number.MAX_SAFE_INTEGER,"
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      Number.MAX_SAFE_INTEGER,"
   },
   {
     "id": "899-max-elements-ignored",
@@ -4425,7 +4425,17 @@
     "testName": "take and return a blob over a million bytes, as a wasm upload and download do",
     "why": "a mock decodes its arguments with the default element budget, so a test of an upload over a million bytes traps",
     "file": "src/testing/test-client.ts",
-    "search": "maxElements: Math.max(maxElements, arg.length),",
-    "replace": "maxElements,"
+    "search": "          maxElements + arg.length,",
+    "replace": "          maxElements,"
+  },
+  {
+    "id": "899-budget-taken-by-blob",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "gives values that take no bytes the whole budget, beside a large blob",
+    "why": "the reply budget is the larger of the byte length and maxElements rather than their sum, so a large blob uses up the budget the values beside it were promised",
+    "file": "src/call.ts",
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      Math.max(limits.maxElements, reply.length),"
   }
 ]

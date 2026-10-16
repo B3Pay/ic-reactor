@@ -2,12 +2,12 @@
 // size-limit adds each `peerDependencies` entry of this package to the check's
 // `ignore` (and an `ignore: []` here does not stop it).
 //
-// The limit is tight on purpose, as react's is: measured 15,011 B with the
+// The limit is tight on purpose, as react's is: measured 15,033 B with the
 // `maxElements` option and a reply's element budget raised to its byte length
-// (14,957 B before that, +54 B, with `client.resendOf()` holding a re-send to
+// (14,957 B before that, +76 B, with `client.resendOf()` holding a re-send to
 // the bytes, the canister id and the effective canister id the write went out
 // with; 14,750 B before that; 14,449 B before resendOf; 14,347 B on
-// 4.0.0-beta.3), so it leaves 49 B. A change that
+// 4.0.0-beta.3), so it leaves 27 B. A change that
 // grows core fails here, and its pull request states the size delta and
 // raises this limit deliberately.
 //

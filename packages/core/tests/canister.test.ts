@@ -319,6 +319,27 @@ describe("a direct call", () => {
     expect(Buffer.from(reply).equals(Buffer.from(wasm))).toBe(true)
   })
 
+  it("gives values that take no bytes the whole budget, beside a large blob", async () => {
+    // The budget is beyond one value per byte: a blob over a million bytes
+    // does not use it up for the values beside it.
+    const reply = encodeArgs(
+      [c.blob(), c.vec(c.null)],
+      [
+        new Uint8Array(1_100_000).fill(3),
+        Array.from({ length: 900_000 }, () => null),
+      ],
+      { maxElements: 3_000_000 }
+    )
+    if (!reply.ok) throw new Error("the test reply did not encode")
+    const replica = replicaWith({ [SHAPES]: { query: () => reply.bytes } })
+    const canister = clientAs(replica, alice).canister<shapes.Actor>(
+      shapes.actor,
+      { id: SHAPES }
+    )
+    const bytes = await canister.bytes(new Uint8Array([1]))
+    expect(bytes.length).toBe(1_100_000)
+  })
+
   it("still refuses a reply whose values take no bytes past the element budget", async () => {
     // A trailing `vec null` the method does not declare is skipped, and each
     // skipped null is charged, though the whole reply is a few bytes.

@@ -727,12 +727,15 @@ function decodeReply(
 ): unknown {
   // candid-core charges a blob one element per byte, so a reply over its
   // default budget of 1,000,000 (a wasm module, an asset chunk) would never
-  // decode. A reply may hold as many values as it has bytes: that work is
+  // decode. A reply may hold one value per byte plus the budget: that work is
   // bounded by the IC's reply size, and the budget still bounds values that
-  // take no bytes on the wire.
+  // take no bytes on the wire, however large a blob beside them.
   const decoded = decodeArgs(method.results, reply, {
     maxDepth: limits.maxDepth,
-    maxElements: Math.max(limits.maxElements, reply.length),
+    maxElements: Math.min(
+      limits.maxElements + reply.length,
+      Number.MAX_SAFE_INTEGER
+    ),
   })
   if (!decoded.ok) {
     const [first] = decoded.issues

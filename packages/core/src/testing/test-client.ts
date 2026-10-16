@@ -180,11 +180,14 @@ function mockCanister(
           `the test gave no handler for ${name}; add it to the handlers of mock()`
         )
       }
-      // As the client decodes a reply: as many values as the argument has
-      // bytes, so a large blob argument (an upload chunk) decodes.
+      // As the client decodes a reply: one value per byte of the argument
+      // plus the budget, so a large blob argument (an upload chunk) decodes.
       const decoded = decodeArgs(method.args, arg, {
         maxDepth,
-        maxElements: Math.max(maxElements, arg.length),
+        maxElements: Math.min(
+          maxElements + arg.length,
+          Number.MAX_SAFE_INTEGER
+        ),
       })
       if (!decoded.ok) {
         throw new Error(

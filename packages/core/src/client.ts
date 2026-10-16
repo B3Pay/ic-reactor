@@ -162,10 +162,10 @@ export type ClientOptions = {
   readonly maxDepth?: number
   /**
    * How many values a decoded reply may hold, beyond one per byte of the
-   * reply. Defaults to 1,000,000. A reply is always allowed as many values as
-   * it has bytes, so a blob (a wasm module, an asset chunk) of any size the IC
-   * returns decodes; this bounds only replies whose values take no bytes,
-   * such as a long `vec null`.
+   * reply. Defaults to 1,000,000. A reply is always allowed one value per byte
+   * on top of this, so a blob (a wasm module, an asset chunk) of any size the
+   * IC returns decodes; this bounds only the values that take no bytes, such
+   * as a long `vec null`.
    */
   readonly maxElements?: number
 } & (
