@@ -3,6 +3,7 @@ import * as vitePluginModule from "./index.js"
 import type { IcReactorPluginOptions } from "./index.js"
 import path from "node:path"
 import { execFile } from "child_process"
+import { installIcpAdvice } from "./env.js"
 import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { resolveConfig as resolveViteConfig } from "vite"
 
@@ -665,7 +666,7 @@ describe("icReactor", () => {
       expect(consoleWarnSpy).toHaveBeenCalledOnce()
       const [warning] = consoleWarnSpy.mock.calls[0]
       expect(warning).toContain("Could not run `icp`")
-      expect(warning).toContain("npm install --save-dev @icp-sdk/icp-cli")
+      expect(warning).toContain(installIcpAdvice())
       expect(warning).not.toContain("Is the local network running?")
     })
 

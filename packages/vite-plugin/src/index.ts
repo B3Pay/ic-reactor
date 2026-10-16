@@ -35,6 +35,7 @@ import {
   type LocalEnvironment,
   type LocalEnvironmentState,
 } from "./dev-environment.js"
+import { installIcpAdvice } from "./env.js"
 import { fetchCandid, resolveNetwork, writeDid } from "./fetch.js"
 import { cachedFoldsCase, fileIdentity, realFile } from "./file-identity.js"
 import {
@@ -2323,8 +2324,7 @@ function warnAboutIncompleteDetection(
     if (state.icpNotFound) {
       console.warn(
         `[ic-reactor] Could not run \`icp\`, so the local IC environment is not detected and no ic_env cookie is set${proxyNote}. ` +
-          `No \`icp\` command was found: install icp-cli in the app (npm install --save-dev @icp-sdk/icp-cli) ` +
-          `or put \`icp\` on PATH, then reload the page. The plugin tries again on each page load.`
+          `No \`icp\` command was found. ${installIcpAdvice()} Then reload the page: the plugin tries again on each page load.`
       )
       return
     }

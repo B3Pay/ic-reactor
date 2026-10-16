@@ -542,8 +542,9 @@ canister. Set the `ICP_ENVIRONMENT` environment variable to use a network other
 than `"local"`.
 
 The plugin runs `icp` from `PATH`, with no shell. On Windows, where npm links
-icp-cli's npm package as `icp.cmd`, it runs the app's
-`@icp-sdk/icp-cli` with Node instead, and otherwise an `icp.exe` on `PATH`.
+icp-cli's npm package as `icp.cmd`, it runs `@icp-sdk/icp-cli` with Node
+instead: the app's own install, else a global npm install, else an `icp.exe`
+on `PATH`.
 
 ### The cookie
 

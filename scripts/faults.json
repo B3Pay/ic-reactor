@@ -4407,5 +4407,45 @@
     "file": "src/env.ts",
     "search": "if ((error as { code?: unknown } | undefined)?.code === \"ENOENT\") {",
     "replace": "if (false) {"
+  },
+  {
+    "id": "905-windows-icp-bin-run-directly",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "starts the bin script it names, so the command runs as given",
+    "why": "icpCommand hands execFile the bin script itself, which Windows cannot start and no platform runs without Node",
+    "file": "src/env.ts",
+    "search": "if (bin) return { file: process.execPath, args: [bin] }",
+    "replace": "if (bin) return { file: bin, args: [] }"
+  },
+  {
+    "id": "905-windows-global-npm-ignored",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "runs a global npm install's bin script on Windows when the app has none",
+    "why": "a global npm install of icp-cli on Windows is reachable only as icp.cmd, which execFile cannot start",
+    "file": "src/env.ts",
+    "search": "? icpBinIn(path.join(appData, \"npm\", \"node_modules\"))",
+    "replace": "? undefined"
+  },
+  {
+    "id": "905-windows-global-before-local",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "prefers the app's own icp-cli to a global one",
+    "why": "the global icp-cli wins over the version the app pins",
+    "file": "src/env.ts",
+    "search": "installedIcpBin(projectRoot) ??",
+    "replace": "(appData ? icpBinIn(path.join(appData, \"npm\", \"node_modules\")) : undefined) ??"
+  },
+  {
+    "id": "905-advice-same-everywhere",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "says an install is enough on Windows, and PATH elsewhere",
+    "why": "the warning tells Linux and macOS users that a local install is enough, though the plugin runs icp from PATH there",
+    "file": "src/env.ts",
+    "search": "return platform === \"win32\"",
+    "replace": "return platform !== \"win32\""
   }
 ]

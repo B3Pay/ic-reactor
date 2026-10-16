@@ -22,10 +22,12 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 - On Windows, local network detection works with icp-cli installed from npm
   (`@icp-sdk/icp-cli`). npm links it as `icp.cmd`, which the plugin could not
   start, so detection always failed while the network was running. On
-  Windows the plugin now runs that package's bin script with Node, and falls
+  Windows the plugin now runs that package's bin script with Node, the app's
+  own install first, then a global npm install (`%APPDATA%\npm`), and falls
   back to an `icp.exe` on `PATH`. When no `icp` can be started at all, the
-  warning says so and how to install it, instead of asking whether the
-  network is running. CI runs the plugin's tests on Windows (#905).
+  warning says so and how to make one runnable on that platform, instead of
+  asking whether the network is running. CI runs the plugin's tests on
+  Windows (#905).
 
 ### Examples (not published)
 

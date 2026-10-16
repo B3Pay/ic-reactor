@@ -87,17 +87,22 @@ function runIcp(args: string[], cwd: string): Promise<string> {
  * (`@icp-sdk/icp-cli`) as `node_modules/.bin/icp.cmd`, and `execFile` cannot
  * start a `.cmd` file: it searches `PATH` for `.com` and `.exe` only. So on
  * Windows the package's own bin script is run with this Node, as the
- * generator's is, when the app installed the package; otherwise `icp` is
- * looked up on `PATH`, where a native `icp.exe` is found. No shell is used,
- * so a canister name is never parsed by one. Elsewhere `icp` is looked up on
- * `PATH` as before.
+ * generator's is, when the app installed the package, or else npm's global
+ * prefix (`%APPDATA%\npm`) holds it; otherwise `icp` is looked up on `PATH`,
+ * where a native `icp.exe` is found. No shell is used, so a canister name is
+ * never parsed by one. Elsewhere `icp` is looked up on `PATH` as before.
  */
 export function icpCommand(
   projectRoot: string,
-  platform: NodeJS.Platform = process.platform
+  platform: NodeJS.Platform = process.platform,
+  appData: string | undefined = process.env.APPDATA
 ): { file: string; args: string[] } {
   if (platform === "win32") {
-    const bin = installedIcpBin(projectRoot)
+    const bin =
+      installedIcpBin(projectRoot) ??
+      (appData
+        ? icpBinIn(path.join(appData, "npm", "node_modules"))
+        : undefined)
     if (bin) return { file: process.execPath, args: [bin] }
   }
   return { file: "icp", args: [] }
@@ -111,29 +116,51 @@ export function icpCommand(
  */
 function installedIcpBin(projectRoot: string): string | undefined {
   for (let dir = path.resolve(projectRoot); ; dir = path.dirname(dir)) {
-    const manifestPath = path.join(
-      dir,
-      "node_modules",
-      "@icp-sdk",
-      "icp-cli",
-      "package.json"
-    )
-    if (fs.existsSync(manifestPath)) {
-      try {
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as {
-          bin?: string | Record<string, string>
-        }
-        const bin =
-          typeof manifest.bin === "string" ? manifest.bin : manifest.bin?.icp
-        return bin
-          ? path.resolve(fs.realpathSync(path.dirname(manifestPath)), bin)
-          : undefined
-      } catch {
-        return undefined
-      }
-    }
+    const bin = icpBinIn(path.join(dir, "node_modules"))
+    if (bin !== undefined) return bin || undefined
     if (path.dirname(dir) === dir) return undefined
   }
+}
+
+/**
+ * The bin script of the `@icp-sdk/icp-cli` in `nodeModules`: `undefined` when
+ * the package is not there, `""` when it is but names no usable bin.
+ */
+function icpBinIn(nodeModules: string): string | undefined {
+  const manifestPath = path.join(
+    nodeModules,
+    "@icp-sdk",
+    "icp-cli",
+    "package.json"
+  )
+  if (!fs.existsSync(manifestPath)) return undefined
+  try {
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as {
+      bin?: string | Record<string, string>
+    }
+    const bin =
+      typeof manifest.bin === "string" ? manifest.bin : manifest.bin?.icp
+    // Through the real path: under pnpm the bin script finds its
+    // platform-specific sibling package only from there.
+    return bin
+      ? path.resolve(fs.realpathSync(path.dirname(manifestPath)), bin)
+      : ""
+  } catch {
+    return ""
+  }
+}
+
+/**
+ * How to make `icp` runnable here. On Windows the plugin runs an installed
+ * `@icp-sdk/icp-cli` itself, so installing it is enough; elsewhere it runs
+ * `icp` from `PATH`, which a local install reaches only through an npm script.
+ */
+export function installIcpAdvice(
+  platform: NodeJS.Platform = process.platform
+): string {
+  return platform === "win32"
+    ? "Install icp-cli in the app (npm install --save-dev @icp-sdk/icp-cli) or globally with npm, or put a native icp.exe on PATH."
+    : "Put `icp` on PATH (npm install --global @icp-sdk/icp-cli), or install it in the app and run vite from an npm script."
 }
 
 /**
@@ -221,8 +248,7 @@ export async function getIcEnvironmentInfo(
   } catch (error) {
     if ((error as { code?: unknown } | undefined)?.code === "ENOENT") {
       diagnostics.push(
-        "`icp` could not be run: no `icp` command was found. Install icp-cli in the app " +
-          "(npm install --save-dev @icp-sdk/icp-cli) or put `icp` on PATH."
+        `\`icp\` could not be run: no \`icp\` command was found. ${installIcpAdvice()}`
       )
       return { environment: null, diagnostics, icpNotFound: true }
     }
