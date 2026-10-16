@@ -243,7 +243,11 @@ jobs:
   # loads an ES module with require(), and a floor that can only fall later
   # without a major release. Every other job runs the newest Node 22, so this
   # one runs the package tests and a candid-core-cli gen on the floor itself,
-  # after checking that all three manifests still name it.
+  # after checking that every package's manifest and docs page still name it.
+  # Some dev tools here (jsdom, undici) declare a newer Node than the floor,
+  # and pnpm checks engines against the workspace's nodeVersion, not this
+  # one: a failure inside such a tool on the floor is a dev-tool problem, not
+  # a package regression.
   node-floor:
     name: Test on the Node floor
     runs-on: ubuntu-latest
@@ -269,11 +273,18 @@ jobs:
       - name: The manifests name this Node as their floor
         run: |
           node -e '
+            const fs = require("node:fs")
             const floor = ">=" + process.versions.node
-            for (const p of ["core", "react", "vite-plugin"]) {
-              const m = require(`./packages/${p}/package.json`)
+            for (const p of fs.readdirSync("packages")) {
+              const m = JSON.parse(fs.readFileSync(`packages/${p}/package.json`, "utf8"))
+              if (m.private) continue
               if (m.engines?.node !== floor) {
                 console.error(`packages/${p}: engines.node is ${m.engines?.node}, expected ${floor}`)
+                process.exitCode = 1
+              }
+              const page = `docs/src/content/docs/packages/${p}.mdx`
+              if (!fs.readFileSync(page, "utf8").includes("Node `" + floor + "`")) {
+                console.error(`${page} does not say Node \`${floor}\``)
                 process.exitCode = 1
               }
             }
