@@ -4415,8 +4415,8 @@
     "testName": "starts the bin script it names, so the command runs as given",
     "why": "icpCommand hands execFile the bin script itself, which Windows cannot start and no platform runs without Node",
     "file": "src/env.ts",
-    "search": "if (bin) return { file: process.execPath, args: [bin] }",
-    "replace": "if (bin) return { file: bin, args: [] }"
+    "search": "return { file: process.execPath, args: [bin] }",
+    "replace": "return { file: bin, args: [] }"
   },
   {
     "id": "905-windows-global-npm-ignored",
