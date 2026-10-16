@@ -154,10 +154,14 @@ Its `queryKey`, `queryOptions`, `caller()` and `authState()` are that caller's,
 and its `mutationOptions` send only as that caller: a write pressed before a
 switch reaches the render is refused (`kind` `"cancelled"`, `code`
 `"caller_changed"`, `mayHaveExecuted: false`) and sends nothing, so a click
-handler needs no check of its own. A canister's direct calls sign as the caller
-current when they run. Canisters, `signIn`, `signOut` and the `QueryClient`
-are the client's own. It is never the provider's client object: to tell two
-clients apart, compare their `queryClient`.
+handler needs no check of its own. Their `mutationKey` ends with that caller. A
+handler that awaits `signIn()` and then calls `mutate` presses with the last
+committed render's options, and is refused if the signed-in render has not
+committed yet (one that suspends on the user's data): let the next render
+press, or make a direct call. A canister's direct calls sign as the caller
+current when they run. Canisters, `signIn`, `signOut` and the `QueryClient` are
+the client's own. It is never the provider's client object: to tell two clients
+apart, compare their `queryClient`.
 
 Do not keep what it returns past the render: a view never moves on. Kept
 anywhere else (`useState(client)`, `useRef(client)`, a `useMemo` or

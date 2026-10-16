@@ -22,8 +22,12 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 - A view of a client pinned to a principal (what `useClient()` returns)
   writes only as that principal: its `mutationOptions` reject `cancelled`
   (`caller_changed`, `mayHaveExecuted: false`) and send nothing while someone
-  else is the caller, including a run pressed before a switch that TanStack
-  then hands a later render's options. Its `authState()` is the client's own
+  else is the caller. Their `mutationKey` ends with the principal
+  (`[..., method, caller]`, still found by a filter on the shorter key), so
+  TanStack never hands a run pressed before a switch the later render's
+  options, on any version and with any `QueryClient`; after a switch the
+  mutation a component shows starts over, idle, and the stale run reports its
+  refusal to the options it was pressed with. Its `authState()` is the client's own
   while its principal is the live caller, so an expired session reads as
   expired (#894). The client's own `mutationOptions`, a canister's direct
   calls and `func` still sign as the caller current when they run.
@@ -43,6 +47,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   the current `useClient()` value and list it in the dependencies; compare
   two clients by `client.queryClient`, not by identity; read who signs now
   from the client you created, since the view's `caller()` is its render's.
+  A handler that does `await client.signIn()` and then `mutation.mutate(arg)`
+  presses with the last committed render's options: it is refused
+  (`caller_changed`) when the signed-in render has not committed yet (one
+  that suspends on the user's data); let the next render press, or use a
+  direct canister call, which signs as the caller current.
 
 ### Examples (not published)
 

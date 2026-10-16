@@ -26,7 +26,7 @@ import {
   type Identity,
 } from "@icp-sdk/core/agent"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
-import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
+import { QueryClient, type QueryKey } from "@tanstack/query-core"
 import { createReactorError, retryQuery } from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
@@ -900,12 +900,6 @@ const CLIENT_DISPOSED = Symbol.for("ic-reactor.client.disposed")
 const CLIENT_AS = Symbol.for("ic-reactor.client.as")
 const CLIENT_OF = Symbol.for("ic-reactor.client.of")
 
-/**
- * On the write options of a view (see `viewAs`): the principal they send as.
- * Enumerable, so that options an app spreads into its own keep it.
- */
-const WRITES_AS = Symbol("ic-reactor.writes-as")
-
 /** Counts one more client in this realm, and returns the count. */
 function nextSerial(): number {
   const count = (globalThis as { [CLIENTS_CREATED]?: unknown })[CLIENTS_CREATED]
@@ -1042,32 +1036,7 @@ export function createClientWith(
       ? undefined
       : (input: RequestInfo | URL, init?: RequestInit) => userFetch(input, init)
 
-  /**
-   * The principal each run of a view's write was pressed as, by the function
-   * context TanStack Query (5.89 and later) creates for the run. The
-   * `MutationCache`'s `onMutate` reads it from the options the run was built
-   * with, synchronously inside `mutate()`, before TanStack can hand the
-   * pending run the options of a later render (it does when their
-   * `mutationKey` is the same): a press handled before a switch reached its
-   * render then stays the earlier caller's, and is refused (see `viewAs`).
-   */
-  const runsAs = new WeakMap<object, string>()
-
   const queryClient = new QueryClient({
-    mutationCache: new MutationCache({
-      onMutate: (_variables, mutation, context?: unknown) => {
-        const as = (mutation.options as { readonly [WRITES_AS]?: unknown })[
-          WRITES_AS
-        ]
-        if (
-          typeof as === "string" &&
-          typeof context === "object" &&
-          context !== null
-        ) {
-          runsAs.set(context, as)
-        }
-      },
-    }),
     defaultOptions: {
       queries: { retry: retryQuery },
       dehydrate: { serializeData },
@@ -1394,11 +1363,11 @@ export function createClientWith(
    * the client's own but for the key: a read they build asks `agentFor` for
    * `principal`'s agent, so while someone else is current it is cancelled
    * (`caller_changed`) and never sent. Its `mutationOptions` are the
-   * client's own but for the mutation function, which sends only as
-   * `principal`: while someone else is current it rejects `cancelled`
-   * (`caller_changed`, `mayHaveExecuted: false`) and sends nothing, so a
-   * write from a render that a switch has not reached yet never goes out as
-   * the new caller. Every other member is `this`'s own: canisters (made for
+   * client's own but for the `mutationKey`, which ends with `principal`, and
+   * the mutation function, which sends only as `principal`: while someone
+   * else is current it rejects `cancelled` (`caller_changed`,
+   * `mayHaveExecuted: false`) and sends nothing, so a write from a render
+   * that a switch has not reached yet never goes out as the new caller. Every other member is `this`'s own: canisters (made for
    * this client, so either one accepts them) and their direct calls,
    * `resendOf`'s `send` and `func`, which sign as the caller current when
    * they run, the `QueryClient`, `subscribe`, `signIn`, `signOut` and
@@ -1451,12 +1420,20 @@ export function createClientWith(
         method: unknown,
         options?: unknown
       ) => {
+        mutationKey: readonly unknown[]
         mutationFn: (vars: unknown, context?: unknown) => Promise<unknown>
       }
       // The client's options, whose checks run as they are built, with a
       // mutation function that sends as `principal` or not at all. The check
       // and the client's own function, which reads the caller it signs as,
       // run in one synchronous step; `agentFor` checks again before sending.
+      //
+      // The key ends with `principal`. TanStack hands a pending run the
+      // options of a later render only when their `mutationKey` is the same;
+      // with another one it detaches the observer and the run keeps the
+      // options it was pressed with. So a press handled before a switch
+      // reached its render is checked against its own principal, and refused,
+      // on every TanStack version and whatever the QueryClient.
       const mutationOptions = (
         canister: unknown,
         method: unknown,
@@ -1465,16 +1442,10 @@ export function createClientWith(
         const built = own(canister, method, options)
         return {
           ...built,
-          [WRITES_AS]: principal,
+          mutationKey: [...built.mutationKey, principal] as const,
           mutationFn: async (vars: unknown, context?: unknown) => {
-            // The principal the run was pressed as, which the options of a
-            // later render that TanStack swapped in do not change.
-            const as =
-              (typeof context === "object" && context !== null
-                ? runsAs.get(context)
-                : undefined) ?? principal
             const now = current().principal
-            if (now !== as) {
+            if (now !== principal) {
               const target = recordOf(
                 canister,
                 internals,
@@ -1484,7 +1455,7 @@ export function createClientWith(
                 method: String(method),
                 canisterId: target.ok ? target.id : target.slot,
                 code: "caller_changed",
-                reason: `the write was made as ${as}, but the caller is now ${now}; it was not sent`,
+                reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
               })
             }
             return built.mutationFn(vars, context)

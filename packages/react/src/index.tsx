@@ -463,7 +463,11 @@ const anonymous = (): string => ANONYMOUS
  * expired session included), and its `mutationOptions` send only as that
  * caller: a write pressed before a switch reached the render is refused
  * (`kind` `"cancelled"`, `code` `"caller_changed"`, `mayHaveExecuted:
- * false`) and sends nothing, so a handler needs no check of its own. A
+ * false`) and sends nothing, so a handler needs no check of its own. Their
+ * `mutationKey` ends with that caller. A handler that awaits `signIn()` and
+ * then calls `mutate` presses with the last committed render's options, and
+ * is refused while the signed-in render has not committed (one that suspends
+ * on the user's data): let the next render press, or make a direct call. A
  * canister's direct calls, `func` and `resendOf`'s `send` sign as the caller
  * current when they run. Everything else (canisters, `signIn`, `signOut`,
  * `subscribe`, `dispose`, the `QueryClient`) is the client's own. It is

@@ -4399,10 +4399,10 @@
     "package": "core",
     "test": "tests/client-pinned.test.ts",
     "testName": "keeps a write pressed as one caller refused after a switch",
-    "why": "a run pressed before a switch is checked against the options TanStack hands it from the later render, so it is signed by the new caller",
+    "why": "the key of a view's write leaves out its principal, so TanStack hands a run pressed before a switch the later render's options, and it is signed by the new caller",
     "file": "src/client.ts",
-    "search": "                ? runsAs.get(context)\n",
-    "replace": "                ? undefined\n"
+    "search": "          mutationKey: [...built.mutationKey, principal] as const,\n",
+    "replace": ""
   },
   {
     "id": "i894-view-state-not-live",
@@ -4413,5 +4413,25 @@
     "file": "src/client.ts",
     "search": "              return live.principal === principal ? live : state\n",
     "replace": "              return state\n"
+  },
+  {
+    "id": "i894-useclient-batch-press-signed-by-new-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "refuses a write pressed in the batch of a switch",
+    "why": "useClient() returns the provider's client for the live caller, so a press handled before a switch reached the render is signed by the new caller",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-useclient-signin-then-mutate-unpinned",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "decides a write pressed right after awaiting a sign-in by whether the signed-in render suspends",
+    "why": "useClient() returns the provider's client for the live caller, so a write pressed with the options of a render from before the sign-in is signed by the user that render never showed",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
   }
 ]

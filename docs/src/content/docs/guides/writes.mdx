@@ -36,7 +36,10 @@ result: for a result `variant { Ok : T; Err : E }`, the `Ok` value. An `Err`
 rejects as kind `canister_err`.
 
 `mutationOptions` throws a `TypeError` for a method the service does not have.
-Its `mutationKey` is `["ic-reactor", network, canisterId, method]`.
+Its `mutationKey` is `["ic-reactor", network, canisterId, method]`. Built from
+the client `useClient()` returns, it ends with the caller the render shows as
+well, `["ic-reactor", network, canisterId, method, caller]`, so a filter on
+the shorter key still finds it.
 
 ## Who signs
 
@@ -49,8 +52,10 @@ Built from the `useClient()` of a render, the options send only as the caller
 that render shows. A press handled before an account switch reached the
 render (the switch and the click in one batch) is refused: kind `cancelled`,
 code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. The
-handler needs no check of its own; disable the button for a caller who is not
-signed in:
+refusal reaches the callbacks of the options the press used (an `onError`
+given to `useMutation`); the mutation that the render for the new caller shows
+starts over, idle, since the key holds the caller. The handler needs no check
+of its own; disable the button for a caller who is not signed in:
 
 ```tsx
 import { useAuth, useClient } from "@ic-reactor/react"
@@ -75,6 +80,14 @@ export function SendAsShown({ arg }: { arg: TransferArg }) {
   )
 }
 ```
+
+A handler that signs in and then writes (`await client.signIn()`, then
+`transfer.mutate(arg)`) presses with the options of the last render React
+committed. The render for the user normally commits before the handler goes
+on, and the write goes out as the user; while that render cannot commit, such
+as when it suspends on the user's data, the press has the previous caller's
+options and is refused. Let the render that shows the user press, or make a
+direct call.
 
 A direct call on a canister (`await ledger.icrc1_transfer(arg)`) is not held
 to a render: it signs as whoever is signed in when it runs. In a component,

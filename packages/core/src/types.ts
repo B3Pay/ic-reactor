@@ -288,7 +288,11 @@ export interface MutationTargets {
  * invalidated, and not those of the one the cookie names now.
  */
 export interface CanisterMutationOptions<V, D, E> {
-  /** `['ic-reactor', network, canisterId, method]`. */
+  /**
+   * `['ic-reactor', network, canisterId, method]`, and then the caller for
+   * the options of a view `useClient()` returned: a prefix match on the
+   * shorter key finds both.
+   */
   readonly mutationKey: MutationKey
   /**
    * Resolves the canister this run writes to and the reads it invalidates,

@@ -659,7 +659,7 @@ describe("useClient()", () => {
         onError: (error) => failures.push(error),
       })
       return (
-        <button onClick={() => stamp.mutate()}>
+        <button data-status={stamp.status} onClick={() => stamp.mutate()}>
           {stamp.data ?? `Stamp as ${client.caller()}`}
         </button>
       )
@@ -690,12 +690,110 @@ describe("useClient()", () => {
       mayHaveExecuted: false,
     })
     expect(stamps()).toEqual([])
+    // The refusal reaches the options the press used (their onError); the
+    // mutation the new render shows starts over for the new caller, idle:
+    // the key holds the caller, so TanStack detached it from the stale run.
+    expect(
+      screen.getByRole("button", { name: `Stamp as ${second}` }).dataset.status
+    ).toBe("idle")
 
     // The render that shows the new caller writes as them.
     fireEvent.click(screen.getByRole("button", { name: `Stamp as ${second}` }))
     await screen.findByRole("button", { name: `written by ${second}` })
     expect(stamps().map(({ caller }) => caller)).toEqual([second])
   })
+
+  // #894: a handler that signs in and then writes presses with the options
+  // of the last render React committed. The sign-in's update renders and
+  // commits before the handler goes on, so the write goes out as the user;
+  // when that render cannot commit yet (it suspends on the user's data), the
+  // press still has the anonymous caller's options and is refused, sending
+  // nothing. A direct call signs as the caller current either way.
+  it.each([
+    ["commits before the handler goes on", false, "sent as the user"],
+    ["suspends on the user's data", true, "refused"],
+  ])(
+    "decides a write pressed right after awaiting a sign-in by whether the signed-in render %s: %s",
+    async (_, suspends, outcome) => {
+      const test = replica({ seed: 1, signedIn: false })
+      const failures: unknown[] = []
+      let direct: Promise<string> | undefined
+      function Read({ client }: { client: Client }) {
+        const who = client.canister<Who>(WHO, { id: CANISTER })
+        return (
+          <p>{useSuspenseQuery(client.queryOptions(who, "whoami")).data}</p>
+        )
+      }
+      function SignInAndStamp() {
+        const client = useClient()
+        const who = client.canister<Who>(WHO, { id: CANISTER })
+        const stamp = useMutation({
+          ...client.mutationOptions(who, "stamp"),
+          onError: (error) => failures.push(error),
+        })
+        const signInAndStamp = async () => {
+          await client.signIn(1)
+          stamp.mutate()
+        }
+        const signInAndCall = async () => {
+          await client.signIn(1)
+          direct = who.stamp()
+        }
+        return (
+          <>
+            {suspends && <Read client={client} />}
+            <button onClick={() => void signInAndStamp()}>
+              sign in, mutate
+            </button>
+            <button onClick={() => void signInAndCall()}>sign in, call</button>
+            <output>{stamp.data ?? stamp.status}</output>
+          </>
+        )
+      }
+      render(
+        <ReactorProvider client={() => test.client}>
+          <Suspense fallback={<p>loading</p>}>
+            <SignInAndStamp />
+          </Suspense>
+        </ReactorProvider>
+      )
+      await screen.findByRole("button", { name: "sign in, mutate" })
+      const stamps = () =>
+        test.requests
+          .filter(
+            ({ methodName, endpoint }) =>
+              methodName === "stamp" && endpoint === "call"
+          )
+          .map(({ caller }) => caller)
+
+      fireEvent.click(screen.getByRole("button", { name: "sign in, mutate" }))
+      for (let tick = 0; tick < 5; tick++) await act(macrotask)
+      const user = test.auth.getPrincipal()?.toText()
+      if (outcome === "refused") {
+        await waitFor(() => expect(failures).toHaveLength(1))
+        expect(failures[0]).toMatchObject({
+          kind: "cancelled",
+          code: "caller_changed",
+          mayHaveExecuted: false,
+        })
+        expect(stamps()).toEqual([])
+      } else {
+        await screen.findByText(`written by ${user}`)
+        expect(failures).toEqual([])
+        expect(stamps()).toEqual([user])
+      }
+
+      // A direct call made after the sign-in signs as the user either way.
+      await act(async () => {
+        await test.client.signOut()
+      })
+      await screen.findByRole("button", { name: "sign in, call" })
+      fireEvent.click(screen.getByRole("button", { name: "sign in, call" }))
+      for (let tick = 0; tick < 5; tick++) await act(macrotask)
+      await expect(direct).resolves.toBe(`written by ${user}`)
+      expect(stamps()[stamps().length - 1]).toBe(user)
+    }
+  )
 
   it("returns a view per caller after a hydration too: the server's caller for the hydrating render, the user's after it", async () => {
     const { json, html } = await serverRender()

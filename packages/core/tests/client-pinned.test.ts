@@ -16,7 +16,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { c } from "@candid-core/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
-import { MutationObserver, QueryObserver } from "@tanstack/query-core"
+import {
+  MutationObserver,
+  QueryClient,
+  QueryObserver,
+} from "@tanstack/query-core"
 import { createClient, isReactorError, type Client } from "../src/index.js"
 import { createTestClient } from "../src/testing/index.js"
 import { ANONYMOUS } from "./canister-helpers.js"
@@ -361,7 +365,9 @@ describe("a client pinned to a principal", () => {
     expect(user.mutationOptions).not.toBe(client.mutationOptions)
     const own = client.mutationOptions(who, "stamp")
     const viewed = user.mutationOptions(who, "stamp")
-    expect(viewed.mutationKey).toEqual(own.mutationKey)
+    // The key ends with the principal, so it stays a prefix match for a
+    // filter on the client's key.
+    expect(viewed.mutationKey).toEqual([...own.mutationKey, SEED_1])
     expect(viewed.retry).toBe(own.retry)
     // The live caller's view writes as them.
     await expect(
@@ -397,28 +403,36 @@ describe("a client pinned to a principal", () => {
     expect(sent("stamp")).toEqual([SEED_1, second, second])
   })
 
-  it("keeps a write pressed as one caller refused after a switch, even once a later render's options are handed to the run", async () => {
-    const { client, auth, who, sent } = signedIn()
-    const observer = new MutationObserver(
-      client.queryClient,
-      pin(client, SEED_1).mutationOptions(who, "stamp")
-    )
-    // The press is handled by the render from before the switch.
-    auth.switchTo(2)
-    const run = observer.mutate()
-    // What useMutation does once the render that shows the switch commits:
-    // TanStack hands the pending run that render's options (same key).
-    observer.setOptions(
-      pin(client, client.caller()).mutationOptions(who, "stamp")
-    )
+  it.each([
+    ["the client's QueryClient", false],
+    ["another QueryClient", true],
+  ])(
+    "keeps a write pressed as one caller refused after a switch, even once a later render's options are handed to the run (%s)",
+    async (_, another) => {
+      const { client, auth, who, sent } = signedIn()
+      const observer = new MutationObserver(
+        another ? new QueryClient() : client.queryClient,
+        pin(client, SEED_1).mutationOptions(who, "stamp")
+      )
+      // The press is handled by the render from before the switch.
+      auth.switchTo(2)
+      const run = observer.mutate()
+      // What useMutation does once the render that shows the switch commits.
+      // With the same key TanStack would hand the pending run these options;
+      // the key holds the principal, so it detaches the observer instead.
+      observer.setOptions(
+        pin(client, client.caller()).mutationOptions(who, "stamp")
+      )
+      expect(observer.getCurrentResult().isPending).toBe(false)
 
-    await expect(run).rejects.toMatchObject({
-      kind: "cancelled",
-      code: "caller_changed",
-      mayHaveExecuted: false,
-    })
-    expect(sent("stamp")).toEqual([])
-  })
+      await expect(run).rejects.toMatchObject({
+        kind: "cancelled",
+        code: "caller_changed",
+        mayHaveExecuted: false,
+      })
+      expect(sent("stamp")).toEqual([])
+    }
+  )
 
   it("says the client's own state while its principal is the live caller, an expired session included", () => {
     const { client, auth } = signedIn()
