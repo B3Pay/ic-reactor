@@ -102,11 +102,20 @@ const twoArguments = (_network: unknown, _more: string) => createTestAuth()
 createClient({ network: "ic", auth: twoArguments })
 expectTypeOf<AuthClient>().toExtend<AuthLike>()
 
-// A status the client does not know is not an AuthLike's.
+// A state a later @icp-sdk/auth adds is still an AuthLike's: it reads as
+// anonymous, and the app keeps compiling.
 export const unknownStatus: AuthLike = {
   ...createTestAuth(),
-  // @ts-expect-error "restoring" is not one of the four states
-  getStatus: () => ({ state: "restoring" as const }),
+  getStatus: () => ({ state: "revoked" as const }),
+}
+// The four known states still complete in an editor and narrow in a switch.
+expectTypeOf<"signed-out">().toExtend<
+  ReturnType<AuthLike["getStatus"]>["state"]
+>()
+export const numericStatus: AuthLike = {
+  ...createTestAuth(),
+  // @ts-expect-error a state is a string, never a number
+  getStatus: () => ({ state: 1 }),
 }
 
 // What a client offers.
