@@ -952,6 +952,109 @@ describe("mutationOptions", () => {
   })
 })
 
+describe("timeoutMs", () => {
+  // #875: a bound on how long one call waits, for reads and mutations.
+  const within = <T>(call: Promise<T>) =>
+    Promise.race([call, sleep(2_000).then(() => "still waiting")])
+
+  /** A ledger whose transfers and balances never answer. */
+  const held = () => {
+    const fake = ledgerCanister(new Map([[ALICE as string, 1_000_000n]]))
+    const replica = replicaWith({
+      [LEDGER]: {
+        query: (method, arg, context) =>
+          method === "icrc1_balance_of"
+            ? new Promise(() => {})
+            : fake.query!(method, arg, context),
+        update: () => new Promise(() => {}),
+      },
+    })
+    return { replica, client: clientAs(replica, alice) }
+  }
+  const transfer = (amount: bigint): icrc1.TransferArg => ({
+    to: { owner: BOB, subaccount: null },
+    amount,
+    fee: null,
+    memo: null,
+    from_subaccount: null,
+    created_at_time: 1_700_000_000_000_000_000n,
+  })
+
+  it.each([
+    ["its own timeoutMs", {}, { timeoutMs: 50 }],
+    ["the canister's timeoutMs", { timeoutMs: 50 }, {}],
+    [
+      "its own timeoutMs over the canister's",
+      { timeoutMs: 600_000 },
+      { timeoutMs: 50 },
+    ],
+  ] as const)(
+    "rejects a mutation whose request went out outcome_unknown with %s, and offers it to resendOf",
+    async (_, target, options) => {
+      const { replica, client } = held()
+      const ledger = client.canister<icrc1.Actor>(icrc1.actor, {
+        id: LEDGER,
+        ...target,
+      })
+      const mutation = new MutationObserver(
+        client.queryClient,
+        client.mutationOptions(ledger, "icrc1_transfer", options)
+      )
+      const error = await within(mutation.mutate(transfer(1n))).catch(
+        (failure: unknown) => failure
+      )
+      expect(error).toMatchObject({
+        kind: "outcome_unknown",
+        mayHaveExecuted: true,
+        code: "timeout",
+      })
+      expect(mutation.getCurrentResult().error).toBe(error)
+      expect(
+        client.resendOf(error, ledger, "icrc1_transfer", {
+          dedupedBy: (arg) => arg.created_at_time,
+        })
+      ).toBeDefined()
+      expect(requestsFor(replica, "icrc1_transfer")).toHaveLength(1)
+    }
+  )
+
+  it("rejects a read of a canister with timeoutMs cancelled, with nothing executed", async () => {
+    const { replica, client } = held()
+    const ledger = client.canister<icrc1.Actor>(icrc1.actor, {
+      id: LEDGER,
+      timeoutMs: 50,
+    })
+    await expect(
+      within(
+        client.queryClient.fetchQuery(
+          client.queryOptions(ledger, "icrc1_balance_of", {
+            owner: ALICE,
+            subaccount: null,
+          })
+        )
+      )
+    ).rejects.toMatchObject({
+      kind: "cancelled",
+      mayHaveExecuted: false,
+      code: "timeout",
+    })
+    expect(requestsFor(replica, "icrc1_balance_of")).toHaveLength(1)
+  })
+
+  it.each([0, 0.5, Number.NaN, 2 ** 31, "50"])(
+    "throws a TypeError for a mutation's timeoutMs %s",
+    (timeoutMs) => {
+      const { client } = held()
+      const ledger = client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
+      expect(() =>
+        client.mutationOptions(ledger, "icrc1_transfer", {
+          timeoutMs: timeoutMs as number,
+        })
+      ).toThrow(/2147483647/)
+    }
+  )
+})
+
 /**
  * Whether the installed TanStack Query hands `onMutate`, `mutationFn` and
  * `onSettled` the same function context for one run (5.89 and later), through

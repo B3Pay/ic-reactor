@@ -199,17 +199,33 @@ export type Canister<A> = {
  *   keys end in `"certified"`. A `composite_query` has no certified path: on
  *   such a canister its direct call rejects `invalid_args` (code
  *   `"no_certified_path"`) and `queryOptions` throws a `TypeError`.
+ * - `timeoutMs` bounds how long each call made through the canister object
+ *   waits for its answer, from the moment it is called: its direct calls,
+ *   its reads made with `queryOptions`, and its mutations (unless
+ *   `mutationOptions` gives its own). Without it, a request that gets no
+ *   HTTP answer waits as long as the `fetch` in use does. When it passes, the
+ *   call rejects with code `"timeout"`: `cancelled` with `mayHaveExecuted:
+ *   false` for a read, and for a write before its request went out; a write
+ *   whose request went out rejects `outcome_unknown` with `mayHaveExecuted:
+ *   true`, an unknown outcome to reconcile (read the state back, or
+ *   `client.resendOf()`), never one to send again blindly. Nothing is sent
+ *   again for it, and the request itself is not torn down: only the waiting
+ *   stops. A number of milliseconds from 1 to 2147483647; anything
+ *   else throws a `TypeError`. Another `timeoutMs` makes another canister
+ *   object, with the same keys.
  */
 export type CanisterTarget =
   | {
       readonly id: string
       readonly name?: never
       readonly certified?: boolean
+      readonly timeoutMs?: number
     }
   | {
       readonly name: string
       readonly id?: never
       readonly certified?: boolean
+      readonly timeoutMs?: number
     }
 
 // ---------------------------------------------------------------------------
@@ -442,4 +458,11 @@ export interface MutationOptionsOptions {
    * `[]` invalidates nothing.
    */
   readonly invalidates?: readonly InvalidationTarget[]
+  /**
+   * How long each run waits for its answer, in place of the canister
+   * target's `timeoutMs`; the same rules. A run whose request went out
+   * rejects `outcome_unknown` with `mayHaveExecuted: true` when it passes:
+   * reconcile it, never re-send it blindly.
+   */
+  readonly timeoutMs?: number
 }

@@ -37,6 +37,7 @@ import {
 import {
   canisterFactory,
   describe,
+  badTimeout,
   methodOf,
   recordOf,
   type CanisterRecord,
@@ -352,6 +353,7 @@ export function createBuilders(
           values,
           encoded,
           signal: context.signal,
+          timeoutMs: record.timeoutMs,
           resend: false,
           canister: canister as object,
         })
@@ -372,9 +374,13 @@ export function createBuilders(
         typeof options === "object" && options !== null
           ? Object.keys(options)
           : undefined
-      if (keys === undefined || keys.some((key) => key !== "invalidates")) {
+      if (
+        keys === undefined ||
+        keys.some((key) => key !== "invalidates" && key !== "timeoutMs") ||
+        badTimeout((options as { timeoutMs?: unknown }).timeoutMs)
+      ) {
         throw new TypeError(
-          `[ic-reactor] ${call} takes { invalidates } as its third argument, or nothing; got ${describe(options)}. ` +
+          `[ic-reactor] ${call} takes { invalidates, timeoutMs } (timeoutMs: 1 to 2147483647 ms) as its third argument, or nothing; got ${describe(options)}. ` +
             "A mutation is never retried: an update re-sent after an unknown outcome can run twice."
         )
       }
@@ -411,6 +417,7 @@ export function createBuilders(
     const record = recordOf(canister, internals, call)
     const prepared = methodOf(record, method, call)
     const invalidates = readInvalidates(canister, options)
+    const timeoutMs = (options as { timeoutMs?: number } | undefined)?.timeoutMs
     // One synchronous step, so that every `{ name }` here (the canister
     // written to, and any listed in `invalidates`) is read from the same
     // cookie.
@@ -463,6 +470,7 @@ export function createBuilders(
           certified: record.certified,
           caller: again?.caller ?? internals.current(),
           values: valuesOf(prepared, vars),
+          timeoutMs: timeoutMs ?? record.timeoutMs,
           resend: true,
           canister: canister as object,
           again,

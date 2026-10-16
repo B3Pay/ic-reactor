@@ -1054,6 +1054,220 @@ describe("a read whose request gets no HTTP answer", () => {
   )
 })
 
+describe("a read aborted while it waits for its caller's identity", () => {
+  it("sends nothing, and rejects cancelled", async () => {
+    const gate = deferred()
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const auth = createTestAuth({ seed: 1 })
+    const slowAuth = withIdentity(auth, async () => {
+      const identity = await auth.getIdentity()
+      await gate.promise
+      return identity
+    })
+    const client = clientWithAuth(replica, slowAuth)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const { queryFn } = client.queryOptions(canister, "one", 1n)
+    const controller = new AbortController()
+    const read = queryFn({ signal: controller.signal } as QueryFunctionContext)
+    await sleep(20)
+    controller.abort()
+    await expect(
+      Promise.race([read, sleep(1_000).then(() => "still waiting")])
+    ).rejects.toMatchObject({ kind: "cancelled", mayHaveExecuted: false })
+    gate.resolve()
+    await sleep(50)
+    expect(canisterRequests(replica)).toEqual([])
+  })
+})
+
+describe("a call with timeoutMs", () => {
+  // A call bounded by `timeoutMs` stops waiting when it passes (#875): a
+  // write whose request went out may have executed, anything else did not.
+  const within = <T>(call: Promise<T>) =>
+    Promise.race([call, sleep(2_000).then(() => "still waiting")])
+
+  /** A ledger whose transfers never answer, and a client calling it as Alice. */
+  const heldLedger = (target: { timeoutMs?: number } = {}) => {
+    const fake = ledgerCanister(new Map([[ALICE as string, 1_000_000n]]))
+    const replica = replicaWith({
+      [LEDGER]: { query: fake.query, update: () => new Promise(() => {}) },
+    })
+    const client = clientAs(replica, alice)
+    const ledger = client.canister<icrc1.Actor>(icrc1.actor, {
+      id: LEDGER,
+      ...target,
+    })
+    return { replica, client, ledger }
+  }
+
+  it("rejects a write whose request went out outcome_unknown, which may have executed, and offers it to resendOf", async () => {
+    const { replica, client, ledger } = heldLedger({ timeoutMs: 50 })
+    const error = await within(
+      ledger.icrc1_transfer(transferTo(BOB, 1n))
+    ).catch((failure: unknown) => failure)
+    expect(error).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      code: "timeout",
+      method: "icrc1_transfer",
+    })
+    expect(isReactorError(error, ledger, "icrc1_transfer")).toBe(true)
+    expect(
+      client.resendOf(error, ledger, "icrc1_transfer", {
+        dedupedBy: (arg) => arg.created_at_time,
+      })
+    ).toBeDefined()
+    // Never sent again for the timeout.
+    await sleep(1_000)
+    expect(requestsFor(replica, "icrc1_transfer")).toHaveLength(1)
+  })
+
+  it.each([
+    ["a query", false],
+    ["a certified read", true],
+  ] as const)(
+    "rejects %s whose canister never answers cancelled, with nothing executed",
+    async (_, certified) => {
+      const replica = replicaWith({
+        [SHAPES]: shapesCanister({ one: () => new Promise(() => {}) }),
+      })
+      const canister = clientAs(replica, alice).canister<shapes.Actor>(
+        shapes.actor,
+        { id: SHAPES, certified, timeoutMs: 50 }
+      )
+      await expect(within(canister.one(1n))).rejects.toMatchObject({
+        kind: "cancelled",
+        mayHaveExecuted: false,
+        code: "timeout",
+        method: "one",
+      })
+      expect(requestsFor(replica, "one")).toHaveLength(1)
+    }
+  )
+
+  it("rejects a write whose poll gets no answer outcome_unknown, which may have executed", async () => {
+    // The call request is answered 202, accepted, without reaching the
+    // canister, and every read_state that polls for it is held.
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    let polls = 0
+    const fetch = (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      const url = urlOf(input)
+      if (url.endsWith("/call")) {
+        return Promise.resolve(new Response(null, { status: 202 }))
+      }
+      if (url.endsWith("/read_state") && url.includes(SHAPES)) {
+        polls += 1
+        return new Promise<Response>(() => {})
+      }
+      return replica.fetch(input, init)
+    }
+    const canister = clientAs(
+      { ...replica, fetch },
+      alice
+    ).canister<shapes.Actor>(shapes.actor, { id: SHAPES, timeoutMs: 200 })
+    await expect(within(canister.bump(1n))).rejects.toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      code: "timeout",
+    })
+    expect(polls).toBeGreaterThan(0)
+  })
+
+  it("rejects a write that times out while it waits to be re-sent cancelled, and never sends it again", async () => {
+    // A 429 proves the first attempt was not delivered; the re-send would
+    // go out 300 ms later, after the timeout.
+    const { client, replica } = shapesSetup()
+    replica.refuseNext(429)
+    const bounded = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      timeoutMs: 100,
+    })
+    const started = Date.now()
+    await expect(within(bounded.bump(1n))).rejects.toMatchObject({
+      kind: "cancelled",
+      mayHaveExecuted: false,
+      code: "timeout",
+    })
+    // At the timeout, not when the wait before the re-send would have ended.
+    expect(Date.now() - started).toBeLessThan(280)
+    await sleep(300 + 600 + 200)
+    expect(requestsFor(replica, "bump")).toMatchObject([
+      { refused: expect.stringContaining("429") },
+    ])
+  })
+
+  it("rejects a write still waiting for its caller's identity cancelled, and sends nothing", async () => {
+    const gate = deferred()
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const auth = createTestAuth({ seed: 1 })
+    const slowAuth = withIdentity(auth, async () => {
+      const identity = await auth.getIdentity()
+      await gate.promise
+      return identity
+    })
+    const canister = clientWithAuth(replica, slowAuth).canister<shapes.Actor>(
+      shapes.actor,
+      { id: SHAPES, timeoutMs: 50 }
+    )
+    await expect(within(canister.bump(1n))).rejects.toMatchObject({
+      kind: "cancelled",
+      mayHaveExecuted: false,
+      code: "timeout",
+    })
+    gate.resolve()
+    await sleep(50)
+    expect(canisterRequests(replica)).toEqual([])
+  })
+
+  it("leaves a call that answers in time as it is", async () => {
+    const { client, replica } = shapesSetup()
+    const canister = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      timeoutMs: 5_000,
+    })
+    await expect(canister.bump(1n)).resolves.toBe(2n)
+    await expect(canister.one(1n)).resolves.toBe(2n)
+    expect(requestsFor(replica, "bump")).toHaveLength(1)
+  })
+
+  it("is part of the target: another timeoutMs is another canister object", () => {
+    const { client } = shapesSetup()
+    const bounded = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      timeoutMs: 50,
+    })
+    expect(
+      client.canister<shapes.Actor>(shapes.actor, { id: SHAPES, timeoutMs: 50 })
+    ).toBe(bounded)
+    expect(
+      client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    ).not.toBe(bounded)
+    expect(client.queryKey(bounded, "one", 1n)).toEqual(
+      client.queryKey(
+        client.canister<shapes.Actor>(shapes.actor, { id: SHAPES }),
+        "one",
+        1n
+      )
+    )
+  })
+
+  it.each([0, -1, 0.5, Number.NaN, Infinity, 2 ** 31, "50", null])(
+    "throws a TypeError for timeoutMs %s",
+    (timeoutMs) => {
+      const { client } = shapesSetup()
+      expect(() =>
+        client.canister(shapes.actor, {
+          id: SHAPES,
+          timeoutMs: timeoutMs as number,
+        })
+      ).toThrow(/2147483647/)
+    }
+  )
+})
+
 describe("a call made as a caller who signs out before it is sent", () => {
   it("is cancelled rather than sent as somebody else", async () => {
     const gate = deferred()

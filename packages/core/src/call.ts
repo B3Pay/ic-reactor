@@ -94,6 +94,7 @@ import {
   isReactorError,
   isRetryable,
   retryUpdate,
+  timedOutError,
   type CallMode,
 } from "./errors.js"
 import { toHex } from "./keys.js"
@@ -203,6 +204,18 @@ export interface CallRequest {
    * answer, and rejects `cancelled`.
    */
   readonly signal?: AbortSignal
+  /**
+   * How long the caller waits, from the start of the call to its answer: a
+   * direct call's `timeoutMs` (on its canister target), or a mutation's.
+   * When it passes, the call stops waiting as if {@link signal} had aborted,
+   * and rejects with code `"timeout"`: `cancelled` with nothing executed,
+   * except while an attempt of an update (or a oneway) is out, which may
+   * have been delivered: `outcome_unknown` with `mayHaveExecuted: true`,
+   * the same as the polling bound. Nothing is ever sent again for it: the
+   * re-sends of {@link resend} only follow a failure that proves the attempt
+   * was not delivered, and the wait before one is a wait of this call.
+   */
+  readonly timeoutMs?: number
   /**
    * Whether this call re-sends itself after a failure that allows it: `true`
    * for a direct call and a mutation, `false` for a query function, whose
@@ -372,39 +385,75 @@ async function run(
     signal: request.signal,
   }
 
+  // A timeout aborts a signal of its own, which the query function's signal
+  // (when there is one) aborts too, so every wait below ends at either.
+  const ms = request.timeoutMs
+  const outer = request.signal
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let timedOut = false
+  // Whether an attempt is out, and may be in the IC: from the moment it is
+  // handed to the agent until it fails. A failure that lets the call re-send
+  // proves the attempt was not delivered, so a timeout during the wait
+  // before a re-send finds nothing out.
+  let out = false
+  if (ms !== undefined) {
+    const stop = new AbortController()
+    const end = () => stop.abort(outer?.reason)
+    call.signal = stop.signal
+    outer?.addEventListener("abort", end, { once: true })
+    if (outer?.aborted) end()
+    timer = setTimeout(() => {
+      timedOut = !stop.signal.aborted
+      stop.abort()
+    }, ms)
+  }
+  const signal = call.signal
+
   let reply: Uint8Array | undefined
-  for (let resends = 0; ; resends += 1) {
-    try {
-      if (request.signal?.aborted) {
-        throw createReactorError("cancelled", {
-          ...where,
-          reason: "the read was cancelled before it was sent",
-        })
+  try {
+    for (let resends = 0; ; resends += 1) {
+      try {
+        if (resends > 0) {
+          await untilAborted(
+            sleep(UPDATE_RESEND_DELAYS_MS[resends - 1]),
+            signal
+          )
+        }
+        // Asked again before every attempt: a re-send for a caller who is no
+        // longer current is cancelled, not sent as them.
+        const agent = await untilAborted(
+          internals.agentFor(caller.principal, where),
+          signal
+        )
+        if (signal?.aborted) throw notSent(where, "the call was cancelled")
+        // agentFor checked for disposal before it returned the agent, but a
+        // dispose() can still run in the microtask between that check and
+        // this line (a reaction on the identity's promise, say): nothing is
+        // sent then.
+        if (internals.disposed()) {
+          throw notSent(where, "the client was disposed", "client_disposed")
+        }
+        out = true
+        reply = await dispatch(agent, send, call)
+        break
+      } catch (error) {
+        // Never a re-send: what the attempt out did is unknown, and the
+        // caller has stopped waiting.
+        if (timedOut) throw timedOutError(where, write && out)
+        out = false
+        if (signal?.aborted && !isReactorError(error)) {
+          throw notSent(where, "the call was cancelled")
+        }
+        const resend =
+          request.resend &&
+          (write
+            ? !management && retryUpdate(error, resends)
+            : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))
+        if (!resend) throw error
       }
-      // Asked again before every attempt: a re-send for a caller who is no
-      // longer current is cancelled, not sent as them.
-      const agent = await internals.agentFor(caller.principal, where)
-      // agentFor checked for disposal before it returned the agent, but a
-      // dispose() can still run in the microtask between that check and this
-      // line (a reaction on the identity's promise, say): nothing is sent then.
-      if (internals.disposed()) {
-        throw createReactorError("cancelled", {
-          ...where,
-          code: "client_disposed",
-          reason: "the client was disposed before the call was sent",
-        })
-      }
-      reply = await dispatch(agent, send, call)
-      break
-    } catch (error) {
-      const resend =
-        request.resend &&
-        (write
-          ? !management && retryUpdate(error, resends)
-          : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))
-      if (!resend) throw error
-      await sleep(UPDATE_RESEND_DELAYS_MS[resends])
     }
+  } finally {
+    clearTimeout(timer)
   }
   if (send === "oneway") return undefined
   return decodeReply(method, reply as Uint8Array, internals.maxDepth, {
@@ -424,6 +473,18 @@ const unroutable = (
     reason: routed.ok ? "the call cannot be routed" : routed.reason,
   })
 
+/** A refusal before the call's next attempt went out. */
+const notSent = (
+  where: { method: string; canisterId: string },
+  lead: string,
+  code?: string
+) =>
+  createReactorError("cancelled", {
+    ...where,
+    code,
+    reason: `${lead} before it was sent`,
+  })
+
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -438,7 +499,8 @@ interface Outgoing {
   readonly arg: Uint8Array
   /** How a failure is classified: `update` for a write, `query` for a read (certified or not). */
   readonly mode: CallMode
-  readonly signal?: AbortSignal
+  /** The call's signal: the query function's, or the timeout's when there is one. */
+  signal?: AbortSignal
 }
 
 /**
