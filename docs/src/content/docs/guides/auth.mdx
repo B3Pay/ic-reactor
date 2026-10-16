@@ -245,9 +245,9 @@ account.
 
 ### Wallets that sign each call
 
-A wallet that speaks ICRC-25 and ICRC-49 (OISY, Plug, an NFID account) never
-hands the app an `Identity`: the user approves each call in the wallet, which
-signs and sends it. Such a wallet is not an `AuthLike`, and the client cannot
+A wallet that speaks ICRC-25, ICRC-27 and ICRC-49 (OISY, Plug, an NFID
+account) never hands the app an `Identity`: the user approves each call in the
+wallet, which signs and sends it. Such a wallet is not an `AuthLike`, and the client cannot
 send as it. Keep the client for reads, anonymous (a ledger's balances are
 public; `SignerAgent` would send each read to the wallet for approval too),
 and send the wallet's writes through `SignerAgent` from `@icp-sdk/signer`,
@@ -277,6 +277,8 @@ export async function connect() {
     // Keep the channel open between the requests of one session.
     autoCloseTransportChannel: false,
   })
+  // ICRC-27: the accounts the user shares. A wallet that lacks it cannot
+  // be used this way; signer.getSupportedStandards() says which it has.
   const [account] = await signer.getAccounts()
   if (!account) throw new Error("the wallet shared no account")
   const agent = await SignerAgent.create({ signer, account: account.owner })
@@ -284,18 +286,21 @@ export async function connect() {
     agent,
     canisterId: Principal.fromText(LEDGER),
   })
-  return { owner: account.owner, wallet }
+  // The whole account: its subaccount, if any, is the one to debit.
+  return { account, wallet }
 }
 
 // Writes: through the wallet, which shows each call to the user.
 export async function send(
-  { wallet }: Awaited<ReturnType<typeof connect>>,
+  { account, wallet }: Awaited<ReturnType<typeof connect>>,
   to: Principal,
   amount: bigint,
   createdAt: bigint // fixed per transfer, so a re-send is deduplicated
 ) {
   try {
     return await wallet.transfer({
+      // Without it the ledger debits the owner's default subaccount.
+      from_subaccount: account.subaccount,
       to: { owner: to, subaccount: [] },
       amount,
       created_at_time: createdAt,
@@ -321,8 +326,8 @@ What the client gives a write does not reach this one: no `ReactorError`, no
   with the same `created_at_time`, which the ledger answers `Duplicate` if
   the first went through.
 
-Show the wallet's principal as the account (`owner`), not `useAuth()`'s, which
-stays anonymous. A wallet that is a browser extension (Plug) connects with
+Show the wallet's account (`account.owner`, and its subaccount when it has
+one) as the user's, not `useAuth()`'s principal, which stays anonymous. A wallet that is a browser extension (Plug) connects with
 `BrowserExtensionTransport` from `@icp-sdk/signer/extension` instead.
 `@icp-sdk/signer` peers only `@icp-sdk/core` 6, so it installs beside the
 client. NFID IdentityKit 2.0 does not: it peers `@icp-sdk/auth` 5, and npm
