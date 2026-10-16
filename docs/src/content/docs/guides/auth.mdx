@@ -188,7 +188,12 @@ interface AuthLike {
   getPrincipal(): { toText(): string } | undefined
   getStatus(): {
     readonly state:
-      "signed-in" | "signed-in-elsewhere" | "expired" | "signed-out"
+      | "signed-in"
+      | "signed-in-elsewhere"
+      | "expired"
+      | "signed-out"
+      // A state a later @icp-sdk/auth adds: the client calls anonymously.
+      | (string & {})
   }
   getIdentity(): Promise<Identity>
   subscribe(listener: () => void): () => void
