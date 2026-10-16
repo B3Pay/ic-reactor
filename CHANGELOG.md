@@ -26,8 +26,8 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   own install first, then a global npm install (`%APPDATA%\npm`), and falls
   back to an `icp.exe` on `PATH`. When no `icp` can be started at all, the
   warning says so and how to make one runnable on that platform, instead of
-  asking whether the network is running. CI runs the plugin's tests on
-  Windows (#905).
+  asking whether the network is running. CI runs the tests of how
+  the plugin starts `icp` on Windows (#905).
 
 ### Examples (not published)
 
