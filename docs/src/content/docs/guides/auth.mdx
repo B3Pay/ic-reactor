@@ -288,19 +288,25 @@ export async function connect(
     // Keep the channel open between the requests of one session.
     autoCloseTransportChannel: false,
   })
-  // ICRC-27: the accounts the user shares. A wallet that lacks it cannot
-  // be used this way; signer.getSupportedStandards() says which it has.
-  const account = await choose(await signer.getAccounts())
-  if (!account) throw new Error("the wallet shared no account")
-  const agent = await SignerAgent.create({ signer, account: account.owner })
-  const wallet = IcrcLedgerCanister.create({
-    agent,
-    canisterId: Principal.fromText(LEDGER),
-  })
-  // The whole account: its subaccount, if any, is the one to debit. Call
-  // disconnect() when the session ends, or before connecting again: it
-  // closes the wallet's window, which stays open otherwise.
-  return { account, wallet, disconnect: () => signer.closeChannel() }
+  try {
+    // ICRC-27: the accounts the user shares. A wallet that lacks it cannot
+    // be used this way; signer.getSupportedStandards() says which it has.
+    const account = await choose(await signer.getAccounts())
+    if (!account) throw new Error("the wallet shared no account")
+    const agent = await SignerAgent.create({ signer, account: account.owner })
+    const wallet = IcrcLedgerCanister.create({
+      agent,
+      canisterId: Principal.fromText(LEDGER),
+    })
+    // The whole account: its subaccount, if any, is the one to debit. Call
+    // disconnect() when the session ends, or before connecting again: it
+    // closes the wallet's window, which stays open otherwise.
+    return { account, wallet, disconnect: () => signer.closeChannel() }
+  } catch (error) {
+    // Cancelled or failed: close the window the request opened.
+    await signer.closeChannel()
+    throw error
+  }
 }
 
 // Writes: through the wallet, which shows each call to the user.
