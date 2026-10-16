@@ -13,7 +13,10 @@ gives you:
 - strict helpers for token amounts;
 - a test client over an in-memory replica, in a separate entry.
 
-It works in a browser, in Node and on a server. For React, add
+It works in a browser, in Node and on a server. It is an ES module only, with
+no CommonJS build: use it from a package with `"type": "module"` or through a
+bundler (see
+[ES modules only](/v4/guides/getting-started/#es-modules-only)). For React, add
 [`@ic-reactor/react`](/v4/packages/react/). For Vite, add
 [`@ic-reactor/vite-plugin`](/v4/packages/vite-plugin/).
 
