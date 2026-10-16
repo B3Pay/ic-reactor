@@ -485,9 +485,17 @@ export function createBuilders(
         const targets = run.invalidates
         if (targets.length === 0) return
         // Every caller's reads, certified or not: a write changes what the
-        // canister answers to everyone.
-        await owner().queryClient.invalidateQueries({
-          predicate: ({ queryKey: key }) =>
+        // canister answers to everyone. On the QueryClient the mutation ran
+        // on, which TanStack (5.89 and later) hands onSettled, as well as the
+        // client's own: an app that nests its own QueryClientProvider keeps
+        // its reads there (#903).
+        const own = owner().queryClient
+        const ran = (runKey(context) as { client?: QueryClient } | undefined)
+          ?.client
+        const queryClients =
+          ran !== undefined && ran !== own ? [own, ran] : [own]
+        const filters = {
+          predicate: ({ queryKey: key }: { queryKey: QueryKey }) =>
             key[0] === KEY_ROOT &&
             key[1] === network &&
             targets.some(
@@ -495,7 +503,12 @@ export function createBuilders(
                 slots.includes(key[3] as string) &&
                 (only === undefined || key[4] === only)
             ),
-        })
+        }
+        await Promise.all(
+          queryClients.map((queryClient) =>
+            queryClient.invalidateQueries(filters)
+          )
+        )
       },
     }
   }

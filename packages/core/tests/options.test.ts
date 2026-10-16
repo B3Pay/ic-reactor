@@ -741,6 +741,35 @@ describe("mutationOptions", () => {
     }
   })
 
+  // An app that nests its own QueryClientProvider inside the client's keeps
+  // its reads, and runs its writes, on its own QueryClient (#903).
+  it("invalidates the reads on the QueryClient the mutation ran on, and on the client's own", async () => {
+    const { replica, reader, ledger, balance, unsubscribe } = await wallet()
+    const app = new QueryClient()
+    const account = { owner: ALICE, subaccount: null }
+    const appBalance = new QueryObserver(
+      app,
+      reader.queryOptions(ledger, "icrc1_balance_of", account)
+    )
+    const unsubscribeApp = appBalance.subscribe(() => {})
+    await vi.waitFor(() =>
+      expect(appBalance.getCurrentResult().data).toBe(1_000_000n)
+    )
+    const mutation = new MutationObserver(
+      app,
+      reader.mutationOptions(ledger, "icrc1_transfer")
+    )
+
+    await mutation.mutate(transfer(100n))
+
+    // onSettled waited for both active reads to refetch.
+    expect(appBalance.getCurrentResult().data).toBe(1_000_000n - 100n - FEE)
+    expect(balance.getCurrentResult().data).toBe(1_000_000n - 100n - FEE)
+    expect(reads(replica)).toBe(4)
+    unsubscribeApp()
+    unsubscribe()
+  })
+
   /**
    * A client on a local page, where the ic_env cookie is trusted, and a
    * `{ name: "backend" }` canister of it. The cookie is read afresh every
