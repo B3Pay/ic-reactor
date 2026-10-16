@@ -65,6 +65,7 @@ function runIcp(args: string[], cwd: string): Promise<string> {
       {
         cwd,
         encoding: "utf-8",
+        env: icp.env && { ...process.env, ...icp.env },
         timeout: ICP_TIMEOUT_MS,
         windowsHide: true,
       },
@@ -86,26 +87,50 @@ function runIcp(args: string[], cwd: string): Promise<string> {
  * On Windows, npm links the bin of icp-cli's npm package
  * (`@icp-sdk/icp-cli`) as `node_modules/.bin/icp.cmd`, and `execFile` cannot
  * start a `.cmd` file: it searches `PATH` for `.com` and `.exe` only. So on
- * Windows the package's own bin script is run with this Node, as the
- * generator's is, when the app installed the package, or else npm's global
- * prefix (`%APPDATA%\npm`) holds it; otherwise `icp` is looked up on `PATH`,
- * where a native `icp.exe` is found. No shell is used, so a canister name is
- * never parsed by one. Elsewhere `icp` is looked up on `PATH` as before.
+ * Windows, when the app installed the package, or else npm's global prefix
+ * (`%APPDATA%\npm`) holds it, the native `icp.exe` that the package's bin
+ * script would start is run directly, so that a timeout kills `icp` itself;
+ * killing the script would leave its child holding the output pipes, and the
+ * command would never settle. When that `icp.exe` is not where the script
+ * looks, the script is run with this Node, as the generator's is, and reports
+ * why. Otherwise `icp` is looked up on `PATH`, where a native `icp.exe` is
+ * found. No shell is used, so a canister name is never parsed by one.
+ * Elsewhere `icp` is looked up on `PATH` as before.
  */
 export function icpCommand(
   projectRoot: string,
   platform: NodeJS.Platform = process.platform,
   appData: string | undefined = process.env.APPDATA
-): { file: string; args: string[] } {
+): { file: string; args: string[]; env?: Record<string, string> } {
   if (platform === "win32") {
     const bin =
       installedIcpBin(projectRoot) ??
       (appData
         ? icpBinIn(path.join(appData, "npm", "node_modules"))
         : undefined)
-    if (bin) return { file: process.execPath, args: [bin] }
+    if (bin) {
+      const native = nativeIcpOf(bin)
+      // The variable the bin script sets for the binary it starts.
+      if (native)
+        return { file: native, args: [], env: { ICP_CLI_DIST: "npm" } }
+      return { file: process.execPath, args: [bin] }
+    }
   }
   return { file: "icp", args: [] }
+}
+
+/**
+ * The `icp.exe` that icp-cli's bin script `script` starts on Windows, in the
+ * two places the script looks for it: the platform package beside icp-cli's
+ * own (a flat or global install), or inside icp-cli's `node_modules`.
+ */
+function nativeIcpOf(script: string): string | undefined {
+  const platformPackage = `@icp-sdk/icp-cli-win32-${process.arch}`
+  const dir = path.dirname(script)
+  return [
+    path.join(dir, "..", "..", "..", platformPackage, "bin", "icp.exe"),
+    path.join(dir, "..", "node_modules", platformPackage, "bin", "icp.exe"),
+  ].find((file) => fs.existsSync(file))
 }
 
 /**

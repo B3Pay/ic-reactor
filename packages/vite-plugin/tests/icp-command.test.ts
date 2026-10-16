@@ -44,6 +44,20 @@ function install(nodeModules: string, bin: string | Record<string, string>) {
   )
 }
 
+/** icp-cli's platform package for this machine in `nodeModules`, with its icp.exe. */
+function nativeIcp(nodeModules: string): string {
+  fs.mkdirSync(nodeModules, { recursive: true })
+  const dir = path.join(
+    fs.realpathSync(nodeModules),
+    "@icp-sdk",
+    `icp-cli-win32-${process.arch}`,
+    "bin"
+  )
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(path.join(dir, "icp.exe"), "")
+  return path.join(dir, "icp.exe")
+}
+
 /** A stand-in for `%APPDATA%`, with npm's global prefix in it. */
 function appData(withIcp: boolean): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "icp-appdata-"))
@@ -123,6 +137,30 @@ describe("icpCommand", () => {
     expect(icpCommand(root, "win32", appData(true)).args[0]).toContain(
       fs.realpathSync(root)
     )
+  })
+
+  it("runs the icp.exe the bin script would start, so a timeout kills icp itself", () => {
+    // Beside icp-cli, as a flat or global install puts it. Killing the bin
+    // script on a timeout would leave this child holding the output pipes.
+    const root = app({ icp: "bin/icp.js" })
+    const exe = nativeIcp(path.join(root, "node_modules"))
+    expect(icpCommand(root, "win32")).toEqual({
+      file: exe,
+      args: [],
+      env: { ICP_CLI_DIST: "npm" },
+    })
+    // And a global npm install's.
+    const data = appData(true)
+    const globalExe = nativeIcp(path.join(data, "npm", "node_modules"))
+    expect(icpCommand(app(), "win32", data).file).toBe(globalExe)
+  })
+
+  it("finds the icp.exe inside icp-cli's own node_modules as well", () => {
+    const root = app({ icp: "bin/icp.js" })
+    const exe = nativeIcp(
+      path.join(root, "node_modules", "@icp-sdk", "icp-cli", "node_modules")
+    )
+    expect(icpCommand(root, "win32").file).toBe(exe)
   })
 
   it("looks icp up on PATH on Windows when neither the app nor npm's prefix has icp-cli", () => {

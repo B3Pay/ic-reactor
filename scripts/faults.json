@@ -4447,5 +4447,25 @@
     "file": "src/env.ts",
     "search": "return platform === \"win32\"",
     "replace": "return platform !== \"win32\""
+  },
+  {
+    "id": "905-windows-timeout-kills-only-the-script",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "file": "src/env.ts",
+    "testName": "runs the icp.exe the bin script would start, so a timeout kills icp itself",
+    "why": "on Windows the plugin always runs icp-cli's bin script, so a timeout kills only the script and the icp.exe it started keeps the output pipes open, holding the page request",
+    "search": "      if (native)\n",
+    "replace": "      if (native && false)\n"
+  },
+  {
+    "id": "905-windows-nested-icp-exe-missed",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "file": "src/env.ts",
+    "testName": "finds the icp.exe inside icp-cli's own node_modules as well",
+    "why": "the plugin looks for icp.exe only beside icp-cli, not in icp-cli's own node_modules, where the bin script also looks",
+    "search": "    path.join(dir, \"..\", \"node_modules\", platformPackage, \"bin\", \"icp.exe\"),\n",
+    "replace": ""
   }
 ]
