@@ -83,6 +83,7 @@ type ClientOptions = {
   readonly allowEnvConfig?: boolean
   readonly fetch?: typeof globalThis.fetch
   readonly maxDepth?: number
+  readonly maxElements?: number
 } & (
   | { readonly identity: Identity | "anonymous"; readonly auth?: never }
   | {
@@ -126,7 +127,7 @@ function formatUnits(
 
 `createClient` does no work until it is used, so the same line runs in a
 server render and in a browser. It throws a `TypeError` for options that do not
-say who calls, say it twice, or name a network or `maxDepth` it cannot use.
+say who calls, say it twice, or name a network, `maxDepth` or `maxElements` it cannot use.
 The `auth` factory is handed the client's network:
 [Auth](/v4/guides/auth/) says where its `identityProvider` comes from.
 

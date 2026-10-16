@@ -4387,5 +4387,65 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "899-reply-budget-not-raised",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "decodes a blob reply over a million bytes with the default options",
+    "why": "decodeReply keeps candid-core's 1,000,000-element budget, so a blob reply over a million bytes (an SNS wasm) rejects invalid_reply",
+    "file": "src/call.ts",
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      limits.maxElements,"
+  },
+  {
+    "id": "899-reply-budget-unbounded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "still refuses a reply whose values take no bytes past the element budget",
+    "why": "decodeReply lifts the element budget altogether, so a few-byte reply of a million skipped nulls decodes",
+    "file": "src/call.ts",
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      Number.MAX_SAFE_INTEGER,"
+  },
+  {
+    "id": "899-max-elements-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "passes maxElements on, 1,000,000 unless given, and refuses one candid-core would refuse",
+    "why": "createClient ignores the maxElements it was given",
+    "file": "src/client.ts",
+    "search": "const maxElements = options.maxElements ?? DEFAULT_MAX_ELEMENTS",
+    "replace": "const maxElements = DEFAULT_MAX_ELEMENTS"
+  },
+  {
+    "id": "899-mock-arg-budget",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "take and return a blob over a million bytes, as a wasm upload and download do",
+    "why": "a mock decodes its arguments with the default element budget, so a test of an upload over a million bytes traps",
+    "file": "src/testing/test-client.ts",
+    "search": "          maxElements + arg.length,",
+    "replace": "          maxElements,"
+  },
+  {
+    "id": "899-budget-taken-by-blob",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "gives values that take no bytes the whole budget, beside a large blob",
+    "why": "the reply budget is the larger of the byte length and maxElements rather than their sum, so a large blob uses up the budget the values beside it were promised",
+    "file": "src/call.ts",
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      Math.max(limits.maxElements, reply.length),"
+  },
+  {
+    "id": "899-mock-reply-budget",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "return as many values as the maxElements the test client was given",
+    "why": "a mock encodes its reply with candid-core's default element budget, so a test client given a larger maxElements still cannot return a reply past 1,000,000 values",
+    "file": "src/testing/test-client.ts",
+    "search": "        maxDepth,\n        maxElements,\n      })",
+    "replace": "        maxDepth,\n      })"
   }
 ]

@@ -19,7 +19,10 @@
  * @module
  */
 import type { FuncValue, Principal, Schema } from "@candid-core/schema"
-import { DEFAULT_MAX_DEPTH } from "@candid-core/schema/codec"
+import {
+  DEFAULT_MAX_DEPTH,
+  DEFAULT_MAX_ELEMENTS,
+} from "@candid-core/schema/codec"
 import {
   AnonymousIdentity,
   HttpAgent,
@@ -157,6 +160,14 @@ export type ClientOptions = {
    * that nest deeper, such as an ICRC-3 block log's values.
    */
   readonly maxDepth?: number
+  /**
+   * How many values a decoded reply may hold, beyond one per byte of the
+   * reply. Defaults to 1,000,000. A reply is always allowed one value per byte
+   * on top of this, so a blob (a wasm module, an asset chunk) of any size the
+   * IC returns decodes; this bounds only the values that take no bytes, such
+   * as a long `vec null`.
+   */
+  readonly maxElements?: number
 } & (
   | {
       /**
@@ -642,6 +653,8 @@ export interface ClientInternals {
   readonly network: ResolvedNetwork
   /** The decode depth bound for replies, from {@link ClientOptions.maxDepth}. */
   readonly maxDepth: number
+  /** The decode element budget for replies, from {@link ClientOptions.maxElements}. */
+  readonly maxElements: number
   /** Who calls now. Reads the auth (building it on first use, in a browser). */
   current(): Caller
   /**
@@ -734,7 +747,7 @@ const AUTH_MEMBERS = [
 /**
  * Checks what a JavaScript caller (or a cast) can get past the types: exactly
  * one of `identity` and `auth`, an identity that is one, an `auth` that is a
- * factory, and a `maxDepth` candid-core would accept.
+ * factory, and a `maxDepth` and `maxElements` candid-core would accept.
  */
 function checkOptions(options: ClientOptions): void {
   if (typeof options !== "object" || options === null) {
@@ -742,10 +755,11 @@ function checkOptions(options: ClientOptions): void {
       "[ic-reactor] createClient() takes an options object: { network, identity } or { network, auth }."
     )
   }
-  const { identity, auth, maxDepth } = options as {
+  const { identity, auth, maxDepth, maxElements } = options as {
     identity?: unknown
     auth?: unknown
     maxDepth?: unknown
+    maxElements?: unknown
   }
   if (identity !== undefined && auth !== undefined) {
     throw new TypeError(
@@ -781,6 +795,14 @@ function checkOptions(options: ClientOptions): void {
   ) {
     throw new TypeError(
       `[ic-reactor] maxDepth is a non-negative safe integer, got ${String(maxDepth)}.`
+    )
+  }
+  if (
+    maxElements !== undefined &&
+    !(Number.isSafeInteger(maxElements) && (maxElements as number) >= 0)
+  ) {
+    throw new TypeError(
+      `[ic-reactor] maxElements is a non-negative safe integer, got ${String(maxElements)}.`
     )
   }
 }
@@ -1020,6 +1042,7 @@ export function createClientWith(
   checkHost(network.host)
   warnEnvOffPage(options.network)
   const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH
+  const maxElements = options.maxElements ?? DEFAULT_MAX_ELEMENTS
   const authFactory = options.auth
   const fixedIdentity =
     options.identity === undefined || options.identity === "anonymous"
@@ -1337,6 +1360,7 @@ export function createClientWith(
   const internals: ClientInternals = Object.freeze({
     network,
     maxDepth,
+    maxElements,
     current,
     disposed: () => disposed,
     agentFor,

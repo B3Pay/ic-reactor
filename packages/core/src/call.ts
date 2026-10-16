@@ -406,7 +406,7 @@ async function run(
     }
   }
   if (send === "oneway") return undefined
-  return decodeReply(method, reply as Uint8Array, internals.maxDepth, {
+  return decodeReply(method, reply as Uint8Array, internals, {
     ...where,
     mode,
   })
@@ -722,10 +722,21 @@ function describeErr(errTag: string, payload: unknown): string {
 function decodeReply(
   method: PreparedMethod,
   reply: Uint8Array,
-  maxDepth: number,
+  limits: { readonly maxDepth: number; readonly maxElements: number },
   context: { method: string; canisterId: string; mode: CallMode }
 ): unknown {
-  const decoded = decodeArgs(method.results, reply, { maxDepth })
+  // candid-core charges a blob one element per byte, so a reply over its
+  // default budget of 1,000,000 (a wasm module, an asset chunk) would never
+  // decode. A reply may hold one value per byte plus the budget: that work is
+  // bounded by the IC's reply size, and the budget still bounds values that
+  // take no bytes on the wire, however large a blob beside them.
+  const decoded = decodeArgs(method.results, reply, {
+    maxDepth: limits.maxDepth,
+    maxElements: Math.min(
+      limits.maxElements + reply.length,
+      Number.MAX_SAFE_INTEGER
+    ),
+  })
   if (!decoded.ok) {
     const [first] = decoded.issues
     throw invalidReplyError(context, {

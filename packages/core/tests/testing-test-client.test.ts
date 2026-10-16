@@ -11,7 +11,7 @@
  * collapse, and the management canister for effective-canister-id routing.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { c, principal } from "@candid-core/schema"
+import { c, principal, type WithMode } from "@candid-core/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { internalsOf } from "../src/client.js"
 import { isReactorError } from "../src/index.js"
@@ -355,6 +355,27 @@ describe("the handlers' values", () => {
     await expect(canister.maybe({ some: null })).resolves.toEqual({
       some: null,
     })
+  })
+
+  it("take and return a blob over a million bytes, as a wasm upload and download do", async () => {
+    const chunk = new Uint8Array(2_000_000).fill(9)
+    const { canister } = withShapes({ bytes: (bytes) => bytes })
+    const reply = await canister.bytes(chunk)
+    // Byte by byte, toEqual takes seconds on two million entries.
+    expect(Buffer.from(reply).equals(Buffer.from(chunk))).toBe(true)
+  })
+
+  it("return as many values as the maxElements the test client was given", async () => {
+    // A reply of values that take no bytes: past candid-core's default
+    // budget, within the one the test asked for.
+    type Nulls = { nulls: (() => Promise<null[]>) & WithMode<"query"> }
+    const nulls = c.service({ nulls: c.func([], [c.vec(c.null)], "query") })
+    const test = setup({ maxElements: 1_200_000 })
+    test.mock<Nulls>(nulls, SHAPES, {
+      nulls: () => Array.from({ length: 1_100_000 }, () => null),
+    })
+    const canister = test.client.canister<Nulls>(nulls, { id: SHAPES })
+    await expect(canister.nulls()).resolves.toHaveLength(1_100_000)
   })
 
   it("make a void update that returns whatever it likes a method with no results", async () => {
