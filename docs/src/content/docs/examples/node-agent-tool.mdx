@@ -14,7 +14,9 @@ Node 22.18 or newer (`node src/cli.ts <command>`, no build step). It is
   `icp identity export` prints it) or a hex seed, else
   `identity: "anonymous"`, whose writes the client refuses before sending.
   Give it an identity of its own that holds little and controls nothing
-  (`icp identity new agent-tool`, or `pnpm exec icp` inside the example),
+  (`icp identity new agent-tool --output-seed <file>`, which writes the seed
+  phrase to a file instead of printing it, or `pnpm exec icp` inside the
+  example),
   never one that controls a canister, and export its key outside the
   project, readable by you alone. An agent that runs the tool can read its
   environment, the seed variable included, and so can sign whatever the tool

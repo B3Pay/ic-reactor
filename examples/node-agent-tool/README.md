@@ -39,15 +39,16 @@ little and controls nothing, never your default identity or one that controls
 a canister. Keep its key outside the project, readable by you alone:
 
 ```sh
-pnpm exec icp identity new agent-tool   # on a machine without a keyring: --storage password
 mkdir -p ~/.config
+# on a machine without a keyring, add --storage password
+(umask 077 && pnpm exec icp identity new agent-tool --output-seed ~/.config/icp-agent-tool.seed)
 (umask 077 && pnpm exec icp identity export agent-tool > ~/.config/icp-agent-tool.pem)
 ```
 
-`icp identity new` prints the identity's seed phrase; keep it out of an
-agent's context too (`--output-seed <file>` writes it to a file instead). The
-subshell's `umask 077` creates the key file readable by you alone from the
-start.
+Without `--output-seed`, `icp identity new` prints the identity's seed phrase,
+and an agent that runs the command keeps it in its context. Run these yourself,
+not through an agent. Each subshell's `umask 077` creates its file readable by
+you alone from the start.
 
 A key exported into the project is one `git add .` away from being published;
 the example's `.gitignore` ignores `*.pem`, but a copy of the example made
