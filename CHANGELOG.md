@@ -15,7 +15,7 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-### core, react, vite-plugin
+### @ic-reactor/core, @ic-reactor/react, @ic-reactor/vite-plugin
 
 #### Changed
 
