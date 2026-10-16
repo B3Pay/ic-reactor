@@ -648,6 +648,27 @@ describe("icReactor", () => {
       expect(warning).toContain("reload the page")
     })
 
+    it("says icp could not be run, not that the network may be down, when no icp starts", async () => {
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {})
+      // What execFile fails with when the file cannot be found: on Windows,
+      // also what an npm-installed icp.cmd gives.
+      mockIcp(() =>
+        Object.assign(new Error("spawn icp ENOENT"), { code: "ENOENT" })
+      )
+
+      const plugin = createVitePlugin(mockOptions)
+      const { middleware } = await serveWithEnvironment(plugin)
+
+      expect(await request(middleware)).toBeUndefined()
+      expect(consoleWarnSpy).toHaveBeenCalledOnce()
+      const [warning] = consoleWarnSpy.mock.calls[0]
+      expect(warning).toContain("Could not run `icp`")
+      expect(warning).toContain("npm install --save-dev @icp-sdk/icp-cli")
+      expect(warning).not.toContain("Is the local network running?")
+    })
+
     // The replica being UP while a configured canister is simply not deployed
     // is the common case: `vite dev` usually starts before `icp deploy`.
     it("should warn when the replica is up but a configured canister has no id", async () => {

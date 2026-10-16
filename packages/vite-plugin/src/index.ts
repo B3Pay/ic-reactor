@@ -2320,6 +2320,14 @@ function warnAboutIncompleteDetection(
     const proxyNote = ownsApiProxy
       ? ` and /api goes to ${state.proxyTarget} for now`
       : ""
+    if (state.icpNotFound) {
+      console.warn(
+        `[ic-reactor] Could not run \`icp\`, so the local IC environment is not detected and no ic_env cookie is set${proxyNote}. ` +
+          `No \`icp\` command was found: install icp-cli in the app (npm install --save-dev @icp-sdk/icp-cli) ` +
+          `or put \`icp\` on PATH, then reload the page. The plugin tries again on each page load.`
+      )
+      return
+    }
     console.warn(
       `[ic-reactor] Could not detect the local IC environment, so no ic_env cookie is set${proxyNote}. ` +
         `Is the local network running? The plugin asks \`icp\` again on each page load until it answers` +

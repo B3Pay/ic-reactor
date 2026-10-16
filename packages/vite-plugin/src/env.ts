@@ -6,6 +6,8 @@
  */
 
 import { execFile } from "child_process"
+import fs from "node:fs"
+import path from "node:path"
 import { describeError } from "./describe-value.js"
 
 export interface IcEnvironment {
@@ -31,6 +33,11 @@ export interface IcEnvironmentDetection {
    * printed here.
    */
   diagnostics: string[]
+  /**
+   * `true` when no `icp` command could be started at all (`ENOENT`), as
+   * opposed to an `icp` that ran and found no network.
+   */
+  icpNotFound?: boolean
 }
 
 /**
@@ -50,10 +57,11 @@ const ICP_TIMEOUT_MS = 10_000
  * instead of waiting for an answer.
  */
 function runIcp(args: string[], cwd: string): Promise<string> {
+  const icp = icpCommand(cwd)
   return new Promise((resolve, reject) => {
     const child = execFile(
-      "icp",
-      args,
+      icp.file,
+      [...icp.args, ...args],
       {
         cwd,
         encoding: "utf-8",
@@ -70,6 +78,62 @@ function runIcp(args: string[], cwd: string): Promise<string> {
     )
     child.stdin?.end()
   })
+}
+
+/**
+ * How to start `icp` for the app rooted at `projectRoot`.
+ *
+ * On Windows, npm links the bin of icp-cli's npm package
+ * (`@icp-sdk/icp-cli`) as `node_modules/.bin/icp.cmd`, and `execFile` cannot
+ * start a `.cmd` file: it searches `PATH` for `.com` and `.exe` only. So on
+ * Windows the package's own bin script is run with this Node, as the
+ * generator's is, when the app installed the package; otherwise `icp` is
+ * looked up on `PATH`, where a native `icp.exe` is found. No shell is used,
+ * so a canister name is never parsed by one. Elsewhere `icp` is looked up on
+ * `PATH` as before.
+ */
+export function icpCommand(
+  projectRoot: string,
+  platform: NodeJS.Platform = process.platform
+): { file: string; args: string[] } {
+  if (platform === "win32") {
+    const bin = installedIcpBin(projectRoot)
+    if (bin) return { file: process.execPath, args: [bin] }
+  }
+  return { file: "icp", args: [] }
+}
+
+/**
+ * The bin script of the `@icp-sdk/icp-cli` the app installed, if any: the
+ * first `node_modules/@icp-sdk/icp-cli` in `projectRoot` or a directory
+ * above it, as Node would find it, but never through `NODE_PATH`, which a
+ * package manager's bin shims point at its own store.
+ */
+function installedIcpBin(projectRoot: string): string | undefined {
+  for (let dir = path.resolve(projectRoot); ; dir = path.dirname(dir)) {
+    const manifestPath = path.join(
+      dir,
+      "node_modules",
+      "@icp-sdk",
+      "icp-cli",
+      "package.json"
+    )
+    if (fs.existsSync(manifestPath)) {
+      try {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as {
+          bin?: string | Record<string, string>
+        }
+        const bin =
+          typeof manifest.bin === "string" ? manifest.bin : manifest.bin?.icp
+        return bin
+          ? path.resolve(fs.realpathSync(path.dirname(manifestPath)), bin)
+          : undefined
+      } catch {
+        return undefined
+      }
+    }
+    if (path.dirname(dir) === dir) return undefined
+  }
 }
 
 /**
@@ -155,7 +219,13 @@ export async function getIcEnvironmentInfo(
       diagnostics,
     }
   } catch (error) {
-    // CLI not found or failed
+    if ((error as { code?: unknown } | undefined)?.code === "ENOENT") {
+      diagnostics.push(
+        "`icp` could not be run: no `icp` command was found. Install icp-cli in the app " +
+          "(npm install --save-dev @icp-sdk/icp-cli) or put `icp` on PATH."
+      )
+      return { environment: null, diagnostics, icpNotFound: true }
+    }
     diagnostics.push(
       `\`icp network status -e ${networkName}\` failed: ${describeExecError(error)}`
     )

@@ -4387,5 +4387,25 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "905-windows-icp-cmd-run-from-path",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "runs the installed icp-cli's bin script with Node on Windows",
+    "why": "on Windows an npm-installed icp-cli (icp.cmd) is looked up on PATH, which execFile cannot start",
+    "file": "src/env.ts",
+    "search": "  if (platform === \"win32\") {",
+    "replace": "  if (platform === \"never\") {"
+  },
+  {
+    "id": "905-enoent-reported-as-network-down",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "says icp could not be run, not that the network may be down, when no icp starts",
+    "why": "an icp that cannot be started is reported as a local network that may be down",
+    "file": "src/env.ts",
+    "search": "if ((error as { code?: unknown } | undefined)?.code === \"ENOENT\") {",
+    "replace": "if (false) {"
   }
 ]

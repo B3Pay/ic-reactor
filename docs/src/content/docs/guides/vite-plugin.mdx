@@ -541,6 +541,10 @@ A `canisterId` in the plugin config overrides the detected id for that
 canister. Set the `ICP_ENVIRONMENT` environment variable to use a network other
 than `"local"`.
 
+The plugin runs `icp` from `PATH`, with no shell. On Windows, where npm links
+icp-cli's npm package as `icp.cmd`, it runs the app's
+`@icp-sdk/icp-cli` with Node instead, and otherwise an `icp.exe` on `PATH`.
+
 ### The cookie
 
 The cookie is `ic_env`, set with `Path=/; SameSite=Lax`. Its value is URI-encoded
