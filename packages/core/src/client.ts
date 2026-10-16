@@ -76,10 +76,9 @@ const ANONYMOUS = SdkPrincipal.anonymous().toText()
  * present, is called from {@link Client.dispose}: the client owns the auth its
  * factory built.
  *
- * Another sign-in source that hands over an `Identity` (a delegation, as
- * Internet Identity, an IdentityKit delegation or a hand-rolled session give,
- * or a local key) fits by implementing these six methods, and `dispose()` if
- * it holds anything. A wallet that signs each call itself (ICRC-25 and
+ * Another sign-in source that hands over an `Identity` (a delegation, such
+ * as a hand-rolled session gives, or a local key) fits by implementing these
+ * six methods, and `dispose()` if it holds anything. A wallet that signs each call itself (ICRC-25 and
  * ICRC-49: OISY, Plug, NFID accounts) gives no `Identity` and does not fit:
  * the Auth guide shows writes through such a wallet beside the client. A
  * source's `getIdentity()` should return the same object until the identity
