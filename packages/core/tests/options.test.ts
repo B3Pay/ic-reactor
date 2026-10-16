@@ -563,7 +563,7 @@ describe("mutationOptions", () => {
   const reads = (replica: ReturnType<typeof replicaWith>) =>
     requestsFor(replica, "icrc1_balance_of").length
 
-  it("returns retry: false and calls the method as the caller current when it runs", async () => {
+  it("returns retry: false and, called with no onMutate run, calls the method as the caller current then", async () => {
     const replica = replicaWith({ [SHAPES]: whoCanister(new Map()) })
     const auth = createTestAuth({ seed: 1, signedIn: false })
     const client = clientWithAuth(replica, auth)
@@ -927,6 +927,124 @@ describe("mutationOptions", () => {
     expect(client.queryClient.getQueryState(read.queryKey)?.isInvalidated).toBe(
       true
     )
+  })
+
+  /**
+   * A shapes canister whose `address` answers with its sender, held back
+   * while `hold` is set, and a client on it signed in as seed 1.
+   */
+  function addressBook() {
+    let hold: Promise<void> | undefined
+    const replica = replicaWith({
+      [SHAPES]: serve<shapes.Actor>(shapes.actor, {
+        address: async ([seed], { caller }) => {
+          await hold
+          return `${seed}:${caller}`
+        },
+      }),
+    })
+    const auth = createTestAuth({ seed: 1 })
+    const client = clientWithAuth(replica, auth)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const holdNext = () => {
+      const held = deferred()
+      hold = held.promise
+      return held
+    }
+    return { replica, auth, client, canister, holdNext }
+  }
+
+  const callerChanged = {
+    kind: "cancelled",
+    code: "caller_changed",
+    mayHaveExecuted: false,
+  }
+
+  it("refuses a write paused offline when the account is switched before it is sent, and sends nothing", async () => {
+    const { replica, auth, client, canister } = addressBook()
+    onlineManager.setOnline(false)
+    const observer = new MutationObserver(
+      client.queryClient,
+      client.mutationOptions(canister, "address")
+    )
+    const write = observer.mutate("x")
+    write.catch(() => undefined)
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().isPaused).toBe(true)
+    )
+    auth.switchTo(2)
+    onlineManager.setOnline(true)
+    void client.queryClient.resumePausedMutations()
+    await expect(write).rejects.toMatchObject(callerChanged)
+    expect(requestsFor(replica, "address")).toEqual([])
+  })
+
+  it("sends a write paused offline as its caller when nobody switched meanwhile", async () => {
+    const { client, canister } = addressBook()
+    const clickedAs = client.caller()
+    onlineManager.setOnline(false)
+    const observer = new MutationObserver(
+      client.queryClient,
+      client.mutationOptions(canister, "address")
+    )
+    const write = observer.mutate("x")
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().isPaused).toBe(true)
+    )
+    onlineManager.setOnline(true)
+    void client.queryClient.resumePausedMutations()
+    await expect(write).resolves.toBe(`x:${clickedAs}`)
+  })
+
+  it("refuses a write queued behind its scope when the account is switched before its turn, and sends nothing", async () => {
+    const { replica, auth, client, canister, holdNext } = addressBook()
+    const clickedAs = client.caller()
+    const options = {
+      ...client.mutationOptions(canister, "address"),
+      scope: { id: "address" },
+    }
+    const held = holdNext()
+    const first = new MutationObserver(client.queryClient, options).mutate("a")
+    await vi.waitFor(() =>
+      expect(requestsFor(replica, "address")).toHaveLength(1)
+    )
+    const queued = new MutationObserver(client.queryClient, options)
+    const second = queued.mutate("b")
+    second.catch(() => undefined)
+    await vi.waitFor(() =>
+      expect(queued.getCurrentResult().isPaused).toBe(true)
+    )
+    auth.switchTo(2)
+    held.resolve()
+    await expect(first).resolves.toBe(`a:${clickedAs}`)
+    await expect(second).rejects.toMatchObject(callerChanged)
+    expect(requestsFor(replica, "address")).toHaveLength(1)
+  })
+
+  it("refuses a write whose mutationFn gets no run context (TanStack before 5.89) when the caller onMutate read is no longer current", async () => {
+    const { replica, auth, client, canister } = addressBook()
+    const clickedAs = client.caller()
+    const options = client.mutationOptions(canister, "address")
+    // TanStack before 5.89 calls both with the argument alone.
+    options.onMutate("x")
+    auth.switchTo(2)
+    await expect(options.mutationFn("x")).rejects.toMatchObject(callerChanged)
+    expect(requestsFor(replica, "address")).toEqual([])
+    // The kept caller was used up; one onMutate per run, oldest first.
+    auth.switchTo(1)
+    expect(client.caller()).toBe(clickedAs)
+    options.onMutate("y")
+    options.onMutate("y")
+    auth.switchTo(2)
+    options.onMutate("y")
+    auth.switchTo(1)
+    await expect(options.mutationFn("y")).resolves.toBe(`y:${clickedAs}`)
+    await expect(options.mutationFn("y")).resolves.toBe(`y:${clickedAs}`)
+    await expect(options.mutationFn("y")).rejects.toMatchObject(callerChanged)
+    expect(requestsFor(replica, "address")).toMatchObject([
+      { methodName: "address" },
+      { methodName: "address" },
+    ])
   })
 
   it("throws a TypeError for an unknown third argument or a canister of another client", () => {

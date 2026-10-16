@@ -15,6 +15,22 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+#### Fixed
+
+- A write from `client.mutationOptions()` goes out as the caller current when
+  `mutate()` was called, or not at all (#893). Its `onMutate` reads the caller
+  and keeps it with the run, as it keeps the canister. When TanStack Query held
+  the write back (paused offline, or queued behind another mutation of its
+  `scope`) and someone else is current by the time it is sent, it rejects with
+  `kind: "cancelled"`, `code: "caller_changed"`, `mayHaveExecuted: false`, and
+  nothing is sent; it was sent as whoever was signed in then. Before TanStack
+  Query 5.89, which passes `mutationFn` no run context, `mutationFn` takes the
+  caller `onMutate` read for the same argument. Migration: treat
+  `caller_changed` from a write like the same error from a read (nothing ran),
+  and call `mutate()` again as the new caller if that is what the user wants.
+
 ### Examples (not published)
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the

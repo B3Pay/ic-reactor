@@ -476,9 +476,13 @@ export interface Client {
    * ledger, "icrc1_transfer"))`, then `mutate(arg)` with the same argument
    * convention as {@link Client.queryOptions}.
    *
-   * The mutation function calls the method as the caller current when it
-   * runs, and an update by a caller who is not signed in rejects
-   * `unauthenticated` before anything is sent. `retry` is `false`: an update
+   * The mutation function calls the method as the caller current when
+   * `mutate()` was called (read in `onMutate`), or not at all: a write that
+   * TanStack Query holds back (offline, or behind another mutation of its
+   * `scope`) while the account changes rejects `cancelled`, code
+   * `caller_changed`, `mayHaveExecuted: false`, and sends nothing. An update
+   * by a caller who is not signed in rejects `unauthenticated` before
+   * anything is sent. `retry` is `false`: an update
    * re-sends itself only when the failure proves the first attempt never got
    * in (see {@link Canister}), and a TanStack retry would re-send after
    * failures that do not prove it, running the write twice.

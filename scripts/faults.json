@@ -1304,8 +1304,8 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "          caller: again?.caller ?? internals.current(),\n          values: valuesOf(prepared, vars),\n",
-        "replace": "          caller: again?.caller ?? current(),\n          values: valuesOf(prepared, vars),\n"
+        "search": "      caller: internals.current(),\n      target: record.resolve(),\n",
+        "replace": "      caller: current(),\n      target: record.resolve(),\n"
       },
       {
         "file": "src/client.ts",
@@ -2766,8 +2766,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "a mutation given an offered argument sends it as whoever is the caller when it runs, so another account pays the same transfer again",
     "file": "src/options.ts",
-    "search": "caller: again?.caller ?? internals.current(),",
-    "replace": "caller: internals.current(),"
+    "search": "caller: again?.caller ?? caller,",
+    "replace": "caller,"
   },
   {
     "id": "ir850-send-as-whoever",
@@ -4387,5 +4387,45 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "893-write-caller-read-when-sent-offline",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write paused offline when the account is switched before it is sent, and sends nothing",
+    "why": "a write TanStack paused offline goes out as whoever is signed in when it resumes, not as the caller current when mutate() was called (#893)",
+    "file": "src/options.ts",
+    "search": "          caller: again?.caller ?? caller,",
+    "replace": "          caller: again?.caller ?? internals.current(),"
+  },
+  {
+    "id": "893-write-caller-read-when-sent-scope",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write queued behind its scope when the account is switched before its turn, and sends nothing",
+    "why": "a write queued behind its mutation scope goes out as whoever is signed in at its turn (#893)",
+    "file": "src/options.ts",
+    "search": "          caller: again?.caller ?? caller,",
+    "replace": "          caller: again?.caller ?? internals.current(),"
+  },
+  {
+    "id": "893-write-caller-no-context-fallback",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write whose mutationFn gets no run context",
+    "why": "without a run context (TanStack before 5.89) mutationFn ignores the caller onMutate read and sends as whoever is current (#893)",
+    "file": "src/options.ts",
+    "search": "          (key === undefined ? takeCaller(prepared, vars) : undefined) ??\n",
+    "replace": ""
+  },
+  {
+    "id": "893-write-caller-no-context-newest-first",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write whose mutationFn gets no run context",
+    "why": "without a run context, mutationFn takes the newest caller kept for its argument instead of the oldest, pairing a run with another run's caller (#893)",
+    "file": "src/options.ts",
+    "search": "    const caller = kept.shift()",
+    "replace": "    const caller = kept.pop()"
   }
 ]

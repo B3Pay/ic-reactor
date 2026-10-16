@@ -238,7 +238,10 @@ export function Send({ arg }: { arg: TransferArg }) {
 - Do not retry a write. `retry` is `false`; keep it. The client itself
   re-sends an update, at most twice, only after a failure proving the canister
   never got it (reject code 2, status 429); any other failure is final.
-- A write is sent as whoever is signed in when it runs. If nobody is, the
+- A write is sent as the caller current when `mutate()` was called, or not at
+  all. Held back by TanStack Query (offline, or queued behind its `scope`)
+  while the account changes, it is refused (`cancelled`, `caller_changed`,
+  `mayHaveExecuted: false`) and nothing is sent. If nobody is signed in, the
   client refuses it (`unauthenticated`) before calling anything.
 - Send the same write again after `mayHaveExecuted: true` only to a method
   that runs the same argument from the same sender at most once, such as an

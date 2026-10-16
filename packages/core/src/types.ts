@@ -306,15 +306,22 @@ export interface CanisterMutationOptions<V, D, E> {
    */
   readonly onMutate: (variables: V, context?: unknown) => MutationTargets
   /**
-   * Calls the method as the caller current when it runs, at the canister
-   * `onMutate` resolved for this run.
+   * Calls the method as the caller current when `mutate()` was called (the
+   * one `onMutate` read for this run), or not at all: when someone else is
+   * current by the time it is sent (TanStack held the write back offline, or
+   * behind another mutation of its `scope`, and the account was switched
+   * meanwhile), it rejects with `kind: "cancelled"`, `code:
+   * "caller_changed"`, `mayHaveExecuted: false`, and sends nothing. It calls
+   * at the canister `onMutate` resolved for this run.
    *
    * It finds that run through `context`, which TanStack Query passes from
    * 5.89 on. When `onMutate` resolved nothing for that context (an
    * `onMutate` of the app's replaced this one), it resolves the run when it
    * starts and keeps it for `onSettled`, which gets the same context.
    * Without a context (TanStack Query before 5.89, a direct call) it
-   * resolves the canister when it starts. Before 5.89 that leaves a gap: a
+   * takes the caller `onMutate` read for the same argument (the one current
+   * now when no `onMutate` of this one ran) and resolves the canister when
+   * it starts. Before 5.89 that leaves a gap: a
    * `{ name }` whose cookie entry is rewritten between `onMutate` and
    * `mutationFn` is written to at the new canister while `onSettled`
    * invalidates the old one's reads. TanStack runs the two back to back,

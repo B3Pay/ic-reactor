@@ -40,8 +40,12 @@ Its `mutationKey` is `["ic-reactor", network, canisterId, method]`.
 
 ## Who signs
 
-The mutation function calls as the caller current **when it runs**, not when
-the options were built. A write needs a signed-in caller. If nobody is signed
+A write calls as the caller current **when `mutate()` was called**, or not at
+all; not the one current when the options were built. TanStack Query can run a
+write later: paused while the browser is offline, or queued behind another
+mutation of its `scope`. If someone else is current by the time it is sent,
+the client refuses it: kind `cancelled`, code `caller_changed`,
+`mayHaveExecuted: false`, and nothing is sent. A write needs a signed-in caller. If nobody is signed
 in, or the client was built with `identity: "anonymous"`, the client refuses
 it before sending anything: kind `unauthenticated`, code `anonymous_write`,
 `mayHaveExecuted: false`.
