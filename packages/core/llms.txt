@@ -90,7 +90,13 @@ returns it (as anonymous while hydrating) and `useAuth()` returns
 `{ status, principal, signIn, signOut }`, `"anonymous"` on a server and in a
 hydrating page's first render.
 
-Any other sign-in source becomes an `AuthLike`:
+Any other sign-in that hands over an `Identity` (a delegation, or a key)
+becomes an `AuthLike`. A wallet that signs each call itself (ICRC-25 and
+ICRC-49: OISY, Plug, NFID accounts) is not one: keep the client anonymous for
+reads, send the wallet's writes with `SignerAgent` from `@icp-sdk/signer`, and
+then invalidate the reads yourself with
+`client.queryClient.invalidateQueries({ queryKey: client.queryKey(canister) })`.
+Such a write gets no `ReactorError` and no `mayHaveExecuted`.
 
 ```ts
 // src/auth-like.ts

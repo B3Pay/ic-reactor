@@ -15,6 +15,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### Docs
+
+- The guide, the auth and client pages and `AuthLike`'s JSDoc no longer say a
+  wallet fits with a small adapter. What fits is a sign-in that hands over an
+  `Identity` (a delegation or a key); a wallet that signs each call itself
+  (ICRC-25 and ICRC-49: OISY, Plug, NFID accounts) does not. The auth page
+  shows such a wallet's writes through `SignerAgent` beside an anonymous
+  client, with the reads invalidated by hand (#904).
+
 ### Examples (not published)
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the

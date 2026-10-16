@@ -167,7 +167,8 @@ The factory is handed the client's `network` as `AuthClient` takes it:
 `fetch`, when you gave one) and, where one can be named, `identityProvider`,
 the Internet Identity to sign in with.
 `@icp-sdk/auth` 10's `AuthClient` is an `AuthLike` as it is. Any other sign-in
-source needs a small adapter. See [Auth](/v4/guides/auth/) for both.
+that hands over an identity needs a small adapter. A wallet that signs each
+call itself (ICRC-49) does not fit. See [Auth](/v4/guides/auth/) for all three.
 
 ### Who is calling
 

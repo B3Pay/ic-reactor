@@ -205,8 +205,10 @@ other state calls as the anonymous principal.
 changes. The client builds a new agent for every new identity object it is
 handed, and reads a new object for the same principal as a renewal.
 
-A wallet or a hand-rolled session fits with a small adapter. This is the one
-in the guide, `packages/core/llms.txt`:
+Any sign-in that hands over an `Identity` fits with a small adapter: one
+that gives a delegation (Internet Identity, IdentityKit in delegation mode, a
+hand-rolled session) or a key (a local dev account). This is the one in the
+guide, `packages/core/llms.txt`:
 
 ```ts
 import type { AuthLike } from "@ic-reactor/core"
@@ -240,6 +242,63 @@ One client has one `auth`. To offer two sign-in sources, write one `AuthLike`
 that holds both and picks one from the options of `signIn`. The Vite wallet's
 `src/auth/wallet-auth.ts` does this for Internet Identity and a local dev
 account.
+
+### Wallets that sign each call
+
+A wallet of ICRC-25 and ICRC-49 (OISY, Plug, an NFID account) never hands
+the app an `Identity`: the user approves each call in the wallet, which signs
+and sends it. Such a wallet is not an `AuthLike`, and the client cannot send
+as it. Keep the client for reads, anonymous (a ledger's balances are public),
+and send the wallet's writes through `SignerAgent` from `@icp-sdk/signer`,
+then invalidate the reads yourself:
+
+```ts nocheck
+// src/wallet.ts: needs @icp-sdk/signer and @icp-sdk/canisters
+import { createClient } from "@ic-reactor/core"
+import { IcrcLedgerCanister } from "@icp-sdk/canisters/ledger/icrc"
+import { Principal } from "@icp-sdk/core/principal"
+import { Signer } from "@icp-sdk/signer"
+import { SignerAgent } from "@icp-sdk/signer/agent"
+import { PostMessageTransport } from "@icp-sdk/signer/web"
+import { actor, type Actor } from "./generated/icrc1"
+
+const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+// Reads: the client, anonymous.
+export const client = createClient({ network: "ic", identity: "anonymous" })
+export const ledger = client.canister<Actor>(actor, { id: LEDGER })
+
+// Writes: through the wallet, which shows each call to the user.
+export async function sendWithWallet(to: Principal, amount: bigint) {
+  const signer = new Signer({
+    transport: new PostMessageTransport({ url: "https://oisy.com/sign" }),
+  })
+  const [account] = await signer.getAccounts()
+  if (!account) throw new Error("the wallet shared no account")
+  const agent = await SignerAgent.create({ signer, account: account.owner })
+  const wallet = IcrcLedgerCanister.create({
+    agent,
+    canisterId: Principal.fromText(LEDGER),
+  })
+  try {
+    return await wallet.transfer({ to: { owner: to, subaccount: [] }, amount })
+  } finally {
+    // The client did not send this write, so it cannot invalidate for it.
+    await client.queryClient.invalidateQueries({
+      queryKey: client.queryKey(ledger),
+    })
+  }
+}
+```
+
+What the client gives a write does not reach this one: no `ReactorError`, no
+`mayHaveExecuted`, no invalidation of its own. A rejection by the user means
+nothing was sent; any other failure after the user approved can mean the
+transfer ran, so read the balance before asking again. Show the wallet's
+principal as the account (`account.owner`), not `useAuth()`'s, which stays
+anonymous. Keep the wallet's own install apart from `@icp-sdk/auth`'s: a
+wallet kit whose peers pin an older `@icp-sdk/auth` can fail to install
+beside the one the client uses.
 
 ## AuthState
 
