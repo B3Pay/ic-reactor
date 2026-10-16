@@ -367,10 +367,12 @@ export function createReactorError(
 
 /**
  * The error of a call whose `timeoutMs` passed (code `"timeout"`). `sent` is
- * whether an attempt of an update or a oneway was out, and may have been
- * delivered: then `outcome_unknown` with `mayHaveExecuted: true`, as when the
- * polling bound passes. Otherwise `cancelled`, with nothing executed: nothing
- * was out, or the call was a read.
+ * whether a write (an update or a oneway, or an update read with
+ * `{ update: "idempotent" }`) may have been delivered: an attempt of it was
+ * out, or it re-sends a write `client.resendOf()` offered, whose earlier
+ * attempt may have run. Then `outcome_unknown` with `mayHaveExecuted: true`,
+ * as when the polling bound passes. Otherwise `cancelled`, with nothing
+ * executed: nothing was out, or the call was a plain read.
  */
 export const timedOutError = (
   where: { readonly method: string; readonly canisterId: string },

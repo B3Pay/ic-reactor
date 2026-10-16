@@ -210,8 +210,9 @@ export interface CallRequest {
    * When it passes, the call stops waiting as if {@link signal} had aborted,
    * and rejects with code `"timeout"`: `cancelled` with nothing executed,
    * except while an attempt of an update (or a oneway) is out, which may
-   * have been delivered: `outcome_unknown` with `mayHaveExecuted: true`,
-   * the same as the polling bound. Nothing is ever sent again for it: the
+   * have been delivered, and for a re-send of an offered write ({@link again})
+   * at any point, whose earlier attempt may have run: `outcome_unknown` with
+   * `mayHaveExecuted: true`, the same as the polling bound. Nothing is ever sent again for it: the
    * re-sends of {@link resend} only follow a failure that proves the attempt
    * was not delivered, and the wait before one is a wait of this call.
    */
@@ -396,9 +397,10 @@ async function run(
   // proves the attempt was not delivered, so a timeout during the wait
   // before a re-send finds nothing out.
   let out = false
+  let end: (() => void) | undefined
   if (ms !== undefined) {
     const stop = new AbortController()
-    const end = () => stop.abort(outer?.reason)
+    end = () => stop.abort(outer?.reason)
     call.signal = stop.signal
     outer?.addEventListener("abort", end, { once: true })
     if (outer?.aborted) end()
@@ -438,8 +440,9 @@ async function run(
         break
       } catch (error) {
         // Never a re-send: what the attempt out did is unknown, and the
-        // caller has stopped waiting.
-        if (timedOut) throw timedOutError(where, write && out)
+        // caller has stopped waiting. A re-send of an offered write keeps
+        // the earlier attempt's unknown outcome, even before it goes out.
+        if (timedOut) throw timedOutError(where, write && (out || !!sent))
         out = false
         if (signal?.aborted && !isReactorError(error)) {
           throw notSent(where, "the call was cancelled")
@@ -454,6 +457,7 @@ async function run(
     }
   } finally {
     clearTimeout(timer)
+    if (end) outer?.removeEventListener("abort", end)
   }
   if (send === "oneway") return undefined
   return decodeReply(method, reply as Uint8Array, internals.maxDepth, {

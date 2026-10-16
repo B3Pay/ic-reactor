@@ -550,7 +550,9 @@ export function createBuilders(
       arg,
       from: caller.principal,
       // The attempt itself: its canister id and the bytes it sent.
-      send: () => invoke(internals, attempt),
+      // Marked as a re-send of itself, which it is: a timeout before it
+      // goes out keeps its unknown outcome (see `run`).
+      send: () => invoke(internals, { ...attempt, again: attempt }),
     }
   }
 

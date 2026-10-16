@@ -1222,6 +1222,131 @@ describe("a call with timeoutMs", () => {
     expect(canisterRequests(replica)).toEqual([])
   })
 
+  it("keeps a re-send resendOf offered outcome_unknown when it times out before it goes out, and offers it again", async () => {
+    const { replica, client, ledger } = heldLedger({ timeoutMs: 50 })
+    const first = await within(
+      ledger.icrc1_transfer(transferTo(BOB, 1n))
+    ).catch((failure: unknown) => failure)
+    const dedupedBy = (arg: icrc1.TransferArg) => arg.created_at_time
+    const offer = client.resendOf(first, ledger, "icrc1_transfer", {
+      dedupedBy,
+    })
+    expect(offer).toBeDefined()
+    // A 429 proves the re-send was not delivered, and the timeout passes in
+    // the wait before it would go out again: the first attempt may still
+    // have executed.
+    replica.refuseNext(429)
+    const again = await within(offer!.send()).catch(
+      (failure: unknown) => failure
+    )
+    expect(again).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      code: "timeout",
+    })
+    expect(
+      client.resendOf(again, ledger, "icrc1_transfer", { dedupedBy })
+    ).toBeDefined()
+    await sleep(1_100)
+    expect(requestsFor(replica, "icrc1_transfer")).toMatchObject([
+      { methodName: "icrc1_transfer" },
+      { refused: expect.stringContaining("429") },
+    ])
+  })
+
+  it("rejects a oneway whose request went out outcome_unknown, which may have executed", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    let sent = 0
+    const fetch = (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      if (urlOf(input).endsWith("/call")) {
+        sent += 1
+        return new Promise<Response>(() => {})
+      }
+      return replica.fetch(input, init)
+    }
+    const canister = clientAs(
+      { ...replica, fetch },
+      alice
+    ).canister<shapes.Actor>(shapes.actor, { id: SHAPES, timeoutMs: 50 })
+    await expect(within(canister.fire("x"))).rejects.toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      code: "timeout",
+      method: "fire",
+    })
+    expect(sent).toBe(1)
+  })
+
+  it('rejects an update read with { update: "idempotent" } whose request went out outcome_unknown, which may have executed', async () => {
+    const replica = replicaWith({
+      [SHAPES]: shapesCanister({ address: () => new Promise(() => {}) }),
+    })
+    const client = clientAs(replica, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      timeoutMs: 50,
+    })
+    const { queryFn } = client.queryOptions(canister, "address", "a", {
+      update: "idempotent",
+    })
+    const read = queryFn({
+      signal: new AbortController().signal,
+    } as QueryFunctionContext)
+    await expect(within(read)).rejects.toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      code: "timeout",
+      method: "address",
+    })
+  })
+
+  it("lets a read's own abort win over the timeout: cancelled with no code, at once", async () => {
+    const replica = replicaWith({
+      [SHAPES]: shapesCanister({ one: () => new Promise(() => {}) }),
+    })
+    const client = clientAs(replica, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      timeoutMs: 1_000,
+    })
+    const { queryFn } = client.queryOptions(canister, "one", 1n)
+    const controller = new AbortController()
+    const started = Date.now()
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext).catch((failure: unknown) => failure)
+    await vi.waitFor(() => expect(requestsFor(replica, "one")).toHaveLength(1))
+    controller.abort()
+    const error = await within(read)
+    expect(error).toMatchObject({ kind: "cancelled", mayHaveExecuted: false })
+    expect((error as { code?: string }).code).toBeUndefined()
+    expect(Date.now() - started).toBeLessThan(800)
+  })
+
+  it("rejects a read whose signal had already aborted cancelled with no code, and sends nothing", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const client = clientAs(replica, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      timeoutMs: 1_000,
+    })
+    const { queryFn } = client.queryOptions(canister, "one", 1n)
+    const controller = new AbortController()
+    controller.abort()
+    const error = await within(
+      queryFn({ signal: controller.signal } as QueryFunctionContext).catch(
+        (failure: unknown) => failure
+      )
+    )
+    expect(error).toMatchObject({ kind: "cancelled", mayHaveExecuted: false })
+    expect((error as { code?: string }).code).toBeUndefined()
+    await sleep(50)
+    expect(requestsFor(replica, "one")).toEqual([])
+  })
+
   it("leaves a call that answers in time as it is", async () => {
     const { client, replica } = shapesSetup()
     const canister = client.canister<shapes.Actor>(shapes.actor, {

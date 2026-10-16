@@ -1018,6 +1018,36 @@ describe("timeoutMs", () => {
     }
   )
 
+  it("keeps a mutation re-sending an offered write outcome_unknown when it times out before it goes out", async () => {
+    const { replica, client } = held()
+    const ledger = client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
+    const mutation = new MutationObserver(
+      client.queryClient,
+      client.mutationOptions(ledger, "icrc1_transfer", { timeoutMs: 50 })
+    )
+    const first = await within(mutation.mutate(transfer(1n))).catch(
+      (failure: unknown) => failure
+    )
+    const dedupedBy = (arg: icrc1.TransferArg) => arg.created_at_time
+    const offer = client.resendOf(first, ledger, "icrc1_transfer", {
+      dedupedBy,
+    })
+    expect(offer).toBeDefined()
+    replica.refuseNext(429)
+    const again = await within(mutation.mutate(offer!.arg)).catch(
+      (failure: unknown) => failure
+    )
+    expect(again).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      code: "timeout",
+    })
+    expect(
+      client.resendOf(again, ledger, "icrc1_transfer", { dedupedBy })
+    ).toBeDefined()
+    expect(requestsFor(replica, "icrc1_transfer")).toHaveLength(2)
+  })
+
   it("rejects a read of a canister with timeoutMs cancelled, with nothing executed", async () => {
     const { replica, client } = held()
     const ledger = client.canister<icrc1.Actor>(icrc1.actor, {

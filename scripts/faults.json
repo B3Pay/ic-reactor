@@ -2794,8 +2794,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "the offer's send() goes out as the caller current when it is pressed, not as the attempt's sender",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, attempt),",
-    "replace": "send: () => invoke(internals, { ...attempt, caller: internals.current() }),"
+    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
+    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, caller: internals.current() }),"
   },
   {
     "id": "ir850-no-dedupe-key-offered",
@@ -3079,8 +3079,8 @@
     "testName": "sends the bytes the attempt sent, whatever became of its argument since, and offers nothing once it changed",
     "why": "send() encodes the attempt's argument objects again instead of sending the bytes the attempt sent, so an argument the app changed since goes out with a new dedupe key and the ledger runs the transfer a second time",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, attempt),",
-    "replace": "send: () => invoke(internals, { ...attempt, encoded: undefined }),"
+    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
+    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, encoded: undefined }),"
   },
   {
     "id": "ir850-c1-offered-after-change",
@@ -3139,8 +3139,8 @@
     "testName": "keeps a { name } canister's re-send on the canister the write went to after the name moves",
     "why": "send() resolves the canister object again, so after the ic_env cookie maps the name elsewhere it sends the transfer to a ledger that has never seen it",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, attempt),",
-    "replace": "send: () => invoke(internals, { ...attempt, target: record.resolve() }),"
+    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
+    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, target: record.resolve() }),"
   },
   {
     "id": "ir850-c1-effective-not-kept",
@@ -4453,7 +4453,7 @@
     "testName": "rejects a write whose request went out outcome_unknown",
     "why": "a timed-out write whose request went out classified cancelled with mayHaveExecuted: false, which reads as safe to send again: a resend could run it twice",
     "file": "src/call.ts",
-    "search": "timedOutError(where, write && out)",
+    "search": "timedOutError(where, write && (out || !!sent))",
     "replace": "timedOutError(where, false)"
   },
   {
@@ -4545,5 +4545,55 @@
     "file": "src/call.ts",
     "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
     "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+  },
+  {
+    "id": "875-timeout-resend-loses-unknown",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a re-send resendOf offered outcome_unknown",
+    "why": "an offered re-send that times out before it goes out rejects cancelled with mayHaveExecuted: false, so the earlier attempt's unknown outcome is dropped and resendOf offers nothing, though that write may have run",
+    "file": "src/call.ts",
+    "search": "timedOutError(where, write && (out || !!sent))",
+    "replace": "timedOutError(where, write && out)"
+  },
+  {
+    "id": "875-timeout-resend-mutation-loses-unknown",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "keeps a mutation re-sending an offered write outcome_unknown",
+    "why": "a mutation re-sending an offered write that times out before it goes out rejects cancelled with mayHaveExecuted: false, dropping the earlier attempt's unknown outcome",
+    "file": "src/call.ts",
+    "search": "timedOutError(where, write && (out || !!sent))",
+    "replace": "timedOutError(where, write && out)"
+  },
+  {
+    "id": "875-timeout-send-not-marked-resend",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a re-send resendOf offered outcome_unknown",
+    "why": "resendOf().send() not marked as a re-send of the attempt, so a timeout before it goes out drops the attempt's unknown outcome",
+    "file": "src/options.ts",
+    "search": "invoke(internals, { ...attempt, again: attempt })",
+    "replace": "invoke(internals, attempt)"
+  },
+  {
+    "id": "875-timeout-outer-abort-not-linked",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "lets a read's own abort win over the timeout",
+    "why": "a read's TanStack signal not linked to the timeout's, so a cancelled read on a canister with timeoutMs keeps waiting until the timeout and rejects with code timeout",
+    "file": "src/call.ts",
+    "search": "    outer?.addEventListener(\"abort\", end, { once: true })\n",
+    "replace": ""
+  },
+  {
+    "id": "875-timeout-pre-aborted-not-linked",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "whose signal had already aborted cancelled with no code",
+    "why": "a read whose signal had aborted before the call not seen once the timeout's signal replaces it, so it is sent and waits for the timeout",
+    "file": "src/call.ts",
+    "search": "    if (outer?.aborted) end()\n",
+    "replace": ""
   }
 ]
