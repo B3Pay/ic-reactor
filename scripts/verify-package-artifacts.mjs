@@ -166,7 +166,10 @@ try {
     console.log(`${name}`)
 
     // MIT asks for the notice to ship with every copy: each tarball carries the
-    // repository's LICENSE, word for word.
+    // repository's LICENSE, word for word. pnpm pack falls back to the
+    // workspace root's LICENSE when a package has none, so this fails only
+    // when the root file is gone too; the per-package copies are for a plain
+    // `npm pack` and for readers of the package directory.
     const license = join(scratch, "node_modules", name, "LICENSE")
     if (!existsSync(license)) {
       fail(name, "LICENSE missing", "the tarball contains no LICENSE file")
