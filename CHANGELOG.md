@@ -15,6 +15,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### Docs
+
+- The client guide has a section for a local network without the Vite plugin
+  (Next.js, Rsbuild, webpack, esbuild): `network: "local"` with `{ id }` from
+  a build-time variable written by `icp canister status -e local -i`, or a
+  Next.js rewrite of `/api/v2` and `/api/v3` to keep `"env"`. Core's guide
+  states the rule in a few lines (#906).
+
 ### Examples (not published)
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the

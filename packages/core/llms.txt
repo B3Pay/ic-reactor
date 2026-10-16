@@ -48,6 +48,11 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
 - `"env"`: the page's network. Canisters can be named, `{ name: "backend" }`,
   from the `ic_env` cookie, believed only on a local replica or with
   `allowEnvConfig: true`. A server has no cookie: use `{ id }` there.
+- Without the Vite plugin (Next.js, webpack, esbuild) there is no cookie and no
+  `/api` proxy, so `"env"` and `{ name }` do not work on a local network. Use
+  `network: "local"` with `{ id }` from a build-time variable
+  (`NEXT_PUBLIC_BACKEND_ID`, written from
+  `icp canister status -e local -i backend` into `.env.local`).
 
 Who calls (exactly one):
 
