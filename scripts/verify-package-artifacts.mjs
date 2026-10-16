@@ -10,15 +10,17 @@
  *
  * This script packs each publishable package, installs the tarballs into a scratch
  * project *outside* the workspace, and then:
- *   1. imports every entry point in real Node ESM
- *   2. requires every CJS entry point where one is declared
- *   3. runs `publint` over each tarball
- *   4. runs `attw` (Are The Types Wrong) over each tarball
+ *   1. checks that each tarball ships the repository's LICENSE
+ *   2. imports every entry point in real Node ESM
+ *   3. requires every CJS entry point where one is declared
+ *   4. runs `publint` over each tarball
+ *   5. runs `attw` (Are The Types Wrong) over each tarball
  *
  * Usage: node scripts/verify-package-artifacts.mjs [--skip-attw] [--keep]
  */
 import { execFileSync } from "node:child_process"
 import {
+  existsSync,
   mkdtempSync,
   rmSync,
   writeFileSync,
@@ -162,6 +164,20 @@ try {
   // ── 3. Import every entry point the way a consumer would ────────────────────
   for (const { name, manifest } of tarballs) {
     console.log(`${name}`)
+
+    // MIT asks for the notice to ship with every copy: each tarball carries the
+    // repository's LICENSE, word for word.
+    const license = join(scratch, "node_modules", name, "LICENSE")
+    if (!existsSync(license)) {
+      fail(name, "LICENSE missing", "the tarball contains no LICENSE file")
+    } else if (
+      readFileSync(license, "utf8") !==
+      readFileSync(join(ROOT, "LICENSE"), "utf8")
+    ) {
+      fail(name, "LICENSE differs", "it is not a copy of the root LICENSE")
+    } else {
+      ok("ships LICENSE")
+    }
 
     if (isBinOnly(manifest)) {
       ok(

@@ -15,6 +15,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### core, react, vite-plugin
+
+#### Fixed
+
+- Each package's tarball now ships the MIT `LICENSE` its manifest names, and
+  the repository has a root `LICENSE` again. `pnpm verify:packages` fails a
+  tarball that has none, or one that is not a copy of the root file (#898).
+
 ### Examples (not published)
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the
