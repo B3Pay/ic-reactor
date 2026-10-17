@@ -42,7 +42,12 @@ import {
   type CanisterRecord,
 } from "./canister.js"
 import type { Caller, Client, ClientInternals } from "./client.js"
-import { isReactorError, retryQuery } from "./errors.js"
+import {
+  createReactorError,
+  fromCanister,
+  isReactorError,
+  retryQuery,
+} from "./errors.js"
 import {
   CERTIFIED,
   INVALID,
@@ -112,13 +117,18 @@ const mayHaveChanged = (error: unknown): boolean =>
 
 /**
  * What one run of a mutation resolved, in one synchronous step when it
- * started: the canister it writes to, and the canisterId segments (and
- * method) of every read it invalidates. A `{ name }` is resolved from the
+ * started: the caller it goes out as, the canister it writes to, and the
+ * canisterId segments (and method) of every read it invalidates. TanStack
+ * Query can run `mutationFn` long after `mutate()` (paused offline, or queued
+ * behind another mutation of its `scope`); the write goes out as the caller
+ * current when it started, or not at all. A `{ name }` is resolved from the
  * `ic_env` cookie, which a local redeploy can rewrite while an update is in
  * flight; resolving once keeps the write and its invalidation on the same
  * canister.
  */
 interface MutationRun {
+  /** Read by our `onMutate`; none for a run it did not start. */
+  readonly caller?: Caller
   readonly target: ResolvedTarget
   readonly invalidates: readonly {
     readonly slots: readonly string[]
@@ -155,8 +165,8 @@ const runKey = (context: unknown): object | undefined =>
  * live caller, or the principal a view of the client is pinned to (see
  * `CLIENT_AS` in `client.ts`). A read built for it still asks `agentFor` for
  * that principal's agent, so it is cancelled rather than sent while someone
- * else is current. Writes, direct calls and `func` read the live caller when
- * they run.
+ * else is current. A write reads the live caller when it starts (its
+ * `onMutate`, run by `mutate()`), and direct calls and `func` when they run.
  */
 export function createBuilders(
   internals: ClientInternals,
@@ -212,6 +222,30 @@ export function createBuilders(
    * even when an `onMutate` of the app's replaced ours.
    */
   const runsByContext = new WeakMap<object, MutationRun>()
+
+  /**
+   * Before 5.89 TanStack passes `onMutate` and `mutationFn` no context, but
+   * calls both as methods of the run's options object
+   * (`mutation.options.onMutate(variables)`), so `this` tells one run from
+   * another, whatever its argument and on whichever `QueryClient`: the
+   * caller our `onMutate` read, by that object. Weak, so an entry lives as
+   * long as its run's options. A later render that hands a pending run new
+   * options (`setOptions`) leaves its `mutationFn` nothing here, which
+   * refuses it.
+   */
+  const callersByOptions = new WeakMap<object, Caller>()
+
+  /** The methods whose `onMutate` read a caller with no context. */
+  const startedMethods = new WeakSet<object>()
+
+  /** The run of the client's own `queryClient` whose options object is `options`, if there is one. */
+  const ownRun = (options: unknown): object | undefined =>
+    typeof options === "object" && options !== null
+      ? owner()
+          .queryClient.getMutationCache()
+          .getAll()
+          .find((mutation) => mutation.options === options)
+      : undefined
 
   /**
    * The argument of each re-send `resendOf` offered, and the write it was
@@ -414,13 +448,110 @@ export function createBuilders(
     // One synchronous step, so that every `{ name }` here (the canister
     // written to, and any listed in `invalidates`) is read from the same
     // cookie.
-    const resolveRun = (): MutationRun => ({
+    const resolveRun = (caller?: Caller): MutationRun => ({
+      caller,
       target: record.resolve(),
       invalidates: invalidates.map(({ record: listed, method: only }) => ({
         slots: listed.slots(),
         method: only,
       })),
     })
+
+    /**
+     * The caller a run of this write goes out as: the one current when
+     * `mutate()` started it, or `undefined` when that is not known, which
+     * refuses the write. Found, in order:
+     *
+     * - by the run's context (5.89 and later): what the client's
+     *   `MutationCache` read for it, which no option replaces, else what our
+     *   `onMutate` read (a run on another `QueryClient`). Neither, for a run
+     *   TanStack restored from a persister (it runs no `onMutate` for one),
+     *   or one on another `QueryClient` whose `onMutate` replaced ours.
+     * - without a context (before 5.89, or a call by hand), by `options`,
+     *   the object TanStack called `mutationFn` on: the run of the client's
+     *   own cache with those options (what its `MutationCache` read; none
+     *   for a restored run), else what our `onMutate` read for them (a run
+     *   on another `QueryClient`). Only when no `onMutate` of ours ever ran
+     *   without a context for this method is this a call by hand, made as
+     *   the caller current now.
+     */
+    const callerOf = (
+      options: unknown,
+      key: object | undefined,
+      run: MutationRun | undefined
+    ): Caller | undefined => {
+      if (key !== undefined) {
+        return internals.mutationCallers.get(key) ?? run?.caller
+      }
+      const own = ownRun(options)
+      if (own !== undefined) return internals.mutationCallers.get(own)
+      const read =
+        typeof options === "object" && options !== null
+          ? callersByOptions.get(options)
+          : undefined
+      return (
+        read ?? (startedMethods.has(prepared) ? undefined : internals.current())
+      )
+    }
+
+    // The write goes out as the caller current when `mutate()` started it
+    // (`callerOf`), or not at all: `agentFor` refuses it (`caller_changed`,
+    // nothing sent) while someone else is current, as when TanStack held it
+    // back offline or behind its `scope` and the account was switched
+    // meanwhile, and a caller not known is refused here. A re-send
+    // `resendOf` offered goes out as its first sender, to the canister id it
+    // went to, with the bytes it had, or not at all (`run` checks the rest).
+    // The target is the one onMutate resolved for this run where TanStack
+    // passes the run's context (5.89 and later), and is resolved now
+    // otherwise.
+    const mutationFn = function (
+      this: unknown,
+      vars: unknown,
+      context?: unknown
+    ) {
+      // TanStack hands a pending mutation the options of a later render
+      // only when their mutationKey is the same (another key detaches the
+      // observer instead), so a run found here was made by options for the
+      // same canister and method.
+      let run = keptRun(context)
+      const key = runKey(context)
+      if (run === undefined && key !== undefined) {
+        // An onMutate of the app's replaced ours, so nothing is resolved
+        // for this run yet: resolve it now, and keep it for onSettled,
+        // which TanStack hands the same context.
+        run = resolveRun()
+        runsByContext.set(key, run)
+      }
+      const target = run?.target ?? record.resolve()
+      const again = offered.get(vars as object)
+      const caller = again?.caller ?? callerOf(this, key, run)
+      // A disposed client cancels every call itself (`client_disposed`).
+      if (caller === undefined && !internals.disposed()) {
+        return Promise.reject(
+          fromCanister(
+            createReactorError("cancelled", {
+              method: prepared.name,
+              canisterId: target.ok ? target.id : target.slot,
+              code: "caller_changed",
+              reason: "who started this write is not known; it was not sent",
+            }),
+            canister as object
+          )
+        )
+      }
+      return invoke(internals, {
+        method: prepared,
+        target,
+        certified: record.certified,
+        caller: caller ?? internals.current(),
+        values: valuesOf(prepared, vars),
+        resend: true,
+        canister: canister as object,
+        again,
+      })
+    }
+    internals.ownMutationFns.add(mutationFn)
+
     return {
       mutationKey: [
         KEY_ROOT,
@@ -429,45 +560,27 @@ export function createBuilders(
         prepared.name,
       ] as const,
       // TanStack runs this first, before mutationFn, and hands what it
-      // returns to onSettled.
-      onMutate: (_vars: unknown, context?: unknown): object => {
-        const run = resolveRun()
+      // returns to onSettled. The caller it reads matters only on a
+      // `QueryClient` other than the client's, whose own `MutationCache`
+      // reads it otherwise.
+      onMutate: function (
+        this: unknown,
+        _vars: unknown,
+        context?: unknown
+      ): object {
+        const caller = internals.current()
+        const run = resolveRun(caller)
         const key = runKey(context)
         if (key !== undefined) runsByContext.set(key, run)
+        else {
+          startedMethods.add(prepared)
+          if (typeof this === "object" && this !== null) {
+            callersByOptions.set(this, caller)
+          }
+        }
         return { [RUN]: run }
       },
-      // The caller is read when the mutation runs, unless the argument is a
-      // re-send `resendOf` offered: that goes out as its first sender, to the
-      // canister id it went to, with the bytes it had, or not at all
-      // (`agentFor` refuses another caller, `run` the rest). The target is
-      // the one onMutate resolved for this run where TanStack passes the run's
-      // context (5.89 and later), and is resolved now otherwise.
-      mutationFn: (vars: unknown, context?: unknown) => {
-        // TanStack hands a pending mutation the options of a later render
-        // only when their mutationKey is the same (another key detaches the
-        // observer instead), so a run found here was made by options for the
-        // same canister and method.
-        let run = keptRun(context)
-        const key = runKey(context)
-        if (run === undefined && key !== undefined) {
-          // An onMutate of the app's replaced ours, so nothing is resolved
-          // for this run yet: resolve it now, and keep it for onSettled,
-          // which TanStack hands the same context.
-          run = resolveRun()
-          runsByContext.set(key, run)
-        }
-        const again = offered.get(vars as object)
-        return invoke(internals, {
-          method: prepared,
-          target: run?.target ?? record.resolve(),
-          certified: record.certified,
-          caller: again?.caller ?? internals.current(),
-          values: valuesOf(prepared, vars),
-          resend: true,
-          canister: canister as object,
-          again,
-        })
-      },
+      mutationFn,
       retry: false as const,
       onSettled: async (
         _data: unknown,

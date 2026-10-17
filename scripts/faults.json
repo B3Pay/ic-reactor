@@ -586,8 +586,8 @@
     "testName": "sends a { name } write that waited offline to the canister resolved when it started",
     "why": "mutationFn resolves a { name } again when it starts instead of using the run onMutate resolved, so a write paused across a local redeploy goes to the new canister while onSettled invalidates the old one's reads",
     "file": "src/options.ts",
-    "search": "          target: run?.target ?? record.resolve(),",
-    "replace": "          target: record.resolve(),"
+    "search": "      const target = run?.target ?? record.resolve()\n",
+    "replace": "      const target = record.resolve()\n"
   },
   {
     "id": "ir2t-name-in-invalidates-resolved-at-settlement",
@@ -1304,8 +1304,8 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "          caller: again?.caller ?? internals.current(),\n          values: valuesOf(prepared, vars),\n",
-        "replace": "          caller: again?.caller ?? current(),\n          values: valuesOf(prepared, vars),\n"
+        "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+        "replace": "      const caller = again?.caller ?? current()"
       },
       {
         "file": "src/client.ts",
@@ -2676,8 +2676,8 @@
     "testName": "is true for the errors of a read's query function and a mutation function built from the canister",
     "why": "a mutation function no longer marks its errors with the canister it was built from",
     "file": "src/options.ts",
-    "search": "          resend: true,\n          canister: canister as object,\n",
-    "replace": "          resend: true,\n"
+    "search": "        resend: true,\n        canister: canister as object,\n",
+    "replace": "        resend: true,\n"
   },
   {
     "id": "ir849-method-without-canister",
@@ -2766,8 +2766,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "a mutation given an offered argument sends it as whoever is the caller when it runs, so another account pays the same transfer again",
     "file": "src/options.ts",
-    "search": "caller: again?.caller ?? internals.current(),",
-    "replace": "caller: internals.current(),"
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "replace": "      const caller = callerOf(this, key, run)"
   },
   {
     "id": "ir850-send-as-whoever",
@@ -3081,8 +3081,8 @@
     "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
     "why": "a mutation given an offered argument does not carry the write it re-sends, so nothing compares the argument with what was sent and a changed one goes out as a new transfer",
     "file": "src/options.ts",
-    "search": "          canister: canister as object,\n          again,\n",
-    "replace": "          canister: canister as object,\n"
+    "search": "        canister: canister as object,\n        again,\n",
+    "replace": "        canister: canister as object,\n"
   },
   {
     "id": "ir850-c1-arg-not-compared",
@@ -4387,5 +4387,123 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "893-write-caller-read-when-sent-offline",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write paused offline when the account is switched before it is sent, and sends nothing",
+    "why": "a write TanStack paused offline goes out as whoever is signed in when it resumes, not as the caller current when mutate() was called (#893)",
+    "file": "src/options.ts",
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "replace": "      const caller = again?.caller ?? internals.current()"
+  },
+  {
+    "id": "893-write-caller-read-when-sent-scope",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write queued behind its scope when the account is switched before its turn, and sends nothing",
+    "why": "a write queued behind its mutation scope goes out as whoever is signed in at its turn (#893)",
+    "file": "src/options.ts",
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "replace": "      const caller = again?.caller ?? internals.current()"
+  },
+  {
+    "id": "893-write-caller-no-context-fallback",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write whose mutationFn gets no run context",
+    "why": "without a run context (TanStack before 5.89), a run whose onMutate read no caller for its options is sent as whoever is current, not refused (#893)",
+    "file": "src/options.ts",
+    "search": "        read ?? (startedMethods.has(prepared) ? undefined : internals.current())",
+    "replace": "        read ?? internals.current()"
+  },
+  {
+    "id": "893-write-caller-retry-read-when-sent",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses the retry of a write when the account is switched after the first attempt failed",
+    "why": "an app's TanStack retry of a write goes out as whoever is signed in when it retries (#893)",
+    "file": "src/options.ts",
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "replace": "      const caller = again?.caller ?? internals.current()"
+  },
+  {
+    "id": "893-write-caller-replaced-onmutate-sent-as-current",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write paused offline across an account switch when an onMutate of the app's replaces the given one",
+    "why": "the caller of a run is read only by the given onMutate, so a write whose onMutate the app replaced (TanStack's optimistic-update recipe) goes out as whoever is signed in when it runs (#893)",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "          mutationCallers.set(context, caller)\n",
+        "replace": ""
+      },
+      {
+        "file": "src/options.ts",
+        "search": "        return internals.mutationCallers.get(key) ?? run?.caller\n",
+        "replace": "        return (\n          internals.mutationCallers.get(key) ?? run?.caller ?? internals.current()\n        )\n"
+      }
+    ]
+  },
+  {
+    "id": "893-write-caller-replaced-onmutate-not-captured",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "sends a write paused offline as its caller when an onMutate of the app's replaces the given one",
+    "why": "the client's MutationCache no longer reads the caller of each run, so a write whose onMutate the app replaced is refused though nobody switched (#893)",
+    "file": "src/client.ts",
+    "search": "          mutationCallers.set(context, caller)\n",
+    "replace": ""
+  },
+  {
+    "id": "893-write-caller-restored-sent-as-current",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write TanStack restored from a persister",
+    "why": "a mutation restored from a persister, for which TanStack runs no onMutate, goes out as whoever is signed in when it resumes (#893)",
+    "file": "src/options.ts",
+    "search": "        return internals.mutationCallers.get(key) ?? run?.caller\n",
+    "replace": "        return (\n          internals.mutationCallers.get(key) ?? run?.caller ?? internals.current()\n        )\n"
+  },
+  {
+    "id": "893-write-caller-leftover-taken",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "never sends a write with no run context as the caller of a run whose mutationFn never ran",
+    "why": "without a run context, the caller our onMutate read is kept by method instead of by the run's options object, so a run goes out as the caller of an abandoned one (#893)",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "            callersByOptions.set(this, caller)",
+        "replace": "            if (!callersByOptions.has(prepared)) callersByOptions.set(prepared, caller)"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "          ? callersByOptions.get(options)",
+        "replace": "          ? callersByOptions.get(prepared)"
+      }
+    ]
+  },
+  {
+    "id": "893-write-caller-other-client-takes-own-run",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "never sends a run on another QueryClient (no run context) as the caller of a run of the client's own cache",
+    "why": "without a run context, a run on another QueryClient is matched to a pending run of the client's own cache by anything but its options object, and goes out as that run's caller (#893)",
+    "file": "src/options.ts",
+    "search": "          .find((mutation) => mutation.options === options)",
+    "replace": "          .find((mutation) => mutation.state.status === \"pending\")"
+  },
+  {
+    "id": "893-mutation-cache-reads-every-caller",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "reads no caller, and builds no auth, for a mutation of the app's on the client's QueryClient",
+    "why": "the client's MutationCache reads the caller of every mutation, so a mutation of the app's builds the auth and fails when it cannot be built (#893)",
+    "file": "src/client.ts",
+    "search": "        if (typeof fn !== \"function\" || !ownMutationFns.has(fn)) return",
+    "replace": "        if (typeof fn !== \"function\") return"
   }
 ]

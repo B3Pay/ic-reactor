@@ -190,11 +190,11 @@ hydrates in a browser that holds a session (below). A client built with
   the anonymous caller's, so the page finds what the server prefetched and
   dehydrated, matches its HTML, and sends nothing. Canisters, writes,
   `signIn`, `signOut` and the `QueryClient` are the client's own, and a write
-  signs as the caller current when it runs. Right after hydrating, React
-  renders each component that calls `useClient()` or `useAuth()` again with
-  the session, and each read loads the user's keys once: until the user's data
-  arrives, a read shows its loading state, and a `useSuspenseQuery` read its
-  boundary's fallback. A tab whose caller
+  signs as the caller current when `mutate()` is called. Right after
+  hydrating, React renders each component that calls `useClient()` or
+  `useAuth()` again with the session, and each read loads the user's keys
+  once: until the user's data arrives, a read shows its loading state, and a
+  `useSuspenseQuery` read its boundary's fallback. A tab whose caller
   is anonymous anyway (no session, or one that expired or is signed in
   elsewhere) renders no `useClient()` component again, and no `useAuth()`
   component either unless its status differs. Show the same thing signed out

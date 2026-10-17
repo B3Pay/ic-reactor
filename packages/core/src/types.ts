@@ -302,12 +302,35 @@ export interface CanisterMutationOptions<V, D, E> {
    * into yours: `{ ...options.onMutate(variables, context), previous }`.
    * One that replaces this one instead (TanStack's optimistic-update recipe
    * as written) leaves the resolving to `mutationFn`, which keeps the write
-   * and its invalidation together only from 5.89 on.
+   * and its invalidation together only from 5.89 on. It keeps the caller on
+   * the client's own `queryClient` either way (see `mutationFn`).
    */
   readonly onMutate: (variables: V, context?: unknown) => MutationTargets
   /**
-   * Calls the method as the caller current when it runs, at the canister
+   * Calls the method as the caller current when `mutate()` was called, or
+   * not at all: when someone else is current by the time it is sent
+   * (TanStack held the write back offline, or behind another mutation of its
+   * `scope`, or retried it, and the account was switched meanwhile), it
+   * rejects with `kind: "cancelled"`, `code: "caller_changed"`,
+   * `mayHaveExecuted: false`, and sends nothing. It calls at the canister
    * `onMutate` resolved for this run.
+   *
+   * On the client's own `queryClient`, the caller of each run is read by its
+   * `MutationCache` when `mutate()` starts the run, whatever the options'
+   * `onMutate` is, so an `onMutate` of the app's that replaces this one
+   * keeps the rule. On another `QueryClient` it is the one this `onMutate`
+   * read. Refused the same way, because the caller of the run is not known:
+   * a mutation TanStack restored from a persister (it runs no `onMutate` for
+   * one; call `mutate()` again), a run on another `QueryClient` whose
+   * `onMutate` replaced this one (5.89 and later), and, without a context
+   * (before 5.89), a run on another `QueryClient` whose options object
+   * (what TanStack calls `onMutate` and `mutationFn` on) this `onMutate`
+   * read nothing for: called from an `onMutate` of the app's, or given new
+   * options by a later render. Exceptions, which go out as the caller
+   * current when they are sent: a call by hand (no context, and no
+   * `onMutate` of this one ever ran without one for the method), and,
+   * before 5.89, a run on another `QueryClient` whose `onMutate` replaced
+   * this one, or one restored there.
    *
    * It finds that run through `context`, which TanStack Query passes from
    * 5.89 on. When `onMutate` resolved nothing for that context (an
