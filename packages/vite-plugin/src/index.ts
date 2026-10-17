@@ -2059,7 +2059,9 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       // Added here rather than returned as a post hook, so it runs before
       // Vite's own middlewares, which serve the page.
       if (localEnvironment) {
-        server.middlewares.use(icEnvMiddleware(localEnvironment))
+        server.middlewares.use(
+          icEnvMiddleware(localEnvironment, (message) => log.warn(message))
+        )
       }
 
       if (configured.length === 0) return
@@ -2093,7 +2095,9 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     // used to inherit the cookie from `server.headers`.
     configurePreviewServer(server) {
       if (localEnvironment) {
-        server.middlewares.use(icEnvMiddleware(localEnvironment))
+        server.middlewares.use(
+          icEnvMiddleware(localEnvironment, (message) => log.warn(message))
+        )
       }
     },
 

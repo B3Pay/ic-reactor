@@ -246,19 +246,69 @@ function setIcEnvCookie(res: ServerResponse, value: string): void {
 }
 
 /**
+ * Whether a request's `Host` names this machine: `localhost`, `*.localhost`,
+ * 127.0.0.0/8 or `[::1]`, the hosts on which `@ic-reactor/core` believes the
+ * cookie. A request with no `Host`, or one that is not a host, counts as
+ * loopback, so it is not warned about.
+ */
+function isLoopbackHost(host: string | undefined): boolean {
+  if (!host) return true
+  let hostname: string
+  try {
+    hostname = new URL(`http://${host}`).hostname
+  } catch {
+    return true
+  }
+  return (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    /^127\.(?:\d{1,3}\.){2}\d{1,3}$/.test(hostname) ||
+    hostname === "[::1]"
+  )
+}
+
+/**
+ * The warning for a page loaded by a host that is not loopback, such as a LAN
+ * address after `vite --host`, a Docker host name or a tunnel.
+ */
+function nonLoopbackPageWarning(host: string): string {
+  return (
+    `[ic-reactor] a page was loaded from ${host}, which is not localhost. ` +
+    `network: "env" is for localhost pages: on this host @ic-reactor/core does not believe the ic_env cookie, ` +
+    `so { name } canisters do not resolve and certified calls fail verification (the page still reaches only this dev server). ` +
+    `Open the app on localhost, or give the client a { host, rootKey } network and { id } canisters. (Logged once.)`
+  )
+}
+
+/**
  * Connect middleware that sets the `ic_env` cookie on each response.
  *
  * For a page load while detection is incomplete, it first asks `icp` again and
  * waits for the answer, so the page that loads after a deploy already carries
  * the new ID. Other requests, and every request once detection is complete,
  * get the cookie from the latest detection without running `icp`.
+ *
+ * The first page load by a `Host` that is not loopback is reported through
+ * `warn`, once per middleware.
  */
-export function icEnvMiddleware(environment: LocalEnvironment) {
+export function icEnvMiddleware(
+  environment: LocalEnvironment,
+  warn: (message: string) => void = (message) => console.warn(message)
+) {
+  let warned = false
   return (
     req: IncomingMessage,
     res: ServerResponse,
     next: (error?: unknown) => void
   ): void => {
+    if (
+      !warned &&
+      isDocumentRequest(req) &&
+      !isLoopbackHost(req.headers.host)
+    ) {
+      warned = true
+      warn(nonLoopbackPageWarning(String(req.headers.host)))
+    }
     const respond = (state: LocalEnvironmentState | undefined) => {
       if (state?.cookie !== undefined) setIcEnvCookie(res, state.cookie)
       next()

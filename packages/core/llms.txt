@@ -48,6 +48,9 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
 - `"env"`: the page's network. Canisters can be named, `{ name: "backend" }`,
   from the `ic_env` cookie, believed only on a local replica or with
   `allowEnvConfig: true`. A server has no cookie: use `{ id }` there.
+  `"env"` is for `localhost` pages: a LAN address, `*.local`, `*.test`,
+  `*.internal`, a tunnel or a dev container routes to its own origin (never
+  mainnet) but does not believe the cookie or take a root key.
 
 Who calls (exactly one):
 

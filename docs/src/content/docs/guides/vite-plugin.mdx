@@ -589,7 +589,12 @@ const backend = client.canister<Actor>(actor, { name: "backend" })
 ```
 
 On a local page the client trusts the cookie, so `{ name: "backend" }` finds the
-id that `icp deploy` gave the backend. Nothing in the code names a host, a port
+id that `icp deploy` gave the backend. `"env"` is for `localhost` pages: opened
+by a LAN address (`vite --host`), a Docker host name or a tunnel, the page
+still sends only to the dev server, but the client does not believe the
+cookie there, so `{ name }` targets do not resolve and certified calls fail.
+The plugin warns once when a page is loaded by a host that is not loopback.
+See [The client](/v4/guides/client/#env-off-localhost). Nothing in the code names a host, a port
 or an id. Deployed on a mainnet domain, `"env"` still sends through the page's
 origin, but the client no longer believes the cookie, so a `{ name }` target
 does not resolve there: give the canister an `{ id }`, or write
