@@ -310,8 +310,12 @@ export interface CanisterMutationOptions<V, D, E> {
    */
   readonly onMutate: (variables: V, context?: unknown) => MutationTargets
   /**
-   * Calls the method as the caller current when it runs, at the canister
-   * `onMutate` resolved for this run.
+   * Calls the method at the canister `onMutate` resolved for this run. Built
+   * by the client itself, it calls as the caller current when it runs.
+   * Built by a view of the client (what `useClient()` returns), it calls only
+   * as the view's principal: while someone else is current it rejects
+   * `cancelled` (`caller_changed`, `mayHaveExecuted: false`) and sends
+   * nothing.
    *
    * It finds that run through `context`, which TanStack Query passes from
    * 5.89 on. When `onMutate` resolved nothing for that context (an

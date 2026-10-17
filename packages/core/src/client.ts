@@ -477,8 +477,12 @@ export interface Client {
    * ledger, "icrc1_transfer"))`, then `mutate(arg)` with the same argument
    * convention as {@link Client.queryOptions}.
    *
-   * The mutation function calls the method as the caller current when it
-   * runs, and an update by a caller who is not signed in rejects
+   * The mutation function of the client's own options calls the method as
+   * the caller current when it runs. Those of a view (what `useClient()`
+   * returns) call only as the view's principal, and end their `mutationKey`
+   * with it: while someone else is current their mutation function rejects
+   * `cancelled` (`caller_changed`, `mayHaveExecuted: false`) and sends
+   * nothing. Either way, an update by a caller who is not signed in rejects
    * `unauthenticated` before anything is sent. `retry` is `false`: an update
    * re-sends itself only when the failure proves the first attempt never got
    * in (see {@link Canister}), and a TanStack retry would re-send after
