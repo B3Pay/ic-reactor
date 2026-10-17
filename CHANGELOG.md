@@ -15,6 +15,22 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core
+
+#### Changed
+
+- `allowEnvConfig: true` trusts less of the `ic_env` cookie (#900). The
+  cookie's root key is never taken for a mainnet host (a mainnet boundary
+  domain, or the `https://icp-api.io` fallback a custom-domain page uses):
+  the agent keeps mainnet's own key. Its `INTERNET_IDENTITY_PROVIDER` is
+  taken over `http:` only on a local page. And on a page under `ic0.app`,
+  `*.app.github.dev` (Codespaces) or `*.gitpod.io`, none of which is a public
+  suffix, so any sibling site can set the cookie, `createClient` throws a
+  `TypeError` for `allowEnvConfig: true`. Migration: on those pages, name the
+  canisters with `{ id }` (build-time env) and a replica that is not mainnet
+  with `{ host, rootKey }`; on mainnet, drop any reliance on a cookie root
+  key; serve a deployed Internet Identity URL over `https:`.
+
 ### Examples (not published)
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the

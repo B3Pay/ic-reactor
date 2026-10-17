@@ -186,11 +186,13 @@ describe("a { name } target on a page that is trusted", () => {
     expect(result).toStrictEqual({ ok: true, id: COOKIE_CANISTER_ID })
   })
 
-  it("takes a Codespaces or Gitpod cookie when the caller opts in", () => {
+  it("refuses the opt-in on a Codespaces or Gitpod page, whose parent is not a public suffix", () => {
+    // Every workspace is a sibling of every stranger's, so the opt-in would
+    // believe ids a stranger's workspace set.
     for (const page of [CODESPACE, GITPOD]) {
-      const { result } = resolveBackend("env", page, { allowEnvConfig: true })
-
-      expect(result).toStrictEqual({ ok: true, id: COOKIE_CANISTER_ID })
+      expect(() =>
+        resolveBackend("env", page, { allowEnvConfig: true })
+      ).toThrow(/allowEnvConfig: true is refused .* is not a public suffix/)
     }
   })
 })
@@ -578,14 +580,12 @@ describe("the cookie's root key", () => {
     expect(fake.cookieReads()).toBe(0)
   })
 
-  it('is taken by "env" on a custom domain with the opt-in, and not on opting out', () => {
-    expect(
-      sameBytes(
-        resolveBackend("env", CUSTOM_PAGE, { allowEnvConfig: true }).net
-          .rootKey,
-        COOKIE_ROOT_KEY
-      )
-    ).toBe(true)
+  it('is not taken by "env" on a custom domain even with the opt-in, whose host is mainnet, nor on opting out', () => {
+    // The page is not routed through, so the host is the mainnet fallback,
+    // and mainnet has one key: the agent's own.
+    const optedIn = resolveBackend("env", CUSTOM_PAGE, { allowEnvConfig: true })
+    expect(optedIn.net.trustsEnv).toBe(true)
+    expect(optedIn.net.rootKey).toBeUndefined()
     expect(
       resolveBackend("env", LOCAL_PAGE, { allowEnvConfig: false }).net.rootKey
     ).toBeUndefined()
