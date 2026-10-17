@@ -162,7 +162,7 @@ Please also review the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 ## License
 
-MIT © [Behrad Deylami](https://github.com/b3hr4d)
+MIT © [Behrad Deylami](https://github.com/b3hr4d). See [LICENSE](./LICENSE).
 
 ---
 
