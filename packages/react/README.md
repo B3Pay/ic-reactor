@@ -114,6 +114,17 @@ lazily shared getter does, logs a warning that names the fix (under
 `StrictMode`, which calls the factory twice, on the first render); and a
 provider that is given a client which is already disposed logs an error.
 
+An app that already uses TanStack Query keeps one `QueryClient` per tree,
+the client's. `ReactorProvider` provides `client.queryClient`, so the app's own
+queries, REST calls included, run on it: an error that is not a `ReactorError`
+is retried as TanStack Query retries it by default (up to 3 times in a
+browser, never on a server), and `client.dispose()` clears those queries
+along with the client's reads. Set other defaults on each query. A
+`QueryClientProvider` of the app's own nested inside the provider works too: a
+write invalidates its reads on the `QueryClient` it ran on as well as on the
+client's. That `QueryClient` lacks the client's dehydrate and hydrate defaults,
+so a server render dehydrates `client.queryClient`.
+
 ## Who is signed in
 
 ```tsx
