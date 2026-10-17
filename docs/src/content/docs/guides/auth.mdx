@@ -314,7 +314,9 @@ export async function send(
   { account, wallet }: Awaited<ReturnType<typeof connect>>,
   to: Principal,
   amount: bigint,
-  createdAt: bigint // fixed per transfer, so a re-send is deduplicated
+  // Nanoseconds since the epoch, BigInt(Date.now()) * 1_000_000n, fixed
+  // per transfer so a re-send is deduplicated.
+  createdAt: bigint
 ) {
   try {
     return await wallet.transfer({
