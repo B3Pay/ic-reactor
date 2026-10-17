@@ -762,10 +762,15 @@ describe("mutationOptions", () => {
 
     await mutation.mutate(transfer(100n))
 
-    // onSettled waited for both active reads to refetch.
-    expect(appBalance.getCurrentResult().data).toBe(1_000_000n - 100n - FEE)
+    // onSettled waited for both active reads to refetch. A TanStack Query
+    // older than 5.89 does not tell onSettled which QueryClient the run was
+    // on, so only the client's own reads are invalidated there.
+    const handsClient = await sharesRunContext()
     expect(balance.getCurrentResult().data).toBe(1_000_000n - 100n - FEE)
-    expect(reads(replica)).toBe(4)
+    expect(appBalance.getCurrentResult().data).toBe(
+      handsClient ? 1_000_000n - 100n - FEE : 1_000_000n
+    )
+    expect(reads(replica)).toBe(handsClient ? 4 : 3)
     unsubscribeApp()
     unsubscribe()
   })
