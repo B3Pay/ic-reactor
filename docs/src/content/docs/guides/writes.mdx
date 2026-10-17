@@ -398,8 +398,11 @@ only from TanStack Query 5.89 on (`@ic-reactor/react` needs 5.90.2 or newer).
 The spread form works everywhere. Either form keeps the caller on the client's
 own `queryClient`: its `MutationCache` reads who started each run. On another
 `QueryClient`, only the client's `onMutate` reads it, so from 5.89 on a write
-whose `onMutate` replaced it there is refused (`caller_changed`), and before
-5.89 it goes out as the caller current when it is sent.
+whose `onMutate` replaced it there is refused (`caller_changed`). Before 5.89,
+which passes no run context, TanStack must call the client's `onMutate` itself
+there, as a method of the run's options: one of yours that calls it leaves
+the write refused, and one that replaces it, sent as the caller current when
+it is sent.
 
 This example shows a new name at once and puts the old one back on failure.
 The client's `onSettled` then re-reads the profile, so the page ends with what

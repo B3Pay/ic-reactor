@@ -19,7 +19,7 @@ import {
   type QueryKey,
 } from "@tanstack/query-core"
 import { classifyError, type ReactorError } from "../src/errors.js"
-import type { Client } from "../src/index.js"
+import { createClient, type Client } from "../src/index.js"
 import type { CanisterMutationOptions } from "../src/types.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
 import {
@@ -1121,7 +1121,7 @@ describe("mutationOptions", () => {
     expect(requestsFor(replica, "address")).toEqual([])
   })
 
-  it("refuses a write whose mutationFn gets no run context (TanStack before 5.89, another QueryClient) unless the caller onMutate read is the live one", async () => {
+  it("refuses a write whose mutationFn gets no run context (TanStack before 5.89, another QueryClient) unless the caller onMutate read for its options is the live one", async () => {
     const { replica, auth, client, canister } = addressBook()
     const clickedAs = client.caller()
     const options = client.mutationOptions(canister, "address")
@@ -1129,9 +1129,11 @@ describe("mutationOptions", () => {
     options.onMutate("x")
     auth.switchTo(2)
     await expect(options.mutationFn("x")).rejects.toMatchObject(callerChanged)
-    // A second run of the argument whose caller another run took (an app's
-    // retry, a run of another scope): nothing is kept for it.
-    await expect(options.mutationFn("x")).rejects.toMatchObject(callerChanged)
+    // A run whose onMutate read nothing for its options (a later render
+    // handed it new ones): its caller is not known.
+    await expect(
+      options.mutationFn.call({ ...options }, "x")
+    ).rejects.toMatchObject(callerChanged)
     expect(requestsFor(replica, "address")).toEqual([])
     auth.switchTo(1)
     options.onMutate("y")
@@ -1141,21 +1143,70 @@ describe("mutationOptions", () => {
   it("never sends a write with no run context as the caller of a run whose mutationFn never ran", async () => {
     const { replica, auth, client, canister } = addressBook()
     const options = client.mutationOptions(canister, "address")
-    // A run started as the first account, whose mutationFn never runs (its
-    // mutation was removed).
-    options.onMutate("z")
+    // Two runs of "z" as TanStack before 5.89 makes them, each with its own
+    // options object. The first, started as the first account, never gets
+    // to mutationFn (its mutation was removed).
+    const abandoned = { ...options }
+    options.onMutate.call(abandoned, "z")
     auth.switchTo(2)
     const second = client.caller()
-    options.onMutate("z")
+    const run = { ...options }
+    options.onMutate.call(run, "z")
     // Back to the first account before the second account's run is sent.
     auth.switchTo(1)
-    await expect(options.mutationFn("z")).rejects.toMatchObject(callerChanged)
+    await expect(options.mutationFn.call(run, "z")).rejects.toMatchObject(
+      callerChanged
+    )
     expect(requestsFor(replica, "address")).toEqual([])
-    // The entry left behind cost one refusal; the next run of "z" as the
-    // second account goes out.
     auth.switchTo(2)
-    options.onMutate("z")
-    await expect(options.mutationFn("z")).resolves.toBe(`z:${second}`)
+    await expect(options.mutationFn.call(run, "z")).resolves.toBe(`z:${second}`)
+  })
+
+  it("never sends a run on another QueryClient (no run context) as the caller of a run of the client's own cache with the same argument", async () => {
+    const { replica, auth, client, canister } = addressBook()
+    const alice = client.caller()
+    const options = client.mutationOptions(canister, "address")
+    // Alice's write of "x", paused offline in the client's own cache.
+    onlineManager.setOnline(false)
+    const observer = new MutationObserver(client.queryClient, options)
+    observer.mutate("x").catch(() => undefined)
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().isPaused).toBe(true)
+    )
+    onlineManager.setOnline(true)
+    // Bob's write of "x" through the same options on another QueryClient,
+    // as TanStack before 5.89 runs it: both functions called as methods of
+    // that run's own options object, with the argument alone.
+    auth.switchTo(2)
+    const bobsRun = { ...options }
+    options.onMutate.call(bobsRun, "x")
+    // Alice is back before Bob's run is sent.
+    auth.switchTo(1)
+    expect(client.caller()).toBe(alice)
+    await expect(options.mutationFn.call(bobsRun, "x")).rejects.toMatchObject(
+      callerChanged
+    )
+    expect(requestsFor(replica, "address")).toEqual([])
+  })
+
+  it("reads no caller, and builds no auth, for a mutation of the app's on the client's QueryClient", async () => {
+    let built = 0
+    // In a page, where the client builds its auth on first use.
+    vi.stubGlobal("window", {
+      location: { origin: "https://app.example.com", protocol: "https:" },
+    })
+    const client = createClient({
+      network: "local",
+      auth: () => {
+        built += 1
+        throw new Error("the auth could not be built")
+      },
+    })
+    const unrelated = new MutationObserver(client.queryClient, {
+      mutationFn: (n: number) => Promise.resolve(n + 1),
+    })
+    await expect(unrelated.mutate(1)).resolves.toBe(2)
+    expect(built).toBe(0)
   })
 
   it("throws a TypeError for an unknown third argument or a canister of another client", () => {

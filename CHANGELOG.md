@@ -23,7 +23,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `mutate()` was called, or not at all (#893). The client's `queryClient`
   reads the caller of each mutation run in its `MutationCache` when the run
   starts, so an `onMutate` of the app's that replaces the client's keeps the
-  rule; on another `QueryClient`, the client's `onMutate` reads it. When
+  rule; on another `QueryClient`, the client's `onMutate` reads it (before
+  TanStack Query 5.89, which passes no run context, by the options object
+  TanStack calls it on). It reads no caller for a mutation of the app's. When
   TanStack Query held the write back (paused offline, queued behind another
   mutation of its `scope`, or retried by an app's `retry`) and someone else is
   current by the time it is sent, it rejects with `kind: "cancelled"`,

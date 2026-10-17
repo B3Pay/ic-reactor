@@ -143,12 +143,6 @@ interface MutationRun {
  */
 const RUN = Symbol("ic-reactor.mutationRun")
 
-/**
- * The method each `mutationFn` of `mutationOptions` calls, by the function:
- * how a `mutationFn` finds its own runs in the client's `MutationCache`.
- */
-const MUTATION_METHODS = new WeakMap<object, object>()
-
 /** The run carried by what `onMutate` returned, if it carries one. */
 const runIn = (onMutateResult: unknown): MutationRun | undefined =>
   typeof onMutateResult === "object" && onMutateResult !== null
@@ -230,62 +224,28 @@ export function createBuilders(
   const runsByContext = new WeakMap<object, MutationRun>()
 
   /**
-   * For a mutation run on a `QueryClient` other than the client's, where
-   * TanStack Query (before 5.89) passes `mutationFn` no context: the callers
-   * our `onMutate` read, by method and then by argument, oldest first. Only
-   * there: a run of the client's own `queryClient` is found by its
-   * `Mutation`. An entry whose `mutationFn` never runs (the mutation was
-   * removed) is taken by the next run of that method and argument, which a
-   * disagreeing caller then refuses: it costs a refusal, never a write as
-   * the wrong caller.
+   * Before 5.89 TanStack passes `onMutate` and `mutationFn` no context, but
+   * calls both as methods of the run's options object
+   * (`mutation.options.onMutate(variables)`), so `this` tells one run from
+   * another, whatever its argument and on whichever `QueryClient`: the
+   * caller our `onMutate` read, by that object. Weak, so an entry lives as
+   * long as its run's options. A later render that hands a pending run new
+   * options (`setOptions`) leaves its `mutationFn` nothing here, which
+   * refuses it.
    */
-  const callersByArg = new WeakMap<object, Map<unknown, Caller[]>>()
+  const callersByOptions = new WeakMap<object, Caller>()
 
-  /** The methods whose `onMutate` kept a caller in `callersByArg`. */
-  const queuedMethods = new WeakSet<object>()
+  /** The methods whose `onMutate` read a caller with no context. */
+  const startedMethods = new WeakSet<object>()
 
-  const keepCaller = (method: object, vars: unknown, caller: Caller): void => {
-    queuedMethods.add(method)
-    let byArg = callersByArg.get(method)
-    if (byArg === undefined) {
-      byArg = new Map()
-      callersByArg.set(method, byArg)
-    }
-    const kept = byArg.get(vars)
-    if (kept === undefined) byArg.set(vars, [caller])
-    else kept.push(caller)
-  }
-
-  /** Takes the oldest caller kept for the argument, and returns every one kept for it until now. */
-  const takeCallers = (
-    method: object,
-    vars: unknown
-  ): readonly Caller[] | undefined => {
-    const byArg = callersByArg.get(method)
-    const kept = byArg?.get(vars)
-    if (byArg === undefined || kept === undefined) return undefined
-    const all = [...kept]
-    kept.shift()
-    if (kept.length === 0) byArg.delete(vars)
-    return all
-  }
-
-  /**
-   * The pending runs of the client's own `queryClient` that call `method`
-   * with `vars`, waiting ones included (TanStack 5.62 leaves a resumed run
-   * marked paused when it calls `mutationFn`): where a `mutationFn` given no
-   * context (before 5.89) finds its run, among them.
-   */
-  const runsInCache = (method: object, vars: unknown): readonly object[] =>
-    owner()
-      .queryClient.getMutationCache()
-      .getAll()
-      .filter(
-        ({ state, options }) =>
-          state.status === "pending" &&
-          Object.is(state.variables, vars) &&
-          MUTATION_METHODS.get(options.mutationFn as object) === method
-      )
+  /** The run of the client's own `queryClient` whose options object is `options`, if there is one. */
+  const ownRun = (options: unknown): object | undefined =>
+    typeof options === "object" && options !== null
+      ? owner()
+          .queryClient.getMutationCache()
+          .getAll()
+          .find((mutation) => mutation.options === options)
+      : undefined
 
   /**
    * The argument of each re-send `resendOf` offered, and the write it was
@@ -507,39 +467,31 @@ export function createBuilders(
      *   `onMutate` read (a run on another `QueryClient`). Neither, for a run
      *   TanStack restored from a persister (it runs no `onMutate` for one),
      *   or one on another `QueryClient` whose `onMutate` replaced ours.
-     * - without a context (before 5.89, or a call by hand): by the run's
-     *   `Mutation` in the client's cache, among its pending runs of this
-     *   method and argument, when they all started as one caller; else by
-     *   the callers our `onMutate` kept for the argument (another
-     *   `QueryClient`), when they all are the live one. Only when no
-     *   `onMutate` of ours ever kept one for this method is this a call by
-     *   hand, made as the caller current now.
+     * - without a context (before 5.89, or a call by hand), by `options`,
+     *   the object TanStack called `mutationFn` on: the run of the client's
+     *   own cache with those options (what its `MutationCache` read; none
+     *   for a restored run), else what our `onMutate` read for them (a run
+     *   on another `QueryClient`). Only when no `onMutate` of ours ever ran
+     *   without a context for this method is this a call by hand, made as
+     *   the caller current now.
      */
     const callerOf = (
-      vars: unknown,
+      options: unknown,
       key: object | undefined,
       run: MutationRun | undefined
     ): Caller | undefined => {
       if (key !== undefined) {
         return internals.mutationCallers.get(key) ?? run?.caller
       }
-      const runs = runsInCache(prepared, vars)
-      if (runs.length > 0) {
-        const callers = runs.map((one) => internals.mutationCallers.get(one))
-        const [first] = callers
-        return first !== undefined &&
-          callers.every((one) => one?.principal === first.principal)
-          ? first
+      const own = ownRun(options)
+      if (own !== undefined) return internals.mutationCallers.get(own)
+      const read =
+        typeof options === "object" && options !== null
+          ? callersByOptions.get(options)
           : undefined
-      }
-      const live = internals.current()
-      const kept = takeCallers(prepared, vars)
-      if (kept !== undefined) {
-        return kept.every((one) => one.principal === live.principal)
-          ? live
-          : undefined
-      }
-      return queuedMethods.has(prepared) ? undefined : live
+      return (
+        read ?? (startedMethods.has(prepared) ? undefined : internals.current())
+      )
     }
 
     // The write goes out as the caller current when `mutate()` started it
@@ -552,7 +504,11 @@ export function createBuilders(
     // The target is the one onMutate resolved for this run where TanStack
     // passes the run's context (5.89 and later), and is resolved now
     // otherwise.
-    const mutationFn = (vars: unknown, context?: unknown) => {
+    const mutationFn = function (
+      this: unknown,
+      vars: unknown,
+      context?: unknown
+    ) {
       // TanStack hands a pending mutation the options of a later render
       // only when their mutationKey is the same (another key detaches the
       // observer instead), so a run found here was made by options for the
@@ -568,7 +524,7 @@ export function createBuilders(
       }
       const target = run?.target ?? record.resolve()
       const again = offered.get(vars as object)
-      const caller = again?.caller ?? callerOf(vars, key, run)
+      const caller = again?.caller ?? callerOf(this, key, run)
       // A disposed client cancels every call itself (`client_disposed`).
       if (caller === undefined && !internals.disposed()) {
         return Promise.reject(
@@ -594,7 +550,7 @@ export function createBuilders(
         again,
       })
     }
-    MUTATION_METHODS.set(mutationFn, prepared)
+    internals.ownMutationFns.add(mutationFn)
 
     return {
       mutationKey: [
@@ -607,13 +563,20 @@ export function createBuilders(
       // returns to onSettled. The caller it reads matters only on a
       // `QueryClient` other than the client's, whose own `MutationCache`
       // reads it otherwise.
-      onMutate: (vars: unknown, context?: unknown): object => {
+      onMutate: function (
+        this: unknown,
+        _vars: unknown,
+        context?: unknown
+      ): object {
         const caller = internals.current()
         const run = resolveRun(caller)
         const key = runKey(context)
         if (key !== undefined) runsByContext.set(key, run)
-        else if (runsInCache(prepared, vars).length === 0) {
-          keepCaller(prepared, vars, caller)
+        else {
+          startedMethods.add(prepared)
+          if (typeof this === "object" && this !== null) {
+            callersByOptions.set(this, caller)
+          }
         }
         return { [RUN]: run }
       },

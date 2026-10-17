@@ -671,6 +671,11 @@ export interface ClientInternals {
    */
   readonly mutationCallers: WeakMap<object, Caller>
   /**
+   * The `mutationFn` of every `mutationOptions` of this client: the only
+   * mutations whose caller the `MutationCache` reads.
+   */
+  readonly ownMutationFns: WeakSet<object>
+  /**
    * The agent that signs as `principal`, and only as `principal`. It is the
    * one place the client enforces "a call goes out as the principal it was
    * made for, or not at all".
@@ -1055,11 +1060,27 @@ export function createClientWith(
       : (input: RequestInfo | URL, init?: RequestInit) => userFetch(input, init)
 
   const mutationCallers = new WeakMap<object, Caller>()
+  const ownMutationFns = new WeakSet<object>()
   const queryClient = new QueryClient({
     mutationCache: new MutationCache({
-      // Before 5.89 TanStack passes no context.
-      onMutate: (_vars: unknown, mutation: object, context?: unknown) => {
-        const caller = current()
+      // Only for a write of this client's `mutationOptions`: a mutation of
+      // the app's never builds the auth, and never fails here. Before 5.89
+      // TanStack passes no context.
+      onMutate: (
+        _vars: unknown,
+        mutation: { readonly options: { readonly mutationFn?: unknown } },
+        context?: unknown
+      ) => {
+        const fn = mutation.options.mutationFn
+        if (typeof fn !== "function" || !ownMutationFns.has(fn)) return
+        let caller: Caller
+        try {
+          caller = current()
+        } catch {
+          // The write's own mutationFn reads the caller again, and fails
+          // as a call does.
+          return
+        }
         mutationCallers.set(mutation, caller)
         if (typeof context === "object" && context !== null) {
           mutationCallers.set(context, caller)
@@ -1370,6 +1391,7 @@ export function createClientWith(
     current,
     disposed: () => disposed,
     mutationCallers,
+    ownMutationFns,
     agentFor,
   })
 

@@ -586,8 +586,8 @@
     "testName": "sends a { name } write that waited offline to the canister resolved when it started",
     "why": "mutationFn resolves a { name } again when it starts instead of using the run onMutate resolved, so a write paused across a local redeploy goes to the new canister while onSettled invalidates the old one's reads",
     "file": "src/options.ts",
-    "search": "          target: run?.target ?? record.resolve(),",
-    "replace": "          target: record.resolve(),"
+    "search": "      const target = run?.target ?? record.resolve()\n",
+    "replace": "      const target = record.resolve()\n"
   },
   {
     "id": "ir2t-name-in-invalidates-resolved-at-settlement",
@@ -1304,7 +1304,7 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "      const caller = again?.caller ?? callerOf(vars, key, run)",
+        "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
         "replace": "      const caller = again?.caller ?? current()"
       },
       {
@@ -2676,8 +2676,8 @@
     "testName": "is true for the errors of a read's query function and a mutation function built from the canister",
     "why": "a mutation function no longer marks its errors with the canister it was built from",
     "file": "src/options.ts",
-    "search": "          resend: true,\n          canister: canister as object,\n",
-    "replace": "          resend: true,\n"
+    "search": "        resend: true,\n        canister: canister as object,\n",
+    "replace": "        resend: true,\n"
   },
   {
     "id": "ir849-method-without-canister",
@@ -2766,8 +2766,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "a mutation given an offered argument sends it as whoever is the caller when it runs, so another account pays the same transfer again",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(vars, key, run)",
-    "replace": "      const caller = callerOf(vars, key, run)"
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "replace": "      const caller = callerOf(this, key, run)"
   },
   {
     "id": "ir850-send-as-whoever",
@@ -3081,8 +3081,8 @@
     "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
     "why": "a mutation given an offered argument does not carry the write it re-sends, so nothing compares the argument with what was sent and a changed one goes out as a new transfer",
     "file": "src/options.ts",
-    "search": "          canister: canister as object,\n          again,\n",
-    "replace": "          canister: canister as object,\n"
+    "search": "        canister: canister as object,\n        again,\n",
+    "replace": "        canister: canister as object,\n"
   },
   {
     "id": "ir850-c1-arg-not-compared",
@@ -4395,7 +4395,7 @@
     "testName": "refuses a write paused offline when the account is switched before it is sent, and sends nothing",
     "why": "a write TanStack paused offline goes out as whoever is signed in when it resumes, not as the caller current when mutate() was called (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(vars, key, run)",
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
     "replace": "      const caller = again?.caller ?? internals.current()"
   },
   {
@@ -4405,7 +4405,7 @@
     "testName": "refuses a write queued behind its scope when the account is switched before its turn, and sends nothing",
     "why": "a write queued behind its mutation scope goes out as whoever is signed in at its turn (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(vars, key, run)",
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
     "replace": "      const caller = again?.caller ?? internals.current()"
   },
   {
@@ -4413,20 +4413,10 @@
     "package": "core",
     "test": "tests/options.test.ts",
     "testName": "refuses a write whose mutationFn gets no run context",
-    "why": "without a run context (TanStack before 5.89, another QueryClient), a run whose kept caller another run took is sent as whoever is current, not refused (#893)",
+    "why": "without a run context (TanStack before 5.89), a run whose onMutate read no caller for its options is sent as whoever is current, not refused (#893)",
     "file": "src/options.ts",
-    "search": "      return queuedMethods.has(prepared) ? undefined : live\n",
-    "replace": "      return live\n"
-  },
-  {
-    "id": "893-write-caller-no-context-newest-first",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "never sends a write with no run context as the caller of a run whose mutationFn never ran",
-    "why": "without a run context, mutationFn takes the newest caller kept for its argument instead of the oldest, pairing a run with another run's caller (#893)",
-    "file": "src/options.ts",
-    "search": "    kept.shift()\n",
-    "replace": "    kept.pop()\n"
+    "search": "        read ?? (startedMethods.has(prepared) ? undefined : internals.current())",
+    "replace": "        read ?? internals.current()"
   },
   {
     "id": "893-write-caller-retry-read-when-sent",
@@ -4435,7 +4425,7 @@
     "testName": "refuses the retry of a write when the account is switched after the first attempt failed",
     "why": "an app's TanStack retry of a write goes out as whoever is signed in when it retries (#893)",
     "file": "src/options.ts",
-    "search": "      const caller = again?.caller ?? callerOf(vars, key, run)",
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
     "replace": "      const caller = again?.caller ?? internals.current()"
   },
   {
@@ -4482,9 +4472,38 @@
     "package": "core",
     "test": "tests/options.test.ts",
     "testName": "never sends a write with no run context as the caller of a run whose mutationFn never ran",
-    "why": "without a run context, mutationFn takes the oldest kept caller even when the callers kept for its argument disagree, so a run is sent as the caller of an abandoned one (#893)",
+    "why": "without a run context, the caller our onMutate read is kept by method instead of by the run's options object, so a run goes out as the caller of an abandoned one (#893)",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "            callersByOptions.set(this, caller)",
+        "replace": "            if (!callersByOptions.has(prepared)) callersByOptions.set(prepared, caller)"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "          ? callersByOptions.get(options)",
+        "replace": "          ? callersByOptions.get(prepared)"
+      }
+    ]
+  },
+  {
+    "id": "893-write-caller-other-client-takes-own-run",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "never sends a run on another QueryClient (no run context) as the caller of a run of the client's own cache",
+    "why": "without a run context, a run on another QueryClient is matched to a pending run of the client's own cache by anything but its options object, and goes out as that run's caller (#893)",
     "file": "src/options.ts",
-    "search": "        return kept.every((one) => one.principal === live.principal)\n          ? live\n          : undefined\n",
-    "replace": "        return kept[0]\n"
+    "search": "          .find((mutation) => mutation.options === options)",
+    "replace": "          .find((mutation) => mutation.state.status === \"pending\")"
+  },
+  {
+    "id": "893-mutation-cache-reads-every-caller",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "reads no caller, and builds no auth, for a mutation of the app's on the client's QueryClient",
+    "why": "the client's MutationCache reads the caller of every mutation, so a mutation of the app's builds the auth and fails when it cannot be built (#893)",
+    "file": "src/client.ts",
+    "search": "        if (typeof fn !== \"function\" || !ownMutationFns.has(fn)) return",
+    "replace": "        if (typeof fn !== \"function\") return"
   }
 ]

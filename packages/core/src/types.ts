@@ -322,13 +322,15 @@ export interface CanisterMutationOptions<V, D, E> {
    * read. Refused the same way, because the caller of the run is not known:
    * a mutation TanStack restored from a persister (it runs no `onMutate` for
    * one; call `mutate()` again), a run on another `QueryClient` whose
-   * `onMutate` replaced this one (5.89 and later), and, without a context,
-   * a run that cannot be told apart from another pending run of the same
-   * argument that started as someone else. Exceptions, which go out as the
-   * caller current when they are sent: a call by hand (no context, and no
-   * `onMutate` of this one ever ran for the method), and, before 5.89, a run
-   * on another `QueryClient` whose `onMutate` replaced this one, or one
-   * restored there.
+   * `onMutate` replaced this one (5.89 and later), and, without a context
+   * (before 5.89), a run on another `QueryClient` whose options object
+   * (what TanStack calls `onMutate` and `mutationFn` on) this `onMutate`
+   * read nothing for: called from an `onMutate` of the app's, or given new
+   * options by a later render. Exceptions, which go out as the caller
+   * current when they are sent: a call by hand (no context, and no
+   * `onMutate` of this one ever ran without one for the method), and,
+   * before 5.89, a run on another `QueryClient` whose `onMutate` replaced
+   * this one, or one restored there.
    *
    * It finds that run through `context`, which TanStack Query passes from
    * 5.89 on. When `onMutate` resolved nothing for that context (an
