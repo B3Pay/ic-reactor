@@ -365,7 +365,6 @@ describe('"env" in a browser', () => {
 
   describe("on a mainnet boundary page", () => {
     it.each([
-      ["a canister's icp0.io domain", `https://${CANISTER}.icp0.io`],
       ["a canister's ic0.app domain", `https://${CANISTER}.ic0.app`],
       ["icp0.io itself", "https://icp0.io"],
       ["the API domain", MAINNET],
@@ -383,6 +382,26 @@ describe('"env" in a browser', () => {
         expect(net.fetchRootKey).toBe(false)
         // Not read at all, rather than read and ignored.
         expect(page.cookieReads()).toBe(0)
+      }
+    )
+
+    it.each([
+      ["<id>.icp0.io", `https://${CANISTER}.icp0.io`],
+      ["<id>.raw.icp0.io", `https://${CANISTER}.raw.icp0.io`],
+    ])(
+      "routes through its origin and believes the cookie's ids only, on %s",
+      (_, origin) => {
+        stubPage(origin)
+
+        const net = resolveNetwork("env")
+
+        expect(net).toStrictEqual({
+          keySegment: origin,
+          host: origin,
+          fetchRootKey: false,
+          trustsEnv: true,
+          envIdsOnly: true,
+        })
       }
     )
 
@@ -819,6 +838,17 @@ describe("the root key an agent really uses", () => {
       expect(used.sentTheCall).toBe(true)
       expect(used.statusRequests).toBe(0)
       expect(sameBytes(used.agentKey, COOKIE_ROOT_KEY)).toBe(true)
+    })
+
+    it("keeps mainnet's key on an icp0.io page whose cookie it believes for ids", async () => {
+      stubPage(`https://${CANISTER}.icp0.io`)
+
+      const net = resolveNetwork("env")
+      expect(net.trustsEnv).toBe(true)
+      const used = await drive(net)
+
+      expect(used.statusRequests).toBe(0)
+      expect(mainnetKey(used.agentKey)).toBe(true)
     })
 
     it("requests nothing on a mainnet page, and ignores the cookie there", async () => {
