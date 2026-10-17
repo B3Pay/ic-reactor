@@ -15,26 +15,26 @@
 // with the packages' own checks; run `pnpm build` first.
 export default [
   {
-    // Measured 90,431 B with each mutation run keeping the caller mutate()
-    // started it as (#893; 89,949 B before that, +482 B, with client.resendOf()
+    // Measured 90,294 B with each mutation run keeping the caller mutate()
+    // started it as (#893; 89,949 B before that, +345 B, with client.resendOf()
     // held to the bytes and the canister ids a write went out with; 89,746 B
     // before that; 89,484 B before resendOf; 89,363 B on 4.0.0-beta.3): the
-    // limit leaves 39 B.
+    // limit leaves 36 B.
     name: "App: { createClient } from @ic-reactor/core, peers included",
     path: "core.js",
-    limit: "90.47 kB",
+    limit: "90.33 kB",
     gzip: true,
   },
   {
-    // Measured 91,649 B with each mutation run keeping the caller mutate()
-    // started it as (#893; 91,155 B before that, +494 B, with client.resendOf()
+    // Measured 91,493 B with each mutation run keeping the caller mutate()
+    // started it as (#893; 91,155 B before that, +338 B, with client.resendOf()
     // held to the bytes and the canister ids a write went out with; 90,960 B
     // before that; 90,692 B before resendOf; 90,566 B on 4.0.0-beta.3): the
-    // limit leaves 41 B. React itself is left out: the app ships it with or
+    // limit leaves 37 B. React itself is left out: the app ships it with or
     // without ic-reactor.
     name: "App: createClient, ReactorProvider and useClient, peers included, React left out",
     path: "react.js",
-    limit: "91.69 kB",
+    limit: "91.53 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },
