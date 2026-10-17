@@ -223,7 +223,12 @@ A method TypeScript cannot tell is a read does not compile: a type parameter
 (`keyof Actor & string`), or any method of a `Canister<A>` with a generic `A`.
 Give the type arguments,
 `client.queryOptions<A, any>(canister, method, vars)`, which keeps the
-run-time check and types the data `unknown`.
+run-time check and types the data `unknown`. The variables follow the same
+rule, checked at run time: the value for one argument, a tuple for several,
+`undefined` or `[]` for none (`[arg]` compiles but is refused
+`invalid_args`). `mutationOptions`, `queryKey` and `resendOf` take
+`<A, any>` the same way; for a generic `A` only `queryOptions` widens the
+variables, so cast them for the other three.
 The target `{ id, certified: true }` certifies `query` replies.
 
 ## Writes
