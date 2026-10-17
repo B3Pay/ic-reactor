@@ -1956,8 +1956,8 @@
     "testName": "names the built-in Internet Identity on a local host's own port, with the root key it was given",
     "why": "the auth factory handed only the agent options, so an AuthClient on a local replica signs in with mainnet's Internet Identity",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const built = checkAuth(\n      authFactory({ agentOptions: authNetwork().agentOptions })\n    )"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      made = authFactory({ agentOptions: authNetwork().agentOptions })"
   },
   {
     "id": "790-auth-factory-zero-argument-refused",
@@ -1966,8 +1966,8 @@
     "testName": "still builds the auth the client calls as",
     "why": "a factory that takes no argument (() => new AuthClient()) no longer builds an auth, as if only network-aware factories were supported",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const built = checkAuth(\n      authFactory.length > 0 ? authFactory(authNetwork()) : undefined\n    )"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      made = authFactory.length > 0 ? authFactory(authNetwork()) : undefined"
   },
   {
     "id": "790-auth-built-in-ii-port-fixed",
@@ -2136,8 +2136,8 @@
     "testName": "is not given by a test client",
     "why": "the warning given before the factory runs, wherever no provider was named, so a test client on \"ic\" warns about its fake replica's root key, though its test auth ignores the network",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-local-ignores-cookie-provider",
@@ -2286,8 +2286,8 @@
     "testName": "is not given to a factory that names its own provider by spreading network",
     "why": "the warning given before the factory runs, so the override it teaches, { ...network, identityProvider }, still logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-warn-before-factory-real-override",
@@ -2296,8 +2296,8 @@
     "testName": "is not given to a real AuthClient built from the override",
     "why": "the warning given before the factory runs, so a real AuthClient built with its own identityProvider still logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-warn-before-factory-not-ii",
@@ -2306,8 +2306,8 @@
     "testName": "is not given to a factory that ignores network",
     "why": "the warning given before the factory runs, so an auth that is not Internet Identity, which never reads the network, logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-provider-read-silent",
