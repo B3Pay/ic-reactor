@@ -41,6 +41,12 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### Examples (not published)
 
+- `node-agent-tool` no longer tells you to export an identity's key into the
+  project. Its README and docs page say to give the tool, and an agent running
+  it, an identity of its own that controls nothing, with its key outside the
+  project and readable by you alone, and that the agent can read the seed
+  variable.
+  The example's `.gitignore` and the root one now ignore `*.pem` (#910).
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the
   server, that gives every method of any mainnet canister an automatic form
   and calls it with ic-reactor's rules in view. The ICP, ckBTC and ckETH
