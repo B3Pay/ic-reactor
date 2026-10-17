@@ -31,7 +31,12 @@ runs in a server render (anonymous, with no auth built) and in a browser.
 
 Pass exactly one of `identity` and `auth`. `createClient` throws a `TypeError`
 for options that name neither, name both, or name a network or a `maxDepth`
-that cannot be used.
+that cannot be used. It also throws for an option it does not have, in the
+options or in a network object (`host` goes inside `network`), and for an
+`allowEnvConfig` or `fetchRootKey` that is not `true` or `false`: an
+environment variable is text, and `"false"` is truthy, so compare it,
+`allowEnvConfig: import.meta.env.VITE_ALLOW_ENV === "true"`. A `rootKey` is the
+133 bytes of the key in a `Uint8Array`: decode hex text first.
 
 ## Networks
 
