@@ -20,6 +20,13 @@ import { actor, type Actor } from "./generated/icrc1"
 One import path per name: Candid values only from `@candid-core/schema`,
 `skipToken` and the hooks only from TanStack Query.
 
+`@ic-reactor/core` and `@ic-reactor/react` are ES modules only. A Node
+project needs `"type": "module"` in its `package.json`
+(`npm pkg set type=module`), or a bundler; `npx tsx` with
+top-level `await` fails in a CommonJS package. Under TypeScript's
+`moduleResolution: "nodenext"`, import local files with their `.js`
+extension (`./generated/icrc1.js`).
+
 The generated module (from `candid-core-cli gen` or `@ic-reactor/vite-plugin`;
 do not edit it) exports a type and schema per Candid type, the service schema
 `actor`, and `type Actor`.

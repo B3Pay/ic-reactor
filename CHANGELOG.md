@@ -15,6 +15,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### Docs
+
+- Getting started has a step 0 that creates the project (Vite's `react-ts`
+  template, or `npm init -y` and `npm pkg set type=module` for Node), so its
+  top-level `await` scripts run under `npx tsx` on the first try. It, core's
+  package page and core's guide now say that core and react are ES modules
+  only and what CommonJS code can do, and show the `.js` import form
+  `moduleResolution: "nodenext"` needs (#907).
+
 ### @ic-reactor/core, @ic-reactor/react, @ic-reactor/vite-plugin
 
 #### Changed
