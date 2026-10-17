@@ -24,13 +24,14 @@ The more of this you can provide, the faster a fix lands:
 
 ## Supported versions
 
-| Package                                 | Supported |
-| --------------------------------------- | --------- |
-| `@ic-reactor/{core,react,candid}`       | `3.x`     |
-| `@ic-reactor/{codegen,cli,vite-plugin}` | `0.13.x`  |
-| `@ic-reactor/parser`                    | `0.4.x`   |
+| Package                                 | Line     | Supported                                          | Branch |
+| --------------------------------------- | -------- | -------------------------------------------------- | ------ |
+| `@ic-reactor/{core,react,vite-plugin}`  | `4.x`    | Yes                                                | `main` |
+| `@ic-reactor/{core,react,candid}`       | `3.x`    | Security fixes until 90 days after the 4.0 release | `v3`   |
+| `@ic-reactor/{codegen,cli,vite-plugin}` | `0.15.x` | Security fixes until 90 days after the 4.0 release | `v3`   |
+| `@ic-reactor/parser`                    | `0.6.x`  | Security fixes until 90 days after the 4.0 release | `v3`   |
 
-Fixes land on the latest minor of each supported line. Older minors are not backported.
+Fixes land on the latest minor of each supported line. Older minors are not backported. `@ic-reactor/candid`, `@ic-reactor/parser`, `@ic-reactor/codegen` and `@ic-reactor/cli` have no 4.x: ic-reactor 4 generates canister modules with `candid-core-cli gen` instead, and their lines end with 3.x's. The 0.15 line of `@ic-reactor/vite-plugin` is the plugin of 3.x apps, which generates with `@ic-reactor/codegen`.
 
 ## Threat model
 

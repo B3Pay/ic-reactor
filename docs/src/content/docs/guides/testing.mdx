@@ -381,14 +381,14 @@ it loads, so the test never sees the first caller's `7` under the second.
 The examples ship their test kits. Read them for larger setups.
 
 - [ICRC-1 ledger](/v4/examples/icrc-ledger/):
-  [`src/sandbox.ts`](https://github.com/b3pay/ic-reactor/blob/v4/examples/icrc-ledger/src/sandbox.ts)
+  [`src/sandbox.ts`](https://github.com/b3pay/ic-reactor/blob/main/examples/icrc-ledger/src/sandbox.ts)
   arms each failure above, and
-  [`sandbox.test.ts`](https://github.com/b3pay/ic-reactor/blob/v4/examples/icrc-ledger/src/sandbox.test.ts)
+  [`sandbox.test.ts`](https://github.com/b3pay/ic-reactor/blob/main/examples/icrc-ledger/src/sandbox.test.ts)
   asserts the re-sends and the unknown outcome.
 - [Vite wallet](/v4/examples/vite-wallet/):
-  [`src/test/test-wallet.tsx`](https://github.com/b3pay/ic-reactor/blob/v4/examples/vite-wallet/src/test/test-wallet.tsx)
+  [`src/test/test-wallet.tsx`](https://github.com/b3pay/ic-reactor/blob/main/examples/vite-wallet/src/test/test-wallet.tsx)
   renders components in a provider over a test client with `network: "env"`
   and an `ic_env` cookie written as the Vite plugin writes it.
 - [Node agent tool](/v4/examples/node-agent-tool/):
-  [`src/test-kit.ts`](https://github.com/b3pay/ic-reactor/blob/v4/examples/node-agent-tool/src/test-kit.ts)
+  [`src/test-kit.ts`](https://github.com/b3pay/ic-reactor/blob/main/examples/node-agent-tool/src/test-kit.ts)
   runs a command-line tool against the in-memory replica.

@@ -38,9 +38,9 @@ This skill describes these versions:
    Identity sign-in. `@candid-core/schema` must be the exact version
    `@ic-reactor/core` lists in its `peerDependencies`, and the generator
    `@candid-core/cli` the exact version `@ic-reactor/vite-plugin` lists:
-   install both with `--save-exact`. Until 4.0 is final, the `@ic-reactor/*`
-   packages above are published under npm's `beta` dist-tag, and `latest` is
-   still 3.x: install them as `@ic-reactor/core@beta`, never bare.
+   install both with `--save-exact`. The `@ic-reactor/*` packages are on npm's
+   `latest` dist-tag: install them bare, and never pin a 3.x version, whose
+   names this guide does not describe.
 3. **Generate the module** from each canister's `.did`, with
    `npx candid-core-cli gen <file>.did -o src/generated`, or with the Vite
    plugin, which regenerates on change:

@@ -37,9 +37,11 @@ updates:
       - "dependencies"
       - "automated"
 
-  # Rust crates of the e2e hello_actor canister. On the v4 line
-  # packages/parser, which this entry used to cover, is deleted; Dependabot
-  # reads this file from the default branch, so this takes effect at 4.0 GA.
+  # Rust crates of the e2e hello_actor canister. packages/parser, which this
+  # entry used to cover, is on the v3 branch only. Dependabot reads this file
+  # from the default branch (main) and opens pull requests against main only:
+  # the v3 branch gets no Dependabot pull requests, and its dependency-review
+  # job's audit is its advisory check.
   - package-ecosystem: "cargo"
     directory: "/e2e"
     schedule:
