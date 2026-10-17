@@ -288,10 +288,36 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
   const [failure, setFailure] = useState<ReactorError<TransferError> | null>(
     null
   )
+  // The outcome of the last transfer, kept in this component's state as
+  // well: the options `useClient()` builds are the caller's, and their key
+  // with them, so after an account switch `transfer` is a new, idle
+  // mutation, while the outcome of the one seed 1 sent must stay on screen.
+  // The callbacks of the options a run was pressed with are the ones it
+  // calls, so they still reach this state after the switch.
+  const [kept, setKept] = useState<{
+    isPending: boolean
+    data?: bigint
+    error: ReactorError<TransferError> | null
+  }>()
+  const options = client.mutationOptions(ledger, "icrc1_transfer")
   const transfer = useMutation({
-    ...client.mutationOptions(ledger, "icrc1_transfer"),
-    onError: (error) => setFailure(error),
+    ...options,
+    onSuccess: (data) => setKept({ isPending: true, data, error: null }),
+    onError: (error) => {
+      setFailure(error)
+      setKept({ isPending: true, error })
+    },
+    // The client's own onSettled re-reads the ledger; the run is pending
+    // until it ends.
+    onSettled: async (...args: Parameters<typeof options.onSettled>) => {
+      try {
+        await options.onSettled(...args)
+      } finally {
+        setKept((last) => last && { ...last, isPending: false })
+      }
+    },
   })
+  const shown = transfer.status !== "idle" ? transfer : (kept ?? transfer)
 
   const [form, setForm] = useState<TransferForm>({
     to: SEED_2,
@@ -322,6 +348,7 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
     // A refusal before sending (nobody signed in) would leave the fault
     // armed for whatever comes next, so it is armed only for a real send.
     if (armed !== "none" && signedIn) sandbox.arm(armed)
+    setKept({ isPending: true, error: null })
     transfer.mutate(arg)
   }
 
@@ -402,11 +429,7 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
           ))}
         </select>
         <div className="row">
-          <button
-            type="submit"
-            className="primary"
-            disabled={transfer.isPending}
-          >
+          <button type="submit" className="primary" disabled={shown.isPending}>
             Send as {signedIn ? nameOf(caller) : "anonymous"}
           </button>
         </div>
@@ -420,7 +443,7 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
         <Outcome
           sandbox={sandbox}
           attempt={attempt}
-          transfer={transfer}
+          transfer={shown}
           failure={failure}
           caller={caller}
           balance={mine.data}

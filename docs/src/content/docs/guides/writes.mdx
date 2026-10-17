@@ -54,7 +54,10 @@ render (the switch and the click in one batch) is refused: kind `cancelled`,
 code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. The
 refusal reaches the callbacks of the options the press used (an `onError`
 given to `useMutation`); the mutation that the render for the new caller shows
-starts over, idle, since the key holds the caller. The handler needs no check
+starts over, idle, since the key holds the caller. That is true of any
+outcome, a write whose outcome is unknown included: an app that must keep
+showing it across a switch (to read the sender's balance back, say) keeps it
+in its own state, from the promise `mutateAsync` returns. The handler needs no check
 of its own; disable the button for a caller who is not signed in:
 
 ```tsx

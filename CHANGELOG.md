@@ -27,7 +27,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   TanStack never hands a run pressed before a switch the later render's
   options, on any version and with any `QueryClient`; after a switch the
   mutation a component shows starts over, idle, and the stale run reports its
-  refusal to the options it was pressed with. Its `authState()` is the client's own
+  refusal to the options it was pressed with. An app that shows an outcome
+  across a switch (an unknown one, to read back as its sender) keeps it in
+  its own state, from the promise `mutateAsync` returns. Its `authState()` is the client's own
   while its principal is the live caller, so an expired session reads as
   expired (#894). The client's own `mutationOptions`, a canister's direct
   calls and `func` still sign as the caller current when they run.
@@ -61,6 +63,10 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 - `canister-studio`'s write runner shows the confirm step again, with the
   new sender, when a write is refused because the caller changed before the
   page caught up (#894).
+- An outcome stays on screen across an account switch: `canister-studio`'s
+  write runner and wallet Send panel, and `icrc-ledger`'s Sandbox transfer,
+  keep the outcome of the write they sent in their own state, since the
+  mutation the new caller's render shows starts over idle (#894).
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the
   server, that gives every method of any mainnet canister an automatic form
