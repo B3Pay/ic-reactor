@@ -211,6 +211,25 @@ describe("the network an auth factory is handed", () => {
     })
   })
 
+  it("ignores a trusted cookie's http: provider on a page that is not local, and takes an https: one", () => {
+    // Over plain http: anyone on the path can serve the sign-in page, so the
+    // cookie's URL is taken over http: only where the page itself is local.
+    stubPage("https://app.example.com", {
+      cookie: cookieWithProvider("http://id.example.com/authorize"),
+    })
+    muteWarnings()
+    expect(
+      handedTo("ic", { allowEnvConfig: true }).identityProvider
+    ).toBeUndefined()
+
+    stubPage("https://app.example.com", {
+      cookie: cookieWithProvider("https://id.example.com/authorize"),
+    })
+    expect(
+      handedTo("ic", { allowEnvConfig: true }).identityProvider?.authorizeUrl
+    ).toBe("https://id.example.com/authorize")
+  })
+
   it("ignores a cookie's INTERNET_IDENTITY_PROVIDER that is not an http(s) URL", () => {
     stubPage("http://localhost:5173", {
       cookie: cookieWithProvider("javascript:alert(1)"),

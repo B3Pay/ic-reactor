@@ -80,6 +80,16 @@ only when both the replica and the page are local, or when you write
 cookie, so write `allowEnvConfig: true` only when every subdomain of the page's
 domain is trusted. `allowEnvConfig: false` never reads the cookie.
 
+Whether siblings can write it depends on the Public Suffix List. `icp0.io` and
+`raw.icp0.io` are on it, so no other canister's page can set a cookie that
+`<id>.icp0.io` reads. `ic0.app`, `app.github.dev` (Codespaces) and `gitpod.io`
+are not, so every canister or workspace under them can set one for all the
+others. On a page under those three, `createClient` refuses
+`allowEnvConfig: true` with a `TypeError`. Even where the opt-in is allowed,
+the cookie's root key is never taken for a mainnet host (the agent keeps
+mainnet's own), and its Internet Identity URL is taken over `http:` only on a
+local page.
+
 Canisters named in the cookie are called by name: `{ name: "backend" }` reads
 `PUBLIC_CANISTER_ID:backend` from the cookie. See
 [The Vite plugin](/v4/guides/vite-plugin/) for how the local cookie is made.
@@ -94,8 +104,9 @@ const backend = client.canister<Actor>(actor, { name: "backend" })
 
 On Codespaces and Gitpod, the page is routed through its own origin but is not
 local. The key is then neither taken from the cookie nor fetched, and certified
-calls fail verification. Set `allowEnvConfig: true`, or use an object network
-with a `rootKey` or `fetchRootKey: true`.
+calls fail verification. Use an object network with the replica's `rootKey`
+(or `fetchRootKey: true`), and `{ id }` canisters. `allowEnvConfig: true` is
+refused there, because any other workspace can set the cookie.
 
 ### `"env"` on a server
 
