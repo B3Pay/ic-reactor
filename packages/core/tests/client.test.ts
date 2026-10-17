@@ -243,6 +243,7 @@ describe("a client following its auth in a browser", () => {
     expect(client.authState()).toEqual({
       status: "signed-in",
       principal: alice,
+      expiresAt: (auth.getStatus() as { expiresAtMs: number }).expiresAtMs,
     })
     expect(current()).toEqual({ principal: alice, authenticated: true })
 
@@ -307,7 +308,9 @@ describe("a client following its auth in a browser", () => {
     })
   })
 
-  it("passes a notification on only when the status or the principal changed", () => {
+  it("passes a notification on only when the status, the principal or the session's end changed", () => {
+    // One instant for both sign-ins, so that their sessions end together.
+    const now = vi.spyOn(Date, "now").mockReturnValue(Date.now())
     const auth = createTestAuth({ seed: 1 })
     const alice = auth.getStatus()
     const client = clientOf(auth)
@@ -316,11 +319,20 @@ describe("a client following its auth in a browser", () => {
     const signedIn = client.authState()
 
     // A new sign-in as the same account notifies the auth's listeners with a
-    // new status object, but the client calls as the same principal.
+    // new status object, but the client calls as the same principal, for a
+    // session that ends when the last one did.
     void auth.signIn()
     expect(auth.getStatus()).not.toBe(alice)
     expect(listener).not.toHaveBeenCalled()
     expect(client.authState()).toBe(signedIn)
+
+    // One that ends later is a change: `expiresAt` moves.
+    now.mockReturnValue(Date.now() + 1000)
+    void auth.signIn()
+    now.mockRestore()
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(client.authState().expiresAt).toBe(signedIn.expiresAt! + 1000)
+    listener.mockClear()
 
     auth.switchTo(2)
     expect(listener).toHaveBeenCalledTimes(1)

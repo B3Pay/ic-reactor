@@ -556,12 +556,19 @@ const SERVER_STATE: AuthState = Object.freeze({
 const serverState = (): AuthState => SERVER_STATE
 
 /**
- * Who calls, and how to change it: the client's {@link AuthState} (`status`
- * and `principal`) with `signIn` and `signOut` forwarded to the client.
+ * Who calls, and how to change it: the client's {@link AuthState} (`status`,
+ * `principal` and, while signed in, `expiresAt`) with `signIn` and `signOut`
+ * forwarded to the client.
  *
  * It follows the client with `useSyncExternalStore`, so a component renders
- * again once per change of status or principal and never otherwise (a renewed
- * delegation, or a parent that renders, does not). The object it returns is
+ * again once per change of status, principal or `expiresAt` and never
+ * otherwise (a renewed delegation, or a parent that renders, does not). A
+ * session that ends by the clock renders it again with `"expired"` when its
+ * `expiresAt` passes, with no user activity needed.
+ *
+ * `"signed-in"` may be a read-only session: Internet Identity can scope one to
+ * queries, and the network refuses its updates. Nothing tells the two apart
+ * yet. The object it returns is
  * the same until the state changes, so it is safe in a dependency array or
  * as a prop of a memoized child.
  *
@@ -604,6 +611,7 @@ export function useAuth(): AuthState & {
     () => ({
       status: state.status,
       principal: state.principal,
+      ...(state.expiresAt === undefined ? {} : { expiresAt: state.expiresAt }),
       signIn: (options?: unknown) => client.signIn(options),
       signOut: (options?: unknown) => client.signOut(options),
     }),

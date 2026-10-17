@@ -4387,5 +4387,114 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "912-no-expiry-timer",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "tells the client's listeners when it ends, with no notification of the auth",
+    "why": "no timer for the session's expiresAtMs, so a session that ends by the clock tells nobody and useAuth() keeps saying signed-in",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "    unsubscribeAuth = built.subscribe(onAuthChange)\n    scheduleExpiry()\n",
+        "replace": "    unsubscribeAuth = built.subscribe(onAuthChange)\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "    scheduleExpiry()\n    if (state === notified) return\n",
+        "replace": "    if (state === notified) return\n"
+      }
+    ]
+  },
+  {
+    "id": "912-expiry-delay-uncapped",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "reaches a deadline past setTimeout's longest delay in steps",
+    "why": "the delay handed to setTimeout uncapped, so a session that ends more than 2^31-1 ms away fires at once",
+    "file": "src/client.ts",
+    "search": "      Math.min(delay, MAX_TIMER_MS)\n    )",
+    "replace": "      delay\n    )"
+  },
+  {
+    "id": "912-expiry-timer-for-a-past-end",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "sets no timer for an end that passed while the auth still says signed in",
+    "why": "a timer set for an end that already passed while the auth still says signed-in, which fires and sets itself again forever",
+    "file": "src/client.ts",
+    "search": "    if (delay <= 0) return\n",
+    "replace": ""
+  },
+  {
+    "id": "912-expiry-timer-kept-after-dispose",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "moves the timer to a new session's end, and drops it on a sign-out and on dispose()",
+    "why": "dispose() leaves the expiry timer set",
+    "file": "src/client.ts",
+    "search": "      agents.clear()\n      clearTimeout(expiryTimer)\n",
+    "replace": "      agents.clear()\n"
+  },
+  {
+    "id": "912-read-change-not-told",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "is told to the listeners once, in a microtask, from caller() and from authState()",
+    "why": "caller() computes another principal than the listeners were told about and tells nobody",
+    "file": "src/client.ts",
+    "search": "    if (caller.principal !== notified.principal) catchUp()\n",
+    "replace": ""
+  },
+  {
+    "id": "912-auth-factory-throw-escapes",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "still answers a public read, and refuses a write as unauthenticated",
+    "why": "what the auth factory threw escapes from caller() and the read paths, so a page whose storage is blocked cannot read public data",
+    "file": "src/client.ts",
+    "search": "      authFailure = { cause }\n",
+    "replace": "      authFailure = { cause }\n      throw cause\n"
+  },
+  {
+    "id": "912-auth-factory-retried",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "runs the client anonymous, calls the factory once, and says so once in development",
+    "why": "a factory that threw is called again on every read (every render)",
+    "file": "src/client.ts",
+    "search": "      auth !== undefined ||\n      authFailure !== undefined ||\n",
+    "replace": "      auth !== undefined ||\n"
+  },
+  {
+    "id": "912-sign-in-hides-factory-error",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "runs the client anonymous, calls the factory once, and says so once in development",
+    "why": "signIn() after a factory that threw rejects with the server-side error instead of what the factory threw",
+    "file": "src/client.ts",
+    "search": "    if (authFailure !== undefined) throw authFailure.cause\n",
+    "replace": ""
+  },
+  {
+    "id": "912-test-auth-never-expires-by-clock",
+    "package": "core",
+    "test": "tests/testing-test-auth.test.ts",
+    "testName": "expires by the clock at expiresAtMs",
+    "why": "the test auth's status stays signed-in past its expiresAtMs, unlike AuthClient's, so tests cannot see a session end by the clock",
+    "file": "src/testing/test-auth.ts",
+    "search": "      Date.now() >= status.expiresAtMs",
+    "replace": "      Date.now() < 0"
+  },
+  {
+    "id": "912-use-auth-drops-expires-at",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "renders again with expired when the session ends, with no user activity",
+    "why": "useAuth() leaves expiresAt out of what it returns",
+    "file": "src/index.tsx",
+    "search": "      ...(state.expiresAt === undefined ? {} : { expiresAt: state.expiresAt }),\n",
+    "replace": ""
   }
 ]
