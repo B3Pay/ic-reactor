@@ -141,18 +141,35 @@ anything else; the object it returns is the same until one changes.
 
 Query keys carry the caller. Call `useClient()` in the body of each component
 that builds keys or read options, on every render, and build them from what it
-returns there, never from a client held at module scope. Do not keep what it
-returns past the render: while a page hydrates it is a view for the anonymous
-caller, and a view never moves on. An effect or a callback that uses it closes
-over the value of its own render and lists it in its dependencies, as the
-`react-hooks/exhaustive-deps` lint rule asks, so that it runs again with the
-client once the page has hydrated. Kept from the hydrating render anywhere
-else (`useState(client)`, `useRef(client)`, a `useMemo` or `useCallback` with
-`[]`, a module variable), it stays that view: the component shows the
-anonymous caller's data, a read it starts while the user is signed in is
-cancelled (`caller_changed`), and a write through it still signs as the live
-caller. Nothing warns about it. A nested `ReactorProvider` given it holds the
-client the view was made over.
+returns there, never from a client held at module scope. It returns a view of
+the client for the caller the render shows: one object per caller, a new one
+after a sign-in, a switch of account or a sign-out, and the same one on every
+render while the caller stays. List it in the dependencies of what is built
+from it (`useMemo(() => client.queryOptions(...), [client])`, an effect, a
+callback, as the `react-hooks/exhaustive-deps` lint rule asks); React Compiler
+memoizes on it the same way. Either way, what is memoized is built again for
+the new caller, and never shows the previous caller's data.
+
+Its `queryKey`, `queryOptions`, `caller()` and `authState()` are that caller's,
+and its `mutationOptions` send only as that caller: a write pressed before a
+switch reaches the render is refused (`kind` `"cancelled"`, `code`
+`"caller_changed"`, `mayHaveExecuted: false`) and sends nothing, so a click
+handler needs no check of its own. Their `mutationKey` ends with that caller. A
+handler that awaits `signIn()` and then calls `mutate` presses with the last
+committed render's options, and is refused if the signed-in render has not
+committed yet (one that suspends on the user's data): let the next render
+press, or make a direct call. A canister's direct calls sign as the caller
+current when they run. Canisters, `signIn`, `signOut` and the `QueryClient` are
+the client's own. It is never the provider's client object: to tell two clients
+apart, compare their `queryClient`.
+
+Do not keep what it returns past the render: a view never moves on. Kept
+anywhere else (`useState(client)`, `useRef(client)`, a `useMemo` or
+`useCallback` with `[]`, a module variable), it stays the view of the caller it
+was taken for: the component shows that caller's data, a read it starts while
+someone else is signed in is cancelled (`caller_changed`), and a write through
+it is refused. Nothing warns about it. A nested `ReactorProvider` given it
+holds the client the view was made over.
 
 ```tsx
 import { useClient } from "@ic-reactor/react"
@@ -171,9 +188,8 @@ export function Fee({ id }: { id: string }) {
 again on a sign-in, a switch of account and a sign-out, and builds the new
 caller's keys; a change of status that leaves the caller as it is (a session
 that expired, or one signed in elsewhere, both call anonymously) renders
-nothing. It returns the provider's client object itself, except while a page
-hydrates in a browser that holds a session (below). A client built with
-`identity` keeps its caller for good and is always returned as it is.
+nothing and returns the same view. A client built with `identity` keeps its
+caller for good and is always returned as it is.
 
 ## On a server
 
@@ -185,12 +201,9 @@ hydrates in a browser that holds a session (below). A client built with
   while a page hydrates, even when the browser holds a session: the server has
   none, and the HTML has to match. `useClient()` builds keys for that same
   anonymous caller there: in a browser that holds a session (an `AuthClient`
-  reads a stored one synchronously), the hydrating render gets a view of the
-  client whose `queryKey`, `queryOptions`, `caller()` and `authState()` are
-  the anonymous caller's, so the page finds what the server prefetched and
-  dehydrated, matches its HTML, and sends nothing. Canisters, writes,
-  `signIn`, `signOut` and the `QueryClient` are the client's own, and a write
-  signs as the caller current when it runs. Right after hydrating, React
+  reads a stored one synchronously), the hydrating render gets the anonymous
+  caller's view, so the page finds what the server prefetched and dehydrated,
+  matches its HTML, and sends nothing. Right after hydrating, React
   renders each component that calls `useClient()` or `useAuth()` again with
   the session, and each read loads the user's keys once: until the user's data
   arrives, a read shows its loading state, and a `useSuspenseQuery` read its
