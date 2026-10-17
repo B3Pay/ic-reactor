@@ -15,6 +15,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/core, @ic-reactor/react, @ic-reactor/vite-plugin
+
+#### Changed
+
+- **Breaking for Node below 22.12:** all three packages now declare
+  `"engines": { "node": ">=22.12.0" }`; core and react said `>=18` and the
+  Vite plugin said nothing. None of them worked on Node 18 (no global
+  `crypto` in an ES module for `createTestClient`, and a `candid-core-cli gen`
+  the plugin runs that needs a newer `readdir`), and `require()` of core and
+  react, which are ES-only, needs Node 22.12 (or 20.19, which reached end of life on
+  2026-04-30). A floor can fall in a 4.x minor but not rise, so it starts at
+  the first Node 22 that works. CI now runs the package tests and a
+  `candid-core-cli gen` on Node 22.12.0 itself. Migration: run Node 22.12 or
+  newer (#896).
+
 ### @ic-reactor/core
 
 #### Fixed
