@@ -1986,7 +1986,7 @@
     "testName": "takes the trusted cookie",
     "why": "a trusted ic_env cookie's INTERNET_IDENTITY_PROVIDER ignored, so \"env\" on a local page has no identity provider",
     "file": "src/network.ts",
-    "search": "  const authorizeUrl = cookieAuthorizeUrl(env)\n",
+    "search": "  const authorizeUrl = cookieAuthorizeUrl(env, net.envIdsOnly === true)\n",
     "replace": "  const authorizeUrl = undefined as string | undefined\n"
   },
   {
@@ -2166,7 +2166,7 @@
     "testName": "that is not an http(s) URL",
     "why": "any INTERNET_IDENTITY_PROVIDER taken from the cookie, so a javascript: URL becomes the page AuthClient opens to sign in",
     "file": "src/network.ts",
-    "search": "    return protocol === \"http:\" || protocol === \"https:\" ? value : undefined",
+    "search": "    return protocol === \"https:\" || (protocol === \"http:\" && !httpsOnly)\n      ? value\n      : undefined",
     "replace": "    return value"
   },
   {
@@ -4387,5 +4387,45 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "icp0-cookie-ids-untrusted",
+    "package": "core",
+    "test": "tests/env-canister-id.test.ts",
+    "testName": "resolves from the cookie for \"env\" and \"ic\" on",
+    "why": "a canister's own <id>.icp0.io page, a public suffix, does not believe its own asset canister's cookie, so { name } fails on icp-cli's production path",
+    "file": "src/network.ts",
+    "search": "    pageIsIcp0Canister()\n    ? { trustsEnv: true, envIdsOnly: true }",
+    "replace": "    false\n    ? { trustsEnv: true, envIdsOnly: true }"
+  },
+  {
+    "id": "icp0-cookie-root-key-taken",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "believes the cookie's ids only",
+    "why": "the cookie believed by default on an icp0.io page hands over its root key too, where the agent must keep mainnet's",
+    "file": "src/network.ts",
+    "search": "trust.trustsEnv && !trust.envIdsOnly ? cookieRootKey()",
+    "replace": "trust.trustsEnv ? cookieRootKey()"
+  },
+  {
+    "id": "icp0-cookie-http-identity-provider",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "takes an icp0.io canister's cookie provider over https: only",
+    "why": "an icp0.io page's cookie hands an http: Internet Identity URL to the auth factory",
+    "file": "src/network.ts",
+    "search": "(protocol === \"http:\" && !httpsOnly)",
+    "replace": "protocol === \"http:\""
+  },
+  {
+    "id": "icp0-label-not-a-canister",
+    "package": "core",
+    "test": "tests/env-canister-id.test.ts",
+    "testName": "is refused on a label that is not a canister id",
+    "why": "any name directly under icp0.io treated as a canister's own page, a label that is not a canister id included",
+    "file": "src/network.ts",
+    "search": "principalProblem(match[1]!) === undefined",
+    "replace": "true"
   }
 ]

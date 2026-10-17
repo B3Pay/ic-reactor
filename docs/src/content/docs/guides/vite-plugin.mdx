@@ -590,12 +590,13 @@ const backend = client.canister<Actor>(actor, { name: "backend" })
 
 On a local page the client trusts the cookie, so `{ name: "backend" }` finds the
 id that `icp deploy` gave the backend. Nothing in the code names a host, a port
-or an id. Deployed on a mainnet domain, `"env"` still sends through the page's
-origin, but the client no longer believes the cookie, so a `{ name }` target
-does not resolve there: give the canister an `{ id }`, or write
-`allowEnvConfig: true` when every subdomain of the page's domain is trusted.
-See [The client](/v4/guides/client/#the-ic_env-cookie) for when the cookie is
-trusted. The [Vite wallet example](/v4/examples/vite-wallet/) is built this way
+or an id. Deployed with `icp deploy -e ic`, `"env"` still sends through the
+page's origin on `<id>.icp0.io`, where the client believes the asset
+canister's cookie for canister ids, so `{ name }` resolves. On `<id>.ic0.app`
+and on a custom domain it does not: give the canister an `{ id }` baked in at
+build time. See
+[Deploy to mainnet](/v4/guides/client/#deploy-to-mainnet) for each domain and
+for when `allowEnvConfig: true` is safe. The [Vite wallet example](/v4/examples/vite-wallet/) is built this way
 for a local network.
 
 ## Tests
