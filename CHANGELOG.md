@@ -64,9 +64,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   new sender, when a write is refused because the caller changed before the
   page caught up (#894).
 - An outcome stays on screen across an account switch: `canister-studio`'s
-  write runner and wallet Send panel, and `icrc-ledger`'s Sandbox transfer,
-  keep the outcome of the write they sent in their own state, since the
-  mutation the new caller's render shows starts over idle (#894).
+  write runner and wallet Send panel, `icrc-ledger`'s Sandbox transfer, and
+  `vite-wallet`'s Send and Pay forms (through one `useTransfer` hook), keep
+  the outcome of the write they sent in their own state, since the mutation
+  the new caller's render shows starts over idle; `vite-wallet` reads
+  `client.resendOf`'s offer from that kept outcome (#894).
 
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the
   server, that gives every method of any mainnet canister an automatic form
