@@ -23,9 +23,65 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   (ICRC-25 and ICRC-49: OISY, Plug, NFID accounts) does not. The auth page
   shows such a wallet's writes through `SignerAgent` beside an anonymous
   client, with the reads invalidated by hand (#904).
+- The client guide has a section for a local network without the Vite plugin
+  (Next.js, Rsbuild, webpack, esbuild): `network: "local"` with `{ id }` from
+  a build-time variable written by `icp canister status -e local -i`, or a
+  Next.js rewrite of `/api/v2` and `/api/v3` to keep `"env"`. Core's guide
+  states the rule in a few lines (#906).
+- Getting started has a step 0 that creates the project (Vite's `react-ts`
+  template, or `npm init -y` and `npm pkg set type=module` for Node), so its
+  top-level `await` scripts run under `npx tsx` on the first try. It, core's
+  package page and core's guide now say that core and react are ES modules
+  only and what CommonJS code can do, and show the `.js` import form
+  `moduleResolution: "nodenext"` needs (#907).
+
+### @ic-reactor/core, @ic-reactor/react, @ic-reactor/vite-plugin
+
+#### Changed
+
+- **Breaking for Node below 22.12:** all three packages now declare
+  `"engines": { "node": ">=22.12.0" }`; core and react said `>=18` and the
+  Vite plugin said nothing. None of them worked on Node 18 (no global
+  `crypto` in an ES module for `createTestClient`, and a `candid-core-cli gen`
+  the plugin runs that needs a newer `readdir`), and `require()` of core and
+  react, which are ES-only, needs Node 22.12 (or 20.19, which reached end of life on
+  2026-04-30). A floor can fall in a 4.x minor but not rise, so it starts at
+  the first Node 22 that works. CI now runs the package tests and a
+  `candid-core-cli gen` on Node 22.12.0 itself. Migration: run Node 22.12 or
+  newer (#896).
+
+### @ic-reactor/core
+
+#### Fixed
+
+- The tarball now ships the MIT `LICENSE` the manifest names; the repository
+  has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
+  has none or one that is not a copy of the root file (#898).
+
+### @ic-reactor/react
+
+#### Fixed
+
+- The tarball now ships the MIT `LICENSE` the manifest names; the repository
+  has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
+  has none or one that is not a copy of the root file (#898).
+
+### @ic-reactor/vite-plugin
+
+#### Fixed
+
+- The tarball now ships the MIT `LICENSE` the manifest names; the repository
+  has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
+  has none or one that is not a copy of the root file (#898).
 
 ### Examples (not published)
 
+- `node-agent-tool` no longer tells you to export an identity's key into the
+  project. Its README and docs page say to give the tool, and an agent running
+  it, an identity of its own that controls nothing, with its key outside the
+  project and readable by you alone, and that the agent can read the seed
+  variable.
+  The example's `.gitignore` and the root one now ignore `*.pem` (#910).
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the
   server, that gives every method of any mainnet canister an automatic form
   and calls it with ic-reactor's rules in view. The ICP, ckBTC and ckETH
