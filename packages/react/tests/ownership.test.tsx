@@ -84,6 +84,7 @@ describe("a client created before the provider's factory ran", () => {
       expect(client.authState()).toEqual({
         status: "signed-in",
         principal: alice,
+        expiresAt: (auth.getStatus() as { expiresAtMs: number }).expiresAtMs,
       })
       seen.push(alice)
       // A call still goes out, as the signed-in user.

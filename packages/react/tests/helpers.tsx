@@ -197,6 +197,34 @@ export function clientWithCanister(
   return { client: test.client, auth: test.auth, callers }
 }
 
+/** What the tests use of core's internal fake replica. */
+interface FakeReplicaModule {
+  createFakeReplica(options: {
+    canisters: Record<string, { query?: (method: string) => Uint8Array }>
+  }): {
+    readonly host: string
+    readonly rootKey: Uint8Array
+    readonly fetch: typeof globalThis.fetch
+  }
+}
+
+/**
+ * Core's internal fake replica running `canisters`, for a client the test
+ * builds with `createClient` itself (one whose auth factory throws). The
+ * testing entry exports only `createTestClient`, so it is read from
+ * `testing/fake-replica.js` beside the entry, as {@link callPathOf} reads
+ * `client.js`.
+ */
+export async function fakeReplica(
+  canisters: Record<string, { query?: (method: string) => Uint8Array }>
+) {
+  const entry = createRequire(import.meta.url).resolve("@ic-reactor/core")
+  const internal = (await import(
+    new URL("testing/fake-replica.js", pathToFileURL(entry)).href
+  )) as FakeReplicaModule
+  return internal.createFakeReplica({ canisters })
+}
+
 /** What {@link callThrough} uses of core's internal `internalsOf`. */
 interface CallPath {
   agentFor(
