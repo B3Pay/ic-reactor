@@ -256,7 +256,8 @@ the HTML has to match, so the hydrating render shows the anonymous caller:
   and `authState()` are the anonymous caller's, so the page finds what the
   server dehydrated and matches the server's HTML. The canisters,
   `mutationOptions`, `signIn`, `signOut` and the `QueryClient` are the
-  client's own, and a write signs as the caller current when it runs.
+  client's own, and a write signs as the caller current when `mutate()` is
+  called.
 - Nothing is sent during the hydrating render.
 
 Right after hydrating, React renders each component that calls `useClient()`
