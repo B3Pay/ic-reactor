@@ -66,6 +66,20 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   canisters with `{ id }` (build-time env) and a replica that is not mainnet
   with `{ host, rootKey }`; on mainnet, drop any reliance on a cookie root
   key; serve a deployed Internet Identity URL over `https:`.
+- A view of a client pinned to a principal (what `useClient()` returns)
+  writes only as that principal: its `mutationOptions` reject `cancelled`
+  (`caller_changed`, `mayHaveExecuted: false`) and send nothing while someone
+  else is the caller. Their `mutationKey` ends with the principal
+  (`[..., method, caller]`, still found by a filter on the shorter key), so
+  TanStack never hands a run pressed before a switch the later render's
+  options, on any version and with any `QueryClient`; after a switch the
+  mutation a component shows starts over, idle, and the stale run reports its
+  refusal to the options it was pressed with. An app that shows an outcome
+  across a switch (an unknown one, to read back as its sender) keeps it in
+  its own state, from the promise `mutateAsync` returns. Its `authState()` is the client's own
+  while its principal is the live caller, so an expired session reads as
+  expired (#894). The client's own `mutationOptions`, a canister's direct
+  calls and `func` still sign as the caller current when they run.
 
 #### Fixed
 
@@ -310,6 +324,25 @@ method, vars)` for a method named by data), the variables of
 
 ### @ic-reactor/react
 
+#### Changed
+
+- **BREAKING:** `useClient()` returns a view of the client for the caller
+  the render shows every time, not the provider's client object once the
+  live caller renders (#894). The view is a new object after a sign-in, a
+  switch or a sign-out and the same one across renders for one caller, so a
+  `useMemo`, an effect or React Compiler's cache keyed on it builds the new
+  caller's options, where they kept the previous caller's key (and showed
+  that caller's data) before. A write built from it is refused rather than
+  signed by a caller the render did not show. Migration: build options from
+  the current `useClient()` value and list it in the dependencies; compare
+  two clients by `client.queryClient`, not by identity; read who signs now
+  from the client you created, since the view's `caller()` is its render's.
+  A handler that does `await client.signIn()` and then `mutation.mutate(arg)`
+  presses with the last committed render's options: it is refused
+  (`caller_changed`) when the signed-in render has not committed yet (one
+  that suspends on the user's data); let the next render press, or use a
+  direct canister call, which signs as the caller current.
+
 #### Fixed
 
 - In development, `ReactorProvider` throws when the client's `QueryClient`
@@ -350,6 +383,18 @@ method, vars)` for a method named by data), the variables of
 
 ### Examples (not published)
 
+- `icrc-ledger`'s Sandbox tab finds its sandbox by the client's
+  `QueryClient`, and reads who signs now from the sandbox's client, since
+  `useClient()` returns a view per caller (#894).
+- `canister-studio`'s write runner shows the confirm step again, with the
+  new sender, when a write is refused because the caller changed before the
+  page caught up (#894).
+- An outcome stays on screen across an account switch: `canister-studio`'s
+  write runner and wallet Send panel, `icrc-ledger`'s Sandbox transfer, and
+  `vite-wallet`'s Send and Pay forms (through one `useTransfer` hook), keep
+  the outcome of the write they sent in their own state, since the mutation
+  the new caller's render shows starts over idle; `vite-wallet` reads
+  `client.resendOf`'s offer from that kept outcome (#894).
 - `node-agent-tool` no longer tells you to export an identity's key into the
   project. Its README and docs page say to give the tool, and an agent running
   it, an identity of its own that controls nothing, with its key outside the

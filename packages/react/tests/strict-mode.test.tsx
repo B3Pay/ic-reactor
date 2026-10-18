@@ -10,6 +10,7 @@ import { StrictMode, type ComponentType, type ReactNode } from "react"
 import { describe, expect, it } from "vitest"
 import { ReactorProvider, useAuth, useClient } from "../src/index.js"
 import {
+  clientOf,
   clientWithAuth,
   macrotask,
   type TestAuth,
@@ -42,7 +43,8 @@ function setup() {
   const currentAuth = () => auths[auths.length - 1] as TestAuth
   const live: { client?: Client } = {}
   function Probe() {
-    live.client = useClient()
+    // The provider's client, which useClient() returns a view of.
+    live.client = clientOf(useClient())
     const { status } = useAuth()
     return <p data-testid="status">{status}</p>
   }

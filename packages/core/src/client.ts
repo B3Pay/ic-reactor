@@ -30,7 +30,7 @@ import {
 } from "@icp-sdk/core/agent"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
 import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
-import { createReactorError, retryDefault } from "./errors.js"
+import { createReactorError, fromCanister, retryDefault } from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
 import {
@@ -42,7 +42,7 @@ import {
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
-import { readTarget } from "./canister.js"
+import { readTarget, recordOf } from "./canister.js"
 import { createBuilders } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
 import type {
@@ -552,9 +552,12 @@ export interface Client {
    * client's own `queryClient` reads each run's caller in its
    * `MutationCache`, so this holds with an `onMutate` of the app's that
    * replaces this one; the JSDoc of the returned `mutationFn` covers a run on
-   * another `QueryClient`. An update
-   * by a caller who is not signed in rejects `unauthenticated` before
-   * anything is sent. `retry` is `false`: an update
+   * another `QueryClient`. The options of a view (what `useClient()` returns)
+   * also call only as the view's principal, and end their `mutationKey` with
+   * it: while someone else is current their mutation function rejects
+   * `cancelled` the same way. An update by a caller who is not signed in
+   * rejects `unauthenticated` before anything is sent. `retry` is `false`: an
+   * update
    * re-sends itself only when the failure proves the first attempt never got
    * in (see {@link Canister}), and a TanStack retry would re-send after
    * failures that do not prove it, running the write twice.
@@ -638,8 +641,8 @@ export interface Client {
    *   sign-in as another principal, nothing is offered: the same argument
    *   from another sender is a new write. Signing in again as the sender
    *   offers it again. A view of the client pinned to a principal (what
-   *   `useClient()` returns while a page hydrates) answers for the live
-   *   caller, whom a write goes out as.
+   *   `useClient()` returns) answers for the live caller, whom a write goes
+   *   out as.
    *
    * The offer goes out only as the same write. `send()` sends the bytes the
    * attempt sent, to the canister id it went to. `mutate(arg)`, on the
@@ -1057,12 +1060,12 @@ function warnEnvOffPage(network: Network): void {
  * - `ic-reactor.client.disposed`, on each client: a getter, `true` once
  *   `dispose()` has run.
  * - `ic-reactor.client.as`, on each client: a method that `useClient()`
- *   calls with the client as `this` and the principal (text) a render shows,
- *   when that principal is not the client's live caller: the server's
- *   anonymous one while a page hydrates in a browser that holds a session.
- *   It returns a frozen view of `this` for that principal (see `viewAs` in
- *   {@link createClientWith}), or `this` itself for a client built with
- *   `identity`, whose caller never changes.
+ *   calls with the client as `this` and the principal (text) a render
+ *   shows: the live caller's, or the server's anonymous one while a page
+ *   hydrates in a browser that holds a session. It returns a frozen view of
+ *   `this` for that principal (see `viewAs` in {@link createClientWith}),
+ *   the same one for the same principal while it is kept, or `this` itself
+ *   for a client built with `identity`, whose caller never changes.
  * - `ic-reactor.client.of`, on each view: the object the view was made over.
  *   The provider holds that object, never a view, when its factory returns
  *   one (a component's `useClient()` handed to a nested provider): a view
@@ -1572,19 +1575,30 @@ export function createClientWith(
 
   /**
    * A view of `this` (the client, or an object over it) for a render that
-   * shows `principal` while the live caller may be someone else: the server's
-   * anonymous caller while a page hydrates in a browser that holds a session.
+   * shows `principal`: the live caller, or someone else while the live caller
+   * moved on, such as the server's anonymous caller while a page hydrates in
+   * a browser that holds a session. `useClient()` returns one on every
+   * render, so that the object a component memoizes on changes exactly when
+   * the caller it renders does (a sign-in, a switch, a sign-out).
    *
    * Its `queryKey` and `queryOptions` build for `principal`, so they find
    * what a server prefetched as that caller and render the markup the server
-   * wrote; `caller()` and `authState()` say who that is. The read options are
+   * wrote; `caller()` and `authState()` say who that is (`authState()` is the
+   * client's own state while `principal` is the live caller, so an expired
+   * session reads as expired; otherwise `"anonymous"` for the anonymous
+   * principal and `"signed-in"` for any other). The read options are
    * the client's own but for the key: a read they build asks `agentFor` for
    * `principal`'s agent, so while someone else is current it is cancelled
-   * (`caller_changed`) and never sent. Every other member is `this`'s own:
-   * canisters (made for this client, so either one accepts them),
-   * `mutationOptions`, direct calls and `func`, which sign as the caller
-   * current when they run, the `QueryClient`, `subscribe`, `signIn`,
-   * `signOut` and `dispose`.
+   * (`caller_changed`) and never sent. Its `mutationOptions` are the
+   * client's own but for the `mutationKey`, which ends with `principal`, and
+   * the mutation function, which sends only as `principal`: while someone
+   * else is current it rejects `cancelled` (`caller_changed`,
+   * `mayHaveExecuted: false`) and sends nothing, so a write from a render
+   * that a switch has not reached yet never goes out as the new caller. Every other member is `this`'s own: canisters (made for
+   * this client, so either one accepts them) and their direct calls,
+   * `resendOf`'s `send` and `func`, which sign as the caller current when
+   * they run, the `QueryClient`, `subscribe`, `signIn`, `signOut` and
+   * `dispose`.
    *
    * One view per object and principal, so that a component's dependencies are
    * the same from one render to the next. Only the anonymous view and the
@@ -1628,12 +1642,83 @@ export function createClientWith(
         () => caller,
         refusals
       )
+      const own = base.mutationOptions as unknown as (
+        canister: unknown,
+        method: unknown,
+        options?: unknown
+      ) => {
+        mutationKey: readonly unknown[]
+        mutationFn: (vars: unknown, context?: unknown) => Promise<unknown>
+      }
+      // The client's options, whose checks run as they are built, with a
+      // mutation function that sends as `principal` or not at all. The check
+      // and the client's own function, which reads the caller it signs as,
+      // run in one synchronous step; `agentFor` checks again before sending.
+      //
+      // The key ends with `principal`. TanStack hands a pending run the
+      // options of a later render only when their `mutationKey` is the same;
+      // with another one it detaches the observer and the run keeps the
+      // options it was pressed with. So a press handled before a switch
+      // reached its render is checked against its own principal, and refused,
+      // on every TanStack version and whatever the QueryClient.
+      const mutationOptions = (
+        canister: unknown,
+        method: unknown,
+        options?: unknown
+      ) => {
+        const built = own(canister, method, options)
+        const mutationFn = async function (
+          this: unknown,
+          vars: unknown,
+          context?: unknown
+        ) {
+          const now = current().principal
+          if (now !== principal) {
+            const target = recordOf(
+              canister,
+              internals,
+              "client.mutationOptions()"
+            ).resolve()
+            // Marked with the canister, as a call's error is, so that
+            // `isReactorError(error, canister, method)` matches it.
+            throw fromCanister(
+              createReactorError("cancelled", {
+                method: String(method),
+                canisterId: target.ok ? target.id : target.slot,
+                code: "caller_changed",
+                reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
+              }),
+              canister as object
+            )
+          }
+          // `this` is the options TanStack called it on, by which the
+          // client's function finds the caller of a run with no context.
+          return built.mutationFn.call(this, vars, context)
+        }
+        // The client's `MutationCache` reads the caller of a run of this
+        // function too, as it does for the client's own.
+        ownMutationFns.add(mutationFn)
+        return {
+          ...built,
+          mutationKey: [...built.mutationKey, principal] as const,
+          mutationFn,
+        }
+      }
       view = Object.freeze(
         Object.create(base, {
           caller: { value: () => principal },
-          authState: { value: () => state },
+          // The live state while `principal` is the live caller, so that a
+          // view of the caller signed in now says what the client says (an
+          // expired session included, which calls as the anonymous one).
+          authState: {
+            value: () => {
+              const live = refresh()
+              return live.principal === principal ? live : state
+            },
+          },
           queryKey: { value: queryKey },
           queryOptions: { value: queryOptions },
+          mutationOptions: { value: mutationOptions },
           [CLIENT_OF]: { value: base },
         }) as Client
       )

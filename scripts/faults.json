@@ -1305,30 +1305,6 @@
     "replace": "        authenticated: true,\n"
   },
   {
-    "id": "ir6b-view-writes-as-pinned-caller",
-    "package": "core",
-    "test": "tests/client-pinned.test.ts",
-    "testName": "writes as the caller current when the write runs",
-    "why": "a view's mutationOptions sign as the principal it is pinned to, so a write made from a hydrating render is refused or sent as the wrong principal",
-    "edits": [
-      {
-        "file": "src/options.ts",
-        "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
-        "replace": "      const caller = again?.caller ?? current()"
-      },
-      {
-        "file": "src/client.ts",
-        "search": "      const { queryKey, queryOptions } = createBuilders(",
-        "replace": "      const { queryKey, queryOptions, mutationOptions } = createBuilders("
-      },
-      {
-        "file": "src/client.ts",
-        "search": "          queryOptions: { value: queryOptions },\n",
-        "replace": "          queryOptions: { value: queryOptions },\n          mutationOptions: { value: mutationOptions },\n"
-      }
-    ]
-  },
-  {
     "id": "ir6b-view-options-held",
     "package": "core",
     "test": "tests/client-pinned.test.ts",
@@ -1375,7 +1351,7 @@
     "testName": "renders the server's keys, sends nothing during hydration",
     "why": "useClient() returns the client whatever caller the render shows, so a page hydrating with a stored session builds the user's keys: React reports a mismatch and the prefetched read is sent again",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1385,7 +1361,7 @@
     "testName": "hydrates a late boundary below no component that renders with the caller",
     "why": "useClient() returns the client whatever caller the render shows, so a boundary that hydrates after the root moved on to the session misses the server's data",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1395,7 +1371,7 @@
     "testName": "hydrates a component that renders the fetch state of a stale read the server prefetched",
     "why": "useClient() returns the client whatever caller the render shows, so a component that renders a prefetched read's fetch state hydrates another markup than the server's",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1405,7 +1381,7 @@
     "testName": "is cancelled when an effect of the hydrating render runs it",
     "why": "useClient() returns the client whatever caller the render shows, so an effect of the hydrating render fetches the user's key instead of the server's",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1415,7 +1391,7 @@
     "testName": "is never shown as an error by a component that hydrated",
     "why": "useClient() returns the client whatever caller the render shows, so a suspense reader hydrating with a stored session renders the user's answer over the server's HTML",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1432,20 +1408,20 @@
     "id": "ir6b-useclient-always-a-view",
     "package": "react",
     "test": "tests/caller-keys.test.tsx",
-    "testName": "returns the provider's client object itself once the caller React renders is the live one",
-    "why": "useClient() returns a view in the steady state too, so the object a component gets is not the provider's client",
+    "testName": "returns one object per caller",
+    "why": "useClient() returns the anonymous caller's view whatever caller the render shows, so a signed-in tab builds the anonymous caller's keys and its reads are cancelled",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return view\n"
   },
   {
     "id": "ir6b-hydrated-tree-keeps-the-view",
     "package": "react",
     "test": "tests/caller-keys.test.tsx",
-    "testName": "returns the client itself after a hydration",
-    "why": "useClient() keeps returning the hydrating render's view after hydration, so the steady state never gets the provider's client back",
+    "testName": "returns a view per caller after a hydration too",
+    "why": "useClient() keeps returning the hydrating render's view after hydration, so the steady state never gets the user's view",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return view\n"
   },
   {
@@ -1754,7 +1730,7 @@
     "testName": "leaves a value kept from the hydrating render (state, ref, module variable) the anonymous view for good",
     "why": "the hydrating render gets the client itself rather than the anonymous view, which changes what a value kept from that render is (documented as the anonymous view) along with the hydrating markup",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -4817,96 +4793,6 @@
     "replace": "        maxElements,"
   },
   {
-    "id": "i895-allow-env-config-string-truthy",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
-    "why": "allowEnvConfig no longer checked, so the text \"false\" is truthy and the ic_env cookie is believed on any page",
-    "file": "src/network.ts",
-    "search": "  checkBoolean(allowEnvConfig, \"allowEnvConfig\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-fetch-root-key-string-truthy",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
-    "why": "fetchRootKey no longer checked, so the text \"false\" fetches the root key from a remote host",
-    "file": "src/network.ts",
-    "search": "  checkBoolean(fetchRootKey, \"fetchRootKey\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-network-object-unknown-key-ignored",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses an option it does not have, in the options or a network object",
-    "why": "a misspelt key of a network object (rootkey, fetchRootkey) ignored instead of refused",
-    "file": "src/network.ts",
-    "search": "  checkKeys(network, NETWORK_KEYS, \"a network object\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-create-client-unknown-option-ignored",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses an option it does not have, in the options or a network object",
-    "why": "an option createClient does not have (host beside network, allowEnvconfig) ignored instead of refused",
-    "file": "src/client.ts",
-    "search": "  checkKeys(options, OPTION_NAMES, \"createClient()\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-root-key-not-checked",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
-    "why": "a rootKey given as hex text, or of the wrong length, accepted, so every query fails and every update ends outcome_unknown",
-    "file": "src/network.ts",
-    "search": "    rootKey !== undefined &&\n    !(rootKey instanceof Uint8Array",
-    "replace": "    false &&\n    !(rootKey instanceof Uint8Array"
-  },
-  {
-    "id": "i895-fetch-not-checked",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
-    "why": "a fetch that is not a function accepted when the client is built, failing only at the first call",
-    "file": "src/client.ts",
-    "search": "  if (fetch !== undefined && typeof fetch !== \"function\") {",
-    "replace": "  if (false) {"
-  },
-  {
-    "id": "i895-units-unknown-option-ignored",
-    "package": "core",
-    "test": "tests/units.test.ts",
-    "testName": "refuses an option it does not have, such as Intl's spelling",
-    "why": "formatUnits ignores maximumFractionDigits (Intl's spelling) and shows every digit",
-    "file": "src/units.ts",
-    "search": "  if (options === undefined) return\n",
-    "replace": "  return\n"
-  },
-  {
-    "id": "i895-parse-units-signed-not-boolean",
-    "package": "core",
-    "test": "tests/units.test.ts",
-    "testName": "takes signed only as a boolean, and options with no other key",
-    "why": "parseUnits takes a signed that is not a boolean, such as the text \"false\", without a word",
-    "file": "src/units.ts",
-    "search": "  checkBoolean(signed, \"parseUnits: signed\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-test-client-signed-in-string",
-    "package": "core",
-    "test": "tests/testing-test-client.test.ts",
-    "testName": "a boolean option that is not a boolean, and a network createClient would refuse",
-    "why": "createTestClient({ signedIn: \"false\" }) starts signed in",
-    "file": "src/testing/test-client.ts",
-    "search": "  checkBoolean(signedIn, \"createTestClient(): signedIn\")\n",
-    "replace": ""
-  },
-  {
     "id": "875-timeout-never-fires",
     "package": "core",
     "test": "tests/canister.test.ts",
@@ -5157,6 +5043,196 @@
     "replace": ""
   },
   {
+    "id": "qc-rest-query-not-retried",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "tries an app's REST query again in a browser page, as TanStack does, up to 3 times",
+    "why": "the client's default retry refuses every error that is not a ReactorError, so an app's REST query on the client's QueryClient loses TanStack's retries",
+    "file": "src/errors.ts",
+    "search": "  return !isServer() && failureCount < 3\n",
+    "replace": "  return false\n"
+  },
+  {
+    "id": "qc-write-invalidates-own-query-client-only",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the reads on the QueryClient the mutation ran on, and on the client's own",
+    "why": "a write invalidates only the client's own QueryClient, so the reads of an app's nested QueryClientProvider, where the mutation ran, are never refreshed",
+    "file": "src/options.ts",
+    "search": "ran !== undefined && ran !== own ? [own, ran] : [own]",
+    "replace": "[own]"
+  },
+  {
+    "id": "i895-allow-env-config-string-truthy",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
+    "why": "allowEnvConfig no longer checked, so the text \"false\" is truthy and the ic_env cookie is believed on any page",
+    "file": "src/network.ts",
+    "search": "  checkBoolean(allowEnvConfig, \"allowEnvConfig\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-fetch-root-key-string-truthy",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
+    "why": "fetchRootKey no longer checked, so the text \"false\" fetches the root key from a remote host",
+    "file": "src/network.ts",
+    "search": "  checkBoolean(fetchRootKey, \"fetchRootKey\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-network-object-unknown-key-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses an option it does not have, in the options or a network object",
+    "why": "a misspelt key of a network object (rootkey, fetchRootkey) ignored instead of refused",
+    "file": "src/network.ts",
+    "search": "  checkKeys(network, NETWORK_KEYS, \"a network object\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-create-client-unknown-option-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses an option it does not have, in the options or a network object",
+    "why": "an option createClient does not have (host beside network, allowEnvconfig) ignored instead of refused",
+    "file": "src/client.ts",
+    "search": "  checkKeys(options, OPTION_NAMES, \"createClient()\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-root-key-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
+    "why": "a rootKey given as hex text, or of the wrong length, accepted, so every query fails and every update ends outcome_unknown",
+    "file": "src/network.ts",
+    "search": "    rootKey !== undefined &&\n    !(rootKey instanceof Uint8Array",
+    "replace": "    false &&\n    !(rootKey instanceof Uint8Array"
+  },
+  {
+    "id": "i895-fetch-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
+    "why": "a fetch that is not a function accepted when the client is built, failing only at the first call",
+    "file": "src/client.ts",
+    "search": "  if (fetch !== undefined && typeof fetch !== \"function\") {",
+    "replace": "  if (false) {"
+  },
+  {
+    "id": "i895-units-unknown-option-ignored",
+    "package": "core",
+    "test": "tests/units.test.ts",
+    "testName": "refuses an option it does not have, such as Intl's spelling",
+    "why": "formatUnits ignores maximumFractionDigits (Intl's spelling) and shows every digit",
+    "file": "src/units.ts",
+    "search": "  if (options === undefined) return\n",
+    "replace": "  return\n"
+  },
+  {
+    "id": "i895-parse-units-signed-not-boolean",
+    "package": "core",
+    "test": "tests/units.test.ts",
+    "testName": "takes signed only as a boolean, and options with no other key",
+    "why": "parseUnits takes a signed that is not a boolean, such as the text \"false\", without a word",
+    "file": "src/units.ts",
+    "search": "  checkBoolean(signed, \"parseUnits: signed\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-test-client-signed-in-string",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "a boolean option that is not a boolean, and a network createClient would refuse",
+    "why": "createTestClient({ signedIn: \"false\" }) starts signed in",
+    "file": "src/testing/test-client.ts",
+    "search": "  checkBoolean(signedIn, \"createTestClient(): signedIn\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i894-view-writes-as-live-caller",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "writes only as its principal",
+    "why": "a view's mutationOptions are the client's own, so a write from a render that a switch has not reached yet is signed by the new caller",
+    "file": "src/client.ts",
+    "search": "          mutationOptions: { value: mutationOptions },\n",
+    "replace": ""
+  },
+  {
+    "id": "i894-useclient-client-for-live-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "rebuilds what a component memoizes on the client after a switch",
+    "why": "useClient() returns the provider's client object for every live caller, so a useMemo, an effect or React Compiler's cache keyed on it keeps the previous caller's options and shows that caller's data after a switch",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-useclient-same-object-every-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "returns one object per caller",
+    "why": "useClient() returns the provider's client object for every live caller, so its identity does not change on a sign-in, a switch or a sign-out",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-view-run-takes-later-options",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "keeps a write pressed as one caller refused after a switch",
+    "why": "the key of a view's write leaves out its principal, so TanStack hands a run pressed before a switch the later render's options, and it is signed by the new caller",
+    "file": "src/client.ts",
+    "search": "          mutationKey: [...built.mutationKey, principal] as const,\n",
+    "replace": ""
+  },
+  {
+    "id": "i894-view-state-not-live",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "says the client's own state while its principal is the live caller",
+    "why": "the live caller's view reports the state it was made with, so useClient().authState() says anonymous for an expired session and is another object than the client's",
+    "file": "src/client.ts",
+    "search": "              return live.principal === principal ? live : state\n",
+    "replace": "              return state\n"
+  },
+  {
+    "id": "i894-useclient-batch-press-signed-by-new-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "refuses a write pressed in the batch of a switch",
+    "why": "useClient() returns the provider's client for the live caller, so a press handled before a switch reached the render is signed by the new caller",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-useclient-signin-then-mutate-unpinned",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "decides a write pressed right after awaiting a sign-in by whether the signed-in render suspends",
+    "why": "useClient() returns the provider's client for the live caller, so a write pressed with the options of a render from before the sign-in is signed by the user that render never showed",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "894-view-write-refusal-unmarked",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
+    "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
+    "file": "src/client.ts",
+    "search": "// `isReactorError(error, canister, method)` matches it.\n            throw fromCanister(",
+    "replace": "// `isReactorError(error, canister, method)` matches it.\n            throw ((error: unknown, _canister: object) => error)("
+  },
+  {
     "id": "893-write-caller-read-when-sent-offline",
     "package": "core",
     "test": "tests/options.test.ts",
@@ -5315,24 +5391,14 @@
     "replace": "        if (false) {"
   },
   {
-    "id": "qc-rest-query-not-retried",
+    "id": "894-view-write-caller-unread",
     "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "tries an app's REST query again in a browser page, as TanStack does, up to 3 times",
-    "why": "the client's default retry refuses every error that is not a ReactorError, so an app's REST query on the client's QueryClient loses TanStack's retries",
-    "file": "src/errors.ts",
-    "search": "  return !isServer() && failureCount < 3\n",
-    "replace": "  return false\n"
-  },
-  {
-    "id": "qc-write-invalidates-own-query-client-only",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "invalidates the reads on the QueryClient the mutation ran on, and on the client's own",
-    "why": "a write invalidates only the client's own QueryClient, so the reads of an app's nested QueryClientProvider, where the mutation ran, are never refreshed",
-    "file": "src/options.ts",
-    "search": "ran !== undefined && ran !== own ? [own, ran] : [own]",
-    "replace": "[own]"
+    "test": "tests/client-pinned.test.ts",
+    "testName": "sends a view's write as its caller when an onMutate of the app's replaces the given one",
+    "why": "a view's mutation function is not one of the client's own, so its MutationCache reads no caller for its runs and a write whose onMutate the app replaced is refused as not known",
+    "file": "src/client.ts",
+    "search": "        ownMutationFns.add(mutationFn)\n",
+    "replace": ""
   },
   {
     "id": "env-cookie-key-on-mainnet",

@@ -487,11 +487,13 @@ all. The client keeps one agent per principal and never points an agent at
 another identity. What that means in practice:
 
 - **Components.** `useClient()` re-renders its component on a sign-in, a switch
-  of account and a sign-out, so the options it builds in that render use the
-  new caller's keys. A change of status that keeps the caller (a session that
-  expired, one signed in elsewhere) renders nothing, because both already
-  called anonymously. Call `useClient()` in the body of each component that
-  builds options, on every render.
+  of account and a sign-out, and returns a new object for the new caller, so
+  the options it builds in that render use the new caller's keys, and a
+  `useMemo` or effect that lists it in its dependencies (or React Compiler's
+  cache) builds them again. A change of status that keeps the caller (a
+  session that expired, one signed in elsewhere) renders nothing, because
+  both already called anonymously. Call `useClient()` in the body of each
+  component that builds options, on every render.
 - **Reads in flight.** A read started for the old caller is cancelled when
   someone else is current, before anything is sent. It fails with
   `kind: "cancelled"` and `code: "caller_changed"`, and it never lands in the
@@ -501,9 +503,11 @@ another identity. What that means in practice:
   called, or not at all. When TanStack Query holds it back (offline, or
   queued behind another mutation of its `scope`) and the account changes in
   between, it fails with `kind: "cancelled"`, `code: "caller_changed"` and
-  `mayHaveExecuted: false`, and nothing is sent. If nobody is signed in, the
-  client refuses it before sending: `kind: "unauthenticated"`, code
-  `anonymous_write`.
+  `mayHaveExecuted: false`, and nothing is sent. Built from a render's
+  `useClient()`, its options also send only as that render's caller: a press
+  handled before a switch reached the render is refused the same way. If
+  nobody is signed in, the client refuses it before sending:
+  `kind: "unauthenticated"`, code `anonymous_write`.
 - **Data.** After a sign-in, a sign-out or a switch, the new keys are empty
   until they load. Do not use `placeholderData: keepPreviousData` or an
   `initialData` taken from another key: it would show one principal's data to
