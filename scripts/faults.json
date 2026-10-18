@@ -475,10 +475,19 @@
     "package": "core",
     "test": "tests/canister.test.ts",
     "testName": "sends no poll for a read whose signal aborted while its call was on the way",
-    "why": "no check of the read's signal before polling, so a read whose observer went away while its call was being sent still polls read_state and resolves for nobody",
-    "file": "src/call.ts",
-    "search": "    if (signal?.aborted === true) throw abortReason(signal)",
-    "replace": ""
+    "why": "no check of the read's signal before polling, and the wait for the call not ended by it (#875), so a read whose observer went away while its call was being sent still polls read_state and resolves for nobody. Either alone stops the poll since the call's wait ends on abort, so both go back",
+    "edits": [
+      {
+        "file": "src/call.ts",
+        "search": "    if (signal?.aborted === true) throw abortReason(signal)",
+        "replace": ""
+      },
+      {
+        "file": "src/call.ts",
+        "search": "    const submitted = await untilAborted(",
+        "replace": "    const submitted = await ((sent: Promise<SubmitResponse>, _signal: unknown) => sent)("
+      }
+    ]
   },
   {
     "id": "ir2t-unresolved-name-sent",
@@ -750,8 +759,8 @@
     "testName": "while a concurrent",
     "why": "refuseNext(status, { method }) that refuses whatever request comes next, as the count form does, so a concurrent read of another method is refused in the write's place",
     "file": "src/testing/fake-replica.ts",
-    "search": "        (refusal.method === undefined || refusal.method === method) &&",
-    "replace": "        true &&"
+    "search": "      (fault.method === undefined || fault.method === method) &&",
+    "replace": "      true &&"
   },
   {
     "id": "822-refusal-ignores-canister",
@@ -760,8 +769,8 @@
     "testName": "refuses only the canister it names, mocked or not, whatever the method",
     "why": "refuseNext(status, { canister }) that refuses a request for any canister, so the ledger read is refused in the shapes canister's place",
     "file": "src/testing/fake-replica.ts",
-    "search": "        (refusal.canister === undefined || refusal.canister === canisterId)",
-    "replace": "        true"
+    "search": "      (fault.canister === undefined || fault.canister === canisterId)",
+    "replace": "      true"
   },
   {
     "id": "822-refusal-head-of-queue-only",
@@ -770,8 +779,8 @@
     "testName": "is matched in the order refusals were armed, and the count form still refuses whatever comes next",
     "why": "only the refusal armed first is looked at, as the queue of 4.0.0-beta.1 was shifted: an aimed refusal waiting for its method holds back a count armed after it, and the count form stops refusing whatever comes next",
     "file": "src/testing/fake-replica.ts",
-    "search": "    const index = refusals.findIndex(",
-    "replace": "    const index = refusals.slice(0, 1).findIndex("
+    "search": "  const index = armed.findIndex(",
+    "replace": "  const index = armed.slice(0, 1).findIndex("
   },
   {
     "id": "822-refusal-option-names-unchecked",
@@ -780,8 +789,8 @@
     "testName": "a refusal that cannot be armed",
     "why": "an option refuseNext() does not have (a misspelled `method`) accepted and ignored, so the refusal is armed for every request instead of failing at once",
     "file": "src/testing/fake-replica.ts",
-    "search": "        (key) => !(REFUSAL_OPTIONS as readonly string[]).includes(key)",
-    "replace": "        () => false"
+    "search": "    (key) => !(REFUSAL_OPTIONS as readonly string[]).includes(key)",
+    "replace": "    () => false"
   },
   {
     "id": "822-refusal-matches-read-state",
@@ -810,8 +819,8 @@
     "testName": "a refusal that cannot be armed",
     "why": "a `method` that is not a string accepted, so refuseNext(status, { method: 5 }) is armed for a method no request can name instead of failing at once",
     "file": "src/testing/fake-replica.ts",
-    "search": "      if (method !== undefined && (typeof method !== \"string\" || !method)) {",
-    "replace": "      if (method !== undefined && !method) {"
+    "search": "  if (method !== undefined && (typeof method !== \"string\" || !method)) {",
+    "replace": "  if (method !== undefined && !method) {"
   },
   {
     "id": "ir4b-fetch-stubbed-globally",
@@ -4387,5 +4396,415 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "899-reply-budget-not-raised",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "decodes a blob reply over a million bytes with the default options",
+    "why": "decodeReply keeps candid-core's 1,000,000-element budget, so a blob reply over a million bytes (an SNS wasm) rejects invalid_reply",
+    "file": "src/call.ts",
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      limits.maxElements,"
+  },
+  {
+    "id": "899-reply-budget-unbounded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "still refuses a reply whose values take no bytes past the element budget",
+    "why": "decodeReply lifts the element budget altogether, so a few-byte reply of a million skipped nulls decodes",
+    "file": "src/call.ts",
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      Number.MAX_SAFE_INTEGER,"
+  },
+  {
+    "id": "899-max-elements-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "passes maxElements on, 1,000,000 unless given, and refuses one candid-core would refuse",
+    "why": "createClient ignores the maxElements it was given",
+    "file": "src/client.ts",
+    "search": "const maxElements = options.maxElements ?? DEFAULT_MAX_ELEMENTS",
+    "replace": "const maxElements = DEFAULT_MAX_ELEMENTS"
+  },
+  {
+    "id": "899-mock-arg-budget",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "take and return a blob over a million bytes, as a wasm upload and download do",
+    "why": "a mock decodes its arguments with the default element budget, so a test of an upload over a million bytes traps",
+    "file": "src/testing/test-client.ts",
+    "search": "          maxElements + arg.length,",
+    "replace": "          maxElements,"
+  },
+  {
+    "id": "899-budget-taken-by-blob",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "gives values that take no bytes the whole budget, beside a large blob",
+    "why": "the reply budget is the larger of the byte length and maxElements rather than their sum, so a large blob uses up the budget the values beside it were promised",
+    "file": "src/call.ts",
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      Math.max(limits.maxElements, reply.length),"
+  },
+  {
+    "id": "899-mock-reply-budget",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "return as many values as the maxElements the test client was given",
+    "why": "a mock encodes its reply with candid-core's default element budget, so a test client given a larger maxElements still cannot return a reply past 1,000,000 values",
+    "file": "src/testing/test-client.ts",
+    "search": "        maxDepth,\n        maxElements: Number.MAX_SAFE_INTEGER,\n      })",
+    "replace": "        maxDepth,\n      })"
+  },
+  {
+    "id": "881-canister-id-trusts-any-cookie",
+    "package": "core",
+    "file": "src/client.ts",
+    "search": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        network\n      ),\n",
+    "replace": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        { ...network, trustsEnv: true }\n      ),\n",
+    "test": "tests/canister-id.test.ts",
+    "testName": "says untrusted_host, with the message a call on the same target rejects with",
+    "why": "client.canisterId resolving against a network that believes the cookie everywhere, so it answers with an id a call on the same target refuses to send to"
+  },
+  {
+    "id": "881-canister-id-target-unchecked",
+    "package": "core",
+    "file": "src/client.ts",
+    "search": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        network\n      ),\n",
+    "replace": "    canisterId: (target) =>\n      resolveCanisterId(\n        target,\n        network\n      ),\n",
+    "test": "tests/canister-id.test.ts",
+    "testName": "throws a TypeError for both id and name",
+    "why": "client.canisterId passing the target to the resolver unchecked, so a target client.canister() refuses gets an answer here"
+  },
+  {
+    "id": "881-canister-id-kept",
+    "package": "core",
+    "file": "src/client.ts",
+    "search": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        network\n      ),\n",
+    "replace": "    canisterId: (() => {\n      const kept = new Map<string, ReturnType<Client[\"canisterId\"]>>()\n      return (target: CanisterTarget) => {\n        const key = JSON.stringify(target)\n        let answer = kept.get(key)\n        if (answer === undefined) {\n          answer = resolveCanisterId(\n            readTarget(target, \"client.canisterId()\").target,\n            network\n          )\n          kept.set(key, answer)\n        }\n        return answer\n      }\n    })(),\n",
+    "test": "tests/canister-id.test.ts",
+    "testName": "reads the cookie again on each call, so a new id is seen at once",
+    "why": "client.canisterId keeping its first answer per target, so after the dev server sends new ids it keeps naming the old canister while calls go to the new one"
+  },
+  {
+    "id": "877-encode-own-arity",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "gives the bytes the replica receives",
+    "why": "client.encode() wraps the variables in a list of its own instead of the call's arity rule, so a call of no or several arguments sends other bytes",
+    "file": "src/options.ts",
+    "search": "    const prepared = methodOf(record, method, call)\n    const encoded = encodeArgs(prepared.args, valuesOf(prepared, vars))\n    if (!encoded.ok) {\n      // Marked",
+    "replace": "    const prepared = methodOf(record, method, call)\n    const encoded = encodeArgs(prepared.args, [vars])\n    if (!encoded.ok) {\n      // Marked"
+  },
+  {
+    "id": "877-encode-error-unmarked",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "throws the invalid_args a call rejects with",
+    "why": "the invalid_args of client.encode() is not marked with its canister, so isReactorError(error, canister, method) is false for it",
+    "file": "src/options.ts",
+    "search": "      throw fromCanister(\n        notEncoded(\n          { method: prepared.name, canisterId: slotOf(record.resolve()) },\n          encoded\n        ),\n        canister as object\n      )",
+    "replace": "      throw notEncoded(\n        { method: prepared.name, canisterId: slotOf(record.resolve()) },\n        encoded\n      )"
+  },
+  {
+    "id": "877-resend-bytes-shared",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "is what the lost attempt sent",
+    "why": "Resend.bytes hands out the attempt's own bytes, so changing them changes what send() sends",
+    "file": "src/options.ts",
+    "search": "        return sent.slice()",
+    "replace": "        return sent"
+  },
+  {
+    "id": "877-encode-error-names-no-canister",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "throws the invalid_args a call rejects with",
+    "why": "the invalid_args of client.encode() names no canister, unlike a call's",
+    "file": "src/options.ts",
+    "search": "{ method: prepared.name, canisterId: slotOf(record.resolve()) },\n          encoded\n        ),",
+    "replace": "{ method: prepared.name, canisterId: \"\" },\n          encoded\n        ),"
+  },
+  {
+    "id": "878-expiry-lost-call-request",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "for a call request lost in transport",
+    "why": "the ingress expiry of a call request is not read as the agent builds it, so a write whose call request was lost carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    recordExpiry(write.sent, body.ingress_expiry)\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-accepted-call",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "when the call was accepted but its polls never answered",
+    "why": "a write's call requests are not watched, so a write whose polls never answered carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    signing.set(call.arg, { sent, signal: call.signal })\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-shared-arg",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "two sends of one resendOf offer are lost at once",
+    "why": "invocations that share one encoded argument share its watch entry, so concurrent sends of one resendOf offer record into the last one's expiry and the first error carries none",
+    "file": "src/call.ts",
+    "search": "    arg: encoded.bytes.slice(),\n",
+    "replace": "    arg: encoded.bytes,\n"
+  },
+  {
+    "id": "878-expiry-cancelled-wait",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "whose wait was cancelled before its answer",
+    "why": "the ingress expiry is read only once the agent answers, so a write cancelled while its answer was awaited carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    recordExpiry(write.sent, body.ingress_expiry)\n",
+    "replace": "    if (!write.signal) recordExpiry(write.sent, body.ingress_expiry)\n"
+  },
+  {
+    "id": "878-expiry-sent-after-cancel",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "sends no call request once the signal aborted before it was signed",
+    "why": "a call request whose signal aborted before it was signed is still sent, after the error that names no expiry for it",
+    "file": "src/call.ts",
+    "search": "    if (write.signal?.aborted) throw abortReason(write.signal)\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-on-answered-write",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "is absent on an answered write",
+    "why": "expiresAt put on every write error, an answered canister_err included, where the read-back is already conclusive",
+    "file": "src/errors.ts",
+    "search": "    error.mayHaveExecuted &&\n    (error.kind === \"outcome_unknown\" || error.kind === \"cancelled\")",
+    "replace": "    true"
+  },
+  {
+    "id": "876-time-from-host-clock",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "resolves the time the replica certifies",
+    "why": "client.time() answers the host's clock instead of the certified time",
+    "file": "src/options.ts",
+    "search": "      return readLeb128(raw)",
+    "replace": "      return BigInt(Date.now()) * 1_000_000n"
+  },
+  {
+    "id": "876-time-failure-unclassified",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "rejects not_delivered for a certificate that does not verify",
+    "why": "a certificate that does not verify rejects with the agent's error instead of not_delivered",
+    "file": "src/options.ts",
+    "search": "      throw classifyError(error, { ...where, mode: \"query\" })",
+    "replace": "      throw error"
+  },
+  {
+    "id": "876-time-checked-against-host-clock",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "resolves the time the replica certifies",
+    "why": "the certificate's age checked against the host's clock, so a host clock off by years makes the agent re-sync before the time is read",
+    "file": "src/options.ts",
+    "search": "{ paths: [TIME_PATH], disableTimeVerification: true }",
+    "replace": "{ paths: [TIME_PATH] }"
+  },
+  {
+    "id": "876-time-management-canister-sent",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "refuses the management canister, which routes no read_state, sending nothing",
+    "why": "client.time() sends a read_state routed by aaaaa-aa, which the IC refuses, instead of refusing the target with nothing sent",
+    "file": "src/options.ts",
+    "search": "    if (target.id === \"aaaaa-aa\") {",
+    "replace": "    if (false) {"
+  },
+  {
+    "id": "873-foreign-skiptoken-encoded",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses another copy's skipToken",
+    "why": "queryOptions no longer refuses a symbol that is not core's skipToken, so another copy's skipToken makes a read that runs and rejects invalid_args",
+    "file": "src/options.ts",
+    "search": "    refuseForeignSymbol(vars, prepared, call)\n    const values",
+    "replace": "    const values"
+  },
+  {
+    "id": "873-reserved-refuses-symbol",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses another copy's skipToken",
+    "why": "the reserved exemption dropped, so a method whose one argument is reserved refuses a symbol, which reserved takes",
+    "file": "src/options.ts",
+    "search": "    vars !== skipToken &&\n    !takesAnything(method)\n",
+    "replace": "    vars !== skipToken\n"
+  },
+  {
+    "id": "873-provider-two-query-cores-silent",
+    "package": "react",
+    "test": "tests/two-query-cores.test.tsx",
+    "testName": "makes the provider throw in development",
+    "why": "the provider no longer checks that the client's QueryClient is react-query's, so two copies of query-core go unnoticed",
+    "file": "src/index.tsx",
+    "search": "  checkOneQueryCore(client)\n",
+    "replace": ""
+  },
+  {
+    "id": "873-provider-checks-in-production",
+    "package": "react",
+    "test": "tests/two-query-cores.test.tsx",
+    "testName": "does not make it throw in production",
+    "why": "the two-copies check runs in production too",
+    "file": "src/index.tsx",
+    "search": "  if (client.queryClient instanceof QueryClient || !isDevelopment()) return\n",
+    "replace": "  if (client.queryClient instanceof QueryClient) return\n"
+  },
+  {
+    "id": "873-querykey-encodes-foreign-skiptoken",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses another copy's skipToken",
+    "why": "queryKey no longer refuses a symbol that is not core's skipToken, so it keys a read with another copy's skipToken as $invalid",
+    "file": "src/options.ts",
+    "search": "    refuseForeignSymbol(vars, prepared, call)\n    const encoded",
+    "replace": "    const encoded"
+  },
+  {
+    "id": "880-hook-not-awaited",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          await Promise.race([hook, closed])\n",
+    "replace": "          void Promise.race([hook, closed])\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is waited for by buildStart, which the next run waits for in turn",
+    "why": "onGenerated called without being awaited, so buildStart resolves while the hook still runs and the next run can overlap it"
+  },
+  {
+    "id": "880-hook-failure-recorded",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          // canisters again and calls the hook again.\n          for (const canister of members) {\n            generatedFrom.delete(canister.name)\n",
+    "replace": "          // canisters again and calls the hook again.\n          for (const canister of members) {\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is called again on the next run after it failed, and not after it succeeded",
+    "why": "a module whose hook failed still recorded as generated, so the next run skips its unchanged .did and the failure is cleared without the hook ever succeeding"
+  },
+  {
+    "id": "880-hook-failure-swallowed",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "            failures.push({\n              canister,\n              message: `onGenerated failed for ${relativeToRoot(module)}: ${describe(error)}`,\n            })\n",
+    "replace": "",
+    "test": "tests/on-generated.test.ts",
+    "testName": "fails the build with a hook that rejects, naming the canister and the hook",
+    "why": "a hook's throw caught and dropped, so a build whose derived step failed exits 0"
+  },
+  {
+    "id": "880-hook-not-checked",
+    "package": "vite-plugin",
+    "file": "src/options.ts",
+    "search": "  if (onGenerated !== undefined && typeof onGenerated !== \"function\") {",
+    "replace": "  if (false) {",
+    "test": "src/index.test.ts",
+    "testName": "should refuse an onGenerated that is not a function",
+    "why": "an onGenerated that is not a function accepted when the config loads, so null is skipped without a word and a string throws at the first generation"
+  },
+  {
+    "id": "880-hook-not-abandoned",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          await Promise.race([hook, closed])\n",
+    "replace": "          await hook\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is abandoned when the build closes, so a hook that never settles holds nothing, and the next run calls it again",
+    "why": "the run waiting for the hook whatever happens, so a hook that ignores its signal holds the queue of runs past its server's close and the next server never generates"
+  },
+  {
+    "id": "880-abandoned-hook-recorded",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          for (const canister of members) generatedFrom.delete(canister.name)\n          return undefined\n",
+    "replace": "          return undefined\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is abandoned when the build closes, so a hook that never settles holds nothing, and the next run calls it again",
+    "why": "a module whose hook was abandoned at a close still recorded as generated, so a restarted server skips its unchanged .did and the hook never finishes"
+  },
+  {
+    "id": "882-drop-ignores-method",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "dropNextReply({ method }) loses the write's reply",
+    "why": "an armed drop spent on the next call request whatever its method, as the bare form is, so a certified read before the write loses its reply in the write's place",
+    "file": "src/testing/fake-replica.ts",
+    "search": "useUp(drops, canisterId, method_name) !== undefined",
+    "replace": "drops.shift() !== undefined"
+  },
+  {
+    "id": "882-drop-ignores-options",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "dropNextReply({ canister }) matches the canister a call names",
+    "why": "dropNextReply's options ignored, so a drop aimed at one canister loses the reply of whatever call comes next",
+    "file": "src/testing/fake-replica.ts",
+    "search": "drops.push(readMatch(\"dropNextReply\", which === undefined ? {} : which))",
+    "replace": "drops.push(readMatch(\"dropNextReply\", {}))"
+  },
+  {
+    "id": "882-bare-drop-aimed-at-updates",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "dropNextReply() with no argument still loses whatever call request comes next",
+    "why": "the bare dropNextReply() skips a certified read and waits for an update, which changes what existing tests that make a certified read first exercise",
+    "file": "src/testing/fake-replica.ts",
+    "search": "const lose = resent || useUp(drops, canisterId, method_name) !== undefined",
+    "replace": "const lose =\n      resent ||\n      (method_name !== \"icrc1_fee\" &&\n        useUp(drops, canisterId, method_name) !== undefined)"
+  },
+  {
+    "id": "875-read-waits-for-http-answer",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "a read whose request gets no HTTP answer",
+    "why": "a replicated call's request awaited without its signal (a certified read, or an update read with { update: \"idempotent\" }), so one whose request gets no HTTP answer keeps waiting after TanStack cancels it",
+    "file": "src/call.ts",
+    "search": "        ...(send === \"oneway\" ? { callSync: false } : {}),\n      }),\n      call.signal\n    )",
+    "replace": "        ...(send === \"oneway\" ? { callSync: false } : {}),\n      }),\n      undefined\n    )"
+  },
+  {
+    "id": "875-query-waits-for-http-answer",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "a read whose request gets no HTTP answer",
+    "why": "a query awaited without its signal, so a query whose request gets no HTTP answer keeps waiting after TanStack cancels it",
+    "file": "src/call.ts",
+    "search": "          effectiveTarget,\n        }),\n        call.signal\n      )",
+    "replace": "          effectiveTarget,\n        }),\n        undefined\n      )"
+  },
+  {
+    "id": "875-poll-waits-for-read-state-answer",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "ends the wait for a certified read's poll once its signal aborts",
+    "why": "a poll's read_state awaited without the signal, so a read whose poll gets no HTTP answer keeps waiting after TanStack cancels it",
+    "file": "src/call.ts",
+    "search": "          strategy,\n        }),\n        signal\n      )",
+    "replace": "          strategy,\n        }),\n        undefined\n      )"
+  },
+  {
+    "id": "899-mock-reply-unbudgeted",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "return a reply the client decodes under a maxElements below its length",
+    "why": "a mock encodes its reply with the test client's maxElements as an absolute limit, so it refuses a reply the client's decoder (maxElements plus the reply's bytes) accepts",
+    "file": "src/testing/test-client.ts",
+    "search": "        maxElements: Number.MAX_SAFE_INTEGER,",
+    "replace": "        maxElements,"
   }
 ]
