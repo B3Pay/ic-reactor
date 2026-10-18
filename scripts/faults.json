@@ -4398,6 +4398,66 @@
     "replace": "  return { keys: Object.keys(object) }\n"
   },
   {
+    "id": "880-hook-not-awaited",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          await Promise.race([hook, closed])\n",
+    "replace": "          void Promise.race([hook, closed])\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is waited for by buildStart, which the next run waits for in turn",
+    "why": "onGenerated called without being awaited, so buildStart resolves while the hook still runs and the next run can overlap it"
+  },
+  {
+    "id": "880-hook-failure-recorded",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          // canisters again and calls the hook again.\n          for (const canister of members) {\n            generatedFrom.delete(canister.name)\n",
+    "replace": "          // canisters again and calls the hook again.\n          for (const canister of members) {\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is called again on the next run after it failed, and not after it succeeded",
+    "why": "a module whose hook failed still recorded as generated, so the next run skips its unchanged .did and the failure is cleared without the hook ever succeeding"
+  },
+  {
+    "id": "880-hook-failure-swallowed",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "            failures.push({\n              canister,\n              message: `onGenerated failed for ${relativeToRoot(module)}: ${describe(error)}`,\n            })\n",
+    "replace": "",
+    "test": "tests/on-generated.test.ts",
+    "testName": "fails the build with a hook that rejects, naming the canister and the hook",
+    "why": "a hook's throw caught and dropped, so a build whose derived step failed exits 0"
+  },
+  {
+    "id": "880-hook-not-checked",
+    "package": "vite-plugin",
+    "file": "src/options.ts",
+    "search": "  if (onGenerated !== undefined && typeof onGenerated !== \"function\") {",
+    "replace": "  if (false) {",
+    "test": "src/index.test.ts",
+    "testName": "should refuse an onGenerated that is not a function",
+    "why": "an onGenerated that is not a function accepted when the config loads, so null is skipped without a word and a string throws at the first generation"
+  },
+  {
+    "id": "880-hook-not-abandoned",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          await Promise.race([hook, closed])\n",
+    "replace": "          await hook\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is abandoned when the build closes, so a hook that never settles holds nothing, and the next run calls it again",
+    "why": "the run waiting for the hook whatever happens, so a hook that ignores its signal holds the queue of runs past its server's close and the next server never generates"
+  },
+  {
+    "id": "880-abandoned-hook-recorded",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          for (const canister of members) generatedFrom.delete(canister.name)\n          return undefined\n",
+    "replace": "          return undefined\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is abandoned when the build closes, so a hook that never settles holds nothing, and the next run calls it again",
+    "why": "a module whose hook was abandoned at a close still recorded as generated, so a restarted server skips its unchanged .did and the hook never finishes"
+  },
+  {
     "id": "882-drop-ignores-method",
     "package": "core",
     "test": "tests/testing-test-client.test.ts",

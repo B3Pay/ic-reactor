@@ -15,6 +15,18 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/vite-plugin
+
+- `onGenerated`, an option called once for each module a run generated, in
+  `vite build` and `vite dev`, with the module's canister `names`, the
+  absolute `didFile`, `module` and `envelope` paths, its `status`
+  (`"written"` or `"unchanged"`) and a `signal` that the run's close aborts.
+  It runs inside the plugin's queue of runs, so `buildStart` waits for it,
+  and a close stops waiting. A throw fails the module's canisters as a
+  failed generation does, and the next run calls it again. Not called for a
+  canister that failed, nor for a run that does not generate the module
+  again. An option, not an export (#880).
+
 ### Docs
 
 - The consumer guide (`packages/core/llms.txt`) and the Reads, Writes, Values
