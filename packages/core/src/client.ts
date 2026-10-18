@@ -36,6 +36,7 @@ import { KEY_ROOT } from "./keys.js"
 import {
   agentOptionsFor,
   authNetworkFor,
+  checkKeys,
   resolveCanisterId,
   resolveNetwork,
   type Network,
@@ -862,10 +863,23 @@ const AUTH_MEMBERS = [
   "signOut",
 ] as const
 
+/** The options {@link createClient} takes. */
+const OPTION_NAMES = [
+  "network",
+  "identity",
+  "auth",
+  "allowEnvConfig",
+  "fetch",
+  "maxDepth",
+  "maxElements",
+]
+
 /**
- * Checks what a JavaScript caller (or a cast) can get past the types: exactly
- * one of `identity` and `auth`, an identity that is one, an `auth` that is a
- * factory, and a `maxDepth` and `maxElements` candid-core would accept.
+ * Checks what a JavaScript caller (or a cast) can get past the types: no
+ * option it does not have, exactly one of `identity` and `auth`, an identity
+ * that is one, an `auth` that is a factory, a `fetch` that is a function, and
+ * a `maxDepth` and `maxElements` candid-core would accept. {@link resolveNetwork}
+ * checks the network and `allowEnvConfig`.
  */
 function checkOptions(options: ClientOptions): void {
   if (typeof options !== "object" || options === null) {
@@ -873,11 +887,18 @@ function checkOptions(options: ClientOptions): void {
       "[ic-reactor] createClient() takes an options object: { network, identity } or { network, auth }."
     )
   }
-  const { identity, auth, maxDepth, maxElements } = options as {
+  checkKeys(options, OPTION_NAMES, "createClient()")
+  const { identity, auth, fetch, maxDepth, maxElements } = options as {
     identity?: unknown
     auth?: unknown
+    fetch?: unknown
     maxDepth?: unknown
     maxElements?: unknown
+  }
+  if (fetch !== undefined && typeof fetch !== "function") {
+    throw new TypeError(
+      `[ic-reactor] fetch is a function, got ${typeof fetch}.`
+    )
   }
   if (identity !== undefined && auth !== undefined) {
     throw new TypeError(
@@ -1113,7 +1134,10 @@ function stateOf(auth: AuthLike): AuthState {
  * neither.
  *
  * @throws TypeError for options that do not say who calls, say it twice, or
- * name a network or `maxDepth` that cannot be used.
+ * name a network or `maxDepth` that cannot be used; for an option it does not
+ * have (in the options or in a network object); and for an `allowEnvConfig`
+ * or `fetchRootKey` that is not a boolean, a `rootKey` that is not 133 bytes
+ * in a `Uint8Array`, or a `fetch` that is not a function.
  *
  * @example
  * ```ts
