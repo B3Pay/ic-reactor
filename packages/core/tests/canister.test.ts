@@ -5,7 +5,12 @@
  * failure.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { principal, serviceMethods, type Principal } from "@candid-core/schema"
+import {
+  c,
+  principal,
+  serviceMethods,
+  type Principal,
+} from "@candid-core/schema"
 import { encodeArgs } from "@candid-core/schema/codec"
 import { AnonymousIdentity, Cbor } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
@@ -302,6 +307,58 @@ describe("a direct call", () => {
       issues: [{ code: "resource_limit_exceeded" }],
     })
     await expect(deep.maybe({ some: 1n })).resolves.toEqual({ some: 1n })
+  })
+
+  it("decodes a blob reply over a million bytes with the default options", async () => {
+    // An SNS wasm or an asset chunk: candid-core charges a blob one element
+    // per byte, so its default budget alone would refuse this reply.
+    const wasm = new Uint8Array(2_000_000).fill(7)
+    const { canister } = shapesSetup({ bytes: () => wasm })
+    const reply = await canister.bytes(new Uint8Array([1]))
+    // Byte by byte, toEqual takes seconds on two million entries.
+    expect(Buffer.from(reply).equals(Buffer.from(wasm))).toBe(true)
+  })
+
+  it("gives values that take no bytes the whole budget, beside a large blob", async () => {
+    // The budget is beyond one value per byte: a blob over a million bytes
+    // does not use it up for the values beside it.
+    const reply = encodeArgs(
+      [c.blob(), c.vec(c.null)],
+      [
+        new Uint8Array(1_100_000).fill(3),
+        Array.from({ length: 900_000 }, () => null),
+      ],
+      { maxElements: 3_000_000 }
+    )
+    if (!reply.ok) throw new Error("the test reply did not encode")
+    const replica = replicaWith({ [SHAPES]: { query: () => reply.bytes } })
+    const canister = clientAs(replica, alice).canister<shapes.Actor>(
+      shapes.actor,
+      { id: SHAPES }
+    )
+    const bytes = await canister.bytes(new Uint8Array([1]))
+    expect(bytes.length).toBe(1_100_000)
+  })
+
+  it("still refuses a reply whose values take no bytes past the element budget", async () => {
+    // A trailing `vec null` the method does not declare is skipped, and each
+    // skipped null is charged, though the whole reply is a few bytes.
+    const bomb = encodeArgs(
+      [c.blob(), c.vec(c.null)],
+      [new Uint8Array([1]), Array.from({ length: 1_100_000 }, () => null)],
+      { maxElements: 2_000_000 }
+    )
+    if (!bomb.ok) throw new Error("the test reply did not encode")
+    expect(bomb.bytes.length).toBeLessThan(100)
+    const replica = replicaWith({ [SHAPES]: { query: () => bomb.bytes } })
+    const canister = clientAs(replica, alice).canister<shapes.Actor>(
+      shapes.actor,
+      { id: SHAPES }
+    )
+    await expect(canister.bytes(new Uint8Array([1]))).rejects.toMatchObject({
+      kind: "invalid_reply",
+      issues: [{ code: "resource_limit_exceeded" }],
+    })
   })
 })
 

@@ -90,6 +90,20 @@ describe("createClient options", () => {
     }
   })
 
+  it("passes maxElements on, 1,000,000 unless given, and refuses one candid-core would refuse", () => {
+    const at = (maxElements?: number) =>
+      internalsOf(
+        createClient({ network: "ic", identity: "anonymous", maxElements })
+      ).maxElements
+
+    expect(at()).toBe(1_000_000)
+    expect(at(5_000_000)).toBe(5_000_000)
+    expect(at(0)).toBe(0)
+    for (const bad of [-1, 1.5, NaN, Infinity, "1000000"]) {
+      expect(() => at(bad as number)).toThrow(/maxElements is a non-negative/)
+    }
+  })
+
   it("names the network by its key segment", () => {
     expect(createClient({ network: "ic", identity: "anonymous" }).network).toBe(
       "ic"

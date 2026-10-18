@@ -20,7 +20,8 @@ export default [
     // With expiresAt (#888) on top of v4: measured 15,646 B, so the limit moved from 15,540 B to 15.7 kB.
     // With client.encode() (#887) on top of v4: measured 15,774 B, so the limit moved from 15,700 B to 15.83 kB.
     // With client.canisterId() (#890) on top of v4: measured 15,809 B, so the limit moved from 15,830 B to 15.86 kB.
-    limit: "15.86 kB",
+    // With maxElements (#932) on top of v4: measured 15,888 B, so the limit moved from 15,860 B to 15.94 kB.
+    limit: "15.94 kB",
     gzip: true,
   },
 ]
