@@ -5229,8 +5229,8 @@
     "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
     "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
     "file": "src/client.ts",
-    "search": "// `isReactorError(error, canister, method)` matches it.\n              throw fromCanister(",
-    "replace": "// `isReactorError(error, canister, method)` matches it.\n              throw ((error: unknown, _canister: object) => error)("
+    "search": "// `isReactorError(error, canister, method)` matches it.\n            throw fromCanister(",
+    "replace": "// `isReactorError(error, canister, method)` matches it.\n            throw ((error: unknown, _canister: object) => error)("
   },
   {
     "id": "893-write-caller-read-when-sent-offline",
@@ -5389,5 +5389,15 @@
     "file": "src/options.ts",
     "search": "        if (kept !== undefined && kept.runs > 0) {",
     "replace": "        if (false) {"
+  },
+  {
+    "id": "894-view-write-caller-unread",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "sends a view's write as its caller when an onMutate of the app's replaces the given one",
+    "why": "a view's mutation function is not one of the client's own, so its MutationCache reads no caller for its runs and a write whose onMutate the app replaced is refused as not known",
+    "file": "src/client.ts",
+    "search": "        ownMutationFns.add(mutationFn)\n",
+    "replace": ""
   }
 ]

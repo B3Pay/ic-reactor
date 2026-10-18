@@ -406,6 +406,21 @@ describe("a client pinned to a principal", () => {
     expect(sent("stamp")).toEqual([SEED_1, second, second])
   })
 
+  it("sends a view's write as its caller when an onMutate of the app's replaces the given one (the client's QueryClient)", async () => {
+    const { client, who, sent } = signedIn()
+    const viewed = pin(client, SEED_1).mutationOptions(who, "stamp")
+    // TanStack's optimistic-update recipe as written: the app's onMutate
+    // replaces the one the options carry, and the client's MutationCache
+    // still reads who pressed.
+    await expect(
+      new MutationObserver(client.queryClient, {
+        ...viewed,
+        onMutate: () => ({ previous: undefined }),
+      }).mutate()
+    ).resolves.toBe(`written by ${SEED_1}`)
+    expect(sent("stamp")).toEqual([SEED_1])
+  })
+
   it.each([
     ["the client's QueryClient", false],
     ["another QueryClient", true],
