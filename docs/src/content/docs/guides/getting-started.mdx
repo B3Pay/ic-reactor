@@ -64,6 +64,12 @@ npm install @ic-reactor/react@beta @tanstack/react-query
 npm install @icp-sdk/auth
 ```
 
+Install `@tanstack/query-core` at the exact version your
+`@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
+dependencies`), and check that `npm ls @tanstack/query-core` shows one copy.
+With two copies, `client.queryOptions()` throws a `TypeError` for the hooks'
+`skipToken`, and `ReactorProvider` throws in development.
+
 The generator is a development tool:
 
 ```sh

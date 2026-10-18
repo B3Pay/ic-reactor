@@ -28,10 +28,11 @@ runs in a server render (anonymous, with no auth built) and in a browser.
 | `allowEnvConfig` | Whether the `ic_env` cookie (root key and canister ids) is believed. Absent: only when the page and the replica are local. |
 | `fetch`          | The `fetch` every agent sends with. Default: the global one. A test passes a fake replica's.                               |
 | `maxDepth`       | How deep a decoded reply may nest. Default 256. Raise it for replies like an ICRC-3 block log's values.                    |
+| `maxElements`    | How many values a reply may hold beyond one per byte. Default 1,000,000. A blob of any size the IC returns decodes.        |
 
 Pass exactly one of `identity` and `auth`. `createClient` throws a `TypeError`
-for options that name neither, name both, or name a network or a `maxDepth`
-that cannot be used.
+for options that name neither, name both, or name a network, a `maxDepth` or a
+`maxElements` that cannot be used.
 
 ## Networks
 
@@ -311,6 +312,14 @@ A target is `{ id }` or `{ name }`, plus an optional `certified`:
   key is built, and only where the cookie is trusted. If it cannot, every call
   rejects as `invalid_args` with code `canister_id_unresolved`, and the keys
   carry `"$unresolved:backend"`.
+  `client.canisterId({ name: "backend" })` asks the same resolver without a
+  call: `{ ok: true, id }`, or `{ ok: false, reason, message }` where
+  `reason` is `"no_browser"` (no page, so no cookie), `"untrusted_host"` (the
+  cookie is not trusted for this network) or `"absent"` (no principal text
+  under that name), and `message` is the resolver's reason, which a call's
+  error includes after the method and target. It
+  reads the cookie on each call, and does not check that a canister answers
+  at that id.
 - `certified: true` makes another canister object whose query methods go as
   replicated calls, with certified replies. See [Reads](/v4/guides/reads/).
 
@@ -369,6 +378,11 @@ Afterwards every call on the client rejects as `cancelled` with code
 `client_disposed` and `mayHaveExecuted: false`, and sends nothing. That covers a
 direct call, a query function, a mutation function and a func reference. A
 direct call that was already sent settles as the replica answers.
+
+A client a `ReactorProvider` built from its factory is disposed when the
+provider unmounts. A client made outside a provider, or kept across its
+unmount, is the app's to dispose when it is done with it. A client that lives
+as long as the page needs none.
 
 ## One client per tab, one per request
 
