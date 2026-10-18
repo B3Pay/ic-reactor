@@ -20,6 +20,13 @@ import { actor, type Actor } from "./generated/icrc1"
 One import path per name: Candid values only from `@candid-core/schema`,
 `skipToken` and the hooks only from TanStack Query.
 
+`@ic-reactor/core` and `@ic-reactor/react` are ES modules only. A Node
+project needs `"type": "module"` in its `package.json`
+(`npm pkg set type=module`), or a bundler; `npx tsx` with
+top-level `await` fails in a CommonJS package. Under TypeScript's
+`moduleResolution: "nodenext"`, import local files with their `.js`
+extension (`./generated/icrc1.js`).
+
 The generated module (from `candid-core-cli gen` or `@ic-reactor/vite-plugin`;
 do not edit it) exports a type and schema per Candid type, the service schema
 `actor`, and `type Actor`.
@@ -48,6 +55,12 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
 - `"env"`: the page's network. Canisters can be named, `{ name: "backend" }`,
   from the `ic_env` cookie, believed only on a local replica or with
   `allowEnvConfig: true`. A server has no cookie: use `{ id }` there.
+- Without the Vite plugin (Next.js, webpack, esbuild) there is no cookie and no
+  `/api` proxy, so `"env"` and `{ name }` do not work on a local network. Use
+  `network: "local"` with `{ id }` from a build-time variable
+  (`NEXT_PUBLIC_BACKEND_ID`, written from
+  `icp canister status -e local -i backend` into
+  `.env.development.local`, which only `next dev` reads).
 
 Who calls (exactly one):
 
@@ -221,7 +234,12 @@ A method TypeScript cannot tell is a read does not compile: a type parameter
 (`keyof Actor & string`), or any method of a `Canister<A>` with a generic `A`.
 Give the type arguments,
 `client.queryOptions<A, any>(canister, method, vars)`, which keeps the
-run-time check and types the data `unknown`.
+run-time check and types the data `unknown`. The variables follow the same
+rule, checked at run time: the value for one argument, a tuple for several,
+`undefined` or `[]` for none (`[arg]` compiles but is refused
+`invalid_args`). `mutationOptions`, `queryKey` and `resendOf` take
+`<A, any>` the same way; for a generic `A` only `queryOptions` widens the
+variables, so cast them for the other three.
 The target `{ id, certified: true }` certifies `query` replies.
 
 ## Writes
@@ -300,6 +318,16 @@ have executed:
 On the management canister (`aaaaa-aa`), codes 1 to 3 prove nothing: a write
 there may have executed. A query changes nothing, so a failed read never "may
 have executed".
+
+How long a call waits: neither the client nor the agent puts a timeout on an
+HTTP request (the call or query, or a `read_state` that polls), so a request
+that gets no answer waits as long as the `fetch` in use does. An accepted
+update is polled for about five minutes (a deadline checked when a poll is
+answered) before it rejects `outcome_unknown`. A read made with `queryOptions` stops
+waiting at any point when TanStack Query cancels it
+(`queryClient.cancelQueries(...)`, or its last observer unmounts), and
+rejects `cancelled` (with `mayHaveExecuted: true` for an update read with
+`{ update: "idempotent" }` whose request went out).
 
 ## Outside React
 
