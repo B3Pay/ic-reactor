@@ -83,7 +83,7 @@ describe("createClient options", () => {
       })
     ).toThrow(
       new TypeError(
-        "[ic-reactor] createClient() has no option host. Its options: network, identity, auth, allowEnvConfig, fetch, maxDepth."
+        "[ic-reactor] createClient() has no option host. Its options: network, identity, auth, allowEnvConfig, fetch, maxDepth, maxElements."
       )
     )
     expect(
@@ -220,6 +220,20 @@ describe("createClient options", () => {
     }
   })
 
+  it("passes maxElements on, 1,000,000 unless given, and refuses one candid-core would refuse", () => {
+    const at = (maxElements?: number) =>
+      internalsOf(
+        createClient({ network: "ic", identity: "anonymous", maxElements })
+      ).maxElements
+
+    expect(at()).toBe(1_000_000)
+    expect(at(5_000_000)).toBe(5_000_000)
+    expect(at(0)).toBe(0)
+    for (const bad of [-1, 1.5, NaN, Infinity, "1000000"]) {
+      expect(() => at(bad as number)).toThrow(/maxElements is a non-negative/)
+    }
+  })
+
   it("names the network by its key segment", () => {
     expect(createClient({ network: "ic", identity: "anonymous" }).network).toBe(
       "ic"
@@ -239,7 +253,9 @@ describe("createClient options", () => {
       "authState",
       "caller",
       "canister",
+      "canisterId",
       "dispose",
+      "encode",
       "func",
       "mutationOptions",
       "network",
@@ -250,6 +266,7 @@ describe("createClient options", () => {
       "signIn",
       "signOut",
       "subscribe",
+      "time",
     ])
     expect(Object.isFrozen(client)).toBe(true)
     expect(() => internalsOf({ ...client })).toThrow(

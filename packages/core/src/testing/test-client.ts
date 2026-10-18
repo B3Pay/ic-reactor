@@ -21,6 +21,7 @@ import {
 } from "@candid-core/schema"
 import {
   DEFAULT_MAX_DEPTH,
+  DEFAULT_MAX_ELEMENTS,
   decodeArgs,
   encodeArgs,
 } from "@candid-core/schema/codec"
@@ -79,6 +80,7 @@ const OPTION_NAMES = [
   "network",
   "allowEnvConfig",
   "maxDepth",
+  "maxElements",
 ] as const
 
 /** The first issue of a codec failure, and how many there were, for a message. */
@@ -117,7 +119,8 @@ type Handler = (...args: unknown[]) => unknown
 function mockCanister(
   service: Schema<Principal>,
   handlers: unknown,
-  maxDepth: number
+  maxDepth: number,
+  maxElements: number
 ): FakeCanister {
   if (typeof handlers !== "object" || handlers === null) {
     throw new TypeError(
@@ -177,7 +180,15 @@ function mockCanister(
           `the test gave no handler for ${name}; add it to the handlers of mock()`
         )
       }
-      const decoded = decodeArgs(method.args, arg, { maxDepth })
+      // As the client decodes a reply: one value per byte of the argument
+      // plus the budget, so a large blob argument (an upload chunk) decodes.
+      const decoded = decodeArgs(method.args, arg, {
+        maxDepth,
+        maxElements: Math.min(
+          maxElements + arg.length,
+          Number.MAX_SAFE_INTEGER
+        ),
+      })
       if (!decoded.ok) {
         throw new Error(
           `the arguments of ${name} do not decode with the mocked service: ${firstIssue(decoded.issues)}`
@@ -186,8 +197,11 @@ function mockCanister(
       const reply = await handler(...decoded.values, {
         caller: principal(caller),
       })
+      // No element budget here: the client's own decode of these bytes
+      // applies the real one, which counts the reply's length as well.
       const encoded = encodeArgs(method.results, resultValues(method, reply), {
         maxDepth,
+        maxElements: Number.MAX_SAFE_INTEGER,
       })
       if (!encoded.ok) {
         throw new Error(
@@ -288,6 +302,11 @@ export function createTestClient(
     allowEnvConfig?: boolean
     /** How deep a decoded value may nest, for the client and for the mocks. Defaults to 256. */
     maxDepth?: number
+    /**
+     * How many values a decoded value may hold beyond one per byte, for the
+     * client and for the mocks. Defaults to 1,000,000.
+     */
+    maxElements?: number
   } = {}
 ): {
   /**
@@ -353,12 +372,33 @@ export function createTestClient(
    */
   reject(code: 1 | 2 | 3 | 4 | 5 | 6, message?: string): never
   /**
-   * Loses the reply to the next update call: the canister runs, but the client
-   * sees a network failure instead of the answer, so the call ends as
+   * Loses the reply to the next call request: the canister runs, but the
+   * client sees a network failure instead of the answer, so an update ends as
    * `outcome_unknown` with `mayHaveExecuted: true`. The same request is never
    * run twice: the fake keeps its reply lost whenever it is asked again.
+   *
+   * With no argument it matches whatever call request comes next, and that
+   * includes a certified read (a `query` method on a `certified: true`
+   * canister) and an update read with `{ update: "idempotent" }`, which go
+   * out as calls. Such a read is not an update: the client sends it again
+   * as a new request, which can be answered, so its handler runs again.
+   * Given options, it loses the replies of the next `times`
+   * call requests that name `method` and are addressed to `canister` (each
+   * one that is given), and lets every other request through, as
+   * `refuseNext(status, options)` does: `dropNextReply({ method:
+   * "icrc1_transfer" })` loses the transfer's reply while the reads around it
+   * are answered. A request that several drops match uses up the one armed
+   * first.
+   *
+   * @throws RangeError for a `times` that is not a count of at least 1;
+   * TypeError for options that are not an object, an option that does not
+   * exist, an empty `method`, or a `canister` that is not a canister id.
    */
-  dropNextReply(): void
+  dropNextReply(options?: {
+    readonly method?: string
+    readonly canister?: string
+    readonly times?: number
+  }): void
   /**
    * Answers the next `times` canister requests that name `method` and are
    * addressed to `canister` (each one that is given) with an HTTP error
@@ -437,7 +477,8 @@ export function createTestClient(
       `[ic-reactor] createTestClient() has no option ${unknown.join(", ")}. Its options: ${OPTION_NAMES.join(", ")}.`
     )
   }
-  const { identity, signedIn, network, allowEnvConfig, maxDepth } = options
+  const { identity, signedIn, network, allowEnvConfig, maxDepth, maxElements } =
+    options
   // `signedIn: "false"` would start signed in. The network and allowEnvConfig
   // are checked as createClient checks them, by resolveNetwork.
   checkBoolean(signedIn, "createTestClient(): signedIn")
@@ -488,16 +529,18 @@ export function createTestClient(
       auth: () => auth,
       allowEnvConfig,
       maxDepth,
+      maxElements,
     },
     { authOnServer: true }
   )
   const limit = maxDepth ?? DEFAULT_MAX_DEPTH
+  const elements = maxElements ?? DEFAULT_MAX_ELEMENTS
 
   return Object.freeze({
     client,
     auth,
     mock<A>(service: Schema<Principal>, id: string, handlers: TestHandlers<A>) {
-      const canister = mockCanister(service, handlers, limit)
+      const canister = mockCanister(service, handlers, limit, elements)
       try {
         replica.addCanister(id, canister)
       } catch {

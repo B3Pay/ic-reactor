@@ -81,19 +81,20 @@ error is not that call's: it can still be of any `kind`.
 
 ## The fields
 
-| Field             | Meaning                                                                                              |
-| ----------------- | ---------------------------------------------------------------------------------------------------- |
-| `kind`            | what went wrong: one of the eight kinds below                                                        |
-| `mayHaveExecuted` | whether the call may have taken effect although you cannot tell what it did                          |
-| `method`          | the Candid method called                                                                             |
-| `canisterId`      | the target canister, as text                                                                         |
-| `code`            | a machine-readable sub-reason inside a kind, when there is one (see [Codes](#codes))                 |
-| `rejectCode`      | the IC reject code (1 to 6), when the call was rejected                                              |
-| `httpStatus`      | the HTTP status the replica or a boundary node answered with, when there was one                     |
-| `issues`          | which parts of the arguments or the reply failed to encode or decode: `{ code, path, message }` each |
-| `err`             | the typed `Err` payload, only when `kind` is `canister_err`                                          |
-| `cause`           | the error that caused this one, when there is one (for example the agent's error)                    |
-| `message`         | one line: `[ic-reactor] <method> on <canisterId>: <reason>`                                          |
+| Field             | Meaning                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `kind`            | what went wrong: one of the eight kinds below                                                         |
+| `mayHaveExecuted` | whether the call may have taken effect although you cannot tell what it did                           |
+| `method`          | the Candid method called                                                                              |
+| `canisterId`      | the target canister, as text                                                                          |
+| `code`            | a machine-readable sub-reason inside a kind, when there is one (see [Codes](#codes))                  |
+| `rejectCode`      | the IC reject code (1 to 6), when the call was rejected                                               |
+| `httpStatus`      | the HTTP status the replica or a boundary node answered with, when there was one                      |
+| `issues`          | which parts of the arguments or the reply failed to encode or decode: `{ code, path, message }` each  |
+| `err`             | the typed `Err` payload, only when `kind` is `canister_err`                                           |
+| `cause`           | the error that caused this one, when there is one (for example the agent's error)                     |
+| `expiresAt`       | for a write that got no answer: the latest ingress expiry of its sends, nanoseconds on the IC's clock |
+| `message`         | one line: `[ic-reactor] <method> on <canisterId>: <reason>`                                           |
 
 ## The eight kinds
 
@@ -153,6 +154,25 @@ Two rules sit behind the table.
 - **The management canister is the exception for reject codes 1 to 3.** For
   every other canister, codes 1 to 3 prove no canister code ran. For
   `aaaaa-aa` they prove nothing, so an update there may have executed.
+
+### How long a call waits
+
+Neither the client nor the agent puts a timeout on an HTTP request. A request
+that gets no HTTP answer, from a proxy that holds it say, waits as long as the
+`fetch` in use waits. That holds for the call or query request, and for each
+`read_state` request that polls for an accepted call's answer.
+
+An update (or a certified read) the replica accepted with a 202 is polled for
+with `read_state` for about five minutes in all, then an update rejects
+`outcome_unknown`. That deadline is checked only when a poll is answered: a
+`read_state` request that gets no answer is not cut short by it.
+
+A read made with `client.queryOptions()` stops waiting at any of these points
+as soon as TanStack Query cancels it (`queryClient.cancelQueries(...)`, or its
+last observer unmounts), and rejects `cancelled`. Its `mayHaveExecuted` is
+`false`, except for an update read with `{ update: "idempotent" }` whose call
+request had gone out: that one may have run. The request itself is not torn
+down; nobody waits for its answer.
 
 The errors the client makes itself, without an agent error to classify, are
 simpler:
@@ -278,13 +298,24 @@ what happened. Two ways to know:
 
 - **Read the state back.** Read the balance, the profile or the list the write
   changed, and decide from what you find. In React, the mutation has already
-  invalidated the canister's reads, so the page shows it.
+  invalidated the canister's reads, so the page shows it. A read-back that
+  finds nothing is final only once no send of the write can still start: for
+  `outcome_unknown` (and `cancelled` with `mayHaveExecuted: true`),
+  `error.expiresAt` is the latest ingress expiry its sends were signed with,
+  in nanoseconds on the IC's clock, about five minutes after the send. Past
+  it, the IC starts no send of the write. A method that awaits another
+  canister can still commit after that, so this makes a read-back final only
+  for a method that commits without awaiting (an ICRC-1 transfer does), and
+  only from a certified read of state newer than the expiry. Compare with a
+  margin, since the host's clock may differ from the IC's. `expiresAt` is not enumerable, so
+  `JSON.stringify(error)` leaves it out.
 - **Let the canister deduplicate.** If the method can tell a repeat from a new
   call, send the same argument again. The ICRC-1 ledger does: a second
   transfer from the same account identical to the first, `created_at_time`
   and `memo` included, is answered `Duplicate`, which means the first one
   went through. Give each transfer its own `memo`, or two different
-  transfers of the same amount made in the same millisecond look like one,
+  transfers of the same amount stamped with the same time look like one (the
+  IC's time, which `client.time()` reads, moves about once a second),
   and the second is reported as done when it never ran. It is the ledger's
   feature: `client.resendOf()` offers the re-send only for a key you say the
   canister deduplicates on, and only to the account that sent it (see
@@ -304,7 +335,9 @@ export async function transferOnce(to: Account, amount: bigint) {
     // This transfer's own: only a repeat of this argument is a duplicate.
     memo: crypto.getRandomValues(new Uint8Array(16)),
     from_subaccount: null,
-    created_at_time: BigInt(Date.now()) * 1_000_000n, // nanoseconds; makes a repeat detectable
+    // The IC's clock, in nanoseconds, which the ledger checks the stamp
+    // against; it makes a repeat detectable.
+    created_at_time: await client.time(ledger),
   }
   try {
     return await ledger.icrc1_transfer(arg)
