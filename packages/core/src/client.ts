@@ -625,6 +625,40 @@ export interface Client {
   ): Resend<VarsOf<A, M>, DataOf<A, M>> | undefined
 
   /**
+   * The Candid bytes a call of `method` with `vars` sends, as a `Uint8Array`:
+   * made by the call path's own encoder with its own variables rule (the
+   * value for one argument, the tuple for several, nothing for none), so
+   * they are the bytes that go out, not a second encoding. Pass them where
+   * the exact argument is wanted, such as an ICRC-21 consent request's `arg`:
+   *
+   * ```ts
+   * const arg = client.encode(ledger, "icrc1_transfer", transfer)
+   * const consent = await ledger.icrc21_canister_call_consent_message({
+   *   method: "icrc1_transfer",
+   *   arg,
+   *   user_preferences: preferences,
+   * })
+   * ```
+   *
+   * It sends nothing and needs no canister id, so a `{ name }` the `ic_env`
+   * cookie does not resolve encodes too.
+   *
+   * It checks only the variables: not the caller, the canister id or
+   * whether the client is disposed, which a call checks before it encodes.
+   *
+   * @throws ReactorError `invalid_args` for variables that do not encode,
+   * with the `issues` and `reason` a call rejects with when its variables are
+   * all that is wrong.
+   * @throws TypeError for a canister of another client, or a method the
+   * service does not have.
+   */
+  encode<A, M extends keyof A & string>(
+    canister: Canister<A>,
+    method: M,
+    vars: VarsOf<A, M>
+  ): Uint8Array
+
+  /**
    * An async function for a func reference a reply carried, such as an ICRC
    * ledger's archive callback:
    *
@@ -650,6 +684,37 @@ export interface Client {
     funcSchema: Schema<FuncValue>,
     ref: FuncValue
   ): F
+
+  /**
+   * The IC's time, in nanoseconds since the epoch (the unit of an ICRC-1
+   * `created_at_time`), from a certified `read_state` of the `time` path,
+   * routed by `canister`'s subnet. Stamp a deduplication key with it rather
+   * than with the host's clock, which a ledger checks against its own.
+   *
+   * ```ts
+   * const created_at_time = await client.time(ledger)
+   * ```
+   *
+   * The IC's time moves about once a second (once per round), so two writes
+   * stamped close together can carry the same time: give each its own
+   * `memo` as well.
+   *
+   * Its request carries an ingress expiry from the host's clock, as every
+   * request does: a host clock so far off that the IC refuses its requests
+   * gets `not_delivered` here too.
+   *
+   * The certificate is verified against the network's root key, as every
+   * reply is; its age is not compared with the host's clock, which may be the
+   * clock that is wrong. A certificate that does not verify rejects
+   * `not_delivered` with `mayHaveExecuted: false`, and its time is never
+   * returned. It needs no signed-in caller, and is sent by the caller's
+   * agent, as a read does. A `{ name }` the `ic_env` cookie
+   * does not resolve rejects `invalid_args` (`canister_id_unresolved`), as
+   * does the management canister `aaaaa-aa` (`management_canister`), which no
+   * `read_state` is routed by, and a disposed client rejects `cancelled`
+   * (`client_disposed`); nothing is sent then.
+   */
+  time(canister: Canister<object>): Promise<bigint>
 }
 
 // ---------------------------------------------------------------------------
