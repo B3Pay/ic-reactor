@@ -83,6 +83,17 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Fixed
 
+- `network: "env"` no longer falls back to mainnet on a dev page opened by a
+  LAN address (RFC 1918, link-local, IPv6 ULA or link-local), a `*.local`,
+  `*.test` or `*.internal` name (`host.docker.internal`), or a tunnel
+  (`*.ngrok-free.app`, `*.ngrok-free.dev`, `*.ngrok.app`, `*.ngrok.io`,
+  `*.trycloudflare.com`, `*.loca.lt`) (#902). Such a page routes through its
+  own origin, the dev server's proxy, as a Codespaces page does: the cookie
+  is not believed and no root key is taken or fetched, so certified calls
+  fail verification instead of reaching mainnet. A dev wallet opened from a
+  phone showed, and after a mainnet sign-in sent, real ICP. Migration: a
+  production app served from such a name now calls its own origin; give it
+  `network: "ic"` or a `{ host, rootKey }` network.
 - An app's own queries on `client.queryClient`, such as REST calls under
   `ReactorProvider`, keep TanStack Query's retries: the default `retry`
   applies the client's rule only to a `ReactorError`, and retries any other
@@ -166,6 +177,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   failed generation does, and the next run calls it again. Not called for a
   canister that failed, nor for a run that does not generate the module
   again. An option, not an export (#880).
+- Under `vite dev` and `vite preview`, a warning, once per server, when a
+  page is loaded by a `Host` that is not loopback, saying that `"env"` is for
+  `localhost` pages (#902).
 
 ### Docs
 

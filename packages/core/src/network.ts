@@ -46,13 +46,17 @@ import { isServer } from "./runtime.js"
  *   4943) is an object: `{ host: "http://127.0.0.1:4943" }`.
  * - `"env"`: the network of the page this code runs in, as an asset canister
  *   or a dev server describes it. In a browser, a page on a local replica or
- *   on a mainnet boundary domain (and a Codespaces or Gitpod page, which
- *   forwards a local dev server) routes through its own origin. The root key
+ *   on a mainnet boundary domain routes through its own origin, and so does
+ *   a page that forwards a dev server: Codespaces, Gitpod, a LAN address
+ *   (RFC 1918, link-local, IPv6 ULA), a `*.local`, `*.test` or `*.internal`
+ *   name such as `host.docker.internal`, or a tunnel (ngrok,
+ *   `trycloudflare.com`, `loca.lt`). `"env"` is for localhost pages: those
+ *   others never reach mainnet, but none is local. The root key
  *   comes from the `ic_env` cookie, but only where that cookie is trusted:
  *   when both the page and the replica are local, or the client was built
  *   with `allowEnvConfig: true`. A local replica with no key from the cookie
- *   has its root key fetched. A Codespaces or Gitpod page is routed but is
- *   not local, so there the key is neither taken from the cookie nor fetched,
+ *   has its root key fetched. A forwarding page is routed but is not local,
+ *   so there the key is neither taken from the cookie nor fetched,
  *   and the agent checks the forwarded replica's certificates against
  *   mainnet's key, so every certified call fails verification. Name the
  *   replica with an object that has a `rootKey` (or `fetchRootKey: true`)
@@ -246,12 +250,46 @@ const isMainnetHostname = (hostname: string | undefined): boolean =>
 const SHARED_PARENTS = ["ic0.app", "github.dev", "gitpod.io"]
 
 /**
- * Dev containers that forward a local dev server and replica to the browser
- * over generated subdomains. Their pages route through their own origin, but
- * they are never local: every workspace on them is a sibling of every
- * stranger's.
+ * Names that forward a dev server and its replica to the browser from
+ * elsewhere: dev containers (Codespaces, Gitpod), the special-use and
+ * internal names a LAN, mDNS or Docker gives a dev machine (`*.local`,
+ * `*.test`, `*.internal`, which covers `host.docker.internal`), and the
+ * tunnels people open to show a dev app on a phone. Their pages route through
+ * their own origin, but they are never local: on a dev container every
+ * workspace is a sibling of every stranger's, and the rest are not this
+ * machine. A production app on such a name falls back to nothing it did not
+ * ask for: it reaches its own origin, never mainnet.
  */
-const REMOTE_DEV_SUFFIXES = [".github.dev", ".gitpod.io"]
+const REMOTE_DEV_SUFFIXES = [
+  ".github.dev",
+  ".gitpod.io",
+  ".local",
+  ".test",
+  ".internal",
+  ".ngrok-free.app",
+  ".ngrok-free.dev",
+  ".ngrok.app",
+  ".ngrok.io",
+  ".trycloudflare.com",
+  ".loca.lt",
+]
+
+/**
+ * Private and link-local addresses, which a LAN or a VM gives a dev machine
+ * (`vite --host` prints one): 10/8, 172.16/12, 192.168/16 and 169.254/16, and
+ * IPv6's unique local fc00::/7 and link-local fe80::/10, with the brackets a
+ * URL's `hostname` keeps around them.
+ */
+const PRIVATE_ADDRESS =
+  /^(?:10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])|192\.168|169\.254)\.\d{1,3}\.\d{1,3}$|^\[(?:f[cd][0-9a-f]{2}|fe[89ab][0-9a-f]):[0-9a-f:.]*\]$/i
+
+/**
+ * Whether `hostname` forwards a dev server from elsewhere: a
+ * {@link REMOTE_DEV_SUFFIXES} name or a {@link PRIVATE_ADDRESS}.
+ */
+const isRemoteDevHostname = (hostname: string): boolean =>
+  PRIVATE_ADDRESS.test(hostname) ||
+  REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
 
 /** 127.0.0.0/8: the entire IPv4 loopback range, not just 127.0.0.1. */
 const IPV4_LOOPBACK = /^127\.(?:\d{1,3}\.){2}\d{1,3}$/
@@ -337,13 +375,16 @@ const pageIsLocal = (): boolean =>
 /**
  * The page's own origin when agent traffic can route through it: a local page
  * (a dev server or a locally deployed asset canister proxies `/api`), a
- * mainnet boundary domain, or a Codespaces or Gitpod page, which forwards a
- * local dev server. An ordinary web host (Vercel, Cloudflare, a custom domain)
- * cannot, so it is left to the fallback; so is a page with no usable origin.
+ * mainnet boundary domain, or a page that forwards a dev server from
+ * elsewhere ({@link isRemoteDevHostname}). An ordinary web host (Vercel,
+ * Cloudflare, a custom domain) cannot, so it is left to the fallback; so is a
+ * page with no usable origin.
  *
  * A Codespaces page used to fall back to mainnet, and a dev app in a codespace
  * sent its local canister ids to mainnet, where whatever canister had that id
- * answered.
+ * answered. So did a dev page opened from a phone by its LAN address, a
+ * Docker host name or a tunnel: a wallet whose ledger has the same id locally
+ * and on mainnet showed, and after a mainnet sign-in sent, real ICP.
  */
 const routableOrigin = (): string | undefined => {
   const origin = pageOrigin()
@@ -352,7 +393,7 @@ const routableOrigin = (): string | undefined => {
   const routable =
     isLocalHostname(hostname) ||
     isMainnetHostname(hostname) ||
-    REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
+    isRemoteDevHostname(hostname)
   return routable ? origin : undefined
 }
 

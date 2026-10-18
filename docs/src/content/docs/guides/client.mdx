@@ -41,12 +41,12 @@ environment variable is text, and `"false"` is truthy, so compare it,
 
 ## Networks
 
-| `network` | Host                                                                                                                                                                                                                                                                                                                     | Root key                                                                                                                          | Key segment                               |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `"ic"`    | `https://icp-api.io`                                                                                                                                                                                                                                                                                                     | Mainnet's, built into the agent. Nothing is fetched.                                                                              | `"ic"`                                    |
-| `"local"` | `http://127.0.0.1:8000`                                                                                                                                                                                                                                                                                                  | Fetched from the replica before the first call.                                                                                   | `"local"`                                 |
-| an object | `host`                                                                                                                                                                                                                                                                                                                   | `rootKey` as given, never fetched. Without it, fetched only when `host` is local, unless `fetchRootKey` says otherwise.           | `name`, or `host` when there is no `name` |
-| `"env"`   | In a browser, the page's own origin when the page is local, on a mainnet boundary domain, or on Codespaces or Gitpod. Any other page (Vercel, a custom domain) uses the server rule [below](#env-on-a-server), which in a browser is usually mainnet (`https://icp-api.io`). On a server, see [below](#env-on-a-server). | From the `ic_env` cookie, only where the cookie is trusted. A local replica with no key from the cookie has its root key fetched. | the resolved host                         |
+| `network` | Host                                                                                                                                                                                                                                                                                                                                                             | Root key                                                                                                                          | Key segment                               |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `"ic"`    | `https://icp-api.io`                                                                                                                                                                                                                                                                                                                                             | Mainnet's, built into the agent. Nothing is fetched.                                                                              | `"ic"`                                    |
+| `"local"` | `http://127.0.0.1:8000`                                                                                                                                                                                                                                                                                                                                          | Fetched from the replica before the first call.                                                                                   | `"local"`                                 |
+| an object | `host`                                                                                                                                                                                                                                                                                                                                                           | `rootKey` as given, never fetched. Without it, fetched only when `host` is local, unless `fetchRootKey` says otherwise.           | `name`, or `host` when there is no `name` |
+| `"env"`   | In a browser, the page's own origin when the page is local, on a mainnet boundary domain, or a page that forwards a dev server ([below](#env-off-localhost)). Any other page (Vercel, a custom domain) uses the server rule [below](#env-on-a-server), which in a browser is usually mainnet (`https://icp-api.io`). On a server, see [below](#env-on-a-server). | From the `ic_env` cookie, only where the cookie is trusted. A local replica with no key from the cookie has its root key fetched. | the resolved host                         |
 
 An object network looks like this:
 
@@ -113,6 +113,21 @@ local. The key is then neither taken from the cookie nor fetched, and certified
 calls fail verification. Use an object network with the replica's `rootKey`
 (or `fetchRootKey: true`), and `{ id }` canisters. `allowEnvConfig: true` is
 refused there, because any other workspace can set the cookie.
+
+### `"env"` off localhost
+
+`"env"` is for `localhost` pages. A dev page opened some other way still
+routes through its own origin, so it reaches the dev server and never
+mainnet: Codespaces and Gitpod, a LAN address (`vite --host` on a phone:
+192.168/16, 10/8, 172.16/12, 169.254/16, IPv6 `fc00::/7` and `fe80::/10`), a
+`*.local`, `*.test` or `*.internal` name (`host.docker.internal`), and the
+tunnels `*.ngrok-free.app`, `*.ngrok-free.dev`, `*.ngrok.app`, `*.ngrok.io`,
+`*.trycloudflare.com` and `*.loca.lt`. None of these is local, so the cookie
+is not believed (a `{ name }` canister does not resolve) and no root key is
+taken from it or fetched: certified calls fail verification against
+mainnet's key. To use such a page, give the client
+`{ host: location.origin, rootKey }` and `{ id }` canisters, or open the app
+on `localhost`.
 
 ### `"env"` on a server
 
