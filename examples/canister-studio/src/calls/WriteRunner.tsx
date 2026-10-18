@@ -196,11 +196,33 @@ export function WriteRunner(
       kind.kind === "call" ? { invalidates: [] } : undefined
     )
   )
+  // The outcome of the last write this runner sent, kept in its own state as
+  // well: the options `useClient()` builds are the caller's, and their key
+  // with them, so after an account switch `mutation` is a new, idle one,
+  // while an unknown outcome must stay on screen until the user moves on.
+  const [outcome, setOutcome] = useState<
+    | { readonly status: "pending" }
+    | { readonly status: "success"; readonly data: unknown }
+    | { readonly status: "error"; readonly error: unknown }
+    | undefined
+  >(undefined)
+  const live = mutation.status !== "idle"
+  const isPending = live ? mutation.isPending : outcome?.status === "pending"
+  const isSuccess = live ? mutation.isSuccess : outcome?.status === "success"
+  const data: unknown = live
+    ? mutation.data
+    : outcome?.status === "success"
+      ? outcome.data
+      : undefined
   const signedIn = auth.status === "signed-in"
   const gated = needsSignIn(kind) && !signedIn
   // Widened: a runtime interface has no typed Err arm, so the mutation types
   // its error `ReactorError<never>`, whose kind can never be canister_err.
-  const error: unknown = mutation.error
+  const error: unknown = live
+    ? mutation.error
+    : outcome?.status === "error"
+      ? outcome.error
+      : null
   // Read in render, in a component that re-renders on caller changes
   // (useAuth): the offer exists only while the sender is the caller.
   const again =
@@ -214,6 +236,13 @@ export function WriteRunner(
   )
   const onChange = useCallback((next: CallCheck) => setCheck(next), [])
 
+  // The caller the latest render shows. The client `useClient()` returns
+  // sends only as its own render's caller: a press handled before a switch
+  // reached this component is refused (`caller_changed`), nothing is sent,
+  // and the step comes back with the sender shown since.
+  const shownCaller = useRef(client.caller())
+  shownCaller.current = client.caller()
+
   const send = async (call: PreparedCall, caller: string, resend: boolean) => {
     const attempt: Sent = { call, caller, resend }
     setSent(attempt)
@@ -221,11 +250,29 @@ export function WriteRunner(
     setPending(undefined)
     setReadBackOpen(false)
     setNotice(undefined)
+    setOutcome({ status: "pending" })
     let result: CallResult
     try {
       result = { ok: true, reply: await mutation.mutateAsync(call.vars) }
+      setOutcome({ status: "success", data: result.reply })
     } catch (failure) {
+      if (
+        !resend &&
+        isReactorError(failure) &&
+        failure.code === "caller_changed" &&
+        shownCaller.current !== caller
+      ) {
+        mutation.reset()
+        setOutcome(undefined)
+        setSent(undefined)
+        setPending({ call, caller: shownCaller.current })
+        setNotice(
+          "The signed-in principal changed: check the sender, then send again."
+        )
+        return
+      }
       result = { ok: false, error: failure }
+      setOutcome({ status: "error", error: failure })
     }
     setUnresolved((current) => afterSettled(current, attempt, result, known))
     addHistoryEntry(
@@ -249,9 +296,9 @@ export function WriteRunner(
   // only once the send's own await resumes.
   const settledNow =
     sent !== undefined &&
-    !mutation.isPending &&
+    !isPending &&
     known &&
-    (mutation.isSuccess || isDuplicateAnswer(error))
+    (isSuccess || isDuplicateAnswer(error))
   const open =
     settledNow && sent !== undefined
       ? unresolved.filter((u) => !sameWrite(u.sent, sent))
@@ -262,7 +309,7 @@ export function WriteRunner(
   // success or duplicate answer from a canister not known to deduplicate.
   const openAfterResend =
     sent !== undefined &&
-    !mutation.isPending &&
+    !isPending &&
     !unknown &&
     open.some((u) => sameWrite(u.sent, sent))
 
@@ -326,6 +373,7 @@ export function WriteRunner(
       current.map((u) => (u.setAside ? u : { ...u, setAside: true }))
     )
     mutation.reset()
+    setOutcome(undefined)
     setSent(undefined)
     setPending(undefined)
     setReadBackOpen(false)
@@ -396,7 +444,7 @@ export function WriteRunner(
                 ? "Confirm or cancel the call below first."
                 : undefined
         }
-        busy={mutation.isPending}
+        busy={isPending}
         externalIssues={
           error === null ? undefined : issuesFromReactorError(error)
         }
@@ -446,7 +494,7 @@ export function WriteRunner(
             bytes: u.sent.call.bytes,
             caller: u.sent.caller,
           }))}
-          busy={mutation.isPending}
+          busy={isPending}
           onConfirm={onConfirm}
           onCancel={() => {
             setPending(undefined)
@@ -455,7 +503,7 @@ export function WriteRunner(
         />
       )}
       <div className="call-outcome" aria-live="polite">
-        {mutation.isPending ? (
+        {isPending ? (
           <p className="row-sm muted" role="status">
             <span className="spinner spinner-sm" aria-hidden="true" />
             {kind.kind === "update"
@@ -464,11 +512,11 @@ export function WriteRunner(
                 : "Sending… waiting for the certified reply."
               : "Sending…"}
           </p>
-        ) : mutation.isSuccess ? (
+        ) : isSuccess ? (
           <WriteSuccess
             kind={kind.kind}
             method={method}
-            reply={mutation.data}
+            reply={data}
             resend={sent?.resend === true}
             known={known}
             units={units}
@@ -516,7 +564,7 @@ export function WriteRunner(
                 createdAt={createdAtNanos(createdAtTimeOf(again.arg))}
                 known={known}
                 duplicateTag={duplicateTag}
-                busy={mutation.isPending}
+                busy={isPending}
                 onResend={onResend}
               />
             ) : (
@@ -532,7 +580,7 @@ export function WriteRunner(
             )}
           </div>
         ) : null}
-        {mutation.isSuccess && openAfterResend && (
+        {isSuccess && openAfterResend && (
           <NoResendNotice
             reason="this canister is not known to deduplicate on created_at_time, so the re-send that ran says nothing about the first send: if it does not deduplicate, both ran."
             onReadBack={
@@ -540,7 +588,7 @@ export function WriteRunner(
             }
           />
         )}
-        {holding && !mutation.isPending && (
+        {holding && !isPending && (
           <div className="stack-xs">
             <div className="row">
               <button
