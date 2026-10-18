@@ -351,3 +351,78 @@ declare module "react-intersection-observer" {
 
   export function useInView(options?: IntersectionOptions): InViewHookResponse
 }
+
+/**
+ * @icp-sdk/signer v6, the ICRC-25 signer client, for the members the docs
+ * use. Shaped after its 6.1.0 declarations.
+ */
+declare module "@icp-sdk/signer" {
+  import type { Principal } from "@icp-sdk/core/principal"
+
+  export interface Transport {
+    readonly __transport: true
+  }
+
+  export class SignerError extends Error {
+    /** The JSON-RPC error code; ICRC-25's 3001 is "action aborted". */
+    code: number
+  }
+
+  export class Signer<T extends Transport = Transport> {
+    constructor(options: { transport: T; autoCloseTransportChannel?: boolean })
+    getAccounts(): Promise<Array<{ owner: Principal; subaccount?: Uint8Array }>>
+    closeChannel(): Promise<void>
+  }
+}
+
+declare module "@icp-sdk/signer/agent" {
+  import type { Agent } from "@icp-sdk/core/agent"
+  import type { Principal } from "@icp-sdk/core/principal"
+  import type { Signer, Transport } from "@icp-sdk/signer"
+
+  // SignerAgent implements the whole Agent interface; the docs pass it on.
+  export interface SignerAgent extends Agent {}
+  export const SignerAgent: {
+    create<T extends Transport>(options: {
+      signer: Signer<T>
+      account: Principal
+    }): Promise<SignerAgent>
+  }
+}
+
+declare module "@icp-sdk/signer/web" {
+  import type { Transport } from "@icp-sdk/signer"
+
+  export class PostMessageTransport implements Transport {
+    readonly __transport: true
+    constructor(options: { url: string })
+  }
+}
+
+/**
+ * @icp-sdk/canisters v4's ICRC ledger, for the members the docs use. Shaped
+ * after its 4.0.0 declarations.
+ */
+declare module "@icp-sdk/canisters/ledger/icrc" {
+  import type { Agent } from "@icp-sdk/core/agent"
+  import type { Principal } from "@icp-sdk/core/principal"
+
+  export interface TransferParams {
+    to: { owner: Principal; subaccount: [] | [Uint8Array] }
+    fee?: bigint
+    memo?: Uint8Array
+    from_subaccount?: Uint8Array
+    created_at_time?: bigint
+    amount: bigint
+  }
+
+  export class IcrcTransferError extends Error {}
+
+  export class IcrcLedgerCanister {
+    static create(options: {
+      agent?: Agent
+      canisterId: Principal
+    }): IcrcLedgerCanister
+    transfer: (params: TransferParams) => Promise<bigint>
+  }
+}

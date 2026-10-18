@@ -13,7 +13,10 @@ gives you:
 - strict helpers for token amounts;
 - a test client over an in-memory replica, in a separate entry.
 
-It works in a browser, in Node and on a server. For React, add
+It works in a browser, in Node and on a server. It ships as ES modules only,
+with no CommonJS build: use it from a package with `"type": "module"` or through a
+bundler (see
+[ES modules only](/v4/guides/getting-started/#es-modules-only)). For React, add
 [`@ic-reactor/react`](/v4/packages/react/). For Vite, add
 [`@ic-reactor/vite-plugin`](/v4/packages/vite-plugin/).
 
@@ -37,7 +40,8 @@ npm install --save-dev --save-exact @candid-core/cli@0.3.0
 
 See [Getting started](/v4/guides/getting-started/) for the first read and write.
 
-Node `>=18`.
+Node `>=22.12.0`, the first Node 22 that loads an ES module with `require()`
+(22.12 itself prints an experimental warning when it does).
 
 ## Peers
 
@@ -48,6 +52,11 @@ Node `>=18`.
 | `@tanstack/query-core` | `^5.62.0`                                                                                                  |
 | `@noble/curves`        | `^2.2.0`, optional: only `@ic-reactor/core/testing` signs with it, and `@icp-sdk/core` installs it already |
 
+With React, install `@tanstack/query-core` at the exact version your
+`@tanstack/react-query` depends on, and check that
+`npm ls @tanstack/query-core` shows one copy; see
+[the React package](/v4/packages/react/#one-copy-of-tanstackquery-core).
+
 `@icp-sdk/auth` is not a peer. Install it when users sign in with Internet
 Identity: its `AuthClient` is an `AuthLike` as it is, see
 [Auth](/v4/guides/auth/).
@@ -57,21 +66,21 @@ Identity: its `AuthClient` is an `AuthLike` as it is, see
 The entry has 13 names: four at runtime and nine types. The export budget caps
 it at 13.
 
-| Export             | Kind    | What it is                                                                                                                                                                         |
-| ------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createClient`     | runtime | Builds a client from a network and a caller. See [The client](/v4/guides/client/).                                                                                                 |
-| `isReactorError`   | runtime | Tests whether a thrown value is a `ReactorError`; with a canister and a method, one of that call's, its `err` typed. See [Errors](/v4/guides/errors/).                             |
-| `parseUnits`       | runtime | Text to base units: `parseUnits("1.5", 8)` is `150000000n`. See [Values and units](/v4/guides/values/).                                                                            |
-| `formatUnits`      | runtime | Base units to text, without losing digits. See [Values and units](/v4/guides/values/).                                                                                             |
-| `Client`           | type    | A client offers: `canister`, `queryOptions`, `mutationOptions`, `resendOf`, `queryKey`, `func`, `signIn`, `signOut`, `caller`, `authState`, `subscribe`, `queryClient`, `dispose`. |
-| `ClientOptions`    | type    | The argument of `createClient`: a `network`, and exactly one of `identity` and `auth`.                                                                                             |
-| `Network`          | type    | `"ic"`, `"local"`, `"env"`, or `{ host, rootKey?, name?, fetchRootKey? }`.                                                                                                         |
-| `AuthLike`         | type    | What `auth` must be: the shape of an `@icp-sdk/auth` 10 `AuthClient`. See [Auth](/v4/guides/auth/).                                                                                |
-| `AuthState`        | type    | `{ status, principal }`: who calls now, and why.                                                                                                                                   |
-| `Canister`         | type    | What `client.canister<Actor>(actor, target)` returns: one async method per Candid method.                                                                                          |
-| `CanisterTarget`   | type    | `{ id }` or `{ name }`, each with an optional `certified`. See [Reads](/v4/guides/reads/#certified-reads).                                                                         |
-| `ReactorError`     | type    | The error every call rejects with. A type only: there is no class, so test with `isReactorError`.                                                                                  |
-| `ReactorErrorKind` | type    | The eight kinds of a `ReactorError`.                                                                                                                                               |
+| Export             | Kind    | What it is                                                                                                                                                                                                                    |
+| ------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createClient`     | runtime | Builds a client from a network and a caller. See [The client](/v4/guides/client/).                                                                                                                                            |
+| `isReactorError`   | runtime | Tests whether a thrown value is a `ReactorError`; with a canister and a method, one of that call's, its `err` typed. See [Errors](/v4/guides/errors/).                                                                        |
+| `parseUnits`       | runtime | Text to base units: `parseUnits("1.5", 8)` is `150000000n`. See [Values and units](/v4/guides/values/).                                                                                                                       |
+| `formatUnits`      | runtime | Base units to text, without losing digits. See [Values and units](/v4/guides/values/).                                                                                                                                        |
+| `Client`           | type    | A client offers: `canister`, `canisterId`, `queryOptions`, `mutationOptions`, `resendOf`, `queryKey`, `encode`, `func`, `time`, `signIn`, `signOut`, `caller`, `authState`, `subscribe`, `queryClient`, `network`, `dispose`. |
+| `ClientOptions`    | type    | The argument of `createClient`: a `network`, and exactly one of `identity` and `auth`.                                                                                                                                        |
+| `Network`          | type    | `"ic"`, `"local"`, `"env"`, or `{ host, rootKey?, name?, fetchRootKey? }`.                                                                                                                                                    |
+| `AuthLike`         | type    | What `auth` must be: the shape of an `@icp-sdk/auth` 10 `AuthClient`. See [Auth](/v4/guides/auth/).                                                                                                                           |
+| `AuthState`        | type    | `{ status, principal }`: who calls now, and why.                                                                                                                                                                              |
+| `Canister`         | type    | What `client.canister<Actor>(actor, target)` returns: one async method per Candid method.                                                                                                                                     |
+| `CanisterTarget`   | type    | `{ id }` or `{ name }`, each with an optional `certified`. See [Reads](/v4/guides/reads/#certified-reads).                                                                                                                    |
+| `ReactorError`     | type    | The error every call rejects with. A type only: there is no class, so test with `isReactorError`.                                                                                                                             |
+| `ReactorErrorKind` | type    | The eight kinds of a `ReactorError`.                                                                                                                                                                                          |
 
 The signatures that matter most:
 
@@ -83,6 +92,7 @@ type ClientOptions = {
   readonly allowEnvConfig?: boolean
   readonly fetch?: typeof globalThis.fetch
   readonly maxDepth?: number
+  readonly maxElements?: number
 } & (
   | { readonly identity: Identity | "anonymous"; readonly auth?: never }
   | {
@@ -126,7 +136,7 @@ function formatUnits(
 
 `createClient` does no work until it is used, so the same line runs in a
 server render and in a browser. It throws a `TypeError` for options that do not
-say who calls, say it twice, or name a network or `maxDepth` it cannot use.
+say who calls, say it twice, or name a network, `maxDepth` or `maxElements` it cannot use.
 The `auth` factory is handed the client's network:
 [Auth](/v4/guides/auth/) says where its `identityProvider` comes from.
 
