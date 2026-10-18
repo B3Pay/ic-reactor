@@ -4454,7 +4454,7 @@
     "testName": "return as many values as the maxElements the test client was given",
     "why": "a mock encodes its reply with candid-core's default element budget, so a test client given a larger maxElements still cannot return a reply past 1,000,000 values",
     "file": "src/testing/test-client.ts",
-    "search": "        maxDepth,\n        maxElements,\n      })",
+    "search": "        maxDepth,\n        maxElements: Number.MAX_SAFE_INTEGER,\n      })",
     "replace": "        maxDepth,\n      })"
   },
   {
@@ -4796,5 +4796,15 @@
     "file": "src/call.ts",
     "search": "          strategy,\n        }),\n        signal\n      )",
     "replace": "          strategy,\n        }),\n        undefined\n      )"
+  },
+  {
+    "id": "899-mock-reply-unbudgeted",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "return a reply the client decodes under a maxElements below its length",
+    "why": "a mock encodes its reply with the test client's maxElements as an absolute limit, so it refuses a reply the client's decoder (maxElements plus the reply's bytes) accepts",
+    "file": "src/testing/test-client.ts",
+    "search": "        maxElements: Number.MAX_SAFE_INTEGER,",
+    "replace": "        maxElements,"
   }
 ]

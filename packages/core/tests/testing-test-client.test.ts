@@ -378,6 +378,19 @@ describe("the handlers' values", () => {
     await expect(canister.nulls()).resolves.toHaveLength(1_100_000)
   })
 
+  it("return a reply the client decodes under a maxElements below its length", async () => {
+    // The client's budget is maxElements plus the reply's bytes, so 100
+    // one-byte nats decode under maxElements 10, and the mock must send them.
+    type Nats = { nats: (() => Promise<bigint[]>) & WithMode<"query"> }
+    const nats = c.service({ nats: c.func([], [c.vec(c.nat)], "query") })
+    const test = setup({ maxElements: 10 })
+    test.mock<Nats>(nats, SHAPES, {
+      nats: () => Array.from({ length: 100 }, (_, i) => BigInt(i)),
+    })
+    const canister = test.client.canister<Nats>(nats, { id: SHAPES })
+    await expect(canister.nats()).resolves.toHaveLength(100)
+  })
+
   it("make a void update that returns whatever it likes a method with no results", async () => {
     const seen: string[] = []
     const { canister } = withShapes({

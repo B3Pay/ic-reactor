@@ -197,9 +197,11 @@ function mockCanister(
       const reply = await handler(...decoded.values, {
         caller: principal(caller),
       })
+      // No element budget here: the client's own decode of these bytes
+      // applies the real one, which counts the reply's length as well.
       const encoded = encodeArgs(method.results, resultValues(method, reply), {
         maxDepth,
-        maxElements,
+        maxElements: Number.MAX_SAFE_INTEGER,
       })
       if (!encoded.ok) {
         throw new Error(
