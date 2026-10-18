@@ -88,6 +88,17 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Fixed
 
+- `client.queryOptions()` and `client.queryKey()` refuse a symbol given as
+  the variables that is not core's `skipToken`, with a `TypeError` that says
+  two copies of `@tanstack/query-core` are installed and how to get one
+  (#873). Such a symbol is the other copy's `skipToken`; it used to be
+  encoded as the argument, so a read meant to wait ran and rejected
+  `invalid_args`. A method whose one argument is Candid `reserved` still
+  takes any value, a symbol included. This check runs in production too: an
+  app with two copies gets a thrown `TypeError` where it got a rejected read.
+  Migration: install `@tanstack/query-core` at the exact version your
+  `@tanstack/react-query` depends on, so that `npm ls @tanstack/query-core`
+  shows one copy.
 - A read made with `queryOptions` stops waiting for the HTTP answer to its
   request, and to each `read_state` that polls for it, once its query
   function's signal aborts, and rejects `cancelled` (part of #875). Its signal
@@ -125,6 +136,19 @@ method, vars)` for a method named by data), the variables of
 
 #### Fixed
 
+- In development, `ReactorProvider` throws when the client's `QueryClient`
+  is not an instance of `@tanstack/react-query`'s `QueryClient`: two copies
+  of `@tanstack/query-core` are loaded (#873). Production builds do not
+  check. Migration: install `@tanstack/query-core` at the exact version your
+  `@tanstack/react-query` depends on; `npm ls @tanstack/query-core` must show
+  one copy.
+
+### Docs
+
+- The guide's Setup, both READMEs, the core and react package pages and
+  Getting started say to install `@tanstack/query-core` at the version
+  `@tanstack/react-query` depends on, and to check that
+  `npm ls @tanstack/query-core` shows one copy (#873).
 - The tarball now ships the MIT `LICENSE` the manifest names; the repository
   has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
   has none or one that is not a copy of the root file (#898).

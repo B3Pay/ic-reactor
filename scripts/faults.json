@@ -4398,6 +4398,56 @@
     "replace": "  return { keys: Object.keys(object) }\n"
   },
   {
+    "id": "873-foreign-skiptoken-encoded",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses another copy's skipToken",
+    "why": "queryOptions no longer refuses a symbol that is not core's skipToken, so another copy's skipToken makes a read that runs and rejects invalid_args",
+    "file": "src/options.ts",
+    "search": "    refuseForeignSymbol(vars, prepared, call)\n    const values",
+    "replace": "    const values"
+  },
+  {
+    "id": "873-reserved-refuses-symbol",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses another copy's skipToken",
+    "why": "the reserved exemption dropped, so a method whose one argument is reserved refuses a symbol, which reserved takes",
+    "file": "src/options.ts",
+    "search": "    vars !== skipToken &&\n    !takesAnything(method)\n",
+    "replace": "    vars !== skipToken\n"
+  },
+  {
+    "id": "873-provider-two-query-cores-silent",
+    "package": "react",
+    "test": "tests/two-query-cores.test.tsx",
+    "testName": "makes the provider throw in development",
+    "why": "the provider no longer checks that the client's QueryClient is react-query's, so two copies of query-core go unnoticed",
+    "file": "src/index.tsx",
+    "search": "  checkOneQueryCore(client)\n",
+    "replace": ""
+  },
+  {
+    "id": "873-provider-checks-in-production",
+    "package": "react",
+    "test": "tests/two-query-cores.test.tsx",
+    "testName": "does not make it throw in production",
+    "why": "the two-copies check runs in production too",
+    "file": "src/index.tsx",
+    "search": "  if (client.queryClient instanceof QueryClient || !isDevelopment()) return\n",
+    "replace": "  if (client.queryClient instanceof QueryClient) return\n"
+  },
+  {
+    "id": "873-querykey-encodes-foreign-skiptoken",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses another copy's skipToken",
+    "why": "queryKey no longer refuses a symbol that is not core's skipToken, so it keys a read with another copy's skipToken as $invalid",
+    "file": "src/options.ts",
+    "search": "    refuseForeignSymbol(vars, prepared, call)\n    const encoded",
+    "replace": "    const encoded"
+  },
+  {
     "id": "880-hook-not-awaited",
     "package": "vite-plugin",
     "file": "src/index.ts",
