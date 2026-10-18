@@ -302,8 +302,16 @@ export function Send({ arg }: { arg: TransferArg }) {
 - Do not retry a write. `retry` is `false`; keep it. The client itself
   re-sends an update, at most twice, only after a failure proving the canister
   never got it (reject code 2, status 429); any other failure is final.
-- A write is sent as whoever is signed in when it runs. If nobody is, the
-  client refuses it (`unauthenticated`) before calling anything.
+- A write is sent as the caller current when `mutate()` was called, or not at
+  all. Held back by TanStack Query (offline, queued behind its `scope`, or
+  retried) while the account changes, it is refused (`cancelled`,
+  `caller_changed`, `mayHaveExecuted: false`) and nothing is sent. This holds
+  with an `onMutate` of yours that replaces the client's, on
+  `client.queryClient`. A mutation restored from a persister is always
+  refused that way: call `mutate()` again. On another `QueryClient`, keep the
+  client's `onMutate` (spread its result into yours; before TanStack Query
+  5.89, pass it unwrapped). If nobody is signed in,
+  the client refuses it (`unauthenticated`) before calling anything.
 - Send the same write again after `mayHaveExecuted: true` only to a method
   that runs the same argument from the same sender at most once, such as an
   ICRC-1 transfer with `created_at_time` set (it answers `Duplicate`).
