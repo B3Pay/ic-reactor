@@ -97,6 +97,17 @@ describe("icReactor", () => {
     }
   })
 
+  it("should refuse an onGenerated that is not a function", () => {
+    for (const value of [null, 0, "", "hook", {}]) {
+      expect(() => createVitePlugin({ onGenerated: value })).toThrow(
+        /^\[ic-reactor\] onGenerated is .*, not a function: give it a function to call after each generated module, or remove it$/
+      )
+    }
+    for (const value of [undefined, () => {}, async () => {}]) {
+      expect(() => createVitePlugin({ onGenerated: value })).not.toThrow()
+    }
+  })
+
   it("should refuse an injectEnvironment that is not true or false", () => {
     for (const value of [null, 0, "", "false"]) {
       expect(() => createVitePlugin({ injectEnvironment: value })).toThrow(
@@ -221,7 +232,7 @@ describe("icReactor", () => {
     for (const [value, refused] of given) {
       expect(() => createVitePlugin(value)).toThrow(
         `[ic-reactor] ${refused} of icReactor(): ` +
-          "its options are canisters, injectEnvironment and failOnError"
+          "its options are canisters, injectEnvironment, failOnError and onGenerated"
       )
     }
     const unlisted = new Proxy(

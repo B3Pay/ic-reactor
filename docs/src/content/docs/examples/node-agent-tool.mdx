@@ -13,6 +13,14 @@ Node 22.18 or newer (`node src/cli.ts <command>`, no build step). It is
 - **Identity:** a fixed `Identity` from a PEM file (Ed25519 or secp256k1, as
   `icp identity export` prints it) or a hex seed, else
   `identity: "anonymous"`, whose writes the client refuses before sending.
+  Give it an identity of its own that holds little and controls nothing
+  (`icp identity new agent-tool --output-seed <file>`, which writes the seed
+  phrase to a file instead of printing it, or `pnpm exec icp` inside the
+  example),
+  never one that controls a canister, and export its key outside the
+  project, readable by you alone. An agent that runs the tool can read its
+  environment, the seed variable included, and so can sign whatever the tool
+  can.
 - **Networks:** `--network ic|local|<url>` onto `createClient`'s `network`. A
   root key is fetched only from a replica on this machine; any other URL needs
   the key given.
