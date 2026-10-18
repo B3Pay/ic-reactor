@@ -23,16 +23,22 @@
  * who sent what, and from the page whose answer it shows.
  */
 import { c } from "@candid-core/schema"
-import { createClient, isReactorError, type Client } from "@ic-reactor/core"
+import {
+  createClient,
+  isReactorError,
+  type Canister,
+  type Client,
+} from "@ic-reactor/core"
 import { createTestClient } from "@ic-reactor/core/testing"
 import {
   HydrationBoundary,
   dehydrate,
+  useMutation,
   useQuery,
   useSuspenseQuery,
   type DehydratedState,
 } from "@tanstack/react-query"
-import { act, render, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import {
   Component,
   StrictMode,
@@ -41,6 +47,7 @@ import {
   startTransition,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   version,
@@ -52,15 +59,24 @@ import { hydrateRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ReactorProvider, useAuth, useClient } from "../src/index.js"
-import { macrotask, testAuth } from "./helpers.js"
+import { clientOf, macrotask, testAuth } from "./helpers.js"
 
 const ANONYMOUS = "2vxsx-fae"
 const CANISTER = "rdmx6-jaaaa-aaaaa-aaadq-cai"
 const REACT_18 = Number(version.split(".")[0]) < 19
+/** What an empty slot of React Compiler's cache holds (`react-compiler-runtime`'s `$empty`). */
+const EMPTY = Symbol.for("react.memo_cache_sentinel")
 
 /** One query that answers with who called it. */
-const WHO = c.service({ whoami: c.func([], [c.text], "query") })
-type Who = { whoami: () => Promise<string> }
+const WHO = c.service({
+  whoami: c.func([], [c.text], "query"),
+  stamp: c.func([], [c.text], "update"),
+})
+type Who = { whoami: () => Promise<string>; stamp: () => Promise<string> }
+/** The options of a `whoami` read, as a client builds them. */
+type WhoamiOptions = ReturnType<typeof whoamiOptions>
+const whoamiOptions = (client: Client, who: Canister<Who>) =>
+  client.queryOptions(who, "whoami")
 
 /**
  * A test client and its replica. Signed in as the identity of `seed` unless
@@ -73,6 +89,7 @@ function replica(options: { seed?: number; signedIn?: boolean } = {}) {
   })
   test.mock<Who>(WHO, CANISTER, {
     whoami: ({ caller }) => `read by ${caller}`,
+    stamp: ({ caller }) => `written by ${caller}`,
   })
   tests.push(test)
   return test
@@ -450,10 +467,13 @@ describe("useClient()", () => {
     expect(callers).toEqual([ANONYMOUS, first, second, ANONYMOUS])
   })
 
-  it("returns the provider's client object itself once the caller React renders is the live one", async () => {
+  it("returns one object per caller: another after a sign-in, a switch, a sign-out and an expiry, the same across renders for one caller", async () => {
     const test = replica({ seed: 1 })
     const seen: Client[] = []
+    let renderAgain!: () => void
     function Probe() {
+      const [, setTick] = useState(0)
+      renderAgain = () => setTick((tick) => tick + 1)
       seen.push(useClient())
       return <p data-testid="status">{useAuth().status}</p>
     }
@@ -462,22 +482,324 @@ describe("useClient()", () => {
         <Probe />
       </ReactorProvider>
     )
+    /** What the last render got, once the tree rendered again for no change of caller. */
+    const settle = () => {
+      const before = seen.length
+      act(() => renderAgain())
+      expect(seen.length).toBeGreaterThan(before)
+      return seen[seen.length - 1] as Client
+    }
+
+    const first = settle()
+    const user = test.auth.getPrincipal()?.toText()
+    act(() => {
+      test.auth.switchTo(2)
+    })
+    const switched = settle()
+    const second = test.auth.getPrincipal()?.toText()
     await act(async () => {
       await test.auth.signOut()
     })
-    act(() => {
-      test.auth.switchTo(3)
+    const signedOut = settle()
+    await act(async () => {
+      await test.auth.signIn(3)
     })
+    const signedIn = settle()
+    const third = test.auth.getPrincipal()?.toText()
+    // The live caller's view says what the client says.
+    expect(signedIn.authState()).toBe(test.client.authState())
+    act(() => {
+      test.auth.expire()
+    })
+    const expired = settle()
 
-    expect(screen.getByTestId("status").textContent).toBe("signed-in")
-    expect(seen.length).toBeGreaterThanOrEqual(3)
-    for (const client of seen) expect(client).toBe(test.client)
+    expect(screen.getByTestId("status").textContent).toBe("expired")
+    // Each render for one caller got that caller's object, and no other.
+    const byCaller = new Map<string, Set<Client>>()
+    for (const client of seen) {
+      const objects = byCaller.get(client.caller()) ?? new Set()
+      byCaller.set(client.caller(), objects.add(client))
+    }
+    expect([...byCaller.keys()]).toEqual([user, second, ANONYMOUS, third])
+    for (const objects of byCaller.values()) expect(objects.size).toBe(1)
+    // A new object at every change of caller, and the anonymous one again
+    // when the caller turns anonymous, however it does.
+    expect(new Set([first, switched, signedOut, signedIn]).size).toBe(4)
+    expect(expired).toBe(signedOut)
+    expect(
+      [first, switched, signedOut, signedIn].map((client) => client.caller())
+    ).toEqual([user, second, ANONYMOUS, third])
+    // Each is a view of the provider's client: its cache, canisters and
+    // sign-in are the client's own, and its state the live one.
+    for (const client of seen) {
+      expect(client).not.toBe(test.client)
+      expect(clientOf(client)).toBe(test.client)
+      expect(client.queryClient).toBe(test.client.queryClient)
+      expect(client.canister).toBe(test.client.canister)
+      expect(client.subscribe).toBe(test.client.subscribe)
+      expect(client.signOut).toBe(test.client.signOut)
+    }
+    expect(expired.authState()).toBe(test.client.authState())
+    expect(expired.authState().status).toBe("expired")
   })
 
-  it("returns the client itself after a hydration, and a view of it only for the hydrating render", async () => {
+  // #894: what a component memoizes on the client (useMemo, an effect's
+  // dependencies, React Compiler's cache) is built again when the caller
+  // changes, because the client it gets changes with it.
+  it("rebuilds what a component memoizes on the client after a switch: useMemo, an effect, and React Compiler's output", async () => {
+    const test = replica({ seed: 1 })
+    function Memoized() {
+      const client = useClient()
+      const who = client.canister<Who>(WHO, { id: CANISTER })
+      const options = useMemo(
+        () => client.queryOptions(who, "whoami"),
+        [client, who]
+      )
+      const read = useQuery(options)
+      return (
+        <p data-testid="memo">
+          {read.isError ? "ERROR" : (read.data ?? "loading")}
+        </p>
+      )
+    }
+    function Effect() {
+      const client = useClient()
+      const [shown, setShown] = useState("loading")
+      useEffect(() => {
+        const who = client.canister<Who>(WHO, { id: CANISTER })
+        let current = true
+        setShown("loading")
+        client.queryClient.fetchQuery(client.queryOptions(who, "whoami")).then(
+          (data) => current && setShown(data),
+          () => current && setShown("ERROR")
+        )
+        return () => {
+          current = false
+        }
+      }, [client])
+      return <p data-testid="effect">{shown}</p>
+    }
+    /**
+     * What React Compiler 1.0 emits for
+     * `useQuery(client.queryOptions(who, "whoami"))`, written by hand: its
+     * cache is the `useState` array of `react-compiler-runtime`'s `c()`
+     * (React 19's own `c` keeps the same array on the fiber), and a slot is
+     * computed again only when an input it read changed by identity.
+     */
+    function Compiled() {
+      const $ = useState(() => new Array<unknown>(5).fill(EMPTY))[0]
+      const client = useClient()
+      let who: Canister<Who>
+      if ($[0] !== client) {
+        who = client.canister<Who>(WHO, { id: CANISTER })
+        $[0] = client
+        $[1] = who
+      } else {
+        who = $[1] as Canister<Who>
+      }
+      let options: WhoamiOptions
+      if ($[2] !== client || $[3] !== who) {
+        options = whoamiOptions(client, who)
+        $[2] = client
+        $[3] = who
+        $[4] = options
+      } else {
+        options = $[4] as WhoamiOptions
+      }
+      const read = useQuery(options)
+      return (
+        <p data-testid="compiled">
+          {read.isError ? "ERROR" : (read.data ?? "loading")}
+        </p>
+      )
+    }
+    render(
+      <ReactorProvider client={() => test.client}>
+        <Memoized />
+        <Effect />
+        <Compiled />
+      </ReactorProvider>
+    )
+    const all = ["memo", "effect", "compiled"] as const
+    const shown = () => all.map((id) => screen.getByTestId(id).textContent)
+    const first = test.auth.getPrincipal()?.toText()
+    await waitFor(() =>
+      expect(shown()).toEqual(all.map(() => `read by ${first}`))
+    )
+
+    act(() => {
+      test.auth.switchTo(2)
+    })
+    const second = test.auth.getPrincipal()?.toText()
+    expect(second).not.toBe(first)
+    // Never the previous caller's data under the new caller.
+    for (const text of shown()) expect(text).not.toBe(`read by ${first}`)
+    await waitFor(() =>
+      expect(shown()).toEqual(all.map(() => `read by ${second}`))
+    )
+
+    // A refetch reads as the caller now, and is never refused.
+    await act(() => test.client.queryClient.invalidateQueries())
+    for (let tick = 0; tick < 3; tick++) await act(macrotask)
+    expect(shown()).toEqual(all.map(() => `read by ${second}`))
+    expect(new Set(whoamiCallers(test).slice(-2))).toEqual(new Set([second]))
+  })
+
+  // #894: the client a render got writes as that render's caller or not at
+  // all, so a press handled before a switch reaches the render is refused
+  // instead of signed by the new caller, with no guard of the app's.
+  it("refuses a write pressed in the batch of a switch, before the render shows the new caller, and sends nothing", async () => {
+    const test = replica({ seed: 1 })
+    const failures: unknown[] = []
+    function Stamp() {
+      const client = useClient()
+      const who = client.canister<Who>(WHO, { id: CANISTER })
+      const stamp = useMutation({
+        ...client.mutationOptions(who, "stamp"),
+        onError: (error) => failures.push(error),
+      })
+      return (
+        <button data-status={stamp.status} onClick={() => stamp.mutate()}>
+          {stamp.data ?? `Stamp as ${client.caller()}`}
+        </button>
+      )
+    }
+    render(
+      <ReactorProvider client={() => test.client}>
+        <Stamp />
+      </ReactorProvider>
+    )
+    const first = test.auth.getPrincipal()?.toText()
+    const button = screen.getByRole("button", { name: `Stamp as ${first}` })
+    const stamps = () =>
+      test.requests.filter(
+        ({ methodName, endpoint }) =>
+          methodName === "stamp" && endpoint === "call"
+      )
+
+    act(() => {
+      test.auth.switchTo(2)
+      fireEvent.click(button)
+    })
+    const second = test.auth.getPrincipal()?.toText()
+    await screen.findByRole("button", { name: `Stamp as ${second}` })
+    await waitFor(() => expect(failures).toHaveLength(1))
+    expect(failures[0]).toMatchObject({
+      kind: "cancelled",
+      code: "caller_changed",
+      mayHaveExecuted: false,
+    })
+    expect(stamps()).toEqual([])
+    // The refusal reaches the options the press used (their onError); the
+    // mutation the new render shows starts over for the new caller, idle:
+    // the key holds the caller, so TanStack detached it from the stale run.
+    expect(
+      screen.getByRole("button", { name: `Stamp as ${second}` }).dataset.status
+    ).toBe("idle")
+
+    // The render that shows the new caller writes as them.
+    fireEvent.click(screen.getByRole("button", { name: `Stamp as ${second}` }))
+    await screen.findByRole("button", { name: `written by ${second}` })
+    expect(stamps().map(({ caller }) => caller)).toEqual([second])
+  })
+
+  // #894: a handler that signs in and then writes presses with the options
+  // of the last render React committed. The sign-in's update renders and
+  // commits before the handler goes on, so the write goes out as the user;
+  // when that render cannot commit yet (it suspends on the user's data), the
+  // press still has the anonymous caller's options and is refused, sending
+  // nothing. A direct call signs as the caller current either way.
+  it.each([
+    ["commits before the handler goes on", false, "sent as the user"],
+    ["suspends on the user's data", true, "refused"],
+  ])(
+    "decides a write pressed right after awaiting a sign-in by whether the signed-in render %s: %s",
+    async (_, suspends, outcome) => {
+      const test = replica({ seed: 1, signedIn: false })
+      const failures: unknown[] = []
+      let direct: Promise<string> | undefined
+      function Read({ client }: { client: Client }) {
+        const who = client.canister<Who>(WHO, { id: CANISTER })
+        return (
+          <p>{useSuspenseQuery(client.queryOptions(who, "whoami")).data}</p>
+        )
+      }
+      function SignInAndStamp() {
+        const client = useClient()
+        const who = client.canister<Who>(WHO, { id: CANISTER })
+        const stamp = useMutation({
+          ...client.mutationOptions(who, "stamp"),
+          onError: (error) => failures.push(error),
+        })
+        const signInAndStamp = async () => {
+          await client.signIn(1)
+          stamp.mutate()
+        }
+        const signInAndCall = async () => {
+          await client.signIn(1)
+          direct = who.stamp()
+        }
+        return (
+          <>
+            {suspends && <Read client={client} />}
+            <button onClick={() => void signInAndStamp()}>
+              sign in, mutate
+            </button>
+            <button onClick={() => void signInAndCall()}>sign in, call</button>
+            <output>{stamp.data ?? stamp.status}</output>
+          </>
+        )
+      }
+      render(
+        <ReactorProvider client={() => test.client}>
+          <Suspense fallback={<p>loading</p>}>
+            <SignInAndStamp />
+          </Suspense>
+        </ReactorProvider>
+      )
+      await screen.findByRole("button", { name: "sign in, mutate" })
+      const stamps = () =>
+        test.requests
+          .filter(
+            ({ methodName, endpoint }) =>
+              methodName === "stamp" && endpoint === "call"
+          )
+          .map(({ caller }) => caller)
+
+      fireEvent.click(screen.getByRole("button", { name: "sign in, mutate" }))
+      for (let tick = 0; tick < 5; tick++) await act(macrotask)
+      const user = test.auth.getPrincipal()?.toText()
+      if (outcome === "refused") {
+        await waitFor(() => expect(failures).toHaveLength(1))
+        expect(failures[0]).toMatchObject({
+          kind: "cancelled",
+          code: "caller_changed",
+          mayHaveExecuted: false,
+        })
+        expect(stamps()).toEqual([])
+      } else {
+        await screen.findByText(`written by ${user}`)
+        expect(failures).toEqual([])
+        expect(stamps()).toEqual([user])
+      }
+
+      // A direct call made after the sign-in signs as the user either way.
+      await act(async () => {
+        await test.client.signOut()
+      })
+      await screen.findByRole("button", { name: "sign in, call" })
+      fireEvent.click(screen.getByRole("button", { name: "sign in, call" }))
+      for (let tick = 0; tick < 5; tick++) await act(macrotask)
+      await expect(direct).resolves.toBe(`written by ${user}`)
+      expect(stamps()[stamps().length - 1]).toBe(user)
+    }
+  )
+
+  it("returns a view per caller after a hydration too: the server's caller for the hydrating render, the user's after it", async () => {
     const { json, html } = await serverRender()
     container.innerHTML = html
     const browser = replica({ seed: 7 })
+    const user = browser.auth.getPrincipal()?.toText()
     const seen: Client[] = []
     function Probe() {
       const client = useClient()
@@ -488,20 +810,23 @@ describe("useClient()", () => {
     await hydrate(page(browser.client, JSON.parse(json), Probe))
 
     expect(seen).toHaveLength(2)
-    const [hydrating] = seen
+    const [hydrating, after] = seen as [Client, Client]
     // The hydrating render's view: the server's caller, the client's own
-    // cache, canisters and writes.
+    // cache and canisters.
     expect(hydrating).not.toBe(browser.client)
-    expect(hydrating?.caller()).toBe(ANONYMOUS)
-    expect(hydrating?.authState()).toEqual({
+    expect(hydrating.caller()).toBe(ANONYMOUS)
+    expect(hydrating.authState()).toEqual({
       status: "anonymous",
       principal: ANONYMOUS,
     })
-    expect(hydrating?.queryClient).toBe(browser.client.queryClient)
-    expect(hydrating?.canister).toBe(browser.client.canister)
-    expect(hydrating?.mutationOptions).toBe(browser.client.mutationOptions)
-    expect(hydrating?.subscribe).toBe(browser.client.subscribe)
-    expect(seen[1]).toBe(browser.client)
+    expect(hydrating.queryClient).toBe(browser.client.queryClient)
+    expect(hydrating.canister).toBe(browser.client.canister)
+    expect(hydrating.subscribe).toBe(browser.client.subscribe)
+    // Then the user's view: another object, over the same client.
+    expect(after).not.toBe(hydrating)
+    expect(clientOf(after)).toBe(browser.client)
+    expect(after.caller()).toBe(user)
+    expect(after.authState()).toBe(browser.client.authState())
   })
 
   it("reads as nobody when the caller turns anonymous before the hydrating render's effects", async () => {
@@ -664,8 +989,10 @@ describe("useClient()", () => {
         // StrictMode mounts the reader twice, and each mount may read.
         expect(new Set(whoamiCallers(browser))).toEqual(new Set([user]))
         // The nested provider's tree, past its hydrating render, is on the
-        // outer provider's client itself.
-        expect(seen[seen.length - 1]).toBe(browser.client)
+        // outer provider's client itself: the user's view of it.
+        const last = seen[seen.length - 1] as Client
+        expect(clientOf(last)).toBe(browser.client)
+        expect(last.caller()).toBe(user)
 
         await act(async () => {
           await browser.auth.signOut()

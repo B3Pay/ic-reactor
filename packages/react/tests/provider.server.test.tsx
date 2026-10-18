@@ -14,6 +14,7 @@ import { ReactorProvider, useAuth, useClient } from "../src/index.js"
 import {
   anonymousClient,
   bindingsWith,
+  clientOf,
   clientWithAuth,
   fakeFinalizationRegistry,
   testAuth,
@@ -93,7 +94,7 @@ describe("ReactorProvider on a server", () => {
     // by identity: two QueryClients that are alike are still two.
     expect(seen).toHaveLength(2)
     for (const [index, entry] of seen.entries()) {
-      expect(entry.client).toBe(made[index]?.client)
+      expect(clientOf(entry.client)).toBe(made[index]?.client)
       expect(entry.queryClient).toBe(made[index]?.client.queryClient)
     }
     expect(mount).not.toHaveBeenCalled()

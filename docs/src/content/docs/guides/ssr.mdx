@@ -252,12 +252,13 @@ the HTML has to match, so the hydrating render shows the anonymous caller:
   session the browser holds.
 - `useClient()` builds keys for the same anonymous caller. In a browser that
   holds a session (an `AuthClient` reads a stored one synchronously) it
-  returns a **view** of the client. Its `queryKey`, `queryOptions`, `caller()`
-  and `authState()` are the anonymous caller's, so the page finds what the
-  server dehydrated and matches the server's HTML. The canisters,
-  `mutationOptions`, `signIn`, `signOut` and the `QueryClient` are the
-  client's own, and a write signs as the caller current when `mutate()` is
-  called.
+  returns the anonymous caller's **view** of the client, as it returns the
+  view of whoever each later render shows. Its `queryKey`, `queryOptions`,
+  `caller()` and `authState()` are the anonymous caller's, so the page finds
+  what the server dehydrated and matches the server's HTML, and its
+  `mutationOptions` send only as that caller, and only while it is the caller
+  current when `mutate()` is called. The canisters, `signIn`,
+  `signOut` and the `QueryClient` are the client's own.
 - Nothing is sent during the hydrating render.
 
 Right after hydrating, React renders each component that calls `useClient()`
@@ -373,15 +374,17 @@ export function RefreshOnFocus({ id }: { id: string }) {
 }
 ```
 
-While a page hydrates, the result is a view for the anonymous caller, and a
-view never moves on. Kept from the hydrating render anywhere else
-(`useState(client)`, `useRef(client)`, a `useMemo` or `useCallback` with
+What `useClient()` returns is a view for the caller its render shows (the
+anonymous one while a page hydrates), and a view never moves on: the hook
+returns another one when the caller changes. Kept from one render anywhere
+else (`useState(client)`, `useRef(client)`, a `useMemo` or `useCallback` with
 `[]`, a module variable), it stays that view:
 
-- the component shows the anonymous caller's data;
-- a read it starts while the user is signed in is cancelled
+- the component shows that caller's data;
+- a read it starts while someone else is signed in is cancelled
   (`caller_changed`);
-- a write through it still signs as the live caller;
+- a write through its `mutationOptions` is refused (`caller_changed`) and
+  sends nothing;
 - nothing warns about it.
 
 A nested `ReactorProvider` given it holds the client the view was made over.
