@@ -73,6 +73,11 @@ development `ReactorProvider` throws when it is handed such a client.
   `icp canister status -e local -i backend` into
   `.env.development.local`, which only `next dev` reads).
 
+`createClient` throws a `TypeError` for an option it does not have (`host`
+goes inside `network`), an `allowEnvConfig` or `fetchRootKey` that is not a
+boolean (environment text: `=== "true"`), and a `rootKey` that is not 133
+bytes in a `Uint8Array` (decode hex first).
+
 Who calls (exactly one):
 
 - `identity`: a fixed `Identity` (scripts, servers, tests), or `"anonymous"`,

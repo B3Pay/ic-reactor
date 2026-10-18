@@ -22,8 +22,9 @@ export default [
     // With client.canisterId() (#890) on top of v4: measured 15,809 B, so the limit moved from 15,830 B to 15.86 kB.
     // With maxElements (#932) on top of v4: measured 15,888 B, so the limit moved from 15,860 B to 15.94 kB.
     // With timeoutMs (#875) on top of v4: measured 16,269 B, so the limit moved from 15,940 B to 16.32 kB.
-    // With TanStack retries for app queries and the ran-on QueryClient invalidated (#937) on top of v4: measured 16,334 B, so the limit moved from 16,320 B to 16.39 kB.
-    limit: "16.39 kB",
+    // With strict createClient options (#938) on top of v4: measured 16,608 B, so the limit moved from 16,320 B to 16.66 kB.
+    // With TanStack retries kept for app queries (#937) on top of v4: measured 16,669 B, so the limit moved from 16,660 B to 16.72 kB.
+    limit: "16.72 kB",
     gzip: true,
   },
 ]
