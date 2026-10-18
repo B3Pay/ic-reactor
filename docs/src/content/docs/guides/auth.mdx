@@ -19,8 +19,11 @@ under another.
 
 ## Internet Identity with @icp-sdk/auth 10
 
-The `AuthClient` of `@icp-sdk/auth` 10 is an `AuthLike` as it is. Pass a
-factory that builds one:
+The `AuthClient` of `@icp-sdk/auth` 10 is an `AuthLike` as it is. The
+supported range is `^10.0.1`, and a weekly CI job checks the newest release
+against `AuthLike`. A later release whose session has a state the client does
+not know still compiles: the client calls anonymously in that state, and
+`useAuth()` reads it as `"anonymous"`. Pass a factory that builds one:
 
 ```sh
 npm install @icp-sdk/auth
@@ -185,7 +188,12 @@ interface AuthLike {
   getPrincipal(): { toText(): string } | undefined
   getStatus(): {
     readonly state:
-      "signed-in" | "signed-in-elsewhere" | "expired" | "signed-out"
+      | "signed-in"
+      | "signed-in-elsewhere"
+      | "expired"
+      | "signed-out"
+      // A state a later @icp-sdk/auth adds: the client calls anonymously.
+      | (string & {})
   }
   getIdentity(): Promise<Identity>
   subscribe(listener: () => void): () => void
@@ -205,8 +213,10 @@ other state calls as the anonymous principal.
 changes. The client builds a new agent for every new identity object it is
 handed, and reads a new object for the same principal as a renewal.
 
-A wallet or a hand-rolled session fits with a small adapter. This is the one
-in the guide, `packages/core/llms.txt`:
+Any other sign-in that hands over an `Identity` fits with a small adapter:
+one that gives a delegation (a hand-rolled session, or Internet Identity
+through a client other than `AuthClient`) or a key (a local dev account).
+This is the one in the guide, `packages/core/llms.txt`:
 
 ```ts
 import type { AuthLike } from "@ic-reactor/core"
@@ -240,6 +250,117 @@ One client has one `auth`. To offer two sign-in sources, write one `AuthLike`
 that holds both and picks one from the options of `signIn`. The Vite wallet's
 `src/auth/wallet-auth.ts` does this for Internet Identity and a local dev
 account.
+
+### Wallets that sign each call
+
+A wallet used through ICRC-25, ICRC-27 and ICRC-49 (OISY, Plug, an NFID
+account) signs each call: the user approves it in the wallet, which signs and
+sends it, and the app never holds an `Identity`. Used this way, the wallet is
+not an `AuthLike`, and the client cannot send as it. (A wallet that also
+speaks ICRC-34 can hand the app a delegation instead, from
+`signer.requestDelegation()`; a `DelegationIdentity` made from it is an
+`Identity`, and an `AuthLike` can hold it as for Internet Identity above.) Keep the client for reads, anonymous (a ledger's balances are
+public; `SignerAgent` would send each read to the wallet for approval too),
+and send the wallet's writes through `SignerAgent` from `@icp-sdk/signer`,
+then invalidate the reads yourself:
+
+```ts
+// src/wallet.ts: needs @icp-sdk/signer, @icp-sdk/canisters and @dfinity/utils
+import { createClient } from "@ic-reactor/core"
+import { IcrcLedgerCanister } from "@icp-sdk/canisters/ledger/icrc"
+import { Principal } from "@icp-sdk/core/principal"
+import { Signer } from "@icp-sdk/signer"
+import { SignerAgent } from "@icp-sdk/signer/agent"
+import { PostMessageTransport } from "@icp-sdk/signer/web"
+import { actor, type Actor } from "./generated/icrc1"
+
+const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+// Reads: the client, anonymous.
+export const client = createClient({ network: "ic", identity: "anonymous" })
+export const ledger = client.canister<Actor>(actor, { id: LEDGER })
+
+type Account = Awaited<ReturnType<Signer["getAccounts"]>>[number]
+
+// The wallet's window may open only in a click handler: call connect()
+// straight from a "Connect" button's onClick, before any await.
+export async function connect(
+  // A wallet may share several accounts (NFID does): let the user pick one.
+  choose: (
+    accounts: Account[]
+  ) => Account | undefined | Promise<Account | undefined> = (accounts) =>
+    accounts[0]
+) {
+  const signer = new Signer({
+    transport: new PostMessageTransport({ url: "https://oisy.com/sign" }),
+    // Keep the channel open between the requests of one session.
+    autoCloseTransportChannel: false,
+  })
+  try {
+    // ICRC-27: the accounts the user shares. A wallet that lacks it cannot
+    // be used this way; signer.getSupportedStandards() says which it has.
+    const account = await choose(await signer.getAccounts())
+    if (!account) throw new Error("the wallet shared no account")
+    const agent = await SignerAgent.create({ signer, account: account.owner })
+    const wallet = IcrcLedgerCanister.create({
+      agent,
+      canisterId: Principal.fromText(LEDGER),
+    })
+    // The whole account: its subaccount, if any, is the one to debit. Call
+    // disconnect() when the session ends, or before connecting again: it
+    // closes the wallet's window, which stays open otherwise.
+    return { account, wallet, disconnect: () => signer.closeChannel() }
+  } catch (error) {
+    // Cancelled or failed: close the window the request opened.
+    await signer.closeChannel()
+    throw error
+  }
+}
+
+// Writes: through the wallet, which shows each call to the user.
+export async function send(
+  { account, wallet }: Awaited<ReturnType<typeof connect>>,
+  to: Principal,
+  amount: bigint,
+  // Nanoseconds since the epoch, BigInt(Date.now()) * 1_000_000n, fixed
+  // per transfer so a re-send is deduplicated.
+  createdAt: bigint
+) {
+  try {
+    return await wallet.transfer({
+      // Without it the ledger debits the owner's default subaccount.
+      from_subaccount: account.subaccount,
+      to: { owner: to, subaccount: [] },
+      amount,
+      created_at_time: createdAt,
+    })
+  } finally {
+    // The client did not send this write, so it cannot invalidate for it.
+    await client.queryClient.invalidateQueries({
+      queryKey: client.queryKey(ledger),
+    })
+  }
+}
+```
+
+What the client gives a write does not reach this one: no `ReactorError`, no
+`mayHaveExecuted`, no invalidation of its own. Read the failure yourself:
+
+- A `SignerError` (from `@icp-sdk/signer`) with ICRC-25's code `3001`, action
+  aborted, is the user's refusal: nothing was sent.
+- A ledger `Err` (`IcrcTransferError` from `@icp-sdk/canisters`) means the
+  ledger answered and did not move the funds.
+- Anything else after the user approved, a closed wallet window included, can
+  mean the transfer ran. Read the balance, or send the same transfer again
+  with the same `created_at_time`, which the ledger answers `Duplicate` if
+  the first went through.
+
+Show the wallet's account (`account.owner`, and its subaccount when it has
+one) as the user's, not `useAuth()`'s principal, which stays anonymous. A wallet that is a browser extension (Plug) connects with
+`BrowserExtensionTransport` from `@icp-sdk/signer/extension` instead.
+`@icp-sdk/signer` peers only `@icp-sdk/core` 6, so it installs beside the
+client. NFID IdentityKit 2.0 does not: it peers `@icp-sdk/auth` 5, and npm
+refuses it beside the `@icp-sdk/auth` 10 the client uses.
 
 ## AuthState
 

@@ -239,6 +239,132 @@ jobs:
       - name: Test at the oldest supported peers and TypeScript
         run: pnpm verify:peer-floors
 
+  # Every other job runs on Linux. The Vite plugin starts child processes
+  # (`icp`, `candid-core-cli`) and handles paths, where Windows differs: an
+  # npm-installed icp-cli is `icp.cmd` there, which execFile cannot start
+  # (#905). This runs the tests of how the plugin starts `icp` on Windows.
+  # The whole suite is not run here yet: on its first Windows run, tests that
+  # compare messages naming `did/ledger.did` got `did\ledger.did`, and a temp
+  # directory cleanup hit EBUSY. Widen this to the whole suite once those pass.
+  vite-plugin-windows:
+    name: Vite plugin on Windows
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+          pnpm --version
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Test how the Vite plugin starts icp
+        run: pnpm --filter @ic-reactor/vite-plugin exec vitest run tests/icp-command.test.ts
+
+  # The packages declare engines.node >=22.12.0 (#896): the first Node 22 that
+  # loads an ES module with require(), and a floor that can only fall later
+  # without a major release. Every other job runs the newest Node 22, so this
+  # one runs the package tests and a candid-core-cli gen on the floor itself,
+  # after checking that every package's manifest and docs page still name it.
+  # Some dev tools here (jsdom, undici) declare a newer Node than the floor,
+  # and pnpm checks engines against the workspace's nodeVersion, not this
+  # one: a failure inside such a tool on the floor is a dev-tool problem, not
+  # a package regression.
+  node-floor:
+    name: Test on the Node floor
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22.12.0
+
+      # The corepack bundled with Node 22.12.0 (0.29.4) predates npm's current
+      # signing keys and refuses to fetch pnpm; this exact one does not.
+      - name: Setup pnpm
+        run: |
+          npm install --global corepack@0.34.0
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+          pnpm --version
+
+      - name: The manifests name this Node as their floor
+        run: |
+          node -e '
+            const fs = require("node:fs")
+            const floor = ">=" + process.versions.node
+            for (const p of fs.readdirSync("packages")) {
+              const m = JSON.parse(fs.readFileSync(`packages/${p}/package.json`, "utf8"))
+              if (m.private) continue
+              if (m.engines?.node !== floor) {
+                console.error(`packages/${p}: engines.node is ${m.engines?.node}, expected ${floor}`)
+                process.exitCode = 1
+              }
+              const page = `docs/src/content/docs/packages/${p}.mdx`
+              if (!fs.readFileSync(page, "utf8").includes("Node `" + floor + "`")) {
+                console.error(`${page} does not say Node \`${floor}\``)
+                process.exitCode = 1
+              }
+            }
+          '
+
+      - name: Get pnpm store path
+        id: pnpm-store
+        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ${{ steps.pnpm-store.outputs.path }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: candid-core-cli gen
+        working-directory: e2e
+        run: pnpm gen:check
+
   build:
     name: Build
     runs-on: ubuntu-latest

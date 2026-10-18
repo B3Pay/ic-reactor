@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+<title>IC Reactor</title>
+<g id="IC Reactor mark">
+  <g id="Ring (blocks)">
+    <rect x="35.25" y="12" width="25.5" height="12" rx="3" id="Block 1" fill="#1a1714"/>
+    <rect x="35.25" y="12" width="25.5" height="12" rx="3" id="Block 2" fill="#1a1714" transform="rotate(60 48 48)"/>
+    <rect x="35.25" y="12" width="25.5" height="12" rx="3" id="Block 3" fill="#1a1714" transform="rotate(120 48 48)"/>
+    <rect x="35.25" y="12" width="25.5" height="12" rx="3" id="Block 4" fill="#1a1714" transform="rotate(180 48 48)"/>
+    <rect x="35.25" y="12" width="25.5" height="12" rx="3" id="Block 5" fill="#1a1714" transform="rotate(240 48 48)"/>
+    <rect x="35.25" y="12" width="25.5" height="12" rx="3" id="Block 6" fill="#1a1714" transform="rotate(300 48 48)"/>
+  </g>
+  <circle id="Node" cx="48" cy="48" r="13" fill="#e8a33d"/>
+</g>
+</svg>
