@@ -1950,8 +1950,8 @@
     "testName": "names the built-in Internet Identity on a local host's own port, with the root key it was given",
     "why": "the auth factory handed only the agent options, so an AuthClient on a local replica signs in with mainnet's Internet Identity",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const built = checkAuth(\n      authFactory({ agentOptions: authNetwork().agentOptions })\n    )"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      made = authFactory({ agentOptions: authNetwork().agentOptions })"
   },
   {
     "id": "790-auth-factory-zero-argument-refused",
@@ -1960,8 +1960,8 @@
     "testName": "still builds the auth the client calls as",
     "why": "a factory that takes no argument (() => new AuthClient()) no longer builds an auth, as if only network-aware factories were supported",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const built = checkAuth(\n      authFactory.length > 0 ? authFactory(authNetwork()) : undefined\n    )"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      made = authFactory.length > 0 ? authFactory(authNetwork()) : undefined"
   },
   {
     "id": "790-auth-built-in-ii-port-fixed",
@@ -2130,8 +2130,8 @@
     "testName": "is not given by a test client",
     "why": "the warning given before the factory runs, wherever no provider was named, so a test client on \"ic\" warns about its fake replica's root key, though its test auth ignores the network",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-local-ignores-cookie-provider",
@@ -2280,8 +2280,8 @@
     "testName": "is not given to a factory that names its own provider by spreading network",
     "why": "the warning given before the factory runs, so the override it teaches, { ...network, identityProvider }, still logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-warn-before-factory-real-override",
@@ -2290,8 +2290,8 @@
     "testName": "is not given to a real AuthClient built from the override",
     "why": "the warning given before the factory runs, so a real AuthClient built with its own identityProvider still logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-warn-before-factory-not-ii",
@@ -2300,8 +2300,8 @@
     "testName": "is not given to a factory that ignores network",
     "why": "the warning given before the factory runs, so an auth that is not Internet Identity, which never reads the network, logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-provider-read-silent",
@@ -4793,6 +4793,96 @@
     "replace": "        maxElements,"
   },
   {
+    "id": "i895-allow-env-config-string-truthy",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
+    "why": "allowEnvConfig no longer checked, so the text \"false\" is truthy and the ic_env cookie is believed on any page",
+    "file": "src/network.ts",
+    "search": "  checkBoolean(allowEnvConfig, \"allowEnvConfig\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-fetch-root-key-string-truthy",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
+    "why": "fetchRootKey no longer checked, so the text \"false\" fetches the root key from a remote host",
+    "file": "src/network.ts",
+    "search": "  checkBoolean(fetchRootKey, \"fetchRootKey\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-network-object-unknown-key-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses an option it does not have, in the options or a network object",
+    "why": "a misspelt key of a network object (rootkey, fetchRootkey) ignored instead of refused",
+    "file": "src/network.ts",
+    "search": "  checkKeys(network, NETWORK_KEYS, \"a network object\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-create-client-unknown-option-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses an option it does not have, in the options or a network object",
+    "why": "an option createClient does not have (host beside network, allowEnvconfig) ignored instead of refused",
+    "file": "src/client.ts",
+    "search": "  checkKeys(options, OPTION_NAMES, \"createClient()\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-root-key-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
+    "why": "a rootKey given as hex text, or of the wrong length, accepted, so every query fails and every update ends outcome_unknown",
+    "file": "src/network.ts",
+    "search": "    rootKey !== undefined &&\n    !(rootKey instanceof Uint8Array",
+    "replace": "    false &&\n    !(rootKey instanceof Uint8Array"
+  },
+  {
+    "id": "i895-fetch-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
+    "why": "a fetch that is not a function accepted when the client is built, failing only at the first call",
+    "file": "src/client.ts",
+    "search": "  if (fetch !== undefined && typeof fetch !== \"function\") {",
+    "replace": "  if (false) {"
+  },
+  {
+    "id": "i895-units-unknown-option-ignored",
+    "package": "core",
+    "test": "tests/units.test.ts",
+    "testName": "refuses an option it does not have, such as Intl's spelling",
+    "why": "formatUnits ignores maximumFractionDigits (Intl's spelling) and shows every digit",
+    "file": "src/units.ts",
+    "search": "  if (options === undefined) return\n",
+    "replace": "  return\n"
+  },
+  {
+    "id": "i895-parse-units-signed-not-boolean",
+    "package": "core",
+    "test": "tests/units.test.ts",
+    "testName": "takes signed only as a boolean, and options with no other key",
+    "why": "parseUnits takes a signed that is not a boolean, such as the text \"false\", without a word",
+    "file": "src/units.ts",
+    "search": "  checkBoolean(signed, \"parseUnits: signed\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-test-client-signed-in-string",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "a boolean option that is not a boolean, and a network createClient would refuse",
+    "why": "createTestClient({ signedIn: \"false\" }) starts signed in",
+    "file": "src/testing/test-client.ts",
+    "search": "  checkBoolean(signedIn, \"createTestClient(): signedIn\")\n",
+    "replace": ""
+  },
+  {
     "id": "875-timeout-never-fires",
     "package": "core",
     "test": "tests/canister.test.ts",
@@ -5043,196 +5133,6 @@
     "replace": ""
   },
   {
-    "id": "qc-rest-query-not-retried",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "tries an app's REST query again in a browser page, as TanStack does, up to 3 times",
-    "why": "the client's default retry refuses every error that is not a ReactorError, so an app's REST query on the client's QueryClient loses TanStack's retries",
-    "file": "src/errors.ts",
-    "search": "  return !isServer() && failureCount < 3\n",
-    "replace": "  return false\n"
-  },
-  {
-    "id": "qc-write-invalidates-own-query-client-only",
-    "package": "core",
-    "test": "tests/options.test.ts",
-    "testName": "invalidates the reads on the QueryClient the mutation ran on, and on the client's own",
-    "why": "a write invalidates only the client's own QueryClient, so the reads of an app's nested QueryClientProvider, where the mutation ran, are never refreshed",
-    "file": "src/options.ts",
-    "search": "ran !== undefined && ran !== own ? [own, ran] : [own]",
-    "replace": "[own]"
-  },
-  {
-    "id": "i895-allow-env-config-string-truthy",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
-    "why": "allowEnvConfig no longer checked, so the text \"false\" is truthy and the ic_env cookie is believed on any page",
-    "file": "src/network.ts",
-    "search": "  checkBoolean(allowEnvConfig, \"allowEnvConfig\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-fetch-root-key-string-truthy",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
-    "why": "fetchRootKey no longer checked, so the text \"false\" fetches the root key from a remote host",
-    "file": "src/network.ts",
-    "search": "  checkBoolean(fetchRootKey, \"fetchRootKey\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-network-object-unknown-key-ignored",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses an option it does not have, in the options or a network object",
-    "why": "a misspelt key of a network object (rootkey, fetchRootkey) ignored instead of refused",
-    "file": "src/network.ts",
-    "search": "  checkKeys(network, NETWORK_KEYS, \"a network object\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-create-client-unknown-option-ignored",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses an option it does not have, in the options or a network object",
-    "why": "an option createClient does not have (host beside network, allowEnvconfig) ignored instead of refused",
-    "file": "src/client.ts",
-    "search": "  checkKeys(options, OPTION_NAMES, \"createClient()\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-root-key-not-checked",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
-    "why": "a rootKey given as hex text, or of the wrong length, accepted, so every query fails and every update ends outcome_unknown",
-    "file": "src/network.ts",
-    "search": "    rootKey !== undefined &&\n    !(rootKey instanceof Uint8Array",
-    "replace": "    false &&\n    !(rootKey instanceof Uint8Array"
-  },
-  {
-    "id": "i895-fetch-not-checked",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
-    "why": "a fetch that is not a function accepted when the client is built, failing only at the first call",
-    "file": "src/client.ts",
-    "search": "  if (fetch !== undefined && typeof fetch !== \"function\") {",
-    "replace": "  if (false) {"
-  },
-  {
-    "id": "i895-units-unknown-option-ignored",
-    "package": "core",
-    "test": "tests/units.test.ts",
-    "testName": "refuses an option it does not have, such as Intl's spelling",
-    "why": "formatUnits ignores maximumFractionDigits (Intl's spelling) and shows every digit",
-    "file": "src/units.ts",
-    "search": "  if (options === undefined) return\n",
-    "replace": "  return\n"
-  },
-  {
-    "id": "i895-parse-units-signed-not-boolean",
-    "package": "core",
-    "test": "tests/units.test.ts",
-    "testName": "takes signed only as a boolean, and options with no other key",
-    "why": "parseUnits takes a signed that is not a boolean, such as the text \"false\", without a word",
-    "file": "src/units.ts",
-    "search": "  checkBoolean(signed, \"parseUnits: signed\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-test-client-signed-in-string",
-    "package": "core",
-    "test": "tests/testing-test-client.test.ts",
-    "testName": "a boolean option that is not a boolean, and a network createClient would refuse",
-    "why": "createTestClient({ signedIn: \"false\" }) starts signed in",
-    "file": "src/testing/test-client.ts",
-    "search": "  checkBoolean(signedIn, \"createTestClient(): signedIn\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i894-view-writes-as-live-caller",
-    "package": "core",
-    "test": "tests/client-pinned.test.ts",
-    "testName": "writes only as its principal",
-    "why": "a view's mutationOptions are the client's own, so a write from a render that a switch has not reached yet is signed by the new caller",
-    "file": "src/client.ts",
-    "search": "          mutationOptions: { value: mutationOptions },\n",
-    "replace": ""
-  },
-  {
-    "id": "i894-useclient-client-for-live-caller",
-    "package": "react",
-    "test": "tests/caller-keys.test.tsx",
-    "testName": "rebuilds what a component memoizes on the client after a switch",
-    "why": "useClient() returns the provider's client object for every live caller, so a useMemo, an effect or React Compiler's cache keyed on it keeps the previous caller's options and shows that caller's data after a switch",
-    "file": "src/index.tsx",
-    "search": "  return shown ?? view\n",
-    "replace": "  return principal === client.caller() ? client : view\n"
-  },
-  {
-    "id": "i894-useclient-same-object-every-caller",
-    "package": "react",
-    "test": "tests/caller-keys.test.tsx",
-    "testName": "returns one object per caller",
-    "why": "useClient() returns the provider's client object for every live caller, so its identity does not change on a sign-in, a switch or a sign-out",
-    "file": "src/index.tsx",
-    "search": "  return shown ?? view\n",
-    "replace": "  return principal === client.caller() ? client : view\n"
-  },
-  {
-    "id": "i894-view-run-takes-later-options",
-    "package": "core",
-    "test": "tests/client-pinned.test.ts",
-    "testName": "keeps a write pressed as one caller refused after a switch",
-    "why": "the key of a view's write leaves out its principal, so TanStack hands a run pressed before a switch the later render's options, and it is signed by the new caller",
-    "file": "src/client.ts",
-    "search": "          mutationKey: [...built.mutationKey, principal] as const,\n",
-    "replace": ""
-  },
-  {
-    "id": "i894-view-state-not-live",
-    "package": "core",
-    "test": "tests/client-pinned.test.ts",
-    "testName": "says the client's own state while its principal is the live caller",
-    "why": "the live caller's view reports the state it was made with, so useClient().authState() says anonymous for an expired session and is another object than the client's",
-    "file": "src/client.ts",
-    "search": "              return live.principal === principal ? live : state\n",
-    "replace": "              return state\n"
-  },
-  {
-    "id": "i894-useclient-batch-press-signed-by-new-caller",
-    "package": "react",
-    "test": "tests/caller-keys.test.tsx",
-    "testName": "refuses a write pressed in the batch of a switch",
-    "why": "useClient() returns the provider's client for the live caller, so a press handled before a switch reached the render is signed by the new caller",
-    "file": "src/index.tsx",
-    "search": "  return shown ?? view\n",
-    "replace": "  return principal === client.caller() ? client : view\n"
-  },
-  {
-    "id": "i894-useclient-signin-then-mutate-unpinned",
-    "package": "react",
-    "test": "tests/caller-keys.test.tsx",
-    "testName": "decides a write pressed right after awaiting a sign-in by whether the signed-in render suspends",
-    "why": "useClient() returns the provider's client for the live caller, so a write pressed with the options of a render from before the sign-in is signed by the user that render never showed",
-    "file": "src/index.tsx",
-    "search": "  return shown ?? view\n",
-    "replace": "  return principal === client.caller() ? client : view\n"
-  },
-  {
-    "id": "894-view-write-refusal-unmarked",
-    "package": "core",
-    "test": "tests/client-pinned.test.ts",
-    "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
-    "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
-    "file": "src/client.ts",
-    "search": "// `isReactorError(error, canister, method)` matches it.\n            throw fromCanister(",
-    "replace": "// `isReactorError(error, canister, method)` matches it.\n            throw ((error: unknown, _canister: object) => error)("
-  },
-  {
     "id": "893-write-caller-read-when-sent-offline",
     "package": "core",
     "test": "tests/options.test.ts",
@@ -5389,6 +5289,215 @@
     "file": "src/options.ts",
     "search": "        if (kept !== undefined && kept.runs > 0) {",
     "replace": "        if (false) {"
+  },
+  {
+    "id": "qc-rest-query-not-retried",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "tries an app's REST query again in a browser page, as TanStack does, up to 3 times",
+    "why": "the client's default retry refuses every error that is not a ReactorError, so an app's REST query on the client's QueryClient loses TanStack's retries",
+    "file": "src/errors.ts",
+    "search": "  return !isServer() && failureCount < 3\n",
+    "replace": "  return false\n"
+  },
+  {
+    "id": "qc-write-invalidates-own-query-client-only",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the reads on the QueryClient the mutation ran on, and on the client's own",
+    "why": "a write invalidates only the client's own QueryClient, so the reads of an app's nested QueryClientProvider, where the mutation ran, are never refreshed",
+    "file": "src/options.ts",
+    "search": "ran !== undefined && ran !== own ? [own, ran] : [own]",
+    "replace": "[own]"
+  },
+  {
+    "id": "912-no-expiry-timer",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "tells the client's listeners when it ends, with no notification of the auth",
+    "why": "no timer for the session's expiresAtMs, so a session that ends by the clock tells nobody and useAuth() keeps saying signed-in",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "    unsubscribeAuth = built.subscribe(onAuthChange)\n    scheduleExpiry()\n",
+        "replace": "    unsubscribeAuth = built.subscribe(onAuthChange)\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "    scheduleExpiry()\n    if (state === notified) return\n",
+        "replace": "    if (state === notified) return\n"
+      }
+    ]
+  },
+  {
+    "id": "912-expiry-delay-uncapped",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "reaches a deadline past setTimeout's longest delay in steps",
+    "why": "the delay handed to setTimeout uncapped, so a session that ends more than 2^31-1 ms away fires at once",
+    "file": "src/client.ts",
+    "search": "      Math.min(delay, MAX_TIMER_MS)\n    )",
+    "replace": "      delay\n    )"
+  },
+  {
+    "id": "912-expiry-timer-for-a-past-end",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "sets no timer for an end that passed while the auth still says signed in",
+    "why": "a timer set for an end that already passed while the auth still says signed-in, which fires and sets itself again forever",
+    "file": "src/client.ts",
+    "search": "    if (delay <= 0) return\n",
+    "replace": ""
+  },
+  {
+    "id": "912-expiry-timer-kept-after-dispose",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "moves the timer to a new session's end, and drops it on a sign-out and on dispose()",
+    "why": "dispose() leaves the expiry timer set",
+    "file": "src/client.ts",
+    "search": "      agents.clear()\n      clearTimeout(expiryTimer)\n",
+    "replace": "      agents.clear()\n"
+  },
+  {
+    "id": "912-read-change-not-told",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "is told to the listeners once, in a microtask, from caller() and from authState()",
+    "why": "caller() computes another principal than the listeners were told about and tells nobody",
+    "file": "src/client.ts",
+    "search": "    if (caller.principal !== notified.principal) catchUp()\n",
+    "replace": ""
+  },
+  {
+    "id": "912-auth-factory-throw-escapes",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "still answers a public read, and refuses a write as unauthenticated",
+    "why": "what the auth factory threw escapes from caller() and the read paths, so a page whose storage is blocked cannot read public data",
+    "file": "src/client.ts",
+    "search": "      authFailure = { cause }\n",
+    "replace": "      authFailure = { cause }\n      throw cause\n"
+  },
+  {
+    "id": "912-auth-factory-retried",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "runs the client anonymous, calls the factory once, and says so once in development",
+    "why": "a factory that threw is called again on every read (every render)",
+    "file": "src/client.ts",
+    "search": "      auth !== undefined ||\n      authFailure !== undefined ||\n",
+    "replace": "      auth !== undefined ||\n"
+  },
+  {
+    "id": "912-sign-in-hides-factory-error",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "runs the client anonymous, calls the factory once, and says so once in development",
+    "why": "signIn() after a factory that threw rejects with the server-side error instead of what the factory threw",
+    "file": "src/client.ts",
+    "search": "    if (authFailure !== undefined) throw authFailure.cause\n",
+    "replace": ""
+  },
+  {
+    "id": "912-test-auth-never-expires-by-clock",
+    "package": "core",
+    "test": "tests/testing-test-auth.test.ts",
+    "testName": "expires by the clock at expiresAtMs",
+    "why": "the test auth's status stays signed-in past its expiresAtMs, unlike AuthClient's, so tests cannot see a session end by the clock",
+    "file": "src/testing/test-auth.ts",
+    "search": "      Date.now() >= status.expiresAtMs",
+    "replace": "      Date.now() < 0"
+  },
+  {
+    "id": "912-use-auth-drops-expires-at",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "renders again with expired when the session ends, with no user activity",
+    "why": "useAuth() leaves expiresAt out of what it returns",
+    "file": "src/index.tsx",
+    "search": "      ...(state.expiresAt === undefined ? {} : { expiresAt: state.expiresAt }),\n",
+    "replace": ""
+  },
+  {
+    "id": "i894-view-writes-as-live-caller",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "writes only as its principal",
+    "why": "a view's mutationOptions are the client's own, so a write from a render that a switch has not reached yet is signed by the new caller",
+    "file": "src/client.ts",
+    "search": "          mutationOptions: { value: mutationOptions },\n",
+    "replace": ""
+  },
+  {
+    "id": "i894-useclient-client-for-live-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "rebuilds what a component memoizes on the client after a switch",
+    "why": "useClient() returns the provider's client object for every live caller, so a useMemo, an effect or React Compiler's cache keyed on it keeps the previous caller's options and shows that caller's data after a switch",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-useclient-same-object-every-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "returns one object per caller",
+    "why": "useClient() returns the provider's client object for every live caller, so its identity does not change on a sign-in, a switch or a sign-out",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-view-run-takes-later-options",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "keeps a write pressed as one caller refused after a switch",
+    "why": "the key of a view's write leaves out its principal, so TanStack hands a run pressed before a switch the later render's options, and it is signed by the new caller",
+    "file": "src/client.ts",
+    "search": "          mutationKey: [...built.mutationKey, principal] as const,\n",
+    "replace": ""
+  },
+  {
+    "id": "i894-view-state-not-live",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "says the client's own state while its principal is the live caller",
+    "why": "the live caller's view reports the state it was made with, so useClient().authState() says anonymous for an expired session and is another object than the client's",
+    "file": "src/client.ts",
+    "search": "              return live.principal === principal ? live : state\n",
+    "replace": "              return state\n"
+  },
+  {
+    "id": "i894-useclient-batch-press-signed-by-new-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "refuses a write pressed in the batch of a switch",
+    "why": "useClient() returns the provider's client for the live caller, so a press handled before a switch reached the render is signed by the new caller",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-useclient-signin-then-mutate-unpinned",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "decides a write pressed right after awaiting a sign-in by whether the signed-in render suspends",
+    "why": "useClient() returns the provider's client for the live caller, so a write pressed with the options of a render from before the sign-in is signed by the user that render never showed",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "894-view-write-refusal-unmarked",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
+    "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
+    "file": "src/client.ts",
+    "search": "// `isReactorError(error, canister, method)` matches it.\n            throw fromCanister(",
+    "replace": "// `isReactorError(error, canister, method)` matches it.\n            throw ((error: unknown, _canister: object) => error)("
   },
   {
     "id": "894-view-write-caller-unread",

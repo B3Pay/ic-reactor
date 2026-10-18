@@ -85,7 +85,9 @@ Who calls (exactly one):
   `new AnonymousIdentity()` signs writes, so map one you are handed:
   `identity: id && !id.getPrincipal().isAnonymous() ? id : "anonymous"`.
 - `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth/client`):
-  users sign in and out. The factory runs once, in a browser only. `network`
+  users sign in and out. The factory runs once, in a browser only; if it
+  throws (blocked `localStorage`), the client stays anonymous, public reads
+  still work, and `signIn()` rejects with that error. `network`
   is `{ agentOptions, identityProvider? }`: the client's host and root key
   (and its `fetch`, when you gave one), and the Internet Identity to sign in
   with (the `ic_env` cookie's, or icp-cli's built-in one for a local host). Absent on a mainnet client, it
@@ -108,6 +110,12 @@ Who is calling, and may they write:
 | may a write be sent    | `useAuth().status === "signed-in"`; the client refuses the rest itself    |
 | when did it change     | `useAuth()` re-renders; `client.subscribe(fn)`                            |
 
+`"signed-in"` may be a read-only session (Internet Identity can scope one to
+queries, and the network refuses its updates); nothing tells the two apart
+yet. A session ends by the clock: `useAuth()` re-renders with `"expired"` at
+`expiresAt` (ms since the epoch, present while signed in), with no user
+activity.
+
 The client keeps one agent per principal: a call goes out as the principal
 current when it was made, or not at all.
 
@@ -124,7 +132,7 @@ hydrating): a new object after each sign-in, switch or sign-out, the same one
 while the caller stays, whose `mutationOptions` send only as that caller (a
 write pressed before a switch reaches the render is refused `cancelled`,
 `caller_changed`, and sends nothing). `useAuth()` returns
-`{ status, principal, signIn, signOut }`, `"anonymous"` on a server and in a
+`{ status, principal, expiresAt?, signIn, signOut }`, `"anonymous"` on a server and in a
 hydrating page's first render.
 
 An app that already uses TanStack Query keeps one `QueryClient` per tree,

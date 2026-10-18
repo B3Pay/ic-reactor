@@ -168,9 +168,10 @@ See [SSR and hydration](/v4/guides/ssr/).
 
 ### useAuth
 
-`useAuth()` returns `{ status, principal, signIn, signOut }`: the client's
-`AuthState` with sign-in and sign-out forwarded to the client. It renders a
-component once for each change of status or principal. It is `"anonymous"` on
+`useAuth()` returns `{ status, principal, expiresAt?, signIn, signOut }`: the
+client's `AuthState` with sign-in and sign-out forwarded to the client. It
+renders a component once for each change of status, principal or `expiresAt`,
+and when a session ends by the clock. It is `"anonymous"` on
 a server and during a hydrating render. See [Auth](/v4/guides/auth/).
 
 ## Life of the client

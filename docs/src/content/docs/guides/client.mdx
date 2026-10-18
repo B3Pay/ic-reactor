@@ -225,7 +225,10 @@ export function clientFor(identity: Identity | undefined) {
 
 `auth` is a factory for a sign-in that users control. It is called once, on
 first use, and only in a browser. The client owns what it returns and disposes
-it with itself.
+it with itself. A factory that throws (`new AuthClient()` reads
+`localStorage`, which throws where site data is blocked) is not called again:
+the client calls anonymously, logs the error once in development, and rejects
+`signIn()` and `signOut()` with it.
 
 ```ts
 import { createClient } from "@ic-reactor/core"
@@ -264,9 +267,13 @@ const stop = client.subscribe(() => {
 // later: stop()
 ```
 
-`authState()` returns the same object until the status or the principal
-changes. `subscribe` calls the listener once per such change, and does nothing
-on a disposed client.
+A `"signed-in"` session may still be read-only: see
+[Auth](/v4/guides/auth/#authstate).
+
+`authState()` returns the same object until the status, the principal or
+`expiresAt` changes. `subscribe` calls the listener once per such change,
+including a session that ends by the clock, and does nothing on a disposed
+client.
 
 The client keeps one agent per principal, and a call goes out as the principal
 that was current when it was made, or not at all. A read started for the
