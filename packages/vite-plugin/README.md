@@ -70,6 +70,7 @@ library: `ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt`.
 | `canisters`         | `{}`                      | The app's canisters, by their name in the `icp` project; see below                |
 | `injectEnvironment` | `true`                    | Set the cookie and the `/api` proxy under `vite dev` and `vite preview`           |
 | `failOnError`       | build `true`, dev `false` | Abort the Vite run when a canister fails to generate; see "When generation fails" |
+| `onGenerated`       | none                      | Called after each generated module; see "After each generation"                   |
 
 Each entry of `canisters` takes:
 
@@ -106,7 +107,7 @@ Every key is checked too, whatever its value, `undefined` included. A key of
 an entry that is none of the fields above (a misspelled `didfile` or
 `canisterID`), or a key of a `network` of `{ host }` other than `host`, fails
 its canister, and a key of the options that is none of `canisters`,
-`injectEnvironment` and `failOnError` throws when the config loads. The
+`injectEnvironment`, `failOnError` and `onGenerated` throws when the config loads. The
 message names the option the key may misspell. Never read, a misspelled key
 would leave a canister ungenerated, or generated without its ID, without a
 word.
@@ -387,6 +388,47 @@ A failed canister costs that canister, and nothing else:
 - `failOnError` overrides either default. It takes `true` or `false`: any
   other value (`null`, `0`, `"false"`) throws when the config loads, as does
   one for `injectEnvironment`.
+
+### After each generation
+
+`onGenerated` is called once for each module a run generated, after the
+generator wrote or checked it and its envelope, under `vite build` and
+`vite dev` alike. Use it for a step that reads the generated output and must
+run after every generation:
+
+```ts
+import { readFile } from "node:fs/promises"
+import { icReactor } from "@ic-reactor/vite-plugin"
+
+icReactor({
+  canisters: { ledger: { didFile: "did/ledger.did" } },
+  onGenerated: async ({ names, envelope, status }) => {
+    const text = await readFile(envelope, "utf-8")
+    // check it, or write derived files; throw to fail the run
+    console.log(names, status, text.length)
+  },
+})
+```
+
+- It is handed `names` (canisters that share a `didFile` and an `outDir`
+  share one module and one call), the absolute paths `didFile`, `module` and
+  `envelope`, `status` (`"written"`, or `"unchanged"` when the module on disk
+  was already what the generator would write), and a `signal` that aborts
+  when the build or dev server closes. A close stops waiting for the hook,
+  and the next run generates the module again and calls the hook again.
+- It runs inside the plugin's one queue of runs: it never overlaps a
+  generation, and `buildStart` waits for it, so under `vite build` a hook
+  that never settles holds the build.
+- It is not called for a canister that failed or was refused, nor for a run
+  that does not generate the module again (the second `buildStart` of
+  Vite 6 and later, a `vite build --watch` rebuild not caused by a `.did`).
+  A save under `vite dev` always generates again, so saving the same text
+  calls it with `"unchanged"`.
+- A throw or a rejection fails the module's canisters as a failed generation
+  does: the build fails unless `failOnError` is `false`, and otherwise the
+  failure is logged and, under `vite dev`, shown in the error overlay. The
+  next run generates them again and calls the hook again.
+- A value that is not a function throws when the config loads.
 
 ### In CI
 

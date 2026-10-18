@@ -13,6 +13,9 @@ own hooks and the options the client builds, `client.queryOptions(...)` and
 The package never re-exports `@ic-reactor/core`, so every name has one import
 path.
 
+Like core, it ships as ES modules only (see
+[ES modules only](/v4/guides/getting-started/#es-modules-only)).
+
 ## Install
 
 ```sh
@@ -35,7 +38,8 @@ Peers of this package:
 | `@tanstack/react-query` | `^5.90.2`                                                     |
 | `react`                 | `>=18.0.0`                                                    |
 
-Node `>=18`.
+Node `>=22.12.0`, the first Node 22 that loads an ES module with `require()`
+(22.12 itself prints an experimental warning when it does).
 
 ### One copy of `@tanstack/query-core`
 
