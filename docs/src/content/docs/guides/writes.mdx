@@ -286,6 +286,25 @@ export function SendOnce({ arg }: { arg: TransferArg }) {
 }
 ```
 
+A `canister_err` is a known outcome, so `resendOf` offers nothing after it.
+When the canister says the failure is temporary (an ICRC-1
+`TemporarilyUnavailable`), send the same argument object again with
+`transfer.mutate(arg)`. Encoding is deterministic, so a deduplicating method
+sees the same bytes and the same key, and answers `Duplicate` if an earlier
+attempt ran.
+
+`Resend` is not exported. To keep an offer in state, type it from the method:
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import type { Actor } from "./generated/icrc1"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+type TransferResend = NonNullable<
+  ReturnType<typeof client.resendOf<Actor, "icrc1_transfer">>
+>
+```
+
 ## Typed errors
 
 The mutation's `error` is `ReactorError<E> | null`, where `E` is the method's

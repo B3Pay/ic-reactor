@@ -266,6 +266,16 @@ export const resendByAFieldItLacks = (error: unknown) =>
     dedupedBy: (arg) => arg.nonce,
   })
 
+// A method named by data, given as `any` (#874): its variables are the value
+// of a one-argument method, as at run time, not a list.
+export const writeOfANamedMethod = (named: string) =>
+  new MutationObserver(client.queryClient, {
+    ...client.mutationOptions<icrc1.Actor, any>(ledger, named),
+    // trap: any-method-vars-not-a-list
+    // @ts-expect-error under <A, any> the variables are the value of a one-argument method, not a list: vars[0] is not its argument
+    onSuccess: (_data, vars) => vars[0],
+  })
+
 // What `useSuspenseQuery` of `@tanstack/react-query` takes, written over
 // query-core: the options of a `QueryObserver`, without the ones a suspense
 // read has no use for, and a `queryFn` that is never `skipToken`, since a
