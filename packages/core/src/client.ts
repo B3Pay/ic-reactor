@@ -185,7 +185,9 @@ export type ClientOptions = {
   /**
    * Whether the `ic_env` cookie (root key and canister ids) is believed. See
    * the `network` option; absent trusts it only when both the page and the
-   * replica are local.
+   * replica are local. Even `true` never takes the cookie's root key for a
+   * mainnet host, and `true` is refused (a `TypeError`) on a page under
+   * `ic0.app`, `github.dev` or `gitpod.io`, which are not public suffixes.
    */
   readonly allowEnvConfig?: boolean
   /**

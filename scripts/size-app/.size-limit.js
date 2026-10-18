@@ -33,7 +33,8 @@ export default [
     // With a held-back write sent as its caller (#936) on top of v4: measured 92,096 B, so the limit moved from 91,640 B to 92.15 kB.
     // With a view per useClient() caller (#935) on top of v4: measured 92,248 B, so the limit moved from 92,150 B to 92.3 kB.
     // With #939 on top of v4: measured 92,590 B, so the limit moved from 92,300 B to 92.64 kB.
-    limit: "92.64 kB",
+    // With #940 on top of v4: measured 92,761 B, so the limit moved from 92,640 B to 92.82 kB.
+    limit: "92.82 kB",
     gzip: true,
   },
   {
@@ -56,7 +57,8 @@ export default [
     // With a held-back write sent as its caller (#936) on top of v4: measured 93,393 B, so the limit moved from 92,950 B to 93.45 kB.
     // With a view per useClient() caller (#935) on top of v4: measured 93,575 B, so the limit moved from 93,450 B to 93.63 kB.
     // With #939 on top of v4: measured 93,873 B, so the limit moved from 93,630 B to 93.93 kB.
-    limit: "93.93 kB",
+    // With #940 on top of v4: measured 94,043 B, so the limit moved from 93,930 B to 94.1 kB.
+    limit: "94.1 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },
