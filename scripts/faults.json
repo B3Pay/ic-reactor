@@ -4398,6 +4398,66 @@
     "replace": "  return { keys: Object.keys(object) }\n"
   },
   {
+    "id": "878-expiry-lost-call-request",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "for a call request lost in transport",
+    "why": "the ingress expiry of a call request is not read as the agent builds it, so a write whose call request was lost carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    recordExpiry(write.sent, body.ingress_expiry)\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-accepted-call",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "when the call was accepted but its polls never answered",
+    "why": "a write's call requests are not watched, so a write whose polls never answered carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    signing.set(call.arg, { sent, signal: call.signal })\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-shared-arg",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "two sends of one resendOf offer are lost at once",
+    "why": "invocations that share one encoded argument share its watch entry, so concurrent sends of one resendOf offer record into the last one's expiry and the first error carries none",
+    "file": "src/call.ts",
+    "search": "    arg: encoded.bytes.slice(),\n",
+    "replace": "    arg: encoded.bytes,\n"
+  },
+  {
+    "id": "878-expiry-cancelled-wait",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "whose wait was cancelled before its answer",
+    "why": "the ingress expiry is read only once the agent answers, so a write cancelled while its answer was awaited carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    recordExpiry(write.sent, body.ingress_expiry)\n",
+    "replace": "    if (!write.signal) recordExpiry(write.sent, body.ingress_expiry)\n"
+  },
+  {
+    "id": "878-expiry-sent-after-cancel",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "sends no call request once the signal aborted before it was signed",
+    "why": "a call request whose signal aborted before it was signed is still sent, after the error that names no expiry for it",
+    "file": "src/call.ts",
+    "search": "    if (write.signal?.aborted) throw abortReason(write.signal)\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-on-answered-write",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "is absent on an answered write",
+    "why": "expiresAt put on every write error, an answered canister_err included, where the read-back is already conclusive",
+    "file": "src/errors.ts",
+    "search": "    error.mayHaveExecuted &&\n    (error.kind === \"outcome_unknown\" || error.kind === \"cancelled\")",
+    "replace": "    true"
+  },
+  {
     "id": "876-time-from-host-clock",
     "package": "core",
     "test": "tests/time.test.ts",

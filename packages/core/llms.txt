@@ -325,6 +325,15 @@ have executed:
 | the canister returned `Err`                                                      | `canister_err`                    | no                |
 | the caller changed, the call was aborted, or an offered re-send would go elsewhere (`target_changed`) | `cancelled` | no (an aborted write: yes) |
 
+A write that got no answer (`outcome_unknown`, or `cancelled` with
+`mayHaveExecuted: true`) carries `error.expiresAt`: the latest ingress expiry
+its sends were signed with, a `bigint` of nanoseconds on the IC's clock
+(about five minutes after the send). Once the IC's time is past it, no send
+of that write can still start running. For a method that commits without
+awaiting another canister (an ICRC-1 transfer), a certified read-back of
+state newer than that which finds nothing is final. Compare with a margin,
+since the host's clock may differ from the IC's.
+
 On the management canister (`aaaaa-aa`), codes 1 to 3 prove nothing: a write
 there may have executed. A query changes nothing, so a failed read never "may
 have executed".

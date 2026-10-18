@@ -66,6 +66,7 @@ import { isResultSchema } from "@candid-core/schema/validate"
 import {
   Certificate,
   CertifiedRejectErrorCode,
+  Expiry,
   QueryResponseStatus,
   RejectError,
   UncertifiedRejectErrorCode,
@@ -90,6 +91,7 @@ import {
   classifyError,
   createReactorError,
   fromCanister,
+  withExpiry,
   invalidReplyError,
   isReactorError,
   isRetryable,
@@ -367,12 +369,18 @@ async function run(
     canisterId: target.id,
     effective: request.effective ?? target.id,
     methodName: name,
-    arg: encoded.bytes,
+    // A copy per invocation: the bytes are what `watchSends` knows this
+    // invocation's sends by, and a `resendOf` offer or a cached encoding
+    // hands the same bytes to every invocation.
+    arg: encoded.bytes.slice(),
     mode,
     signal: request.signal,
   }
 
   let reply: Uint8Array | undefined
+  // The latest ingress expiry among this call's sends, for a write that ends
+  // with no answer (`expiresAt`).
+  const sends: Sent = {}
   for (let resends = 0; ; resends += 1) {
     try {
       if (request.signal?.aborted) {
@@ -394,7 +402,7 @@ async function run(
           reason: "the client was disposed before the call was sent",
         })
       }
-      reply = await dispatch(agent, send, call)
+      reply = await dispatch(agent, send, call, sends)
       break
     } catch (error) {
       const resend =
@@ -402,7 +410,7 @@ async function run(
         (write
           ? !management && retryUpdate(error, resends)
           : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))
-      if (!resend) throw error
+      if (!resend) throw write ? withExpiry(error, sends.expiresAt) : error
       await sleep(UPDATE_RESEND_DELAYS_MS[resends])
     }
   }
@@ -441,14 +449,59 @@ interface Outgoing {
   readonly signal?: AbortSignal
 }
 
+/** What the sends of one call record: the latest ingress expiry they were signed with. */
+interface Sent {
+  expiresAt?: bigint
+}
+
+/** Records the ingress expiry a send was signed with, keeping the latest. */
+function recordExpiry(sent: Sent, expiry: unknown): void {
+  if (!Expiry.isExpiry(expiry)) return
+  const value = expiry.toBigInt()
+  if (sent.expiresAt === undefined || value > sent.expiresAt) {
+    sent.expiresAt = value
+  }
+}
+
+/**
+ * The writes being sent, by the encoded argument the agent puts into their
+ * call requests, for {@link watchSends}.
+ */
+const signing = new WeakMap<
+  Uint8Array,
+  { readonly sent: Sent; readonly signal?: AbortSignal }
+>()
+const watched = new WeakSet<HttpAgent>()
+
+/**
+ * Has `agent` record the ingress expiry of every call request of a write in
+ * its `Sent` while it builds the request, before it is signed and sent: a
+ * signal that aborts while the answer is awaited cannot lose it. A request
+ * whose signal aborted before then is refused, so it is never sent: every
+ * send of a write that may have gone out is recorded.
+ */
+function watchSends(agent: HttpAgent): void {
+  if (watched.has(agent)) return
+  watched.add(agent)
+  agent.addTransform("update", async (request) => {
+    const body = request.body as { arg?: Uint8Array; ingress_expiry?: unknown }
+    const write = body.arg && signing.get(body.arg)
+    if (!write) return
+    if (write.signal?.aborted) throw abortReason(write.signal)
+    recordExpiry(write.sent, body.ingress_expiry)
+  })
+}
+
 /**
  * Sends one attempt and returns the reply bytes (`undefined` for a oneway).
- * Rejects with the classified failure.
+ * Rejects with the classified failure. The ingress expiry of a call request
+ * is recorded in `sent` as the agent builds it ({@link watchSends}).
  */
 async function dispatch(
   agent: HttpAgent,
   send: Send,
-  call: Outgoing
+  call: Outgoing,
+  sent: Sent
 ): Promise<Uint8Array | undefined> {
   const effectiveTarget = { canisterId: call.effective }
   // Whether the request may be in the IC: only once `agent.call` returned,
@@ -483,6 +536,8 @@ async function dispatch(
       }
       return response.reply.arg
     }
+    watchSends(agent)
+    signing.set(call.arg, { sent, signal: call.signal })
     const submitted = await untilAborted(
       agent.call(call.canisterId, {
         methodName: call.methodName,
