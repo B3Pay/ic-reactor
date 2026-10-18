@@ -326,6 +326,45 @@ describe("queryOptions", () => {
     }
   })
 
+  it("refuses another copy's skipToken, which it cannot tell from an argument, and still skips its own and passes a symbol to reserved", async () => {
+    const replica = replicaWith({
+      [SHAPES]: serve<skippable.Actor>(skippable.actor, {
+        anything: () => 6n,
+      }),
+    })
+    const client = clientAs(replica, alice)
+    const canister = client.canister<skippable.Actor>(skippable.actor, {
+      id: SHAPES,
+    })
+    // What a second copy of @tanstack/query-core exports: its own Symbol().
+    const foreign = Symbol() as never
+    const twoCopies =
+      /a symbol, not core's skipToken: two copies of @tanstack\/query-core are installed.*`npm ls @tanstack\/query-core` must show one copy/
+    expect(() => client.queryOptions(canister, "maybe_nat", foreign)).toThrow(
+      twoCopies
+    )
+    expect(() =>
+      client.queryOptions(canister, "empty_record", foreign)
+    ).toThrow(TypeError)
+    expect(() => client.queryKey(canister, "maybe_nat", foreign)).toThrow(
+      twoCopies
+    )
+    expect(() => client.queryKey(canister, "no_args", foreign)).toThrow(
+      twoCopies
+    )
+    // Its own skipToken still skips.
+    expect(client.queryOptions(canister, "maybe_nat", skipToken).queryFn).toBe(
+      skipToken
+    )
+    const skipped = client.queryKey(canister, "maybe_nat", skipToken as never)
+    expect(skipped[skipped.length - 1]).toBe("$skip")
+    // reserved takes every value, a symbol included: it is encoded and read.
+    const options = client.queryOptions(canister, "anything", foreign)
+    expect(typeof options.queryFn).toBe("function")
+    await expect(client.queryClient.fetchQuery(options)).resolves.toBe(6n)
+    expect(() => client.queryKey(canister, "anything", foreign)).not.toThrow()
+  })
+
   it("throws a TypeError for an update or oneway method, a certified composite query, or an unknown fourth argument", () => {
     const client = clientAs(replicaWith({}), alice)
     const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
@@ -1230,6 +1269,139 @@ describe("mutationOptions", () => {
       })
     ).toThrow(/has no method "nope"/)
   })
+})
+
+describe("timeoutMs", () => {
+  // #875: a bound on how long one call waits, for reads and mutations.
+  const within = <T>(call: Promise<T>) =>
+    Promise.race([call, sleep(2_000).then(() => "still waiting")])
+
+  /** A ledger whose transfers and balances never answer. */
+  const held = () => {
+    const fake = ledgerCanister(new Map([[ALICE as string, 1_000_000n]]))
+    const replica = replicaWith({
+      [LEDGER]: {
+        query: (method, arg, context) =>
+          method === "icrc1_balance_of"
+            ? new Promise(() => {})
+            : fake.query!(method, arg, context),
+        update: () => new Promise(() => {}),
+      },
+    })
+    return { replica, client: clientAs(replica, alice) }
+  }
+  const transfer = (amount: bigint): icrc1.TransferArg => ({
+    to: { owner: BOB, subaccount: null },
+    amount,
+    fee: null,
+    memo: null,
+    from_subaccount: null,
+    created_at_time: 1_700_000_000_000_000_000n,
+  })
+
+  it.each([
+    ["its own timeoutMs", {}, { timeoutMs: 50 }],
+    ["the canister's timeoutMs", { timeoutMs: 50 }, {}],
+    [
+      "its own timeoutMs over the canister's",
+      { timeoutMs: 600_000 },
+      { timeoutMs: 50 },
+    ],
+  ] as const)(
+    "rejects a mutation whose request went out outcome_unknown with %s, and offers it to resendOf",
+    async (_, target, options) => {
+      const { replica, client } = held()
+      const ledger = client.canister<icrc1.Actor>(icrc1.actor, {
+        id: LEDGER,
+        ...target,
+      })
+      const mutation = new MutationObserver(
+        client.queryClient,
+        client.mutationOptions(ledger, "icrc1_transfer", options)
+      )
+      const error = await within(mutation.mutate(transfer(1n))).catch(
+        (failure: unknown) => failure
+      )
+      expect(error).toMatchObject({
+        kind: "outcome_unknown",
+        mayHaveExecuted: true,
+        code: "timeout",
+      })
+      expect(mutation.getCurrentResult().error).toBe(error)
+      expect(
+        client.resendOf(error, ledger, "icrc1_transfer", {
+          dedupedBy: (arg) => arg.created_at_time,
+        })
+      ).toBeDefined()
+      expect(requestsFor(replica, "icrc1_transfer")).toHaveLength(1)
+    }
+  )
+
+  it("keeps a mutation re-sending an offered write outcome_unknown when it times out before it goes out", async () => {
+    const { replica, client } = held()
+    const ledger = client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
+    const mutation = new MutationObserver(
+      client.queryClient,
+      client.mutationOptions(ledger, "icrc1_transfer", { timeoutMs: 50 })
+    )
+    const first = await within(mutation.mutate(transfer(1n))).catch(
+      (failure: unknown) => failure
+    )
+    const dedupedBy = (arg: icrc1.TransferArg) => arg.created_at_time
+    const offer = client.resendOf(first, ledger, "icrc1_transfer", {
+      dedupedBy,
+    })
+    expect(offer).toBeDefined()
+    replica.refuseNext(429)
+    const again = await within(mutation.mutate(offer!.arg)).catch(
+      (failure: unknown) => failure
+    )
+    expect(again).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      code: "timeout",
+    })
+    expect(
+      client.resendOf(again, ledger, "icrc1_transfer", { dedupedBy })
+    ).toBeDefined()
+    expect(requestsFor(replica, "icrc1_transfer")).toHaveLength(2)
+  })
+
+  it("rejects a read of a canister with timeoutMs cancelled, with nothing executed", async () => {
+    const { replica, client } = held()
+    const ledger = client.canister<icrc1.Actor>(icrc1.actor, {
+      id: LEDGER,
+      timeoutMs: 50,
+    })
+    await expect(
+      within(
+        client.queryClient.fetchQuery(
+          client.queryOptions(ledger, "icrc1_balance_of", {
+            owner: ALICE,
+            subaccount: null,
+          })
+        )
+      )
+    ).rejects.toMatchObject({
+      kind: "cancelled",
+      mayHaveExecuted: false,
+      code: "timeout",
+    })
+    expect(requestsFor(replica, "icrc1_balance_of")).toHaveLength(1)
+  })
+
+  it.each([0, 0.5, Number.NaN, 2 ** 31, "50"])(
+    "throws a TypeError for a mutation's timeoutMs %s",
+    (timeoutMs) => {
+      const { client } = held()
+      const ledger = client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
+      expect(() =>
+        client.mutationOptions(ledger, "icrc1_transfer", {
+          timeoutMs: timeoutMs as number,
+        })
+      ).toThrow(/2147483647/)
+    }
+  )
 })
 
 /**

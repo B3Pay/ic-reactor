@@ -19,7 +19,10 @@
  * @module
  */
 import type { FuncValue, Principal, Schema } from "@candid-core/schema"
-import { DEFAULT_MAX_DEPTH } from "@candid-core/schema/codec"
+import {
+  DEFAULT_MAX_DEPTH,
+  DEFAULT_MAX_ELEMENTS,
+} from "@candid-core/schema/codec"
 import {
   AnonymousIdentity,
   HttpAgent,
@@ -33,10 +36,12 @@ import { KEY_ROOT } from "./keys.js"
 import {
   agentOptionsFor,
   authNetworkFor,
+  resolveCanisterId,
   resolveNetwork,
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
+import { readTarget } from "./canister.js"
 import { createBuilders } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
 import type {
@@ -76,22 +81,33 @@ const ANONYMOUS = SdkPrincipal.anonymous().toText()
  * present, is called from {@link Client.dispose}: the client owns the auth its
  * factory built.
  *
- * Another sign-in source (a wallet, a hand-rolled session) fits by
- * implementing these six methods, and `dispose()` if it holds anything. Its
- * `getIdentity()` should return the same object until the identity really
- * changes: the client builds a new agent for every new identity object it is
- * handed, and reads a new object for the same principal as a renewal.
+ * Another sign-in source that hands over an `Identity` (a delegation, such
+ * as a hand-rolled session gives, or a local key) fits by implementing these
+ * six methods, and `dispose()` if it holds anything. A wallet that signs each call itself (ICRC-25 and
+ * ICRC-49: OISY, Plug, NFID accounts) gives no `Identity` and does not fit:
+ * the Auth guide shows writes through such a wallet beside the client. A
+ * source's `getIdentity()` should return the same object until the identity
+ * really changes: the client builds a new agent for every new identity object
+ * it is handed, and reads a new object for the same principal as a renewal.
  */
 export interface AuthLike {
   /** Who calls are accepted as, or `undefined` when nobody can act. */
   getPrincipal(): { toText(): string } | undefined
   /**
    * Who is signed in. Only `"signed-in"` makes the client call as
-   * {@link AuthLike.getPrincipal}; every other state calls anonymously.
+   * {@link AuthLike.getPrincipal}; every other state calls anonymously. The
+   * four named states are `@icp-sdk/auth` 10's; any other string, such as a
+   * state a later `@icp-sdk/auth` adds, is accepted and reads as
+   * `"anonymous"` in {@link AuthState}, so an upgrade of the auth library
+   * does not stop an app compiling.
    */
   getStatus(): {
     readonly state:
-      "signed-in" | "signed-in-elsewhere" | "expired" | "signed-out"
+      | "signed-in"
+      | "signed-in-elsewhere"
+      | "expired"
+      | "signed-out"
+      | (string & {})
   }
   /** The identity to sign calls with while signed in. */
   getIdentity(): Promise<Identity>
@@ -122,8 +138,9 @@ export interface AuthLike {
  */
 export interface AuthState {
   /**
-   * - `anonymous`: nobody is signed in (the auth says `signed-out`), the client
-   *   runs on a server, or it was built anonymous.
+   * - `anonymous`: nobody is signed in (the auth says `signed-out`, or a state
+   *   the client does not know), the client runs on a server, or it was built
+   *   anonymous.
    * - `signed-in`: calls are signed by `principal`.
    * - `expired`: the session ended; calls are anonymous until a sign-in.
    * - `signed-in-elsewhere`: someone is signed in on this domain but this
@@ -157,6 +174,14 @@ export type ClientOptions = {
    * that nest deeper, such as an ICRC-3 block log's values.
    */
   readonly maxDepth?: number
+  /**
+   * How many values a decoded reply may hold, beyond one per byte of the
+   * reply. Defaults to 1,000,000. A reply is always allowed one value per byte
+   * on top of this, so a blob (a wasm module, an asset chunk) of any size the
+   * IC returns decodes; this bounds only the values that take no bytes, such
+   * as a long `vec null`.
+   */
+  readonly maxElements?: number
 } & (
   | {
       /**
@@ -315,6 +340,43 @@ export interface Client {
    * principal text.
    */
   canister<A>(service: Schema<Principal>, target: CanisterTarget): Canister<A>
+
+  /**
+   * The canister id a target resolves to now, by the same resolver the calls
+   * of `client.canister(service, target)` use, without making a call.
+   *
+   * ```ts
+   * const backend = client.canisterId({ name: "backend" })
+   * if (!backend.ok && backend.reason === "untrusted_host") showSetupHint()
+   * ```
+   *
+   * `{ id }` gives that id. `{ name }` is read from the `ic_env` cookie, as a
+   * call reads it, and gives the id or one of three reasons, each with its
+   * own fix:
+   *
+   * - `no_browser`: there is no page, so no cookie to read (a server render,
+   *   a web worker).
+   * - `untrusted_host`: the cookie is not trusted for this network, so it was
+   *   not read.
+   * - `absent`: the cookie was read and has no principal text under that
+   *   name.
+   *
+   * `message` is the resolver's reason, the text a call on that target puts
+   * in its error after the method and target. The answer is not kept: each call reads the cookie again, as each call of a
+   * `{ name }` canister does. It sends nothing, and a `certified` flag in the
+   * target is ignored. An id it gives is the one the cookie names; whether a
+   * canister answers there is not checked.
+   *
+   * @throws TypeError for a target that is not one of the allowed shapes or
+   * whose `id` is not principal text.
+   */
+  canisterId(target: CanisterTarget):
+    | { readonly ok: true; readonly id: string }
+    | {
+        readonly ok: false
+        readonly reason: "no_browser" | "untrusted_host" | "absent"
+        readonly message: string
+      }
 
   /**
    * The query key of a read, or the prefix of a group of reads, for
@@ -595,6 +657,40 @@ export interface Client {
   ): Resend<VarsOf<A, M>, DataOf<A, M>> | undefined
 
   /**
+   * The Candid bytes a call of `method` with `vars` sends, as a `Uint8Array`:
+   * made by the call path's own encoder with its own variables rule (the
+   * value for one argument, the tuple for several, nothing for none), so
+   * they are the bytes that go out, not a second encoding. Pass them where
+   * the exact argument is wanted, such as an ICRC-21 consent request's `arg`:
+   *
+   * ```ts
+   * const arg = client.encode(ledger, "icrc1_transfer", transfer)
+   * const consent = await ledger.icrc21_canister_call_consent_message({
+   *   method: "icrc1_transfer",
+   *   arg,
+   *   user_preferences: preferences,
+   * })
+   * ```
+   *
+   * It sends nothing and needs no canister id, so a `{ name }` the `ic_env`
+   * cookie does not resolve encodes too.
+   *
+   * It checks only the variables: not the caller, the canister id or
+   * whether the client is disposed, which a call checks before it encodes.
+   *
+   * @throws ReactorError `invalid_args` for variables that do not encode,
+   * with the `issues` and `reason` a call rejects with when its variables are
+   * all that is wrong.
+   * @throws TypeError for a canister of another client, or a method the
+   * service does not have.
+   */
+  encode<A, M extends keyof A & string>(
+    canister: Canister<A>,
+    method: M,
+    vars: VarsOf<A, M>
+  ): Uint8Array
+
+  /**
    * An async function for a func reference a reply carried, such as an ICRC
    * ledger's archive callback:
    *
@@ -620,6 +716,37 @@ export interface Client {
     funcSchema: Schema<FuncValue>,
     ref: FuncValue
   ): F
+
+  /**
+   * The IC's time, in nanoseconds since the epoch (the unit of an ICRC-1
+   * `created_at_time`), from a certified `read_state` of the `time` path,
+   * routed by `canister`'s subnet. Stamp a deduplication key with it rather
+   * than with the host's clock, which a ledger checks against its own.
+   *
+   * ```ts
+   * const created_at_time = await client.time(ledger)
+   * ```
+   *
+   * The IC's time moves about once a second (once per round), so two writes
+   * stamped close together can carry the same time: give each its own
+   * `memo` as well.
+   *
+   * Its request carries an ingress expiry from the host's clock, as every
+   * request does: a host clock so far off that the IC refuses its requests
+   * gets `not_delivered` here too.
+   *
+   * The certificate is verified against the network's root key, as every
+   * reply is; its age is not compared with the host's clock, which may be the
+   * clock that is wrong. A certificate that does not verify rejects
+   * `not_delivered` with `mayHaveExecuted: false`, and its time is never
+   * returned. It needs no signed-in caller, and is sent by the caller's
+   * agent, as a read does. A `{ name }` the `ic_env` cookie
+   * does not resolve rejects `invalid_args` (`canister_id_unresolved`), as
+   * does the management canister `aaaaa-aa` (`management_canister`), which no
+   * `read_state` is routed by, and a disposed client rejects `cancelled`
+   * (`client_disposed`); nothing is sent then.
+   */
+  time(canister: Canister<object>): Promise<bigint>
 }
 
 // ---------------------------------------------------------------------------
@@ -651,6 +778,8 @@ export interface ClientInternals {
   readonly network: ResolvedNetwork
   /** The decode depth bound for replies, from {@link ClientOptions.maxDepth}. */
   readonly maxDepth: number
+  /** The decode element budget for replies, from {@link ClientOptions.maxElements}. */
+  readonly maxElements: number
   /** Who calls now. Reads the auth (building it on first use, in a browser). */
   current(): Caller
   /**
@@ -758,7 +887,7 @@ const AUTH_MEMBERS = [
 /**
  * Checks what a JavaScript caller (or a cast) can get past the types: exactly
  * one of `identity` and `auth`, an identity that is one, an `auth` that is a
- * factory, and a `maxDepth` candid-core would accept.
+ * factory, and a `maxDepth` and `maxElements` candid-core would accept.
  */
 function checkOptions(options: ClientOptions): void {
   if (typeof options !== "object" || options === null) {
@@ -766,10 +895,11 @@ function checkOptions(options: ClientOptions): void {
       "[ic-reactor] createClient() takes an options object: { network, identity } or { network, auth }."
     )
   }
-  const { identity, auth, maxDepth } = options as {
+  const { identity, auth, maxDepth, maxElements } = options as {
     identity?: unknown
     auth?: unknown
     maxDepth?: unknown
+    maxElements?: unknown
   }
   if (identity !== undefined && auth !== undefined) {
     throw new TypeError(
@@ -805,6 +935,14 @@ function checkOptions(options: ClientOptions): void {
   ) {
     throw new TypeError(
       `[ic-reactor] maxDepth is a non-negative safe integer, got ${String(maxDepth)}.`
+    )
+  }
+  if (
+    maxElements !== undefined &&
+    !(Number.isSafeInteger(maxElements) && (maxElements as number) >= 0)
+  ) {
+    throw new TypeError(
+      `[ic-reactor] maxElements is a non-negative safe integer, got ${String(maxElements)}.`
     )
   }
 }
@@ -976,9 +1114,11 @@ function stateOf(auth: AuthLike): AuthState {
   if (caller.authenticated) {
     return { status: "signed-in", principal: caller.principal }
   }
+  // A state the client does not know, such as one a later @icp-sdk/auth
+  // adds, is anonymous.
   const { state } = auth.getStatus()
   return state === "expired" || state === "signed-in-elsewhere"
-    ? { status: state, principal: ANONYMOUS }
+    ? { status: state as AuthState["status"], principal: ANONYMOUS }
     : ANONYMOUS_STATE
 }
 
@@ -1044,6 +1184,7 @@ export function createClientWith(
   checkHost(network.host)
   warnEnvOffPage(options.network)
   const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH
+  const maxElements = options.maxElements ?? DEFAULT_MAX_ELEMENTS
   const authFactory = options.auth
   const fixedIdentity =
     options.identity === undefined || options.identity === "anonymous"
@@ -1388,6 +1529,7 @@ export function createClientWith(
   const internals: ClientInternals = Object.freeze({
     network,
     maxDepth,
+    maxElements,
     current,
     disposed: () => disposed,
     mutationCallers,
@@ -1474,6 +1616,11 @@ export function createClientWith(
     ...createBuilders(internals, () => client),
     network: network.keySegment,
     queryClient,
+    canisterId: (target) =>
+      resolveCanisterId(
+        readTarget(target, "client.canisterId()").target,
+        network
+      ),
     caller: () => current().principal,
     authState: refresh,
     subscribe(listener: () => void): () => void {
