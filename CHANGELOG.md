@@ -58,6 +58,25 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Fixed
 
+- **BREAKING:** `createClient` checks every option, so a value the types
+  forbid but untyped code can pass (an `import.meta.env` value, a spread,
+  plain JavaScript) fails closed with a `TypeError` naming the option and
+  what it got (#895). Before, `allowEnvConfig: "false"` was truthy and
+  believed the `ic_env` cookie on any page, `fetchRootKey: "false"` fetched
+  the root key from a remote host, a hex `rootKey` made every call fail, and
+  an unknown key was ignored (`host` beside `network`, the 3.x habit, talked
+  to port 8000). It now refuses an option it does not have, in the options
+  and in a network object, listing those it has; an `allowEnvConfig` or
+  `fetchRootKey` that is not `true` or `false`; a `rootKey` that is not 133
+  bytes in a `Uint8Array` (`null` included); and a `fetch` that is not a
+  function. `createTestClient` checks the network and `allowEnvConfig` it
+  forwards the same way, and refuses a `signedIn` that is not a boolean. `parseUnits` and `formatUnits` refuse
+  options that are not an object or have a key they do not take (Intl's
+  `maximumFractionDigits`, a misspelt `signd`), and `parseUnits` a `signed`
+  that is not a boolean. Migration: compare environment text,
+  `allowEnvConfig: import.meta.env.VITE_ALLOW_ENV === "true"`; move `host`
+  into `network: { host }`; decode a hex root key to its bytes; drop or
+  correct the key the error names.
 - A write from `client.mutationOptions()` goes out as the caller current when
   `mutate()` was called, or not at all (#893). The client's `queryClient`
   reads the caller of each mutation run in its `MutationCache` when the run
