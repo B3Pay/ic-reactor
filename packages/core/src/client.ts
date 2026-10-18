@@ -29,7 +29,7 @@ import {
   type Identity,
 } from "@icp-sdk/core/agent"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
-import { QueryClient, type QueryKey } from "@tanstack/query-core"
+import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
 import { createReactorError, fromCanister, retryDefault } from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
@@ -541,13 +541,21 @@ export interface Client {
    * ledger, "icrc1_transfer"))`, then `mutate(arg)` with the same argument
    * convention as {@link Client.queryOptions}.
    *
-   * The mutation function of the client's own options calls the method as
-   * the caller current when it runs. Those of a view (what `useClient()`
-   * returns) call only as the view's principal, and end their `mutationKey`
-   * with it: while someone else is current their mutation function rejects
-   * `cancelled` (`caller_changed`, `mayHaveExecuted: false`) and sends
-   * nothing. Either way, an update by a caller who is not signed in rejects
-   * `unauthenticated` before anything is sent. `retry` is `false`: an update
+   * The mutation function calls the method as the caller current when
+   * `mutate()` was called (read in `onMutate`), or not at all: a write that
+   * TanStack Query holds back (offline, or behind another mutation of its
+   * `scope`) while the account changes rejects `cancelled`, code
+   * `caller_changed`, `mayHaveExecuted: false`, and sends nothing; so does a
+   * mutation restored from a persister, whose caller is not known. The
+   * client's own `queryClient` reads each run's caller in its
+   * `MutationCache`, so this holds with an `onMutate` of the app's that
+   * replaces this one; the JSDoc of the returned `mutationFn` covers a run on
+   * another `QueryClient`. The options of a view (what `useClient()` returns)
+   * also call only as the view's principal, and end their `mutationKey` with
+   * it: while someone else is current their mutation function rejects
+   * `cancelled` the same way. An update by a caller who is not signed in
+   * rejects `unauthenticated` before anything is sent. `retry` is `false`: an
+   * update
    * re-sends itself only when the failure proves the first attempt never got
    * in (see {@link Canister}), and a TanStack retry would re-send after
    * failures that do not prove it, running the write twice.
@@ -789,6 +797,21 @@ export interface ClientInternals {
    * and a write would otherwise be refused as `unauthenticated`.
    */
   disposed(): boolean
+  /**
+   * The caller current when each mutation run of the client's `queryClient`
+   * started, by its `Mutation` and (TanStack Query 5.89 and later) by the
+   * function context TanStack made for the run. Read by the `MutationCache`'s
+   * own `onMutate`, which `mutate()` runs before the mutation's `onMutate`
+   * and which a mutation's options cannot replace. Weak, so an entry lives as
+   * long as its mutation. A restored mutation (hydrated from a persister) has
+   * none: TanStack runs no `onMutate` for it.
+   */
+  readonly mutationCallers: WeakMap<object, Caller>
+  /**
+   * The `mutationFn` of every `mutationOptions` of this client: the only
+   * mutations whose caller the `MutationCache` reads.
+   */
+  readonly ownMutationFns: WeakSet<object>
   /**
    * The agent that signs as `principal`, and only as `principal`. It is the
    * one place the client enforces "a call goes out as the principal it was
@@ -1208,7 +1231,34 @@ export function createClientWith(
       ? undefined
       : (input: RequestInfo | URL, init?: RequestInit) => userFetch(input, init)
 
+  const mutationCallers = new WeakMap<object, Caller>()
+  const ownMutationFns = new WeakSet<object>()
   const queryClient = new QueryClient({
+    mutationCache: new MutationCache({
+      // Only for a write of this client's `mutationOptions`: a mutation of
+      // the app's never builds the auth, and never fails here. Before 5.89
+      // TanStack passes no context.
+      onMutate: (
+        _vars: unknown,
+        mutation: { readonly options: { readonly mutationFn?: unknown } },
+        context?: unknown
+      ) => {
+        const fn = mutation.options.mutationFn
+        if (typeof fn !== "function" || !ownMutationFns.has(fn)) return
+        let caller: Caller
+        try {
+          caller = current()
+        } catch {
+          // The write's own mutationFn reads the caller again, and fails
+          // as a call does.
+          return
+        }
+        mutationCallers.set(mutation, caller)
+        if (typeof context === "object" && context !== null) {
+          mutationCallers.set(context, caller)
+        }
+      },
+    }),
     defaultOptions: {
       queries: { retry: retryDefault },
       dehydrate: { serializeData },
@@ -1513,6 +1563,8 @@ export function createClientWith(
     maxElements,
     current,
     disposed: () => disposed,
+    mutationCallers,
+    ownMutationFns,
     agentFor,
   })
 
@@ -1613,31 +1665,41 @@ export function createClientWith(
         options?: unknown
       ) => {
         const built = own(canister, method, options)
+        const mutationFn = async function (
+          this: unknown,
+          vars: unknown,
+          context?: unknown
+        ) {
+          const now = current().principal
+          if (now !== principal) {
+            const target = recordOf(
+              canister,
+              internals,
+              "client.mutationOptions()"
+            ).resolve()
+            // Marked with the canister, as a call's error is, so that
+            // `isReactorError(error, canister, method)` matches it.
+            throw fromCanister(
+              createReactorError("cancelled", {
+                method: String(method),
+                canisterId: target.ok ? target.id : target.slot,
+                code: "caller_changed",
+                reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
+              }),
+              canister as object
+            )
+          }
+          // `this` is the options TanStack called it on, by which the
+          // client's function finds the caller of a run with no context.
+          return built.mutationFn.call(this, vars, context)
+        }
+        // The client's `MutationCache` reads the caller of a run of this
+        // function too, as it does for the client's own.
+        ownMutationFns.add(mutationFn)
         return {
           ...built,
           mutationKey: [...built.mutationKey, principal] as const,
-          mutationFn: async (vars: unknown, context?: unknown) => {
-            const now = current().principal
-            if (now !== principal) {
-              const target = recordOf(
-                canister,
-                internals,
-                "client.mutationOptions()"
-              ).resolve()
-              // Marked with the canister, as a call's error is, so that
-              // `isReactorError(error, canister, method)` matches it.
-              throw fromCanister(
-                createReactorError("cancelled", {
-                  method: String(method),
-                  canisterId: target.ok ? target.id : target.slot,
-                  code: "caller_changed",
-                  reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
-                }),
-                canister as object
-              )
-            }
-            return built.mutationFn(vars, context)
-          },
+          mutationFn,
         }
       }
       view = Object.freeze(

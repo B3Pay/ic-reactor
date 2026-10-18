@@ -256,7 +256,8 @@ the HTML has to match, so the hydrating render shows the anonymous caller:
   view of whoever each later render shows. Its `queryKey`, `queryOptions`,
   `caller()` and `authState()` are the anonymous caller's, so the page finds
   what the server dehydrated and matches the server's HTML, and its
-  `mutationOptions` send only as that caller. The canisters, `signIn`,
+  `mutationOptions` send only as that caller, and only while it is the caller
+  current when `mutate()` is called. The canisters, `signIn`,
   `signOut` and the `QueryClient` are the client's own.
 - Nothing is sent during the hydrating render.
 
