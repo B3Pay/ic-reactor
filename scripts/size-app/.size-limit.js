@@ -29,8 +29,9 @@ export default [
     // With maxElements (#932) on top of v4: measured 90,897 B, so the limit moved from 90,850 B to 90.95 kB.
     // With timeoutMs (#875) on top of v4: measured 91,291 B, so the limit moved from 90,950 B to 91.34 kB.
     // With strict createClient options (#938) on top of v4: measured 91,519 B, so the limit moved from 91,340 B to 91.57 kB.
-    // With a per-caller useClient() view (#935) on top of v4: measured 91,674 B, so the limit moved from 91,570 B to 91.73 kB.
-    limit: "91.73 kB",
+    // With TanStack retries kept for app queries (#937) on top of v4: measured 91,589 B, so the limit moved from 91,570 B to 91.64 kB.
+    // With a per-caller useClient() view (#935) on top of v4: measured 91,744 B, so the limit moved from 91,640 B to 91.8 kB.
+    limit: "91.8 kB",
     gzip: true,
   },
   {
@@ -49,8 +50,9 @@ export default [
     // With maxElements (#932) on top of v4: measured 92,162 B, so the limit moved from 92,140 B to 92.22 kB.
     // With timeoutMs (#875) on top of v4: measured 92,561 B, so the limit moved from 92,220 B to 92.61 kB.
     // With strict createClient options (#938) on top of v4: measured 92,830 B, so the limit moved from 92,610 B to 92.88 kB.
-    // With a per-caller useClient() view (#935) on top of v4: measured 92,972 B, so the limit moved from 92,880 B to 93.03 kB.
-    limit: "93.03 kB",
+    // With TanStack retries kept for app queries (#937) on top of v4: measured 92,899 B, so the limit moved from 92,880 B to 92.95 kB.
+    // With a per-caller useClient() view (#935) on top of v4: measured 93,037 B, so the limit moved from 92,950 B to 93.09 kB.
+    limit: "93.09 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },

@@ -4793,96 +4793,6 @@
     "replace": "        maxElements,"
   },
   {
-    "id": "i895-allow-env-config-string-truthy",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
-    "why": "allowEnvConfig no longer checked, so the text \"false\" is truthy and the ic_env cookie is believed on any page",
-    "file": "src/network.ts",
-    "search": "  checkBoolean(allowEnvConfig, \"allowEnvConfig\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-fetch-root-key-string-truthy",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
-    "why": "fetchRootKey no longer checked, so the text \"false\" fetches the root key from a remote host",
-    "file": "src/network.ts",
-    "search": "  checkBoolean(fetchRootKey, \"fetchRootKey\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-network-object-unknown-key-ignored",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses an option it does not have, in the options or a network object",
-    "why": "a misspelt key of a network object (rootkey, fetchRootkey) ignored instead of refused",
-    "file": "src/network.ts",
-    "search": "  checkKeys(network, NETWORK_KEYS, \"a network object\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-create-client-unknown-option-ignored",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses an option it does not have, in the options or a network object",
-    "why": "an option createClient does not have (host beside network, allowEnvconfig) ignored instead of refused",
-    "file": "src/client.ts",
-    "search": "  checkKeys(options, OPTION_NAMES, \"createClient()\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-root-key-not-checked",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
-    "why": "a rootKey given as hex text, or of the wrong length, accepted, so every query fails and every update ends outcome_unknown",
-    "file": "src/network.ts",
-    "search": "    rootKey !== undefined &&\n    !(rootKey instanceof Uint8Array",
-    "replace": "    false &&\n    !(rootKey instanceof Uint8Array"
-  },
-  {
-    "id": "i895-fetch-not-checked",
-    "package": "core",
-    "test": "tests/client.test.ts",
-    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
-    "why": "a fetch that is not a function accepted when the client is built, failing only at the first call",
-    "file": "src/client.ts",
-    "search": "  if (fetch !== undefined && typeof fetch !== \"function\") {",
-    "replace": "  if (false) {"
-  },
-  {
-    "id": "i895-units-unknown-option-ignored",
-    "package": "core",
-    "test": "tests/units.test.ts",
-    "testName": "refuses an option it does not have, such as Intl's spelling",
-    "why": "formatUnits ignores maximumFractionDigits (Intl's spelling) and shows every digit",
-    "file": "src/units.ts",
-    "search": "  if (options === undefined) return\n",
-    "replace": "  return\n"
-  },
-  {
-    "id": "i895-parse-units-signed-not-boolean",
-    "package": "core",
-    "test": "tests/units.test.ts",
-    "testName": "takes signed only as a boolean, and options with no other key",
-    "why": "parseUnits takes a signed that is not a boolean, such as the text \"false\", without a word",
-    "file": "src/units.ts",
-    "search": "  checkBoolean(signed, \"parseUnits: signed\")\n",
-    "replace": ""
-  },
-  {
-    "id": "i895-test-client-signed-in-string",
-    "package": "core",
-    "test": "tests/testing-test-client.test.ts",
-    "testName": "a boolean option that is not a boolean, and a network createClient would refuse",
-    "why": "createTestClient({ signedIn: \"false\" }) starts signed in",
-    "file": "src/testing/test-client.ts",
-    "search": "  checkBoolean(signedIn, \"createTestClient(): signedIn\")\n",
-    "replace": ""
-  },
-  {
     "id": "875-timeout-never-fires",
     "package": "core",
     "test": "tests/canister.test.ts",
@@ -5130,6 +5040,116 @@
     "testName": "finds the icp.exe inside icp-cli's own node_modules as well",
     "why": "the plugin looks for icp.exe only beside icp-cli, not in icp-cli's own node_modules, where the bin script also looks",
     "search": "    path.join(dir, \"..\", \"node_modules\", platformPackage, \"bin\", \"icp.exe\"),\n",
+    "replace": ""
+  },
+  {
+    "id": "qc-rest-query-not-retried",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "tries an app's REST query again in a browser page, as TanStack does, up to 3 times",
+    "why": "the client's default retry refuses every error that is not a ReactorError, so an app's REST query on the client's QueryClient loses TanStack's retries",
+    "file": "src/errors.ts",
+    "search": "  return !isServer() && failureCount < 3\n",
+    "replace": "  return false\n"
+  },
+  {
+    "id": "qc-write-invalidates-own-query-client-only",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the reads on the QueryClient the mutation ran on, and on the client's own",
+    "why": "a write invalidates only the client's own QueryClient, so the reads of an app's nested QueryClientProvider, where the mutation ran, are never refreshed",
+    "file": "src/options.ts",
+    "search": "ran !== undefined && ran !== own ? [own, ran] : [own]",
+    "replace": "[own]"
+  },
+  {
+    "id": "i895-allow-env-config-string-truthy",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
+    "why": "allowEnvConfig no longer checked, so the text \"false\" is truthy and the ic_env cookie is believed on any page",
+    "file": "src/network.ts",
+    "search": "  checkBoolean(allowEnvConfig, \"allowEnvConfig\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-fetch-root-key-string-truthy",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
+    "why": "fetchRootKey no longer checked, so the text \"false\" fetches the root key from a remote host",
+    "file": "src/network.ts",
+    "search": "  checkBoolean(fetchRootKey, \"fetchRootKey\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-network-object-unknown-key-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses an option it does not have, in the options or a network object",
+    "why": "a misspelt key of a network object (rootkey, fetchRootkey) ignored instead of refused",
+    "file": "src/network.ts",
+    "search": "  checkKeys(network, NETWORK_KEYS, \"a network object\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-create-client-unknown-option-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses an option it does not have, in the options or a network object",
+    "why": "an option createClient does not have (host beside network, allowEnvconfig) ignored instead of refused",
+    "file": "src/client.ts",
+    "search": "  checkKeys(options, OPTION_NAMES, \"createClient()\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-root-key-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
+    "why": "a rootKey given as hex text, or of the wrong length, accepted, so every query fails and every update ends outcome_unknown",
+    "file": "src/network.ts",
+    "search": "    rootKey !== undefined &&\n    !(rootKey instanceof Uint8Array",
+    "replace": "    false &&\n    !(rootKey instanceof Uint8Array"
+  },
+  {
+    "id": "i895-fetch-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
+    "why": "a fetch that is not a function accepted when the client is built, failing only at the first call",
+    "file": "src/client.ts",
+    "search": "  if (fetch !== undefined && typeof fetch !== \"function\") {",
+    "replace": "  if (false) {"
+  },
+  {
+    "id": "i895-units-unknown-option-ignored",
+    "package": "core",
+    "test": "tests/units.test.ts",
+    "testName": "refuses an option it does not have, such as Intl's spelling",
+    "why": "formatUnits ignores maximumFractionDigits (Intl's spelling) and shows every digit",
+    "file": "src/units.ts",
+    "search": "  if (options === undefined) return\n",
+    "replace": "  return\n"
+  },
+  {
+    "id": "i895-parse-units-signed-not-boolean",
+    "package": "core",
+    "test": "tests/units.test.ts",
+    "testName": "takes signed only as a boolean, and options with no other key",
+    "why": "parseUnits takes a signed that is not a boolean, such as the text \"false\", without a word",
+    "file": "src/units.ts",
+    "search": "  checkBoolean(signed, \"parseUnits: signed\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-test-client-signed-in-string",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "a boolean option that is not a boolean, and a network createClient would refuse",
+    "why": "createTestClient({ signedIn: \"false\" }) starts signed in",
+    "file": "src/testing/test-client.ts",
+    "search": "  checkBoolean(signedIn, \"createTestClient(): signedIn\")\n",
     "replace": ""
   },
   {

@@ -296,6 +296,12 @@ export interface ReactorProviderProps {
  * client's `QueryClient`, and, if its factory created the client, disposes it
  * when it unmounts.
  *
+ * An app that already uses TanStack Query runs its own queries on that same
+ * `QueryClient` (one per tree): an error that is not a `ReactorError` is
+ * retried there as TanStack Query retries it, and a write invalidates its
+ * reads on the `QueryClient` it ran on as well, so a `QueryClientProvider` of
+ * the app's nested inside still sees them refresh.
+ *
  * Put it at the root of the part of the app that calls canisters, in a
  * client module (the examples below). On a server it renders inside the
  * request, so a factory that creates the client runs once per request and no
