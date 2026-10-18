@@ -42,9 +42,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   identity, then reject `caller_changed`, `client_disposed` or
   `unauthenticated` (`identity_unavailable`) when one of those applied, and
   otherwise send the read nobody waited for. The abort now comes first.
-- Core's size limit is raised to 16.22 kB for `timeoutMs` (16,170 B, +361 B),
-  and the app checks with the peers included to 91.24 kB (91,191 B, +396 B)
-  and 92.53 kB (92,482 B, +399 B).
+- Core's size limit is raised to 16.32 kB for `timeoutMs` (16,269 B, +381 B),
+  and the app checks with the peers included to 91.34 kB (91,291 B, +394 B)
+  and 92.61 kB (92,561 B, +399 B).
+
+#### Fixed
+
+- A reply over about a million bytes decodes. candid-core charges a blob one
+  element per byte against its 1,000,000-element budget, so an SNS wasm from
+  SNS-W's `get_wasm`, the ICPSwap factory's `getActiveWasm` or a large asset
+  chunk rejected `invalid_reply` (`value_elements limit 1000000 exceeded`), and
+  an update with such a reply rejected after it ran. A reply may now hold one
+  value per byte plus the budget, which bounds only values that take no
+  bytes, such as a long `vec null`, however large a blob beside them. A new `maxElements` option of
+  `createClient` and `createTestClient` sets that budget, and a mock decodes
+  its arguments the same way, so a test can upload a large chunk.
 - `client.canisterId(target)` gives what a target resolves to now, from the
   resolver the calls use, without a call: `{ ok: true, id }`, or
   `{ ok: false, reason, message }` with `reason` `"no_browser"`,

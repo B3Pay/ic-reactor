@@ -28,10 +28,11 @@ runs in a server render (anonymous, with no auth built) and in a browser.
 | `allowEnvConfig` | Whether the `ic_env` cookie (root key and canister ids) is believed. Absent: only when the page and the replica are local. |
 | `fetch`          | The `fetch` every agent sends with. Default: the global one. A test passes a fake replica's.                               |
 | `maxDepth`       | How deep a decoded reply may nest. Default 256. Raise it for replies like an ICRC-3 block log's values.                    |
+| `maxElements`    | How many values a reply may hold beyond one per byte. Default 1,000,000. A blob of any size the IC returns decodes.        |
 
 Pass exactly one of `identity` and `auth`. `createClient` throws a `TypeError`
-for options that name neither, name both, or name a network or a `maxDepth`
-that cannot be used.
+for options that name neither, name both, or name a network, a `maxDepth` or a
+`maxElements` that cannot be used.
 
 ## Networks
 
