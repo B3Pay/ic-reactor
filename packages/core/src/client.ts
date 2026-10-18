@@ -30,7 +30,7 @@ import {
 } from "@icp-sdk/core/agent"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
 import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
-import { createReactorError, retryQuery } from "./errors.js"
+import { createReactorError, retryDefault } from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
 import {
@@ -261,9 +261,11 @@ export interface Client {
   /** The network's segment in query keys: `"ic"`, `"local"`, a custom network's `name ?? host`, or the resolved host for `"env"`. */
   readonly network: string
   /**
-   * The `QueryClient` this client owns. Its default `retry` retries a read
-   * only after a failure that proves it was not delivered, and never on a
-   * server; its dehydrate and hydrate defaults keep `bigint`, `Uint8Array`
+   * The `QueryClient` this client owns. Its default `retry` retries a
+   * `ReactorError` only after a failure that proves it was not delivered, and
+   * any other error (an app's own REST query on this `QueryClient`) as
+   * TanStack Query does by default: up to 3 times; neither is retried on a
+   * server. Its dehydrate and hydrate defaults keep `bigint`, `Uint8Array`
    * and the floats JSON cannot write, so a server's `dehydrate()` survives
    * `JSON.stringify` and comes back exact.
    */
@@ -555,11 +557,13 @@ export interface Client {
    * in (see {@link Canister}), and a TanStack retry would re-send after
    * failures that do not prove it, running the write twice.
    *
-   * `onSettled` invalidates the reads the write may have changed, on this
-   * client's `queryClient`, for every caller, certified or not, and waits for
-   * the active ones to refetch: after a success, a `canister_err`, and any
-   * failure whose `mayHaveExecuted` is `true` (a lost reply: the re-read shows
-   * whether it happened). Not after a failure that proves nothing ran
+   * `onSettled` invalidates the reads the write may have changed, on the
+   * `QueryClient` the mutation ran on (which TanStack Query 5.89 and later
+   * hands it; an app's own `QueryClientProvider` nested inside the client's)
+   * and on this client's `queryClient`, for every caller, certified or not,
+   * and waits for the active ones to refetch: after a success, a
+   * `canister_err`, and any failure whose `mayHaveExecuted` is `true` (a lost
+   * reply: the re-read shows whether it happened). Not after a failure that proves nothing ran
    * (`invalid_args`, `unauthenticated`, `not_delivered`, a reject 1 or 3, a
    * `cancelled` before sending). The reads are every read of the canister
    * written to (DECISIONS Q10), or those listed in `invalidates`: canisters
@@ -1253,7 +1257,7 @@ export function createClientWith(
       },
     }),
     defaultOptions: {
-      queries: { retry: retryQuery },
+      queries: { retry: retryDefault },
       dehydrate: { serializeData },
       hydrate: { deserializeData },
     },

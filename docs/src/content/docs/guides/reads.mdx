@@ -183,7 +183,8 @@ attempt can change (an HTTP 429, a reject with code 2, a network failure, a
 timeout). Every other kind fails at once: retrying `invalid_args`, `rejected`,
 `invalid_reply` or `canister_err` would only repeat the answer. A read through
 `queryOptions` is never retried on a server, and the client's own
-`QueryClient` has the same default. A direct call still re-sends a retryable
+`QueryClient` has the same default for a `ReactorError` (any other error, from
+an app's own query on it, is retried as TanStack Query retries it). A direct call still re-sends a retryable
 read up to twice (see [Outside React](#outside-react)).
 
 The [classification table](/v4/guides/errors/) lists which failures are

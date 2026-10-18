@@ -5313,5 +5313,25 @@
     "file": "src/options.ts",
     "search": "        if (kept !== undefined && kept.runs > 0) {",
     "replace": "        if (false) {"
+  },
+  {
+    "id": "qc-rest-query-not-retried",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "tries an app's REST query again in a browser page, as TanStack does, up to 3 times",
+    "why": "the client's default retry refuses every error that is not a ReactorError, so an app's REST query on the client's QueryClient loses TanStack's retries",
+    "file": "src/errors.ts",
+    "search": "  return !isServer() && failureCount < 3\n",
+    "replace": "  return false\n"
+  },
+  {
+    "id": "qc-write-invalidates-own-query-client-only",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the reads on the QueryClient the mutation ran on, and on the client's own",
+    "why": "a write invalidates only the client's own QueryClient, so the reads of an app's nested QueryClientProvider, where the mutation ran, are never refreshed",
+    "file": "src/options.ts",
+    "search": "ran !== undefined && ran !== own ? [own, ran] : [own]",
+    "replace": "[own]"
   }
 ]
