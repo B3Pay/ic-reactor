@@ -1,2 +1,4 @@
 node_modules
 .icp
+# Private keys: an exported identity never belongs in the project.
+*.pem

@@ -970,35 +970,40 @@ describe("IC_REACTOR_FETCH", () => {
     expect(ic.requests).toHaveLength(2)
   })
 
-  it("is tried again at the next buildStart when the write failed", async () => {
-    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
-    const app = newApp({ "did/ledger.did": OLD })
-    vi.stubEnv("IC_REACTOR_FETCH", "ledger")
-    const { buildStart, context, lines } = oneBuildPlugin(app, ic.host)
-    const dir = path.join(app.root, "did")
+  // A read-only mode on a directory does not stop a write on Windows, so the
+  // write this test needs to fail succeeds there.
+  it.skipIf(process.platform === "win32")(
+    "is tried again at the next buildStart when the write failed",
+    async () => {
+      const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+      const app = newApp({ "did/ledger.did": OLD })
+      vi.stubEnv("IC_REACTOR_FETCH", "ledger")
+      const { buildStart, context, lines } = oneBuildPlugin(app, ic.host)
+      const dir = path.join(app.root, "did")
 
-    // did/ is read-only for the first buildStart only.
-    fs.chmodSync(dir, 0o555)
-    try {
+      // did/ is read-only for the first buildStart only.
+      fs.chmodSync(dir, 0o555)
+      try {
+        await buildStart()
+      } finally {
+        fs.chmodSync(dir, 0o755)
+      }
+      expect(context.error).toHaveBeenCalledTimes(1)
+      expect(String(context.error.mock.calls[0][0])).toContain(
+        `ledger (did/ledger.did): fetched the certified candid:service of ${LEDGER_ID} on ${ic.host}, but could not write it to did/ledger.did: `
+      )
+      expect(read(app, "did/ledger.did")).toBe(OLD)
+      expect(ic.requests).toHaveLength(2)
+
       await buildStart()
-    } finally {
-      fs.chmodSync(dir, 0o755)
+      expect(context.error).toHaveBeenCalledTimes(1)
+      expect(read(app, "did/ledger.did")).toBe(LEDGER)
+      expect(lines).toContainEqual(
+        expect.stringContaining(`rewrote did/ledger.did from the certified`)
+      )
+      expect(ic.requests).toHaveLength(4)
     }
-    expect(context.error).toHaveBeenCalledTimes(1)
-    expect(String(context.error.mock.calls[0][0])).toContain(
-      `ledger (did/ledger.did): fetched the certified candid:service of ${LEDGER_ID} on ${ic.host}, but could not write it to did/ledger.did: `
-    )
-    expect(read(app, "did/ledger.did")).toBe(OLD)
-    expect(ic.requests).toHaveLength(2)
-
-    await buildStart()
-    expect(context.error).toHaveBeenCalledTimes(1)
-    expect(read(app, "did/ledger.did")).toBe(LEDGER)
-    expect(lines).toContainEqual(
-      expect.stringContaining(`rewrote did/ledger.did from the certified`)
-    )
-    expect(ic.requests).toHaveLength(4)
-  })
+  )
 })
 
 describe("the root key", () => {

@@ -2,14 +2,11 @@
 // size-limit adds each `peerDependencies` entry of this package to the check's
 // `ignore` (and an `ignore: []` here does not stop it).
 //
-// The limit is tight on purpose, as react's is: measured 15,020 B with the
-// `QueryClient`'s default `retry` falling back to TanStack's rule for an
-// error that is not a `ReactorError`, and a write invalidating the
-// `QueryClient` it ran on (#903; 14,957 B before that, +63 B, with
-// `client.resendOf()` holding a re-send to the bytes, the canister id and the
-// effective canister id the write went out with; 14,750 B before that,
-// +207 B; 14,449 B before resendOf; 14,347 B on 4.0.0-beta.3), so it leaves
-// 40 B. A change that
+// The limit is tight on purpose, as react's is: measured 15,164 B with the
+// builders refusing another copy's skipToken (#873; 14,957 B before that,
+// +207 B; 14,750 B before resendOf held a re-send to the bytes and canister
+// ids it went out with; 14,449 B before resendOf; 14,347 B on
+// 4.0.0-beta.3), so it leaves 36 B. A change that
 // grows core fails here, and its pull request states the size delta and
 // raises this limit deliberately.
 //
@@ -19,7 +16,14 @@ export default [
   {
     name: "Core Library",
     path: "dist/index.js",
-    limit: "15.06 kB",
+    // With client.time() (#885) on top of v4: measured 15,487 B, so the limit moved from 15,200 B to 15.54 kB.
+    // With expiresAt (#888) on top of v4: measured 15,646 B, so the limit moved from 15,540 B to 15.7 kB.
+    // With client.encode() (#887) on top of v4: measured 15,774 B, so the limit moved from 15,700 B to 15.83 kB.
+    // With client.canisterId() (#890) on top of v4: measured 15,809 B, so the limit moved from 15,830 B to 15.86 kB.
+    // With maxElements (#932) on top of v4: measured 15,888 B, so the limit moved from 15,860 B to 15.94 kB.
+    // With timeoutMs (#875) on top of v4: measured 16,269 B, so the limit moved from 15,940 B to 16.32 kB.
+    // With TanStack retries for app queries and the ran-on QueryClient invalidated (#937) on top of v4: measured 16,334 B, so the limit moved from 16,320 B to 16.39 kB.
+    limit: "16.39 kB",
     gzip: true,
   },
 ]

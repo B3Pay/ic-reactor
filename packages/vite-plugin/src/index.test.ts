@@ -3,6 +3,7 @@ import * as vitePluginModule from "./index.js"
 import type { IcReactorPluginOptions } from "./index.js"
 import path from "node:path"
 import { execFile } from "child_process"
+import { installIcpAdvice } from "./env.js"
 import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { resolveConfig as resolveViteConfig } from "vite"
 
@@ -93,6 +94,17 @@ describe("icReactor", () => {
     }
     for (const value of [undefined, true, false]) {
       expect(() => createVitePlugin({ failOnError: value })).not.toThrow()
+    }
+  })
+
+  it("should refuse an onGenerated that is not a function", () => {
+    for (const value of [null, 0, "", "hook", {}]) {
+      expect(() => createVitePlugin({ onGenerated: value })).toThrow(
+        /^\[ic-reactor\] onGenerated is .*, not a function: give it a function to call after each generated module, or remove it$/
+      )
+    }
+    for (const value of [undefined, () => {}, async () => {}]) {
+      expect(() => createVitePlugin({ onGenerated: value })).not.toThrow()
     }
   })
 
@@ -220,7 +232,7 @@ describe("icReactor", () => {
     for (const [value, refused] of given) {
       expect(() => createVitePlugin(value)).toThrow(
         `[ic-reactor] ${refused} of icReactor(): ` +
-          "its options are canisters, injectEnvironment and failOnError"
+          "its options are canisters, injectEnvironment, failOnError and onGenerated"
       )
     }
     const unlisted = new Proxy(
@@ -646,6 +658,27 @@ describe("icReactor", () => {
         "asks `icp` again on each page load until it answers"
       )
       expect(warning).toContain("reload the page")
+    })
+
+    it("says icp could not be run, not that the network may be down, when no icp starts", async () => {
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {})
+      // What execFile fails with when the file cannot be found: on Windows,
+      // also what an npm-installed icp.cmd gives.
+      mockIcp(() =>
+        Object.assign(new Error("spawn icp ENOENT"), { code: "ENOENT" })
+      )
+
+      const plugin = createVitePlugin(mockOptions)
+      const { middleware } = await serveWithEnvironment(plugin)
+
+      expect(await request(middleware)).toBeUndefined()
+      expect(consoleWarnSpy).toHaveBeenCalledOnce()
+      const [warning] = consoleWarnSpy.mock.calls[0]
+      expect(warning).toContain("Could not run `icp`")
+      expect(warning).toContain(installIcpAdvice())
+      expect(warning).not.toContain("Is the local network running?")
     })
 
     // The replica being UP while a configured canister is simply not deployed
