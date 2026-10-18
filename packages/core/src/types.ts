@@ -373,7 +373,10 @@ export interface CanisterMutationOptions<V, D, E> {
    * (before 5.89), a run on another `QueryClient` whose options object
    * (what TanStack calls `onMutate` and `mutationFn` on) this `onMutate`
    * read nothing for: called from an `onMutate` of the app's, or given new
-   * options by a later render. Exceptions, which go out as the caller
+   * options by a later render. Also refused before 5.89: a run whose
+   * observer has another run pending that started as someone else, on any
+   * `QueryClient`, since every run of one observer shares its options
+   * object and `mutationFn` cannot tell them apart. Exceptions, which go out as the caller
    * current when they are sent: a call by hand (no context, and no
    * `onMutate` of this one ever ran without one for the method), and,
    * before 5.89, a run on another `QueryClient` whose `onMutate` replaced

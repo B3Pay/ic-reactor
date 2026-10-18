@@ -1182,8 +1182,8 @@ describe("mutationOptions", () => {
   it("never sends a write with no run context as the caller of a run whose mutationFn never ran", async () => {
     const { replica, auth, client, canister } = addressBook()
     const options = client.mutationOptions(canister, "address")
-    // Two runs of "z" as TanStack before 5.89 makes them, each with its own
-    // options object. The first, started as the first account, never gets
+    // Two runs of "z" as TanStack before 5.89 makes them through two
+    // observers, each with its own options object. The first, started as the first account, never gets
     // to mutationFn (its mutation was removed).
     const abandoned = { ...options }
     options.onMutate.call(abandoned, "z")
@@ -1215,7 +1215,7 @@ describe("mutationOptions", () => {
     onlineManager.setOnline(true)
     // Bob's write of "x" through the same options on another QueryClient,
     // as TanStack before 5.89 runs it: both functions called as methods of
-    // that run's own options object, with the argument alone.
+    // its observer's options object, with the argument alone.
     auth.switchTo(2)
     const bobsRun = { ...options }
     options.onMutate.call(bobsRun, "x")
@@ -1226,6 +1226,95 @@ describe("mutationOptions", () => {
       callerChanged
     )
     expect(requestsFor(replica, "address")).toEqual([])
+  })
+
+  it("never sends a write with no run context as the caller of a settled run that shares its options (one observer, TanStack before 5.89)", async () => {
+    const { replica, auth, client, canister } = addressBook()
+    const alice = client.caller()
+    const options = client.mutationOptions(canister, "address")
+    const observer = new MutationObserver(client.queryClient, options)
+    // Alice's write, settled and still cached.
+    await expect(observer.mutate("a")).resolves.toBe(`a:${alice}`)
+    // Bob's write through the same observer, held back offline: TanStack
+    // builds it with the same options object as Alice's.
+    auth.switchTo(2)
+    onlineManager.setOnline(false)
+    observer.mutate("b").catch(() => undefined)
+    await vi.waitFor(() =>
+      expect(observer.getCurrentResult().isPaused).toBe(true)
+    )
+    const runs = client.queryClient.getMutationCache().getAll()
+    expect(runs).toHaveLength(2)
+    expect(runs[0]?.options).toBe(runs[1]?.options)
+    onlineManager.setOnline(true)
+    // Alice is back when Bob's run is sent as TanStack before 5.89 sends it:
+    // mutationFn called on the shared options, with the argument alone.
+    auth.switchTo(1)
+    await expect(
+      options.mutationFn.call(runs[1]?.options, "b")
+    ).rejects.toMatchObject(callerChanged)
+    // Only Alice's write went out.
+    expect(requestsFor(replica, "address")).toHaveLength(1)
+    // With Bob current, his run goes out as him: Alice's settled run is not
+    // one it may run for.
+    auth.switchTo(2)
+    const bob = client.caller()
+    await expect(options.mutationFn.call(runs[1]?.options, "b")).resolves.toBe(
+      `b:${bob}`
+    )
+  })
+
+  it("refuses a write with no run context whose observer's pending runs started as different callers (TanStack before 5.89)", async () => {
+    const { replica, auth, client, canister } = addressBook()
+    const options = client.mutationOptions(canister, "address")
+    const observer = new MutationObserver(client.queryClient, options)
+    // Alice's write, then Bob's, both held back offline.
+    onlineManager.setOnline(false)
+    observer.mutate("a").catch(() => undefined)
+    auth.switchTo(2)
+    observer.mutate("b").catch(() => undefined)
+    const runs = client.queryClient.getMutationCache().getAll()
+    await vi.waitFor(() =>
+      expect(runs.every((run) => run.state.isPaused)).toBe(true)
+    )
+    onlineManager.setOnline(true)
+    // Called on the options both share, mutationFn cannot tell which of them
+    // it runs for, so it sends neither, whoever is current.
+    auth.switchTo(1)
+    await expect(
+      options.mutationFn.call(runs[0]?.options, "a")
+    ).rejects.toMatchObject(callerChanged)
+    expect(requestsFor(replica, "address")).toEqual([])
+  })
+
+  it("refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)", async () => {
+    const { replica, auth, client, canister } = addressBook()
+    const alice = client.caller()
+    const options = client.mutationOptions(canister, "address")
+    // Two runs of one observer on another QueryClient, as TanStack before
+    // 5.89 runs them: every function called on the observer's one options
+    // object, with the argument alone.
+    const shared = { ...options }
+    options.onMutate.call(shared, "a")
+    auth.switchTo(2)
+    options.onMutate.call(shared, "b")
+    // Neither run can be told from the other, so neither is sent, whoever
+    // is current.
+    await expect(options.mutationFn.call(shared, "b")).rejects.toMatchObject(
+      callerChanged
+    )
+    auth.switchTo(1)
+    await expect(options.mutationFn.call(shared, "a")).rejects.toMatchObject(
+      callerChanged
+    )
+    expect(requestsFor(replica, "address")).toEqual([])
+    // Once both settled, a new run is sent as its caller.
+    await options.onSettled.call(shared, undefined, null, "a", undefined)
+    await options.onSettled.call(shared, undefined, null, "b", undefined)
+    options.onMutate.call(shared, "c")
+    await expect(options.mutationFn.call(shared, "c")).resolves.toBe(
+      `c:${alice}`
+    )
   })
 
   it("reads no caller, and builds no auth, for a mutation of the app's on the client's QueryClient", async () => {

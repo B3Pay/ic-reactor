@@ -23,7 +23,8 @@ export default [
     // With maxElements (#932) on top of v4: measured 15,888 B, so the limit moved from 15,860 B to 15.94 kB.
     // With timeoutMs (#875) on top of v4: measured 16,269 B, so the limit moved from 15,940 B to 16.32 kB.
     // With the write caller kept per run (#936) on top of v4: measured 16,631 B, so the limit moved from 16,320 B to 16.69 kB.
-    limit: "16.69 kB",
+    // With runs that share an observer's options told apart (#936) on top of v4: measured 16,807 B, so the limit moved from 16,690 B to 16.86 kB.
+    limit: "16.86 kB",
     gzip: true,
   },
 ]

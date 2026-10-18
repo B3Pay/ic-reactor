@@ -5093,8 +5093,8 @@
     "testName": "refuses a write whose mutationFn gets no run context",
     "why": "without a run context (TanStack before 5.89), a run whose onMutate read no caller for its options is sent as whoever is current, not refused (#893)",
     "file": "src/options.ts",
-    "search": "        read ?? (startedMethods.has(prepared) ? undefined : internals.current())",
-    "replace": "        read ?? internals.current()"
+    "search": "      return startedMethods.has(prepared) ? undefined : internals.current()",
+    "replace": "      return internals.current()"
   },
   {
     "id": "893-write-caller-retry-read-when-sent",
@@ -5154,8 +5154,8 @@
     "edits": [
       {
         "file": "src/options.ts",
-        "search": "            callersByOptions.set(this, caller)",
-        "replace": "            if (!callersByOptions.has(prepared)) callersByOptions.set(prepared, caller)"
+        "search": "            const kept = callersByOptions.get(this)\n            callersByOptions.set(\n              this,\n",
+        "replace": "            const kept = callersByOptions.get(prepared)\n            if (kept === undefined) callersByOptions.set(prepared, { caller, runs: 1 })\n            else callersByOptions.set(\n              {},\n"
       },
       {
         "file": "src/options.ts",
@@ -5171,8 +5171,8 @@
     "testName": "never sends a run on another QueryClient (no run context) as the caller of a run of the client's own cache",
     "why": "without a run context, a run on another QueryClient is matched to a pending run of the client's own cache by anything but its options object, and goes out as that run's caller (#893)",
     "file": "src/options.ts",
-    "search": "          .find((mutation) => mutation.options === options)",
-    "replace": "          .find((mutation) => mutation.state.status === \"pending\")"
+    "search": "              mutation.options === options &&\n              mutation.state.status === \"pending\"\n",
+    "replace": "              mutation.state.status === \"pending\"\n"
   },
   {
     "id": "893-mutation-cache-reads-every-caller",
@@ -5183,5 +5183,45 @@
     "file": "src/client.ts",
     "search": "        if (typeof fn !== \"function\" || !ownMutationFns.has(fn)) return",
     "replace": "        if (typeof fn !== \"function\") return"
+  },
+  {
+    "id": "893-shared-options-settled-run-counted",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "never sends a write with no run context as the caller of a settled run that shares its options (one observer, TanStack before 5.89)",
+    "why": "a run of the client's own cache that already settled still counts among those a mutationFn called on its observer's shared options may run for, so the pending run's own caller is refused",
+    "file": "src/options.ts",
+    "search": "              mutation.options === options &&\n              mutation.state.status === \"pending\"\n",
+    "replace": "              mutation.options === options\n"
+  },
+  {
+    "id": "893-shared-options-own-runs-not-told-apart",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write with no run context whose observer's pending runs started as different callers (TanStack before 5.89)",
+    "why": "pending runs of one observer that started as different callers share one options object, and mutationFn sends as the first one's caller",
+    "file": "src/options.ts",
+    "search": "          ? first\n          : undefined",
+    "replace": "          ? first\n          : first"
+  },
+  {
+    "id": "893-shared-options-other-runs-not-told-apart",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)",
+    "why": "on another QueryClient, a later run's onMutate replaces the caller kept for options an earlier pending run shares, so the earlier run is sent as the later caller",
+    "file": "src/options.ts",
+    "search": "                    caller: sameCaller(kept.caller, caller)\n                      ? caller\n                      : undefined,",
+    "replace": "                    caller,"
+  },
+  {
+    "id": "893-shared-options-never-counted-out",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)",
+    "why": "onSettled no longer counts a settled run out of its options, so once two callers shared an observer every later write of it is refused",
+    "file": "src/options.ts",
+    "search": "        if (kept !== undefined && kept.runs > 0) {",
+    "replace": "        if (false) {"
   }
 ]

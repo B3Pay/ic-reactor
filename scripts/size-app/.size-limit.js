@@ -29,7 +29,8 @@ export default [
     // With maxElements (#932) on top of v4: measured 90,897 B, so the limit moved from 90,850 B to 90.95 kB.
     // With timeoutMs (#875) on top of v4: measured 91,291 B, so the limit moved from 90,950 B to 91.34 kB.
     // With the write caller kept per run (#936) on top of v4: measured 91,639 B, so the limit moved from 91,340 B to 91.69 kB.
-    limit: "91.69 kB",
+    // With runs that share an observer's options told apart (#936) on top of v4: measured 91,778 B, so the limit moved from 91,690 B to 91.83 kB.
+    limit: "91.83 kB",
     gzip: true,
   },
   {
@@ -48,7 +49,8 @@ export default [
     // With maxElements (#932) on top of v4: measured 92,162 B, so the limit moved from 92,140 B to 92.22 kB.
     // With timeoutMs (#875) on top of v4: measured 92,561 B, so the limit moved from 92,220 B to 92.61 kB.
     // With the write caller kept per run (#936) on top of v4: measured 92,913 B, so the limit moved from 92,610 B to 92.97 kB.
-    limit: "92.97 kB",
+    // With runs that share an observer's options told apart (#936) on top of v4: measured 93,078 B, so the limit moved from 92,970 B to 93.13 kB.
+    limit: "93.13 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },
