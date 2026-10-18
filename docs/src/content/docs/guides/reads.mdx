@@ -324,6 +324,12 @@ runs once more, as a replicated call. That is safe for an idempotent method but
 it is a cost. To keep the read cached across writes, list the reads a write
 changes in `invalidates`, see [Writes](/v4/guides/writes/).
 
+It is still an update, so a signed-out or `"anonymous"` client refuses it as
+`unauthenticated` (code `anonymous_write`) and sends nothing, as it refuses a
+write. Read an ICRC-21 consent message (`icrc21_canister_call_consent_message`)
+as the caller who will send the write: the message can depend on the caller,
+and the DFINITY ICRC-1 ledger names the sender as `From`.
+
 Do not use `{ update: "idempotent" }` for a method that changes state. The
 option opts in an update only: a oneway method does not compile even with it,
 and the variables come before it, `undefined` for a method without
