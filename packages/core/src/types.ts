@@ -104,8 +104,36 @@ export type Vars<P extends readonly unknown[]> = P extends readonly []
     ? One
     : P
 
-/** The variables of method `M` of `A`. */
-export type VarsOf<A, M extends keyof A> = Vars<ArgsOf<A[M]>>
+/**
+ * The variables of a method whose type is `any`, as it is when the method is
+ * given as `any` (`client.queryOptions<A, any>(canister, method, vars)` for a
+ * method named by data): every value but a symbol. The client still applies
+ * the run-time rule of {@link Vars} (the value for one argument, the tuple
+ * for several, nothing or `[]` for none) and checks the value against the
+ * method's schemas when it encodes it.
+ *
+ * Not `unknown`: `skipToken` is assignable to `unknown`, so a read of such a
+ * method would always keep `SkipToken` in its `queryFn` (see
+ * {@link QueryArgs}). The cost is that, on this path only, a symbol cannot be
+ * given to a method whose one argument is Candid `reserved`.
+ */
+export type AnyVars =
+  string | number | bigint | boolean | object | null | undefined
+
+/**
+ * The variables of method `M` of `A`: {@link Vars} of its arguments, or
+ * {@link AnyVars} when the method is given as `any`. It checks `M`, which
+ * reaches a `Canister<A>` with a generic `A` in `queryOptions`, and the
+ * method's type `A[M]`, which reaches the builders that declare
+ * `M extends keyof A & string` (under that constraint a check on `M` never
+ * takes its `any` branch). With a generic `A`, those builders still see
+ * `VarsOf<A, any>` unresolved.
+ */
+export type VarsOf<A, M extends keyof A> = 0 extends 1 & M
+  ? AnyVars
+  : 0 extends 1 & A[M]
+    ? AnyVars
+    : Vars<ArgsOf<A[M]>>
 
 /**
  * The methods of `A` a read may be built from with `{ update: "idempotent" }`:
@@ -199,17 +227,36 @@ export type Canister<A> = {
  *   keys end in `"certified"`. A `composite_query` has no certified path: on
  *   such a canister its direct call rejects `invalid_args` (code
  *   `"no_certified_path"`) and `queryOptions` throws a `TypeError`.
+ * - `timeoutMs` bounds how long each call made through the canister object
+ *   waits for its answer, from the moment it is called: its direct calls,
+ *   its reads made with `queryOptions`, and its mutations (unless
+ *   `mutationOptions` gives its own). Without it, a request that gets no
+ *   HTTP answer waits as long as the `fetch` in use does. When it passes, the
+ *   call rejects with code `"timeout"`: `cancelled` with `mayHaveExecuted:
+ *   false` for a read, and for a write before its request went out; a write
+ *   whose request went out (an `{ update: "idempotent" }` read's included),
+ *   or a re-send of a write `client.resendOf()` offered at any point, rejects
+ *   `outcome_unknown` with `mayHaveExecuted: true`, an unknown outcome to
+ *   reconcile (read the state back, or `client.resendOf()` with this same
+ *   canister object), never one to send again blindly. Nothing is sent
+ *   again for it, and the request itself is not torn down: only the waiting
+ *   stops. A number of milliseconds from 1 to 2147483647; anything
+ *   else throws a `TypeError`. Another `timeoutMs` makes another canister
+ *   object, with the same keys: a read observed through two of them is
+ *   bounded by the options TanStack Query was given last.
  */
 export type CanisterTarget =
   | {
       readonly id: string
       readonly name?: never
       readonly certified?: boolean
+      readonly timeoutMs?: number
     }
   | {
       readonly name: string
       readonly id?: never
       readonly certified?: boolean
+      readonly timeoutMs?: number
     }
 
 // ---------------------------------------------------------------------------
@@ -429,6 +476,12 @@ export interface Resend<V, D> {
   /** The principal that sent the attempt, as text: the only caller a re-send goes out as. */
   readonly from: string
   /**
+   * The Candid bytes the attempt sent, which `send()` sends again. A getter
+   * that returns a new copy on every read, so changing it changes nothing
+   * that is sent: read it once and keep the copy.
+   */
+  readonly bytes: Uint8Array
+  /**
    * Sends again now the bytes the attempt sent, to the canister id it went
    * to (for `aaaaa-aa`, routed by the same effective canister id), as `from`, whatever became of `arg` or of a `{ name }` since. If
    * someone else is the caller by then, it rejects `cancelled`
@@ -450,4 +503,11 @@ export interface MutationOptionsOptions {
    * `[]` invalidates nothing.
    */
   readonly invalidates?: readonly InvalidationTarget[]
+  /**
+   * How long each run waits for its answer, in place of the canister
+   * target's `timeoutMs`; the same rules. A run whose request went out
+   * rejects `outcome_unknown` with `mayHaveExecuted: true` when it passes:
+   * reconcile it, never re-send it blindly.
+   */
+  readonly timeoutMs?: number
 }

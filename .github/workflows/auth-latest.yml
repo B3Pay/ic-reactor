@@ -1,0 +1,68 @@
+name: Auth on the latest @icp-sdk/auth
+
+# `auth: (network) => new AuthClient(network)` compiles only while
+# @icp-sdk/auth's AuthClient is an AuthLike. Core's dev dependency and the
+# examples pin @icp-sdk/auth ^10, so CI never sees a release outside that
+# range. This installs the newest release npm calls `latest`, type-checks core
+# (whose client.test-d.ts asserts AuthClient extends AuthLike) and runs the
+# core and react tests against it. Weekly, because @icp-sdk/auth releases with
+# no commit of ours. GitHub runs `schedule` and offers `workflow_dispatch` only
+# for workflow files on the default branch, which is main (3.x) until 4.0 GA,
+# so those two triggers start working when v4 becomes main; a pull request
+# that changes this file runs it meanwhile.
+on:
+  pull_request:
+    branches: [v4]
+    paths:
+      - ".github/workflows/auth-latest.yml"
+  workflow_dispatch:
+  schedule:
+    # Wednesdays, 06:41 UTC.
+    - cron: "41 6 * * 3"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  auth-latest:
+    name: AuthLike against @icp-sdk/auth@latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.30.3 --activate
+          pnpm --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --filter '!./examples/**'
+
+      # Not frozen: this is the one place the lockfile is meant to move.
+      - name: Install @icp-sdk/auth@latest into core
+        run: |
+          pnpm --filter @ic-reactor/core add --save-dev @icp-sdk/auth@latest
+          node -p "'@icp-sdk/auth ' + require('./packages/core/node_modules/@icp-sdk/auth/package.json').version"
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Type check core against it
+        run: pnpm --filter @ic-reactor/core typecheck
+
+      - name: Core and react tests against it
+        run: |
+          pnpm --filter @ic-reactor/core test
+          pnpm --filter @ic-reactor/react test

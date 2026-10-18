@@ -19,7 +19,7 @@
  * @packageDocumentation
  */
 import type { AuthState, Client } from "@ic-reactor/core"
-import { QueryClientProvider } from "@tanstack/react-query"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   createContext,
   useContext,
@@ -247,6 +247,25 @@ function reportLazilyShared(): void {
   )
 }
 
+/**
+ * Throws, in development, when the client's `QueryClient` is not an instance
+ * of the `QueryClient` that `@tanstack/react-query` is built on: two copies of
+ * `@tanstack/query-core` are loaded, one for core and one for the hooks.
+ * npm installs two when the app's `@tanstack/query-core` is not the exact
+ * version its `@tanstack/react-query` depends on, and a bundler can load one
+ * copy twice. Each copy has its own `skipToken`, so the hooks' one is not
+ * core's: `client.queryOptions()` then throws a `TypeError` for it, and this
+ * check names the cause where the tree mounts.
+ */
+function checkOneQueryCore(client: Client): void {
+  if (client.queryClient instanceof QueryClient || !isDevelopment()) return
+  throw new Error(
+    "[ic-reactor] <ReactorProvider>: the client's QueryClient is not @tanstack/react-query's: two copies of @tanstack/query-core " +
+      "are installed (or a bundler loads it twice), and skipToken does not skip. Install it at the exact version @tanstack/react-query depends on; " +
+      "`npm ls @tanstack/query-core` must show one copy."
+  )
+}
+
 /** Props of {@link ReactorProvider}. */
 export interface ReactorProviderProps {
   /**
@@ -384,6 +403,7 @@ export function ReactorProvider({
 }: ReactorProviderProps): ReactElement {
   const [held, setHeld] = useState(() => hold(build))
   const { client, owned } = held
+  checkOneQueryCore(client)
   const firstBuild = useRef(build)
   const replacement = useRef<
     { readonly of: Client; readonly held: Held } | undefined
