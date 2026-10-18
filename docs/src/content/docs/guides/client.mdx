@@ -309,6 +309,14 @@ A target is `{ id }` or `{ name }`, plus an optional `certified`:
   key is built, and only where the cookie is trusted. If it cannot, every call
   rejects as `invalid_args` with code `canister_id_unresolved`, and the keys
   carry `"$unresolved:backend"`.
+  `client.canisterId({ name: "backend" })` asks the same resolver without a
+  call: `{ ok: true, id }`, or `{ ok: false, reason, message }` where
+  `reason` is `"no_browser"` (no page, so no cookie), `"untrusted_host"` (the
+  cookie is not trusted for this network) or `"absent"` (no principal text
+  under that name), and `message` is the resolver's reason, which a call's
+  error includes after the method and target. It
+  reads the cookie on each call, and does not check that a canister answers
+  at that id.
 - `certified: true` makes another canister object whose query methods go as
   replicated calls, with certified replies. See [Reads](/v4/guides/reads/).
 

@@ -609,9 +609,12 @@ Identity (see [Auth](/v4/guides/auth/#the-network-the-factory-is-handed)).
   canister has an id. Until then the plugin asks `icp` again on each page load,
   so start `vite dev` first, run `icp network start` and `icp deploy`, and
   reload the page.
-- Once detection is complete, page loads run no more `icp` commands. Deploying
-  into a fresh network, with new ids and a new root key, needs a restart of the
-  dev server.
+- Once detection is complete, page loads run no more `icp` commands, so any
+  network restart (`icp network stop`, then `start` and `icp deploy`) needs a
+  restart of the dev server, even when the root key stays the same: icp-cli
+  1.2.0's managed network kept its root key across starts while a new deploy
+  gave the names other ids, and the dev server's cookie kept naming the old
+  ones. Reload a page loaded before the restart.
 - A configured canister you never deploy locally keeps detection incomplete.
   Set its `canisterId` and it counts as resolved. If you never run a local
   network, set `injectEnvironment: false`.

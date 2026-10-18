@@ -109,6 +109,7 @@ describe("createClient options", () => {
       "authState",
       "caller",
       "canister",
+      "canisterId",
       "dispose",
       "encode",
       "func",

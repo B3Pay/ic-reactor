@@ -4398,6 +4398,36 @@
     "replace": "  return { keys: Object.keys(object) }\n"
   },
   {
+    "id": "881-canister-id-trusts-any-cookie",
+    "package": "core",
+    "file": "src/client.ts",
+    "search": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        network\n      ),\n",
+    "replace": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        { ...network, trustsEnv: true }\n      ),\n",
+    "test": "tests/canister-id.test.ts",
+    "testName": "says untrusted_host, with the message a call on the same target rejects with",
+    "why": "client.canisterId resolving against a network that believes the cookie everywhere, so it answers with an id a call on the same target refuses to send to"
+  },
+  {
+    "id": "881-canister-id-target-unchecked",
+    "package": "core",
+    "file": "src/client.ts",
+    "search": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        network\n      ),\n",
+    "replace": "    canisterId: (target) =>\n      resolveCanisterId(\n        target,\n        network\n      ),\n",
+    "test": "tests/canister-id.test.ts",
+    "testName": "throws a TypeError for both id and name",
+    "why": "client.canisterId passing the target to the resolver unchecked, so a target client.canister() refuses gets an answer here"
+  },
+  {
+    "id": "881-canister-id-kept",
+    "package": "core",
+    "file": "src/client.ts",
+    "search": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        network\n      ),\n",
+    "replace": "    canisterId: (() => {\n      const kept = new Map<string, ReturnType<Client[\"canisterId\"]>>()\n      return (target: CanisterTarget) => {\n        const key = JSON.stringify(target)\n        let answer = kept.get(key)\n        if (answer === undefined) {\n          answer = resolveCanisterId(\n            readTarget(target, \"client.canisterId()\").target,\n            network\n          )\n          kept.set(key, answer)\n        }\n        return answer\n      }\n    })(),\n",
+    "test": "tests/canister-id.test.ts",
+    "testName": "reads the cookie again on each call, so a new id is seen at once",
+    "why": "client.canisterId keeping its first answer per target, so after the dev server sends new ids it keeps naming the old canister while calls go to the new one"
+  },
+  {
     "id": "877-encode-own-arity",
     "package": "core",
     "test": "tests/encode.test.ts",
