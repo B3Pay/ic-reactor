@@ -5578,5 +5578,25 @@
     "file": "src/network.ts",
     "search": "principalProblem(match[1]!) === undefined",
     "replace": "true"
+  },
+  {
+    "id": "env-lan-page-falls-back-to-mainnet",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "routes through its own origin, never mainnet, on",
+    "why": "\"env\" on a LAN address, a *.local/*.test/*.internal name or a tunnel falls back to mainnet, so a dev app's local ids and sign-in reach mainnet",
+    "file": "src/network.ts",
+    "search": "    isRemoteDevHostname(hostname)\n",
+    "replace": "    REMOTE_DEV_SUFFIXES.slice(0, 2).some((suffix) => hostname.endsWith(suffix))\n"
+  },
+  {
+    "id": "vite-non-loopback-page-unwarned",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "warns once when a page is loaded by a host that is not loopback",
+    "why": "the dev server serves a page to a host that is not loopback without saying that \"env\" is for localhost pages",
+    "file": "src/dev-environment.ts",
+    "search": "!isLoopbackHost(req.headers.host)",
+    "replace": "false"
   }
 ]

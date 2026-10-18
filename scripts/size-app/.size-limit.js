@@ -34,8 +34,9 @@ export default [
     // With a view per useClient() caller (#935) on top of v4: measured 92,248 B, so the limit moved from 92,150 B to 92.3 kB.
     // With #939 on top of v4: measured 92,590 B, so the limit moved from 92,300 B to 92.64 kB.
     // With #940 on top of v4: measured 92,761 B, so the limit moved from 92,640 B to 92.82 kB.
-    // With icp0.io cookie canister ids (#942) on top of v4: measured 92,903 B, so the limit moved from 92,820 B to 92.96 kB.
-    limit: "92.96 kB",
+    // With #941 on top of v4: measured 92,915 B, so the limit moved from 92,820 B to 92.97 kB.
+    // With #942 on top of v4: measured 93,050 B, so the limit moved from 92,970 B to 93.1 kB.
+    limit: "93.1 kB",
     gzip: true,
   },
   {
@@ -59,8 +60,9 @@ export default [
     // With a view per useClient() caller (#935) on top of v4: measured 93,575 B, so the limit moved from 93,450 B to 93.63 kB.
     // With #939 on top of v4: measured 93,873 B, so the limit moved from 93,630 B to 93.93 kB.
     // With #940 on top of v4: measured 94,043 B, so the limit moved from 93,930 B to 94.1 kB.
-    // With icp0.io cookie canister ids (#942) on top of v4: measured 94,174 B, so the limit moved from 94,100 B to 94.23 kB.
-    limit: "94.23 kB",
+    // With #941 on top of v4: measured 94,202 B, so the limit moved from 94,100 B to 94.26 kB.
+    // With #942 on top of v4: measured 94,335 B, so the limit moved from 94,260 B to 94.39 kB.
+    limit: "94.39 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },

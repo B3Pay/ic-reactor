@@ -12,7 +12,13 @@ import os from "node:os"
 import path from "node:path"
 import type { AddressInfo } from "node:net"
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { createServer, preview, type Plugin } from "vite"
+import {
+  createLogger,
+  createServer,
+  preview,
+  type Logger,
+  type Plugin,
+} from "vite"
 import { noWebSocket } from "../tests/support.js"
 import { icReactor } from "./index.js"
 
@@ -69,11 +75,20 @@ interface Response {
 function get(
   port: number,
   pathname: string,
-  accept = "text/html,application/xhtml+xml"
+  accept = "text/html,application/xhtml+xml",
+  hostHeader?: string
 ): Promise<Response> {
   return new Promise((resolve, reject) => {
     const req = http.get(
-      { host: "127.0.0.1", port, path: pathname, headers: { accept } },
+      {
+        host: "127.0.0.1",
+        port,
+        path: pathname,
+        headers: {
+          accept,
+          ...(hostHeader === undefined ? {} : { host: hostHeader }),
+        },
+      },
       (res) => {
         let body = ""
         res.setEncoding("utf-8")
@@ -170,11 +185,15 @@ describe.skipIf(process.platform === "win32")(
      * Start `vite dev` and serve its middlewares on a port. `laterPlugins` run
      * their config hooks after this plugin's.
      */
-    async function startDev(laterPlugins: Plugin[] = []): Promise<number> {
+    async function startDev(
+      laterPlugins: Plugin[] = [],
+      customLogger?: Logger
+    ): Promise<number> {
       const server = await createServer({
         root,
         configFile: false,
         logLevel: "silent",
+        ...(customLogger === undefined ? {} : { customLogger }),
         server: { middlewareMode: true, ...noWebSocket() },
         plugins: [plugin(), ...laterPlugins],
       })
@@ -299,6 +318,42 @@ describe.skipIf(process.platform === "win32")(
       expect(module.status).toBe(200)
       expect(module.icEnv).toContain(`ic_root_key=${ROOT_KEY}`)
       expect(icpCalls()).toBe(calls)
+    }, 30_000)
+
+    // `vite --host` serves the cookie and /api to a phone on the LAN, where
+    // core does not believe the cookie, so `"env"` there needs saying (#902).
+    it("warns once when a page is loaded by a host that is not loopback", async () => {
+      await setUp((replicaUrl) => ({
+        network: { root_key: ROOT_KEY, api_url: replicaUrl },
+        ids: { backend: BACKEND_ID },
+      }))
+      const logger = createLogger("silent")
+      const warnings: string[] = []
+      logger.warn = (message) => void warnings.push(message)
+      const port = await startDev([], logger)
+      const notEnv = () =>
+        warnings.filter((message) => message.includes("not localhost"))
+
+      for (const host of [
+        `127.0.0.1:${port}`,
+        `localhost:${port}`,
+        `app.localhost:${port}`,
+        `[::1]:${port}`,
+      ]) {
+        expect((await get(port, "/", undefined, host)).status).toBe(200)
+      }
+      // A module request from the LAN is not a page load.
+      await get(port, "/index.html", "*/*", `192.168.1.5:${port}`)
+      expect(notEnv()).toEqual([])
+
+      const lan = await get(port, "/", undefined, `192.168.1.5:${port}`)
+      expect(lan.icEnv).toContain(`PUBLIC_CANISTER_ID:backend=${BACKEND_ID}`)
+      await get(port, "/", undefined, `192.168.1.5:${port}`)
+      await get(port, "/", undefined, `10.0.0.2:${port}`)
+
+      expect(notEnv()).toHaveLength(1)
+      expect(notEnv()[0]).toContain(`192.168.1.5:${port}`)
+      expect(notEnv()[0]).toContain('network: "env" is for localhost pages')
     }, 30_000)
 
     // `vite preview` resolves the config with the `serve` command, and used to

@@ -509,6 +509,58 @@ describe('"env" in a browser', () => {
     })
   })
 
+  describe("on a page that forwards a dev server from elsewhere", () => {
+    const FORWARDING = [
+      ["a LAN address (192.168/16)", "http://192.168.1.5:5175"],
+      ["a LAN address (10/8)", "http://10.0.0.2:5173"],
+      ["a LAN address (172.16/12)", "http://172.20.3.4:5173"],
+      ["the top of 172.16/12", "http://172.31.255.254:5173"],
+      ["a link-local address", "http://169.254.10.20:5173"],
+      ["an IPv6 unique local address", "http://[fd12:3456:789a::1]:5173"],
+      ["an IPv6 link-local address", "http://[fe80::1]:5173"],
+      ["an mDNS name", "http://my-laptop.local:5173"],
+      ["a *.test name", "http://myapp.test:5175"],
+      ["Docker's host name", "http://host.docker.internal:5175"],
+      ["an ngrok tunnel", "https://abc.ngrok-free.app"],
+      ["an older ngrok tunnel", "https://abc.ngrok.io"],
+      ["a Cloudflare quick tunnel", "https://words-here.trycloudflare.com"],
+      ["a localtunnel", "https://quiet-cat.loca.lt"],
+    ] as const
+
+    it.each(FORWARDING)(
+      "routes through its own origin, never mainnet, on %s",
+      (_, origin) => {
+        // The Vite plugin serves the dev cookie and the /api proxy to any
+        // Host, and `vite --host` is how a phone opens the app. Falling back
+        // to mainnet sent a dev wallet's calls, and a mainnet sign-in, there.
+        const page = stubPage(origin)
+
+        const net = resolveNetwork("env")
+
+        expect(net.host).toBe(origin)
+        expect(net.keySegment).toBe(origin)
+        // As on Codespaces: not local, so the cookie is not believed, and no
+        // key is taken or fetched. Certified calls fail verification.
+        expect(net.trustsEnv).toBe(false)
+        expect(net.rootKey).toBeUndefined()
+        expect(net.fetchRootKey).toBe(false)
+        expect(page.cookieReads()).toBe(0)
+      }
+    )
+
+    it.each([
+      ["a public address", "http://8.8.8.8:5173"],
+      ["an address just past 172.16/12", "http://172.32.0.1:5173"],
+      ["an IPv6 global address", "http://[2001:db8::1]:5173"],
+      ["a name that only ends like a tunnel", "https://myngrok.io"],
+      ["a name that only contains .local", "https://app.local.example.com"],
+    ])("still falls back on %s, which is not a dev page", (_, origin) => {
+      stubPage(origin)
+
+      expect(resolveNetwork("env").host).toBe(MAINNET)
+    })
+  })
+
   describe("on an ordinary web host", () => {
     it.each([
       ["a custom domain", "https://app.example.com"],
@@ -742,9 +794,11 @@ describe("the root key an agent really uses", () => {
    */
   const fakeReplica = () => {
     const paths: string[] = []
+    const origins = new Set<string>()
     const fetch = (input: Parameters<typeof globalThis.fetch>[0]) => {
       const url = new URL(input instanceof Request ? input.url : String(input))
       paths.push(url.pathname)
+      origins.add(url.origin)
       return Promise.resolve(
         url.pathname === "/api/v2/status"
           ? new Response(Cbor.encode({ root_key: REPLICA_ROOT_KEY }), {
@@ -754,7 +808,7 @@ describe("the root key an agent really uses", () => {
           : new Response("not a replica", { status: 400 })
       )
     }
-    return { paths, fetch }
+    return { paths, origins, fetch }
   }
 
   /** Builds the agent from the resolved network and makes it send a query. */
@@ -777,6 +831,7 @@ describe("the root key an agent really uses", () => {
       statusRequests: replica.paths.filter((p) => p === "/api/v2/status")
         .length,
       sentTheCall: replica.paths.some((p) => QUERY_PATH.test(p)),
+      origins: [...replica.origins],
       optionsFetch: agentOptionsFor(net).shouldFetchRootKey,
     }
   }
@@ -902,6 +957,17 @@ describe("the root key an agent really uses", () => {
       expect(net.trustsEnv).toBe(true)
       const used = await drive(net)
 
+      expect(used.statusRequests).toBe(0)
+      expect(mainnetKey(used.agentKey)).toBe(true)
+    })
+
+    it("sends a LAN page's call to the page, never to mainnet, and requests no key", async () => {
+      stubPage("http://192.168.1.5:5175")
+
+      const used = await drive(resolveNetwork("env"))
+
+      expect(used.sentTheCall).toBe(true)
+      expect(used.origins).toEqual(["http://192.168.1.5:5175"])
       expect(used.statusRequests).toBe(0)
       expect(mainnetKey(used.agentKey)).toBe(true)
     })
