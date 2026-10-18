@@ -98,10 +98,12 @@ describe("a client pinned to a principal", () => {
     // The client itself still builds for its live caller.
     expect(client.queryKey(who, "whoami")[2]).toBe(SEED_1)
     expect(client.queryOptions(who, "whoami").queryKey[2]).toBe(SEED_1)
-    // Pinned to a user, it says that user is signed in.
+    // Pinned to the live user, it says what the client says, the session's
+    // expiry included.
     expect(pin(client, SEED_1).authState()).toEqual({
       status: "signed-in",
       principal: SEED_1,
+      expiresAt: expect.any(Number),
     })
   })
 

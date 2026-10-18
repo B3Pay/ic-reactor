@@ -79,6 +79,13 @@ export interface TestAuth {
    * yet) or `signed-out` (nobody is, and there is no `principal`).
    * Synchronous. The object it returns is the same one until the status
    * changes, so it is safe to read from `useSyncExternalStore`.
+   *
+   * A session ends by the clock too, as `AuthClient`'s does: once `Date.now()`
+   * reaches `expiresAtMs` (eight hours after the sign-in; advance fake timers
+   * to get there), a `signed-in` or `signed-in-elsewhere` status reads as
+   * `expired`, and listeners are not told, since `AuthClient` tells nobody
+   * either. `expire()` is the explicit form, which does tell
+   * them.
    */
   getStatus(): TestAuthStatus
   /**
@@ -124,7 +131,8 @@ export interface TestAuth {
   /**
    * Ends the session of the identity the auth last signed in as, in another
    * tab or by running out its time, so the status becomes `expired`.
-   * Listeners are told once, unless it already was.
+   * Listeners are told once, unless it already was. A session also expires
+   * by the clock, without telling them (see `getStatus()`).
    */
   expire(): void
   /**
@@ -243,6 +251,25 @@ export function createTestAuth(options: TestAuthOptions = {}): TestAuth {
   let status: TestAuthStatus =
     options.signedIn === false ? { state: "signed-out" } : signedInAs(account)
 
+  /**
+   * The status now: a session whose `expiresAtMs` has passed reads as
+   * `expired`, replaced once, as `AuthClient.getStatus()` does.
+   */
+  function read(): TestAuthStatus {
+    if (
+      (status.state === "signed-in" ||
+        status.state === "signed-in-elsewhere") &&
+      Date.now() >= status.expiresAtMs
+    ) {
+      status = {
+        state: "expired",
+        principal: status.principal,
+        expiresAtMs: status.expiresAtMs,
+      }
+    }
+    return status
+  }
+
   /** Replaces the status, and tells the listeners once. */
   function set(next: TestAuthStatus) {
     status = next
@@ -251,12 +278,14 @@ export function createTestAuth(options: TestAuthOptions = {}): TestAuth {
   }
 
   return {
-    getPrincipal: () =>
-      status.state === "signed-in" ? status.principal : undefined,
-    getStatus: () => status,
+    getPrincipal: () => {
+      const now = read()
+      return now.state === "signed-in" ? now.principal : undefined
+    },
+    getStatus: read,
     getIdentity: () =>
       Promise.resolve(
-        status.state === "signed-in" ? account : new AnonymousIdentity()
+        read().state === "signed-in" ? account : new AnonymousIdentity()
       ),
     subscribe(listener) {
       if (disposed) return () => {}
@@ -282,7 +311,7 @@ export function createTestAuth(options: TestAuthOptions = {}): TestAuth {
       return account
     },
     expire() {
-      if (status.state === "expired") return
+      if (read().state === "expired") return
       set({
         state: "expired",
         principal: account.getPrincipal(),
@@ -290,7 +319,7 @@ export function createTestAuth(options: TestAuthOptions = {}): TestAuth {
       })
     },
     elsewhere() {
-      if (status.state === "signed-in-elsewhere") return
+      if (read().state === "signed-in-elsewhere") return
       set({
         state: "signed-in-elsewhere",
         principal: account.getPrincipal(),

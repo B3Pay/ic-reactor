@@ -67,7 +67,8 @@ describe("the wallet's auth", () => {
   it("signs in with Internet Identity when the options say so", async () => {
     const { client, keyCaller } = setUp()
     await client.signIn({ with: "internet-identity" })
-    expect(client.authState()).toEqual({
+    // `toMatchObject`: a session's `expiresAt` comes with it.
+    expect(client.authState()).toMatchObject({
       status: "signed-in",
       principal: SEED_1,
     })
