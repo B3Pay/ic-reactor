@@ -192,7 +192,15 @@ Sending the same argument again after `mayHaveExecuted: true` is safe only
 when the canister deduplicates it: it runs the same argument from the same
 sender at most once. The ICRC-1 ledger does, for a transfer with
 `created_at_time` set: the second one is answered `Duplicate`, which means the
-first went through. Most methods do not deduplicate. For them a second send
+first went through. Stamp `created_at_time` with `await client.time(ledger)`:
+the IC's time in nanoseconds, from a certificate verified against the
+network's root key, rather than the host's clock. Its request is signed with
+an ingress expiry taken from the host's clock, as every request is: a host
+clock so far off that the IC refuses its requests cannot read the time
+either, and no call works until that clock is fixed. That time moves about once a second, so
+two transfers stamped in the same second need their own `memo` each, or the
+second is answered `Duplicate` without running. Most methods do not
+deduplicate. For them a second send
 can run the write twice, so read the state back instead.
 
 `client.resendOf(error, canister, method, { dedupedBy })` offers that re-send.
@@ -284,6 +292,25 @@ export function SendOnce({ arg }: { arg: TransferArg }) {
     </>
   )
 }
+```
+
+A `canister_err` is a known outcome, so `resendOf` offers nothing after it.
+When the canister says the failure is temporary (an ICRC-1
+`TemporarilyUnavailable`), send the same argument object again with
+`transfer.mutate(arg)`. Encoding is deterministic, so a deduplicating method
+sees the same bytes and the same key, and answers `Duplicate` if an earlier
+attempt ran.
+
+`Resend` is not exported. To keep an offer in state, type it from the method:
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import type { Actor } from "./generated/icrc1"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+type TransferResend = NonNullable<
+  ReturnType<typeof client.resendOf<Actor, "icrc1_transfer">>
+>
 ```
 
 ## Typed errors

@@ -927,9 +927,131 @@ describe("a certified canister", () => {
     await expect(
       queryFn({ signal: controller.signal } as QueryFunctionContext)
     ).rejects.toMatchObject({ kind: "cancelled", mayHaveExecuted: false })
+    // A poll started and then abandoned would still go out: give it the time.
+    await new Promise((resolve) => setTimeout(resolve, 50))
     expect(requestsFor(replica, "one")).toHaveLength(1)
     expect(later.polls()).toBe(0)
   })
+})
+
+describe("a read whose request gets no HTTP answer", () => {
+  // Neither the agent nor the fetch it is given bounds the wait for an HTTP
+  // answer (#875): a proxy that holds the request, or a fake replica whose
+  // handler never returns, leaves the read waiting until its signal aborts.
+  const held = (
+    replica: ReturnType<typeof replicaWith>,
+    endpoint: "call" | "query"
+  ) => {
+    let sent = 0
+    const fetch = (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      if (urlOf(input).endsWith(`/${endpoint}`)) {
+        sent += 1
+        return new Promise<Response>(() => {})
+      }
+      return replica.fetch(input, init)
+    }
+    return { fetch, sent: () => sent }
+  }
+
+  it('ends the wait for an update read with { update: "idempotent" }, which may have executed', async () => {
+    const replica = replicaWith({
+      [SHAPES]: serve<shapes.Actor>(shapes.actor, { address: ([s]) => s }),
+    })
+    const request = held(replica, "call")
+    const client = clientAs({ ...replica, fetch: request.fetch }, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const { queryFn } = client.queryOptions(canister, "address", "a", {
+      update: "idempotent",
+    })
+    const controller = new AbortController()
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext)
+    await vi.waitFor(() => expect(request.sent()).toBe(1))
+    controller.abort()
+    // The call request went out: it may have reached the canister.
+    await expect(
+      Promise.race([read, sleep(1_000).then(() => "still waiting")])
+    ).rejects.toMatchObject({
+      kind: "cancelled",
+      mayHaveExecuted: true,
+      method: "address",
+    })
+  })
+
+  it("ends the wait for a certified read's poll once its signal aborts", async () => {
+    // The call request is answered 202, accepted, without reaching the
+    // canister, and every read_state that polls for it is held.
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    let polls = 0
+    const fetch = (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      const url = urlOf(input)
+      if (url.endsWith("/call")) {
+        return Promise.resolve(new Response(null, { status: 202 }))
+      }
+      if (url.endsWith("/read_state") && url.includes(SHAPES)) {
+        polls += 1
+        return new Promise<Response>(() => {})
+      }
+      return replica.fetch(input, init)
+    }
+    const client = clientAs({ ...replica, fetch }, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      certified: true,
+    })
+    const { queryFn } = client.queryOptions(canister, "one", 1n)
+    const controller = new AbortController()
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext)
+    await vi.waitFor(() => expect(polls).toBeGreaterThan(0))
+    controller.abort()
+    await expect(
+      Promise.race([read, sleep(1_000).then(() => "still waiting")])
+    ).rejects.toMatchObject({
+      kind: "cancelled",
+      mayHaveExecuted: false,
+      method: "one",
+    })
+  })
+
+  it.each([
+    ["a query", false, "query"],
+    ["a certified read", true, "call"],
+  ] as const)(
+    "ends the wait for %s once its signal aborts, and rejects cancelled with nothing executed",
+    async (_, certified, endpoint) => {
+      const replica = replicaWith({ [SHAPES]: shapesCanister() })
+      const request = held(replica, endpoint)
+      const client = clientAs({ ...replica, fetch: request.fetch }, alice)
+      const canister = client.canister<shapes.Actor>(shapes.actor, {
+        id: SHAPES,
+        certified,
+      })
+      const { queryFn } = client.queryOptions(canister, "one", 1n)
+      const controller = new AbortController()
+      const read = queryFn({
+        signal: controller.signal,
+      } as QueryFunctionContext)
+      await vi.waitFor(() => expect(request.sent()).toBe(1))
+      controller.abort()
+      await expect(
+        Promise.race([read, sleep(1_000).then(() => "still waiting")])
+      ).rejects.toMatchObject({
+        kind: "cancelled",
+        mayHaveExecuted: false,
+        method: "one",
+      })
+      expect(request.sent()).toBe(1)
+    }
+  )
 })
 
 describe("a call made as a caller who signs out before it is sent", () => {
