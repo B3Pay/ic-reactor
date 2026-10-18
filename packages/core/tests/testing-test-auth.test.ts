@@ -296,6 +296,39 @@ describe("a test auth's states", () => {
     expect(auth.getPrincipal()).toBeUndefined()
   })
 
+  it("expires by the clock at expiresAtMs, telling nobody, as AuthClient does", async () => {
+    vi.useFakeTimers()
+    try {
+      const auth = createTestAuth({ seed: 1 })
+      const listener = vi.fn()
+      auth.subscribe(listener)
+      const signedIn = auth.getStatus()
+      if (signedIn.state !== "signed-in") throw new Error("not signed in")
+
+      vi.setSystemTime(signedIn.expiresAtMs - 1)
+      expect(auth.getStatus()).toBe(signedIn)
+
+      vi.setSystemTime(signedIn.expiresAtMs)
+      const expired = auth.getStatus()
+      expect(expired).toEqual({
+        state: "expired",
+        principal: signedIn.principal,
+        expiresAtMs: signedIn.expiresAtMs,
+      })
+      // The same object from then on, and the rest of the auth agrees.
+      expect(auth.getStatus()).toBe(expired)
+      expect(auth.getPrincipal()).toBeUndefined()
+      expect(await auth.getIdentity()).toBeInstanceOf(AnonymousIdentity)
+      expect(listener).not.toHaveBeenCalled()
+
+      // `expire()` on a session already over tells nobody either.
+      auth.expire()
+      expect(listener).not.toHaveBeenCalled()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it("reaches signed-in-elsewhere, naming the account and holding no credential for it", async () => {
     const auth = createTestAuth({ seed: 1 })
 

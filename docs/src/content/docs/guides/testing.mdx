@@ -270,13 +270,13 @@ provider, plus the controls a test needs to play out what a user does. Every
 change is synchronous and reaches the client's listeners once, so a test
 reads the result without waiting.
 
-| Call                            | Effect                                                                                                        |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `auth.signOut()`                | nobody is signed in. A later `signIn()` returns to the same identity                                          |
-| `auth.signIn(identityOrSeed?)`  | signs in as that identity, or as the one it last signed in as                                                 |
-| `auth.switchTo(identityOrSeed)` | signs in as another identity in one step, with no signed-out state in between: a user picking another account |
-| `auth.expire()`                 | the session of the last identity ends: status `expired`                                                       |
-| `auth.elsewhere()`              | that identity is signed in on this domain but not held by this origin: status `signed-in-elsewhere`           |
+| Call                            | Effect                                                                                                                                                      |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth.signOut()`                | nobody is signed in. A later `signIn()` returns to the same identity                                                                                        |
+| `auth.signIn(identityOrSeed?)`  | signs in as that identity, or as the one it last signed in as                                                                                               |
+| `auth.switchTo(identityOrSeed)` | signs in as another identity in one step, with no signed-out state in between: a user picking another account                                               |
+| `auth.expire()`                 | the session of the last identity ends: status `expired`. A session also ends by the clock, eight hours after its sign-in (advance fake timers to get there) |
+| `auth.elsewhere()`              | that identity is signed in on this domain but not held by this origin: status `signed-in-elsewhere`                                                         |
 
 `getPrincipal()`, `getStatus()` and `getIdentity()` read the current state.
 The client owns the auth once anything has asked it who the caller is, and

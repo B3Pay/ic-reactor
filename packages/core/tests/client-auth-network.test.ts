@@ -392,28 +392,31 @@ describe("the warning for a network with no identity provider", () => {
     expect(warningsFor("local")).toEqual([])
   })
 
-  it("is given once per client, even when its factory throws and runs again", () => {
+  it("is given once per client, even when its factory reads the provider twice and throws", () => {
     stubPage("http://localhost:5173", { cookie: "" })
     const warn = muteWarnings()
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
     let calls = 0
     const client = createClient({
       network: "env",
       auth: (network) => {
         calls++
         void network.identityProvider
-        if (calls === 1) throw new Error("not yet")
         void network.identityProvider
-        return createTestAuth()
+        throw new Error("not yet")
       },
     })
     made.push(client)
 
-    expect(() => client.caller()).toThrow("not yet")
+    // A factory that threw is not called again: the client runs anonymous.
+    client.caller()
     client.caller()
     client.authState()
 
-    expect(calls).toBe(2)
+    expect(calls).toBe(1)
     expect(warn).toHaveBeenCalledTimes(1)
+    expect(error).toHaveBeenCalledTimes(1)
+    error.mockRestore()
 
     const other = createClient({ network: "env", auth: readsLikeAuthClient })
     made.push(other)

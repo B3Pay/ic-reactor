@@ -263,6 +263,8 @@ describe("the agent of a principal", () => {
   it("builds a new agent for a renewal the auth announces, without telling its own listeners", async () => {
     const replica = replicaWithWhoami()
     const root = Ed25519KeyIdentity.generate()
+    // A renewal keeps the session's end: one instant for both sign-ins.
+    const now = vi.spyOn(Date, "now").mockReturnValue(Date.now())
     const auth = createTestAuth({ identity: await delegate(root) })
     const client = clientOn(replica, auth)
     const principal = client.caller()
@@ -271,6 +273,7 @@ describe("the agent of a principal", () => {
     const old = await agentFor(client, principal)
 
     auth.switchTo(await delegate(root))
+    now.mockRestore()
 
     expect(listener).not.toHaveBeenCalled()
     const renewed = await agentFor(client, principal)
