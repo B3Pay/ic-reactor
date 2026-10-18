@@ -27,7 +27,9 @@ export default [
     // With client.encode() (#887) on top of v4: measured 90,767 B, so the limit moved from 90,670 B to 90.82 kB.
     // With client.canisterId() (#890) on top of v4: measured 90,795 B, so the limit moved from 90,820 B to 90.85 kB.
     // With maxElements (#932) on top of v4: measured 90,897 B, so the limit moved from 90,850 B to 90.95 kB.
-    limit: "90.95 kB",
+    // With timeoutMs (#875) on top of v4: measured 91,291 B, so the limit moved from 90,950 B to 91.34 kB.
+    // With strict createClient options (#938) on top of v4: measured 91,519 B, so the limit moved from 91,340 B to 91.57 kB.
+    limit: "91.57 kB",
     gzip: true,
   },
   {
@@ -44,7 +46,9 @@ export default [
     // With client.encode() (#887) on top of v4: measured 92,053 B, so the limit moved from 91,970 B to 92.11 kB.
     // With client.canisterId() (#890) on top of v4: measured 92,083 B, so the limit moved from 92,110 B to 92.14 kB.
     // With maxElements (#932) on top of v4: measured 92,162 B, so the limit moved from 92,140 B to 92.22 kB.
-    limit: "92.22 kB",
+    // With timeoutMs (#875) on top of v4: measured 92,561 B, so the limit moved from 92,220 B to 92.61 kB.
+    // With strict createClient options (#938) on top of v4: measured 92,830 B, so the limit moved from 92,610 B to 92.88 kB.
+    limit: "92.88 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },

@@ -123,7 +123,13 @@ returns it (as anonymous while hydrating) and `useAuth()` returns
 `{ status, principal, signIn, signOut }`, `"anonymous"` on a server and in a
 hydrating page's first render.
 
-Any other sign-in source becomes an `AuthLike`:
+Any other sign-in that hands over an `Identity` (a delegation, or a key)
+becomes an `AuthLike`. A wallet that signs each call itself (ICRC-25 and
+ICRC-49: OISY, Plug, NFID accounts) is not one: keep the client anonymous for
+reads, send the wallet's writes with `SignerAgent` from `@icp-sdk/signer`, and
+then invalidate the reads yourself with
+`client.queryClient.invalidateQueries({ queryKey: client.queryKey(canister) })`.
+Such a write gets no `ReactorError` and no `mayHaveExecuted`.
 
 ```ts
 // src/auth-like.ts
@@ -280,6 +286,8 @@ export function Send({ arg }: { arg: TransferArg }) {
   names the reads to invalidate instead (name the written canister too if
   its reads change); `[]`, none. To add an `onSettled`, call the client's
   from yours.
+- A write that timed out (`timeoutMs`, below in Errors) whose request went
+  out is `outcome_unknown`: never send it again blindly.
 - Do not retry a write. `retry` is `false`; keep it. The client itself
   re-sends an update, at most twice, only after a failure proving the canister
   never got it (reject code 2, status 429); any other failure is final.
@@ -337,12 +345,14 @@ have executed:
 | a sent write got no trustworthy answer: network drop, timeout, 5xx, 408          | `outcome_unknown`                 | yes               |
 | a reply that did not decode                                                      | `invalid_reply`                   | yes (a write)     |
 | the canister returned `Err`                                                      | `canister_err`                    | no                |
-| the caller changed, the call was aborted, or an offered re-send would go elsewhere (`target_changed`) | `cancelled` | no (an aborted write: yes) |
+| the caller changed, the call was aborted, an offered re-send would go elsewhere (`target_changed`), or a read's `timeoutMs` passed (`code: "timeout"`) | `cancelled` | no (an aborted write: yes) |
 
 A write that got no answer (`outcome_unknown`, or `cancelled` with
 `mayHaveExecuted: true`) carries `error.expiresAt`: the latest ingress expiry
 its sends were signed with, a `bigint` of nanoseconds on the IC's clock
-(about five minutes after the send). Once the IC's time is past it, no send
+(about five minutes after the send). A `client.resendOf()` re-send whose
+`timeoutMs` passed before it went out has none: the earlier error's
+`expiresAt` still holds. Once the IC's time is past it, no send
 of that write can still start running. For a method that commits without
 awaiting another canister (an ICRC-1 transfer), a certified read-back of
 state newer than that which finds nothing is final. Compare with a margin,
@@ -352,8 +362,8 @@ On the management canister (`aaaaa-aa`), codes 1 to 3 prove nothing: a write
 there may have executed. A query changes nothing, so a failed read never "may
 have executed".
 
-How long a call waits: neither the client nor the agent puts a timeout on an
-HTTP request (the call or query, or a `read_state` that polls), so a request
+How long a call waits: unless the call has a `timeoutMs` (below), neither the
+client nor the agent puts a timeout on an HTTP request (the call or query, or a `read_state` that polls), so a request
 that gets no answer waits as long as the `fetch` in use does. An accepted
 update is polled for about five minutes (a deadline checked when a poll is
 answered) before it rejects `outcome_unknown`. A read made with `queryOptions` stops
@@ -361,6 +371,26 @@ waiting at any point when TanStack Query cancels it
 (`queryClient.cancelQueries(...)`, or its last observer unmounts), and
 rejects `cancelled` (with `mayHaveExecuted: true` for an update read with
 `{ update: "idempotent" }` whose request went out).
+
+To bound the wait, give the canister target `timeoutMs`:
+`client.canister<Actor>(actor, { id, timeoutMs: 15_000 })` bounds each of its
+direct calls, `queryOptions` reads and mutations, counted from the call.
+`client.mutationOptions(ledger, "icrc1_transfer", { timeoutMs: 15_000 })`
+bounds that mutation's runs instead (1 to 2147483647 ms; anything else
+throws). When it passes, the call stops waiting and rejects with
+`code: "timeout"`: `cancelled`, `mayHaveExecuted: false`, for a read and for a
+write that had not gone out; `outcome_unknown`, `mayHaveExecuted: true`, for a
+write whose request went out, for an `{ update: "idempotent" }` read whose
+request went out, and for a re-send of an offered write at any point. That
+write may still execute: it is an unknown outcome to reconcile like any other
+(read the state back, or `resendOf` for a method that deduplicates, given the
+canister object the write went through: another `timeoutMs` is another
+object), never one to send again blindly. Nothing is sent again for a
+timeout, and the request is not torn down. Unlike other `cancelled` errors, a
+`cancelled` with `code: "timeout"` is a real timeout: show it, do not ignore
+it. Canister objects that differ only in `timeoutMs` share query keys, so a
+read observed through two of them is bounded by the options TanStack Query
+was given last.
 
 ## Outside React
 

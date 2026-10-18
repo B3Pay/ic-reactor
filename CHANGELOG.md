@@ -17,6 +17,45 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### @ic-reactor/core
 
+#### Added
+
+- `timeoutMs` bounds how long a call waits for its answer (#875). On the
+  canister target, `client.canister(actor, { id, timeoutMs })`, it bounds every
+  direct call, `queryOptions` read and mutation made through that canister
+  object; in `client.mutationOptions()`' third argument, `{ timeoutMs }`, it
+  bounds that mutation's runs instead. When it passes, the call rejects with
+  `code: "timeout"`: `cancelled` with `mayHaveExecuted: false` for a read and
+  for a write that had not gone out, and `outcome_unknown` with
+  `mayHaveExecuted: true` for a write whose request went out (an
+  `{ update: "idempotent" }` read's included) and for a re-send of a write
+  `client.resendOf()` offered, at any point, which `client.resendOf()` offers
+  like any other unknown outcome when given the canister object the write went
+  through (another `timeoutMs` is another object). Such a write is to be
+  reconciled, never sent again blindly. A timed-out write that went out
+  carries `expiresAt`; a re-send that timed out before it went out has none,
+  and the earlier error's still holds. Nothing is re-sent for a timeout, and
+  the request is not torn down. Canister objects that differ only in
+  `timeoutMs` share query keys. Without `timeoutMs`, nothing changes, except
+  for the next entry.
+- A read aborted while it waits for its caller's identity now rejects
+  `cancelled` at once, with no code, and sends nothing. It used to wait for the
+  identity, then reject `caller_changed`, `client_disposed` or
+  `unauthenticated` (`identity_unavailable`) when one of those applied, and
+  otherwise send the read nobody waited for. The abort now comes first.
+- Core's size limit is raised to 16.32 kB for `timeoutMs` (16,269 B, +381 B),
+  and the app checks with the peers included to 91.34 kB (91,291 B, +394 B)
+  and 92.61 kB (92,561 B, +399 B).
+
+#### Changed
+
+- `AuthLike`'s `getStatus().state` takes any string beside the four states
+  of `@icp-sdk/auth` 10, so an `@icp-sdk/auth` release that adds a session
+  state does not stop `auth: (network) => new AuthClient(network)` compiling.
+  The client already called anonymously in such a state; `authState()` reads
+  it as `"anonymous"`. A weekly CI job type-checks core and runs the core and
+  react tests against `@icp-sdk/auth@latest`. Code that switches over
+  `getStatus().state` exhaustively needs a `default` (#911).
+
 #### Fixed
 
 - **BREAKING:** `createClient` checks every option, so a value the types
@@ -146,6 +185,12 @@ Both are members, so the export budget is unchanged.
 
 ### Docs
 
+- The guide, the auth and client pages and `AuthLike`'s JSDoc no longer say a
+  wallet fits with a small adapter. What fits is a sign-in that hands over an
+  `Identity` (a delegation or a key); a wallet that signs each call itself
+  (ICRC-25 and ICRC-49: OISY, Plug, NFID accounts) does not. The auth page
+  shows such a wallet's writes through `SignerAgent` beside an anonymous
+  client, with the reads invalidated by hand (#904).
 - The client guide has a section for a local network without the Vite plugin
   (Next.js, Rsbuild, webpack, esbuild): `network: "local"` with `{ id }` from
   a build-time variable written by `icp canister status -e local -i`, or a
@@ -199,8 +244,8 @@ Both are members, so the export budget is unchanged.
 
 ### Docs
 
-- The guide's Errors section says how long a call waits: an HTTP request has
-  no timeout in the client or the agent, an accepted update polls for about
+- The guide's Errors section says how long a call waits: unless the call has
+  a `timeoutMs`, an HTTP request has no timeout in the client or the agent, an accepted update polls for about
   five minutes (a deadline checked when a poll is answered) before `outcome_unknown`, and
   a cancelled read stops waiting (part of #875).
 - With the method given as `any` (`client.queryOptions<A, any>(canister,
@@ -246,6 +291,17 @@ method, vars)` for a method named by data), the variables of
 
 #### Fixed
 
+- On Windows, local network detection works with icp-cli installed from npm
+  (`@icp-sdk/icp-cli`). npm links it as `icp.cmd`, which the plugin could not
+  start, so detection always failed while the network was running. On
+  Windows the plugin now runs the `icp.exe` that package installs, from the
+  app's own install first, then a global npm install (`%APPDATA%\npm`), so a
+  command that hangs is killed after its timeout; it runs the package's bin
+  script with Node when that `icp.exe` is missing, and falls back to an
+  `icp.exe` on `PATH`. When no `icp` can be started at all, the
+  warning says so and how to make one runnable on that platform, instead of
+  asking whether the network is running. CI runs the tests of how
+  the plugin starts `icp` on Windows (#905).
 - The tarball now ships the MIT `LICENSE` the manifest names; the repository
   has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
   has none or one that is not a copy of the root file (#898).

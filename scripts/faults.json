@@ -417,8 +417,8 @@
     "testName": "cancels a write disposed of just after its agent was handed over, and sends nothing",
     "why": "a dispose() that runs after agentFor's last check but before the call resumes from it (a reaction on the identity's promise) would still send the write with the agent it was handed",
     "file": "src/call.ts",
-    "search": "      if (internals.disposed()) {\n        throw createReactorError(\"cancelled\", {\n          ...where,",
-    "replace": "      if (false && internals.disposed()) {\n        throw createReactorError(\"cancelled\", {\n          ...where,"
+    "search": "        if (internals.disposed()) {\n          throw notSent(",
+    "replace": "        if (false && internals.disposed()) {\n          throw notSent("
   },
   {
     "id": "ir2t-err-not-unwrapped",
@@ -1026,8 +1026,8 @@
     "testName": "is not sent again as somebody else",
     "why": "a re-send signed by whoever is signed in when it goes out, so a user who switched account during the wait pays for the first user's transfer",
     "file": "src/call.ts",
-    "search": "      const agent = await internals.agentFor(caller.principal, where)",
-    "replace": "      const agent = await internals.agentFor(internals.current().principal, where)"
+    "search": "          internals.agentFor(caller.principal, where),",
+    "replace": "          internals.agentFor(internals.current().principal, where),"
   },
   {
     "id": "ir9-management-reject-2-not-executed-2",
@@ -1733,10 +1733,19 @@
     "package": "core",
     "test": "tests/client-pinned.test.ts",
     "testName": "leaves a fetch that replaced a cancelled refused read of the key running",
-    "why": "a refused view read that TanStack had already cancelled still cancels the key, so the fetch that replaced it (a read as the caller now current) is cancelled and the key keeps the old data",
-    "file": "src/options.ts",
-    "search": "        !context.signal.aborted &&\n",
-    "replace": ""
+    "why": "a refused view read that TanStack had already cancelled still cancels the key, so the fetch that replaced it (a read as the caller now current) is cancelled and the key keeps the old data. Since #875 a read's abort also ends its wait for the caller's agent (a cancellation with no code), which alone keeps the key too, so that goes back as well",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "        !context.signal.aborted &&\n",
+        "replace": ""
+      },
+      {
+        "file": "src/call.ts",
+        "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+        "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+      }
+    ]
   },
   {
     "id": "ir6m-kept-value-is-the-client",
@@ -2785,8 +2794,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "the offer's send() goes out as the caller current when it is pressed, not as the attempt's sender",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, attempt),",
-    "replace": "send: () => invoke(internals, { ...attempt, caller: internals.current() }),"
+    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
+    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, caller: internals.current() }),"
   },
   {
     "id": "ir850-no-dedupe-key-offered",
@@ -3070,8 +3079,8 @@
     "testName": "sends the bytes the attempt sent, whatever became of its argument since, and offers nothing once it changed",
     "why": "send() encodes the attempt's argument objects again instead of sending the bytes the attempt sent, so an argument the app changed since goes out with a new dedupe key and the ledger runs the transfer a second time",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, attempt),",
-    "replace": "send: () => invoke(internals, { ...attempt, encoded: undefined }),"
+    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
+    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, encoded: undefined }),"
   },
   {
     "id": "ir850-c1-offered-after-change",
@@ -3130,8 +3139,8 @@
     "testName": "keeps a { name } canister's re-send on the canister the write went to after the name moves",
     "why": "send() resolves the canister object again, so after the ic_env cookie maps the name elsewhere it sends the transfer to a ledger that has never seen it",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, attempt),",
-    "replace": "send: () => invoke(internals, { ...attempt, target: record.resolve() }),"
+    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
+    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, target: record.resolve() }),"
   },
   {
     "id": "ir850-c1-effective-not-kept",
@@ -4571,7 +4580,7 @@
     "id": "878-expiry-sent-after-cancel",
     "package": "core",
     "test": "tests/canister.test.ts",
-    "testName": "sends no call request once the signal aborted before it was signed",
+    "testName": "when the signal aborts inside the agent, before it is signed",
     "why": "a call request whose signal aborted before it was signed is still sent, after the error that names no expiry for it",
     "file": "src/call.ts",
     "search": "    if (write.signal?.aborted) throw abortReason(write.signal)\n",
@@ -4895,6 +4904,256 @@
     "why": "createTestClient({ signedIn: \"false\" }) starts signed in",
     "file": "src/testing/test-client.ts",
     "search": "  checkBoolean(signedIn, \"createTestClient(): signedIn\")\n",
+    "replace": ""
+  },
+  {
+    "id": "875-timeout-never-fires",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "a call with timeoutMs",
+    "why": "timeoutMs read but its timer never fires, so a call whose request gets no answer waits as long as fetch does",
+    "file": "src/call.ts",
+    "search": "    }, ms)\n",
+    "replace": "    }, 2147483647)\n"
+  },
+  {
+    "id": "875-timeout-sent-write-not-executed",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write whose request went out outcome_unknown",
+    "why": "a timed-out write whose request went out classified cancelled with mayHaveExecuted: false, which reads as safe to send again: a resend could run it twice",
+    "file": "src/call.ts",
+    "search": "timedOutError(where, write && (out || !!sent))",
+    "replace": "timedOutError(where, false)"
+  },
+  {
+    "id": "875-timeout-resend-wait-counts-as-sent",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "times out while it waits to be re-sent",
+    "why": "an attempt proven not delivered (a 429) still counted as out, so a write that times out before its re-send reports outcome_unknown instead of cancelled with nothing executed",
+    "file": "src/call.ts",
+    "search": "        out = false\n",
+    "replace": ""
+  },
+  {
+    "id": "875-timeout-resend-wait-unbounded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "times out while it waits to be re-sent",
+    "why": "the wait before a re-send not ended by the timeout, so the call rejects only when that wait ends, after timeoutMs",
+    "file": "src/call.ts",
+    "search": "          await untilAborted(\n            sleep(UPDATE_RESEND_DELAYS_MS[resends - 1]),\n            signal\n          )\n",
+    "replace": "          await sleep(UPDATE_RESEND_DELAYS_MS[resends - 1])\n"
+  },
+  {
+    "id": "875-timeout-identity-wait-unbounded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "still waiting for its caller's identity",
+    "why": "the wait for the caller's agent not ended by the timeout, so a call whose identity never arrives waits forever",
+    "file": "src/call.ts",
+    "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+    "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+  },
+  {
+    "id": "875-timeout-direct-call-ignores-target",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write whose request went out outcome_unknown",
+    "why": "a direct call not given its canister target's timeoutMs, so it waits unbounded",
+    "file": "src/canister.ts",
+    "search": "            values: args,\n            timeoutMs,\n",
+    "replace": "            values: args,\n"
+  },
+  {
+    "id": "875-timeout-memo-ignores-timeout",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "another timeoutMs is another canister object",
+    "why": "canister objects memoized without timeoutMs, so a target with another timeoutMs gets the first object and its bound",
+    "file": "src/canister.ts",
+    "search": "\\u0000${timeoutMs as number}`",
+    "replace": "`"
+  },
+  {
+    "id": "875-timeout-value-unbounded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "throws a TypeError for timeoutMs",
+    "why": "a timeoutMs above 2147483647 accepted, which a timer fires at once, so every call would time out immediately",
+    "file": "src/canister.ts",
+    "search": "value <= 2147483647",
+    "replace": "value <= Infinity"
+  },
+  {
+    "id": "875-timeout-mutation-ignores-own",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "rejects a mutation whose request went out outcome_unknown",
+    "why": "a mutation's own timeoutMs not passed to its call, so mutationOptions' { timeoutMs } bounds nothing",
+    "file": "src/options.ts",
+    "search": "timeoutMs: timeoutMs ?? record.timeoutMs,",
+    "replace": "timeoutMs: record.timeoutMs,"
+  },
+  {
+    "id": "875-timeout-read-ignores-target",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "rejects a read of a canister with timeoutMs cancelled",
+    "why": "a read made with queryOptions not given its canister's timeoutMs, so it waits unbounded",
+    "file": "src/options.ts",
+    "search": "          timeoutMs: record.timeoutMs,\n          resend: false,",
+    "replace": "          resend: false,"
+  },
+  {
+    "id": "875-aborted-read-waits-for-identity",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "a read aborted while it waits for its caller's identity",
+    "why": "the wait for the caller's agent not ended by a read's abort signal, so an aborted read keeps waiting for an identity that may never come",
+    "file": "src/call.ts",
+    "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+    "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+  },
+  {
+    "id": "875-timeout-resend-loses-unknown",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a re-send resendOf offered outcome_unknown",
+    "why": "an offered re-send that times out before it goes out rejects cancelled with mayHaveExecuted: false, so the earlier attempt's unknown outcome is dropped and resendOf offers nothing, though that write may have run",
+    "file": "src/call.ts",
+    "search": "timedOutError(where, write && (out || !!sent))",
+    "replace": "timedOutError(where, write && out)"
+  },
+  {
+    "id": "875-timeout-resend-mutation-loses-unknown",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "keeps a mutation re-sending an offered write outcome_unknown",
+    "why": "a mutation re-sending an offered write that times out before it goes out rejects cancelled with mayHaveExecuted: false, dropping the earlier attempt's unknown outcome",
+    "file": "src/call.ts",
+    "search": "timedOutError(where, write && (out || !!sent))",
+    "replace": "timedOutError(where, write && out)"
+  },
+  {
+    "id": "875-timeout-send-not-marked-resend",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a re-send resendOf offered outcome_unknown",
+    "why": "resendOf().send() not marked as a re-send of the attempt, so a timeout before it goes out drops the attempt's unknown outcome",
+    "file": "src/options.ts",
+    "search": "invoke(internals, { ...attempt, again: attempt })",
+    "replace": "invoke(internals, attempt)"
+  },
+  {
+    "id": "875-timeout-outer-abort-not-linked",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "lets a read's own abort win over the timeout",
+    "why": "a read's TanStack signal not linked to the timeout's, so a cancelled read on a canister with timeoutMs keeps waiting until the timeout and rejects with code timeout",
+    "file": "src/call.ts",
+    "search": "    outer?.addEventListener(\"abort\", end, { once: true })\n",
+    "replace": ""
+  },
+  {
+    "id": "875-timeout-pre-aborted-not-linked",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "whose signal had already aborted cancelled with no code",
+    "why": "a read whose signal had aborted before the call not seen once the timeout's signal replaces it, so it is sent and waits for the timeout",
+    "file": "src/call.ts",
+    "search": "    if (outer?.aborted) end()\n",
+    "replace": ""
+  },
+  {
+    "id": "875-timeout-expiry-lost",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "for a write that timed out after it went out",
+    "why": "a write whose timeoutMs passed after it went out rejects outcome_unknown with no expiresAt, so a read-back cannot tell when no send of it can still start",
+    "file": "src/call.ts",
+    "search": "            timedOutError(where, write && (out || !!sent)),\n            sends.expiresAt\n",
+    "replace": "            timedOutError(where, write && (out || !!sent)),\n            undefined\n"
+  },
+  {
+    "id": "905-windows-icp-cmd-run-from-path",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "runs the installed icp-cli's bin script with Node on Windows",
+    "why": "on Windows an npm-installed icp-cli (icp.cmd) is looked up on PATH, which execFile cannot start",
+    "file": "src/env.ts",
+    "search": "  if (platform === \"win32\") {",
+    "replace": "  if (platform === \"never\") {"
+  },
+  {
+    "id": "905-enoent-reported-as-network-down",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "says icp could not be run, not that the network may be down, when no icp starts",
+    "why": "an icp that cannot be started is reported as a local network that may be down",
+    "file": "src/env.ts",
+    "search": "if ((error as { code?: unknown } | undefined)?.code === \"ENOENT\") {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "905-windows-icp-bin-run-directly",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "starts the bin script it names, so the command runs as given",
+    "why": "icpCommand hands execFile the bin script itself, which Windows cannot start and no platform runs without Node",
+    "file": "src/env.ts",
+    "search": "return { file: process.execPath, args: [bin] }",
+    "replace": "return { file: bin, args: [] }"
+  },
+  {
+    "id": "905-windows-global-npm-ignored",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "runs a global npm install's bin script on Windows when the app has none",
+    "why": "a global npm install of icp-cli on Windows is reachable only as icp.cmd, which execFile cannot start",
+    "file": "src/env.ts",
+    "search": "? icpBinIn(path.join(appData, \"npm\", \"node_modules\"))",
+    "replace": "? undefined"
+  },
+  {
+    "id": "905-windows-global-before-local",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "prefers the app's own icp-cli to a global one",
+    "why": "the global icp-cli wins over the version the app pins",
+    "file": "src/env.ts",
+    "search": "installedIcpBin(projectRoot) ??",
+    "replace": "(appData ? icpBinIn(path.join(appData, \"npm\", \"node_modules\")) : undefined) ??"
+  },
+  {
+    "id": "905-advice-same-everywhere",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "says an install is enough on Windows, and PATH elsewhere",
+    "why": "the warning tells Linux and macOS users that a local install is enough, though the plugin runs icp from PATH there",
+    "file": "src/env.ts",
+    "search": "return platform === \"win32\"",
+    "replace": "return platform !== \"win32\""
+  },
+  {
+    "id": "905-windows-timeout-kills-only-the-script",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "file": "src/env.ts",
+    "testName": "runs the icp.exe the bin script would start, so a timeout kills icp itself",
+    "why": "on Windows the plugin always runs icp-cli's bin script, so a timeout kills only the script and the icp.exe it started keeps the output pipes open, holding the page request",
+    "search": "      if (native)\n",
+    "replace": "      if (native && false)\n"
+  },
+  {
+    "id": "905-windows-nested-icp-exe-missed",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "file": "src/env.ts",
+    "testName": "finds the icp.exe inside icp-cli's own node_modules as well",
+    "why": "the plugin looks for icp.exe only beside icp-cli, not in icp-cli's own node_modules, where the bin script also looks",
+    "search": "    path.join(dir, \"..\", \"node_modules\", platformPackage, \"bin\", \"icp.exe\"),\n",
     "replace": ""
   }
 ]
