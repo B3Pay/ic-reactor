@@ -25,10 +25,10 @@ npm install --save-dev @ic-reactor/vite-plugin@beta
 The package has one entry, `@ic-reactor/vite-plugin`, in ESM and CommonJS. It
 exports two names, and there is no other subpath:
 
-| Name                     | Kind     | What it is                                                   |
-| ------------------------ | -------- | ------------------------------------------------------------ |
-| `icReactor`              | function | `icReactor(options?)` returns the Vite plugin                |
-| `IcReactorPluginOptions` | type     | The options: `canisters`, `injectEnvironment`, `failOnError` |
+| Name                     | Kind     | What it is                                                                  |
+| ------------------------ | -------- | --------------------------------------------------------------------------- |
+| `icReactor`              | function | `icReactor(options?)` returns the Vite plugin                               |
+| `IcReactorPluginOptions` | type     | The options: `canisters`, `injectEnvironment`, `failOnError`, `onGenerated` |
 
 ```ts
 import { icReactor, type IcReactorPluginOptions } from "@ic-reactor/vite-plugin"
@@ -48,6 +48,8 @@ export default defineConfig({ plugins: [icReactor(options)] })
 | `@candid-core/cli` | exactly `0.3.0`                                    |
 | `@icp-sdk/core`    | `^6.1.0`, optional                                 |
 | `vite`             | `^4.2.0`, `^5.0.0`, `^6.0.0`, `^7.0.0` or `^8.0.0` |
+
+Node `>=22.12.0`, as core and react.
 
 The CLI is pinned exactly because the plugin runs the CLI your app installs,
 and that CLI has to pair with the `@candid-core/schema` runtime the generated

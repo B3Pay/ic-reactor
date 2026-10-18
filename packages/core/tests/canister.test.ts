@@ -927,9 +927,131 @@ describe("a certified canister", () => {
     await expect(
       queryFn({ signal: controller.signal } as QueryFunctionContext)
     ).rejects.toMatchObject({ kind: "cancelled", mayHaveExecuted: false })
+    // A poll started and then abandoned would still go out: give it the time.
+    await new Promise((resolve) => setTimeout(resolve, 50))
     expect(requestsFor(replica, "one")).toHaveLength(1)
     expect(later.polls()).toBe(0)
   })
+})
+
+describe("a read whose request gets no HTTP answer", () => {
+  // Neither the agent nor the fetch it is given bounds the wait for an HTTP
+  // answer (#875): a proxy that holds the request, or a fake replica whose
+  // handler never returns, leaves the read waiting until its signal aborts.
+  const held = (
+    replica: ReturnType<typeof replicaWith>,
+    endpoint: "call" | "query"
+  ) => {
+    let sent = 0
+    const fetch = (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      if (urlOf(input).endsWith(`/${endpoint}`)) {
+        sent += 1
+        return new Promise<Response>(() => {})
+      }
+      return replica.fetch(input, init)
+    }
+    return { fetch, sent: () => sent }
+  }
+
+  it('ends the wait for an update read with { update: "idempotent" }, which may have executed', async () => {
+    const replica = replicaWith({
+      [SHAPES]: serve<shapes.Actor>(shapes.actor, { address: ([s]) => s }),
+    })
+    const request = held(replica, "call")
+    const client = clientAs({ ...replica, fetch: request.fetch }, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const { queryFn } = client.queryOptions(canister, "address", "a", {
+      update: "idempotent",
+    })
+    const controller = new AbortController()
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext)
+    await vi.waitFor(() => expect(request.sent()).toBe(1))
+    controller.abort()
+    // The call request went out: it may have reached the canister.
+    await expect(
+      Promise.race([read, sleep(1_000).then(() => "still waiting")])
+    ).rejects.toMatchObject({
+      kind: "cancelled",
+      mayHaveExecuted: true,
+      method: "address",
+    })
+  })
+
+  it("ends the wait for a certified read's poll once its signal aborts", async () => {
+    // The call request is answered 202, accepted, without reaching the
+    // canister, and every read_state that polls for it is held.
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    let polls = 0
+    const fetch = (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      const url = urlOf(input)
+      if (url.endsWith("/call")) {
+        return Promise.resolve(new Response(null, { status: 202 }))
+      }
+      if (url.endsWith("/read_state") && url.includes(SHAPES)) {
+        polls += 1
+        return new Promise<Response>(() => {})
+      }
+      return replica.fetch(input, init)
+    }
+    const client = clientAs({ ...replica, fetch }, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      certified: true,
+    })
+    const { queryFn } = client.queryOptions(canister, "one", 1n)
+    const controller = new AbortController()
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext)
+    await vi.waitFor(() => expect(polls).toBeGreaterThan(0))
+    controller.abort()
+    await expect(
+      Promise.race([read, sleep(1_000).then(() => "still waiting")])
+    ).rejects.toMatchObject({
+      kind: "cancelled",
+      mayHaveExecuted: false,
+      method: "one",
+    })
+  })
+
+  it.each([
+    ["a query", false, "query"],
+    ["a certified read", true, "call"],
+  ] as const)(
+    "ends the wait for %s once its signal aborts, and rejects cancelled with nothing executed",
+    async (_, certified, endpoint) => {
+      const replica = replicaWith({ [SHAPES]: shapesCanister() })
+      const request = held(replica, endpoint)
+      const client = clientAs({ ...replica, fetch: request.fetch }, alice)
+      const canister = client.canister<shapes.Actor>(shapes.actor, {
+        id: SHAPES,
+        certified,
+      })
+      const { queryFn } = client.queryOptions(canister, "one", 1n)
+      const controller = new AbortController()
+      const read = queryFn({
+        signal: controller.signal,
+      } as QueryFunctionContext)
+      await vi.waitFor(() => expect(request.sent()).toBe(1))
+      controller.abort()
+      await expect(
+        Promise.race([read, sleep(1_000).then(() => "still waiting")])
+      ).rejects.toMatchObject({
+        kind: "cancelled",
+        mayHaveExecuted: false,
+        method: "one",
+      })
+      expect(request.sent()).toBe(1)
+    }
+  )
 })
 
 describe("a call made as a caller who signs out before it is sent", () => {
@@ -955,5 +1077,208 @@ describe("a call made as a caller who signs out before it is sent", () => {
       mayHaveExecuted: false,
     })
     expect(canisterRequests(replica)).toEqual([])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The ingress expiry of a write that got no answer (#878): after it, no send
+// of the write can still run, so a read-back that finds nothing is final.
+// ---------------------------------------------------------------------------
+
+describe("expiresAt on a write that got no answer", () => {
+  const shapesThrough = (
+    replica: FakeReplica,
+    fetch: typeof globalThis.fetch
+  ) =>
+    clientAs({ ...replica, fetch }, alice).canister<shapes.Actor>(
+      shapes.actor,
+      { id: SHAPES }
+    )
+
+  /** Wraps `fetch`, keeping the ingress expiry of every call request it sees. */
+  const expiries = (fetch: typeof globalThis.fetch) => {
+    const seen: bigint[] = []
+    const wrapped = async (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      if (urlOf(input).endsWith("/call")) {
+        const envelope = (await cborOf(init?.body)) as {
+          content: { ingress_expiry: bigint | number }
+        }
+        seen.push(BigInt(envelope.content.ingress_expiry))
+      }
+      return fetch(input, init)
+    }
+    return { fetch: wrapped, seen }
+  }
+
+  it("is the ingress expiry the replica received, for a call request lost in transport", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const sends = expiries(replica.fetch)
+    const canister = shapesThrough(replica, sends.fetch)
+    replica.dropNextReply()
+    const error = await canister.bump(1n).catch((caught: unknown) => caught)
+    expect(error).toMatchObject({ kind: "outcome_unknown" })
+    expect(sends.seen).toHaveLength(1)
+    expect((error as { expiresAt?: bigint }).expiresAt).toBe(sends.seen[0])
+    // A nanosecond time minutes ahead of now, not a duration.
+    const now = BigInt(Date.now()) * 1_000_000n
+    expect(sends.seen[0]).toBeGreaterThan(now)
+    expect(sends.seen[0]).toBeLessThan(now + 6n * 60n * 1_000_000_000n)
+    // Not enumerable: logging the error as JSON still works.
+    expect(() => JSON.stringify(error)).not.toThrow()
+  })
+
+  it("is the call request's own expiry when the call was accepted but its polls never answered", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const sends = expiries(replica.fetch)
+    const later = answerLater(sends.fetch, { failures: Infinity })
+    const error = await shapesThrough(replica, later.fetch)
+      .bump(4n)
+      .catch((caught: unknown) => caught)
+    expect(error).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+    })
+    expect(sends.seen).toHaveLength(1)
+    expect((error as { expiresAt?: bigint }).expiresAt).toBe(sends.seen[0])
+  }, 10_000)
+
+  it("is the latest expiry of the sends of a write the client sent again", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const sends = expiries(replica.fetch)
+    const canister = shapesThrough(replica, sends.fetch)
+    replica.refuseNext(429)
+    replica.dropNextReply()
+    const error = await canister.bump(1n).catch((caught: unknown) => caught)
+    expect(error).toMatchObject({ kind: "outcome_unknown" })
+    expect(sends.seen).toHaveLength(2)
+    const latest = sends.seen.reduce((a, b) => (a > b ? a : b))
+    expect((error as { expiresAt?: bigint }).expiresAt).toBe(latest)
+  })
+
+  it("is a resendOf re-send's own expiry when that send is lost too", async () => {
+    const replica = replicaWith({ [LEDGER]: ledgerCanister(new Map()) })
+    const sends = expiries(replica.fetch)
+    const client = clientAs({ ...replica, fetch: sends.fetch }, alice)
+    const ledger = client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
+    const arg = { ...transferTo(BOB, 1n), created_at_time: 1_000n }
+    replica.dropNextReply()
+    const first = await ledger
+      .icrc1_transfer(arg)
+      .catch((caught: unknown) => caught)
+    const again = client.resendOf(first, ledger, "icrc1_transfer", {
+      dedupedBy: (sent) => sent.created_at_time,
+    })
+    expect(again).toBeDefined()
+    replica.dropNextReply()
+    const second = await again?.send().catch((caught: unknown) => caught)
+    expect(second).toMatchObject({ kind: "outcome_unknown" })
+    expect(sends.seen).toHaveLength(2)
+    expect((first as { expiresAt?: bigint }).expiresAt).toBe(sends.seen[0])
+    expect((second as { expiresAt?: bigint }).expiresAt).toBe(sends.seen[1])
+  })
+
+  it("is each send's own when two sends of one resendOf offer are lost at once", async () => {
+    const replica = replicaWith({ [LEDGER]: ledgerCanister(new Map()) })
+    const sends = expiries(replica.fetch)
+    const client = clientAs({ ...replica, fetch: sends.fetch }, alice)
+    const ledger = client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
+    const arg = { ...transferTo(BOB, 1n), created_at_time: 1_000n }
+    replica.dropNextReply()
+    const first = await ledger
+      .icrc1_transfer(arg)
+      .catch((caught: unknown) => caught)
+    const again = client.resendOf(first, ledger, "icrc1_transfer", {
+      dedupedBy: (sent) => sent.created_at_time,
+    })
+    replica.dropNextReply({ method: "icrc1_transfer", times: 2 })
+    // The same encoded argument goes out twice, concurrently.
+    const both = await Promise.all([
+      again?.send().catch((caught: unknown) => caught),
+      again?.send().catch((caught: unknown) => caught),
+    ])
+    expect(sends.seen).toHaveLength(3)
+    for (const error of both) {
+      expect(error).toMatchObject({ kind: "outcome_unknown" })
+      expect((error as { expiresAt?: bigint }).expiresAt).toBeDefined()
+    }
+  })
+
+  it("is the expiry of a call request whose wait was cancelled before its answer", async () => {
+    const replica = replicaWith({
+      [SHAPES]: serve<shapes.Actor>(shapes.actor, { address: ([s]) => s }),
+    })
+    const sends = expiries(replica.fetch)
+    // The call request reaches the replica, and its answer never comes.
+    const fetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      const response = sends.fetch(input, init)
+      if (!urlOf(input).endsWith("/call")) return response
+      return new Promise<Response>(() => {})
+    }
+    const client = clientAs({ ...replica, fetch }, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const { queryFn } = client.queryOptions(canister, "address", "a", {
+      update: "idempotent",
+    })
+    const controller = new AbortController()
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext).catch((caught: unknown) => caught)
+    await vi.waitFor(() => expect(sends.seen).toHaveLength(1))
+    controller.abort()
+    const error = await read
+    expect(error).toMatchObject({ kind: "cancelled", mayHaveExecuted: true })
+    expect((error as { expiresAt?: bigint }).expiresAt).toBe(sends.seen[0])
+  })
+
+  it("sends no call request once the signal aborted before it was signed", async () => {
+    const replica = replicaWith({
+      [SHAPES]: serve<shapes.Actor>(shapes.actor, { address: ([s]) => s }),
+    })
+    const sends = expiries(replica.fetch)
+    const client = clientAs({ ...replica, fetch: sends.fetch }, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const { queryFn } = client.queryOptions(canister, "address", "a", {
+      update: "idempotent",
+    })
+    const controller = new AbortController()
+    // Aborted while the caller's agent is fetched, before the request is built.
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext).catch((caught: unknown) => caught)
+    controller.abort()
+    expect(await read).toMatchObject({ kind: "cancelled" })
+    await sleep(50)
+    expect(sends.seen).toHaveLength(0)
+  })
+
+  it("is absent on an answered write, a refused one, and a read", async () => {
+    const { canister, replica } = shapesSetup({
+      bump: () => ({ tag: "err", value: "no" }),
+    })
+    const answered = await canister.bump(1n).catch((caught: unknown) => caught)
+    expect(answered).toMatchObject({ kind: "canister_err" })
+    expect(answered).not.toHaveProperty("expiresAt")
+
+    const refused = await canister
+      .bump("not a nat" as never)
+      .catch((caught: unknown) => caught)
+    expect(refused).toMatchObject({ kind: "invalid_args" })
+    expect(refused).not.toHaveProperty("expiresAt")
+
+    replica.refuseNext(429, 3)
+    const neverIn = await canister.bump(1n).catch((caught: unknown) => caught)
+    expect(neverIn).toMatchObject({ kind: "not_delivered" })
+    expect(neverIn).not.toHaveProperty("expiresAt")
+
+    replica.refuseNext(503, 3)
+    const read = await canister.one(1n).catch((caught: unknown) => caught)
+    expect(isReactorError(read)).toBe(true)
+    expect(read).not.toHaveProperty("expiresAt")
   })
 })
