@@ -97,6 +97,7 @@ import {
   isRetryable,
   retryUpdate,
   type CallMode,
+  type ReactorError,
 } from "./errors.js"
 import { toHex } from "./keys.js"
 import {
@@ -160,6 +161,21 @@ export function valuesOf(
   if (arity === 1) return [vars]
   if (arity === 0 && vars === undefined) return []
   return Array.isArray(vars) ? vars : [vars]
+}
+
+/** The `invalid_args` of arguments that do not encode, with the codec's issues. */
+export function notEncoded(
+  where: { readonly method: string; readonly canisterId: string },
+  encoded: Extract<EncodeResult, { ok: false }>
+): ReactorError {
+  const [first] = encoded.issues
+  return createReactorError("invalid_args", {
+    ...where,
+    reason: first
+      ? `the arguments could not be encoded: ${first.path}: ${first.message}`
+      : undefined,
+    issues: encoded.issues,
+  })
 }
 
 /** Where a call goes: a canister id, or the key segment of an unresolved name and why. */
@@ -323,16 +339,7 @@ async function run(
     throw unroutable(where, effectiveCanisterId(name, request.values))
   }
   const encoded = (request.encoded ??= encodeArgs(method.args, request.values))
-  if (!encoded.ok) {
-    const [first] = encoded.issues
-    throw createReactorError("invalid_args", {
-      ...where,
-      reason: first
-        ? `the arguments could not be encoded: ${first.path}: ${first.message}`
-        : undefined,
-      issues: encoded.issues,
-    })
-  }
+  if (!encoded.ok) throw notEncoded(where, encoded)
   // A re-send of an offered write goes out only as that write: anything else
   // would be a new write, which the canister has seen no dedupe key for.
   const sent = request.again

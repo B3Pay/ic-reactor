@@ -18,7 +18,8 @@ export default [
     path: "dist/index.js",
     // With client.time() (#885) on top of v4: measured 15,487 B, so the limit moved from 15,200 B to 15.54 kB.
     // With expiresAt (#888) on top of v4: measured 15,646 B, so the limit moved from 15,540 B to 15.7 kB.
-    limit: "15.7 kB",
+    // With client.encode() (#887) on top of v4: measured 15,774 B, so the limit moved from 15,700 B to 15.83 kB.
+    limit: "15.83 kB",
     gzip: true,
   },
 ]

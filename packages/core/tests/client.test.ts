@@ -110,6 +110,7 @@ describe("createClient options", () => {
       "caller",
       "canister",
       "dispose",
+      "encode",
       "func",
       "mutationOptions",
       "network",

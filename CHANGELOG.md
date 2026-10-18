@@ -45,6 +45,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Added
 
+- `client.encode(canister, method, vars)`: the Candid bytes a call of
+  `method` with `vars` sends, as a `Uint8Array`, for an ICRC-21 consent
+  request's `arg` or an audit log (#877). It uses the call path's own encoder
+  and variables rule, and variables that do not encode throw `invalid_args`
+  with the `issues` a call of them rejects with. It sends
+  nothing and needs no canister id.
+- `Resend.bytes`, on what `client.resendOf()` offers: the bytes the attempt
+  sent, which `send()` sends again; a copy on every read (#877).
+
+Both are members, so the export budget is unchanged.
+
+### Docs
+
+- The guide and the Writes page say how to get the bytes a write sends
+  (#877).
 - `ReactorError.expiresAt`: on a write that got no answer (`outcome_unknown`,
   or `cancelled` with `mayHaveExecuted: true`), the latest ingress expiry its
   sends were signed with, in nanoseconds since the epoch on the IC's clock

@@ -32,6 +32,7 @@ import {
   invoke,
   isWrite,
   prepareMethod,
+  notEncoded,
   valuesOf,
   type CallRequest,
   type ResolvedTarget,
@@ -47,6 +48,7 @@ import type { Caller, Client, ClientInternals } from "./client.js"
 import {
   classifyError,
   createReactorError,
+  fromCanister,
   isReactorError,
   retryQuery,
 } from "./errors.js"
@@ -68,6 +70,7 @@ export type Builders = Pick<
   | "queryOptions"
   | "mutationOptions"
   | "resendOf"
+  | "encode"
   | "func"
   | "time"
 >
@@ -615,12 +618,42 @@ export function createBuilders(
       return undefined
     }
     offered.set(arg, attempt)
+    const sent = (attempt.encoded as { bytes: Uint8Array }).bytes
     return {
       arg,
       from: caller.principal,
+      // A copy on every read: `send()` sends the attempt's own bytes, which
+      // nothing outside the client can reach to change.
+      get bytes() {
+        return sent.slice()
+      },
       // The attempt itself: its canister id and the bytes it sent.
       send: () => invoke(internals, attempt),
     }
+  }
+
+  /**
+   * The bytes a call of `method` with `vars` sends: the same arity rule and
+   * the same encoder as the call path, so they are those bytes, not a second
+   * encoding of the value.
+   */
+  const encode = (canister: unknown, method: unknown, vars: unknown) => {
+    const call = "client.encode()"
+    const record = recordOf(canister, internals, call)
+    const prepared = methodOf(record, method, call)
+    const encoded = encodeArgs(prepared.args, valuesOf(prepared, vars))
+    if (!encoded.ok) {
+      // Marked with the canister, as a call's error is, so that
+      // `isReactorError(error, canister, method)` reads its issues.
+      throw fromCanister(
+        notEncoded(
+          { method: prepared.name, canisterId: slotOf(record.resolve()) },
+          encoded
+        ),
+        canister as object
+      )
+    }
+    return encoded.bytes
   }
 
   const func = (funcSchema: unknown, ref: unknown) => {
@@ -741,6 +774,7 @@ export function createBuilders(
     queryOptions,
     mutationOptions,
     resendOf,
+    encode,
     func,
   } as unknown as Builders
 }

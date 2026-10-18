@@ -294,6 +294,11 @@ export function Send({ arg }: { arg: TransferArg }) {
   the first write's outcome is still unknown: read the state back, never
   ignore it as a plain `cancelled`. Never change an offered argument: build a new one for a new transfer. A method with no
   such key has no safe re-send: read the state back.
+- For the exact bytes a write will send, such as an ICRC-21 consent
+  request's `arg`, use `client.encode(ledger, "icrc1_transfer", arg)` (a
+  `Uint8Array`, made by the call's own encoder; variables that do not encode
+  throw `invalid_args`), never a second encoding of your own. An offered
+  re-send carries the bytes it sent as `again.bytes`.
 - A `canister_err` is a known outcome, so `resendOf` offers nothing after it.
   When the canister calls it temporary (an ICRC-1 `TemporarilyUnavailable`),
   send the same argument object again with `transfer.mutate(arg)`: with

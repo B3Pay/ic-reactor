@@ -586,6 +586,40 @@ export interface Client {
   ): Resend<VarsOf<A, M>, DataOf<A, M>> | undefined
 
   /**
+   * The Candid bytes a call of `method` with `vars` sends, as a `Uint8Array`:
+   * made by the call path's own encoder with its own variables rule (the
+   * value for one argument, the tuple for several, nothing for none), so
+   * they are the bytes that go out, not a second encoding. Pass them where
+   * the exact argument is wanted, such as an ICRC-21 consent request's `arg`:
+   *
+   * ```ts
+   * const arg = client.encode(ledger, "icrc1_transfer", transfer)
+   * const consent = await ledger.icrc21_canister_call_consent_message({
+   *   method: "icrc1_transfer",
+   *   arg,
+   *   user_preferences: preferences,
+   * })
+   * ```
+   *
+   * It sends nothing and needs no canister id, so a `{ name }` the `ic_env`
+   * cookie does not resolve encodes too.
+   *
+   * It checks only the variables: not the caller, the canister id or
+   * whether the client is disposed, which a call checks before it encodes.
+   *
+   * @throws ReactorError `invalid_args` for variables that do not encode,
+   * with the `issues` and `reason` a call rejects with when its variables are
+   * all that is wrong.
+   * @throws TypeError for a canister of another client, or a method the
+   * service does not have.
+   */
+  encode<A, M extends keyof A & string>(
+    canister: Canister<A>,
+    method: M,
+    vars: VarsOf<A, M>
+  ): Uint8Array
+
+  /**
    * An async function for a func reference a reply carried, such as an ICRC
    * ledger's archive callback:
    *

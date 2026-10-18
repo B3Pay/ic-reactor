@@ -449,6 +449,12 @@ export interface Resend<V, D> {
   /** The principal that sent the attempt, as text: the only caller a re-send goes out as. */
   readonly from: string
   /**
+   * The Candid bytes the attempt sent, which `send()` sends again. A getter
+   * that returns a new copy on every read, so changing it changes nothing
+   * that is sent: read it once and keep the copy.
+   */
+  readonly bytes: Uint8Array
+  /**
    * Sends again now the bytes the attempt sent, to the canister id it went
    * to (for `aaaaa-aa`, routed by the same effective canister id), as `from`, whatever became of `arg` or of a `{ name }` since. If
    * someone else is the caller by then, it rejects `cancelled`
