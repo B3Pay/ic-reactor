@@ -1,0 +1,5 @@
+{
+  "file": "src/types.ts",
+  "search": "export type VarsOf<A, M extends keyof A> = 0 extends 1 & M\n  ? AnyVars\n  : 0 extends 1 & A[M]\n    ? AnyVars\n    : Vars<ArgsOf<A[M]>>",
+  "replace": "export type VarsOf<A, M extends keyof A> = Vars<ArgsOf<A[M]>>"
+}

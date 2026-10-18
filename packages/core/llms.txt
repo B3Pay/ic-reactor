@@ -20,6 +20,13 @@ import { actor, type Actor } from "./generated/icrc1"
 One import path per name: Candid values only from `@candid-core/schema`,
 `skipToken` and the hooks only from TanStack Query.
 
+`@ic-reactor/core` and `@ic-reactor/react` are ES modules only. A Node
+project needs `"type": "module"` in its `package.json`
+(`npm pkg set type=module`), or a bundler; `npx tsx` with
+top-level `await` fails in a CommonJS package. Under TypeScript's
+`moduleResolution: "nodenext"`, import local files with their `.js`
+extension (`./generated/icrc1.js`).
+
 The generated module (from `candid-core-cli gen` or `@ic-reactor/vite-plugin`;
 do not edit it) exports a type and schema per Candid type, the service schema
 `actor`, and `type Actor`.
@@ -37,6 +44,13 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
 
 `client.canister()` returns the same object each time: safe in render.
 
+With React, install `@tanstack/query-core` at the exact version your
+`@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
+dependencies`), and check that `npm ls @tanstack/query-core` shows one copy.
+With two copies, core and the hooks each have their own `skipToken`:
+`client.queryOptions()` throws a `TypeError` for the hooks' one, and in
+development `ReactorProvider` throws when it is handed such a client.
+
 `network` and the root key:
 
 - `"ic"`: mainnet (`https://icp-api.io`) and its built-in root key.
@@ -48,6 +62,16 @@ export const ledger = client.canister<Actor>(actor, { id: "ryjl3-tyaaa-aaaaa-aaa
 - `"env"`: the page's network. Canisters can be named, `{ name: "backend" }`,
   from the `ic_env` cookie, believed only on a local replica or with
   `allowEnvConfig: true`. A server has no cookie: use `{ id }` there.
+  `client.canisterId({ name })` says, without a call, what a name resolves
+  to: `{ ok: true, id }`, or `{ ok: false, reason, message }` with `reason`
+  `"no_browser"`, `"untrusted_host"` or `"absent"`, and the resolver's reason
+  text, which a call's error includes after the method and target.
+- Without the Vite plugin (Next.js, webpack, esbuild) there is no cookie and no
+  `/api` proxy, so `"env"` and `{ name }` do not work on a local network. Use
+  `network: "local"` with `{ id }` from a build-time variable
+  (`NEXT_PUBLIC_BACKEND_ID`, written from
+  `icp canister status -e local -i backend` into
+  `.env.development.local`, which only `next dev` reads).
 
 Who calls (exactly one):
 
@@ -85,7 +109,11 @@ current when it was made, or not at all.
 One client per browser tab, or per request on a server. In React,
 `<ReactorProvider client={() => createClient(...)}>` builds it once per
 mounted tree and disposes it on unmount; a module-scope client passed as
-`client={() => client}` is borrowed, never disposed. Inside, `useClient()`
+`client={() => client}` is borrowed, never disposed. A client made outside a
+provider, or kept across its unmount, is the app's to release with
+`client.dispose()` (calling it again does nothing; later calls reject
+`cancelled`, code `client_disposed`, and send nothing); one that lives as long
+as the page needs none. Inside, `useClient()`
 returns it (as anonymous while hydrating) and `useAuth()` returns
 `{ status, principal, signIn, signOut }`, `"anonymous"` on a server and in a
 hydrating page's first render.
@@ -157,7 +185,10 @@ const local = new Intl.NumberFormat(undefined, { maximumFractionDigits: 8 }).for
 ```
 
 `parseUnits` throws for text that is not a plain decimal (`"1e3"`, `"1,5"`),
-a negative, or excess fraction digits: refuse that input. A cap is the Candid
+a negative, or more significant fraction digits than `decimals`: refuse that
+input. Trailing zeros, `"5."`, `".5"` and whitespace around the number are
+accepted (`"1.500"` at 2 decimals is `150n`), so validate the field with
+`parseUnits` itself, not another parser. A cap is the Candid
 type's: a `nat64` field refuses 2^64 at encoding (`invalid_args`); an ICRC-1
 `amount` is a `nat`, with none.
 
@@ -205,12 +236,21 @@ not compile (an `Actor` written by hand says no mode: it throws at run time).
 An update that answers the same however often it runs (ckBTC's
 `get_btc_address`) opts in with a fourth argument, `{ update: "idempotent" }`,
 after the arguments (`undefined` when it takes none); a oneway never compiles.
+Such a read is still an update, so a signed-out or `"anonymous"` client
+refuses it (`unauthenticated`) and sends nothing. Read an ICRC-21 consent
+message as the caller who will send the write: the message can depend on the
+caller (the DFINITY ICRC-1 ledger names the sender as `From`).
 A method TypeScript cannot tell is a read does not compile: a type parameter
 (`M extends keyof A & string`), a union that may name an update
 (`keyof Actor & string`), or any method of a `Canister<A>` with a generic `A`.
 Give the type arguments,
 `client.queryOptions<A, any>(canister, method, vars)`, which keeps the
-run-time check and types the data `unknown`.
+run-time check and types the data `unknown`. The variables follow the same
+rule, checked at run time: the value for one argument, a tuple for several,
+`undefined` or `[]` for none (`[arg]` compiles but is refused
+`invalid_args`). `mutationOptions`, `queryKey` and `resendOf` take
+`<A, any>` the same way; for a generic `A` only `queryOptions` widens the
+variables, so cast them for the other three.
 The target `{ id, certified: true }` certifies `query` replies.
 
 ## Writes
@@ -243,6 +283,9 @@ export function Send({ arg }: { arg: TransferArg }) {
 - Send the same write again after `mayHaveExecuted: true` only to a method
   that runs the same argument from the same sender at most once, such as an
   ICRC-1 transfer with `created_at_time` set (it answers `Duplicate`).
+  Stamp that key from the IC's clock, `await client.time(ledger)` (a certified
+  `bigint` of nanoseconds), not from `Date.now()`. That time moves about once
+  a second, so give each transfer its own `memo` too.
   `client.resendOf(transfer.error, ledger, "icrc1_transfer", { dedupedBy: (arg) => arg.created_at_time })`
   is `undefined` unless that write's outcome is unknown, `dedupedBy` finds a
   key (not `null`) in its argument, the argument is unchanged since it was
@@ -255,6 +298,18 @@ export function Send({ arg }: { arg: TransferArg }) {
   the first write's outcome is still unknown: read the state back, never
   ignore it as a plain `cancelled`. Never change an offered argument: build a new one for a new transfer. A method with no
   such key has no safe re-send: read the state back.
+- For the exact bytes a write will send, such as an ICRC-21 consent
+  request's `arg`, use `client.encode(ledger, "icrc1_transfer", arg)` (a
+  `Uint8Array`, made by the call's own encoder; variables that do not encode
+  throw `invalid_args`), never a second encoding of your own. An offered
+  re-send carries the bytes it sent as `again.bytes`.
+- A `canister_err` is a known outcome, so `resendOf` offers nothing after it.
+  When the canister calls it temporary (an ICRC-1 `TemporarilyUnavailable`),
+  send the same argument object again with `transfer.mutate(arg)`: with
+  `created_at_time` set, that is the same bytes and the same key, answered
+  `Duplicate` if an earlier attempt ran.
+- To keep an offer in state, type it from the method:
+  `NonNullable<ReturnType<typeof client.resendOf<Actor, "icrc1_transfer">>>`.
 - Call update methods only from `useMutation` or directly, never from
   `useQuery`; call query methods from `useQuery` or directly.
 
@@ -279,9 +334,28 @@ have executed:
 | the canister returned `Err`                                                      | `canister_err`                    | no                |
 | the caller changed, the call was aborted, or an offered re-send would go elsewhere (`target_changed`) | `cancelled` | no (an aborted write: yes) |
 
+A write that got no answer (`outcome_unknown`, or `cancelled` with
+`mayHaveExecuted: true`) carries `error.expiresAt`: the latest ingress expiry
+its sends were signed with, a `bigint` of nanoseconds on the IC's clock
+(about five minutes after the send). Once the IC's time is past it, no send
+of that write can still start running. For a method that commits without
+awaiting another canister (an ICRC-1 transfer), a certified read-back of
+state newer than that which finds nothing is final. Compare with a margin,
+since the host's clock may differ from the IC's.
+
 On the management canister (`aaaaa-aa`), codes 1 to 3 prove nothing: a write
 there may have executed. A query changes nothing, so a failed read never "may
 have executed".
+
+How long a call waits: neither the client nor the agent puts a timeout on an
+HTTP request (the call or query, or a `read_state` that polls), so a request
+that gets no answer waits as long as the `fetch` in use does. An accepted
+update is polled for about five minutes (a deadline checked when a poll is
+answered) before it rejects `outcome_unknown`. A read made with `queryOptions` stops
+waiting at any point when TanStack Query cancels it
+(`queryClient.cancelQueries(...)`, or its last observer unmounts), and
+rejects `cancelled` (with `mayHaveExecuted: true` for an update read with
+`{ update: "idempotent" }` whose request went out).
 
 ## Outside React
 

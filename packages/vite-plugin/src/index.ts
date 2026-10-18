@@ -248,6 +248,61 @@ export interface IcReactorPluginOptions {
    * `"false"`) throws when the config loads.
    */
   failOnError?: boolean
+  /**
+   * Called once for each module a run generated, after the generator wrote
+   * or checked it, in `vite build` and `vite dev` alike: the place for a
+   * step that reads the generated output (a module's envelope, say) and must
+   * run after every generation.
+   *
+   * ```ts
+   * icReactor({
+   *   canisters: { ledger: { didFile: "did/ledger.did" } },
+   *   onGenerated: async ({ names, envelope, signal }) => {
+   *     // read the envelope, write derived files, or throw to fail the run
+   *   },
+   * })
+   * ```
+   *
+   * - `names`: the canisters the module is for. Canisters that share a
+   *   `didFile` and an `outDir` share one module and one call.
+   * - `didFile`, `module`, `envelope`: absolute paths of the `.did` it was
+   *   generated from, the module and its envelope. The module and the
+   *   envelope are on disk when it is called.
+   * - `status`: `"written"` when the generator wrote the module,
+   *   `"unchanged"` when it found the module already as it would write it.
+   * - `signal`: aborted when the build or dev server the run belongs to
+   *   closes. The run then stops waiting for the hook and reports nothing,
+   *   whatever the hook does, and the next run generates the module again
+   *   and calls the hook again.
+   *
+   * It runs in the plugin's one queue of runs, so it never overlaps a
+   * generation, and a build's `buildStart` waits for it: under `vite build`
+   * a hook that never settles holds the build until it closes. It is not
+   * called for a canister that failed or was refused, for a run whose
+   * `.did` was written while the generator read it (the run takes nothing of
+   * it), nor for a run that does not generate the module again: the second
+   * `buildStart` of Vite 6 and later, and each rebuild of
+   * `vite build --watch` not caused by a `.did`. A save under `vite dev`
+   * always generates again, so a save of the same text calls it, with
+   * `"unchanged"`. A `.did` written while the hook runs is caught after it:
+   * a build then fails as changed during the build, and a dev server
+   * generates it again and calls the hook again.
+   *
+   * A throw or a rejection fails the module's canisters as a failed
+   * generation does: a build fails, unless `failOnError` is `false`, and
+   * otherwise the failure is logged and, under `vite dev`, shown in the
+   * error overlay. The next run generates those canisters again, and calls
+   * the hook again. A value given that is not a function throws when the
+   * config loads.
+   */
+  onGenerated?: (generated: {
+    readonly names: readonly string[]
+    readonly didFile: string
+    readonly module: string
+    readonly envelope: string
+    readonly status: "written" | "unchanged"
+    readonly signal: AbortSignal
+  }) => void | Promise<void>
 }
 
 /** The environment variable that asks for a `didFile` to be fetched again. */
@@ -500,6 +555,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   const {
     injectEnvironment,
     failOnError,
+    onGenerated,
     names,
     uncarriedNames,
     configuredCanisterIds,
@@ -856,6 +912,52 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
           log.warn(
             `ic-reactor: ${names}: omitted ${kind} ${what} (${reason}${via ? ` via ${via}` : ""})`
           )
+        }
+        if (onGenerated === undefined || members.length === 0) continue
+        // Inside the run, and so inside the queue of runs: the next run waits
+        // for it, and so does a build's `buildStart`.
+        const { module, envelope } = outputsOf(generationOf(members[0]))
+        // A close abandons a hook still running, as it kills a generator: the
+        // run waits for the hook or for the close, whichever comes first, so a
+        // hook that never settles cannot hold the queue past its server.
+        let stopWaiting = () => {}
+        const closed = new Promise<void>((resolve) => {
+          stopWaiting = () => signal.removeEventListener("abort", onAbort)
+          const onAbort = () => resolve()
+          signal.addEventListener("abort", onAbort, { once: true })
+        })
+        try {
+          const hook = Promise.resolve(
+            onGenerated({
+              names: members.map(({ name }) => name),
+              didFile: didPath(members[0]),
+              module,
+              envelope,
+              status: outcome.status,
+              signal,
+            })
+          )
+          // Settled after an abandoned run, it is reported nowhere.
+          hook.catch(() => undefined)
+          await Promise.race([hook, closed])
+        } catch (error) {
+          // Not recorded as generated, so the next run generates the
+          // canisters again and calls the hook again.
+          for (const canister of members) {
+            generatedFrom.delete(canister.name)
+            failures.push({
+              canister,
+              message: `onGenerated failed for ${relativeToRoot(module)}: ${describe(error)}`,
+            })
+          }
+        } finally {
+          stopWaiting()
+        }
+        if (signal.aborted) {
+          // The hook may not have finished: the next run, a restarted
+          // server's included, generates the canisters again and calls it.
+          for (const canister of members) generatedFrom.delete(canister.name)
+          return undefined
         }
       }
       return failures
