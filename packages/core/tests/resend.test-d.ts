@@ -17,8 +17,8 @@ const ledger = client.canister<icrc1.Actor>(icrc1.actor, {
 })
 declare const caught: unknown
 
-// The offer of a transfer: its argument, the sender, and a send that resolves
-// with the block index, the `Ok` payload.
+// The offer of a transfer: its argument, the sender, the bytes it sent
+// (#877), and a send that resolves with the block index, the `Ok` payload.
 const again = client.resendOf(caught, ledger, "icrc1_transfer", {
   dedupedBy: (arg) => {
     expectTypeOf(arg).toEqualTypeOf<icrc1.TransferArg>()
@@ -29,6 +29,7 @@ expectTypeOf(again).toEqualTypeOf<
   | {
       readonly arg: icrc1.TransferArg
       readonly from: string
+      readonly bytes: Uint8Array
       send(): Promise<bigint>
     }
   | undefined
@@ -36,7 +37,26 @@ expectTypeOf(again).toEqualTypeOf<
 if (again !== undefined) {
   expectTypeOf(again.arg).toEqualTypeOf<icrc1.TransferArg>()
   expectTypeOf(again.send()).toEqualTypeOf<Promise<bigint>>()
+  expectTypeOf(again.bytes).toEqualTypeOf<Uint8Array>()
 }
+
+// client.encode() takes the variables mutationOptions takes for the same
+// method (#877), and returns the bytes.
+declare const transfer: icrc1.TransferArg
+expectTypeOf(
+  client.encode(ledger, "icrc1_transfer", transfer)
+).toEqualTypeOf<Uint8Array>()
+expectTypeOf(client.encode<icrc1.Actor, "icrc1_transfer">)
+  .parameter(2)
+  .toEqualTypeOf<
+    Parameters<
+      NonNullable<
+        ReturnType<
+          typeof client.mutationOptions<icrc1.Actor, "icrc1_transfer">
+        >["mutationFn"]
+      >
+    >[0]
+  >()
 
 // A mutation's error and variables go in and come back as they are: the
 // offer's argument is what `mutate` takes.

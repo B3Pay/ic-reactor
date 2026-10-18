@@ -53,6 +53,11 @@ export interface LocalEnvironmentState {
    * detection does not run again.
    */
   complete: boolean
+  /**
+   * The last detection could not start `icp` at all, so the network was never
+   * asked about.
+   */
+  icpNotFound: boolean
 }
 
 export interface LocalEnvironmentOptions {
@@ -110,7 +115,8 @@ export function createLocalEnvironment(
   let running: Promise<LocalEnvironmentState> | undefined
 
   const toState = (
-    environment: IcEnvironment | null
+    environment: IcEnvironment | null,
+    icpNotFound = false
   ): LocalEnvironmentState => {
     // By name in a `Map`, as everywhere a canister's name is a key: a canister
     // named `__proto__` keeps its ID, and one named `toString` or
@@ -147,19 +153,19 @@ export function createLocalEnvironment(
       proxyTarget: environment?.proxyTarget ?? DEFAULT_LOCAL_REPLICA,
       missingCanisterIds,
       complete: environment !== null && missingCanisterIds.length === 0,
+      icpNotFound: environment === null && icpNotFound,
     }
   }
 
   const run = async (): Promise<LocalEnvironmentState> => {
     const previous = state
     try {
-      const { environment, diagnostics } = await getIcEnvironmentInfo(
-        lookupNames,
-        projectRoot
-      )
+      const { environment, diagnostics, icpNotFound } =
+        await getIcEnvironmentInfo(lookupNames, projectRoot)
       diagnostics.forEach(onDiagnostic)
       state = toState(
-        mergeDetections(previous?.environment ?? null, environment)
+        mergeDetections(previous?.environment ?? null, environment),
+        icpNotFound
       )
     } catch (error) {
       // getIcEnvironmentInfo reports failures in its result. This is for
