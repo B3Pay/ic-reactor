@@ -279,6 +279,9 @@ export function Send({ arg }: { arg: TransferArg }) {
 - Send the same write again after `mayHaveExecuted: true` only to a method
   that runs the same argument from the same sender at most once, such as an
   ICRC-1 transfer with `created_at_time` set (it answers `Duplicate`).
+  Stamp that key from the IC's clock, `await client.time(ledger)` (a certified
+  `bigint` of nanoseconds), not from `Date.now()`. That time moves about once
+  a second, so give each transfer its own `memo` too.
   `client.resendOf(transfer.error, ledger, "icrc1_transfer", { dedupedBy: (arg) => arg.created_at_time })`
   is `undefined` unless that write's outcome is unknown, `dedupedBy` finds a
   key (not `null`) in its argument, the argument is unchanged since it was

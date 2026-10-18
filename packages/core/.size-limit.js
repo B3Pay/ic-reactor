@@ -16,7 +16,8 @@ export default [
   {
     name: "Core Library",
     path: "dist/index.js",
-    limit: "15.2 kB",
+    // With client.time() (#885) on top of v4: measured 15,487 B, so the limit moved from 15,200 B to 15.54 kB.
+    limit: "15.54 kB",
     gzip: true,
   },
 ]

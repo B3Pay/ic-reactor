@@ -45,6 +45,20 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Added
 
+- `client.time(canister)`: the IC's time in nanoseconds since the epoch, as a
+  `bigint`, the unit of an ICRC-1 `created_at_time` (#876). It reads the
+  `time` path with a `read_state` routed by the canister's subnet and verifies
+  the certificate against the network's root key, as every reply is; a
+  certificate that does not verify rejects `not_delivered`. The certificate's
+  age is not compared with the host's clock, the clock this member replaces.
+  It needs no signed-in caller. The management canister `aaaaa-aa` routes no
+  `read_state`, so it is refused `invalid_args` (`management_canister`) with
+  nothing sent. It is a `Client` member: the export budget is unchanged.
+
+### Docs
+
+- The guide, Writes and Errors stamp `created_at_time` from
+  `client.time(ledger)` instead of `Date.now()` (#876).
 - `createTestClient().dropNextReply({ method, canister, times })`
   (`@ic-reactor/core/testing`): loses the replies of the next `times` call
   requests that name `method` and are addressed to `canister`, with

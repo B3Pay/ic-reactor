@@ -147,6 +147,15 @@ export interface FakeReplicaOptions {
    * does not exist.
    */
   canisters?: Record<string, FakeCanister>
+  /**
+   * The time its certificates carry, in nanoseconds since the epoch: the
+   * IC's clock as an agent reads it from the `time` path. Internal, for the
+   * tests of `client.time()`; every other check the fake makes reads the
+   * host's clock.
+   *
+   * @defaultValue The host's clock.
+   */
+  now?: () => bigint
 }
 
 /**
@@ -699,7 +708,10 @@ function buildFakeReplica(
   }
 
   async function certify(entries: Array<[string, TreeNode]>) {
-    const tree = toHashTree([...entries, ["time", leb128(nowNanos())]])
+    const tree = toHashTree([
+      ...entries,
+      ["time", leb128((options.now ?? nowNanos)())],
+    ])
     const rootHash = await reconstruct(tree)
     const message = bls12_381.shortSignatures.hash(
       concat(IC_STATE_ROOT_DOMAIN_SEPARATOR, rootHash)

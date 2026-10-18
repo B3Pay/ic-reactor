@@ -24,6 +24,8 @@ import {
   type QueryFunctionContext,
   type QueryKey,
 } from "@tanstack/query-core"
+import { lookupResultToBuffer } from "@icp-sdk/core/agent"
+import { Principal } from "@icp-sdk/core/principal"
 import {
   UNKNOWN_WRITES,
   differs,
@@ -42,7 +44,12 @@ import {
   type CanisterRecord,
 } from "./canister.js"
 import type { Caller, Client, ClientInternals } from "./client.js"
-import { isReactorError, retryQuery } from "./errors.js"
+import {
+  classifyError,
+  createReactorError,
+  isReactorError,
+  retryQuery,
+} from "./errors.js"
 import {
   CERTIFIED,
   INVALID,
@@ -62,6 +69,7 @@ export type Builders = Pick<
   | "mutationOptions"
   | "resendOf"
   | "func"
+  | "time"
 >
 
 /** What an update read with `{ update: "idempotent" }` adds to its options (DECISIONS Q2). */
@@ -98,6 +106,21 @@ function readQueryOptionsArg(options: unknown): boolean {
   throw new TypeError(
     `[ic-reactor] client.queryOptions() takes { update: "idempotent" } as its fourth argument, or nothing; got ${describe(options)}.`
   )
+}
+
+/** The `time` path of the state tree. */
+const TIME_PATH = [new TextEncoder().encode("time")]
+
+/** An unsigned LEB128 number, as the state tree writes `time`. */
+function readLeb128(bytes: Uint8Array): bigint {
+  let value = 0n
+  let shift = 0n
+  for (const byte of bytes) {
+    value |= BigInt(byte & 0x7f) << shift
+    if ((byte & 0x80) === 0) return value
+    shift += 7n
+  }
+  throw new Error("the certificate's time is not a complete LEB128 number")
 }
 
 /**
@@ -650,8 +673,70 @@ export function createBuilders(
       })
   }
 
+  /**
+   * The IC's time, from a certified `read_state` of the `time` path routed by
+   * the canister's subnet, sent by the caller's agent. The certificate's
+   * signature is verified against the network's root key; its freshness is
+   * not compared with the host clock, which may be the clock that is wrong
+   * (as `HttpAgent.syncTime()` reads it).
+   */
+  const time = async (canister: unknown): Promise<bigint> => {
+    const record = recordOf(canister, internals, "client.time()")
+    const target = record.resolve()
+    const method = "read_state"
+    if (!target.ok) {
+      throw createReactorError("invalid_args", {
+        method,
+        canisterId: target.slot,
+        code: "canister_id_unresolved",
+        reason: target.message,
+      })
+    }
+    // A read_state is routed by a canister in a subnet's range, and the
+    // management canister is in none: the IC would refuse it.
+    if (target.id === "aaaaa-aa") {
+      throw createReactorError("invalid_args", {
+        method,
+        canisterId: target.id,
+        code: "management_canister",
+        reason: "the management canister routes no read_state",
+      })
+    }
+    const where = { method, canisterId: target.id }
+    const agent = await internals.agentFor(internals.current().principal, where)
+    // As in the call path: a dispose() in the microtask after agentFor's own
+    // check still sends nothing.
+    if (internals.disposed()) {
+      throw createReactorError("cancelled", {
+        ...where,
+        code: "client_disposed",
+        reason: "the client was disposed before the time was read",
+      })
+    }
+    try {
+      // The agent verifies the certificate against the network's root key
+      // and the canister's subnet delegation. Its age is not checked: that
+      // would compare it with the host's clock, the clock this replaces, and
+      // a host clock out by minutes would first make the agent re-sync.
+      const { verifiedCertificate } = await agent.readState(
+        { canisterId: Principal.fromText(target.id) },
+        { paths: [TIME_PATH], disableTimeVerification: true }
+      )
+      const raw = lookupResultToBuffer(
+        verifiedCertificate.lookup_path(TIME_PATH)
+      )
+      if (raw === undefined) {
+        throw new Error("the certificate holds no time")
+      }
+      return readLeb128(raw)
+    } catch (error) {
+      throw classifyError(error, { ...where, mode: "query" })
+    }
+  }
+
   return {
     canister: canisterFactory(internals),
+    time,
     queryKey,
     queryOptions,
     mutationOptions,

@@ -22,7 +22,8 @@ export default [
     // 31 B.
     name: "App: { createClient } from @ic-reactor/core, peers included",
     path: "core.js",
-    limit: "90.2 kB",
+    // With client.time() (#885) on top of v4: measured 90,472 B, so the limit moved from 90,200 B to 90.53 kB.
+    limit: "90.53 kB",
     gzip: true,
   },
   {
@@ -34,7 +35,8 @@ export default [
     // app ships it with or without ic-reactor.
     name: "App: createClient, ReactorProvider and useClient, peers included, React left out",
     path: "react.js",
-    limit: "91.5 kB",
+    // With client.time() (#885) on top of v4: measured 91,763 B, so the limit moved from 91,500 B to 91.82 kB.
+    limit: "91.82 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },
