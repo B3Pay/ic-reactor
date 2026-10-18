@@ -17,6 +17,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### @ic-reactor/core
 
+#### Changed
+
+- `AuthLike`'s `getStatus().state` takes any string beside the four states
+  of `@icp-sdk/auth` 10, so an `@icp-sdk/auth` release that adds a session
+  state does not stop `auth: (network) => new AuthClient(network)` compiling.
+  The client already called anonymously in such a state; `authState()` reads
+  it as `"anonymous"`. A weekly CI job type-checks core and runs the core and
+  react tests against `@icp-sdk/auth@latest`. Code that switches over
+  `getStatus().state` exhaustively needs a `default` (#911).
+
 #### Fixed
 
 - A reply over about a million bytes decodes. candid-core charges a blob one

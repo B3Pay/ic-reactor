@@ -19,8 +19,11 @@ under another.
 
 ## Internet Identity with @icp-sdk/auth 10
 
-The `AuthClient` of `@icp-sdk/auth` 10 is an `AuthLike` as it is. Pass a
-factory that builds one:
+The `AuthClient` of `@icp-sdk/auth` 10 is an `AuthLike` as it is. The
+supported range is `^10.0.1`, and a weekly CI job checks the newest release
+against `AuthLike`. A later release whose session has a state the client does
+not know still compiles: the client calls anonymously in that state, and
+`useAuth()` reads it as `"anonymous"`. Pass a factory that builds one:
 
 ```sh
 npm install @icp-sdk/auth
@@ -185,7 +188,12 @@ interface AuthLike {
   getPrincipal(): { toText(): string } | undefined
   getStatus(): {
     readonly state:
-      "signed-in" | "signed-in-elsewhere" | "expired" | "signed-out"
+      | "signed-in"
+      | "signed-in-elsewhere"
+      | "expired"
+      | "signed-out"
+      // A state a later @icp-sdk/auth adds: the client calls anonymously.
+      | (string & {})
   }
   getIdentity(): Promise<Identity>
   subscribe(listener: () => void): () => void
