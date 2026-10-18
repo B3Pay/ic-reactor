@@ -154,6 +154,25 @@ Two rules sit behind the table.
   every other canister, codes 1 to 3 prove no canister code ran. For
   `aaaaa-aa` they prove nothing, so an update there may have executed.
 
+### How long a call waits
+
+Neither the client nor the agent puts a timeout on an HTTP request. A request
+that gets no HTTP answer, from a proxy that holds it say, waits as long as the
+`fetch` in use waits. That holds for the call or query request, and for each
+`read_state` request that polls for an accepted call's answer.
+
+An update (or a certified read) the replica accepted with a 202 is polled for
+with `read_state` for about five minutes in all, then an update rejects
+`outcome_unknown`. That deadline is checked only when a poll is answered: a
+`read_state` request that gets no answer is not cut short by it.
+
+A read made with `client.queryOptions()` stops waiting at any of these points
+as soon as TanStack Query cancels it (`queryClient.cancelQueries(...)`, or its
+last observer unmounts), and rejects `cancelled`. Its `mayHaveExecuted` is
+`false`, except for an update read with `{ update: "idempotent" }` whose call
+request had gone out: that one may have run. The request itself is not torn
+down; nobody waits for its answer.
+
 The errors the client makes itself, without an agent error to classify, are
 simpler:
 

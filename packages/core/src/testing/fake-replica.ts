@@ -214,8 +214,18 @@ export interface FakeReplica {
    * cannot learn the outcome by polling. A real replica would still answer a
    * `read_state` for a request id it holds: the fake models a network
    * partition for that one request id, so the call stays outcome-unknown.
+   *
+   * With no argument it loses the reply of whatever call request comes next,
+   * a certified read or an update read included. Given {@link FakeRefusal}
+   * options, it loses only the replies of the next `times` call requests that
+   * name `method` and are addressed to `canister` (each one that is given),
+   * and lets every other request through, with the matching rules of
+   * {@link FakeReplica.refuseNext}. A request that several armed drops match
+   * uses up the one armed first.
+   *
+   * @param which - Which call requests to lose the reply of, and how many.
    */
-  dropNextReply(): void
+  dropNextReply(which?: FakeRefusal): void
   /**
    * Answers the next `times` canister requests (a `query` or a `call`) with an
    * HTTP error `status` before any canister sees them, as a gateway or a
@@ -268,6 +278,87 @@ export interface FakeRefusal {
 
 /** The options of {@link FakeRefusal}, for the message of one that is not. */
 const REFUSAL_OPTIONS = ["method", "canister", "times"] as const
+
+/** An armed fault: the requests it matches, and how many it has left. */
+interface Armed {
+  readonly method: string | undefined
+  readonly canister: string | undefined
+  left: number
+}
+
+/**
+ * Checks the options of `refuseNext` or `dropNextReply`, and returns what
+ * they match, with the canister id in its canonical text.
+ */
+function readMatch(call: string, options: FakeRefusal): Armed {
+  if (
+    typeof options !== "object" ||
+    options === null ||
+    Array.isArray(options)
+  ) {
+    throw new TypeError(
+      `${call}() takes { ${REFUSAL_OPTIONS.join(", ")} }, got ${typeof options}.`
+    )
+  }
+  const unknown = Object.keys(options).filter(
+    (key) => !(REFUSAL_OPTIONS as readonly string[]).includes(key)
+  )
+  if (unknown.length > 0) {
+    throw new TypeError(
+      `${call}() has no option ${unknown.join(", ")}. Its options: ${REFUSAL_OPTIONS.join(", ")}.`
+    )
+  }
+  const { method, canister, times = 1 } = options
+  if (!Number.isInteger(times) || times < 1) {
+    throw new RangeError(
+      `${call}: \`times\` is ${times}, not a count of at least 1`
+    )
+  }
+  if (method !== undefined && (typeof method !== "string" || !method)) {
+    throw new TypeError(
+      `${call}: \`method\` is the name of a canister method, got ${
+        typeof method === "string" ? '""' : typeof method
+      }`
+    )
+  }
+  let canisterId: string | undefined
+  if (canister !== undefined) {
+    try {
+      canisterId = Principal.fromText(canister).toText()
+    } catch {
+      throw new TypeError(
+        `${call}: \`canister\` is a canister id, such as "ryjl3-tyaaa-aaaaa-aaaba-cai" or "aaaaa-aa", got ${
+          typeof canister === "string"
+            ? JSON.stringify(canister)
+            : typeof canister
+        }`
+      )
+    }
+  }
+  return { method, canister: canisterId, left: times }
+}
+
+/**
+ * The first fault in `armed` that a request for `method` on `canisterId`
+ * matches, with one use taken from it (and removed once it has none left);
+ * `undefined` when none matches.
+ */
+function useUp<T extends Armed>(
+  armed: T[],
+  canisterId: string,
+  method: string | undefined
+): T | undefined {
+  const index = armed.findIndex(
+    (fault) =>
+      (fault.method === undefined || fault.method === method) &&
+      (fault.canister === undefined || fault.canister === canisterId)
+  )
+  if (index === -1) return undefined
+  const fault = armed[index]
+  fault.left -= 1
+  if (fault.left === 0) armed.splice(index, 1)
+  return fault
+}
 
 /** A fake replica installed by {@link installFakeReplica}. */
 export interface InstalledFakeReplica extends FakeReplica {
@@ -602,16 +693,10 @@ function buildFakeReplica(
   const nodeKey = new Uint8Array(node.getPublicKey().toDer())
   const nodeId = Principal.selfAuthenticating(nodeKey)
 
-  // The fault hooks' state: how many update replies are still to be lost,
-  // the refusals still armed, in the order they were armed, and the calls
-  // whose reply was lost.
-  let repliesToLose = 0
-  const refusals: Array<{
-    readonly status: number
-    readonly method: string | undefined
-    readonly canister: string | undefined
-    left: number
-  }> = []
+  // The fault hooks' state: the drops and the refusals still armed, each in
+  // the order they were armed, and the calls whose reply was lost.
+  const drops: Armed[] = []
+  const refusals: Array<Armed & { readonly status: number }> = []
   const lostRequests = new Set<string>()
 
   /**
@@ -619,16 +704,7 @@ function buildFakeReplica(
    * refusal it matches, which it uses up; `undefined` to let it through.
    */
   function refusalFor(canisterId: string, method: string | undefined) {
-    const index = refusals.findIndex(
-      (refusal) =>
-        (refusal.method === undefined || refusal.method === method) &&
-        (refusal.canister === undefined || refusal.canister === canisterId)
-    )
-    if (index === -1) return undefined
-    const refusal = refusals[index]
-    refusal.left -= 1
-    if (refusal.left === 0) refusals.splice(index, 1)
-    return refusal.status
+    return useUp(refusals, canisterId, method)?.status
   }
 
   async function certify(entries: Array<[string, TreeNode]>) {
@@ -817,11 +893,8 @@ function buildFakeReplica(
     // `readsLostRequest`). That models a partition for that one request id,
     // not what a replica does, which would still answer a `read_state`.
     const resent = lostRequests.has(requestId)
-    const lose = resent || repliesToLose > 0
-    if (lose && !resent) {
-      repliesToLose -= 1
-      lostRequests.add(requestId)
-    }
+    const lose = resent || useUp(drops, canisterId, method_name) !== undefined
+    if (lose && !resent) lostRequests.add(requestId)
     requests.push({
       endpoint: "call",
       canisterId,
@@ -1061,8 +1134,8 @@ function buildFakeReplica(
           `fake replica: the canister rejected the call with reject code ${code} (${REJECT_NAMES[code]})`
       )
     },
-    dropNextReply() {
-      repliesToLose += 1
+    dropNextReply(which) {
+      drops.push(readMatch("dropNextReply", which === undefined ? {} : which))
     },
     refuseNext(status, which = 1) {
       if (!Number.isInteger(status) || status < 400 || status > 599) {
@@ -1076,42 +1149,7 @@ function buildFakeReplica(
         typeof which === "object" && which !== null && !Array.isArray(which)
           ? which
           : { times: which as number }
-      const unknown = Object.keys(options).filter(
-        (key) => !(REFUSAL_OPTIONS as readonly string[]).includes(key)
-      )
-      if (unknown.length > 0) {
-        throw new TypeError(
-          `refuseNext() has no option ${unknown.join(", ")}. Its options: ${REFUSAL_OPTIONS.join(", ")}.`
-        )
-      }
-      const { method, canister, times = 1 } = options
-      if (!Number.isInteger(times) || times < 1) {
-        throw new RangeError(
-          `refuseNext: \`times\` is ${times}, not a count of at least 1`
-        )
-      }
-      if (method !== undefined && (typeof method !== "string" || !method)) {
-        throw new TypeError(
-          `refuseNext: \`method\` is the name of a canister method, got ${
-            typeof method === "string" ? '""' : typeof method
-          }`
-        )
-      }
-      let canisterId: string | undefined
-      if (canister !== undefined) {
-        try {
-          canisterId = Principal.fromText(canister).toText()
-        } catch {
-          throw new TypeError(
-            `refuseNext: \`canister\` is a canister id, such as "ryjl3-tyaaa-aaaaa-aaaba-cai" or "aaaaa-aa", got ${
-              typeof canister === "string"
-                ? JSON.stringify(canister)
-                : typeof canister
-            }`
-          )
-        }
-      }
-      refusals.push({ status, method, canister: canisterId, left: times })
+      refusals.push({ status, ...readMatch("refuseNext", options) })
     },
   }
 }

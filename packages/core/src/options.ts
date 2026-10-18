@@ -123,6 +123,58 @@ function readLeb128(bytes: Uint8Array): bigint {
   throw new Error("the certificate's time is not a complete LEB128 number")
 }
 
+/**
+ * What a builder says when it is handed a symbol that is not the
+ * `skipToken` of the `@tanstack/query-core` this package imports. Correct
+ * variables are never a symbol (but see {@link takesAnything}), so such a
+ * symbol is almost always the `skipToken` of another copy of
+ * `@tanstack/query-core`: npm installs one beside the exact version
+ * `@tanstack/react-query` depends on when the two do not match, and each copy
+ * has its own `skipToken`. Encoded, it would make a read that is never
+ * skipped and rejects `invalid_args`.
+ */
+const twoQueryCores = (call: string): string =>
+  `[ic-reactor] ${call}: the variables are a symbol, not core's skipToken: two copies of @tanstack/query-core are installed (or a bundler loads it twice). ` +
+  "Install it at the exact version @tanstack/react-query depends on; `npm ls @tanstack/query-core` must show one copy."
+
+/**
+ * Whether a method's one argument is Candid `reserved`, which every value
+ * inhabits, a symbol included: the one method whose variables may be a
+ * symbol.
+ */
+const takesAnything = (method: {
+  readonly args: readonly unknown[]
+}): boolean => {
+  if (method.args.length !== 1) return false
+  try {
+    const node = resolveSchema(
+      method.args[0] as Parameters<typeof resolveSchema>[0]
+    )
+    return (
+      node.kind === "primitive" &&
+      (node as { primitive?: unknown }).primitive === "reserved"
+    )
+  } catch {
+    // A schema resolveSchema refuses takes no symbol either.
+    return false
+  }
+}
+
+/** Throws {@link twoQueryCores} for a symbol that is not our `skipToken`, unless the method takes anything. */
+const refuseForeignSymbol = (
+  vars: unknown,
+  method: { readonly args: readonly unknown[] },
+  call: string
+): void => {
+  if (
+    typeof vars === "symbol" &&
+    vars !== skipToken &&
+    !takesAnything(method)
+  ) {
+    throw new TypeError(twoQueryCores(call))
+  }
+}
+
 /** Whether a settled mutation may have changed what its canister's reads return. */
 const mayHaveChanged = (error: unknown): boolean =>
   error === null ||
@@ -284,6 +336,7 @@ export function createBuilders(
     if (vars === skipToken) {
       return readKey(record, caller, target, prepared.name, [SKIP])
     }
+    refuseForeignSymbol(vars, prepared, call)
     const encoded = encodeArgs(prepared.args, valuesOf(prepared, vars))
     return readKey(
       record,
@@ -356,6 +409,7 @@ export function createBuilders(
         ...base,
       }
     }
+    refuseForeignSymbol(vars, prepared, call)
     const values = valuesOf(prepared, vars)
     const encoded = encodeArgs(prepared.args, values)
     return {

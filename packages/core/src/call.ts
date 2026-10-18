@@ -199,7 +199,8 @@ export interface CallRequest {
   readonly again?: CallRequest
   /**
    * The signal of a query function. Once it aborts, the call is not sent, or
-   * stops polling for its answer, and rejects `cancelled`.
+   * stops waiting for the HTTP answer to its request or polling for its
+   * answer, and rejects `cancelled`.
    */
   readonly signal?: AbortSignal
   /**
@@ -456,12 +457,19 @@ async function dispatch(
   // failure itself.
   let accepted = false
   try {
+    // Neither the agent nor the `fetch` it was given bounds the wait for an
+    // HTTP answer, and the agent passes `fetch` no signal: the wait is ended
+    // here when the signal aborts. The request itself is not torn down, but
+    // nobody waits for its answer.
     if (send === "query") {
-      const response = await agent.query(call.canisterId, {
-        methodName: call.methodName,
-        arg: call.arg,
-        effectiveTarget,
-      })
+      const response = await untilAborted(
+        agent.query(call.canisterId, {
+          methodName: call.methodName,
+          arg: call.arg,
+          effectiveTarget,
+        }),
+        call.signal
+      )
       if (response.status === QueryResponseStatus.Rejected) {
         throw RejectError.fromCode(
           new UncertifiedRejectErrorCode(
@@ -475,14 +483,17 @@ async function dispatch(
       }
       return response.reply.arg
     }
-    const submitted = await agent.call(call.canisterId, {
-      methodName: call.methodName,
-      arg: call.arg,
-      effectiveTarget,
-      // A oneway expects no reply, so it is sent asynchronously and settles
-      // once the IC has accepted it.
-      ...(send === "oneway" ? { callSync: false } : {}),
-    })
+    const submitted = await untilAborted(
+      agent.call(call.canisterId, {
+        methodName: call.methodName,
+        arg: call.arg,
+        effectiveTarget,
+        // A oneway expects no reply, so it is sent asynchronously and settles
+        // once the IC has accepted it.
+        ...(send === "oneway" ? { callSync: false } : {}),
+      }),
+      call.signal
+    )
     accepted = true
     const { body } = submitted.response
     if (isV2ResponseBody(body)) {
@@ -534,11 +545,9 @@ async function settle(
 ): Promise<Uint8Array> {
   const { body } = response
   if (isV4ResponseBody(body)) {
-    const reply = await readCertificate(
-      agent,
-      body.certificate,
-      call.effective,
-      requestId
+    const reply = await untilAborted(
+      readCertificate(agent, body.certificate, call.effective, requestId),
+      call.signal
     )
     if (reply !== undefined) return reply
   } else if (response.status !== 202) {
@@ -633,11 +642,11 @@ function untilAborted<T>(
   if (signal === undefined) return promise
   return new Promise<T>((resolve, reject) => {
     const abort = () => reject(abortReason(signal))
-    if (signal.aborted) {
-      abort()
-      return
-    }
+    // The promise is handled even when the signal has already aborted, so a
+    // request that fails after nobody waits for it is not an unhandled
+    // rejection.
     signal.addEventListener("abort", abort, { once: true })
+    if (signal.aborted) abort()
     promise.then(
       (value) => {
         signal.removeEventListener("abort", abort)
@@ -659,8 +668,8 @@ const abortReason = (signal: AbortSignal): unknown =>
  * Polls `read_state` for the request's reply, asking again after a transient
  * failure, at most {@link REPOLL_DELAYS_MS} times.
  *
- * It stops, and rejects, as soon as `signal` aborts: before each poll and
- * during every wait between two. A read whose observer went away (TanStack
+ * It stops, and rejects, as soon as `signal` aborts: before each poll,
+ * while a poll waits for its answer, and during every wait between two. A read whose observer went away (TanStack
  * aborts the signal it gave the query function) would otherwise keep asking
  * for up to the strategy's five minutes, for an answer nobody reads.
  */
@@ -677,11 +686,13 @@ async function poll(
   for (let failures = 0; ; failures += 1) {
     if (signal?.aborted === true) throw abortReason(signal)
     try {
-      const { reply } = await pollForResponse(
-        agent,
-        { canisterId: effective },
-        requestId,
-        { strategy }
+      // Each poll's own read_state request has no bound either: an abort
+      // ends the wait for its answer too.
+      const { reply } = await untilAborted(
+        pollForResponse(agent, { canisterId: effective }, requestId, {
+          strategy,
+        }),
+        signal
       )
       return reply
     } catch (error) {

@@ -15,24 +15,28 @@
 // with the packages' own checks; run `pnpm build` first.
 export default [
   {
-    // Measured 90,199 B with client.time() (89,949 B before it, +250 B;
-    // 89,746 B before resendOf held the bytes and the canister ids a write
-    // went out with; 89,484 B before resendOf; 89,363 B on 4.0.0-beta.3):
-    // the limit leaves 51 B.
+    // Measured 90,169 B with the builders refusing another copy's skipToken
+    // (#873; 89,949 B before that, +220 B; 89,746 B before client.resendOf()
+    // was held to the bytes and the canister ids a write went out with;
+    // 89,484 B before resendOf; 89,363 B on 4.0.0-beta.3): the limit leaves
+    // 31 B.
     name: "App: { createClient } from @ic-reactor/core, peers included",
     path: "core.js",
-    limit: "90.25 kB",
+    // With client.time() (#885) on top of v4: measured 90,472 B, so the limit moved from 90,200 B to 90.53 kB.
+    limit: "90.53 kB",
     gzip: true,
   },
   {
-    // Measured 91,437 B with client.time() (91,155 B before it, +282 B;
-    // 90,960 B before resendOf held the bytes and the canister ids a write
-    // went out with; 90,692 B before resendOf; 90,566 B on 4.0.0-beta.3):
-    // the limit leaves 43 B. React itself is left out: the app ships it with or without
-    // ic-reactor.
+    // Measured 91,453 B with the builders and the provider checking for two
+    // copies of @tanstack/query-core (#873; 91,155 B before that, +298 B;
+    // 90,960 B before client.resendOf() was held to the bytes and the
+    // canister ids a write went out with; 90,692 B before resendOf; 90,566 B
+    // on 4.0.0-beta.3): the limit leaves 47 B. React itself is left out: the
+    // app ships it with or without ic-reactor.
     name: "App: createClient, ReactorProvider and useClient, peers included, React left out",
     path: "react.js",
-    limit: "91.48 kB",
+    // With client.time() (#885) on top of v4: measured 91,763 B, so the limit moved from 91,500 B to 91.82 kB.
+    limit: "91.82 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },

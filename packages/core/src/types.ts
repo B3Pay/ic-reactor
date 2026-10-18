@@ -104,8 +104,36 @@ export type Vars<P extends readonly unknown[]> = P extends readonly []
     ? One
     : P
 
-/** The variables of method `M` of `A`. */
-export type VarsOf<A, M extends keyof A> = Vars<ArgsOf<A[M]>>
+/**
+ * The variables of a method whose type is `any`, as it is when the method is
+ * given as `any` (`client.queryOptions<A, any>(canister, method, vars)` for a
+ * method named by data): every value but a symbol. The client still applies
+ * the run-time rule of {@link Vars} (the value for one argument, the tuple
+ * for several, nothing or `[]` for none) and checks the value against the
+ * method's schemas when it encodes it.
+ *
+ * Not `unknown`: `skipToken` is assignable to `unknown`, so a read of such a
+ * method would always keep `SkipToken` in its `queryFn` (see
+ * {@link QueryArgs}). The cost is that, on this path only, a symbol cannot be
+ * given to a method whose one argument is Candid `reserved`.
+ */
+export type AnyVars =
+  string | number | bigint | boolean | object | null | undefined
+
+/**
+ * The variables of method `M` of `A`: {@link Vars} of its arguments, or
+ * {@link AnyVars} when the method is given as `any`. It checks `M`, which
+ * reaches a `Canister<A>` with a generic `A` in `queryOptions`, and the
+ * method's type `A[M]`, which reaches the builders that declare
+ * `M extends keyof A & string` (under that constraint a check on `M` never
+ * takes its `any` branch). With a generic `A`, those builders still see
+ * `VarsOf<A, any>` unresolved.
+ */
+export type VarsOf<A, M extends keyof A> = 0 extends 1 & M
+  ? AnyVars
+  : 0 extends 1 & A[M]
+    ? AnyVars
+    : Vars<ArgsOf<A[M]>>
 
 /**
  * The methods of `A` a read may be built from with `{ update: "idempotent" }`:
