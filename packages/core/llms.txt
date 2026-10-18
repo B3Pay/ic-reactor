@@ -301,6 +301,16 @@ On the management canister (`aaaaa-aa`), codes 1 to 3 prove nothing: a write
 there may have executed. A query changes nothing, so a failed read never "may
 have executed".
 
+How long a call waits: neither the client nor the agent puts a timeout on an
+HTTP request (the call or query, or a `read_state` that polls), so a request
+that gets no answer waits as long as the `fetch` in use does. An accepted
+update is polled for about five minutes (a deadline checked when a poll is
+answered) before it rejects `outcome_unknown`. A read made with `queryOptions` stops
+waiting at any point when TanStack Query cancels it
+(`queryClient.cancelQueries(...)`, or its last observer unmounts), and
+rejects `cancelled` (with `mayHaveExecuted: true` for an update read with
+`{ update: "idempotent" }` whose request went out).
+
 ## Outside React
 
 ```ts

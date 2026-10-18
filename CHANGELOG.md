@@ -48,6 +48,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Fixed
 
+- A read made with `queryOptions` stops waiting for the HTTP answer to its
+  request, and to each `read_state` that polls for it, once its query
+  function's signal aborts, and rejects `cancelled` (part of #875). Its signal
+  used to reach only the check before sending and the waits between polls:
+  neither the client nor the agent bounds an HTTP request, so a request that
+  got no answer kept the read waiting after TanStack cancelled it. The request
+  itself is not torn down. `mayHaveExecuted` is `false`, except for an update
+  read with `{ update: "idempotent" }` whose call request went out.
+
+### Docs
+
+- The guide's Errors section says how long a call waits: an HTTP request has
+  no timeout in the client or the agent, an accepted update polls for about
+  five minutes (a deadline checked when a poll is answered) before `outcome_unknown`, and
+  a cancelled read stops waiting (part of #875).
 - With the method given as `any` (`client.queryOptions<A, any>(canister,
 method, vars)` for a method named by data), the variables of
   `queryOptions`, `queryKey`, `mutationOptions` (its `mutationFn`) and
