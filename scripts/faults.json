@@ -759,8 +759,8 @@
     "testName": "while a concurrent",
     "why": "refuseNext(status, { method }) that refuses whatever request comes next, as the count form does, so a concurrent read of another method is refused in the write's place",
     "file": "src/testing/fake-replica.ts",
-    "search": "        (refusal.method === undefined || refusal.method === method) &&",
-    "replace": "        true &&"
+    "search": "      (fault.method === undefined || fault.method === method) &&",
+    "replace": "      true &&"
   },
   {
     "id": "822-refusal-ignores-canister",
@@ -769,8 +769,8 @@
     "testName": "refuses only the canister it names, mocked or not, whatever the method",
     "why": "refuseNext(status, { canister }) that refuses a request for any canister, so the ledger read is refused in the shapes canister's place",
     "file": "src/testing/fake-replica.ts",
-    "search": "        (refusal.canister === undefined || refusal.canister === canisterId)",
-    "replace": "        true"
+    "search": "      (fault.canister === undefined || fault.canister === canisterId)",
+    "replace": "      true"
   },
   {
     "id": "822-refusal-head-of-queue-only",
@@ -779,8 +779,8 @@
     "testName": "is matched in the order refusals were armed, and the count form still refuses whatever comes next",
     "why": "only the refusal armed first is looked at, as the queue of 4.0.0-beta.1 was shifted: an aimed refusal waiting for its method holds back a count armed after it, and the count form stops refusing whatever comes next",
     "file": "src/testing/fake-replica.ts",
-    "search": "    const index = refusals.findIndex(",
-    "replace": "    const index = refusals.slice(0, 1).findIndex("
+    "search": "  const index = armed.findIndex(",
+    "replace": "  const index = armed.slice(0, 1).findIndex("
   },
   {
     "id": "822-refusal-option-names-unchecked",
@@ -789,8 +789,8 @@
     "testName": "a refusal that cannot be armed",
     "why": "an option refuseNext() does not have (a misspelled `method`) accepted and ignored, so the refusal is armed for every request instead of failing at once",
     "file": "src/testing/fake-replica.ts",
-    "search": "        (key) => !(REFUSAL_OPTIONS as readonly string[]).includes(key)",
-    "replace": "        () => false"
+    "search": "    (key) => !(REFUSAL_OPTIONS as readonly string[]).includes(key)",
+    "replace": "    () => false"
   },
   {
     "id": "822-refusal-matches-read-state",
@@ -819,8 +819,8 @@
     "testName": "a refusal that cannot be armed",
     "why": "a `method` that is not a string accepted, so refuseNext(status, { method: 5 }) is armed for a method no request can name instead of failing at once",
     "file": "src/testing/fake-replica.ts",
-    "search": "      if (method !== undefined && (typeof method !== \"string\" || !method)) {",
-    "replace": "      if (method !== undefined && !method) {"
+    "search": "  if (method !== undefined && (typeof method !== \"string\" || !method)) {",
+    "replace": "  if (method !== undefined && !method) {"
   },
   {
     "id": "ir4b-fetch-stubbed-globally",
@@ -4396,6 +4396,36 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "882-drop-ignores-method",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "dropNextReply({ method }) loses the write's reply",
+    "why": "an armed drop spent on the next call request whatever its method, as the bare form is, so a certified read before the write loses its reply in the write's place",
+    "file": "src/testing/fake-replica.ts",
+    "search": "useUp(drops, canisterId, method_name) !== undefined",
+    "replace": "drops.shift() !== undefined"
+  },
+  {
+    "id": "882-drop-ignores-options",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "dropNextReply({ canister }) matches the canister a call names",
+    "why": "dropNextReply's options ignored, so a drop aimed at one canister loses the reply of whatever call comes next",
+    "file": "src/testing/fake-replica.ts",
+    "search": "drops.push(readMatch(\"dropNextReply\", which === undefined ? {} : which))",
+    "replace": "drops.push(readMatch(\"dropNextReply\", {}))"
+  },
+  {
+    "id": "882-bare-drop-aimed-at-updates",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "dropNextReply() with no argument still loses whatever call request comes next",
+    "why": "the bare dropNextReply() skips a certified read and waits for an update, which changes what existing tests that make a certified read first exercise",
+    "file": "src/testing/fake-replica.ts",
+    "search": "const lose = resent || useUp(drops, canisterId, method_name) !== undefined",
+    "replace": "const lose =\n      resent ||\n      (method_name !== \"icrc1_fee\" &&\n        useUp(drops, canisterId, method_name) !== undefined)"
   },
   {
     "id": "875-read-waits-for-http-answer",
