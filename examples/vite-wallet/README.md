@@ -90,8 +90,11 @@ can write a cookie there, so `{ name: "backend" }` stays unresolved and its
 calls are refused before sending (`invalid_args`, code
 `canister_id_unresolved`). For a build that works on every domain, give it
 the id instead, as
-`{ id: import.meta.env.VITE_BACKEND_ID }`, or pass `allowEnvConfig: true` to
-`createClient` if every subdomain of the page's domain is yours. The root key
+`{ id: import.meta.env.VITE_BACKEND_ID }`. `allowEnvConfig: true` is safe only
+on `<id>.icp0.io`, a public suffix, or a custom domain whose every subdomain is
+yours; on `ic0.app` `createClient` refuses it, because any other canister's
+page can set the cookie there. Even with it, the cookie's root key is not
+used on mainnet. The root key
 there is mainnet's, built into the agent; nothing is fetched. Internet
 Identity is mainnet's (the `AuthClient` defaults), and the dev account is not
 offered.

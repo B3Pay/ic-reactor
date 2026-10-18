@@ -644,9 +644,12 @@ or an id. Deployed with `icp deploy -e ic`, `"env"` still sends through the
 page's origin on `<id>.icp0.io`, where the client believes the asset
 canister's cookie for canister ids, so `{ name }` resolves. On `<id>.ic0.app`
 and on a custom domain it does not: give the canister an `{ id }` baked in at
-build time. See
+build time. `allowEnvConfig: true` is safe on `<id>.icp0.io`, a public suffix,
+and refused on `ic0.app`, because every other canister's page can set a cookie
+there. See
 [Deploy to mainnet](/v4/guides/client/#deploy-to-mainnet) for each domain and
-for when `allowEnvConfig: true` is safe. The [Vite wallet example](/v4/examples/vite-wallet/) is built this way
+[The client](/v4/guides/client/#the-ic_env-cookie) for when the cookie is
+trusted. The [Vite wallet example](/v4/examples/vite-wallet/) is built this way
 for a local network.
 
 ## Tests
