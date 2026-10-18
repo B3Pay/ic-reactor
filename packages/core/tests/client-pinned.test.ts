@@ -386,6 +386,9 @@ describe("a client pinned to a principal", () => {
       method: "stamp",
       canisterId: CANISTER,
     })
+    // Marked with its canister, as a call's error is.
+    const failure: unknown = await refused.catch((error: unknown) => error)
+    expect(isReactorError(failure, who, "stamp")).toBe(true)
     // Options built while seed 1 was current, run after a switch: refused.
     auth.switchTo(2)
     await expect(

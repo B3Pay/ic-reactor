@@ -30,7 +30,7 @@ import {
 } from "@icp-sdk/core/agent"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
 import { QueryClient, type QueryKey } from "@tanstack/query-core"
-import { createReactorError, retryQuery } from "./errors.js"
+import { createReactorError, fromCanister, retryQuery } from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
 import {
@@ -1620,12 +1620,17 @@ export function createClientWith(
                 internals,
                 "client.mutationOptions()"
               ).resolve()
-              throw createReactorError("cancelled", {
-                method: String(method),
-                canisterId: target.ok ? target.id : target.slot,
-                code: "caller_changed",
-                reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
-              })
+              // Marked with the canister, as a call's error is, so that
+              // `isReactorError(error, canister, method)` matches it.
+              throw fromCanister(
+                createReactorError("cancelled", {
+                  method: String(method),
+                  canisterId: target.ok ? target.id : target.slot,
+                  code: "caller_changed",
+                  reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
+                }),
+                canister as object
+              )
             }
             return built.mutationFn(vars, context)
           },

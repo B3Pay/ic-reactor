@@ -5201,5 +5201,15 @@
     "file": "src/index.tsx",
     "search": "  return shown ?? view\n",
     "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "894-view-write-refusal-unmarked",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
+    "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
+    "file": "src/client.ts",
+    "search": "// `isReactorError(error, canister, method)` matches it.\n              throw fromCanister(",
+    "replace": "// `isReactorError(error, canister, method)` matches it.\n              throw ((error: unknown, _canister: object) => error)("
   }
 ]
