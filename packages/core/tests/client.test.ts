@@ -5,7 +5,11 @@
  * `client-hydration.test.ts`.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { AnonymousIdentity } from "@icp-sdk/core/agent"
+import {
+  AnonymousIdentity,
+  HttpErrorCode,
+  ProtocolError,
+} from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {
   createClient,
@@ -629,9 +633,10 @@ describe("two clients", () => {
 })
 
 // A query built by hand on `client.queryClient` (a `useQuery` with its own
-// query function) sets no `retry`, so the client's default decides. The
-// default must never be TanStack's own: three retries in a browser, of any
-// failure, a canister's Err included.
+// query function) sets no `retry`, so the client's default decides. For a
+// ReactorError it must never be TanStack's own (three retries in a browser, of
+// any failure, a canister's Err included); any other error is retried as
+// TanStack retries it.
 describe("the QueryClient's default retry", () => {
   /** A client whose reads go to a fake replica, and a query function for it. */
   function anonymousReader() {
@@ -654,12 +659,69 @@ describe("the QueryClient's default retry", () => {
     return { replica, client, queryFn, queries }
   }
 
-  it("is the client's retry predicate", () => {
+  it("retries a ReactorError as the client's retry predicate does", () => {
     const { client } = anonymousReader()
-
-    expect(client.queryClient.getDefaultOptions().queries?.retry).toBe(
-      retryQuery
+    const retry = client.queryClient.getDefaultOptions().queries?.retry
+    if (typeof retry !== "function") throw new Error("retry is a predicate")
+    const refused = classifyError(
+      ProtocolError.fromCode(new HttpErrorCode(503, "busy", [])),
+      { ...CALL, mode: "query" }
     )
+    const err = createReactorError("canister_err", { ...CALL, err: null })
+
+    for (const page of [false, true]) {
+      if (page) onPage()
+      for (const error of [refused, err]) {
+        for (const failures of [0, 2, 3]) {
+          expect(retry(failures, error)).toBe(retryQuery(failures, error))
+        }
+      }
+    }
+  })
+
+  // An app's own query on the client's QueryClient, such as a REST call,
+  // throws errors that are not ReactorErrors: they are retried as a plain
+  // QueryClient retries them (#903).
+  it("tries an app's REST query again in a browser page, as TanStack does, up to 3 times", async () => {
+    onPage()
+    const { client } = anonymousReader()
+    const flaky = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue("rest")
+
+    await expect(
+      client.queryClient.fetchQuery({
+        queryKey: ["rest", "flaky"],
+        queryFn: flaky,
+        retryDelay: 0,
+      })
+    ).resolves.toBe("rest")
+    expect(flaky).toHaveBeenCalledTimes(2)
+
+    const down = vi.fn(() => Promise.reject(new TypeError("Failed to fetch")))
+    await expect(
+      client.queryClient.fetchQuery({
+        queryKey: ["rest", "down"],
+        queryFn: down,
+        retryDelay: 0,
+      })
+    ).rejects.toThrow("Failed to fetch")
+    expect(down).toHaveBeenCalledTimes(4)
+  })
+
+  it("never tries an app's REST query again on a server, as TanStack does not", async () => {
+    const { client } = anonymousReader()
+    const down = vi.fn(() => Promise.reject(new TypeError("Failed to fetch")))
+
+    await expect(
+      client.queryClient.fetchQuery({
+        queryKey: ["rest", "down"],
+        queryFn: down,
+        retryDelay: 0,
+      })
+    ).rejects.toThrow("Failed to fetch")
+    expect(down).toHaveBeenCalledTimes(1)
   })
 
   it("tries a read again in a browser page when the replica refused it for now", async () => {
