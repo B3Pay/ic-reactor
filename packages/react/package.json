@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12.0"
   },
   "sideEffects": false,
   "exports": {
@@ -82,7 +82,7 @@
     {
       "name": "React bindings",
       "path": "dist/index.js",
-      "limit": "1.31 KB",
+      "limit": "1.51 KB",
       "gzip": true,
       "ignore": [
         "react",

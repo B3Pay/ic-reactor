@@ -17,6 +17,7 @@ import {
   type ClientOptions,
 } from "../src/index.js"
 import { internalsOf } from "../src/client.js"
+import type { CanisterIdResolution } from "../src/network.js"
 import { createTestAuth } from "../src/testing/test-auth.js"
 
 const identity = Ed25519KeyIdentity.generate()
@@ -102,11 +103,20 @@ const twoArguments = (_network: unknown, _more: string) => createTestAuth()
 createClient({ network: "ic", auth: twoArguments })
 expectTypeOf<AuthClient>().toExtend<AuthLike>()
 
-// A status the client does not know is not an AuthLike's.
+// A state a later @icp-sdk/auth adds is still an AuthLike's: it reads as
+// anonymous, and the app keeps compiling.
 export const unknownStatus: AuthLike = {
   ...createTestAuth(),
-  // @ts-expect-error "restoring" is not one of the four states
-  getStatus: () => ({ state: "restoring" as const }),
+  getStatus: () => ({ state: "revoked" as const }),
+}
+// The four known states still complete in an editor and narrow in a switch.
+expectTypeOf<"signed-out">().toExtend<
+  ReturnType<AuthLike["getStatus"]>["state"]
+>()
+export const numericStatus: AuthLike = {
+  ...createTestAuth(),
+  // @ts-expect-error a state is a string, never a number
+  getStatus: () => ({ state: 1 }),
 }
 
 // What a client offers.
@@ -149,3 +159,23 @@ expectTypeOf(internalsOf(client).current()).toEqualTypeOf<{
 
 // The option type is usable on its own.
 export const options: ClientOptions = { network: "env", identity: "anonymous" }
+
+// client.canisterId takes a canister's target and answers with the id, or a
+// reason that narrows on `ok`.
+{
+  const client = createClient({ network: "local", identity: "anonymous" })
+  const answer = client.canisterId({ name: "backend", certified: true })
+  if (answer.ok) {
+    expectTypeOf(answer.id).toEqualTypeOf<string>()
+  } else {
+    expectTypeOf(answer.reason).toEqualTypeOf<
+      "no_browser" | "untrusted_host" | "absent"
+    >()
+    expectTypeOf(answer.message).toEqualTypeOf<string>()
+  }
+  // The same answer the resolver of the calls gives, so the reasons cannot
+  // drift apart.
+  expectTypeOf(answer).toEqualTypeOf<CanisterIdResolution>()
+  // @ts-expect-error a target is { id } or { name }, never both
+  client.canisterId({ id: "aaaaa-aa", name: "backend" })
+}

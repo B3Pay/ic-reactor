@@ -31,6 +31,13 @@ npm install @ic-reactor/core@beta @ic-reactor/react@beta @tanstack/react-query
 Peers: `react` 18 or newer, `@tanstack/react-query` 5, and `@ic-reactor/core` at
 exactly this package's version (the two are released together).
 
+Install `@tanstack/query-core` (a peer of core) at the exact version your
+`@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
+dependencies`), and check that `npm ls @tanstack/query-core` shows one copy.
+With two copies, core and the hooks each have their own `skipToken`:
+`client.queryOptions()` throws a `TypeError` for the hooks' one, and in
+development `ReactorProvider` throws when it is handed such a client.
+
 ## Provide a client
 
 `ReactorProvider` takes a factory, not a client, and calls it once for each
