@@ -29,8 +29,96 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   comes next, certified reads included, as its JSDoc and the testing page now
   say. No new export.
 
+### Docs
+
+- The client guide has a section for a local network without the Vite plugin
+  (Next.js, Rsbuild, webpack, esbuild): `network: "local"` with `{ id }` from
+  a build-time variable written by `icp canister status -e local -i`, or a
+  Next.js rewrite of `/api/v2` and `/api/v3` to keep `"env"`. Core's guide
+  states the rule in a few lines (#906).
+- Getting started has a step 0 that creates the project (Vite's `react-ts`
+  template, or `npm init -y` and `npm pkg set type=module` for Node), so its
+  top-level `await` scripts run under `npx tsx` on the first try. It, core's
+  package page and core's guide now say that core and react are ES modules
+  only and what CommonJS code can do, and show the `.js` import form
+  `moduleResolution: "nodenext"` needs (#907).
+
+### @ic-reactor/core, @ic-reactor/react, @ic-reactor/vite-plugin
+
+#### Changed
+
+- **Breaking for Node below 22.12:** all three packages now declare
+  `"engines": { "node": ">=22.12.0" }`; core and react said `>=18` and the
+  Vite plugin said nothing. None of them worked on Node 18 (no global
+  `crypto` in an ES module for `createTestClient`, and a `candid-core-cli gen`
+  the plugin runs that needs a newer `readdir`), and `require()` of core and
+  react, which are ES-only, needs Node 22.12 (or 20.19, which reached end of life on
+  2026-04-30). A floor can fall in a 4.x minor but not rise, so it starts at
+  the first Node 22 that works. CI now runs the package tests and a
+  `candid-core-cli gen` on Node 22.12.0 itself. Migration: run Node 22.12 or
+  newer (#896).
+
+### @ic-reactor/core
+
+#### Fixed
+
+- A read made with `queryOptions` stops waiting for the HTTP answer to its
+  request, and to each `read_state` that polls for it, once its query
+  function's signal aborts, and rejects `cancelled` (part of #875). Its signal
+  used to reach only the check before sending and the waits between polls:
+  neither the client nor the agent bounds an HTTP request, so a request that
+  got no answer kept the read waiting after TanStack cancelled it. The request
+  itself is not torn down. `mayHaveExecuted` is `false`, except for an update
+  read with `{ update: "idempotent" }` whose call request went out.
+
+### Docs
+
+- The guide's Errors section says how long a call waits: an HTTP request has
+  no timeout in the client or the agent, an accepted update polls for about
+  five minutes (a deadline checked when a poll is answered) before `outcome_unknown`, and
+  a cancelled read stops waiting (part of #875).
+- With the method given as `any` (`client.queryOptions<A, any>(canister,
+method, vars)` for a method named by data), the variables of
+  `queryOptions`, `queryKey`, `mutationOptions` (its `mutationFn`) and
+  `resendOf` (its `dedupedBy` and `arg`) follow the run-time rule: the value
+  for a one-argument method, a tuple for several, `undefined` or `[]` for
+  none (#874). They were typed `unknown[]`, so a one-argument call compiled
+  only as `[arg]`, the shape the client refuses with `invalid_args`. They are
+  now any value but a symbol, so a read with a real value keeps
+  `CanisterQueryOptions<unknown, never, never>`. `[arg]` still compiles (an
+  array is a value too) and the client still refuses it with `invalid_args`.
+  Migration: code that wrote `[arg]` (or cast `arg as never`) on this path
+  writes `arg`; a `dedupedBy` that read `arg[0]` reads `arg`. Inside a
+  function generic over the `Actor`, only `queryOptions` gets the wider type;
+  `mutationOptions`, `queryKey` and `resendOf` still need a cast there.
+- The tarball now ships the MIT `LICENSE` the manifest names; the repository
+  has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
+  has none or one that is not a copy of the root file (#898).
+
+### @ic-reactor/react
+
+#### Fixed
+
+- The tarball now ships the MIT `LICENSE` the manifest names; the repository
+  has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
+  has none or one that is not a copy of the root file (#898).
+
+### @ic-reactor/vite-plugin
+
+#### Fixed
+
+- The tarball now ships the MIT `LICENSE` the manifest names; the repository
+  has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
+  has none or one that is not a copy of the root file (#898).
+
 ### Examples (not published)
 
+- `node-agent-tool` no longer tells you to export an identity's key into the
+  project. Its README and docs page say to give the tool, and an agent running
+  it, an identity of its own that controls nothing, with its key outside the
+  project and readable by you alone, and that the agent can read the seed
+  variable.
+  The example's `.gitignore` and the root one now ignore `*.pem` (#910).
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the
   server, that gives every method of any mainnet canister an automatic form
   and calls it with ic-reactor's rules in view. The ICP, ckBTC and ckETH
