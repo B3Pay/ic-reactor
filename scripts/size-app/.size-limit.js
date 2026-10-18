@@ -28,8 +28,9 @@ export default [
     // With client.canisterId() (#890) on top of v4: measured 90,795 B, so the limit moved from 90,820 B to 90.85 kB.
     // With maxElements (#932) on top of v4: measured 90,897 B, so the limit moved from 90,850 B to 90.95 kB.
     // With timeoutMs (#875) on top of v4: measured 91,291 B, so the limit moved from 90,950 B to 91.34 kB.
-    // With the session events (#939) on top of v4: measured 91,579 B, so the limit moved from 91,340 B to 91.63 kB.
-    limit: "91.63 kB",
+    // With strict createClient options (#938) on top of v4: measured 91,519 B, so the limit moved from 91,340 B to 91.57 kB.
+    // With the session events (#939) on top of v4: measured 91,817 B, so the limit moved from 91,570 B to 91.87 kB.
+    limit: "91.87 kB",
     gzip: true,
   },
   {
@@ -47,8 +48,9 @@ export default [
     // With client.canisterId() (#890) on top of v4: measured 92,083 B, so the limit moved from 92,110 B to 92.14 kB.
     // With maxElements (#932) on top of v4: measured 92,162 B, so the limit moved from 92,140 B to 92.22 kB.
     // With timeoutMs (#875) on top of v4: measured 92,561 B, so the limit moved from 92,220 B to 92.61 kB.
-    // With the session events (#939) on top of v4: measured 92,865 B, so the limit moved from 92,610 B to 92.92 kB.
-    limit: "92.92 kB",
+    // With strict createClient options (#938) on top of v4: measured 92,830 B, so the limit moved from 92,610 B to 92.88 kB.
+    // With the session events (#939) on top of v4: measured 93,127 B, so the limit moved from 92,880 B to 93.18 kB.
+    limit: "93.18 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },

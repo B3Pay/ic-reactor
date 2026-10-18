@@ -145,6 +145,42 @@ const describe = (value: unknown): string => {
   }
 }
 
+/**
+ * Throws a `TypeError` for a key of `options` that `names` does not list, so a
+ * misspelt option fails instead of being ignored. Internal.
+ */
+export const checkKeys = (
+  options: object,
+  names: readonly string[],
+  what: string
+): void => {
+  const unknown = Object.keys(options).filter((key) => !names.includes(key))
+  if (unknown.length > 0) {
+    throw new TypeError(
+      `[ic-reactor] ${what} has no option ${unknown.join(", ")}. Its options: ${names.join(", ")}.`
+    )
+  }
+}
+
+/**
+ * Throws a `TypeError` unless `value` is `true`, `false` or absent: the text
+ * `"false"` an environment variable gives is truthy, and would trust what
+ * `false` refuses. Internal.
+ */
+export const checkBoolean = (value: unknown, name: string): void => {
+  if (value !== undefined && typeof value !== "boolean") {
+    throw new TypeError(
+      `[ic-reactor] ${name} is true or false, got ${describe(value)}.`
+    )
+  }
+}
+
+/** The keys a network object may have. */
+const NETWORK_KEYS = ["host", "rootKey", "name", "fetchRootKey"]
+
+/** The length of a DER-encoded BLS root key. */
+const ROOT_KEY_LENGTH = 133
+
 const badTarget = (target: unknown): TypeError =>
   new TypeError(
     `[ic-reactor] a canister target is { id: string } or { name: string }, got ${describe(target)}.`
@@ -360,14 +396,17 @@ const resolved = (
  * The legacy v3 option `allowEnvRootKey` is not carried over: `allowEnvConfig`
  * is the only opt-in, and it covers the whole cookie.
  *
- * @throws TypeError for a network that is not one of the allowed shapes: a
- * programmer error at build time.
+ * @throws TypeError for a network that is not one of the allowed shapes (a
+ * network object with a key it does not have, a `fetchRootKey` that is not a
+ * boolean, or a `rootKey` that is not 133 bytes in a `Uint8Array`), or an
+ * `allowEnvConfig` that is not a boolean: a programmer error at build time.
  */
 export const resolveNetwork = (
   network: Network,
   options: NetworkOptions = {}
 ): ResolvedNetwork => {
   const { allowEnvConfig } = options
+  checkBoolean(allowEnvConfig, "allowEnvConfig")
 
   if (network === "ic") {
     return resolved({
@@ -413,8 +452,21 @@ export const resolveNetwork = (
     )
   }
 
-  const { host, name, fetchRootKey } = network
-  const rootKey = network.rootKey ?? undefined
+  checkKeys(network, NETWORK_KEYS, "a network object")
+  const { host, name, rootKey, fetchRootKey } = network
+  checkBoolean(fetchRootKey, "fetchRootKey")
+  if (
+    rootKey !== undefined &&
+    !(rootKey instanceof Uint8Array && rootKey.length === ROOT_KEY_LENGTH)
+  ) {
+    throw new TypeError(
+      `[ic-reactor] rootKey is a Uint8Array of ${ROOT_KEY_LENGTH} bytes (decode hex first), got ${
+        rootKey instanceof Uint8Array
+          ? `${rootKey.length} bytes`
+          : describe(rootKey)
+      }.`
+    )
+  }
   return resolved({
     keySegment: name ?? host,
     host,

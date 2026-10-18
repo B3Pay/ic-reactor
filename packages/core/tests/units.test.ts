@@ -113,14 +113,30 @@ describe("parseUnits", () => {
     expect(parseUnits("1.5", 8, { signed: true })).toBe(150_000_000n)
   })
 
-  it("takes signed only as the boolean true", () => {
-    expect(() => parseUnits("-1", 8, { signed: "false" as never })).toThrow(
-      RangeError
+  it("takes signed only as a boolean, and options with no other key", () => {
+    // Text from an environment variable, or a number, is not a boolean:
+    // refused rather than read as true or false, even for a positive amount.
+    for (const signed of ["false", "true", 1, null]) {
+      expect(() => parseUnits("1", 8, { signed } as never)).toThrow(
+        new TypeError(
+          `[ic-reactor] parseUnits: signed is true or false, got ${JSON.stringify(signed)}.`
+        )
+      )
+    }
+    expect(() => parseUnits("-1", 8, { signed: false })).toThrow(RangeError)
+    // A misspelt key fails instead of being ignored.
+    expect(() => parseUnits("1.5", 8, { signd: true } as never)).toThrow(
+      new TypeError(
+        "[ic-reactor] parseUnits has no option signd. Its options: signed."
+      )
     )
-    expect(() => parseUnits("-1", 8, { signed: 1 as never })).toThrow(
-      RangeError
-    )
-    expect(() => parseUnits("-1", 8, null as never)).toThrow(RangeError)
+    for (const options of [null, true, "signed"]) {
+      expect(() => parseUnits("1", 8, options as never)).toThrow(
+        /^\[ic-reactor\] parseUnits: options is an object, got /
+      )
+    }
+    expect(parseUnits("1", 8, {})).toBe(100_000_000n)
+    expect(parseUnits("1", 8, undefined)).toBe(100_000_000n)
   })
 
   it.each([
@@ -238,6 +254,21 @@ describe("long input", () => {
 })
 
 describe("formatUnits", () => {
+  it("refuses an option it does not have, such as Intl's spelling", () => {
+    // Ignored, this would show all eight digits where two were asked for.
+    expect(() =>
+      formatUnits(123_456_789n, 8, { maximumFractionDigits: 2 } as never)
+    ).toThrow(
+      new TypeError(
+        "[ic-reactor] formatUnits has no option maximumFractionDigits. Its options: maxFractionDigits, minFractionDigits."
+      )
+    )
+    expect(() => formatUnits(1n, 8, null as never)).toThrow(
+      "[ic-reactor] formatUnits: options is an object, got null"
+    )
+    expect(formatUnits(123_456_789n, 8, {})).toBe("1.23456789")
+  })
+
   it("shows base units as plain decimal text, dropping zeros at the end", () => {
     expect(formatUnits(150_000_000n, 8)).toBe("1.5")
     expect(formatUnits(100_000_000n, 8)).toBe("1")

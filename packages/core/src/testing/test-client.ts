@@ -27,7 +27,7 @@ import {
 } from "@candid-core/schema/codec"
 import type { Identity } from "@icp-sdk/core/agent"
 import { createClientWith, type Client } from "../client.js"
-import { resolveNetwork, type Network } from "../network.js"
+import { checkBoolean, resolveNetwork, type Network } from "../network.js"
 import {
   createFakeReplica,
   type FakeCallContext,
@@ -479,6 +479,9 @@ export function createTestClient(
   }
   const { identity, signedIn, network, allowEnvConfig, maxDepth, maxElements } =
     options
+  // `signedIn: "false"` would start signed in. The network and allowEnvConfig
+  // are checked as createClient checks them, by resolveNetwork.
+  checkBoolean(signedIn, "createTestClient(): signedIn")
   // `typeof null` is "object": without this, `identity: null` from untyped
   // code would reach the test auth as no identity and sign in as seed 1.
   if (
