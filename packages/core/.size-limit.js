@@ -27,8 +27,9 @@ export default [
     // With a held-back write sent as its caller (#936) on top of v4: measured 17,194 B, so the limit moved from 16,720 B to 17.25 kB.
     // With a view per useClient() caller (#935) on top of v4: measured 17,347 B, so the limit moved from 17,250 B to 17.4 kB.
     // With #939 on top of v4: measured 17,645 B, so the limit moved from 17,400 B to 17.7 kB.
-    // With "env" routing LAN, .local and tunnel pages through their own origin (#941) on top of v4: measured 17,811 B, so the limit moved from 17,700 B to 17.87 kB.
-    limit: "17.87 kB",
+    // With #940 on top of v4: measured 17,818 B, so the limit moved from 17,700 B to 17.87 kB.
+    // With #941 on top of v4: measured 17,980 B, so the limit moved from 17,870 B to 18.03 kB.
+    limit: "18.03 kB",
     gzip: true,
   },
 ]

@@ -393,6 +393,25 @@ describe('"env" in a browser', () => {
 
       expect(resolveNetwork("env").rootKey).toBeUndefined()
     })
+
+    it.each([
+      ["a canister's icp0.io domain", `https://${CANISTER}.icp0.io`],
+      ["icp0.io itself", "https://icp0.io"],
+      ["the API domain", MAINNET],
+    ])(
+      "does not take the cookie's key with allowEnvConfig: true either, on %s",
+      (_, origin) => {
+        // Mainnet has one root key, the agent's own: a cookie's can only be
+        // wrong, and taking it would verify a forged replica's answers.
+        stubPage(origin)
+
+        const net = resolveNetwork("env", { allowEnvConfig: true })
+
+        expect(net.trustsEnv).toBe(true)
+        expect(net.rootKey).toBeUndefined()
+        expect(net.fetchRootKey).toBe(false)
+      }
+    )
   })
 
   describe("on a Codespaces or Gitpod page", () => {
@@ -431,15 +450,43 @@ describe('"env" in a browser', () => {
       expect(page.cookieReads()).toBe(0)
     })
 
-    it("trusts the cookie, and takes its key, with allowEnvConfig: true", () => {
-      stubPage(CODESPACE)
+    it.each([
+      ["Codespaces", CODESPACE],
+      ["Gitpod", GITPOD],
+      ["a canister's ic0.app domain", `https://${CANISTER}.ic0.app`],
+      ["a canister's raw.ic0.app domain", `https://${CANISTER}.raw.ic0.app`],
+    ])(
+      "refuses allowEnvConfig: true on %s, whose parent is not a public suffix",
+      (_, origin) => {
+        stubPage(origin)
 
-      const net = resolveNetwork("env", { allowEnvConfig: true })
+        // For every network: the opt-in is about the page's cookie jar.
+        for (const network of ["env", "ic", { host: origin }] as Network[]) {
+          expect(() =>
+            resolveNetwork(network, { allowEnvConfig: true })
+          ).toThrow(
+            /allowEnvConfig: true is refused on .*is not a public suffix.*\{ id \}.*\{ host, rootKey \}/
+          )
+        }
+        // Without the opt-in nothing is refused, and nothing is trusted.
+        expect(resolveNetwork("env").trustsEnv).toBe(false)
+        expect(resolveNetwork("env", { allowEnvConfig: false }).trustsEnv).toBe(
+          false
+        )
+      }
+    )
 
-      expect(net.host).toBe(CODESPACE)
-      expect(net.trustsEnv).toBe(true)
-      expect(sameBytes(net.rootKey, COOKIE_ROOT_KEY)).toBe(true)
-      expect(net.fetchRootKey).toBe(false)
+    it("does not refuse the opt-in on icp0.io, a public suffix, or where there is no page", () => {
+      stubPage(`https://${CANISTER}.icp0.io`)
+      expect(() =>
+        resolveNetwork("env", { allowEnvConfig: true })
+      ).not.toThrow()
+
+      vi.unstubAllGlobals()
+      stubNoWindow({ workerOrigin: CODESPACE })
+      expect(() =>
+        resolveNetwork("env", { allowEnvConfig: true })
+      ).not.toThrow()
     })
   })
 
@@ -528,15 +575,26 @@ describe('"env" in a browser', () => {
       expect(net.fetchRootKey).toBe(true)
     })
 
-    it("takes the cookie only on the caller's say-so, and then its key too", () => {
-      // What the opt-in means: the whole cookie, root key included, is trusted.
-      // The page is not routed through, so the host is the fallback.
+    it("takes the cookie on the caller's say-so, but never its key for the mainnet fallback", () => {
+      // The page is not routed through, so the host is the fallback, mainnet,
+      // whose one key the agent already holds.
       stubPage("https://app.example.com")
 
       const net = resolveNetwork("env", { allowEnvConfig: true })
 
       expect(net.host).toBe(MAINNET)
       expect(net.trustsEnv).toBe(true)
+      expect(net.rootKey).toBeUndefined()
+      expect(net.fetchRootKey).toBe(false)
+    })
+
+    it("takes the cookie's key with the opt-in when the fallback is a local replica", () => {
+      stubPage("https://app.example.com")
+      stubProcessEnv({ ICP_NETWORK: "local" })
+
+      const net = resolveNetwork("env", { allowEnvConfig: true })
+
+      expect(net.host).toBe(ICP_CLI_LOCAL)
       expect(sameBytes(net.rootKey, COOKIE_ROOT_KEY)).toBe(true)
     })
   })
@@ -864,16 +922,13 @@ describe("the root key an agent really uses", () => {
       expect(mainnetKey(used.agentKey)).toBe(true)
     })
 
-    it("uses the cookie's key on a Codespaces page when the caller opts in", async () => {
-      // The `Network` docs name this as the way out of the Codespaces failure
-      // above, so it is pinned against a real agent and not only the resolver.
-      stubPage(CODESPACE)
+    it("keeps mainnet's key on a mainnet page even when the caller opts in", async () => {
+      stubPage(`https://${CANISTER}.icp0.io`)
 
       const used = await drive(resolveNetwork("env", { allowEnvConfig: true }))
 
-      expect(used.sentTheCall).toBe(true)
       expect(used.statusRequests).toBe(0)
-      expect(sameBytes(used.agentKey, COOKIE_ROOT_KEY)).toBe(true)
+      expect(mainnetKey(used.agentKey)).toBe(true)
     })
 
     it("sends a LAN page's call to the page, never to mainnet, and requests no key", async () => {

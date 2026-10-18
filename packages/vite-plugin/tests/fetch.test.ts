@@ -445,23 +445,29 @@ describe("one didFile under two paths", () => {
   it("through a symlinked directory starts one run for two saves reported under each name", async () => {
     const app = linkDid(newApp({}))
     fs.writeFileSync(path.join(app.root, "did/ledger.did"), LEDGER)
+    fs.writeFileSync(path.join(app.root, "did/ping.did"), PING_DID)
     const { server, lines } = await serve(app.root, {
       canisters: {
         a: { didFile: "did/ledger.did" },
         b: { didFile: "linked/ledger.did", outDir: "src/b" },
+        c: { didFile: "did/ping.did", outDir: "src/c" },
       },
     })
-    expect(generatorRuns()).toBe(2)
+    expect(generatorRuns()).toBe(3)
 
     // Both before the queued run starts: the second joins it.
     server.watcher.emit("change", path.join(app.root, "did/ledger.did"))
     server.watcher.emit("change", path.join(app.root, "linked/ledger.did"))
-    await vi.waitFor(() => expect(generatorRuns()).toBe(4))
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    expect(generatorRuns()).toBe(4)
-    expect(
-      lines.filter((line) => line.includes("changed, regenerating"))
-    ).toHaveLength(1)
+    // Runs go one after another, so once the run of a save queued after
+    // these has started, any second run for them would already have been.
+    server.watcher.emit("change", path.join(app.root, "did/ping.did"))
+    const regenerating = (file: string) =>
+      lines.filter((line) => line.includes(`${file} changed, regenerating`))
+    await vi.waitFor(() => expect(regenerating("ping.did")).toHaveLength(1), {
+      timeout: 10_000,
+    })
+    await vi.waitFor(() => expect(generatorRuns()).toBe(6))
+    expect(regenerating("ledger.did")).toHaveLength(1)
     expect(lines.filter((line) => line.startsWith("error:"))).toEqual([])
   })
 

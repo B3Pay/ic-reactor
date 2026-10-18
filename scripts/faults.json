@@ -2160,7 +2160,7 @@
     "testName": "that is not an http(s) URL",
     "why": "any INTERNET_IDENTITY_PROVIDER taken from the cookie, so a javascript: URL becomes the page AuthClient opens to sign in",
     "file": "src/network.ts",
-    "search": "    return protocol === \"http:\" || protocol === \"https:\" ? value : undefined",
+    "search": "    return protocol === \"https:\" || (protocol === \"http:\" && pageIsLocal())\n      ? value\n      : undefined",
     "replace": "    return value"
   },
   {
@@ -5528,5 +5528,35 @@
     "file": "src/dev-environment.ts",
     "search": "!isLoopbackHost(req.headers.host)",
     "replace": "false"
+  },
+  {
+    "id": "env-cookie-key-on-mainnet",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "does not take the cookie's key with allowEnvConfig: true either",
+    "why": "with allowEnvConfig: true, \"env\" takes the ic_env cookie's root key for a mainnet host, so a forged replica's answers verify",
+    "file": "src/network.ts",
+    "search": "      trustsEnv && !isMainnetHostname(agentHostnameOf(host))",
+    "replace": "      trustsEnv"
+  },
+  {
+    "id": "env-opt-in-under-shared-parent",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on",
+    "why": "allowEnvConfig: true accepted on a page under ic0.app, github.dev or gitpod.io, which are not public suffixes, so a stranger's page can write the cookie it believes",
+    "file": "src/network.ts",
+    "search": "  if (parent === undefined) return\n",
+    "replace": "  return\n"
+  },
+  {
+    "id": "env-cookie-http-identity-provider",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "ignores a trusted cookie's http: provider on a page that is not local",
+    "why": "the ic_env cookie's http: Internet Identity URL taken on a page that is not local",
+    "file": "src/network.ts",
+    "search": "(protocol === \"http:\" && pageIsLocal())",
+    "replace": "protocol === \"http:\""
   }
 ]
