@@ -963,3 +963,15 @@ export function retryQuery(failureCount: number, error: unknown): boolean {
   if (isServer()) return false
   return failureCount < 3 && isRetryable(error)
 }
+
+/**
+ * The default `retry` of a client's `QueryClient`. A client's own reads set
+ * `retry` themselves, so this default reaches only the other queries on that
+ * `QueryClient`, such as an app's REST queries. A `ReactorError` is retried as
+ * {@link retryQuery} says; any other error as TanStack Query retries it by
+ * default: up to 3 times in a browser, never on a server (#903).
+ */
+export function retryDefault(failureCount: number, error: unknown): boolean {
+  if (isReactorError(error)) return retryQuery(failureCount, error)
+  return !isServer() && failureCount < 3
+}

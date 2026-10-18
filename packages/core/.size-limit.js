@@ -23,7 +23,8 @@ export default [
     // With maxElements (#932) on top of v4: measured 15,888 B, so the limit moved from 15,860 B to 15.94 kB.
     // With timeoutMs (#875) on top of v4: measured 16,269 B, so the limit moved from 15,940 B to 16.32 kB.
     // With strict createClient options (#938) on top of v4: measured 16,608 B, so the limit moved from 16,320 B to 16.66 kB.
-    limit: "16.66 kB",
+    // With TanStack retries kept for app queries (#937) on top of v4: measured 16,669 B, so the limit moved from 16,660 B to 16.72 kB.
+    limit: "16.72 kB",
     gzip: true,
   },
 ]
