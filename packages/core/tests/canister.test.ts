@@ -1180,6 +1180,32 @@ describe("expiresAt on a write that got no answer", () => {
     expect((second as { expiresAt?: bigint }).expiresAt).toBe(sends.seen[1])
   })
 
+  it("is each send's own when two sends of one resendOf offer are lost at once", async () => {
+    const replica = replicaWith({ [LEDGER]: ledgerCanister(new Map()) })
+    const sends = expiries(replica.fetch)
+    const client = clientAs({ ...replica, fetch: sends.fetch }, alice)
+    const ledger = client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
+    const arg = { ...transferTo(BOB, 1n), created_at_time: 1_000n }
+    replica.dropNextReply()
+    const first = await ledger
+      .icrc1_transfer(arg)
+      .catch((caught: unknown) => caught)
+    const again = client.resendOf(first, ledger, "icrc1_transfer", {
+      dedupedBy: (sent) => sent.created_at_time,
+    })
+    replica.dropNextReply({ method: "icrc1_transfer", times: 2 })
+    // The same encoded argument goes out twice, concurrently.
+    const both = await Promise.all([
+      again?.send().catch((caught: unknown) => caught),
+      again?.send().catch((caught: unknown) => caught),
+    ])
+    expect(sends.seen).toHaveLength(3)
+    for (const error of both) {
+      expect(error).toMatchObject({ kind: "outcome_unknown" })
+      expect((error as { expiresAt?: bigint }).expiresAt).toBeDefined()
+    }
+  })
+
   it("is the expiry of a call request whose wait was cancelled before its answer", async () => {
     const replica = replicaWith({
       [SHAPES]: serve<shapes.Actor>(shapes.actor, { address: ([s]) => s }),

@@ -369,7 +369,10 @@ async function run(
     canisterId: target.id,
     effective: request.effective ?? target.id,
     methodName: name,
-    arg: encoded.bytes,
+    // A copy per invocation: the bytes are what `watchSends` knows this
+    // invocation's sends by, and a `resendOf` offer or a cached encoding
+    // hands the same bytes to every invocation.
+    arg: encoded.bytes.slice(),
     mode,
     signal: request.signal,
   }

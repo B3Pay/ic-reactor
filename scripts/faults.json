@@ -4418,6 +4418,16 @@
     "replace": ""
   },
   {
+    "id": "878-expiry-shared-arg",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "two sends of one resendOf offer are lost at once",
+    "why": "invocations that share one encoded argument share its watch entry, so concurrent sends of one resendOf offer record into the last one's expiry and the first error carries none",
+    "file": "src/call.ts",
+    "search": "    arg: encoded.bytes.slice(),\n",
+    "replace": "    arg: encoded.bytes,\n"
+  },
+  {
     "id": "878-expiry-cancelled-wait",
     "package": "core",
     "test": "tests/canister.test.ts",
