@@ -1,4 +1,4 @@
-import { defineConfig } from "astro/config"
+import { defineConfig, passthroughImageService } from "astro/config"
 import starlight from "@astrojs/starlight"
 import starlightPageActions from "starlight-page-actions"
 
@@ -6,6 +6,9 @@ export default defineConfig({
   site: "https://ic-reactor.b3pay.net",
   base: "/v4/",
   output: "static",
+  // The only images are SVGs (the hero's mark), which need no optimizing, so
+  // the build needs no sharp.
+  image: { service: passthroughImageService() },
   integrations: [
     starlight({
       title: "IC Reactor",
@@ -38,6 +41,26 @@ export default defineConfig({
         baseUrl: "https://github.com/b3pay/ic-reactor/edit/v4/docs/",
       },
       head: [
+        // The B3Pay design system's type: Schibsted Grotesk and Martian Mono.
+        {
+          tag: "link",
+          attrs: { rel: "preconnect", href: "https://fonts.googleapis.com" },
+        },
+        {
+          tag: "link",
+          attrs: {
+            rel: "preconnect",
+            href: "https://fonts.gstatic.com",
+            crossorigin: true,
+          },
+        },
+        {
+          tag: "link",
+          attrs: {
+            rel: "stylesheet",
+            href: "https://fonts.googleapis.com/css2?family=Martian+Mono:wdth,wght@87.5..100,400..500&family=Schibsted+Grotesk:ital,wght@0,400;0,600;0,700;1,400&display=swap",
+          },
+        },
         {
           tag: "meta",
           attrs: {
@@ -117,6 +140,11 @@ export default defineConfig({
           ],
         },
       ],
+      expressiveCode: {
+        themes: ["vitesse-dark", "vitesse-light"],
+        useStarlightUiThemeColors: true,
+        styleOverrides: { borderRadius: "10px" },
+      },
       customCss: ["./src/styles/custom.css"],
       components: {
         SiteTitle: "./src/components/SiteTitle.astro",
