@@ -46,6 +46,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   and the app checks with the peers included to 91.34 kB (91,291 B, +394 B)
   and 92.61 kB (92,561 B, +399 B).
 
+#### Changed
+
+- `AuthLike`'s `getStatus().state` takes any string beside the four states
+  of `@icp-sdk/auth` 10, so an `@icp-sdk/auth` release that adds a session
+  state does not stop `auth: (network) => new AuthClient(network)` compiling.
+  The client already called anonymously in such a state; `authState()` reads
+  it as `"anonymous"`. A weekly CI job type-checks core and runs the core and
+  react tests against `@icp-sdk/auth@latest`. Code that switches over
+  `getStatus().state` exhaustively needs a `default` (#911).
+
 #### Fixed
 
 - A reply over about a million bytes decodes. candid-core charges a blob one
@@ -156,6 +166,12 @@ Both are members, so the export budget is unchanged.
 
 ### Docs
 
+- The guide, the auth and client pages and `AuthLike`'s JSDoc no longer say a
+  wallet fits with a small adapter. What fits is a sign-in that hands over an
+  `Identity` (a delegation or a key); a wallet that signs each call itself
+  (ICRC-25 and ICRC-49: OISY, Plug, NFID accounts) does not. The auth page
+  shows such a wallet's writes through `SignerAgent` beside an anonymous
+  client, with the reads invalidated by hand (#904).
 - The client guide has a section for a local network without the Vite plugin
   (Next.js, Rsbuild, webpack, esbuild): `network: "local"` with `{ id }` from
   a build-time variable written by `icp canister status -e local -i`, or a

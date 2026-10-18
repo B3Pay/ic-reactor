@@ -291,7 +291,7 @@ describe("a client following its auth in a browser", () => {
     let state = "restoring"
     const auth = {
       ...createTestAuth({ identity: new AnonymousIdentity() }),
-      getStatus: () => ({ state }) as never,
+      getStatus: () => ({ state }),
     }
     const client = clientOf(auth)
 
