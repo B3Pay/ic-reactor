@@ -29,6 +29,8 @@ export interface CanisterRecord {
   readonly internals: ClientInternals
   readonly target: CanisterIdTarget
   readonly certified: boolean
+  /** How long each call through the canister waits for its answer (`CanisterTarget.timeoutMs`). */
+  readonly timeoutMs?: number
   readonly methods: ReadonlyMap<string, PreparedMethod>
   /**
    * The canister id now, or the key segment of a `{ name }` the cookie does
@@ -101,7 +103,15 @@ export function methodOf(
   return prepared
 }
 
-const TARGET_KEYS = new Set(["id", "name", "certified"])
+const TARGET_KEYS = new Set(["id", "name", "certified", "timeoutMs"])
+
+/**
+ * Whether `value` is not a `timeoutMs`: a number of milliseconds from 1 to
+ * 2147483647, the most a timer takes (a larger one fires at once).
+ */
+export const badTimeout = (value: unknown): boolean =>
+  value !== undefined &&
+  !(typeof value === "number" && value >= 1 && value <= 2147483647)
 
 /**
  * Checks a {@link CanisterTarget} that a JavaScript caller, or a cast, can get
@@ -113,11 +123,12 @@ export function readTarget(
 ): {
   readonly target: CanisterIdTarget
   readonly certified: boolean
+  readonly timeoutMs?: number
   readonly memoKey: string
 } {
   const bad = (why: string) =>
     new TypeError(
-      `[ic-reactor] ${what} takes { id } or { name }, with an optional certified: boolean; ${why}, got ${describe(target)}.`
+      `[ic-reactor] ${what} takes { id } or { name }, with an optional certified: boolean and timeoutMs; ${why}, got ${describe(target)}.`
     )
   if (typeof target !== "object" || target === null) {
     throw bad("the target is not an object")
@@ -125,27 +136,26 @@ export function readTarget(
   const record = target as Record<string, unknown>
   const unknown = Object.keys(record).filter((key) => !TARGET_KEYS.has(key))
   if (unknown.length > 0) throw bad(`it has no option ${unknown.join(", ")}`)
-  const { id, name, certified } = record
+  const { id, name, certified, timeoutMs } = record
   if (certified !== undefined && typeof certified !== "boolean") {
     throw bad("certified is a boolean")
   }
+  if (badTimeout(timeoutMs)) throw bad("timeoutMs is 1 to 2147483647 ms")
   const hasId = id !== undefined
   const hasName = name !== undefined
   if (hasId === hasName) throw bad("give exactly one of id and name")
   if (hasId && typeof id !== "string") throw bad("id is principal text")
   if (hasName && typeof name !== "string") throw bad("name is text")
   const flag = certified === true
-  return hasId
-    ? {
-        target: { id: id as string },
-        certified: flag,
-        memoKey: `id\u0000${id as string}\u0000${flag}`,
-      }
-    : {
-        target: { name: name as string },
-        certified: flag,
-        memoKey: `name\u0000${name as string}\u0000${flag}`,
-      }
+  const rest = {
+    certified: flag,
+    timeoutMs: timeoutMs as number | undefined,
+    memoKey: `${hasId ? "id" : "name"}\u0000${(id ?? name) as string}\u0000${flag}\u0000${timeoutMs as number}`,
+  }
+  return {
+    target: hasId ? { id: id as string } : { name: name as string },
+    ...rest,
+  }
 }
 
 /**
@@ -159,7 +169,7 @@ export function canisterFactory(
   const memo = new WeakMap<object, Map<string, object>>()
 
   return (service, rawTarget) => {
-    const { target, certified, memoKey } = readTarget(rawTarget)
+    const { target, certified, timeoutMs, memoKey } = readTarget(rawTarget)
     if (typeof service !== "object" || service === null) {
       throw new TypeError(
         `[ic-reactor] client.canister() takes the service schema of a generated module (its \`actor\` export), got ${describe(service)}.`
@@ -206,6 +216,7 @@ export function canisterFactory(
       internals,
       target,
       certified,
+      timeoutMs,
       methods,
       resolve,
       slots(): readonly string[] {
@@ -230,6 +241,7 @@ export function canisterFactory(
             certified,
             caller: internals.current(),
             values: args,
+            timeoutMs,
             resend: true,
             canister,
           }),
