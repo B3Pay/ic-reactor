@@ -41,6 +41,19 @@ export const clientWithAuth = (auth: () => AuthLike): Client =>
 export const anonymousClient = (): Client =>
   createClient({ network: "ic", identity: "anonymous" })
 
+/**
+ * The client a view that `useClient()` returned was made over, read through
+ * the seam core and the provider share (`ic-reactor.client.of`), or `client`
+ * itself when it is no view: a client built with `identity`, which
+ * `useClient()` returns as it is. `useClient()` returns a view per caller,
+ * never the provider's client object, so a test that asks which client a
+ * component got compares this.
+ */
+export const clientOf = (client: Client): Client =>
+  (client as unknown as { readonly [key: symbol]: Client | undefined })[
+    Symbol.for("ic-reactor.client.of")
+  ] ?? client
+
 /** A client the test can ask whether it was disposed, and how often. */
 export interface TrackedClient {
   readonly client: Client
@@ -72,9 +85,10 @@ export function trackedFactory(build: () => Client) {
     made.push(tracked)
     return tracked.client
   })
-  /** The record of a client the provider handed to a component. */
+  /** The record of the client a provider gave a component a view of. */
   const trackOf = (client: Client): TrackedClient => {
-    const found = made.find((entry) => entry.client === client)
+    const held = clientOf(client)
+    const found = made.find((entry) => entry.client === held)
     if (found === undefined) {
       throw new Error("the client was not built by this factory")
     }

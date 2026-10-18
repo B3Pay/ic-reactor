@@ -39,17 +39,75 @@ import { useCanisters } from "./use-canisters.ts"
 /** What the ledger deduplicates a transfer on: absent, a re-send could pay twice. */
 export const dedupedBy = (arg: TransferArg) => arg.created_at_time
 
-export function SendIcp() {
+/** What became of the last transfer sent from a form. */
+interface Kept {
+  variables: TransferArg
+  isPending: boolean
+  data?: bigint
+  error: ReactorError<Icrc1TransferError> | null
+}
+
+/**
+ * `useMutation(client.mutationOptions(ledger, "icrc1_transfer"))`, with the
+ * outcome of the last transfer kept in the form's own state as well. The
+ * options `useClient()` builds are the caller's, and their key with them, so
+ * after an account switch the mutation is a new, idle one, while an unknown
+ * outcome must stay on screen: `client.resendOf` withdraws its offer while
+ * another account is the caller, and makes it again once the sender is back.
+ * The callbacks of the options a run was pressed with are the ones it calls,
+ * so they still reach this state after the switch.
+ */
+export function useTransfer() {
   const client = useClient()
   const { ledger } = useCanisters()
-  const { status, principal: caller } = useAuth()
-  const token = useToken()
-  const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  const [kept, setKept] = useState<Kept>()
+  const options = client.mutationOptions(ledger, "icrc1_transfer")
+  const transfer = useMutation({
+    ...options,
+    onSuccess: (data, variables) =>
+      setKept({ variables, isPending: true, data, error: null }),
+    onError: (error, variables) =>
+      setKept({ variables, isPending: true, error }),
+    // The client's own onSettled re-reads the ledger, the balance included;
+    // the transfer reads as pending until that ends.
+    onSettled: async (...args: Parameters<typeof options.onSettled>) => {
+      try {
+        await options.onSettled(...args)
+      } finally {
+        setKept((last) => last && { ...last, isPending: false })
+      }
+    },
+  })
+  const shown: Kept | undefined =
+    transfer.variables !== undefined
+      ? {
+          variables: transfer.variables,
+          isPending: transfer.isPending,
+          data: transfer.data,
+          error: transfer.error,
+        }
+      : kept
   // Read on every render: `useAuth()` re-renders this on a switch of account,
   // and the offer follows the caller.
-  const again = client.resendOf(transfer.error, ledger, "icrc1_transfer", {
-    dedupedBy,
-  })
+  const again = client.resendOf(
+    shown?.error ?? null,
+    ledger,
+    "icrc1_transfer",
+    { dedupedBy }
+  )
+  const mutate = (arg: TransferArg) => {
+    setKept({ variables: arg, isPending: true, error: null })
+    transfer.mutate(arg)
+  }
+  return { shown, again, mutate }
+}
+
+export function SendIcp() {
+  const client = useClient()
+  const { status, principal: caller } = useAuth()
+  const token = useToken()
+  const transfer = useTransfer()
+  const { again } = transfer
   const [form, setForm] = useState<TransferForm>({ to: "", amount: "" })
   const [refusal, setRefusal] = useState<{ field: string; reason: string }>()
   const signedIn = status === "signed-in"
@@ -101,7 +159,9 @@ export function SendIcp() {
           <button
             type="submit"
             className="primary"
-            disabled={!signedIn || token === undefined || transfer.isPending}
+            disabled={
+              !signedIn || token === undefined || transfer.shown?.isPending
+            }
           >
             Send
           </button>
@@ -113,13 +173,13 @@ export function SendIcp() {
           </p>
         )}
       </form>
-      {transfer.variables && token && (
+      {transfer.shown && token && (
         <Outcome
-          arg={transfer.variables}
+          arg={transfer.shown.variables}
           token={token}
-          isPending={transfer.isPending}
-          block={transfer.data}
-          error={transfer.error}
+          isPending={transfer.shown.isPending}
+          block={transfer.shown.data}
+          error={transfer.shown.error}
           onSendAgain={again && (() => transfer.mutate(again.arg))}
         />
       )}

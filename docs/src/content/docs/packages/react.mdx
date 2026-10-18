@@ -154,9 +154,17 @@ export function Fee({ id }: { id: string }) {
 It follows the client's caller, so a component that calls it renders again on
 a sign-in, a switch of account and a sign-out, and builds the new caller's
 keys. A change of status that leaves the caller as it is renders nothing.
-While a page hydrates in a browser that holds a session, it returns a view for
-the anonymous caller, so do not keep its result past its render. See
-[SSR and hydration](/v4/guides/ssr/).
+
+It returns a view of the client for the caller the render shows (the anonymous
+one while a page hydrates): one object per caller, a new one when the caller
+changes, the same one on every render while it stays. List it in the
+dependencies of a `useMemo`, an effect or a callback built from it; React
+Compiler memoizes on it the same way, so what is memoized is built again for
+the new caller. Its `mutationOptions` send only as that caller: a write
+pressed before a switch reached the render is refused (`caller_changed`) and
+sends nothing. It is never the provider's client object, so compare two
+clients by their `queryClient`, and do not keep its result past its render.
+See [SSR and hydration](/v4/guides/ssr/).
 
 ### useAuth
 
