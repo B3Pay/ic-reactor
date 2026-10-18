@@ -281,7 +281,8 @@ function nonLoopbackPageWarning(host: string): string {
   return (
     `[ic-reactor] a page was loaded from ${host}, which is not localhost. ` +
     `network: "env" is for localhost pages: on this host @ic-reactor/core does not believe the ic_env cookie, ` +
-    `so { name } canisters do not resolve and certified calls fail verification (the page still reaches only this dev server). ` +
+    `so { name } canisters do not resolve and certified calls fail verification. ` +
+    `A LAN address or a known tunnel or codespace domain sends its calls to this dev server; any other host falls back to mainnet (https://icp-api.io), where { id } canisters are mainnet's. ` +
     `Open the app on localhost, or give the client a { host, rootKey } network and { id } canisters. (Logged once.)`
   )
 }
