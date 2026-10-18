@@ -67,6 +67,18 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Fixed
 
+- An app's own queries on `client.queryClient`, such as REST calls under
+  `ReactorProvider`, keep TanStack Query's retries: the default `retry`
+  applies the client's rule only to a `ReactorError`, and retries any other
+  error up to 3 times in a browser, as a plain `QueryClient` does (never on a
+  server). The client's own reads set `retry` themselves and are unchanged.
+  An app that turned retries off through this default sets `retry: false` on
+  its queries instead (#903).
+- A write from `client.mutationOptions` invalidates the reads on the
+  `QueryClient` it ran on, which TanStack Query 5.89 and later hands it, as
+  well as on `client.queryClient`: an app that nests its own
+  `QueryClientProvider` inside `ReactorProvider` now sees its reads refresh
+  after a write (#903).
 - **BREAKING:** `createClient` checks every option, so a value the types
   forbid but untyped code can pass (an `import.meta.env` value, a spread,
   plain JavaScript) fails closed with a `TypeError` naming the option and

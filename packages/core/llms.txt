@@ -133,6 +133,14 @@ returns it (as anonymous while hydrating) and `useAuth()` returns
 `{ status, principal, signIn, signOut }`, `"anonymous"` on a server and in a
 hydrating page's first render.
 
+An app that already uses TanStack Query keeps one `QueryClient` per tree,
+the client's: run its own queries (REST too) under `ReactorProvider`, on
+`client.queryClient`. An error that is not a `ReactorError` is retried there
+as TanStack Query retries it (up to 3 times in a browser), and
+`client.dispose()` clears those queries too. A nested `QueryClientProvider` of
+the app's still has its reads invalidated by a write that ran on it, but a
+server render dehydrates `client.queryClient`.
+
 Any other sign-in that hands over an `Identity` (a delegation, or a key)
 becomes an `AuthLike`. A wallet that signs each call itself (ICRC-25 and
 ICRC-49: OISY, Plug, NFID accounts) is not one: keep the client anonymous for
