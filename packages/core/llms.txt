@@ -79,6 +79,16 @@ development `ReactorProvider` throws when it is handed such a client.
   `icp canister status -e local -i backend` into
   `.env.development.local`, which only `next dev` reads).
 
+Deploying to mainnet (`icp deploy -e ic`): with `"env"`, a canister's own
+`<id>.icp0.io` (or `<id>.raw.icp0.io`) page believes its cookie's canister
+ids (a public suffix: no sibling can set it), never its root key. On
+`<id>.ic0.app` and custom domains `{ name }` does not resolve. For a page that
+works everywhere, name canisters `{ id: import.meta.env.VITE_BACKEND_ID }`,
+with the local id in `.env.development` and the mainnet id
+(`icp canister status backend -e ic -i`) in `.env.production`. Never set
+`allowEnvConfig: true` on `ic0.app`; on a custom domain only when every
+subdomain is yours.
+
 `createClient` throws a `TypeError` for an option it does not have (`host`
 goes inside `network`), an `allowEnvConfig` or `fetchRootKey` that is not a
 boolean (environment text: `=== "true"`), and a `rootKey` that is not 133

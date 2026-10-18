@@ -48,6 +48,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 #### Changed
 
+- `network: "env"` on a canister's own `<id>.icp0.io` or `<id>.raw.icp0.io`
+  page, with a mainnet agent host, believes the `ic_env` cookie's canister
+  ids by default (#901). Both parents are on the Public Suffix List, so the
+  cookie is the asset canister's own, and `{ name }` targets now resolve
+  after `icp deploy -e ic` with no `allowEnvConfig`. Its root key is never
+  taken there (the agent keeps mainnet's), and its Internet Identity URL
+  only over `https:`. `ic0.app` and custom domains are unchanged. Migration:
+  an app that relied on `{ name }` failing on icp0.io needs nothing; to
+  refuse the cookie there, pass `allowEnvConfig: false`.
 - `AuthLike`'s `getStatus().state` takes any string beside the four states
   of `@icp-sdk/auth` 10, so an `@icp-sdk/auth` release that adds a session
   state does not stop `auth: (network) => new AuthClient(network)` compiling.
@@ -183,6 +192,10 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### Docs
 
+- The client guide has a "Deploy to mainnet" section: `icp deploy -e ic`,
+  what `"env"` resolves to on `icp0.io`, `ic0.app` and a custom domain,
+  `{ id }` from build-time env with the local and the mainnet id, and when
+  `allowEnvConfig: true` is safe; `llms.txt` states the rule (#901).
 - The consumer guide (`packages/core/llms.txt`) and the Reads, Writes, Values
   and Client pages say five things that already worked (#879): a read with
   `{ update: "idempotent" }` is still an update, refused for a signed-out or

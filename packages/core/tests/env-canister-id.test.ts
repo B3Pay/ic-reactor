@@ -39,6 +39,8 @@ const LOCAL_PAGE = "http://localhost:5173"
 const CUSTOM_PAGE = "https://app.example.com"
 const CODESPACE = "https://fluffy-space-5173.app.github.dev"
 const GITPOD = "https://5173-user-repo-abc123.ws-us118.gitpod.io"
+/** A canister id, as the first label of its icp0.io page. */
+const ICP0_CANISTER = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
 
 beforeEach(() => {
   stubProcessEnv()
@@ -197,6 +199,53 @@ describe("a { name } target on a page that is trusted", () => {
   })
 })
 
+describe("a { name } target on a canister's own icp0.io page", () => {
+  // icp0.io and *.raw.icp0.io are public suffixes, so the cookie such a page
+  // receives is its own asset canister's: icp-cli's production path, with no
+  // allowEnvConfig (#901).
+  it.each([
+    ["<id>.icp0.io", `https://${ICP0_CANISTER}.icp0.io`],
+    ["<id>.raw.icp0.io", `https://${ICP0_CANISTER}.raw.icp0.io`],
+  ])('resolves from the cookie for "env" and "ic" on %s', (_, page) => {
+    for (const network of ["env", "ic"] as Network[]) {
+      const { result, net } = resolveBackend(network, page)
+
+      expect(result).toStrictEqual({ ok: true, id: COOKIE_CANISTER_ID })
+      expect(net.trustsEnv).toBe(true)
+      expect(net.envIdsOnly).toBe(true)
+      // The ids only: the agent keeps mainnet's own key.
+      expect(net.rootKey).toBeUndefined()
+      expect(net.fetchRootKey).toBe(false)
+    }
+  })
+
+  it.each([
+    ["icp0.io itself", "https://icp0.io"],
+    ["raw.icp0.io itself", "https://raw.icp0.io"],
+    ["a label that is not a canister id", "https://my-app.icp0.io"],
+    ["a name two labels under icp0.io", `https://a.${ICP0_CANISTER}.icp0.io`],
+    ["ic0.app, not a public suffix", `https://${ICP0_CANISTER}.ic0.app`],
+    ["a custom domain", CUSTOM_PAGE],
+  ])("is refused on %s", (_, page) => {
+    const { result, fake } = resolveBackend("env", page)
+
+    expect(refusal(result).reason).toBe("untrusted_host")
+    expect(fake.cookieReads()).toBe(0)
+  })
+
+  it("is refused when the agent host is not mainnet, or with allowEnvConfig: false", () => {
+    const page = `https://${ICP0_CANISTER}.icp0.io`
+    // The cookie describes the network the asset canister runs on, mainnet.
+    expect(
+      refusal(resolveBackend({ host: LOCAL_REPLICA }, page).result).reason
+    ).toBe("untrusted_host")
+    expect(
+      refusal(resolveBackend("env", page, { allowEnvConfig: false }).result)
+        .reason
+    ).toBe("untrusted_host")
+  })
+})
+
 describe("a { name } target on a page that is not trusted", () => {
   it("is refused on a custom domain, which is the attack the guard exists for", () => {
     // app.example.com and evil.example.com share a registrable domain, so the
@@ -221,13 +270,11 @@ describe("a { name } target on a page that is not trusted", () => {
     expect(fake.cookieReads()).toBe(0)
   })
 
-  it('is refused for "env" on a dapp served from its own mainnet asset canister', () => {
+  it('is refused for "env" on a dapp served from its own canister on ic0.app', () => {
     // Here the page origin IS adopted as the host, so this is the other branch
-    // of the host choice and it still has to fail closed.
-    const { result } = resolveBackend(
-      "env",
-      "https://abcde-aaaaa-aaaaa-aaaaa-cai.icp0.io"
-    )
+    // of the host choice and it still has to fail closed: ic0.app is not a
+    // public suffix, so any other canister's page can set this cookie.
+    const { result } = resolveBackend("env", `https://${ICP0_CANISTER}.ic0.app`)
 
     expect(refusal(result).reason).toBe("untrusted_host")
   })

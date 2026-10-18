@@ -211,6 +211,24 @@ describe("the network an auth factory is handed", () => {
     })
   })
 
+  it("takes an icp0.io canister's cookie provider over https: only, with its internet_identity", () => {
+    const page = "https://bkyz2-fmaaa-aaaaa-qaaaq-cai.icp0.io"
+    stubPage(page, {
+      cookie: cookieWithProvider("http://id.example.com/authorize"),
+    })
+    expect(handedTo("env").identityProvider).toBeUndefined()
+
+    stubPage(page, {
+      cookie: cookieWithProvider("https://id.example.com/authorize", {
+        "PUBLIC_CANISTER_ID:internet_identity": PROJECT_II,
+      }),
+    })
+    expect(handedTo("env").identityProvider).toEqual({
+      authorizeUrl: "https://id.example.com/authorize",
+      canisterId: PROJECT_II,
+    })
+  })
+
   it("ignores a trusted cookie's http: provider on a page that is not local, and takes an https: one", () => {
     // Over plain http: anyone on the path can serve the sign-in page, so the
     // cookie's URL is taken over http: only where the page itself is local.

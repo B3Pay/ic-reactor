@@ -84,7 +84,9 @@ asset canisters set it. The client reads it only in a browser, and believes it
 only when both the replica and the page are local, or when you write
 `allowEnvConfig: true`. Any sibling subdomain of a page's domain can write a
 cookie, so write `allowEnvConfig: true` only when every subdomain of the page's
-domain is trusted. `allowEnvConfig: false` never reads the cookie.
+domain is trusted. `allowEnvConfig: false` never reads the cookie. One more
+page believes the cookie's canister ids by default: a canister's own
+`<id>.icp0.io` page (see [Deploy to mainnet](#deploy-to-mainnet)).
 
 Whether siblings can write it depends on the Public Suffix List. `icp0.io` and
 `raw.icp0.io` are on it, so no other canister's page can set a cookie that
@@ -218,6 +220,65 @@ The page is local, so the client fetches the root key through the rewrite. It
 still gives no cookie, so the canisters still need `{ id }`, and a server
 render has no page origin: run `next dev` with `ICP_NETWORK=local`, or the
 server's `"env"` is mainnet.
+
+### Deploy to mainnet
+
+`icp deploy -e ic` deploys the project's canisters, the frontend's asset
+canister among them, to mainnet: `ic` is, with `local`, one of the two
+environments every icp-cli project has. The asset canister then serves the
+built page at `https://<frontend-id>.icp0.io`, also reachable as
+`<frontend-id>.raw.icp0.io` and `<frontend-id>.ic0.app`, and at a custom
+domain once you register one. It sets an `ic_env` cookie like the Vite
+plugin's, with the `PUBLIC_CANISTER_ID:<name>` entries icp-cli sets on the
+canisters and mainnet's root key.
+
+What `network: "env"` does on each of these pages:
+
+| The page                           | The host             | The root key        | `{ name: "backend" }`                   |
+| ---------------------------------- | -------------------- | ------------------- | --------------------------------------- |
+| `<id>.icp0.io`, `<id>.raw.icp0.io` | the page's origin    | mainnet's, built in | resolved from the cookie                |
+| `<id>.ic0.app`                     | the page's origin    | mainnet's, built in | not resolved (`canister_id_unresolved`) |
+| a custom domain                    | `https://icp-api.io` | mainnet's, built in | not resolved (`canister_id_unresolved`) |
+
+`icp0.io` and `raw.icp0.io` are on the Public Suffix List, so no other
+canister's page can set a cookie that `<id>.icp0.io` receives: the cookie is
+the frontend's own, and its canister ids are believed without
+`allowEnvConfig`. Its root key is not used (the agent keeps mainnet's), and its
+`INTERNET_IDENTITY_PROVIDER` only over `https:`. `ic0.app` is not on the list:
+any canister's page can set a cookie there for every other one, so the
+cookie is not believed. A custom domain is not known to be either, and its
+page cannot proxy `/api`, so `"env"` falls back to mainnet's API host.
+
+For an app that works on all three, and on a local network, bake the ids into
+the build instead of naming canisters. With Vite, read them from a mode's env
+file:
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { actor, type Actor } from "./generated/backend"
+
+const client = createClient({ network: "env", identity: "anonymous" })
+const backend = client.canister<Actor>(actor, {
+  id: import.meta.env.VITE_BACKEND_ID,
+})
+```
+
+```sh
+# .env.development: the id on the local network
+VITE_BACKEND_ID=bkyz2-fmaaa-aaaaa-qaaaq-cai
+# .env.production: the id on mainnet
+VITE_BACKEND_ID=<the id icp printed for backend on ic>
+```
+
+`icp canister status backend -e local -i` and
+`icp canister status backend -e ic -i` print the two ids. Then
+`vite build` and `icp deploy -e ic` ship a page that calls the mainnet id from
+any of its domains.
+
+`allowEnvConfig: true` is safe only on a page whose every sibling subdomain
+is yours, which is to say a custom domain where no subdomain serves content
+anyone else controls. On `<id>.icp0.io` it adds nothing you need, and on
+`ic0.app` it is never safe.
 
 ## Who calls
 

@@ -15,18 +15,23 @@
  *   choosing.
  * - **The `ic_env` cookie is believed only where it is as trustworthy as the
  *   replica it describes.** Cookies are not origin-isolated: any sibling
- *   subdomain of the page's registrable domain can write one. It carries the
+ *   subdomain of the page's registrable domain can write one. (Not so on
+ *   `<id>.icp0.io` and `<id>.raw.icp0.io`: `icp0.io` and `*.raw.icp0.io` are
+ *   on the Public Suffix List, so a browser refuses a cookie a sibling
+ *   canister sets for them, and the cookie such a page receives is its own
+ *   asset canister's.) It carries the
  *   root key certificates are verified against and the canister ids calls are
  *   routed to, and certificate verification cannot notice a substituted id
  *   (the attacker names a real canister, whose replies verify against the real
  *   root key). So the cookie is read only in a browser, and only when both the
  *   agent host and the page are a local replica, or the caller wrote
- *   `allowEnvConfig: true`. Even then its root key is never taken for a
- *   mainnet host, which has one key, the agent's own; its Internet Identity
- *   URL is taken over `http:` only on a local page; and the opt-in itself is
- *   refused on a page under a shared parent that is not a public suffix
- *   (`ic0.app`, `github.dev`, `gitpod.io`), where any stranger's page can
- *   write the cookie.
+ *   `allowEnvConfig: true`. On a canister's own `icp0.io` page with a mainnet
+ *   agent host, its canister ids are believed by default. Its root key is
+ *   never taken for a mainnet host, which has one key, the agent's own; its
+ *   Internet Identity URL is taken over `http:` only on a local page; and the
+ *   opt-in itself is refused on a page under a shared parent that is not a
+ *   public suffix (`ic0.app`, `github.dev`, `gitpod.io`), where any stranger's
+ *   page can write the cookie.
  *
  * @module
  */
@@ -54,9 +59,11 @@ import { isServer } from "./runtime.js"
  *   others never reach mainnet, but none is local. The root key
  *   comes from the `ic_env` cookie, but only where that cookie is trusted:
  *   when both the page and the replica are local, or the client was built
- *   with `allowEnvConfig: true`. A local replica with no key from the cookie
- *   has its root key fetched. A forwarding page is routed but is not local,
- *   so there the key is neither taken from the cookie nor fetched,
+ *   with `allowEnvConfig: true`. On a canister's own `<id>.icp0.io` page the
+ *   cookie's canister ids are believed by default, never its root key. A
+ *   local replica with no key from the cookie has its root key fetched. A
+ *   forwarding page is routed but is not local, so there the key is neither
+ *   taken from the cookie nor fetched,
  *   and the agent checks the forwarded replica's certificates against
  *   mainnet's key, so every certified call fails verification. Name the
  *   replica with an object that has a `rootKey` (or `fetchRootKey: true`)
@@ -104,7 +111,9 @@ export interface NetworkOptions {
   /**
    * `true` trusts the cookie (root key and canister ids) wherever the code
    * runs in a browser, `false` never reads it, and absent trusts it only when
-   * both the agent host and the page are a local replica. Set it to `true`
+   * both the agent host and the page are a local replica, or (canister ids
+   * only) when the page is a canister's own `<id>.icp0.io` or
+   * `<id>.raw.icp0.io` page and the agent host is mainnet's. Set it to `true`
    * only when every subdomain of the page's domain is trusted to write
    * cookies. Even with `true`, the root key is never taken for a mainnet host
    * and an `http:` Internet Identity URL only on a local page.
@@ -128,6 +137,12 @@ export interface ResolvedNetwork {
   readonly fetchRootKey: boolean
   /** Whether the `ic_env` cookie is believed. Always `false` outside a browser page. */
   readonly trustsEnv: boolean
+  /**
+   * Present when the cookie is believed for canister ids only, as on a
+   * canister's own `icp0.io` page by default: its root key is never taken,
+   * and its Internet Identity URL only over `https:`.
+   */
+  readonly envIdsOnly?: true
 }
 
 /** The part of `HttpAgentOptions` a resolved network decides. */
@@ -248,6 +263,14 @@ const isMainnetHostname = (hostname: string | undefined): boolean =>
  * refuses a cookie a sibling canister sets for them.
  */
 const SHARED_PARENTS = ["ic0.app", "github.dev", "gitpod.io"]
+
+/**
+ * A canister's own page on `icp0.io`: `<id>.icp0.io` or `<id>.raw.icp0.io`,
+ * `<id>` being principal text. Both parents are on the Public Suffix List
+ * (`icp0.io` and `*.raw.icp0.io`), so no other site can set a cookie this
+ * page receives. `ic0.app` is not on it, nor is a custom domain known to be.
+ */
+const ICP0_CANISTER_PAGE = /^([a-z0-9-]+)\.(?:raw\.)?icp0\.io$/
 
 /**
  * Names that forward a dev server and its replica to the browser from
@@ -446,6 +469,36 @@ const trustsEnvFor = (
 }
 
 /**
+ * Whether the page is a canister's own {@link ICP0_CANISTER_PAGE}. A worker
+ * has no cookie, so it is never one.
+ */
+const pageIsIcp0Canister = (): boolean => {
+  if (typeof window === "undefined") return false
+  const match = ICP0_CANISTER_PAGE.exec(pageHostnameOf(pageOrigin()) ?? "")
+  return match !== null && principalProblem(match[1]!) === undefined
+}
+
+/**
+ * How far the `ic_env` cookie is believed for an agent on `host`: the
+ * {@link ResolvedNetwork} fields `trustsEnv` and `envIdsOnly`. With no
+ * `allowEnvConfig`, a canister's own `icp0.io` page talking to mainnet has
+ * its cookie believed for canister ids: icp-cli's asset canister serves it,
+ * and no sibling can write it.
+ */
+const envTrustFor = (
+  host: string,
+  allowEnvConfig: boolean | undefined
+): Pick<ResolvedNetwork, "trustsEnv" | "envIdsOnly"> => {
+  if (trustsEnvFor(host, allowEnvConfig)) return { trustsEnv: true }
+  return allowEnvConfig === undefined &&
+    !isServer() &&
+    isMainnetHostname(agentHostnameOf(host)) &&
+    pageIsIcp0Canister()
+    ? { trustsEnv: true, envIdsOnly: true }
+    : { trustsEnv: false }
+}
+
+/**
  * Refuses `allowEnvConfig` on a browser page under a {@link SHARED_PARENTS}
  * domain, where it would believe a cookie any stranger's page can set.
  */
@@ -513,7 +566,7 @@ export const resolveNetwork = (
       keySegment: "ic",
       host: IC_HOST,
       fetchRootKey: false,
-      trustsEnv: trustsEnvFor(IC_HOST, allowEnvConfig),
+      ...envTrustFor(IC_HOST, allowEnvConfig),
     })
   }
 
@@ -522,18 +575,19 @@ export const resolveNetwork = (
       keySegment: "local",
       host: LOCAL_HOST,
       fetchRootKey: true,
-      trustsEnv: trustsEnvFor(LOCAL_HOST, allowEnvConfig),
+      ...envTrustFor(LOCAL_HOST, allowEnvConfig),
     })
   }
 
   if (network === "env") {
     const host = routableOrigin() ?? fallbackHost()
-    const trustsEnv = trustsEnvFor(host, allowEnvConfig)
+    const trust = envTrustFor(host, allowEnvConfig)
     // The key is the replica's, so it is taken only from a cookie that is as
     // trustworthy as the replica, and never for mainnet, whose key the agent
-    // already holds. Without one, a local replica is asked.
+    // already holds (a cookie believed for ids only is always a mainnet
+    // host's). Without one, a local replica is asked.
     const rootKey =
-      trustsEnv && !isMainnetHostname(agentHostnameOf(host))
+      trust.trustsEnv && !isMainnetHostname(agentHostnameOf(host))
         ? cookieRootKey()
         : undefined
     return resolved({
@@ -542,7 +596,7 @@ export const resolveNetwork = (
       rootKey,
       fetchRootKey:
         rootKey === undefined && isLocalHostname(agentHostnameOf(host)),
-      trustsEnv,
+      ...trust,
     })
   }
 
@@ -581,7 +635,7 @@ export const resolveNetwork = (
     fetchRootKey:
       rootKey === undefined &&
       (fetchRootKey ?? isLocalHostname(agentHostnameOf(host))),
-    trustsEnv: trustsEnvFor(host, allowEnvConfig),
+    ...envTrustFor(host, allowEnvConfig),
   })
 }
 
@@ -664,7 +718,8 @@ export const resolveCanisterId = (
         // anywhere the reader recognises, so name the page too.
         `${origin ? `, page ${origin}` : ""}), so it was not read. ` +
         `It is trusted only when both the agent host and the page are a local replica ` +
-        `(localhost, *.localhost or a loopback address), because any sibling subdomain can write it. ` +
+        `(localhost, *.localhost or a loopback address), or, for canister ids, on a canister's own ` +
+        `<id>.icp0.io page with a mainnet host, because elsewhere a sibling subdomain can write it. ` +
         `Use { id } (bake the id in at build time) or, only if you trust every subdomain of this domain, ` +
         `set allowEnvConfig: true, which trusts the cookie's canister ids, and its root key for a replica that is not mainnet.`
     )
@@ -740,8 +795,9 @@ const verifiesAsMainnet = (net: ResolvedNetwork): boolean =>
 
 /**
  * The cookie's `INTERNET_IDENTITY_PROVIDER`, when it is an `https:` URL, or an
- * `http:` one on a local page. Over plain `http:` from a page that is not
- * local, anyone on the path could stand in for the sign-in page.
+ * `http:` one on a local page (never one believed for ids only, a canister's
+ * `icp0.io` page). Over plain `http:` from a page that is not local, anyone on
+ * the path could stand in for the sign-in page.
  */
 const cookieAuthorizeUrl = (
   env: Readonly<Record<string, unknown>> | undefined
@@ -787,7 +843,8 @@ const builtInAuthorizeUrl = (host: string): string | undefined => {
  * agents, and the identity provider to sign in with, by these rules in order.
  *
  * 1. A trusted `ic_env` cookie that names `INTERNET_IDENTITY_PROVIDER` over
- *    `https:` (or `http:` on a local page): that URL, with the cookie's `PUBLIC_CANISTER_ID:internet_identity`, or
+ *    `https:` (or `http:` on a local page): that URL, with the cookie's
+ *    `PUBLIC_CANISTER_ID:internet_identity`, or
  *    Internet Identity's own id when it names none.
  * 2. A trusted cookie that names an `internet_identity` canister but no URL
  *    (the project deploys its own): none, and a gap unless the network is

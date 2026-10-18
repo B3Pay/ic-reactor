@@ -83,11 +83,13 @@ checks it against the live ledger.
 page: with `network: "env"` it calls its own origin's `/api`, which an asset
 canister's domain (`<id>.icp0.io`) serves as the dev server's proxy does
 locally. What changes is the cookie. An asset canister sets an `ic_env`
-cookie too, but ic-reactor reads it only where both the page and the replica
-are local, because any sibling subdomain of a page's domain can write a
-cookie. On a deployed page `{ name: "backend" }` stays unresolved and its
+cookie too. On `<id>.icp0.io`, a public suffix no other canister can set a
+cookie for, ic-reactor believes its canister ids (never its root key); on
+`<id>.ic0.app` and a custom domain it does not, because a sibling subdomain
+can write a cookie there, so `{ name: "backend" }` stays unresolved and its
 calls are refused before sending (`invalid_args`, code
-`canister_id_unresolved`). Give the deployed build the id instead, as
+`canister_id_unresolved`). For a build that works on every domain, give it
+the id instead, as
 `{ id: import.meta.env.VITE_BACKEND_ID }`. `allowEnvConfig: true` is safe only
 on `<id>.icp0.io`, a public suffix, or a custom domain whose every subdomain is
 yours; on `ic0.app` `createClient` refuses it, because any other canister's
