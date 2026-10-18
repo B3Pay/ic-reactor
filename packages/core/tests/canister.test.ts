@@ -1180,6 +1180,57 @@ describe("expiresAt on a write that got no answer", () => {
     expect((second as { expiresAt?: bigint }).expiresAt).toBe(sends.seen[1])
   })
 
+  it("is the expiry of a call request whose wait was cancelled before its answer", async () => {
+    const replica = replicaWith({
+      [SHAPES]: serve<shapes.Actor>(shapes.actor, { address: ([s]) => s }),
+    })
+    const sends = expiries(replica.fetch)
+    // The call request reaches the replica, and its answer never comes.
+    const fetch = async (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      const response = sends.fetch(input, init)
+      if (!urlOf(input).endsWith("/call")) return response
+      return new Promise<Response>(() => {})
+    }
+    const client = clientAs({ ...replica, fetch }, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const { queryFn } = client.queryOptions(canister, "address", "a", {
+      update: "idempotent",
+    })
+    const controller = new AbortController()
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext).catch((caught: unknown) => caught)
+    await vi.waitFor(() => expect(sends.seen).toHaveLength(1))
+    controller.abort()
+    const error = await read
+    expect(error).toMatchObject({ kind: "cancelled", mayHaveExecuted: true })
+    expect((error as { expiresAt?: bigint }).expiresAt).toBe(sends.seen[0])
+  })
+
+  it("sends no call request once the signal aborted before it was signed", async () => {
+    const replica = replicaWith({
+      [SHAPES]: serve<shapes.Actor>(shapes.actor, { address: ([s]) => s }),
+    })
+    const sends = expiries(replica.fetch)
+    const client = clientAs({ ...replica, fetch: sends.fetch }, alice)
+    const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+    const { queryFn } = client.queryOptions(canister, "address", "a", {
+      update: "idempotent",
+    })
+    const controller = new AbortController()
+    // Aborted while the caller's agent is fetched, before the request is built.
+    const read = queryFn({
+      signal: controller.signal,
+    } as QueryFunctionContext).catch((caught: unknown) => caught)
+    controller.abort()
+    expect(await read).toMatchObject({ kind: "cancelled" })
+    await sleep(50)
+    expect(sends.seen).toHaveLength(0)
+  })
+
   it("is absent on an answered write, a refused one, and a read", async () => {
     const { canister, replica } = shapesSetup({
       bump: () => ({ tag: "err", value: "no" }),

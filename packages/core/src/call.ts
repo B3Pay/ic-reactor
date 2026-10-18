@@ -65,7 +65,6 @@ import {
 import { isResultSchema } from "@candid-core/schema/validate"
 import {
   Certificate,
-  AgentError,
   CertifiedRejectErrorCode,
   Expiry,
   QueryResponseStatus,
@@ -462,11 +461,38 @@ function recordExpiry(sent: Sent, expiry: unknown): void {
 }
 
 /**
+ * The writes being sent, by the encoded argument the agent puts into their
+ * call requests, for {@link watchSends}.
+ */
+const signing = new WeakMap<
+  Uint8Array,
+  { readonly sent: Sent; readonly signal?: AbortSignal }
+>()
+const watched = new WeakSet<HttpAgent>()
+
+/**
+ * Has `agent` record the ingress expiry of every call request of a write in
+ * its `Sent` while it builds the request, before it is signed and sent: a
+ * signal that aborts while the answer is awaited cannot lose it. A request
+ * whose signal aborted before then is refused, so it is never sent: every
+ * send of a write that may have gone out is recorded.
+ */
+function watchSends(agent: HttpAgent): void {
+  if (watched.has(agent)) return
+  watched.add(agent)
+  agent.addTransform("update", async (request) => {
+    const body = request.body as { arg?: Uint8Array; ingress_expiry?: unknown }
+    const write = body.arg && signing.get(body.arg)
+    if (!write) return
+    if (write.signal?.aborted) throw abortReason(write.signal)
+    recordExpiry(write.sent, body.ingress_expiry)
+  })
+}
+
+/**
  * Sends one attempt and returns the reply bytes (`undefined` for a oneway).
- * Rejects with the classified failure. Records the ingress expiry of a call
- * request in `sent`: from the request the agent returns, or, when the agent
- * throws on the request itself (a lost connection, an HTTP error), from the
- * request context it puts on its error.
+ * Rejects with the classified failure. The ingress expiry of a call request
+ * is recorded in `sent` as the agent builds it ({@link watchSends}).
  */
 async function dispatch(
   agent: HttpAgent,
@@ -507,6 +533,8 @@ async function dispatch(
       }
       return response.reply.arg
     }
+    watchSends(agent)
+    signing.set(call.arg, { sent, signal: call.signal })
     const submitted = await untilAborted(
       agent.call(call.canisterId, {
         methodName: call.methodName,
@@ -519,7 +547,6 @@ async function dispatch(
       call.signal
     )
     accepted = true
-    recordExpiry(sent, submitted.requestDetails?.ingress_expiry)
     const { body } = submitted.response
     if (isV2ResponseBody(body)) {
       throw RejectError.fromCode(
@@ -534,9 +561,6 @@ async function dispatch(
     if (send === "oneway") return undefined
     return await settle(agent, submitted, call)
   } catch (error) {
-    if (send !== "query" && !accepted && error instanceof AgentError) {
-      recordExpiry(sent, error.code.requestContext?.ingressExpiry)
-    }
     throw classifyError(
       error,
       call.mode === "update"

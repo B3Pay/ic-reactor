@@ -48,8 +48,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 - `ReactorError.expiresAt`: on a write that got no answer (`outcome_unknown`,
   or `cancelled` with `mayHaveExecuted: true`), the latest ingress expiry its
   sends were signed with, in nanoseconds since the epoch on the IC's clock
-  (#878). It is read from the call request the agent returns, or, when the
-  request itself failed, from the request context on the agent's error. A
+  (#878). It is read from each call request as the agent builds it, before
+  it is signed, so a signal that aborts while the answer is awaited keeps it.
+  A call request whose signal aborted before it was signed is not sent. A
   write the client sent again carries the latest of its sends' expiries, and
   a `resendOf` re-send its own. Answered or refused writes and reads carry
   none. It is not enumerable, so `JSON.stringify(error)` keeps working. A

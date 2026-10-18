@@ -4402,9 +4402,9 @@
     "package": "core",
     "test": "tests/canister.test.ts",
     "testName": "for a call request lost in transport",
-    "why": "the ingress expiry the agent puts on its error is not read, so a write whose call request was lost carries no expiresAt",
+    "why": "the ingress expiry of a call request is not read as the agent builds it, so a write whose call request was lost carries no expiresAt",
     "file": "src/call.ts",
-    "search": "      recordExpiry(sent, error.code.requestContext?.ingressExpiry)\n",
+    "search": "    recordExpiry(write.sent, body.ingress_expiry)\n",
     "replace": ""
   },
   {
@@ -4412,9 +4412,29 @@
     "package": "core",
     "test": "tests/canister.test.ts",
     "testName": "when the call was accepted but its polls never answered",
-    "why": "the ingress expiry of an accepted call request is not read, so a write whose polls never answered carries no expiresAt",
+    "why": "a write's call requests are not watched, so a write whose polls never answered carries no expiresAt",
     "file": "src/call.ts",
-    "search": "    recordExpiry(sent, submitted.requestDetails?.ingress_expiry)\n",
+    "search": "    signing.set(call.arg, { sent, signal: call.signal })\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-cancelled-wait",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "whose wait was cancelled before its answer",
+    "why": "the ingress expiry is read only once the agent answers, so a write cancelled while its answer was awaited carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    recordExpiry(write.sent, body.ingress_expiry)\n",
+    "replace": "    if (!write.signal) recordExpiry(write.sent, body.ingress_expiry)\n"
+  },
+  {
+    "id": "878-expiry-sent-after-cancel",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "sends no call request once the signal aborted before it was signed",
+    "why": "a call request whose signal aborted before it was signed is still sent, after the error that names no expiry for it",
+    "file": "src/call.ts",
+    "search": "    if (write.signal?.aborted) throw abortReason(write.signal)\n",
     "replace": ""
   },
   {
