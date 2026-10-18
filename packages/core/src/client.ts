@@ -109,6 +109,15 @@ export interface AuthLike {
       | "expired"
       | "signed-out"
       | (string & {})
+    /**
+     * When the session ends, in milliseconds since the epoch (`Date.now()`'s
+     * scale), as `AuthClient` 10 reports it. While the status is
+     * `"signed-in"` or `"signed-in-elsewhere"`, the client sets a timer for it
+     * and tells its listeners when the session ends: an auth whose status
+     * turns `"expired"` by the clock, as `AuthClient`'s does, need not notify
+     * for it. It is {@link AuthState.expiresAt} while signed in.
+     */
+    readonly expiresAtMs?: number
   }
   /** The identity to sign calls with while signed in. */
   getIdentity(): Promise<Identity>
@@ -150,6 +159,20 @@ export interface AuthState {
   readonly status: "anonymous" | "signed-in" | "expired" | "signed-in-elsewhere"
   /** The principal calls go out as, as text. */
   readonly principal: string
+  /**
+   * When the session ends, in milliseconds since the epoch (`Date.now()`'s
+   * scale; `new Date(expiresAt)` for a date), so an app can show "signed in
+   * until". Present only while `status` is `"signed-in"` through an auth whose
+   * `getStatus()` carries `expiresAtMs`, as `AuthClient` 10's does; absent for
+   * a client built with `identity`. The client tells its listeners when that
+   * time passes, and the status turns `"expired"`.
+   *
+   * A `"signed-in"` session may still be read-only: Internet Identity can
+   * scope a session to queries, `AuthClient` reports it `"signed-in"` all the
+   * same, and the network refuses its updates. Nothing here tells the two
+   * apart yet.
+   */
+  readonly expiresAt?: number
 }
 
 /**
@@ -203,6 +226,12 @@ export type ClientOptions = {
        * use, and only in a browser: on a server the client is anonymous and
        * never calls it. The client owns what it returns and disposes it with
        * itself.
+       *
+       * A factory that throws (`new AuthClient()` reads `localStorage`, which
+       * throws where site data is blocked) is not called again: the client
+       * calls anonymously, so public reads still work, logs the error once in
+       * development, and rejects {@link Client.signIn} and
+       * {@link Client.signOut} with what the factory threw.
        *
        * `network` is the client's network under `@icp-sdk/auth` 10's own
        * option names, so `new AuthClient(network)` signs in where the client
@@ -275,22 +304,29 @@ export interface Client {
   /** The principal calls go out as now, as text: the anonymous principal unless signed in. */
   caller(): string
   /**
-   * Who calls go out as, and why. The object is the same until the status or
-   * the principal changes, so it can be read with `useSyncExternalStore`.
+   * Who calls go out as, and why. The object is the same until the status,
+   * the principal or `expiresAt` changes, so it can be read with
+   * `useSyncExternalStore`.
    */
   authState(): AuthState
   /**
    * Calls `listener` once after each change of {@link Client.authState}, and
-   * never for a notification of the auth that changed neither the status nor
-   * the principal (a renewed delegation, for one). Returns a function that
-   * stops listening. On a disposed client it adds nothing.
+   * never for a notification of the auth that changed none of the status,
+   * the principal and `expiresAt` (a renewed delegation, for one). A session
+   * that ends by the clock is a change too: the client sets a timer for its
+   * {@link AuthState.expiresAt}, so listeners hear of it without any
+   * notification of the auth, and a read of {@link Client.caller} or
+   * {@link Client.authState} that sees a change first tells them in a
+   * microtask. Returns a function that stops listening. On a disposed client
+   * it adds nothing.
    */
   subscribe(listener: () => void): () => void
   /**
    * Signs in through the client's auth, passing `options` on. Listeners are
    * told once the auth settles, even if the auth itself did not notify.
    * Rejects a `TypeError` on a client built with `identity`, which has no
-   * sign-in, and an `Error` on a server or after {@link Client.dispose}.
+   * sign-in, an `Error` on a server or after {@link Client.dispose}, and
+   * with what the auth factory threw when it threw.
    */
   signIn(options?: unknown): Promise<void>
   /**
@@ -1123,7 +1159,15 @@ const ANONYMOUS_CALLER: Caller = Object.freeze({
 })
 
 const sameState = (a: AuthState, b: AuthState): boolean =>
-  a.status === b.status && a.principal === b.principal
+  a.status === b.status &&
+  a.principal === b.principal &&
+  a.expiresAt === b.expiresAt
+
+/**
+ * The longest delay `setTimeout` keeps: a longer one fires at once. A later
+ * deadline is reached in steps of this length.
+ */
+const MAX_TIMER_MS = 2 ** 31 - 1
 
 /**
  * Who `auth` says calls: its principal only while its status is `signed-in`
@@ -1142,7 +1186,14 @@ function callerOf(auth: AuthLike): Caller {
 function stateOf(auth: AuthLike): AuthState {
   const caller = callerOf(auth)
   if (caller.authenticated) {
-    return { status: "signed-in", principal: caller.principal }
+    const { expiresAtMs } = auth.getStatus()
+    return Number.isFinite(expiresAtMs)
+      ? {
+          status: "signed-in",
+          principal: caller.principal,
+          expiresAt: expiresAtMs,
+        }
+      : { status: "signed-in", principal: caller.principal }
   }
   // A state the client does not know, such as one a later @icp-sdk/auth
   // adds, is anonymous.
@@ -1305,6 +1356,16 @@ export function createClientWith(
   const listeners = new Set<() => void>()
   let auth: AuthLike | undefined
   let unsubscribeAuth: (() => void) | undefined
+  /**
+   * What the auth factory threw, once it has: the client then runs anonymous,
+   * never calls the factory again, and rejects `signIn()` and `signOut()` with
+   * it.
+   */
+  let authFailure: { readonly cause: unknown } | undefined
+  /** The timer set for the end of the session (see `scheduleExpiry`). */
+  let expiryTimer: ReturnType<typeof setTimeout> | undefined
+  /** Whether a `catchUp` notification is queued. */
+  let catchUpQueued = false
   /** Whether this client said that its network has no identity provider. */
   let warnedAuthNetwork = false
   let disposed = false
@@ -1399,26 +1460,91 @@ export function createClientWith(
   const ensureAuth = (): AuthLike | undefined => {
     if (
       auth !== undefined ||
+      authFailure !== undefined ||
       authFactory === undefined ||
       disposed ||
       (seams.authOnServer !== true && isServer())
     ) {
       return auth
     }
-    const built = checkAuth(authFactory(authNetwork()))
+    let made: unknown
+    try {
+      made = authFactory(authNetwork())
+    } catch (cause) {
+      // `new AuthClient()` reads `localStorage`, which throws where site data
+      // is blocked or in a sandboxed frame. That must not take the public
+      // reads down with it, nor run again on every render.
+      authFailure = { cause }
+      if (isDevelopment()) {
+        console.error(
+          "[ic-reactor] the auth factory threw: this client calls anonymously, and signIn() rejects with this error. (Logged once, in development.)",
+          cause
+        )
+      }
+      return undefined
+    }
+    const built = checkAuth(made)
     auth = built
     const initial = stateOf(built)
     if (!sameState(initial, snapshot)) snapshot = Object.freeze(initial)
     notified = snapshot
     unsubscribeAuth = built.subscribe(onAuthChange)
+    scheduleExpiry()
     return built
+  }
+
+  /**
+   * Sets one timer for the end of the auth's session, replacing the last one:
+   * `AuthClient`'s status turns `expired` by the clock, with no notification,
+   * so without it nobody would be told. A deadline that has passed while the
+   * auth still says `signed-in` sets none: that auth does not expire by the
+   * clock, and a timer would only fire again and again.
+   */
+  function scheduleExpiry(): void {
+    clearTimeout(expiryTimer)
+    expiryTimer = undefined
+    if (disposed || auth === undefined) return
+    const { state, expiresAtMs } = auth.getStatus()
+    if (state !== "signed-in" && state !== "signed-in-elsewhere") return
+    if (expiresAtMs === undefined || !Number.isFinite(expiresAtMs)) return
+    const delay = expiresAtMs - Date.now()
+    if (delay <= 0) return
+    expiryTimer = setTimeout(
+      () => {
+        expiryTimer = undefined
+        // A capped delay ends early: `onAuthChange` sets the next step.
+        onAuthChange()
+      },
+      Math.min(delay, MAX_TIMER_MS)
+    )
+    // A session's end is no reason to keep a Node process (a test, a script
+    // with the test client) alive.
+    ;(expiryTimer as { unref?: () => void }).unref?.()
+  }
+
+  /**
+   * Tells the listeners, in a microtask, about a change a read noticed before
+   * any notification did (a session that ended while the timer was held back,
+   * as a browser does in a background tab). Queued rather than run, since the
+   * read may be a render's.
+   */
+  const catchUp = (): void => {
+    if (catchUpQueued || disposed) return
+    catchUpQueued = true
+    queueMicrotask(() => {
+      catchUpQueued = false
+      onAuthChange()
+    })
   }
 
   const current = (): Caller => {
     if (disposed) return ANONYMOUS_CALLER
     if (fixedCaller !== undefined) return fixedCaller
     const source = ensureAuth()
-    return source === undefined ? ANONYMOUS_CALLER : callerOf(source)
+    if (source === undefined) return ANONYMOUS_CALLER
+    const caller = callerOf(source)
+    if (caller.principal !== notified.principal) catchUp()
+    return caller
   }
 
   /** Re-reads the state, replacing {@link snapshot} only when it changed. */
@@ -1439,6 +1565,7 @@ export function createClientWith(
     for (const principal of agents.keys()) {
       if (principal !== state.principal) agents.delete(principal)
     }
+    scheduleExpiry()
     if (state === notified) return
     notified = state
     clearRefusals(state.principal)
@@ -1551,6 +1678,8 @@ export function createClientWith(
       )
     }
     const source = ensureAuth()
+    // The factory threw: what it threw is the reason there is no sign-in.
+    if (authFailure !== undefined) throw authFailure.cause
     if (source === undefined) {
       throw new Error(
         `[ic-reactor] ${call}() runs only in a browser: on a server the client is anonymous and never builds its auth.`
@@ -1737,7 +1866,11 @@ export function createClientWith(
         network
       ),
     caller: () => current().principal,
-    authState: refresh,
+    authState(): AuthState {
+      const state = refresh()
+      if (state !== notified) catchUp()
+      return state
+    },
     subscribe(listener: () => void): () => void {
       if (disposed) return () => {}
       ensureAuth()
@@ -1771,6 +1904,8 @@ export function createClientWith(
       unsubscribeAuth = undefined
       listeners.clear()
       agents.clear()
+      clearTimeout(expiryTimer)
+      expiryTimer = undefined
       snapshot = notified = ANONYMOUS_STATE
       queryClient.clear()
       unsubscribe?.()

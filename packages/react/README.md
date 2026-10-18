@@ -151,9 +151,14 @@ export function SessionButton() {
 
 `status` is `"anonymous"`, `"signed-in"`, `"expired"` or `"signed-in-elsewhere"`,
 and `principal` is the principal calls go out as: the anonymous principal
-(`2vxsx-fae`) in every state but `"signed-in"`. A component that uses
-`useAuth()` renders once for each change of status or principal, and never for
-anything else; the object it returns is the same until one changes.
+(`2vxsx-fae`) in every state but `"signed-in"`. While signed in through an
+auth that reports when the session ends, as `AuthClient` 10 does, `expiresAt`
+is that time in milliseconds since the epoch. A component that uses
+`useAuth()` renders once for each change of status, principal or `expiresAt`
+(a session that ends by the clock included, with no user activity), and never
+for anything else; the object it returns is the same until one changes.
+`"signed-in"` may be a read-only session, which the network refuses updates
+from: `@icp-sdk/auth` does not expose the scope yet.
 
 ## Keys follow the caller a render shows
 

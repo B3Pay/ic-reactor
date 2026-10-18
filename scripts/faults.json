@@ -1950,8 +1950,8 @@
     "testName": "names the built-in Internet Identity on a local host's own port, with the root key it was given",
     "why": "the auth factory handed only the agent options, so an AuthClient on a local replica signs in with mainnet's Internet Identity",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const built = checkAuth(\n      authFactory({ agentOptions: authNetwork().agentOptions })\n    )"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      made = authFactory({ agentOptions: authNetwork().agentOptions })"
   },
   {
     "id": "790-auth-factory-zero-argument-refused",
@@ -1960,8 +1960,8 @@
     "testName": "still builds the auth the client calls as",
     "why": "a factory that takes no argument (() => new AuthClient()) no longer builds an auth, as if only network-aware factories were supported",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const built = checkAuth(\n      authFactory.length > 0 ? authFactory(authNetwork()) : undefined\n    )"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      made = authFactory.length > 0 ? authFactory(authNetwork()) : undefined"
   },
   {
     "id": "790-auth-built-in-ii-port-fixed",
@@ -2130,8 +2130,8 @@
     "testName": "is not given by a test client",
     "why": "the warning given before the factory runs, wherever no provider was named, so a test client on \"ic\" warns about its fake replica's root key, though its test auth ignores the network",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-local-ignores-cookie-provider",
@@ -2280,8 +2280,8 @@
     "testName": "is not given to a factory that names its own provider by spreading network",
     "why": "the warning given before the factory runs, so the override it teaches, { ...network, identityProvider }, still logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-warn-before-factory-real-override",
@@ -2290,8 +2290,8 @@
     "testName": "is not given to a real AuthClient built from the override",
     "why": "the warning given before the factory runs, so a real AuthClient built with its own identityProvider still logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-warn-before-factory-not-ii",
@@ -2300,8 +2300,8 @@
     "testName": "is not given to a factory that ignores network",
     "why": "the warning given before the factory runs, so an auth that is not Internet Identity, which never reads the network, logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-provider-read-silent",
@@ -5429,5 +5429,114 @@
     "file": "src/network.ts",
     "search": "(protocol === \"http:\" && pageIsLocal())",
     "replace": "protocol === \"http:\""
+  },
+  {
+    "id": "912-no-expiry-timer",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "tells the client's listeners when it ends, with no notification of the auth",
+    "why": "no timer for the session's expiresAtMs, so a session that ends by the clock tells nobody and useAuth() keeps saying signed-in",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "    unsubscribeAuth = built.subscribe(onAuthChange)\n    scheduleExpiry()\n",
+        "replace": "    unsubscribeAuth = built.subscribe(onAuthChange)\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "    scheduleExpiry()\n    if (state === notified) return\n",
+        "replace": "    if (state === notified) return\n"
+      }
+    ]
+  },
+  {
+    "id": "912-expiry-delay-uncapped",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "reaches a deadline past setTimeout's longest delay in steps",
+    "why": "the delay handed to setTimeout uncapped, so a session that ends more than 2^31-1 ms away fires at once",
+    "file": "src/client.ts",
+    "search": "      Math.min(delay, MAX_TIMER_MS)\n    )",
+    "replace": "      delay\n    )"
+  },
+  {
+    "id": "912-expiry-timer-for-a-past-end",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "sets no timer for an end that passed while the auth still says signed in",
+    "why": "a timer set for an end that already passed while the auth still says signed-in, which fires and sets itself again forever",
+    "file": "src/client.ts",
+    "search": "    if (delay <= 0) return\n",
+    "replace": ""
+  },
+  {
+    "id": "912-expiry-timer-kept-after-dispose",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "moves the timer to a new session's end, and drops it on a sign-out and on dispose()",
+    "why": "dispose() leaves the expiry timer set",
+    "file": "src/client.ts",
+    "search": "      agents.clear()\n      clearTimeout(expiryTimer)\n",
+    "replace": "      agents.clear()\n"
+  },
+  {
+    "id": "912-read-change-not-told",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "is told to the listeners once, in a microtask, from caller() and from authState()",
+    "why": "caller() computes another principal than the listeners were told about and tells nobody",
+    "file": "src/client.ts",
+    "search": "    if (caller.principal !== notified.principal) catchUp()\n",
+    "replace": ""
+  },
+  {
+    "id": "912-auth-factory-throw-escapes",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "still answers a public read, and refuses a write as unauthenticated",
+    "why": "what the auth factory threw escapes from caller() and the read paths, so a page whose storage is blocked cannot read public data",
+    "file": "src/client.ts",
+    "search": "      authFailure = { cause }\n",
+    "replace": "      authFailure = { cause }\n      throw cause\n"
+  },
+  {
+    "id": "912-auth-factory-retried",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "runs the client anonymous, calls the factory once, and says so once in development",
+    "why": "a factory that threw is called again on every read (every render)",
+    "file": "src/client.ts",
+    "search": "      auth !== undefined ||\n      authFailure !== undefined ||\n",
+    "replace": "      auth !== undefined ||\n"
+  },
+  {
+    "id": "912-sign-in-hides-factory-error",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "runs the client anonymous, calls the factory once, and says so once in development",
+    "why": "signIn() after a factory that threw rejects with the server-side error instead of what the factory threw",
+    "file": "src/client.ts",
+    "search": "    if (authFailure !== undefined) throw authFailure.cause\n",
+    "replace": ""
+  },
+  {
+    "id": "912-test-auth-never-expires-by-clock",
+    "package": "core",
+    "test": "tests/testing-test-auth.test.ts",
+    "testName": "expires by the clock at expiresAtMs",
+    "why": "the test auth's status stays signed-in past its expiresAtMs, unlike AuthClient's, so tests cannot see a session end by the clock",
+    "file": "src/testing/test-auth.ts",
+    "search": "      Date.now() >= status.expiresAtMs",
+    "replace": "      Date.now() < 0"
+  },
+  {
+    "id": "912-use-auth-drops-expires-at",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "renders again with expired when the session ends, with no user activity",
+    "why": "useAuth() leaves expiresAt out of what it returns",
+    "file": "src/index.tsx",
+    "search": "      ...(state.expiresAt === undefined ? {} : { expiresAt: state.expiresAt }),\n",
+    "replace": ""
   }
 ]

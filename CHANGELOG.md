@@ -421,6 +421,51 @@ method, vars)` for a method named by data), the variables of
   The root README, the docs' home page and Getting started now say five
   examples.
 
+### @ic-reactor/core
+
+#### Added
+
+- `AuthState.expiresAt`: when the session ends, in milliseconds since the
+  epoch, while signed in through an auth whose `getStatus()` carries
+  `expiresAtMs` (`AuthClient` 10 does), so an app can show "signed in until".
+  `AuthLike`'s `getStatus()` may carry that optional `expiresAtMs` (#912).
+
+#### Fixed
+
+- A session that ends by the clock is announced: the client sets a timer for
+  the auth's `expiresAtMs` and tells its listeners, so `useAuth()` renders
+  `"expired"` at the session's end with no user activity, where it kept
+  saying `"signed-in"` while calls went out anonymous. A read of `caller()`
+  or `authState()` that sees a change no notification announced also tells
+  the listeners, in a microtask. A sign-in that ends at another time than the
+  last one now notifies too, since `expiresAt` changed (#912).
+- An auth factory that throws (`new AuthClient()` reads `localStorage`,
+  which throws where site data is blocked) no longer breaks every read: it is
+  called once, the client calls anonymously so public reads still work, the
+  error is logged once in development, and `signIn()` and `signOut()` reject
+  with what the factory threw. It was called again on every read and render,
+  and its error escaped from `caller()`, `authState()`, `subscribe()`,
+  `queryOptions()` and direct calls. Migration: catch the factory's error
+  from `signIn()`, not from the first read; build a new client to try the
+  factory again (#912).
+- The test auth of `createTestClient()` expires by the clock, as
+  `AuthClient` does: past its `expiresAtMs` (eight hours after a sign-in) its
+  status reads `"expired"` without telling anyone. `auth.expire()` is still
+  the explicit form, which does tell them (#912).
+
+#### Documentation
+
+- The auth guide says that a `"signed-in"` session may be read-only:
+  Internet Identity can scope one to queries, and `@icp-sdk/auth` does not
+  expose that scope yet (#912).
+
+### @ic-reactor/react
+
+#### Changed
+
+- `useAuth()` returns `expiresAt` while signed in, and renders again when it
+  changes and when a session ends by the clock (#912).
+
 ## core, react, vite-plugin 4.0.0-beta.5
 
 Prepared on 2026-10-11. It goes out under npm's `beta` dist-tag, as
