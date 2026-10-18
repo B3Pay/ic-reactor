@@ -10,7 +10,10 @@ export default defineConfig({
     starlight({
       title: "IC Reactor",
       logo: {
-        src: "./src/assets/icon.svg",
+        light: "./src/assets/ic-reactor-lockup-light.svg",
+        dark: "./src/assets/ic-reactor-lockup-dark.svg",
+        alt: "IC Reactor",
+        replacesTitle: true,
       },
       plugins: [
         starlightPageActions({
