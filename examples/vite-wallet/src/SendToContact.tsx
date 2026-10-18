@@ -14,10 +14,10 @@
 // paid out through the ledger itself, for one, would list
 // `{ invalidates: [backend, [ledger, "icrc1_balance_of"]] }`.
 import { useAuth, useClient } from "@ic-reactor/react"
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { useState, type FormEvent } from "react"
 import type { Contact } from "./canisters/backend.ts"
-import { dedupedBy, Outcome } from "./SendIcp.tsx"
+import { Outcome, useTransfer } from "./SendIcp.tsx"
 import { showAmount, useToken } from "./token.ts"
 import { readTransferForm } from "./transfer.ts"
 import { useCanisters } from "./use-canisters.ts"
@@ -33,10 +33,9 @@ export function SendToContact({ contact }: { contact: Contact }) {
       subaccount: null,
     })
   )
-  const pay = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
-  const again = client.resendOf(pay.error, ledger, "icrc1_transfer", {
-    dedupedBy,
-  })
+  // The outcome stays on screen across a switch of account: see `useTransfer`.
+  const pay = useTransfer()
+  const { again } = pay
   const [amount, setAmount] = useState("")
   const [refusal, setRefusal] = useState<string>()
 
@@ -77,7 +76,7 @@ export function SendToContact({ contact }: { contact: Contact }) {
           <button
             type="submit"
             className="primary"
-            disabled={token === undefined || pay.isPending}
+            disabled={token === undefined || pay.shown?.isPending}
           >
             Pay
           </button>
@@ -88,13 +87,13 @@ export function SendToContact({ contact }: { contact: Contact }) {
           </p>
         )}
       </form>
-      {pay.variables && token && (
+      {pay.shown && token && (
         <Outcome
-          arg={pay.variables}
+          arg={pay.shown.variables}
           token={token}
-          isPending={pay.isPending}
-          block={pay.data}
-          error={pay.error}
+          isPending={pay.shown.isPending}
+          block={pay.shown.data}
+          error={pay.shown.error}
           onSendAgain={again && (() => pay.mutate(again.arg))}
         />
       )}

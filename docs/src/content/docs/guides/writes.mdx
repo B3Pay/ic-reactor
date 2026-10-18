@@ -36,7 +36,10 @@ result: for a result `variant { Ok : T; Err : E }`, the `Ok` value. An `Err`
 rejects as kind `canister_err`.
 
 `mutationOptions` throws a `TypeError` for a method the service does not have.
-Its `mutationKey` is `["ic-reactor", network, canisterId, method]`.
+Its `mutationKey` is `["ic-reactor", network, canisterId, method]`. Built from
+the client `useClient()` returns, it ends with the caller the render shows as
+well, `["ic-reactor", network, canisterId, method, caller]`, so a filter on
+the shorter key still finds it.
 
 ## Who signs
 
@@ -57,8 +60,17 @@ built with `identity: "anonymous"`, the client refuses it before sending
 anything: kind `unauthenticated`, code `anonymous_write`,
 `mayHaveExecuted: false`.
 
-Disable the button for a caller who is not signed in, and send as the caller
-the page shows:
+Built from the `useClient()` of a render, the options send only as the caller
+that render shows. A press handled before an account switch reached the
+render (the switch and the click in one batch) is refused: kind `cancelled`,
+code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. The
+refusal reaches the callbacks of the options the press used (an `onError`
+given to `useMutation`); the mutation that the render for the new caller shows
+starts over, idle, since the key holds the caller. That is true of any
+outcome, a write whose outcome is unknown included: an app that must keep
+showing it across a switch (to read the sender's balance back, say) keeps it
+in its own state, from the promise `mutateAsync` returns. The handler needs no check
+of its own; disable the button for a caller who is not signed in:
 
 ```tsx
 import { useAuth, useClient } from "@ic-reactor/react"
@@ -73,23 +85,28 @@ export function SendAsShown({ arg }: { arg: TransferArg }) {
   })
   const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
 
-  const send = () => {
-    // The write signs as whoever is signed in now. If an account switch has
-    // not reached this render yet, send nothing.
-    if (client.caller() !== shown) return
-    transfer.mutate(arg)
-  }
-
   return (
     <button
       disabled={status !== "signed-in" || transfer.isPending}
-      onClick={send}
+      onClick={() => transfer.mutate(arg)}
     >
-      Send
+      Send as {shown}
     </button>
   )
 }
 ```
+
+A handler that signs in and then writes (`await client.signIn()`, then
+`transfer.mutate(arg)`) presses with the options of the last render React
+committed. The render for the user normally commits before the handler goes
+on, and the write goes out as the user; while that render cannot commit, such
+as when it suspends on the user's data, the press has the previous caller's
+options and is refused. Let the render that shows the user press, or make a
+direct call.
+
+A direct call on a canister (`await ledger.icrc1_transfer(arg)`) is not held
+to a render: it signs as whoever is signed in when it runs. In a component,
+send writes through `mutationOptions`.
 
 See [Auth](/v4/guides/auth/) for sign-in and caller changes.
 
@@ -236,9 +253,8 @@ all of these hold:
 - Whoever sent it is the caller now. After a sign-out, or a sign-in as
   another account, nothing is offered: the same argument from another sender
   is a new transfer, paid in full. Signing back in as the sender offers it
-  again. While a page hydrates, `useClient()` may return a view pinned to the
-  server's caller; the offer still follows the live caller, whom a write goes
-  out as.
+  again. `useClient()` returns a view pinned to the caller its render shows;
+  the offer still follows the live caller, whom the write goes out as.
 
 The offer's `arg` is the attempt's own argument, the object `mutate` was
 given, and `from` is its sender. Send it with `mutate(again.arg)` on the same

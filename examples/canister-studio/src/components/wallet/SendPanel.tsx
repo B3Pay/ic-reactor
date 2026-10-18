@@ -57,6 +57,36 @@ export function SendPanel({
   const iface = ledgerInterface(entry)
   const method = transferMethod(iface)
   const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
+  // The last transfer this panel sent, kept in its own state as well: the
+  // options `useClient()` builds are the caller's, and their key with them,
+  // so after an account switch `transfer` is a new, idle mutation, while an
+  // unknown outcome must stay on screen (read back as its sender) until the
+  // user moves on.
+  const [inFlight, setInFlight] = useState(false)
+  const [settled, setSettled] = useState<
+    | { readonly ok: true; readonly data: bigint }
+    | { readonly ok: false; readonly error: NonNullable<typeof transfer.error> }
+    | undefined
+  >(undefined)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const live = transfer.status !== "idle"
+  const error = live
+    ? transfer.error
+    : settled?.ok === false
+      ? settled.error
+      : null
+  const isPending = live ? transfer.isPending : inFlight
+  const data = live
+    ? transfer.data
+    : settled?.ok === true
+      ? settled.data
+      : undefined
   const [draft, setDraft] = useState<Draft | undefined>(undefined)
   // The transfer that went out, and as whom: what a re-send repeats, byte
   // for byte.
@@ -107,15 +137,14 @@ export function SendPanel({
   // Read during render, in a component that re-renders on caller changes
   // (useAuth): the offer disappears when the sender is no longer the caller.
   const again =
-    transfer.error === null
+    error === null
       ? undefined
-      : client.resendOf(transfer.error, ledger, "icrc1_transfer", {
+      : client.resendOf(error, ledger, "icrc1_transfer", {
           dedupedBy: (arg) => arg.created_at_time,
         })
   const duplicate =
-    transfer.error?.kind === "canister_err" &&
-    transfer.error.err.tag === "Duplicate"
-      ? transfer.error.err.value.duplicate_of
+    error?.kind === "canister_err" && error.err.tag === "Duplicate"
+      ? error.err.value.duplicate_of
       : undefined
 
   // `mutateAsync`, not `mutate`'s callbacks: those never run once the panel
@@ -141,9 +170,21 @@ export function SendPanel({
           newHistoryId()
         )
       )
+    setInFlight(true)
+    setSettled(undefined)
     void transfer.mutateAsync(value).then(
-      (reply) => record({ ok: true, reply }),
-      (error: unknown) => record({ ok: false, error })
+      (reply) => {
+        record({ ok: true, reply })
+        if (!mounted.current) return
+        setInFlight(false)
+        setSettled({ ok: true, data: reply })
+      },
+      (failure: NonNullable<typeof transfer.error>) => {
+        record({ ok: false, error: failure })
+        if (!mounted.current) return
+        setInFlight(false)
+        setSettled({ ok: false, error: failure })
+      }
     )
   }
 
@@ -156,6 +197,8 @@ export function SendPanel({
     setResent(false)
     setReadBackOf(undefined)
     transfer.reset()
+    setInFlight(false)
+    setSettled(undefined)
     setDraft(undefined)
     setSent(undefined)
     // A new form instance; without a kept argument it has a new
@@ -164,7 +207,7 @@ export function SendPanel({
     refocus.current = true
   }
 
-  if (transfer.isPending) {
+  if (isPending) {
     return (
       <div className="row text-sm" role="status">
         <Spinner size="sm" label="Sending" />
@@ -176,14 +219,14 @@ export function SendPanel({
     )
   }
 
-  if (transfer.isSuccess) {
+  if (data !== undefined) {
     return (
       <div className="stack">
         <Notice tone="success" title="Sent">
           <p>
             The ledger recorded the transfer at block{" "}
-            <span className="mono">{groupDigits(transfer.data)}</span>. Reads of
-            this ledger were invalidated, so your balance reloads by itself.
+            <span className="mono">{groupDigits(data)}</span>. Reads of this
+            ledger were invalidated, so your balance reloads by itself.
           </p>
         </Notice>
         <button
@@ -197,12 +240,12 @@ export function SendPanel({
     )
   }
 
-  if (transfer.isError) {
+  if (error !== null) {
     // A re-send refused, or answered other than Duplicate (TooOld, BadFee),
     // says nothing about the first transfer: that one is still unknown.
     const stillUnknown =
-      resent && !transfer.error.mayHaveExecuted && duplicate === undefined
-    const mayHaveMoved = transfer.error.mayHaveExecuted || stillUnknown
+      resent && !error.mayHaveExecuted && duplicate === undefined
+    const mayHaveMoved = error.mayHaveExecuted || stillUnknown
     return (
       <div className="stack">
         {duplicate !== undefined ? (
@@ -216,7 +259,7 @@ export function SendPanel({
           </Notice>
         ) : (
           <ErrorPanel
-            error={transfer.error}
+            error={error}
             method={method}
             units={units}
             earlierUnknown={stillUnknown}
@@ -259,7 +302,7 @@ export function SendPanel({
           >
             <p>
               {stillUnknown
-                ? `${sentence(resendLeftOpen(transfer.error))}. The first transfer may still have executed.`
+                ? `${sentence(resendLeftOpen(error))}. The first transfer may still have executed.`
                 : "No safe re-send is on offer (the sender changed, or the argument has no deduplication key)."}{" "}
               Check your balance before sending anything new. The transfer is in
               your history, with its exact bytes.

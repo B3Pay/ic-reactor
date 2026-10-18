@@ -335,7 +335,11 @@ export interface MutationTargets {
  * invalidated, and not those of the one the cookie names now.
  */
 export interface CanisterMutationOptions<V, D, E> {
-  /** `['ic-reactor', network, canisterId, method]`. */
+  /**
+   * `['ic-reactor', network, canisterId, method]`, and then the caller for
+   * the options of a view `useClient()` returned: a prefix match on the
+   * shorter key finds both.
+   */
   readonly mutationKey: MutationKey
   /**
    * Resolves the canister this run writes to and the reads it invalidates,
@@ -359,8 +363,10 @@ export interface CanisterMutationOptions<V, D, E> {
    * (TanStack held the write back offline, or behind another mutation of its
    * `scope`, or retried it, and the account was switched meanwhile), it
    * rejects with `kind: "cancelled"`, `code: "caller_changed"`,
-   * `mayHaveExecuted: false`, and sends nothing. It calls at the canister
-   * `onMutate` resolved for this run.
+   * `mayHaveExecuted: false`, and sends nothing. Built by a view of the
+   * client (what `useClient()` returns), it also calls only as the view's
+   * principal, and rejects the same way while someone else is current. It
+   * calls at the canister `onMutate` resolved for this run.
    *
    * On the client's own `queryClient`, the caller of each run is read by its
    * `MutationCache` when `mutate()` starts the run, whatever the options'
