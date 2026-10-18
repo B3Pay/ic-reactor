@@ -66,6 +66,7 @@ import { isResultSchema } from "@candid-core/schema/validate"
 import {
   Certificate,
   CertifiedRejectErrorCode,
+  Expiry,
   QueryResponseStatus,
   RejectError,
   UncertifiedRejectErrorCode,
@@ -90,12 +91,14 @@ import {
   classifyError,
   createReactorError,
   fromCanister,
+  withExpiry,
   invalidReplyError,
   isReactorError,
   isRetryable,
   retryUpdate,
   timedOutError,
   type CallMode,
+  type ReactorError,
 } from "./errors.js"
 import { toHex } from "./keys.js"
 import {
@@ -159,6 +162,21 @@ export function valuesOf(
   if (arity === 1) return [vars]
   if (arity === 0 && vars === undefined) return []
   return Array.isArray(vars) ? vars : [vars]
+}
+
+/** The `invalid_args` of arguments that do not encode, with the codec's issues. */
+export function notEncoded(
+  where: { readonly method: string; readonly canisterId: string },
+  encoded: Extract<EncodeResult, { ok: false }>
+): ReactorError {
+  const [first] = encoded.issues
+  return createReactorError("invalid_args", {
+    ...where,
+    reason: first
+      ? `the arguments could not be encoded: ${first.path}: ${first.message}`
+      : undefined,
+    issues: encoded.issues,
+  })
 }
 
 /** Where a call goes: a canister id, or the key segment of an unresolved name and why. */
@@ -335,16 +353,7 @@ async function run(
     throw unroutable(where, effectiveCanisterId(name, request.values))
   }
   const encoded = (request.encoded ??= encodeArgs(method.args, request.values))
-  if (!encoded.ok) {
-    const [first] = encoded.issues
-    throw createReactorError("invalid_args", {
-      ...where,
-      reason: first
-        ? `the arguments could not be encoded: ${first.path}: ${first.message}`
-        : undefined,
-      issues: encoded.issues,
-    })
-  }
+  if (!encoded.ok) throw notEncoded(where, encoded)
   // A re-send of an offered write goes out only as that write: anything else
   // would be a new write, which the canister has seen no dedupe key for.
   const sent = request.again
@@ -381,7 +390,10 @@ async function run(
     canisterId: target.id,
     effective: request.effective ?? target.id,
     methodName: name,
-    arg: encoded.bytes,
+    // A copy per invocation: the bytes are what `watchSends` knows this
+    // invocation's sends by, and a `resendOf` offer or a cached encoding
+    // hands the same bytes to every invocation.
+    arg: encoded.bytes.slice(),
     mode,
     signal: request.signal,
   }
@@ -412,6 +424,9 @@ async function run(
   const signal = call.signal
 
   let reply: Uint8Array | undefined
+  // The latest ingress expiry among this call's sends, for a write that ends
+  // with no answer (`expiresAt`).
+  const sends: Sent = {}
   try {
     for (let resends = 0; ; resends += 1) {
       try {
@@ -436,13 +451,18 @@ async function run(
           throw notSent(where, "the client was disposed", "client_disposed")
         }
         out = true
-        reply = await dispatch(agent, send, call)
+        reply = await dispatch(agent, send, call, sends)
         break
       } catch (error) {
         // Never a re-send: what the attempt out did is unknown, and the
         // caller has stopped waiting. A re-send of an offered write keeps
         // the earlier attempt's unknown outcome, even before it goes out.
-        if (timedOut) throw timedOutError(where, write && (out || !!sent))
+        if (timedOut) {
+          throw withExpiry(
+            timedOutError(where, write && (out || !!sent)),
+            sends.expiresAt
+          )
+        }
         out = false
         if (signal?.aborted && !isReactorError(error)) {
           throw notSent(where, "the call was cancelled")
@@ -452,7 +472,7 @@ async function run(
           (write
             ? !management && retryUpdate(error, resends)
             : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))
-        if (!resend) throw error
+        if (!resend) throw write ? withExpiry(error, sends.expiresAt) : error
       }
     }
   } finally {
@@ -507,14 +527,59 @@ interface Outgoing {
   signal?: AbortSignal
 }
 
+/** What the sends of one call record: the latest ingress expiry they were signed with. */
+interface Sent {
+  expiresAt?: bigint
+}
+
+/** Records the ingress expiry a send was signed with, keeping the latest. */
+function recordExpiry(sent: Sent, expiry: unknown): void {
+  if (!Expiry.isExpiry(expiry)) return
+  const value = expiry.toBigInt()
+  if (sent.expiresAt === undefined || value > sent.expiresAt) {
+    sent.expiresAt = value
+  }
+}
+
+/**
+ * The writes being sent, by the encoded argument the agent puts into their
+ * call requests, for {@link watchSends}.
+ */
+const signing = new WeakMap<
+  Uint8Array,
+  { readonly sent: Sent; readonly signal?: AbortSignal }
+>()
+const watched = new WeakSet<HttpAgent>()
+
+/**
+ * Has `agent` record the ingress expiry of every call request of a write in
+ * its `Sent` while it builds the request, before it is signed and sent: a
+ * signal that aborts while the answer is awaited cannot lose it. A request
+ * whose signal aborted before then is refused, so it is never sent: every
+ * send of a write that may have gone out is recorded.
+ */
+function watchSends(agent: HttpAgent): void {
+  if (watched.has(agent)) return
+  watched.add(agent)
+  agent.addTransform("update", async (request) => {
+    const body = request.body as { arg?: Uint8Array; ingress_expiry?: unknown }
+    const write = body.arg && signing.get(body.arg)
+    if (!write) return
+    if (write.signal?.aborted) throw abortReason(write.signal)
+    recordExpiry(write.sent, body.ingress_expiry)
+  })
+}
+
 /**
  * Sends one attempt and returns the reply bytes (`undefined` for a oneway).
- * Rejects with the classified failure.
+ * Rejects with the classified failure. The ingress expiry of a call request
+ * is recorded in `sent` as the agent builds it ({@link watchSends}).
  */
 async function dispatch(
   agent: HttpAgent,
   send: Send,
-  call: Outgoing
+  call: Outgoing,
+  sent: Sent
 ): Promise<Uint8Array | undefined> {
   const effectiveTarget = { canisterId: call.effective }
   // Whether the request may be in the IC: only once `agent.call` returned,
@@ -549,6 +614,8 @@ async function dispatch(
       }
       return response.reply.arg
     }
+    watchSends(agent)
+    signing.set(call.arg, { sent, signal: call.signal })
     const submitted = await untilAborted(
       agent.call(call.canisterId, {
         methodName: call.methodName,

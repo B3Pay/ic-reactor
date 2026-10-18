@@ -324,6 +324,45 @@ describe("queryOptions", () => {
     }
   })
 
+  it("refuses another copy's skipToken, which it cannot tell from an argument, and still skips its own and passes a symbol to reserved", async () => {
+    const replica = replicaWith({
+      [SHAPES]: serve<skippable.Actor>(skippable.actor, {
+        anything: () => 6n,
+      }),
+    })
+    const client = clientAs(replica, alice)
+    const canister = client.canister<skippable.Actor>(skippable.actor, {
+      id: SHAPES,
+    })
+    // What a second copy of @tanstack/query-core exports: its own Symbol().
+    const foreign = Symbol() as never
+    const twoCopies =
+      /a symbol, not core's skipToken: two copies of @tanstack\/query-core are installed.*`npm ls @tanstack\/query-core` must show one copy/
+    expect(() => client.queryOptions(canister, "maybe_nat", foreign)).toThrow(
+      twoCopies
+    )
+    expect(() =>
+      client.queryOptions(canister, "empty_record", foreign)
+    ).toThrow(TypeError)
+    expect(() => client.queryKey(canister, "maybe_nat", foreign)).toThrow(
+      twoCopies
+    )
+    expect(() => client.queryKey(canister, "no_args", foreign)).toThrow(
+      twoCopies
+    )
+    // Its own skipToken still skips.
+    expect(client.queryOptions(canister, "maybe_nat", skipToken).queryFn).toBe(
+      skipToken
+    )
+    const skipped = client.queryKey(canister, "maybe_nat", skipToken as never)
+    expect(skipped[skipped.length - 1]).toBe("$skip")
+    // reserved takes every value, a symbol included: it is encoded and read.
+    const options = client.queryOptions(canister, "anything", foreign)
+    expect(typeof options.queryFn).toBe("function")
+    await expect(client.queryClient.fetchQuery(options)).resolves.toBe(6n)
+    expect(() => client.queryKey(canister, "anything", foreign)).not.toThrow()
+  })
+
   it("throws a TypeError for an update or oneway method, a certified composite query, or an unknown fourth argument", () => {
     const client = clientAs(replicaWith({}), alice)
     const canister = client.canister<shapes.Actor>(shapes.actor, { id: SHAPES })

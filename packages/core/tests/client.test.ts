@@ -109,7 +109,9 @@ describe("createClient options", () => {
       "authState",
       "caller",
       "canister",
+      "canisterId",
       "dispose",
+      "encode",
       "func",
       "mutationOptions",
       "network",
@@ -120,6 +122,7 @@ describe("createClient options", () => {
       "signIn",
       "signOut",
       "subscribe",
+      "time",
     ])
     expect(Object.isFrozen(client)).toBe(true)
     expect(() => internalsOf({ ...client })).toThrow(

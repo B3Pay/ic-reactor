@@ -117,7 +117,10 @@ export const badTimeout = (value: unknown): boolean =>
  * Checks a {@link CanisterTarget} that a JavaScript caller, or a cast, can get
  * past the types, and returns its parts and the text it is memoized under.
  */
-function readTarget(target: unknown): {
+export function readTarget(
+  target: unknown,
+  what = "client.canister()"
+): {
   readonly target: CanisterIdTarget
   readonly certified: boolean
   readonly timeoutMs?: number
@@ -125,7 +128,7 @@ function readTarget(target: unknown): {
 } {
   const bad = (why: string) =>
     new TypeError(
-      `[ic-reactor] client.canister() takes { id } or { name }, with an optional certified: boolean and timeoutMs; ${why}, got ${describe(target)}.`
+      `[ic-reactor] ${what} takes { id } or { name }, with an optional certified: boolean and timeoutMs; ${why}, got ${describe(target)}.`
     )
   if (typeof target !== "object" || target === null) {
     throw bad("the target is not an object")

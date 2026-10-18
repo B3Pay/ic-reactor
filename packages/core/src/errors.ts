@@ -93,6 +93,18 @@ type ReactorErrorBase = Error & {
   readonly issues?: readonly { code: string; path: string; message: string }[]
   /** The error that caused this one, when there is one. */
   readonly cause?: unknown
+  /**
+   * For a write that got no answer (`outcome_unknown`, or `cancelled` with
+   * `mayHaveExecuted: true`): the latest ingress expiry its sends were signed
+   * with, in nanoseconds since the epoch, on the IC's clock. Once the IC's
+   * time is past it, no send of this write can still start executing: for a
+   * method that commits without awaiting another canister, a certified
+   * read-back of later state that finds nothing is final. The host's clock
+   * may differ from the IC's: compare with a margin. Absent on every other
+   * error. Not enumerable, so
+   * `JSON.stringify(error)` still works.
+   */
+  readonly expiresAt?: bigint
 }
 
 /**
@@ -276,6 +288,7 @@ class ReactorFailure extends Error {
   declare readonly issues?: Issues
   declare readonly err?: unknown
   declare readonly cause?: unknown
+  declare readonly expiresAt?: bigint
 
   constructor(init: BuildInit) {
     super(`[ic-reactor] ${init.method} on ${init.canisterId}: ${init.reason}`)
@@ -312,6 +325,30 @@ Object.defineProperty(ReactorFailure.prototype, "name", {
   writable: true,
   configurable: true,
 })
+
+/**
+ * `error` with `expiresAt`, when it is a write's failure that got no answer
+ * (`outcome_unknown`, or `cancelled` with `mayHaveExecuted: true`) and a send
+ * of it recorded an ingress expiry. Not enumerable, as `cause` is not: a
+ * `bigint` would make `JSON.stringify(error)` throw.
+ */
+export const withExpiry = (
+  error: unknown,
+  expiresAt: bigint | undefined
+): unknown => {
+  if (
+    expiresAt !== undefined &&
+    isReactorError(error) &&
+    error.mayHaveExecuted &&
+    (error.kind === "outcome_unknown" || error.kind === "cancelled")
+  ) {
+    Object.defineProperty(error, "expiresAt", {
+      value: expiresAt,
+      configurable: true,
+    })
+  }
+  return error
+}
 
 const build = <E = never>(init: BuildInit): ReactorError<E> =>
   new ReactorFailure(init) as unknown as ReactorError<E>

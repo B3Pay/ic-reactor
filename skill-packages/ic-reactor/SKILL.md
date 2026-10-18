@@ -34,7 +34,9 @@ This skill describes these versions:
    describes; when that differs from the list above, the installed guide wins.
 2. **Install the exact peers.** `@ic-reactor/core` with `@icp-sdk/core` and
    `@tanstack/query-core`; for React, `@ic-reactor/react` (at exactly core's
-   version), `@tanstack/react-query` and `react`; `@icp-sdk/auth` for Internet
+   version), `@tanstack/react-query` and `react`, with `@tanstack/query-core`
+   at the exact version `@tanstack/react-query` depends on, so that
+   `npm ls @tanstack/query-core` shows one copy; `@icp-sdk/auth` for Internet
    Identity sign-in. `@candid-core/schema` must be the exact version
    `@ic-reactor/core` lists in its `peerDependencies`, and the generator
    `@candid-core/cli` the exact version `@ic-reactor/vite-plugin` lists:
