@@ -1,7 +1,10 @@
 # IC Reactor
 
 <div align="center">
-  <img src="docs/src/assets/icon.svg" alt="IC Reactor Logo" width="240" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/ic-reactor-mark-dark.svg" />
+    <img src="docs/src/assets/ic-reactor-mark-light.svg" alt="IC Reactor logo" width="160" />
+  </picture>
   <br><br>
   <strong>Type-safe Internet Computer integration for TypeScript and React</strong>
   <br><br>
