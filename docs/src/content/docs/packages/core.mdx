@@ -136,7 +136,11 @@ function formatUnits(
 
 `createClient` does no work until it is used, so the same line runs in a
 server render and in a browser. It throws a `TypeError` for options that do not
-say who calls, say it twice, or name a network, `maxDepth` or `maxElements` it cannot use.
+say who calls, say it twice, or name a network, `maxDepth` or `maxElements` it cannot use; for
+an option it does not have, in the options or in a network object; and for an
+`allowEnvConfig` or `fetchRootKey` that is not a boolean, a `rootKey` that is
+not 133 bytes in a `Uint8Array`, or a `fetch` that is not a function.
+`parseUnits` and `formatUnits` refuse an option they do not have too.
 The `auth` factory is handed the client's network:
 [Auth](/v4/guides/auth/) says where its `identityProvider` comes from.
 

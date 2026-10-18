@@ -1134,6 +1134,40 @@ describe("what it refuses", () => {
     )
   })
 
+  it("a boolean option that is not a boolean, and a network createClient would refuse", () => {
+    onPage()
+    // "false" is truthy: it started signed in, and trusted the ic_env cookie.
+    expect(() =>
+      createTestClient({ signedIn: "false" } as unknown as Options)
+    ).toThrow(
+      new TypeError(
+        '[ic-reactor] createTestClient(): signedIn is true or false, got "false".'
+      )
+    )
+    for (const network of [undefined, "ic", { host: "https://x.example" }]) {
+      expect(() =>
+        createTestClient({
+          network,
+          allowEnvConfig: "false",
+        } as unknown as Options)
+      ).toThrow(
+        new TypeError(
+          '[ic-reactor] allowEnvConfig is true or false, got "false".'
+        )
+      )
+    }
+    expect(() =>
+      createTestClient({
+        network: { host: "https://x.example", rootkey: new Uint8Array(133) },
+      } as unknown as Options)
+    ).toThrow(/a network object has no option rootkey\./)
+    expect(() =>
+      createTestClient({
+        network: { host: "https://x.example", fetchRootKey: "false" },
+      } as unknown as Options)
+    ).toThrow(/fetchRootKey is true or false, got "false"\./)
+  })
+
   it("an identity that is neither an Identity nor a seed, null included", () => {
     for (const identity of [null, "seed", {}, true]) {
       expect(() =>
