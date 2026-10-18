@@ -432,8 +432,12 @@ Two properties are worth knowing:
 
 - `client.network` is the network's key segment, as in the table above.
 - `client.queryClient` is the `QueryClient` the client owns. Its default `retry`
-  retries a read only after a failure that proves it was not delivered, and
-  never on a server. Its dehydrate and hydrate defaults keep `bigint`,
+  retries a `ReactorError` only after a failure that proves it was not
+  delivered, and any other error (an app's own REST query on it) as TanStack
+  Query does by default: up to 3 times. Neither is retried on a server. Use it
+  for the app's other queries too, one `QueryClient` per tree; a write
+  invalidates its reads on the `QueryClient` it ran on and on this one, and
+  `dispose()` clears every query on it. Its dehydrate and hydrate defaults keep `bigint`,
   `Uint8Array` and the floats JSON cannot write, so a server's `dehydrate()`
   survives `JSON.stringify` and comes back exact.
 
