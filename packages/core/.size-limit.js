@@ -24,8 +24,9 @@ export default [
     // With timeoutMs (#875) on top of v4: measured 16,269 B, so the limit moved from 15,940 B to 16.32 kB.
     // With strict createClient options (#938) on top of v4: measured 16,608 B, so the limit moved from 16,320 B to 16.66 kB.
     // With TanStack retries kept for app queries (#937) on top of v4: measured 16,669 B, so the limit moved from 16,660 B to 16.72 kB.
-    // With the session events (#939) on top of v4: measured 16,974 B, so the limit moved from 16,720 B to 17.03 kB.
-    limit: "17.03 kB",
+    // With a held-back write sent as its caller (#936) on top of v4: measured 17,194 B, so the limit moved from 16,720 B to 17.25 kB.
+    // With session expiry and auth-factory failures (#939) on top of v4: measured 17,481 B, so the limit moved from 17,250 B to 17.54 kB.
+    limit: "17.54 kB",
     gzip: true,
   },
 ]

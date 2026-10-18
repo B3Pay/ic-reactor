@@ -536,8 +536,12 @@ another identity. What that means in practice:
   `kind: "cancelled"` and `code: "caller_changed"`, and it never lands in the
   new caller's key. Treat this error as "ignore" (see
   [Errors](/v4/guides/errors/)).
-- **Writes.** A write goes out as whoever is signed in when it runs. If nobody
-  is, the client refuses it before sending: `kind: "unauthenticated"`, code
+- **Writes.** A write goes out as the caller current when `mutate()` was
+  called, or not at all. When TanStack Query holds it back (offline, or
+  queued behind another mutation of its `scope`) and the account changes in
+  between, it fails with `kind: "cancelled"`, `code: "caller_changed"` and
+  `mayHaveExecuted: false`, and nothing is sent. If nobody is signed in, the
+  client refuses it before sending: `kind: "unauthenticated"`, code
   `anonymous_write`.
 - **Data.** After a sign-in, a sign-out or a switch, the new keys are empty
   until they load. Do not use `placeholderData: keepPreviousData` or an
