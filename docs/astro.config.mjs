@@ -61,6 +61,31 @@ export default defineConfig({
             href: "https://fonts.googleapis.com/css2?family=Martian+Mono:wdth,wght@87.5..100,400..500&family=Schibsted+Grotesk:ital,wght@0,400;0,600;0,700;1,400&display=swap",
           },
         },
+        // The share image: the B3Pay design system's social card, from
+        // assets/logos/ic-reactor. Starlight already sets twitter:card to
+        // summary_large_image.
+        {
+          tag: "meta",
+          attrs: {
+            property: "og:image",
+            content:
+              "https://ic-reactor.b3pay.net/v4/ic-reactor-social-card.png",
+          },
+        },
+        { tag: "meta", attrs: { property: "og:image:width", content: "1280" } },
+        { tag: "meta", attrs: { property: "og:image:height", content: "640" } },
+        {
+          tag: "meta",
+          attrs: { property: "og:image:alt", content: "IC Reactor" },
+        },
+        {
+          tag: "meta",
+          attrs: {
+            name: "twitter:image",
+            content:
+              "https://ic-reactor.b3pay.net/v4/ic-reactor-social-card.png",
+          },
+        },
         {
           tag: "meta",
           attrs: {
