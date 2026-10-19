@@ -62,19 +62,19 @@
     "@ic-reactor/core": "workspace:^",
     "@ic-reactor/parser": "workspace:^",
     "@noble/hashes": "^2.4.0",
-    "zod": "^4.6.2"
+    "zod": "^4.6.7"
   },
   "peerDependencies": {
-    "@icp-sdk/core": "^6.1.0",
+    "@icp-sdk/core": "^6.1.1",
     "@noble/hashes": "^2.0.0"
   },
   "peerDependenciesMeta": {},
   "devDependencies": {
-    "@icp-sdk/core": "^6.1.0",
+    "@icp-sdk/core": "^6.1.1",
     "@size-limit/preset-small-lib": "^13.0.3",
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.5",
     "size-limit": "^13.0.3",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.5"
   },
   "size-limit": [
     {
