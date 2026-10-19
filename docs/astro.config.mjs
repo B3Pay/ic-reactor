@@ -111,7 +111,10 @@ export default defineConfig({
         },
         {
           label: "Build",
-          items: [{ label: "An ICRC-1 wallet", slug: "build/icrc1-wallet" }],
+          items: [
+            { label: "An ICRC-1 wallet", slug: "build/icrc1-wallet" },
+            { label: "A server page for one user", slug: "build/ssr-per-user" },
+          ],
         },
         {
           label: "Guides",
