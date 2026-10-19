@@ -231,6 +231,8 @@ const CONTEXTS = {}
  * declares names to show them, not to use them), and `@types/node` joins the
  * template's `vite/client`, for the `vite.config.ts` and script snippets.
  * `vite/client` types `import.meta.env`, where a Vite app reads a canister id.
+ * `allowImportingTsExtensions` is on, as in the template, so a script that
+ * Node runs as TypeScript can import `./tools.ts` as Node needs it to.
  */
 const COMPILER_OPTIONS = {
   target: "ES2022",
@@ -240,6 +242,7 @@ const COMPILER_OPTIONS = {
   moduleDetection: "force",
   verbatimModuleSyntax: true,
   erasableSyntaxOnly: true,
+  allowImportingTsExtensions: true,
   jsx: "react-jsx",
   strict: true,
   noEmit: true,
@@ -259,7 +262,10 @@ const COMPILER_OPTIONS = {
  * the runtime packages, so that `react`, `@tanstack/react-query` and the rest
  * keep the versions the packages themselves compile against.
  * `examples/next-ssr` provides `next` for the SSR guide's App Router
- * snippets (`next/server`, `next/headers`).
+ * snippets (`next/server`, `next/headers`). A library only a build guide's app
+ * uses, and no example, is a devDependency of `docs`, listed last:
+ * `@modelcontextprotocol/server`, `@modelcontextprotocol/client` and `zod` for
+ * the agent tools guide.
  */
 const DEPENDENCY_SOURCES = [
   "packages/react",
@@ -267,6 +273,7 @@ const DEPENDENCY_SOURCES = [
   "packages/vite-plugin",
   ".",
   "examples/next-ssr",
+  "docs",
 ]
 
 // ── Source files ─────────────────────────────────────────────────────────────
@@ -503,10 +510,13 @@ const isAppAlias = (specifier) => specifier.startsWith("@/")
 
 /**
  * The path segments of an import that name the module: a relative import's
- * without its `.` and `..`, an `@/` import's without the alias.
+ * without its `.` and `..`, an `@/` import's without the alias, and either
+ * without a `.ts` or `.tsx` extension, which a script Node runs as
+ * TypeScript writes (`./generated/icrc1.ts`).
  */
 function moduleSegments(specifier) {
   return (isAppAlias(specifier) ? specifier.slice(1) : specifier)
+    .replace(/\.tsx?$/, "")
     .split("/")
     .filter((segment) => segment !== "" && segment !== "." && segment !== "..")
 }

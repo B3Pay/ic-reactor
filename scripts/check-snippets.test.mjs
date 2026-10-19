@@ -298,6 +298,20 @@ describe(
       assert.equal(notShown.status, 1, notShown.output)
       assert.match(notShown.output, /build\/app\.mdx:\d+:\d+ TS2305/)
 
+      // A script Node runs as TypeScript imports with the extension: the file
+      // the page shows and the generated module's fixture are found the same.
+      const withExtension = fence(
+        [
+          "// src/use.ts",
+          'import { amount } from "./amount.ts"',
+          'import { actor } from "./generated/icrc1.ts"',
+          "",
+          'console.log(amount("1.5"), actor)',
+        ].join("\n")
+      )
+      const extension = check(repo(guide(shown, withExtension)), "--docs")
+      assert.equal(extension.status, 0, extension.output)
+
       // `principal` is a global of the other docs pages.
       const global = check(
         repo(guide(fence("console.log(principal.toText())"))),

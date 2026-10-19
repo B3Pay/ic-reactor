@@ -114,6 +114,7 @@ export default defineConfig({
           items: [
             { label: "An ICRC-1 wallet", slug: "build/icrc1-wallet" },
             { label: "A server page for one user", slug: "build/ssr-per-user" },
+            { label: "An agent's ledger tools", slug: "build/agent-tools" },
           ],
         },
         {
