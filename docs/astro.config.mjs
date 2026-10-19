@@ -98,7 +98,8 @@ export default defineConfig({
         },
       ],
       // One library's sidebar, in the sections every library on the site
-      // shares: Get started, Guides, Concepts, Reference and Examples.
+      // shares: Get started, Guides, Concepts, Reference and Examples. Build
+      // holds the site's step-by-step apps, which may use several libraries.
       sidebar: [
         {
           label: "Get started",
@@ -107,6 +108,10 @@ export default defineConfig({
             { label: "Getting started", slug: "guides/getting-started" },
             { label: "Migrating from 3.x", slug: "migrating-from-3" },
           ],
+        },
+        {
+          label: "Build",
+          items: [{ label: "An ICRC-1 wallet", slug: "build/icrc1-wallet" }],
         },
         {
           label: "Guides",
