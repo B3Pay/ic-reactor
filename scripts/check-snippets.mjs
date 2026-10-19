@@ -78,6 +78,10 @@
  *   file, such as `// src/reactor.ts` for `./reactor`. Only a module the guide
  *   never shows, such as the canister's declarations, comes from a fixture.
  *
+ * The docs site's build guides (`build/` under the docs content root) follow
+ * the same two rules: each one takes an app from nothing to working and shows
+ * every file of it, so a reader can paste each file as it stands.
+ *
  * ## Hooks
  *
  * The compiler cannot see the rule the guides teach first: a React hook runs
@@ -197,6 +201,14 @@ const DOCS_ROOT = "docs/src/content/docs/"
  * only what its pages assume beyond the default app; without one, the page
  * gets the default app.
  */
+/**
+ * A build guide of the docs site: a page under `build/` that shows every file
+ * of the app it builds. Its snippets are held to the consumer guides' rules.
+ */
+function isBuildGuide(file) {
+  return file.startsWith(`${DOCS_ROOT}build/`)
+}
+
 function docsContext(file) {
   if (!file.startsWith(DOCS_ROOT)) return undefined
   const dir = dirname(file.slice(DOCS_ROOT.length))
@@ -384,7 +396,7 @@ function collectSnippets(files, docs) {
         context: CONTEXTS[file] ?? docsContext(file) ?? DEFAULT_CONTEXT,
         group: moduleGroup(file),
         defines: defines ? defines[1].split("/") : undefined,
-        selfContained: isConsumerGuide(file),
+        selfContained: isConsumerGuide(file) || isBuildGuide(file),
         skipped,
         docs,
       })
@@ -527,9 +539,10 @@ function findFixture(project, context, specifier) {
 }
 
 /**
- * The snippet module a relative import of a consumer guide names when the
- * guide shows that module itself: a snippet of the same document, or of the
- * same skill, whose first line names a path ending in the import's
+ * The snippet module a relative import of a consumer guide or a build guide
+ * names when the guide shows that module itself: a snippet of the same
+ * document, or of the same skill, whose first line names a path ending in the
+ * import's
  * (`// src/reactor.ts` for `./reactor`). The nearest one above the importing
  * snippet wins, then the first below it, then the first in another file of
  * the skill. The import is then checked against the module the reader was

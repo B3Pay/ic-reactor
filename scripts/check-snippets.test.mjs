@@ -260,5 +260,51 @@ describe(
       )
       assert.equal(run.status, 0, run.output)
     })
+
+    it("compiles a build guide against the files it shows, and gives it no globals", () => {
+      const page = (...fences) =>
+        `---\ntitle: Build\n---\n\n${fences.join("\n\n")}\n`
+      const shown = fence(
+        [
+          "// src/amount.ts",
+          'import { parseUnits } from "@ic-reactor/core"',
+          "",
+          "export const amount = (text: string) => parseUnits(text, 8)",
+        ].join("\n")
+      )
+      const using = (name) =>
+        fence(
+          [
+            "// src/use.ts",
+            `import { ${name} } from "./amount"`,
+            "",
+            `console.log(${name}("1.5"))`,
+          ].join("\n")
+        )
+      // A fixture of the same path, which a page outside build/ would get.
+      const fixture = {
+        "scripts/check-snippets/app/amount.ts":
+          "export const total = (text: string) => text\n",
+      }
+      const guide = (...fences) => ({
+        ...fixture,
+        "docs/src/content/docs/build/app.mdx": page(...fences),
+      })
+
+      const shownWins = check(repo(guide(shown, using("amount"))), "--docs")
+      assert.equal(shownWins.status, 0, shownWins.output)
+
+      const notShown = check(repo(guide(shown, using("total"))), "--docs")
+      assert.equal(notShown.status, 1, notShown.output)
+      assert.match(notShown.output, /build\/app\.mdx:\d+:\d+ TS2305/)
+
+      // `principal` is a global of the other docs pages.
+      const global = check(
+        repo(guide(fence("console.log(principal.toText())"))),
+        "--docs"
+      )
+      assert.equal(global.status, 1, global.output)
+      assert.match(global.output, /build\/app\.mdx:\d+:\d+ TS2304.*principal/)
+    })
   }
 )
