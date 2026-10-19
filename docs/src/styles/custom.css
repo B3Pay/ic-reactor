@@ -32,6 +32,8 @@
   --sl-color-bg-nav: var(--sl-color-black);
   --sl-color-bg-sidebar: var(--sl-color-black);
   --sl-color-bg-inline-code: var(--sl-color-gray-6);
+  /* surface-raised: cards and panels on the page background */
+  --b3-surface-raised: #1c1a18;
   --sl-color-hairline-light: #3a3631;
   --sl-color-hairline: #2e2b27;
   --sl-color-hairline-shade: #2e2b27;
@@ -61,6 +63,7 @@
   --sl-color-bg-nav: var(--sl-color-black);
   --sl-color-bg-sidebar: var(--sl-color-black);
   --sl-color-bg-inline-code: #ffffff;
+  --b3-surface-raised: #ffffff;
   --sl-color-hairline-light: #ddd8cf;
   --sl-color-hairline: #ddd8cf;
   --sl-color-hairline-shade: #ddd8cf;

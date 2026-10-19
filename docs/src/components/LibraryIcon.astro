@@ -1,0 +1,28 @@
+---
+// A library's layer icon: its node on its own (round for IC Reactor, a colon
+// for Candid Core, a tag for Candid Profile). The files come from the B3Pay
+// design system's logo builder, one for each theme; always set beside the
+// library's name.
+import reactorDark from "../assets/layers/ic-reactor-layer-icon-dark.svg?url"
+import reactorLight from "../assets/layers/ic-reactor-layer-icon-light.svg?url"
+import coreDark from "../assets/layers/candid-core-layer-icon-dark.svg?url"
+import coreLight from "../assets/layers/candid-core-layer-icon-light.svg?url"
+import profileDark from "../assets/layers/candid-profile-layer-icon-dark.svg?url"
+import profileLight from "../assets/layers/candid-profile-layer-icon-light.svg?url"
+
+interface Props {
+  library: "ic-reactor" | "candid-core" | "candid-profile"
+  size?: number
+}
+
+const icons = {
+  "ic-reactor": [reactorDark, reactorLight],
+  "candid-core": [coreDark, coreLight],
+  "candid-profile": [profileDark, profileLight],
+}
+const { library, size = 16 } = Astro.props
+const [dark, light] = icons[library]
+---
+
+<img src={dark} width={size} height={size} alt="" class="light:sl-hidden" />
+<img src={light} width={size} height={size} alt="" class="dark:sl-hidden" />
