@@ -3514,8 +3514,18 @@
     "testName": "that passed in one build runs again in the next build of the same plugin object",
     "why": "a new lifetime, and with it new passes of the live check, made only when a dev server starts, so a second build of one plugin object reuses the first build's pass and generates against a canister that changed since",
     "file": "src/index.ts",
-    "search": "      current = lifetimeAfter(current, config.command)\n",
-    "replace": "      if (config.command === \"serve\") {\n        current = lifetimeAfter(current, config.command)\n      }\n"
+    "search": "      current = lifetimeAfter(\n        current,\n        config.command === \"build\" || config.mode === \"test\"\n      )\n",
+    "replace": "      if (config.command === \"serve\") {\n        current = lifetimeAfter(\n          current,\n          config.command === \"build\" || config.mode === \"test\"\n        )\n      }\n"
+  },
+  {
+    "id": "967-vitest-failure-only-logged",
+    "package": "vite-plugin",
+    "test": "tests/generation.test.ts",
+    "testName": "fails the run's startup when a .did does not generate",
+    "why": "under Vitest (a dev server in mode test) a failed generation with failOnError omitted is only logged, so the tests run against the module a failed run left on disk",
+    "file": "src/index.ts",
+    "search": "        config.command === \"build\" || config.mode === \"test\"\n",
+    "replace": "        config.command === \"build\"\n"
   },
   {
     "id": "did-verify-old-run-writes-new",
