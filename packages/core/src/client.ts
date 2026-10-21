@@ -1958,8 +1958,8 @@ export function createClientWith(
       auth = undefined
       unsubscribeAuth = undefined
       listeners.clear()
-      agents.clear()
       signInsThisRun = []
+      agents.clear()
       clearTimeout(expiryTimer)
       expiryTimer = undefined
       snapshot = notified = ANONYMOUS_STATE

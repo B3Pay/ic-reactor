@@ -5676,7 +5676,7 @@
     "testName": "rejects a sign-in after dispose(), even with the options of one earlier in the run",
     "why": "a sign-in after dispose() with the options of one earlier in the run is joined to it instead of rejecting, so the caller waits on a client that is gone",
     "file": "src/client.ts",
-    "search": "      signInsThisRun = []\n      clearTimeout(expiryTimer)\n",
-    "replace": "      clearTimeout(expiryTimer)\n"
+    "search": "      signInsThisRun = []\n      agents.clear()\n",
+    "replace": "      agents.clear()\n"
   }
 ]
