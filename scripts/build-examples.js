@@ -17,7 +17,7 @@ import { spawnSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { SKIP, discoverExampleDirs, examplesDir } from "./example-projects.js"
+import { discoverExampleDirs, examplesDir } from "./example-projects.js"
 
 const dirs = discoverExampleDirs()
 
@@ -55,7 +55,4 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log(
-  `\n✅ All ${built.length} buildable examples build cleanly` +
-    (SKIP.size > 0 ? ` (skipped by name: ${[...SKIP].join(", ")})` : "")
-)
+console.log(`\n✅ All ${built.length} buildable examples build cleanly`)

@@ -15,7 +15,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/vite-plugin
+
+#### Changed
+
+- The package no longer publishes its TypeScript source (#978). It shipped
+  `src` beside `dist` with no source map or declaration map pointing at it,
+  and nothing in `dist` refers to it. Measured with `npm pack`: 17 files and
+  487,020 B unpacked before, 7 files and 268,245 B now.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
