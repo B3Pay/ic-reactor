@@ -112,8 +112,15 @@ function readQueryOptionsArg(options: unknown): boolean {
   )
 }
 
-/** The `time` path of the state tree. */
-const TIME_PATH = [new TextEncoder().encode("time")]
+/**
+ * The `time` path of the state tree, copied into the global `Uint8Array`, the
+ * one the agent's CBOR encoder knows bytes by (`instanceof`). Under a test's
+ * jsdom that is jsdom's, while `TextEncoder` hands out Node's, and the encoder
+ * sent such a label as a map: the `read_state` the replica received was not
+ * the one the agent signed, so a signed-in caller's was refused (#949). The
+ * fake replica copies its labels for the same reason.
+ */
+const TIME_PATH = [Uint8Array.from(new TextEncoder().encode("time"))]
 
 /** An unsigned LEB128 number, as the state tree writes `time`. */
 function readLeb128(bytes: Uint8Array): bigint {

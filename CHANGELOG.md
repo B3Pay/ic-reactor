@@ -15,7 +15,18 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Fixed
+
+- `client.time(canister)` resolves under a test's jsdom environment, where the
+  fake replica refused a signed-in client's signature (#949). There
+  `TextEncoder` hands out Node's bytes, which are not the global (jsdom's)
+  `Uint8Array`, and the agent's CBOR encoder sent the `time` label built from
+  them as a map, so the request the replica received was not the one the
+  agent signed. The label is now copied into the global `Uint8Array`. In a
+  browser, `TextEncoder` and the agent share one realm, so an app there is
+  not expected to have been affected.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
