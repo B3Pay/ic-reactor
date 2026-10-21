@@ -355,7 +355,8 @@ affected.
   `ic-reactor: ledger: omitted declaration Bad (reserved_field_name)`.
 - Editing a `.did` regenerates only the canisters that name it. Saves that
   arrive while it runs collapse into one more run. `vite build --watch`
-  regenerates a canister only when its `.did` text changed.
+  regenerates a canister only when its `.did` text changed, or its module or
+  envelope is missing.
 - A run (the start of a build or dev server, or a save's regeneration) reads
   each `didFile` once, and again after each step that runs `candid-core-cli`
   on it (listing its methods, the live check, generation), since each of those
@@ -421,7 +422,8 @@ icReactor({
   that never settles holds the build.
 - It is not called for a canister that failed or was refused, nor for a run
   that does not generate the module again (the second `buildStart` of
-  Vite 6 and later, a `vite build --watch` rebuild not caused by a `.did`).
+  Vite 6 and later, a `vite build --watch` rebuild not caused by a `.did`
+  or by a missing module or envelope).
   A save under `vite dev` always generates again, so saving the same text
   calls it with `"unchanged"`.
 - A throw or a rejection fails the module's canisters as a failed generation
@@ -455,8 +457,10 @@ plugin:
 3. sets the `ic_env` cookie on each response
 4. proxies `/api` to the local replica
 
-If a canister has a `canisterId` set in the plugin config, that value overrides
-the auto-detected ID for that canister.
+If a canister has a `canisterId` set in the plugin config, that value is used
+for it, and `icp` is not asked for its ID. `internet_identity` is asked for
+even then: what `icp` reports decides whether the cookie also names icp-cli's
+built-in Internet Identity.
 
 Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
 (defaults to `"local"`).

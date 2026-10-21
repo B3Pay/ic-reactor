@@ -13,9 +13,10 @@
  * This writes a consumer, in a temporary directory, that imports every public
  * entry point of the packages below (each subpath of their `exports` maps),
  * and compiles it with TYPESCRIPT_FLOOR, `strict` and `skipLibCheck: false`:
- * once with `moduleResolution: "bundler"` and once with `"node16"`. The
- * consumer reaches the packages through symlinks, so their declarations resolve
- * their own dependencies from the workspace install, at the lockfile's versions.
+ * once with `moduleResolution: "bundler"` and once with `"node16"`, for each
+ * of its programs. The consumer reaches the packages through symlinks, so their
+ * declarations resolve their own dependencies from the workspace install, at
+ * the lockfile's versions.
  *
  * It reads the declarations `pnpm build` wrote to `packages/<name>/dist`, so
  * build first. `pnpm verify:peer-floors` runs it.
@@ -50,8 +51,14 @@ const keep = process.argv.includes("--keep")
  */
 const TYPESCRIPT_FLOOR = "5.7.2"
 
-/** The packages whose declarations are compiled, by directory under packages/. */
-const PACKAGES = ["core", "react"]
+/**
+ * The packages whose declarations are compiled, by directory under packages/,
+ * in one program for each entry. The Vite plugin's declarations import Vite's,
+ * which reference Node's types (`/// <reference types="node" />`). In one
+ * program with core and react, those types would reach their declarations too,
+ * and `types: []` would no longer catch one that uses Node's globals (#980).
+ */
+const PROGRAMS = { app: ["core", "react"], "vite-plugin": ["vite-plugin"] }
 
 /**
  * The tsconfig the installation guide recommends, with `skipLibCheck` off so
@@ -123,10 +130,24 @@ function typesTargets(value) {
   )
 }
 
-/** Writes the consumer and returns the specifiers it imports. */
+/**
+ * Writes the consumer, a `<program>.ts` and a `tsconfig.<program>.<mode>.json`
+ * for each program and mode, and returns the specifiers each program imports.
+ */
 function writeConsumer(consumer, links) {
+  writeJson(join(consumer, "package.json"), { private: true, type: "module" })
+  return Object.fromEntries(
+    Object.entries(PROGRAMS).map(([program, dirs]) => [
+      program,
+      writeProgram(consumer, links, program, dirs),
+    ])
+  )
+}
+
+/** Writes one program of the consumer and returns the specifiers it imports. */
+function writeProgram(consumer, links, program, dirs) {
   const specifiers = []
-  for (const dir of PACKAGES) {
+  for (const dir of dirs) {
     const packageDir = join(rootDir, "packages", dir)
     const manifest = readJson(join(packageDir, "package.json"))
     const declared = [manifest.types, ...typesTargets(manifest.exports)]
@@ -147,10 +168,9 @@ function writeConsumer(consumer, links) {
     specifiers.push(...entryPoints(manifest))
   }
 
-  writeJson(join(consumer, "package.json"), { private: true, type: "module" })
   const names = specifiers.map((_, i) => `entry${i}`)
   writeFileSync(
-    join(consumer, "consumer.ts"),
+    join(consumer, `${program}.ts`),
     [
       ...specifiers.map(
         (specifier, i) => `import * as ${names[i]} from "${specifier}"`
@@ -160,9 +180,9 @@ function writeConsumer(consumer, links) {
     ].join("\n")
   )
   for (const [mode, options] of Object.entries(MODES)) {
-    writeJson(join(consumer, `tsconfig.${mode}.json`), {
+    writeJson(join(consumer, `tsconfig.${program}.${mode}.json`), {
       compilerOptions: { ...COMPILER_OPTIONS, ...options },
-      files: ["consumer.ts"],
+      files: [`${program}.ts`],
     })
   }
   return specifiers
@@ -172,8 +192,11 @@ const consumer = mkdtempSync(join(tmpdir(), "typescript-floor-"))
 const links = []
 let ok = false
 try {
-  const specifiers = writeConsumer(consumer, links)
-  console.log(`\n▶ TypeScript ${TYPESCRIPT_FLOOR}: ${specifiers.join(", ")}`)
+  const programs = writeConsumer(consumer, links)
+  console.log(`\n▶ TypeScript ${TYPESCRIPT_FLOOR}`)
+  for (const [program, specifiers] of Object.entries(programs)) {
+    console.log(`  ${program}: ${specifiers.join(", ")}`)
+  }
 
   // Run from the consumer, outside the workspace, so npx cannot pick up the
   // workspace's own TypeScript, and confirm which compiler it runs. Under
@@ -197,13 +220,18 @@ try {
     )
   }
   console.log(found)
-  const failed = Object.keys(MODES).filter((mode) => {
-    console.log(`  moduleResolution: ${mode}`)
-    return !run("npx", [...tsc, "--project", `tsconfig.${mode}.json`], consumer)
-  })
+  const failed = Object.keys(programs).flatMap((program) =>
+    Object.keys(MODES)
+      .filter((mode) => {
+        console.log(`  ${program}, moduleResolution: ${mode}`)
+        const project = `tsconfig.${program}.${mode}.json`
+        return !run("npx", [...tsc, "--project", project], consumer)
+      })
+      .map((mode) => `${program} with moduleResolution: ${mode}`)
+  )
   if (failed.length > 0) {
     throw new Error(
-      `The declarations do not compile with TypeScript ${TYPESCRIPT_FLOOR} (moduleResolution: ${failed.join(", ")})`
+      `The declarations do not compile with TypeScript ${TYPESCRIPT_FLOOR} (${failed.join("; ")})`
     )
   }
   ok = true

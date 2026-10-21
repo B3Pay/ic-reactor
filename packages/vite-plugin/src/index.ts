@@ -283,7 +283,8 @@ export interface IcReactorPluginOptions {
    * `.did` was written while the generator read it (the run takes nothing of
    * it), nor for a run that does not generate the module again: the second
    * `buildStart` of Vite 6 and later, and each rebuild of
-   * `vite build --watch` not caused by a `.did`. A save under `vite dev`
+   * `vite build --watch` not caused by a `.did` or by a missing module or
+   * envelope. A save under `vite dev`
    * always generates again, so a save of the same text calls it, with
    * `"unchanged"`. A `.did` written while the hook runs is caught after it:
    * a build then fails as changed during the build, and a dev server
@@ -667,11 +668,11 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
 
   /**
    * The `.did` text each canister last generated from. A rebuild that finds
-   * the text unchanged skips the canister, which is every rebuild of
-   * `vite build --watch` that was not caused by a `.did`, and the second
-   * `buildStart` Vite 6 and later run for another environment. It is the
-   * plugin's, not a lifetime's: it says what is on disk, which a restart
-   * keeps.
+   * the text unchanged, and the module and envelope still there, skips the
+   * canister, which is every rebuild of `vite build --watch` that was not
+   * caused by a `.did`, and the second `buildStart` Vite 6 and later run for
+   * another environment. It is the plugin's, not a lifetime's: it says what
+   * is on disk, which a restart keeps.
    */
   const generatedFrom = new Map<string, string>()
 
@@ -843,7 +844,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         return (
           force ||
           source === undefined ||
-          generatedFrom.get(canister.name) !== source
+          generatedFrom.get(canister.name) !== source ||
+          // Deleted since it was generated: the text alone would skip it,
+          // and every rebuild would fail until the `.did` changed (#980).
+          outputFiles(canister).some((file) => !fs.existsSync(file))
         )
       })
       if (stale.length === 0) return []

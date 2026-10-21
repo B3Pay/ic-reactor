@@ -340,8 +340,10 @@ function docsFiles() {
  * The fenced code blocks of a Markdown (or MDX) file, following CommonMark: a
  * fence closes on a line of the same character, at least as long, with no
  * info string, so a ```ts inside a ````markdown block is content, not a fence.
- * The opening fence's indentation is removed from each line (fences nested in
- * lists and MDX components are indented).
+ * A fence that is never closed runs to the end of the file, as CommonMark has
+ * it, so its code is checked rather than dropped (#980). The opening fence's
+ * indentation is removed from each line (fences nested in lists and MDX
+ * components are indented).
  *
  * @returns {{ lang: string, info: string[], line: number, code: string }[]}
  *   `line` is the 1-based line of the fence's first line of code.
@@ -379,6 +381,10 @@ function extractFences(text) {
     }
     const indent = /^\s*/.exec(line)[0].length
     open.body.push(line.slice(Math.min(indent, open.indent)))
+  }
+  if (open !== null) {
+    const { lang, info, line: start, body } = open
+    fences.push({ lang, info, line: start, code: body.join("\n") })
   }
   return fences
 }

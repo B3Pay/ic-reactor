@@ -19,11 +19,11 @@
  * is never touched; uncommitted changes are not part of the run.
  *
  * TypeScript has a floor too, and this runs its check first:
- * verify-typescript-floor.js compiles the declarations of core and react with
- * the oldest TypeScript the docs name. That check reads the declarations
- * `pnpm build` wrote to this checkout, not a worktree of HEAD: a worktree would
- * have to build the packages again, and CI has just built them here. Locally,
- * run `pnpm build` first.
+ * verify-typescript-floor.js compiles the declarations of core, react and the
+ * vite plugin with the oldest TypeScript the docs name. That check reads the
+ * declarations `pnpm build` wrote to this checkout, not a worktree of HEAD: a
+ * worktree would have to build the packages again, and CI has just built them
+ * here. Locally, run `pnpm build` first.
  *
  * Usage
  *   node scripts/verify-peer-floors.js [--keep]
@@ -308,13 +308,20 @@ export function verifyPackage(
 
     // Each project named on its own: selected only as a dependency (`react...`),
     // core would be installed without the devDependencies its build needs.
+    // A filter that matches no package makes pnpm exit 0 having run nothing,
+    // so each command here passes --fail-if-no-match (#980). pnpm fails only
+    // when the whole selection is empty: an install whose other filter still
+    // matches goes on, and the build or check of the missing package fails.
     const projects = [...(check.buildFirst ?? []), check.pkg]
     const filters = projects.flatMap((pkg) => ["--filter", `./packages/${pkg}`])
     const setup = [
-      ["pnpm", ["install", "--no-frozen-lockfile", ...filters]],
+      [
+        "pnpm",
+        ["install", "--no-frozen-lockfile", "--fail-if-no-match", ...filters],
+      ],
       ...(check.buildFirst ?? []).map((pkg) => [
         "pnpm",
-        ["--filter", `@ic-reactor/${pkg}`, "build"],
+        ["--filter", `@ic-reactor/${pkg}`, "--fail-if-no-match", "build"],
       ]),
     ]
     for (const [command, args] of setup) {
@@ -340,7 +347,12 @@ export function verifyPackage(
         linkCopy(packageDir, copy)
       }
       for (const script of ["typecheck", "test"]) {
-        const args = ["--filter", `@ic-reactor/${check.pkg}`, script]
+        const args = [
+          "--filter",
+          `@ic-reactor/${check.pkg}`,
+          "--fail-if-no-match",
+          script,
+        ]
         if (!run("pnpm", args, worktree)) {
           console.error(`✖ ${label}: \`pnpm ${args.join(" ")}\` failed`)
           failed.push(`${label}: ${script}`)

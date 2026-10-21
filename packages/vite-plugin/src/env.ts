@@ -5,7 +5,7 @@
  * and building the `ic_env` cookie for the browser.
  */
 
-import { execFile } from "child_process"
+import { spawn } from "child_process"
 import fs from "node:fs"
 import path from "node:path"
 import { describeError } from "./describe-value.js"
@@ -48,35 +48,93 @@ export interface IcEnvironmentDetection {
 const ICP_TIMEOUT_MS = 10_000
 
 /**
- * Run `icp` with `args` in `cwd` and resolve with its stdout.
+ * Run `icp` with `args` in `cwd` and resolve with its stdout. It rejects as
+ * `execFile` did: with the error that kept `icp` from starting (`ENOENT`), or
+ * with "Command failed: ..." and the exit `code`, the `signal`, and `killed`
+ * when the timeout killed it, each with the `cmd` and the `stderr` it wrote.
+ * Once the timeout has fired it rejects even if `icp` then exits 0, since its
+ * pipes are closed by then and what it wrote may be cut short.
  *
  * Asynchronous, so a page request that waits for detection does not block the
  * dev server's other requests. stderr is captured rather than shown, so a
  * failure can explain itself: it only reaches the terminal if the caller prints
  * the diagnostics. stdin is closed, so a command that asks a question fails
  * instead of waiting for an answer.
+ *
+ * Elsewhere than on Windows, npm's `icp` is a Node script that starts the
+ * native binary as its child, on the script's pipes, and killing the script
+ * leaves that child running: each page load while detection is incomplete
+ * could leave one more (#980). So there `icp` starts in a session and process
+ * group of its own (`detached`), and the timeout kills the whole group. The
+ * cost: the terminal's Ctrl-C and hang-up no longer reach an `icp` that is
+ * running when the dev server stops. Windows runs `icp.exe` itself
+ * (`icpCommand`), and the timeout kills that.
+ *
+ * @param timeoutMs - How long it may run; the tests shorten it.
  */
-function runIcp(args: string[], cwd: string): Promise<string> {
+export function runIcp(
+  args: string[],
+  cwd: string,
+  timeoutMs: number = ICP_TIMEOUT_MS
+): Promise<string> {
   const icp = icpCommand(cwd)
+  const argv = [...icp.args, ...args]
+  const command = [icp.file, ...argv].join(" ")
+  const group = process.platform !== "win32"
   return new Promise((resolve, reject) => {
-    const child = execFile(
-      icp.file,
-      [...icp.args, ...args],
-      {
-        cwd,
-        encoding: "utf-8",
-        env: icp.env && { ...process.env, ...icp.env },
-        timeout: ICP_TIMEOUT_MS,
-        windowsHide: true,
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          reject(Object.assign(error, { stderr }))
+    let stdout = ""
+    let stderr = ""
+    let killed = false
+    let settled = false
+    const settle = (error?: Error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      if (error) reject(Object.assign(error, { stderr }))
+      else resolve(stdout)
+    }
+
+    const child = spawn(icp.file, argv, {
+      cwd,
+      env: icp.env && { ...process.env, ...icp.env },
+      detached: group,
+      windowsHide: true,
+    })
+    const timer = setTimeout(() => {
+      killed = true
+      try {
+        if (group && child.pid !== undefined) {
+          process.kill(-child.pid, "SIGTERM")
         } else {
-          resolve(stdout)
+          child.kill("SIGTERM")
         }
+      } catch {
+        child.kill("SIGTERM")
       }
-    )
+      // A process outside the group could still hold the pipes open.
+      child.stdout?.destroy()
+      child.stderr?.destroy()
+    }, timeoutMs)
+
+    child.stdout?.setEncoding("utf-8")
+    child.stderr?.setEncoding("utf-8")
+    child.stdout?.on("data", (chunk: string) => (stdout += chunk))
+    child.stderr?.on("data", (chunk: string) => (stderr += chunk))
+    child.on("error", (error) => settle(Object.assign(error, { cmd: command })))
+    child.on("close", (code, signal) => {
+      if (code === 0 && !killed) {
+        settle()
+        return
+      }
+      settle(
+        Object.assign(new Error(`Command failed: ${command}\n${stderr}`), {
+          code,
+          signal,
+          killed,
+          cmd: command,
+        })
+      )
+    })
     child.stdin?.end()
   })
 }
@@ -85,7 +143,7 @@ function runIcp(args: string[], cwd: string): Promise<string> {
  * How to start `icp` for the app rooted at `projectRoot`.
  *
  * On Windows, npm links the bin of icp-cli's npm package
- * (`@icp-sdk/icp-cli`) as `node_modules/.bin/icp.cmd`, and `execFile` cannot
+ * (`@icp-sdk/icp-cli`) as `node_modules/.bin/icp.cmd`, and `spawn` cannot
  * start a `.cmd` file: it searches `PATH` for `.com` and `.exe` only. So on
  * Windows, when the app installed the package, or else npm's global prefix
  * (`%APPDATA%\npm`) holds it, the native `icp.exe` that the package's bin

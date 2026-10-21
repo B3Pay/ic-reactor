@@ -2,12 +2,14 @@
  * Helpers for the plugin tests that run a real Vite server or build against a
  * temporary app.
  */
+import { EventEmitter } from "node:events"
 import fs from "node:fs"
 import http from "node:http"
 import Module, { createRequire } from "node:module"
 import type { AddressInfo } from "node:net"
 import os from "node:os"
 import path from "node:path"
+import { PassThrough } from "node:stream"
 import { fileURLToPath } from "node:url"
 import {
   build,
@@ -254,4 +256,39 @@ export function get(port: number, pathname: string) {
       )
       .on("error", reject)
   })
+}
+
+/**
+ * What a mocked `spawn` hands back for an `icp` command: a process that
+ * writes `result` to stdout and exits 0, or for an Error, writes its `stderr`
+ * (its message when it has none, as a real `icp` writes its error) and exits
+ * 1. An Error whose `code` is `ENOENT` is a command that never started. It
+ * settles later, as a real process does.
+ */
+export function icpProcess(result: string | Error) {
+  const child = Object.assign(new EventEmitter(), {
+    stdout: new PassThrough(),
+    stderr: new PassThrough(),
+    stdin: new PassThrough(),
+    pid: undefined,
+    kill: () => true,
+  })
+  setImmediate(() => {
+    if (
+      result instanceof Error &&
+      (result as { code?: unknown }).code === "ENOENT"
+    ) {
+      child.emit("error", result)
+      child.emit("close", -2, null)
+      return
+    }
+    const failed = result instanceof Error
+    child.stdout.end(failed ? "" : result)
+    child.stderr.end(
+      failed ? ((result as { stderr?: string }).stderr ?? result.message) : ""
+    )
+    // After the streams have ended, as a real process closes.
+    setImmediate(() => child.emit("close", failed ? 1 : 0, null))
+  })
+  return child
 }
