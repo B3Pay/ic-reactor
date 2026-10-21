@@ -685,10 +685,13 @@ export interface Client {
    * mutation that failed (which keeps its pending state and invalidation) or
    * any other of this client, sends `arg` only to the method and canister id
    * the attempt went to, and only while it encodes to the same bytes. Either
-   * one goes out only as `from`. Each refusal sends nothing: `cancelled`
-   * (`caller_changed`) once someone else is the caller, `cancelled`
-   * (`target_changed`) for another method or canister id, and `invalid_args`
-   * (`arg_changed`) for an argument changed since it was sent. Once
+   * one goes out only as `from`. Each refusal sends nothing, and the code
+   * says which it is: `caller_changed` once someone else is the caller,
+   * `target_changed` for another method or canister id, and `arg_changed`
+   * for an argument changed since it was sent. A re-send that is refused, or
+   * turned away when sent (an HTTP 4xx, reject code 1 to 3), still rejects
+   * `outcome_unknown` with `mayHaveExecuted: true`, because the attempt it
+   * re-sends may have run, and this method offers that write again. Once
    * offered, that object stays held to that write: build a new argument for
    * a new write, rather than change this one or send it from another account.
    *

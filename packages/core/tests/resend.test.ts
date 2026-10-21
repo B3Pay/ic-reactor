@@ -203,15 +203,17 @@ describe("client.resendOf", () => {
     )
     expect(again?.arg).toBe(mutation.getCurrentResult().variables)
 
-    // Someone else signs in before the re-send is pressed.
+    // Someone else signs in before the re-send is pressed. Nothing is sent,
+    // and the write it re-sends may still have run.
     t.auth.switchTo(2)
-    const cancelled = {
-      kind: "cancelled",
+    const refused = {
+      kind: "outcome_unknown",
       code: "caller_changed",
-      mayHaveExecuted: false,
+      mayHaveExecuted: true,
+      cause: { kind: "cancelled", code: "caller_changed" },
     }
-    await expect(again?.send()).rejects.toMatchObject(cancelled)
-    await expect(mutation.mutate(again!.arg)).rejects.toMatchObject(cancelled)
+    await expect(again?.send()).rejects.toMatchObject(refused)
+    await expect(mutation.mutate(again!.arg)).rejects.toMatchObject(refused)
     expect(t.sent()).toBe(1)
 
     // The sender again: the mutation re-sends it, and the ledger says it ran.
@@ -329,19 +331,26 @@ describe("client.resendOf", () => {
     expect(again?.arg).toBe(arg)
 
     // Changed after the offer, as a form bound to the object would change it.
+    // Nothing is sent, and the write it re-sends may still have run.
     rewrite(arg, { amount: 200n })
     const refused = await mutation.mutate(again!.arg).catch((e: unknown) => e)
     expect(refused).toMatchObject({
-      kind: "invalid_args",
+      kind: "outcome_unknown",
       code: "arg_changed",
-      mayHaveExecuted: false,
+      mayHaveExecuted: true,
       canisterId: LEDGER,
+      cause: { kind: "invalid_args", code: "arg_changed" },
     })
     expect(isReactorError(refused, t.ledger, "icrc1_transfer")).toBe(true)
     expect(t.sent()).toBe(1)
+    // That write is offered again, though only while its argument is as sent.
+    const offer = () =>
+      t.client.resendOf(refused, t.ledger, "icrc1_transfer", { dedupedBy })
+    expect(offer()).toBeUndefined()
 
     // As it was sent again, it is the same write, and the ledger says it ran.
     rewrite(arg, { amount: 100n })
+    expect(offer()?.arg).toBe(arg)
     await expect(mutation.mutate(again!.arg)).rejects.toMatchObject({
       kind: "canister_err",
       err: { tag: "Duplicate", value: { duplicate_of: 1n } },
@@ -381,13 +390,18 @@ describe("client.resendOf", () => {
 
     deployed = ARCHIVE
     expect(offer()).toBeUndefined()
-    await expect(mutation.mutate(again!.arg)).rejects.toMatchObject({
-      kind: "cancelled",
+    const refused = await mutation.mutate(again!.arg).catch((e: unknown) => e)
+    expect(refused).toMatchObject({
+      kind: "outcome_unknown",
       code: "target_changed",
-      mayHaveExecuted: false,
+      mayHaveExecuted: true,
       canisterId: ARCHIVE,
     })
     expect(t.sent()).toBe(1)
+    // The write it re-sends is kept: offered while the name maps to it.
+    expect(
+      t.client.resendOf(refused, named, "icrc1_transfer", { dedupedBy })
+    ).toBeUndefined()
 
     // send() goes where the write went, and that ledger says it ran.
     await expect(again?.send()).rejects.toMatchObject({
@@ -400,6 +414,9 @@ describe("client.resendOf", () => {
     // Mapped back, the mutation re-sends it to that ledger as well.
     deployed = LEDGER
     expect(offer()).toMatchObject({ from: SEED_1 })
+    expect(
+      t.client.resendOf(refused, named, "icrc1_transfer", { dedupedBy })
+    ).toMatchObject({ from: SEED_1 })
     await expect(mutation.mutate(again!.arg)).rejects.toMatchObject({
       kind: "canister_err",
       err: { tag: "Duplicate" },
@@ -441,12 +458,20 @@ describe("client.resendOf", () => {
       t.client.queryClient,
       t.client.mutationOptions(ic, "start_canister")
     )
-    await expect(start.mutate(again!.arg)).rejects.toMatchObject({
-      kind: "cancelled",
+    const refused = await start.mutate(again!.arg).catch((e: unknown) => e)
+    expect(refused).toMatchObject({
+      kind: "outcome_unknown",
       code: "target_changed",
-      mayHaveExecuted: false,
+      mayHaveExecuted: true,
     })
     expect(calls).toEqual(["stop"])
+    // What stays offered is the write it would have re-sent, for its method.
+    expect(
+      t.client.resendOf(refused, ic, "start_canister", { dedupedBy })
+    ).toBeUndefined()
+    expect(
+      t.client.resendOf(refused, ic, "stop_canister", { dedupedBy })
+    ).toMatchObject({ arg: again!.arg })
   })
 
   it("routes a management write's re-send by the effective canister id its write went out with", async () => {
@@ -471,5 +496,118 @@ describe("client.resendOf", () => {
     await expect(again?.send()).resolves.toBeUndefined()
     const stops = t.requests.filter((r) => r.methodName === "stop_canister")
     expect(stops.map((r) => r.effectiveCanisterId)).toEqual([SHAPES, SHAPES])
+  })
+})
+
+describe("a re-send that did not run", () => {
+  // A refused or turned-away re-send proves only that it did not run. The
+  // write it re-sends may have run all the same, so the outcome stays
+  // unknown, and the write stays offered (#960).
+  for (const how of ["mutate", "send"] as const) {
+    it(`keeps the unknown outcome after a lost reply when the re-send by ${how}() is throttled, and offers it again`, async () => {
+      const t = setup()
+      const mutation = new MutationObserver(
+        t.client.queryClient,
+        t.client.mutationOptions(t.ledger, "icrc1_transfer")
+      )
+      t.dropNextReply({ method: "icrc1_transfer" })
+      const first = await mutation.mutate(transfer()).catch((e: unknown) => e)
+      expect(first).toMatchObject({
+        kind: "outcome_unknown",
+        mayHaveExecuted: true,
+      })
+      expect(t.ran()).toBe(1n)
+      const offerFor = (error: unknown) =>
+        t.client.resendOf(error, t.ledger, "icrc1_transfer", { dedupedBy })
+      const again = offerFor(first)
+      expect(again).toBeDefined()
+
+      // Throttled on every attempt, the client's own re-sends included.
+      t.refuseNext(429, { method: "icrc1_transfer", times: 3 })
+      const invalidate = vi.spyOn(t.client.queryClient, "invalidateQueries")
+      const throttled =
+        how === "mutate"
+          ? await mutation.mutate(again!.arg).catch((e: unknown) => e)
+          : await again!.send().catch((e: unknown) => e)
+      expect(throttled).toMatchObject({
+        kind: "outcome_unknown",
+        mayHaveExecuted: true,
+        httpStatus: 429,
+        cause: { kind: "not_delivered", mayHaveExecuted: false },
+      })
+      expect(isReactorError(throttled, t.ledger, "icrc1_transfer")).toBe(true)
+      expect((throttled as { expiresAt?: bigint }).expiresAt).toBe(
+        (first as { expiresAt?: bigint }).expiresAt
+      )
+      if (how === "mutate") {
+        expect(mutation.getCurrentResult().error).toBe(throttled)
+        // A write that may have run refreshes its reads.
+        expect(invalidate).toHaveBeenCalled()
+      }
+
+      // Still offered, and the next re-send learns from the ledger that the
+      // first attempt ran.
+      const next = offerFor(throttled)
+      expect(next?.arg).toBe(again!.arg)
+      await expect(next!.send()).rejects.toMatchObject({
+        kind: "canister_err",
+        err: { tag: "Duplicate", value: { duplicate_of: 1n } },
+      })
+      expect(t.ran()).toBe(1n)
+    })
+  }
+
+  it("keeps the unknown outcome when the re-send is rejected before any canister code ran", async () => {
+    const t = setup()
+    const error = await lostTransfer(t)
+    const again = t.client.resendOf(error, t.ledger, "icrc1_transfer", {
+      dedupedBy,
+    })
+    // The subnet refuses the re-send (reject code 1, SysFatal).
+    t.mock<icrc1.Actor>(icrc1.actor, LEDGER, {
+      icrc1_transfer: () => t.reject(1, "subnet refused it"),
+    })
+    const rejected = await again!.send().catch((e: unknown) => e)
+    expect(rejected).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      rejectCode: 1,
+      cause: { kind: "rejected", mayHaveExecuted: false },
+    })
+    expect(
+      t.client.resendOf(rejected, t.ledger, "icrc1_transfer", { dedupedBy })
+    ).toMatchObject({ from: SEED_1 })
+    expect(t.ran()).toBe(1n)
+  })
+
+  it("leaves a first send that is throttled not delivered, and a re-send the ledger answers known", async () => {
+    const t = setup()
+    // A first send: a 429 proves it never ran, and nothing else did either.
+    t.refuseNext(429, { method: "icrc1_transfer", times: 3 })
+    const throttled = await t.ledger
+      .icrc1_transfer(transfer())
+      .catch((e: unknown) => e)
+    expect(throttled).toMatchObject({
+      kind: "not_delivered",
+      mayHaveExecuted: false,
+      httpStatus: 429,
+    })
+    expect(
+      t.client.resendOf(throttled, t.ledger, "icrc1_transfer", { dedupedBy })
+    ).toBeUndefined()
+
+    // A re-send that ran: the ledger's answer is the outcome.
+    const error = await lostTransfer(t, transfer(2_000n))
+    const answered = await t.client
+      .resendOf(error, t.ledger, "icrc1_transfer", { dedupedBy })!
+      .send()
+      .catch((e: unknown) => e)
+    expect(answered).toMatchObject({
+      kind: "canister_err",
+      mayHaveExecuted: false,
+    })
+    expect(
+      t.client.resendOf(answered, t.ledger, "icrc1_transfer", { dedupedBy })
+    ).toBeUndefined()
   })
 })

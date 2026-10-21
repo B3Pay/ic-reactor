@@ -15,7 +15,28 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Changed
+
+- A re-send of a write `client.resendOf()` offered that did not run now
+  rejects `outcome_unknown` with `mayHaveExecuted: true`, and
+  `client.resendOf()` offers the write it re-sends again (#960). That covers a
+  re-send refused before it went out (code `caller_changed`, `target_changed`,
+  `arg_changed` or `client_disposed`), and one turned away when sent (an HTTP
+  4xx such as 429, or reject code 1 to 3). Each proves only that the re-send
+  did not run, while the earlier attempt may have: the error used to say
+  `cancelled`, `invalid_args` or `not_delivered` with `mayHaveExecuted: false`,
+  so `resendOf` offered nothing after it, a mutation did not invalidate its
+  reads, and an app could tell the user the transfer had not happened. The
+  error keeps the re-send's `code`, `httpStatus` and `rejectCode`, has the
+  re-send's own error as its `cause`, and carries the write's `expiresAt`. A
+  timeout before the re-send went out already worked this way; it now also
+  carries `expiresAt`. A re-send the canister answers (`canister_err`, such as
+  `Duplicate`) and the same failures of a first send are unchanged.
+  Migration: an app that branched on `kind` for a refused re-send reads its
+  `code` instead, and treats it as any other `outcome_unknown`: read the
+  state back.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 

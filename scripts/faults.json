@@ -2720,7 +2720,7 @@
     "testName": "offers the attempt's own argument after a lost reply, and the re-send answers Duplicate",
     "why": "a write whose outcome is unknown is not kept with its error, so resendOf has nothing to offer after a lost reply",
     "file": "src/call.ts",
-    "search": "      UNKNOWN_WRITES.set(error, request)\n",
+    "search": "      UNKNOWN_WRITES.set(failure, write)\n",
     "replace": ""
   },
   {
@@ -2740,7 +2740,7 @@
     "testName": "offers nothing after a failure whose outcome is known",
     "why": "every failed write is kept for a re-send, so a canister_err or a request turned away (whose outcome is known) is offered to send again",
     "file": "src/call.ts",
-    "search": "      error.mayHaveExecuted &&\n",
+    "search": "      failure.mayHaveExecuted &&\n",
     "replace": ""
   },
   {
@@ -3127,6 +3127,90 @@
     "file": "src/call.ts",
     "search": "if (management && !request.effective) {",
     "replace": "if (management) {"
+  },
+  {
+    "id": "960-resend-turned-away-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by mutate() is throttled",
+    "why": "a re-send of an offered write turned away with HTTP 429 rejects not_delivered with mayHaveExecuted: false, so resendOf offers nothing and the app reads a write that may have run as not executed",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-send-turned-away-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by send() is throttled",
+    "why": "again.send() turned away with HTTP 429 rejects not_delivered with mayHaveExecuted: false, though the first attempt may have run",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-rejected-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome when the re-send is rejected before any canister code ran",
+    "why": "a re-send rejected with code 1 rejects rejected with mayHaveExecuted: false, though the first attempt may have run",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-refusal-loses-expiry",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by send() is throttled",
+    "why": "a re-send that did not run rejects outcome_unknown without the write's expiresAt, so a read-back cannot tell when no send of it can still start",
+    "file": "src/call.ts",
+    "search": "resendDidNotRun(error, again.expiresAt)",
+    "replace": "resendDidNotRun(error, undefined)"
+  },
+  {
+    "id": "960-resend-refusal-offers-changed-write",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
+    "why": "a refused re-send is kept as the write it would have sent, so after arg_changed resendOf offers the changed argument, a new write no dedupe key has been seen for",
+    "file": "src/call.ts",
+    "search": "    const write = resent ? again : request\n",
+    "replace": "    const write = request\n"
+  },
+  {
+    "id": "960-resend-answer-made-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "leaves a first send that is throttled not delivered, and a re-send the ledger answers known",
+    "why": "a re-send the ledger answers with an Err is made outcome_unknown, though the canister's answer is the outcome",
+    "file": "src/call.ts",
+    "search": "      !error.mayHaveExecuted &&\n      error.kind !== \"canister_err\"\n",
+    "replace": "      !error.mayHaveExecuted\n"
+  },
+  {
+    "id": "960-first-send-refusal-made-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "leaves a first send that is throttled not delivered, and a re-send the ledger answers known",
+    "why": "a first send turned away with HTTP 429 is made outcome_unknown, though nothing ran: it would no longer read as safe to send again",
+    "edits": [
+      {
+        "file": "src/call.ts",
+        "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+        "replace": "      isReactorError(error) &&\n"
+      },
+      {
+        "file": "src/call.ts",
+        "search": "resendDidNotRun(error, again.expiresAt)",
+        "replace": "resendDidNotRun(error, again?.expiresAt)"
+      },
+      {
+        "file": "src/call.ts",
+        "search": "    const write = resent ? again : request\n",
+        "replace": "    const write = resent ? (again ?? request) : request\n"
+      }
+    ]
   },
   {
     "id": "did-project-not-projected",
@@ -4809,7 +4893,7 @@
     "testName": "rejects a write whose request went out outcome_unknown",
     "why": "a timed-out write whose request went out classified cancelled with mayHaveExecuted: false, which reads as safe to send again: a resend could run it twice",
     "file": "src/call.ts",
-    "search": "timedOutError(where, write && (out || !!sent))",
+    "search": "timedOutError(where, write && out)",
     "replace": "timedOutError(where, false)"
   },
   {
@@ -4909,8 +4993,8 @@
     "testName": "keeps a re-send resendOf offered outcome_unknown",
     "why": "an offered re-send that times out before it goes out rejects cancelled with mayHaveExecuted: false, so the earlier attempt's unknown outcome is dropped and resendOf offers nothing, though that write may have run",
     "file": "src/call.ts",
-    "search": "timedOutError(where, write && (out || !!sent))",
-    "replace": "timedOutError(where, write && out)"
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
   },
   {
     "id": "875-timeout-resend-mutation-loses-unknown",
@@ -4919,8 +5003,8 @@
     "testName": "keeps a mutation re-sending an offered write outcome_unknown",
     "why": "a mutation re-sending an offered write that times out before it goes out rejects cancelled with mayHaveExecuted: false, dropping the earlier attempt's unknown outcome",
     "file": "src/call.ts",
-    "search": "timedOutError(where, write && (out || !!sent))",
-    "replace": "timedOutError(where, write && out)"
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
   },
   {
     "id": "875-timeout-send-not-marked-resend",
@@ -4959,8 +5043,8 @@
     "testName": "for a write that timed out after it went out",
     "why": "a write whose timeoutMs passed after it went out rejects outcome_unknown with no expiresAt, so a read-back cannot tell when no send of it can still start",
     "file": "src/call.ts",
-    "search": "            timedOutError(where, write && (out || !!sent)),\n            sends.expiresAt\n",
-    "replace": "            timedOutError(where, write && (out || !!sent)),\n            undefined\n"
+    "search": "throw withExpiry(timedOutError(where, write && out), sends.expiresAt)",
+    "replace": "throw withExpiry(timedOutError(where, write && out), undefined)"
   },
   {
     "id": "905-windows-icp-cmd-run-from-path",

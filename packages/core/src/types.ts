@@ -491,10 +491,11 @@ export interface Resend<V, D> {
    * The argument the attempt sent: the very object `mutate` or the call was
    * given (the list, for several arguments). `mutate(resend.arg)` sends it
    * again through a mutation, as the same write or not at all: as `from`
-   * (else `cancelled`, `caller_changed`), to the method and canister id the
-   * attempt went to (else `cancelled`, `target_changed`), and while it still
-   * encodes to the bytes the attempt sent (else `invalid_args`,
-   * `arg_changed`). Do not change it: build a new argument for a new write.
+   * (else code `caller_changed`), to the method and canister id the attempt
+   * went to (else `target_changed`), and while it still encodes to the bytes
+   * the attempt sent (else `arg_changed`). A refusal sends nothing and
+   * rejects `outcome_unknown`, since the attempt may have run. Do not change
+   * it: build a new argument for a new write.
    */
   readonly arg: V
   /** The principal that sent the attempt, as text: the only caller a re-send goes out as. */
@@ -508,8 +509,11 @@ export interface Resend<V, D> {
   /**
    * Sends again now the bytes the attempt sent, to the canister id it went
    * to (for `aaaaa-aa`, routed by the same effective canister id), as `from`, whatever became of `arg` or of a `{ name }` since. If
-   * someone else is the caller by then, it rejects `cancelled`
-   * (`caller_changed`) and sends nothing. Settles as a direct call does.
+   * someone else is the caller by then, it sends nothing and rejects
+   * `outcome_unknown` (code `caller_changed`). Settles as a direct call
+   * does, except that a re-send that did not run (refused, or turned away
+   * with an HTTP 4xx or reject code 1 to 3) rejects `outcome_unknown` with
+   * `mayHaveExecuted: true`: the attempt it re-sends may have run.
    */
   send(): Promise<D>
 }

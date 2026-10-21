@@ -18,8 +18,11 @@
  *    `invalid_args` with the codec's `$`-rooted issues; a call to `aaaaa-aa`
  *    also needs a row of the effective canister id table (`management.ts`).
  *    A mutation that re-sends a write `client.resendOf()` offered must be
- *    that write: the same method, canister id and bytes, or it rejects
- *    `cancelled` (`target_changed`) or `invalid_args` (`arg_changed`);
+ *    that write: the same method, canister id and bytes, or it is refused
+ *    (`target_changed`, `arg_changed`). A re-send refused at any step, or
+ *    turned away when sent, rejects `outcome_unknown` with the refusal's
+ *    code instead, since the write it re-sends may have run (see
+ *    {@link invoke});
  * 5. the send, as the caller's own agent: `agent.query` for a read,
  *    `agent.call` for an update, a oneway and a certified read. Every failure
  *    is classified (`classifyError`), and a call re-sends itself only when
@@ -95,6 +98,7 @@ import {
   invalidReplyError,
   isReactorError,
   isRetryable,
+  resendDidNotRun,
   retryUpdate,
   timedOutError,
   type CallMode,
@@ -217,6 +221,13 @@ export interface CallRequest {
    */
   readonly again?: CallRequest
   /**
+   * The `expiresAt` of the error this write was kept in {@link UNKNOWN_WRITES}
+   * with, set by `invoke`: the latest ingress expiry its sends were signed
+   * with, which a re-send of it that did not run carries on
+   * ({@link resendDidNotRun}).
+   */
+  expiresAt?: bigint
+  /**
    * The signal of a query function. Once it aborts, the call is not sent, or
    * stops waiting for the HTTP answer to its request or polling for its
    * answer, and rejects `cancelled`.
@@ -293,20 +304,36 @@ export const differs = (
  * the generated `Actor` types it (unwrapped), and rejects with a
  * `ReactorError`, marked with the request's canister when it has one. A write
  * whose outcome is unknown is kept in {@link UNKNOWN_WRITES}.
+ *
+ * A re-send of an offered write ({@link CallRequest.again}) that did not run
+ * leaves that write's outcome as unknown as it was, since the earlier attempt
+ * may have run: it rejects `outcome_unknown` ({@link resendDidNotRun}), and
+ * the write it re-sends stays kept, so `client.resendOf()` offers it again.
  */
 export const invoke = (
   internals: ClientInternals,
   request: CallRequest
 ): Promise<unknown> =>
   run(internals, request).catch((error: unknown) => {
-    if (
+    // A re-send that did not run leaves the write it re-sends as unknown as
+    // it was, and that write stays kept.
+    const again = request.again
+    const resent =
+      again !== undefined &&
       isReactorError(error) &&
-      error.mayHaveExecuted &&
-      isWrite(request.method.mode)
+      !error.mayHaveExecuted &&
+      error.kind !== "canister_err"
+    const failure = resent ? resendDidNotRun(error, again.expiresAt) : error
+    const write = resent ? again : request
+    if (
+      isReactorError(failure) &&
+      failure.mayHaveExecuted &&
+      isWrite(write.method.mode)
     ) {
-      UNKNOWN_WRITES.set(error, request)
+      UNKNOWN_WRITES.set(failure, write)
+      write.expiresAt = failure.expiresAt
     }
-    throw fromCanister(error, request.canister)
+    throw fromCanister(failure, request.canister)
   })
 
 async function run(
@@ -455,13 +482,11 @@ async function run(
         break
       } catch (error) {
         // Never a re-send: what the attempt out did is unknown, and the
-        // caller has stopped waiting. A re-send of an offered write keeps
-        // the earlier attempt's unknown outcome, even before it goes out.
+        // caller has stopped waiting. A re-send of an offered write that
+        // times out before it goes out keeps the earlier attempt's unknown
+        // outcome all the same (`invoke`).
         if (timedOut) {
-          throw withExpiry(
-            timedOutError(where, write && (out || !!sent)),
-            sends.expiresAt
-          )
+          throw withExpiry(timedOutError(where, write && out), sends.expiresAt)
         }
         out = false
         if (signal?.aborted && !isReactorError(error)) {

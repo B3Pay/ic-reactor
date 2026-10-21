@@ -20,9 +20,7 @@ import type { Canister, ErrorOf } from "./types.js"
  * What kind of failure a {@link ReactorError} reports.
  *
  * - `invalid_args`: the arguments could not be encoded, or the target canister
- *   id could not be resolved, or a re-send `client.resendOf()` offered was
- *   given an argument changed since it was sent (`arg_changed`). Nothing was
- *   sent.
+ *   id could not be resolved. Nothing was sent.
  * - `unauthenticated`: an update was attempted while not signed in. Nothing was
  *   sent.
  * - `not_delivered`: nothing that matters ran. Either the request was refused
@@ -33,7 +31,12 @@ import type { Canister, ErrorOf } from "./types.js"
  *   `not_delivered`, because a refused update never ran and a query changes
  *   nothing.
  * - `outcome_unknown`: an update went out and no trustworthy answer came back,
- *   so the canister may or may not have run it.
+ *   so the canister may or may not have run it. So does a re-send of a write
+ *   `client.resendOf()` offered that did not run, refused before it went out
+ *   or turned away: the write it re-sends may have run all the same. Its
+ *   `code`, `httpStatus` and `rejectCode` say why the re-send did not run
+ *   (such as `caller_changed`, `target_changed` or `arg_changed`), and its
+ *   `cause` is the re-send's own error.
  * - `rejected`: the IC or the canister rejected the call; `rejectCode` says which.
  * - `invalid_reply`: a reply arrived but did not decode as the method's result.
  * - `canister_err`: the canister ran the call and replied with the `Err` arm of
@@ -41,10 +44,8 @@ import type { Canister, ErrorOf } from "./types.js"
  *   `mayHaveExecuted` is `false`: re-sending is a new decision, not a retry.
  * - `cancelled`: the caller abandoned the call (an aborted query, a key whose
  *   principal is no longer current, a call on a disposed client
- *   (`client_disposed`), a re-send that would go to another method or
- *   canister id than the write it re-sends (`target_changed`), a read or an
- *   unsent write whose `timeoutMs` passed (`timeout`), or an update aborted
- *   in flight). A write whose `timeoutMs` passed after its request went out
+ *   (`client_disposed`), a read or an unsent write whose `timeoutMs` passed
+ *   (`timeout`), or an update aborted in flight). A write whose `timeoutMs` passed after its request went out
  *   is `outcome_unknown` (`timeout`) instead.
  *   `mayHaveExecuted` is `false` when nothing was sent, and `true` for an
  *   update aborted after its request may already have been delivered.
@@ -406,10 +407,11 @@ export function createReactorError(
  * The error of a call whose `timeoutMs` passed (code `"timeout"`). `sent` is
  * whether a write (an update or a oneway, or an update read with
  * `{ update: "idempotent" }`) may have been delivered: an attempt of it was
- * out, or it re-sends a write `client.resendOf()` offered, whose earlier
- * attempt may have run. Then `outcome_unknown` with `mayHaveExecuted: true`,
- * as when the polling bound passes. Otherwise `cancelled`, with nothing
- * executed: nothing was out, or the call was a plain read.
+ * out. Then `outcome_unknown` with `mayHaveExecuted: true`, as when the
+ * polling bound passes. Otherwise `cancelled`, with nothing executed: nothing
+ * was out, or the call was a plain read. A re-send of a write
+ * `client.resendOf()` offered that times out before it goes out keeps the
+ * unknown outcome all the same ({@link resendDidNotRun}).
  */
 export const timedOutError = (
   where: { readonly method: string; readonly canisterId: string },
@@ -422,6 +424,36 @@ export const timedOutError = (
     code: "timeout",
     reason: `timeoutMs passed${sent ? " with no answer; the write may have executed" : ""}`,
   })
+
+/**
+ * The error of a re-send of a write `client.resendOf()` offered that did not
+ * run: refused before it went out (`caller_changed`, `target_changed`,
+ * `arg_changed`, `client_disposed`, a `timeout` before it went out), or
+ * turned away (an HTTP 4xx, reject code 1 to 3). `failure`, what the re-send
+ * itself rejected with, proves only that the re-send did not run. The write
+ * it re-sends may have run all the same, so its outcome stays unknown:
+ * `outcome_unknown` with `mayHaveExecuted: true`, `failure`'s `code`,
+ * `rejectCode` and `httpStatus`, `failure` itself as the `cause` (its message
+ * says why the re-send did not run), and the write's `expiresAt`. A re-send that ran is answered by the canister
+ * (`canister_err`, such as a ledger's `Duplicate`), and one that may have run
+ * says so itself: neither comes here.
+ */
+export const resendDidNotRun = (
+  failure: ReactorError<unknown>,
+  expiresAt: bigint | undefined
+): ReactorError =>
+  withExpiry(
+    // The spread takes `failure`'s own enumerable fields (method, canisterId,
+    // code, rejectCode, httpStatus); its kind and verdict are replaced.
+    build({
+      ...failure,
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      reason: "the re-send did not run; the write may have executed",
+      cause: failure,
+    }),
+    expiresAt
+  ) as ReactorError
 
 /**
  * Creates the `invalid_reply` error for a reply that did not decode as the
