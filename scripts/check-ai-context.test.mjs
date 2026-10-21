@@ -40,8 +40,9 @@ function repo(files = {}) {
     "check-ai-context.js",
     "ai-context-files.js",
     "removed-v3-names.js",
+    "lib/markdown-fences.mjs",
   ]) {
-    mkdirSync(join(root, "scripts"), { recursive: true })
+    mkdirSync(dirname(join(root, "scripts", name)), { recursive: true })
     cpSync(join(scripts, name), join(root, "scripts", name))
   }
   const all = {
@@ -388,6 +389,25 @@ describe("docs pages", () => {
       repo({ [`${PAGES}/libs/classes/clientmanager.md`]: "# ClientManager\n" })
     )
     assert.equal(run.status, 0, run.output)
+  })
+
+  it("takes no heading id from a code block, by the fence rule check:snippets follows", () => {
+    // A ```ts line inside a ``` block is code, not the block's end, so the
+    // heading after it is code too and gives the page no "in-code" id.
+    const page = ["# Auth", "", "```", "```ts", "## In code", "```", ""]
+    const link = (fragment) =>
+      guideWith(`See https://ic-reactor.b3pay.net/v4/guides/auth/#${fragment}.`)
+    const files = (fragment) => ({
+      [`${PAGES}/guides/auth.md`]: page.join("\n"),
+      "packages/core/llms.txt": link(fragment),
+    })
+
+    assert.equal(check(repo(files("auth"))).status, 0)
+    const run = check(repo(files("in-code")))
+    assert.equal(run.status, 1, run.output)
+    const lines = failureLines(run)
+    assert.equal(lines.length, 1, run.output)
+    assert.match(lines[0], /has no heading with the id "in-code"/)
   })
 
   it("fails a link to the 3.x docs from any page but the migration page", () => {

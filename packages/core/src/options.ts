@@ -914,7 +914,7 @@ export function createBuilders(
     }
     // A read_state is routed by a canister in a subnet's range, and the
     // management canister is in none: the IC would refuse it.
-    if (target.id === "aaaaa-aa") {
+    if (target.id === MANAGEMENT_CANISTER) {
       throw createReactorError("invalid_args", {
         method,
         canisterId: target.id,

@@ -11,7 +11,8 @@
  * so nothing noticed (#591).
  *
  * This writes a consumer, in a temporary directory, that imports every public
- * entry point of the packages below (each subpath of their `exports` maps),
+ * entry point of the packages below (each subpath of their `exports` maps
+ * that a consumer can import),
  * and compiles it with TYPESCRIPT_FLOOR, `strict` and `skipLibCheck: false`:
  * once with `moduleResolution: "bundler"` and once with `"node16"`. The
  * consumer reaches the packages through symlinks, so their declarations resolve
@@ -30,7 +31,6 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   rmSync,
   symlinkSync,
   unlinkSync,
@@ -39,6 +39,8 @@ import {
 import { dirname, join, normalize } from "node:path"
 import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
+import { readJson, run, writeJson } from "./lib/io.mjs"
+import { publicSubpaths, specifierOf } from "./lib/package-exports.mjs"
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
 const keep = process.argv.includes("--keep")
@@ -80,32 +82,15 @@ const MODES = {
   node16: { module: "Node16", moduleResolution: "Node16" },
 }
 
-function readJson(path) {
-  return JSON.parse(readFileSync(path, "utf8"))
-}
-
-function writeJson(path, value) {
-  writeFileSync(path, JSON.stringify(value, null, 2) + "\n")
-}
-
-function run(command, args, cwd) {
-  return spawnSync(command, args, { cwd, stdio: "inherit" }).status === 0
-}
-
 /**
  * The specifier of every public entry point: each subpath of the `exports` map
- * except `./package.json`. A pattern such as `./*` cannot be listed, so it
- * fails here instead of going unchecked.
+ * except `./package.json` and one mapped to `null` (`publicSubpaths`). A
+ * pattern such as `./*` cannot be listed, so it fails here instead of going
+ * unchecked.
  */
-function entryPoints({ name, exports }) {
-  const subpaths =
-    exports &&
-    typeof exports === "object" &&
-    /^\./.test(Object.keys(exports)[0])
-      ? Object.keys(exports).filter((subpath) => subpath !== "./package.json")
-      : ["."]
-  return subpaths.map((subpath) => {
-    const specifier = subpath === "." ? name : `${name}/${subpath.slice(2)}`
+function entryPoints(manifest) {
+  return publicSubpaths(manifest).map((subpath) => {
+    const specifier = specifierOf(manifest.name, subpath)
     if (subpath.includes("*")) {
       throw new Error(`Cannot list the entry points matching "${specifier}"`)
     }

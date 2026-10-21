@@ -44,6 +44,7 @@ import {
   generate,
   moduleCollisions,
   outputsOf,
+  quoteNames,
   resolveCliBin,
   type GenerateCanister,
 } from "./generate.js"
@@ -852,7 +853,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       try {
         cli = resolveCliBin(projectRoot)
       } catch (error) {
-        return stale.map((canister) => ({ canister, message: describe(error) }))
+        return stale.map((canister) => ({
+          canister,
+          message: describeError(error),
+        }))
       }
 
       // Each module and envelope as it is before the generator writes it.
@@ -948,7 +952,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             generatedFrom.delete(canister.name)
             failures.push({
               canister,
-              message: `onGenerated failed for ${relativeToRoot(module)}: ${describe(error)}`,
+              message: `onGenerated failed for ${relativeToRoot(module)}: ${describeError(error)}`,
             })
           }
         } finally {
@@ -964,7 +968,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       return failures
     } catch (error) {
       if (signal.aborted) return undefined
-      return wanted.map((canister) => ({ canister, message: describe(error) }))
+      return wanted.map((canister) => ({
+        canister,
+        message: describeError(error),
+      }))
     }
   }
 
@@ -1215,7 +1222,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             failures.push({
               canister,
               message:
-                `fetched ${from}, but could not write it to ${relativeToRoot(file)}: ${describe(writeError)}. ` +
+                `fetched ${from}, but could not write it to ${relativeToRoot(file)}: ${describeError(writeError)}. ` +
                 `Make its directory writable and build again.`,
             })
           }
@@ -1240,7 +1247,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             .filter(
               (canister) => !failed.has(canister) && !blocked.has(canister)
             )
-            .map((canister) => ({ canister, message: describe(error) })),
+            .map((canister) => ({ canister, message: describeError(error) })),
         ],
         fetched,
       }
@@ -1252,7 +1259,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     try {
       return { cli: resolveCliBin(projectRoot), root: projectRoot, signal }
     } catch (error) {
-      return describe(error)
+      return describeError(error)
     }
   }
 
@@ -1649,7 +1656,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       }
       return { ok: true, notes }
     } catch (error) {
-      return { ok: false, message: describe(error) }
+      return { ok: false, message: describeError(error) }
     }
   }
 
@@ -1943,7 +1950,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         )
       } catch (error) {
         // A listener must not throw into the watcher.
-        log.error(`ic-reactor: ${describe(error)}`)
+        log.error(`ic-reactor: ${describeError(error)}`)
       }
     })
   }
@@ -2363,11 +2370,6 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   return plugin
 }
 
-/** One readable line for whatever was thrown. Never throws. */
-function describe(error: unknown): string {
-  return describeError(error)
-}
-
 /**
  * The `server.proxy` entry that sends `/api` to `target`, or nothing when the
  * user's Vite config already proxies `/api`.
@@ -2401,11 +2403,6 @@ function apiProxy(
       configure: (_proxy, options) => configure(options),
     },
   }
-}
-
-/** `"a"`, or `"a", "b"`: canister names as the warnings quote them. */
-function quoteNames(names: string[]): string {
-  return names.map((name) => `"${name}"`).join(", ")
 }
 
 /**

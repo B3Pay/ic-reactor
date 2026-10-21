@@ -15,7 +15,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### CI (not published)
+
+- The scripts keep one copy of each helper they shared by hand, in
+  `scripts/lib/`: the fence rule for Markdown code blocks (`check-snippets`
+  and both readers of `check-ai-context`), the list of a package's public
+  subpaths (`check-exports`, `verify-package-artifacts` and
+  `verify-typescript-floor`), and `run`, `readJson` and `writeJson` (the two
+  floor scripts). `check-ai-context` now reads a docs page's heading ids by
+  CommonMark's rule, as `check-snippets` does: a fence line with an info
+  string, such as ` ```ts `, no longer ends a block, so a heading in
+  the code after it is not taken for one of the page's.
+  `verify-package-artifacts` and `verify-typescript-floor` now read
+  `exports` as `check-exports` does: a subpath mapped to `null` is left out,
+  and a string or a set of conditions is the root entry. No package of the
+  repository uses either form, so no run changes (#979).
 
 ## core, react, vite-plugin 4.0.0-beta.6
 

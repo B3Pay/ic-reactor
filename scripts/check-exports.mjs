@@ -39,6 +39,7 @@ import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { EXPORT_BUDGET } from "./export-budget.mjs"
+import { exportsMapOf, publicSubpaths } from "./lib/package-exports.mjs"
 
 const ts = createRequire(import.meta.url)("typescript")
 
@@ -57,24 +58,6 @@ const IMPLICIT_DECLARATION = [
 ]
 
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"))
-
-/**
- * A manifest's `exports` as a map of subpath to target. The sugar forms (a
- * string, an array, or conditions with no subpath keys) are the root subpath;
- * a manifest without `exports` has none, and is read through `types`.
- */
-export function exportsMapOf(manifest) {
-  const { exports } = manifest
-  if (exports === undefined || exports === null) return undefined
-  if (
-    typeof exports === "string" ||
-    Array.isArray(exports) ||
-    !Object.keys(exports).some((key) => key.startsWith("."))
-  ) {
-    return { ".": exports }
-  }
-  return exports
-}
 
 /**
  * The declaration file `subpath` of a package resolves to, as the `exports`
@@ -667,16 +650,14 @@ export function checkPackages({ rootDir, budget = EXPORT_BUDGET }) {
       )
       continue
     }
-    const map = exportsMapOf(manifest)
-    if (map === undefined) {
+    if (exportsMapOf(manifest) === undefined) {
       failures.push(
         `${dir}/package.json has no \`exports\` map, so every file of ${name} is importable and the budget reads only the entry. ` +
           `Map the entries in \`exports\`.`
       )
       continue
     }
-    for (const [subpath, target] of Object.entries(map)) {
-      if (subpath === "./package.json" || target === null) continue
+    for (const subpath of publicSubpaths(manifest)) {
       if (!subpaths.includes(subpath)) {
         failures.push(
           `${dir}/package.json maps the subpath "${subpath}", which the export budget has no entry for. ` +
