@@ -221,10 +221,10 @@ export interface CallRequest {
    */
   readonly again?: CallRequest
   /**
-   * The `expiresAt` of the error this write was kept in {@link UNKNOWN_WRITES}
-   * with, set by `invoke`: the latest ingress expiry its sends were signed
-   * with, which a re-send of it that did not run carries on
-   * ({@link resendDidNotRun}).
+   * On a write no other re-sends ({@link firstOf}), set by `invoke`: the
+   * latest `expiresAt` of the errors it and its re-sends were kept in
+   * {@link UNKNOWN_WRITES} with. Until then a send of it may still start, so
+   * a re-send of it that did not run carries it on ({@link keptUnknown}).
    */
   expiresAt?: bigint
   /**
@@ -299,41 +299,65 @@ export const differs = (
       ? "arg"
       : undefined
 
+/** The write `request` re-sends, at the end of a chain of re-sends, or `request` itself. */
+const firstOf = (request: CallRequest): CallRequest =>
+  request.again === undefined ? request : firstOf(request.again)
+
+/**
+ * The error of a re-send of `again` that did not run, `failure` proving only
+ * that: `outcome_unknown` ({@link resendDidNotRun}), since an earlier send of
+ * the write may have run, kept as `again` in {@link UNKNOWN_WRITES}, so that
+ * `client.resendOf()` offers that write again.
+ */
+export const keptUnknown = (
+  again: CallRequest,
+  failure: ReactorError | ReactorError<unknown>
+): ReactorError => {
+  const kept = resendDidNotRun(failure, firstOf(again).expiresAt)
+  UNKNOWN_WRITES.set(kept, again)
+  return kept
+}
+
 /**
  * Runs one call through the steps of this module. Resolves with the reply as
  * the generated `Actor` types it (unwrapped), and rejects with a
  * `ReactorError`, marked with the request's canister when it has one. A write
  * whose outcome is unknown is kept in {@link UNKNOWN_WRITES}.
  *
- * A re-send of an offered write ({@link CallRequest.again}) that did not run
- * leaves that write's outcome as unknown as it was, since the earlier attempt
- * may have run: it rejects `outcome_unknown` ({@link resendDidNotRun}), and
- * the write it re-sends stays kept, so `client.resendOf()` offers it again.
+ * A re-send of an offered write ({@link CallRequest.again}) that did not run,
+ * and that the canister did not answer, rejects {@link keptUnknown}.
  */
 export const invoke = (
   internals: ClientInternals,
   request: CallRequest
 ): Promise<unknown> =>
   run(internals, request).catch((error: unknown) => {
-    // A re-send that did not run leaves the write it re-sends as unknown as
-    // it was, and that write stays kept.
     const again = request.again
-    const resent =
+    if (
       again !== undefined &&
       isReactorError(error) &&
       !error.mayHaveExecuted &&
       error.kind !== "canister_err"
-    const failure = resent ? resendDidNotRun(error, again.expiresAt) : error
-    const write = resent ? again : request
-    if (
-      isReactorError(failure) &&
-      failure.mayHaveExecuted &&
-      isWrite(write.method.mode)
     ) {
-      UNKNOWN_WRITES.set(failure, write)
-      write.expiresAt = failure.expiresAt
+      throw fromCanister(keptUnknown(again, error), request.canister)
     }
-    throw fromCanister(failure, request.canister)
+    if (
+      isReactorError(error) &&
+      error.mayHaveExecuted &&
+      isWrite(request.method.mode)
+    ) {
+      UNKNOWN_WRITES.set(error, request)
+      // Each send of the write may start until its own expiry, so the write
+      // it re-sends keeps the latest.
+      const first = firstOf(request)
+      if (
+        first.expiresAt === undefined ||
+        (error.expiresAt ?? 0n) > first.expiresAt
+      ) {
+        first.expiresAt = error.expiresAt
+      }
+    }
+    throw fromCanister(error, request.canister)
   })
 
 async function run(

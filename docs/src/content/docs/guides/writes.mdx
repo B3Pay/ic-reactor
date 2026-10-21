@@ -274,9 +274,10 @@ sends nothing:
 A re-send that did not run is not the end of the write, whether it was
 refused or turned away when sent (an HTTP 429 or another 4xx, reject code 1
 to 3). The first attempt may have run all the same, so it rejects
-`outcome_unknown` with `mayHaveExecuted: true`, its `code` says why the
-re-send did not run, and `client.resendOf(transfer.error)` offers the write
-again. Read the state back before anything else (see
+`outcome_unknown` with `mayHaveExecuted: true`, its `code`, `httpStatus` or
+`rejectCode` and its `cause` say why the re-send did not run, and
+`client.resendOf(transfer.error)` offers the write again while its sender is
+the caller. Read the state back before anything else (see
 [Errors](/v4/guides/errors/#what-to-do-for-each-kind)).
 
 Once offered, that object stays held to that write on every mutation of the

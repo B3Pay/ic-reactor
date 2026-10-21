@@ -38,6 +38,7 @@ const made: ReturnType<typeof createTestClient>[] = []
 afterEach(() => {
   for (const test of made.splice(0)) test.client.dispose()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 /** A dedupe key, as an ICRC-1 transfer has it. */
@@ -578,6 +579,83 @@ describe("a re-send that did not run", () => {
       t.client.resendOf(rejected, t.ledger, "icrc1_transfer", { dedupedBy })
     ).toMatchObject({ from: SEED_1 })
     expect(t.ran()).toBe(1n)
+  })
+
+  it("keeps the unknown outcome when a mutation of a view pinned to the sender refuses the re-send after a switch", async () => {
+    const t = setup()
+    type ViewOf = (principal: string) => typeof t.client
+    const viewAs = (t.client as unknown as { [AS_VIEW]: ViewOf })[AS_VIEW]
+    // What useClient() returns in a render that shows the sender.
+    const pinned = viewAs.call(t.client, SEED_1)
+    const mutation = new MutationObserver(
+      t.client.queryClient,
+      pinned.mutationOptions(t.ledger, "icrc1_transfer")
+    )
+    t.dropNextReply()
+    const first = await mutation.mutate(transfer()).catch((e: unknown) => e)
+    const again = pinned.resendOf(first, t.ledger, "icrc1_transfer", {
+      dedupedBy,
+    })
+    expect(again).toBeDefined()
+
+    // The press is handled after someone else signed in, before the render.
+    t.auth.switchTo(2)
+    const invalidate = vi.spyOn(t.client.queryClient, "invalidateQueries")
+    const refused = await mutation.mutate(again!.arg).catch((e: unknown) => e)
+    expect(refused).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      code: "caller_changed",
+      cause: { kind: "cancelled", code: "caller_changed" },
+    })
+    expect(isReactorError(refused, t.ledger, "icrc1_transfer")).toBe(true)
+    expect(invalidate).toHaveBeenCalled()
+    expect(t.sent()).toBe(1)
+
+    // The sender again: still offered, and the ledger says it ran.
+    t.auth.switchTo(1)
+    const next = t.client.resendOf(refused, t.ledger, "icrc1_transfer", {
+      dedupedBy,
+    })
+    expect(next?.arg).toBe(again!.arg)
+    await expect(next!.send()).rejects.toMatchObject({
+      kind: "canister_err",
+      err: { tag: "Duplicate" },
+    })
+    expect(t.ran()).toBe(1n)
+  })
+
+  it("carries the latest expiry of the write's sends when a later re-send does not run", async () => {
+    const t = setup()
+    const first = await lostTransfer(t)
+    const offer = (error: unknown) =>
+      t.client.resendOf(error, t.ledger, "icrc1_transfer", { dedupedBy })
+    const expiryOf = (error: unknown) =>
+      (error as { expiresAt?: bigint }).expiresAt
+
+    // Three minutes on, a re-send's reply is lost too: that send may start
+    // until its own expiry, after the first one's.
+    const now = Date.now()
+    vi.spyOn(Date, "now").mockImplementation(() => now + 180_000)
+    t.dropNextReply()
+    const second = await offer(first)!
+      .send()
+      .catch((e: unknown) => e)
+    expect(second).toMatchObject({ kind: "outcome_unknown" })
+    expect(expiryOf(second)! > expiryOf(first)!).toBe(true)
+
+    // The next re-send of the write is throttled: what may still start is
+    // the second send, until its expiry.
+    t.refuseNext(429, { method: "icrc1_transfer", times: 3 })
+    const throttled = await offer(first)!
+      .send()
+      .catch((e: unknown) => e)
+    expect(throttled).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      httpStatus: 429,
+    })
+    expect(expiryOf(throttled)).toBe(expiryOf(second))
   })
 
   it("leaves a first send that is throttled not delivered, and a re-send the ledger answers known", async () => {

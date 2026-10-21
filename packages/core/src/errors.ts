@@ -428,23 +428,25 @@ export const timedOutError = (
 /**
  * The error of a re-send of a write `client.resendOf()` offered that did not
  * run: refused before it went out (`caller_changed`, `target_changed`,
- * `arg_changed`, `client_disposed`, a `timeout` before it went out), or
- * turned away (an HTTP 4xx, reject code 1 to 3). `failure`, what the re-send
- * itself rejected with, proves only that the re-send did not run. The write
- * it re-sends may have run all the same, so its outcome stays unknown:
- * `outcome_unknown` with `mayHaveExecuted: true`, `failure`'s `code`,
- * `rejectCode` and `httpStatus`, `failure` itself as the `cause` (its message
- * says why the re-send did not run), and the write's `expiresAt`. A re-send that ran is answered by the canister
- * (`canister_err`, such as a ledger's `Duplicate`), and one that may have run
- * says so itself: neither comes here.
+ * `arg_changed`, `client_disposed`, a `timeout` before it went out, and any
+ * other refusal before sending), or turned away (an HTTP 4xx, reject code 1
+ * to 3). `failure`, what the re-send itself rejected with, proves only that
+ * the re-send did not run. The write it re-sends may have run all the same,
+ * so its outcome stays unknown: `outcome_unknown` with `mayHaveExecuted:
+ * true`, `failure`'s `method`, `canisterId`, `code`, `rejectCode`,
+ * `httpStatus` and `issues` (the call that was refused), `failure` itself as
+ * the `cause` (its message says why the re-send did not run), and
+ * `expiresAt`, the latest of the write's sends. A re-send that ran is
+ * answered by the canister (`canister_err`, such as a ledger's `Duplicate`),
+ * and one that may have run says so itself: neither comes here.
  */
 export const resendDidNotRun = (
-  failure: ReactorError<unknown>,
+  failure: ReactorError | ReactorError<unknown>,
   expiresAt: bigint | undefined
 ): ReactorError =>
   withExpiry(
     // The spread takes `failure`'s own enumerable fields (method, canisterId,
-    // code, rejectCode, httpStatus); its kind and verdict are replaced.
+    // code, rejectCode, httpStatus, issues); its kind and verdict are replaced.
     build({
       ...failure,
       kind: "outcome_unknown",

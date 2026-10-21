@@ -332,7 +332,8 @@ export function Send({ arg }: { arg: TransferArg }) {
 - A write is sent as the caller current when `mutate()` was called, or not at
   all. Held back by TanStack Query (offline, queued behind its `scope`, or
   retried) while the account changes, it is refused (`cancelled`,
-  `caller_changed`, `mayHaveExecuted: false`) and nothing is sent. This holds
+  `caller_changed`, `mayHaveExecuted: false`) and nothing is sent; a
+  re-send `resendOf` offered is refused as `outcome_unknown` instead (below). This holds
   with an `onMutate` of yours that replaces the client's, on
   `client.queryClient`. A mutation restored from a persister is always
   refused that way: call `mutate()` again. On another `QueryClient`, keep the
@@ -355,8 +356,9 @@ export function Send({ arg }: { arg: TransferArg }) {
   `caller_changed`, `target_changed`, `arg_changed`). A re-send that did not
   run, refused that way or turned away (HTTP 429 or another 4xx, reject code
   1 to 3), rejects `outcome_unknown` with `mayHaveExecuted: true`, because
-  the first attempt may have run: `resendOf` offers that write again, and
-  you read the state back before anything else. Never change an offered argument: build a new one for a new transfer. A method with no
+  the first attempt may have run: its `code`, `httpStatus` or `rejectCode`
+  and its `cause` say why, `resendOf` offers that write again while its
+  sender is the caller, and you read the state back before anything else. Never change an offered argument: build a new one for a new transfer. A method with no
   such key has no safe re-send: read the state back.
 - For the exact bytes a write will send, such as an ICRC-21 consent
   request's `arg`, use `client.encode(ledger, "icrc1_transfer", arg)` (a
@@ -393,7 +395,7 @@ have executed:
 | a reply that did not decode                                                      | `invalid_reply`                   | yes (a write)     |
 | the canister returned `Err`                                                      | `canister_err`                    | no                |
 | the caller changed, the call was aborted, or a read's `timeoutMs` passed (`code: "timeout"`) | `cancelled` | no (an aborted write: yes) |
-| a `client.resendOf()` re-send that did not run, refused (its `code` says why) or turned away by any of the rows above; the first attempt may have run | `outcome_unknown` | yes |
+| a `client.resendOf()` re-send that did not run, refused (its `code` says why) or turned away by any of the rows above (its `httpStatus` or `rejectCode` says why); the first attempt may have run | `outcome_unknown` | yes |
 
 A write that got no answer (`outcome_unknown`, or `cancelled` with
 `mayHaveExecuted: true`) carries `error.expiresAt`: the latest ingress expiry
