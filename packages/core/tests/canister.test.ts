@@ -742,10 +742,11 @@ describe("an update the replica answers later", () => {
     expect(requestsFor(replica, "bump")).toHaveLength(1)
   }, 10_000)
 
-  // A poll answered 429 is otherwise read as a request the IC turned away
-  // before it got in: only the 202 the call was answered with says it got in.
-  // Without it the update is sent three times, which takes over 10 s, hence
-  // the time limit: the test then fails on what was sent, not on the clock.
+  // `dispatch` records that the call was answered (`accepted`), so a poll
+  // answered 429 is not read as the IC turning the call away (#964). Without
+  // that record the update rejects not_delivered and is sent three times, in
+  // about 12 s: the 30 s limit lets the test fail on its assertions, not on
+  // the clock.
   it("gives up as outcome_unknown when polls are answered HTTP 429, without sending the update again", async () => {
     const replica = replicaWith({ [SHAPES]: shapesCanister() })
     const later = answerLater(replica.fetch, {
@@ -760,6 +761,7 @@ describe("an update the replica answers later", () => {
       mayHaveExecuted: true,
       httpStatus: 429,
     })
+    expect(later.polls()).toBe(4)
     expect(requestsFor(replica, "bump")).toHaveLength(1)
   }, 30_000)
 
