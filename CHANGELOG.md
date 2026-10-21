@@ -15,7 +15,19 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Fixed
+
+- A page with an element whose id is `Deno`, or a frame named `Deno`, no
+  longer counts as a server (#976). The client knew Deno by a `Deno` global,
+  which in a browser such an element is (`window.Deno`), and user content
+  that a sanitizer such as DOMPurify keeps can carry the id. On such a page
+  the auth was never built, `signIn()` rejected as on a server, the `ic_env`
+  cookie was not read, so `{ name }` targets were refused as `no_browser`,
+  and reads were not retried. Deno is now known by its `Deno.version.deno`,
+  and a page where reading it throws (a cross-origin frame named `Deno`) is
+  a page too.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 

@@ -1934,6 +1934,56 @@
     "replace": "false"
   },
   {
+    "id": "976-deno-element-taken-for-server",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "signs in, as any page does",
+    "why": "a page with an element whose id is Deno counts as a server, so the client never builds its auth and signIn() rejects",
+    "file": "src/runtime.ts",
+    "search": "      typeof (globalThis as { Deno?: { version?: { deno?: unknown } } }).Deno\n        ?.version?.deno === \"string\"\n",
+    "replace": "      \"Deno\" in globalThis\n"
+  },
+  {
+    "id": "976-deno-element-hides-names",
+    "package": "core",
+    "test": "tests/env-canister-id.test.ts",
+    "testName": "resolves from the cookie on a page with an element whose id is Deno",
+    "why": "a page with an element whose id is Deno counts as a server, so its { name } targets are refused as no_browser",
+    "file": "src/runtime.ts",
+    "search": "      typeof (globalThis as { Deno?: { version?: { deno?: unknown } } }).Deno\n        ?.version?.deno === \"string\"\n",
+    "replace": "      \"Deno\" in globalThis\n"
+  },
+  {
+    "id": "976-deno-not-a-server",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "does not retry under Deno, which TanStack counts as a server even with a window",
+    "why": "Deno with a window, as Deno 1 has, counts as a browser, so the retry predicates retry where TanStack itself would not",
+    "file": "src/runtime.ts",
+    "search": "  if (typeof window === \"undefined\") return true\n  try {\n",
+    "replace": "  if (typeof window === \"undefined\") return true\n  return false\n  try {\n"
+  },
+  {
+    "id": "976-deno-1-not-a-server",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "counts Deno, which has a version, as a server even with a window",
+    "why": "Deno with a window, as Deno 1 has, counts as a browser, so the client builds its auth there",
+    "file": "src/runtime.ts",
+    "search": "  if (typeof window === \"undefined\") return true\n  try {\n",
+    "replace": "  if (typeof window === \"undefined\") return true\n  return false\n  try {\n"
+  },
+  {
+    "id": "976-deno-frame-read-throws",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "signs in when it is a cross-origin frame, whose properties throw when read",
+    "why": "a cross-origin frame named Deno makes isServer() throw a SecurityError, so createClient, caller() and the retry predicates throw on that page",
+    "file": "src/runtime.ts",
+    "search": "  } catch {\n    return false\n  }\n}\n",
+    "replace": "  } finally {\n  }\n}\n"
+  },
+  {
     "id": "835-nullish-vars-read-as-skipped",
     "package": "core",
     "test": "tests/options.test.ts",
