@@ -742,6 +742,27 @@ describe("an update the replica answers later", () => {
     expect(requestsFor(replica, "bump")).toHaveLength(1)
   }, 10_000)
 
+  // A poll answered 429 is otherwise read as a request the IC turned away
+  // before it got in: only the 202 the call was answered with says it got in.
+  // Without it the update is sent three times, which takes over 10 s, hence
+  // the time limit: the test then fails on what was sent, not on the clock.
+  it("gives up as outcome_unknown when polls are answered HTTP 429, without sending the update again", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const later = answerLater(replica.fetch, {
+      failures: Infinity,
+      failWith: 429,
+    })
+    const error = await shapesThrough(replica, later.fetch)
+      .bump(4n)
+      .catch((e: unknown) => e)
+    expect(error).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      httpStatus: 429,
+    })
+    expect(requestsFor(replica, "bump")).toHaveLength(1)
+  }, 30_000)
+
   // The regression test DECISIONS Q8 keeps from v3 (icp-js-core#1330): a
   // synchronous answer whose certificate has no status for the request yet is
   // polled for, not failed.
