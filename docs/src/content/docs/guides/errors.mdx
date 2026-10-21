@@ -159,8 +159,9 @@ Two rules sit behind the table.
 
 Unless the call has a `timeoutMs` (below), neither the client nor the agent
 puts a timeout on an HTTP request. A request that gets no HTTP answer, from a proxy that holds it say, waits as long as the
-`fetch` in use waits. That holds for the call or query request, and for each
-`read_state` request that polls for an accepted call's answer.
+`fetch` in use waits. That holds for the call or query request, for each
+`read_state` request that polls for an accepted call's answer, and for the
+`read_state` of `client.time()`.
 
 An update (or a certified read) the replica accepted with a 202 is polled for
 with `read_state` for about five minutes in all, then an update rejects
@@ -179,7 +180,7 @@ To stop waiting sooner, give a call a bound with `timeoutMs`, in milliseconds
 
 - on the canister target, `client.canister(actor, { id, timeoutMs })`, it
   bounds every call made through that canister object: its direct calls, its
-  reads made with `queryOptions`, and its mutations;
+  reads made with `queryOptions`, its mutations, and `client.time()` on it;
 - in the third argument of `client.mutationOptions()`,
   `{ invalidates, timeoutMs }`, it bounds that mutation's runs in place of the
   canister's.

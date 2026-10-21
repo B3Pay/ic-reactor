@@ -420,7 +420,8 @@ rejects `cancelled` (with `mayHaveExecuted: true` for an update read with
 
 To bound the wait, give the canister target `timeoutMs`:
 `client.canister<Actor>(actor, { id, timeoutMs: 15_000 })` bounds each of its
-direct calls, `queryOptions` reads and mutations, counted from the call.
+direct calls, its `queryOptions` reads, its mutations and `client.time()` on
+it, counted from the call.
 `client.mutationOptions(ledger, "icrc1_transfer", { timeoutMs: 15_000 })`
 bounds that mutation's runs instead (1 to 2147483647 ms; anything else
 throws). When it passes, the call stops waiting and rejects with

@@ -52,6 +52,7 @@ import {
   fromCanister,
   isReactorError,
   retryQuery,
+  timedOutError,
 } from "./errors.js"
 import {
   CERTIFIED,
@@ -923,6 +924,36 @@ export function createBuilders(
       })
     }
     const where = { method, canisterId: target.id }
+    const ms = record.timeoutMs
+    let timedOut = false
+    const read = readTime(where, () => timedOut)
+    if (ms === undefined) return read
+    // The canister object's timeoutMs bounds the wait from here, as it bounds
+    // a call through it: when it passes, the time rejects `cancelled` (code
+    // `timeout`), and a read_state not sent yet is never sent. One already
+    // out goes on, but nobody waits for it.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true
+        reject(timedOutError(where, false))
+      }, ms)
+    })
+    try {
+      return await Promise.race([read, timeout])
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  /**
+   * The IC's time, read for `client.time()`. `timedOut` says whether its
+   * bound passed while the caller's agent was awaited: nothing is sent then.
+   */
+  const readTime = async (
+    where: { readonly method: string; readonly canisterId: string },
+    timedOut: () => boolean
+  ): Promise<bigint> => {
     const agent = await internals.agentFor(internals.current().principal, where)
     // As in the call path: a dispose() in the microtask after agentFor's own
     // check still sends nothing.
@@ -933,13 +964,14 @@ export function createBuilders(
         reason: "the client was disposed before the time was read",
       })
     }
+    if (timedOut()) throw timedOutError(where, false)
     try {
       // The agent verifies the certificate against the network's root key
       // and the canister's subnet delegation. Its age is not checked: that
       // would compare it with the host's clock, the clock this replaces, and
       // a host clock out by minutes would first make the agent re-sync.
       const { verifiedCertificate } = await agent.readState(
-        { canisterId: Principal.fromText(target.id) },
+        { canisterId: Principal.fromText(where.canisterId) },
         { paths: [TIME_PATH], disableTimeVerification: true }
       )
       const raw = lookupResultToBuffer(

@@ -791,6 +791,14 @@ export interface Client {
    * does the management canister `aaaaa-aa` (`management_canister`), which no
    * `read_state` is routed by, and a disposed client rejects `cancelled`
    * (`client_disposed`); nothing is sent then.
+   *
+   * A canister object made with `timeoutMs` bounds the wait, counted from the
+   * moment `time()` is called, as it bounds a call through it. When the bound
+   * passes, `time()` rejects `cancelled` with code `"timeout"` and
+   * `mayHaveExecuted: false`; a request already out is not torn down, only
+   * the waiting stops, and one not sent yet is never sent. Without
+   * `timeoutMs`, a `read_state` that gets no HTTP answer waits as long as the
+   * `fetch` in use does.
    */
   time(canister: Canister<object>): Promise<bigint>
 }
