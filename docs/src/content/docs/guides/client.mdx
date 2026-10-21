@@ -315,7 +315,9 @@ first use, and only in a browser. The client owns what it returns and disposes
 it with itself. A factory that throws (`new AuthClient()` reads
 `localStorage`, which throws where site data is blocked) is not called again:
 the client calls anonymously, logs the error once in development, and rejects
-`signIn()` and `signOut()` with it.
+`signIn()` and `signOut()` with it. The same holds for a factory that returns
+something other than an auth, such as a Promise from an `async` factory; the
+error is then a `TypeError` that names what the result lacks.
 
 ```ts
 import { createClient } from "@ic-reactor/core"

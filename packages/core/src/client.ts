@@ -231,7 +231,11 @@ export type ClientOptions = {
        * throws where site data is blocked) is not called again: the client
        * calls anonymously, so public reads still work, logs the error once in
        * development, and rejects {@link Client.signIn} and
-       * {@link Client.signOut} with what the factory threw.
+       * {@link Client.signOut} with what the factory threw. The same holds
+       * for a factory that returns something other than an {@link AuthLike},
+       * such as a Promise (an `async` factory, or `AuthClient.create()` of
+       * `@icp-sdk/auth` 5 and earlier): the error is then a `TypeError`
+       * naming what the result lacks.
        *
        * `network` is the client's network under `@icp-sdk/auth` 10's own
        * option names, so `new AuthClient(network)` signs in where the client
@@ -326,7 +330,8 @@ export interface Client {
    * told once the auth settles, even if the auth itself did not notify.
    * Rejects a `TypeError` on a client built with `identity`, which has no
    * sign-in, an `Error` on a server or after {@link Client.dispose}, and
-   * with what the auth factory threw when it threw.
+   * with what the auth factory threw when it threw (a `TypeError` when it
+   * returned something other than an {@link AuthLike}).
    */
   signIn(options?: unknown): Promise<void>
   /**
@@ -1357,9 +1362,9 @@ export function createClientWith(
   let auth: AuthLike | undefined
   let unsubscribeAuth: (() => void) | undefined
   /**
-   * What the auth factory threw, once it has: the client then runs anonymous,
-   * never calls the factory again, and rejects `signIn()` and `signOut()` with
-   * it.
+   * What the auth factory threw, once it has, or the `TypeError` for a result
+   * that is not an {@link AuthLike}: the client then runs anonymous, never calls
+   * the factory again, and rejects `signIn()` and `signOut()` with it.
    */
   let authFailure: { readonly cause: unknown } | undefined
   /** The timer set for the end of the session (see `scheduleExpiry`). */
@@ -1468,8 +1473,12 @@ export function createClientWith(
       return auth
     }
     let made: unknown
+    let built: AuthLike
     try {
       made = authFactory(authNetwork())
+      // A factory that returns no AuthLike (a Promise, from an `async`
+      // factory) fails here too, and is not called again.
+      built = checkAuth(made)
     } catch (cause) {
       // `new AuthClient()` reads `localStorage`, which throws where site data
       // is blocked or in a sandboxed frame. That must not take the public
@@ -1483,7 +1492,6 @@ export function createClientWith(
       }
       return undefined
     }
-    const built = checkAuth(made)
     auth = built
     const initial = stateOf(built)
     if (!sameState(initial, snapshot)) snapshot = Object.freeze(initial)

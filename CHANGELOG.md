@@ -15,7 +15,23 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Fixed
+
+- An auth factory that returns something other than an auth, such as a
+  Promise, is called once (#972). An `async` factory returns a Promise, and so
+  does `auth: () => AuthClient.create()` with `@icp-sdk/auth` 5 or earlier.
+  Its result was checked after the step that records a factory's
+  failure, so the client built a new auth on every `caller()`,
+  `authState()`, `subscribe()` and render, threw a `TypeError` from each,
+  and leaked every auth it built. It now fails as a factory that throws
+  does: the client calls anonymously, so public reads still work, logs the
+  error once in development, and `signIn()` and `signOut()` reject with the
+  `TypeError`, which names what the result lacks. Migration: catch the
+  `TypeError` from `signIn()`, not from the first read, and return the auth
+  itself, synchronously, with `AuthClient` from `@icp-sdk/auth` 10:
+  `auth: (network) => new AuthClient(network)`.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
