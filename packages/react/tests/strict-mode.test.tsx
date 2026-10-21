@@ -45,18 +45,21 @@ function setup() {
   /** The auth of the client most recently put to use. */
   const currentAuth = () => auths[auths.length - 1] as TestAuth
   const live: { client?: Client } = {}
+  /** Every client a render of the tree has used. */
+  const seen = new Set<Client>()
   function Probe() {
     // The provider's client, which useClient() returns a view of.
     live.client = clientOf(useClient())
+    seen.add(live.client)
     const { status } = useAuth()
     return <p data-testid="status">{status}</p>
   }
-  return { currentAuth, live, Probe, ...tracked }
+  return { currentAuth, live, seen, Probe, ...tracked }
 }
 
 describe("a provider's client across mounts", () => {
   it("survives React's development double-mount and keeps working", async () => {
-    const { currentAuth, live, Probe, factory, made, trackOf } = setup()
+    const { currentAuth, live, seen, Probe, factory, made, trackOf } = setup()
 
     const view = render(
       <StrictMode>
@@ -68,7 +71,7 @@ describe("a provider's client across mounts", () => {
     await act(macrotask)
 
     // React's development render builds two clients and keeps one. The
-    // registry disposes the one it threw away when a collection finds it
+    // registry disposes the one React threw away when a collection finds it
     // unreachable, which can happen at any point of this test, so the
     // assertions are about the client in use. Where the runtime exposes
     // `gc()`, run that collection now, so that they are checked after it.
@@ -82,12 +85,13 @@ describe("a provider's client across mounts", () => {
       round++
     ) {
       collectGarbage()
-      await act(macrotask)
+      await macrotask()
     }
 
-    // The client in use was not disposed, and no client was built to replace
-    // a disposed one.
+    // The client in use was not disposed, and the tree has used no other: no
+    // client was built to replace a disposed one.
     expect(used.dispose).not.toHaveBeenCalled()
+    expect([...seen]).toEqual([used.client])
     expect(factory.mock.calls.length).toBeLessThanOrEqual(2)
     // The client still hears its auth: the subscription survived.
     expect(view.getByTestId("status").textContent).toBe("anonymous")
@@ -95,7 +99,7 @@ describe("a provider's client across mounts", () => {
       await currentAuth().signIn()
     })
     expect(view.getByTestId("status").textContent).toBe("signed-in")
-    expect(live.client).toBe(used.client)
+    expect([...seen]).toEqual([used.client])
     expect(used.dispose).not.toHaveBeenCalled()
   })
 
@@ -240,6 +244,8 @@ describe("a provider's client across mounts", () => {
       expect(shown).not.toBe(hidden)
       expect(shown).toBe(made[made.length - 1]?.client)
       expect(trackOf(shown).dispose).not.toHaveBeenCalled()
+      // The client that was hidden was disposed once, not again on the reveal.
+      expect(trackOf(hidden).dispose).toHaveBeenCalledTimes(1)
     }
   )
 })
