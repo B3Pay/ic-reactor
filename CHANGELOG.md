@@ -15,7 +15,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### CI (not published)
+
+- `pnpm verify:traps` finds a `@ts-ignore` or `@ts-expect-error` wherever
+  TypeScript reads one, found with TypeScript's own parser (#971): after code
+  on its line (`ok() // @ts-ignore`), on a block comment's last line, and
+  spelled `@ts-ignored`, as well as a `@ts-nocheck` TypeScript obeys after a
+  block comment on the first line. It found only a directive that started its
+  line, so a trailing `// @ts-ignore` hid an error that no trap proves, and
+  the gate still passed. A tag's `@ts-expect-error` must still start the line
+  under it.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
