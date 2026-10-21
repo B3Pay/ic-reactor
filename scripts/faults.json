@@ -1331,8 +1331,8 @@
     "testName": "keeps no view of a principal that is neither current nor anonymous",
     "why": "the views are kept for every principal ever asked for, so a tab that switches accounts keeps one view and its builders per account for good",
     "file": "src/client.ts",
-    "search": "      if (kept !== principal && kept !== live && kept !== ANONYMOUS) {\n",
-    "replace": "      if (kept === undefined) {\n"
+    "search": "        if (kept !== principal && kept !== live && kept !== ANONYMOUS) {\n",
+    "replace": "        if (kept === undefined) {\n"
   },
   {
     "id": "ir6b-fixed-caller-viewed",
@@ -5399,6 +5399,26 @@
     "file": "src/client.ts",
     "search": "        ownMutationFns.add(mutationFn)\n",
     "replace": ""
+  },
+  {
+    "id": "977-view-hit-reads-caller",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "hands back a view it already made without reading who calls",
+    "why": "viewAs reads the live caller on every call, so a signed-in useClient() render converts its principal to text three times in React's production build, where once is enough",
+    "file": "src/client.ts",
+    "search": "    let view = byPrincipal.get(principal)\n",
+    "replace": "    current()\n    let view = byPrincipal.get(principal)\n"
+  },
+  {
+    "id": "977-view-hit-prunes",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "keeps the view of a user who signed out until it makes a view for someone else",
+    "why": "a view already made prunes the others again, from the last caller the client told its listeners about, so a render after a sign-out drops the user's view and their sign-in back makes a new one",
+    "file": "src/client.ts",
+    "search": "    let view = byPrincipal.get(principal)\n",
+    "replace": "    for (const kept of byPrincipal.keys()) {\n      if (kept !== principal && kept !== notified.principal && kept !== ANONYMOUS) byPrincipal.delete(kept)\n    }\n    let view = byPrincipal.get(principal)\n"
   },
   {
     "id": "env-cookie-key-on-mainnet",

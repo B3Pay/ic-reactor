@@ -15,7 +15,19 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Changed
+
+- A signed-in render of `useClient()` converts the caller's principal to text
+  once, where it did three times (#977). The client now hands back a view it
+  already made without reading who is signed in, and drops the views it no
+  longer needs only when it makes a new one. So the view of a user who signed
+  out, or whose session expired, is kept until the next view is made, and
+  that user signing in again before then gets the same object back. Measured
+  in the React tests with React's production build; its development build
+  reads `useSyncExternalStore`'s snapshot twice per render, so there the count
+  goes from 4 to 2.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
