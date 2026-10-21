@@ -88,7 +88,13 @@ export type Network =
   | "local"
   | "env"
   | {
-      /** The replica's URL. A host with no scheme is read against the page's protocol, as `HttpAgent` reads it. */
+      /**
+       * The replica's URL, over `http:` or `https:`. A host with no scheme is
+       * read against the page's protocol, as `HttpAgent` reads it, and is
+       * refused where there is no page. `createClient` throws a `TypeError`
+       * for any other host, such as `localhost:4943`, which reads as the
+       * scheme `localhost:`.
+       */
       readonly host: string
       /**
        * The root key certificates are verified against. Used as given and
@@ -346,9 +352,10 @@ const isLocalHostname = (hostname: string | undefined): boolean => {
  * domain, is read against the page's protocol. The agent's scheme test is
  * copied as is, so `localhost:4943`, which it reads as the scheme `localhost:`,
  * has no hostname here either, and neither has a scheme-less host where there
- * is no page. A host the agent cannot read is not local.
+ * is no page. A host the agent cannot read is not local. Internal: also read
+ * by `createClient`'s host check, and not exported from the package entry.
  */
-const agentUrlOf = (host: string): URL | undefined => {
+export const agentUrlOf = (host: string): URL | undefined => {
   try {
     return !/^[a-z]+:/.test(host) && typeof window !== "undefined"
       ? new URL(`${window.location.protocol}//${host}`)

@@ -37,7 +37,10 @@ options or in a network object (`host` goes inside `network`), and for an
 `allowEnvConfig` or `fetchRootKey` that is not `true` or `false`: an
 environment variable is text, and `"false"` is truthy, so compare it,
 `allowEnvConfig: import.meta.env.VITE_ALLOW_ENV === "true"`. A `rootKey` is the
-133 bytes of the key in a `Uint8Array`: decode hex text first.
+133 bytes of the key in a `Uint8Array`: decode hex text first. A `host` is an
+`http:` or `https:` URL, and so must be the one `"env"` takes from the page or
+from `ICP_HOST`: `localhost:4943` reads as the scheme `localhost:`, so write
+`http://localhost:4943`.
 
 ## Networks
 

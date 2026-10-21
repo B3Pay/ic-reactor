@@ -91,8 +91,11 @@ subdomain is yours.
 
 `createClient` throws a `TypeError` for an option it does not have (`host`
 goes inside `network`), an `allowEnvConfig` or `fetchRootKey` that is not a
-boolean (environment text: `=== "true"`), and a `rootKey` that is not 133
-bytes in a `Uint8Array` (decode hex first).
+boolean (environment text: `=== "true"`), a `rootKey` that is not 133 bytes
+in a `Uint8Array` (decode hex first), and a `host` the agent cannot call over
+`http:` or `https:`, including one `"env"` takes from the page or from
+`ICP_HOST` (`localhost:4943` reads as the scheme `localhost:`; write
+`http://localhost:4943`).
 
 Who calls (exactly one):
 

@@ -5123,6 +5123,46 @@
     "replace": "  if (false) {"
   },
   {
+    "id": "974-non-http-host-accepted",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "which no call can use, when the client is built",
+    "why": "createClient accepts a host the agent reads with a scheme other than http: or https: (localhost:4943, ftp:, data:), and every call then fails",
+    "file": "src/client.ts",
+    "search": "  if (url?.protocol === \"http:\" || url?.protocol === \"https:\") return\n",
+    "replace": "  if (url !== undefined) return\n"
+  },
+  {
+    "id": "974-scheme-less-host-not-read-on-page",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "takes an http: or https: host, and a host with no scheme on a page",
+    "why": "createClient refuses a host with no scheme on a page, which HttpAgent reads against the page's protocol",
+    "file": "src/client.ts",
+    "search": "  const url = agentUrlOf(host)\n",
+    "replace": "  const url = URL.canParse(host) ? new URL(host) : undefined\n"
+  },
+  {
+    "id": "974-env-host-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "says where network \"env\" took a host no call can use",
+    "why": "createClient checks only a host the caller wrote, so ICP_HOST=localhost:8000 or a capacitor: page under network \"env\" builds a client every call of which fails",
+    "file": "src/client.ts",
+    "search": "  checkHost(network.host, options.network === \"env\")\n",
+    "replace": "  if (typeof options.network === \"object\") checkHost(network.host, false)\n"
+  },
+  {
+    "id": "974-env-host-source-unsaid",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "says where network \"env\" took a host no call can use",
+    "why": "the host message under network \"env\" blames a host the caller never wrote, without saying it came from the page or ICP_HOST",
+    "file": "src/client.ts",
+    "search": "  checkHost(network.host, options.network === \"env\")\n",
+    "replace": "  checkHost(network.host, false)\n"
+  },
+  {
     "id": "i895-units-unknown-option-ignored",
     "package": "core",
     "test": "tests/units.test.ts",

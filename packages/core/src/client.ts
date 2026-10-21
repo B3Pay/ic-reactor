@@ -35,6 +35,7 @@ import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
 import {
   agentOptionsFor,
+  agentUrlOf,
   authNetworkFor,
   checkKeys,
   resolveCanisterId,
@@ -1033,24 +1034,29 @@ function checkAuth(auth: unknown): AuthLike {
 }
 
 /**
- * Checks that the agent can read `host` the way `HttpAgent` reads it (a host
- * without a scheme is read against the page's protocol), so a bad host is a
- * `TypeError` from `createClient` rather than a failure of some later call.
+ * Checks that `host`, read as `HttpAgent` reads it ({@link agentUrlOf}: a
+ * host without a scheme is read against the page's protocol), is an `http:`
+ * or `https:` URL, so a bad host is a `TypeError` from `createClient` rather
+ * than a failure of every later call. `localhost:4943` reads as the scheme
+ * `localhost:`. A host `"env"` chose came from the page's origin or from
+ * `ICP_HOST` or `IC_HOST`, not from the caller, and the message says so.
  */
-function checkHost(host: string): void {
-  try {
-    void new URL(
-      !/^[a-z]+:/.test(host) && typeof window !== "undefined"
-        ? `${window.location.protocol}//${host}`
-        : host
-    )
-  } catch (error) {
-    throw new TypeError(
-      `[ic-reactor] the network host ${JSON.stringify(host)} is not a URL the agent can read (${
-        error instanceof Error ? error.message : String(error)
-      }). Give one with a scheme, such as "https://icp-api.io".`
-    )
-  }
+function checkHost(host: string, fromEnv: boolean): void {
+  const url = agentUrlOf(host)
+  if (url?.protocol === "http:" || url?.protocol === "https:") return
+  throw new TypeError(
+    `[ic-reactor] the network host ${JSON.stringify(host)}${
+      fromEnv
+        ? ', which network "env" took from the page\'s origin or from ICP_HOST or IC_HOST,'
+        : ""
+    } is not a URL the agent can read (${
+      url === undefined
+        ? "it does not parse as one"
+        : `its scheme is ${url.protocol}, and the agent calls over http: and https: only`
+    }). Give one with a scheme, such as "https://icp-api.io"${
+      fromEnv ? ", in ICP_HOST or as network: { host }" : ""
+    }.`
+  )
 }
 
 let warnedEnvOffPage = false
@@ -1265,7 +1271,7 @@ export function createClientWith(
   const network = resolveNetwork(options.network, {
     allowEnvConfig: options.allowEnvConfig,
   })
-  checkHost(network.host)
+  checkHost(network.host, options.network === "env")
   warnEnvOffPage(options.network)
   const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH
   const maxElements = options.maxElements ?? DEFAULT_MAX_ELEMENTS
