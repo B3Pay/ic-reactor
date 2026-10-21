@@ -30,7 +30,12 @@ import {
 } from "@icp-sdk/core/agent"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
 import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
-import { createReactorError, fromCanister, retryDefault } from "./errors.js"
+import {
+  createReactorError,
+  fromCanister,
+  notSigned,
+  retryDefault,
+} from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
 import {
@@ -1651,7 +1656,19 @@ export function createClientWith(
     }
     const agent = HttpAgent.createSync({
       ...agentOptionsFor(network),
-      identity,
+      // The agent signs outside its own error handling: a signer that fails
+      // is thrown as a request that could not be signed (`notSigned`), never
+      // as a call whose outcome is unknown.
+      identity: {
+        getPrincipal: () => identity.getPrincipal(),
+        transformRequest: async (request) => {
+          try {
+            return await identity.transformRequest(request)
+          } catch (cause) {
+            throw notSigned(cause)
+          }
+        },
+      },
       fetch: agentFetch,
       // The agent re-sends a request on its own after a fetch failure or a
       // non-2xx status and reports only the last status, so a 429 after a

@@ -10,6 +10,66 @@
     "replace": "const noCodeRan = true"
   },
   {
+    "id": "963-signer-failure-unknown",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered, sends nothing and offers no re-send when the signer declines",
+    "why": "what a signer throws reaches the classifier unmarked, so a write the user declined to sign rejects outcome_unknown with mayHaveExecuted: true and is offered to resendOf, though nothing was sent",
+    "file": "src/client.ts",
+    "search": "            throw notSigned(cause)\n",
+    "replace": "            throw cause\n"
+  },
+  {
+    "id": "963-signer-error-dropped",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered, sends nothing and offers no re-send when the signer declines",
+    "why": "the error the agent was handed, not the signer's own, becomes the cause, so an app cannot tell a declined prompt from another failure by its cause",
+    "file": "src/errors.ts",
+    "search": "      cause: thrown,\n",
+    "replace": "      cause: error,\n"
+  },
+  {
+    "id": "963-poll-signing-failure-not-delivered",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a write outcome_unknown when the signer declines a read_state poll after the IC took the call",
+    "why": "a request the signer did not sign reads as not_delivered even for a read_state poll of an update the IC already took, which may have executed",
+    "file": "src/errors.ts",
+    "search": "      mayBeAccepted ? \"outcome_unknown\" : \"not_delivered\",\n      mayBeAccepted,\n",
+    "replace": "      \"not_delivered\",\n      false,\n"
+  },
+  {
+    "id": "963-wrapped-signer-failure-retried",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a read not_delivered, and does not ask again, when the signer declines the read_state for the subnet's keys",
+    "why": "a signer failure the agent wrapped as UnexpectedErrorCode (a query's read_state for the subnet's keys) is not unwrapped, so the read is retryable and the signer is asked again on every re-send",
+    "file": "src/errors.ts",
+    "search": "  return signerError(asRecord(record.code).error, depth + 1)\n",
+    "replace": "  return undefined\n"
+  },
+  {
+    "id": "963-signer-detail-stringified",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered when the signer throws something that is not an Error",
+    "why": "what the signer threw is turned into text with String(), which throws for an object with no prototype, so the classifier fails and the write is not reported not_delivered",
+    "file": "src/errors.ts",
+    "search": "withDetail(reason, condense(messageOf(thrown)))",
+    "replace": "withDetail(reason, condense(messageOf(thrown) ?? String(thrown)))"
+  },
+  {
+    "id": "963-signer-abort-not-cancelled",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a signer's AbortError cancelled, as any abort",
+    "why": "an AbortError the signer threw is looked for on the wrapper instead, so it reads as a signer failure (not_delivered) rather than cancelled, as every other abort does",
+    "file": "src/errors.ts",
+    "search": "  if (context.signal?.aborted || isAbort(thrown)) {",
+    "replace": "  if (context.signal?.aborted || isAbort(error)) {"
+  },
+  {
     "id": "ir1c-codespaces-host-is-local",
     "package": "core",
     "test": "tests/network.test.ts",

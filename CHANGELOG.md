@@ -15,7 +15,24 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Fixed
+
+- A write whose signer fails, such as a user who declines a passkey or
+  hardware-wallet prompt, now rejects `not_delivered` with
+  `mayHaveExecuted: false` (#963). Nothing was sent, but the agent signs
+  outside its own error handling, so the failure used to read as
+  `outcome_unknown` with `mayHaveExecuted: true`: `client.resendOf()`
+  offered it, a mutation invalidated its reads, and an app could tell the
+  user the payment may have gone through. The client now hands the agent an
+  identity that marks its signing failures, and the error's `cause` is the
+  signer's own error. A signer that fails on a `read_state` poll of an update
+  the IC already took still rejects `outcome_unknown`, and says the call was
+  sent. A read whose signer declines the `read_state` for the subnet's keys
+  rejects `not_delivered` and is no longer retried, which asked the signer
+  again on every attempt. An `AbortError` from the signer is still
+  `cancelled`, as every abort is.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
