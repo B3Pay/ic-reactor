@@ -15,7 +15,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### CI (not published)
+
+- `pnpm verify:test-fails` compares with where the branch left v4: the
+  merge-base with `v4` or `origin/v4`, whichever HEAD left last, instead of
+  `main`, the 3.x line, whose sources cannot load v4's tests (#968). With
+  neither ref, it asks for `--base`. A test with no result on the base,
+  because its file did not load there, a hook failed there or the test was
+  skipped there, is listed on its own as no evidence, with the file's error,
+  and makes the run exit 2; it used to count as passing either way, and
+  `main` made every v4 test look like a guard.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
