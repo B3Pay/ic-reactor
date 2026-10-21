@@ -65,9 +65,10 @@ development `ReactorProvider` throws when it is handed such a client.
   `"env"` is for `localhost` pages: a LAN address, `*.local`, `*.test`,
   `*.internal`, a tunnel or a dev container routes to its own origin (never
   mainnet) but does not believe the cookie or take a root key.
-  `allowEnvConfig: true` throws on `ic0.app`, `*.app.github.dev` and
-  `*.gitpod.io` pages (not public suffixes: any sibling site can set the
-  cookie), and never takes the cookie's root key for a mainnet host.
+  `allowEnvConfig: true` throws on `ic0.app`, `*.app.github.dev`,
+  `*.gitpod.io`, `*.loca.lt` and `*.devtunnels.ms` pages (not public
+  suffixes: any sibling site can set the cookie), and never takes the
+  cookie's root key for a mainnet host.
   `client.canisterId({ name })` says, without a call, what a name resolves
   to: `{ ok: true, id }`, or `{ ok: false, reason, message }` with `reason`
   `"no_browser"`, `"untrusted_host"` or `"absent"`, and the resolver's reason

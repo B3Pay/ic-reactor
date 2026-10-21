@@ -30,8 +30,8 @@
  *   never taken for a mainnet host, which has one key, the agent's own; its
  *   Internet Identity URL is taken over `http:` only on a local page; and the
  *   opt-in itself is refused on a page under a shared parent that is not a
- *   public suffix (`ic0.app`, `github.dev`, `gitpod.io`), where any stranger's
- *   page can write the cookie.
+ *   public suffix (`ic0.app`, `github.dev`, `gitpod.io`, `loca.lt`,
+ *   `devtunnels.ms`), where any stranger's page can write the cookie.
  *
  * @module
  */
@@ -67,8 +67,9 @@ import { isServer } from "./runtime.js"
  *   and the agent checks the forwarded replica's certificates against
  *   mainnet's key, so every certified call fails verification. Name the
  *   replica with an object that has a `rootKey` (or `fetchRootKey: true`)
- *   and the canisters with `{ id }`: `allowEnvConfig: true` is refused
- *   there, because every workspace is a sibling of every stranger's. On a
+ *   and the canisters with `{ id }`: on a dev container or a localtunnel,
+ *   `allowEnvConfig: true` is refused, because every workspace or tunnel is
+ *   a sibling of every stranger's. On a
  *   mainnet host the cookie's root key is never taken, even with
  *   `allowEnvConfig: true`: the agent keeps mainnet's own. On a server there
  *   is no page and no cookie: the host is `ICP_HOST` or `IC_HOST` when
@@ -119,8 +120,9 @@ export interface NetworkOptions {
    * and an `http:` Internet Identity URL only on a local page.
    *
    * @throws TypeError, when `true`, on a page under `ic0.app`, `github.dev`
-   * (Codespaces) or `gitpod.io`: none of them is a public suffix, so any
-   * other site under it can write the cookie this page reads.
+   * (Codespaces), `gitpod.io`, `loca.lt` (localtunnel) or `devtunnels.ms`
+   * (VS Code dev tunnels): none of them is a public suffix, so any other site
+   * under it can write the cookie this page reads.
    */
   readonly allowEnvConfig?: boolean
 }
@@ -258,11 +260,19 @@ const isMainnetHostname = (hostname: string | undefined): boolean =>
  * Public Suffix List, so a page on any one of them can set a cookie for the
  * whole parent, and every other page under it reads that cookie. `ic0.app`
  * serves every canister's frontend, `github.dev` every codespace
- * (`*.app.github.dev`), `gitpod.io` every Gitpod workspace. `icp0.io` and
+ * (`*.app.github.dev`), `gitpod.io` every Gitpod workspace, `loca.lt` every
+ * localtunnel and `devtunnels.ms` every VS Code dev tunnel. `icp0.io` and
  * `*.raw.icp0.io` are public suffixes, so they are not here: a browser
- * refuses a cookie a sibling canister sets for them.
+ * refuses a cookie a sibling canister sets for them. So are the other tunnel
+ * parents {@link REMOTE_DEV_SUFFIXES} names.
  */
-const SHARED_PARENTS = ["ic0.app", "github.dev", "gitpod.io"]
+const SHARED_PARENTS = [
+  "ic0.app",
+  "github.dev",
+  "gitpod.io",
+  "loca.lt",
+  "devtunnels.ms",
+]
 
 /**
  * A canister's own page on `icp0.io`: `<id>.icp0.io` or `<id>.raw.icp0.io`,
