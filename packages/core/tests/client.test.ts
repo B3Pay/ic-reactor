@@ -28,6 +28,7 @@ import { createTestAuth, type TestAuth } from "../src/testing/test-auth.js"
 import {
   ANONYMOUS,
   CALL,
+  deferred,
   networkOf,
   onPage,
   readAs,
@@ -567,6 +568,99 @@ describe("a client following its auth in a browser", () => {
     })
     expect(listener).toHaveBeenCalledTimes(2)
     expect(client.caller()).toBe(ANONYMOUS)
+  })
+
+  /** A signed-out auth whose `signIn` is `signIn`. */
+  const authSigningInWith = (signIn: AuthLike["signIn"]): AuthLike => ({
+    getPrincipal: () => undefined,
+    getStatus: () => ({ state: "signed-out" }),
+    getIdentity: () => Promise.resolve(Ed25519KeyIdentity.generate()),
+    subscribe: () => () => {},
+    signIn,
+    signOut: () => Promise.resolve(),
+  })
+
+  it("makes one sign-in of two calls with the same options in one run, as StrictMode's double effect makes them", async () => {
+    const answer = deferred()
+    const signIn = vi.fn((_options?: unknown) => answer.promise)
+    const client = clientOf(authSigningInWith(signIn))
+
+    // Each run of the effect builds its own options object.
+    const first = client.signIn({ returnTo: "/account" })
+    const second = client.signIn({ returnTo: "/account" })
+
+    expect(second).toBe(first)
+    expect(signIn).toHaveBeenCalledTimes(1)
+    answer.resolve()
+    await first
+    client.dispose()
+  })
+
+  it("signs in again for a call in a later run, or with other options", async () => {
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+
+    void client.signIn({ maxTimeToLive: 1n })
+    void client.signIn({ maxTimeToLive: 2n })
+    // Its one key is another than the last call's, which it only inherits.
+    const inherited = Object.create(
+      { maxTimeToLive: 2n },
+      { maxTimeToIdle: { value: 1n, enumerable: true } }
+    ) as object
+    void client.signIn(inherited)
+    void client.signIn()
+    // A second click is another run: it signs in again, and the auth decides
+    // which sign-in wins.
+    await Promise.resolve()
+    void client.signIn()
+
+    expect(signIn.mock.calls).toEqual([
+      [{ maxTimeToLive: 1n }],
+      [{ maxTimeToLive: 2n }],
+      [inherited],
+      [undefined],
+      [undefined],
+    ])
+    client.dispose()
+  })
+
+  it("joins each sign-in of the run, not only the last, as StrictMode runs two sign-in effects", () => {
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+
+    // StrictMode runs the effects of a subtree, then runs them all again.
+    const toAccount = client.signIn({ returnTo: "/account" })
+    const toWallet = client.signIn({ returnTo: "/wallet" })
+
+    expect(client.signIn({ returnTo: "/account" })).toBe(toAccount)
+    expect(client.signIn({ returnTo: "/wallet" })).toBe(toWallet)
+    expect(signIn).toHaveBeenCalledTimes(2)
+    client.dispose()
+  })
+
+  it("ends the run with a promise job, which fake timers do not replace as Jest's replace queueMicrotask", async () => {
+    vi.stubGlobal("queueMicrotask", () => {})
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+
+    void client.signIn()
+    await Promise.resolve()
+    void client.signIn()
+
+    expect(signIn).toHaveBeenCalledTimes(2)
+    client.dispose()
+  })
+
+  it("rejects a sign-in after dispose(), even with the options of one earlier in the run", async () => {
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+    void client.signIn({ returnTo: "/account" })
+
+    client.dispose()
+
+    await expect(client.signIn({ returnTo: "/account" })).rejects.toThrow(
+      "signIn() on a disposed client"
+    )
   })
 
   it("keeps telling the other listeners when one throws, and reports the error", () => {

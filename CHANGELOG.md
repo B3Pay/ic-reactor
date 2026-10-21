@@ -15,7 +15,24 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Fixed
+
+- Two `client.signIn()` calls with the same options in one synchronous run are
+  now one sign-in: the second returns the first one's promise, and the auth is
+  asked once (#913). `StrictMode` makes such a pair in development when an
+  effect calls `signIn()`, as a sign-in route does for Internet Identity's
+  `transport: "redirect"`. There, the two calls put two requests in one
+  redirect, and both sign-ins failed on the load Internet Identity returned
+  to. Options are the same when they are the same value, or objects with the
+  same keys and values (`Object.is`, one level deep). A call in a later run,
+  or with other options, signs in again, and a call after `dispose()`
+  rejects, as before. `useAuth().signIn` goes through the client, so it joins
+  the same way. The auth guide has a new "Redirect
+  sign-in" section: the route for Vite, Next.js and TanStack Start, entered
+  with a full page load, the `/.well-known/ii-auth-callbacks` file, and
+  `memoize`.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 

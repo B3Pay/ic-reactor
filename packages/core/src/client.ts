@@ -327,6 +327,14 @@ export interface Client {
    * Rejects a `TypeError` on a client built with `identity`, which has no
    * sign-in, an `Error` on a server or after {@link Client.dispose}, and
    * with what the auth factory threw when it threw.
+   *
+   * A call in the same synchronous run as an earlier one with the same
+   * options (the same value, or an object with the same own enumerable keys
+   * and values) returns that call's promise and does not ask the auth again.
+   * React's `StrictMode` runs an effect twice in one run, and an Internet
+   * Identity sign-in over `transport: "redirect"` that starts twice fails on
+   * the load it comes back to. A call in a later run, such as a second click,
+   * signs in again.
    */
   signIn(options?: unknown): Promise<void>
   /**
@@ -1013,6 +1021,27 @@ function checkOptions(options: ClientOptions): void {
   }
 }
 
+/**
+ * Whether two `signIn()` options are the same: the same value, or objects
+ * with the same own enumerable keys whose values are the same (`Object.is`),
+ * as two renders' `{ returnTo: "/account" }` are.
+ */
+function sameOptions(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true
+  if (typeof a !== "object" || typeof b !== "object" || !a || !b) return false
+  const first = a as Record<string, unknown>
+  const second = b as Record<string, unknown>
+  const keys = Object.keys(first)
+  return (
+    keys.length === Object.keys(second).length &&
+    keys.every(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(second, key) &&
+        Object.is(first[key], second[key])
+    )
+  )
+}
+
 /** Checks that an auth factory returned an {@link AuthLike}, naming what it lacks. */
 function checkAuth(auth: unknown): AuthLike {
   const missing =
@@ -1362,6 +1391,18 @@ export function createClientWith(
    * it.
    */
   let authFailure: { readonly cause: unknown } | undefined
+  /**
+   * The `signIn()` calls started in the current synchronous run, with their
+   * options, until a microtask queued by the run's first call clears them. A
+   * later call with the same options as one of them returns its promise
+   * instead of signing in again: React's `StrictMode` runs an effect twice in
+   * one run, and a redirect sign-in (ICRC-167) that starts twice fails on the
+   * load that comes back.
+   */
+  let signInsThisRun: Array<{
+    readonly options: unknown
+    readonly done: Promise<void>
+  }> = []
   /** The timer set for the end of the session (see `scheduleExpiry`). */
   let expiryTimer: ReturnType<typeof setTimeout> | undefined
   /** Whether a `catchUp` notification is queued. */
@@ -1879,13 +1920,27 @@ export function createClientWith(
         listeners.delete(listener)
       }
     },
-    async signIn(signInOptions?: unknown): Promise<void> {
-      const source = authFor("signIn")
-      try {
-        await source.signIn(signInOptions)
-      } finally {
-        onAuthChange()
+    signIn(signInOptions?: unknown): Promise<void> {
+      const started = signInsThisRun.find((earlier) =>
+        sameOptions(earlier.options, signInOptions)
+      )
+      if (started) return started.done
+      const done = (async () => {
+        const source = authFor("signIn")
+        try {
+          await source.signIn(signInOptions)
+        } finally {
+          onAuthChange()
+        }
+      })()
+      // Every sign-in started in this run is done joining when it ends. A
+      // promise job, which fake timers do not replace as they can
+      // `queueMicrotask`.
+      if (signInsThisRun.length === 0) {
+        void Promise.resolve().then(() => (signInsThisRun = []))
       }
+      signInsThisRun.push({ options: signInOptions, done })
+      return done
     },
     async signOut(signOutOptions?: unknown): Promise<void> {
       const source = authFor("signOut")
@@ -1904,6 +1959,7 @@ export function createClientWith(
       unsubscribeAuth = undefined
       listeners.clear()
       agents.clear()
+      signInsThisRun = []
       clearTimeout(expiryTimer)
       expiryTimer = undefined
       snapshot = notified = ANONYMOUS_STATE
