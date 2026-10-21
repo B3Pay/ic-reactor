@@ -29,8 +29,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   or fetched, so certified calls fail verification instead of reaching
   mainnet. A name with no dot counts only on an `http:` or `https:` page, so
   a browser extension's or a desktop app's page falls back as before.
-  Migration: a production app served from such a name now calls its own
-  origin; give it `network: "ic"` or a `{ host, rootKey }` network.
+  `allowEnvConfig: true` is refused with a `TypeError` on a dev tunnel page,
+  as on Codespaces: `devtunnels.ms` is not a public suffix, so any other
+  tunnel could set the cookie whose root key the page would take. Migration:
+  a production app served from such a name now calls its own origin; give it
+  `network: "ic"` or a `{ host, rootKey }` network.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 

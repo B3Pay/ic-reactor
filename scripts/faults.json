@@ -5660,6 +5660,16 @@
     "replace": "  (!hostname.includes(\".\") &&\n"
   },
   {
+    "id": "962-dev-tunnel-parent-not-shared",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a VS Code dev tunnel",
+    "why": "devtunnels.ms left out of the shared parents, so allowEnvConfig: true on a *.devtunnels.ms page, which \"env\" routes through the page, takes the root key of a cookie any other dev tunnel can set",
+    "file": "src/network.ts",
+    "search": "\"gitpod.io\", \"devtunnels.ms\"]",
+    "replace": "\"gitpod.io\"]"
+  },
+  {
     "id": "vite-non-loopback-page-unwarned",
     "package": "vite-plugin",
     "test": "src/dev-environment.test.ts",

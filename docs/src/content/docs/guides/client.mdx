@@ -90,13 +90,13 @@ page believes the cookie's canister ids by default: a canister's own
 
 Whether siblings can write it depends on the Public Suffix List. `icp0.io` and
 `raw.icp0.io` are on it, so no other canister's page can set a cookie that
-`<id>.icp0.io` reads. `ic0.app`, `app.github.dev` (Codespaces) and `gitpod.io`
-are not, so every canister or workspace under them can set one for all the
-others. On a page under those three, `createClient` refuses
-`allowEnvConfig: true` with a `TypeError`. Even where the opt-in is allowed,
-the cookie's root key is never taken for a mainnet host (the agent keeps
-mainnet's own), and its Internet Identity URL is taken over `http:` only on a
-local page.
+`<id>.icp0.io` reads. `ic0.app`, `app.github.dev` (Codespaces), `gitpod.io` and
+`devtunnels.ms` (VS Code dev tunnels) are not, so every canister, workspace or
+tunnel under them can set one for all the others. On a page under those four,
+`createClient` refuses `allowEnvConfig: true` with a `TypeError`. Even where
+the opt-in is allowed, the cookie's root key is never taken for a mainnet host
+(the agent keeps mainnet's own), and its Internet Identity URL is taken over
+`http:` only on a local page.
 
 Canisters named in the cookie are called by name: `{ name: "backend" }` reads
 `PUBLIC_CANISTER_ID:backend` from the cookie. See
