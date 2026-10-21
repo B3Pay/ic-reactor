@@ -541,11 +541,11 @@ const canisterErr: Scenario = {
 const callerChanged: Scenario = {
   id: "caller-changed",
   title: "The caller changes: reads and re-sends refuse",
-  rule: "A read is made as the caller current when its options are built, and a re-send goes out only as its sender; anyone else gets cancelled / caller_changed, and nothing is sent.",
+  rule: "A read is made as the caller current when its options are built, and a re-send goes out only as its sender; for anyone else nothing is sent (caller_changed). The read is cancelled; the re-send stays outcome_unknown, since the write it re-sends may have run.",
   narrative:
     "Options for a balance read are built while seed 1 is signed in, then the user switches to seed 2 before the read runs: the query function refuses to send seed 1's read as seed 2. Then a transfer by seed 1 loses its reply. After a switch to seed 2, resendOf offers nothing, and the offer already in hand refuses to go out as the wrong sender. Back as seed 1, the offer returns and the re-send answers Duplicate.",
   expected:
-    "cancelled / caller_changed for the read and for send() as seed 2, 0 extra requests; offer restored for seed 1.",
+    "cancelled / caller_changed for the read, outcome_unknown / caller_changed for send() as seed 2, 0 extra requests; offer restored for seed 1.",
   code: `const account = { owner: seed2, subaccount: null }
 const read = client.queryOptions(ledger, "icrc1_balance_of", account) // as seed 1
 auth.switchTo(2)
@@ -556,7 +556,7 @@ auth.switchTo(1); dropNextReply(); await transfer.mutate(arg) // outcome_unknown
 const again = client.resendOf(error, ledger, "icrc1_transfer", dedupe)
 auth.switchTo(2)
 client.resendOf(error, ledger, "icrc1_transfer", dedupe) // undefined
-await again.send() // cancelled / caller_changed, nothing sent
+await again.send() // outcome_unknown / caller_changed, nothing sent
 auth.switchTo(1)
 await again.send() // canister_err Duplicate: it ran once`,
   run: () =>
@@ -612,6 +612,9 @@ await again.send() // canister_err Duplicate: it ran once`,
         "again.send() as seed 2 is refused",
         await settle(() => again.send())
       )
+      // The write it re-sends may have run: its outcome stays unknown.
+      r.same("kind", fieldsOf(refused)?.kind, "outcome_unknown")
+      r.same("mayHaveExecuted", fieldsOf(refused)?.mayHaveExecuted, true)
       r.same("code", fieldsOf(refused)?.code, "caller_changed")
       r.same("Nothing was sent", sent(lab, "icrc1_transfer").length, calls)
 

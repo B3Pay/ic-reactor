@@ -11,7 +11,7 @@ export const KIND_INFO: Readonly<
   invalid_args: {
     title: "Refused before sending",
     meaning:
-      "The arguments do not encode as the method's Candid types (or a held re-send's argument changed since it was sent). Nothing was sent.",
+      "The arguments do not encode as the method's Candid types. Nothing was sent.",
   },
   unauthenticated: {
     title: "Refused before sending",
@@ -26,7 +26,7 @@ export const KIND_INFO: Readonly<
   outcome_unknown: {
     title: "Outcome unknown",
     meaning:
-      "The call went out and no trustworthy answer came back: a network drop, a timeout, HTTP 5xx or 408. It may or may not have run.",
+      "The call went out and no trustworthy answer came back (a network drop, a timeout, HTTP 5xx or 408), or a held re-send did not run while the write it re-sends may have. It may or may not have run.",
   },
   rejected: {
     title: "Rejected",
@@ -44,8 +44,7 @@ export const KIND_INFO: Readonly<
   },
   cancelled: {
     title: "Cancelled",
-    meaning:
-      "The caller changed, the call was aborted, or a held re-send would have gone elsewhere.",
+    meaning: "The caller changed or the call was aborted.",
   },
 }
 
