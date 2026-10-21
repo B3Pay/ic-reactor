@@ -496,6 +496,12 @@ export type ErrorContext = ErrorContextBase &
          * untyped caller that leaves it out gets the safe answer.
          */
         readonly accepted: boolean
+        /**
+         * Whether the call re-sends a write that `resendOf()` offered, whose
+         * earlier attempt may have run. A signer that does not sign the
+         * re-send leaves that write's outcome unknown.
+         */
+        readonly again?: boolean
       }
   )
 
@@ -840,15 +846,18 @@ export function classifyError(
 
   // Before anything else the agent wrapped it in: what the signer threw says
   // nothing about the call. Only a poll of an update the IC may already hold
-  // leaves the outcome open; a read's signature is asked for again by any
-  // retry, so a read is not retried.
+  // leaves the outcome open, and a re-send of an offered write, whose earlier
+  // attempt may have run (as a re-send that times out does). A read's
+  // signature is asked for again by any retry, so a read is not retried.
   if (signer !== undefined) {
+    const unknown =
+      mayBeAccepted || (context.mode === "update" && context.again === true)
     const reason = mayBeAccepted
       ? "the call was sent, but the signer did not sign a request for its answer"
       : `the signer did not sign the request${update ? ", so it was not sent" : ""}`
     return make(
-      mayBeAccepted ? "outcome_unknown" : "not_delivered",
-      mayBeAccepted,
+      unknown ? "outcome_unknown" : "not_delivered",
+      unknown,
       withDetail(reason, condense(messageOf(thrown)))
     )
   }

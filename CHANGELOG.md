@@ -31,7 +31,9 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   the IC already took still rejects `outcome_unknown`, and says the call was
   sent. A read whose signer declines the `read_state` for the subnet's keys
   rejects `not_delivered` and is no longer retried, which asked the signer
-  again on every attempt. An `AbortError` from the signer is still
+  again on every attempt. A re-send that `client.resendOf()` offered and the
+  signer declines stays `outcome_unknown` and offered, as on v4: the write
+  it re-sends may have run. An `AbortError` from the signer is still
   `cancelled`, as every abort is.
 
 ## core, react, vite-plugin 4.0.0-beta.6

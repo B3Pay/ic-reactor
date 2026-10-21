@@ -36,8 +36,8 @@
     "testName": "keeps a write outcome_unknown when the signer declines a read_state poll after the IC took the call",
     "why": "a request the signer did not sign reads as not_delivered even for a read_state poll of an update the IC already took, which may have executed",
     "file": "src/errors.ts",
-    "search": "      mayBeAccepted ? \"outcome_unknown\" : \"not_delivered\",\n      mayBeAccepted,\n",
-    "replace": "      \"not_delivered\",\n      false,\n"
+    "search": "      mayBeAccepted || (context.mode === \"update\" && context.again === true)\n",
+    "replace": "      context.mode === \"update\" && context.again === true\n"
   },
   {
     "id": "963-wrapped-signer-failure-retried",
@@ -68,6 +68,16 @@
     "file": "src/errors.ts",
     "search": "  if (context.signal?.aborted || isAbort(thrown)) {",
     "replace": "  if (context.signal?.aborted || isAbort(error)) {"
+  },
+  {
+    "id": "963-declined-resend-loses-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome, and the offer, when the signer declines the re-send",
+    "why": "a re-send of an offered write that the signer declines reads as not_delivered, so the write it re-sends, which may have run, is no longer offered and its error says it may not have executed",
+    "file": "src/errors.ts",
+    "search": "      mayBeAccepted || (context.mode === \"update\" && context.again === true)\n",
+    "replace": "      mayBeAccepted\n"
   },
   {
     "id": "ir1c-codespaces-host-is-local",

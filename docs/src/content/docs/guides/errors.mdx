@@ -270,7 +270,9 @@ A timeout is not such a refusal. A re-send of an offered write that times out
 before it goes out (while it waits for the caller's identity, or to be sent
 again after a 429) rejects `outcome_unknown` with `mayHaveExecuted: true` and
 code `timeout`, like one that timed out after going out: the earlier attempt
-may have run, and `client.resendOf()` offers the write again.
+may have run, and `client.resendOf()` offers the write again. So does a
+re-send the signer does not sign, such as a declined prompt: `outcome_unknown`,
+`mayHaveExecuted: true`, offered again, with the signer's error as `cause`.
 
 For every `mayHaveExecuted: true` failure of a write, a mutation has already
 invalidated the canister's reads, so the page shows what the canister holds
