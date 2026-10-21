@@ -135,6 +135,7 @@ describe("the network table", () => {
         "a locally deployed canister's domain",
         `http://${CANISTER}.localhost:4943`,
       ],
+      ["localhost with a trailing dot", "http://localhost.:4943"],
     ])("fetches the replica's root key from %s", (_, host) => {
       const net = resolveNetwork({ host })
 
@@ -303,6 +304,8 @@ describe('"env" in a browser', () => {
         "a locally deployed asset canister",
         `http://${CANISTER}.localhost:4943`,
       ],
+      // The URL parser keeps the trailing dot, and the rules drop it (#975).
+      ["a dev server with a trailing dot", "http://localhost.:5173"],
     ])(
       "routes through the page's origin and trusts the cookie, on %s",
       (_, origin) => {
@@ -368,6 +371,11 @@ describe('"env" in a browser', () => {
       ["a canister's ic0.app domain", `https://${CANISTER}.ic0.app`],
       ["icp0.io itself", "https://icp0.io"],
       ["the API domain", MAINNET],
+      // #975: as for a name without the dot.
+      [
+        "a canister's ic0.app domain with a trailing dot",
+        `https://${CANISTER}.ic0.app.`,
+      ],
     ])(
       "routes through its origin, with no cookie read and no fetch, on %s",
       (_, origin) => {
@@ -405,6 +413,22 @@ describe('"env" in a browser', () => {
       }
     )
 
+    it("believes nothing by default on <id>.icp0.io with a trailing dot", () => {
+      // Whether the Public Suffix List still keeps sibling canisters from
+      // setting a cookie for a name written that way is not checked, so the
+      // page is a mainnet page like any other (#975).
+      const origin = `https://${CANISTER}.icp0.io.`
+      const page = stubPage(origin)
+
+      expect(resolveNetwork("env")).toStrictEqual({
+        keySegment: origin,
+        host: origin,
+        fetchRootKey: false,
+        trustsEnv: false,
+      })
+      expect(page.cookieReads()).toBe(0)
+    })
+
     it("does not take the cookie's key even when the cookie is well formed", () => {
       // The same cookie a dev server would set: on a real domain it proves
       // nothing, because any sibling subdomain can write it.
@@ -417,6 +441,11 @@ describe('"env" in a browser', () => {
       ["a canister's icp0.io domain", `https://${CANISTER}.icp0.io`],
       ["icp0.io itself", "https://icp0.io"],
       ["the API domain", MAINNET],
+      [
+        "a canister's icp0.io domain with a trailing dot",
+        `https://${CANISTER}.icp0.io.`,
+      ],
+      ["the API domain with a trailing dot", `${MAINNET}.`],
     ])(
       "does not take the cookie's key with allowEnvConfig: true either, on %s",
       (_, origin) => {
@@ -474,6 +503,11 @@ describe('"env" in a browser', () => {
       ["Gitpod", GITPOD],
       ["a canister's ic0.app domain", `https://${CANISTER}.ic0.app`],
       ["a canister's raw.ic0.app domain", `https://${CANISTER}.raw.ic0.app`],
+      [
+        "a canister's ic0.app domain with a trailing dot",
+        `https://${CANISTER}.ic0.app.`,
+      ],
+      ["Codespaces with a trailing dot", `${CODESPACE}.`],
     ])(
       "refuses allowEnvConfig: true on %s, whose parent is not a public suffix",
       (_, origin) => {
