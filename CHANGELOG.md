@@ -15,7 +15,22 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Fixed
+
+- `network: "env"` no longer falls back to mainnet on a dev page opened over
+  Tailscale (a 100.64/10 address or a `*.ts.net` name), by a VS Code dev
+  tunnel (`*.devtunnels.ms`) or by a LAN name with no dot
+  (`http://devbox:5173`) (#962). An app that names its canisters with
+  `{ id }` from its build-time env sent its local ids to mainnet there. Such
+  a page now routes through its own origin, as #902 made LAN addresses and
+  the other tunnels do: the cookie is not believed and no root key is taken
+  or fetched, so certified calls fail verification instead of reaching
+  mainnet. A name with no dot counts only on an `http:` or `https:` page, so
+  a browser extension's or a desktop app's page falls back as before.
+  Migration: a production app served from such a name now calls its own
+  origin; give it `network: "ic"` or a `{ host, rootKey }` network.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
