@@ -114,8 +114,8 @@ declare const FinalizationRegistry:
  *
  * The client is the unregister token, so one `unregister` removes what every
  * dropped render registered for it. Two moments do: a factory call that hands
- * the client back as borrowed (see {@link hold}), and the commit of any
- * provider that renders it. A client that a factory returns again, or that a
+ * the client itself back as borrowed (see {@link hold}; a view of it does
+ * not), and the commit of any provider that renders it. A client that a factory returns again, or that a
  * tree runs on, is not one React threw away, and only an unmount, or its
  * owner, may end it.
  *
@@ -161,19 +161,28 @@ const unclaimed =
  * development (see {@link reportLazilyShared}). Only the call that created a
  * client registers it, and the first removal ends the registration, so the
  * report comes once per client.
+ *
+ * A view (`client={() => view}`, a nested provider handed the outer one's
+ * `useClient()`) is borrowed, and its client's registration is left alone:
+ * the outer provider renders in the same pass, and removing it would report
+ * correct code as lazily shared and, when React throws that render away,
+ * leave the outer provider's client to nobody (#965). Each provider's commit
+ * removes it.
  */
 function hold(build: () => Client): Held {
   const before = clientsCreated()
   const built = build()
   // A view that a component's useClient() returned keeps its caller for good:
   // hold the client it was made over, whose caller the tree then follows.
-  const client = (built as Stamped)[CLIENT_OF] ?? built
+  const of = (built as Stamped)[CLIENT_OF]
+  const client = of ?? built
   const serial = (client as Stamped)[CLIENT_SERIAL]
   const owned =
     typeof serial === "number" ? serial > before : clientsCreated() > before
   const held = { client, owned }
+  // A view leaves its client's registration to the commits (see above).
   if (owned) unclaimed?.register(held, client, client)
-  else if (unclaimed?.unregister(client)) reportLazilyShared()
+  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()
   return held
 }
 
@@ -226,7 +235,9 @@ function reportDisposed(client: Client): void {
  * Reports, in development, a factory that handed back a client which an
  * earlier factory call created and no provider has committed yet. A lazily
  * shared factory (`() => (client ??= createClient(...))`) does that, and so
- * does one that returns a client another provider's factory call created.
+ * does one that returns a client another provider's factory call created. A
+ * view of such a client (a nested provider handed `useClient()`) is not
+ * reported: the outer provider holds the client.
  *
  * The provider of the call that created such a client owns it, so it disposes
  * it on unmount under every other tree that uses it; and from the moment React
