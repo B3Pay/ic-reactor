@@ -389,6 +389,7 @@ have executed:
 | ------------------------------------------------------------------------------- | --------------------------------- | ----------------- |
 | refused before sending: arguments that do not encode, a write while signed out | `invalid_args`, `unauthenticated` | no |
 | HTTP 4xx except 408 (429 included): the replica or a boundary node refused it    | `not_delivered`                   | no                |
+| the identity did not sign it (a declined passkey or hardware-wallet prompt: the signer's error is the `cause`), or the request could not be built | `not_delivered` | no |
 | reject code 1, 2 (transient) or 3: rejected before any canister code ran         | `rejected` (2: `not_delivered`)   | no                |
 | reject code 4 or 5: the canister rejected or trapped, maybe after changing state | `rejected`                        | yes (a write)     |
 | a sent write got no trustworthy answer: network drop, timeout, 5xx, 408          | `outcome_unknown`                 | yes               |

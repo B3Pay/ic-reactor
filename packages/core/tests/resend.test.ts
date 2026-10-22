@@ -13,6 +13,8 @@
  * would be a new transfer.
  */
 import { principal } from "@candid-core/schema"
+import type { Identity } from "@icp-sdk/core/agent"
+import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { MutationObserver } from "@tanstack/query-core"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { isReactorError } from "../src/index.js"
@@ -223,6 +225,36 @@ describe("client.resendOf", () => {
       kind: "canister_err",
       err: { tag: "Duplicate" },
     })
+    expect(t.ran()).toBe(1n)
+  })
+
+  it("keeps the unknown outcome, and the offer, when the signer declines the re-send", async () => {
+    // A user who declines the re-send's passkey or hardware-wallet prompt
+    // sends nothing, and that says nothing about the write it re-sends.
+    const key = Ed25519KeyIdentity.generate()
+    let declining = false
+    const declined = new Error("the user declined the signature")
+    const signer: Identity = {
+      getPrincipal: () => key.getPrincipal(),
+      transformRequest: (request) =>
+        declining ? Promise.reject(declined) : key.transformRequest(request),
+    }
+    const t = setup({ identity: signer })
+    const error = await lostTransfer(t)
+    const offer = (failure: unknown) =>
+      t.client.resendOf(failure, t.ledger, "icrc1_transfer", { dedupedBy })
+    const again = offer(error)
+
+    declining = true
+    const refused = await again!.send().catch((e: unknown) => e)
+    expect(refused).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+    })
+    expect((refused as Error).message).toContain("so it was not sent")
+    expect((refused as { cause?: unknown }).cause).toBe(declined)
+    expect(offer(refused)?.arg).toBe(again!.arg)
+    expect(t.sent()).toBe(1)
     expect(t.ran()).toBe(1n)
   })
 

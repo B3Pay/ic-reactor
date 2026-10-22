@@ -139,14 +139,15 @@ an update and for a query:
 | HTTP 429                                                                                                          | `not_delivered` (retryable) | false                     | `not_delivered` (retryable) |
 | any other HTTP 4xx, `IngressExpiryInvalid`                                                                        | `not_delivered`             | false                     | `not_delivered`             |
 | a request that could not be built or signed                                                                       | `not_delivered`             | false                     | `not_delivered`             |
+| the signer did not sign it (a declined prompt; the `cause` is the signer's error)                                 | `not_delivered`             | false                     | `not_delivered`             |
 
 A query's `mayHaveExecuted` is `false` in every row.
 
 Three rules sit behind the table.
 
 - **Once the request may be in the IC, the HTTP rows change.** The HTTP rows,
-  `IngressExpiryInvalid` and the "could not be built" row hold for an update
-  only before the request may have been accepted. After the replica answered
+  `IngressExpiryInvalid`, the "could not be built" row and the signer's row
+  hold for an update only before the request may have been accepted. After the replica answered
   202 (the client is polling for the reply), a later refusal says nothing
   about the call, so all of those rows read `outcome_unknown` with
   `mayHaveExecuted: true`. This is why a 429 on the first send is safe to send
@@ -279,8 +280,10 @@ Its `message` says only that the re-send did not run. The write stays kept,
 so `client.resendOf()` of this error offers it again while its sender is the
 caller and its argument and canister are what they were, and the mutation's
 error keeps leading back to it. Read the state back before
-anything else, as for any `outcome_unknown`. The same failures of a first send
-mean what the table above says: nothing ran.
+anything else, as for any `outcome_unknown`. A re-send the signer does not
+sign, such as a declined prompt, rejects the same way, with the signer's own
+error as its `cause`. The same failures of a first send mean what the table
+above says: nothing ran.
 
 For every `mayHaveExecuted: true` failure of a write, a mutation has already
 invalidated the canister's reads, so the page shows what the canister holds

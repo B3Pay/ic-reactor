@@ -447,6 +447,7 @@ async function run(
     arg: encoded.bytes.slice(),
     mode,
     signal: request.signal,
+    again: sent !== undefined,
   }
 
   // A timeout aborts a signal of its own, which the query function's signal
@@ -574,6 +575,8 @@ interface Outgoing {
   readonly mode: CallMode
   /** The call's signal: the query function's, or the timeout's when there is one. */
   signal?: AbortSignal
+  /** Whether the call re-sends a write `resendOf()` offered, which may have run. */
+  readonly again: boolean
 }
 
 /** What the sends of one call record: the latest ingress expiry they were signed with. */
@@ -699,6 +702,7 @@ async function dispatch(
             canisterId: call.canisterId,
             mode: "update",
             accepted,
+            again: call.again,
             signal: call.signal,
           }
         : {

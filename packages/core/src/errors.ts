@@ -530,6 +530,12 @@ export type ErrorContext = ErrorContextBase &
          * untyped caller that leaves it out gets the safe answer.
          */
         readonly accepted: boolean
+        /**
+         * Whether the call re-sends a write that `resendOf()` offered, whose
+         * earlier attempt may have run. A signer that does not sign the
+         * re-send leaves that write's outcome unknown.
+         */
+        readonly again?: boolean
       }
   )
 
@@ -595,6 +601,38 @@ const PRE_SEND_CODES: ReadonlySet<string> = new Set([
   "MissingCanisterIdErrorCode",
   "InvalidReadStateRequestErrorCode",
 ])
+
+/** The errors {@link notSigned} made, which {@link classifyError} unwraps. */
+const unsigned = new WeakSet<object>()
+
+/**
+ * What a failure of an identity's `transformRequest` is thrown to the agent
+ * as (see `agentFor`): a user who declines a passkey or hardware-wallet
+ * prompt, a signer that is gone. {@link classifyError} reads it as a request
+ * that was not signed, whatever the signer's error (its `cause`) says, and
+ * makes that error the result's `cause`.
+ */
+export const notSigned = (cause: unknown): Error => {
+  const error = Object.assign(new Error("the signer did not sign"), { cause })
+  unsigned.add(error)
+  return error
+}
+
+/**
+ * The signer's error, when `error` is a {@link notSigned} failure or wraps
+ * one: the agent throws a failure from inside its own error handling (a
+ * query's `read_state` for the subnet's keys) as
+ * `UnknownError(UnexpectedErrorCode(error))`.
+ */
+function signerError(
+  error: unknown,
+  depth = 0
+): { cause: unknown } | undefined {
+  if (depth > 3) return undefined
+  const record = asRecord(error)
+  if (unsigned.has(record)) return { cause: record.cause }
+  return signerError(asRecord(record.code).error, depth + 1)
+}
 
 /**
  * `ReactorError.code` when the IC answers that the canister a request was
@@ -764,6 +802,7 @@ const withDetail = (lead: string, detail: string): string =>
  * | HTTP 429 | `not_delivered`, retryable | false / false |
  * | any other HTTP 4xx, `IngressExpiryInvalid` | `not_delivered` | false / false |
  * | a request that could not be built or signed (CBOR or DER encoding, an invalid identity, no `fetch`, no canister id) | `not_delivered` | false / false |
+ * | the signer did not sign a request (a declined prompt: {@link notSigned}) | `not_delivered` | false / false |
  *
  * A canister that does not exist also sets `code: "canister_not_found"`, and
  * changes nothing else. The IC says it in one of two ways. For a canister id
@@ -781,8 +820,8 @@ const withDetail = (lead: string, detail: string): string =>
  *
  * For a query nothing that matters executes, so every doubt is `not_delivered`
  * and `mayHaveExecuted` is `false`. The HTTP rows, and `IngressExpiryInvalid`,
- * hold for an update only when `context.accepted` is `false`, and so does the
- * row of a request that could not be built. Once the request
+ * hold for an update only when `context.accepted` is `false`, and so do the
+ * rows of a request that could not be built or signed. Once the request
  * may be in the IC (see {@link ErrorContext}), they all read as
  * `outcome_unknown` with `mayHaveExecuted: true`, because a refusal that comes
  * later says nothing about the call.
@@ -795,7 +834,8 @@ const withDetail = (lead: string, detail: string): string =>
  * An error that is already a ReactorError comes back as the same object, so
  * it may carry an `err` that the return type does not promise.
  *
- * The thrown error becomes the result's `cause`, and the result's `message`
+ * The thrown error becomes the result's `cause` (for a signer that did not
+ * sign, the signer's own error), and the result's `message`
  * is one short line (`[ic-reactor] <method> on <canisterId>: <reason>`): a
  * missing canister arrives from the agent as an HTTP 400 whose own message
  * runs to thousands of characters.
@@ -811,6 +851,8 @@ export function classifyError(
   const mayBeAccepted = update && context.accepted !== false
   const shape = readShape(error)
   const { rejectCode, httpStatus } = shape
+  const signer = signerError(error)
+  const thrown = signer === undefined ? error : signer.cause
 
   const make = (
     kind: ReactorErrorKind,
@@ -829,11 +871,29 @@ export function classifyError(
       canisterId,
       rejectCode,
       httpStatus,
-      cause: error,
+      cause: thrown,
     })
 
-  if (context.signal?.aborted || isAbort(error)) {
+  if (context.signal?.aborted || isAbort(thrown)) {
     return make("cancelled", update, DEFAULT_REASON.cancelled)
+  }
+
+  // Before anything else the agent wrapped it in: what the signer threw says
+  // nothing about the call. Only a poll of an update the IC may already hold
+  // leaves the outcome open, and a re-send of an offered write, whose earlier
+  // attempt may have run (as a re-send that times out does). A read's
+  // signature is asked for again by any retry, so a read is not retried.
+  if (signer !== undefined) {
+    const unknown =
+      mayBeAccepted || (context.mode === "update" && context.again === true)
+    const reason = mayBeAccepted
+      ? "the call was sent, but the signer did not sign a request for its answer"
+      : `the signer did not sign the request${update ? ", so it was not sent" : ""}`
+    return make(
+      unknown ? "outcome_unknown" : "not_delivered",
+      unknown,
+      withDetail(reason, condense(messageOf(thrown)))
+    )
   }
 
   // An agent error has a `kind`. One without (a bug, or some other agent) is
