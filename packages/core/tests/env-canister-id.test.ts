@@ -160,6 +160,22 @@ describe("a { name } target on a page that is trusted", () => {
     expect(result).toStrictEqual({ ok: true, id: COOKIE_CANISTER_ID })
   })
 
+  it("resolves from the cookie on a page with an element whose id is Deno", () => {
+    // Named access: `window.Deno` is that element, which does not make the
+    // page a server (#976).
+    const fake = stubPage(LOCAL_PAGE, {
+      cookie: icEnvCookie({ "PUBLIC_CANISTER_ID:backend": COOKIE_CANISTER_ID }),
+    })
+    vi.stubGlobal("Deno", { id: "Deno", tagName: "SPAN" })
+    const net = resolveNetwork("local")
+
+    expect(resolveCanisterId({ name: "backend" }, net)).toStrictEqual({
+      ok: true,
+      id: COOKIE_CANISTER_ID,
+    })
+    expect(fake.cookieReads()).toBeGreaterThan(0)
+  })
+
   it("resolves each name from its own entry", () => {
     stubPage(LOCAL_PAGE, {
       cookie: icEnvCookie({

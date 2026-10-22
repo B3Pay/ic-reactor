@@ -16,7 +16,8 @@
  * ## Adding a trap
  *
  * 1. Write the line that must not compile, with a tag on the line above the
- *    directive, the id first and the directive straight after it:
+ *    directive, the id first and the directive straight after it, on a line
+ *    of its own:
  *
  *        // trap: <id>
  *        // @ts-expect-error <what the line gets wrong, and what to do instead>

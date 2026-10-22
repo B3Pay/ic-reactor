@@ -16,6 +16,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { c } from "@candid-core/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
+import { Principal } from "@icp-sdk/core/principal"
 import {
   MutationObserver,
   QueryClient,
@@ -532,7 +533,61 @@ describe("a client pinned to a principal", () => {
     }
 
     // The anonymous view a hydrating render asks for is kept; a user's view
-    // is not kept past their session.
+    // is not kept once a view is made for someone else.
+    expect(pin(client, ANONYMOUS)).toBe(anonymous)
+    expect(pin(client, SEED_1)).not.toBe(first)
+  })
+
+  it("hands back a view it already made without reading who calls", () => {
+    // `useClient()` asks for the anonymous view and the user's on every
+    // render, and reading the live caller converts a principal to text (#977).
+    const { client } = signedIn()
+    const anonymous = pin(client, ANONYMOUS)
+    const user = pin(client, SEED_1)
+    const toText = vi.spyOn(Principal.prototype, "toText")
+    try {
+      expect(pin(client, ANONYMOUS)).toBe(anonymous)
+      expect(pin(client, SEED_1)).toBe(user)
+      expect(toText).not.toHaveBeenCalled()
+    } finally {
+      toText.mockRestore()
+    }
+  })
+
+  it("keeps the view of a user who signed out until it makes a view for someone else", async () => {
+    const { client, auth, who, sent } = signedIn()
+    const anonymous = pin(client, ANONYMOUS)
+    const first = pin(client, SEED_1)
+
+    await client.signOut()
+    // A render after the sign-out asks only for views the client has.
+    expect(pin(client, ANONYMOUS)).toBe(anonymous)
+    expect(pin(client, SEED_1)).toBe(first)
+
+    // The same user signing in again gets that view back, and it reads and
+    // writes as the session now live.
+    auth.switchTo(1)
+    expect(pin(client, client.caller())).toBe(first)
+    expect(first.authState()).toEqual({
+      status: "signed-in",
+      principal: SEED_1,
+      expiresAt: expect.any(Number),
+    })
+    await expect(
+      client.queryClient.fetchQuery(first.queryOptions(who, "whoami"))
+    ).resolves.toBe(`read by ${SEED_1}`)
+    await expect(
+      new MutationObserver(
+        client.queryClient,
+        first.mutationOptions(who, "stamp")
+      ).mutate()
+    ).resolves.toBe(`written by ${SEED_1}`)
+    expect(sent("whoami")).toEqual([SEED_1])
+    expect(sent("stamp")).toEqual([SEED_1])
+
+    // A view made for someone else drops it.
+    auth.switchTo(2)
+    pin(client, client.caller())
     expect(pin(client, ANONYMOUS)).toBe(anonymous)
     expect(pin(client, SEED_1)).not.toBe(first)
   })

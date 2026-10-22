@@ -260,21 +260,24 @@ The offer's `arg` is the attempt's own argument, the object `mutate` was
 given, and `from` is its sender. Send it with `mutate(again.arg)` on the same
 mutation, which keeps its pending state and invalidation, or with
 `again.send()`. Either one goes out only as the same write, and otherwise
-rejects and sends nothing:
+sends nothing:
 
-- only as `from`: if someone else is the caller by then, it rejects
-  `cancelled` (code `caller_changed`);
+- only as `from`: if someone else is the caller by then, it is refused (code
+  `caller_changed`);
 - only to the method and canister the write went to: `again.send()` always
-  goes there, and a mutation whose canister now resolves elsewhere rejects
-  `cancelled` (code `target_changed`);
+  goes there, and a mutation whose canister now resolves elsewhere is refused
+  (code `target_changed`);
 - only with the bytes the write sent: `again.send()` sends those bytes, and
-  `mutate(again.arg)` rejects `invalid_args` (code `arg_changed`) if the
-  object was changed since.
+  `mutate(again.arg)` is refused (code `arg_changed`) if the object was
+  changed since.
 
-A refusal is not the end of the write. It replaces the mutation's
-`outcome_unknown` error, so `client.resendOf(transfer.error)` is `undefined`
-after it, and the write it re-sends still has an unknown outcome: read the
-state back, and do not ignore it as you might another `cancelled` (see
+A re-send that did not run is not the end of the write, whether it was
+refused or turned away when sent (an HTTP 429 or another 4xx, reject code 1
+to 3). The first attempt may have run all the same, so it rejects
+`outcome_unknown` with `mayHaveExecuted: true`, its `code`, `httpStatus` or
+`rejectCode` and its `cause` say why the re-send did not run, and
+`client.resendOf(transfer.error)` offers the write again while its sender is
+the caller. Read the state back before anything else (see
 [Errors](/v4/guides/errors/#what-to-do-for-each-kind)).
 
 Once offered, that object stays held to that write on every mutation of the

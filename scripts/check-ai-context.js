@@ -346,7 +346,7 @@ for (const relPath of docsLinkFiles) {
 // and no key outside the spec, which claude.ai uploads and the Skills API
 // reject.
 const SKILLS_DIR = "skill-packages"
-// Absent on the v4 line until DX3 adds its one consumer skill.
+// Absent only in a tree with no skill, such as this script's tests.
 const skillEntries = existsSync(join(rootDir, SKILLS_DIR))
   ? readdirSync(join(rootDir, SKILLS_DIR), { withFileTypes: true })
   : []
@@ -512,8 +512,12 @@ for (const entry of skillEntries) {
 // checks the same shape, but it is not installed in CI.
 const currentReact = currentVersions.get("@ic-reactor/react")
 /** Folders whose skills an app installs: every text an agent loads from them
- * must stand on the published packages alone. */
-const consumerSkillDirs = []
+ * must stand on the published packages alone. They are the folder of every
+ * skill under SKILLS_DIR, which `npx skills add` installs from this repository
+ * whether or not a marketplace lists it (#970), and of each skill of a
+ * marketplace plugin below. So a contributor skill does not go under
+ * SKILLS_DIR. */
+const consumerSkillDirs = [...checkedSkills].map((rel) => posix.dirname(rel))
 
 function readJson(relPath) {
   try {
@@ -528,7 +532,8 @@ const isDirectory = (relPath) =>
   existsSync(join(rootDir, relPath)) &&
   statSync(join(rootDir, relPath)).isDirectory()
 
-// Optional on the v4 line: it has no plugin until DX3 adds the skill.
+// Optional: v4 has no marketplace (DX3 added the skill without one), so the
+// consumer rules of section 8 do not depend on this file.
 if (existsSync(join(rootDir, CLAUDE_MARKETPLACE))) {
   const marketplace = readJson(CLAUDE_MARKETPLACE)
   if (marketplace !== undefined) {
@@ -625,7 +630,10 @@ if (existsSync(join(rootDir, CLAUDE_MARKETPLACE))) {
       }
       for (const rel of skillFiles) {
         if (!checkedSkills.has(rel)) checkSkill(rel)
-        consumerSkillDirs.push(posix.dirname(rel))
+        const skillDir = posix.dirname(rel)
+        if (!consumerSkillDirs.includes(skillDir)) {
+          consumerSkillDirs.push(skillDir)
+        }
       }
     }
   }
@@ -917,7 +925,7 @@ if (failures.length > 0) {
 } else {
   console.log(
     `AI context check passed (${aiContextFiles.length} files, ${packageGuides.length} package guides, ` +
-      `${checkedSkills.size} skills, ${consumerSkillDirs.length} plugin skill(s), ` +
+      `${checkedSkills.size} skills, ${consumerSkillDirs.length} consumer skill(s), ` +
       `docs links in ${docsLinkFiles.length} files, ${sourcePages.size} docs pages, versions: ${[...validVersions].join(", ")}).`
   )
 }

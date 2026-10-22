@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, writeFileSync } from "fs"
+import { readFileSync, writeFileSync } from "fs"
 import { join, dirname } from "path"
 import { fileURLToPath } from "url"
 import { execFileSync } from "child_process"
@@ -155,10 +155,7 @@ const RELEASE_PATHS = [
   // committed, so without staging it here the repo keeps reporting the previous
   // release's VERSION even though the published artifact is correct.
   "packages/core/src/version.ts",
-  // A tree without examples/ (the v4 line had none before DX1), since
-  // `git add -u` refuses a pathspec that matches no tracked file, which would
-  // stop the release before its commit and tag.
-  ...(existsSync(join(rootDir, "examples")) ? ["examples"] : []),
+  "examples",
 ]
 
 // 6. Git Commit and Tag
@@ -166,7 +163,7 @@ console.log("\n📂 Creating release commit and tag...")
 try {
   // `-u` stages modifications to already-tracked files only, so no untracked
   // scratch file can be swept in -- `git add .` would have committed, tagged and
-  // published one, since core/react/vite-plugin ship "src". It also keeps `examples`
+  // published one, since core and react ship "src". It also keeps `examples`
   // safe to pass as a directory: sync-example-versions.js only rewrites
   // package.json files under it, at either workspace depth, but an untracked file
   // sitting there must never ride along.
