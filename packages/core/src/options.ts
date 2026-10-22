@@ -34,7 +34,6 @@ import {
   prepareMethod,
   notEncoded,
   valuesOf,
-  type CallRequest,
   type ResolvedTarget,
 } from "./call.js"
 import {
@@ -344,12 +343,7 @@ export function createBuilders(
           )
       : []
 
-  /**
-   * The argument of each re-send `resendOf` offered, and the write it was
-   * first sent in: a mutation given that very argument sends it as that
-   * write's caller, to its canister id, with its bytes, or not at all.
-   */
-  const offered = new WeakMap<object, CallRequest>()
+  const { offered } = internals
 
   /** The run kept for a run's function context, if TanStack passed one and a run was kept for it. */
   const keptRun = (context: unknown): MutationRun | undefined => {

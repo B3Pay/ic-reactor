@@ -222,6 +222,61 @@ describe("a client the provider owns, and the registry that backs its disposal",
     expect(view.getByTestId("status").textContent).toBe("signed-in")
   })
 
+  it("disposes the clients of a thrown-away render whose nested provider was handed their view", async () => {
+    // The pattern the README describes: an inner provider given the outer
+    // one's useClient(). It holds the client the view was made over, which
+    // is the outer provider's to hold: it stays registered until a provider
+    // that renders it commits.
+    const registry = fakeFinalizationRegistry()
+    const bindings = await bindingsWith(registry.Registry)
+    const { ReactorProvider, useClient } = bindings
+    const { factory, made, trackOf, authOf, committed, Probe } = setup(bindings)
+    const { Gate, open } = suspendUntilOpened()
+    function Nested({ children }: { children: ReactNode }) {
+      const outer = useClient()
+      return <ReactorProvider client={() => outer}>{children}</ReactorProvider>
+    }
+
+    const view = render(
+      <Suspense fallback={<p>loading</p>}>
+        <ReactorProvider client={factory}>
+          <Nested>
+            <Probe />
+            <Gate />
+          </Nested>
+        </ReactorProvider>
+      </Suspense>
+    )
+    await act(macrotask)
+    expect(committed.size).toBe(0)
+    await open()
+
+    expect(committed.size).toBe(1)
+    const [used] = [...committed] as [Client]
+    const dropped = made.filter((entry) => entry.client !== used)
+    expect(dropped.length).toBeGreaterThan(0)
+    for (const entry of dropped) {
+      // What the registry is there to release: an auth listening to the
+      // window, built by a render whose effects never run.
+      expect(authOf(entry.client).listenerCount).toBe(1)
+      expect(entry.dispose).not.toHaveBeenCalled()
+    }
+    expect(registry.live.map((entry) => entry.held)).toEqual(
+      dropped.map((entry) => entry.client)
+    )
+
+    registry.collectAll()
+    registry.collectAll()
+
+    for (const entry of dropped) {
+      expect(entry.dispose).toHaveBeenCalledTimes(1)
+      expect(authOf(entry.client).listenerCount).toBe(0)
+    }
+    expect(trackOf(used).dispose).not.toHaveBeenCalled()
+    await act(() => authOf(used).signIn())
+    expect(view.getByTestId("status").textContent).toBe("signed-in")
+  })
+
   it("disposes the client of the initializer call that StrictMode drops, and only that one", async () => {
     const registry = fakeFinalizationRegistry()
     const bindings = await bindingsWith(registry.Registry)
@@ -577,6 +632,41 @@ describe("the development warning about a factory that shares a client lazily", 
     expect(fresh.made.length).toBeGreaterThan(1)
     expect(warn).not.toHaveBeenCalled()
   })
+
+  it.each([false, true])(
+    "says nothing about a nested provider handed the view of the outer one's client (StrictMode: %s)",
+    async (strict) => {
+      const bindings = await bindingsWith(RealRegistry)
+      const { ReactorProvider, useClient } = bindings
+      const { factory, made, committed, Probe } = setup(bindings)
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+      function Nested({ children }: { children: ReactNode }) {
+        const outer = useClient()
+        return (
+          <ReactorProvider client={() => outer}>{children}</ReactorProvider>
+        )
+      }
+      const tree = (
+        <ReactorProvider client={factory}>
+          <Nested>
+            <Probe />
+          </Nested>
+        </ReactorProvider>
+      )
+
+      const view = render(strict ? <StrictMode>{tree}</StrictMode> : tree)
+      await act(macrotask)
+
+      // Only the outer provider's factory creates a client (StrictMode calls
+      // it twice), and both providers hold the one it keeps.
+      expect(made).toHaveLength(strict ? 2 : 1)
+      expect(committed.size).toBe(1)
+      expect(made.map((entry) => entry.client)).toContain([...committed][0])
+      expect(warn).not.toHaveBeenCalled()
+      view.unmount()
+      await act(macrotask)
+    }
+  )
 })
 
 describe("a runtime without FinalizationRegistry", () => {

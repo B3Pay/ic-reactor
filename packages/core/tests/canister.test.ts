@@ -15,6 +15,7 @@ import { encodeArgs } from "@candid-core/schema/codec"
 import { AnonymousIdentity, Cbor, type Identity } from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import type { QueryFunctionContext } from "@tanstack/query-core"
+import { isRetryable } from "../src/errors.js"
 import { isReactorError } from "../src/index.js"
 import { toHex } from "../src/keys.js"
 import { type FakeReplica } from "../src/testing/fake-replica.js"
@@ -741,6 +742,29 @@ describe("an update the replica answers later", () => {
     expect(later.polls()).toBe(4)
     expect(requestsFor(replica, "bump")).toHaveLength(1)
   }, 10_000)
+
+  // `dispatch` records that the call was answered (`accepted`), so a poll
+  // answered 429 is not read as the IC turning the call away (#964). Without
+  // that record the update rejects not_delivered and is sent three times, in
+  // about 12 s: the 30 s limit lets the test fail on its assertions, not on
+  // the clock.
+  it("gives up as outcome_unknown when polls are answered HTTP 429, without sending the update again", async () => {
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const later = answerLater(replica.fetch, {
+      failures: Infinity,
+      failWith: 429,
+    })
+    const error = await shapesThrough(replica, later.fetch)
+      .bump(4n)
+      .catch((e: unknown) => e)
+    expect(error).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      httpStatus: 429,
+    })
+    expect(later.polls()).toBe(4)
+    expect(requestsFor(replica, "bump")).toHaveLength(1)
+  }, 30_000)
 
   // The regression test DECISIONS Q8 keeps from v3 (icp-js-core#1330): a
   // synchronous answer whose certificate has no status for the request yet is
@@ -1473,6 +1497,153 @@ describe("a call made as a caller who signs out before it is sent", () => {
       mayHaveExecuted: false,
     })
     expect(canisterRequests(replica)).toEqual([])
+  })
+})
+
+describe("a signer that fails to sign", () => {
+  // The agent signs outside its own error handling, so what a signer throws
+  // (a user who declines a passkey or hardware-wallet prompt) used to reach
+  // the classifier as an unknown failure: outcome_unknown, offered to
+  // resendOf, though nothing was sent (#963).
+  const declined = new Error("the user declined the signature on the device")
+
+  /** Alice's identity, throwing `thrown` for every request `refuses` picks. */
+  const signer = (
+    refuses: (endpoint: unknown) => boolean,
+    thrown: unknown = declined
+  ) => {
+    const asked: unknown[] = []
+    const identity: Identity = {
+      getPrincipal: () => alice.getPrincipal(),
+      transformRequest: (request) => {
+        const endpoint = (request as { endpoint?: unknown }).endpoint
+        asked.push(endpoint)
+        return refuses(endpoint)
+          ? Promise.reject(thrown)
+          : alice.transformRequest(request)
+      },
+    }
+    return { identity, asked }
+  }
+
+  /** A transfer by Alice, whose `identity` signs for her. */
+  const transfer = (identity: Identity) => {
+    const replica = replicaWith({
+      [LEDGER]: ledgerCanister(new Map([[ALICE as string, 1_000_000n]])),
+    })
+    const client = clientAs(replica, identity)
+    const ledger = client.canister<icrc1.Actor>(icrc1.actor, { id: LEDGER })
+    const sent = ledger
+      .icrc1_transfer(transferTo(BOB, 1n))
+      .catch((failure: unknown) => failure)
+    return { replica, client, ledger, sent }
+  }
+
+  it("rejects a write not_delivered, sends nothing and offers no re-send when the signer declines", async () => {
+    const { identity, asked } = signer(() => true)
+    const { replica, client, ledger, sent } = transfer(identity)
+    const error = await sent
+
+    expect(error).toMatchObject({
+      kind: "not_delivered",
+      mayHaveExecuted: false,
+      method: "icrc1_transfer",
+    })
+    expect((error as Error).message).toContain(
+      `the signer did not sign the request, so it was not sent: ${declined.message}`
+    )
+    expect((error as { cause?: unknown }).cause).toBe(declined)
+    expect(isRetryable(error)).toBe(false)
+    expect(isReactorError(error, ledger, "icrc1_transfer")).toBe(true)
+    expect(
+      client.resendOf(error, ledger, "icrc1_transfer", {
+        dedupedBy: (arg) => arg.created_at_time,
+      })
+    ).toBeUndefined()
+    // Asked once, and not again: nothing was sent, and nothing is re-sent.
+    expect(asked).toEqual(["call"])
+    expect(canisterRequests(replica)).toEqual([])
+  })
+
+  it("rejects a write not_delivered when the signer throws something that is not an Error", async () => {
+    const thrown = Object.create(null) as object
+    const { identity } = signer(() => true, thrown)
+    const { replica, sent } = transfer(identity)
+    const error = await sent
+
+    expect(error).toMatchObject({
+      kind: "not_delivered",
+      mayHaveExecuted: false,
+    })
+    expect((error as { cause?: unknown }).cause).toBe(thrown)
+    expect(canisterRequests(replica)).toEqual([])
+  })
+
+  it("keeps a signer's AbortError cancelled, as any abort", async () => {
+    const aborted = new DOMException("the prompt was aborted", "AbortError")
+    const { identity } = signer(() => true, aborted)
+    const { replica, sent } = transfer(identity)
+    const error = await sent
+
+    expect(error).toMatchObject({ kind: "cancelled" })
+    expect((error as { cause?: unknown }).cause).toBe(aborted)
+    expect(canisterRequests(replica)).toEqual([])
+  })
+
+  it("keeps a write outcome_unknown when the signer declines a read_state poll after the IC took the call", async () => {
+    // The call is accepted (202), so the agent polls read_state for its
+    // answer, and the signer declines to sign that poll.
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const accepted = (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> =>
+      urlOf(input).endsWith("/call")
+        ? Promise.resolve(new Response(null, { status: 202 }))
+        : replica.fetch(input, init)
+    const { identity, asked } = signer((endpoint) => endpoint === "read_state")
+    const canister = clientAs(
+      { ...replica, fetch: accepted },
+      identity
+    ).canister<shapes.Actor>(shapes.actor, { id: SHAPES })
+
+    const error = await canister.bump(1n).catch((failure: unknown) => failure)
+
+    expect(error).toMatchObject({
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      method: "bump",
+    })
+    expect((error as Error).message).toContain(
+      `the call was sent, but the signer did not sign a request for its answer: ${declined.message}`
+    )
+    expect((error as { cause?: unknown }).cause).toBe(declined)
+    expect(asked).toEqual(["call", "read_state"])
+  })
+
+  it("rejects a read not_delivered, and does not ask again, when the signer declines the read_state for the subnet's keys", async () => {
+    // A query's answer is checked against the subnet's node keys, which the
+    // agent reads with a signed read_state inside its own error handling.
+    const replica = replicaWith({ [SHAPES]: shapesCanister() })
+    const { identity, asked } = signer((endpoint) => endpoint === "read_state")
+    const canister = clientAs(replica, identity).canister<shapes.Actor>(
+      shapes.actor,
+      { id: SHAPES }
+    )
+
+    const error = await canister.one(1n).catch((failure: unknown) => failure)
+
+    expect(error).toMatchObject({
+      kind: "not_delivered",
+      mayHaveExecuted: false,
+      method: "one",
+    })
+    expect(isRetryable(error)).toBe(false)
+    expect((error as Error).message).toContain(
+      `the signer did not sign the request: ${declined.message}`
+    )
+    expect((error as { cause?: unknown }).cause).toBe(declined)
+    expect(asked).toEqual(["read", "read_state"])
   })
 })
 
