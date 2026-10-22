@@ -105,6 +105,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `TypeError` from `signIn()`, not from the first read, and return the auth
   itself, synchronously, with `AuthClient` from `@icp-sdk/auth` 10:
   `auth: (network) => new AuthClient(network)`.
+- `client.time(canister)` now stops waiting once the canister object's
+  `timeoutMs` passes, as a call through that object does (#973). It awaited
+  its `read_state` with no bound, so a node that never answered left it
+  pending forever, and with it any flow that awaits `client.time(ledger)`
+  before a transfer. It now rejects `cancelled`, code `"timeout"`, with
+  `mayHaveExecuted: false`, so such a flow fails before it sends anything,
+  and a `read_state` not yet sent when the bound passes is never sent.
+  Without `timeoutMs` it waits as before, as long as the `fetch` in use does.
 
 ### @ic-reactor/react
 

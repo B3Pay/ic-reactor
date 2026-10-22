@@ -4822,6 +4822,56 @@
     "replace": "    if (false) {"
   },
   {
+    "id": "973-time-not-bounded",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "rejects cancelled, code timeout, once the canister object's timeoutMs passes",
+    "why": "client.time() waits forever for a read_state that never answers, past the canister object's timeoutMs",
+    "file": "src/options.ts",
+    "search": "    if (ms === undefined) return read\n",
+    "replace": "    if (ms === undefined || ms > 0) return read\n"
+  },
+  {
+    "id": "973-time-timer-left",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "resolves through a canister object with timeoutMs, and leaves no timer behind",
+    "why": "client.time() leaves its timeoutMs timer running after the time arrives",
+    "file": "src/options.ts",
+    "search": "      clearTimeout(timer)\n    }\n  }\n\n  /**\n   * The IC's time, read for",
+    "replace": "      void timer\n    }\n  }\n\n  /**\n   * The IC's time, read for"
+  },
+  {
+    "id": "973-time-bound-not-the-targets",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "is bounded by that canister object's timeoutMs, not by another bound",
+    "why": "client.time() waits a bound of its own instead of the canister object's timeoutMs",
+    "file": "src/options.ts",
+    "search": "    const ms = record.timeoutMs\n    let timedOut = false\n",
+    "replace": "    const ms = record.timeoutMs === undefined ? undefined : 1_000\n    let timedOut = false\n"
+  },
+  {
+    "id": "973-time-bound-after-identity",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "counts the wait for the caller's identity, and sends nothing once the bound passed",
+    "why": "client.time() starts its timeoutMs only once the caller's identity arrives, so a slow identity waits past the bound",
+    "file": "src/options.ts",
+    "search": "    const read = readTime(where, () => timedOut)\n",
+    "replace": "    await internals.agentFor(internals.current().principal, where)\n    const read = readTime(where, () => timedOut)\n"
+  },
+  {
+    "id": "973-time-sent-after-timeout",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "counts the wait for the caller's identity, and sends nothing once the bound passed",
+    "why": "client.time() still sends its read_state once its timeoutMs has passed while the caller's identity was awaited",
+    "file": "src/options.ts",
+    "search": "    if (timedOut()) throw timedOutError(where, false)\n",
+    "replace": ""
+  },
+  {
     "id": "873-foreign-skiptoken-encoded",
     "package": "core",
     "test": "tests/options.test.ts",
