@@ -428,14 +428,18 @@ describe("a client following its auth in a browser", () => {
     expect(factory).toHaveBeenCalledTimes(1)
   })
 
-  it("refuses a factory that returns something other than an auth, naming what is missing", () => {
+  it("refuses a factory that returns something other than an auth, naming what is missing", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
     onPage()
     const client = createClient({
       network: "ic",
       auth: () => ({ getStatus: () => ({ state: "signed-out" }) }) as never,
     })
 
-    expect(() => client.caller()).toThrow(
+    // As for a factory that throws: the reads call anonymously, and signIn()
+    // says why (#972).
+    expect(client.caller()).toBe(ANONYMOUS)
+    await expect(client.signIn()).rejects.toThrow(
       /not an AuthLike: it has no getPrincipal\(\), getIdentity\(\), subscribe\(\), signIn\(\), signOut\(\)/
     )
   })
