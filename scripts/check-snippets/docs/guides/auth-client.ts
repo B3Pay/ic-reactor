@@ -15,10 +15,13 @@ interface Built {
   readonly signer: string
 }
 
-const builtBy = new WeakMap<Client, () => Built | undefined>()
+// Keyed by the client's QueryClient, which every view of the client that
+// `useClient()` returns shares: a view is an object of its own.
+const builtBy = new WeakMap<Client["queryClient"], () => Built | undefined>()
 
 /** What `client`'s auth factory built, once it has run. */
-export const getAuthClient = (client: Client) => builtBy.get(client)?.()
+export const getAuthClient = (client: Client) =>
+  builtBy.get(client.queryClient)?.()
 
 export function createAppClient(): Client {
   let built: Built | undefined
@@ -33,6 +36,6 @@ export function createAppClient(): Client {
       return authClient
     },
   })
-  builtBy.set(client, () => built)
+  builtBy.set(client.queryClient, () => built)
   return client
 }
