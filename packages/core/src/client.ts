@@ -1782,11 +1782,13 @@ export function createClientWith(
    * `dispose`.
    *
    * One view per object and principal, so that a component's dependencies are
-   * the same from one render to the next. Only the anonymous view and the
-   * live caller's are kept past a call for another principal, so switching
-   * accounts leaves nothing behind. A client built with `identity` has one
-   * caller for good, the one its server render built keys for too: it
-   * returns `this`.
+   * the same from one render to the next. A view already made is handed back
+   * without reading who calls. Making a view drops every other one but the
+   * anonymous view and the live caller's, so switching accounts leaves
+   * nothing behind. Until then, the view of a user who signed out, or whose
+   * session expired, is kept, and that user signing in again gets the same
+   * view back. A client built with `identity` has one caller for good, the
+   * one its server render built keys for too: it returns `this`.
    *
    * A view carries the object it was made over (`CLIENT_OF`), which
    * `ReactorProvider` holds in its place, and asked for a view of its own it
@@ -1801,14 +1803,18 @@ export function createClientWith(
     if (fixedCaller !== undefined) return base
     let byPrincipal = views.get(base)
     if (byPrincipal === undefined) views.set(base, (byPrincipal = new Map()))
-    const live = current().principal
-    for (const kept of byPrincipal.keys()) {
-      if (kept !== principal && kept !== live && kept !== ANONYMOUS) {
-        byPrincipal.delete(kept)
-      }
-    }
     let view = byPrincipal.get(principal)
     if (view === undefined) {
+      // The views are pruned only when one is made, since `useClient()` asks
+      // for two on every render and reading the live caller converts its
+      // principal to text each time (#977). Every miss prunes, so the map
+      // holds at most the anonymous view, the live caller's and this one.
+      const live = current().principal
+      for (const kept of byPrincipal.keys()) {
+        if (kept !== principal && kept !== live && kept !== ANONYMOUS) {
+          byPrincipal.delete(kept)
+        }
+      }
       const caller: Caller = Object.freeze({
         principal,
         authenticated: principal !== ANONYMOUS,
