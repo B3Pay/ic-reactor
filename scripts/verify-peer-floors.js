@@ -31,21 +31,20 @@
  *   --keep   leave the worktrees and the TypeScript consumer in place
  *            (debugging)
  */
-import { execFileSync, spawnSync } from "node:child_process"
+import { execFileSync } from "node:child_process"
 import {
   lstatSync,
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   realpathSync,
   rmSync,
   symlinkSync,
   unlinkSync,
-  writeFileSync,
 } from "node:fs"
 import { dirname, join } from "node:path"
 import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
+import { readJson, run, writeJson } from "./lib/io.mjs"
 
 const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..")
 const SCRIPT = fileURLToPath(import.meta.url)
@@ -153,23 +152,6 @@ export function alternativeFloors(range) {
 /** The lowest version a peer range accepts. */
 function lowestVersion(range) {
   return alternativeFloors(range).sort(compareVersions)[0]
-}
-
-function readJson(path) {
-  return JSON.parse(readFileSync(path, "utf8"))
-}
-
-function writeJson(path, value) {
-  writeFileSync(path, JSON.stringify(value, null, 2) + "\n")
-}
-
-function run(command, args, cwd) {
-  const result = spawnSync(command, args, {
-    cwd,
-    stdio: "inherit",
-    env: { ...process.env, HUSKY: "0" },
-  })
-  return result.status === 0
 }
 
 /**

@@ -443,7 +443,7 @@ async function runGroup(
 }
 
 /** `"a"`, or `"a", "b"`: canister names as messages quote them. */
-function quoteNames(names: string[]): string {
+export function quoteNames(names: string[]): string {
   return names.map((name) => `"${name}"`).join(", ")
 }
 

@@ -30,8 +30,8 @@
  *   never taken for a mainnet host, which has one key, the agent's own; its
  *   Internet Identity URL is taken over `http:` only on a local page; and the
  *   opt-in itself is refused on a page under a shared parent that is not a
- *   public suffix (`ic0.app`, `github.dev`, `gitpod.io`), where any stranger's
- *   page can write the cookie.
+ *   public suffix (`ic0.app`, `github.dev`, `gitpod.io`, `loca.lt`,
+ *   `devtunnels.ms`), where any stranger's page can write the cookie.
  *
  * @module
  */
@@ -53,9 +53,11 @@ import { isServer } from "./runtime.js"
  *   or a dev server describes it. In a browser, a page on a local replica or
  *   on a mainnet boundary domain routes through its own origin, and so does
  *   a page that forwards a dev server: Codespaces, Gitpod, a LAN address
- *   (RFC 1918, link-local, IPv6 ULA), a `*.local`, `*.test` or `*.internal`
- *   name such as `host.docker.internal`, or a tunnel (ngrok,
- *   `trycloudflare.com`, `loca.lt`). `"env"` is for localhost pages: those
+ *   (RFC 1918, link-local, IPv6 ULA), a Tailscale address or name
+ *   (100.64/10, `*.ts.net`), a LAN name with no dot such as `devbox`, a
+ *   `*.local`, `*.test` or `*.internal` name such as `host.docker.internal`,
+ *   or a tunnel (ngrok, `trycloudflare.com`, `loca.lt`, VS Code's
+ *   `devtunnels.ms`). `"env"` is for localhost pages: those
  *   others never reach mainnet, but none is local. The root key
  *   comes from the `ic_env` cookie, but only where that cookie is trusted:
  *   when both the page and the replica are local, or the client was built
@@ -67,8 +69,9 @@ import { isServer } from "./runtime.js"
  *   and the agent checks the forwarded replica's certificates against
  *   mainnet's key, so every certified call fails verification. Name the
  *   replica with an object that has a `rootKey` (or `fetchRootKey: true`)
- *   and the canisters with `{ id }`: `allowEnvConfig: true` is refused
- *   there, because every workspace is a sibling of every stranger's. On a
+ *   and the canisters with `{ id }`: on a dev container or a localtunnel,
+ *   `allowEnvConfig: true` is refused, because every workspace or tunnel is
+ *   a sibling of every stranger's. On a
  *   mainnet host the cookie's root key is never taken, even with
  *   `allowEnvConfig: true`: the agent keeps mainnet's own. On a server there
  *   is no page and no cookie: the host is `ICP_HOST` or `IC_HOST` when
@@ -88,7 +91,13 @@ export type Network =
   | "local"
   | "env"
   | {
-      /** The replica's URL. A host with no scheme is read against the page's protocol, as `HttpAgent` reads it. */
+      /**
+       * The replica's URL, over `http:` or `https:`. A host with no scheme is
+       * read against the page's protocol, as `HttpAgent` reads it, and is
+       * refused where there is no page. `createClient` throws a `TypeError`
+       * for any other host, such as `localhost:4943`, which reads as the
+       * scheme `localhost:`.
+       */
       readonly host: string
       /**
        * The root key certificates are verified against. Used as given and
@@ -119,8 +128,9 @@ export interface NetworkOptions {
    * and an `http:` Internet Identity URL only on a local page.
    *
    * @throws TypeError, when `true`, on a page under `ic0.app`, `github.dev`
-   * (Codespaces) or `gitpod.io`: none of them is a public suffix, so any
-   * other site under it can write the cookie this page reads.
+   * (Codespaces), `gitpod.io`, `loca.lt` (localtunnel) or `devtunnels.ms`
+   * (VS Code dev tunnels): none of them is a public suffix, so any other site
+   * under it can write the cookie this page reads.
    */
   readonly allowEnvConfig?: boolean
 }
@@ -258,11 +268,19 @@ const isMainnetHostname = (hostname: string | undefined): boolean =>
  * Public Suffix List, so a page on any one of them can set a cookie for the
  * whole parent, and every other page under it reads that cookie. `ic0.app`
  * serves every canister's frontend, `github.dev` every codespace
- * (`*.app.github.dev`), `gitpod.io` every Gitpod workspace. `icp0.io` and
+ * (`*.app.github.dev`), `gitpod.io` every Gitpod workspace, `loca.lt` every
+ * localtunnel and `devtunnels.ms` every VS Code dev tunnel. `icp0.io` and
  * `*.raw.icp0.io` are public suffixes, so they are not here: a browser
- * refuses a cookie a sibling canister sets for them.
+ * refuses a cookie a sibling canister sets for them. So are the other tunnel
+ * parents {@link REMOTE_DEV_SUFFIXES} names.
  */
-const SHARED_PARENTS = ["ic0.app", "github.dev", "gitpod.io"]
+const SHARED_PARENTS = [
+  "ic0.app",
+  "github.dev",
+  "gitpod.io",
+  "loca.lt",
+  "devtunnels.ms",
+]
 
 /**
  * A canister's own page on `icp0.io`: `<id>.icp0.io` or `<id>.raw.icp0.io`,
@@ -276,8 +294,9 @@ const ICP0_CANISTER_PAGE = /^([a-z0-9-]+)\.(?:raw\.)?icp0\.io$/
  * Names that forward a dev server and its replica to the browser from
  * elsewhere: dev containers (Codespaces, Gitpod), the special-use and
  * internal names a LAN, mDNS or Docker gives a dev machine (`*.local`,
- * `*.test`, `*.internal`, which covers `host.docker.internal`), and the
- * tunnels people open to show a dev app on a phone. Their pages route through
+ * `*.test`, `*.internal`, which covers `host.docker.internal`), the names
+ * Tailscale gives the machines of a tailnet (`*.ts.net`), and the tunnels
+ * people open to show a dev app on a phone. Their pages route through
  * their own origin, but they are never local: on a dev container every
  * workspace is a sibling of every stranger's, and the rest are not this
  * machine. A production app on such a name falls back to nothing it did not
@@ -295,24 +314,39 @@ const REMOTE_DEV_SUFFIXES = [
   ".ngrok.io",
   ".trycloudflare.com",
   ".loca.lt",
+  ".devtunnels.ms",
+  ".ts.net",
 ]
 
 /**
  * Private and link-local addresses, which a LAN or a VM gives a dev machine
- * (`vite --host` prints one): 10/8, 172.16/12, 192.168/16 and 169.254/16, and
- * IPv6's unique local fc00::/7 and link-local fe80::/10, with the brackets a
- * URL's `hostname` keeps around them.
+ * (`vite --host` prints one): 10/8, 172.16/12, 192.168/16 and 169.254/16,
+ * the shared 100.64/10 that Tailscale gives each machine of a tailnet, and
+ * IPv6's unique local fc00::/7 (Tailscale's IPv6 addresses among them) and
+ * link-local fe80::/10, with the brackets a URL's `hostname` keeps around
+ * them.
  */
 const PRIVATE_ADDRESS =
-  /^(?:10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])|192\.168|169\.254)\.\d{1,3}\.\d{1,3}$|^\[(?:f[cd][0-9a-f]{2}|fe[89ab][0-9a-f]):[0-9a-f:.]*\]$/i
+  /^(?:10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])|192\.168|169\.254|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7]))\.\d{1,3}\.\d{1,3}$|^\[(?:f[cd][0-9a-f]{2}|fe[89ab][0-9a-f]):[0-9a-f:.]*\]$/i
+
+/** An `http:` or `https:` origin: a page a web server serves. */
+const WEB_ORIGIN = /^https?:\/\//i
 
 /**
- * Whether `hostname` forwards a dev server from elsewhere: a
- * {@link REMOTE_DEV_SUFFIXES} name or a {@link PRIVATE_ADDRESS}.
+ * Whether the page at `origin`, whose hostname is `hostname`, forwards a dev
+ * server from elsewhere: a {@link REMOTE_DEV_SUFFIXES} name, a
+ * {@link PRIVATE_ADDRESS}, or a web page whose name has no dot, which only a
+ * LAN, a hosts file or a VPN's DNS resolves (`http://devbox:5173`). An IPv6
+ * address has no dot either, so one in brackets is not such a name. Neither
+ * is the id a browser extension's or a desktop app's own scheme puts there
+ * (`chrome-extension://<id>`, `app://name`): no dev server is behind it.
  */
-const isRemoteDevHostname = (hostname: string): boolean =>
+const isRemoteDevPage = (origin: string, hostname: string): boolean =>
   PRIVATE_ADDRESS.test(hostname) ||
-  REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
+  REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix)) ||
+  (WEB_ORIGIN.test(origin) &&
+    !hostname.includes(".") &&
+    !hostname.startsWith("["))
 
 /** 127.0.0.0/8: the entire IPv4 loopback range, not just 127.0.0.1. */
 const IPV4_LOOPBACK = /^127\.(?:\d{1,3}\.){2}\d{1,3}$/
@@ -346,9 +380,10 @@ const isLocalHostname = (hostname: string | undefined): boolean => {
  * domain, is read against the page's protocol. The agent's scheme test is
  * copied as is, so `localhost:4943`, which it reads as the scheme `localhost:`,
  * has no hostname here either, and neither has a scheme-less host where there
- * is no page. A host the agent cannot read is not local.
+ * is no page. A host the agent cannot read is not local. Internal: also read
+ * by `createClient`'s host check, and not exported from the package entry.
  */
-const agentUrlOf = (host: string): URL | undefined => {
+export const agentUrlOf = (host: string): URL | undefined => {
   try {
     return !/^[a-z]+:/.test(host) && typeof window !== "undefined"
       ? new URL(`${window.location.protocol}//${host}`)
@@ -358,18 +393,41 @@ const agentUrlOf = (host: string): URL | undefined => {
   }
 }
 
-/** The hostname of {@link agentUrlOf}. */
-const agentHostnameOf = (host: string): string | undefined =>
-  agentUrlOf(host)?.hostname
+/**
+ * A hostname without the one trailing dot a fully qualified name may end
+ * with. The URL parser keeps it, so `victim.ic0.app.` would otherwise not be
+ * under `ic0.app`, and every rule here that names a domain would miss it
+ * (all but {@link pageIsIcp0Canister}'s, which keeps it on purpose).
+ */
+const withoutRootDot = (hostname: string): string =>
+  hostname.endsWith(".") ? hostname.slice(0, -1) : hostname
 
-/** The hostname of a page origin, or `undefined` when it is not a URL (an opaque origin reads as `"null"`). */
-const pageHostnameOf = (origin: string | undefined): string | undefined => {
+/** The hostname of {@link agentUrlOf}, without its trailing dot. */
+const agentHostnameOf = (host: string): string | undefined => {
+  const hostname = agentUrlOf(host)?.hostname
+  return hostname === undefined ? undefined : withoutRootDot(hostname)
+}
+
+/**
+ * The hostname of a page origin as the URL parser reads it, trailing dot
+ * included, or `undefined` when it is not a URL (an opaque origin reads as
+ * `"null"`).
+ */
+const parsedHostnameOf = (origin: string | undefined): string | undefined => {
   if (!origin) return undefined
   try {
     return new URL(origin).hostname || undefined
   } catch {
     return undefined
   }
+}
+
+/** The hostname of a page origin without its trailing dot (see {@link parsedHostnameOf}). */
+const pageHostnameOf = (origin: string | undefined): string | undefined => {
+  const hostname = parsedHostnameOf(origin)
+  return hostname === undefined
+    ? undefined
+    : withoutRootDot(hostname) || undefined
 }
 
 /**
@@ -399,7 +457,7 @@ const pageIsLocal = (): boolean =>
  * The page's own origin when agent traffic can route through it: a local page
  * (a dev server or a locally deployed asset canister proxies `/api`), a
  * mainnet boundary domain, or a page that forwards a dev server from
- * elsewhere ({@link isRemoteDevHostname}). An ordinary web host (Vercel,
+ * elsewhere ({@link isRemoteDevPage}). An ordinary web host (Vercel,
  * Cloudflare, a custom domain) cannot, so it is left to the fallback; so is a
  * page with no usable origin.
  *
@@ -416,7 +474,7 @@ const routableOrigin = (): string | undefined => {
   const routable =
     isLocalHostname(hostname) ||
     isMainnetHostname(hostname) ||
-    isRemoteDevHostname(hostname)
+    isRemoteDevPage(origin, hostname)
   return routable ? origin : undefined
 }
 
@@ -470,11 +528,14 @@ const trustsEnvFor = (
 
 /**
  * Whether the page is a canister's own {@link ICP0_CANISTER_PAGE}. A worker
- * has no cookie, so it is never one.
+ * has no cookie, so it is never one. The name is matched as the URL parser
+ * reads it: `<id>.icp0.io.`, with the trailing dot, believes nothing by
+ * default, because the Public Suffix List's protection of a name written
+ * that way has not been checked.
  */
 const pageIsIcp0Canister = (): boolean => {
   if (typeof window === "undefined") return false
-  const match = ICP0_CANISTER_PAGE.exec(pageHostnameOf(pageOrigin()) ?? "")
+  const match = ICP0_CANISTER_PAGE.exec(parsedHostnameOf(pageOrigin()) ?? "")
   return match !== null && principalProblem(match[1]!) === undefined
 }
 

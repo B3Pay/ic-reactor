@@ -406,6 +406,15 @@ function describeExecError(error: unknown): string {
   return describeError(error)
 }
 
+/**
+ * Whether the gateway is at `localhost` or `127.0.0.1`, the hosts that
+ * icp-cli's built-in Internet Identity, `id.ai.localhost` on the gateway's
+ * port, is known to share. Narrower than `isLocalHostname` in `local-host.ts`
+ * on purpose: a gateway on another loopback address, such as `127.0.0.2`, need
+ * not be the server a browser reaches at `id.ai.localhost`. Core's client names
+ * that provider for every host `isLocalHostname` accepts (`builtInAuthorizeUrl`
+ * in its `src/network.ts`), so on those other hosts the two differ.
+ */
 function isLocalhostGateway(proxyTarget: string): boolean {
   try {
     const { hostname } = new URL(proxyTarget)

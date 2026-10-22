@@ -187,19 +187,25 @@ export interface Running {
  * mean to by emitting them: a real watcher on a directory created a moment
  * ago sometimes reports the files in it, which starts a run nobody asked for.
  * `realWatcher` keeps it. `hmr: false` is the server without a WebSocket
- * (`noWebSocket`). The
+ * (`noWebSocket`). `mode: "test"` is the server Vitest starts. The
  * environment half of the plugin is off, so no test runs `icp`.
  */
 export async function startDev(
   root: string,
   options: IcReactorPluginOptions,
-  { before = [] as Plugin[], realWatcher = false, hmr = true } = {}
+  {
+    before = [] as Plugin[],
+    realWatcher = false,
+    hmr = true,
+    mode = undefined as string | undefined,
+  } = {}
 ): Promise<Running> {
   const { logger, lines } = recordingLogger()
   const httpServer = http.createServer()
   const server = await createServer({
     root,
     configFile: false,
+    mode,
     customLogger: logger,
     server: {
       middlewareMode: true,

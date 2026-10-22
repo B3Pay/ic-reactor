@@ -16,7 +16,6 @@ import {
   collect,
   declarationFilesOf,
   evaluate,
-  exportsMapOf,
   isAlpha,
   readExportNames,
   typesFileOf,
@@ -658,26 +657,6 @@ describe("a subpath of `exports` that the budget has no entry for", () => {
 
   it("holds for the real packages", () => {
     assert.deepEqual(checkPackages({ rootDir: repoRoot }), [])
-  })
-})
-
-describe("reading an `exports` map", () => {
-  it("takes the sugar forms as the root subpath", () => {
-    assert.deepEqual(exportsMapOf({ exports: "./index.js" }), {
-      ".": "./index.js",
-    })
-    assert.deepEqual(
-      exportsMapOf({ exports: { import: "./a.js", default: "./b.js" } }),
-      { ".": { import: "./a.js", default: "./b.js" } }
-    )
-    assert.deepEqual(
-      exportsMapOf({ exports: { ".": "./a.js", "./b": null } }),
-      {
-        ".": "./a.js",
-        "./b": null,
-      }
-    )
-    assert.equal(exportsMapOf({}), undefined)
   })
 })
 

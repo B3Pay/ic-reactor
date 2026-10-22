@@ -136,6 +136,7 @@ import { tmpdir } from "node:os"
 import { dirname, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { AI_CONTEXT_FILES } from "./ai-context-files.js"
+import { closesFence, fenceOpening } from "./lib/markdown-fences.mjs"
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
 const fixturesDir = join(rootDir, "scripts", "check-snippets")
@@ -337,13 +338,11 @@ function docsFiles() {
 // ── Fence extraction ─────────────────────────────────────────────────────────
 
 /**
- * The fenced code blocks of a Markdown (or MDX) file, following CommonMark: a
- * fence closes on a line of the same character, at least as long, with no
- * info string, so a ```ts inside a ````markdown block is content, not a fence.
- * A fence that is never closed runs to the end of the file, as CommonMark has
- * it, so its code is checked rather than dropped (#980). The opening fence's
- * indentation is removed from each line (fences nested in lists and MDX
- * components are indented).
+ * The fenced code blocks of a Markdown (or MDX) file, by the rule in
+ * `lib/markdown-fences.mjs`. A fence that is never closed runs to the end of
+ * the file, as CommonMark has it, so its code is checked rather than dropped
+ * (#980). The opening fence's indentation is removed from each line (fences
+ * nested in lists and MDX components are indented).
  *
  * @returns {{ lang: string, info: string[], line: number, code: string }[]}
  *   `line` is the 1-based line of the fence's first line of code.
@@ -355,25 +354,11 @@ function extractFences(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     if (open === null) {
-      const match = /^(\s*)(`{3,}|~{3,})\s*([^\s`]*)(.*)$/.exec(line)
-      if (match) {
-        open = {
-          indent: match[1].length,
-          marker: match[2],
-          lang: match[3].toLowerCase(),
-          info: match[4].trim().split(/\s+/).filter(Boolean),
-          line: i + 2,
-          body: [],
-        }
-      }
+      const opening = fenceOpening(line)
+      if (opening) open = { ...opening, line: i + 2, body: [] }
       continue
     }
-    const close = /^\s*(`{3,}|~{3,})\s*$/.exec(line)
-    if (
-      close &&
-      close[1][0] === open.marker[0] &&
-      close[1].length >= open.marker.length
-    ) {
+    if (closesFence(line, open.marker)) {
       const { lang, info, line: start, body } = open
       fences.push({ lang, info, line: start, code: body.join("\n") })
       open = null

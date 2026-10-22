@@ -23,12 +23,7 @@ import {
   getIcEnvironmentInfo,
   type IcEnvironment,
 } from "./env.js"
-
-/**
- * Where `/api` goes while `icp` reports no network: icp-cli's local network
- * on its default gateway port, the client's `"local"`.
- */
-export const DEFAULT_LOCAL_REPLICA = "http://127.0.0.1:8000"
+import { DEFAULT_LOCAL_REPLICA, isLocalHostname } from "./local-host.js"
 
 /**
  * The Internet Identity provider the cookie names when no canister is
@@ -273,12 +268,7 @@ function isLoopbackHost(host: string | undefined): boolean {
   } catch {
     return true
   }
-  return (
-    hostname === "localhost" ||
-    hostname.endsWith(".localhost") ||
-    /^127\.(?:\d{1,3}\.){2}\d{1,3}$/.test(hostname) ||
-    hostname === "[::1]"
-  )
+  return isLocalHostname(hostname)
 }
 
 /**
