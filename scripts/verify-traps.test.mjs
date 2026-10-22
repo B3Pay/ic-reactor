@@ -180,13 +180,123 @@ describe("parseTraps", () => {
         " *    // @ts-expect-error written as an example, in a doc comment",
         " * Do not use @ts-ignore or @ts-nocheck here.",
         " */",
+        "ok() // a trailing comment that mentions @ts-ignore in a sentence",
+        'const inAString = "a() // @ts-ignore"',
+        "const inATemplate = `b() // @ts-expect-error ${inAString}`",
         "// trap: real-one",
         "// @ts-expect-error a real directive",
         "bad()",
       ].join("\n")
     )
     assert.deepEqual(problems, [])
-    assert.deepEqual(traps, [{ id: "real-one", line: 7 }])
+    assert.deepEqual(traps, [{ id: "real-one", line: 10 }])
+  })
+
+  it("flags a directive written after code on its line, as TypeScript reads it", () => {
+    // TypeScript honours `// @ts-ignore` and `// @ts-expect-error` after
+    // code too (#971).
+    const { problems } = parseTraps(
+      [
+        "a() // @ts-ignore",
+        "bad()",
+        "b() /* @ts-ignore */",
+        "bad()",
+        "c() /// @ts-expect-error untagged, after code",
+        "bad()",
+        'const url = "https://example.com" // @ts-ignore after a string',
+        "bad()",
+        "/* a block */ // @ts-ignore after a block comment",
+        "bad()",
+        "/*",
+        " * a doc comment */ d() // @ts-ignore after the comment closes",
+        "bad()",
+      ].join("\n")
+    )
+    assert.deepEqual(
+      problems.map((problem) => problem.match(/^line (\d+)/)?.[1]),
+      ["1", "3", "5", "7", "9", "12"],
+      problems.join("\n")
+    )
+    assert.match(problems[0], /line 1: @ts-ignore and @ts-nocheck/)
+    assert.match(problems[2], /line 5: this @ts-expect-error has no/)
+  })
+
+  it("flags a directive at the start of a block comment's last line", () => {
+    for (const last of ["@ts-ignore */", " * @ts-ignore */"]) {
+      const { problems } = parseTraps(
+        ["/* a comment whose last line is", last, "bad()"].join("\n")
+      )
+      assert.equal(problems.length, 1, problems.join("\n"))
+      assert.match(problems[0], /line 2: @ts-ignore and @ts-nocheck/)
+    }
+  })
+
+  it("flags what TypeScript reads where a line pattern cannot tell", () => {
+    const { problems } = parseTraps(
+      [
+        "const n = 3",
+        "  * 2 // @ts-ignore after a multiplication",
+        "bad()",
+        "class Counter {",
+        "  *values() { // @ts-ignore after a generator method",
+        "    yield bad()",
+        "  }",
+        "}",
+        "a() // @ts-ignored",
+        "bad()",
+        "b() // @ts-expect-errors",
+        "bad()",
+      ].join("\n")
+    )
+    assert.deepEqual(
+      problems.map((problem) => problem.match(/^line (\d+)/)?.[1]),
+      ["2", "5", "9", "11"],
+      problems.join("\n")
+    )
+    assert.match(problems[2], /line 9: @ts-ignore and @ts-nocheck/)
+    assert.match(problems[3], /line 11: this @ts-expect-error has no/)
+  })
+
+  it("flags a @ts-nocheck TypeScript obeys after a comment on the first line", () => {
+    const { problems } = parseTraps("/* a */ // @ts-nocheck\nbad()\n")
+    assert.equal(problems.length, 1, problems.join("\n"))
+    assert.match(problems[0], /line 1: @ts-ignore and @ts-nocheck/)
+  })
+
+  it("refuses a tag whose directive follows code on its line", () => {
+    const { traps, problems } = parseTraps(
+      "// trap: trailing\nsetUp() // @ts-expect-error the next line is wrong\nbad()\n"
+    )
+    assert.deepEqual(traps, [])
+    assert.equal(problems.length, 1, problems.join("\n"))
+    assert.match(
+      problems[0],
+      /line 1: the tag "trap: trailing" must be followed by a line that starts with its/
+    )
+  })
+
+  it("counts lines as the file does, past a U+2028 in a string", () => {
+    // TypeScript also breaks lines at U+2028 and U+2029; a directive after
+    // one is still on the line the file's "\n"s give it.
+    const { problems } = parseTraps(
+      [
+        'export const a = "\u2028\u2029"',
+        "ok() // @ts-ignore",
+        "export const b: string = 1",
+      ].join("\n")
+    )
+    assert.equal(problems.length, 1, problems.join("\n"))
+    assert.match(problems[0], /line 2: @ts-ignore and @ts-nocheck/)
+  })
+
+  it("still flags a directive that starts a line TypeScript does not read, as before", () => {
+    const { problems } = parseTraps(
+      ["/**", " * @ts-expect-error in the middle of a doc comment", " */"].join(
+        "\n"
+      )
+    )
+    assert.equal(problems.length, 1, problems.join("\n"))
+    assert.match(problems[0], /line 2: this @ts-expect-error has no/)
   })
 
   it("flags a directive with no tag, a tag with no directive, and ts-ignore", () => {
