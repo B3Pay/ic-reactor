@@ -135,6 +135,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   skipped there, is listed on its own as no evidence, with the file's error,
   and makes the run exit 2; it used to count as passing either way, and
   `main` made every v4 test look like a guard.
+- `pnpm check:ai-context` holds every skill under `skill-packages/` to the
+  rules for a skill an app installs, with or without a plugin marketplace:
+  its `SKILL.md` lists `@ic-reactor/react`'s version, and any other package's
+  it lists, at the current version, and it names no path that exists only in
+  this repository. They ran only on the skills of
+  `.claude-plugin/marketplace.json`, which v4 does not have, so
+  `skill-packages/ic-reactor/SKILL.md` could drop its version lines or point
+  at `packages/core/src/` and pass. The summary line now counts them as
+  "consumer skill(s)". `skill-packages/ic-reactor/SKILL.md` passes both as it
+  stands (#970).
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
