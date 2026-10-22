@@ -10,6 +10,76 @@
     "replace": "const noCodeRan = true"
   },
   {
+    "id": "963-signer-failure-unknown",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered, sends nothing and offers no re-send when the signer declines",
+    "why": "what a signer throws reaches the classifier unmarked, so a write the user declined to sign rejects outcome_unknown with mayHaveExecuted: true and is offered to resendOf, though nothing was sent",
+    "file": "src/client.ts",
+    "search": "            throw notSigned(cause)\n",
+    "replace": "            throw cause\n"
+  },
+  {
+    "id": "963-signer-error-dropped",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered, sends nothing and offers no re-send when the signer declines",
+    "why": "the error the agent was handed, not the signer's own, becomes the cause, so an app cannot tell a declined prompt from another failure by its cause",
+    "file": "src/errors.ts",
+    "search": "      cause: thrown,\n",
+    "replace": "      cause: error,\n"
+  },
+  {
+    "id": "963-poll-signing-failure-not-delivered",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a write outcome_unknown when the signer declines a read_state poll after the IC took the call",
+    "why": "a request the signer did not sign reads as not_delivered even for a read_state poll of an update the IC already took, which may have executed",
+    "file": "src/errors.ts",
+    "search": "      mayBeAccepted || (context.mode === \"update\" && context.again === true)\n",
+    "replace": "      context.mode === \"update\" && context.again === true\n"
+  },
+  {
+    "id": "963-wrapped-signer-failure-retried",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a read not_delivered, and does not ask again, when the signer declines the read_state for the subnet's keys",
+    "why": "a signer failure the agent wrapped as UnexpectedErrorCode (a query's read_state for the subnet's keys) is not unwrapped, so the read is retryable and the signer is asked again on every re-send",
+    "file": "src/errors.ts",
+    "search": "  return signerError(asRecord(record.code).error, depth + 1)\n",
+    "replace": "  return undefined\n"
+  },
+  {
+    "id": "963-signer-detail-stringified",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered when the signer throws something that is not an Error",
+    "why": "what the signer threw is turned into text with String(), which throws for an object with no prototype, so the classifier fails and the write is not reported not_delivered",
+    "file": "src/errors.ts",
+    "search": "withDetail(reason, condense(messageOf(thrown)))",
+    "replace": "withDetail(reason, condense(messageOf(thrown) ?? String(thrown)))"
+  },
+  {
+    "id": "963-signer-abort-not-cancelled",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a signer's AbortError cancelled, as any abort",
+    "why": "an AbortError the signer threw is looked for on the wrapper instead, so it reads as a signer failure (not_delivered) rather than cancelled, as every other abort does",
+    "file": "src/errors.ts",
+    "search": "  if (context.signal?.aborted || isAbort(thrown)) {",
+    "replace": "  if (context.signal?.aborted || isAbort(error)) {"
+  },
+  {
+    "id": "963-declined-resend-loses-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome, and the offer, when the signer declines the re-send",
+    "why": "a re-send of an offered write that the signer declines reads as not_delivered, so the write it re-sends, which may have run, is no longer offered and its error says it may not have executed",
+    "file": "src/errors.ts",
+    "search": "      mayBeAccepted || (context.mode === \"update\" && context.again === true)\n",
+    "replace": "      mayBeAccepted\n"
+  },
+  {
     "id": "ir1c-codespaces-host-is-local",
     "package": "core",
     "test": "tests/network.test.ts",
@@ -146,8 +216,8 @@
     "testName": "disposes, with its auth, each client of a first render that a Suspense boundary above the provider threw away",
     "why": "an owned client is never registered for disposal at collection, so the client of a render React threw away keeps its auth and listeners for good",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
-    "replace": "  if (!owned && unclaimed?.unregister(client)) reportLazilyShared()\n"
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  if (!owned && !of && unclaimed?.unregister(client)) reportLazilyShared()\n"
   },
   {
     "id": "ir6-committed-client-left-registered",
@@ -166,7 +236,7 @@
     "testName": "is never registered, even when renders are thrown away",
     "why": "a client the app created is registered too, so a collection after a thrown-away render disposes a client its owner still uses",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
     "replace": "  unclaimed?.register(held, client, client)\n"
   },
   {
@@ -178,7 +248,7 @@
     "edits": [
       {
         "file": "src/index.tsx",
-        "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+        "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
         "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
       },
       {
@@ -195,7 +265,7 @@
     "testName": "is let go by the registry as soon as a later render gets it back",
     "why": "a factory call that hands back a client a dropped render registered leaves the registration standing until a commit, so a collection while the fallback still shows disposes the lazily shared client the retry is about to mount",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
     "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
   },
   {
@@ -205,8 +275,8 @@
     "testName": "warns once, before anything commits, when a render gets back the client of a render React threw away",
     "why": "a factory that hands back a client a render which never committed created, as a lazily shared one does, is taken off the registry without a word, so the pattern shows only later, as cancelled calls after its first provider unmounts or a collection disposes it",
     "file": "src/index.tsx",
-    "search": "  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
-    "replace": "  else unclaimed?.unregister(client)\n"
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else if (!of) unclaimed?.unregister(client)\n"
   },
   {
     "id": "ir6-every-borrowed-client-warned",
@@ -215,8 +285,28 @@
     "testName": "says nothing about a client the factory creates on each call",
     "why": "every borrowed client is reported as lazily shared, so the module-scope client the docs recommend warns on every render that gets it",
     "file": "src/index.tsx",
-    "search": "  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
     "replace": "  else {\n    unclaimed?.unregister(client)\n    reportLazilyShared()\n  }\n"
+  },
+  {
+    "id": "965-view-client-unregistered-leaks",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "disposes the clients of a thrown-away render whose nested provider was handed their view",
+    "why": "a nested provider handed the outer one's useClient() view removes the outer client's registration (quietly) while both render, so when React throws that render away the outer client and its auth listeners are never disposed",
+    "file": "src/index.tsx",
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else if (unclaimed?.unregister(client) && !of) reportLazilyShared()\n"
+  },
+  {
+    "id": "965-view-client-warned",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "says nothing about a nested provider handed the view of the outer one's client",
+    "why": "a nested provider handed the outer one's useClient() view is reported as a lazily shared factory, though it leaves the registration alone",
+    "file": "src/index.tsx",
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else if (of !== undefined || unclaimed?.unregister(client)) reportLazilyShared()\n"
   },
   {
     "id": "ir6-server-client-registered",
@@ -449,6 +539,16 @@
     "file": "src/call.ts",
     "search": "  if (status === undefined) return undefined",
     "replace": "  if (status === undefined) throw new Error(\"no status for the request\")"
+  },
+  {
+    "id": "964-accepted-update-unrecorded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "gives up as outcome_unknown when polls are answered HTTP 429",
+    "why": "an update answered 202 is not recorded as accepted, so polls answered 429 classify it not_delivered and the update is sent again, running it up to three times",
+    "file": "src/call.ts",
+    "search": "    accepted = true\n",
+    "replace": ""
   },
   {
     "id": "ir2t-cancelled-read-keeps-polling",
@@ -1661,7 +1761,7 @@
     "testName": "hands a nested ReactorProvider given it the client itself",
     "why": "a provider holds the anonymous view a hydrating useClient() handed its factory, so its tree reads as nobody for good and never follows a sign-in",
     "file": "src/index.tsx",
-    "search": "  const client = (built as Stamped)[CLIENT_OF] ?? built\n",
+    "search": "  const client = of ?? built\n",
     "replace": "  const client = built\n"
   },
   {
@@ -3129,6 +3229,105 @@
     "replace": "if (management) {"
   },
   {
+    "id": "960-resend-turned-away-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by mutate() is throttled",
+    "why": "a re-send of an offered write turned away with HTTP 429 rejects not_delivered with mayHaveExecuted: false, so resendOf offers nothing and the app reads a write that may have run as not executed",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-send-turned-away-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by send() is throttled",
+    "why": "again.send() turned away with HTTP 429 rejects not_delivered with mayHaveExecuted: false, though the first attempt may have run",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-rejected-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome when the re-send is rejected before any canister code ran",
+    "why": "a re-send rejected with code 1 rejects rejected with mayHaveExecuted: false, though the first attempt may have run",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-refusal-loses-expiry",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by send() is throttled",
+    "why": "a re-send that did not run rejects outcome_unknown without the write's expiresAt, so a read-back cannot tell when no send of it can still start",
+    "file": "src/call.ts",
+    "search": "resendDidNotRun(failure, firstOf(again).expiresAt)",
+    "replace": "resendDidNotRun(failure, undefined)"
+  },
+  {
+    "id": "960-resend-refusal-offers-changed-write",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
+    "why": "a refused re-send is kept as the write it would have sent, so after arg_changed resendOf offers the changed argument, a new write no dedupe key has been seen for",
+    "file": "src/call.ts",
+    "search": "      throw fromCanister(keptUnknown(again, error), request.canister)\n",
+    "replace": "      throw fromCanister(keptUnknown(request, error), request.canister)\n"
+  },
+  {
+    "id": "960-resend-answer-made-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "leaves a first send that is throttled not delivered, and a re-send the ledger answers known",
+    "why": "a re-send the ledger answers with an Err is made outcome_unknown, though the canister's answer is the outcome",
+    "file": "src/call.ts",
+    "search": "      !error.mayHaveExecuted &&\n      error.kind !== \"canister_err\"\n",
+    "replace": "      !error.mayHaveExecuted\n"
+  },
+  {
+    "id": "960-first-send-refusal-made-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "leaves a first send that is throttled not delivered, and a re-send the ledger answers known",
+    "why": "a first send turned away with HTTP 429 is made outcome_unknown, though nothing ran: it would no longer read as safe to send again",
+    "edits": [
+      {
+        "file": "src/call.ts",
+        "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+        "replace": "      isReactorError(error) &&\n"
+      },
+      {
+        "file": "src/call.ts",
+        "search": "keptUnknown(again, error)",
+        "replace": "keptUnknown(again ?? request, error)"
+      }
+    ]
+  },
+  {
+    "id": "960-view-resend-refusal-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome when a mutation of a view pinned to the sender refuses the re-send after a switch",
+    "why": "a pinned view's mutation refuses a re-send after a switch cancelled with mayHaveExecuted: false, so the write it re-sends, which may have run, is no longer offered and its reads are not refreshed",
+    "file": "src/client.ts",
+    "search": "again === undefined ? refusal : keptUnknown(again, refusal)",
+    "replace": "refusal"
+  },
+  {
+    "id": "960-resend-expiry-not-latest",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "carries the latest expiry of the write's sends when a later re-send does not run",
+    "why": "a re-send that may have run keeps its expiry only on itself, so a later re-send of the write that did not run carries the first send's earlier expiry, after which a read-back that finds nothing would wrongly be final",
+    "file": "src/call.ts",
+    "search": "      const first = firstOf(request)\n",
+    "replace": "      const first = request\n"
+  },
+  {
     "id": "did-project-not-projected",
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
@@ -3514,8 +3713,18 @@
     "testName": "that passed in one build runs again in the next build of the same plugin object",
     "why": "a new lifetime, and with it new passes of the live check, made only when a dev server starts, so a second build of one plugin object reuses the first build's pass and generates against a canister that changed since",
     "file": "src/index.ts",
-    "search": "      current = lifetimeAfter(current, config.command)\n",
-    "replace": "      if (config.command === \"serve\") {\n        current = lifetimeAfter(current, config.command)\n      }\n"
+    "search": "      current = lifetimeAfter(\n        current,\n        config.command === \"build\" || config.mode === \"test\"\n      )\n",
+    "replace": "      if (config.command === \"serve\") {\n        current = lifetimeAfter(\n          current,\n          config.command === \"build\" || config.mode === \"test\"\n        )\n      }\n"
+  },
+  {
+    "id": "967-vitest-failure-only-logged",
+    "package": "vite-plugin",
+    "test": "tests/generation.test.ts",
+    "testName": "fails the run's startup when a .did does not generate",
+    "why": "under Vitest (a dev server in mode test) a failed generation with failOnError omitted is only logged, so the tests run against the module a failed run left on disk",
+    "file": "src/index.ts",
+    "search": "        config.command === \"build\" || config.mode === \"test\"\n",
+    "replace": "        config.command === \"build\"\n"
   },
   {
     "id": "did-verify-old-run-writes-new",
@@ -4809,7 +5018,7 @@
     "testName": "rejects a write whose request went out outcome_unknown",
     "why": "a timed-out write whose request went out classified cancelled with mayHaveExecuted: false, which reads as safe to send again: a resend could run it twice",
     "file": "src/call.ts",
-    "search": "timedOutError(where, write && (out || !!sent))",
+    "search": "timedOutError(where, write && out)",
     "replace": "timedOutError(where, false)"
   },
   {
@@ -4909,8 +5118,8 @@
     "testName": "keeps a re-send resendOf offered outcome_unknown",
     "why": "an offered re-send that times out before it goes out rejects cancelled with mayHaveExecuted: false, so the earlier attempt's unknown outcome is dropped and resendOf offers nothing, though that write may have run",
     "file": "src/call.ts",
-    "search": "timedOutError(where, write && (out || !!sent))",
-    "replace": "timedOutError(where, write && out)"
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
   },
   {
     "id": "875-timeout-resend-mutation-loses-unknown",
@@ -4919,8 +5128,8 @@
     "testName": "keeps a mutation re-sending an offered write outcome_unknown",
     "why": "a mutation re-sending an offered write that times out before it goes out rejects cancelled with mayHaveExecuted: false, dropping the earlier attempt's unknown outcome",
     "file": "src/call.ts",
-    "search": "timedOutError(where, write && (out || !!sent))",
-    "replace": "timedOutError(where, write && out)"
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
   },
   {
     "id": "875-timeout-send-not-marked-resend",
@@ -4959,8 +5168,8 @@
     "testName": "for a write that timed out after it went out",
     "why": "a write whose timeoutMs passed after it went out rejects outcome_unknown with no expiresAt, so a read-back cannot tell when no send of it can still start",
     "file": "src/call.ts",
-    "search": "            timedOutError(where, write && (out || !!sent)),\n            sends.expiresAt\n",
-    "replace": "            timedOutError(where, write && (out || !!sent)),\n            undefined\n"
+    "search": "throw withExpiry(timedOutError(where, write && out), sends.expiresAt)",
+    "replace": "throw withExpiry(timedOutError(where, write && out), undefined)"
   },
   {
     "id": "905-windows-icp-cmd-run-from-path",
@@ -5229,8 +5438,8 @@
     "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
     "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
     "file": "src/client.ts",
-    "search": "// `isReactorError(error, canister, method)` matches it.\n            throw fromCanister(",
-    "replace": "// `isReactorError(error, canister, method)` matches it.\n            throw ((error: unknown, _canister: object) => error)("
+    "search": "            const again = internals.offered.get(vars as object)\n            throw fromCanister(",
+    "replace": "            const again = internals.offered.get(vars as object)\n            throw ((error: unknown, _canister: object) => error)("
   },
   {
     "id": "893-write-caller-read-when-sent-offline",
