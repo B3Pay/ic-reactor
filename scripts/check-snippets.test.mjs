@@ -206,6 +206,20 @@ describe("check:snippets compiles the AI-context files", () => {
     assert.match(pointer.output, /packages\/react\/llms\.txt:\d+:\d+ TS2345/)
   })
 
+  it("checks a fence that is never closed, which runs to the end of the file", () => {
+    // `BROKEN` without its closing line: CommonMark ends it with the file.
+    const unclosed = BROKEN.slice(0, BROKEN.lastIndexOf("\n```"))
+    const run = check(
+      repo({
+        "packages/core/llms.txt": guide(GOOD, unclosed),
+        "AGENTS.md": "# AGENTS.md\n",
+        "CLAUDE.md": "# CLAUDE.md\n",
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    assert.match(run.output, /packages\/core\/llms\.txt:\d+:\d+ TS2345/)
+  })
+
   it("skips a fence marked `nocheck`, and only that fence", () => {
     const skipped = check(
       repo({

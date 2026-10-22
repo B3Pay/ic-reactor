@@ -53,12 +53,17 @@ You write no adapter. The client does the rest:
   `AuthClient`'s status turns `"expired"` by the clock and tells nobody, so
   the client tells its listeners itself: `useAuth()` renders `"expired"` when
   the session ends, with no user activity needed.
-- It forwards `signIn(options)` and `signOut(options)` to it.
+- It forwards `signIn(options)` and `signOut(options)` to it. Two `signIn()`
+  calls with the same options in one synchronous run reach it once (see
+  [Sign-in options](#sign-in-options)).
 - If the factory throws, it is not called again. `new AuthClient()` reads
   `localStorage`, which throws where site data is blocked or in a sandboxed
   frame. The client then calls anonymously, so public reads still work, logs
   the error once in development, and rejects `signIn()` and `signOut()` with
-  what the factory threw. Build a new client to try again.
+  what the factory threw. A factory that returns something other than an
+  auth, such as a Promise from an `async` factory, is treated the same way,
+  with a `TypeError` that names what the result lacks. Build a new client to
+  try again.
 
 `AuthClient` is not a peer dependency of core: you install `@icp-sdk/auth`
 yourself when you want Internet Identity.
@@ -196,9 +201,231 @@ export function EightHourSession() {
 The client types `options` as `unknown`, so a wrong option is not a type error.
 Check it against `AuthClientSignInOptions` in `@icp-sdk/auth`.
 
+Two `signIn()` calls with the same options in one synchronous run are one
+sign-in: the later one returns the earlier one's promise, and the auth is
+asked once. Options are the same when they are the same value (none at all
+included), or objects with the same keys and the same values (compared with
+`Object.is`, one level deep), so `{ returnTo: "/account" }` built twice is the
+same. `StrictMode` makes such a pair in development, when it runs an effect
+twice in a row. A call in a later run, such as a second click, signs in
+again, as does a call with other options.
+
 `AuthClient` has more options, such as `openIdProvider: "google"` for a
 one-click sign-in and `transport: "redirect"`. They belong to
-`@icp-sdk/auth`, not to this library: the next section lists them.
+`@icp-sdk/auth`, not to this library: [Internet Identity 2.0](#internet-identity-20)
+lists them. One of them, `transport: "redirect"`, changes how the page that
+signs in is written: see [Redirect sign-in](#redirect-sign-in).
+
+### Redirect sign-in
+
+With `transport: "redirect"`, `AuthClient` signs in over the ICRC-167 URL
+transport instead of a window: the page itself goes to Internet Identity,
+which sends the user back to the same page with its answer in the URL
+fragment. `@icp-sdk/auth` suggests it for a full-page sign-in that needs no
+click to open a window, and for a native app that hands off through a
+universal link.
+
+The page unloads on the way out, so the `signIn()` that left never settles.
+On the load Internet Identity returns to, the same `signIn()` runs again, and
+`AuthClient` finishes the sign-in from the URL. So the sign-in is a route of
+its own that calls `signIn()` each time it loads, not from a click. Build the
+`AuthClient` with the option in the client's factory:
+`auth: (network) => new AuthClient({ ...network, transport: "redirect" })`.
+A spread like this one reads no provider, so on a network the client names
+none for (see [The network the factory is handed](#the-network-the-factory-is-handed)),
+name `identityProvider` in it too.
+
+`AuthClient` takes its callback, the URL Internet Identity returns to, from
+the page it is built on: `location.origin` plus `location.pathname`. The
+client builds it once, on first use, and keeps it while the app moves between
+routes without a page load. So enter the sign-in route with a full page load,
+a plain `<a href="/sign-in">` or `location.assign("/sign-in")`, not a
+router's link, and start every sign-in there.
+
+The route renders a component like this one:
+
+```tsx
+// src/components/sign-in-page.tsx
+import { useAuth } from "@ic-reactor/react"
+import { useEffect, useState } from "react"
+
+/** Signs in each time it loads; Internet Identity's return goes to /account. */
+export function SignInPage() {
+  const { status, signIn } = useAuth()
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (status === "signed-in") return
+    const start = setTimeout(() => {
+      signIn({ returnTo: "/account" }).catch((error: unknown) => {
+        console.error(error)
+        setFailed(true)
+      })
+    })
+    return () => clearTimeout(start)
+  }, [status, signIn])
+  if (status === "signed-in") return <a href="/account">Continue</a>
+  if (failed) {
+    return (
+      <p>
+        The sign-in did not finish. <a href="/sign-in">Try again</a>
+      </p>
+    )
+  }
+  return <p>Signing you in…</p>
+}
+```
+
+- The first load leaves for Internet Identity. The load it returns to
+  finishes the sign-in, and `AuthClient` goes to `returnTo` in place of the
+  sign-in page's history entry.
+- Pass the same options on every load. The return load replays the first
+  load's request, and a different one (another `maxTimeToLive`, say) fails.
+  `AuthClient` keeps the first load's `returnTo`, so it may come from a query
+  such as `?next=`, which the callback drops; pass one on every load or on
+  none.
+- A user who cancels at Internet Identity comes back with an error, and
+  `signIn()` rejects. A new visit to the route starts a new sign-in. So does a
+  return more than 10 minutes later: `AuthClient` keeps the flow in the tab's
+  `sessionStorage` for that long.
+- Once the user is signed in, `status` changes, the effect runs again, and
+  returns. A user who is already signed in gets the link on.
+- The timer is for a page rendered on a server. There, the render that
+  hydrates shows `"anonymous"` whatever session the browser holds (see
+  [The hydrating render](/v4/guides/ssr/#the-hydrating-render)), and React
+  renders again with the session right after. The cleanup then clears the
+  timer, so a user who is already signed in is not sent to Internet Identity.
+  It also clears the first of the two runs `StrictMode` makes in development.
+  In an app with no server render, calling `signIn()` straight from the effect
+  works as well: `StrictMode`'s second call joins the first.
+
+The route, by framework:
+
+- **Vite.** With a router, give `/sign-in` a route that renders
+  `SignInPage`, below the `ReactorProvider`. Without one, choose by the path:
+
+  ```tsx
+  // src/App.tsx, with a redirect sign-in
+  import { createClient } from "@ic-reactor/core"
+  import { ReactorProvider, useAuth } from "@ic-reactor/react"
+  import { AuthClient } from "@icp-sdk/auth/client"
+  import { SignInPage } from "./components/sign-in-page"
+
+  export function App() {
+    return (
+      <ReactorProvider
+        client={() =>
+          createClient({
+            network: "ic",
+            auth: (network) =>
+              new AuthClient({ ...network, transport: "redirect" }),
+          })
+        }
+      >
+        {location.pathname === "/sign-in" ? <SignInPage /> : <Home />}
+      </ReactorProvider>
+    )
+  }
+
+  function Home() {
+    const { status, signOut } = useAuth()
+    return status === "signed-in" ? (
+      <button onClick={() => signOut({ returnTo: "/" }).catch(console.error)}>
+        Sign out
+      </button>
+    ) : (
+      <a href="/sign-in">Sign in</a>
+    )
+  }
+  ```
+
+- **Next.js** (App Router). The provider in the root layout (see
+  [SSR and hydration](/v4/guides/ssr/#the-provider)) builds the `AuthClient`
+  with `transport: "redirect"`, and the page is a client module. Link to it
+  with `<a href="/sign-in">`, not `<Link>`:
+
+  ```tsx
+  "use client"
+  // src/app/sign-in/page.tsx
+
+  import { SignInPage } from "@/components/sign-in-page"
+
+  export default SignInPage
+  ```
+
+- **TanStack Start.** A file route, below the root route that renders the
+  provider. Link to it with `<a href="/sign-in">`, or a `<Link>` with
+  `reloadDocument`:
+
+  ```tsx nocheck
+  // src/routes/sign-in.tsx
+  import { createFileRoute } from "@tanstack/react-router"
+  import { SignInPage } from "../components/sign-in-page"
+
+  export const Route = createFileRoute("/sign-in")({ component: SignInPage })
+  ```
+
+`signOut({ returnTo })` works as with a window: it ends the session and goes
+to `returnTo`, from any page.
+
+#### The callbacks file
+
+Internet Identity sends its answer only to a URL that the page's origin
+lists. The callback is the sign-in page's `location.origin` plus
+`location.pathname`, so list exactly that:
+
+```json
+{ "callbacks": ["https://app.example/sign-in"] }
+```
+
+Serve it at `/.well-known/ii-auth-callbacks` on that origin:
+
+- as JSON, with `Content-Type: application/json`;
+- with an `Access-Control-Allow-Origin` header, so that Internet Identity's
+  page can read it;
+- at that URL itself: Internet Identity does not follow a redirect.
+
+An entry matches the callback byte for byte, with nothing normalized: an
+absolute URL on the same origin, with no fragment.
+`https://app.example/sign-in/` does not match `https://app.example/sign-in`.
+Each origin the app signs in from lists its own callback in its own file.
+Check the two headers there, for example with `curl -i`, a dev server
+included: Vite's serves `public/.well-known/ii-auth-callbacks` with an empty
+`Content-Type`, since the name has no extension, so set the header in a
+middleware ahead of Vite's own (a plugin's `configureServer`).
+
+On the IC, the asset canister's upload skips a name that starts with a dot
+unless `.ic-assets.json5` in the assets folder (in a Vite app, `public/`)
+says otherwise, as for Internet Identity's alternative-origins file:
+
+```json5
+[
+  { match: ".well-known", ignore: false },
+  {
+    match: ".well-known/ii-auth-callbacks",
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Content-Type": "application/json",
+    },
+    ignore: false,
+  },
+]
+```
+
+#### Values the return load needs
+
+The return load runs the page's code from the start. A value of your own
+that the first load computed and the code after the sign-in reads, such as
+an id it generated or something it fetched, goes through
+`authClient.memoize(produce)`: it runs `produce` on the first load, keeps the
+result, and returns it on the return load. Call it in the same order relative
+to `signIn()` on every load, and keep the value JSON. It is a method of
+`AuthClient`, not of the client, so keep your own reference to it, as in
+[Identity attributes](#identity-attributes).
+
+`requestAttributes` keeps the nonce its callback returns by itself, so the
+canister that issues it is asked once. `@icp-sdk/auth` advises giving each
+flow its own route, so this guide's `SignInPage` calls `signIn()` only, and
+`requestAttributes()` goes on a route of its own.
 
 ### Internet Identity 2.0
 
@@ -250,7 +477,8 @@ export const adminClient = createClient({
   redirect route: see `@icp-sdk/auth`'s documentation.
 - With `transport: "redirect"` the page itself goes to Internet Identity and
   comes back, so `AuthClient` asks for `signIn()` to be called on the page's
-  load, not from a click, on a route of its own for each flow.
+  load, not from a click, on a route of its own for each flow: see
+  [Redirect sign-in](#redirect-sign-in).
 
 ## Any other sign-in: AuthLike
 
@@ -528,7 +756,8 @@ export function SessionButton() {
 
 - on a client built with `identity`, with a `TypeError`: there is no sign-in;
 - on a server, and after `client.dispose()`, with an `Error`;
-- with what the auth factory threw, when it threw;
+- with what the auth factory threw, when it threw, or a `TypeError` when it
+  returned something other than an auth;
 - with whatever the auth rejects with, never a `ReactorError`. `AuthClient`
   rejects when the user closes Internet Identity's window or the browser
   blocks it, and rejects a sign-in that a later sign-in or sign-out took over
@@ -611,7 +840,9 @@ another identity. What that means in practice:
   between, it fails with `kind: "cancelled"`, `code: "caller_changed"` and
   `mayHaveExecuted: false`, and nothing is sent. Built from a render's
   `useClient()`, its options also send only as that render's caller: a press
-  handled before a switch reached the render is refused the same way. If
+  handled before a switch reached the render is refused the same way. A
+  re-send `client.resendOf()` offered is refused as `outcome_unknown` with
+  `mayHaveExecuted: true` instead, since the write it re-sends may have run. If
   nobody is signed in, the client refuses it before sending:
   `kind: "unauthenticated"`, code `anonymous_write`.
 - **Data.** After a sign-in, a sign-out or a switch, the new keys are empty
@@ -820,9 +1051,10 @@ the module `candid-core-cli gen` writes for the accounts canister's `.did`.
   `signIn()`.
 - That is the window transport. With `transport: "redirect"`, `AuthClient`
   asks for `signIn()` and `requestAttributes()` to be called on the page's
-  load, not from a click, each flow on a route of its own. So call it on each
-  load of that route: `requestAttributes()` keeps the nonce across the loads,
-  so the canister issues one.
+  load, not from a click, each flow on a route of its own (see
+  [Redirect sign-in](#redirect-sign-in)). So call it on each load of that
+  route: `requestAttributes()` keeps the nonce across the loads, so the
+  canister issues one.
 - For a user who is signed in already, skip the sign-in: call
   `authClient.requestAttributes()` alone, with a new nonce, then the finish
   call.

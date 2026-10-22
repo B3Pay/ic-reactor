@@ -79,12 +79,12 @@ library: `ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt`.
 
 ## Options
 
-| Option              | Default                   | Meaning                                                                                      |
-| ------------------- | ------------------------- | -------------------------------------------------------------------------------------------- |
-| `canisters`         | `{}`                      | The app's canisters, by their name in the `icp` project                                      |
-| `injectEnvironment` | `true`                    | Set the cookie and the `/api` proxy under `vite dev` and `vite preview`                      |
-| `failOnError`       | build `true`, dev `false` | Abort the Vite run when a canister fails to generate. See [Failures](#when-generation-fails) |
-| `onGenerated`       | none                      | Called after each generated module. See [After each generation](#after-each-generation)      |
+| Option              | Default                              | Meaning                                                                                      |
+| ------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `canisters`         | `{}`                                 | The app's canisters, by their name in the `icp` project                                      |
+| `injectEnvironment` | `true`                               | Set the cookie and the `/api` proxy under `vite dev` and `vite preview`                      |
+| `failOnError`       | build and Vitest `true`, dev `false` | Abort the Vite run when a canister fails to generate. See [Failures](#when-generation-fails) |
+| `onGenerated`       | none                                 | Called after each generated module. See [After each generation](#after-each-generation)      |
 
 Each entry of `canisters` takes:
 
@@ -277,7 +277,8 @@ Each failure says what happened to which canister, and what to do next:
 
 A canister whose fetch failed is not generated, and the failure follows
 `failOnError` as a generation failure does: under `vite build` it fails the
-build, and under `vite dev` it is logged and shown in the overlay. A fetch that
+build, under Vitest the run's startup, and under `vite dev` it is logged and
+shown in the overlay. A fetch that
 failed, one that `IC_REACTOR_FETCH` asked for included, is tried again at the
 next `buildStart`: each rebuild of
 `vite build --watch`, and each Vite environment that starts one. Writing the
@@ -492,7 +493,7 @@ affected. The command it runs is
   overlay starts as the old one's, and its runs change it.
 - Editing a `.did` regenerates only the canisters that name it. Under
   `vite build --watch`, a canister is regenerated only when its `.did` text
-  changed.
+  changed, or its module or envelope is missing.
 - Deleting a `.did` under `vite dev` fails the canisters that name it at once,
   because the module it generated is still on disk and would look current.
   Putting the file back regenerates them.
@@ -510,7 +511,10 @@ A failed canister costs that canister, and nothing else:
   update, so a canister that is still broken can drop out of the overlay after
   you save another file. Its error stays in the terminal log, and a full
   reload shows the overlay again.
-- `failOnError` overrides either default. It takes `true` or `false`: any
+- Under Vitest (mode `test`), the run fails at startup, as a build does: tests
+  that pass against the modules left over from the last good run prove
+  nothing.
+- `failOnError` overrides each default. It takes `true` or `false`: any
   other value (`null`, `0`, `"false"`) throws when the config loads, as does
   one for `injectEnvironment`.
 
@@ -546,12 +550,14 @@ icReactor({
   that never settles holds the build.
 - It is not called for a canister that failed or was refused, nor for a run
   that does not generate the module again (the second `buildStart` of
-  Vite 6 and later, a `vite build --watch` rebuild not caused by a `.did`).
+  Vite 6 and later, a `vite build --watch` rebuild not caused by a `.did`
+  or by a missing module or envelope).
   A save under `vite dev` always generates again, so saving the same text
   calls it with `"unchanged"`.
 - A throw or a rejection fails the module's canisters as a failed generation
-  does: the build fails unless `failOnError` is `false`, and otherwise the
-  failure is logged and, under `vite dev`, shown in the error overlay. The
+  does: the build or the Vitest run fails unless `failOnError` is `false`, and
+  otherwise the failure is logged and, under `vite dev`, shown in the error
+  overlay. The
   next run generates them again and calls the hook again.
 - A value that is not a function throws when the config loads.
 
@@ -579,8 +585,10 @@ When `injectEnvironment` is on, under `vite dev` and `vite preview`, the plugin:
 3. sets the `ic_env` cookie on each response;
 4. proxies `/api` to the local replica.
 
-A `canisterId` in the plugin config overrides the detected id for that
-canister. Set the `ICP_ENVIRONMENT` environment variable to use a network other
+A `canisterId` in the plugin config is used for that canister, and `icp` is not
+asked for its id. `internet_identity` is asked for even then: what `icp`
+reports decides whether the cookie also names icp-cli's built-in Internet
+Identity. Set the `ICP_ENVIRONMENT` environment variable to use a network other
 than `"local"`.
 
 The plugin runs `icp` from `PATH`, with no shell. On Windows, where npm links
@@ -661,5 +669,13 @@ for a local network.
 
 Vitest runs the plugin in mode `test`. There it injects no environment and
 never runs `icp`, whatever `injectEnvironment` says. Generation is not an
-environment concern and still runs, so the modules a test imports exist. To
-test canister code, see [Testing](/v4/guides/testing/).
+environment concern and still runs, so the modules a test imports exist. A
+canister that fails to generate fails the run at startup, unless `failOnError`
+is `false`: a `.did` that does not parse, a fetch that fails, a live check
+(`verify: "live"`, `IC_REACTOR_VERIFY`) that fails or cannot reach the
+network, an `onGenerated` that throws. For an offline test run with the live
+check on, set `IC_REACTOR_VERIFY=0`. A `.did` that stops generating after
+startup, in watch mode, is logged, as under `vite dev`. A Vitest run in
+another mode (`--mode`, `test.mode`) keeps the dev default, and a Vitest
+config that does not load the plugin generates nothing. To test
+canister code, see [Testing](/v4/guides/testing/).

@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process"
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-import { SKIP, discoverExampleDirs, examplesDir } from "./example-projects.js"
+import { discoverExampleDirs, examplesDir } from "./example-projects.js"
 
 /** Next.js generates this file during `next build`; create a shim so `tsc` can
  * type-check the app without a full build. */
@@ -73,30 +73,23 @@ for (const name of dirs) {
   const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"))
   const isNext = Boolean(pkg.dependencies?.next || pkg.devDependencies?.next)
 
-  // Pick the project to type-check. Most examples ship a self-contained
-  // tsconfig.json with `noEmit`. icp-reactor-demo keeps its app under frontend/.
-  let project = dir
+  // Each example must ship its own tsconfig.json.
   if (!existsSync(join(dir, "tsconfig.json"))) {
-    const frontend = join(dir, "frontend")
-    if (existsSync(join(frontend, "tsconfig.json"))) {
-      project = frontend
-    } else {
-      // Previously a silent `continue` that still counted toward "All N examples
-      // type-check cleanly" -- a project could drop out of coverage unnoticed.
-      console.error(`\u274c ${name}: has a package.json but no tsconfig.json`)
-      skipped.push(name)
-      continue
-    }
+    // Previously a silent `continue` that still counted toward "All N examples
+    // type-check cleanly" -- a project could drop out of coverage unnoticed.
+    console.error(`\u274c ${name}: has a package.json but no tsconfig.json`)
+    skipped.push(name)
+    continue
   }
 
   if (isNext) {
-    const nextEnv = join(project, "next-env.d.ts")
+    const nextEnv = join(dir, "next-env.d.ts")
     if (!existsSync(nextEnv)) writeFileSync(nextEnv, NEXT_ENV)
   }
 
   let solution
   try {
-    solution = isSolutionTsconfig(project)
+    solution = isSolutionTsconfig(dir)
   } catch (err) {
     console.error(
       `\u274c ${name}: could not parse tsconfig.json: ${err instanceof Error ? err.message : err}`
@@ -109,14 +102,14 @@ for (const name of dirs) {
   // `--force` because `tsc -b` trusts an existing .tsbuildinfo and would report
   // success without re-reading a single file on a repeat local run.
   const result = solution
-    ? run("pnpm", ["exec", "tsc", "-b", "--force", "tsconfig.json"], project)
-    : run("pnpm", ["exec", "tsc", "--noEmit", "-p", "tsconfig.json"], project)
+    ? run("pnpm", ["exec", "tsc", "-b", "--force", "tsconfig.json"], dir)
+    : run("pnpm", ["exec", "tsc", "--noEmit", "-p", "tsconfig.json"], dir)
   if (result.status !== 0) failures.push(name)
 }
 
 if (skipped.length > 0) {
   console.error(
-    `\n\u274c Not type-checked (add a tsconfig.json, or add to SKIP with a reason): ${skipped.join(", ")}`
+    `\n\u274c Not type-checked (add a tsconfig.json, or fix one that does not parse): ${skipped.join(", ")}`
   )
 }
 if (failures.length > 0) {
@@ -125,6 +118,5 @@ if (failures.length > 0) {
 if (failures.length > 0 || skipped.length > 0) process.exit(1)
 
 console.log(
-  `\n\u2705 All ${dirs.length - skipped.length} examples type-check cleanly` +
-    (SKIP.size > 0 ? ` (skipped by name: ${[...SKIP].join(", ")})` : "")
+  `\n\u2705 All ${dirs.length - skipped.length} examples type-check cleanly`
 )

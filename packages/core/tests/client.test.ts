@@ -28,11 +28,13 @@ import { createTestAuth, type TestAuth } from "../src/testing/test-auth.js"
 import {
   ANONYMOUS,
   CALL,
+  deferred,
   networkOf,
   onPage,
   readAs,
   replicaWithWhoami,
 } from "./client-helpers.js"
+import { stubProcessEnv } from "./network-helpers.js"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -207,7 +209,62 @@ describe("createClient options", () => {
   it("refuses a network host the agent cannot read when the client is built", () => {
     expect(() =>
       createClient({ network: { host: "not a url" }, identity: "anonymous" })
-    ).toThrow(/"not a url" is not a URL the agent can read/)
+    ).toThrow(
+      /"not a url" is not a URL the agent can read \(it does not parse as one\)/
+    )
+  })
+
+  it.each([
+    // Read as the scheme `localhost:`, on a page too (#974).
+    ["localhost:4943", "localhost:"],
+    ["ftp://example.com", "ftp:"],
+    ["javascript:alert(1)", "javascript:"],
+    ["data:text/plain,hi", "data:"],
+  ])(
+    "refuses the host %s, which no call can use, when the client is built",
+    (host, scheme) => {
+      for (const page of [false, true]) {
+        if (page) onPage()
+        const build = () =>
+          createClient({ network: { host }, identity: "anonymous" })
+        expect(build).toThrow(TypeError)
+        expect(build).toThrow(
+          `the network host ${JSON.stringify(host)} is not a URL the agent can read (its scheme is ${scheme}, and the agent calls over http: and https: only). Give one with a scheme, such as "https://icp-api.io".`
+        )
+      }
+    }
+  )
+
+  it('says where network "env" took a host no call can use', () => {
+    const scheme = "is not a URL the agent can read (its scheme is"
+    const advice = `Give one with a scheme, such as "https://icp-api.io", in ICP_HOST or as network: { host }.`
+    const build = () => createClient({ network: "env", identity: "anonymous" })
+    // Off a page, from ICP_HOST.
+    stubProcessEnv({ ICP_NETWORK: "local", ICP_HOST: "localhost:8000" })
+    expect(build).toThrow(TypeError)
+    expect(build).toThrow(
+      `the network host "localhost:8000", which network "env" took from the page's origin or from ICP_HOST or IC_HOST, ${scheme} localhost:`
+    )
+    expect(build).toThrow(advice)
+    // On a page, from its origin: an app shell such as Capacitor on iOS.
+    stubProcessEnv()
+    onPage("capacitor://localhost")
+    expect(build).toThrow(
+      `the network host "capacitor://localhost", which network "env" took from the page's origin or from ICP_HOST or IC_HOST, ${scheme} capacitor:`
+    )
+    expect(build).toThrow(advice)
+  })
+
+  it("takes an http: or https: host, and a host with no scheme on a page", () => {
+    const host = (network: { host: string }) =>
+      internalsOf(createClient({ network, identity: "anonymous" })).network.host
+    expect(host({ host: "http://127.0.0.1:4943" })).toBe(
+      "http://127.0.0.1:4943"
+    )
+    expect(host({ host: "https://icp-api.io" })).toBe("https://icp-api.io")
+    // HttpAgent reads it against the page's protocol.
+    onPage("http://localhost:5173")
+    expect(host({ host: "127.0.0.1:4943" })).toBe("127.0.0.1:4943")
   })
 
   it("passes maxDepth on, 256 unless given, and refuses one candid-core would refuse", () => {
@@ -357,6 +414,53 @@ describe("a client on a server", () => {
 
     expect(factory).not.toHaveBeenCalled()
   })
+
+  it("counts Deno, which has a version, as a server even with a window", async () => {
+    // Deno 1 defines a window (#976).
+    onPage()
+    vi.stubGlobal("Deno", { version: { deno: "1.46.3" } })
+    const factory = vi.fn(() => createTestAuth({ seed: 1 }))
+    const client = createClient({ network: "ic", auth: factory })
+
+    await expect(client.signIn()).rejects.toThrow(/only in a browser/)
+    expect(factory).not.toHaveBeenCalled()
+    client.dispose()
+  })
+})
+
+// Named access makes an element whose id is Deno, or a frame named Deno, a
+// `Deno` global, and user content a sanitizer keeps can carry either (#976).
+// A plain object stands in for it: vitest's jsdom globals have no named
+// access, so a real element would leave `Deno` undefined.
+describe("a page with an element whose id is Deno", () => {
+  it("signs in, as any page does", async () => {
+    onPage()
+    vi.stubGlobal("Deno", { id: "Deno", tagName: "SPAN" })
+    const auth = createTestAuth({ seed: 1, signedIn: false })
+    const client = createClient({ network: "ic", auth: () => auth })
+
+    await client.signIn()
+    expect(client.caller()).toBe(auth.getPrincipal()!.toText())
+    client.dispose()
+  })
+
+  it("signs in when it is a cross-origin frame, whose properties throw when read", async () => {
+    onPage()
+    vi.stubGlobal("Deno", {
+      get version(): never {
+        throw new DOMException(
+          "Blocked a frame from accessing a cross-origin frame.",
+          "SecurityError"
+        )
+      },
+    })
+    const auth = createTestAuth({ seed: 1, signedIn: false })
+    const client = createClient({ network: "ic", auth: () => auth })
+
+    await client.signIn()
+    expect(client.caller()).toBe(auth.getPrincipal()!.toText())
+    client.dispose()
+  })
 })
 
 describe("a client following its auth in a browser", () => {
@@ -372,14 +476,18 @@ describe("a client following its auth in a browser", () => {
     expect(factory).toHaveBeenCalledTimes(1)
   })
 
-  it("refuses a factory that returns something other than an auth, naming what is missing", () => {
+  it("refuses a factory that returns something other than an auth, naming what is missing", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
     onPage()
     const client = createClient({
       network: "ic",
       auth: () => ({ getStatus: () => ({ state: "signed-out" }) }) as never,
     })
 
-    expect(() => client.caller()).toThrow(
+    // As for a factory that throws: the reads call anonymously, and signIn()
+    // says why (#972).
+    expect(client.caller()).toBe(ANONYMOUS)
+    await expect(client.signIn()).rejects.toThrow(
       /not an AuthLike: it has no getPrincipal\(\), getIdentity\(\), subscribe\(\), signIn\(\), signOut\(\)/
     )
   })
@@ -567,6 +675,99 @@ describe("a client following its auth in a browser", () => {
     })
     expect(listener).toHaveBeenCalledTimes(2)
     expect(client.caller()).toBe(ANONYMOUS)
+  })
+
+  /** A signed-out auth whose `signIn` is `signIn`. */
+  const authSigningInWith = (signIn: AuthLike["signIn"]): AuthLike => ({
+    getPrincipal: () => undefined,
+    getStatus: () => ({ state: "signed-out" }),
+    getIdentity: () => Promise.resolve(Ed25519KeyIdentity.generate()),
+    subscribe: () => () => {},
+    signIn,
+    signOut: () => Promise.resolve(),
+  })
+
+  it("makes one sign-in of two calls with the same options in one run, as StrictMode's double effect makes them", async () => {
+    const answer = deferred()
+    const signIn = vi.fn((_options?: unknown) => answer.promise)
+    const client = clientOf(authSigningInWith(signIn))
+
+    // Each run of the effect builds its own options object.
+    const first = client.signIn({ returnTo: "/account" })
+    const second = client.signIn({ returnTo: "/account" })
+
+    expect(second).toBe(first)
+    expect(signIn).toHaveBeenCalledTimes(1)
+    answer.resolve()
+    await first
+    client.dispose()
+  })
+
+  it("signs in again for a call in a later run, or with other options", async () => {
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+
+    void client.signIn({ maxTimeToLive: 1n })
+    void client.signIn({ maxTimeToLive: 2n })
+    // Its one key is another than the last call's, which it only inherits.
+    const inherited = Object.create(
+      { maxTimeToLive: 2n },
+      { maxTimeToIdle: { value: 1n, enumerable: true } }
+    ) as object
+    void client.signIn(inherited)
+    void client.signIn()
+    // A second click is another run: it signs in again, and the auth decides
+    // which sign-in wins.
+    await Promise.resolve()
+    void client.signIn()
+
+    expect(signIn.mock.calls).toEqual([
+      [{ maxTimeToLive: 1n }],
+      [{ maxTimeToLive: 2n }],
+      [inherited],
+      [undefined],
+      [undefined],
+    ])
+    client.dispose()
+  })
+
+  it("joins each sign-in of the run, not only the last, as StrictMode runs two sign-in effects", () => {
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+
+    // StrictMode runs the effects of a subtree, then runs them all again.
+    const toAccount = client.signIn({ returnTo: "/account" })
+    const toWallet = client.signIn({ returnTo: "/wallet" })
+
+    expect(client.signIn({ returnTo: "/account" })).toBe(toAccount)
+    expect(client.signIn({ returnTo: "/wallet" })).toBe(toWallet)
+    expect(signIn).toHaveBeenCalledTimes(2)
+    client.dispose()
+  })
+
+  it("ends the run with a promise job, which fake timers do not replace as Jest's replace queueMicrotask", async () => {
+    vi.stubGlobal("queueMicrotask", () => {})
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+
+    void client.signIn()
+    await Promise.resolve()
+    void client.signIn()
+
+    expect(signIn).toHaveBeenCalledTimes(2)
+    client.dispose()
+  })
+
+  it("rejects a sign-in after dispose(), even with the options of one earlier in the run", async () => {
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+    void client.signIn({ returnTo: "/account" })
+
+    client.dispose()
+
+    await expect(client.signIn({ returnTo: "/account" })).rejects.toThrow(
+      "signIn() on a disposed client"
+    )
   })
 
   it("keeps telling the other listeners when one throws, and reports the error", () => {

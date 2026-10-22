@@ -12,7 +12,15 @@
  * browser's state instead would produce different HTML on the two sides.
  */
 import { act } from "@testing-library/react"
-import { Suspense, lazy, type ComponentType, type ReactElement } from "react"
+import {
+  StrictMode,
+  Suspense,
+  lazy,
+  useEffect,
+  useState,
+  type ComponentType,
+  type ReactElement,
+} from "react"
 import { hydrateRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -163,5 +171,92 @@ describe("hydrating the server's HTML", () => {
     expect(recoverable).toEqual([])
     expect(logged).not.toHaveBeenCalled()
     expect(container.textContent).toBe("anonymous:2vxsx-faeanonymous")
+  })
+})
+
+/**
+ * The redirect sign-in route of the auth guide, as the guide shows it: its
+ * effect starts the sign-in on a timer that its cleanup clears. Keep the two
+ * in step.
+ */
+function SignInPage() {
+  const { status, signIn } = useAuth()
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (status === "signed-in") return
+    const start = setTimeout(() => {
+      signIn({ returnTo: "/account" }).catch((error: unknown) => {
+        console.error(error)
+        setFailed(true)
+      })
+    })
+    return () => clearTimeout(start)
+  }, [status, signIn])
+  if (status === "signed-in") return <a href="/account">Continue</a>
+  if (failed) {
+    return (
+      <p>
+        The sign-in did not finish. <a href="/sign-in">Try again</a>
+      </p>
+    )
+  }
+  return <p>Signing you in…</p>
+}
+
+/** The sign-in route: the server renders it anonymous, the browser with `auth`. */
+const signInRoute = (auth?: TestAuth): ReactElement => (
+  <StrictMode>
+    <ReactorProvider
+      client={() =>
+        auth === undefined ? anonymousClient() : clientWithAuth(() => auth)
+      }
+    >
+      <SignInPage />
+    </ReactorProvider>
+  </StrictMode>
+)
+
+/** `real` with a `signIn` that counts its calls. */
+function countingSignIn(real: TestAuth) {
+  const signIn = vi.fn((_options?: unknown) => real.signIn())
+  return { auth: { ...real, signIn }, signIn }
+}
+
+describe("the auth guide's sign-in route, hydrated", () => {
+  it("sends nobody to sign in whose session the hydrating render did not show", async () => {
+    const { auth, signIn } = countingSignIn(testAuth({ identity: 7 }))
+    container.innerHTML = renderToString(signInRoute())
+
+    const { recoverable } = await hydrate(signInRoute(auth))
+
+    expect(recoverable).toEqual([])
+    expect(signIn).not.toHaveBeenCalled()
+    expect(container.textContent).toBe("Continue")
+  })
+
+  it("starts one sign-in in a browser that holds no session, under StrictMode", async () => {
+    const { auth, signIn } = countingSignIn(
+      testAuth({ identity: 7, signedIn: false })
+    )
+    container.innerHTML = renderToString(signInRoute())
+
+    await hydrate(signInRoute(auth))
+
+    expect(signIn).toHaveBeenCalledTimes(1)
+    expect(signIn).toHaveBeenCalledWith({ returnTo: "/account" })
+    expect(auth.getStatus().state).toBe("signed-in")
+  })
+
+  it("offers to try again when the sign-in fails", async () => {
+    const real = testAuth({ identity: 7, signedIn: false })
+    const cancelled = new Error("The user cancelled the sign-in.")
+    const auth = { ...real, signIn: vi.fn(() => Promise.reject(cancelled)) }
+    container.innerHTML = renderToString(signInRoute())
+
+    await hydrate(signInRoute(auth))
+
+    expect(auth.signIn).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toBe("The sign-in did not finish. Try again")
+    expect(container.querySelector("a")?.getAttribute("href")).toBe("/sign-in")
   })
 })

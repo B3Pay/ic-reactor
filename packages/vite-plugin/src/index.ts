@@ -24,7 +24,6 @@ import type {
   Logger,
   Plugin,
   ProxyOptions,
-  ResolvedConfig,
   UserConfig,
   ViteDevServer,
 } from "vite"
@@ -44,6 +43,7 @@ import {
   generate,
   moduleCollisions,
   outputsOf,
+  quoteNames,
   resolveCliBin,
   type GenerateCanister,
 } from "./generate.js"
@@ -240,13 +240,14 @@ export interface IcReactorPluginOptions {
   /**
    * Abort the Vite run when a canister fails to generate.
    *
-   * Default: `true` under `vite build`, `false` under `vite dev`. A build that
-   * silently ships the bindings left over from the last successful run is
-   * worse than no build at all, while a dev server has to survive the broken
-   * intermediate states of a `.did` file being edited: there the failure is
-   * logged and shown in the browser's error overlay, and the server keeps
-   * serving. Any value given other than `true` or `false` (`null`, `0`,
-   * `"false"`) throws when the config loads.
+   * Default: `true` under `vite build` and under Vitest (mode `test`), `false`
+   * under `vite dev`. A build that silently ships the bindings left over from
+   * the last successful run is worse than no build at all, and a test run
+   * that passes against them proves nothing, while a dev server has to
+   * survive the broken intermediate states of a `.did` file being edited:
+   * there the failure is logged and shown in the browser's error overlay, and
+   * the server keeps serving. Any value given other than `true` or `false`
+   * (`null`, `0`, `"false"`) throws when the config loads.
    */
   failOnError?: boolean
   /**
@@ -283,16 +284,17 @@ export interface IcReactorPluginOptions {
    * `.did` was written while the generator read it (the run takes nothing of
    * it), nor for a run that does not generate the module again: the second
    * `buildStart` of Vite 6 and later, and each rebuild of
-   * `vite build --watch` not caused by a `.did`. A save under `vite dev`
+   * `vite build --watch` not caused by a `.did` or by a missing module or
+   * envelope. A save under `vite dev`
    * always generates again, so a save of the same text calls it, with
    * `"unchanged"`. A `.did` written while the hook runs is caught after it:
    * a build then fails as changed during the build, and a dev server
    * generates it again and calls the hook again.
    *
    * A throw or a rejection fails the module's canisters as a failed
-   * generation does: a build fails, unless `failOnError` is `false`, and
-   * otherwise the failure is logged and, under `vite dev`, shown in the
-   * error overlay. The next run generates those canisters again, and calls
+   * generation does: a build or a Vitest run fails, unless `failOnError` is
+   * `false`, and otherwise the failure is logged and, under `vite dev`, shown
+   * in the error overlay. The next run generates those canisters again, and calls
    * the hook again. A value given that is not a function throws when the
    * config loads.
    */
@@ -380,7 +382,12 @@ interface Requests {
  * stops only its own and leaves the new server's alone.
  */
 interface Lifetime {
-  command: ResolvedConfig["command"]
+  /**
+   * Whether a failed generation fails the run when `failOnError` is omitted:
+   * under `vite build`, and under Vitest (mode `test`), whose tests would
+   * otherwise run against the modules left over from the last good run.
+   */
+  failsByDefault: boolean
   /** The dev server, once `configureServer` hands it over. */
   server: ViteDevServer | null
   /**
@@ -510,9 +517,10 @@ const consoleLog: PluginLog = {
  *   in a child process (the running Node binary on the CLI's bin script, never
  *   through a shell, killed after 60 seconds). A trap, a crash or a hang on a
  *   bad `.did` then ends that process and not the dev server: under
- *   `vite build` it fails the build with the CLI's own message, and under
- *   `vite dev` it is logged and shown in the error overlay while the server
- *   keeps serving. See {@link IcReactorPluginOptions.failOnError}.
+ *   `vite build` it fails the build with the CLI's own message, under Vitest
+ *   the run's startup, and under `vite dev` it is logged and shown in the
+ *   error overlay while the server keeps serving. See
+ *   {@link IcReactorPluginOptions.failOnError}.
  * - **Injects the local IC environment.** Under `vite dev` and `vite preview`
  *   it sets the `ic_env` cookie, which carries the replica's root key and the
  *   canister IDs, and proxies `/api` to the local replica, so the app needs no
@@ -602,9 +610,9 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    */
   const lifetimeAfter = (
     previous: Lifetime | undefined,
-    command: ResolvedConfig["command"]
+    failsByDefault: boolean
   ): Lifetime => ({
-    command,
+    failsByDefault,
     server: null,
     stopper: new AbortController(),
     queued: new Set(),
@@ -619,7 +627,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * before any `configResolved` runs in one of its own, as a build, the safer
    * default: `vite build` and `vite dev` want opposite failure behaviour.
    */
-  let current = lifetimeAfter(undefined, "build")
+  let current = lifetimeAfter(undefined, true)
 
   /** The lifetime of each config `configResolved` was handed. */
   const byConfig = new WeakMap<object, Lifetime>()
@@ -667,11 +675,11 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
 
   /**
    * The `.did` text each canister last generated from. A rebuild that finds
-   * the text unchanged skips the canister, which is every rebuild of
-   * `vite build --watch` that was not caused by a `.did`, and the second
-   * `buildStart` Vite 6 and later run for another environment. It is the
-   * plugin's, not a lifetime's: it says what is on disk, which a restart
-   * keeps.
+   * the text unchanged, and the module and envelope still there, skips the
+   * canister, which is every rebuild of `vite build --watch` that was not
+   * caused by a `.did`, and the second `buildStart` Vite 6 and later run for
+   * another environment. It is the plugin's, not a lifetime's: it says what
+   * is on disk, which a restart keeps.
    */
   const generatedFrom = new Map<string, string>()
 
@@ -843,7 +851,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         return (
           force ||
           source === undefined ||
-          generatedFrom.get(canister.name) !== source
+          generatedFrom.get(canister.name) !== source ||
+          // Deleted since it was generated: the text alone would skip it,
+          // and every rebuild would fail until the `.did` changed (#980).
+          outputFiles(canister).some((file) => !fs.existsSync(file))
         )
       })
       if (stale.length === 0) return []
@@ -852,7 +863,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       try {
         cli = resolveCliBin(projectRoot)
       } catch (error) {
-        return stale.map((canister) => ({ canister, message: describe(error) }))
+        return stale.map((canister) => ({
+          canister,
+          message: describeError(error),
+        }))
       }
 
       // Each module and envelope as it is before the generator writes it.
@@ -948,7 +962,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             generatedFrom.delete(canister.name)
             failures.push({
               canister,
-              message: `onGenerated failed for ${relativeToRoot(module)}: ${describe(error)}`,
+              message: `onGenerated failed for ${relativeToRoot(module)}: ${describeError(error)}`,
             })
           }
         } finally {
@@ -964,7 +978,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       return failures
     } catch (error) {
       if (signal.aborted) return undefined
-      return wanted.map((canister) => ({ canister, message: describe(error) }))
+      return wanted.map((canister) => ({
+        canister,
+        message: describeError(error),
+      }))
     }
   }
 
@@ -1215,7 +1232,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             failures.push({
               canister,
               message:
-                `fetched ${from}, but could not write it to ${relativeToRoot(file)}: ${describe(writeError)}. ` +
+                `fetched ${from}, but could not write it to ${relativeToRoot(file)}: ${describeError(writeError)}. ` +
                 `Make its directory writable and build again.`,
             })
           }
@@ -1240,7 +1257,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             .filter(
               (canister) => !failed.has(canister) && !blocked.has(canister)
             )
-            .map((canister) => ({ canister, message: describe(error) })),
+            .map((canister) => ({ canister, message: describeError(error) })),
         ],
         fetched,
       }
@@ -1252,7 +1269,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     try {
       return { cli: resolveCliBin(projectRoot), root: projectRoot, signal }
     } catch (error) {
-      return describe(error)
+      return describeError(error)
     }
   }
 
@@ -1649,7 +1666,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       }
       return { ok: true, notes }
     } catch (error) {
-      return { ok: false, message: describe(error) }
+      return { ok: false, message: describeError(error) }
     }
   }
 
@@ -1705,7 +1722,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
 
   /**
    * Report the outcome of a run that does not end the Vite run (a save, or a
-   * build with `failOnError` off): log a failure and put every unfixed one in
+   * build or a Vitest start with `failOnError` off): log a failure and put every unfixed one in
    * the error overlay of the `lifetime`'s browsers. When a canister is fixed,
    * the overlay is replaced by one that lists only the canisters still
    * failing, or cleared once there are none.
@@ -1943,7 +1960,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         )
       } catch (error) {
         // A listener must not throw into the watcher.
-        log.error(`ic-reactor: ${describe(error)}`)
+        log.error(`ic-reactor: ${describeError(error)}`)
       }
     })
   }
@@ -2148,7 +2165,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       log = config.logger
       // A new lifetime: a build, or a dev server, a restart's included. Its
       // live checks start again (see `Lifetime`).
-      current = lifetimeAfter(current, config.command)
+      current = lifetimeAfter(
+        current,
+        config.command === "build" || config.mode === "test"
+      )
       byConfig.set(config, current)
     },
 
@@ -2334,10 +2354,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       // Only an omitted `failOnError` takes the default (options.ts).
       if (
         failures.length > 0 &&
-        (failOnError === undefined ? lifetime.command === "build" : failOnError)
+        (failOnError === undefined ? lifetime.failsByDefault : failOnError)
       ) {
-        // A build that exits 0 would ship whatever stale bindings are still on
-        // disk, which no longer match the canister.
+        // A build that exits 0 would ship, and a test run would test, whatever
+        // stale bindings are still on disk, which no longer match the canister.
         this.error(describeFailures(failures))
       }
       // Under a dev server, nothing is said of a written canister here, not
@@ -2361,11 +2381,6 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   }
 
   return plugin
-}
-
-/** One readable line for whatever was thrown. Never throws. */
-function describe(error: unknown): string {
-  return describeError(error)
 }
 
 /**
@@ -2401,11 +2416,6 @@ function apiProxy(
       configure: (_proxy, options) => configure(options),
     },
   }
-}
-
-/** `"a"`, or `"a", "b"`: canister names as the warnings quote them. */
-function quoteNames(names: string[]): string {
-  return names.map((name) => `"${name}"`).join(", ")
 }
 
 /**
