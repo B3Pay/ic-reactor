@@ -474,8 +474,9 @@ describe('"env" in a browser', () => {
       ["Gitpod", GITPOD],
       ["a canister's ic0.app domain", `https://${CANISTER}.ic0.app`],
       ["a canister's raw.ic0.app domain", `https://${CANISTER}.raw.ic0.app`],
-      // Every VS Code dev tunnel shares devtunnels.ms, whose pages "env" now
-      // routes through the page (#962).
+      // Every localtunnel shares loca.lt (#961), and every VS Code dev tunnel
+      // devtunnels.ms, whose pages "env" now routes through the page (#962).
+      ["a localtunnel", "https://quiet-cat.loca.lt"],
       ["a VS Code dev tunnel", "https://abc123-5173.euw.devtunnels.ms"],
     ])(
       "refuses allowEnvConfig: true on %s, whose parent is not a public suffix",
