@@ -15,7 +15,48 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/core
+
+#### Changed
+
+- A re-send of a write `client.resendOf()` offered that did not run now
+  rejects `outcome_unknown` with `mayHaveExecuted: true`, and
+  `client.resendOf()` offers the write it re-sends again (#960). That covers a
+  re-send refused before it went out (code `caller_changed`, `target_changed`,
+  `arg_changed`, `client_disposed`, or any other refusal before sending,
+  including the one of a mutation built from a pinned `useClient()` view), and
+  one turned away when sent (an HTTP 4xx such as 429, or reject code 1 to 3). Each proves only that the re-send
+  did not run, while the earlier attempt may have: the error used to say
+  `cancelled`, `invalid_args` or `not_delivered` with `mayHaveExecuted: false`,
+  so `resendOf` offered nothing after it, a mutation did not invalidate its
+  reads, and an app could tell the user the transfer had not happened. The
+  error keeps the re-send's `code`, `httpStatus` and `rejectCode`, has the
+  re-send's own error as its `cause`, and carries the latest `expiresAt` of
+  the write's sends. A timeout before the re-send went out already worked
+  this way; it now also carries `expiresAt`. A re-send the canister answers (`canister_err`, such as
+  `Duplicate`) and the same failures of a first send are unchanged.
+  Migration: an app that branched on `kind` for a refused re-send reads its
+  `code`, `httpStatus` or `rejectCode` instead, and treats it as any other `outcome_unknown`: read the
+  state back.
+
+#### Fixed
+
+- A write whose signer fails, such as a user who declines a passkey or
+  hardware-wallet prompt, now rejects `not_delivered` with
+  `mayHaveExecuted: false` (#963). Nothing was sent, but the agent signs
+  outside its own error handling, so the failure used to read as
+  `outcome_unknown` with `mayHaveExecuted: true`: `client.resendOf()`
+  offered it, a mutation invalidated its reads, and an app could tell the
+  user the payment may have gone through. The client now hands the agent an
+  identity that marks its signing failures, and the error's `cause` is the
+  signer's own error. A signer that fails on a `read_state` poll of an update
+  the IC already took still rejects `outcome_unknown`, and says the call was
+  sent. A read whose signer declines the `read_state` for the subnet's keys
+  rejects `not_delivered` and is no longer retried, which asked the signer
+  again on every attempt. A re-send that `client.resendOf()` offered and the
+  signer declines stays `outcome_unknown` and offered, as on v4: the write
+  it re-sends may have run. An `AbortError` from the signer is still
+  `cancelled`, as every abort is.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
