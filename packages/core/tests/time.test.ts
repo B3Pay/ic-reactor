@@ -8,11 +8,22 @@
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { createFakeReplica } from "../src/testing/fake-replica.js"
-import { LEDGER, SHAPES, clientAs, serve } from "./canister-helpers.js"
+import { createTestAuth } from "../src/testing/test-auth.js"
+import {
+  LEDGER,
+  SHAPES,
+  clientAs,
+  clientWithAuth,
+  deferred,
+  serve,
+  sleep,
+} from "./canister-helpers.js"
+import { withIdentity } from "./client-helpers.js"
 import * as shapes from "./fixtures/shapes.js"
 import { icEnvCookie, stubPage } from "./network-helpers.js"
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
 })
 
@@ -111,6 +122,111 @@ describe("client.time()", () => {
       mayHaveExecuted: false,
     })
     expect(replica.requests).toEqual([])
+  })
+
+  it("rejects cancelled, code timeout, once the canister object's timeoutMs passes", async () => {
+    // A read_state that never answers: time() stops waiting at the canister
+    // object's timeoutMs, as a call through it does (#973).
+    const replica = replicaAt()
+    let held = 0
+    const fetch = (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      const url = input instanceof Request ? input.url : String(input)
+      if (url.endsWith("/read_state")) {
+        held += 1
+        return new Promise<Response>(() => {})
+      }
+      return replica.fetch(input, init)
+    }
+    const client = clientAs({ ...replica, fetch }, "anonymous")
+    const bounded = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      timeoutMs: 100,
+    })
+    const settled = await Promise.race([
+      client.time(bounded).then(
+        () => "resolved",
+        (error: unknown) => error
+      ),
+      sleep(2_000).then(() => "still waiting"),
+    ])
+    expect(settled).toMatchObject({
+      kind: "cancelled",
+      code: "timeout",
+      mayHaveExecuted: false,
+      method: "read_state",
+      canisterId: SHAPES,
+    })
+    expect(held).toBe(1)
+  })
+
+  it("is bounded by that canister object's timeoutMs, not by another bound", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const replica = replicaAt()
+    const fetch = (
+      input: RequestInfo | URL,
+      init?: RequestInit
+    ): Promise<Response> => {
+      const url = input instanceof Request ? input.url : String(input)
+      return url.endsWith("/read_state")
+        ? new Promise<Response>(() => {})
+        : replica.fetch(input, init)
+    }
+    const client = clientAs({ ...replica, fetch }, "anonymous")
+    let settled: unknown = "pending"
+    void client
+      .time(
+        client.canister<shapes.Actor>(shapes.actor, {
+          id: SHAPES,
+          timeoutMs: 100,
+        })
+      )
+      .catch((error: unknown) => (settled = error))
+    await vi.advanceTimersByTimeAsync(99)
+    expect(settled).toBe("pending")
+    await vi.advanceTimersByTimeAsync(1)
+    expect(settled).toMatchObject({ kind: "cancelled", code: "timeout" })
+  })
+
+  it("counts the wait for the caller's identity, and sends nothing once the bound passed", async () => {
+    // As a call through the canister object does.
+    const gate = deferred()
+    const replica = replicaAt()
+    const auth = createTestAuth({ seed: 1 })
+    const slowAuth = withIdentity(auth, async () => {
+      const identity = await auth.getIdentity()
+      await gate.promise
+      return identity
+    })
+    const client = clientWithAuth(replica, slowAuth)
+    const bounded = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      timeoutMs: 50,
+    })
+    const settled = await Promise.race([
+      client.time(bounded).then(
+        () => "resolved",
+        (error: unknown) => error
+      ),
+      sleep(2_000).then(() => "still waiting"),
+    ])
+    expect(settled).toMatchObject({ kind: "cancelled", code: "timeout" })
+    gate.resolve()
+    await sleep(50)
+    expect(replica.requests).toEqual([])
+  })
+
+  it("resolves through a canister object with timeoutMs, and leaves no timer behind", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const client = clientAs(replicaAt(), "anonymous")
+    const bounded = client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+      timeoutMs: 60_000,
+    })
+    await expect(client.time(bounded)).resolves.toBe(IC_TIME)
+    expect(vi.getTimerCount()).toBe(0)
   })
 
   it("throws a TypeError for anything but a canister of this client", async () => {
