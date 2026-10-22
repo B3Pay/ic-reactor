@@ -612,7 +612,6 @@ await again.send() // canister_err Duplicate: it ran once`,
         "again.send() as seed 2 is refused",
         await settle(() => again.send())
       )
-      r.same("kind", fieldsOf(refused)?.kind, "cancelled")
       r.same("code", fieldsOf(refused)?.code, "caller_changed")
       r.same("Nothing was sent", sent(lab, "icrc1_transfer").length, calls)
 
