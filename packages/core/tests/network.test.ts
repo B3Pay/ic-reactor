@@ -135,6 +135,7 @@ describe("the network table", () => {
         "a locally deployed canister's domain",
         `http://${CANISTER}.localhost:4943`,
       ],
+      ["localhost with a trailing dot", "http://localhost.:4943"],
     ])("fetches the replica's root key from %s", (_, host) => {
       const net = resolveNetwork({ host })
 
@@ -303,6 +304,8 @@ describe('"env" in a browser', () => {
         "a locally deployed asset canister",
         `http://${CANISTER}.localhost:4943`,
       ],
+      // The URL parser keeps the trailing dot, and the rules drop it (#975).
+      ["a dev server with a trailing dot", "http://localhost.:5173"],
     ])(
       "routes through the page's origin and trusts the cookie, on %s",
       (_, origin) => {
@@ -368,6 +371,11 @@ describe('"env" in a browser', () => {
       ["a canister's ic0.app domain", `https://${CANISTER}.ic0.app`],
       ["icp0.io itself", "https://icp0.io"],
       ["the API domain", MAINNET],
+      // #975: as for a name without the dot.
+      [
+        "a canister's ic0.app domain with a trailing dot",
+        `https://${CANISTER}.ic0.app.`,
+      ],
     ])(
       "routes through its origin, with no cookie read and no fetch, on %s",
       (_, origin) => {
@@ -405,6 +413,22 @@ describe('"env" in a browser', () => {
       }
     )
 
+    it("believes nothing by default on <id>.icp0.io with a trailing dot", () => {
+      // Whether the Public Suffix List still keeps sibling canisters from
+      // setting a cookie for a name written that way is not checked, so the
+      // page is a mainnet page like any other (#975).
+      const origin = `https://${CANISTER}.icp0.io.`
+      const page = stubPage(origin)
+
+      expect(resolveNetwork("env")).toStrictEqual({
+        keySegment: origin,
+        host: origin,
+        fetchRootKey: false,
+        trustsEnv: false,
+      })
+      expect(page.cookieReads()).toBe(0)
+    })
+
     it("does not take the cookie's key even when the cookie is well formed", () => {
       // The same cookie a dev server would set: on a real domain it proves
       // nothing, because any sibling subdomain can write it.
@@ -417,6 +441,11 @@ describe('"env" in a browser', () => {
       ["a canister's icp0.io domain", `https://${CANISTER}.icp0.io`],
       ["icp0.io itself", "https://icp0.io"],
       ["the API domain", MAINNET],
+      [
+        "a canister's icp0.io domain with a trailing dot",
+        `https://${CANISTER}.icp0.io.`,
+      ],
+      ["the API domain with a trailing dot", `${MAINNET}.`],
     ])(
       "does not take the cookie's key with allowEnvConfig: true either, on %s",
       (_, origin) => {
@@ -474,6 +503,15 @@ describe('"env" in a browser', () => {
       ["Gitpod", GITPOD],
       ["a canister's ic0.app domain", `https://${CANISTER}.ic0.app`],
       ["a canister's raw.ic0.app domain", `https://${CANISTER}.raw.ic0.app`],
+      // Every localtunnel shares loca.lt (#961), and every VS Code dev tunnel
+      // devtunnels.ms, whose pages "env" now routes through the page (#962).
+      ["a localtunnel", "https://quiet-cat.loca.lt"],
+      ["a VS Code dev tunnel", "https://abc123-5173.euw.devtunnels.ms"],
+      [
+        "a canister's ic0.app domain with a trailing dot",
+        `https://${CANISTER}.ic0.app.`,
+      ],
+      ["Codespaces with a trailing dot", `${CODESPACE}.`],
     ])(
       "refuses allowEnvConfig: true on %s, whose parent is not a public suffix",
       (_, origin) => {
@@ -525,6 +563,13 @@ describe('"env" in a browser', () => {
       ["an older ngrok tunnel", "https://abc.ngrok.io"],
       ["a Cloudflare quick tunnel", "https://words-here.trycloudflare.com"],
       ["a localtunnel", "https://quiet-cat.loca.lt"],
+      // #962: Tailscale, VS Code's dev tunnels and a LAN name with no dot.
+      ["a Tailscale address (100.64/10)", "http://100.101.102.103:5173"],
+      ["the bottom of 100.64/10", "http://100.64.0.1:5173"],
+      ["the top of 100.64/10", "http://100.127.255.254:5173"],
+      ["a Tailscale name", "https://box.tail1234.ts.net:5173"],
+      ["a VS Code dev tunnel", "https://abc123-5173.euw.devtunnels.ms"],
+      ["a LAN name with no dot", "http://devbox:5173"],
     ] as const
 
     it.each(FORWARDING)(
@@ -551,9 +596,22 @@ describe('"env" in a browser', () => {
     it.each([
       ["a public address", "http://8.8.8.8:5173"],
       ["an address just past 172.16/12", "http://172.32.0.1:5173"],
+      ["an address just below 100.64/10", "http://100.63.255.254:5173"],
+      ["an address just past 100.64/10", "http://100.128.0.1:5173"],
       ["an IPv6 global address", "http://[2001:db8::1]:5173"],
       ["a name that only ends like a tunnel", "https://myngrok.io"],
       ["a name that only contains .local", "https://app.local.example.com"],
+      // #962: the id of an extension's or a desktop app's page has no dot,
+      // but no dev server is behind it.
+      [
+        "a Chrome extension's page",
+        "chrome-extension://abcdefghijklmnopabcdefghijklmnop",
+      ],
+      [
+        "a Firefox extension's page",
+        "moz-extension://0b5e1c2a-1111-4222-8333-444455556666",
+      ],
+      ["a desktop app's own scheme", "app://my-app"],
     ])("still falls back on %s, which is not a dev page", (_, origin) => {
       stubPage(origin)
 
