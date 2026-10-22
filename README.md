@@ -18,7 +18,7 @@
 ---
 
 > **This is the `v4` branch, where ic-reactor 4 is in development.** Its
-> packages are at `4.0.0-beta.6`, published under npm's `beta` dist-tag; `latest`
+> packages are at `4.0.0-beta.7`, published under npm's `beta` dist-tag; `latest`
 > stays 3.x until 4.0 GA. ic-reactor 4 is a
 > thin layer over a candid-core generated module, with a guide shipped in
 > `@ic-reactor/core` (`packages/core/llms.txt`). Milestone 1
