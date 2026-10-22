@@ -71,6 +71,25 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   provider threw that render away, the outer client and the auth listening
   to the window were never disposed.
 
+### @ic-reactor/vite-plugin
+
+#### Changed
+
+- **Breaking for a Vitest run that loads the plugin and whose generation
+  fails:** under Vitest (mode `test`), a canister that fails to generate now
+  fails the run at startup when `failOnError` is omitted, as under
+  `vite build` (#967). Vitest runs the plugin as a dev server, so the failure
+  used to be only logged, and the tests ran against the modules left over
+  from the last good run: a `.did` that no longer parsed still reported its
+  tests passing. Every failure counts: a `.did` that does not parse, a fetch
+  that fails, a missing `@candid-core/cli`, refused canister options, an
+  `onGenerated` that throws, and a live check (`verify: "live"`,
+  `IC_REACTOR_VERIFY`) that fails or cannot reach the network. Migration: fix
+  the failure; set `IC_REACTOR_VERIFY=0` for an offline test run with the
+  live check on; or set `failOnError: false` to log the failure and run the
+  tests anyway. A Vitest config that does not load the plugin (a
+  `vitest.config.ts` without it, as in the examples) is not affected.
+
 ## core, react, vite-plugin 4.0.0-beta.6
 
 Prepared on 2026-10-21. It goes out under npm's `beta` dist-tag, as
