@@ -493,7 +493,7 @@ affected. The command it runs is
   overlay starts as the old one's, and its runs change it.
 - Editing a `.did` regenerates only the canisters that name it. Under
   `vite build --watch`, a canister is regenerated only when its `.did` text
-  changed.
+  changed, or its module or envelope is missing.
 - Deleting a `.did` under `vite dev` fails the canisters that name it at once,
   because the module it generated is still on disk and would look current.
   Putting the file back regenerates them.
@@ -550,7 +550,8 @@ icReactor({
   that never settles holds the build.
 - It is not called for a canister that failed or was refused, nor for a run
   that does not generate the module again (the second `buildStart` of
-  Vite 6 and later, a `vite build --watch` rebuild not caused by a `.did`).
+  Vite 6 and later, a `vite build --watch` rebuild not caused by a `.did`
+  or by a missing module or envelope).
   A save under `vite dev` always generates again, so saving the same text
   calls it with `"unchanged"`.
 - A throw or a rejection fails the module's canisters as a failed generation
@@ -584,8 +585,10 @@ When `injectEnvironment` is on, under `vite dev` and `vite preview`, the plugin:
 3. sets the `ic_env` cookie on each response;
 4. proxies `/api` to the local replica.
 
-A `canisterId` in the plugin config overrides the detected id for that
-canister. Set the `ICP_ENVIRONMENT` environment variable to use a network other
+A `canisterId` in the plugin config is used for that canister, and `icp` is not
+asked for its id. `internet_identity` is asked for even then: what `icp`
+reports decides whether the cookie also names icp-cli's built-in Internet
+Identity. Set the `ICP_ENVIRONMENT` environment variable to use a network other
 than `"local"`.
 
 The plugin runs `icp` from `PATH`, with no shell. On Windows, where npm links

@@ -991,4 +991,35 @@ describe("generation under vite build", () => {
       path.join(app.root, "did/a.did")
     )
   })
+
+  it("generates again a canister whose module or envelope was deleted, though its .did is unchanged", async () => {
+    const app = newApp({ "did/a.did": PING_DID }, "real")
+    const plugin = icReactor({
+      canisters: { a: { didFile: "did/a.did" } },
+    }) as Plugin & {
+      configResolved: (config: unknown) => void
+      buildStart: (this: unknown) => Promise<void>
+    }
+    const { logger } = recordingLogger()
+    plugin.configResolved({ root: app.root, command: "build", logger })
+    const context = { addWatchFile: vi.fn(), error: vi.fn() }
+
+    await plugin.buildStart.call(context)
+    expect(generatorRuns()).toHaveLength(1)
+
+    // A rebuild of `vite build --watch` after the module was deleted (#980).
+    fs.rmSync(path.join(app.root, "src/canisters/a.ts"))
+    await plugin.buildStart.call(context)
+    expect(generatorRuns()).toHaveLength(2)
+    expect(exists(app, "src/canisters/a.ts")).toBe(true)
+
+    fs.rmSync(path.join(app.root, "src/canisters/a.envelope.json"))
+    await plugin.buildStart.call(context)
+    expect(generatorRuns()).toHaveLength(3)
+    expect(exists(app, "src/canisters/a.envelope.json")).toBe(true)
+
+    await plugin.buildStart.call(context)
+    expect(generatorRuns()).toHaveLength(3)
+    expect(context.error).not.toHaveBeenCalled()
+  })
 })

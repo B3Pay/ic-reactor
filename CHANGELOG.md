@@ -187,6 +187,28 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   and nothing in `dist` refers to it. Measured with `npm pack`: 17 files and
   487,020 B unpacked before, 7 files and 268,245 B now.
 
+#### Fixed
+
+- `vite build --watch` generates a canister again when its module or envelope
+  was deleted, though its `.did` is unchanged (#980). A rebuild skipped a
+  canister whose `.did` text had not changed without looking for the files,
+  so after the module was deleted every rebuild failed until the `.did`
+  changed.
+- On Linux and macOS, an `icp` that does not answer within 10 seconds is
+  killed together with the native binary it started (#980). npm's `icp` is a
+  Node script that starts that binary, and the timeout killed only the
+  script, so while detection was incomplete each page load could leave one
+  more `icp` running. `icp` now runs in a session and process group of its
+  own there, and the timeout kills the group. So the terminal's Ctrl-C no
+  longer reaches an `icp` that is running when the dev server is stopped: it
+  ends on its own, or, if it hangs, keeps running, as every timed-out one did
+  before.
+- `icp` is no longer asked for the ID of a canister whose `canisterId` is
+  configured, which wins over what `icp` says anyway: one `icp` process fewer
+  per page load while detection is incomplete (#980). `internet_identity` is
+  still asked for, since what `icp` reports for it decides whether the cookie
+  also names icp-cli's built-in Internet Identity.
+
 ### CI (not published)
 
 - `pnpm verify:test-fails` compares with where the branch left v4: the
@@ -228,6 +250,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `exports` as `check-exports` does: a subpath mapped to `null` is left out,
   and a string or a set of conditions is the root entry. No package of the
   repository uses either form, so no run changes (#979).
+- `pnpm check:snippets` checks a code block that is never closed, which runs
+  to the end of the file as CommonMark has it, instead of dropping it and
+  passing (#980).
+- `pnpm verify:peer-floors` fails when one of its pnpm filters matches no
+  package (`--fail-if-no-match`), where pnpm exited 0 having run nothing, and
+  its TypeScript floor compiles the Vite plugin's declarations as well as
+  core's and react's, in a program of their own so that the Node types Vite's
+  declarations bring in do not reach core's and react's (#980).
 
 ## core, react, vite-plugin 4.0.0-beta.6
 

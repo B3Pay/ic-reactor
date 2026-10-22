@@ -5276,7 +5276,7 @@
     "package": "vite-plugin",
     "test": "tests/icp-command.test.ts",
     "testName": "runs the installed icp-cli's bin script with Node on Windows",
-    "why": "on Windows an npm-installed icp-cli (icp.cmd) is looked up on PATH, which execFile cannot start",
+    "why": "on Windows an npm-installed icp-cli (icp.cmd) is looked up on PATH, which spawn cannot start",
     "file": "src/env.ts",
     "search": "  if (platform === \"win32\") {",
     "replace": "  if (platform === \"never\") {"
@@ -5296,7 +5296,7 @@
     "package": "vite-plugin",
     "test": "tests/icp-command.test.ts",
     "testName": "starts the bin script it names, so the command runs as given",
-    "why": "icpCommand hands execFile the bin script itself, which Windows cannot start and no platform runs without Node",
+    "why": "icpCommand hands spawn the bin script itself, which Windows cannot start and no platform runs without Node",
     "file": "src/env.ts",
     "search": "return { file: process.execPath, args: [bin] }",
     "replace": "return { file: bin, args: [] }"
@@ -5306,7 +5306,7 @@
     "package": "vite-plugin",
     "test": "tests/icp-command.test.ts",
     "testName": "runs a global npm install's bin script on Windows when the app has none",
-    "why": "a global npm install of icp-cli on Windows is reachable only as icp.cmd, which execFile cannot start",
+    "why": "a global npm install of icp-cli on Windows is reachable only as icp.cmd, which spawn cannot start",
     "file": "src/env.ts",
     "search": "? icpBinIn(path.join(appData, \"npm\", \"node_modules\"))",
     "replace": "? undefined"
@@ -6126,5 +6126,55 @@
     "file": "src/options.ts",
     "search": "const TIME_PATH = [Uint8Array.from(new TextEncoder().encode(\"time\"))]",
     "replace": "const TIME_PATH = [new TextEncoder().encode(\"time\")]"
+  },
+  {
+    "id": "980-deleted-module-not-regenerated",
+    "package": "vite-plugin",
+    "test": "tests/generation.test.ts",
+    "testName": "generates again a canister whose module or envelope was deleted",
+    "why": "a rebuild skips a canister whose .did is unchanged without looking for its module, so after the module is deleted every rebuild of vite build --watch fails until the .did changes",
+    "file": "src/index.ts",
+    "search": "          outputFiles(canister).some((file) => !fs.existsSync(file))\n",
+    "replace": "          false\n"
+  },
+  {
+    "id": "980-deleted-envelope-not-regenerated",
+    "package": "vite-plugin",
+    "test": "tests/generation.test.ts",
+    "testName": "generates again a canister whose module or envelope was deleted",
+    "why": "a rebuild looks for the module but not the envelope, so a deleted envelope is not written again while the .did is unchanged",
+    "file": "src/index.ts",
+    "search": "          outputFiles(canister).some((file) => !fs.existsSync(file))\n",
+    "replace": "          !fs.existsSync(outputFiles(canister)[0])\n"
+  },
+  {
+    "id": "980-icp-group-not-killed",
+    "package": "vite-plugin",
+    "test": "tests/icp-timeout.test.ts",
+    "testName": "is killed at the timeout with the process it started",
+    "why": "icp shares the dev server's process group, so the timeout kills only npm's icp script and the native icp it started keeps running",
+    "file": "src/env.ts",
+    "search": "      detached: group,\n",
+    "replace": "      detached: false,\n"
+  },
+  {
+    "id": "980-configured-canister-looked-up",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should not ask icp for a canister whose canisterId is configured, but for internet_identity",
+    "why": "icp is asked for the ID of a canister whose canisterId is configured, which wins anyway: one more icp process per page load while detection is incomplete",
+    "file": "src/dev-environment.ts",
+    "search": "    (name) => name === \"internet_identity\" || !configuredCanisterIds.get(name)\n",
+    "replace": "    () => true\n"
+  },
+  {
+    "id": "980-configured-ii-not-looked-up",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should not ask icp for a canister whose canisterId is configured, but for internet_identity",
+    "why": "leaves a configured internet_identity out of the lookups too: icp is never asked for it, so the cookie names icp-cli's built-in Internet Identity beside the project's own",
+    "file": "src/dev-environment.ts",
+    "search": "    (name) => name === \"internet_identity\" || !configuredCanisterIds.get(name)\n",
+    "replace": "    (name) => !configuredCanisterIds.get(name)\n"
   }
 ]

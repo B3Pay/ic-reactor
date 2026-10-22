@@ -100,11 +100,19 @@ export function createLocalEnvironment(
 
   // Two entries can share a name. internet_identity is looked up as well, but
   // it is routinely not deployed, so it is not needed for detection to be
-  // complete.
+  // complete. Another name with a configured `canisterId` is not looked up:
+  // that ID wins over what `icp` says (`toState`), and each lookup is an `icp`
+  // process, one more per page load while detection is incomplete (#980).
+  // internet_identity is looked up even then, because what `icp` says about
+  // it decides whether the built-in provider is named in the cookie.
   const requiredNames = [...new Set(canisterNames)]
-  const lookupNames = requiredNames.includes("internet_identity")
-    ? requiredNames
-    : [...requiredNames, "internet_identity"]
+  const lookupNames = (
+    requiredNames.includes("internet_identity")
+      ? requiredNames
+      : [...requiredNames, "internet_identity"]
+  ).filter(
+    (name) => name === "internet_identity" || !configuredCanisterIds.get(name)
+  )
 
   let state: LocalEnvironmentState | undefined
   let running: Promise<LocalEnvironmentState> | undefined

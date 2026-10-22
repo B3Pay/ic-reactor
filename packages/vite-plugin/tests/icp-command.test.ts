@@ -1,6 +1,6 @@
 /**
  * How the plugin starts `icp`. On Windows, npm links icp-cli's npm package as
- * `node_modules/.bin/icp.cmd`, which `execFile` cannot start, so the package's
+ * `node_modules/.bin/icp.cmd`, which `spawn` cannot start, so the package's
  * bin script is run with Node there.
  */
 import fs from "node:fs"
@@ -107,7 +107,7 @@ describe("icpCommand", () => {
   })
 
   it("starts the bin script it names, so the command runs as given", () => {
-    // What execFile is handed on Windows, run here on any platform: Node and
+    // What spawn is handed on Windows, run here on any platform: Node and
     // the script, never a .cmd shim.
     const { file, args } = icpCommand(app({ icp: "bin/icp.js" }), "win32")
     const out = execFileSync(file, [...args, "network", "status", "--json"], {
