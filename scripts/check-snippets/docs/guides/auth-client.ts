@@ -10,6 +10,11 @@ export const network = "ic"
 const INTERNET_IDENTITY = "rdmx6-jaaaa-aaaaa-aaadq-cai"
 
 interface Built {
+  /**
+   * The client itself, whose keys are the live caller's. A view of it that
+   * `useClient()` returns keys reads by the caller of the render it came from.
+   */
+  readonly client: Client
   readonly authClient: AuthClient
   /** The canister that mints the sign-in, which signs the attributes too. */
   readonly signer: string
@@ -25,11 +30,12 @@ export const getAuthClient = (client: Client) =>
 
 export function createAppClient(): Client {
   let built: Built | undefined
-  const client = createClient({
+  const client: Client = createClient({
     network,
     auth: (handed) => {
       const authClient = new AuthClient({ ...handed, openIdProvider: "google" })
       built = {
+        client,
         authClient,
         signer: handed.identityProvider?.canisterId ?? INTERNET_IDENTITY,
       }

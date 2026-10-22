@@ -936,6 +936,11 @@ export const network = "ic"
 const INTERNET_IDENTITY = "rdmx6-jaaaa-aaaaa-aaadq-cai"
 
 interface Built {
+  /**
+   * The client itself, whose keys are the live caller's. A view of it that
+   * `useClient()` returns keys reads by the caller of the render it came from.
+   */
+  readonly client: Client
   readonly authClient: AuthClient
   /** The canister that mints the sign-in, which signs the attributes too. */
   readonly signer: string
@@ -951,11 +956,12 @@ export const getAuthClient = (client: Client) =>
 
 export function createAppClient(): Client {
   let built: Built | undefined
-  const client = createClient({
+  const client: Client = createClient({
     network,
     auth: (handed) => {
       const authClient = new AuthClient({ ...handed, openIdProvider: "google" })
       built = {
+        client,
         authClient,
         signer: handed.identityProvider?.canisterId ?? INTERNET_IDENTITY,
       }
@@ -1013,7 +1019,7 @@ export async function signInWithAttributes(app: Client) {
     await signedIn // on a server it rejects, and says why
     throw new Error("This client was not built by createAppClient")
   }
-  const { authClient, signer } = built
+  const { client, authClient, signer } = built
 
   // 1 and 2: the nonce, and the attributes in the same interaction.
   const [, attributes] = await Promise.all([
@@ -1041,8 +1047,12 @@ export async function signInWithAttributes(app: Client) {
   )
 
   // The app's client did not send that write, so it cannot invalidate for it.
-  await app.queryClient.invalidateQueries({
-    queryKey: app.queryKey(app.canister<Accounts>(actor, { id: ACCOUNTS_ID })),
+  // The key is the client's, for the user now signed in: `app` may be a view
+  // from a render before the sign-in, whose keys are the anonymous caller's.
+  await client.queryClient.invalidateQueries({
+    queryKey: client.queryKey(
+      client.canister<Accounts>(actor, { id: ACCOUNTS_ID })
+    ),
   })
   return attributes
 }
