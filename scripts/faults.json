@@ -521,6 +521,16 @@
     "replace": "  if (status === undefined) throw new Error(\"no status for the request\")"
   },
   {
+    "id": "964-accepted-update-unrecorded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "gives up as outcome_unknown when polls are answered HTTP 429",
+    "why": "an update answered 202 is not recorded as accepted, so polls answered 429 classify it not_delivered and the update is sent again, running it up to three times",
+    "file": "src/call.ts",
+    "search": "    accepted = true\n",
+    "replace": ""
+  },
+  {
     "id": "ir2t-cancelled-read-keeps-polling",
     "package": "core",
     "test": "tests/canister.test.ts",
