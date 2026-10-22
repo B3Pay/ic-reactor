@@ -297,6 +297,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   its TypeScript floor compiles the Vite plugin's declarations as well as
   core's and react's, in a program of their own so that the Node types Vite's
   declarations bring in do not reach core's and react's (#980).
+- `pnpm release <version>` stops at the release commit and prints the rest
+  of the release: the `CHANGELOG.md` section, the `release/v<version>` branch
+  and its pull request into `v4`, and the tag on that pull request's merge
+  commit, which `release.yml` publishes from (#969). It no longer tags the
+  commit, and it refuses `--dry-run` and `--publish` before changing
+  anything: `--dry-run` made a real commit and tag, and `--publish` published
+  from the machine it ran on, outside `release.yml`'s preflight, approval and
+  provenance. Its step for a root `llms.txt`, which `v4` does not have and
+  which failed on every run, is gone.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
