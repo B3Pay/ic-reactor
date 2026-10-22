@@ -90,13 +90,13 @@ page believes the cookie's canister ids by default: a canister's own
 
 Whether siblings can write it depends on the Public Suffix List. `icp0.io` and
 `raw.icp0.io` are on it, so no other canister's page can set a cookie that
-`<id>.icp0.io` reads. `ic0.app`, `app.github.dev` (Codespaces) and `gitpod.io`
-are not, so every canister or workspace under them can set one for all the
-others. On a page under those three, `createClient` refuses
-`allowEnvConfig: true` with a `TypeError`. Even where the opt-in is allowed,
-the cookie's root key is never taken for a mainnet host (the agent keeps
-mainnet's own), and its Internet Identity URL is taken over `http:` only on a
-local page.
+`<id>.icp0.io` reads. `ic0.app`, `app.github.dev` (Codespaces), `gitpod.io`,
+`loca.lt` (localtunnel) and `devtunnels.ms` (VS Code dev tunnels) are not, so
+every canister, workspace or tunnel under them can set one for all the others.
+On a page under those five, `createClient` refuses `allowEnvConfig: true` with
+a `TypeError`. Even where the opt-in is allowed, the cookie's root key is never
+taken for a mainnet host (the agent keeps mainnet's own), and its Internet
+Identity URL is taken over `http:` only on a local page.
 
 Canisters named in the cookie are called by name: `{ name: "backend" }` reads
 `PUBLIC_CANISTER_ID:backend` from the cookie. See
@@ -122,11 +122,13 @@ refused there, because any other workspace can set the cookie.
 routes through its own origin, so it reaches the dev server and never
 mainnet: Codespaces and Gitpod, a LAN address (`vite --host` on a phone:
 192.168/16, 10/8, 172.16/12, 169.254/16, IPv6 `fc00::/7` and `fe80::/10`), a
-`*.local`, `*.test` or `*.internal` name (`host.docker.internal`), and the
-tunnels `*.ngrok-free.app`, `*.ngrok-free.dev`, `*.ngrok.app`, `*.ngrok.io`,
-`*.trycloudflare.com` and `*.loca.lt`. None of these is local, so the cookie
-is not believed (a `{ name }` canister does not resolve) and no root key is
-taken from it or fetched: certified calls fail verification against
+Tailscale address or name (100.64/10, `*.ts.net`), a LAN name with no dot
+(`http://devbox:5173`), a `*.local`, `*.test` or `*.internal` name
+(`host.docker.internal`), and the tunnels `*.ngrok-free.app`,
+`*.ngrok-free.dev`, `*.ngrok.app`, `*.ngrok.io`, `*.trycloudflare.com`,
+`*.loca.lt` and VS Code's `*.devtunnels.ms`. None of these is local, so the
+cookie is not believed (a `{ name }` canister does not resolve) and no root
+key is taken from it or fetched: certified calls fail verification against
 mainnet's key. To use such a page, give the client
 `{ host: location.origin, rootKey }` and `{ id }` canisters, or open the app
 on `localhost`.
@@ -315,7 +317,9 @@ first use, and only in a browser. The client owns what it returns and disposes
 it with itself. A factory that throws (`new AuthClient()` reads
 `localStorage`, which throws where site data is blocked) is not called again:
 the client calls anonymously, logs the error once in development, and rejects
-`signIn()` and `signOut()` with it.
+`signIn()` and `signOut()` with it. The same holds for a factory that returns
+something other than an auth, such as a Promise from an `async` factory; the
+error is then a `TypeError` that names what the result lacks.
 
 ```ts
 import { createClient } from "@ic-reactor/core"

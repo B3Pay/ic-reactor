@@ -62,12 +62,14 @@ development `ReactorProvider` throws when it is handed such a client.
 - `"env"`: the page's network. Canisters can be named, `{ name: "backend" }`,
   from the `ic_env` cookie, believed only on a local replica or with
   `allowEnvConfig: true`. A server has no cookie: use `{ id }` there.
-  `"env"` is for `localhost` pages: a LAN address, `*.local`, `*.test`,
-  `*.internal`, a tunnel or a dev container routes to its own origin (never
-  mainnet) but does not believe the cookie or take a root key.
-  `allowEnvConfig: true` throws on `ic0.app`, `*.app.github.dev` and
-  `*.gitpod.io` pages (not public suffixes: any sibling site can set the
-  cookie), and never takes the cookie's root key for a mainnet host.
+  `"env"` is for `localhost` pages: a LAN or Tailscale address, a LAN name
+  with no dot, `*.local`, `*.test`, `*.internal`, `*.ts.net`, a tunnel or a
+  dev container routes to its own origin (never mainnet) but does not
+  believe the cookie or take a root key.
+  `allowEnvConfig: true` throws on `ic0.app`, `*.app.github.dev`,
+  `*.gitpod.io`, `*.loca.lt` and `*.devtunnels.ms` pages (not public
+  suffixes: any sibling site can set the cookie), and never takes the
+  cookie's root key for a mainnet host.
   `client.canisterId({ name })` says, without a call, what a name resolves
   to: `{ ok: true, id }`, or `{ ok: false, reason, message }` with `reason`
   `"no_browser"`, `"untrusted_host"` or `"absent"`, and the resolver's reason
@@ -102,8 +104,9 @@ Who calls (exactly one):
   `identity: id && !id.getPrincipal().isAnonymous() ? id : "anonymous"`.
 - `auth: (network) => new AuthClient(network)` (`@icp-sdk/auth/client`):
   users sign in and out. The factory runs once, in a browser only; if it
-  throws (blocked `localStorage`), the client stays anonymous, public reads
-  still work, and `signIn()` rejects with that error. `network`
+  throws (blocked `localStorage`) or returns no auth (a Promise, from an
+  `async` factory), the client stays anonymous, public reads still work, and
+  `signIn()` rejects with the error. `network`
   is `{ agentOptions, identityProvider? }`: the client's host and root key
   (and its `fetch`, when you gave one), and the Internet Identity to sign in
   with (the `ic_env` cookie's, or icp-cli's built-in one for a local host). Absent on a mainnet client, it
@@ -332,7 +335,8 @@ export function Send({ arg }: { arg: TransferArg }) {
 - A write is sent as the caller current when `mutate()` was called, or not at
   all. Held back by TanStack Query (offline, queued behind its `scope`, or
   retried) while the account changes, it is refused (`cancelled`,
-  `caller_changed`, `mayHaveExecuted: false`) and nothing is sent. This holds
+  `caller_changed`, `mayHaveExecuted: false`) and nothing is sent; a
+  re-send `resendOf` offered is refused as `outcome_unknown` instead (below). This holds
   with an `onMutate` of yours that replaces the client's, on
   `client.queryClient`. A mutation restored from a persister is always
   refused that way: call `mutate()` again. On another `QueryClient`, keep the
@@ -351,11 +355,13 @@ export function Send({ arg }: { arg: TransferArg }) {
   sent, the canister still resolves where the write went, and its sender is
   still the caller; then `again.send()` sends the same bytes to the same
   canister as that sender, and `transfer.mutate(again.arg)` sends the
-  argument only as that same write, or rejects and sends nothing
-  (`caller_changed`, `target_changed`, `arg_changed`). Such a refusal
-  replaces the mutation's error, so `resendOf` offers nothing after it, and
-  the first write's outcome is still unknown: read the state back, never
-  ignore it as a plain `cancelled`. Never change an offered argument: build a new one for a new transfer. A method with no
+  argument only as that same write, or sends nothing (`code`
+  `caller_changed`, `target_changed`, `arg_changed`). A re-send that did not
+  run, refused that way or turned away (HTTP 429 or another 4xx, reject code
+  1 to 3), rejects `outcome_unknown` with `mayHaveExecuted: true`, because
+  the first attempt may have run: its `code`, `httpStatus` or `rejectCode`
+  and its `cause` say why, `resendOf` offers that write again while its
+  sender is the caller, and you read the state back before anything else. Never change an offered argument: build a new one for a new transfer. A method with no
   such key has no safe re-send: read the state back.
 - For the exact bytes a write will send, such as an ICRC-21 consent
   request's `arg`, use `client.encode(ledger, "icrc1_transfer", arg)` (a
@@ -384,21 +390,22 @@ have executed:
 
 | What happened                                                                   | `kind`                            | May have executed |
 | ------------------------------------------------------------------------------- | --------------------------------- | ----------------- |
-| refused before sending: arguments that do not encode (or an offered re-send's argument changed since: `arg_changed`), a write while signed out | `invalid_args`, `unauthenticated` | no |
+| refused before sending: arguments that do not encode, a write while signed out | `invalid_args`, `unauthenticated` | no |
 | HTTP 4xx except 408 (429 included): the replica or a boundary node refused it    | `not_delivered`                   | no                |
+| the identity did not sign it (a declined passkey or hardware-wallet prompt: the signer's error is the `cause`), or the request could not be built | `not_delivered` | no |
 | reject code 1, 2 (transient) or 3: rejected before any canister code ran         | `rejected` (2: `not_delivered`)   | no                |
 | reject code 4 or 5: the canister rejected or trapped, maybe after changing state | `rejected`                        | yes (a write)     |
 | a sent write got no trustworthy answer: network drop, timeout, 5xx, 408          | `outcome_unknown`                 | yes               |
 | a reply that did not decode                                                      | `invalid_reply`                   | yes (a write)     |
 | the canister returned `Err`                                                      | `canister_err`                    | no                |
-| the caller changed, the call was aborted, an offered re-send would go elsewhere (`target_changed`), or a read's `timeoutMs` passed (`code: "timeout"`) | `cancelled` | no (an aborted write: yes) |
+| the caller changed, the call was aborted, or a read's `timeoutMs` passed (`code: "timeout"`) | `cancelled` | no (an aborted write: yes) |
+| a `client.resendOf()` re-send that did not run, refused (its `code` says why) or turned away by any of the rows above (its `httpStatus` or `rejectCode` says why); the first attempt may have run | `outcome_unknown` | yes |
 
 A write that got no answer (`outcome_unknown`, or `cancelled` with
 `mayHaveExecuted: true`) carries `error.expiresAt`: the latest ingress expiry
 its sends were signed with, a `bigint` of nanoseconds on the IC's clock
-(about five minutes after the send). A `client.resendOf()` re-send whose
-`timeoutMs` passed before it went out has none: the earlier error's
-`expiresAt` still holds. Once the IC's time is past it, no send
+(about five minutes after the send). A `client.resendOf()` re-send that did
+not run carries the `expiresAt` of the write it re-sends. Once the IC's time is past it, no send
 of that write can still start running. For a method that commits without
 awaiting another canister (an ICRC-1 transfer), a certified read-back of
 state newer than that which finds nothing is final. Compare with a margin,

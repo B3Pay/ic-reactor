@@ -30,7 +30,12 @@ import {
 } from "@icp-sdk/core/agent"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
 import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
-import { createReactorError, fromCanister, retryDefault } from "./errors.js"
+import {
+  createReactorError,
+  fromCanister,
+  notSigned,
+  retryDefault,
+} from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
 import {
@@ -42,6 +47,7 @@ import {
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
+import { keptUnknown, type CallRequest } from "./call.js"
 import { readTarget, recordOf } from "./canister.js"
 import { createBuilders } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
@@ -187,7 +193,8 @@ export type ClientOptions = {
    * the `network` option; absent trusts it only when both the page and the
    * replica are local. Even `true` never takes the cookie's root key for a
    * mainnet host, and `true` is refused (a `TypeError`) on a page under
-   * `ic0.app`, `github.dev` or `gitpod.io`, which are not public suffixes.
+   * `ic0.app`, `github.dev`, `gitpod.io`, `loca.lt` or `devtunnels.ms`, which
+   * are not public suffixes.
    */
   readonly allowEnvConfig?: boolean
   /**
@@ -231,7 +238,11 @@ export type ClientOptions = {
        * throws where site data is blocked) is not called again: the client
        * calls anonymously, so public reads still work, logs the error once in
        * development, and rejects {@link Client.signIn} and
-       * {@link Client.signOut} with what the factory threw.
+       * {@link Client.signOut} with what the factory threw. The same holds
+       * for a factory that returns something other than an {@link AuthLike},
+       * such as a Promise (an `async` factory, or `AuthClient.create()` of
+       * `@icp-sdk/auth` 5 and earlier): the error is then a `TypeError`
+       * naming what the result lacks.
        *
        * `network` is the client's network under `@icp-sdk/auth` 10's own
        * option names, so `new AuthClient(network)` signs in where the client
@@ -326,7 +337,8 @@ export interface Client {
    * told once the auth settles, even if the auth itself did not notify.
    * Rejects a `TypeError` on a client built with `identity`, which has no
    * sign-in, an `Error` on a server or after {@link Client.dispose}, and
-   * with what the auth factory threw when it threw.
+   * with what the auth factory threw when it threw (a `TypeError` when it
+   * returned something other than an {@link AuthLike}).
    */
   signIn(options?: unknown): Promise<void>
   /**
@@ -685,10 +697,14 @@ export interface Client {
    * mutation that failed (which keeps its pending state and invalidation) or
    * any other of this client, sends `arg` only to the method and canister id
    * the attempt went to, and only while it encodes to the same bytes. Either
-   * one goes out only as `from`. Each refusal sends nothing: `cancelled`
-   * (`caller_changed`) once someone else is the caller, `cancelled`
-   * (`target_changed`) for another method or canister id, and `invalid_args`
-   * (`arg_changed`) for an argument changed since it was sent. Once
+   * one goes out only as `from`. Each refusal sends nothing, and the code
+   * says which it is: `caller_changed` once someone else is the caller,
+   * `target_changed` for another method or canister id, and `arg_changed`
+   * for an argument changed since it was sent. A re-send that is refused, or
+   * turned away when sent (an HTTP 4xx, reject code 1 to 3), still rejects
+   * `outcome_unknown` with `mayHaveExecuted: true`, because the attempt it
+   * re-sends may have run, and this method offers that write again for that
+   * error, under the same conditions as for the first. Once
    * offered, that object stays held to that write: build a new argument for
    * a new write, rather than change this one or send it from another account.
    *
@@ -858,6 +874,12 @@ export interface ClientInternals {
    * mutations whose caller the `MutationCache` reads.
    */
   readonly ownMutationFns: WeakSet<object>
+  /**
+   * The argument of each re-send `resendOf` offered, and the write it was
+   * first sent in: a mutation given that very argument sends it as that
+   * write's caller, to its canister id, with its bytes, or not at all.
+   */
+  readonly offered: WeakMap<object, CallRequest>
   /**
    * The agent that signs as `principal`, and only as `principal`. It is the
    * one place the client enforces "a call goes out as the principal it was
@@ -1365,9 +1387,9 @@ export function createClientWith(
   let auth: AuthLike | undefined
   let unsubscribeAuth: (() => void) | undefined
   /**
-   * What the auth factory threw, once it has: the client then runs anonymous,
-   * never calls the factory again, and rejects `signIn()` and `signOut()` with
-   * it.
+   * What the auth factory threw, once it has, or the `TypeError` for a result
+   * that is not an {@link AuthLike}: the client then runs anonymous, never calls
+   * the factory again, and rejects `signIn()` and `signOut()` with it.
    */
   let authFailure: { readonly cause: unknown } | undefined
   /** The timer set for the end of the session (see `scheduleExpiry`). */
@@ -1476,8 +1498,12 @@ export function createClientWith(
       return auth
     }
     let made: unknown
+    let built: AuthLike
     try {
       made = authFactory(authNetwork())
+      // A factory that returns no AuthLike (a Promise, from an `async`
+      // factory) fails here too, and is not called again.
+      built = checkAuth(made)
     } catch (cause) {
       // `new AuthClient()` reads `localStorage`, which throws where site data
       // is blocked or in a sandboxed frame. That must not take the public
@@ -1491,7 +1517,6 @@ export function createClientWith(
       }
       return undefined
     }
-    const built = checkAuth(made)
     auth = built
     const initial = stateOf(built)
     if (!sameState(initial, snapshot)) snapshot = Object.freeze(initial)
@@ -1659,7 +1684,19 @@ export function createClientWith(
     }
     const agent = HttpAgent.createSync({
       ...agentOptionsFor(network),
-      identity,
+      // The agent signs outside its own error handling: a signer that fails
+      // is thrown as a request that could not be signed (`notSigned`), never
+      // as a call whose outcome is unknown.
+      identity: {
+        getPrincipal: () => identity.getPrincipal(),
+        transformRequest: async (request) => {
+          try {
+            return await identity.transformRequest(request)
+          } catch (cause) {
+            throw notSigned(cause)
+          }
+        },
+      },
       fetch: agentFetch,
       // The agent re-sends a request on its own after a fetch failure or a
       // non-2xx status and reports only the last status, so a 429 after a
@@ -1704,6 +1741,7 @@ export function createClientWith(
     disposed: () => disposed,
     mutationCallers,
     ownMutationFns,
+    offered: new WeakMap(),
     agentFor,
   })
 
@@ -1816,15 +1854,18 @@ export function createClientWith(
               internals,
               "client.mutationOptions()"
             ).resolve()
-            // Marked with the canister, as a call's error is, so that
-            // `isReactorError(error, canister, method)` matches it.
+            const refusal = createReactorError("cancelled", {
+              method: String(method),
+              canisterId: target.ok ? target.id : target.slot,
+              code: "caller_changed",
+              reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
+            })
+            // A re-send `resendOf` offered leaves its write unknown, as the
+            // call path does. Marked with the canister, as a call's error
+            // is, so that `isReactorError(error, canister, method)` matches.
+            const again = internals.offered.get(vars as object)
             throw fromCanister(
-              createReactorError("cancelled", {
-                method: String(method),
-                canisterId: target.ok ? target.id : target.slot,
-                code: "caller_changed",
-                reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
-              }),
+              again === undefined ? refusal : keptUnknown(again, refusal),
               canister as object
             )
           }
