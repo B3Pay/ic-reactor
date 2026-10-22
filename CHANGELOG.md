@@ -124,6 +124,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   Migration: write the scheme, `{ host: "http://localhost:4943" }` or
   `ICP_HOST=http://localhost:8000`, and on an app shell's page pass
   `network: { host }` in place of `"env"`.
+- A page with an element whose id is `Deno`, or a frame named `Deno`, no
+  longer counts as a server (#976). The client knew Deno by a `Deno` global,
+  which in a browser such an element is (`window.Deno`), and user content
+  that a sanitizer such as DOMPurify keeps can carry the id. On such a page
+  the auth was never built, `signIn()` rejected as on a server, the `ic_env`
+  cookie was not read, so `{ name }` targets were refused as `no_browser`,
+  and reads were not retried. Deno is now known by its `Deno.version.deno`,
+  and a page where reading it throws (a cross-origin frame named `Deno`) is
+  a page too.
 
 ### @ic-reactor/react
 

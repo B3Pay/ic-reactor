@@ -413,6 +413,53 @@ describe("a client on a server", () => {
 
     expect(factory).not.toHaveBeenCalled()
   })
+
+  it("counts Deno, which has a version, as a server even with a window", async () => {
+    // Deno 1 defines a window (#976).
+    onPage()
+    vi.stubGlobal("Deno", { version: { deno: "1.46.3" } })
+    const factory = vi.fn(() => createTestAuth({ seed: 1 }))
+    const client = createClient({ network: "ic", auth: factory })
+
+    await expect(client.signIn()).rejects.toThrow(/only in a browser/)
+    expect(factory).not.toHaveBeenCalled()
+    client.dispose()
+  })
+})
+
+// Named access makes an element whose id is Deno, or a frame named Deno, a
+// `Deno` global, and user content a sanitizer keeps can carry either (#976).
+// A plain object stands in for it: vitest's jsdom globals have no named
+// access, so a real element would leave `Deno` undefined.
+describe("a page with an element whose id is Deno", () => {
+  it("signs in, as any page does", async () => {
+    onPage()
+    vi.stubGlobal("Deno", { id: "Deno", tagName: "SPAN" })
+    const auth = createTestAuth({ seed: 1, signedIn: false })
+    const client = createClient({ network: "ic", auth: () => auth })
+
+    await client.signIn()
+    expect(client.caller()).toBe(auth.getPrincipal()!.toText())
+    client.dispose()
+  })
+
+  it("signs in when it is a cross-origin frame, whose properties throw when read", async () => {
+    onPage()
+    vi.stubGlobal("Deno", {
+      get version(): never {
+        throw new DOMException(
+          "Blocked a frame from accessing a cross-origin frame.",
+          "SecurityError"
+        )
+      },
+    })
+    const auth = createTestAuth({ seed: 1, signedIn: false })
+    const client = createClient({ network: "ic", auth: () => auth })
+
+    await client.signIn()
+    expect(client.caller()).toBe(auth.getPrincipal()!.toText())
+    client.dispose()
+  })
 })
 
 describe("a client following its auth in a browser", () => {
