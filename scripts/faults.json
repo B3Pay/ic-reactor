@@ -6176,5 +6176,85 @@
     "file": "src/dev-environment.ts",
     "search": "    (name) => name === \"internet_identity\" || !configuredCanisterIds.get(name)\n",
     "replace": "    (name) => !configuredCanisterIds.get(name)\n"
+  },
+  {
+    "id": "913-strict-mode-signs-in-twice",
+    "package": "core",
+    "test": "tests/redirect-sign-in.test.ts",
+    "testName": "is one ceremony when signIn() runs twice on each load",
+    "why": "React's StrictMode runs the sign-in route's effect twice, and each call signs in: the redirect carries two sign-ins, and on the load that comes back both fail, so the user stays signed out",
+    "file": "src/client.ts",
+    "search": "      if (started) return started.done\n",
+    "replace": ""
+  },
+  {
+    "id": "913-options-compared-by-identity",
+    "package": "core",
+    "test": "tests/redirect-sign-in.test.ts",
+    "testName": "is one ceremony when signIn() runs twice on each load",
+    "why": "each run of an effect builds its own options object, so comparing the objects themselves joins nothing and StrictMode's two calls sign in twice",
+    "file": "src/client.ts",
+    "search": "  if (typeof a !== \"object\" || typeof b !== \"object\" || !a || !b) return false\n",
+    "replace": "  if (typeof a !== \"object\" || typeof b !== \"object\" || !a || !b || a) return false\n"
+  },
+  {
+    "id": "913-joined-after-the-run",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "signs in again for a call in a later run, or with other options",
+    "why": "a sign-in in flight swallows the next click's, so a user who clicks again while the first ceremony is open gets nothing new from the auth",
+    "file": "src/client.ts",
+    "search": "        void Promise.resolve().then(() => (signInsThisRun = []))\n",
+    "replace": ""
+  },
+  {
+    "id": "913-other-options-joined",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "signs in again for a call in a later run, or with other options",
+    "why": "a second sign-in with other options in the same run is taken for the first, so the auth never sees what it asked for",
+    "file": "src/client.ts",
+    "search": "  if (Object.is(a, b)) return true\n",
+    "replace": "  if (a !== null) return true\n"
+  },
+  {
+    "id": "913-inherited-option-joined",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "signs in again for a call in a later run, or with other options",
+    "why": "options are compared by keys the second object only inherits, so a call whose own options differ is taken for the one before it",
+    "file": "src/client.ts",
+    "search": "        Object.prototype.hasOwnProperty.call(second, key) &&\n",
+    "replace": "        key in second &&\n"
+  },
+  {
+    "id": "913-only-the-last-joined",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "joins each sign-in of the run, not only the last",
+    "why": "StrictMode runs every effect of a subtree and then all of them again, so with two sign-in effects a comparison with the last sign-in alone joins neither, and each signs in twice",
+    "file": "src/client.ts",
+    "search": "      signInsThisRun.push({ options: signInOptions, done })\n",
+    "replace": "      signInsThisRun = [{ options: signInOptions, done }]\n"
+  },
+  {
+    "id": "913-run-ended-by-queueMicrotask",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "ends the run with a promise job",
+    "why": "fake timers that replace queueMicrotask, as Jest's do by default, never end the run, so every later sign-in with the same options gets the first one's settled promise and never reaches the auth",
+    "file": "src/client.ts",
+    "search": "        void Promise.resolve().then(() => (signInsThisRun = []))\n",
+    "replace": "        queueMicrotask(() => (signInsThisRun = []))\n"
+  },
+  {
+    "id": "913-joined-after-dispose",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "rejects a sign-in after dispose(), even with the options of one earlier in the run",
+    "why": "a sign-in after dispose() with the options of one earlier in the run is joined to it instead of rejecting, so the caller waits on a client that is gone",
+    "file": "src/client.ts",
+    "search": "      signInsThisRun = []\n      agents.clear()\n",
+    "replace": "      agents.clear()\n"
   }
 ]

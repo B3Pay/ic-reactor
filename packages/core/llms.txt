@@ -123,6 +123,15 @@ Who calls (exactly one):
   A spread that adds other options, `{ ...network, derivationOrigin }`, reads no
   provider and gets no warning, so name one there too.
   `() => new AuthClient()` ignores `network`, so it suits mainnet only.
+  Two `signIn()` calls with the same options in one synchronous run, as
+  `StrictMode`'s double effect makes them, are one sign-in.
+  With `new AuthClient({ ...network, transport: "redirect" })` (Internet
+  Identity's ICRC-167 redirect), sign in only on a route of its own that calls
+  `signIn()` on every load, from an effect that starts it on a timer its
+  cleanup clears (a hydrating render shows `"anonymous"` whatever the
+  session). Enter that route with a full page load (`<a href="/sign-in">`, not
+  a router link): `AuthClient` takes its callback from the page it is built
+  on. List that URL in the origin's `/.well-known/ii-auth-callbacks`.
 
 Who is calling, and may they write:
 

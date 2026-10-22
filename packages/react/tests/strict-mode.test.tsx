@@ -6,8 +6,13 @@
 import type { Client } from "@ic-reactor/core"
 import { act, render } from "@testing-library/react"
 import * as React from "react"
-import { StrictMode, type ComponentType, type ReactNode } from "react"
-import { describe, expect, it } from "vitest"
+import {
+  StrictMode,
+  useEffect,
+  type ComponentType,
+  type ReactNode,
+} from "react"
+import { describe, expect, it, vi } from "vitest"
 import { ReactorProvider, useAuth, useClient } from "../src/index.js"
 import {
   clientOf,
@@ -248,4 +253,36 @@ describe("a provider's client across mounts", () => {
       expect(trackOf(hidden).dispose).toHaveBeenCalledTimes(1)
     }
   )
+})
+
+describe("a sign-in an effect starts", () => {
+  it("is one sign-in of the auth under StrictMode, which runs the effect twice", async () => {
+    const real = testAuth({ identity: 3, signedIn: false })
+    const signIn = vi.fn((_options?: unknown) => real.signIn())
+    const auth = { ...real, signIn }
+    // A sign-in route that calls signIn() straight from its effect, as the
+    // auth guide says an app with no server render can.
+    function SignInPage() {
+      const { status, signIn } = useAuth()
+      useEffect(() => {
+        if (status === "signed-in") return
+        signIn({ returnTo: "/account" }).catch(() => {})
+      }, [status, signIn])
+      return <p data-testid="status">{status}</p>
+    }
+
+    const view = render(
+      <StrictMode>
+        <ReactorProvider client={() => clientWithAuth(() => auth)}>
+          <SignInPage />
+        </ReactorProvider>
+      </StrictMode>
+    )
+    await act(macrotask)
+
+    expect(view.getByTestId("status").textContent).toBe("signed-in")
+    expect(signIn).toHaveBeenCalledTimes(1)
+    expect(signIn).toHaveBeenCalledWith({ returnTo: "/account" })
+    view.unmount()
+  })
 })
