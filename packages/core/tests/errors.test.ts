@@ -1228,7 +1228,7 @@ describe("retryQuery", () => {
 
   it("does not retry under Deno, which TanStack counts as a server even with a window", () => {
     vi.stubGlobal("window", {})
-    vi.stubGlobal("Deno", {})
+    vi.stubGlobal("Deno", { version: { deno: "1.46.3" } })
     try {
       expect(retryQuery(0, retryable())).toBe(false)
     } finally {

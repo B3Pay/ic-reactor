@@ -1,8 +1,9 @@
 /**
  * The events of a session a client meets without anyone signing in or out:
  * a session that ends by the clock, a change a read notices before any
- * notification, and an auth factory that throws (`new AuthClient()` reads
- * `localStorage`, which throws where site data is blocked).
+ * notification, an auth factory that throws (`new AuthClient()` reads
+ * `localStorage`, which throws where site data is blocked), and one that
+ * returns a Promise instead of an auth.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { principal } from "@candid-core/schema"
@@ -297,6 +298,51 @@ describe("an auth factory that throws", () => {
 
     expect(client.caller()).toBe(ANONYMOUS)
     expect(error).not.toHaveBeenCalled()
+    client.dispose()
+  })
+})
+
+describe("an auth factory that returns a Promise", () => {
+  // An `async` factory, or `() => AuthClient.create()` of `@icp-sdk/auth` 5
+  // and earlier: the factory returns a Promise, not an auth (#972).
+  function promising(): { client: Client; factory: ReturnType<typeof vi.fn> } {
+    const factory = vi.fn(() => Promise.resolve(createTestAuth({ seed: 1 })))
+    onPage()
+    const client = createClient({ network: "ic", auth: factory as never })
+    return { client, factory }
+  }
+
+  it("is called once: the client calls anonymously and says why once in development", () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
+    const { client, factory } = promising()
+
+    expect(client.caller()).toBe(ANONYMOUS)
+    expect(client.authState()).toEqual({
+      status: "anonymous",
+      principal: ANONYMOUS,
+    })
+    client.subscribe(() => {})
+    client.caller()
+
+    expect(factory).toHaveBeenCalledTimes(1)
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(error.mock.calls[0]).toEqual([
+      expect.stringMatching(/the auth factory threw/),
+      expect.any(TypeError),
+    ])
+    client.dispose()
+  })
+
+  it("rejects signIn() and signOut() with what the result lacks, and is not called again", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    const { client, factory } = promising()
+
+    await expect(client.signIn()).rejects.toThrow(
+      /the auth factory returned something that is not an AuthLike: it has no getPrincipal\(\), getStatus\(\)/
+    )
+    await expect(client.signOut()).rejects.toBeInstanceOf(TypeError)
+    expect(client.caller()).toBe(ANONYMOUS)
+    expect(factory).toHaveBeenCalledTimes(1)
     client.dispose()
   })
 })

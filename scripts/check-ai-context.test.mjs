@@ -643,3 +643,95 @@ describe("version stamps", () => {
     )
   })
 })
+
+describe("consumer skills", () => {
+  // An app installs a skill of skill-packages/ with `npx skills add`, so the
+  // rules for what an app installs hold with no marketplace file (#970).
+  const skill = (body = "") =>
+    `---\nname: ic-reactor\ndescription: Use IC Reactor.\n---\n\n- \`@ic-reactor/react\`: \`${VERSION}\`\n${body}`
+
+  it("passes a skill that lists its versions and names no repository path", () => {
+    const run = check(
+      repo({
+        "skill-packages/ic-reactor/SKILL.md": skill(
+          "Read node_modules/@ic-reactor/core/llms.txt first.\n"
+        ),
+      })
+    )
+    assert.equal(run.status, 0, run.output)
+    assert.match(run.output, /1 skills, 1 consumer skill\(s\)/)
+  })
+
+  it("fails a repository path in a skill that no marketplace lists, at its line", () => {
+    const run = check(
+      repo({
+        "skill-packages/ic-reactor/SKILL.md": skill(
+          "See packages/core/src/client.ts for the options.\n"
+        ),
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    assert.match(
+      run.output,
+      /skill-packages\/ic-reactor\/SKILL\.md:7 names the repository path "packages\/core\/src\/client\.ts"/
+    )
+  })
+
+  it("fails a repository path in one of its references", () => {
+    const run = check(
+      repo({
+        "skill-packages/ic-reactor/SKILL.md": skill(),
+        "skill-packages/ic-reactor/references/ssr.md":
+          "Copy examples/nextjs/src/service/provider.tsx into the app.\n",
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    assert.match(
+      run.output,
+      /references\/ssr\.md:1 names the repository path "examples\/nextjs\/src\/service\/provider\.tsx"/
+    )
+  })
+
+  it("fails a skill that lists no version", () => {
+    const run = check(
+      repo({
+        "skill-packages/ic-reactor/SKILL.md":
+          "---\nname: ic-reactor\ndescription: Use IC Reactor.\n---\n\nUse createClient.\n",
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    assert.match(
+      run.output,
+      /skill-packages\/ic-reactor\/SKILL\.md must list the versions it describes/
+    )
+  })
+
+  it("reports a failure once when a marketplace lists the same skill", () => {
+    const run = check(
+      repo({
+        "skill-packages/ic-reactor/SKILL.md": skill(
+          "See packages/core/src/client.ts for the options.\n"
+        ),
+        ".claude-plugin/marketplace.json": JSON.stringify({
+          name: "ic-reactor",
+          owner: { name: "B3Pay" },
+          plugins: [
+            { name: "ic-reactor", source: "./skill-packages/ic-reactor" },
+          ],
+        }),
+        "skill-packages/ic-reactor/.claude-plugin/plugin.json": JSON.stringify({
+          name: "ic-reactor",
+          description: "Use IC Reactor.",
+          author: { name: "B3Pay" },
+        }),
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    assert.deepEqual(
+      failureLines(run).filter((line) => line.includes("repository path")),
+      [
+        '- skill-packages/ic-reactor/SKILL.md:7 names the repository path "packages/core/src/client.ts", which an app does not have; link the docs site or node_modules/@ic-reactor/<package>/llms.txt instead',
+      ]
+    )
+  })
+})

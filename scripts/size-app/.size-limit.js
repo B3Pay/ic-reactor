@@ -36,8 +36,16 @@ export default [
     // With #940 on top of v4: measured 92,761 B, so the limit moved from 92,640 B to 92.82 kB.
     // With #941 on top of v4: measured 92,915 B, so the limit moved from 92,820 B to 92.97 kB.
     // With #942 on top of v4: measured 93,050 B, so the limit moved from 92,970 B to 93.1 kB.
-    // With #949 on top of v4: measured 93,056 B, so the limit moved from 93,100 B to 93.11 kB.
-    limit: "93.11 kB",
+    // With #960 on top of v4: measured 93,213 B, so the limit moved from 93,100 B to 93.27 kB.
+    // With #963 on top of v4: measured 93,409 B, so the limit moved from 93,270 B to 93.47 kB.
+    // With #961 on top of v4: measured 93,426 B, so the limit moved from 93,470 B to 93.49 kB.
+    // With #962 on top of v4: measured 93,497 B, so the limit moved from 93,490 B to 93.57 kB.
+    // With #975 on top of v4: measured 93,542 B, so the limit moved from 93,570 B to 93.62 kB.
+    // With #973 on top of v4: measured 93,657 B, so the limit moved from 93,620 B to 93.74 kB.
+    // With #974 on top of v4: measured 93,757 B, so the limit moved from 93,740 B to 93.84 kB.
+    // With #976 on top of v4: measured 93,775 B, so the limit moved from 93,840 B to 93.86 kB.
+    // With #949 on top of v4: measured 93,777 B, so the limit moved from 93,860 B to 93.87 kB.
+    limit: "93.87 kB",
     gzip: true,
   },
   {
@@ -63,8 +71,17 @@ export default [
     // With #940 on top of v4: measured 94,043 B, so the limit moved from 93,930 B to 94.1 kB.
     // With #941 on top of v4: measured 94,202 B, so the limit moved from 94,100 B to 94.26 kB.
     // With #942 on top of v4: measured 94,335 B, so the limit moved from 94,260 B to 94.39 kB.
-    // With #949 on top of v4: measured 94,341 B, so the limit moved from 94,390 B to 94.4 kB.
-    limit: "94.4 kB",
+    // With #960 on top of v4: measured 94,506 B, so the limit moved from 94,390 B to 94.56 kB.
+    // With #963 on top of v4: measured 94,712 B, so the limit moved from 94,560 B to 94.77 kB.
+    // With #961 on top of v4: measured 94,733 B, so the limit moved from 94,770 B to 94.79 kB.
+    // With #962 on top of v4: measured 94,818 B, so the limit moved from 94,790 B to 94.88 kB.
+    // With #975 on top of v4: measured 94,847 B, so the limit moved from 94,880 B to 94.91 kB.
+    // With #972 on top of v4: measured 94,849 B, so the limit moved from 94,910 B to 94.92 kB.
+    // With #973 on top of v4: measured 94,952 B, so the limit moved from 94,920 B to 95.03 kB.
+    // With #974 on top of v4: measured 95,069 B, so the limit moved from 95,030 B to 95.15 kB.
+    // With #976 on top of v4: measured 95,091 B, so the limit moved from 95,150 B to 95.18 kB.
+    // With #949 on top of v4: measured 95,092 B, so the limit moved from 95,180 B to 95.19 kB.
+    limit: "95.19 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },

@@ -30,7 +30,9 @@ way, so what is memoized is built again for the new caller. Its `queryKey`,
 `mutationOptions` send only as that caller: a write pressed before a switch
 reaches the render is refused (`kind` `"cancelled"`, `code` `"caller_changed"`,
 `mayHaveExecuted: false`) and sends nothing, so a click handler needs no check
-of its own. Their `mutationKey` ends with that caller. A handler that awaits
+of its own. A re-send `client.resendOf()` offered is refused the same way but
+as `"outcome_unknown"` with `mayHaveExecuted: true`: the write it re-sends may
+have run, and stays offered. Their `mutationKey` ends with that caller. A handler that awaits
 `signIn()` and then calls `mutate` presses with the last committed render's
 options, and is refused if the signed-in render has not committed yet (one that
 suspends on the user's data): let the next render press, or make a direct call.
