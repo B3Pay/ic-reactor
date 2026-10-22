@@ -544,7 +544,9 @@ another identity. What that means in practice:
   between, it fails with `kind: "cancelled"`, `code: "caller_changed"` and
   `mayHaveExecuted: false`, and nothing is sent. Built from a render's
   `useClient()`, its options also send only as that render's caller: a press
-  handled before a switch reached the render is refused the same way. If
+  handled before a switch reached the render is refused the same way. A
+  re-send `client.resendOf()` offered is refused as `outcome_unknown` with
+  `mayHaveExecuted: true` instead, since the write it re-sends may have run. If
   nobody is signed in, the client refuses it before sending:
   `kind: "unauthenticated"`, code `anonymous_write`.
 - **Data.** After a sign-in, a sign-out or a switch, the new keys are empty
