@@ -58,6 +58,19 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   it re-sends may have run. An `AbortError` from the signer is still
   `cancelled`, as every abort is.
 
+### @ic-reactor/react
+
+#### Fixed
+
+- A `ReactorProvider` handed the view an outer provider's `useClient()`
+  returned (`client={() => view}`, as the README and the SSR guide describe)
+  no longer removes the outer client from the registry that disposes the
+  clients of renders React throws away (#965). Both providers render in the
+  same pass, so in development every first mount logged the "lazily shared"
+  warning for correct code, and when a Suspense boundary above the outer
+  provider threw that render away, the outer client and the auth listening
+  to the window were never disposed.
+
 ## core, react, vite-plugin 4.0.0-beta.6
 
 Prepared on 2026-10-21. It goes out under npm's `beta` dist-tag, as
