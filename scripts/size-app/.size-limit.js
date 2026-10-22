@@ -44,7 +44,8 @@ export default [
     // With #973 on top of v4: measured 93,657 B, so the limit moved from 93,620 B to 93.74 kB.
     // With #974 on top of v4: measured 93,757 B, so the limit moved from 93,740 B to 93.84 kB.
     // With #976 on top of v4: measured 93,775 B, so the limit moved from 93,840 B to 93.86 kB.
-    limit: "93.86 kB",
+    // With #949 on top of v4: measured 93,777 B, so the limit moved from 93,860 B to 93.87 kB.
+    limit: "93.87 kB",
     gzip: true,
   },
   {
@@ -79,7 +80,8 @@ export default [
     // With #973 on top of v4: measured 94,952 B, so the limit moved from 94,920 B to 95.03 kB.
     // With #974 on top of v4: measured 95,069 B, so the limit moved from 95,030 B to 95.15 kB.
     // With #976 on top of v4: measured 95,091 B, so the limit moved from 95,150 B to 95.18 kB.
-    limit: "95.18 kB",
+    // With #949 on top of v4: measured 95,092 B, so the limit moved from 95,180 B to 95.19 kB.
+    limit: "95.19 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },

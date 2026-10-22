@@ -6116,5 +6116,15 @@
     "file": "src/network.ts",
     "search": "ICP0_CANISTER_PAGE.exec(parsedHostnameOf(pageOrigin()) ?? \"\")",
     "replace": "ICP0_CANISTER_PAGE.exec(pageHostnameOf(pageOrigin()) ?? \"\")"
+  },
+  {
+    "id": "949-time-path-other-realm",
+    "package": "core",
+    "test": "tests/time-realm.test.ts",
+    "testName": "resolves the replica's time with signedIn: true",
+    "why": "builds the time path from TextEncoder's bytes as they are: under jsdom they are not the global Uint8Array's, the CBOR encoder sends the label as a map, and a signed-in caller's client.time() is refused",
+    "file": "src/options.ts",
+    "search": "const TIME_PATH = [Uint8Array.from(new TextEncoder().encode(\"time\"))]",
+    "replace": "const TIME_PATH = [new TextEncoder().encode(\"time\")]"
   }
 ]

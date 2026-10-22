@@ -142,6 +142,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   and reads were not retried. Deno is now known by its `Deno.version.deno`,
   and a page where reading it throws (a cross-origin frame named `Deno`) is
   a page too.
+- `client.time(canister)` resolves under a test's jsdom environment, where the
+  fake replica refused a signed-in client's signature (#949). There
+  `TextEncoder` hands out Node's bytes, which are not the global (jsdom's)
+  `Uint8Array`, and the agent's CBOR encoder sent the `time` label built from
+  them as a map, so the request the replica received was not the one the
+  agent signed. The label is now copied into the global `Uint8Array`. In a
+  browser, `TextEncoder` and the agent share one realm, so an app there is
+  not expected to have been affected.
 
 ### @ic-reactor/react
 
