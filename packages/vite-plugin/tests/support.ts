@@ -2,12 +2,14 @@
  * Helpers for the plugin tests that run a real Vite server or build against a
  * temporary app.
  */
+import { EventEmitter } from "node:events"
 import fs from "node:fs"
 import http from "node:http"
 import Module, { createRequire } from "node:module"
 import type { AddressInfo } from "node:net"
 import os from "node:os"
 import path from "node:path"
+import { PassThrough } from "node:stream"
 import { fileURLToPath } from "node:url"
 import {
   build,
@@ -185,19 +187,25 @@ export interface Running {
  * mean to by emitting them: a real watcher on a directory created a moment
  * ago sometimes reports the files in it, which starts a run nobody asked for.
  * `realWatcher` keeps it. `hmr: false` is the server without a WebSocket
- * (`noWebSocket`). The
+ * (`noWebSocket`). `mode: "test"` is the server Vitest starts. The
  * environment half of the plugin is off, so no test runs `icp`.
  */
 export async function startDev(
   root: string,
   options: IcReactorPluginOptions,
-  { before = [] as Plugin[], realWatcher = false, hmr = true } = {}
+  {
+    before = [] as Plugin[],
+    realWatcher = false,
+    hmr = true,
+    mode = undefined as string | undefined,
+  } = {}
 ): Promise<Running> {
   const { logger, lines } = recordingLogger()
   const httpServer = http.createServer()
   const server = await createServer({
     root,
     configFile: false,
+    mode,
     customLogger: logger,
     server: {
       middlewareMode: true,
@@ -254,4 +262,39 @@ export function get(port: number, pathname: string) {
       )
       .on("error", reject)
   })
+}
+
+/**
+ * What a mocked `spawn` hands back for an `icp` command: a process that
+ * writes `result` to stdout and exits 0, or for an Error, writes its `stderr`
+ * (its message when it has none, as a real `icp` writes its error) and exits
+ * 1. An Error whose `code` is `ENOENT` is a command that never started. It
+ * settles later, as a real process does.
+ */
+export function icpProcess(result: string | Error) {
+  const child = Object.assign(new EventEmitter(), {
+    stdout: new PassThrough(),
+    stderr: new PassThrough(),
+    stdin: new PassThrough(),
+    pid: undefined,
+    kill: () => true,
+  })
+  setImmediate(() => {
+    if (
+      result instanceof Error &&
+      (result as { code?: unknown }).code === "ENOENT"
+    ) {
+      child.emit("error", result)
+      child.emit("close", -2, null)
+      return
+    }
+    const failed = result instanceof Error
+    child.stdout.end(failed ? "" : result)
+    child.stderr.end(
+      failed ? ((result as { stderr?: string }).stderr ?? result.message) : ""
+    )
+    // After the streams have ended, as a real process closes.
+    setImmediate(() => child.emit("close", failed ? 1 : 0, null))
+  })
+  return child
 }

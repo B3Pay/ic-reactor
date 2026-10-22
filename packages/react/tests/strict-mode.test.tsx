@@ -23,6 +23,9 @@ import {
   trackedFactory,
 } from "./helpers.js"
 
+/** Node's `gc()`, present when the worker runs with `--expose-gc`. */
+const collectGarbage = (globalThis as { gc?: () => void }).gc
+
 /** `React.Activity` exists from React 19.2; the peer range starts at 18. */
 const Activity = (
   React as unknown as {
@@ -47,18 +50,21 @@ function setup() {
   /** The auth of the client most recently put to use. */
   const currentAuth = () => auths[auths.length - 1] as TestAuth
   const live: { client?: Client } = {}
+  /** Every client a render of the tree has used. */
+  const seen = new Set<Client>()
   function Probe() {
     // The provider's client, which useClient() returns a view of.
     live.client = clientOf(useClient())
+    seen.add(live.client)
     const { status } = useAuth()
     return <p data-testid="status">{status}</p>
   }
-  return { currentAuth, live, Probe, ...tracked }
+  return { currentAuth, live, seen, Probe, ...tracked }
 }
 
 describe("a provider's client across mounts", () => {
   it("survives React's development double-mount and keeps working", async () => {
-    const { currentAuth, Probe, factory, disposals } = setup()
+    const { currentAuth, live, seen, Probe, factory, made, trackOf } = setup()
 
     const view = render(
       <StrictMode>
@@ -69,9 +75,28 @@ describe("a provider's client across mounts", () => {
     )
     await act(macrotask)
 
-    // Nothing was disposed, and no client was built to replace a disposed
-    // one. React's development render builds two and keeps one.
-    expect(disposals()).toBe(0)
+    // React's development render builds two clients and keeps one. The
+    // registry disposes the one React threw away when a collection finds it
+    // unreachable, which can happen at any point of this test, so the
+    // assertions are about the client in use. Where the runtime exposes
+    // `gc()`, run that collection now, so that they are checked after it.
+    const used = trackOf(live.client as Client)
+    const dropped = made.filter((entry) => entry !== used)
+    for (
+      let round = 0;
+      collectGarbage !== undefined &&
+      round < 20 &&
+      dropped.some((entry) => entry.dispose.mock.calls.length === 0);
+      round++
+    ) {
+      collectGarbage()
+      await macrotask()
+    }
+
+    // The client in use was not disposed, and the tree has used no other: no
+    // client was built to replace a disposed one.
+    expect(used.dispose).not.toHaveBeenCalled()
+    expect([...seen]).toEqual([used.client])
     expect(factory.mock.calls.length).toBeLessThanOrEqual(2)
     // The client still hears its auth: the subscription survived.
     expect(view.getByTestId("status").textContent).toBe("anonymous")
@@ -79,11 +104,12 @@ describe("a provider's client across mounts", () => {
       await currentAuth().signIn()
     })
     expect(view.getByTestId("status").textContent).toBe("signed-in")
-    expect(disposals()).toBe(0)
+    expect([...seen]).toEqual([used.client])
+    expect(used.dispose).not.toHaveBeenCalled()
   })
 
   it("disposes the client exactly once when the provider unmounts", async () => {
-    const { live, Probe, factory, trackOf, disposals } = setup()
+    const { live, Probe, factory, trackOf } = setup()
     const view = render(
       <StrictMode>
         <ReactorProvider client={factory}>
@@ -93,14 +119,13 @@ describe("a provider's client across mounts", () => {
     )
     await act(macrotask)
     const used = trackOf(live.client as Client)
-    expect(disposals()).toBe(0)
+    expect(used.dispose).not.toHaveBeenCalled()
 
     view.unmount()
     await act(macrotask)
     await act(macrotask)
 
     expect(used.dispose).toHaveBeenCalledTimes(1)
-    expect(disposals()).toBe(1)
   })
 
   it("disposes the client exactly once when it unmounts outside StrictMode too", async () => {
@@ -195,7 +220,7 @@ describe("a provider's client across mounts", () => {
     "builds one replacement, not two, when StrictMode shows a hidden subtree again",
     async () => {
       const Hideable = Activity as NonNullable<typeof Activity>
-      const { live, Probe, factory, made, trackOf, disposals } = setup()
+      const { live, Probe, factory, made, trackOf } = setup()
       const tree = (mode: "visible" | "hidden") => (
         <StrictMode>
           <Hideable mode={mode}>
@@ -224,8 +249,8 @@ describe("a provider's client across mounts", () => {
       expect(shown).not.toBe(hidden)
       expect(shown).toBe(made[made.length - 1]?.client)
       expect(trackOf(shown).dispose).not.toHaveBeenCalled()
-      // Only the client that was hidden was ever disposed, and only once.
-      expect(disposals()).toBe(1)
+      // The client that was hidden was disposed once, not again on the reveal.
+      expect(trackOf(hidden).dispose).toHaveBeenCalledTimes(1)
     }
   )
 })

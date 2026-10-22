@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import * as vitePluginModule from "./index.js"
 import type { IcReactorPluginOptions } from "./index.js"
 import path from "node:path"
-import { execFile } from "child_process"
+import { spawn } from "child_process"
 import { installIcpAdvice } from "./env.js"
+import { icpProcess } from "../tests/support.js"
 import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { resolveConfig as resolveViteConfig } from "vite"
 
@@ -13,27 +14,17 @@ const createVitePlugin =
 
 // Mock child_process
 vi.mock("child_process", () => ({
-  execFile: vi.fn(),
+  spawn: vi.fn(),
 }))
 
 /**
  * Answer each `icp` command with what `answer` returns for its arguments: its
- * stdout, or an Error to fail with. An Error's `stderr` is passed on as the
- * command's stderr. The callback runs later, as a real child process's does.
+ * stdout, or an Error to fail with. An Error's `stderr`, or else its message,
+ * is the command's stderr (`icpProcess`).
  */
 function mockIcp(answer: (args: string[]) => string | Error) {
-  ;(execFile as any).mockImplementation(
-    (_file: string, args: string[], _options: unknown, callback: any) => {
-      const result = answer(args)
-      setImmediate(() => {
-        if (result instanceof Error) {
-          callback(result, "", (result as { stderr?: string }).stderr ?? "")
-        } else {
-          callback(null, result, "")
-        }
-      })
-      return { stdin: { end: vi.fn() } }
-    }
+  ;(spawn as any).mockImplementation((_file: string, args: string[]) =>
+    icpProcess(answer(args))
   )
 }
 
@@ -310,7 +301,7 @@ describe("icReactor", () => {
       })
 
     /** How many `icp` commands the plugin has run. */
-    const icpCalls = () => (execFile as any).mock.calls.length
+    const icpCalls = () => (spawn as any).mock.calls.length
 
     /**
      * Run the config hook as `vite dev` does, then configureServer, and return
@@ -393,7 +384,7 @@ describe("icReactor", () => {
       const plugin = createVitePlugin(mockOptions)
       await plugin.config({ root: "apps/web" }, { command: "serve" })
 
-      const workingDirs = (execFile as any).mock.calls.map(
+      const workingDirs = (spawn as any).mock.calls.map(
         ([, , options]: any) => options?.cwd
       )
       expect(workingDirs.length).toBeGreaterThan(1)
@@ -416,6 +407,47 @@ describe("icReactor", () => {
         "PUBLIC_CANISTER_ID%3Atest_canister%3Dyq4ns-hyaaa-aaaap-akbna-cai"
       )
       expect(cookie).not.toContain("local-cli-canister-id")
+    })
+
+    // Its answer would be thrown away, and each question is an `icp` process
+    // (#980).
+    it("should not ask icp for a canister whose canisterId is configured, but for internet_identity", async () => {
+      answerIcp({
+        other: "bkyz2-fmaaa-aaaaa-qaaaq-cai",
+        internet_identity: "rdmx6-jaaaa-aaaaa-aaadq-cai",
+      })
+      const askedFor = () =>
+        (spawn as any).mock.calls
+          .map(([, args]: [string, string[]]) => args)
+          .filter((args: string[]) => args[0] === "canister")
+          .map((args: string[]) => args[args.length - 1])
+
+      const plugin = createVitePlugin({
+        canisters: {
+          test_canister: { canisterId: "yq4ns-hyaaa-aaaap-akbna-cai" },
+          other: {},
+        },
+      })
+      const { middleware } = await serveWithEnvironment(plugin)
+      await request(middleware)
+      expect(askedFor()).toEqual(["other", "internet_identity"])
+
+      // A configured internet_identity is still looked up: icp reports the
+      // project's own, so the cookie names no built-in provider beside it.
+      ;(spawn as any).mockClear()
+      const withIdentity = createVitePlugin({
+        canisters: {
+          other: {},
+          internet_identity: { canisterId: "rdmx6-jaaaa-aaaaa-aaadq-cai" },
+        },
+      })
+      const served = await serveWithEnvironment(withIdentity)
+      const cookie = await request(served.middleware)
+      expect(askedFor()).toEqual(["other", "internet_identity"])
+      expect(cookie).toContain(
+        "PUBLIC_CANISTER_ID%3Ainternet_identity%3Drdmx6-jaaaa-aaaaa-aaadq-cai"
+      )
+      expect(cookie).not.toContain("INTERNET_IDENTITY_PROVIDER")
     })
 
     // A canister's name is kept as given, and a JSON config can name one
@@ -546,7 +578,7 @@ describe("icReactor", () => {
           "out of the cookie, and icp is not asked for their IDs. Name the canister as icp does: ASCII letters, " +
           'digits, "_" and "-".'
       )
-      const asked = (execFile as any).mock.calls.map(
+      const asked = (spawn as any).mock.calls.map(
         ([, args]: [string, string[]]) => args[args.length - 1]
       )
       expect(asked).toContain("-x")
@@ -664,7 +696,7 @@ describe("icReactor", () => {
       const consoleWarnSpy = vi
         .spyOn(console, "warn")
         .mockImplementation(() => {})
-      // What execFile fails with when the file cannot be found: on Windows,
+      // What spawn fails with when the file cannot be found: on Windows,
       // also what an npm-installed icp.cmd gives.
       mockIcp(() =>
         Object.assign(new Error("spawn icp ENOENT"), { code: "ENOENT" })
@@ -759,7 +791,7 @@ describe("icReactor", () => {
       const config = await (plugin as any).config({}, { command: "build" })
 
       expect(config).toEqual({})
-      expect(execFile).not.toHaveBeenCalled()
+      expect(spawn).not.toHaveBeenCalled()
     })
 
     it("should add no middleware when injectEnvironment is off", async () => {
@@ -771,7 +803,7 @@ describe("icReactor", () => {
 
       expect(config).toEqual({})
       expect(middleware).toBeUndefined()
-      expect(execFile).not.toHaveBeenCalled()
+      expect(spawn).not.toHaveBeenCalled()
     })
 
     // `vite preview` resolves the config with the `serve` command, and used to
@@ -900,7 +932,7 @@ describe("icReactor", () => {
 
         await Promise.all([request(middleware), request(middleware)])
 
-        const networkStatusCalls = (execFile as any).mock.calls
+        const networkStatusCalls = (spawn as any).mock.calls
           .slice(calls)
           .filter(([, args]: any) => args[0] === "network")
         expect(networkStatusCalls).toHaveLength(1)

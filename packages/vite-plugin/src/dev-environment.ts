@@ -23,12 +23,7 @@ import {
   getIcEnvironmentInfo,
   type IcEnvironment,
 } from "./env.js"
-
-/**
- * Where `/api` goes while `icp` reports no network: icp-cli's local network
- * on its default gateway port, the client's `"local"`.
- */
-export const DEFAULT_LOCAL_REPLICA = "http://127.0.0.1:8000"
+import { DEFAULT_LOCAL_REPLICA, isLocalHostname } from "./local-host.js"
 
 /**
  * The Internet Identity provider the cookie names when no canister is
@@ -105,11 +100,19 @@ export function createLocalEnvironment(
 
   // Two entries can share a name. internet_identity is looked up as well, but
   // it is routinely not deployed, so it is not needed for detection to be
-  // complete.
+  // complete. Another name with a configured `canisterId` is not looked up:
+  // that ID wins over what `icp` says (`toState`), and each lookup is an `icp`
+  // process, one more per page load while detection is incomplete (#980).
+  // internet_identity is looked up even then, because what `icp` says about
+  // it decides whether the built-in provider is named in the cookie.
   const requiredNames = [...new Set(canisterNames)]
-  const lookupNames = requiredNames.includes("internet_identity")
-    ? requiredNames
-    : [...requiredNames, "internet_identity"]
+  const lookupNames = (
+    requiredNames.includes("internet_identity")
+      ? requiredNames
+      : [...requiredNames, "internet_identity"]
+  ).filter(
+    (name) => name === "internet_identity" || !configuredCanisterIds.get(name)
+  )
 
   let state: LocalEnvironmentState | undefined
   let running: Promise<LocalEnvironmentState> | undefined
@@ -265,12 +268,7 @@ function isLoopbackHost(host: string | undefined): boolean {
   } catch {
     return true
   }
-  return (
-    hostname === "localhost" ||
-    hostname.endsWith(".localhost") ||
-    /^127\.(?:\d{1,3}\.){2}\d{1,3}$/.test(hostname) ||
-    hostname === "[::1]"
-  )
+  return isLocalHostname(hostname)
 }
 
 /**

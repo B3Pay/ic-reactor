@@ -3,9 +3,7 @@
  *
  * {@link createFakeReplica} returns a `fetch` to pass as
  * `HttpAgentOptions.fetch`, so the agents that use it are the only code that
- * reaches the fake and nothing global is touched. {@link installFakeReplica}
- * puts the same fake in `globalThis.fetch` instead, for code that builds its
- * own agents.
+ * reaches the fake and nothing global is touched.
  *
  * It holds its own root key and node key, and signs what a replica signs: a
  * BLS signature over each certificate and a node signature over each query
@@ -129,7 +127,7 @@ export interface FakeReplicaRequest {
   readonly dropped?: true
 }
 
-/** Options for {@link createFakeReplica} and {@link installFakeReplica}. */
+/** Options for {@link createFakeReplica}. */
 export interface FakeReplicaOptions {
   /**
    * The origin the fake answers for. Point the agents under test at it, for
@@ -360,18 +358,6 @@ function useUp<T extends Armed>(
   return fault
 }
 
-/** A fake replica installed by {@link installFakeReplica}. */
-export interface InstalledFakeReplica extends FakeReplica {
-  /**
-   * Takes the fake out of `globalThis.fetch`, putting back the `fetch` it
-   * replaced, along with any wrapper a test installed around it since.
-   * Calling it again does nothing, and several fakes may be restored in any
-   * order: one installed over this fake keeps its place. An agent built while
-   * the fake was installed keeps calling it.
-   */
-  restore(): void
-}
-
 /**
  * Rejects a call with a reject code. Thrown by {@link FakeReplica.reject}.
  *
@@ -445,39 +431,6 @@ function urlOf(input: RequestInfo | URL): URL | undefined {
   } catch {
     return undefined
   }
-}
-
-/** Marks a `fetch` that {@link installFakeReplica} put in place. */
-const FAKE_REPLICA_FETCH = Symbol.for("@ic-reactor/core/testing/fakeReplica")
-
-type Fetch = typeof globalThis.fetch
-
-/** What an installed fake replica's `fetch` knows about its place in the chain. */
-interface FakeReplicaLink {
-  /** The `fetch` the fake replaced. */
-  readonly previous: Fetch
-  /** Whether its `restore()` has been called. */
-  restored: boolean
-}
-
-// A test environment may have had no `fetch` before the fake installed one.
-const linkOf = (fetch: Fetch | undefined): FakeReplicaLink | undefined =>
-  typeof fetch === "function"
-    ? (fetch as Fetch & { [FAKE_REPLICA_FETCH]?: FakeReplicaLink })[
-        FAKE_REPLICA_FETCH
-      ]
-    : undefined
-
-/**
- * The `fetch` to put back in place of a fake: the one it replaced, past any
- * fakes under it that were restored while this one was installed over them.
- */
-function liveFetchUnder(link: FakeReplicaLink): Fetch {
-  let fetch = link.previous
-  for (let under = linkOf(fetch); under?.restored; under = linkOf(fetch)) {
-    fetch = under.previous
-  }
-  return fetch
 }
 
 const encoder = new TextEncoder()
@@ -647,18 +600,71 @@ const REJECT_NAMES: Record<FakeRejectCode, string> = {
 }
 
 /**
- * How an installed fake hands on a request that is not its own to answer.
- * Returns the answer, or `undefined` for the fake to refuse the request.
+ * Creates a fake replica that runs `options.canisters`, to give to the agents
+ * under test as their `fetch`. Nothing global is touched, so two fakes run
+ * side by side in one process, each with its own root key, node key and
+ * request log, and the agents that use one never reach the other.
+ *
+ * Point an agent at it with its `host`, its `fetch` and its root key:
+ * `HttpAgent.createSync({ host: replica.host, fetch: replica.fetch, rootKey:
+ * replica.rootKey })`, or pass `shouldFetchRootKey: true` instead of the
+ * `rootKey` to let the agent fetch it from the fake as it does from a local
+ * replica. The fake answers the IC API on `replica.host` and refuses the IC
+ * API on any other origin as a network error, which it also logs once, so a
+ * test never reaches a real network by mistake.
+ *
+ * It checks each request's signatures as a replica does, and refuses one that
+ * does not verify with HTTP 400. It can check Ed25519, ECDSA P-256 and
+ * secp256k1 keys, including delegation chains between them, which covers
+ * `Ed25519KeyIdentity`, `ECDSAKeyIdentity`, `Secp256k1KeyIdentity` and a
+ * `DelegationIdentity` built from them. It refuses any other kind of key.
+ *
+ * An agent keeps the node keys it reads in IndexedDB when the environment has
+ * one, under a name that holds only the host. Agents of two fakes that share a
+ * host therefore share cached keys. The agent notices a signature that does
+ * not verify and reads fresh keys, but pass each agent its own
+ * `subnetNodeKeyExpirableStore` to keep them apart.
+ *
+ * The signing uses `@noble/curves`, an optional peer dependency of
+ * `@ic-reactor/core` that `@icp-sdk/core` already installs. Add it to your
+ * devDependencies if your package manager does not let this package resolve
+ * it.
+ *
+ * @param options - The canisters to run and the origin to answer for.
+ * @returns The fake: its `fetch`, `host` and `rootKey`, the requests it
+ * received, and the hooks that fail a call on purpose.
+ *
+ * @example
+ * ```typescript
+ * import { HttpAgent } from "@icp-sdk/core/agent"
+ * import { IDL } from "@icp-sdk/core/candid"
+ * // Internal: core's own tests import it from its module.
+ * import { createFakeReplica } from "../src/testing/fake-replica.js"
+ *
+ * const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
+ *
+ * const replica = createFakeReplica({
+ *   canisters: {
+ *     [BACKEND]: {
+ *       query: () => new Uint8Array(IDL.encode([IDL.Text], ["Hello, Ada!"])),
+ *       update: () => replica.reject(4, "not today"),
+ *     },
+ *   },
+ * })
+ * const agent = HttpAgent.createSync({
+ *   host: replica.host,
+ *   fetch: replica.fetch,
+ *   rootKey: replica.rootKey,
+ * })
+ *
+ * const answer = await agent.query(BACKEND, {
+ *   methodName: "greet",
+ *   arg: new Uint8Array(IDL.encode([IDL.Text], ["Ada"])),
+ * })
+ * ```
  */
-type PassOn = (
-  input: RequestInfo | URL,
-  init: RequestInit | undefined,
-  why: "not-ic-api" | "other-origin"
-) => Promise<Response> | undefined
-
-function buildFakeReplica(
-  options: FakeReplicaOptions,
-  passOn?: PassOn
+export function createFakeReplica(
+  options: FakeReplicaOptions = {}
 ): FakeReplica {
   const host = new URL(options.host ?? localPageOrigin() ?? DEFAULT_HOST).origin
   const canisters: Record<string, FakeCanister> = {}
@@ -989,8 +995,6 @@ function buildFakeReplica(
   ): Promise<Response> => {
     const url = urlOf(input)
     if (!url || !IC_API_PATH.test(url.pathname)) {
-      const passed = passOn?.(input, init, "not-ic-api")
-      if (passed) return passed
       throw new TypeError(
         `fake replica: ${url?.href ?? String(input)} is not an IC API request, ` +
           `which is all the fake answers`
@@ -998,8 +1002,6 @@ function buildFakeReplica(
     }
 
     if (url.origin !== host) {
-      const passed = passOn?.(input, init, "other-origin")
-      if (passed) return passed
       const message =
         `fake replica: no route to ${url.origin}. The fake answers ${host}; ` +
         `build the agent with \`host: replica.host\` and \`fetch: replica.fetch\`, ` +
@@ -1162,132 +1164,3 @@ const lostReply = (method?: string) =>
   new LostReply(
     `fake replica: the connection was lost before the reply${method ? ` to ${method}` : ""} arrived`
   )
-
-/**
- * Creates a fake replica that runs `options.canisters`, to give to the agents
- * under test as their `fetch`. Nothing global is touched, so two fakes run
- * side by side in one process, each with its own root key, node key and
- * request log, and the agents that use one never reach the other.
- *
- * Point an agent at it with its `host`, its `fetch` and its root key:
- * `HttpAgent.createSync({ host: replica.host, fetch: replica.fetch, rootKey:
- * replica.rootKey })`, or pass `shouldFetchRootKey: true` instead of the
- * `rootKey` to let the agent fetch it from the fake as it does from a local
- * replica. The fake answers the IC API on `replica.host` and refuses the IC
- * API on any other origin as a network error, which it also logs once, so a
- * test never reaches a real network by mistake.
- *
- * It checks each request's signatures as a replica does, and refuses one that
- * does not verify with HTTP 400. It can check Ed25519, ECDSA P-256 and
- * secp256k1 keys, including delegation chains between them, which covers
- * `Ed25519KeyIdentity`, `ECDSAKeyIdentity`, `Secp256k1KeyIdentity` and a
- * `DelegationIdentity` built from them. It refuses any other kind of key.
- *
- * An agent keeps the node keys it reads in IndexedDB when the environment has
- * one, under a name that holds only the host. Agents of two fakes that share a
- * host therefore share cached keys. The agent notices a signature that does
- * not verify and reads fresh keys, but pass each agent its own
- * `subnetNodeKeyExpirableStore` to keep them apart.
- *
- * The signing uses `@noble/curves`, an optional peer dependency of
- * `@ic-reactor/core` that `@icp-sdk/core` already installs. Add it to your
- * devDependencies if your package manager does not let this package resolve
- * it.
- *
- * @param options - The canisters to run and the origin to answer for.
- * @returns The fake: its `fetch`, `host` and `rootKey`, the requests it
- * received, and the hooks that fail a call on purpose.
- *
- * @example
- * ```typescript
- * import { HttpAgent } from "@icp-sdk/core/agent"
- * import { IDL } from "@icp-sdk/core/candid"
- * import { createFakeReplica } from "@ic-reactor/core/testing"
- *
- * const BACKEND = "bkyz2-fmaaa-aaaaa-qaaaq-cai"
- *
- * const replica = createFakeReplica({
- *   canisters: {
- *     [BACKEND]: {
- *       query: () => new Uint8Array(IDL.encode([IDL.Text], ["Hello, Ada!"])),
- *       update: () => replica.reject(4, "not today"),
- *     },
- *   },
- * })
- * const agent = HttpAgent.createSync({
- *   host: replica.host,
- *   fetch: replica.fetch,
- *   rootKey: replica.rootKey,
- * })
- *
- * const answer = await agent.query(BACKEND, {
- *   methodName: "greet",
- *   arg: new Uint8Array(IDL.encode([IDL.Text], ["Ada"])),
- * })
- * ```
- */
-export function createFakeReplica(
-  options: FakeReplicaOptions = {}
-): FakeReplica {
-  return buildFakeReplica(options)
-}
-
-/**
- * Stubs `globalThis.fetch` with a fake replica that runs `options.canisters`,
- * for code that builds its own agents. Prefer {@link createFakeReplica}, which
- * is passed to the agents it serves and touches nothing global.
- *
- * Install it before the agents under test are built: an `HttpAgent` keeps the
- * `fetch` it found when it was built. An agent built at module scope is built
- * when its module is first imported, so install the fake in a setup file, or
- * import that module after installing it.
- *
- * Point the agents at `replica.host`. The fake answers the IC API there and
- * refuses the IC API on any other origin as a network error, which it also
- * logs once, so a test never reaches a real network by mistake. Every other
- * request, on any origin, goes to the `fetch` it replaced. A fake installed
- * while another is installed answers its own host and hands the IC API on any
- * other origin to the earlier one.
- *
- * Everything else, including the request checks and the fault hooks, is
- * {@link createFakeReplica}'s.
- *
- * @param options - The canisters to run and the origin to answer for.
- * @returns The installed replica, with a `restore()` that puts the previous
- * `fetch` back.
- */
-export function installFakeReplica(
-  options: FakeReplicaOptions = {}
-): InstalledFakeReplica {
-  const link: FakeReplicaLink = {
-    previous: globalThis.fetch,
-    restored: false,
-  }
-  const replica = buildFakeReplica(options, (input, init, why) => {
-    // Read per request: a fake installed under this one may be restored since.
-    const next = liveFetchUnder(link)
-    return why === "other-origin" && !linkOf(next)
-      ? undefined
-      : next(input, init)
-  })
-
-  const fetch = Object.assign(replica.fetch, {
-    [FAKE_REPLICA_FETCH]: link,
-  }) as Fetch
-  globalThis.fetch = fetch
-
-  return {
-    ...replica,
-    restore() {
-      if (link.restored) return
-      link.restored = true
-      // A fake installed over this one and not yet restored keeps its place,
-      // and skips this one from now on. Anything else is taken out with this
-      // fake: a wrapper a test put around it to drop or delay responses, as
-      // it was before the fake was installed.
-      const above = linkOf(globalThis.fetch)
-      if (globalThis.fetch !== fetch && above && !above.restored) return
-      globalThis.fetch = liveFetchUnder(link)
-    },
-  }
-}

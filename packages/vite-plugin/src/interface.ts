@@ -125,10 +125,6 @@ export type Source = { file: string } | { text: string }
 
 const stopped: Unfinished = { ok: false, stopped: true, message: "was stopped" }
 
-function describe(error: unknown): string {
-  return describeError(error)
-}
-
 /**
  * Run `run` with a new temporary directory, removed when it settles. Never
  * rejects: an error is a failure.
@@ -141,7 +137,7 @@ async function inTemporary<T>(
     dir = fs.mkdtempSync(path.join(os.tmpdir(), "ic-reactor-did-"))
     return await run(dir)
   } catch (error) {
-    return { ok: false, message: describe(error) }
+    return { ok: false, message: describeError(error) }
   } finally {
     if (dir) fs.rmSync(dir, { recursive: true, force: true })
   }

@@ -11,13 +11,7 @@
  * to match the current local package versions, ensuring StackBlitz compatibility.
  */
 
-import {
-  existsSync,
-  readFileSync,
-  writeFileSync,
-  readdirSync,
-  statSync,
-} from "fs"
+import { readFileSync, writeFileSync, readdirSync, statSync } from "fs"
 import { join, dirname, relative } from "path"
 import { fileURLToPath } from "url"
 
@@ -71,8 +65,6 @@ console.log(`\n📦 Syncing @ic-reactor/* example dependencies\n`)
 function findExamplePackageJsonFiles(dir) {
   const ignored = new Set(["node_modules", "dist", ".next", "out"])
   const packageJsonFiles = []
-  // A tree without examples/ (the v4 line had none before DX1) has nothing to sync.
-  if (!existsSync(dir)) return packageJsonFiles
 
   for (const entry of readdirSync(dir)) {
     if (ignored.has(entry)) continue
@@ -97,16 +89,6 @@ const failedExamples = []
 
 for (const pkgPath of packageJsonFiles) {
   const example = dirname(relative(examplesDir, pkgPath))
-
-  // npm lockfiles cannot resolve a runtime version until it has been
-  // published. Keep those examples internally consistent during preparation;
-  // refresh them in the post-publish example sync.
-  if (cliVersion && existsSync(join(dirname(pkgPath), "package-lock.json"))) {
-    console.log(
-      `  - ${example}: skipped (npm lockfile requires published packages)`
-    )
-    continue
-  }
 
   try {
     const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"))

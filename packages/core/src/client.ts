@@ -30,11 +30,17 @@ import {
 } from "@icp-sdk/core/agent"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
 import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
-import { createReactorError, fromCanister, retryDefault } from "./errors.js"
+import {
+  createReactorError,
+  fromCanister,
+  notSigned,
+  retryDefault,
+} from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
 import {
   agentOptionsFor,
+  agentUrlOf,
   authNetworkFor,
   checkKeys,
   resolveCanisterId,
@@ -42,6 +48,7 @@ import {
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
+import { keptUnknown, type CallRequest } from "./call.js"
 import { readTarget, recordOf } from "./canister.js"
 import { createBuilders } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
@@ -187,7 +194,8 @@ export type ClientOptions = {
    * the `network` option; absent trusts it only when both the page and the
    * replica are local. Even `true` never takes the cookie's root key for a
    * mainnet host, and `true` is refused (a `TypeError`) on a page under
-   * `ic0.app`, `github.dev` or `gitpod.io`, which are not public suffixes.
+   * `ic0.app`, `github.dev`, `gitpod.io`, `loca.lt` or `devtunnels.ms`, which
+   * are not public suffixes.
    */
   readonly allowEnvConfig?: boolean
   /**
@@ -231,7 +239,11 @@ export type ClientOptions = {
        * throws where site data is blocked) is not called again: the client
        * calls anonymously, so public reads still work, logs the error once in
        * development, and rejects {@link Client.signIn} and
-       * {@link Client.signOut} with what the factory threw.
+       * {@link Client.signOut} with what the factory threw. The same holds
+       * for a factory that returns something other than an {@link AuthLike},
+       * such as a Promise (an `async` factory, or `AuthClient.create()` of
+       * `@icp-sdk/auth` 5 and earlier): the error is then a `TypeError`
+       * naming what the result lacks.
        *
        * `network` is the client's network under `@icp-sdk/auth` 10's own
        * option names, so `new AuthClient(network)` signs in where the client
@@ -326,7 +338,8 @@ export interface Client {
    * told once the auth settles, even if the auth itself did not notify.
    * Rejects a `TypeError` on a client built with `identity`, which has no
    * sign-in, an `Error` on a server or after {@link Client.dispose}, and
-   * with what the auth factory threw when it threw.
+   * with what the auth factory threw when it threw (a `TypeError` when it
+   * returned something other than an {@link AuthLike}).
    *
    * A call in the same synchronous run as an earlier one with the same
    * options (the same value, or an object with the same own enumerable keys
@@ -693,10 +706,14 @@ export interface Client {
    * mutation that failed (which keeps its pending state and invalidation) or
    * any other of this client, sends `arg` only to the method and canister id
    * the attempt went to, and only while it encodes to the same bytes. Either
-   * one goes out only as `from`. Each refusal sends nothing: `cancelled`
-   * (`caller_changed`) once someone else is the caller, `cancelled`
-   * (`target_changed`) for another method or canister id, and `invalid_args`
-   * (`arg_changed`) for an argument changed since it was sent. Once
+   * one goes out only as `from`. Each refusal sends nothing, and the code
+   * says which it is: `caller_changed` once someone else is the caller,
+   * `target_changed` for another method or canister id, and `arg_changed`
+   * for an argument changed since it was sent. A re-send that is refused, or
+   * turned away when sent (an HTTP 4xx, reject code 1 to 3), still rejects
+   * `outcome_unknown` with `mayHaveExecuted: true`, because the attempt it
+   * re-sends may have run, and this method offers that write again for that
+   * error, under the same conditions as for the first. Once
    * offered, that object stays held to that write: build a new argument for
    * a new write, rather than change this one or send it from another account.
    *
@@ -799,6 +816,14 @@ export interface Client {
    * does the management canister `aaaaa-aa` (`management_canister`), which no
    * `read_state` is routed by, and a disposed client rejects `cancelled`
    * (`client_disposed`); nothing is sent then.
+   *
+   * A canister object made with `timeoutMs` bounds the wait, counted from the
+   * moment `time()` is called, as it bounds a call through it. When the bound
+   * passes, `time()` rejects `cancelled` with code `"timeout"` and
+   * `mayHaveExecuted: false`; a request already out is not torn down, only
+   * the waiting stops, and one not sent yet is never sent. Without
+   * `timeoutMs`, a `read_state` that gets no HTTP answer waits as long as the
+   * `fetch` in use does.
    */
   time(canister: Canister<object>): Promise<bigint>
 }
@@ -858,6 +883,12 @@ export interface ClientInternals {
    * mutations whose caller the `MutationCache` reads.
    */
   readonly ownMutationFns: WeakSet<object>
+  /**
+   * The argument of each re-send `resendOf` offered, and the write it was
+   * first sent in: a mutation given that very argument sends it as that
+   * write's caller, to its canister id, with its bytes, or not at all.
+   */
+  readonly offered: WeakMap<object, CallRequest>
   /**
    * The agent that signs as `principal`, and only as `principal`. It is the
    * one place the client enforces "a call goes out as the principal it was
@@ -1062,24 +1093,29 @@ function checkAuth(auth: unknown): AuthLike {
 }
 
 /**
- * Checks that the agent can read `host` the way `HttpAgent` reads it (a host
- * without a scheme is read against the page's protocol), so a bad host is a
- * `TypeError` from `createClient` rather than a failure of some later call.
+ * Checks that `host`, read as `HttpAgent` reads it ({@link agentUrlOf}: a
+ * host without a scheme is read against the page's protocol), is an `http:`
+ * or `https:` URL, so a bad host is a `TypeError` from `createClient` rather
+ * than a failure of every later call. `localhost:4943` reads as the scheme
+ * `localhost:`. A host `"env"` chose came from the page's origin or from
+ * `ICP_HOST` or `IC_HOST`, not from the caller, and the message says so.
  */
-function checkHost(host: string): void {
-  try {
-    void new URL(
-      !/^[a-z]+:/.test(host) && typeof window !== "undefined"
-        ? `${window.location.protocol}//${host}`
-        : host
-    )
-  } catch (error) {
-    throw new TypeError(
-      `[ic-reactor] the network host ${JSON.stringify(host)} is not a URL the agent can read (${
-        error instanceof Error ? error.message : String(error)
-      }). Give one with a scheme, such as "https://icp-api.io".`
-    )
-  }
+function checkHost(host: string, fromEnv: boolean): void {
+  const url = agentUrlOf(host)
+  if (url?.protocol === "http:" || url?.protocol === "https:") return
+  throw new TypeError(
+    `[ic-reactor] the network host ${JSON.stringify(host)}${
+      fromEnv
+        ? ', which network "env" took from the page\'s origin or from ICP_HOST or IC_HOST,'
+        : ""
+    } is not a URL the agent can read (${
+      url === undefined
+        ? "it does not parse as one"
+        : `its scheme is ${url.protocol}, and the agent calls over http: and https: only`
+    }). Give one with a scheme, such as "https://icp-api.io"${
+      fromEnv ? ", in ICP_HOST or as network: { host }" : ""
+    }.`
+  )
 }
 
 let warnedEnvOffPage = false
@@ -1294,7 +1330,7 @@ export function createClientWith(
   const network = resolveNetwork(options.network, {
     allowEnvConfig: options.allowEnvConfig,
   })
-  checkHost(network.host)
+  checkHost(network.host, options.network === "env")
   warnEnvOffPage(options.network)
   const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH
   const maxElements = options.maxElements ?? DEFAULT_MAX_ELEMENTS
@@ -1386,9 +1422,9 @@ export function createClientWith(
   let auth: AuthLike | undefined
   let unsubscribeAuth: (() => void) | undefined
   /**
-   * What the auth factory threw, once it has: the client then runs anonymous,
-   * never calls the factory again, and rejects `signIn()` and `signOut()` with
-   * it.
+   * What the auth factory threw, once it has, or the `TypeError` for a result
+   * that is not an {@link AuthLike}: the client then runs anonymous, never calls
+   * the factory again, and rejects `signIn()` and `signOut()` with it.
    */
   let authFailure: { readonly cause: unknown } | undefined
   /**
@@ -1509,8 +1545,12 @@ export function createClientWith(
       return auth
     }
     let made: unknown
+    let built: AuthLike
     try {
       made = authFactory(authNetwork())
+      // A factory that returns no AuthLike (a Promise, from an `async`
+      // factory) fails here too, and is not called again.
+      built = checkAuth(made)
     } catch (cause) {
       // `new AuthClient()` reads `localStorage`, which throws where site data
       // is blocked or in a sandboxed frame. That must not take the public
@@ -1524,7 +1564,6 @@ export function createClientWith(
       }
       return undefined
     }
-    const built = checkAuth(made)
     auth = built
     const initial = stateOf(built)
     if (!sameState(initial, snapshot)) snapshot = Object.freeze(initial)
@@ -1692,7 +1731,19 @@ export function createClientWith(
     }
     const agent = HttpAgent.createSync({
       ...agentOptionsFor(network),
-      identity,
+      // The agent signs outside its own error handling: a signer that fails
+      // is thrown as a request that could not be signed (`notSigned`), never
+      // as a call whose outcome is unknown.
+      identity: {
+        getPrincipal: () => identity.getPrincipal(),
+        transformRequest: async (request) => {
+          try {
+            return await identity.transformRequest(request)
+          } catch (cause) {
+            throw notSigned(cause)
+          }
+        },
+      },
       fetch: agentFetch,
       // The agent re-sends a request on its own after a fetch failure or a
       // non-2xx status and reports only the last status, so a 429 after a
@@ -1737,6 +1788,7 @@ export function createClientWith(
     disposed: () => disposed,
     mutationCallers,
     ownMutationFns,
+    offered: new WeakMap(),
     agentFor,
   })
 
@@ -1771,11 +1823,13 @@ export function createClientWith(
    * `dispose`.
    *
    * One view per object and principal, so that a component's dependencies are
-   * the same from one render to the next. Only the anonymous view and the
-   * live caller's are kept past a call for another principal, so switching
-   * accounts leaves nothing behind. A client built with `identity` has one
-   * caller for good, the one its server render built keys for too: it
-   * returns `this`.
+   * the same from one render to the next. A view already made is handed back
+   * without reading who calls. Making a view drops every other one but the
+   * anonymous view and the live caller's, so switching accounts leaves
+   * nothing behind. Until then, the view of a user who signed out, or whose
+   * session expired, is kept, and that user signing in again gets the same
+   * view back. A client built with `identity` has one caller for good, the
+   * one its server render built keys for too: it returns `this`.
    *
    * A view carries the object it was made over (`CLIENT_OF`), which
    * `ReactorProvider` holds in its place, and asked for a view of its own it
@@ -1790,14 +1844,18 @@ export function createClientWith(
     if (fixedCaller !== undefined) return base
     let byPrincipal = views.get(base)
     if (byPrincipal === undefined) views.set(base, (byPrincipal = new Map()))
-    const live = current().principal
-    for (const kept of byPrincipal.keys()) {
-      if (kept !== principal && kept !== live && kept !== ANONYMOUS) {
-        byPrincipal.delete(kept)
-      }
-    }
     let view = byPrincipal.get(principal)
     if (view === undefined) {
+      // The views are pruned only when one is made, since `useClient()` asks
+      // for two on every render and reading the live caller converts its
+      // principal to text each time (#977). Every miss prunes, so the map
+      // holds at most the anonymous view, the live caller's and this one.
+      const live = current().principal
+      for (const kept of byPrincipal.keys()) {
+        if (kept !== principal && kept !== live && kept !== ANONYMOUS) {
+          byPrincipal.delete(kept)
+        }
+      }
       const caller: Caller = Object.freeze({
         principal,
         authenticated: principal !== ANONYMOUS,
@@ -1849,15 +1907,18 @@ export function createClientWith(
               internals,
               "client.mutationOptions()"
             ).resolve()
-            // Marked with the canister, as a call's error is, so that
-            // `isReactorError(error, canister, method)` matches it.
+            const refusal = createReactorError("cancelled", {
+              method: String(method),
+              canisterId: target.ok ? target.id : target.slot,
+              code: "caller_changed",
+              reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
+            })
+            // A re-send `resendOf` offered leaves its write unknown, as the
+            // call path does. Marked with the canister, as a call's error
+            // is, so that `isReactorError(error, canister, method)` matches.
+            const again = internals.offered.get(vars as object)
             throw fromCanister(
-              createReactorError("cancelled", {
-                method: String(method),
-                canisterId: target.ok ? target.id : target.slot,
-                code: "caller_changed",
-                reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
-              }),
+              again === undefined ? refusal : keptUnknown(again, refusal),
               canister as object
             )
           }

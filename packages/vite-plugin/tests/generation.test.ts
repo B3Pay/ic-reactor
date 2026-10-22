@@ -645,6 +645,35 @@ describe("generation under vite dev", () => {
   })
 })
 
+// Vitest starts a dev server in mode `test`. A failure logged there would let
+// the tests run against the modules left over from the last good run (#967).
+describe("generation under Vitest", () => {
+  it("fails the run's startup when a .did does not generate", async () => {
+    const app = newApp({ "did/bad.did": BROKEN_DID }, "real")
+
+    await expect(
+      serve(
+        app.root,
+        { canisters: { bad: { didFile: "did/bad.did" } } },
+        { mode: "test" }
+      )
+    ).rejects.toThrow("did_parse_error")
+  })
+
+  it("only logs the failure when failOnError is off", async () => {
+    const app = newApp({ "did/bad.did": BROKEN_DID }, "real")
+    const { lines } = await serve(
+      app.root,
+      { failOnError: false, canisters: { bad: { didFile: "did/bad.did" } } },
+      { mode: "test" }
+    )
+
+    const errors = lines.filter((line) => line.startsWith("error:"))
+    expect(errors).toHaveLength(1)
+    expect(errors[0]).toContain("did_parse_error")
+  })
+})
+
 describe("generation under vite build", () => {
   // AC6: the real generator, on a real interface.
   it("generates the ICRC-1 ledger module with the real candid-core-cli", async () => {
@@ -961,5 +990,36 @@ describe("generation under vite build", () => {
     expect(context.addWatchFile).toHaveBeenCalledWith(
       path.join(app.root, "did/a.did")
     )
+  })
+
+  it("generates again a canister whose module or envelope was deleted, though its .did is unchanged", async () => {
+    const app = newApp({ "did/a.did": PING_DID }, "real")
+    const plugin = icReactor({
+      canisters: { a: { didFile: "did/a.did" } },
+    }) as Plugin & {
+      configResolved: (config: unknown) => void
+      buildStart: (this: unknown) => Promise<void>
+    }
+    const { logger } = recordingLogger()
+    plugin.configResolved({ root: app.root, command: "build", logger })
+    const context = { addWatchFile: vi.fn(), error: vi.fn() }
+
+    await plugin.buildStart.call(context)
+    expect(generatorRuns()).toHaveLength(1)
+
+    // A rebuild of `vite build --watch` after the module was deleted (#980).
+    fs.rmSync(path.join(app.root, "src/canisters/a.ts"))
+    await plugin.buildStart.call(context)
+    expect(generatorRuns()).toHaveLength(2)
+    expect(exists(app, "src/canisters/a.ts")).toBe(true)
+
+    fs.rmSync(path.join(app.root, "src/canisters/a.envelope.json"))
+    await plugin.buildStart.call(context)
+    expect(generatorRuns()).toHaveLength(3)
+    expect(exists(app, "src/canisters/a.envelope.json")).toBe(true)
+
+    await plugin.buildStart.call(context)
+    expect(generatorRuns()).toHaveLength(3)
+    expect(context.error).not.toHaveBeenCalled()
   })
 })

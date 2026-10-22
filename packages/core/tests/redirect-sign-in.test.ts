@@ -18,9 +18,8 @@ import { DelegationChain, Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { Principal } from "@icp-sdk/core/principal"
 import { createClient, type Client } from "../src/client.js"
 import {
-  installFakeReplica,
+  createFakeReplica,
   type FakeCanister,
-  type InstalledFakeReplica,
 } from "../src/testing/fake-replica.js"
 
 /** Internet Identity's canister, where the client's "local" mints. */
@@ -260,20 +259,21 @@ function fakeInternetIdentity() {
   return { user, canister, signInAt, visits, revoked: () => revoked }
 }
 
-let replica: InstalledFakeReplica | undefined
 const made: Client[] = []
 
 afterEach(() => {
   for (const client of made.splice(0)) client.dispose()
-  replica?.restore()
-  replica = undefined
   vi.unstubAllGlobals()
 })
 
-/** A tab, an Internet Identity, and the fake replica its canister runs on. */
+/**
+ * A tab, an Internet Identity, and the fake replica its canister runs on, in
+ * `globalThis.fetch`: the client builds its agents with the global `fetch`.
+ */
 function setUp() {
   const ii = fakeInternetIdentity()
-  replica = installFakeReplica({ canisters: { [II]: ii.canister } })
+  const replica = createFakeReplica({ canisters: { [II]: ii.canister } })
+  vi.stubGlobal("fetch", replica.fetch)
   return { ii, tab: browserTab() }
 }
 

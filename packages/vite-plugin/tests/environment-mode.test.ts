@@ -3,32 +3,32 @@
  * none: in mode `test` (Vitest's) the plugin never runs `icp`, and under
  * `vite dev` it does.
  */
-import { execFile } from "node:child_process"
+import { spawn } from "node:child_process"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { icReactor } from "../src/index.js"
-import { createApp, get, noWebSocket, startDev, type App } from "./support.js"
+import {
+  createApp,
+  get,
+  icpProcess,
+  noWebSocket,
+  startDev,
+  type App,
+} from "./support.js"
 
-// `env.ts` runs `icp` through `execFile`; nothing here needs it to exist.
+// `env.ts` runs `icp` through `spawn`; nothing here needs it to exist.
 vi.mock("child_process", async (importOriginal) => ({
   ...(await importOriginal<typeof import("child_process")>()),
-  execFile: vi.fn(),
+  spawn: vi.fn(),
 }))
 
 const closers: Array<() => Promise<unknown>> = []
 let app: App | undefined
 
 beforeEach(() => {
-  vi.mocked(execFile).mockReset()
+  vi.mocked(spawn).mockReset()
   // `icp` answers with a failure, as it does with no local network.
-  vi.mocked(execFile).mockImplementation(((
-    _file: string,
-    _args: string[],
-    _options: unknown,
-    callback: (error: Error | null, stdout: string, stderr: string) => void
-  ) => {
-    setImmediate(() => callback(new Error("no local network"), "", ""))
-    return { stdin: { end: vi.fn() } }
-  }) as never)
+  vi.mocked(spawn).mockImplementation((() =>
+    icpProcess(new Error("no local network"))) as never)
   vi.spyOn(console, "warn").mockImplementation(() => {})
   vi.spyOn(console, "log").mockImplementation(() => {})
 })
@@ -41,7 +41,7 @@ afterEach(async () => {
 })
 
 const icpCommands = () =>
-  vi.mocked(execFile).mock.calls.map(([file, args]) => [file, ...(args ?? [])])
+  vi.mocked(spawn).mock.calls.map(([file, args]) => [file, ...(args ?? [])])
 
 describe("mode test", () => {
   it("never runs icp, injects nothing and adds no middleware", async () => {
@@ -59,7 +59,7 @@ describe("mode test", () => {
 
     expect(config).toEqual({})
     expect(use).not.toHaveBeenCalled()
-    expect(execFile).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
   })
 
   it("never runs icp for a real Vite server in mode test", async () => {
@@ -75,7 +75,7 @@ describe("mode test", () => {
     })
     closers.push(() => server.close())
 
-    expect(execFile).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
     expect(server.config.server.proxy?.["/api"]).toBeUndefined()
   })
 })
@@ -114,7 +114,7 @@ describe("vite dev", () => {
     closers.push(running.close)
 
     expect((await get(running.port, "/")).status).toBe(200)
-    expect(execFile).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
   })
 })
 
@@ -131,6 +131,6 @@ describe("vite build", () => {
     expect(
       await plugin.config({}, { command: "build", mode: "production" })
     ).toEqual({})
-    expect(execFile).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
   })
 })

@@ -297,8 +297,9 @@ describe("vite-plugin at its Vite floors", () => {
    * `fail` says; resolves to its root and the recorded runs. Its root pins
    * rollup 4, as the real root pins rollup ^4.60.1 for its own installs: the
    * check drops that override (`withoutOverrides`), or Vite 4 would get it.
+   * `name` is the plugin's package name, which the check filters by.
    */
-  function seeded(fail = {}) {
+  function seeded(fail = {}, name = "@ic-reactor/vite-plugin") {
     const settings = {
       registry: registry.url,
       "store-dir": join(work, "store"),
@@ -316,7 +317,7 @@ describe("vite-plugin at its Vite floors", () => {
         .map(([key, value]) => `${key}=${value}\n`)
         .join(""),
       "packages/vite-plugin/package.json": JSON.stringify({
-        name: "@ic-reactor/vite-plugin",
+        name,
         private: true,
         type: "module",
         scripts: { typecheck: "node typecheck.mjs", test: "node test.mjs" },
@@ -357,7 +358,7 @@ describe("vite-plugin at its Vite floors", () => {
           }
         }
       },
-      runs: () => readFileSync(log, "utf8").trim().split("\n"),
+      runs: () => readFileSync(log, "utf8").split("\n").filter(Boolean),
     }
   }
 
@@ -393,6 +394,17 @@ describe("vite-plugin at its Vite floors", () => {
         ran("test", floor),
       ])
     )
+    assert.equal(worktrees(seed.root).length, 1)
+  })
+
+  it("fails, having run nothing, when no package has the name it filters by", () => {
+    // pnpm exits 0 for a filter that matches nothing (#980).
+    const seed = seeded({}, "@ic-reactor/vite-plugin-renamed")
+    assert.deepEqual(
+      seed.run(),
+      VITE_FLOORS.map((floor) => `vite-plugin at vite ${floor}: typecheck`)
+    )
+    assert.deepEqual(seed.runs(), [])
     assert.equal(worktrees(seed.root).length, 1)
   })
 
