@@ -10,6 +10,76 @@
     "replace": "const noCodeRan = true"
   },
   {
+    "id": "963-signer-failure-unknown",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered, sends nothing and offers no re-send when the signer declines",
+    "why": "what a signer throws reaches the classifier unmarked, so a write the user declined to sign rejects outcome_unknown with mayHaveExecuted: true and is offered to resendOf, though nothing was sent",
+    "file": "src/client.ts",
+    "search": "            throw notSigned(cause)\n",
+    "replace": "            throw cause\n"
+  },
+  {
+    "id": "963-signer-error-dropped",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered, sends nothing and offers no re-send when the signer declines",
+    "why": "the error the agent was handed, not the signer's own, becomes the cause, so an app cannot tell a declined prompt from another failure by its cause",
+    "file": "src/errors.ts",
+    "search": "      cause: thrown,\n",
+    "replace": "      cause: error,\n"
+  },
+  {
+    "id": "963-poll-signing-failure-not-delivered",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a write outcome_unknown when the signer declines a read_state poll after the IC took the call",
+    "why": "a request the signer did not sign reads as not_delivered even for a read_state poll of an update the IC already took, which may have executed",
+    "file": "src/errors.ts",
+    "search": "      mayBeAccepted || (context.mode === \"update\" && context.again === true)\n",
+    "replace": "      context.mode === \"update\" && context.again === true\n"
+  },
+  {
+    "id": "963-wrapped-signer-failure-retried",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a read not_delivered, and does not ask again, when the signer declines the read_state for the subnet's keys",
+    "why": "a signer failure the agent wrapped as UnexpectedErrorCode (a query's read_state for the subnet's keys) is not unwrapped, so the read is retryable and the signer is asked again on every re-send",
+    "file": "src/errors.ts",
+    "search": "  return signerError(asRecord(record.code).error, depth + 1)\n",
+    "replace": "  return undefined\n"
+  },
+  {
+    "id": "963-signer-detail-stringified",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered when the signer throws something that is not an Error",
+    "why": "what the signer threw is turned into text with String(), which throws for an object with no prototype, so the classifier fails and the write is not reported not_delivered",
+    "file": "src/errors.ts",
+    "search": "withDetail(reason, condense(messageOf(thrown)))",
+    "replace": "withDetail(reason, condense(messageOf(thrown) ?? String(thrown)))"
+  },
+  {
+    "id": "963-signer-abort-not-cancelled",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a signer's AbortError cancelled, as any abort",
+    "why": "an AbortError the signer threw is looked for on the wrapper instead, so it reads as a signer failure (not_delivered) rather than cancelled, as every other abort does",
+    "file": "src/errors.ts",
+    "search": "  if (context.signal?.aborted || isAbort(thrown)) {",
+    "replace": "  if (context.signal?.aborted || isAbort(error)) {"
+  },
+  {
+    "id": "963-declined-resend-loses-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome, and the offer, when the signer declines the re-send",
+    "why": "a re-send of an offered write that the signer declines reads as not_delivered, so the write it re-sends, which may have run, is no longer offered and its error says it may not have executed",
+    "file": "src/errors.ts",
+    "search": "      mayBeAccepted || (context.mode === \"update\" && context.again === true)\n",
+    "replace": "      mayBeAccepted\n"
+  },
+  {
     "id": "ir1c-codespaces-host-is-local",
     "package": "core",
     "test": "tests/network.test.ts",
@@ -146,8 +216,8 @@
     "testName": "disposes, with its auth, each client of a first render that a Suspense boundary above the provider threw away",
     "why": "an owned client is never registered for disposal at collection, so the client of a render React threw away keeps its auth and listeners for good",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
-    "replace": "  if (!owned && unclaimed?.unregister(client)) reportLazilyShared()\n"
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  if (!owned && !of && unclaimed?.unregister(client)) reportLazilyShared()\n"
   },
   {
     "id": "ir6-committed-client-left-registered",
@@ -166,7 +236,7 @@
     "testName": "is never registered, even when renders are thrown away",
     "why": "a client the app created is registered too, so a collection after a thrown-away render disposes a client its owner still uses",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
     "replace": "  unclaimed?.register(held, client, client)\n"
   },
   {
@@ -178,7 +248,7 @@
     "edits": [
       {
         "file": "src/index.tsx",
-        "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+        "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
         "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
       },
       {
@@ -195,7 +265,7 @@
     "testName": "is let go by the registry as soon as a later render gets it back",
     "why": "a factory call that hands back a client a dropped render registered leaves the registration standing until a commit, so a collection while the fallback still shows disposes the lazily shared client the retry is about to mount",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
     "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
   },
   {
@@ -205,8 +275,8 @@
     "testName": "warns once, before anything commits, when a render gets back the client of a render React threw away",
     "why": "a factory that hands back a client a render which never committed created, as a lazily shared one does, is taken off the registry without a word, so the pattern shows only later, as cancelled calls after its first provider unmounts or a collection disposes it",
     "file": "src/index.tsx",
-    "search": "  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
-    "replace": "  else unclaimed?.unregister(client)\n"
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else if (!of) unclaimed?.unregister(client)\n"
   },
   {
     "id": "ir6-every-borrowed-client-warned",
@@ -215,8 +285,28 @@
     "testName": "says nothing about a client the factory creates on each call",
     "why": "every borrowed client is reported as lazily shared, so the module-scope client the docs recommend warns on every render that gets it",
     "file": "src/index.tsx",
-    "search": "  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
     "replace": "  else {\n    unclaimed?.unregister(client)\n    reportLazilyShared()\n  }\n"
+  },
+  {
+    "id": "965-view-client-unregistered-leaks",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "disposes the clients of a thrown-away render whose nested provider was handed their view",
+    "why": "a nested provider handed the outer one's useClient() view removes the outer client's registration (quietly) while both render, so when React throws that render away the outer client and its auth listeners are never disposed",
+    "file": "src/index.tsx",
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else if (unclaimed?.unregister(client) && !of) reportLazilyShared()\n"
+  },
+  {
+    "id": "965-view-client-warned",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "says nothing about a nested provider handed the view of the outer one's client",
+    "why": "a nested provider handed the outer one's useClient() view is reported as a lazily shared factory, though it leaves the registration alone",
+    "file": "src/index.tsx",
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else if (of !== undefined || unclaimed?.unregister(client)) reportLazilyShared()\n"
   },
   {
     "id": "ir6-server-client-registered",
@@ -449,6 +539,16 @@
     "file": "src/call.ts",
     "search": "  if (status === undefined) return undefined",
     "replace": "  if (status === undefined) throw new Error(\"no status for the request\")"
+  },
+  {
+    "id": "964-accepted-update-unrecorded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "gives up as outcome_unknown when polls are answered HTTP 429",
+    "why": "an update answered 202 is not recorded as accepted, so polls answered 429 classify it not_delivered and the update is sent again, running it up to three times",
+    "file": "src/call.ts",
+    "search": "    accepted = true\n",
+    "replace": ""
   },
   {
     "id": "ir2t-cancelled-read-keeps-polling",
@@ -1661,7 +1761,7 @@
     "testName": "hands a nested ReactorProvider given it the client itself",
     "why": "a provider holds the anonymous view a hydrating useClient() handed its factory, so its tree reads as nobody for good and never follows a sign-in",
     "file": "src/index.tsx",
-    "search": "  const client = (built as Stamped)[CLIENT_OF] ?? built\n",
+    "search": "  const client = of ?? built\n",
     "replace": "  const client = built\n"
   },
   {
@@ -3179,6 +3279,105 @@
     "replace": "if (management) {"
   },
   {
+    "id": "960-resend-turned-away-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by mutate() is throttled",
+    "why": "a re-send of an offered write turned away with HTTP 429 rejects not_delivered with mayHaveExecuted: false, so resendOf offers nothing and the app reads a write that may have run as not executed",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-send-turned-away-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by send() is throttled",
+    "why": "again.send() turned away with HTTP 429 rejects not_delivered with mayHaveExecuted: false, though the first attempt may have run",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-rejected-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome when the re-send is rejected before any canister code ran",
+    "why": "a re-send rejected with code 1 rejects rejected with mayHaveExecuted: false, though the first attempt may have run",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-refusal-loses-expiry",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by send() is throttled",
+    "why": "a re-send that did not run rejects outcome_unknown without the write's expiresAt, so a read-back cannot tell when no send of it can still start",
+    "file": "src/call.ts",
+    "search": "resendDidNotRun(failure, firstOf(again).expiresAt)",
+    "replace": "resendDidNotRun(failure, undefined)"
+  },
+  {
+    "id": "960-resend-refusal-offers-changed-write",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
+    "why": "a refused re-send is kept as the write it would have sent, so after arg_changed resendOf offers the changed argument, a new write no dedupe key has been seen for",
+    "file": "src/call.ts",
+    "search": "      throw fromCanister(keptUnknown(again, error), request.canister)\n",
+    "replace": "      throw fromCanister(keptUnknown(request, error), request.canister)\n"
+  },
+  {
+    "id": "960-resend-answer-made-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "leaves a first send that is throttled not delivered, and a re-send the ledger answers known",
+    "why": "a re-send the ledger answers with an Err is made outcome_unknown, though the canister's answer is the outcome",
+    "file": "src/call.ts",
+    "search": "      !error.mayHaveExecuted &&\n      error.kind !== \"canister_err\"\n",
+    "replace": "      !error.mayHaveExecuted\n"
+  },
+  {
+    "id": "960-first-send-refusal-made-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "leaves a first send that is throttled not delivered, and a re-send the ledger answers known",
+    "why": "a first send turned away with HTTP 429 is made outcome_unknown, though nothing ran: it would no longer read as safe to send again",
+    "edits": [
+      {
+        "file": "src/call.ts",
+        "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+        "replace": "      isReactorError(error) &&\n"
+      },
+      {
+        "file": "src/call.ts",
+        "search": "keptUnknown(again, error)",
+        "replace": "keptUnknown(again ?? request, error)"
+      }
+    ]
+  },
+  {
+    "id": "960-view-resend-refusal-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome when a mutation of a view pinned to the sender refuses the re-send after a switch",
+    "why": "a pinned view's mutation refuses a re-send after a switch cancelled with mayHaveExecuted: false, so the write it re-sends, which may have run, is no longer offered and its reads are not refreshed",
+    "file": "src/client.ts",
+    "search": "again === undefined ? refusal : keptUnknown(again, refusal)",
+    "replace": "refusal"
+  },
+  {
+    "id": "960-resend-expiry-not-latest",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "carries the latest expiry of the write's sends when a later re-send does not run",
+    "why": "a re-send that may have run keeps its expiry only on itself, so a later re-send of the write that did not run carries the first send's earlier expiry, after which a read-back that finds nothing would wrongly be final",
+    "file": "src/call.ts",
+    "search": "      const first = firstOf(request)\n",
+    "replace": "      const first = request\n"
+  },
+  {
     "id": "did-project-not-projected",
     "package": "vite-plugin",
     "test": "tests/project.test.ts",
@@ -3564,8 +3763,18 @@
     "testName": "that passed in one build runs again in the next build of the same plugin object",
     "why": "a new lifetime, and with it new passes of the live check, made only when a dev server starts, so a second build of one plugin object reuses the first build's pass and generates against a canister that changed since",
     "file": "src/index.ts",
-    "search": "      current = lifetimeAfter(current, config.command)\n",
-    "replace": "      if (config.command === \"serve\") {\n        current = lifetimeAfter(current, config.command)\n      }\n"
+    "search": "      current = lifetimeAfter(\n        current,\n        config.command === \"build\" || config.mode === \"test\"\n      )\n",
+    "replace": "      if (config.command === \"serve\") {\n        current = lifetimeAfter(\n          current,\n          config.command === \"build\" || config.mode === \"test\"\n        )\n      }\n"
+  },
+  {
+    "id": "967-vitest-failure-only-logged",
+    "package": "vite-plugin",
+    "test": "tests/generation.test.ts",
+    "testName": "fails the run's startup when a .did does not generate",
+    "why": "under Vitest (a dev server in mode test) a failed generation with failOnError omitted is only logged, so the tests run against the module a failed run left on disk",
+    "file": "src/index.ts",
+    "search": "        config.command === \"build\" || config.mode === \"test\"\n",
+    "replace": "        config.command === \"build\"\n"
   },
   {
     "id": "did-verify-old-run-writes-new",
@@ -4663,6 +4872,56 @@
     "replace": "    if (false) {"
   },
   {
+    "id": "973-time-not-bounded",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "rejects cancelled, code timeout, once the canister object's timeoutMs passes",
+    "why": "client.time() waits forever for a read_state that never answers, past the canister object's timeoutMs",
+    "file": "src/options.ts",
+    "search": "    if (ms === undefined) return read\n",
+    "replace": "    if (ms === undefined || ms > 0) return read\n"
+  },
+  {
+    "id": "973-time-timer-left",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "resolves through a canister object with timeoutMs, and leaves no timer behind",
+    "why": "client.time() leaves its timeoutMs timer running after the time arrives",
+    "file": "src/options.ts",
+    "search": "      clearTimeout(timer)\n    }\n  }\n\n  /**\n   * The IC's time, read for",
+    "replace": "      void timer\n    }\n  }\n\n  /**\n   * The IC's time, read for"
+  },
+  {
+    "id": "973-time-bound-not-the-targets",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "is bounded by that canister object's timeoutMs, not by another bound",
+    "why": "client.time() waits a bound of its own instead of the canister object's timeoutMs",
+    "file": "src/options.ts",
+    "search": "    const ms = record.timeoutMs\n    let timedOut = false\n",
+    "replace": "    const ms = record.timeoutMs === undefined ? undefined : 1_000\n    let timedOut = false\n"
+  },
+  {
+    "id": "973-time-bound-after-identity",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "counts the wait for the caller's identity, and sends nothing once the bound passed",
+    "why": "client.time() starts its timeoutMs only once the caller's identity arrives, so a slow identity waits past the bound",
+    "file": "src/options.ts",
+    "search": "    const read = readTime(where, () => timedOut)\n",
+    "replace": "    await internals.agentFor(internals.current().principal, where)\n    const read = readTime(where, () => timedOut)\n"
+  },
+  {
+    "id": "973-time-sent-after-timeout",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "counts the wait for the caller's identity, and sends nothing once the bound passed",
+    "why": "client.time() still sends its read_state once its timeoutMs has passed while the caller's identity was awaited",
+    "file": "src/options.ts",
+    "search": "    if (timedOut()) throw timedOutError(where, false)\n",
+    "replace": ""
+  },
+  {
     "id": "873-foreign-skiptoken-encoded",
     "package": "core",
     "test": "tests/options.test.ts",
@@ -4859,7 +5118,7 @@
     "testName": "rejects a write whose request went out outcome_unknown",
     "why": "a timed-out write whose request went out classified cancelled with mayHaveExecuted: false, which reads as safe to send again: a resend could run it twice",
     "file": "src/call.ts",
-    "search": "timedOutError(where, write && (out || !!sent))",
+    "search": "timedOutError(where, write && out)",
     "replace": "timedOutError(where, false)"
   },
   {
@@ -4959,8 +5218,8 @@
     "testName": "keeps a re-send resendOf offered outcome_unknown",
     "why": "an offered re-send that times out before it goes out rejects cancelled with mayHaveExecuted: false, so the earlier attempt's unknown outcome is dropped and resendOf offers nothing, though that write may have run",
     "file": "src/call.ts",
-    "search": "timedOutError(where, write && (out || !!sent))",
-    "replace": "timedOutError(where, write && out)"
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
   },
   {
     "id": "875-timeout-resend-mutation-loses-unknown",
@@ -4969,8 +5228,8 @@
     "testName": "keeps a mutation re-sending an offered write outcome_unknown",
     "why": "a mutation re-sending an offered write that times out before it goes out rejects cancelled with mayHaveExecuted: false, dropping the earlier attempt's unknown outcome",
     "file": "src/call.ts",
-    "search": "timedOutError(where, write && (out || !!sent))",
-    "replace": "timedOutError(where, write && out)"
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
   },
   {
     "id": "875-timeout-send-not-marked-resend",
@@ -5009,8 +5268,8 @@
     "testName": "for a write that timed out after it went out",
     "why": "a write whose timeoutMs passed after it went out rejects outcome_unknown with no expiresAt, so a read-back cannot tell when no send of it can still start",
     "file": "src/call.ts",
-    "search": "            timedOutError(where, write && (out || !!sent)),\n            sends.expiresAt\n",
-    "replace": "            timedOutError(where, write && (out || !!sent)),\n            undefined\n"
+    "search": "throw withExpiry(timedOutError(where, write && out), sends.expiresAt)",
+    "replace": "throw withExpiry(timedOutError(where, write && out), undefined)"
   },
   {
     "id": "905-windows-icp-cmd-run-from-path",
@@ -5173,6 +5432,46 @@
     "replace": "  if (false) {"
   },
   {
+    "id": "974-non-http-host-accepted",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "which no call can use, when the client is built",
+    "why": "createClient accepts a host the agent reads with a scheme other than http: or https: (localhost:4943, ftp:, data:), and every call then fails",
+    "file": "src/client.ts",
+    "search": "  if (url?.protocol === \"http:\" || url?.protocol === \"https:\") return\n",
+    "replace": "  if (url !== undefined) return\n"
+  },
+  {
+    "id": "974-scheme-less-host-not-read-on-page",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "takes an http: or https: host, and a host with no scheme on a page",
+    "why": "createClient refuses a host with no scheme on a page, which HttpAgent reads against the page's protocol",
+    "file": "src/client.ts",
+    "search": "  const url = agentUrlOf(host)\n",
+    "replace": "  const url = URL.canParse(host) ? new URL(host) : undefined\n"
+  },
+  {
+    "id": "974-env-host-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "says where network \"env\" took a host no call can use",
+    "why": "createClient checks only a host the caller wrote, so ICP_HOST=localhost:8000 or a capacitor: page under network \"env\" builds a client every call of which fails",
+    "file": "src/client.ts",
+    "search": "  checkHost(network.host, options.network === \"env\")\n",
+    "replace": "  if (typeof options.network === \"object\") checkHost(network.host, false)\n"
+  },
+  {
+    "id": "974-env-host-source-unsaid",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "says where network \"env\" took a host no call can use",
+    "why": "the host message under network \"env\" blames a host the caller never wrote, without saying it came from the page or ICP_HOST",
+    "file": "src/client.ts",
+    "search": "  checkHost(network.host, options.network === \"env\")\n",
+    "replace": "  checkHost(network.host, false)\n"
+  },
+  {
     "id": "i895-units-unknown-option-ignored",
     "package": "core",
     "test": "tests/units.test.ts",
@@ -5279,8 +5578,8 @@
     "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
     "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
     "file": "src/client.ts",
-    "search": "// `isReactorError(error, canister, method)` matches it.\n            throw fromCanister(",
-    "replace": "// `isReactorError(error, canister, method)` matches it.\n            throw ((error: unknown, _canister: object) => error)("
+    "search": "            const again = internals.offered.get(vars as object)\n            throw fromCanister(",
+    "replace": "            const again = internals.offered.get(vars as object)\n            throw ((error: unknown, _canister: object) => error)("
   },
   {
     "id": "893-write-caller-read-when-sent-offline",
@@ -5465,10 +5764,30 @@
     "package": "core",
     "test": "tests/network.test.ts",
     "testName": "refuses allowEnvConfig: true on",
-    "why": "allowEnvConfig: true accepted on a page under ic0.app, github.dev or gitpod.io, which are not public suffixes, so a stranger's page can write the cookie it believes",
+    "why": "allowEnvConfig: true accepted on a page under ic0.app, github.dev, gitpod.io, loca.lt or devtunnels.ms, which are not public suffixes, so a stranger's page can write the cookie it believes",
     "file": "src/network.ts",
     "search": "  if (parent === undefined) return\n",
     "replace": "  return\n"
+  },
+  {
+    "id": "961-localtunnel-parent-not-shared",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a localtunnel",
+    "why": "loca.lt left out of the shared parents, so allowEnvConfig: true on a *.loca.lt page believes a cookie any other tunnel can set for it",
+    "file": "src/network.ts",
+    "search": "  \"loca.lt\",\n  \"devtunnels.ms\",\n]",
+    "replace": "  \"devtunnels.ms\",\n]"
+  },
+  {
+    "id": "961-dev-tunnel-parent-not-shared",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a VS Code dev tunnel",
+    "why": "devtunnels.ms left out of the shared parents, so allowEnvConfig: true on a *.devtunnels.ms page believes a cookie any other dev tunnel can set for it",
+    "file": "src/network.ts",
+    "search": "  \"loca.lt\",\n  \"devtunnels.ms\",\n]",
+    "replace": "  \"loca.lt\",\n]"
   },
   {
     "id": "env-cookie-http-identity-provider",
@@ -5590,6 +5909,25 @@
     "replace": ""
   },
   {
+    "id": "972-non-auth-result-thrown-on-every-read",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "an auth factory that returns a Promise",
+    "why": "the factory's result checked after the try that records a failure, so a factory that returns a Promise is called again on every read and its TypeError escapes from each",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "      built = checkAuth(made)\n",
+        "replace": "      built = made as AuthLike\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "    auth = built\n    const initial = stateOf(built)\n",
+        "replace": "    built = checkAuth(built)\n    auth = built\n    const initial = stateOf(built)\n"
+      }
+    ]
+  },
+  {
     "id": "icp0-cookie-ids-untrusted",
     "package": "core",
     "test": "tests/env-canister-id.test.ts",
@@ -5636,8 +5974,88 @@
     "testName": "routes through its own origin, never mainnet, on",
     "why": "\"env\" on a LAN address, a *.local/*.test/*.internal name or a tunnel falls back to mainnet, so a dev app's local ids and sign-in reach mainnet",
     "file": "src/network.ts",
-    "search": "    isRemoteDevHostname(hostname)\n",
+    "search": "    isRemoteDevPage(origin, hostname)\n",
     "replace": "    REMOTE_DEV_SUFFIXES.slice(0, 2).some((suffix) => hostname.endsWith(suffix))\n"
+  },
+  {
+    "id": "962-tailscale-address-not-private",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a Tailscale address",
+    "why": "100.64/10 left out of the private addresses, so \"env\" on a Tailscale address falls back to mainnet with a dev app's local ids",
+    "file": "src/network.ts",
+    "search": "|169\\.254|100\\.(?:6[4-9]|[7-9]\\d|1[01]\\d|12[0-7]))",
+    "replace": "|169\\.254)"
+  },
+  {
+    "id": "962-tailscale-range-too-wide",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "still falls back on an address just past 100.64/10",
+    "why": "all of 100/8 read as Tailscale's 100.64/10, so a public address next to it routes to the page",
+    "file": "src/network.ts",
+    "search": "|169\\.254|100\\.(?:6[4-9]|[7-9]\\d|1[01]\\d|12[0-7]))",
+    "replace": "|169\\.254|100\\.\\d{1,3})"
+  },
+  {
+    "id": "962-ts-net-not-remote",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a Tailscale name",
+    "why": "*.ts.net left out of the remote dev names, so \"env\" on a tailnet name falls back to mainnet",
+    "file": "src/network.ts",
+    "search": "  \".ts.net\",\n",
+    "replace": ""
+  },
+  {
+    "id": "962-dev-tunnel-not-remote",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a VS Code dev tunnel",
+    "why": "*.devtunnels.ms left out of the remote dev names, so \"env\" on a VS Code dev tunnel falls back to mainnet",
+    "file": "src/network.ts",
+    "search": "  \".devtunnels.ms\",\n",
+    "replace": ""
+  },
+  {
+    "id": "962-dotless-name-not-remote",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a LAN name with no dot",
+    "why": "a LAN name with no dot (http://devbox:5173) not read as a dev page, so \"env\" there falls back to mainnet",
+    "file": "src/network.ts",
+    "search": "  REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix)) ||\n  (WEB_ORIGIN.test(origin) &&\n    !hostname.includes(\".\") &&\n    !hostname.startsWith(\"[\"))\n",
+    "replace": "  REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix))\n"
+  },
+  {
+    "id": "962-ipv6-read-as-dotless-name",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "still falls back on an IPv6 global address",
+    "why": "an IPv6 address, which has no dot, read as a LAN name, so any IPv6 page routes to itself",
+    "file": "src/network.ts",
+    "search": "    !hostname.includes(\".\") &&\n    !hostname.startsWith(\"[\"))\n",
+    "replace": "    !hostname.includes(\".\"))\n"
+  },
+  {
+    "id": "962-extension-page-read-as-lan-name",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "still falls back on a Chrome extension's page",
+    "why": "any page whose name has no dot read as a LAN name, scheme and all, so \"env\" in a browser extension or a desktop app routes its calls to its own origin instead of the fallback",
+    "file": "src/network.ts",
+    "search": "  (WEB_ORIGIN.test(origin) &&\n    !hostname.includes(\".\") &&\n",
+    "replace": "  (!hostname.includes(\".\") &&\n"
+  },
+  {
+    "id": "962-dev-tunnel-parent-not-shared",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a VS Code dev tunnel",
+    "why": "devtunnels.ms left out of the shared parents, so allowEnvConfig: true on a *.devtunnels.ms page, which \"env\" routes through the page, takes the root key of a cookie any other dev tunnel can set",
+    "file": "src/network.ts",
+    "search": "  \"loca.lt\",\n  \"devtunnels.ms\",\n]",
+    "replace": "  \"loca.lt\",\n]"
   },
   {
     "id": "vite-non-loopback-page-unwarned",
@@ -5648,5 +6066,35 @@
     "file": "src/dev-environment.ts",
     "search": "!isLoopbackHost(req.headers.host)",
     "replace": "false"
+  },
+  {
+    "id": "975-page-dot-kept",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a canister's ic0.app domain with a trailing dot",
+    "why": "the page's hostname keeps its trailing dot, so victim.ic0.app. is not under ic0.app and allowEnvConfig: true is not refused there",
+    "file": "src/network.ts",
+    "search": "    : withoutRootDot(hostname) || undefined\n",
+    "replace": "    : hostname\n"
+  },
+  {
+    "id": "975-agent-dot-kept",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "does not take the cookie's key with allowEnvConfig: true either, on a canister's icp0.io domain with a trailing dot",
+    "why": "the agent host keeps its trailing dot, so a page routed through <id>.icp0.io. is not a mainnet host and takes the cookie's root key",
+    "file": "src/network.ts",
+    "search": "  return hostname === undefined ? undefined : withoutRootDot(hostname)\n",
+    "replace": "  return hostname\n"
+  },
+  {
+    "id": "975-icp0-dotted-page-believed",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "believes nothing by default on <id>.icp0.io with a trailing dot",
+    "why": "<id>.icp0.io. matched with its dot dropped, so the page believes the cookie's ids by default on a name whose Public Suffix List protection is not checked",
+    "file": "src/network.ts",
+    "search": "ICP0_CANISTER_PAGE.exec(parsedHostnameOf(pageOrigin()) ?? \"\")",
+    "replace": "ICP0_CANISTER_PAGE.exec(pageHostnameOf(pageOrigin()) ?? \"\")"
   }
 ]

@@ -65,12 +65,12 @@ library: `ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt`.
 
 ## Options
 
-| Option              | Default                   | Meaning                                                                           |
-| ------------------- | ------------------------- | --------------------------------------------------------------------------------- |
-| `canisters`         | `{}`                      | The app's canisters, by their name in the `icp` project; see below                |
-| `injectEnvironment` | `true`                    | Set the cookie and the `/api` proxy under `vite dev` and `vite preview`           |
-| `failOnError`       | build `true`, dev `false` | Abort the Vite run when a canister fails to generate; see "When generation fails" |
-| `onGenerated`       | none                      | Called after each generated module; see "After each generation"                   |
+| Option              | Default                              | Meaning                                                                           |
+| ------------------- | ------------------------------------ | --------------------------------------------------------------------------------- |
+| `canisters`         | `{}`                                 | The app's canisters, by their name in the `icp` project; see below                |
+| `injectEnvironment` | `true`                               | Set the cookie and the `/api` proxy under `vite dev` and `vite preview`           |
+| `failOnError`       | build and Vitest `true`, dev `false` | Abort the Vite run when a canister fails to generate; see "When generation fails" |
+| `onGenerated`       | none                                 | Called after each generated module; see "After each generation"                   |
 
 Each entry of `canisters` takes:
 
@@ -385,7 +385,10 @@ A failed canister costs that canister, and nothing else:
   update, as it does for Vite's own errors, so a canister that is still broken
   can drop out of the browser's overlay after you save some other file. Its
   error stays in the terminal log, and a full reload shows the overlay again.
-- `failOnError` overrides either default. It takes `true` or `false`: any
+- Under Vitest (mode `test`) the run fails at startup, as a build does: tests
+  that pass against the modules left over from the last good run prove
+  nothing.
+- `failOnError` overrides each default. It takes `true` or `false`: any
   other value (`null`, `0`, `"false"`) throws when the config loads, as does
   one for `injectEnvironment`.
 
@@ -425,8 +428,9 @@ icReactor({
   A save under `vite dev` always generates again, so saving the same text
   calls it with `"unchanged"`.
 - A throw or a rejection fails the module's canisters as a failed generation
-  does: the build fails unless `failOnError` is `false`, and otherwise the
-  failure is logged and, under `vite dev`, shown in the error overlay. The
+  does: the build or the Vitest run fails unless `failOnError` is `false`, and
+  otherwise the failure is logged and, under `vite dev`, shown in the error
+  overlay. The
   next run generates them again and calls the hook again.
 - A value that is not a function throws when the config loads.
 
@@ -494,4 +498,12 @@ not follow detection.
 
 Vitest runs the plugin in mode `test`. There the plugin injects no environment
 and never runs `icp`, whatever `injectEnvironment` says. Generation is not an
-environment concern and still runs, so the modules a test imports exist.
+environment concern and still runs, so the modules a test imports exist. A
+canister that fails to generate fails the run at startup, unless `failOnError`
+is `false`: a `.did` that does not parse, a fetch that fails, a live check
+(`verify: "live"`, `IC_REACTOR_VERIFY`) that fails or cannot reach the
+network, an `onGenerated` that throws. For an offline test run with the live
+check on, set `IC_REACTOR_VERIFY=0`. A `.did` that stops generating after
+startup, in watch mode, is logged, as under `vite dev`. A Vitest run in
+another mode (`--mode`, `test.mode`) keeps the dev default, and a Vitest
+config that does not load the plugin generates nothing.
