@@ -182,6 +182,10 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   live check on; or set `failOnError: false` to log the failure and run the
   tests anyway. A Vitest config that does not load the plugin (a
   `vitest.config.ts` without it, as in the examples) is not affected.
+- The package no longer publishes its TypeScript source (#978). It shipped
+  `src` beside `dist` with no source map or declaration map pointing at it,
+  and nothing in `dist` refers to it. Measured with `npm pack`: 17 files and
+  487,020 B unpacked before, 7 files and 268,245 B now.
 
 ### CI (not published)
 

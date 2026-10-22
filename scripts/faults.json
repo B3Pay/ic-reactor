@@ -927,7 +927,7 @@
     "package": "core",
     "test": "tests/testing-test-client.test.ts",
     "testName": "never replaces or uses globalThis.fetch",
-    "why": "the fake replica put in globalThis.fetch, as installFakeReplica does: code that builds its own agents reaches it and two test clients share one",
+    "why": "the fake replica put in globalThis.fetch: code that builds its own agents reaches it and two test clients share one",
     "file": "src/testing/test-client.ts",
     "search": "  const client = createClientWith(",
     "replace": "  globalThis.fetch = replica.fetch\n  const client = createClientWith("
