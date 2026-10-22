@@ -6256,5 +6256,55 @@
     "file": "src/client.ts",
     "search": "      signInsThisRun = []\n      agents.clear()\n",
     "replace": "      agents.clear()\n"
+  },
+  {
+    "id": "914-nonce-sent-through-the-client",
+    "package": "core",
+    "test": "tests/identity-attributes.test.ts",
+    "testName": "mints the nonce through a client built with an explicit AnonymousIdentity, which identity: anonymous refuses",
+    "why": "a client built with identity: \"anonymous\" sends an update, so the refusal the auth guide works around by minting the nonce through an AnonymousIdentity client no longer holds",
+    "file": "src/call.ts",
+    "search": "  if (write && !caller.authenticated) {",
+    "replace": "  if (false && write && !caller.authenticated) {"
+  },
+  {
+    "id": "914-sender-info-left-unsigned",
+    "package": "core",
+    "test": "tests/identity-attributes.test.ts",
+    "testName": "sends an AttributesIdentity's attributes as the call's sender_info, signed by the identity it wraps",
+    "why": "the fake replica checks a call's signature over its content without sender_info, so it refuses every call that carries identity attributes",
+    "file": "src/testing/fake-replica.ts",
+    "search": "      IC_REQUEST_DOMAIN_SEPARATOR,\n      requestIdOf(envelope.content)\n    )\n    const signed",
+    "replace": "      IC_REQUEST_DOMAIN_SEPARATOR,\n      requestIdOf({ ...envelope.content, sender_info: undefined })\n    )\n    const signed"
+  },
+  {
+    "id": "914-lower-case-result-not-unwrapped",
+    "package": "core",
+    "test": "tests/identity-attributes.test.ts",
+    "testName": "resolves accepted attributes, rejects refused ones as a canister_err that names the library's error, and a trap as rejected",
+    "why": "a result variant spelled ok/err, as a Motoko Result is, is read as Ok/Err, so an accepted bundle rejects as if the canister had refused it",
+    "file": "src/call.ts",
+    "search": "    result: \"Ok\" in arms ? { ok: \"Ok\", err: \"Err\" } : { ok: \"ok\", err: \"err\" },",
+    "replace": "    result: { ok: \"Ok\", err: \"Err\" },"
+  },
+  {
+    "id": "914-anonymous-identity-refused",
+    "package": "core",
+    "test": "tests/identity-attributes.test.ts",
+    "testName": "mints the nonce through a client built with an explicit AnonymousIdentity, which identity: anonymous refuses",
+    "why": "a client built with an explicit AnonymousIdentity is refused an update, so the auth guide's nonce, an update made as the anonymous principal, cannot go through the client",
+    "file": "src/client.ts",
+    "search": "            principal: fixedIdentity.getPrincipal().toText(),\n            authenticated: true,",
+    "replace": "            principal: fixedIdentity.getPrincipal().toText(),\n            authenticated: fixedIdentity.getPrincipal().toText() !== ANONYMOUS,"
+  },
+  {
+    "id": "914-sign-in-deferred",
+    "package": "core",
+    "test": "tests/identity-attributes.test.ts",
+    "testName": "builds its auth and asks it to sign in before signIn() returns, so the guide reads the AuthClient right after",
+    "why": "signIn() builds the auth and asks it to sign in only after a promise job, so the auth guide's read of the AuthClient right after the call finds none, and a window transport opens outside the click",
+    "file": "src/client.ts",
+    "search": "const source = authFor(\"signIn\")",
+    "replace": "await Promise.resolve()\n      const source = authFor(\"signIn\")"
   }
 ]

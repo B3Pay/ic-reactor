@@ -122,7 +122,10 @@ Who calls (exactly one):
   `(network) => new AuthClient({ ...network, identityProvider: { authorizeUrl, canisterId } })`.
   A spread that adds other options, `{ ...network, derivationOrigin }`, reads no
   provider and gets no warning, so name one there too.
-  `() => new AuthClient()` ignores `network`, so it suits mainnet only.
+  `() => new AuthClient()` ignores `network`, so it suits mainnet only. On a
+  dfx replica (`{ host: "http://127.0.0.1:4943" }`) the factory is handed
+  icp-cli's built-in Internet Identity on port 4943, which dfx does not serve:
+  name the one the dfx project deploys.
   Two `signIn()` calls with the same options in one synchronous run, as
   `StrictMode`'s double effect makes them, are one sign-in.
   With `new AuthClient({ ...network, transport: "redirect" })` (Internet
@@ -132,6 +135,32 @@ Who calls (exactly one):
   session). Enter that route with a full page load (`<a href="/sign-in">`, not
   a router link): `AuthClient` takes its callback from the page it is built
   on. List that URL in the origin's `/.well-known/ii-auth-callbacks`.
+
+Internet Identity's sign-in features, 2.0's among them, are `AuthClient`
+options. Pass them in the
+factory beside `...network` (`openIdProvider`, `ssoDomain`,
+`derivationOrigin`, `stateStorage: new CookieStateStorage({ domain })`,
+`namespace`, `disableBrowserActivity`, `transport: "redirect"`, which needs
+`signIn()` called on the page's load, not from a click), or to
+`signIn()` (`maxTimeToLive`, `maxTimeToIdle`, `returnTo`). `signIn()` rejects
+with the auth's own errors (its window closed or blocked, a
+`SupersededError`), never a `ReactorError`: always catch it.
+
+Identity attributes reach a canister as a call's `sender_info`, never as
+arguments. With DFINITY's `identity-attributes` library on the canister: keep
+the `AuthClient` the factory builds, and the `identityProvider` canister it is
+handed (mainnet: `rdmx6-jaaaa-aaaaa-aaadq-cai`), per client; mint the nonce
+(`_internet_identity_sign_in_start`, an update) through a second client on the
+same network built with `identity: new AnonymousIdentity()`, since
+`identity: "anonymous"` and a signed-out client refuse updates; start
+`client.signIn()` and `requestAttributes({ keys, nonce })` together, from a
+click; then call `_internet_identity_sign_in_finish` through a client built
+with `identity: new AttributesIdentity({ inner: await authClient.getIdentity(), attributes, signer: { canisterId } })`,
+dispose both, and invalidate the app client's reads of that canister. Its
+`err` rejects as a `canister_err`; an untrusted signer traps (`rejected`, code
+5). Trust `verified_email`, never `email` (for an organization's SSO, the
+canister reads `sso:<domain>:email` for its `trusted_sso_domains`), and let
+the canister check the attributes.
 
 Who is calling, and may they write:
 
@@ -512,7 +541,7 @@ function Profile() {
   const profile = useQuery(client.queryOptions(backend, "get_profile", signedIn ? me : skipToken))
   const rename = useMutation(client.mutationOptions(backend, "set_name"))
 
-  if (!signedIn) return <button onClick={() => void signIn()}>Sign in</button>
+  if (!signedIn) return <button onClick={() => signIn().catch(console.error)}>Sign in</button>
   if (profile.data === undefined) return <p>Loading…</p>
   return (
     <>

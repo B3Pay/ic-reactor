@@ -223,6 +223,31 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   still asked for, since what `icp` reports for it decides whether the cookie
   also names icp-cli's built-in Internet Identity.
 
+### Docs
+
+- The auth guide's "Identity attributes" shows the flow DFINITY's
+  `identity-attributes` library (Motoko and Rust) expects, end to end: the
+  attributes reach the canister as the finish call's `sender_info`, not as
+  arguments. The nonce goes through a second client built with
+  `new AnonymousIdentity()`, `signIn()` and `requestAttributes()` start
+  together, and the finish call goes through a client built with an
+  `AttributesIdentity`, on the same network and with the signer the factory is
+  handed. It says to trust `verified_email`, what a refusal and an untrusted
+  signer reject as, and what the canister must check. The consumer guide
+  (`packages/core/llms.txt`) states the same, and the migration guide's recipe
+  points at it (#914).
+- The auth guide has a table of what Internet Identity offers beyond a plain
+  sign-in, 2.0's features among them, and the `AuthClient` option for each:
+  one-click OpenID and organization SSO, session length,
+  `disableBrowserActivity`, `namespace`, `derivationOrigin`, a sign-in shared
+  by sibling subdomains, and redirect sign-in (#914).
+- The auth guide installs `@icp-sdk/auth@^10`, since npm's newest is 11, and
+  says that on dfx the client hands the factory icp-cli's built-in Internet
+  Identity, which dfx does not serve (#914).
+- `signIn()` rejects with the auth's own errors, never a `ReactorError`, as
+  the auth guide's "useAuth" and the consumer guide now say; the consumer
+  guide's example catches it (#914).
+
 ### CI (not published)
 
 - `pnpm verify:test-fails` compares with where the branch left v4: the
