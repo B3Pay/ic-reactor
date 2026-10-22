@@ -5769,6 +5769,25 @@
     "replace": ""
   },
   {
+    "id": "972-non-auth-result-thrown-on-every-read",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "an auth factory that returns a Promise",
+    "why": "the factory's result checked after the try that records a failure, so a factory that returns a Promise is called again on every read and its TypeError escapes from each",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "      built = checkAuth(made)\n",
+        "replace": "      built = made as AuthLike\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "    auth = built\n    const initial = stateOf(built)\n",
+        "replace": "    built = checkAuth(built)\n    auth = built\n    const initial = stateOf(built)\n"
+      }
+    ]
+  },
+  {
     "id": "icp0-cookie-ids-untrusted",
     "package": "core",
     "test": "tests/env-canister-id.test.ts",

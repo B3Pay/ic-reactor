@@ -72,7 +72,8 @@ export default [
     // With #961 on top of v4: measured 94,733 B, so the limit moved from 94,770 B to 94.79 kB.
     // With #962 on top of v4: measured 94,818 B, so the limit moved from 94,790 B to 94.88 kB.
     // With #975 on top of v4: measured 94,847 B, so the limit moved from 94,880 B to 94.91 kB.
-    limit: "94.91 kB",
+    // With #972 on top of v4: measured 94,849 B, so the limit moved from 94,910 B to 94.92 kB.
+    limit: "94.92 kB",
     gzip: true,
     ignore: ["react", "react/jsx-runtime"],
   },
