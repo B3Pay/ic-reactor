@@ -56,7 +56,10 @@ You write no adapter. The client does the rest:
   `localStorage`, which throws where site data is blocked or in a sandboxed
   frame. The client then calls anonymously, so public reads still work, logs
   the error once in development, and rejects `signIn()` and `signOut()` with
-  what the factory threw. Build a new client to try again.
+  what the factory threw. A factory that returns something other than an
+  auth, such as a Promise from an `async` factory, is treated the same way,
+  with a `TypeError` that names what the result lacks. Build a new client to
+  try again.
 
 `AuthClient` is not a peer dependency of core: you install `@icp-sdk/auth`
 yourself when you want Internet Identity.
@@ -462,7 +465,8 @@ export function SessionButton() {
 
 - on a client built with `identity`, with a `TypeError`: there is no sign-in;
 - on a server, and after `client.dispose()`, with an `Error`;
-- with what the auth factory threw, when it threw;
+- with what the auth factory threw, when it threw, or a `TypeError` when it
+  returned something other than an auth;
 - with whatever the auth rejects with. `AuthClient` rejects a sign-in that a
   later sign-in or sign-out took over from with a `SupersededError`, which you
   can usually ignore.
@@ -544,7 +548,9 @@ another identity. What that means in practice:
   between, it fails with `kind: "cancelled"`, `code: "caller_changed"` and
   `mayHaveExecuted: false`, and nothing is sent. Built from a render's
   `useClient()`, its options also send only as that render's caller: a press
-  handled before a switch reached the render is refused the same way. If
+  handled before a switch reached the render is refused the same way. A
+  re-send `client.resendOf()` offered is refused as `outcome_unknown` with
+  `mayHaveExecuted: true` instead, since the write it re-sends may have run. If
   nobody is signed in, the client refuses it before sending:
   `kind: "unauthenticated"`, code `anonymous_write`.
 - **Data.** After a sign-in, a sign-out or a switch, the new keys are empty
