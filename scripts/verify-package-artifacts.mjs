@@ -29,6 +29,11 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
+import {
+  exportsMapOf,
+  publicSubpaths,
+  specifierOf,
+} from "./lib/package-exports.mjs"
 
 const ROOT = resolve(import.meta.dirname, "..")
 const KEEP = process.argv.includes("--keep")
@@ -188,12 +193,10 @@ try {
       )
     }
 
-    // Derive the public subpaths from the exports map (skip ./package.json).
-    const subpaths = manifest.exports
-      ? Object.keys(manifest.exports).filter((k) => k !== "./package.json")
-      : isBinOnly(manifest)
-        ? []
-        : ["."]
+    // The public subpaths of the exports map; a bin-only package without
+    // one exposes no module.
+    const exportsMap = exportsMapOf(manifest)
+    const subpaths = isBinOnly(manifest) ? [] : publicSubpaths(manifest)
 
     // A bin package's entry *is* the executable, so importing it runs the program
     // rather than exposing a module surface. Only its declarations are checked.
@@ -208,13 +211,13 @@ try {
       binTargets.has(String(target || "").replace(/^\.\//, ""))
 
     for (const sub of subpaths) {
-      const spec = sub === "." ? name : `${name}/${sub.replace(/^\.\//, "")}`
+      const spec = specifierOf(name, sub)
 
       const entryTarget =
         sub === "."
-          ? (manifest.exports?.["."]?.import?.default ??
-            manifest.exports?.["."]?.import ??
-            manifest.exports?.["."]?.default ??
+          ? (exportsMap?.["."]?.import?.default ??
+            exportsMap?.["."]?.import ??
+            exportsMap?.["."]?.default ??
             manifest.main)
           : undefined
       if (isBinEntry(entryTarget)) {
@@ -253,7 +256,7 @@ try {
       // The `react-server` entry, resolved the way a React Server Component
       // bundle resolves it. It must load without reaching React at all (the
       // resolve hook throws on any React specifier) and export no hook.
-      const cond = manifest.exports?.[sub]
+      const cond = exportsMap?.[sub]
       if (cond && typeof cond === "object" && "react-server" in cond) {
         try {
           const out = run(

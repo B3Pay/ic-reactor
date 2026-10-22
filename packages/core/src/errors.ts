@@ -13,6 +13,7 @@
  *
  * @module
  */
+import { MANAGEMENT_CANISTER } from "./management.js"
 import { isServer } from "./runtime.js"
 import type { Canister, ErrorOf } from "./types.js"
 
@@ -574,7 +575,6 @@ export type ErrorContext = ErrorContextBase &
 const SYS_FATAL = 1
 const SYS_TRANSIENT = 2
 const DESTINATION_INVALID = 3
-const MANAGEMENT_CANISTER = "aaaaa-aa"
 
 const REJECT_NAMES: Readonly<Record<number, string>> = {
   1: "SYS_FATAL",
@@ -682,7 +682,8 @@ interface Shape {
   readonly statusText: string
 }
 
-const asRecord = (value: unknown): Record<string, unknown> =>
+/** `value` when it is an object, so its fields can be read; `{}` otherwise. */
+export const asRecord = (value: unknown): Record<string, unknown> =>
   typeof value === "object" && value !== null
     ? (value as Record<string, unknown>)
     : {}
@@ -708,8 +709,8 @@ function readRejectCode(error: Record<string, unknown>): number | undefined {
  * error from another copy of `@icp-sdk/core` classifies the same way. A
  * `status` on any other code says nothing about an HTTP answer and is ignored.
  */
-function readHttpStatus(error: Record<string, unknown>): number | undefined {
-  const code = asRecord(error.code)
+export function readHttpStatus(error: unknown): number | undefined {
+  const code = asRecord(asRecord(error).code)
   return code.name === "HttpErrorCode" && typeof code.status === "number"
     ? code.status
     : undefined
@@ -1002,8 +1003,12 @@ export function classifyError(
  * `not_delivered` that another attempt can change. {@link retryQuery} and
  * {@link retryUpdate} add their own limits; a direct read re-sends on this
  * alone, at most twice.
+ *
+ * It narrows `error` to a {@link ReactorError} when it returns `true`. Its
+ * `false` says nothing about the type, though TypeScript reads it as "not a
+ * `ReactorError`", so call it on an `unknown`, as both callers do.
  */
-export const isRetryable = (error: unknown): boolean =>
+export const isRetryable = (error: unknown): error is ReactorError =>
   isReactorError(error) &&
   error.kind === "not_delivered" &&
   (error as unknown as Record<symbol, unknown>)[RETRYABLE] === true
@@ -1035,10 +1040,10 @@ export const UPDATE_RESEND_DELAYS_MS: readonly [300, 600] = [300, 600]
  */
 export function retryUpdate(error: unknown, resendsSoFar: number): boolean {
   if (resendsSoFar >= UPDATE_RESEND_DELAYS_MS.length) return false
+  // A retryable error is a `not_delivered`, whose `mayHaveExecuted` is always
+  // `false`, so that needs no check of its own here.
   return (
     isRetryable(error) &&
-    isReactorError(error) &&
-    !error.mayHaveExecuted &&
     (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)
   )
 }

@@ -91,6 +91,7 @@ import { Principal } from "@icp-sdk/core/principal"
 import type { Caller, ClientInternals } from "./client.js"
 import {
   UPDATE_RESEND_DELAYS_MS,
+  asRecord,
   classifyError,
   createReactorError,
   fromCanister,
@@ -98,6 +99,7 @@ import {
   invalidReplyError,
   isReactorError,
   isRetryable,
+  readHttpStatus,
   resendDidNotRun,
   retryUpdate,
   timedOutError,
@@ -802,17 +804,10 @@ async function readCertificate(
 
 /** Whether a failed `read_state` is worth asking again: the request may simply not have arrived. */
 function isTransientPollFailure(error: unknown): boolean {
-  const record = (
-    typeof error === "object" && error !== null ? error : {}
-  ) as Record<string, unknown>
-  if (record.kind === "Transport") return true
-  const code = (
-    typeof record.code === "object" && record.code !== null ? record.code : {}
-  ) as Record<string, unknown>
-  const status = code.name === "HttpErrorCode" ? code.status : undefined
+  if (asRecord(error).kind === "Transport") return true
+  const status = readHttpStatus(error)
   return (
-    typeof status === "number" &&
-    (status === 408 || status === 429 || status >= 500)
+    status !== undefined && (status === 408 || status === 429 || status >= 500)
   )
 }
 

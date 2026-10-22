@@ -1065,8 +1065,8 @@
       },
       {
         "file": "src/errors.ts",
-        "search": "    !error.mayHaveExecuted &&\n    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
-        "replace": "    !error.mayHaveExecuted"
+        "search": "    isRetryable(error) &&\n    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
+        "replace": "    isRetryable(error)"
       }
     ]
   },
@@ -1084,8 +1084,8 @@
       },
       {
         "file": "src/errors.ts",
-        "search": "    !error.mayHaveExecuted &&\n    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
-        "replace": "    !error.mayHaveExecuted"
+        "search": "    isRetryable(error) &&\n    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
+        "replace": "    isRetryable(error)"
       }
     ]
   },
@@ -2419,7 +2419,7 @@
     "test": "src/index.test.ts",
     "testName": "should fallback to default proxy when icp-cli fails",
     "why": "the plugin's fallback /api proxy left on dfx's 4943 while core's \"local\" and the cookie's Internet Identity are on icp-cli's 8000",
-    "file": "src/dev-environment.ts",
+    "file": "src/local-host.ts",
     "search": "export const DEFAULT_LOCAL_REPLICA = \"http://127.0.0.1:8000\"",
     "replace": "export const DEFAULT_LOCAL_REPLICA = \"http://127.0.0.1:4943\""
   },
@@ -4868,7 +4868,7 @@
     "testName": "refuses the management canister, which routes no read_state, sending nothing",
     "why": "client.time() sends a read_state routed by aaaaa-aa, which the IC refuses, instead of refusing the target with nothing sent",
     "file": "src/options.ts",
-    "search": "    if (target.id === \"aaaaa-aa\") {",
+    "search": "    if (target.id === MANAGEMENT_CANISTER) {",
     "replace": "    if (false) {"
   },
   {
@@ -4995,7 +4995,7 @@
     "id": "880-hook-failure-swallowed",
     "package": "vite-plugin",
     "file": "src/index.ts",
-    "search": "            failures.push({\n              canister,\n              message: `onGenerated failed for ${relativeToRoot(module)}: ${describe(error)}`,\n            })\n",
+    "search": "            failures.push({\n              canister,\n              message: `onGenerated failed for ${relativeToRoot(module)}: ${describeError(error)}`,\n            })\n",
     "replace": "",
     "test": "tests/on-generated.test.ts",
     "testName": "fails the build with a hook that rejects, naming the canister and the hook",

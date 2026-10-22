@@ -7,6 +7,7 @@ import {
   CLAUDE_MARKETPLACE,
   RUNTIME_PLUGIN_MANIFESTS,
 } from "./ai-context-files.js"
+import { fencedLines } from "./lib/markdown-fences.mjs"
 import { REMOVED_V3_NAMES } from "./removed-v3-names.js"
 
 const rootDir = process.cwd()
@@ -270,17 +271,11 @@ function headingIds(page) {
   if (headingIdsCache.has(page)) return headingIdsCache.get(page)
   const ids = new Set(["_top"])
   const seen = new Map()
-  let fence = null
+  const fenced = fencedLines()
   for (const line of readFileSync(join(DOCS_CONTENT, page), "utf8").split(
     "\n"
   )) {
-    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/)
-    if (fenceMatch) {
-      if (fence === null) fence = fenceMatch[1]
-      else if (fenceMatch[1].startsWith(fence)) fence = null
-      continue
-    }
-    if (fence !== null) continue
+    if (fenced(line)) continue
     // A heading may open a list item, as the steps of a <Steps> block do.
     const heading = line.match(
       /^\s*(?:(?:\d+\.|[-*+])\s+)?#{1,6}\s+(.+?)\s*#*\s*$/
@@ -753,20 +748,10 @@ function staleNameMentions(text, { exempt = true } = {}) {
     m.index + m[0].length,
   ])
   const found = []
-  let fence = null
+  const fenced = fencedLines()
   let exemptLevel = null
   lines.forEach((line, i) => {
-    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/)
-    if (fenceMatch) {
-      if (fence === null) fence = fenceMatch[1]
-      else if (
-        fenceMatch[1][0] === fence[0] &&
-        fenceMatch[1].length >= fence.length &&
-        line.trim() === fenceMatch[1]
-      ) {
-        fence = null
-      }
-    } else if (fence === null) {
+    if (!fenced(line)) {
       const heading = line.match(/^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/)
       if (heading) {
         const level = heading[1].length
