@@ -5907,5 +5907,35 @@
     "file": "src/dev-environment.ts",
     "search": "!isLoopbackHost(req.headers.host)",
     "replace": "false"
+  },
+  {
+    "id": "975-page-dot-kept",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a canister's ic0.app domain with a trailing dot",
+    "why": "the page's hostname keeps its trailing dot, so victim.ic0.app. is not under ic0.app and allowEnvConfig: true is not refused there",
+    "file": "src/network.ts",
+    "search": "    : withoutRootDot(hostname) || undefined\n",
+    "replace": "    : hostname\n"
+  },
+  {
+    "id": "975-agent-dot-kept",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "does not take the cookie's key with allowEnvConfig: true either, on a canister's icp0.io domain with a trailing dot",
+    "why": "the agent host keeps its trailing dot, so a page routed through <id>.icp0.io. is not a mainnet host and takes the cookie's root key",
+    "file": "src/network.ts",
+    "search": "  return hostname === undefined ? undefined : withoutRootDot(hostname)\n",
+    "replace": "  return hostname\n"
+  },
+  {
+    "id": "975-icp0-dotted-page-believed",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "believes nothing by default on <id>.icp0.io with a trailing dot",
+    "why": "<id>.icp0.io. matched with its dot dropped, so the page believes the cookie's ids by default on a name whose Public Suffix List protection is not checked",
+    "file": "src/network.ts",
+    "search": "ICP0_CANISTER_PAGE.exec(parsedHostnameOf(pageOrigin()) ?? \"\")",
+    "replace": "ICP0_CANISTER_PAGE.exec(pageHostnameOf(pageOrigin()) ?? \"\")"
   }
 ]

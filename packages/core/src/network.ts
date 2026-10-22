@@ -386,18 +386,41 @@ const agentUrlOf = (host: string): URL | undefined => {
   }
 }
 
-/** The hostname of {@link agentUrlOf}. */
-const agentHostnameOf = (host: string): string | undefined =>
-  agentUrlOf(host)?.hostname
+/**
+ * A hostname without the one trailing dot a fully qualified name may end
+ * with. The URL parser keeps it, so `victim.ic0.app.` would otherwise not be
+ * under `ic0.app`, and every rule here that names a domain would miss it
+ * (all but {@link pageIsIcp0Canister}'s, which keeps it on purpose).
+ */
+const withoutRootDot = (hostname: string): string =>
+  hostname.endsWith(".") ? hostname.slice(0, -1) : hostname
 
-/** The hostname of a page origin, or `undefined` when it is not a URL (an opaque origin reads as `"null"`). */
-const pageHostnameOf = (origin: string | undefined): string | undefined => {
+/** The hostname of {@link agentUrlOf}, without its trailing dot. */
+const agentHostnameOf = (host: string): string | undefined => {
+  const hostname = agentUrlOf(host)?.hostname
+  return hostname === undefined ? undefined : withoutRootDot(hostname)
+}
+
+/**
+ * The hostname of a page origin as the URL parser reads it, trailing dot
+ * included, or `undefined` when it is not a URL (an opaque origin reads as
+ * `"null"`).
+ */
+const parsedHostnameOf = (origin: string | undefined): string | undefined => {
   if (!origin) return undefined
   try {
     return new URL(origin).hostname || undefined
   } catch {
     return undefined
   }
+}
+
+/** The hostname of a page origin without its trailing dot (see {@link parsedHostnameOf}). */
+const pageHostnameOf = (origin: string | undefined): string | undefined => {
+  const hostname = parsedHostnameOf(origin)
+  return hostname === undefined
+    ? undefined
+    : withoutRootDot(hostname) || undefined
 }
 
 /**
@@ -498,11 +521,14 @@ const trustsEnvFor = (
 
 /**
  * Whether the page is a canister's own {@link ICP0_CANISTER_PAGE}. A worker
- * has no cookie, so it is never one.
+ * has no cookie, so it is never one. The name is matched as the URL parser
+ * reads it: `<id>.icp0.io.`, with the trailing dot, believes nothing by
+ * default, because the Public Suffix List's protection of a name written
+ * that way has not been checked.
  */
 const pageIsIcp0Canister = (): boolean => {
   if (typeof window === "undefined") return false
-  const match = ICP0_CANISTER_PAGE.exec(pageHostnameOf(pageOrigin()) ?? "")
+  const match = ICP0_CANISTER_PAGE.exec(parsedHostnameOf(pageOrigin()) ?? "")
   return match !== null && principalProblem(match[1]!) === undefined
 }
 

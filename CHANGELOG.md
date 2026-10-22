@@ -81,6 +81,17 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   tunnel could set the cookie whose root key the page would take. Migration:
   a production app served from such a name now calls its own origin; give it
   `network: "ic"` or a `{ host, rootKey }` network.
+- A page or agent host whose name ends with a trailing dot
+  (`https://victim.ic0.app./`) now counts as the name without it (#975). The
+  URL parser keeps the dot, so such a page got past the rule that refuses
+  `allowEnvConfig: true` under `ic0.app`, `github.dev` and `gitpod.io`, and
+  the client believed the cookie's canister ids and Internet Identity URL
+  there. Such a page is now refused the opt-in and routes as the name without
+  the dot does, and a mainnet host written that way still never takes the
+  cookie's root key. A `localhost.` page or host is local, as `localhost` is:
+  the cookie is believed there and the replica's root key fetched. One rule
+  stays closed: unlike `<id>.icp0.io`, `<id>.icp0.io.` does not believe the
+  cookie's canister ids by default.
 
 ### @ic-reactor/react
 
