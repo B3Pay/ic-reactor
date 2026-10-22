@@ -5815,8 +5815,88 @@
     "testName": "routes through its own origin, never mainnet, on",
     "why": "\"env\" on a LAN address, a *.local/*.test/*.internal name or a tunnel falls back to mainnet, so a dev app's local ids and sign-in reach mainnet",
     "file": "src/network.ts",
-    "search": "    isRemoteDevHostname(hostname)\n",
+    "search": "    isRemoteDevPage(origin, hostname)\n",
     "replace": "    REMOTE_DEV_SUFFIXES.slice(0, 2).some((suffix) => hostname.endsWith(suffix))\n"
+  },
+  {
+    "id": "962-tailscale-address-not-private",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a Tailscale address",
+    "why": "100.64/10 left out of the private addresses, so \"env\" on a Tailscale address falls back to mainnet with a dev app's local ids",
+    "file": "src/network.ts",
+    "search": "|169\\.254|100\\.(?:6[4-9]|[7-9]\\d|1[01]\\d|12[0-7]))",
+    "replace": "|169\\.254)"
+  },
+  {
+    "id": "962-tailscale-range-too-wide",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "still falls back on an address just past 100.64/10",
+    "why": "all of 100/8 read as Tailscale's 100.64/10, so a public address next to it routes to the page",
+    "file": "src/network.ts",
+    "search": "|169\\.254|100\\.(?:6[4-9]|[7-9]\\d|1[01]\\d|12[0-7]))",
+    "replace": "|169\\.254|100\\.\\d{1,3})"
+  },
+  {
+    "id": "962-ts-net-not-remote",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a Tailscale name",
+    "why": "*.ts.net left out of the remote dev names, so \"env\" on a tailnet name falls back to mainnet",
+    "file": "src/network.ts",
+    "search": "  \".ts.net\",\n",
+    "replace": ""
+  },
+  {
+    "id": "962-dev-tunnel-not-remote",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a VS Code dev tunnel",
+    "why": "*.devtunnels.ms left out of the remote dev names, so \"env\" on a VS Code dev tunnel falls back to mainnet",
+    "file": "src/network.ts",
+    "search": "  \".devtunnels.ms\",\n",
+    "replace": ""
+  },
+  {
+    "id": "962-dotless-name-not-remote",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a LAN name with no dot",
+    "why": "a LAN name with no dot (http://devbox:5173) not read as a dev page, so \"env\" there falls back to mainnet",
+    "file": "src/network.ts",
+    "search": "  REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix)) ||\n  (WEB_ORIGIN.test(origin) &&\n    !hostname.includes(\".\") &&\n    !hostname.startsWith(\"[\"))\n",
+    "replace": "  REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix))\n"
+  },
+  {
+    "id": "962-ipv6-read-as-dotless-name",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "still falls back on an IPv6 global address",
+    "why": "an IPv6 address, which has no dot, read as a LAN name, so any IPv6 page routes to itself",
+    "file": "src/network.ts",
+    "search": "    !hostname.includes(\".\") &&\n    !hostname.startsWith(\"[\"))\n",
+    "replace": "    !hostname.includes(\".\"))\n"
+  },
+  {
+    "id": "962-extension-page-read-as-lan-name",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "still falls back on a Chrome extension's page",
+    "why": "any page whose name has no dot read as a LAN name, scheme and all, so \"env\" in a browser extension or a desktop app routes its calls to its own origin instead of the fallback",
+    "file": "src/network.ts",
+    "search": "  (WEB_ORIGIN.test(origin) &&\n    !hostname.includes(\".\") &&\n",
+    "replace": "  (!hostname.includes(\".\") &&\n"
+  },
+  {
+    "id": "962-dev-tunnel-parent-not-shared",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a VS Code dev tunnel",
+    "why": "devtunnels.ms left out of the shared parents, so allowEnvConfig: true on a *.devtunnels.ms page, which \"env\" routes through the page, takes the root key of a cookie any other dev tunnel can set",
+    "file": "src/network.ts",
+    "search": "  \"loca.lt\",\n  \"devtunnels.ms\",\n]",
+    "replace": "  \"loca.lt\",\n]"
   },
   {
     "id": "vite-non-loopback-page-unwarned",

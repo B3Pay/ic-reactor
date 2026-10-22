@@ -66,6 +66,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   signer declines stays `outcome_unknown` and offered, as on v4: the write
   it re-sends may have run. An `AbortError` from the signer is still
   `cancelled`, as every abort is.
+- `network: "env"` no longer falls back to mainnet on a dev page opened over
+  Tailscale (a 100.64/10 address or a `*.ts.net` name), by a VS Code dev
+  tunnel (`*.devtunnels.ms`) or by a LAN name with no dot
+  (`http://devbox:5173`) (#962). An app that names its canisters with
+  `{ id }` from its build-time env sent its local ids to mainnet there. Such
+  a page now routes through its own origin, as #902 made LAN addresses and
+  the other tunnels do: the cookie is not believed and no root key is taken
+  or fetched, so certified calls fail verification instead of reaching
+  mainnet. A name with no dot counts only on an `http:` or `https:` page, so
+  a browser extension's or a desktop app's page falls back as before.
+  `allowEnvConfig: true` is refused with a `TypeError` on a dev tunnel page,
+  as on Codespaces: `devtunnels.ms` is not a public suffix, so any other
+  tunnel could set the cookie whose root key the page would take. Migration:
+  a production app served from such a name now calls its own origin; give it
+  `network: "ic"` or a `{ host, rootKey }` network.
 
 ### @ic-reactor/react
 
