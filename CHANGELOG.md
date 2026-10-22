@@ -38,6 +38,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   Migration: an app that branched on `kind` for a refused re-send reads its
   `code`, `httpStatus` or `rejectCode` instead, and treats it as any other `outcome_unknown`: read the
   state back.
+- `createClient` now also throws a `TypeError` for `allowEnvConfig: true` on
+  a localtunnel page (`*.loca.lt`) or a VS Code dev tunnel page
+  (`*.devtunnels.ms`) (#961). Neither parent is a public suffix, so any other
+  tunnel can set the `ic_env` cookie these pages read, as on the `ic0.app`,
+  Codespaces and Gitpod pages #900 refuses. The client used to believe that
+  cookie's canister ids and Internet Identity URL there, and with
+  `network: "env"` on `*.loca.lt` its root key too. Migration: as for #900,
+  name the canisters with `{ id }` and a replica that is not mainnet with
+  `{ host, rootKey }`.
 
 #### Fixed
 
