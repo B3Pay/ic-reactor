@@ -36,7 +36,8 @@ export default [
     // With #962 on top of v4: measured 18,577 B, so the limit moved from 18,560 B to 18.64 kB.
     // With #975 on top of v4: measured 18,622 B, so the limit moved from 18,640 B to 18.69 kB.
     // With #973 on top of v4: measured 18,721 B, so the limit moved from 18,690 B to 18.79 kB.
-    limit: "18.79 kB",
+    // With #974 on top of v4: measured 18,825 B, so the limit moved from 18,790 B to 18.9 kB.
+    limit: "18.9 kB",
     gzip: true,
   },
 ]

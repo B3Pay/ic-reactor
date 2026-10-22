@@ -113,6 +113,17 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `mayHaveExecuted: false`, so such a flow fails before it sends anything,
   and a `read_state` not yet sent when the bound passes is never sent.
   Without `timeoutMs` it waits as before, as long as the `fetch` in use does.
+- `createClient` throws a `TypeError` for a network host the agent cannot
+  call over `http:` or `https:` (#974). It accepted any host the URL parser
+  read: `{ host: "localhost:4943" }` and `ICP_HOST=localhost:8000` on a server
+  read as the scheme `localhost:`, and `ftp:`, `javascript:` and `data:` URLs
+  passed too, so the client was built and every call then failed. The message
+  names the scheme it read. Under `network: "env"` it also says that the host
+  came from the page's origin or from `ICP_HOST` or `IC_HOST`, since an app
+  shell's page, such as `capacitor://localhost`, now throws there too.
+  Migration: write the scheme, `{ host: "http://localhost:4943" }` or
+  `ICP_HOST=http://localhost:8000`, and on an app shell's page pass
+  `network: { host }` in place of `"env"`.
 
 ### @ic-reactor/react
 

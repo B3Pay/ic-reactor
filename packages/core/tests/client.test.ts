@@ -33,6 +33,7 @@ import {
   readAs,
   replicaWithWhoami,
 } from "./client-helpers.js"
+import { stubProcessEnv } from "./network-helpers.js"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -207,7 +208,62 @@ describe("createClient options", () => {
   it("refuses a network host the agent cannot read when the client is built", () => {
     expect(() =>
       createClient({ network: { host: "not a url" }, identity: "anonymous" })
-    ).toThrow(/"not a url" is not a URL the agent can read/)
+    ).toThrow(
+      /"not a url" is not a URL the agent can read \(it does not parse as one\)/
+    )
+  })
+
+  it.each([
+    // Read as the scheme `localhost:`, on a page too (#974).
+    ["localhost:4943", "localhost:"],
+    ["ftp://example.com", "ftp:"],
+    ["javascript:alert(1)", "javascript:"],
+    ["data:text/plain,hi", "data:"],
+  ])(
+    "refuses the host %s, which no call can use, when the client is built",
+    (host, scheme) => {
+      for (const page of [false, true]) {
+        if (page) onPage()
+        const build = () =>
+          createClient({ network: { host }, identity: "anonymous" })
+        expect(build).toThrow(TypeError)
+        expect(build).toThrow(
+          `the network host ${JSON.stringify(host)} is not a URL the agent can read (its scheme is ${scheme}, and the agent calls over http: and https: only). Give one with a scheme, such as "https://icp-api.io".`
+        )
+      }
+    }
+  )
+
+  it('says where network "env" took a host no call can use', () => {
+    const scheme = "is not a URL the agent can read (its scheme is"
+    const advice = `Give one with a scheme, such as "https://icp-api.io", in ICP_HOST or as network: { host }.`
+    const build = () => createClient({ network: "env", identity: "anonymous" })
+    // Off a page, from ICP_HOST.
+    stubProcessEnv({ ICP_NETWORK: "local", ICP_HOST: "localhost:8000" })
+    expect(build).toThrow(TypeError)
+    expect(build).toThrow(
+      `the network host "localhost:8000", which network "env" took from the page's origin or from ICP_HOST or IC_HOST, ${scheme} localhost:`
+    )
+    expect(build).toThrow(advice)
+    // On a page, from its origin: an app shell such as Capacitor on iOS.
+    stubProcessEnv()
+    onPage("capacitor://localhost")
+    expect(build).toThrow(
+      `the network host "capacitor://localhost", which network "env" took from the page's origin or from ICP_HOST or IC_HOST, ${scheme} capacitor:`
+    )
+    expect(build).toThrow(advice)
+  })
+
+  it("takes an http: or https: host, and a host with no scheme on a page", () => {
+    const host = (network: { host: string }) =>
+      internalsOf(createClient({ network, identity: "anonymous" })).network.host
+    expect(host({ host: "http://127.0.0.1:4943" })).toBe(
+      "http://127.0.0.1:4943"
+    )
+    expect(host({ host: "https://icp-api.io" })).toBe("https://icp-api.io")
+    // HttpAgent reads it against the page's protocol.
+    onPage("http://localhost:5173")
+    expect(host({ host: "127.0.0.1:4943" })).toBe("127.0.0.1:4943")
   })
 
   it("passes maxDepth on, 256 unless given, and refuses one candid-core would refuse", () => {
