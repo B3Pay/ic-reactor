@@ -11,6 +11,7 @@ import os from "node:os"
 import path from "node:path"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { runIcp } from "../src/env.js"
+import { removeDirectory } from "./support.js"
 
 /** A stand-in for npm's `icp`: it starts a child as the script does, and hangs. */
 const HANGING_ICP = `#!/usr/bin/env node
@@ -36,7 +37,7 @@ afterEach(() => {
       // Gone already.
     }
   }
-  for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true })
+  for (const dir of dirs.splice(0)) removeDirectory(dir)
 })
 
 /**

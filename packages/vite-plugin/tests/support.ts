@@ -2,6 +2,7 @@
  * Helpers for the plugin tests that run a real Vite server or build against a
  * temporary app.
  */
+import type { ChildProcess } from "node:child_process"
 import { EventEmitter } from "node:events"
 import fs from "node:fs"
 import http from "node:http"
@@ -48,6 +49,40 @@ const NO_WATCHER = (
 ) as ServerOptions["watch"]
 
 /**
+ * Remove a test's temporary directory. On Windows a file in it can still be
+ * open for a moment after the process or watcher that held it ended, and the
+ * removal fails with EBUSY or EPERM, which Node tries again on (#905).
+ */
+export function removeDirectory(directory: string): void {
+  fs.rmSync(directory, {
+    recursive: true,
+    force: true,
+    maxRetries: 10,
+    retryDelay: 100,
+  })
+}
+
+/**
+ * Every process that `spawn`, a `vi.fn` over the real one, started has
+ * exited. A server's close kills the generator it is running, but on Windows
+ * the killed process holds the app directory, its working directory, until
+ * it is gone. Removing the app before then fails with EBUSY on the directory
+ * itself, which `fs.rmSync` does not try again (#905).
+ */
+export async function spawnedExited(spawn: {
+  mock: { results: Array<{ type: string; value: unknown }> }
+}): Promise<void> {
+  await Promise.all(
+    spawn.mock.results
+      .flatMap(({ type, value }) =>
+        type === "return" ? [value as ChildProcess] : []
+      )
+      .filter((child) => child.exitCode === null && child.signalCode === null)
+      .map((child) => new Promise((resolve) => child.once("exit", resolve)))
+  )
+}
+
+/**
  * The server options of a middleware-mode server without a WebSocket, which
  * binds no port. `hmr: false` alone is not that: Vite still opens a WebSocket
  * server then, on the fixed port 24678, so two servers at once (two test
@@ -82,7 +117,11 @@ export function createApp(
   files: Record<string, string>,
   cli: "real" | "fake" | "none"
 ): App {
-  const root = fs.realpathSync(
+  // The native realpath, as the plugin's: on Windows the temporary directory
+  // can be spelled with 8.3 short names (C:\Users\RUNNER~1), which only it
+  // expands, and the paths the tests expect must be the ones the plugin gives
+  // the generator (#905).
+  const root = fs.realpathSync.native(
     fs.mkdtempSync(path.join(os.tmpdir(), "ic-reactor-vite-"))
   )
   const all: Record<string, string> = {
@@ -123,7 +162,7 @@ export function createApp(
         return []
       }
     },
-    cleanup: () => fs.rmSync(root, { recursive: true, force: true }),
+    cleanup: () => removeDirectory(root),
   }
 }
 

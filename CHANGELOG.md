@@ -17,6 +17,15 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/vite-plugin
+
+#### Fixed
+
+- On Windows, the plugin's messages name a path relative to the project with
+  `/`, as the config writes it (`did/ledger.did`), where they named
+  `did\ledger.did` (#905). The plugin's whole test suite now runs on Windows
+  in CI, where only the tests of how it starts `icp` ran.
+
 ### Docs
 
 - A Versioning and support page (#897). It says what a 4.x patch, minor and

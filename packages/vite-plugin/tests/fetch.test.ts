@@ -27,6 +27,7 @@ import {
   PING_DID,
   recordingLogger,
   runBuild,
+  spawnedExited,
   startDev,
   type App,
   type Running,
@@ -59,6 +60,7 @@ afterEach(async () => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
   for (const close of closers.splice(0).reverse()) await close()
+  await spawnedExited(vi.mocked(spawn))
   for (const app of apps.splice(0)) app.cleanup()
 })
 
