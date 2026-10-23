@@ -107,6 +107,7 @@ export default defineConfig({
             { label: "Overview", slug: "ic-reactor" },
             { label: "Getting started", slug: "guides/getting-started" },
             { label: "Migrating from 3.x", slug: "migrating-from-3" },
+            { label: "Versioning and support", slug: "versioning" },
           ],
         },
         {
