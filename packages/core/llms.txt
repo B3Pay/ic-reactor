@@ -398,8 +398,8 @@ export function Send({ arg }: { arg: TransferArg }) {
   canister as that sender, and `transfer.mutate(again.arg)` sends the
   argument only as that same write, or sends nothing (`code`
   `caller_changed`, `target_changed`, `arg_changed`). A re-send that did not
-  run, refused that way or turned away (HTTP 429 or another 4xx, reject code
-  1 to 3), rejects `outcome_unknown` with `mayHaveExecuted: true`, because
+  run, refused that way or turned away (a 429 or another 4xx status, reject
+  code 1 to 3), rejects `outcome_unknown` with `mayHaveExecuted: true`, because
   the first attempt may have run: its `code`, `httpStatus` or `rejectCode`
   and its `cause` say why, `resendOf` offers that write again while its
   sender is the caller, and you read the state back before anything else. Never change an offered argument: build a new one for a new transfer. A method with no
