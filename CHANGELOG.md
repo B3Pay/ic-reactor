@@ -15,6 +15,82 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+Nothing yet.
+
+## core, react, vite-plugin 4.0.0-beta.7
+
+Prepared on 2026-10-22. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.6.
+
+This release carries the fixes of the audit of beta.6 (#960 to #980), the
+`client.time` fix under jsdom (#949), the redirect sign-in fix (#913) and the
+Internet Identity guide (#914), so that 4.0.0 ships no code a prerelease did
+not carry first. One change is marked breaking (the Vite plugin under Vitest),
+and several more change what an app sees; the steps below list them.
+
+No export is added or removed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2), no public type changes, and the candid-core pair is unchanged:
+core peers `@candid-core/schema` at exactly `0.4.0` and the Vite plugin
+`@candid-core/cli` at exactly `0.3.0`, so a module generated for beta.6 need
+not be regenerated.
+
+What an app on beta.6 does:
+
+1. Bump all three `@ic-reactor/*` packages to `4.0.0-beta.7` in one
+   `npm install`. react 4.0.0-beta.7 peers core at exactly `4.0.0-beta.7`, so
+   they move together. The command keeps each package in the section of
+   `package.json` it is in:
+
+   ```sh
+   npm install --save-exact @ic-reactor/core@4.0.0-beta.7 @ic-reactor/react@4.0.0-beta.7 @ic-reactor/vite-plugin@4.0.0-beta.7
+   ```
+
+   Name only the packages the app has.
+
+2. Treat a re-send that `client.resendOf()` offered and that did not run as
+   any other `outcome_unknown` (#960). Refused before it went out, or turned
+   away with an HTTP 4xx or reject code 1 to 3, it used to reject
+   `cancelled`, `invalid_args`, `not_delivered` or `rejected`; it now rejects
+   `outcome_unknown` with `mayHaveExecuted: true`, since the write it re-sends
+   may have run. `client.resendOf()` offers the write again, and a mutation
+   invalidates its reads. Read `kind` and `mayHaveExecuted` first, and read
+   the state back. The error keeps the re-send's `code`, which says only why
+   the re-send did not go out: unlike a first send's (#893), its
+   `caller_changed` does not mean nothing ran, so do not call `mutate()`
+   again on it.
+3. Check a Vitest run that loads the Vite plugin (breaking, #967). A canister
+   that fails to generate now fails the run at startup when `failOnError` is
+   omitted. Fix the failure, set `IC_REACTOR_VERIFY=0` to skip the live check
+   (`verify: "live"`) in an offline run, or set `failOnError: false`.
+4. Write the scheme in every network host (#974):
+   `{ host: "http://localhost:4943" }`, `ICP_HOST=http://localhost:8000`. On
+   an app shell's page, such as `capacitor://localhost`, pass
+   `network: { host }` in place of `"env"`. Such a client used to be built
+   and then fail on every call; `createClient` now throws.
+5. Check where pages run:
+   - on a localtunnel page (`*.loca.lt`) or a VS Code dev tunnel page
+     (`*.devtunnels.ms`), `allowEnvConfig: true` now throws, whatever the
+     network; name canisters with `{ id }` there (#961, #962);
+   - with `network: "env"`, a dev page opened over Tailscale, by a dev tunnel
+     or by a LAN name with no dot now calls its own origin, never mainnet; a
+     production app served from such a name needs `network: "ic"` or a
+     `{ host, rootKey }` network (#962);
+   - a page or host whose name ends with a dot now counts as the name without
+     it, except that `<id>.icp0.io.` does not believe the cookie's canister
+     ids by default (#975).
+6. Smaller changes, each with its migration in the entries below: an `auth`
+   factory returns the auth itself, synchronously, and an async one's
+   `TypeError` now comes from `signIn()` (#972); a signer that declines a
+   first send, such as a user who closes a passkey prompt, now rejects
+   `not_delivered` with `mayHaveExecuted: false`, not `outcome_unknown`,
+   while a declined re-send stays `outcome_unknown` (#963); and
+   `client.time(canister)` now stops waiting at the canister object's
+   `timeoutMs` (#973).
+
+The guide (`llms.txt`) and the skill now say they apply to 4.0.0-beta.7, and
+the five examples pin `^4.0.0-beta.7`.
+
 ### @ic-reactor/core
 
 #### Changed
@@ -27,7 +103,7 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   including the one of a mutation built from a pinned `useClient()` view), and
   one turned away when sent (an HTTP 4xx such as 429, or reject code 1 to 3). Each proves only that the re-send
   did not run, while the earlier attempt may have: the error used to say
-  `cancelled`, `invalid_args` or `not_delivered` with `mayHaveExecuted: false`,
+  `cancelled`, `invalid_args`, `not_delivered` or `rejected` with `mayHaveExecuted: false`,
   so `resendOf` offered nothing after it, a mutation did not invalidate its
   reads, and an app could tell the user the transfer had not happened. The
   error keeps the re-send's `code`, `httpStatus` and `rejectCode`, has the
@@ -37,7 +113,8 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `Duplicate`) and the same failures of a first send are unchanged.
   Migration: an app that branched on `kind` for a refused re-send reads its
   `code`, `httpStatus` or `rejectCode` instead, and treats it as any other `outcome_unknown`: read the
-  state back.
+  state back. That `code` says only why the re-send did not go out: unlike a
+  first send's (#893), its `caller_changed` does not mean nothing ran.
 - `createClient` now also throws a `TypeError` for `allowEnvConfig: true` on
   a localtunnel page (`*.loca.lt`) or a VS Code dev tunnel page
   (`*.devtunnels.ms`) (#961). Neither parent is a public suffix, so any other
@@ -248,6 +325,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   the auth guide's "useAuth" and the consumer guide now say; the consumer
   guide's example catches it (#914).
 
+### Examples (not published)
+
+- `canister-studio`'s Safety lab now says what a re-send refused as another
+  sender rejects with, and checks it: `outcome_unknown` / `caller_changed`,
+  with `mayHaveExecuted: true`. The texts of the error kinds now say that a
+  held re-send that did not run is `outcome_unknown`, no longer
+  `invalid_args` or `cancelled` (#960).
+
 ### CI (not published)
 
 - `pnpm verify:test-fails` compares with where the branch left v4: the
@@ -306,6 +391,19 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   from the machine it ran on, outside `release.yml`'s preflight, approval and
   provenance. Its step for a root `llms.txt`, which `v4` does not have and
   which failed on every run, is gone.
+- react's StrictMode tests check the disposals of the client in use, where
+  they counted those of every client the factory built (#966). The registry
+  disposes the client React's development render throws away whenever a
+  collection runs, so a collection during the test failed it, as in
+  4.0.0-beta.6's release run. The double-mount test now runs real
+  collections where `gc()` is exposed.
+- A core test fails if an update the IC accepted is no longer recorded as
+  accepted (#964). Without that record, a poll answered HTTP 429 reads as the
+  IC turning the update away, and the update is sent again.
+- The size limits rose by the measured amount of each fix that grew the
+  bundles, each in a commit that states the measurement: core's from
+  18.17 kB to 19.1 kB, and the size app's two checks from 93.1 kB to
+  94.07 kB and from 94.39 kB to 95.38 kB.
 
 ## core, react, vite-plugin 4.0.0-beta.6
 
