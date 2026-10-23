@@ -14,8 +14,8 @@ https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md.
 ## Install
 
 ```bash
-pnpm add -D @ic-reactor/cli
-pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+pnpm add -D @ic-reactor/cli@0
+pnpm add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
 pnpm exec ic-reactor init       # writes ic-reactor.json (and src/clients.ts)
 pnpm exec ic-reactor generate   # run again after every .did change
 ```

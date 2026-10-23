@@ -33,6 +33,16 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `./node_modules/@ic-reactor/cli/schema.json` instead. The CLI never reads
   the URL, so only an editor's completion is affected.
 
+### Docs
+
+- Every install line names the 3.x range: `@3` for core, react and candid,
+  `@0` for the Vite plugin, the CLI, codegen and the parser (#908). That
+  covers the README, the package READMEs and `llms.txt` guides, the docs
+  pages and `llms-full.txt`. Once `latest` on npm is ic-reactor 4, a line
+  without a range would install 4.x packages under a 3.x guide. The
+  installation page and `llms-full.txt` say so, and `llms-full.txt` names
+  the guide ic-reactor 4 ships.
+
 ## core, react, candid 3.13.0
 
 Changes since core, react and candid 3.12.5.

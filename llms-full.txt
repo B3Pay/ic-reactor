@@ -5,6 +5,12 @@
 > render on a server, handle errors, generate code, test, and the mistakes to
 > avoid.
 
+This is the guide to ic-reactor 3.x. Its install lines name the 3.x range
+(`@3`, and `@0` for the Vite plugin, the CLI, codegen and the parser), so they
+keep installing 3.x once `latest` on npm is ic-reactor 4. For ic-reactor 4,
+read the guide `@ic-reactor/core` 4 ships at
+`node_modules/@ic-reactor/core/llms.txt`.
+
 This guide is for code that uses the published packages. The short index of
 the documentation is https://ic-reactor.b3pay.net/v3/llms.txt. Both are published
 from the v3 branch, so they can describe changes that no release carries
@@ -53,7 +59,7 @@ of this from `.did` files.
 React apps:
 
 ```bash
-pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+pnpm add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
 ```
 
 `@ic-reactor/react` needs `@tanstack/react-query` 5.90.2 or later and React 18
@@ -67,7 +73,7 @@ import it.
 Non-React apps:
 
 ```bash
-pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+pnpm add @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
 ```
 
 Internet Identity sign-in (optional; the auth classes ship in
@@ -98,11 +104,11 @@ On v10 a custom `identityProvider` also needs `internetIdentityId`.
 Dynamic Candid:
 
 ```bash
-pnpm add @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core
+pnpm add @ic-reactor/candid@3 @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
 ```
 
-Code generation: `pnpm add -D @ic-reactor/vite-plugin` (Vite) or
-`pnpm add -D @ic-reactor/cli` (anything else; Node.js 22.12 or later).
+Code generation: `pnpm add -D @ic-reactor/vite-plugin@0` (Vite) or
+`pnpm add -D @ic-reactor/cli@0` (anything else; Node.js 22.12 or later).
 
 The snippets below import `canisterId`, `idlFactory` and the `_SERVICE` type
 from `./declarations/backend`, which stands for your canister's declarations.

@@ -21,7 +21,7 @@ Lightweight adapter for fetching and parsing Candid definitions from Internet Co
 ## Installation
 
 ```bash
-npm install @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core
+npm install @ic-reactor/candid@3 @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
 ```
 
 `ClientManager` requires a TanStack `QueryClient`, so `@tanstack/query-core` is

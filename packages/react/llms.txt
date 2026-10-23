@@ -14,7 +14,7 @@ https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md.
 ## Install
 
 ```bash
-pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+pnpm add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
 pnpm add @icp-sdk/auth@^10 # optional: Internet Identity sign-in
 ```
 

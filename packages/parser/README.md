@@ -12,7 +12,7 @@ TypeScript declaration strings.
 ## Install
 
 ```bash
-pnpm add @ic-reactor/parser
+pnpm add @ic-reactor/parser@0
 ```
 
 ## API

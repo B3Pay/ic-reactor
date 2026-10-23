@@ -14,7 +14,7 @@ https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md.
 ## Install
 
 ```bash
-pnpm add @ic-reactor/parser
+pnpm add @ic-reactor/parser@0
 ```
 
 Most apps do not install it directly: `@ic-reactor/candid` depends on it and
