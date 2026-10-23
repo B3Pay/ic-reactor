@@ -17,7 +17,7 @@ We aim to acknowledge a report within 5 working days.
 
 The more of this you can provide, the faster a fix lands:
 
-- Which package and version (`@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/candid`, `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli`, `@ic-reactor/vite-plugin`)
+- Which package and version (`@ic-reactor/core`, `@ic-reactor/react`, `@ic-reactor/vite-plugin`, or a 3.x package: `@ic-reactor/candid`, `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli`)
 - A minimal reproduction — a config file, a `.did`, or a short script
 - What an attacker controls, and what they gain
 - Any known workaround
@@ -34,31 +34,39 @@ Fixes land on the latest minor of each supported line. Older minors are not back
 
 ## Threat model
 
-IC Reactor is a client-side library plus a build-time code generator. Two boundaries matter, and they have different trust assumptions.
+This section is ic-reactor 4's: `@ic-reactor/core`, `@ic-reactor/react` and `@ic-reactor/vite-plugin` 4.x. The 3.x packages' threat model is in the [`v3` branch's SECURITY.md](https://github.com/B3Pay/ic-reactor/blob/v3/SECURITY.md).
 
-### Runtime (`core`, `react`, `candid`, `parser`)
+ic-reactor 4 is a client library and a Vite plugin. Two boundaries matter, and they have different trust assumptions.
+
+### Runtime (`core`, `react`)
 
 These run in the user's browser or on their server. In scope:
 
-- Anything that causes one principal's canister data to be served to another (cache-key scoping, identity-switch handling, SSR request isolation)
-- Anything that weakens certificate verification — in particular how the agent's root key is chosen
-- Anything that lets untrusted input choose which canister a call is routed to. Certificate verification does not cover this: a substituted canister ID names a real canister, whose responses verify against the real root key
+- Anything that serves one principal's canister data to another: the caller-scoped query keys, a sign-in or sign-out while a fetch runs, and one client per request on a server
+- Anything that weakens certificate verification, in particular which root key a client takes: mainnet's built-in key, a key given in `network`, or one fetched only from a local host
+- Anything that lets untrusted input choose which canister a call is routed to. Certificate verification does not cover this: a substituted canister ID names a real canister, whose responses verify against the real root key. That includes the `ic_env` cookie: core believes its canister IDs only on a local replica, on a canister's own `<id>.icp0.io` page, or with `allowEnvConfig: true`, and never takes its root key for a mainnet host
 - Anything that mishandles delegations or identity material
-- Candid decoding of hostile canister responses
+- An error that says a write did not execute when it may have, so that resending it can execute it twice
 
-Out of scope: a canister returning wrong data is the canister's problem, not the library's, unless the library misrepresents it as verified.
+Out of scope:
 
-### Build time (`codegen`, `cli`, `vite-plugin`)
+- A canister returning wrong data, unless the library presents it as verified
+- `@ic-reactor/core/testing`: its fake replica and test client are for tests, not for production
 
-**These treat `ic-reactor.json` and plugin options as untrusted input.** The pipeline turns config values into filesystem paths it recursively deletes, and into source text it writes into the consumer's bundle. A developer who clones a repository and runs `pnpm install && pnpm dev` should not thereby give that repository the ability to delete files outside the project or execute code of its choosing.
+Candid encoding and decoding are `@candid-core/schema`'s. Report a decoding bug, such as a hostile reply that decodes to the wrong value or crashes the decoder, to candid-core through <https://github.com/b3hr4d/candid-core/security/advisories/new>.
 
-In scope:
+### Development and build (`vite-plugin`)
 
-- A config value that resolves to a path outside the project root
-- A config value that injects source text into generated output
-- A `.did` file whose contents or filename influence anything beyond the declarations it describes
+The plugin runs in `vite dev`, `vite preview` and `vite build`. Its options come from the Vite config, which is code the developer runs, so they are trusted. A `.did` file, its name, and an interface fetched from a network are not. In scope:
 
-Out of scope: a developer explicitly and knowingly pointing `outDir` somewhere destructive within their own project.
+- **The generator.** The plugin runs `candid-core-cli gen` from the app's `node_modules`, with the running Node binary, in a child process and not through a shell. Anything that makes it run another program, or turns a `.did` path into anything but an argument, is in scope.
+- **Live interfaces.** A missing `didFile` is written from the canister's `candid:service` metadata, read from certified state, and `verify: "live"` compares a `didFile` with it. Anything that writes or accepts an interface that does not verify against the network's root key, or writes outside the configured `didFile`, is in scope.
+- **The `ic_env` cookie and the `/api` proxy** under `vite dev` and `vite preview`. A cookie that names a canister the local network did not report for that name, for example after the network restarted, or a proxy that sends requests to a host other than the local network, is in scope.
+- **Generated files.** A `.did` file or a fetched interface that writes outside the configured `outDir`, or puts code into a generated module beyond the declarations it describes. `candid-core-cli` writes the module, so the fix can be candid-core's.
+
+Out of scope: a developer's own Vite config pointing `outDir` or `didFile` somewhere destructive.
+
+If you are unsure which project a bug belongs to, report it here, and we will move it.
 
 ## Disclosure
 

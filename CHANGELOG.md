@@ -19,6 +19,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ### Docs
 
+- `SECURITY.md` describes ic-reactor 4 (#909). Its threat model covers core
+  and react (cache scoping, root keys, the `ic_env` cookie's canister IDs, a
+  write misreported as not executed) and the Vite plugin (the
+  `candid-core-cli` child process, live interfaces and `verify: "live"`, the
+  cookie and the `/api` proxy, generated files). It says that
+  `@ic-reactor/core/testing` is not for production and sends Candid decoding
+  bugs to candid-core. The 3.x threat model stays on the `v3` branch.
+
 - A Versioning and support page (#897). It says what a 4.x patch, minor and
   major may change. It names the unions that may grow in a minor
   (`ReactorErrorKind`, `ReactorError.code`, `AuthState.status`) and the
