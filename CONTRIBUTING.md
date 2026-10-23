@@ -244,7 +244,7 @@ Remove an entry as soon as a patched version is released.
 This repository enforces **OIDC Trusted Publishing** for releases (no long-lived publish tokens for the publish step). Trusted publishing is more secure and produces provenance attestations when used from GitHub Actions.
 
 - To enable: go to your package on npmjs.com → Settings → Trusted publishers and add this repository's workflow filename (e.g., `release.yml`).
-- Ensure the `release.yml` workflow has `permissions: id-token: write` (already configured).
+- Ensure the publish job of `release.yml` has `permissions: id-token: write` (already configured). It is the only job that has it.
 - After enabling and validating Trusted Publishing, do not add a write `NPM_TOKEN` secret — publishing will use the OIDC token.
 
 If your CI needs to install private dependencies, create a **read-only** granular token on npmjs.com and store it as `NPM_READ_TOKEN` (the install step will use this token when present).
@@ -257,7 +257,7 @@ Start from the latest `v4`, on a branch of the release's own: `git fetch origin 
 
 ### Approving a release
 
-Pushing a release tag no longer publishes unattended. The release workflow (`release.yml`; on `main` there is also `release-tools.yml` for the 3.x tooling lane) runs an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against its branch, the manifests, the build, the tests and `verify:packages`. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
+Pushing a release tag no longer publishes unattended. The release workflow (`release.yml`; on `main` there is also `release-tools.yml` for the 3.x tooling lane) runs an `Approve publish` job against the `npm-publish` environment, which requires a reviewer to approve the run once before any package is published; every package in the release then publishes on that single approval. Preflight still runs first, so by the time the run pauses the tag has been checked against its branch, the manifests, the build, the tests and `verify:packages`, and the tarballs to publish are packed from that build. The approval also waits for the push runs of `ci.yml` and `e2e.yml` on the tagged commit to succeed: a tag on a commit that CI failed, or that no push to `v4` tested, publishes nothing. The publish job then publishes the three tarballs back to back, with nothing installed, built or tested in between; if it stops part-way, re-running its failed job skips the packages npm already has from the same tarballs and publishes the rest. Approve it from the run's page under Actions, or from the pending-deployments prompt on the workflow run. Approving completes the release unchanged; rejecting it publishes nothing. npm versions are immutable, so this is the last point at which a wrong release can be stopped rather than superseded.
 
 The environment lives in repository settings (Settings → Environments → `npm-publish`) and carries:
 

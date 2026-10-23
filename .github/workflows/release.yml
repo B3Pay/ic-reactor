@@ -22,7 +22,7 @@ concurrency:
 jobs:
   # Nothing verified the commit a tag points at: ci.yml and e2e.yml have no `tags:`
   # trigger, so a tag could publish code that never passed a single check. This job
-  # gates every publish leg.
+  # gates the publish, and packs the tarballs it publishes.
   preflight:
     name: Preflight
     runs-on: ubuntu-latest
@@ -90,6 +90,86 @@ jobs:
       - name: Verify published artifacts
         run: pnpm verify:packages
 
+      # The tarballs the publish job publishes, packed from the build this job
+      # just tested. Nothing is built or tested between here and the publish,
+      # so a test cannot fail half-way through a release, after core is out and
+      # before react is (#909). pnpm pack turns workspace:* into the version.
+      - name: Pack the release
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p "$RUNNER_TEMP/tarballs"
+          for name in core react vite-plugin; do
+            (cd "packages/$name" && pnpm pack --pack-destination "$RUNNER_TEMP/tarballs")
+            if [ ! -s "$RUNNER_TEMP/tarballs/ic-reactor-$name-$VERSION.tgz" ]; then
+              echo "::error::pnpm pack made no ic-reactor-$name-$VERSION.tgz."
+              exit 1
+            fi
+          done
+          ls -l "$RUNNER_TEMP/tarballs"
+
+      - name: Upload the release tarballs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-tarballs
+          path: ${{ runner.temp }}/tarballs/*.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  # ci.yml and e2e.yml never run for the tag itself. The tagged commit is the
+  # release pull request's merge into v4, and that push ran both: this job
+  # waits for those two runs and fails unless both succeeded. That brings
+  # every gate they hold to the publish, beside preflight's own: lint, the
+  # export budget, the trap and fault checks, the snippets, the peer floors,
+  # the examples and the e2e suite (#909).
+  ci-passed:
+    name: CI passed on the tagged commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      actions: read
+    steps:
+      - name: Wait for ci.yml and e2e.yml on the tagged commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          start=$(date +%s)
+          while :; do
+            waiting=""
+            missing=""
+            for workflow in ci.yml e2e.yml; do
+              # The newest run of the workflow for a push of this commit.
+              run="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/runs?head_sha=$GITHUB_SHA&event=push&per_page=1" \
+                --jq '.workflow_runs[0] | if . == null then "none" else "\(.status) \(.conclusion) \(.html_url)" end')"
+              read -r status conclusion url <<< "$run"
+              if [ "$status" = "none" ]; then
+                missing="$missing $workflow"
+              elif [ "$status" != "completed" ]; then
+                waiting="$waiting $workflow"
+              elif [ "$conclusion" != "success" ]; then
+                echo "::error::$workflow ended $conclusion on $GITHUB_SHA: $url. Re-run its failed jobs until it succeeds, then re-run the failed jobs of this run."
+                exit 1
+              else
+                echo "$workflow succeeded on $GITHUB_SHA: $url"
+              fi
+            done
+            if [ -z "$waiting$missing" ]; then
+              exit 0
+            fi
+            elapsed=$(( $(date +%s) - start ))
+            if [ -n "$missing" ] && [ "$elapsed" -ge 600 ]; then
+              echo "::error::No push run of$missing on $GITHUB_SHA after 10 minutes. Tag the merge commit of the release pull request, which a push to v4 tested."
+              exit 1
+            fi
+            if [ "$elapsed" -ge 3000 ]; then
+              echo "::error::Still running on $GITHUB_SHA after 50 minutes:$waiting$missing."
+              exit 1
+            fi
+            echo "Waiting for$waiting$missing on $GITHUB_SHA"
+            sleep 30
+          done
+
   # One approval for the whole release. The `npm-publish` environment carries a
   # required reviewer and a deployment tag policy (v*, tools-v*, parser-v*) in
   # repo settings. Preflight gates correctness and the `Release tags` ruleset
@@ -99,12 +179,13 @@ jobs:
   # step, not a second-person requirement. Like preflight, it is read from the
   # tagged revision: the tag policy is the part that holds regardless.
   #
-  # It is its own job rather than a key on `release` because the publish
-  # matrix runs with max-parallel: 1, and an environment on a matrix job asks
-  # for approval once per leg as each one starts -- three prompts for v*.
+  # It is its own job rather than a key on `publish`, so that the publish
+  # job's OIDC token names no environment, as the token of every release so
+  # far did: npm's trusted publisher takes that one. It asks for approval only
+  # once preflight and CI have passed.
   approve:
     name: Approve publish
-    needs: preflight
+    needs: [preflight, ci-passed]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     environment: npm-publish
@@ -112,27 +193,26 @@ jobs:
       - name: Approved
         run: echo "Publishing ${GITHUB_REF_NAME} was approved."
 
-  release:
-    needs: [preflight, approve]
-    name: Release to npm
+  # The publish holds the OIDC token, so it does only that: no checkout, no
+  # install, no cache and no build, and the one package it installs is npm,
+  # pinned exactly. It publishes the tarballs preflight packed and tested,
+  # back to back, core first and vite-plugin last, and stops at the first that
+  # fails. Run again (Re-run failed jobs), it publishes the same tarballs and
+  # skips one npm already has with the same integrity, so a release that
+  # stopped half-way is finished, not superseded (#909).
+  publish:
+    name: Publish to npm
+    needs: [preflight, ci-passed, approve]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     permissions:
-      contents: write
       id-token: write
-    strategy:
-      max-parallel: 1
-      fail-fast: true
-      matrix:
-        workspace:
-          - packages/core
-          - packages/react
-          - packages/vite-plugin
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Download the tarballs preflight tested
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          fetch-depth: 0
+          name: release-tarballs
+          path: tarballs
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -140,71 +220,56 @@ jobs:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
 
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@10.30.3 --activate
-          pnpm --version
+      # Trusted publishing (OIDC) needs npm 11.5.1 or later.
+      - name: Install npm
+        run: npm install -g npm@11.21.0 && npm --version
 
-      - name: Get pnpm store path
-        id: pnpm-store
-        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
-
-      - name: Cache pnpm store
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Upgrade npm to v11 (required for OIDC)
-        run: npm i -g npm@^11.5.1 && npm --version
-
-      - name: Install dependencies
-        # Install only this package and its dependency graph, keeping any
-        # other workspace out of the release.
-        run: pnpm install --frozen-lockfile --filter "{./${{ matrix.workspace }}}..."
-
-      # Build this publishable package and the workspace packages it depends on.
-      - name: Build package dependency graph
-        run: pnpm -r --filter "{./${{ matrix.workspace }}}..." build
-
-      - name: Run package tests
-        run: pnpm --filter "{./${{ matrix.workspace }}}" test
-
-      - name: Determine publish tag
-        run: |
-          # Prereleases go to `beta`. The v4 line has no `latest` until GA;
-          # preflight already refused a tag without a hyphen, and this refuses
-          # it again rather than fall back to `latest`.
-          REF=${GITHUB_REF##*/}
-          echo "Detected tag: $REF"
-          if [[ "$REF" == *-* ]]; then
-            echo "TAG=beta" >> $GITHUB_ENV
-          else
-            echo "::error::$REF is not a prerelease; refusing to publish under latest."
-            exit 1
-          fi
-
-      - name: Publish to npm (uses npm CLI for OIDC)
-        # pnpm pack converts workspace:^ to real versions, then npm publish for OIDC auth
-        working-directory: ${{ matrix.workspace }}
+      - name: Publish core, react and vite-plugin
         shell: bash
         run: |
           set -euo pipefail
-          # Pack first - this converts workspace:^ to actual versions
-          TARBALL=$(pnpm pack | tail -1)
-          if [ -z "$TARBALL" ] || [ ! -s "$TARBALL" ]; then
-            echo "::error::pnpm pack produced no tarball; refusing to publish."
+          REF="$GITHUB_REF_NAME"
+          # Prereleases go to `beta`. The v4 line has no `latest` until GA;
+          # preflight already refused a tag without a hyphen, and this refuses
+          # it again rather than fall back to `latest`.
+          if [[ "$REF" != *-* ]]; then
+            echo "::error::$REF is not a prerelease; refusing to publish under latest."
             exit 1
           fi
-          echo "Publishing tarball: $TARBALL"
-          # Publish the tarball (npm for OIDC support)
-          npm publish "$TARBALL" --access public --tag "$TAG"
+          VERSION="${REF#v}"
+          for name in core react vite-plugin; do
+            if [ ! -s "tarballs/ic-reactor-$name-$VERSION.tgz" ]; then
+              echo "::error::tarballs/ic-reactor-$name-$VERSION.tgz is missing or empty; publishing nothing."
+              exit 1
+            fi
+          done
+          for name in core react vite-plugin; do
+            TARBALL="tarballs/ic-reactor-$name-$VERSION.tgz"
+            # npm's dist.integrity is the sha512 of the tarball it was given.
+            INTEGRITY="sha512-$(openssl dgst -sha512 -binary "$TARBALL" | base64 -w0)"
+            PUBLISHED="$(npm view "@ic-reactor/$name@$VERSION" dist.integrity 2>/dev/null || true)"
+            if [ "$PUBLISHED" = "$INTEGRITY" ]; then
+              echo "@ic-reactor/$name@$VERSION is already published from this tarball; skipping it."
+              continue
+            fi
+            if [ -n "$PUBLISHED" ]; then
+              echo "::error::@ic-reactor/$name@$VERSION is already published, from another tarball ($PUBLISHED, not $INTEGRITY)."
+              exit 1
+            fi
+            echo "Publishing $TARBALL"
+            npm publish "$TARBALL" --access public --tag beta
+          done
 
+  # The one job that can write to the repository, once every package is out.
+  release-notes:
+    name: GitHub release
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
       - name: Create GitHub Release
-        if: matrix.workspace == 'packages/core'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
         with:
           generate_release_notes: true
@@ -217,11 +282,11 @@ jobs:
   # commit: the green run of examples-published.yml that counts for a release.
   # The release PR's own run of that workflow is expected to fail when its
   # examples use the API this release publishes.
-  # The publish job's matrix runs one package at a time (core, react,
-  # vite-plugin), so --wait-for waits for every one of them, not only core.
+  # The publish job publishes core, react and vite-plugin before it ends, and
+  # --wait-for waits for every one of them, not only core.
   examples-published:
     name: Examples on the published beta
-    needs: release
+    needs: publish
     permissions:
       contents: read
     uses: ./.github/workflows/examples-published.yml
