@@ -365,10 +365,14 @@ what happened. Two ways to know:
   in nanoseconds on the IC's clock, about five minutes after the send (a
   `client.resendOf()` re-send that did not run carries the latest of the
   write's sends). Past
-  it, the IC starts no send of the write. A method that awaits another
-  canister can still commit after that, so this makes a read-back final only
-  for a method that commits without awaiting (an ICRC-1 transfer does), and
-  only from a certified read of state newer than the expiry. Compare with a
+  it, the IC starts no send of the write: the
+  [IC interface specification](https://docs.internetcomputer.org/references/ic-interface-spec/https-interface/)
+  says the IC neither accepts a call nor moves one from `received` to
+  `processing` once its `ingress_expiry` is past. The expiry does not stop a
+  send that started before it, so a method that awaits another canister can
+  still commit after that, and this makes a read-back final only for a
+  method that commits without awaiting (an ICRC-1 transfer does), and only
+  from a certified read of state newer than the expiry. Compare with a
   margin, since the host's clock may differ from the IC's. `expiresAt` is not enumerable, so
   `JSON.stringify(error)` leaves it out.
 - **Let the canister deduplicate.** If the method can tell a repeat from a new
