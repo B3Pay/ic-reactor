@@ -15,7 +15,14 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### Docs
+
+- The errors page and `ReactorError.expiresAt`'s JSDoc cite the IC interface
+  specification for what the expiry proves (#924): the IC neither accepts a
+  call nor moves it from `received` to `processing` once its `ingress_expiry`
+  is past, so no send of the write can start after it. They also say why that
+  settles only a method that commits without awaiting another canister: the
+  expiry does not stop a send that started before it.
 
 ## core, react, vite-plugin 4.0.0-beta.7
 

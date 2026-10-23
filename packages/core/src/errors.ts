@@ -99,12 +99,15 @@ type ReactorErrorBase = Error & {
    * For a write that got no answer (`outcome_unknown`, or `cancelled` with
    * `mayHaveExecuted: true`): the latest ingress expiry its sends were signed
    * with, in nanoseconds since the epoch, on the IC's clock. Once the IC's
-   * time is past it, no send of this write can still start executing: for a
-   * method that commits without awaiting another canister, a certified
-   * read-back of later state that finds nothing is final. The host's clock
-   * may differ from the IC's: compare with a margin. Absent on every other
-   * error. Not enumerable, so
-   * `JSON.stringify(error)` still works.
+   * time is past it, no send of this write can still start executing (the IC
+   * interface specification: the IC neither accepts a call nor moves it from
+   * `received` to `processing` past its `ingress_expiry`:
+   * https://docs.internetcomputer.org/references/ic-interface-spec/https-interface/).
+   * The expiry does not stop a send that started before it, so only for a
+   * method that commits without awaiting another canister is a certified
+   * read-back of later state that finds nothing final. The host's clock may
+   * differ from the IC's: compare with a margin. Absent on every other error.
+   * Not enumerable, so `JSON.stringify(error)` still works.
    */
   readonly expiresAt?: bigint
 }
