@@ -614,8 +614,9 @@ Identity (see [Auth](/v4/guides/auth/#the-network-the-factory-is-handed)).
 ### Detection
 
 - If detection fails, the plugin falls back to proxying `/api` to icp-cli's
-  local network, `http://127.0.0.1:8000`, and sets no cookie, or with no
-  canisters configured, one that names only the built-in Internet Identity. It warns when that
+  local network, `http://127.0.0.1:8000`, and sets no cookie (a page load
+  clears one the browser kept), or with no canisters configured, one that
+  names only the built-in Internet Identity. It warns when that
   happens with canisters configured, and when a configured canister has no id.
   Run with `DEBUG=ic-reactor` to see the `icp` output behind the warning.
 - Detection is complete once `icp` reports the network and every configured
@@ -626,8 +627,16 @@ Identity (see [Auth](/v4/guides/auth/#the-network-the-factory-is-handed)).
   network restart (`icp network stop`, then `start` and `icp deploy`) needs a
   restart of the dev server, even when the root key stays the same: icp-cli
   1.2.0's managed network kept its root key across starts while a new deploy
-  gave the names other ids, and the dev server's cookie kept naming the old
-  ones. Reload a page loaded before the restart.
+  gave the names other ids.
+- While it serves, the plugin holds a connection to the detected network, so
+  it notices the network stop when it stops, whether or not a request reaches
+  it. From then on it no longer vouches for the ids it detected, which a
+  network started again may have given to other canisters: it warns once,
+  page loads get the cookie without those ids and that root key, and
+  `vite dev` reloads the pages it has open so that they drop the old cookie.
+  `{ name }` canisters then reject `canister_id_unresolved` until the dev
+  server restarts. Under `vite preview`, which has no HMR connection, reload
+  open pages yourself.
 - A configured canister you never deploy locally keeps detection incomplete.
   Set its `canisterId` and it counts as resolved. If you never run a local
   network, set `injectEnvironment: false`.

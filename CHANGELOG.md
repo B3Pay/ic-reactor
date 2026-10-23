@@ -15,6 +15,25 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/vite-plugin
+
+#### Fixed
+
+- The dev server and the preview server stop vouching for a local network that
+  stopped (#881). While serving, the plugin holds a connection to the detected
+  network. When the network stops, it warns once, page loads get the
+  `ic_env` cookie without the detected canister IDs and root key until the
+  server restarts, and `vite dev` reloads the pages it has open. Detection had
+  stopped running once it was complete, so after `icp network stop`, `start`
+  and `icp deploy` the cookie kept naming the old canister IDs under the same
+  root key, and a restarted icp-cli network can give those IDs to other
+  canisters: a page could call a different canister than the one it named.
+  `{ name }` canisters now reject `canister_id_unresolved` instead. Nothing
+  detects the network again; restarting the dev server does.
+- A page load with no cookie to send, while no network is detected, clears an
+  `ic_env` cookie the browser kept from an earlier dev server, which
+  `network: "env"` believed (#881).
+
 ### Docs
 
 - The errors page and `ReactorError.expiresAt`'s JSDoc cite the IC interface

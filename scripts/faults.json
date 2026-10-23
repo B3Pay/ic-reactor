@@ -6306,5 +6306,105 @@
     "file": "src/client.ts",
     "search": "const source = authFor(\"signIn\")",
     "replace": "await Promise.resolve()\n      const source = authFor(\"signIn\")"
+  },
+  {
+    "id": "881-lost-network-cookie-sent",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "clears the cookie, reloads open pages and says to restart once the network stops",
+    "why": "a network that stopped keeps its cookie, so page loads keep sending the canister IDs a network started again may have given to other canisters",
+    "file": "src/dev-environment.ts",
+    "search": "      cookie: toState(null).cookie,\n",
+    "replace": ""
+  },
+  {
+    "id": "881-lost-network-redetected",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "clears the cookie, reloads open pages and says to restart once the network stops",
+    "why": "a lost network is detected again on the next page load, so the plugin takes the restarted network's IDs and merges the old ones back in, where the owner's rule is that the dev server restart is the signal",
+    "file": "src/dev-environment.ts",
+    "search": "      if (state?.lost) return Promise.resolve(state)\n",
+    "replace": ""
+  },
+  {
+    "id": "881-no-network-cookie-kept",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "follows a network that was down when vite dev started, and notices it stop",
+    "why": "a page load with no cookie to send leaves the browser's ic_env cookie alone, so a cookie kept from an earlier dev server is still believed",
+    "file": "src/dev-environment.ts",
+    "search": "      else if (state && isDocumentRequest(req)) clearIcEnvCookie(res)\n",
+    "replace": ""
+  },
+  {
+    "id": "881-lost-overwritten-by-detection",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "keeps a network lost while a detection was running",
+    "why": "a detection that was running when the network stopped overwrites the lost state when icp answers, so the cookie comes back with IDs that may belong to a network started again",
+    "file": "src/dev-environment.ts",
+    "search": "    if (state?.lost) return state\n",
+    "replace": ""
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/dev-environment.ts",
+    "id": "881-starting-network-lost",
+    "testName": "does not lose a network that is still starting",
+    "why": "a refused connection before the network ever took one counts as a stop, so a network whose gateway is still starting is lost for good and the dev server must restart",
+    "search": "      if (reached && refused) {\n",
+    "replace": "      if (refused) {\n"
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/dev-environment.ts",
+    "id": "881-idle-close-loses-network",
+    "testName": "does not lose a network that closes idle connections",
+    "why": "the watch treats any close of its connection as a stop, without connecting again, so a network that drops idle connections is lost while it still runs",
+    "search": "      if (reached && refused) {\n",
+    "replace": "      if (reached) {\n"
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/dev-environment.ts",
+    "id": "881-later-network-unwatched",
+    "testName": "follows a network that was down when vite dev started, and notices it stop",
+    "why": "a network detected after the server started is never watched, so its stop is noticed by nothing and its IDs keep reaching page loads",
+    "search": "    follow()\n    return state\n",
+    "replace": "    return state\n"
+  },
+  {
+    "id": "881-detected-network-unwatched",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "clears the cookie, reloads open pages and says to restart once the network stops",
+    "why": "a server that starts after its network was detected never watches it, so the stop is noticed by nothing and the old IDs keep reaching page loads",
+    "file": "src/dev-environment.ts",
+    "search": "      onLost = listener\n      follow()\n",
+    "replace": "      onLost = listener\n"
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/index.ts",
+    "id": "881-watch-not-closed",
+    "testName": "stops watching when the dev server closes",
+    "why": "a closed dev server keeps watching its network, so after a restart the old server's watch reports the network stopping again and keeps a connection open",
+    "search": "          () => environment.close(),\n",
+    "replace": "          () => {},\n"
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/index.ts",
+    "id": "881-open-pages-not-reloaded",
+    "testName": "clears the cookie, reloads open pages and says to restart once the network stops",
+    "why": "pages open when the network stopped are not reloaded, so they keep the old cookie and their calls reach the old IDs on a network started again",
+    "search": "          server.ws.send({ type: \"full-reload\" })\n",
+    "replace": ""
   }
 ]

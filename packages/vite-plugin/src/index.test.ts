@@ -320,6 +320,12 @@ describe("icReactor", () => {
     /** A module or `fetch` request, which is not a page load. */
     const MODULE = { method: "GET", accept: "*/*" }
 
+    /**
+     * The Set-Cookie of a page load with no cookie to send: it clears one the
+     * browser kept (#881).
+     */
+    const CLEARED = "ic_env=; Path=/; SameSite=Lax; Max-Age=0"
+
     /** Send `middleware` a request and return the Set-Cookie it added. */
     const request = async (
       middleware: any,
@@ -677,7 +683,7 @@ describe("icReactor", () => {
       const plugin = createVitePlugin(mockOptions)
       const { config, middleware } = await serveWithEnvironment(plugin)
 
-      expect(await request(middleware)).toBeUndefined()
+      expect(await request(middleware)).toBe(CLEARED)
       expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:8000")
       // Silent detection failure is indistinguishable from a working setup
       // until the app blows up on an undefined canister id at runtime. The
@@ -705,7 +711,7 @@ describe("icReactor", () => {
       const plugin = createVitePlugin(mockOptions)
       const { middleware } = await serveWithEnvironment(plugin)
 
-      expect(await request(middleware)).toBeUndefined()
+      expect(await request(middleware)).toBe(CLEARED)
       expect(consoleWarnSpy).toHaveBeenCalledOnce()
       const [warning] = consoleWarnSpy.mock.calls[0]
       expect(warning).toContain("Could not run `icp`")
@@ -814,7 +820,10 @@ describe("icReactor", () => {
 
       const plugin = createVitePlugin(mockOptions)
       await plugin.config({}, { command: "serve" })
-      const previewServer = { middlewares: { use: vi.fn() } }
+      const previewServer = {
+        middlewares: { use: vi.fn() },
+        httpServer: { once: vi.fn() },
+      }
       plugin.configurePreviewServer(previewServer)
 
       expect(
@@ -861,7 +870,7 @@ describe("icReactor", () => {
         const proxyOptions = { ...apiEntry }
         apiEntry.configure({}, proxyOptions)
         expect(proxyOptions.target).toBe("http://127.0.0.1:8000")
-        expect(await request(middleware)).toBeUndefined()
+        expect(await request(middleware)).toBe(CLEARED)
 
         // A gateway on another port than the fallback's, so the switch shows.
         answerIcp(
