@@ -49,7 +49,8 @@ const keep = process.argv.includes("--keep")
 /**
  * The oldest TypeScript the packages support, the first stable 5.7 release.
  * The docs name it as well, so change them with it: the badges in README.md
- * and packages/core/README.md.
+ * and packages/core/README.md, and the support table in
+ * docs/src/content/docs/versioning.mdx.
  */
 const TYPESCRIPT_FLOOR = "5.7.2"
 

@@ -1,0 +1,101 @@
+---
+title: "Versioning and support"
+description: "What a 4.x patch or minor may change, the unions that may grow, the interfaces to consume rather than implement, the candid-core pins, and the oldest Node, TypeScript, React, TanStack Query, Vite and @icp-sdk/core supported"
+---
+
+From 4.0.0 on, ic-reactor follows semantic versioning. `@ic-reactor/core`,
+`@ic-reactor/react` and `@ic-reactor/vite-plugin` release together, at one
+version. This page says what that promise covers. A prerelease, a version
+with a `-beta` suffix, promises none of it: read its entry in the
+[CHANGELOG](https://github.com/B3Pay/ic-reactor/blob/v4/CHANGELOG.md).
+
+## What a release may change
+
+- **A patch** (4.0.x) fixes a defect or a doc. It adds no API and raises no
+  floor in the [support table](#support-table).
+- **A minor** (4.x.0) may add API: an export, an option, a member of an
+  interface, or a member of one of the [unions that may grow](#unions-that-may-grow).
+  It may raise a floor, and its CHANGELOG entry says so. Code that follows this
+  page keeps compiling and running.
+- **A major** (5.0.0) is the only release that removes or renames API, or
+  changes what an existing call does.
+
+## Unions that may grow
+
+These unions may gain a member in a minor:
+
+- `ReactorErrorKind`, the `kind` of a `ReactorError`.
+- `ReactorError.code`, the finer reason some errors carry.
+- `AuthState.status`, what `client.authState()` and `useAuth()` report.
+
+A `switch` over one of them needs a `default` branch. An exhaustiveness check
+that assigns the value to `never` stops compiling when a member is added.
+Treat a value you do not know as the closest one you do: an unknown error kind
+as an error, and an unknown status as not signed in.
+
+## Interfaces to consume, not implement
+
+`Client`, `Canister`, `Resend` and `ReactorError` are for you to call and
+read. A minor may add members to them, so a class that implements one, or an
+object literal typed as one, may stop compiling. Get them from
+`createClient`, `client.canister()`, `client.resendOf()` and a rejected call,
+and build test doubles with `@ic-reactor/core/testing` (see
+[Testing](/v4/guides/testing/)).
+
+`AuthLike` is the interface you implement, to bring an auth other than
+`@icp-sdk/auth`'s `AuthClient`. A minor adds only optional members to it.
+
+## candid-core
+
+`@ic-reactor/core` pins `@candid-core/schema` exactly, and
+`@ic-reactor/vite-plugin` pins `@candid-core/cli` exactly; each package page
+names the version. The module `candid-core-cli gen` writes is what core's types
+describe, so a candid-core release reaches your app only through an ic-reactor
+release that was tested with it:
+
+- A candid-core patch ships in an ic-reactor patch.
+- A new candid-core minor ships in an ic-reactor minor. Its CHANGELOG entry
+  says whether to regenerate your modules (run `candid-core-cli gen` again, or
+  restart the dev server with the Vite plugin).
+
+Install the candid-core versions your ic-reactor version names, so that the
+app holds one copy of `@candid-core/schema`.
+
+## The dehydrated cache
+
+The JSON a client's `QueryClient` dehydrates, for a server render or a
+persister, may gain tags in a minor. A version always reads what an older
+version wrote. A cache that a newer version wrote can fail to hydrate in an
+older one, as after a rollback: `hydrate()` throws. TanStack Query's
+`persistQueryClientRestore` removes a persisted cache that fails to restore.
+A server render and the browser that hydrates it run one version when they
+come from one build.
+
+## Support table
+
+The oldest version of each that the packages support. A floor rises only in a
+minor, with a CHANGELOG note.
+
+| What            | Oldest supported                                              | Where it is declared and checked                                                                                           |
+| --------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Node            | 22.12.0                                                       | `engines.node` of every package; a CI job runs the package tests on 22.12.0                                                |
+| TypeScript      | 5.7                                                           | CI compiles the declarations of core, react and the Vite plugin with 5.7.2                                                 |
+| React           | 18.0.0                                                        | the `react` peer of `@ic-reactor/react`                                                                                    |
+| TanStack Query  | `@tanstack/query-core` 5.62.0, `@tanstack/react-query` 5.90.2 | the peers of core and react                                                                                                |
+| Vite            | 4.2.0, and every major to 8                                   | the `vite` peer of `@ic-reactor/vite-plugin`                                                                               |
+| `@icp-sdk/core` | 6.1.0                                                         | the peer of core, and of the Vite plugin, where it is optional                                                             |
+| `@icp-sdk/auth` | 10                                                            | not a peer: the [Auth](/v4/guides/auth/) guide's `AuthClient`, which is an `AuthLike` as it is; any other `AuthLike` works |
+| Module format   | ES modules only                                               | no `require` export condition; Node 22.12 and later can `require()` an ES module                                           |
+| Browsers        | ES2020                                                        | the packages' compile target, which uses `BigInt`                                                                          |
+
+`pnpm verify:peer-floors` runs core, react and the Vite plugin at the lowest
+peers their ranges accept, the Vite plugin once for each Vite major, and
+compiles the declarations with the TypeScript floor. CI runs it on every pull
+request. The peers of each package are listed with their ranges on its page:
+[core](/v4/packages/core/#peers), [react](/v4/packages/react/) and
+[the Vite plugin](/v4/packages/vite-plugin/).
+
+## 3.x
+
+The 3.x line gets security fixes only until 4.0 is released. See
+[Migrating from 3.x](/v4/migrating-from-3/).

@@ -11,11 +11,22 @@ three lanes, each with its own version:
 - parser: `@ic-reactor/parser`
 
 The GitHub release of each tag also lists every pull request it contains.
+What a 4.x release may change, from 4.0.0 on, is in
+[Versioning and support](docs/src/content/docs/versioning.mdx).
 Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
 ### Docs
+
+- A Versioning and support page (#897). It says what a 4.x patch, minor and
+  major may change. It names the unions that may grow in a minor
+  (`ReactorErrorKind`, `ReactorError.code`, `AuthState.status`) and the
+  interfaces to consume rather than implement (`Client`, `Canister`, `Resend`,
+  `ReactorError`; `AuthLike` gains only optional members). It says how
+  candid-core releases reach an app while the pins stay exact, what a
+  dehydrated cache from a newer version does, and the oldest Node,
+  TypeScript, React, TanStack Query, Vite and `@icp-sdk/core` supported.
 
 - The errors page and `ReactorError.expiresAt`'s JSDoc cite the IC interface
   specification for what the expiry proves (#924): the IC neither accepts a
