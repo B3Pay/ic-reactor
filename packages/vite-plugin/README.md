@@ -470,9 +470,9 @@ Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
 (defaults to `"local"`).
 
 If environment detection fails, the plugin falls back to proxying `/api` to
-icp-cli's local network, `http://127.0.0.1:8000`, and sets no cookie, or with
-no canisters configured one that names only icp-cli's built-in Internet
-Identity. It warns when that happens with canisters configured, and when a
+icp-cli's local network, `http://127.0.0.1:8000`, and sets no cookie (a page
+load clears one the browser kept), or with no canisters configured one that
+names only icp-cli's built-in Internet Identity. It warns when that happens with canisters configured, and when a
 configured canister has no ID, because the failure is otherwise
 indistinguishable from success until the app breaks on an undefined canister
 id. Run with `DEBUG=ic-reactor` to see the `icp` output
@@ -487,9 +487,19 @@ complete, page loads run no further `icp` commands, so any network restart
 (`icp network stop`, then `start` and `icp deploy`) needs a dev server
 restart, even when the root key stays the same. icp-cli 1.2.0's managed
 network kept its root key across starts while a new deploy gave the names
-other canister IDs, and until the dev server restarts its cookie keeps
-naming the old ones. A page loaded before stays on its old cookie too: reload it after
-the restart. A configured canister you never deploy locally keeps detection
+other canister IDs.
+
+While it serves, the plugin holds a connection to the detected network, so it
+notices the network stop when it stops, whether or not a request reaches it.
+From then on it no longer vouches for the IDs it detected, which a network
+started again may have given to other canisters. It warns once, page loads get
+the cookie without those IDs and that root key (with canisters configured, no
+cookie at all), and `vite dev` reloads the pages it has open so that they drop
+the old cookie. `{ name }` canisters then reject `canister_id_unresolved`
+instead of reaching another canister, until the dev server restarts. Under
+`vite preview`, which has no HMR connection, reload open pages yourself.
+
+A configured canister you never deploy locally keeps detection
 incomplete, so every page load runs `icp` for it; set its `canisterId` and it
 counts as resolved. If you never run a local network, set
 `injectEnvironment: false` and page loads run no `icp`.

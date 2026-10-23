@@ -8,9 +8,21 @@ import { icpProcess } from "../tests/support.js"
 import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { resolveConfig as resolveViteConfig } from "vite"
 
-const createVitePlugin =
-  (vitePluginModule as any).icReactor ??
-  (vitePluginModule as any).icReactorPlugin
+/**
+ * The plugins a test created, each closed after it as a server's close does.
+ * The close ends the network watch a served plugin starts, which would
+ * otherwise keep connecting to the port the test's `icp` named (#881).
+ */
+const created: any[] = []
+
+const createVitePlugin = (...args: unknown[]) => {
+  const plugin = (
+    (vitePluginModule as any).icReactor ??
+    (vitePluginModule as any).icReactorPlugin
+  )(...args)
+  created.push(plugin)
+  return plugin
+}
 
 // Mock child_process
 vi.mock("child_process", () => ({
@@ -63,6 +75,7 @@ describe("icReactor", () => {
   })
 
   afterEach(() => {
+    for (const plugin of created.splice(0)) plugin.closeBundle.call({})
     vi.restoreAllMocks()
   })
 
@@ -319,6 +332,12 @@ describe("icReactor", () => {
     const PAGE = { method: "GET", accept: "text/html,application/xhtml+xml" }
     /** A module or `fetch` request, which is not a page load. */
     const MODULE = { method: "GET", accept: "*/*" }
+
+    /**
+     * The Set-Cookie of a page load with no cookie to send: it clears one the
+     * browser kept (#881).
+     */
+    const CLEARED = "ic_env=; Path=/; SameSite=Lax; Max-Age=0"
 
     /** Send `middleware` a request and return the Set-Cookie it added. */
     const request = async (
@@ -677,7 +696,7 @@ describe("icReactor", () => {
       const plugin = createVitePlugin(mockOptions)
       const { config, middleware } = await serveWithEnvironment(plugin)
 
-      expect(await request(middleware)).toBeUndefined()
+      expect(await request(middleware)).toBe(CLEARED)
       expect(config.server.proxy["/api"].target).toBe("http://127.0.0.1:8000")
       // Silent detection failure is indistinguishable from a working setup
       // until the app blows up on an undefined canister id at runtime. The
@@ -705,7 +724,7 @@ describe("icReactor", () => {
       const plugin = createVitePlugin(mockOptions)
       const { middleware } = await serveWithEnvironment(plugin)
 
-      expect(await request(middleware)).toBeUndefined()
+      expect(await request(middleware)).toBe(CLEARED)
       expect(consoleWarnSpy).toHaveBeenCalledOnce()
       const [warning] = consoleWarnSpy.mock.calls[0]
       expect(warning).toContain("Could not run `icp`")
@@ -814,12 +833,22 @@ describe("icReactor", () => {
 
       const plugin = createVitePlugin(mockOptions)
       await plugin.config({}, { command: "serve" })
-      const previewServer = { middlewares: { use: vi.fn() } }
+      const previewServer = {
+        middlewares: { use: vi.fn() },
+        httpServer: { once: vi.fn() },
+      }
       plugin.configurePreviewServer(previewServer)
 
       expect(
         await request(previewServer.middlewares.use.mock.calls[0][0])
       ).toContain("PUBLIC_CANISTER_ID%3Atest_canister%3Dmock-canister-id")
+
+      // The preview server's close ends its network watch.
+      expect(previewServer.httpServer.once).toHaveBeenCalledWith(
+        "close",
+        expect.any(Function)
+      )
+      previewServer.httpServer.once.mock.calls[0][1]()
     })
 
     // `vite dev` usually starts before the canister is deployed. The cookie
@@ -861,7 +890,7 @@ describe("icReactor", () => {
         const proxyOptions = { ...apiEntry }
         apiEntry.configure({}, proxyOptions)
         expect(proxyOptions.target).toBe("http://127.0.0.1:8000")
-        expect(await request(middleware)).toBeUndefined()
+        expect(await request(middleware)).toBe(CLEARED)
 
         // A gateway on another port than the fallback's, so the switch shows.
         answerIcp(

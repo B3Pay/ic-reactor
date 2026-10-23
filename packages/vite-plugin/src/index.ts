@@ -2182,8 +2182,24 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       // Added here rather than returned as a post hook, so it runs before
       // Vite's own middlewares, which serve the page.
       if (localEnvironment) {
+        const environment = localEnvironment
         server.middlewares.use(
-          icEnvMiddleware(localEnvironment, (message) => log.warn(message))
+          icEnvMiddleware(environment, (message) => log.warn(message))
+        )
+        // A page left open keeps the cookie it loaded with, and its calls
+        // would reach the old IDs on a network started again (#881). Reloaded,
+        // it loads without them. With `server.ws: false` the reload reaches no
+        // page, and the warning does not say it did.
+        const reloads =
+          (server.config.server as { ws?: unknown } | undefined)?.ws !== false
+        environment.watch((lost) => {
+          server.ws.send({ type: "full-reload" })
+          log.warn(lostNetworkWarning(lost.proxyTarget, reloads))
+        })
+        lifetime.stopper.signal.addEventListener(
+          "abort",
+          () => environment.close(),
+          { once: true }
         )
       }
 
@@ -2218,9 +2234,15 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     // used to inherit the cookie from `server.headers`.
     configurePreviewServer(server) {
       if (localEnvironment) {
+        const environment = localEnvironment
         server.middlewares.use(
-          icEnvMiddleware(localEnvironment, (message) => log.warn(message))
+          icEnvMiddleware(environment, (message) => log.warn(message))
         )
+        // A preview server has no HMR connection to reload its pages with.
+        environment.watch((lost) =>
+          log.warn(lostNetworkWarning(lost.proxyTarget, false))
+        )
+        server.httpServer.once("close", () => environment.close())
       }
     },
 
@@ -2503,9 +2525,25 @@ function reportDetectionProgress(
   if (next.complete && !previous.complete) {
     console.log(
       "[ic-reactor] Every configured canister has an ID, so page loads no longer run `icp`. " +
-        "Restart the dev server after redeploying into a fresh network."
+        "Restart the dev server after the network restarts."
     )
   }
+}
+
+/**
+ * The warning for a detected network that stopped, at `target`. `reloaded`:
+ * the dev server reloaded the pages it has open.
+ */
+function lostNetworkWarning(target: string, reloaded: boolean): string {
+  return (
+    `[ic-reactor] The local network at ${target} stopped. ` +
+    `A network started again can give the canister IDs this server detected to other canisters under the same root key, ` +
+    `so page loads now get the ic_env cookie without those IDs and that root key` +
+    (reloaded
+      ? ", and the pages open on this server were reloaded to drop the old cookie"
+      : "") +
+    `. A { name } canister does not resolve until you deploy again (\`icp network start\`, \`icp deploy\`) and restart this server. (Logged once.)`
+  )
 }
 
 /**
