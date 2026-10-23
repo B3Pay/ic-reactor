@@ -96,7 +96,11 @@ export function createApp(
   files: Record<string, string>,
   cli: "real" | "fake" | "none"
 ): App {
-  const root = fs.realpathSync(
+  // The native realpath, as the plugin's: on Windows the temporary directory
+  // can be spelled with 8.3 short names (C:\Users\RUNNER~1), which only it
+  // expands, and the paths the tests expect must be the ones the plugin gives
+  // the generator (#905).
+  const root = fs.realpathSync.native(
     fs.mkdtempSync(path.join(os.tmpdir(), "ic-reactor-vite-"))
   )
   const all: Record<string, string> = {

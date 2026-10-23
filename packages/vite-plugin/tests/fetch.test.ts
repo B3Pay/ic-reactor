@@ -13,7 +13,7 @@ import http from "node:http"
 import type { AddressInfo } from "node:net"
 import os from "node:os"
 import path from "node:path"
-import { spawn } from "node:child_process"
+import { spawn, type ChildProcess } from "node:child_process"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Plugin } from "vite"
 import { fetchCandid, resolveNetwork } from "../src/fetch.js"
@@ -59,8 +59,28 @@ afterEach(async () => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
   for (const close of closers.splice(0).reverse()) await close()
+  await generatorsExited()
   for (const app of apps.splice(0)) app.cleanup()
 })
+
+/**
+ * Every process the test spawned has exited. A server's close kills the
+ * generator it is running, but on Windows the killed process holds the app
+ * directory, its working directory, until it is gone, and the app's removal
+ * fails with EBUSY (#905).
+ */
+async function generatorsExited(): Promise<void> {
+  const children = vi
+    .mocked(spawn)
+    .mock.results.flatMap(({ type, value }) =>
+      type === "return" ? [value as ChildProcess] : []
+    )
+  await Promise.all(
+    children
+      .filter((child) => child.exitCode === null && child.signalCode === null)
+      .map((child) => new Promise((resolve) => child.once("exit", resolve)))
+  )
+}
 
 function newApp(files: Record<string, string>) {
   const app = createApp(files, "real")
