@@ -6406,5 +6406,35 @@
     "why": "pages open when the network stopped are not reloaded, so they keep the old cookie and their calls reach the old IDs on a network started again",
     "search": "          server.ws.send({ type: \"full-reload\" })\n",
     "replace": ""
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/dev-environment.ts",
+    "id": "881-watch-unread-bytes",
+    "testName": "notices a stop after the network wrote to a connection it closed",
+    "why": "the watch never reads its connection, so bytes the network writes before it closes an idle connection, such as a Node server's 408, hold back the close: the watch does not connect again and a later stop is never noticed",
+    "search": "    attempt.resume()\n",
+    "replace": ""
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/index.ts",
+    "id": "881-preview-watch-not-closed",
+    "testName": "stops watching when the preview server closes",
+    "why": "a closed preview server keeps watching its network, so it keeps a connection open and reports a later stop of a network it no longer serves",
+    "search": "        server.httpServer.once(\"close\", () => environment.close())\n",
+    "replace": ""
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/index.ts",
+    "id": "881-reload-claimed-without-ws",
+    "testName": "clears the cookie, reloads open pages and says to restart once the network stops",
+    "why": "with server.ws: false the warning still says the open pages were reloaded, though the reload reached none and they keep the old cookie",
+    "search": "          (server.config.server as { ws?: unknown } | undefined)?.ws !== false\n",
+    "replace": "          true\n"
   }
 ]

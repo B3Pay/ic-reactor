@@ -314,17 +314,24 @@ function watchNetwork(target: string, onStopped: () => void): () => void {
   const connect = () => {
     let connected = false
     let refused = false
-    socket = net.connect({ host, port })
-    // Neither the connection nor the timer keeps the process running.
-    socket.unref()
-    socket.on("connect", () => {
+    const attempt = net.connect({ host, port })
+    socket = attempt
+    // Neither the connection nor the timer keeps the process running. A host
+    // with several addresses connects on a new handle, unref'd again below.
+    attempt.unref()
+    // What the network sends, such as a 408 before it closes an idle
+    // connection, is read and dropped: bytes left unread hold back the end of
+    // the stream, and with it the close the watch waits for.
+    attempt.resume()
+    attempt.on("connect", () => {
+      attempt.unref()
       connected = true
       reached = true
     })
-    socket.on("error", (error) => {
+    attempt.on("error", (error) => {
       refused = !connected && isConnectionRefused(error)
     })
-    socket.on("close", () => {
+    attempt.on("close", () => {
       if (ended) return
       if (reached && refused) {
         ended = true

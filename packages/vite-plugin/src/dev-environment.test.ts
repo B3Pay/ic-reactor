@@ -19,6 +19,7 @@ import {
   type Logger,
   type Plugin,
   type ViteDevServer,
+  version as viteVersion,
 } from "vite"
 import { noWebSocket } from "../tests/support.js"
 import { createLocalEnvironment } from "./dev-environment.js"
@@ -265,6 +266,32 @@ describe.skipIf(process.platform === "win32")(
       return port
     }
 
+    /** Start `vite preview` over a dist/ that holds a copy of index.html. */
+    async function startPreview(customLogger?: Logger) {
+      fs.mkdirSync(path.join(root, "dist"))
+      fs.copyFileSync(
+        path.join(root, "index.html"),
+        path.join(root, "dist/index.html")
+      )
+      const server = await preview({
+        root,
+        configFile: false,
+        logLevel: "silent",
+        ...(customLogger === undefined ? {} : { customLogger }),
+        preview: { port: 0, host: "127.0.0.1" },
+        plugins: [plugin()],
+      })
+      /** Close the preview server, once. */
+      const close = () =>
+        new Promise<void>((resolve) => {
+          if (!server.httpServer.listening) return resolve()
+          server.httpServer.close(() => resolve())
+        })
+      closers.push(close)
+      const { port } = server.httpServer.address() as AddressInfo
+      return { port, close }
+    }
+
     // `vite dev` usually starts before `icp deploy`. The cookie was fixed at
     // startup, so every reload after the deploy still lacked the id until the
     // dev server restarted (#664).
@@ -423,6 +450,11 @@ describe.skipIf(process.platform === "win32")(
       expect(stoppedWarnings(warnings)[0]).toContain(replicaUrl)
       expect(stoppedWarnings(warnings)[0]).toContain("restart this server")
       expect(reload).toHaveBeenCalledWith({ type: "full-reload" })
+      // From Vite 6 these servers run with `server.ws: false`, where the
+      // reload reaches no page, and the warning does not claim it did.
+      expect(stoppedWarnings(warnings)[0].includes("were reloaded")).toBe(
+        Number(viteVersion.split(".")[0]) < 6
+      )
 
       // The network comes back under the same root key with the IDs swapped.
       setState({
@@ -569,6 +601,54 @@ describe.skipIf(process.platform === "win32")(
       expect(environment.state?.lost).toBe(false)
     }, 30_000)
 
+    // A Node server answers a connection that sent no request with a 408
+    // before it closes it. Left unread, those bytes held back the close, so
+    // the watch never connected again and missed the stop.
+    it("notices a stop after the network wrote to a connection it closed", async () => {
+      const gateway = http.createServer((_req, res) => res.end())
+      gateway.on("connection", (socket: Socket) => {
+        setTimeout(
+          () =>
+            socket.end(
+              "HTTP/1.1 408 Request Timeout\r\nConnection: close\r\n\r\n"
+            ),
+          100
+        )
+      })
+      const gatewayConnections = track(gateway)
+      const gatewayUrl = `http://127.0.0.1:${await listen(gateway)}`
+      closers.push(async () => {
+        if (gateway.listening) await gatewayConnections.close()
+      })
+      await setUp(() => ({
+        network: { root_key: ROOT_KEY, api_url: gatewayUrl },
+        ids: { backend: BACKEND_ID },
+      }))
+      const environment = createLocalEnvironment({
+        canisterNames: ["backend"],
+        configuredCanisterIds: new Map(),
+        projectRoot: root,
+        onDiagnostic: () => {},
+      })
+      closers.push(async () => environment.close())
+      const onLost = vi.fn()
+      environment.watch(onLost)
+      await environment.detect()
+
+      // Written to and closed, and connected again, more than once.
+      await vi.waitFor(
+        () => expect(gatewayConnections.accepted()).toBeGreaterThan(2),
+        { timeout: 5_000 }
+      )
+      expect(onLost).not.toHaveBeenCalled()
+
+      await gatewayConnections.close()
+      await vi.waitFor(() => expect(onLost).toHaveBeenCalledOnce(), {
+        timeout: 5_000,
+      })
+      expect(environment.state?.lost).toBe(true)
+    }, 30_000)
+
     // A restart closes the old server after starting the new one, so an old
     // watch left running would report the new server's network stopping.
     it("stops watching when the dev server closes", async () => {
@@ -580,6 +660,21 @@ describe.skipIf(process.platform === "win32")(
       await vi.waitFor(() => expect(connections.open()).toBe(1))
 
       await devServer!.close()
+
+      await vi.waitFor(() => expect(connections.open()).toBe(0))
+      await sleep(500)
+      expect(connections.open()).toBe(0)
+    }, 30_000)
+
+    it("stops watching when the preview server closes", async () => {
+      const { connections } = await setUp((replicaUrl) => ({
+        network: { root_key: ROOT_KEY, api_url: replicaUrl },
+        ids: { backend: BACKEND_ID },
+      }))
+      const { close } = await startPreview()
+      await vi.waitFor(() => expect(connections.open()).toBe(1))
+
+      await close()
 
       await vi.waitFor(() => expect(connections.open()).toBe(0))
       await sleep(500)
@@ -629,27 +724,7 @@ describe.skipIf(process.platform === "win32")(
         ids: { backend: BACKEND_ID },
       }))
       const { logger, warnings } = recordWarnings()
-      fs.mkdirSync(path.join(root, "dist"))
-      fs.copyFileSync(
-        path.join(root, "index.html"),
-        path.join(root, "dist/index.html")
-      )
-
-      const server = await preview({
-        root,
-        configFile: false,
-        logLevel: "silent",
-        customLogger: logger,
-        preview: { port: 0, host: "127.0.0.1" },
-        plugins: [plugin()],
-      })
-      closers.push(
-        () =>
-          new Promise((resolve) =>
-            server.httpServer.close(() => resolve(undefined))
-          )
-      )
-      const { port } = server.httpServer.address() as AddressInfo
+      const { port } = await startPreview(logger)
 
       expect((await get(port, "/")).icEnv).toContain(
         `PUBLIC_CANISTER_ID:backend=${BACKEND_ID}`

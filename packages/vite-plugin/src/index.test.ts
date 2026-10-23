@@ -8,9 +8,21 @@ import { icpProcess } from "../tests/support.js"
 import { getCanisterEnv } from "@icp-sdk/core/agent/canister-env"
 import { resolveConfig as resolveViteConfig } from "vite"
 
-const createVitePlugin =
-  (vitePluginModule as any).icReactor ??
-  (vitePluginModule as any).icReactorPlugin
+/**
+ * The plugins a test created, each closed after it as a server's close does.
+ * The close ends the network watch a served plugin starts, which would
+ * otherwise keep connecting to the port the test's `icp` named (#881).
+ */
+const created: any[] = []
+
+const createVitePlugin = (...args: unknown[]) => {
+  const plugin = (
+    (vitePluginModule as any).icReactor ??
+    (vitePluginModule as any).icReactorPlugin
+  )(...args)
+  created.push(plugin)
+  return plugin
+}
 
 // Mock child_process
 vi.mock("child_process", () => ({
@@ -63,6 +75,7 @@ describe("icReactor", () => {
   })
 
   afterEach(() => {
+    for (const plugin of created.splice(0)) plugin.closeBundle.call({})
     vi.restoreAllMocks()
   })
 
@@ -829,6 +842,13 @@ describe("icReactor", () => {
       expect(
         await request(previewServer.middlewares.use.mock.calls[0][0])
       ).toContain("PUBLIC_CANISTER_ID%3Atest_canister%3Dmock-canister-id")
+
+      // The preview server's close ends its network watch.
+      expect(previewServer.httpServer.once).toHaveBeenCalledWith(
+        "close",
+        expect.any(Function)
+      )
+      previewServer.httpServer.once.mock.calls[0][1]()
     })
 
     // `vite dev` usually starts before the canister is deployed. The cookie

@@ -2188,10 +2188,13 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         )
         // A page left open keeps the cookie it loaded with, and its calls
         // would reach the old IDs on a network started again (#881). Reloaded,
-        // it loads without them.
+        // it loads without them. With `server.ws: false` the reload reaches no
+        // page, and the warning does not say it did.
+        const reloads =
+          (server.config.server as { ws?: unknown } | undefined)?.ws !== false
         environment.watch((lost) => {
           server.ws.send({ type: "full-reload" })
-          log.warn(lostNetworkWarning(lost.proxyTarget, true))
+          log.warn(lostNetworkWarning(lost.proxyTarget, reloads))
         })
         lifetime.stopper.signal.addEventListener(
           "abort",
