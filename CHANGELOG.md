@@ -24,6 +24,27 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   settles only a method that commits without awaiting another canister: the
   expiry does not stop a send that started before it.
 
+### CI (not published)
+
+- `release.yml` publishes what it tested, and only after CI passed on the
+  tagged commit (#909):
+  - Preflight packs core, react and vite-plugin from the build it tested and
+    uploads the tarballs. The publish job publishes those three back to back,
+    with no install, build or test between them, so a failing test can no
+    longer stop a release after core is out and before react is.
+  - A new job waits for the push runs of `ci.yml` and `e2e.yml` on the
+    tagged commit and fails unless both succeeded, so lint, the export
+    budget, the trap and fault checks, the snippets, the peer floors, the
+    examples and the e2e suite gate the publish too. The approval is asked
+    for only after it passes.
+  - The publish job holds `id-token: write` and nothing else. It has no
+    checkout, install, cache or build, and installs npm 11.21.0 exactly,
+    where it installed `npm@^11.5.1`. A re-run skips a package npm already
+    has from the same tarball, so a release that stopped half-way can be
+    finished.
+  - The GitHub release is made by a job of its own, the only one with
+    `contents: write`, once all three packages are out.
+
 ## core, react, vite-plugin 4.0.0-beta.7
 
 Prepared on 2026-10-22. It goes out under npm's `beta` dist-tag, as
