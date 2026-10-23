@@ -2,6 +2,7 @@
  * Helpers for the plugin tests that run a real Vite server or build against a
  * temporary app.
  */
+import type { ChildProcess } from "node:child_process"
 import { EventEmitter } from "node:events"
 import fs from "node:fs"
 import http from "node:http"
@@ -59,6 +60,26 @@ export function removeDirectory(directory: string): void {
     maxRetries: 10,
     retryDelay: 100,
   })
+}
+
+/**
+ * Every process that `spawn`, a `vi.fn` over the real one, started has
+ * exited. A server's close kills the generator it is running, but on Windows
+ * the killed process holds the app directory, its working directory, until
+ * it is gone. Removing the app before then fails with EBUSY on the directory
+ * itself, which `fs.rmSync` does not try again (#905).
+ */
+export async function spawnedExited(spawn: {
+  mock: { results: Array<{ type: string; value: unknown }> }
+}): Promise<void> {
+  await Promise.all(
+    spawn.mock.results
+      .flatMap(({ type, value }) =>
+        type === "return" ? [value as ChildProcess] : []
+      )
+      .filter((child) => child.exitCode === null && child.signalCode === null)
+      .map((child) => new Promise((resolve) => child.once("exit", resolve)))
+  )
 }
 
 /**
