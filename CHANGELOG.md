@@ -11,6 +11,8 @@ three lanes, each with its own version:
 - parser: `@ic-reactor/parser`
 
 The GitHub release of each tag also lists every pull request it contains.
+What a 4.x release may change, from 4.0.0 on, is in
+[Versioning and support](docs/src/content/docs/versioning.mdx).
 Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
@@ -33,8 +35,21 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 - A page load with no cookie to send, while no network is detected, clears an
   `ic_env` cookie the browser kept from an earlier dev server, which
   `network: "env"` believed (#881).
+- On Windows, the plugin's messages name a path relative to the project with
+  `/`, as the config writes it (`did/ledger.did`), where they named
+  `did\ledger.did` (#905). The plugin's whole test suite now runs on Windows
+  in CI, where only the tests of how it starts `icp` ran.
 
 ### Docs
+
+- A Versioning and support page (#897). It says what a 4.x patch, minor and
+  major may change. It names the unions that may grow in a minor
+  (`ReactorErrorKind`, `ReactorError.code`, `AuthState.status`) and the
+  interfaces to consume rather than implement (`Client`, `Canister`, `Resend`,
+  `ReactorError`; `AuthLike` gains only optional members). It says how
+  candid-core releases reach an app while the pins stay exact, what a
+  dehydrated cache from a newer version does, and the oldest Node,
+  TypeScript, React, TanStack Query, Vite and `@icp-sdk/core` supported.
 
 - The errors page and `ReactorError.expiresAt`'s JSDoc cite the IC interface
   specification for what the expiry proves (#924): the IC neither accepts a
@@ -42,6 +57,27 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   is past, so no send of the write can start after it. They also say why that
   settles only a method that commits without awaiting another canister: the
   expiry does not stop a send that started before it.
+
+### CI (not published)
+
+- `release.yml` publishes what it tested, and only after CI passed on the
+  tagged commit (#909):
+  - Preflight packs core, react and vite-plugin from the build it tested and
+    uploads the tarballs. The publish job publishes those three back to back,
+    with no install, build or test between them, so a failing test can no
+    longer stop a release after core is out and before react is.
+  - A new job waits for the push runs of `ci.yml` and `e2e.yml` on the
+    tagged commit and fails unless both succeeded, so lint, the export
+    budget, the trap and fault checks, the snippets, the peer floors, the
+    examples and the e2e suite gate the publish too. The approval is asked
+    for only after it passes.
+  - The publish job holds `id-token: write` and nothing else. It has no
+    checkout, install, cache or build, and installs npm 11.21.0 exactly,
+    where it installed `npm@^11.5.1`. A re-run skips a package npm already
+    has from the same tarball, so a release that stopped half-way can be
+    finished.
+  - The GitHub release is made by a job of its own, the only one with
+    `contents: write`, once all three packages are out.
 
 ## core, react, vite-plugin 4.0.0-beta.7
 

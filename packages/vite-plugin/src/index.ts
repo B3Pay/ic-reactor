@@ -27,7 +27,7 @@ import type {
   UserConfig,
   ViteDevServer,
 } from "vite"
-import { describeError, describeValue } from "./describe-value.js"
+import { describeError, describePath, describeValue } from "./describe-value.js"
 import {
   createLocalEnvironment,
   icEnvMiddleware,
@@ -662,7 +662,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   const didPath = (canister: { didFile: string }) =>
     path.resolve(projectRoot, canister.didFile)
   const relativeToRoot = (file: string) =>
-    path.relative(projectRoot, file) || "."
+    describePath(path.relative(projectRoot, file)) || "."
 
   /**
    * The file a path names, as a key: equal for every spelling of one file,
