@@ -9,13 +9,12 @@ import path from "node:path"
 import { execFileSync } from "node:child_process"
 import { afterEach, describe, expect, it } from "vitest"
 import { icpCommand, installIcpAdvice } from "../src/env.js"
+import { removeDirectory } from "./support.js"
 
 const roots: string[] = []
 
 afterEach(() => {
-  for (const root of roots.splice(0)) {
-    fs.rmSync(root, { recursive: true, force: true })
-  }
+  for (const root of roots.splice(0)) removeDirectory(root)
 })
 
 /** An app root, with `@icp-sdk/icp-cli` installed when `bin` is given. */

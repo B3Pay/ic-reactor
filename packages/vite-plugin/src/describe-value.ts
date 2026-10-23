@@ -7,6 +7,7 @@
  * built with either could throw instead of failing the canister it is about.
  */
 
+import path from "node:path"
 import { types } from "node:util"
 
 /** How deep `describeValue` looks into lists and objects. */
@@ -154,4 +155,13 @@ function kindOf(object: object): string {
   return name && "value" in name && typeof name.value === "string"
     ? name.value
     : ""
+}
+
+/**
+ * A relative path as a message shows it: with `/` between its segments on
+ * every platform, as a config writes it, so that a message on Windows names
+ * `did/ledger.did` and not `did\ledger.did` (#905).
+ */
+export function describePath(relative: string): string {
+  return relative.split(path.sep).join("/")
 }

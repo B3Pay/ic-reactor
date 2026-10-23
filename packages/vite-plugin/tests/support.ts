@@ -48,6 +48,20 @@ const NO_WATCHER = (
 ) as ServerOptions["watch"]
 
 /**
+ * Remove a test's temporary directory. On Windows a file in it can still be
+ * open for a moment after the process or watcher that held it ended, and the
+ * removal fails with EBUSY or EPERM, which Node tries again on (#905).
+ */
+export function removeDirectory(directory: string): void {
+  fs.rmSync(directory, {
+    recursive: true,
+    force: true,
+    maxRetries: 10,
+    retryDelay: 100,
+  })
+}
+
+/**
  * The server options of a middleware-mode server without a WebSocket, which
  * binds no port. `hmr: false` alone is not that: Vite still opens a WebSocket
  * server then, on the fixed port 24678, so two servers at once (two test
@@ -123,7 +137,7 @@ export function createApp(
         return []
       }
     },
-    cleanup: () => fs.rmSync(root, { recursive: true, force: true }),
+    cleanup: () => removeDirectory(root),
   }
 }
 
