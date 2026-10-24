@@ -57,13 +57,13 @@ the changes on `v3` that no release carries yet.
 ### React apps
 
 ```bash
-pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+pnpm add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
 ```
 
 ### Non-React apps
 
 ```bash
-pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+pnpm add @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
 ```
 
 ### Optional packages
@@ -74,7 +74,7 @@ pnpm add @icp-sdk/auth@^10 # v10 recommended; v8 also supported
 
 # Dynamic Candid support (explorers/dev tools). The example below imports
 # ClientManager and QueryClient from these two, which a React install lacks.
-pnpm add @ic-reactor/candid @ic-reactor/core @tanstack/query-core
+pnpm add @ic-reactor/candid@3 @ic-reactor/core@3 @tanstack/query-core
 ```
 
 > **Install `@icp-sdk/auth@^10` if you use npm.** v10 is the first release whose

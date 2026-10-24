@@ -15,8 +15,8 @@ are in https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md.
 ## Install
 
 ```bash
-pnpm add -D @ic-reactor/vite-plugin
-pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+pnpm add -D @ic-reactor/vite-plugin@0
+pnpm add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
 ```
 
 ## Setup and Usage

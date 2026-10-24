@@ -32,7 +32,7 @@ Framework-agnostic core library for building type-safe Internet Computer applica
 ## Installation
 
 ```bash
-npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
+npm install @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
 ```
 
 > **Note**: Internet Identity is not part of this package. `AuthenticationManager`,

@@ -12,7 +12,7 @@ and reusable query or mutation factories built around TanStack Query.
 ## Install
 
 ```bash
-pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+pnpm add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
 
 # Optional: Internet Identity login helpers
 pnpm add @icp-sdk/auth@^10

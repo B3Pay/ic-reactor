@@ -12,8 +12,8 @@ Vite plugin for IC Reactor code generation. It runs the shared
 ## Install
 
 ```bash
-pnpm add -D @ic-reactor/vite-plugin
-pnpm add @ic-reactor/react @tanstack/react-query @icp-sdk/core
+pnpm add -D @ic-reactor/vite-plugin@0
+pnpm add @ic-reactor/react@3 @tanstack/react-query @icp-sdk/core
 ```
 
 ## Quick Start

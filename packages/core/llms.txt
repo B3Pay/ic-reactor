@@ -14,7 +14,7 @@ https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md.
 ## Install
 
 ```bash
-pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+pnpm add @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
 ```
 
 ## Setup and Usage
