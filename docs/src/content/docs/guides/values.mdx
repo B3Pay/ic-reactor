@@ -178,12 +178,17 @@ It refuses anything it would have to guess at:
 | grouping (`"1,5"`), exponents (`"1e3"`), a leading `+` | `TypeError`  |
 | a lone `.`, whitespace inside the number               | `TypeError`  |
 | `decimals` that is not a whole number                  | `TypeError`  |
+| an option other than `signed`, a `signed` not boolean  | `TypeError`  |
 | more significant fraction digits than `decimals`       | `RangeError` |
 | a negative amount without `signed: true`               | `RangeError` |
 | `decimals` outside 0 to 255                            | `RangeError` |
 
 `"0.123456789"` at 8 decimals is no amount of e8s, and rounding it would send
-something other than what was typed, so it is refused. In a form, catch both
+something other than what was typed, so it is refused. Fraction digits past
+`decimals` that are all zeros are not significant, so `"1.000000000"` at 8
+decimals is `100000000n`; `"5."`, `".5"` and whitespace around the number are
+accepted too. Validate the field with `parseUnits` itself, so that the form
+and the amount sent never disagree. In a form, catch both
 errors, show the message, and send nothing:
 
 ```ts
@@ -224,8 +229,9 @@ formatUnits(-1n, 8) // "-0.00000001"
 - `minFractionDigits` pads the fraction with zeros instead of trimming them.
 - There is no `"-0"`: a negative amount whose shown digits are all zero is
   written without the sign.
-- `formatUnits` throws a `TypeError` when `value` is not a `bigint`, and a
-  `RangeError` for digit options outside 0 to 255 or a `minFractionDigits` above
+- `formatUnits` throws a `TypeError` when `value` is not a `bigint` or an
+  option is not one of these two (Intl's `maximumFractionDigits` included), and
+  a `RangeError` for digit options outside 0 to 255 or a `minFractionDigits` above
   `maxFractionDigits`.
 
 ### Locale display

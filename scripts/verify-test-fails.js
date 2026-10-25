@@ -13,11 +13,19 @@
  *   node scripts/verify-test-fails.js <vitest-file-pattern> [options]
  *
  *   --package <name>   workspace package to run in     (default: auto-detected)
- *   --base <ref>       revision to revert sources to   (default: main)
+ *   --base <ref>       revision to revert sources to   (default: where
+ *                      HEAD left main, `git merge-base HEAD main origin/main`
+ *                      over those that exist; with neither, it stops)
  *   --keep             leave the reverted sources in place (debugging)
  *
  * Example
  *   node scripts/verify-test-fails.js tests/retry-classification.test.ts --package core
+ *
+ * It exits 0 when a test caught the bug and every test has a result on the
+ * base, 1 when a test fails now or the run cannot start, and 2 otherwise: no
+ * test distinguishes the fix, or a test has no result on the base (its file
+ * did not load there, a hook failed there, or it was skipped there), which is
+ * no evidence either way. The rules are in `verify-test-fails-rules.mjs`.
  *
  * Sources are copied aside and restored from that copy rather than via git
  * stash, so an interrupted run cannot leave conflict markers behind.
@@ -43,6 +51,12 @@ import {
 import { dirname, join, relative } from "node:path"
 import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
+import {
+  BASE_LINES,
+  classify,
+  defaultBase,
+  exitCodeFor,
+} from "./verify-test-fails-rules.mjs"
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
 
@@ -64,7 +78,6 @@ for (let i = 0; i < args.length; i++) {
 
 const flag = (name, fallback) => options[name] ?? fallback
 const pattern = positional[0]
-const base = flag("base", "main")
 const keep = Boolean(flag("keep", false))
 
 if (!pattern) {
@@ -109,8 +122,33 @@ function git(...a) {
   return execFileSync("git", a, { cwd: rootDir, encoding: "utf8" }).trim()
 }
 
+const named = flag("base")
+let defaulted
+if (named === undefined) {
+  try {
+    defaulted = defaultBase(git)
+  } catch (error) {
+    console.error(
+      `✖ ${error.message} (a shallow clone?): git fetch --unshallow, or pass --base <ref>.`
+    )
+    process.exit(1)
+  }
+  if (defaulted === undefined) {
+    console.error(
+      `✖ No ${BASE_LINES.map(({ name }) => name).join(" or ")} to compare with: git fetch origin main:refs/remotes/origin/main (deepen a shallow clone), or pass --base <ref>.`
+    )
+    process.exit(1)
+  }
+}
+/** What the sources are reverted to, and how the report names it. */
+const base = named ?? defaulted.commit
+const baseName = named ?? git("rev-parse", "--short", base)
+const baseHeader = named ?? `${baseName} (where HEAD left ${defaulted.line})`
+
 /**
- * Run the tests and return a map of test name -> passed.
+ * Run the tests and return a map of test name -> status, and the first line
+ * of the error of each test file that failed with no test result (it did not
+ * load), the way `verify-faults.mjs` tells a broken file.
  *
  * A non-zero exit is expected on the "before" run, so the exit code is ignored
  * in favour of the JSON report.
@@ -130,14 +168,20 @@ function runTests(label) {
   }
   const report = JSON.parse(readFileSync(reportPath, "utf8"))
   const results = new Map()
+  const fileErrors = []
   for (const file of report.testResults ?? []) {
     for (const t of file.assertionResults ?? []) {
       // Keep the status verbatim. Collapsing it to a boolean made every
       // skipped or todo test look like a failure, and this repo has both.
       results.set(t.fullName ?? t.title, t.status)
     }
+    if (file.status === "failed" && !file.assertionResults?.length) {
+      const where = file.name ? relative(pkgDir, file.name) : pattern
+      const first = String(file.message ?? "").split("\n")[0]
+      fileErrors.push(`${where}: ${first || "failed with no test result"}`)
+    }
   }
-  return results
+  return { results, fileErrors }
 }
 
 // Sources are what we revert; tests stay exactly as written.
@@ -206,11 +250,12 @@ for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => process.exit(1))
 console.log(`\nverify-test-fails`)
 console.log(`  package : ${pkg}`)
 console.log(`  tests   : ${pattern}`)
-console.log(`  base    : ${base}\n`)
+console.log(`  base    : ${baseHeader}\n`)
 
 console.log("→ running against the current sources…")
-const after = runTests("current")
+const { results: after, fileErrors: errorsNow } = runTests("current")
 if (after.size === 0) {
+  for (const error of errorsNow) console.error(`      ! ${error}`)
   console.error("✖ No tests matched — check the path.")
   process.exit(1)
 }
@@ -236,7 +281,7 @@ function colocatedTests() {
   return found
 }
 
-console.log(`→ reverting sources to ${base} and re-running…`)
+console.log(`→ reverting sources to ${baseName} and re-running…`)
 try {
   git("checkout", base, "--", ...sourcePaths)
   // Some packages colocate tests under `src` (codegen does). Checking out the
@@ -256,32 +301,23 @@ try {
   }
 } catch (error) {
   console.error(
-    `✖ Could not check out sources from "${base}": ${error.message}`
+    `✖ Could not check out sources from ${baseName}: ${error.message}`
   )
   process.exit(1)
 }
-const before = runTests("base")
+const { results: before, fileErrors } = runTests("base")
 restore()
 
 // ── report ────────────────────────────────────────────────────────────────
-const discriminating = []
-const bothPass = []
-const failingNow = []
-const skipped = []
-
-for (const [name, statusAfter] of after) {
-  const statusBefore = before.get(name)
-  if (statusAfter === "failed") failingNow.push(name)
-  else if (statusAfter !== "passed") skipped.push(name)
-  // Only an outright failure on the base counts as evidence. A test that was
-  // skipped there says nothing either way.
-  else if (statusBefore === "failed") discriminating.push(name)
-  else bothPass.push(name)
-}
+const groups = classify(after, before)
+// A matched file that does not load now fails now, as verify-faults counts it
+// broken, rather than dropping out of the report.
+groups.failingNow.unshift(...errorsNow)
+const { discriminating, bothPass, noBaseResult, failingNow, skipped } = groups
 
 const pad = (n) => String(n).padStart(3)
 console.log(
-  `\n${pad(discriminating.length)} caught the bug   (fail on ${base}, pass now)`
+  `\n${pad(discriminating.length)} caught the bug   (fail on ${baseName}, pass now)`
 )
 for (const n of discriminating) console.log(`      ✓ ${n}`)
 
@@ -290,6 +326,14 @@ if (bothPass.length) {
     `\n${pad(bothPass.length)} passed either way  (invariant guards, or vacuous — check each)`
   )
   for (const n of bothPass) console.log(`      • ${n}`)
+}
+
+if (noBaseResult.length) {
+  console.log(
+    `\n${pad(noBaseResult.length)} no result on the base  (not evidence either way)`
+  )
+  for (const error of fileErrors) console.log(`      ! ${error}`)
+  for (const n of noBaseResult) console.log(`      ? ${n}`)
 }
 
 if (failingNow.length) {
@@ -305,16 +349,23 @@ if (skipped.length) {
 }
 
 console.log("")
-if (failingNow.length) process.exit(1)
-if (discriminating.length === 0 && bothPass.length === 0 && skipped.length) {
-  console.log("Every test here is skipped, so this run proves nothing.\n")
-  process.exit(2)
+const code = exitCodeFor(groups)
+if (code !== 2) process.exit(code)
+if (noBaseResult.length) {
+  console.log(
+    `${noBaseResult.length} test(s) did not run on the base (the file did not load there, or\n` +
+      "a hook failed or the test was skipped there), so this run says nothing\n" +
+      "about them. Pick a base they run on (--base <ref>). If they need the\n" +
+      "fix itself to load or set up, no base will run them: hold them to a\n" +
+      "fault in scripts/faults.json instead.\n"
+  )
 }
-if (discriminating.length === 0) {
+if (discriminating.length === 0 && bothPass.length) {
   console.log(
     "No test in this file distinguishes the fix. That is correct for a pure\n" +
       "refactor or a file of invariant guards — otherwise the fix is untested.\n"
   )
-  process.exit(2)
+} else if (discriminating.length === 0 && !noBaseResult.length) {
+  console.log("Every test here is skipped, so this run proves nothing.\n")
 }
-process.exit(0)
+process.exit(2)

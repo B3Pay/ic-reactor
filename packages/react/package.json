@@ -1,13 +1,13 @@
 {
   "name": "@ic-reactor/react",
-  "version": "4.0.0-beta.5",
+  "version": "4.0.0-beta.7",
   "description": "ic-reactor 4 React bindings: a provider that owns one client per tree, useClient and useAuth",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=22.12.0"
   },
   "sideEffects": false,
   "exports": {
@@ -82,7 +82,7 @@
     {
       "name": "React bindings",
       "path": "dist/index.js",
-      "limit": "1.28 KB",
+      "limit": "1.51 KB",
       "gzip": true,
       "ignore": [
         "react",

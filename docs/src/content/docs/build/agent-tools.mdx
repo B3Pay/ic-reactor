@@ -1,0 +1,588 @@
+---
+title: "Give an agent a canister's tools"
+description: "An MCP server that gives an AI agent an ICRC-1 ledger's balance and transfers: amounts as decimal text, a transfer prepared in words before anything is sent, and a commit that never pays twice"
+---
+
+import { Aside, FileTree } from "@astrojs/starlight/components"
+
+This guide builds an [MCP](https://modelcontextprotocol.io) server for an
+ICRC-1 ledger. An agent such as Claude connects to it and gets three tools:
+`balance`, `prepare_transfer` and `commit_transfer`. The server runs on Node
+with `@ic-reactor/core`, and calls the ICP ledger on mainnet with a key of the
+agent's own.
+
+A model reads JSON and makes mistakes a person would not, so the tools are
+shaped for it:
+
+- **Amounts are decimal text** both ways. The model writes `"1.5"`, never base
+  units, and `parseUnits` refuses what it would have to round. Every amount
+  comes back as tokens and as base units.
+- **Nothing is sent by surprise.** `prepare_transfer` checks a transfer and
+  says it in words. Only `commit_transfer` sends anything.
+- **A commit never pays twice.** Each prepared transfer has a memo of its own
+  and the IC's time, so committing it again after a lost reply is answered
+  `Duplicate` instead of paying again.
+- **Every failure says whether it may have run:** a commit ends as `sent`,
+  `refused`, `unknown` or `not_sent`.
+
+Candid Profile, coming next, is meant to generate tools of this shape from a
+profile of the interface. This guide writes them by hand.
+
+When it is done, the project holds these files:
+
+<FileTree>
+
+- icrc1.did the ledger's interface
+- tsconfig.json
+- scripts/
+  - new-key.ts
+- src/
+  - generated/
+    - icrc1.ts written by `candid-core-cli gen`
+  - ledger-tools.ts the three tools
+  - ledger-tools.test.ts
+  - server.ts the server, over stdio
+
+</FileTree>
+
+## Before you start
+
+The server needs Node 22.18 or later, which runs TypeScript files as they are,
+with no build step.
+
+1. Make an ES module package, as in
+   [Getting started, step 0](/v4/guides/getting-started/#0-create-the-project)
+   ("For Node only").
+2. Install the core packages and the generator of
+   [Getting started, step 1](/v4/guides/getting-started/#1-install). The
+   React packages are not needed.
+3. Install the MCP SDK, and what the test and the type check use:
+
+   ```sh
+   npm install @modelcontextprotocol/server zod
+   npm install --save-dev @modelcontextprotocol/client vitest typescript @types/node@22
+   ```
+
+4. Add a `tsconfig.json`. Node runs each file by its own name, so imports end
+   in `.ts`, which `allowImportingTsExtensions` lets TypeScript accept:
+
+   ```json title="tsconfig.json"
+   {
+     "compilerOptions": {
+       "target": "ES2022",
+       "module": "nodenext",
+       "strict": true,
+       "noEmit": true,
+       "skipLibCheck": true,
+       "verbatimModuleSyntax": true,
+       "erasableSyntaxOnly": true,
+       "allowImportingTsExtensions": true,
+       "types": ["node"]
+     },
+     "include": ["src", "scripts"]
+   }
+   ```
+
+5. Copy `icrc1.did` from the repository's
+   [`examples/icrc-ledger`](https://github.com/B3Pay/ic-reactor/tree/main/examples/icrc-ledger)
+   directory to the project's root, and generate its module:
+
+   ```sh
+   npx candid-core-cli gen icrc1.did -o src/generated
+   ```
+
+## 1. A key for the agent
+
+```ts
+// scripts/new-key.ts
+import { writeFileSync } from "node:fs"
+import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
+
+// usage: node scripts/new-key.ts <file>
+const [file] = process.argv.slice(2)
+if (file === undefined) throw new Error("usage: node scripts/new-key.ts <file>")
+
+const identity = Ed25519KeyIdentity.generate()
+// Readable by you alone, and never written over a key that is already there.
+writeFileSync(file, JSON.stringify(identity.toJSON()), {
+  mode: 0o600,
+  flag: "wx",
+})
+console.log(identity.getPrincipal().toText())
+```
+
+```sh
+node scripts/new-key.ts ~/.config/ledger-tools-key.json
+```
+
+It prints the key's principal: the account the agent spends from.
+
+<Aside type="caution">
+  Whatever the server can sign, the agent can make it sign. Give it a key of its
+  own, never your own identity or one that controls a canister, and send that
+  account only what you would let the agent spend. Keep the file outside the
+  project. The script creates it readable by you alone, and never writes over a
+  key that is already there.
+</Aside>
+
+## 2. The tools
+
+```ts
+// src/ledger-tools.ts
+import { isPrincipal, principal } from "@candid-core/schema"
+import {
+  formatUnits,
+  isReactorError,
+  parseUnits,
+  type Client,
+} from "@ic-reactor/core"
+import { McpServer, type CallToolResult } from "@modelcontextprotocol/server"
+import * as z from "zod"
+import { actor, type Actor, type TransferArg } from "./generated/icrc1.ts"
+
+/** One value, as text for the model and as structured content for programs. */
+function reply(
+  value: Record<string, unknown>,
+  isError = false
+): CallToolResult {
+  return {
+    content: [{ type: "text", text: JSON.stringify(value) }],
+    structuredContent: value,
+    isError,
+  }
+}
+
+/** A failed read, by its kind. */
+function readFailure(error: unknown): CallToolResult {
+  if (!isReactorError(error)) throw error
+  return reply({ error: error.kind, message: error.message }, true)
+}
+
+/** The tools of one ICRC-1 ledger, calling as the client's caller. */
+export function createLedgerTools(client: Client, ledgerId: string): McpServer {
+  const ledger = client.canister<Actor>(actor, { id: ledgerId })
+  const server = new McpServer({ name: "icrc1-ledger", version: "1.0.0" })
+  /** Every transfer prepared in this process, by its preview id. */
+  const prepared = new Map<string, TransferArg>()
+
+  // A token's symbol and decimals never change: read once, kept. The fee is
+  // read again each time.
+  const token = async () => {
+    const [symbol, decimals, fee] = await Promise.all([
+      client.queryClient.fetchQuery({
+        ...client.queryOptions(ledger, "icrc1_symbol"),
+        staleTime: Infinity,
+      }),
+      client.queryClient.fetchQuery({
+        ...client.queryOptions(ledger, "icrc1_decimals"),
+        staleTime: Infinity,
+      }),
+      ledger.icrc1_fee(),
+    ])
+    return { symbol, decimals, fee }
+  }
+  type Token = Awaited<ReturnType<typeof token>>
+  /** An amount as tokens and as base units, both as text. */
+  const amount = (units: bigint, { symbol, decimals }: Token) => ({
+    tokens: `${formatUnits(units, decimals)} ${symbol}`,
+    units: units.toString(),
+  })
+
+  server.registerTool(
+    "balance",
+    {
+      title: "Balance",
+      description:
+        "The balance of an account on the ledger. Leave out owner for your own account.",
+      inputSchema: z.object({
+        owner: z
+          .string()
+          .optional()
+          .describe("The account owner's principal, as text"),
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ owner = client.caller() }) => {
+      if (!isPrincipal(owner)) {
+        return reply(
+          { error: "usage", message: `${owner} is not a principal.` },
+          true
+        )
+      }
+      try {
+        const [t, units] = await Promise.all([
+          token(),
+          ledger.icrc1_balance_of({
+            owner: principal(owner),
+            subaccount: null,
+          }),
+        ])
+        return reply({ owner, balance: amount(units, t) })
+      } catch (error) {
+        return readFailure(error)
+      }
+    }
+  )
+
+  server.registerTool(
+    "prepare_transfer",
+    {
+      title: "Prepare a transfer",
+      description:
+        "Checks a transfer and returns it in words with a preview_id. Sends nothing: commit_transfer sends it.",
+      inputSchema: z.object({
+        to: z.string().describe("The recipient's principal, as text"),
+        amount: z
+          .string()
+          .describe('The amount in tokens, as decimal text such as "1.5"'),
+      }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ to, amount: text }) => {
+      if (!isPrincipal(to)) {
+        return reply(
+          { error: "usage", message: `${to} is not a principal.` },
+          true
+        )
+      }
+      try {
+        const t = await token()
+        let units: bigint
+        try {
+          // Exact or refused: "1,5", "1e3" and a decimal too many are never rounded.
+          units = parseUnits(text, t.decimals)
+        } catch (error) {
+          return reply(
+            { error: "usage", message: (error as Error).message },
+            true
+          )
+        }
+        if (units === 0n) {
+          return reply(
+            { error: "usage", message: "Send more than zero." },
+            true
+          )
+        }
+        const arg: TransferArg = {
+          to: { owner: principal(to), subaccount: null },
+          amount: units,
+          fee: t.fee,
+          // Its own memo, and the IC's time: the ledger runs this argument
+          // once, and answers a repeat Duplicate.
+          memo: crypto.getRandomValues(new Uint8Array(16)),
+          from_subaccount: null,
+          created_at_time: await client.time(ledger),
+        }
+        const preview_id = crypto.randomUUID()
+        prepared.set(preview_id, arg)
+        return reply({
+          preview_id,
+          intent: `Send ${amount(units, t).tokens} to ${to}, plus a fee of ${amount(t.fee, t).tokens}, from ${client.caller()}.`,
+          amount: amount(units, t),
+          fee: amount(t.fee, t),
+        })
+      } catch (error) {
+        return readFailure(error)
+      }
+    }
+  )
+
+  server.registerTool(
+    "commit_transfer",
+    {
+      title: "Commit a transfer",
+      description:
+        "Sends a prepared transfer. Committing the same preview_id again never pays twice.",
+      inputSchema: z.object({
+        preview_id: z.string().describe("The id prepare_transfer returned"),
+      }),
+      annotations: { destructiveHint: true, idempotentHint: true },
+    },
+    async ({ preview_id }) => {
+      const arg = prepared.get(preview_id)
+      if (arg === undefined) {
+        return reply(
+          {
+            error: "usage",
+            message: "No such preview_id: prepare the transfer first.",
+          },
+          true
+        )
+      }
+      try {
+        const block = await ledger.icrc1_transfer(arg)
+        return reply({ outcome: "sent", block: block.toString() })
+      } catch (error) {
+        if (!isReactorError(error, ledger, "icrc1_transfer")) throw error
+        if (error.kind === "canister_err") {
+          if (error.err.tag === "Duplicate") {
+            // An earlier commit of this preview went through.
+            return reply({
+              outcome: "sent",
+              block: error.err.value.duplicate_of.toString(),
+            })
+          }
+          return reply(
+            {
+              outcome: "refused",
+              reason: error.err.tag,
+              message: "The ledger refused it. Nothing moved.",
+            },
+            true
+          )
+        }
+        if (error.mayHaveExecuted) {
+          return reply(
+            {
+              outcome: "unknown",
+              kind: error.kind,
+              message:
+                "It may have gone through. Commit the same preview_id again: the ledger runs it at most once.",
+            },
+            true
+          )
+        }
+        return reply(
+          { outcome: "not_sent", kind: error.kind, message: error.message },
+          true
+        )
+      }
+    }
+  )
+
+  return server
+}
+```
+
+- **`reply`** answers every call with one JSON object, as text for the model
+  and as `structuredContent` for programs. Amounts in it are text, as tokens
+  and as base units, because JSON has no `bigint`.
+- **The token.** The server runs for as long as the agent's session, so it
+  keeps the symbol and the decimals in the client's `QueryClient`, read once.
+  It reads the fee again each time.
+- **`balance`** reads any account, and the agent's own when `owner` is left
+  out. `client.caller()` is the principal of the server's key.
+- **`prepare_transfer`** sends nothing to the ledger. It reads the fee and the
+  IC's time, builds the whole argument, and keeps it under a new `preview_id`,
+  for as long as the process runs. Its `intent` says the transfer in words,
+  for the model, or for you, to check.
+- **`commit_transfer`** sends the argument it is given the id of, the same
+  one every time. Its annotations tell the host that it changes something,
+  and that calling it again with the same id has no further effect.
+
+A commit ends in one of four ways:
+
+| `outcome`  | `isError` | What happened                                                                                     | What the model does next                         |
+| ---------- | --------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `sent`     | no        | the ledger ran it, in `block`; a repeat it answered `Duplicate` ends here too                     | nothing                                          |
+| `refused`  | yes       | the ledger's `Err`, such as `InsufficientFunds` or `BadFee`: nothing moved                        | prepare a new transfer, if one is still wanted   |
+| `unknown`  | yes       | the reply was lost, and the transfer may have gone through                                        | commit the same `preview_id` again               |
+| `not_sent` | yes       | it certainly did not run: the server has no key, or the network refused the request before it got in | fix what the message says, and commit again   |
+
+Committing the same `preview_id` again is safe because the ledger deduplicates:
+the same argument from the same account, `created_at_time` and `memo`
+included, runs once within the ledger's window (about 24 hours on the ICP
+ledger), and a repeat is answered `Duplicate`. After the window, the ledger
+answers `TooOld`, and only the balance or the ledger's history can say whether
+an unknown commit went through. See
+[Errors and mayHaveExecuted](/v4/guides/errors/).
+
+## 3. The server
+
+```ts
+// src/server.ts
+import { readFileSync } from "node:fs"
+import { createClient } from "@ic-reactor/core"
+import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
+import { serveStdio } from "@modelcontextprotocol/server/stdio"
+import { createLedgerTools } from "./ledger-tools.ts"
+
+/** The ICP ledger on mainnet. */
+const LEDGER_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+// The agent's own key. Without one, the client refuses every transfer before
+// sending it, and the tools only read.
+const keyFile = process.env.LEDGER_TOOLS_KEY
+const client = createClient({
+  network: "ic",
+  identity: keyFile
+    ? Ed25519KeyIdentity.fromJSON(readFileSync(keyFile, "utf8"))
+    : "anonymous",
+})
+
+serveStdio(() => createLedgerTools(client, LEDGER_ID))
+// stdout carries the protocol: anything else goes to stderr.
+console.error(`ICRC-1 tools for ${LEDGER_ID}, calling as ${client.caller()}`)
+```
+
+- The host starts this process and talks to it over stdin and stdout, so
+  stdout carries the protocol, and the server writes its own lines to stderr.
+- Without `LEDGER_TOOLS_KEY`, the client calls as the anonymous principal. The
+  tools still read, and the client refuses every transfer before sending it:
+  `commit_transfer` answers `not_sent` with the kind `unauthenticated`.
+
+## 4. Test it
+
+```ts
+// src/ledger-tools.test.ts
+import { createTestClient } from "@ic-reactor/core/testing"
+import { Client, InMemoryTransport } from "@modelcontextprotocol/client"
+import { afterEach, beforeEach, expect, it } from "vitest"
+import { actor, type Actor } from "./generated/icrc1.ts"
+import { createLedgerTools } from "./ledger-tools.ts"
+
+const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+let test: ReturnType<typeof createTestClient>
+let agent: Client
+let moved: bigint
+
+beforeEach(async () => {
+  test = createTestClient() // signed in: the server's own key
+  moved = 0n
+  // The ledger, with its deduplication: the same argument from the same
+  // account runs once, and is answered Duplicate after that.
+  const blocks = new Map<string, bigint>()
+  test.mock<Actor>(actor, LEDGER, {
+    icrc1_symbol: () => "ICP",
+    icrc1_decimals: () => 8,
+    icrc1_fee: () => 10_000n,
+    icrc1_balance_of: () => 150_000_000n,
+    icrc1_transfer: (arg, { caller }) => {
+      const key = [caller, arg.created_at_time, arg.memo?.join()].join(" ")
+      const block = blocks.get(key)
+      if (block !== undefined) {
+        return {
+          tag: "Err",
+          value: { tag: "Duplicate", value: { duplicate_of: block } },
+        }
+      }
+      moved += arg.amount
+      blocks.set(key, BigInt(blocks.size))
+      return { tag: "Ok", value: BigInt(blocks.size - 1) }
+    },
+  })
+  // An MCP client in memory, as an agent's host connects over stdio.
+  const [agentSide, serverSide] = InMemoryTransport.createLinkedPair()
+  await createLedgerTools(test.client, LEDGER).connect(serverSide)
+  agent = new Client({ name: "test-agent", version: "1.0.0" })
+  await agent.connect(agentSide)
+})
+
+afterEach(async () => {
+  await agent.close()
+  test.client.dispose()
+})
+
+/** Calls a tool as the agent does, and reads back the object it answered. */
+const call = async (name: string, args: Record<string, unknown>) => {
+  const result = await agent.callTool({ name, arguments: args })
+  const value = result.structuredContent as Record<string, unknown> | undefined
+  return { isError: result.isError ?? false, value }
+}
+
+it("reads a balance in tokens and in base units", async () => {
+  expect(await call("balance", {})).toMatchObject({
+    isError: false,
+    value: { balance: { tokens: "1.5 ICP", units: "150000000" } },
+  })
+})
+
+it("refuses an amount it would have to round, before anything is sent", async () => {
+  const refused = await call("prepare_transfer", {
+    to: "aaaaa-aa",
+    amount: "0.123456789",
+  })
+  expect(refused.isError).toBe(true)
+  expect(moved).toBe(0n)
+})
+
+it("commits a transfer whose reply was lost again, and the ledger pays once", async () => {
+  const { value: preview } = await call("prepare_transfer", {
+    to: "aaaaa-aa",
+    amount: "0.5",
+  })
+  expect(preview?.intent).toMatch(
+    /^Send 0.5 ICP to aaaaa-aa, plus a fee of 0.0001 ICP/
+  )
+  const preview_id = preview?.preview_id
+
+  test.dropNextReply({ method: "icrc1_transfer" }) // it runs; its reply is lost
+  expect(await call("commit_transfer", { preview_id })).toMatchObject({
+    isError: true,
+    value: { outcome: "unknown" },
+  })
+  expect(await call("commit_transfer", { preview_id })).toMatchObject({
+    isError: false,
+    value: { outcome: "sent", block: "0" },
+  })
+  expect(moved).toBe(50_000_000n)
+})
+```
+
+```sh
+npx vitest run
+npx tsc --noEmit
+```
+
+- `createTestClient()` is a real client, signed in, over an in-memory
+  replica, with the ledger replaced by handlers. Its `icrc1_transfer`
+  deduplicates as the ledger does.
+- The MCP client connects to the tools in memory, and calls them as an agent's
+  host does, with the same arguments and the same results.
+- `dropNextReply` lets the first commit run and loses its reply, so it ends
+  `unknown`. The second commit of the same `preview_id` ends `sent`, and the
+  ledger has moved the amount once.
+- `tsc --noEmit` checks the types, which Node does not do when it runs the
+  files.
+
+## 5. Connect an agent
+
+To try the tools by hand first, open them in the MCP Inspector. Without the
+key, they read, and the client refuses any commit before sending it:
+
+```sh
+npx @modelcontextprotocol/inspector node src/server.ts
+```
+
+To give them to Claude Code, run this in the project's directory. The host
+starts the server from anywhere, so both paths are absolute:
+
+```sh
+claude mcp add --env LEDGER_TOOLS_KEY="$HOME/.config/ledger-tools-key.json" --transport stdio icrc1-ledger -- node "$PWD/src/server.ts"
+```
+
+`--env` goes before the server's name, with another option between them, and
+everything after `--` is the command that starts the server. With
+`--scope project`, Claude Code writes the same entry to a `.mcp.json` at the
+project's root, to share, and asks before it uses a server from that file.
+Other hosts, such as Claude Desktop, take the same entry in their
+configuration
+([Connect to local MCP servers](https://modelcontextprotocol.io/docs/develop/connect-local-servers)):
+
+```json title=".mcp.json"
+{
+  "mcpServers": {
+    "icrc1-ledger": {
+      "command": "node",
+      "args": ["/absolute/path/to/project/src/server.ts"],
+      "env": { "LEDGER_TOOLS_KEY": "/absolute/path/to/ledger-tools-key.json" }
+    }
+  }
+}
+```
+
+Then ask for your balance, and the agent calls `balance`. Ask it to send
+0.0001 ICP to a principal: it calls `prepare_transfer`, can show you the
+`intent`, and sends only when it calls `commit_transfer`. Prepare and commit
+are two tools whatever the host does with the annotations, so every transfer
+is put in words before it can be sent.
+
+## Next
+
+- [Node agent tool](/v4/examples/node-agent-tool/): the same ledger as a
+  command-line tool an agent runs, with exit codes, certified reads and a
+  narrated demo of every failure.
+- [Writes](/v4/guides/writes/#sending-the-same-write-again): sending the same
+  write again when the caller can change, with `client.resendOf`.
+- [Testing](/v4/guides/testing/): every failure the test client can inject.

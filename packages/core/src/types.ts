@@ -104,8 +104,36 @@ export type Vars<P extends readonly unknown[]> = P extends readonly []
     ? One
     : P
 
-/** The variables of method `M` of `A`. */
-export type VarsOf<A, M extends keyof A> = Vars<ArgsOf<A[M]>>
+/**
+ * The variables of a method whose type is `any`, as it is when the method is
+ * given as `any` (`client.queryOptions<A, any>(canister, method, vars)` for a
+ * method named by data): every value but a symbol. The client still applies
+ * the run-time rule of {@link Vars} (the value for one argument, the tuple
+ * for several, nothing or `[]` for none) and checks the value against the
+ * method's schemas when it encodes it.
+ *
+ * Not `unknown`: `skipToken` is assignable to `unknown`, so a read of such a
+ * method would always keep `SkipToken` in its `queryFn` (see
+ * {@link QueryArgs}). The cost is that, on this path only, a symbol cannot be
+ * given to a method whose one argument is Candid `reserved`.
+ */
+export type AnyVars =
+  string | number | bigint | boolean | object | null | undefined
+
+/**
+ * The variables of method `M` of `A`: {@link Vars} of its arguments, or
+ * {@link AnyVars} when the method is given as `any`. It checks `M`, which
+ * reaches a `Canister<A>` with a generic `A` in `queryOptions`, and the
+ * method's type `A[M]`, which reaches the builders that declare
+ * `M extends keyof A & string` (under that constraint a check on `M` never
+ * takes its `any` branch). With a generic `A`, those builders still see
+ * `VarsOf<A, any>` unresolved.
+ */
+export type VarsOf<A, M extends keyof A> = 0 extends 1 & M
+  ? AnyVars
+  : 0 extends 1 & A[M]
+    ? AnyVars
+    : Vars<ArgsOf<A[M]>>
 
 /**
  * The methods of `A` a read may be built from with `{ update: "idempotent" }`:
@@ -199,17 +227,36 @@ export type Canister<A> = {
  *   keys end in `"certified"`. A `composite_query` has no certified path: on
  *   such a canister its direct call rejects `invalid_args` (code
  *   `"no_certified_path"`) and `queryOptions` throws a `TypeError`.
+ * - `timeoutMs` bounds how long each call made through the canister object
+ *   waits for its answer, from the moment it is called: its direct calls, its
+ *   reads made with `queryOptions`, its mutations (unless `mutationOptions`
+ *   gives its own), and `client.time()` on it. Without it, a request that gets
+ *   no HTTP answer waits as long as the `fetch` in use does. When it passes,
+ *   the call rejects with code `"timeout"`: `cancelled` with `mayHaveExecuted:
+ *   false` for a read, and for a write before its request went out; a write
+ *   whose request went out (an `{ update: "idempotent" }` read's included), or
+ *   a re-send of a write `client.resendOf()` offered at any point, rejects
+ *   `outcome_unknown` with `mayHaveExecuted: true`, an unknown outcome to
+ *   reconcile (read the state back, or `client.resendOf()` with this same
+ *   canister object), never one to send again blindly. Nothing is sent again
+ *   for it, and the request itself is not torn down: only the waiting stops. A
+ *   number of milliseconds from 1 to 2147483647; anything else throws a
+ *   `TypeError`. Another `timeoutMs` makes another canister object, with the
+ *   same keys: a read observed through two of them is bounded by the options
+ *   TanStack Query was given last.
  */
 export type CanisterTarget =
   | {
       readonly id: string
       readonly name?: never
       readonly certified?: boolean
+      readonly timeoutMs?: number
     }
   | {
       readonly name: string
       readonly id?: never
       readonly certified?: boolean
+      readonly timeoutMs?: number
     }
 
 // ---------------------------------------------------------------------------
@@ -288,7 +335,11 @@ export interface MutationTargets {
  * invalidated, and not those of the one the cookie names now.
  */
 export interface CanisterMutationOptions<V, D, E> {
-  /** `['ic-reactor', network, canisterId, method]`. */
+  /**
+   * `['ic-reactor', network, canisterId, method]`, and then the caller for
+   * the options of a view `useClient()` returned: a prefix match on the
+   * shorter key finds both.
+   */
   readonly mutationKey: MutationKey
   /**
    * Resolves the canister this run writes to and the reads it invalidates,
@@ -302,12 +353,40 @@ export interface CanisterMutationOptions<V, D, E> {
    * into yours: `{ ...options.onMutate(variables, context), previous }`.
    * One that replaces this one instead (TanStack's optimistic-update recipe
    * as written) leaves the resolving to `mutationFn`, which keeps the write
-   * and its invalidation together only from 5.89 on.
+   * and its invalidation together only from 5.89 on. It keeps the caller on
+   * the client's own `queryClient` either way (see `mutationFn`).
    */
   readonly onMutate: (variables: V, context?: unknown) => MutationTargets
   /**
-   * Calls the method as the caller current when it runs, at the canister
-   * `onMutate` resolved for this run.
+   * Calls the method as the caller current when `mutate()` was called, or
+   * not at all: when someone else is current by the time it is sent
+   * (TanStack held the write back offline, or behind another mutation of its
+   * `scope`, or retried it, and the account was switched meanwhile), it
+   * rejects with `kind: "cancelled"`, `code: "caller_changed"`,
+   * `mayHaveExecuted: false`, and sends nothing. Built by a view of the
+   * client (what `useClient()` returns), it also calls only as the view's
+   * principal, and rejects the same way while someone else is current. It
+   * calls at the canister `onMutate` resolved for this run.
+   *
+   * On the client's own `queryClient`, the caller of each run is read by its
+   * `MutationCache` when `mutate()` starts the run, whatever the options'
+   * `onMutate` is, so an `onMutate` of the app's that replaces this one
+   * keeps the rule. On another `QueryClient` it is the one this `onMutate`
+   * read. Refused the same way, because the caller of the run is not known:
+   * a mutation TanStack restored from a persister (it runs no `onMutate` for
+   * one; call `mutate()` again), a run on another `QueryClient` whose
+   * `onMutate` replaced this one (5.89 and later), and, without a context
+   * (before 5.89), a run on another `QueryClient` whose options object
+   * (what TanStack calls `onMutate` and `mutationFn` on) this `onMutate`
+   * read nothing for: called from an `onMutate` of the app's, or given new
+   * options by a later render. Also refused before 5.89: a run whose
+   * observer has another run pending that started as someone else, on any
+   * `QueryClient`, since every run of one observer shares its options
+   * object and `mutationFn` cannot tell them apart. Exceptions, which go out as the caller
+   * current when they are sent: a call by hand (no context, and no
+   * `onMutate` of this one ever ran without one for the method), and,
+   * before 5.89, a run on another `QueryClient` whose `onMutate` replaced
+   * this one, or one restored there.
    *
    * It finds that run through `context`, which TanStack Query passes from
    * 5.89 on. When `onMutate` resolved nothing for that context (an
@@ -412,19 +491,29 @@ export interface Resend<V, D> {
    * The argument the attempt sent: the very object `mutate` or the call was
    * given (the list, for several arguments). `mutate(resend.arg)` sends it
    * again through a mutation, as the same write or not at all: as `from`
-   * (else `cancelled`, `caller_changed`), to the method and canister id the
-   * attempt went to (else `cancelled`, `target_changed`), and while it still
-   * encodes to the bytes the attempt sent (else `invalid_args`,
-   * `arg_changed`). Do not change it: build a new argument for a new write.
+   * (else code `caller_changed`), to the method and canister id the attempt
+   * went to (else `target_changed`), and while it still encodes to the bytes
+   * the attempt sent (else `arg_changed`). A refusal sends nothing and
+   * rejects `outcome_unknown`, since the attempt may have run. Do not change
+   * it: build a new argument for a new write.
    */
   readonly arg: V
   /** The principal that sent the attempt, as text: the only caller a re-send goes out as. */
   readonly from: string
   /**
+   * The Candid bytes the attempt sent, which `send()` sends again. A getter
+   * that returns a new copy on every read, so changing it changes nothing
+   * that is sent: read it once and keep the copy.
+   */
+  readonly bytes: Uint8Array
+  /**
    * Sends again now the bytes the attempt sent, to the canister id it went
    * to (for `aaaaa-aa`, routed by the same effective canister id), as `from`, whatever became of `arg` or of a `{ name }` since. If
-   * someone else is the caller by then, it rejects `cancelled`
-   * (`caller_changed`) and sends nothing. Settles as a direct call does.
+   * someone else is the caller by then, it sends nothing and rejects
+   * `outcome_unknown` (code `caller_changed`). Settles as a direct call
+   * does, except that a re-send that did not run (refused, or turned away
+   * with an HTTP 4xx or reject code 1 to 3) rejects `outcome_unknown` with
+   * `mayHaveExecuted: true`: the attempt it re-sends may have run.
    */
   send(): Promise<D>
 }
@@ -442,4 +531,11 @@ export interface MutationOptionsOptions {
    * `[]` invalidates nothing.
    */
   readonly invalidates?: readonly InvalidationTarget[]
+  /**
+   * How long each run waits for its answer, in place of the canister
+   * target's `timeoutMs`; the same rules. A run whose request went out
+   * rejects `outcome_unknown` with `mayHaveExecuted: true` when it passes:
+   * reconcile it, never re-send it blindly.
+   */
+  readonly timeoutMs?: number
 }

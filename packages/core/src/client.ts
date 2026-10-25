@@ -19,24 +19,37 @@
  * @module
  */
 import type { FuncValue, Principal, Schema } from "@candid-core/schema"
-import { DEFAULT_MAX_DEPTH } from "@candid-core/schema/codec"
+import {
+  DEFAULT_MAX_DEPTH,
+  DEFAULT_MAX_ELEMENTS,
+} from "@candid-core/schema/codec"
 import {
   AnonymousIdentity,
   HttpAgent,
   type Identity,
 } from "@icp-sdk/core/agent"
 import { Principal as SdkPrincipal } from "@icp-sdk/core/principal"
-import { QueryClient, type QueryKey } from "@tanstack/query-core"
-import { createReactorError, retryQuery } from "./errors.js"
+import { MutationCache, QueryClient, type QueryKey } from "@tanstack/query-core"
+import {
+  createReactorError,
+  fromCanister,
+  notSigned,
+  retryDefault,
+} from "./errors.js"
 import { deserializeData, serializeData } from "./hydration.js"
 import { KEY_ROOT } from "./keys.js"
 import {
   agentOptionsFor,
+  agentUrlOf,
   authNetworkFor,
+  checkKeys,
+  resolveCanisterId,
   resolveNetwork,
   type Network,
   type ResolvedNetwork,
 } from "./network.js"
+import { keptUnknown, type CallRequest } from "./call.js"
+import { readTarget, recordOf } from "./canister.js"
 import { createBuilders } from "./options.js"
 import { isDevelopment, isServer } from "./runtime.js"
 import type {
@@ -76,22 +89,42 @@ const ANONYMOUS = SdkPrincipal.anonymous().toText()
  * present, is called from {@link Client.dispose}: the client owns the auth its
  * factory built.
  *
- * Another sign-in source (a wallet, a hand-rolled session) fits by
- * implementing these six methods, and `dispose()` if it holds anything. Its
- * `getIdentity()` should return the same object until the identity really
- * changes: the client builds a new agent for every new identity object it is
- * handed, and reads a new object for the same principal as a renewal.
+ * Another sign-in source that hands over an `Identity` (a delegation, such
+ * as a hand-rolled session gives, or a local key) fits by implementing these
+ * six methods, and `dispose()` if it holds anything. A wallet that signs each call itself (ICRC-25 and
+ * ICRC-49: OISY, Plug, NFID accounts) gives no `Identity` and does not fit:
+ * the Auth guide shows writes through such a wallet beside the client. A
+ * source's `getIdentity()` should return the same object until the identity
+ * really changes: the client builds a new agent for every new identity object
+ * it is handed, and reads a new object for the same principal as a renewal.
  */
 export interface AuthLike {
   /** Who calls are accepted as, or `undefined` when nobody can act. */
   getPrincipal(): { toText(): string } | undefined
   /**
    * Who is signed in. Only `"signed-in"` makes the client call as
-   * {@link AuthLike.getPrincipal}; every other state calls anonymously.
+   * {@link AuthLike.getPrincipal}; every other state calls anonymously. The
+   * four named states are `@icp-sdk/auth` 10's; any other string, such as a
+   * state a later `@icp-sdk/auth` adds, is accepted and reads as
+   * `"anonymous"` in {@link AuthState}, so an upgrade of the auth library
+   * does not stop an app compiling.
    */
   getStatus(): {
     readonly state:
-      "signed-in" | "signed-in-elsewhere" | "expired" | "signed-out"
+      | "signed-in"
+      | "signed-in-elsewhere"
+      | "expired"
+      | "signed-out"
+      | (string & {})
+    /**
+     * When the session ends, in milliseconds since the epoch (`Date.now()`'s
+     * scale), as `AuthClient` 10 reports it. While the status is
+     * `"signed-in"` or `"signed-in-elsewhere"`, the client sets a timer for it
+     * and tells its listeners when the session ends: an auth whose status
+     * turns `"expired"` by the clock, as `AuthClient`'s does, need not notify
+     * for it. It is {@link AuthState.expiresAt} while signed in.
+     */
+    readonly expiresAtMs?: number
   }
   /** The identity to sign calls with while signed in. */
   getIdentity(): Promise<Identity>
@@ -122,8 +155,9 @@ export interface AuthLike {
  */
 export interface AuthState {
   /**
-   * - `anonymous`: nobody is signed in (the auth says `signed-out`), the client
-   *   runs on a server, or it was built anonymous.
+   * - `anonymous`: nobody is signed in (the auth says `signed-out`, or a state
+   *   the client does not know), the client runs on a server, or it was built
+   *   anonymous.
    * - `signed-in`: calls are signed by `principal`.
    * - `expired`: the session ended; calls are anonymous until a sign-in.
    * - `signed-in-elsewhere`: someone is signed in on this domain but this
@@ -132,6 +166,20 @@ export interface AuthState {
   readonly status: "anonymous" | "signed-in" | "expired" | "signed-in-elsewhere"
   /** The principal calls go out as, as text. */
   readonly principal: string
+  /**
+   * When the session ends, in milliseconds since the epoch (`Date.now()`'s
+   * scale; `new Date(expiresAt)` for a date), so an app can show "signed in
+   * until". Present only while `status` is `"signed-in"` through an auth whose
+   * `getStatus()` carries `expiresAtMs`, as `AuthClient` 10's does; absent for
+   * a client built with `identity`. The client tells its listeners when that
+   * time passes, and the status turns `"expired"`.
+   *
+   * A `"signed-in"` session may still be read-only: Internet Identity can
+   * scope a session to queries, `AuthClient` reports it `"signed-in"` all the
+   * same, and the network refuses its updates. Nothing here tells the two
+   * apart yet.
+   */
+  readonly expiresAt?: number
 }
 
 /**
@@ -144,7 +192,10 @@ export type ClientOptions = {
   /**
    * Whether the `ic_env` cookie (root key and canister ids) is believed. See
    * the `network` option; absent trusts it only when both the page and the
-   * replica are local.
+   * replica are local. Even `true` never takes the cookie's root key for a
+   * mainnet host, and `true` is refused (a `TypeError`) on a page under
+   * `ic0.app`, `github.dev`, `gitpod.io`, `loca.lt` or `devtunnels.ms`, which
+   * are not public suffixes.
    */
   readonly allowEnvConfig?: boolean
   /**
@@ -157,6 +208,14 @@ export type ClientOptions = {
    * that nest deeper, such as an ICRC-3 block log's values.
    */
   readonly maxDepth?: number
+  /**
+   * How many values a decoded reply may hold, beyond one per byte of the
+   * reply. Defaults to 1,000,000. A reply is always allowed one value per byte
+   * on top of this, so a blob (a wasm module, an asset chunk) of any size the
+   * IC returns decodes; this bounds only the values that take no bytes, such
+   * as a long `vec null`.
+   */
+  readonly maxElements?: number
 } & (
   | {
       /**
@@ -175,6 +234,16 @@ export type ClientOptions = {
        * use, and only in a browser: on a server the client is anonymous and
        * never calls it. The client owns what it returns and disposes it with
        * itself.
+       *
+       * A factory that throws (`new AuthClient()` reads `localStorage`, which
+       * throws where site data is blocked) is not called again: the client
+       * calls anonymously, so public reads still work, logs the error once in
+       * development, and rejects {@link Client.signIn} and
+       * {@link Client.signOut} with what the factory threw. The same holds
+       * for a factory that returns something other than an {@link AuthLike},
+       * such as a Promise (an `async` factory, or `AuthClient.create()` of
+       * `@icp-sdk/auth` 5 and earlier): the error is then a `TypeError`
+       * naming what the result lacks.
        *
        * `network` is the client's network under `@icp-sdk/auth` 10's own
        * option names, so `new AuthClient(network)` signs in where the client
@@ -235,9 +304,11 @@ export interface Client {
   /** The network's segment in query keys: `"ic"`, `"local"`, a custom network's `name ?? host`, or the resolved host for `"env"`. */
   readonly network: string
   /**
-   * The `QueryClient` this client owns. Its default `retry` retries a read
-   * only after a failure that proves it was not delivered, and never on a
-   * server; its dehydrate and hydrate defaults keep `bigint`, `Uint8Array`
+   * The `QueryClient` this client owns. Its default `retry` retries a
+   * `ReactorError` only after a failure that proves it was not delivered, and
+   * any other error (an app's own REST query on this `QueryClient`) as
+   * TanStack Query does by default: up to 3 times; neither is retried on a
+   * server. Its dehydrate and hydrate defaults keep `bigint`, `Uint8Array`
    * and the floats JSON cannot write, so a server's `dehydrate()` survives
    * `JSON.stringify` and comes back exact.
    */
@@ -245,22 +316,38 @@ export interface Client {
   /** The principal calls go out as now, as text: the anonymous principal unless signed in. */
   caller(): string
   /**
-   * Who calls go out as, and why. The object is the same until the status or
-   * the principal changes, so it can be read with `useSyncExternalStore`.
+   * Who calls go out as, and why. The object is the same until the status,
+   * the principal or `expiresAt` changes, so it can be read with
+   * `useSyncExternalStore`.
    */
   authState(): AuthState
   /**
    * Calls `listener` once after each change of {@link Client.authState}, and
-   * never for a notification of the auth that changed neither the status nor
-   * the principal (a renewed delegation, for one). Returns a function that
-   * stops listening. On a disposed client it adds nothing.
+   * never for a notification of the auth that changed none of the status,
+   * the principal and `expiresAt` (a renewed delegation, for one). A session
+   * that ends by the clock is a change too: the client sets a timer for its
+   * {@link AuthState.expiresAt}, so listeners hear of it without any
+   * notification of the auth, and a read of {@link Client.caller} or
+   * {@link Client.authState} that sees a change first tells them in a
+   * microtask. Returns a function that stops listening. On a disposed client
+   * it adds nothing.
    */
   subscribe(listener: () => void): () => void
   /**
    * Signs in through the client's auth, passing `options` on. Listeners are
    * told once the auth settles, even if the auth itself did not notify.
    * Rejects a `TypeError` on a client built with `identity`, which has no
-   * sign-in, and an `Error` on a server or after {@link Client.dispose}.
+   * sign-in, an `Error` on a server or after {@link Client.dispose}, and
+   * with what the auth factory threw when it threw (a `TypeError` when it
+   * returned something other than an {@link AuthLike}).
+   *
+   * A call in the same synchronous run as an earlier one with the same
+   * options (the same value, or an object with the same own enumerable keys
+   * and values) returns that call's promise and does not ask the auth again.
+   * React's `StrictMode` runs an effect twice in one run, and an Internet
+   * Identity sign-in over `transport: "redirect"` that starts twice fails on
+   * the load it comes back to. A call in a later run, such as a second click,
+   * signs in again.
    */
   signIn(options?: unknown): Promise<void>
   /**
@@ -315,6 +402,43 @@ export interface Client {
    * principal text.
    */
   canister<A>(service: Schema<Principal>, target: CanisterTarget): Canister<A>
+
+  /**
+   * The canister id a target resolves to now, by the same resolver the calls
+   * of `client.canister(service, target)` use, without making a call.
+   *
+   * ```ts
+   * const backend = client.canisterId({ name: "backend" })
+   * if (!backend.ok && backend.reason === "untrusted_host") showSetupHint()
+   * ```
+   *
+   * `{ id }` gives that id. `{ name }` is read from the `ic_env` cookie, as a
+   * call reads it, and gives the id or one of three reasons, each with its
+   * own fix:
+   *
+   * - `no_browser`: there is no page, so no cookie to read (a server render,
+   *   a web worker).
+   * - `untrusted_host`: the cookie is not trusted for this network, so it was
+   *   not read.
+   * - `absent`: the cookie was read and has no principal text under that
+   *   name.
+   *
+   * `message` is the resolver's reason, the text a call on that target puts
+   * in its error after the method and target. The answer is not kept: each call reads the cookie again, as each call of a
+   * `{ name }` canister does. It sends nothing, and a `certified` flag in the
+   * target is ignored. An id it gives is the one the cookie names; whether a
+   * canister answers there is not checked.
+   *
+   * @throws TypeError for a target that is not one of the allowed shapes or
+   * whose `id` is not principal text.
+   */
+  canisterId(target: CanisterTarget):
+    | { readonly ok: true; readonly id: string }
+    | {
+        readonly ok: false
+        readonly reason: "no_browser" | "untrusted_host" | "absent"
+        readonly message: string
+      }
 
   /**
    * The query key of a read, or the prefix of a group of reads, for
@@ -476,18 +600,32 @@ export interface Client {
    * ledger, "icrc1_transfer"))`, then `mutate(arg)` with the same argument
    * convention as {@link Client.queryOptions}.
    *
-   * The mutation function calls the method as the caller current when it
-   * runs, and an update by a caller who is not signed in rejects
-   * `unauthenticated` before anything is sent. `retry` is `false`: an update
+   * The mutation function calls the method as the caller current when
+   * `mutate()` was called (read in `onMutate`), or not at all: a write that
+   * TanStack Query holds back (offline, or behind another mutation of its
+   * `scope`) while the account changes rejects `cancelled`, code
+   * `caller_changed`, `mayHaveExecuted: false`, and sends nothing; so does a
+   * mutation restored from a persister, whose caller is not known. The
+   * client's own `queryClient` reads each run's caller in its
+   * `MutationCache`, so this holds with an `onMutate` of the app's that
+   * replaces this one; the JSDoc of the returned `mutationFn` covers a run on
+   * another `QueryClient`. The options of a view (what `useClient()` returns)
+   * also call only as the view's principal, and end their `mutationKey` with
+   * it: while someone else is current their mutation function rejects
+   * `cancelled` the same way. An update by a caller who is not signed in
+   * rejects `unauthenticated` before anything is sent. `retry` is `false`: an
+   * update
    * re-sends itself only when the failure proves the first attempt never got
    * in (see {@link Canister}), and a TanStack retry would re-send after
    * failures that do not prove it, running the write twice.
    *
-   * `onSettled` invalidates the reads the write may have changed, on this
-   * client's `queryClient`, for every caller, certified or not, and waits for
-   * the active ones to refetch: after a success, a `canister_err`, and any
-   * failure whose `mayHaveExecuted` is `true` (a lost reply: the re-read shows
-   * whether it happened). Not after a failure that proves nothing ran
+   * `onSettled` invalidates the reads the write may have changed, on the
+   * `QueryClient` the mutation ran on (which TanStack Query 5.89 and later
+   * hands it; an app's own `QueryClientProvider` nested inside the client's)
+   * and on this client's `queryClient`, for every caller, certified or not,
+   * and waits for the active ones to refetch: after a success, a
+   * `canister_err`, and any failure whose `mayHaveExecuted` is `true` (a lost
+   * reply: the re-read shows whether it happened). Not after a failure that proves nothing ran
    * (`invalid_args`, `unauthenticated`, `not_delivered`, a reject 1 or 3, a
    * `cancelled` before sending). The reads are every read of the canister
    * written to (DECISIONS Q10), or those listed in `invalidates`: canisters
@@ -560,18 +698,22 @@ export interface Client {
    *   sign-in as another principal, nothing is offered: the same argument
    *   from another sender is a new write. Signing in again as the sender
    *   offers it again. A view of the client pinned to a principal (what
-   *   `useClient()` returns while a page hydrates) answers for the live
-   *   caller, whom a write goes out as.
+   *   `useClient()` returns) answers for the live caller, whom a write goes
+   *   out as.
    *
    * The offer goes out only as the same write. `send()` sends the bytes the
    * attempt sent, to the canister id it went to. `mutate(arg)`, on the
    * mutation that failed (which keeps its pending state and invalidation) or
    * any other of this client, sends `arg` only to the method and canister id
    * the attempt went to, and only while it encodes to the same bytes. Either
-   * one goes out only as `from`. Each refusal sends nothing: `cancelled`
-   * (`caller_changed`) once someone else is the caller, `cancelled`
-   * (`target_changed`) for another method or canister id, and `invalid_args`
-   * (`arg_changed`) for an argument changed since it was sent. Once
+   * one goes out only as `from`. Each refusal sends nothing, and the code
+   * says which it is: `caller_changed` once someone else is the caller,
+   * `target_changed` for another method or canister id, and `arg_changed`
+   * for an argument changed since it was sent. A re-send that is refused, or
+   * turned away when sent (an HTTP 4xx, reject code 1 to 3), still rejects
+   * `outcome_unknown` with `mayHaveExecuted: true`, because the attempt it
+   * re-sends may have run, and this method offers that write again for that
+   * error, under the same conditions as for the first. Once
    * offered, that object stays held to that write: build a new argument for
    * a new write, rather than change this one or send it from another account.
    *
@@ -584,6 +726,40 @@ export interface Client {
     method: M,
     options: ResendOptions<VarsOf<A, M>>
   ): Resend<VarsOf<A, M>, DataOf<A, M>> | undefined
+
+  /**
+   * The Candid bytes a call of `method` with `vars` sends, as a `Uint8Array`:
+   * made by the call path's own encoder with its own variables rule (the
+   * value for one argument, the tuple for several, nothing for none), so
+   * they are the bytes that go out, not a second encoding. Pass them where
+   * the exact argument is wanted, such as an ICRC-21 consent request's `arg`:
+   *
+   * ```ts
+   * const arg = client.encode(ledger, "icrc1_transfer", transfer)
+   * const consent = await ledger.icrc21_canister_call_consent_message({
+   *   method: "icrc1_transfer",
+   *   arg,
+   *   user_preferences: preferences,
+   * })
+   * ```
+   *
+   * It sends nothing and needs no canister id, so a `{ name }` the `ic_env`
+   * cookie does not resolve encodes too.
+   *
+   * It checks only the variables: not the caller, the canister id or
+   * whether the client is disposed, which a call checks before it encodes.
+   *
+   * @throws ReactorError `invalid_args` for variables that do not encode,
+   * with the `issues` and `reason` a call rejects with when its variables are
+   * all that is wrong.
+   * @throws TypeError for a canister of another client, or a method the
+   * service does not have.
+   */
+  encode<A, M extends keyof A & string>(
+    canister: Canister<A>,
+    method: M,
+    vars: VarsOf<A, M>
+  ): Uint8Array
 
   /**
    * An async function for a func reference a reply carried, such as an ICRC
@@ -611,6 +787,45 @@ export interface Client {
     funcSchema: Schema<FuncValue>,
     ref: FuncValue
   ): F
+
+  /**
+   * The IC's time, in nanoseconds since the epoch (the unit of an ICRC-1
+   * `created_at_time`), from a certified `read_state` of the `time` path,
+   * routed by `canister`'s subnet. Stamp a deduplication key with it rather
+   * than with the host's clock, which a ledger checks against its own.
+   *
+   * ```ts
+   * const created_at_time = await client.time(ledger)
+   * ```
+   *
+   * The IC's time moves about once a second (once per round), so two writes
+   * stamped close together can carry the same time: give each its own
+   * `memo` as well.
+   *
+   * Its request carries an ingress expiry from the host's clock, as every
+   * request does: a host clock so far off that the IC refuses its requests
+   * gets `not_delivered` here too.
+   *
+   * The certificate is verified against the network's root key, as every
+   * reply is; its age is not compared with the host's clock, which may be the
+   * clock that is wrong. A certificate that does not verify rejects
+   * `not_delivered` with `mayHaveExecuted: false`, and its time is never
+   * returned. It needs no signed-in caller, and is sent by the caller's
+   * agent, as a read does. A `{ name }` the `ic_env` cookie
+   * does not resolve rejects `invalid_args` (`canister_id_unresolved`), as
+   * does the management canister `aaaaa-aa` (`management_canister`), which no
+   * `read_state` is routed by, and a disposed client rejects `cancelled`
+   * (`client_disposed`); nothing is sent then.
+   *
+   * A canister object made with `timeoutMs` bounds the wait, counted from the
+   * moment `time()` is called, as it bounds a call through it. When the bound
+   * passes, `time()` rejects `cancelled` with code `"timeout"` and
+   * `mayHaveExecuted: false`; a request already out is not torn down, only
+   * the waiting stops, and one not sent yet is never sent. Without
+   * `timeoutMs`, a `read_state` that gets no HTTP answer waits as long as the
+   * `fetch` in use does.
+   */
+  time(canister: Canister<object>): Promise<bigint>
 }
 
 // ---------------------------------------------------------------------------
@@ -642,6 +857,8 @@ export interface ClientInternals {
   readonly network: ResolvedNetwork
   /** The decode depth bound for replies, from {@link ClientOptions.maxDepth}. */
   readonly maxDepth: number
+  /** The decode element budget for replies, from {@link ClientOptions.maxElements}. */
+  readonly maxElements: number
   /** Who calls now. Reads the auth (building it on first use, in a browser). */
   current(): Caller
   /**
@@ -651,6 +868,27 @@ export interface ClientInternals {
    * and a write would otherwise be refused as `unauthenticated`.
    */
   disposed(): boolean
+  /**
+   * The caller current when each mutation run of the client's `queryClient`
+   * started, by its `Mutation` and (TanStack Query 5.89 and later) by the
+   * function context TanStack made for the run. Read by the `MutationCache`'s
+   * own `onMutate`, which `mutate()` runs before the mutation's `onMutate`
+   * and which a mutation's options cannot replace. Weak, so an entry lives as
+   * long as its mutation. A restored mutation (hydrated from a persister) has
+   * none: TanStack runs no `onMutate` for it.
+   */
+  readonly mutationCallers: WeakMap<object, Caller>
+  /**
+   * The `mutationFn` of every `mutationOptions` of this client: the only
+   * mutations whose caller the `MutationCache` reads.
+   */
+  readonly ownMutationFns: WeakSet<object>
+  /**
+   * The argument of each re-send `resendOf` offered, and the write it was
+   * first sent in: a mutation given that very argument sends it as that
+   * write's caller, to its canister id, with its bytes, or not at all.
+   */
+  readonly offered: WeakMap<object, CallRequest>
   /**
    * The agent that signs as `principal`, and only as `principal`. It is the
    * one place the client enforces "a call goes out as the principal it was
@@ -731,10 +969,23 @@ const AUTH_MEMBERS = [
   "signOut",
 ] as const
 
+/** The options {@link createClient} takes. */
+const OPTION_NAMES = [
+  "network",
+  "identity",
+  "auth",
+  "allowEnvConfig",
+  "fetch",
+  "maxDepth",
+  "maxElements",
+]
+
 /**
- * Checks what a JavaScript caller (or a cast) can get past the types: exactly
- * one of `identity` and `auth`, an identity that is one, an `auth` that is a
- * factory, and a `maxDepth` candid-core would accept.
+ * Checks what a JavaScript caller (or a cast) can get past the types: no
+ * option it does not have, exactly one of `identity` and `auth`, an identity
+ * that is one, an `auth` that is a factory, a `fetch` that is a function, and
+ * a `maxDepth` and `maxElements` candid-core would accept. {@link resolveNetwork}
+ * checks the network and `allowEnvConfig`.
  */
 function checkOptions(options: ClientOptions): void {
   if (typeof options !== "object" || options === null) {
@@ -742,10 +993,18 @@ function checkOptions(options: ClientOptions): void {
       "[ic-reactor] createClient() takes an options object: { network, identity } or { network, auth }."
     )
   }
-  const { identity, auth, maxDepth } = options as {
+  checkKeys(options, OPTION_NAMES, "createClient()")
+  const { identity, auth, fetch, maxDepth, maxElements } = options as {
     identity?: unknown
     auth?: unknown
+    fetch?: unknown
     maxDepth?: unknown
+    maxElements?: unknown
+  }
+  if (fetch !== undefined && typeof fetch !== "function") {
+    throw new TypeError(
+      `[ic-reactor] fetch is a function, got ${typeof fetch}.`
+    )
   }
   if (identity !== undefined && auth !== undefined) {
     throw new TypeError(
@@ -783,6 +1042,35 @@ function checkOptions(options: ClientOptions): void {
       `[ic-reactor] maxDepth is a non-negative safe integer, got ${String(maxDepth)}.`
     )
   }
+  if (
+    maxElements !== undefined &&
+    !(Number.isSafeInteger(maxElements) && (maxElements as number) >= 0)
+  ) {
+    throw new TypeError(
+      `[ic-reactor] maxElements is a non-negative safe integer, got ${String(maxElements)}.`
+    )
+  }
+}
+
+/**
+ * Whether two `signIn()` options are the same: the same value, or objects
+ * with the same own enumerable keys whose values are the same (`Object.is`),
+ * as two renders' `{ returnTo: "/account" }` are.
+ */
+function sameOptions(a: unknown, b: unknown): boolean {
+  if (Object.is(a, b)) return true
+  if (typeof a !== "object" || typeof b !== "object" || !a || !b) return false
+  const first = a as Record<string, unknown>
+  const second = b as Record<string, unknown>
+  const keys = Object.keys(first)
+  return (
+    keys.length === Object.keys(second).length &&
+    keys.every(
+      (key) =>
+        Object.prototype.hasOwnProperty.call(second, key) &&
+        Object.is(first[key], second[key])
+    )
+  )
 }
 
 /** Checks that an auth factory returned an {@link AuthLike}, naming what it lacks. */
@@ -805,24 +1093,29 @@ function checkAuth(auth: unknown): AuthLike {
 }
 
 /**
- * Checks that the agent can read `host` the way `HttpAgent` reads it (a host
- * without a scheme is read against the page's protocol), so a bad host is a
- * `TypeError` from `createClient` rather than a failure of some later call.
+ * Checks that `host`, read as `HttpAgent` reads it ({@link agentUrlOf}: a
+ * host without a scheme is read against the page's protocol), is an `http:`
+ * or `https:` URL, so a bad host is a `TypeError` from `createClient` rather
+ * than a failure of every later call. `localhost:4943` reads as the scheme
+ * `localhost:`. A host `"env"` chose came from the page's origin or from
+ * `ICP_HOST` or `IC_HOST`, not from the caller, and the message says so.
  */
-function checkHost(host: string): void {
-  try {
-    void new URL(
-      !/^[a-z]+:/.test(host) && typeof window !== "undefined"
-        ? `${window.location.protocol}//${host}`
-        : host
-    )
-  } catch (error) {
-    throw new TypeError(
-      `[ic-reactor] the network host ${JSON.stringify(host)} is not a URL the agent can read (${
-        error instanceof Error ? error.message : String(error)
-      }). Give one with a scheme, such as "https://icp-api.io".`
-    )
-  }
+function checkHost(host: string, fromEnv: boolean): void {
+  const url = agentUrlOf(host)
+  if (url?.protocol === "http:" || url?.protocol === "https:") return
+  throw new TypeError(
+    `[ic-reactor] the network host ${JSON.stringify(host)}${
+      fromEnv
+        ? ', which network "env" took from the page\'s origin or from ICP_HOST or IC_HOST,'
+        : ""
+    } is not a URL the agent can read (${
+      url === undefined
+        ? "it does not parse as one"
+        : `its scheme is ${url.protocol}, and the agent calls over http: and https: only`
+    }). Give one with a scheme, such as "https://icp-api.io"${
+      fromEnv ? ", in ICP_HOST or as network: { host }" : ""
+    }.`
+  )
 }
 
 let warnedEnvOffPage = false
@@ -868,12 +1161,12 @@ function warnEnvOffPage(network: Network): void {
  * - `ic-reactor.client.disposed`, on each client: a getter, `true` once
  *   `dispose()` has run.
  * - `ic-reactor.client.as`, on each client: a method that `useClient()`
- *   calls with the client as `this` and the principal (text) a render shows,
- *   when that principal is not the client's live caller: the server's
- *   anonymous one while a page hydrates in a browser that holds a session.
- *   It returns a frozen view of `this` for that principal (see `viewAs` in
- *   {@link createClientWith}), or `this` itself for a client built with
- *   `identity`, whose caller never changes.
+ *   calls with the client as `this` and the principal (text) a render
+ *   shows: the live caller's, or the server's anonymous one while a page
+ *   hydrates in a browser that holds a session. It returns a frozen view of
+ *   `this` for that principal (see `viewAs` in {@link createClientWith}),
+ *   the same one for the same principal while it is kept, or `this` itself
+ *   for a client built with `identity`, whose caller never changes.
  * - `ic-reactor.client.of`, on each view: the object the view was made over.
  *   The provider holds that object, never a view, when its factory returns
  *   one (a component's `useClient()` handed to a nested provider): a view
@@ -931,7 +1224,15 @@ const ANONYMOUS_CALLER: Caller = Object.freeze({
 })
 
 const sameState = (a: AuthState, b: AuthState): boolean =>
-  a.status === b.status && a.principal === b.principal
+  a.status === b.status &&
+  a.principal === b.principal &&
+  a.expiresAt === b.expiresAt
+
+/**
+ * The longest delay `setTimeout` keeps: a longer one fires at once. A later
+ * deadline is reached in steps of this length.
+ */
+const MAX_TIMER_MS = 2 ** 31 - 1
 
 /**
  * Who `auth` says calls: its principal only while its status is `signed-in`
@@ -950,11 +1251,20 @@ function callerOf(auth: AuthLike): Caller {
 function stateOf(auth: AuthLike): AuthState {
   const caller = callerOf(auth)
   if (caller.authenticated) {
-    return { status: "signed-in", principal: caller.principal }
+    const { expiresAtMs } = auth.getStatus()
+    return Number.isFinite(expiresAtMs)
+      ? {
+          status: "signed-in",
+          principal: caller.principal,
+          expiresAt: expiresAtMs,
+        }
+      : { status: "signed-in", principal: caller.principal }
   }
+  // A state the client does not know, such as one a later @icp-sdk/auth
+  // adds, is anonymous.
   const { state } = auth.getStatus()
   return state === "expired" || state === "signed-in-elsewhere"
-    ? { status: state, principal: ANONYMOUS }
+    ? { status: state as AuthState["status"], principal: ANONYMOUS }
     : ANONYMOUS_STATE
 }
 
@@ -971,7 +1281,10 @@ function stateOf(auth: AuthLike): AuthState {
  * neither.
  *
  * @throws TypeError for options that do not say who calls, say it twice, or
- * name a network or `maxDepth` that cannot be used.
+ * name a network or `maxDepth` that cannot be used; for an option it does not
+ * have (in the options or in a network object); and for an `allowEnvConfig`
+ * or `fetchRootKey` that is not a boolean, a `rootKey` that is not 133 bytes
+ * in a `Uint8Array`, or a `fetch` that is not a function.
  *
  * @example
  * ```ts
@@ -1017,9 +1330,10 @@ export function createClientWith(
   const network = resolveNetwork(options.network, {
     allowEnvConfig: options.allowEnvConfig,
   })
-  checkHost(network.host)
+  checkHost(network.host, options.network === "env")
   warnEnvOffPage(options.network)
   const maxDepth = options.maxDepth ?? DEFAULT_MAX_DEPTH
+  const maxElements = options.maxElements ?? DEFAULT_MAX_ELEMENTS
   const authFactory = options.auth
   const fixedIdentity =
     options.identity === undefined || options.identity === "anonymous"
@@ -1035,9 +1349,36 @@ export function createClientWith(
       ? undefined
       : (input: RequestInfo | URL, init?: RequestInit) => userFetch(input, init)
 
+  const mutationCallers = new WeakMap<object, Caller>()
+  const ownMutationFns = new WeakSet<object>()
   const queryClient = new QueryClient({
+    mutationCache: new MutationCache({
+      // Only for a write of this client's `mutationOptions`: a mutation of
+      // the app's never builds the auth, and never fails here. Before 5.89
+      // TanStack passes no context.
+      onMutate: (
+        _vars: unknown,
+        mutation: { readonly options: { readonly mutationFn?: unknown } },
+        context?: unknown
+      ) => {
+        const fn = mutation.options.mutationFn
+        if (typeof fn !== "function" || !ownMutationFns.has(fn)) return
+        let caller: Caller
+        try {
+          caller = current()
+        } catch {
+          // The write's own mutationFn reads the caller again, and fails
+          // as a call does.
+          return
+        }
+        mutationCallers.set(mutation, caller)
+        if (typeof context === "object" && context !== null) {
+          mutationCallers.set(context, caller)
+        }
+      },
+    }),
     defaultOptions: {
-      queries: { retry: retryQuery },
+      queries: { retry: retryDefault },
       dehydrate: { serializeData },
       hydrate: { deserializeData },
     },
@@ -1080,6 +1421,28 @@ export function createClientWith(
   const listeners = new Set<() => void>()
   let auth: AuthLike | undefined
   let unsubscribeAuth: (() => void) | undefined
+  /**
+   * What the auth factory threw, once it has, or the `TypeError` for a result
+   * that is not an {@link AuthLike}: the client then runs anonymous, never calls
+   * the factory again, and rejects `signIn()` and `signOut()` with it.
+   */
+  let authFailure: { readonly cause: unknown } | undefined
+  /**
+   * The `signIn()` calls started in the current synchronous run, with their
+   * options, until a microtask queued by the run's first call clears them. A
+   * later call with the same options as one of them returns its promise
+   * instead of signing in again: React's `StrictMode` runs an effect twice in
+   * one run, and a redirect sign-in (ICRC-167) that starts twice fails on the
+   * load that comes back.
+   */
+  let signInsThisRun: Array<{
+    readonly options: unknown
+    readonly done: Promise<void>
+  }> = []
+  /** The timer set for the end of the session (see `scheduleExpiry`). */
+  let expiryTimer: ReturnType<typeof setTimeout> | undefined
+  /** Whether a `catchUp` notification is queued. */
+  let catchUpQueued = false
   /** Whether this client said that its network has no identity provider. */
   let warnedAuthNetwork = false
   let disposed = false
@@ -1174,26 +1537,94 @@ export function createClientWith(
   const ensureAuth = (): AuthLike | undefined => {
     if (
       auth !== undefined ||
+      authFailure !== undefined ||
       authFactory === undefined ||
       disposed ||
       (seams.authOnServer !== true && isServer())
     ) {
       return auth
     }
-    const built = checkAuth(authFactory(authNetwork()))
+    let made: unknown
+    let built: AuthLike
+    try {
+      made = authFactory(authNetwork())
+      // A factory that returns no AuthLike (a Promise, from an `async`
+      // factory) fails here too, and is not called again.
+      built = checkAuth(made)
+    } catch (cause) {
+      // `new AuthClient()` reads `localStorage`, which throws where site data
+      // is blocked or in a sandboxed frame. That must not take the public
+      // reads down with it, nor run again on every render.
+      authFailure = { cause }
+      if (isDevelopment()) {
+        console.error(
+          "[ic-reactor] the auth factory threw: this client calls anonymously, and signIn() rejects with this error. (Logged once, in development.)",
+          cause
+        )
+      }
+      return undefined
+    }
     auth = built
     const initial = stateOf(built)
     if (!sameState(initial, snapshot)) snapshot = Object.freeze(initial)
     notified = snapshot
     unsubscribeAuth = built.subscribe(onAuthChange)
+    scheduleExpiry()
     return built
+  }
+
+  /**
+   * Sets one timer for the end of the auth's session, replacing the last one:
+   * `AuthClient`'s status turns `expired` by the clock, with no notification,
+   * so without it nobody would be told. A deadline that has passed while the
+   * auth still says `signed-in` sets none: that auth does not expire by the
+   * clock, and a timer would only fire again and again.
+   */
+  function scheduleExpiry(): void {
+    clearTimeout(expiryTimer)
+    expiryTimer = undefined
+    if (disposed || auth === undefined) return
+    const { state, expiresAtMs } = auth.getStatus()
+    if (state !== "signed-in" && state !== "signed-in-elsewhere") return
+    if (expiresAtMs === undefined || !Number.isFinite(expiresAtMs)) return
+    const delay = expiresAtMs - Date.now()
+    if (delay <= 0) return
+    expiryTimer = setTimeout(
+      () => {
+        expiryTimer = undefined
+        // A capped delay ends early: `onAuthChange` sets the next step.
+        onAuthChange()
+      },
+      Math.min(delay, MAX_TIMER_MS)
+    )
+    // A session's end is no reason to keep a Node process (a test, a script
+    // with the test client) alive.
+    ;(expiryTimer as { unref?: () => void }).unref?.()
+  }
+
+  /**
+   * Tells the listeners, in a microtask, about a change a read noticed before
+   * any notification did (a session that ended while the timer was held back,
+   * as a browser does in a background tab). Queued rather than run, since the
+   * read may be a render's.
+   */
+  const catchUp = (): void => {
+    if (catchUpQueued || disposed) return
+    catchUpQueued = true
+    queueMicrotask(() => {
+      catchUpQueued = false
+      onAuthChange()
+    })
   }
 
   const current = (): Caller => {
     if (disposed) return ANONYMOUS_CALLER
     if (fixedCaller !== undefined) return fixedCaller
     const source = ensureAuth()
-    return source === undefined ? ANONYMOUS_CALLER : callerOf(source)
+    if (source === undefined) return ANONYMOUS_CALLER
+    const caller = callerOf(source)
+    if (caller.principal !== notified.principal) catchUp()
+    return caller
   }
 
   /** Re-reads the state, replacing {@link snapshot} only when it changed. */
@@ -1214,6 +1645,7 @@ export function createClientWith(
     for (const principal of agents.keys()) {
       if (principal !== state.principal) agents.delete(principal)
     }
+    scheduleExpiry()
     if (state === notified) return
     notified = state
     clearRefusals(state.principal)
@@ -1299,7 +1731,19 @@ export function createClientWith(
     }
     const agent = HttpAgent.createSync({
       ...agentOptionsFor(network),
-      identity,
+      // The agent signs outside its own error handling: a signer that fails
+      // is thrown as a request that could not be signed (`notSigned`), never
+      // as a call whose outcome is unknown.
+      identity: {
+        getPrincipal: () => identity.getPrincipal(),
+        transformRequest: async (request) => {
+          try {
+            return await identity.transformRequest(request)
+          } catch (cause) {
+            throw notSigned(cause)
+          }
+        },
+      },
       fetch: agentFetch,
       // The agent re-sends a request on its own after a fetch failure or a
       // non-2xx status and reports only the last status, so a 429 after a
@@ -1326,6 +1770,8 @@ export function createClientWith(
       )
     }
     const source = ensureAuth()
+    // The factory threw: what it threw is the reason there is no sign-in.
+    if (authFailure !== undefined) throw authFailure.cause
     if (source === undefined) {
       throw new Error(
         `[ic-reactor] ${call}() runs only in a browser: on a server the client is anonymous and never builds its auth.`
@@ -1337,8 +1783,12 @@ export function createClientWith(
   const internals: ClientInternals = Object.freeze({
     network,
     maxDepth,
+    maxElements,
     current,
     disposed: () => disposed,
+    mutationCallers,
+    ownMutationFns,
+    offered: new WeakMap(),
     agentFor,
   })
 
@@ -1347,26 +1797,39 @@ export function createClientWith(
 
   /**
    * A view of `this` (the client, or an object over it) for a render that
-   * shows `principal` while the live caller may be someone else: the server's
-   * anonymous caller while a page hydrates in a browser that holds a session.
+   * shows `principal`: the live caller, or someone else while the live caller
+   * moved on, such as the server's anonymous caller while a page hydrates in
+   * a browser that holds a session. `useClient()` returns one on every
+   * render, so that the object a component memoizes on changes exactly when
+   * the caller it renders does (a sign-in, a switch, a sign-out).
    *
    * Its `queryKey` and `queryOptions` build for `principal`, so they find
    * what a server prefetched as that caller and render the markup the server
-   * wrote; `caller()` and `authState()` say who that is. The read options are
+   * wrote; `caller()` and `authState()` say who that is (`authState()` is the
+   * client's own state while `principal` is the live caller, so an expired
+   * session reads as expired; otherwise `"anonymous"` for the anonymous
+   * principal and `"signed-in"` for any other). The read options are
    * the client's own but for the key: a read they build asks `agentFor` for
    * `principal`'s agent, so while someone else is current it is cancelled
-   * (`caller_changed`) and never sent. Every other member is `this`'s own:
-   * canisters (made for this client, so either one accepts them),
-   * `mutationOptions`, direct calls and `func`, which sign as the caller
-   * current when they run, the `QueryClient`, `subscribe`, `signIn`,
-   * `signOut` and `dispose`.
+   * (`caller_changed`) and never sent. Its `mutationOptions` are the
+   * client's own but for the `mutationKey`, which ends with `principal`, and
+   * the mutation function, which sends only as `principal`: while someone
+   * else is current it rejects `cancelled` (`caller_changed`,
+   * `mayHaveExecuted: false`) and sends nothing, so a write from a render
+   * that a switch has not reached yet never goes out as the new caller. Every other member is `this`'s own: canisters (made for
+   * this client, so either one accepts them) and their direct calls,
+   * `resendOf`'s `send` and `func`, which sign as the caller current when
+   * they run, the `QueryClient`, `subscribe`, `signIn`, `signOut` and
+   * `dispose`.
    *
    * One view per object and principal, so that a component's dependencies are
-   * the same from one render to the next. Only the anonymous view and the
-   * live caller's are kept past a call for another principal, so switching
-   * accounts leaves nothing behind. A client built with `identity` has one
-   * caller for good, the one its server render built keys for too: it
-   * returns `this`.
+   * the same from one render to the next. A view already made is handed back
+   * without reading who calls. Making a view drops every other one but the
+   * anonymous view and the live caller's, so switching accounts leaves
+   * nothing behind. Until then, the view of a user who signed out, or whose
+   * session expired, is kept, and that user signing in again gets the same
+   * view back. A client built with `identity` has one caller for good, the
+   * one its server render built keys for too: it returns `this`.
    *
    * A view carries the object it was made over (`CLIENT_OF`), which
    * `ReactorProvider` holds in its place, and asked for a view of its own it
@@ -1381,14 +1844,18 @@ export function createClientWith(
     if (fixedCaller !== undefined) return base
     let byPrincipal = views.get(base)
     if (byPrincipal === undefined) views.set(base, (byPrincipal = new Map()))
-    const live = current().principal
-    for (const kept of byPrincipal.keys()) {
-      if (kept !== principal && kept !== live && kept !== ANONYMOUS) {
-        byPrincipal.delete(kept)
-      }
-    }
     let view = byPrincipal.get(principal)
     if (view === undefined) {
+      // The views are pruned only when one is made, since `useClient()` asks
+      // for two on every render and reading the live caller converts its
+      // principal to text each time (#977). Every miss prunes, so the map
+      // holds at most the anonymous view, the live caller's and this one.
+      const live = current().principal
+      for (const kept of byPrincipal.keys()) {
+        if (kept !== principal && kept !== live && kept !== ANONYMOUS) {
+          byPrincipal.delete(kept)
+        }
+      }
       const caller: Caller = Object.freeze({
         principal,
         authenticated: principal !== ANONYMOUS,
@@ -1403,12 +1870,86 @@ export function createClientWith(
         () => caller,
         refusals
       )
+      const own = base.mutationOptions as unknown as (
+        canister: unknown,
+        method: unknown,
+        options?: unknown
+      ) => {
+        mutationKey: readonly unknown[]
+        mutationFn: (vars: unknown, context?: unknown) => Promise<unknown>
+      }
+      // The client's options, whose checks run as they are built, with a
+      // mutation function that sends as `principal` or not at all. The check
+      // and the client's own function, which reads the caller it signs as,
+      // run in one synchronous step; `agentFor` checks again before sending.
+      //
+      // The key ends with `principal`. TanStack hands a pending run the
+      // options of a later render only when their `mutationKey` is the same;
+      // with another one it detaches the observer and the run keeps the
+      // options it was pressed with. So a press handled before a switch
+      // reached its render is checked against its own principal, and refused,
+      // on every TanStack version and whatever the QueryClient.
+      const mutationOptions = (
+        canister: unknown,
+        method: unknown,
+        options?: unknown
+      ) => {
+        const built = own(canister, method, options)
+        const mutationFn = async function (
+          this: unknown,
+          vars: unknown,
+          context?: unknown
+        ) {
+          const now = current().principal
+          if (now !== principal) {
+            const target = recordOf(
+              canister,
+              internals,
+              "client.mutationOptions()"
+            ).resolve()
+            const refusal = createReactorError("cancelled", {
+              method: String(method),
+              canisterId: target.ok ? target.id : target.slot,
+              code: "caller_changed",
+              reason: `the write was made as ${principal}, but the caller is now ${now}; it was not sent`,
+            })
+            // A re-send `resendOf` offered leaves its write unknown, as the
+            // call path does. Marked with the canister, as a call's error
+            // is, so that `isReactorError(error, canister, method)` matches.
+            const again = internals.offered.get(vars as object)
+            throw fromCanister(
+              again === undefined ? refusal : keptUnknown(again, refusal),
+              canister as object
+            )
+          }
+          // `this` is the options TanStack called it on, by which the
+          // client's function finds the caller of a run with no context.
+          return built.mutationFn.call(this, vars, context)
+        }
+        // The client's `MutationCache` reads the caller of a run of this
+        // function too, as it does for the client's own.
+        ownMutationFns.add(mutationFn)
+        return {
+          ...built,
+          mutationKey: [...built.mutationKey, principal] as const,
+          mutationFn,
+        }
+      }
       view = Object.freeze(
         Object.create(base, {
           caller: { value: () => principal },
-          authState: { value: () => state },
+          // The live state while `principal` is the live caller, so that a
+          // view of the caller signed in now says what the client says (an
+          // expired session included, which calls as the anonymous one).
+          authState: {
+            value: () => {
+              const live = refresh()
+              return live.principal === principal ? live : state
+            },
+          },
           queryKey: { value: queryKey },
           queryOptions: { value: queryOptions },
+          mutationOptions: { value: mutationOptions },
           [CLIENT_OF]: { value: base },
         }) as Client
       )
@@ -1421,8 +1962,17 @@ export function createClientWith(
     ...createBuilders(internals, () => client),
     network: network.keySegment,
     queryClient,
+    canisterId: (target) =>
+      resolveCanisterId(
+        readTarget(target, "client.canisterId()").target,
+        network
+      ),
     caller: () => current().principal,
-    authState: refresh,
+    authState(): AuthState {
+      const state = refresh()
+      if (state !== notified) catchUp()
+      return state
+    },
     subscribe(listener: () => void): () => void {
       if (disposed) return () => {}
       ensureAuth()
@@ -1431,13 +1981,27 @@ export function createClientWith(
         listeners.delete(listener)
       }
     },
-    async signIn(signInOptions?: unknown): Promise<void> {
-      const source = authFor("signIn")
-      try {
-        await source.signIn(signInOptions)
-      } finally {
-        onAuthChange()
+    signIn(signInOptions?: unknown): Promise<void> {
+      const started = signInsThisRun.find((earlier) =>
+        sameOptions(earlier.options, signInOptions)
+      )
+      if (started) return started.done
+      const done = (async () => {
+        const source = authFor("signIn")
+        try {
+          await source.signIn(signInOptions)
+        } finally {
+          onAuthChange()
+        }
+      })()
+      // Every sign-in started in this run is done joining when it ends. A
+      // promise job, which fake timers do not replace as they can
+      // `queueMicrotask`.
+      if (signInsThisRun.length === 0) {
+        void Promise.resolve().then(() => (signInsThisRun = []))
       }
+      signInsThisRun.push({ options: signInOptions, done })
+      return done
     },
     async signOut(signOutOptions?: unknown): Promise<void> {
       const source = authFor("signOut")
@@ -1455,7 +2019,10 @@ export function createClientWith(
       auth = undefined
       unsubscribeAuth = undefined
       listeners.clear()
+      signInsThisRun = []
       agents.clear()
+      clearTimeout(expiryTimer)
+      expiryTimer = undefined
       snapshot = notified = ANONYMOUS_STATE
       queryClient.clear()
       unsubscribe?.()

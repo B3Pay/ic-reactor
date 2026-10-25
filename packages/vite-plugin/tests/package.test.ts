@@ -55,7 +55,8 @@ describe("the public surface", () => {
 
     const exported = fs
       .readFileSync(path.join(PACKAGE, "src/index.ts"), "utf-8")
-      .split("\n")
+      // A Windows checkout can have CRLF line endings.
+      .split(/\r?\n/)
       .filter((line) => /^export\b/.test(line))
     expect(exported).toEqual([
       "export interface IcReactorPluginOptions {",

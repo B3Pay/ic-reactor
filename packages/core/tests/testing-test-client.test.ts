@@ -11,7 +11,7 @@
  * collapse, and the management canister for effective-canister-id routing.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { c, principal } from "@candid-core/schema"
+import { c, principal, type WithMode } from "@candid-core/schema"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import { internalsOf } from "../src/client.js"
 import { isReactorError } from "../src/index.js"
@@ -355,6 +355,40 @@ describe("the handlers' values", () => {
     await expect(canister.maybe({ some: null })).resolves.toEqual({
       some: null,
     })
+  })
+
+  it("take and return a blob over a million bytes, as a wasm upload and download do", async () => {
+    const chunk = new Uint8Array(2_000_000).fill(9)
+    const { canister } = withShapes({ bytes: (bytes) => bytes })
+    const reply = await canister.bytes(chunk)
+    // Byte by byte, toEqual takes seconds on two million entries.
+    expect(Buffer.from(reply).equals(Buffer.from(chunk))).toBe(true)
+  })
+
+  it("return as many values as the maxElements the test client was given", async () => {
+    // A reply of values that take no bytes: past candid-core's default
+    // budget, within the one the test asked for.
+    type Nulls = { nulls: (() => Promise<null[]>) & WithMode<"query"> }
+    const nulls = c.service({ nulls: c.func([], [c.vec(c.null)], "query") })
+    const test = setup({ maxElements: 1_200_000 })
+    test.mock<Nulls>(nulls, SHAPES, {
+      nulls: () => Array.from({ length: 1_100_000 }, () => null),
+    })
+    const canister = test.client.canister<Nulls>(nulls, { id: SHAPES })
+    await expect(canister.nulls()).resolves.toHaveLength(1_100_000)
+  })
+
+  it("return a reply the client decodes under a maxElements below its length", async () => {
+    // The client's budget is maxElements plus the reply's bytes, so 100
+    // one-byte nats decode under maxElements 10, and the mock must send them.
+    type Nats = { nats: (() => Promise<bigint[]>) & WithMode<"query"> }
+    const nats = c.service({ nats: c.func([], [c.vec(c.nat)], "query") })
+    const test = setup({ maxElements: 10 })
+    test.mock<Nats>(nats, SHAPES, {
+      nats: () => Array.from({ length: 100 }, (_, i) => BigInt(i)),
+    })
+    const canister = test.client.canister<Nats>(nats, { id: SHAPES })
+    await expect(canister.nats()).resolves.toHaveLength(100)
   })
 
   it("make a void update that returns whatever it likes a method with no results", async () => {
@@ -839,6 +873,97 @@ describe("a refusal aimed at one method or canister", () => {
 
     expect(test.runs).toMatchObject({ fee: 1, one: 0, transfer: 0 })
   })
+
+  // dropNextReply({ method, canister, times }) (#882): the same matching as
+  // refuseNext's, for a lost reply.
+  it("dropNextReply({ method }) loses the write's reply, not a certified read's made first", async () => {
+    const test = twoCanisters()
+    const certified = test.client.canister<icrc1.Actor>(icrc1.actor, {
+      id: LEDGER,
+      certified: true,
+    })
+    test.dropNextReply({ method: "icrc1_transfer" })
+
+    await expect(certified.icrc1_fee()).resolves.toBe(10_000n)
+    await expect(test.ledger.icrc1_transfer(transferArg)).rejects.toMatchObject(
+      { kind: "outcome_unknown", mayHaveExecuted: true }
+    )
+    expect(test.runs).toMatchObject({ fee: 1, transfer: 1 })
+    expect(
+      canisterRequests(test).map((r) => [r.methodName, r.dropped === true])
+    ).toEqual([
+      ["icrc1_fee", false],
+      ["icrc1_transfer", true],
+    ])
+    // Used up: the next transfer is answered.
+    await expect(test.ledger.icrc1_transfer(transferArg)).resolves.toBe(1n)
+  })
+
+  it("dropNextReply({ canister }) matches the canister a call names, aaaaa-aa for a management call", async () => {
+    const test = setup()
+    const stopped: string[] = []
+    test.mock<management.Actor>(management.actor, MANAGEMENT, {
+      stop_canister: ({ canister_id }) => {
+        stopped.push(`${canister_id}`)
+      },
+    })
+    test.mock<shapes.Actor>(shapes.actor, SHAPES, {
+      bump: (n) => ({ tag: "ok", value: n }),
+    })
+    const ic = test.client.canister<management.Actor>(management.actor, {
+      id: MANAGEMENT,
+    })
+    const shapesCanister = test.client.canister<shapes.Actor>(shapes.actor, {
+      id: SHAPES,
+    })
+    // Aimed at SHAPES, the canister the management call is routed by: the
+    // management call names aaaaa-aa, so it is answered and the drop waits.
+    test.dropNextReply({ canister: SHAPES })
+
+    await expect(
+      ic.stop_canister({ canister_id: principal(SHAPES) })
+    ).resolves.toBeUndefined()
+    await expect(shapesCanister.bump(1n)).rejects.toMatchObject({
+      kind: "outcome_unknown",
+    })
+    test.dropNextReply({ canister: MANAGEMENT })
+    await expect(shapesCanister.bump(2n)).resolves.toBe(2n)
+    await expect(
+      ic.stop_canister({ canister_id: principal(SHAPES) })
+    ).rejects.toMatchObject({ kind: "outcome_unknown" })
+
+    expect(stopped).toEqual([SHAPES, SHAPES])
+    expect(
+      canisterRequests(test).map((r) => [r.canisterId, r.dropped === true])
+    ).toEqual([
+      [MANAGEMENT, false],
+      [SHAPES, true],
+      [SHAPES, false],
+      [MANAGEMENT, true],
+    ])
+  })
+
+  it("dropNextReply() with no argument still loses whatever call request comes next", async () => {
+    const test = twoCanisters()
+    const certified = test.client.canister<icrc1.Actor>(icrc1.actor, {
+      id: LEDGER,
+      certified: true,
+    })
+    test.dropNextReply()
+    // A certified read goes out as a call: its reply is the one lost, and
+    // the client sends the read again.
+    await expect(certified.icrc1_fee()).resolves.toBe(10_000n)
+    await expect(test.ledger.icrc1_transfer(transferArg)).resolves.toBe(1n)
+    expect(
+      canisterRequests(test).map((r) => [r.methodName, r.dropped === true])
+    ).toEqual([
+      ["icrc1_fee", true],
+      ["icrc1_fee", false],
+      ["icrc1_transfer", false],
+    ])
+    // The read is not an update: its handler ran for both requests.
+    expect(test.runs).toMatchObject({ fee: 2, transfer: 1 })
+  })
 })
 
 describe("what it leaves alone", () => {
@@ -1009,6 +1134,40 @@ describe("what it refuses", () => {
     )
   })
 
+  it("a boolean option that is not a boolean, and a network createClient would refuse", () => {
+    onPage()
+    // "false" is truthy: it started signed in, and trusted the ic_env cookie.
+    expect(() =>
+      createTestClient({ signedIn: "false" } as unknown as Options)
+    ).toThrow(
+      new TypeError(
+        '[ic-reactor] createTestClient(): signedIn is true or false, got "false".'
+      )
+    )
+    for (const network of [undefined, "ic", { host: "https://x.example" }]) {
+      expect(() =>
+        createTestClient({
+          network,
+          allowEnvConfig: "false",
+        } as unknown as Options)
+      ).toThrow(
+        new TypeError(
+          '[ic-reactor] allowEnvConfig is true or false, got "false".'
+        )
+      )
+    }
+    expect(() =>
+      createTestClient({
+        network: { host: "https://x.example", rootkey: new Uint8Array(133) },
+      } as unknown as Options)
+    ).toThrow(/a network object has no option rootkey\./)
+    expect(() =>
+      createTestClient({
+        network: { host: "https://x.example", fetchRootKey: "false" },
+      } as unknown as Options)
+    ).toThrow(/fetchRootKey is true or false, got "false"\./)
+  })
+
   it("an identity that is neither an Identity nor a seed, null included", () => {
     for (const identity of [null, "seed", {}, true]) {
       expect(() =>
@@ -1078,6 +1237,31 @@ describe("what it refuses", () => {
     expect(() => refuseNext(429, { canister: "ledger" })).toThrow(
       new TypeError(
         'refuseNext: `canister` is a canister id, such as "ryjl3-tyaaa-aaaaa-aaaba-cai" or "aaaaa-aa", got "ledger"'
+      )
+    )
+    // dropNextReply takes the same options, checked the same way.
+    const { dropNextReply } = setup()
+    expect(() => dropNextReply({ times: 0 })).toThrow(
+      new RangeError("dropNextReply: `times` is 0, not a count of at least 1")
+    )
+    expect(() => dropNextReply({ methd: "x" } as never)).toThrow(
+      new TypeError(
+        "dropNextReply() has no option methd. Its options: method, canister, times."
+      )
+    )
+    expect(() => dropNextReply({ method: "" })).toThrow(
+      new TypeError(
+        'dropNextReply: `method` is the name of a canister method, got ""'
+      )
+    )
+    expect(() => dropNextReply({ canister: "ledger" })).toThrow(
+      new TypeError(
+        'dropNextReply: `canister` is a canister id, such as "ryjl3-tyaaa-aaaaa-aaaba-cai" or "aaaaa-aa", got "ledger"'
+      )
+    )
+    expect(() => dropNextReply(3 as never)).toThrow(
+      new TypeError(
+        "dropNextReply() takes { method, canister, times }, got number."
       )
     )
     // The published form is checked as it was.

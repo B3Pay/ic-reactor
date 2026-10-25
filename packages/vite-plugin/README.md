@@ -65,11 +65,12 @@ library: `ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt`.
 
 ## Options
 
-| Option              | Default                   | Meaning                                                                           |
-| ------------------- | ------------------------- | --------------------------------------------------------------------------------- |
-| `canisters`         | `{}`                      | The app's canisters, by their name in the `icp` project; see below                |
-| `injectEnvironment` | `true`                    | Set the cookie and the `/api` proxy under `vite dev` and `vite preview`           |
-| `failOnError`       | build `true`, dev `false` | Abort the Vite run when a canister fails to generate; see "When generation fails" |
+| Option              | Default                              | Meaning                                                                           |
+| ------------------- | ------------------------------------ | --------------------------------------------------------------------------------- |
+| `canisters`         | `{}`                                 | The app's canisters, by their name in the `icp` project; see below                |
+| `injectEnvironment` | `true`                               | Set the cookie and the `/api` proxy under `vite dev` and `vite preview`           |
+| `failOnError`       | build and Vitest `true`, dev `false` | Abort the Vite run when a canister fails to generate; see "When generation fails" |
+| `onGenerated`       | none                                 | Called after each generated module; see "After each generation"                   |
 
 Each entry of `canisters` takes:
 
@@ -106,7 +107,7 @@ Every key is checked too, whatever its value, `undefined` included. A key of
 an entry that is none of the fields above (a misspelled `didfile` or
 `canisterID`), or a key of a `network` of `{ host }` other than `host`, fails
 its canister, and a key of the options that is none of `canisters`,
-`injectEnvironment` and `failOnError` throws when the config loads. The
+`injectEnvironment`, `failOnError` and `onGenerated` throws when the config loads. The
 message names the option the key may misspell. Never read, a misspelled key
 would leave a canister ungenerated, or generated without its ID, without a
 word.
@@ -354,7 +355,8 @@ affected.
   `ic-reactor: ledger: omitted declaration Bad (reserved_field_name)`.
 - Editing a `.did` regenerates only the canisters that name it. Saves that
   arrive while it runs collapse into one more run. `vite build --watch`
-  regenerates a canister only when its `.did` text changed.
+  regenerates a canister only when its `.did` text changed, or its module or
+  envelope is missing.
 - A run (the start of a build or dev server, or a save's regeneration) reads
   each `didFile` once, and again after each step that runs `candid-core-cli`
   on it (listing its methods, the live check, generation), since each of those
@@ -384,9 +386,55 @@ A failed canister costs that canister, and nothing else:
   update, as it does for Vite's own errors, so a canister that is still broken
   can drop out of the browser's overlay after you save some other file. Its
   error stays in the terminal log, and a full reload shows the overlay again.
-- `failOnError` overrides either default. It takes `true` or `false`: any
+- Under Vitest (mode `test`) the run fails at startup, as a build does: tests
+  that pass against the modules left over from the last good run prove
+  nothing.
+- `failOnError` overrides each default. It takes `true` or `false`: any
   other value (`null`, `0`, `"false"`) throws when the config loads, as does
   one for `injectEnvironment`.
+
+### After each generation
+
+`onGenerated` is called once for each module a run generated, after the
+generator wrote or checked it and its envelope, under `vite build` and
+`vite dev` alike. Use it for a step that reads the generated output and must
+run after every generation:
+
+```ts
+import { readFile } from "node:fs/promises"
+import { icReactor } from "@ic-reactor/vite-plugin"
+
+icReactor({
+  canisters: { ledger: { didFile: "did/ledger.did" } },
+  onGenerated: async ({ names, envelope, status }) => {
+    const text = await readFile(envelope, "utf-8")
+    // check it, or write derived files; throw to fail the run
+    console.log(names, status, text.length)
+  },
+})
+```
+
+- It is handed `names` (canisters that share a `didFile` and an `outDir`
+  share one module and one call), the absolute paths `didFile`, `module` and
+  `envelope`, `status` (`"written"`, or `"unchanged"` when the module on disk
+  was already what the generator would write), and a `signal` that aborts
+  when the build or dev server closes. A close stops waiting for the hook,
+  and the next run generates the module again and calls the hook again.
+- It runs inside the plugin's one queue of runs: it never overlaps a
+  generation, and `buildStart` waits for it, so under `vite build` a hook
+  that never settles holds the build.
+- It is not called for a canister that failed or was refused, nor for a run
+  that does not generate the module again (the second `buildStart` of
+  Vite 6 and later, a `vite build --watch` rebuild not caused by a `.did`
+  or by a missing module or envelope).
+  A save under `vite dev` always generates again, so saving the same text
+  calls it with `"unchanged"`.
+- A throw or a rejection fails the module's canisters as a failed generation
+  does: the build or the Vitest run fails unless `failOnError` is `false`, and
+  otherwise the failure is logged and, under `vite dev`, shown in the error
+  overlay. The
+  next run generates them again and calls the hook again.
+- A value that is not a function throws when the config loads.
 
 ### In CI
 
@@ -413,16 +461,18 @@ plugin:
 3. sets the `ic_env` cookie on each response
 4. proxies `/api` to the local replica
 
-If a canister has a `canisterId` set in the plugin config, that value overrides
-the auto-detected ID for that canister.
+If a canister has a `canisterId` set in the plugin config, that value is used
+for it, and `icp` is not asked for its ID. `internet_identity` is asked for
+even then: what `icp` reports decides whether the cookie also names icp-cli's
+built-in Internet Identity.
 
 Set the `ICP_ENVIRONMENT` environment variable to target a non-default network
 (defaults to `"local"`).
 
 If environment detection fails, the plugin falls back to proxying `/api` to
-icp-cli's local network, `http://127.0.0.1:8000`, and sets no cookie, or with
-no canisters configured one that names only icp-cli's built-in Internet
-Identity. It warns when that happens with canisters configured, and when a
+icp-cli's local network, `http://127.0.0.1:8000`, and sets no cookie (a page
+load clears one the browser kept), or with no canisters configured one that
+names only icp-cli's built-in Internet Identity. It warns when that happens with canisters configured, and when a
 configured canister has no ID, because the failure is otherwise
 indistinguishable from success until the app breaks on an undefined canister
 id. Run with `DEBUG=ic-reactor` to see the `icp` output
@@ -433,9 +483,23 @@ canister has an ID. Until then the plugin asks `icp` again on each page load,
 and that page gets the answer: start `vite dev` first, then run
 `icp network start` and `icp deploy`, and reload the page. The `/api` proxy
 moves to the network `icp` reports, the fallback included. Once detection is
-complete, page loads run no further `icp` commands, so redeploying into a
-fresh network, with new canister IDs and a new root key, needs a dev server
-restart. A configured canister you never deploy locally keeps detection
+complete, page loads run no further `icp` commands, so any network restart
+(`icp network stop`, then `start` and `icp deploy`) needs a dev server
+restart, even when the root key stays the same. icp-cli 1.2.0's managed
+network kept its root key across starts while a new deploy gave the names
+other canister IDs.
+
+While it serves, the plugin holds a connection to the detected network, so it
+notices the network stop when it stops, whether or not a request reaches it.
+From then on it no longer vouches for the IDs it detected, which a network
+started again may have given to other canisters. It warns once, page loads get
+the cookie without those IDs and that root key (with canisters configured, no
+cookie at all), and `vite dev` reloads the pages it has open so that they drop
+the old cookie. `{ name }` canisters then reject `canister_id_unresolved`
+instead of reaching another canister, until the dev server restarts. Under
+`vite preview`, which has no HMR connection, reload open pages yourself.
+
+A configured canister you never deploy locally keeps detection
 incomplete, so every page load runs `icp` for it; set its `canisterId` and it
 counts as resolved. If you never run a local network, set
 `injectEnvironment: false` and page loads run no `icp`.
@@ -448,4 +512,12 @@ not follow detection.
 
 Vitest runs the plugin in mode `test`. There the plugin injects no environment
 and never runs `icp`, whatever `injectEnvironment` says. Generation is not an
-environment concern and still runs, so the modules a test imports exist.
+environment concern and still runs, so the modules a test imports exist. A
+canister that fails to generate fails the run at startup, unless `failOnError`
+is `false`: a `.did` that does not parse, a fetch that fails, a live check
+(`verify: "live"`, `IC_REACTOR_VERIFY`) that fails or cannot reach the
+network, an `onGenerated` that throws. For an offline test run with the live
+check on, set `IC_REACTOR_VERIFY=0`. A `.did` that stops generating after
+startup, in watch mode, is logged, as under `vite dev`. A Vitest run in
+another mode (`--mode`, `test.mode`) keeps the dev default, and a Vitest
+config that does not load the plugin generates nothing.

@@ -19,11 +19,16 @@ under another.
 
 ## Internet Identity with @icp-sdk/auth 10
 
-The `AuthClient` of `@icp-sdk/auth` 10 is an `AuthLike` as it is. Pass a
+The `AuthClient` of `@icp-sdk/auth` 10 is an `AuthLike` as it is. The
+supported range is `^10.0.1`, and a weekly CI job checks the newest release
+against `AuthLike`. A later release whose session has a state the client does
+not know still compiles: the client calls anonymously in that state, and
+`useAuth()` reads it as `"anonymous"`. npm's newest release is 11, which is
+outside that range, so name the major version when you install it, and pass a
 factory that builds one:
 
 ```sh
-npm install @icp-sdk/auth
+npm install @icp-sdk/auth@^10
 ```
 
 ```ts
@@ -44,7 +49,21 @@ You write no adapter. The client does the rest:
   and calls its `dispose()`.
 - It reads `getStatus()` and `getPrincipal()` to decide who calls, and asks
   `getIdentity()` for the identity to sign with.
-- It forwards `signIn(options)` and `signOut(options)` to it.
+- It sets a timer for the session's end, `getStatus().expiresAtMs`.
+  `AuthClient`'s status turns `"expired"` by the clock and tells nobody, so
+  the client tells its listeners itself: `useAuth()` renders `"expired"` when
+  the session ends, with no user activity needed.
+- It forwards `signIn(options)` and `signOut(options)` to it. Two `signIn()`
+  calls with the same options in one synchronous run reach it once (see
+  [Sign-in options](#sign-in-options)).
+- If the factory throws, it is not called again. `new AuthClient()` reads
+  `localStorage`, which throws where site data is blocked or in a sandboxed
+  frame. The client then calls anonymously, so public reads still work, logs
+  the error once in development, and rejects `signIn()` and `signOut()` with
+  what the factory threw. A factory that returns something other than an
+  auth, such as a Promise from an `async` factory, is treated the same way,
+  with a `TypeError` that names what the result lacks. Build a new client to
+  try again.
 
 `AuthClient` is not a peer dependency of core: you install `@icp-sdk/auth`
 yourself when you want Internet Identity.
@@ -137,6 +156,16 @@ mainnet's Internet Identity, whose delegations the replica rejects, and the
 client cannot tell that it did. On any network but mainnet, pass `network`
 through.
 
+**On dfx.** Rule 3 names icp-cli's built-in Internet Identity, which dfx does
+not serve. A client of dfx's replica, `{ host: "http://127.0.0.1:4943" }`, is
+handed `http://id.ai.localhost:4943/authorize`, a page that does not load,
+and nothing warns. Name the Internet Identity your dfx project deploys, as
+above: `authorizeUrl` is its sign-in page on dfx's gateway,
+`http://<the id of the canister that serves it>.localhost:4943/authorize`,
+and `canisterId` the canister that mints its delegations. It must be a release
+of Internet Identity that answers the `ii_session_delegation` request
+`@icp-sdk/auth` 10 signs in with.
+
 ### Sign-in options
 
 `signIn` and `signOut` of the client and of `useAuth()` pass their argument to
@@ -172,9 +201,284 @@ export function EightHourSession() {
 The client types `options` as `unknown`, so a wrong option is not a type error.
 Check it against `AuthClientSignInOptions` in `@icp-sdk/auth`.
 
+Two `signIn()` calls with the same options in one synchronous run are one
+sign-in: the later one returns the earlier one's promise, and the auth is
+asked once. Options are the same when they are the same value (none at all
+included), or objects with the same keys and the same values (compared with
+`Object.is`, one level deep), so `{ returnTo: "/account" }` built twice is the
+same. `StrictMode` makes such a pair in development, when it runs an effect
+twice in a row. A call in a later run, such as a second click, signs in
+again, as does a call with other options.
+
 `AuthClient` has more options, such as `openIdProvider: "google"` for a
 one-click sign-in and `transport: "redirect"`. They belong to
-`@icp-sdk/auth`, not to this library.
+`@icp-sdk/auth`, not to this library: [Internet Identity 2.0](#internet-identity-20)
+lists them. One of them, `transport: "redirect"`, changes how the page that
+signs in is written: see [Redirect sign-in](#redirect-sign-in).
+
+### Redirect sign-in
+
+With `transport: "redirect"`, `AuthClient` signs in over the ICRC-167 URL
+transport instead of a window: the page itself goes to Internet Identity,
+which sends the user back to the same page with its answer in the URL
+fragment. `@icp-sdk/auth` suggests it for a full-page sign-in that needs no
+click to open a window, and for a native app that hands off through a
+universal link.
+
+The page unloads on the way out, so the `signIn()` that left never settles.
+On the load Internet Identity returns to, the same `signIn()` runs again, and
+`AuthClient` finishes the sign-in from the URL. So the sign-in is a route of
+its own that calls `signIn()` each time it loads, not from a click. Build the
+`AuthClient` with the option in the client's factory:
+`auth: (network) => new AuthClient({ ...network, transport: "redirect" })`.
+A spread like this one reads no provider, so on a network the client names
+none for (see [The network the factory is handed](#the-network-the-factory-is-handed)),
+name `identityProvider` in it too.
+
+`AuthClient` takes its callback, the URL Internet Identity returns to, from
+the page it is built on: `location.origin` plus `location.pathname`. The
+client builds it once, on first use, and keeps it while the app moves between
+routes without a page load. So enter the sign-in route with a full page load,
+a plain `<a href="/sign-in">` or `location.assign("/sign-in")`, not a
+router's link, and start every sign-in there.
+
+The route renders a component like this one:
+
+```tsx
+// src/components/sign-in-page.tsx
+import { useAuth } from "@ic-reactor/react"
+import { useEffect, useState } from "react"
+
+/** Signs in each time it loads; Internet Identity's return goes to /account. */
+export function SignInPage() {
+  const { status, signIn } = useAuth()
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (status === "signed-in") return
+    const start = setTimeout(() => {
+      signIn({ returnTo: "/account" }).catch((error: unknown) => {
+        console.error(error)
+        setFailed(true)
+      })
+    })
+    return () => clearTimeout(start)
+  }, [status, signIn])
+  if (status === "signed-in") return <a href="/account">Continue</a>
+  if (failed) {
+    return (
+      <p>
+        The sign-in did not finish. <a href="/sign-in">Try again</a>
+      </p>
+    )
+  }
+  return <p>Signing you in…</p>
+}
+```
+
+- The first load leaves for Internet Identity. The load it returns to
+  finishes the sign-in, and `AuthClient` goes to `returnTo` in place of the
+  sign-in page's history entry.
+- Pass the same options on every load. The return load replays the first
+  load's request, and a different one (another `maxTimeToLive`, say) fails.
+  `AuthClient` keeps the first load's `returnTo`, so it may come from a query
+  such as `?next=`, which the callback drops; pass one on every load or on
+  none.
+- A user who cancels at Internet Identity comes back with an error, and
+  `signIn()` rejects. A new visit to the route starts a new sign-in. So does a
+  return more than 10 minutes later: `AuthClient` keeps the flow in the tab's
+  `sessionStorage` for that long.
+- Once the user is signed in, `status` changes, the effect runs again, and
+  returns. A user who is already signed in gets the link on.
+- The timer is for a page rendered on a server. There, the render that
+  hydrates shows `"anonymous"` whatever session the browser holds (see
+  [The hydrating render](/v4/guides/ssr/#the-hydrating-render)), and React
+  renders again with the session right after. The cleanup then clears the
+  timer, so a user who is already signed in is not sent to Internet Identity.
+  It also clears the first of the two runs `StrictMode` makes in development.
+  In an app with no server render, calling `signIn()` straight from the effect
+  works as well: `StrictMode`'s second call joins the first.
+
+The route, by framework:
+
+- **Vite.** With a router, give `/sign-in` a route that renders
+  `SignInPage`, below the `ReactorProvider`. Without one, choose by the path:
+
+  ```tsx
+  // src/App.tsx, with a redirect sign-in
+  import { createClient } from "@ic-reactor/core"
+  import { ReactorProvider, useAuth } from "@ic-reactor/react"
+  import { AuthClient } from "@icp-sdk/auth/client"
+  import { SignInPage } from "./components/sign-in-page"
+
+  export function App() {
+    return (
+      <ReactorProvider
+        client={() =>
+          createClient({
+            network: "ic",
+            auth: (network) =>
+              new AuthClient({ ...network, transport: "redirect" }),
+          })
+        }
+      >
+        {location.pathname === "/sign-in" ? <SignInPage /> : <Home />}
+      </ReactorProvider>
+    )
+  }
+
+  function Home() {
+    const { status, signOut } = useAuth()
+    return status === "signed-in" ? (
+      <button onClick={() => signOut({ returnTo: "/" }).catch(console.error)}>
+        Sign out
+      </button>
+    ) : (
+      <a href="/sign-in">Sign in</a>
+    )
+  }
+  ```
+
+- **Next.js** (App Router). The provider in the root layout (see
+  [SSR and hydration](/v4/guides/ssr/#the-provider)) builds the `AuthClient`
+  with `transport: "redirect"`, and the page is a client module. Link to it
+  with `<a href="/sign-in">`, not `<Link>`:
+
+  ```tsx
+  "use client"
+  // src/app/sign-in/page.tsx
+
+  import { SignInPage } from "@/components/sign-in-page"
+
+  export default SignInPage
+  ```
+
+- **TanStack Start.** A file route, below the root route that renders the
+  provider. Link to it with `<a href="/sign-in">`, or a `<Link>` with
+  `reloadDocument`:
+
+  ```tsx nocheck
+  // src/routes/sign-in.tsx
+  import { createFileRoute } from "@tanstack/react-router"
+  import { SignInPage } from "../components/sign-in-page"
+
+  export const Route = createFileRoute("/sign-in")({ component: SignInPage })
+  ```
+
+`signOut({ returnTo })` works as with a window: it ends the session and goes
+to `returnTo`, from any page.
+
+#### The callbacks file
+
+Internet Identity sends its answer only to a URL that the page's origin
+lists. The callback is the sign-in page's `location.origin` plus
+`location.pathname`, so list exactly that:
+
+```json
+{ "callbacks": ["https://app.example/sign-in"] }
+```
+
+Serve it at `/.well-known/ii-auth-callbacks` on that origin:
+
+- as JSON, with `Content-Type: application/json`;
+- with an `Access-Control-Allow-Origin` header, so that Internet Identity's
+  page can read it;
+- at that URL itself: Internet Identity does not follow a redirect.
+
+An entry matches the callback byte for byte, with nothing normalized: an
+absolute URL on the same origin, with no fragment.
+`https://app.example/sign-in/` does not match `https://app.example/sign-in`.
+Each origin the app signs in from lists its own callback in its own file.
+Check the two headers there, for example with `curl -i`, a dev server
+included: Vite's serves `public/.well-known/ii-auth-callbacks` with an empty
+`Content-Type`, since the name has no extension, so set the header in a
+middleware ahead of Vite's own (a plugin's `configureServer`).
+
+On the IC, the asset canister's upload skips a name that starts with a dot
+unless `.ic-assets.json5` in the assets folder (in a Vite app, `public/`)
+says otherwise, as for Internet Identity's alternative-origins file:
+
+```json5
+[
+  { match: ".well-known", ignore: false },
+  {
+    match: ".well-known/ii-auth-callbacks",
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+      "Content-Type": "application/json",
+    },
+    ignore: false,
+  },
+]
+```
+
+#### Values the return load needs
+
+The return load runs the page's code from the start. A value of your own
+that the first load computed and the code after the sign-in reads, such as
+an id it generated or something it fetched, goes through
+`authClient.memoize(produce)`: it runs `produce` on the first load, keeps the
+result, and returns it on the return load. Call it in the same order relative
+to `signIn()` on every load, and keep the value JSON. It is a method of
+`AuthClient`, not of the client, so keep your own reference to it, as in
+[Identity attributes](#identity-attributes).
+
+`requestAttributes` keeps the nonce its callback returns by itself, so the
+canister that issues it is asked once. `@icp-sdk/auth` advises giving each
+flow its own route, so this guide's `SignInPage` calls `signIn()` only, and
+`requestAttributes()` goes on a route of its own.
+
+### Internet Identity 2.0
+
+What Internet Identity offers an app beyond a plain sign-in, its 2.0 features
+among them, is an option of `AuthClient`, so it works through the factory, with
+nothing from this library. An option of `new AuthClient()` goes in the factory,
+beside `...network`, and is fixed for the client's life, since the client calls
+its factory once. An option of `signIn()` goes in the call.
+
+| To get                                            | Pass                                                                        | In                                          |
+| ------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------- |
+| One-click sign-in with Google, Apple or Microsoft | `openIdProvider: "google"`, `"apple"` or `"microsoft"`                      | the factory                                 |
+| Sign-in with an organization's own SSO            | `ssoDomain: "example.com"`                                                  | the factory                                 |
+| A verified email and the user's name              | `requestAttributes()` with `verified_email` and `name`                      | [Identity attributes](#identity-attributes) |
+| A shorter session, or a shorter idle time         | `maxTimeToLive`, `maxTimeToIdle` (nanoseconds)                              | `signIn()`                                  |
+| Sessions that only calls keep alive               | `disableBrowserActivity: true`                                              | the factory                                 |
+| Two clients on one origin, each with its sign-in  | `namespace: "admin"` on one of them                                         | the factory                                 |
+| One principal on several origins                  | `derivationOrigin`                                                          | the factory                                 |
+| One sign-in for sibling subdomains                | `stateStorage: new CookieStateStorage({ domain })` and a `derivationOrigin` | the factory                                 |
+| A full-page sign-in instead of a window           | `transport: "redirect"`                                                     | the factory                                 |
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import { AuthClient } from "@icp-sdk/auth/client"
+
+// An admin console beside the main app on the same origin, signed in with
+// the organization's SSO.
+export const adminClient = createClient({
+  network: "ic",
+  auth: (network) =>
+    new AuthClient({
+      ...network,
+      ssoDomain: "example.com",
+      namespace: "admin",
+    }),
+})
+```
+
+- `openIdProvider` and `ssoDomain` exclude each other.
+- `disableBrowserActivity` stops `AuthClient` from reading page visits, focus,
+  pointer and keys as signs that the user is there. Calls are then the only
+  sign, so a session in which the user only reads can reach its idle time.
+- Sibling subdomains share one sign-in only when they share a principal, so
+  every app passes the same `derivationOrigin`. A sibling whose browser holds
+  the shared record but no credential of its own reads as
+  `"signed-in-elsewhere"` (see [AuthState](#authstate)) and calls
+  anonymously. Taking that sign-in over without asking the user again needs
+  `prompt: "none"` and `hint`, which are options of the constructor, on a
+  redirect route: see `@icp-sdk/auth`'s documentation.
+- With `transport: "redirect"` the page itself goes to Internet Identity and
+  comes back, so `AuthClient` asks for `signIn()` to be called on the page's
+  load, not from a click, on a route of its own for each flow: see
+  [Redirect sign-in](#redirect-sign-in).
 
 ## Any other sign-in: AuthLike
 
@@ -185,7 +489,13 @@ interface AuthLike {
   getPrincipal(): { toText(): string } | undefined
   getStatus(): {
     readonly state:
-      "signed-in" | "signed-in-elsewhere" | "expired" | "signed-out"
+      | "signed-in"
+      | "signed-in-elsewhere"
+      | "expired"
+      | "signed-out"
+      // A state a later @icp-sdk/auth adds: the client calls anonymously.
+      | (string & {})
+    readonly expiresAtMs?: number // when the session ends, as Date.now() counts
   }
   getIdentity(): Promise<Identity>
   subscribe(listener: () => void): () => void
@@ -201,12 +511,22 @@ principal, and it reads both again after every `subscribe()` notification.
 Only the state `"signed-in"` makes the client call as `getPrincipal()`. Every
 other state calls as the anonymous principal.
 
+`expiresAtMs` is optional. When the status carries it while `"signed-in"` or
+`"signed-in-elsewhere"`, the client sets a timer for it and reads the status
+again then, so an `AuthLike` whose status turns `"expired"` by the clock need
+not notify for it. A deadline that has passed while the status still says
+`"signed-in"` sets no timer. And whenever `client.caller()` or
+`client.authState()` reads a change no notification announced, the client
+tells its listeners in a microtask.
+
 `getIdentity()` should return the same object until the identity really
 changes. The client builds a new agent for every new identity object it is
 handed, and reads a new object for the same principal as a renewal.
 
-A wallet or a hand-rolled session fits with a small adapter. This is the one
-in the guide, `packages/core/llms.txt`:
+Any other sign-in that hands over an `Identity` fits with a small adapter:
+one that gives a delegation (a hand-rolled session, or Internet Identity
+through a client other than `AuthClient`) or a key (a local dev account).
+This is the one in the guide, `packages/core/llms.txt`:
 
 ```ts
 import type { AuthLike } from "@ic-reactor/core"
@@ -241,10 +561,121 @@ that holds both and picks one from the options of `signIn`. The Vite wallet's
 `src/auth/wallet-auth.ts` does this for Internet Identity and a local dev
 account.
 
+### Wallets that sign each call
+
+A wallet used through ICRC-25, ICRC-27 and ICRC-49 (OISY, Plug, an NFID
+account) signs each call: the user approves it in the wallet, which signs and
+sends it, and the app never holds an `Identity`. Used this way, the wallet is
+not an `AuthLike`, and the client cannot send as it. (A wallet that also
+speaks ICRC-34 can hand the app a delegation instead, from
+`signer.requestDelegation()`; a `DelegationIdentity` made from it is an
+`Identity`, and an `AuthLike` can hold it as for Internet Identity above.) Keep the client for reads, anonymous (a ledger's balances are
+public; `SignerAgent` would send each read to the wallet for approval too),
+and send the wallet's writes through `SignerAgent` from `@icp-sdk/signer`,
+then invalidate the reads yourself:
+
+```ts
+// src/wallet.ts: needs @icp-sdk/signer, @icp-sdk/canisters and @dfinity/utils
+import { createClient } from "@ic-reactor/core"
+import { IcrcLedgerCanister } from "@icp-sdk/canisters/ledger/icrc"
+import { Principal } from "@icp-sdk/core/principal"
+import { Signer } from "@icp-sdk/signer"
+import { SignerAgent } from "@icp-sdk/signer/agent"
+import { PostMessageTransport } from "@icp-sdk/signer/web"
+import { actor, type Actor } from "./generated/icrc1"
+
+const LEDGER = "ryjl3-tyaaa-aaaaa-aaaba-cai"
+
+// Reads: the client, anonymous.
+export const client = createClient({ network: "ic", identity: "anonymous" })
+export const ledger = client.canister<Actor>(actor, { id: LEDGER })
+
+type Account = Awaited<ReturnType<Signer["getAccounts"]>>[number]
+
+// The wallet's window may open only in a click handler: call connect()
+// straight from a "Connect" button's onClick, before any await.
+export async function connect(
+  // A wallet may share several accounts (NFID does): let the user pick one.
+  choose: (
+    accounts: Account[]
+  ) => Account | undefined | Promise<Account | undefined> = (accounts) =>
+    accounts[0]
+) {
+  const signer = new Signer({
+    transport: new PostMessageTransport({ url: "https://oisy.com/sign" }),
+    // Keep the channel open between the requests of one session.
+    autoCloseTransportChannel: false,
+  })
+  try {
+    // ICRC-27: the accounts the user shares. A wallet that lacks it cannot
+    // be used this way; signer.getSupportedStandards() says which it has.
+    const account = await choose(await signer.getAccounts())
+    if (!account) throw new Error("the wallet shared no account")
+    const agent = await SignerAgent.create({ signer, account: account.owner })
+    const wallet = IcrcLedgerCanister.create({
+      agent,
+      canisterId: Principal.fromText(LEDGER),
+    })
+    // The whole account: its subaccount, if any, is the one to debit. Call
+    // disconnect() when the session ends, or before connecting again: it
+    // closes the wallet's window, which stays open otherwise.
+    return { account, wallet, disconnect: () => signer.closeChannel() }
+  } catch (error) {
+    // Cancelled or failed: close the window the request opened.
+    await signer.closeChannel()
+    throw error
+  }
+}
+
+// Writes: through the wallet, which shows each call to the user.
+export async function send(
+  { account, wallet }: Awaited<ReturnType<typeof connect>>,
+  to: Principal,
+  amount: bigint,
+  // Nanoseconds since the epoch, BigInt(Date.now()) * 1_000_000n, fixed
+  // per transfer so a re-send is deduplicated.
+  createdAt: bigint
+) {
+  try {
+    return await wallet.transfer({
+      // Without it the ledger debits the owner's default subaccount.
+      from_subaccount: account.subaccount,
+      to: { owner: to, subaccount: [] },
+      amount,
+      created_at_time: createdAt,
+    })
+  } finally {
+    // The client did not send this write, so it cannot invalidate for it.
+    await client.queryClient.invalidateQueries({
+      queryKey: client.queryKey(ledger),
+    })
+  }
+}
+```
+
+What the client gives a write does not reach this one: no `ReactorError`, no
+`mayHaveExecuted`, no invalidation of its own. Read the failure yourself:
+
+- A `SignerError` (from `@icp-sdk/signer`) with ICRC-25's code `3001`, action
+  aborted, is the user's refusal: nothing was sent.
+- A ledger `Err` (`IcrcTransferError` from `@icp-sdk/canisters`) means the
+  ledger answered and did not move the funds.
+- Anything else after the user approved, a closed wallet window included, can
+  mean the transfer ran. Read the balance, or send the same transfer again
+  with the same `created_at_time`, which the ledger answers `Duplicate` if
+  the first went through.
+
+Show the wallet's account (`account.owner`, and its subaccount when it has
+one) as the user's, not `useAuth()`'s principal, which stays anonymous. A wallet that is a browser extension (Plug) connects with
+`BrowserExtensionTransport` from `@icp-sdk/signer/extension` instead.
+`@icp-sdk/signer` peers only `@icp-sdk/core` 6, so it installs beside the
+client. NFID IdentityKit 2.0 does not: it peers `@icp-sdk/auth` 5, and npm
+refuses it beside the `@icp-sdk/auth` 10 the client uses.
+
 ## AuthState
 
-`client.authState()` and `useAuth()` give an `AuthState`: a `status` and a
-`principal`.
+`client.authState()` and `useAuth()` give an `AuthState`: a `status`, a
+`principal` and, while signed in, `expiresAt`.
 
 | The auth says         | `status`                | `principal`          |
 | --------------------- | ----------------------- | -------------------- |
@@ -259,11 +690,29 @@ account.
 and one signed in on a sibling origin cannot sign a call, so they do not name
 their principal. To say whose session ended, read the auth's own
 `getStatus()`, which keeps it. For that you need your own reference to the
-`AuthClient` (see below), because the client does not expose its auth.
+`AuthClient` (see
+[Your own reference to the AuthClient](#your-own-reference-to-the-authclient)),
+because the client does not expose its auth.
+
+`expiresAt` is when the session ends, in milliseconds since the epoch (as
+`Date.now()` counts; `new Date(expiresAt)` for a date), so you can show
+"signed in until". It is there only while `status` is `"signed-in"` through an
+auth whose `getStatus()` carries `expiresAtMs`, as `AuthClient` 10's does.
+When that time passes, the status turns `"expired"` and listeners are told.
 
 A client built with `identity` reports `"signed-in"` with that identity's
 principal, or `"anonymous"` for `"anonymous"` and for an explicit
-`AnonymousIdentity`. A client on a server reports `"anonymous"`.
+`AnonymousIdentity`, with no `expiresAt`. A client on a server reports
+`"anonymous"`.
+
+<Aside type="caution" title="Signed in may be read-only">
+  Since `@icp-sdk/auth` 10.0.0, `AuthClient` acts for sessions that Internet
+  Identity scoped to queries only. Such a session reports `"signed-in"`, and the
+  network refuses its updates. `@icp-sdk/auth` does not expose the scope yet, so
+  `AuthState` cannot tell the two apart: `"signed-in"` means calls are signed by
+  `principal`, not that a write will be accepted. Handle an update's rejection
+  as you would any other.
+</Aside>
 
 ## useAuth
 
@@ -290,8 +739,10 @@ export function SessionButton() {
 }
 ```
 
-- A component that calls it renders once for each change of `status` or
-  `principal`, and never otherwise. A renewed delegation does not render it.
+- A component that calls it renders once for each change of `status`,
+  `principal` or `expiresAt`, and never otherwise. A renewed delegation does
+  not render it. A session that ends by the clock renders it with
+  `"expired"` when it ends.
 - The object it returns is the same until one of them changes, so it is safe
   in a dependency array or as a prop of a memoized child.
 - It is `"anonymous"` on a server and during a hydrating render, even when the
@@ -305,9 +756,12 @@ export function SessionButton() {
 
 - on a client built with `identity`, with a `TypeError`: there is no sign-in;
 - on a server, and after `client.dispose()`, with an `Error`;
-- with whatever the auth rejects with. `AuthClient` rejects a sign-in that a
-  later sign-in or sign-out took over from with a `SupersededError`, which you
-  can usually ignore.
+- with what the auth factory threw, when it threw, or a `TypeError` when it
+  returned something other than an auth;
+- with whatever the auth rejects with, never a `ReactorError`. `AuthClient`
+  rejects when the user closes Internet Identity's window or the browser
+  blocks it, and rejects a sign-in that a later sign-in or sign-out took over
+  from with a `SupersededError`, which you can usually ignore.
 
 Always catch them, as the examples do.
 
@@ -361,24 +815,36 @@ stop()
 | may a write be sent    | `useAuth().status === "signed-in"`; the client refuses the rest itself  |
 | when did it change     | `useAuth()` re-renders; `client.subscribe(fn)`                          |
 
+A `"signed-in"` session may still be read-only (see [AuthState](#authstate)).
+
 A call goes out as the principal that was current when it was made, or not at
 all. The client keeps one agent per principal and never points an agent at
 another identity. What that means in practice:
 
 - **Components.** `useClient()` re-renders its component on a sign-in, a switch
-  of account and a sign-out, so the options it builds in that render use the
-  new caller's keys. A change of status that keeps the caller (a session that
-  expired, one signed in elsewhere) renders nothing, because both already
-  called anonymously. Call `useClient()` in the body of each component that
-  builds options, on every render.
+  of account and a sign-out, and returns a new object for the new caller, so
+  the options it builds in that render use the new caller's keys, and a
+  `useMemo` or effect that lists it in its dependencies (or React Compiler's
+  cache) builds them again. A change of status that keeps the caller (a
+  session that expired, one signed in elsewhere) renders nothing, because
+  both already called anonymously. Call `useClient()` in the body of each
+  component that builds options, on every render.
 - **Reads in flight.** A read started for the old caller is cancelled when
   someone else is current, before anything is sent. It fails with
   `kind: "cancelled"` and `code: "caller_changed"`, and it never lands in the
   new caller's key. Treat this error as "ignore" (see
   [Errors](/v4/guides/errors/)).
-- **Writes.** A write goes out as whoever is signed in when it runs. If nobody
-  is, the client refuses it before sending: `kind: "unauthenticated"`, code
-  `anonymous_write`.
+- **Writes.** A write goes out as the caller current when `mutate()` was
+  called, or not at all. When TanStack Query holds it back (offline, or
+  queued behind another mutation of its `scope`) and the account changes in
+  between, it fails with `kind: "cancelled"`, `code: "caller_changed"` and
+  `mayHaveExecuted: false`, and nothing is sent. Built from a render's
+  `useClient()`, its options also send only as that render's caller: a press
+  handled before a switch reached the render is refused the same way. A
+  re-send `client.resendOf()` offered is refused as `outcome_unknown` with
+  `mayHaveExecuted: true` instead, since the write it re-sends may have run. If
+  nobody is signed in, the client refuses it before sending:
+  `kind: "unauthenticated"`, code `anonymous_write`.
 - **Data.** After a sign-in, a sign-out or a switch, the new keys are empty
   until they load. Do not use `placeholderData: keepPreviousData` or an
   `initialData` taken from another key: it would show one principal's data to
@@ -415,66 +881,250 @@ export function MyBalance() {
 
 ## Identity attributes
 
-Internet Identity can sign attributes about the user, such as an email address
-from the provider they signed in with. `@icp-sdk/auth` 10 asks for them with
-`authClient.requestAttributes`. This library has no hook for it, and the
-client does not expose its auth, so you keep your own reference to the
-`AuthClient` and give the client a factory that returns it.
+Internet Identity can sign attributes about the user for your canister, such
+as their name and an email address. The canister reads them from a call that
+carries them, and they reach it in three steps:
+
+1. Your canister issues a nonce: an update call to
+   `_internet_identity_sign_in_start`, made as the anonymous principal, which
+   returns a `blob`.
+2. The app signs in and asks for the attributes with that nonce. Started
+   together, they are one Internet Identity interaction for the user. The
+   answer is the attributes, Candid-encoded, as `data`, and Internet
+   Identity's `signature` over them.
+3. The app calls `_internet_identity_sign_in_finish` as the signed-in user,
+   with `data` and `signature` attached to the call as its `sender_info`. The
+   canister checks them and keeps what it needs.
+
+DFINITY's `identity-attributes` library adds both methods to a canister and
+makes the checks: [`mo:identity-attributes`](https://github.com/dfinity/identity-attributes/tree/main/motoko)
+for Motoko, a mixin you `include`, and the
+[`identity-attributes`](https://github.com/dfinity/identity-attributes/tree/main/rust)
+crate for Rust, `#[identity_attributes]`. Both answer with the same Candid, so
+the app's side below works with either. Their READMEs say how to set the
+canister up. They pair the library with `@icp-sdk/auth` 7, whose
+`requestAttributes` takes the nonce as a promise; in 10 it takes a function
+that returns one, as below.
+
+The app's client calls every update as the signed-in user and attaches
+nothing to a call, so steps 1 and 3 each go through a second client on the
+same network, built for that one call and disposed after it:
+
+- Step 1 through a client built with `new AnonymousIdentity()` from
+  `@icp-sdk/core/agent`, which may send an update as the anonymous principal.
+  A client built with `identity: "anonymous"`, like a signed-out one, refuses
+  an update before it sends it.
+- Step 3 through a client built with an `AttributesIdentity` from
+  `@icp-sdk/core/identity`, which attaches `data` and `signature` to each call
+  it signs.
+
+Step 2 needs the `AuthClient` itself, which the client does not hand out, so
+you keep your own reference to it.
+
+### Your own reference to the AuthClient
+
+Keep what each client's factory builds, beside the client:
 
 ```ts
-import { AuthClient } from "@icp-sdk/auth/client"
-import { createClient } from "@ic-reactor/core"
-
-export const authClient = new AuthClient({ openIdProvider: "google" })
-export const client = createClient({ network: "ic", auth: () => authClient })
-```
-
-The client still owns it and disposes it with itself. Create this
-`AuthClient` in a browser-only module. In an app that also renders on a
-server, assign it inside the factory instead: a server never runs the
-factory, so the reference exists only in a browser.
-
-```ts
-import { createClient } from "@ic-reactor/core"
+import { createClient, type Client } from "@ic-reactor/core"
 import { AuthClient } from "@icp-sdk/auth/client"
 
-let authClient: AuthClient | undefined
+/** The app's network, for its client and the clients built beside it. */
+export const network = "ic"
 
-export const getAuthClient = () => authClient
-export const createAppClient = () =>
-  createClient({
-    network: "ic",
-    auth: (network) =>
-      (authClient = new AuthClient({ ...network, openIdProvider: "google" })),
+/** Internet Identity's canister, where the factory is handed no provider. */
+const INTERNET_IDENTITY = "rdmx6-jaaaa-aaaaa-aaadq-cai"
+
+interface Built {
+  /**
+   * The client itself, whose keys are the live caller's. A view of it that
+   * `useClient()` returns keys reads by the caller of the render it came from.
+   */
+  readonly client: Client
+  readonly authClient: AuthClient
+  /** The canister that mints the sign-in, which signs the attributes too. */
+  readonly signer: string
+}
+
+// Keyed by the client's QueryClient, which every view of the client that
+// `useClient()` returns shares: a view is an object of its own.
+const builtBy = new WeakMap<Client["queryClient"], () => Built | undefined>()
+
+/** What `client`'s auth factory built, once it has run. */
+export const getAuthClient = (client: Client) =>
+  builtBy.get(client.queryClient)?.()
+
+export function createAppClient(): Client {
+  let built: Built | undefined
+  const client: Client = createClient({
+    network,
+    auth: (handed) => {
+      const authClient = new AuthClient({ ...handed, openIdProvider: "google" })
+      built = {
+        client,
+        authClient,
+        signer: handed.identityProvider?.canisterId ?? INTERNET_IDENTITY,
+      }
+      return authClient
+    },
   })
+  builtBy.set(client.queryClient, () => built)
+  return client
+}
 ```
 
-### Request and decode
+Hand it to the provider, `<ReactorProvider client={createAppClient}>`, or, in
+an app with no server render, call it once in a module. The client still owns
+the `AuthClient` and disposes it with itself. The factory runs in a browser,
+on first use, so `getAuthClient(client)` is `undefined` on a server and until
+the client has built its auth. In a component, pass it what `useClient()`
+returns: that is a view of the provider's client, another object, but it has
+the client's `queryClient`, which the map is keyed by.
 
-`requestAttributes({ keys, nonce })` resolves to `{ data, signature }`, two
-`Uint8Array`s.
+### Sign in with attributes
 
-- `keys` are the attribute names. `scopedKeys` from `@icp-sdk/auth/client`
-  scopes them to the provider of a one-click sign-in, so the user grants them
-  in one step: `scopedKeys({ openIdProvider: "google", keys: ["email"] })` is
-  `["openid:https://accounts.google.com:email"]`. For an organization's SSO use
-  `scopedKeys({ ssoDomain })`.
-- `nonce` is a callback, not a value. It returns a promise of the 32-byte
-  nonce that your own canister (the relying party) issued. A callback lets the
-  Internet Identity window open while the nonce is still loading, and lets the
-  redirect transport replay the exact same bytes.
+```ts
+import { createClient, type Canister, type Client } from "@ic-reactor/core"
+import { scopedKeys } from "@icp-sdk/auth/client"
+import { AnonymousIdentity, type Identity } from "@icp-sdk/core/agent"
+import { AttributesIdentity } from "@icp-sdk/core/identity"
+import { Principal } from "@icp-sdk/core/principal"
+import { getAuthClient, network } from "./auth-client"
+import { actor, type Actor as Accounts } from "./generated/accounts"
 
-Internet Identity certifies `data` as a Candid-encoded ICRC-3 `Value`, a
-`Map` of the requested keys, plus `implicit:nonce`, `implicit:origin` and
-`implicit:issued_at_timestamp_ns` entries. A scoped key stays scoped in the
-map, and an unscoped request gets bare keys. You can describe that type with
-candid-core's schema builders and read `data` with `decode`:
+const ACCOUNTS_ID = "be2us-64aaa-aaaaa-qaabq-cai"
+
+/** One call to the accounts canister as `identity`, through a client of its own. */
+async function callAs<T>(
+  identity: Identity,
+  call: (accounts: Canister<Accounts>) => Promise<T>
+): Promise<T> {
+  const client = createClient({ network, identity })
+  try {
+    return await call(client.canister<Accounts>(actor, { id: ACCOUNTS_ID }))
+  } finally {
+    client.dispose()
+  }
+}
+
+/**
+ * Signs in, has the accounts canister verify the user's name and email, and
+ * returns what Internet Identity signed.
+ */
+export async function signInWithAttributes(app: Client) {
+  // Builds the auth if the client has not yet, and opens Internet Identity.
+  const signedIn = app.signIn()
+  const built = getAuthClient(app)
+  if (built === undefined) {
+    await signedIn // on a server it rejects, and says why
+    throw new Error("This client was not built by createAppClient")
+  }
+  const { client, authClient, signer } = built
+
+  // 1 and 2: the nonce, and the attributes in the same interaction.
+  const [, attributes] = await Promise.all([
+    signedIn,
+    authClient.requestAttributes({
+      keys: scopedKeys({
+        openIdProvider: "google",
+        keys: ["name", "verified_email"],
+      }),
+      nonce: () =>
+        callAs(new AnonymousIdentity(), (accounts) =>
+          accounts._internet_identity_sign_in_start()
+        ),
+    }),
+  ])
+
+  // 3: the finish call, with the attributes as its sender_info.
+  const identity = new AttributesIdentity({
+    inner: await authClient.getIdentity(),
+    attributes,
+    signer: { canisterId: Principal.fromText(signer) },
+  })
+  await callAs(identity, (accounts) =>
+    accounts._internet_identity_sign_in_finish()
+  )
+
+  // The app's client did not send that write, so it cannot invalidate for it.
+  // The key is the client's, for the user now signed in: `app` may be a view
+  // from a render before the sign-in, whose keys are the anonymous caller's.
+  await client.queryClient.invalidateQueries({
+    queryKey: client.queryKey(
+      client.canister<Accounts>(actor, { id: ACCOUNTS_ID })
+    ),
+  })
+  return attributes
+}
+```
+
+This imports `./auth-client`, the module above, and `./generated/accounts`,
+the module `candid-core-cli gen` writes for the accounts canister's `.did`.
+
+- Call it straight from a click handler, with no `await` before it:
+  Internet Identity's window opens only inside a click. Catch it as you catch
+  `signIn()`.
+- That is the window transport. With `transport: "redirect"`, `AuthClient`
+  asks for `signIn()` and `requestAttributes()` to be called on the page's
+  load, not from a click, each flow on a route of its own (see
+  [Redirect sign-in](#redirect-sign-in)). So call it on each load of that
+  route: `requestAttributes()` keeps the nonce across the loads, so the
+  canister issues one.
+- For a user who is signed in already, skip the sign-in: call
+  `authClient.requestAttributes()` alone, with a new nonce, then the finish
+  call.
+- A failure after the sign-in leaves the user signed in without the
+  attributes, so offer to try again.
+- `_internet_identity_sign_in_finish` answers `variant { ok; err : … }`, so
+  attributes the canister refuses reject as a `canister_err` whose `err.tag`
+  says why (see [Errors](/v4/guides/errors/)). On `Stale` or `UnknownNonce`,
+  ask for them again, with a new nonce. A signer the canister does not trust,
+  or a canister with no `trusted_attribute_signers`, traps instead: a
+  `rejected` error with reject code 5.
+- The signer is the canister that minted the sign-in: Internet Identity's,
+  `rdmx6-jaaaa-aaaaa-aaadq-cai`, on mainnet and in icp-cli's built-in one, or
+  the `identityProvider` canister the factory is handed. The accounts canister
+  must list it in `trusted_attribute_signers`.
+
+### Which attributes to ask for
+
+| Key              | What it is                                                                                      |
+| ---------------- | ----------------------------------------------------------------------------------------------- |
+| `name`           | The name on the account the user signed in with                                                 |
+| `email`          | An email address from that account. Internet Identity does not check it: treat it as user input |
+| `verified_email` | Present only when Internet Identity established that the user controls the address              |
+
+Grant access on `verified_email`, not `email`. `scopedKeys` from
+`@icp-sdk/auth/client` scopes keys to the provider of a one-click sign-in, so
+the user shares them in the same step:
+`scopedKeys({ openIdProvider: "google", keys: ["verified_email"] })` is
+`["openid:https://accounts.google.com:verified_email"]`. An organization's
+SSO is the exception: `scopedKeys({ ssoDomain })` gives `sso:<domain>:name`
+and `sso:<domain>:email`, with no `verified_email`, and the library takes the
+email from `sso:<domain>:email` only for a domain the canister lists in
+`trusted_sso_domains`.
+
+<Aside type="caution" title="The canister checks, not the app">
+  What the app holds is not proof. Any canister can sign attributes, so your
+  canister must check that Internet Identity signed them, that their origin is
+  your app's, and that their nonce is one it issued and has not used, within a
+  few minutes. The `identity-attributes` library makes these checks; its README
+  says how to configure them (`trusted_attribute_signers`, `frontend_origins`,
+  `trusted_sso_domains`).
+</Aside>
+
+### Show what the user shared
+
+`signInWithAttributes` returns what Internet Identity signed. Its `data` is a
+Candid-encoded ICRC-3 `Value`: a `Map` of the requested keys, plus
+`implicit:nonce`, `implicit:origin` and `implicit:issued_at_timestamp_ns`. A
+scoped key stays scoped in the map. To show the user what they shared,
+describe that type with candid-core's schema builders and read it with
+`decode`:
 
 ```ts
 import { c, type Schema } from "@candid-core/schema"
 import { decode } from "@candid-core/schema/codec"
-import { scopedKeys } from "@icp-sdk/auth/client"
-import { authClient } from "./auth-client"
 
 type Icrc3Value =
   | { tag: "Nat"; value: bigint }
@@ -495,34 +1145,20 @@ const Icrc3Value: Schema<Icrc3Value> = c.rec(() =>
   })
 )
 
-/** The user's email, for display. `nonce` asks your own canister for one. */
-export async function readEmail(nonce: () => Promise<Uint8Array>) {
-  const keys = scopedKeys({ openIdProvider: "google", keys: ["email"] })
-  const signed = await authClient.requestAttributes({ keys, nonce })
-
-  const decoded = decode(Icrc3Value, signed.data) // never throws
+/** The text the attributes hold under `key`, for display. */
+export function readAttribute(data: Uint8Array, key: string) {
+  const decoded = decode(Icrc3Value, data) // never throws
   if (!decoded.ok) throw new Error(decoded.issues[0]?.message)
   const value = decoded.value as Icrc3Value // `decode` checked it against the schema
 
   if (value.tag !== "Map") return undefined
-  const entry = value.value.find(([key]) => key === keys[0])
+  const entry = value.value.find(([name]) => name === key)
   return entry?.[1].tag === "Text" ? entry[1].value : undefined
 }
 ```
 
-This snippet imports `authClient` from the module above, saved as
-`src/auth-client.ts`.
-
-<Aside type="caution" title="Display only">
-  What you decode in the browser is not proof. Your canister, the one that
-  issued the nonce, must verify `data` and `signature` before it trusts any
-  attribute. Send both to it. Reading `data` here is for showing the user what
-  they shared.
-</Aside>
-
-The `implicit:*` entries are there for that verifier. This page does not
-describe how a canister checks the signature; see the Internet Identity
-documentation.
+`readAttribute(attributes.data, "openid:https://accounts.google.com:name")`
+is the name the user shared.
 
 ## See also
 

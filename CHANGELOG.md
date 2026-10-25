@@ -11,12 +11,961 @@ dist-tag, prereleases under `beta`. The 3.x line, on the `v3` branch since the
 - parser: `@ic-reactor/parser`
 
 The GitHub release of each tag also lists every pull request it contains.
+What a 4.x release may change, from 4.0.0 on, is in
+[Versioning and support](docs/src/content/docs/versioning.mdx).
 Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+### @ic-reactor/vite-plugin
+
+#### Fixed
+
+- The dev server and the preview server stop vouching for a local network that
+  stopped (#881). While serving, the plugin holds a connection to the detected
+  network. When the network stops, it warns once, page loads get the
+  `ic_env` cookie without the detected canister IDs and root key until the
+  server restarts, and `vite dev` reloads the pages it has open. Detection had
+  stopped running once it was complete, so after `icp network stop`, `start`
+  and `icp deploy` the cookie kept naming the old canister IDs under the same
+  root key, and a restarted icp-cli network can give those IDs to other
+  canisters: a page could call a different canister than the one it named.
+  `{ name }` canisters now reject `canister_id_unresolved` instead. Nothing
+  detects the network again; restarting the dev server does.
+- A page load with no cookie to send, while no network is detected, clears an
+  `ic_env` cookie the browser kept from an earlier dev server, which
+  `network: "env"` believed (#881).
+- On Windows, the plugin's messages name a path relative to the project with
+  `/`, as the config writes it (`did/ledger.did`), where they named
+  `did\ledger.did` (#905). The plugin's whole test suite now runs on Windows
+  in CI, where only the tests of how it starts `icp` ran.
+
+### Docs
+
+- `SECURITY.md` describes ic-reactor 4 (#909). Its threat model covers core
+  and react (cache scoping, root keys, the `ic_env` cookie's canister IDs, a
+  write misreported as not executed) and the Vite plugin (the
+  `candid-core-cli` child process, live interfaces and `verify: "live"`, the
+  cookie and the `/api` proxy, generated files). It says that
+  `@ic-reactor/core/testing` is not for production and sends Candid decoding
+  bugs to candid-core. The 3.x threat model stays on the `v3` branch.
+
+- A Versioning and support page (#897). It says what a 4.x patch, minor and
+  major may change. It names the unions that may grow in a minor
+  (`ReactorErrorKind`, `ReactorError.code`, `AuthState.status`) and the
+  interfaces to consume rather than implement (`Client`, `Canister`, `Resend`,
+  `ReactorError`; `AuthLike` gains only optional members). It says how
+  candid-core releases reach an app while the pins stay exact, what a
+  dehydrated cache from a newer version does, and the oldest Node,
+  TypeScript, React, TanStack Query, Vite and `@icp-sdk/core` supported.
+
+- The errors page and `ReactorError.expiresAt`'s JSDoc cite the IC interface
+  specification for what the expiry proves (#924): the IC neither accepts a
+  call nor moves it from `received` to `processing` once its `ingress_expiry`
+  is past, so no send of the write can start after it. They also say why that
+  settles only a method that commits without awaiting another canister: the
+  expiry does not stop a send that started before it.
+
+### CI (not published)
+
+- `release.yml` publishes what it tested, and only after CI passed on the
+  tagged commit (#909):
+  - Preflight packs core, react and vite-plugin from the build it tested and
+    uploads the tarballs. The publish job publishes those three back to back,
+    with no install, build or test between them, so a failing test can no
+    longer stop a release after core is out and before react is.
+  - A new job waits for the push runs of `ci.yml` and `e2e.yml` on the
+    tagged commit and fails unless both succeeded, so lint, the export
+    budget, the trap and fault checks, the snippets, the peer floors, the
+    examples and the e2e suite gate the publish too. The approval is asked
+    for only after it passes.
+  - The publish job holds `id-token: write` and nothing else. It has no
+    checkout, install, cache or build, and installs npm 11.21.0 exactly,
+    where it installed `npm@^11.5.1`. A re-run skips a package npm already
+    has from the same tarball, so a release that stopped half-way can be
+    finished.
+  - The GitHub release is made by a job of its own, the only one with
+    `contents: write`, once all three packages are out.
+
+## core, react, vite-plugin 4.0.0-beta.7
+
+Prepared on 2026-10-22. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.6.
+
+This release carries the fixes of the audit of beta.6 (#960 to #980), the
+`client.time` fix under jsdom (#949), the redirect sign-in fix (#913) and the
+Internet Identity guide (#914), so that 4.0.0 ships no code a prerelease did
+not carry first. One change is marked breaking (the Vite plugin under Vitest),
+and several more change what an app sees; the steps below list them.
+
+No export is added or removed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2), no public type changes, and the candid-core pair is unchanged:
+core peers `@candid-core/schema` at exactly `0.4.0` and the Vite plugin
+`@candid-core/cli` at exactly `0.3.0`, so a module generated for beta.6 need
+not be regenerated.
+
+What an app on beta.6 does:
+
+1. Bump all three `@ic-reactor/*` packages to `4.0.0-beta.7` in one
+   `npm install`. react 4.0.0-beta.7 peers core at exactly `4.0.0-beta.7`, so
+   they move together. The command keeps each package in the section of
+   `package.json` it is in:
+
+   ```sh
+   npm install --save-exact @ic-reactor/core@4.0.0-beta.7 @ic-reactor/react@4.0.0-beta.7 @ic-reactor/vite-plugin@4.0.0-beta.7
+   ```
+
+   Name only the packages the app has.
+
+2. Treat a re-send that `client.resendOf()` offered and that did not run as
+   any other `outcome_unknown` (#960). Refused before it went out, or turned
+   away with an HTTP 4xx or reject code 1 to 3, it used to reject
+   `cancelled`, `invalid_args`, `not_delivered` or `rejected`; it now rejects
+   `outcome_unknown` with `mayHaveExecuted: true`, since the write it re-sends
+   may have run. `client.resendOf()` offers the write again, and a mutation
+   invalidates its reads. Read `kind` and `mayHaveExecuted` first, and read
+   the state back. The error keeps the re-send's `code`, which says only why
+   the re-send did not go out: unlike a first send's (#893), its
+   `caller_changed` does not mean nothing ran, so do not call `mutate()`
+   again on it.
+3. Check a Vitest run that loads the Vite plugin (breaking, #967). A canister
+   that fails to generate now fails the run at startup when `failOnError` is
+   omitted. Fix the failure, set `IC_REACTOR_VERIFY=0` to skip the live check
+   (`verify: "live"`) in an offline run, or set `failOnError: false`.
+4. Write the scheme in every network host (#974):
+   `{ host: "http://localhost:4943" }`, `ICP_HOST=http://localhost:8000`. On
+   an app shell's page, such as `capacitor://localhost`, pass
+   `network: { host }` in place of `"env"`. Such a client used to be built
+   and then fail on every call; `createClient` now throws.
+5. Check where pages run:
+   - on a localtunnel page (`*.loca.lt`) or a VS Code dev tunnel page
+     (`*.devtunnels.ms`), `allowEnvConfig: true` now throws, whatever the
+     network; name canisters with `{ id }` there (#961, #962);
+   - with `network: "env"`, a dev page opened over Tailscale, by a dev tunnel
+     or by a LAN name with no dot now calls its own origin, never mainnet; a
+     production app served from such a name needs `network: "ic"` or a
+     `{ host, rootKey }` network (#962);
+   - a page or host whose name ends with a dot now counts as the name without
+     it, except that `<id>.icp0.io.` does not believe the cookie's canister
+     ids by default (#975).
+6. Smaller changes, each with its migration in the entries below: an `auth`
+   factory returns the auth itself, synchronously, and an async one's
+   `TypeError` now comes from `signIn()` (#972); a signer that declines a
+   first send, such as a user who closes a passkey prompt, now rejects
+   `not_delivered` with `mayHaveExecuted: false`, not `outcome_unknown`,
+   while a declined re-send stays `outcome_unknown` (#963); and
+   `client.time(canister)` now stops waiting at the canister object's
+   `timeoutMs` (#973).
+
+The guide (`llms.txt`) and the skill now say they apply to 4.0.0-beta.7, and
+the five examples pin `^4.0.0-beta.7`.
+
+### @ic-reactor/core
+
+#### Changed
+
+- A re-send of a write `client.resendOf()` offered that did not run now
+  rejects `outcome_unknown` with `mayHaveExecuted: true`, and
+  `client.resendOf()` offers the write it re-sends again (#960). That covers a
+  re-send refused before it went out (code `caller_changed`, `target_changed`,
+  `arg_changed`, `client_disposed`, or any other refusal before sending,
+  including the one of a mutation built from a pinned `useClient()` view), and
+  one turned away when sent (an HTTP 4xx such as 429, or reject code 1 to 3). Each proves only that the re-send
+  did not run, while the earlier attempt may have: the error used to say
+  `cancelled`, `invalid_args`, `not_delivered` or `rejected` with `mayHaveExecuted: false`,
+  so `resendOf` offered nothing after it, a mutation did not invalidate its
+  reads, and an app could tell the user the transfer had not happened. The
+  error keeps the re-send's `code`, `httpStatus` and `rejectCode`, has the
+  re-send's own error as its `cause`, and carries the latest `expiresAt` of
+  the write's sends. A timeout before the re-send went out already worked
+  this way; it now also carries `expiresAt`. A re-send the canister answers (`canister_err`, such as
+  `Duplicate`) and the same failures of a first send are unchanged.
+  Migration: an app that branched on `kind` for a refused re-send reads its
+  `code`, `httpStatus` or `rejectCode` instead, and treats it as any other `outcome_unknown`: read the
+  state back. That `code` says only why the re-send did not go out: unlike a
+  first send's (#893), its `caller_changed` does not mean nothing ran.
+- `createClient` now also throws a `TypeError` for `allowEnvConfig: true` on
+  a localtunnel page (`*.loca.lt`) or a VS Code dev tunnel page
+  (`*.devtunnels.ms`) (#961). Neither parent is a public suffix, so any other
+  tunnel can set the `ic_env` cookie these pages read, as on the `ic0.app`,
+  Codespaces and Gitpod pages #900 refuses. The client used to believe that
+  cookie's canister ids and Internet Identity URL there, and with
+  `network: "env"` on `*.loca.lt` its root key too. Migration: as for #900,
+  name the canisters with `{ id }` and a replica that is not mainnet with
+  `{ host, rootKey }`.
+- A signed-in render of `useClient()` converts the caller's principal to text
+  once, where it did three times (#977). The client now hands back a view it
+  already made without reading who is signed in, and drops the views it no
+  longer needs only when it makes a new one. So the view of a user who signed
+  out, or whose session expired, is kept until the next view is made, and
+  that user signing in again before then gets the same object back. Measured
+  in the React tests with React's production build; its development build
+  reads `useSyncExternalStore`'s snapshot twice per render, so there the count
+  goes from 4 to 2.
+
+#### Fixed
+
+- A write whose signer fails, such as a user who declines a passkey or
+  hardware-wallet prompt, now rejects `not_delivered` with
+  `mayHaveExecuted: false` (#963). Nothing was sent, but the agent signs
+  outside its own error handling, so the failure used to read as
+  `outcome_unknown` with `mayHaveExecuted: true`: `client.resendOf()`
+  offered it, a mutation invalidated its reads, and an app could tell the
+  user the payment may have gone through. The client now hands the agent an
+  identity that marks its signing failures, and the error's `cause` is the
+  signer's own error. A signer that fails on a `read_state` poll of an update
+  the IC already took still rejects `outcome_unknown`, and says the call was
+  sent. A read whose signer declines the `read_state` for the subnet's keys
+  rejects `not_delivered` and is no longer retried, which asked the signer
+  again on every attempt. A re-send that `client.resendOf()` offered and the
+  signer declines stays `outcome_unknown` and offered, as on v4: the write
+  it re-sends may have run. An `AbortError` from the signer is still
+  `cancelled`, as every abort is.
+- `network: "env"` no longer falls back to mainnet on a dev page opened over
+  Tailscale (a 100.64/10 address or a `*.ts.net` name), by a VS Code dev
+  tunnel (`*.devtunnels.ms`) or by a LAN name with no dot
+  (`http://devbox:5173`) (#962). An app that names its canisters with
+  `{ id }` from its build-time env sent its local ids to mainnet there. Such
+  a page now routes through its own origin, as #902 made LAN addresses and
+  the other tunnels do: the cookie is not believed and no root key is taken
+  or fetched, so certified calls fail verification instead of reaching
+  mainnet. A name with no dot counts only on an `http:` or `https:` page, so
+  a browser extension's or a desktop app's page falls back as before.
+  `allowEnvConfig: true` is refused with a `TypeError` on a dev tunnel page,
+  as on Codespaces: `devtunnels.ms` is not a public suffix, so any other
+  tunnel could set the cookie whose root key the page would take. Migration:
+  a production app served from such a name now calls its own origin; give it
+  `network: "ic"` or a `{ host, rootKey }` network.
+- A page or agent host whose name ends with a trailing dot
+  (`https://victim.ic0.app./`) now counts as the name without it (#975). The
+  URL parser keeps the dot, so such a page got past the rule that refuses
+  `allowEnvConfig: true` under `ic0.app`, `github.dev` and `gitpod.io`, and
+  the client believed the cookie's canister ids and Internet Identity URL
+  there. Such a page is now refused the opt-in and routes as the name without
+  the dot does, and a mainnet host written that way still never takes the
+  cookie's root key. A `localhost.` page or host is local, as `localhost` is:
+  the cookie is believed there and the replica's root key fetched. One rule
+  stays closed: unlike `<id>.icp0.io`, `<id>.icp0.io.` does not believe the
+  cookie's canister ids by default.
+- An auth factory that returns something other than an auth, such as a
+  Promise, is called once (#972). An `async` factory returns a Promise, and so
+  does `auth: () => AuthClient.create()` with `@icp-sdk/auth` 5 or earlier.
+  Its result was checked after the step that records a factory's
+  failure, so the client built a new auth on every `caller()`,
+  `authState()`, `subscribe()` and render, threw a `TypeError` from each,
+  and leaked every auth it built. It now fails as a factory that throws
+  does: the client calls anonymously, so public reads still work, logs the
+  error once in development, and `signIn()` and `signOut()` reject with the
+  `TypeError`, which names what the result lacks. Migration: catch the
+  `TypeError` from `signIn()`, not from the first read, and return the auth
+  itself, synchronously, with `AuthClient` from `@icp-sdk/auth` 10:
+  `auth: (network) => new AuthClient(network)`.
+- `client.time(canister)` now stops waiting once the canister object's
+  `timeoutMs` passes, as a call through that object does (#973). It awaited
+  its `read_state` with no bound, so a node that never answered left it
+  pending forever, and with it any flow that awaits `client.time(ledger)`
+  before a transfer. It now rejects `cancelled`, code `"timeout"`, with
+  `mayHaveExecuted: false`, so such a flow fails before it sends anything,
+  and a `read_state` not yet sent when the bound passes is never sent.
+  Without `timeoutMs` it waits as before, as long as the `fetch` in use does.
+- `createClient` throws a `TypeError` for a network host the agent cannot
+  call over `http:` or `https:` (#974). It accepted any host the URL parser
+  read: `{ host: "localhost:4943" }` and `ICP_HOST=localhost:8000` on a server
+  read as the scheme `localhost:`, and `ftp:`, `javascript:` and `data:` URLs
+  passed too, so the client was built and every call then failed. The message
+  names the scheme it read. Under `network: "env"` it also says that the host
+  came from the page's origin or from `ICP_HOST` or `IC_HOST`, since an app
+  shell's page, such as `capacitor://localhost`, now throws there too.
+  Migration: write the scheme, `{ host: "http://localhost:4943" }` or
+  `ICP_HOST=http://localhost:8000`, and on an app shell's page pass
+  `network: { host }` in place of `"env"`.
+- A page with an element whose id is `Deno`, or a frame named `Deno`, no
+  longer counts as a server (#976). The client knew Deno by a `Deno` global,
+  which in a browser such an element is (`window.Deno`), and user content
+  that a sanitizer such as DOMPurify keeps can carry the id. On such a page
+  the auth was never built, `signIn()` rejected as on a server, the `ic_env`
+  cookie was not read, so `{ name }` targets were refused as `no_browser`,
+  and reads were not retried. Deno is now known by its `Deno.version.deno`,
+  and a page where reading it throws (a cross-origin frame named `Deno`) is
+  a page too.
+- `client.time(canister)` resolves under a test's jsdom environment, where the
+  fake replica refused a signed-in client's signature (#949). There
+  `TextEncoder` hands out Node's bytes, which are not the global (jsdom's)
+  `Uint8Array`, and the agent's CBOR encoder sent the `time` label built from
+  them as a map, so the request the replica received was not the one the
+  agent signed. The label is now copied into the global `Uint8Array`. In a
+  browser, `TextEncoder` and the agent share one realm, so an app there is
+  not expected to have been affected.
+- Two `client.signIn()` calls with the same options in one synchronous run are
+  now one sign-in: the second returns the first one's promise, and the auth is
+  asked once (#913). `StrictMode` makes such a pair in development when an
+  effect calls `signIn()`, as a sign-in route does for Internet Identity's
+  `transport: "redirect"`. There, the two calls put two requests in one
+  redirect, and both sign-ins failed on the load Internet Identity returned
+  to. Options are the same when they are the same value, or objects with the
+  same keys and values (`Object.is`, one level deep). A call in a later run,
+  or with other options, signs in again, and a call after `dispose()`
+  rejects, as before. `useAuth().signIn` goes through the client, so it joins
+  the same way. The auth guide has a new "Redirect
+  sign-in" section: the route for Vite, Next.js and TanStack Start, entered
+  with a full page load, the `/.well-known/ii-auth-callbacks` file, and
+  `memoize`.
+
+### @ic-reactor/react
+
+#### Fixed
+
+- A `ReactorProvider` handed the view an outer provider's `useClient()`
+  returned (`client={() => view}`, as the README and the SSR guide describe)
+  no longer removes the outer client from the registry that disposes the
+  clients of renders React throws away (#965). Both providers render in the
+  same pass, so in development every first mount logged the "lazily shared"
+  warning for correct code, and when a Suspense boundary above the outer
+  provider threw that render away, the outer client and the auth listening
+  to the window were never disposed.
+
+### @ic-reactor/vite-plugin
+
+#### Changed
+
+- **Breaking for a Vitest run that loads the plugin and whose generation
+  fails:** under Vitest (mode `test`), a canister that fails to generate now
+  fails the run at startup when `failOnError` is omitted, as under
+  `vite build` (#967). Vitest runs the plugin as a dev server, so the failure
+  used to be only logged, and the tests ran against the modules left over
+  from the last good run: a `.did` that no longer parsed still reported its
+  tests passing. Every failure counts: a `.did` that does not parse, a fetch
+  that fails, a missing `@candid-core/cli`, refused canister options, an
+  `onGenerated` that throws, and a live check (`verify: "live"`,
+  `IC_REACTOR_VERIFY`) that fails or cannot reach the network. Migration: fix
+  the failure; set `IC_REACTOR_VERIFY=0` for an offline test run with the
+  live check on; or set `failOnError: false` to log the failure and run the
+  tests anyway. A Vitest config that does not load the plugin (a
+  `vitest.config.ts` without it, as in the examples) is not affected.
+- The package no longer publishes its TypeScript source (#978). It shipped
+  `src` beside `dist` with no source map or declaration map pointing at it,
+  and nothing in `dist` refers to it. Measured with `npm pack`: 17 files and
+  487,020 B unpacked before, 7 files and 268,245 B now.
+
+#### Fixed
+
+- `vite build --watch` generates a canister again when its module or envelope
+  was deleted, though its `.did` is unchanged (#980). A rebuild skipped a
+  canister whose `.did` text had not changed without looking for the files,
+  so after the module was deleted every rebuild failed until the `.did`
+  changed.
+- On Linux and macOS, an `icp` that does not answer within 10 seconds is
+  killed together with the native binary it started (#980). npm's `icp` is a
+  Node script that starts that binary, and the timeout killed only the
+  script, so while detection was incomplete each page load could leave one
+  more `icp` running. `icp` now runs in a session and process group of its
+  own there, and the timeout kills the group. So the terminal's Ctrl-C no
+  longer reaches an `icp` that is running when the dev server is stopped: it
+  ends on its own, or, if it hangs, keeps running, as every timed-out one did
+  before.
+- `icp` is no longer asked for the ID of a canister whose `canisterId` is
+  configured, which wins over what `icp` says anyway: one `icp` process fewer
+  per page load while detection is incomplete (#980). `internet_identity` is
+  still asked for, since what `icp` reports for it decides whether the cookie
+  also names icp-cli's built-in Internet Identity.
+
+### Docs
+
+- The auth guide's "Identity attributes" shows the flow DFINITY's
+  `identity-attributes` library (Motoko and Rust) expects, end to end: the
+  attributes reach the canister as the finish call's `sender_info`, not as
+  arguments. The nonce goes through a second client built with
+  `new AnonymousIdentity()`, `signIn()` and `requestAttributes()` start
+  together, and the finish call goes through a client built with an
+  `AttributesIdentity`, on the same network and with the signer the factory is
+  handed. It says to trust `verified_email`, what a refusal and an untrusted
+  signer reject as, and what the canister must check. The consumer guide
+  (`packages/core/llms.txt`) states the same, and the migration guide's recipe
+  points at it (#914).
+- The auth guide has a table of what Internet Identity offers beyond a plain
+  sign-in, 2.0's features among them, and the `AuthClient` option for each:
+  one-click OpenID and organization SSO, session length,
+  `disableBrowserActivity`, `namespace`, `derivationOrigin`, a sign-in shared
+  by sibling subdomains, and redirect sign-in (#914).
+- The auth guide installs `@icp-sdk/auth@^10`, since npm's newest is 11, and
+  says that on dfx the client hands the factory icp-cli's built-in Internet
+  Identity, which dfx does not serve (#914).
+- `signIn()` rejects with the auth's own errors, never a `ReactorError`, as
+  the auth guide's "useAuth" and the consumer guide now say; the consumer
+  guide's example catches it (#914).
+
 ### Examples (not published)
 
+- `canister-studio`'s Safety lab now says what a re-send refused as another
+  sender rejects with, and checks it: `outcome_unknown` / `caller_changed`,
+  with `mayHaveExecuted: true`. The texts of the error kinds now say that a
+  held re-send that did not run is `outcome_unknown`, no longer
+  `invalid_args` or `cancelled` (#960).
+
+### CI (not published)
+
+- `pnpm verify:test-fails` compares with where the branch left v4: the
+  merge-base with `v4` or `origin/v4`, whichever HEAD left last, instead of
+  `main`, the 3.x line, whose sources cannot load v4's tests (#968). With
+  neither ref, it asks for `--base`. A test with no result on the base,
+  because its file did not load there, a hook failed there or the test was
+  skipped there, is listed on its own as no evidence, with the file's error,
+  and makes the run exit 2; it used to count as passing either way, and
+  `main` made every v4 test look like a guard.
+- `pnpm check:ai-context` holds every skill under `skill-packages/` to the
+  rules for a skill an app installs, with or without a plugin marketplace:
+  its `SKILL.md` lists `@ic-reactor/react`'s version, and any other package's
+  it lists, at the current version, and it names no path that exists only in
+  this repository. They ran only on the skills of
+  `.claude-plugin/marketplace.json`, which v4 does not have, so
+  `skill-packages/ic-reactor/SKILL.md` could drop its version lines or point
+  at `packages/core/src/` and pass. The summary line now counts them as
+  "consumer skill(s)". `skill-packages/ic-reactor/SKILL.md` passes both as it
+  stands (#970).
+- `pnpm verify:traps` finds a `@ts-ignore` or `@ts-expect-error` wherever
+  TypeScript reads one, found with TypeScript's own parser (#971): after code
+  on its line (`ok() // @ts-ignore`), on a block comment's last line, and
+  spelled `@ts-ignored`, as well as a `@ts-nocheck` TypeScript obeys after a
+  block comment on the first line. It found only a directive that started its
+  line, so a trailing `// @ts-ignore` hid an error that no trap proves, and
+  the gate still passed. A tag's `@ts-expect-error` must still start the line
+  under it.
+- The scripts keep one copy of each helper they shared by hand, in
+  `scripts/lib/`: the fence rule for Markdown code blocks (`check-snippets`
+  and both readers of `check-ai-context`), the list of a package's public
+  subpaths (`check-exports`, `verify-package-artifacts` and
+  `verify-typescript-floor`), and `run`, `readJson` and `writeJson` (the two
+  floor scripts). `check-ai-context` now reads a docs page's heading ids by
+  CommonMark's rule, as `check-snippets` does: a fence line with an info
+  string, such as ` ```ts `, no longer ends a block, so a heading in
+  the code after it is not taken for one of the page's.
+  `verify-package-artifacts` and `verify-typescript-floor` now read
+  `exports` as `check-exports` does: a subpath mapped to `null` is left out,
+  and a string or a set of conditions is the root entry. No package of the
+  repository uses either form, so no run changes (#979).
+- `pnpm check:snippets` checks a code block that is never closed, which runs
+  to the end of the file as CommonMark has it, instead of dropping it and
+  passing (#980).
+- `pnpm verify:peer-floors` fails when one of its pnpm filters matches no
+  package (`--fail-if-no-match`), where pnpm exited 0 having run nothing, and
+  its TypeScript floor compiles the Vite plugin's declarations as well as
+  core's and react's, in a program of their own so that the Node types Vite's
+  declarations bring in do not reach core's and react's (#980).
+- `pnpm release <version>` stops at the release commit and prints the rest
+  of the release: the `CHANGELOG.md` section, the `release/v<version>` branch
+  and its pull request into `v4`, and the tag on that pull request's merge
+  commit, which `release.yml` publishes from (#969). It no longer tags the
+  commit, and it refuses `--dry-run` and `--publish` before changing
+  anything: `--dry-run` made a real commit and tag, and `--publish` published
+  from the machine it ran on, outside `release.yml`'s preflight, approval and
+  provenance. Its step for a root `llms.txt`, which `v4` does not have and
+  which failed on every run, is gone.
+- react's StrictMode tests check the disposals of the client in use, where
+  they counted those of every client the factory built (#966). The registry
+  disposes the client React's development render throws away whenever a
+  collection runs, so a collection during the test failed it, as in
+  4.0.0-beta.6's release run. The double-mount test now runs real
+  collections where `gc()` is exposed.
+- A core test fails if an update the IC accepted is no longer recorded as
+  accepted (#964). Without that record, a poll answered HTTP 429 reads as the
+  IC turning the update away, and the update is sent again.
+- The size limits rose by the measured amount of each fix that grew the
+  bundles, each in a commit that states the measurement: core's from
+  18.17 kB to 19.1 kB, and the size app's two checks from 93.1 kB to
+  94.07 kB and from 94.39 kB to 95.38 kB.
+
+## core, react, vite-plugin 4.0.0-beta.6
+
+Prepared on 2026-10-21. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.5.
+
+This release carries the fixes of the pre-GA audit of beta.5 (#893 to #912)
+and the ten fixes and features filed just before it (#873 to #882), so that
+4.0.0 ships no code a prerelease did not carry first. Three changes are marked
+breaking (the Node floor, `createClient`'s option checks and `useClient()`),
+and several more change what an app sees; the steps below list them.
+
+No export is added or removed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2), and the candid-core pair is unchanged: core peers
+`@candid-core/schema` at exactly `0.4.0` and the Vite plugin
+`@candid-core/cli` at exactly `0.3.0`, so a module generated for beta.5 need
+not be regenerated. What is new comes as members and options, as the entries
+below say:
+
+- on the client: `client.time(canister)`, `client.canisterId(target)` and
+  `client.encode(canister, method, vars)`;
+- on what the client gives back: `ReactorError.expiresAt`, `Resend.bytes` and
+  `AuthState.expiresAt`;
+- options: `timeoutMs` on a canister and on a mutation, `maxElements` on
+  `createClient` and `createTestClient`, and the Vite plugin's `onGenerated`;
+- in `@ic-reactor/core/testing`: `dropNextReply({ method, canister, times })`.
+
+Code that writes its own object of the `Client` type, such as a hand-made
+fake, no longer compiles until it has `time`, `encode` and `canisterId` (a
+client from `createClient` or `createTestClient` has them).
+
+What an app on beta.5 does:
+
+1. Run Node 22.12 or newer. All three packages now say so in `engines`
+   (#896).
+2. Bump all three `@ic-reactor/*` packages to `4.0.0-beta.6` in one
+   `npm install`. react 4.0.0-beta.6 peers core at exactly `4.0.0-beta.6`, so
+   they move together. The command keeps each package in the section of
+   `package.json` it is in:
+
+   ```sh
+   npm install --save-exact @ic-reactor/core@4.0.0-beta.6 @ic-reactor/react@4.0.0-beta.6 @ic-reactor/vite-plugin@4.0.0-beta.6
+   ```
+
+   Name only the packages the app has.
+
+3. Check what the app passes `createClient` (breaking, #895). A value the
+   types forbid now fails closed with a `TypeError`: compare environment text
+   (`allowEnvConfig: import.meta.env.VITE_ALLOW_ENV === "true"`), move a
+   top-level `host` into `network: { host }`, decode a hex `rootKey` to its
+   bytes, and drop or correct the key an error names.
+4. Build options from the current `useClient()` value (breaking, #894). It is
+   a new object for each caller, so list it in `useMemo` and effect
+   dependencies, compare two clients by `client.queryClient`, and keep a
+   write's outcome in the app's own state when it must stay on screen across
+   an account switch.
+5. Treat `caller_changed` from a write as the same error from a read: nothing
+   ran (#893). A write TanStack Query held back (offline, behind a mutation
+   `scope`, or retried) is refused, with nothing sent, when someone else is
+   signed in by the time it would go out, and a write restored from a
+   persister is always refused. Call `mutate()` again as the new caller.
+6. Check where pages run with `network: "env"`:
+   - on `ic0.app`, Codespaces or Gitpod, `allowEnvConfig: true` now throws;
+     name canisters with `{ id }` there (#900);
+   - a dev page opened by a LAN address, a `*.local` name or a tunnel now
+     calls its own origin, never mainnet (#902);
+   - on a canister's own `icp0.io` page, `{ name }` targets now resolve from
+     the cookie's canister ids, with mainnet's root key (#901).
+7. Smaller changes, each with its migration in the entries below: a `switch`
+   over `AuthLike`'s `getStatus().state` needs a `default` (#911); an app's
+   own queries on `client.queryClient` now retry as a plain `QueryClient`'s do
+   (#903); two copies of `@tanstack/query-core` now throw instead of
+   misbehaving (#873); with the method typed `any`, pass `arg`, not `[arg]`
+   (#874); and an auth factory's error now comes from `signIn()`, not from the
+   first read (#912).
+
+The guide (`llms.txt`) and the skill now say they apply to 4.0.0-beta.6, and
+the five examples pin `^4.0.0-beta.6`.
+
+### @ic-reactor/core, @ic-reactor/react, @ic-reactor/vite-plugin
+
+#### Changed
+
+- **Breaking for Node below 22.12:** all three packages now declare
+  `"engines": { "node": ">=22.12.0" }`; core and react said `>=18` and the
+  Vite plugin said nothing. None of them worked on Node 18 (no global
+  `crypto` in an ES module for `createTestClient`, and a `candid-core-cli gen`
+  the plugin runs that needs a newer `readdir`), and `require()` of core and
+  react, which are ES-only, needs Node 22.12 (or 20.19, which reached end of life on
+  2026-04-30). A floor can fall in a 4.x minor but not rise, so it starts at
+  the first Node 22 that works. CI now runs the package tests and a
+  `candid-core-cli gen` on Node 22.12.0 itself. Migration: run Node 22.12 or
+  newer (#896).
+
+#### Fixed
+
+- The tarball now ships the MIT `LICENSE` the manifest names; the repository
+  has a root `LICENSE` again, and `pnpm verify:packages` fails a tarball that
+  has none or one that is not a copy of the root file (#898).
+
+### @ic-reactor/core
+
+#### Added
+
+- `timeoutMs` bounds how long a call waits for its answer (#875). On the
+  canister target, `client.canister(actor, { id, timeoutMs })`, it bounds every
+  direct call, `queryOptions` read and mutation made through that canister
+  object; in `client.mutationOptions()`' third argument, `{ timeoutMs }`, it
+  bounds that mutation's runs instead. When it passes, the call rejects with
+  `code: "timeout"`: `cancelled` with `mayHaveExecuted: false` for a read and
+  for a write that had not gone out, and `outcome_unknown` with
+  `mayHaveExecuted: true` for a write whose request went out (an
+  `{ update: "idempotent" }` read's included) and for a re-send of a write
+  `client.resendOf()` offered, at any point, which `client.resendOf()` offers
+  like any other unknown outcome when given the canister object the write went
+  through (another `timeoutMs` is another object). Such a write is to be
+  reconciled, never sent again blindly. A timed-out write that went out
+  carries `expiresAt`; a re-send that timed out before it went out has none,
+  and the earlier error's still holds. Nothing is re-sent for a timeout, and
+  the request is not torn down. Canister objects that differ only in
+  `timeoutMs` share query keys. Without `timeoutMs`, nothing changes, except
+  for the next entry.
+- A read aborted while it waits for its caller's identity now rejects
+  `cancelled` at once, with no code, and sends nothing. It used to wait for the
+  identity, then reject `caller_changed`, `client_disposed` or
+  `unauthenticated` (`identity_unavailable`) when one of those applied, and
+  otherwise send the read nobody waited for. The abort now comes first.
+- Core's size limit is raised to 16.32 kB for `timeoutMs` (16,269 B, +381 B),
+  and the app checks with the peers included to 91.34 kB (91,291 B, +394 B)
+  and 92.61 kB (92,561 B, +399 B).
+- `client.time(canister)`: the IC's time in nanoseconds since the epoch, as a
+  `bigint`, the unit of an ICRC-1 `created_at_time` (#876). It reads the
+  `time` path with a `read_state` routed by the canister's subnet and verifies
+  the certificate against the network's root key, as every reply is; a
+  certificate that does not verify rejects `not_delivered`. The certificate's
+  age is not compared with the host's clock, the clock this member replaces.
+  It needs no signed-in caller. The management canister `aaaaa-aa` routes no
+  `read_state`, so it is refused `invalid_args` (`management_canister`) with
+  nothing sent. It is a `Client` member: the export budget is unchanged.
+- `client.encode(canister, method, vars)`: the Candid bytes a call of
+  `method` with `vars` sends, as a `Uint8Array`, for an ICRC-21 consent
+  request's `arg` or an audit log (#877). It uses the call path's own encoder
+  and variables rule, and variables that do not encode throw `invalid_args`
+  with the `issues` a call of them rejects with. It sends
+  nothing and needs no canister id.
+- `Resend.bytes`, on what `client.resendOf()` offers: the bytes the attempt
+  sent, which `send()` sends again; a copy on every read (#877).
+- `ReactorError.expiresAt`: on a write that got no answer (`outcome_unknown`,
+  or `cancelled` with `mayHaveExecuted: true`), the latest ingress expiry its
+  sends were signed with, in nanoseconds since the epoch on the IC's clock
+  (#878). It is read from each call request as the agent builds it, before
+  it is signed, so a signal that aborts while the answer is awaited keeps it.
+  A call request whose signal aborted before it was signed is not sent. A
+  write the client sent again carries the latest of its sends' expiries, and
+  a `resendOf` re-send its own. Answered or refused writes and reads carry
+  none. It is not enumerable, so `JSON.stringify(error)` keeps working. A
+  field of an existing type: the export budget is unchanged.
+- `client.canisterId(target)` gives what a target resolves to now, from the
+  resolver the calls use, without a call: `{ ok: true, id }`, or
+  `{ ok: false, reason, message }` with `reason` `"no_browser"`,
+  `"untrusted_host"` or `"absent"`, and the resolver's reason text, which a
+  call on that target includes in its error. It reads the `ic_env` cookie on each call. A `Client`
+  member, so the export budget is unchanged (#881).
+- `AuthState.expiresAt`: when the session ends, in milliseconds since the
+  epoch, while signed in through an auth whose `getStatus()` carries
+  `expiresAtMs` (`AuthClient` 10 does), so an app can show "signed in until".
+  `AuthLike`'s `getStatus()` may carry that optional `expiresAtMs` (#912).
+- `createTestClient().dropNextReply({ method, canister, times })`
+  (`@ic-reactor/core/testing`): loses the replies of the next `times` call
+  requests that name `method` and are addressed to `canister`, with
+  `refuseNext`'s matching rules and checks, and lets every other request
+  through (#882). A test can aim a lost reply at its write while a certified
+  read or an ICRC-21 consent read before it is answered. `dropNextReply()`
+  with no argument is unchanged: it loses the reply of whatever call request
+  comes next, certified reads included, as its JSDoc and the testing page now
+  say. No new export.
+
+#### Changed
+
+- `network: "env"` on a canister's own `<id>.icp0.io` or `<id>.raw.icp0.io`
+  page, with a mainnet agent host, believes the `ic_env` cookie's canister
+  ids by default (#901). Both parents are on the Public Suffix List, so the
+  cookie is the asset canister's own, and `{ name }` targets now resolve
+  after `icp deploy -e ic` with no `allowEnvConfig`. Its root key is never
+  taken there (the agent keeps mainnet's), and its Internet Identity URL
+  only over `https:`. `ic0.app` and custom domains are unchanged. Migration:
+  an app that relied on `{ name }` failing on icp0.io needs nothing; to
+  refuse the cookie there, pass `allowEnvConfig: false`.
+- `AuthLike`'s `getStatus().state` takes any string beside the four states
+  of `@icp-sdk/auth` 10, so an `@icp-sdk/auth` release that adds a session
+  state does not stop `auth: (network) => new AuthClient(network)` compiling.
+  The client already called anonymously in such a state; `authState()` reads
+  it as `"anonymous"`. A weekly CI job type-checks core and runs the core and
+  react tests against `@icp-sdk/auth@latest`. Code that switches over
+  `getStatus().state` exhaustively needs a `default` (#911).
+- `allowEnvConfig: true` trusts less of the `ic_env` cookie (#900). The
+  cookie's root key is never taken for a mainnet host (a mainnet boundary
+  domain, or the `https://icp-api.io` fallback a custom-domain page uses):
+  the agent keeps mainnet's own key. Its `INTERNET_IDENTITY_PROVIDER` is
+  taken over `http:` only on a local page. And on a page under `ic0.app`,
+  `*.app.github.dev` (Codespaces) or `*.gitpod.io`, none of which is a public
+  suffix, so any sibling site can set the cookie, `createClient` throws a
+  `TypeError` for `allowEnvConfig: true`. Migration: on those pages, name the
+  canisters with `{ id }` (build-time env) and a replica that is not mainnet
+  with `{ host, rootKey }`; on mainnet, drop any reliance on a cookie root
+  key; serve a deployed Internet Identity URL over `https:`.
+- A view of a client pinned to a principal (what `useClient()` returns)
+  writes only as that principal: its `mutationOptions` reject `cancelled`
+  (`caller_changed`, `mayHaveExecuted: false`) and send nothing while someone
+  else is the caller. Their `mutationKey` ends with the principal
+  (`[..., method, caller]`, still found by a filter on the shorter key), so
+  TanStack never hands a run pressed before a switch the later render's
+  options, on any version and with any `QueryClient`; after a switch the
+  mutation a component shows starts over, idle, and the stale run reports its
+  refusal to the options it was pressed with. An app that shows an outcome
+  across a switch (an unknown one, to read back as its sender) keeps it in
+  its own state, from the promise `mutateAsync` returns. Its `authState()` is the client's own
+  while its principal is the live caller, so an expired session reads as
+  expired (#894). The client's own `mutationOptions`, a canister's direct
+  calls and `func` still sign as the caller current when they run.
+
+#### Fixed
+
+- **BREAKING:** `createClient` checks every option, so a value the types
+  forbid but untyped code can pass (an `import.meta.env` value, a spread,
+  plain JavaScript) fails closed with a `TypeError` naming the option and
+  what it got (#895). Before, `allowEnvConfig: "false"` was truthy and
+  believed the `ic_env` cookie on any page, `fetchRootKey: "false"` fetched
+  the root key from a remote host, a hex `rootKey` made every call fail, and
+  an unknown key was ignored (`host` beside `network`, the 3.x habit, talked
+  to port 8000). It now refuses an option it does not have, in the options
+  and in a network object, listing those it has; an `allowEnvConfig` or
+  `fetchRootKey` that is not `true` or `false`; a `rootKey` that is not 133
+  bytes in a `Uint8Array` (`null` included); and a `fetch` that is not a
+  function. `createTestClient` checks the network and `allowEnvConfig` it
+  forwards the same way, and refuses a `signedIn` that is not a boolean. `parseUnits` and `formatUnits` refuse
+  options that are not an object or have a key they do not take (Intl's
+  `maximumFractionDigits`, a misspelt `signd`), and `parseUnits` a `signed`
+  that is not a boolean. Migration: compare environment text,
+  `allowEnvConfig: import.meta.env.VITE_ALLOW_ENV === "true"`; move `host`
+  into `network: { host }`; decode a hex root key to its bytes; drop or
+  correct the key the error names.
+- A write from `client.mutationOptions()` goes out as the caller current when
+  `mutate()` was called, or not at all (#893). The client's `queryClient`
+  reads the caller of each mutation run in its `MutationCache` when the run
+  starts, so an `onMutate` of the app's that replaces the client's keeps the
+  rule; on another `QueryClient`, the client's `onMutate` reads it (before
+  TanStack Query 5.89, which passes no run context, by the options object
+  TanStack calls it on; the runs of one observer share that object, so
+  before 5.89 a write whose observer has another run pending that started
+  as someone else is refused). It reads no caller for a mutation of the app's. When
+  TanStack Query held the write back (paused offline, queued behind another
+  mutation of its `scope`, or retried by an app's `retry`) and someone else is
+  current by the time it is sent, it rejects with `kind: "cancelled"`,
+  `code: "caller_changed"`, `mayHaveExecuted: false`, and nothing is sent; it
+  was sent as whoever was signed in then. A mutation restored from a
+  persister is now always refused that way, since who started it is not
+  known. Migration: treat `caller_changed` from a write like the same error
+  from a read (nothing ran), and call `mutate()` again as the new caller if
+  that is what the user wants; resume a persisted write by calling `mutate()`
+  again, not with `resumePausedMutations()`.
+- `network: "env"` no longer falls back to mainnet on a dev page opened by a
+  LAN address (RFC 1918, link-local, IPv6 ULA or link-local), a `*.local`,
+  `*.test` or `*.internal` name (`host.docker.internal`), or a tunnel
+  (`*.ngrok-free.app`, `*.ngrok-free.dev`, `*.ngrok.app`, `*.ngrok.io`,
+  `*.trycloudflare.com`, `*.loca.lt`) (#902). Such a page routes through its
+  own origin, the dev server's proxy, as a Codespaces page does: the cookie
+  is not believed and no root key is taken or fetched, so certified calls
+  fail verification instead of reaching mainnet. A dev wallet opened from a
+  phone showed, and after a mainnet sign-in sent, real ICP. Migration: a
+  production app served from such a name now calls its own origin; give it
+  `network: "ic"` or a `{ host, rootKey }` network.
+- An app's own queries on `client.queryClient`, such as REST calls under
+  `ReactorProvider`, keep TanStack Query's retries: the default `retry`
+  applies the client's rule only to a `ReactorError`, and retries any other
+  error up to 3 times in a browser, as a plain `QueryClient` does (never on a
+  server). The client's own reads set `retry` themselves and are unchanged.
+  An app that turned retries off through this default sets `retry: false` on
+  its queries instead (#903).
+- A write from `client.mutationOptions` invalidates the reads on the
+  `QueryClient` it ran on, which TanStack Query 5.89 and later hands it, as
+  well as on `client.queryClient`: an app that nests its own
+  `QueryClientProvider` inside `ReactorProvider` now sees its reads refresh
+  after a write (#903).
+- A reply over about a million bytes decodes. candid-core charges a blob one
+  element per byte against its 1,000,000-element budget, so an SNS wasm from
+  SNS-W's `get_wasm`, the ICPSwap factory's `getActiveWasm` or a large asset
+  chunk rejected `invalid_reply` (`value_elements limit 1000000 exceeded`), and
+  an update with such a reply rejected after it ran. A reply may now hold one
+  value per byte plus the budget, which bounds only values that take no
+  bytes, such as a long `vec null`, however large a blob beside them. A new `maxElements` option of
+  `createClient` and `createTestClient` sets that budget, and a mock decodes
+  its arguments the same way, so a test can upload a large chunk (#899).
+- `client.queryOptions()` and `client.queryKey()` refuse a symbol given as
+  the variables that is not core's `skipToken`, with a `TypeError` that says
+  two copies of `@tanstack/query-core` are installed and how to get one
+  (#873). Such a symbol is the other copy's `skipToken`; it used to be
+  encoded as the argument, so a read meant to wait ran and rejected
+  `invalid_args`. A method whose one argument is Candid `reserved` still
+  takes any value, a symbol included. This check runs in production too: an
+  app with two copies gets a thrown `TypeError` where it got a rejected read.
+  Migration: install `@tanstack/query-core` at the exact version your
+  `@tanstack/react-query` depends on, so that `npm ls @tanstack/query-core`
+  shows one copy.
+- A read made with `queryOptions` stops waiting for the HTTP answer to its
+  request, and to each `read_state` that polls for it, once its query
+  function's signal aborts, and rejects `cancelled` (part of #875). Its signal
+  used to reach only the check before sending and the waits between polls:
+  neither the client nor the agent bounds an HTTP request, so a request that
+  got no answer kept the read waiting after TanStack cancelled it. The request
+  itself is not torn down. `mayHaveExecuted` is `false`, except for an update
+  read with `{ update: "idempotent" }` whose call request went out.
+- With the method given as `any` (`client.queryOptions<A, any>(canister,
+method, vars)` for a method named by data), the variables of
+  `queryOptions`, `queryKey`, `mutationOptions` (its `mutationFn`) and
+  `resendOf` (its `dedupedBy` and `arg`) follow the run-time rule: the value
+  for a one-argument method, a tuple for several, `undefined` or `[]` for
+  none (#874). They were typed `unknown[]`, so a one-argument call compiled
+  only as `[arg]`, the shape the client refuses with `invalid_args`. They are
+  now any value but a symbol, so a read with a real value keeps
+  `CanisterQueryOptions<unknown, never, never>`. `[arg]` still compiles (an
+  array is a value too) and the client still refuses it with `invalid_args`.
+  Migration: code that wrote `[arg]` (or cast `arg as never`) on this path
+  writes `arg`; a `dedupedBy` that read `arg[0]` reads `arg`. Inside a
+  function generic over the `Actor`, only `queryOptions` gets the wider type;
+  `mutationOptions`, `queryKey` and `resendOf` still need a cast there.
+- A session that ends by the clock is announced: the client sets a timer for
+  the auth's `expiresAtMs` and tells its listeners, so `useAuth()` renders
+  `"expired"` at the session's end with no user activity, where it kept
+  saying `"signed-in"` while calls went out anonymous. A read of `caller()`
+  or `authState()` that sees a change no notification announced also tells
+  the listeners, in a microtask. A sign-in that ends at another time than the
+  last one now notifies too, since `expiresAt` changed (#912).
+- An auth factory that throws (`new AuthClient()` reads `localStorage`,
+  which throws where site data is blocked) no longer breaks every read: it is
+  called once, the client calls anonymously so public reads still work, the
+  error is logged once in development, and `signIn()` and `signOut()` reject
+  with what the factory threw. It was called again on every read and render,
+  and its error escaped from `caller()`, `authState()`, `subscribe()`,
+  `queryOptions()` and direct calls. Migration: catch the factory's error
+  from `signIn()`, not from the first read; build a new client to try the
+  factory again (#912).
+- The test auth of `createTestClient()` expires by the clock, as
+  `AuthClient` does: past its `expiresAtMs` (eight hours after a sign-in) its
+  status reads `"expired"` without telling anyone. `auth.expire()` is still
+  the explicit form, which does tell them (#912).
+
+### @ic-reactor/react
+
+#### Changed
+
+- **BREAKING:** `useClient()` returns a view of the client for the caller
+  the render shows every time, not the provider's client object once the
+  live caller renders (#894). The view is a new object after a sign-in, a
+  switch or a sign-out and the same one across renders for one caller, so a
+  `useMemo`, an effect or React Compiler's cache keyed on it builds the new
+  caller's options, where they kept the previous caller's key (and showed
+  that caller's data) before. A write built from it is refused rather than
+  signed by a caller the render did not show. Migration: build options from
+  the current `useClient()` value and list it in the dependencies; compare
+  two clients by `client.queryClient`, not by identity; read who signs now
+  from the client you created, since the view's `caller()` is its render's.
+  A handler that does `await client.signIn()` and then `mutation.mutate(arg)`
+  presses with the last committed render's options: it is refused
+  (`caller_changed`) when the signed-in render has not committed yet (one
+  that suspends on the user's data); let the next render press, or use a
+  direct canister call, which signs as the caller current.
+- `useAuth()` returns `expiresAt` while signed in, and renders again when it
+  changes and when a session ends by the clock (#912).
+
+#### Fixed
+
+- In development, `ReactorProvider` throws when the client's `QueryClient`
+  is not an instance of `@tanstack/react-query`'s `QueryClient`: two copies
+  of `@tanstack/query-core` are loaded (#873). Production builds do not
+  check. Migration: install `@tanstack/query-core` at the exact version your
+  `@tanstack/react-query` depends on; `npm ls @tanstack/query-core` must show
+  one copy.
+
+### @ic-reactor/vite-plugin
+
+#### Added
+
+- `onGenerated`, an option called once for each module a run generated, in
+  `vite build` and `vite dev`, with the module's canister `names`, the
+  absolute `didFile`, `module` and `envelope` paths, its `status`
+  (`"written"` or `"unchanged"`) and a `signal` that the run's close aborts.
+  It runs inside the plugin's queue of runs, so `buildStart` waits for it,
+  and a close stops waiting. A throw fails the module's canisters as a
+  failed generation does, and the next run calls it again. Not called for a
+  canister that failed, nor for a run that does not generate the module
+  again. An option, not an export (#880).
+- Under `vite dev` and `vite preview`, a warning, once per server, when a
+  page is loaded by a `Host` that is not loopback, saying that `"env"` is for
+  `localhost` pages (#902).
+
+#### Fixed
+
+- On Windows, local network detection works with icp-cli installed from npm
+  (`@icp-sdk/icp-cli`). npm links it as `icp.cmd`, which the plugin could not
+  start, so detection always failed while the network was running. On
+  Windows the plugin now runs the `icp.exe` that package installs, from the
+  app's own install first, then a global npm install (`%APPDATA%\npm`), so a
+  command that hangs is killed after its timeout; it runs the package's bin
+  script with Node when that `icp.exe` is missing, and falls back to an
+  `icp.exe` on `PATH`. When no `icp` can be started at all, the
+  warning says so and how to make one runnable on that platform, instead of
+  asking whether the network is running. CI runs the tests of how
+  the plugin starts `icp` on Windows (#905).
+
+### Docs
+
+- The README and the Vite plugin guide say that any local network restart
+  needs a dev server restart, even when the root key stays the same: the
+  plugin keeps sending the ids it detected first (#881).
+- The client guide has a "Deploy to mainnet" section: `icp deploy -e ic`,
+  what `"env"` resolves to on `icp0.io`, `ic0.app` and a custom domain,
+  `{ id }` from build-time env with the local and the mainnet id, and when
+  `allowEnvConfig: true` is safe; `llms.txt` states the rule (#901).
+- The consumer guide (`packages/core/llms.txt`) and the Reads, Writes, Values
+  and Client pages say five things that already worked (#879): a read with
+  `{ update: "idempotent" }` is still an update, refused for a signed-out or
+  `"anonymous"` client, and an ICRC-21 consent message is read as the caller
+  who will send the write; after a `canister_err` the canister calls
+  temporary, send the same argument object again; `parseUnits` accepts
+  trailing zeros, `"5."` and `".5"`, and refuses only significant excess
+  fraction digits; a kept `resendOf` offer is typed
+  `NonNullable<ReturnType<typeof client.resendOf<A, "method">>>`; and a client
+  made outside a provider, or kept across its unmount, is the app's to release
+  with `client.dispose()`.
+- The guide and the Writes page say how to get the bytes a write sends
+  (#877).
+- The guide and the Errors page say when a read-back after an unknown write
+  outcome is final: once the IC's time is past `error.expiresAt` (#878).
+- The guide, Writes and Errors stamp `created_at_time` from
+  `client.time(ledger)` instead of `Date.now()` (#876).
+- The guide, the auth and client pages and `AuthLike`'s JSDoc no longer say a
+  wallet fits with a small adapter. What fits is a sign-in that hands over an
+  `Identity` (a delegation or a key); a wallet that signs each call itself
+  (ICRC-25 and ICRC-49: OISY, Plug, NFID accounts) does not. The auth page
+  shows such a wallet's writes through `SignerAgent` beside an anonymous
+  client, with the reads invalidated by hand (#904).
+- The client guide has a section for a local network without the Vite plugin
+  (Next.js, Rsbuild, webpack, esbuild): `network: "local"` with `{ id }` from
+  a build-time variable written by `icp canister status -e local -i`, or a
+  Next.js rewrite of `/api/v2` and `/api/v3` to keep `"env"`. Core's guide
+  states the rule in a few lines (#906).
+- Getting started has a step 0 that creates the project (Vite's `react-ts`
+  template, or `npm init -y` and `npm pkg set type=module` for Node), so its
+  top-level `await` scripts run under `npx tsx` on the first try. It, core's
+  package page and core's guide now say that core and react are ES modules
+  only and what CommonJS code can do, and show the `.js` import form
+  `moduleResolution: "nodenext"` needs (#907).
+- The guide's Errors section says how long a call waits: unless the call has
+  a `timeoutMs`, an HTTP request has no timeout in the client or the agent, an accepted update polls for about
+  five minutes (a deadline checked when a poll is answered) before `outcome_unknown`, and
+  a cancelled read stops waiting (part of #875).
+- The guide's Setup, both READMEs, the core and react package pages and
+  Getting started say to install `@tanstack/query-core` at the version
+  `@tanstack/react-query` depends on, and to check that
+  `npm ls @tanstack/query-core` shows one copy (#873).
+- The auth guide says that a `"signed-in"` session may be read-only:
+  Internet Identity can scope one to queries, and `@icp-sdk/auth` does not
+  expose that scope yet (#912).
+- The docs site has three guides that build a whole app step by step: an
+  ICRC-1 wallet with Internet Identity sign-in, a Next.js server page for
+  one user, and an MCP server that gives an AI agent a ledger's tools
+  (#948, #953, #954). It now has B3Pay's look and the core mark, and one
+  home for the three libraries with a library switcher (#943, #944, #945,
+  #947, #955).
+
+### Examples (not published)
+
+- `icrc-ledger`'s Sandbox tab finds its sandbox by the client's
+  `QueryClient`, and reads who signs now from the sandbox's client, since
+  `useClient()` returns a view per caller (#894).
+- `canister-studio`'s write runner shows the confirm step again, with the
+  new sender, when a write is refused because the caller changed before the
+  page caught up (#894).
+- An outcome stays on screen across an account switch: `canister-studio`'s
+  write runner and wallet Send panel, `icrc-ledger`'s Sandbox transfer, and
+  `vite-wallet`'s Send and Pay forms (through one `useTransfer` hook), keep
+  the outcome of the write they sent in their own state, since the mutation
+  the new caller's render shows starts over idle; `vite-wallet` reads
+  `client.resendOf`'s offer from that kept outcome (#894).
+- `node-agent-tool` no longer tells you to export an identity's key into the
+  project. Its README and docs page say to give the tool, and an agent running
+  it, an identity of its own that controls nothing, with its key outside the
+  project and readable by you alone, and that the agent can read the seed
+  variable.
+  The example's `.gitignore` and the root one now ignore `*.pem` (#910).
 - A fifth example, `canister-studio`: a TanStack Start app, rendered on the
   server, that gives every method of any mainnet canister an automatic form
   and calls it with ic-reactor's rules in view. The ICP, ckBTC and ckETH
@@ -32,7 +981,7 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   `createTestClient()` in the browser, and a playground that compiles a
   pasted `.did` in the browser. Its tests run offline; its `smoke` script
   checks its `.did` files and reads against mainnet. It pins
-  `^4.0.0-beta.5`, `@candid-core/schema` `0.4.0` and `@candid-core/cli`
+  `^4.0.0-beta.6`, `@candid-core/schema` `0.4.0` and `@candid-core/cli`
   `0.3.0`, a runtime dependency here, and has a page in the examples docs.
   The root README, the docs' home page and Getting started now say five
   examples.

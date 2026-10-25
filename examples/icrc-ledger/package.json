@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "@candid-core/schema": "0.4.0",
-    "@ic-reactor/core": "^4.0.0-beta.5",
-    "@ic-reactor/react": "^4.0.0-beta.5",
+    "@ic-reactor/core": "^4.0.0-beta.7",
+    "@ic-reactor/react": "^4.0.0-beta.7",
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
     "@tanstack/react-query": "^5.102.8",
@@ -25,7 +25,7 @@
   },
   "devDependencies": {
     "@candid-core/cli": "0.3.0",
-    "@ic-reactor/vite-plugin": "^4.0.0-beta.5",
+    "@ic-reactor/vite-plugin": "^4.0.0-beta.7",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.5.1",
@@ -34,7 +34,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "30.0.1",
     "typescript": "^6.0.3",
-    "vite": "^8.3.0",
+    "vite": "^8.3.4",
     "vitest": "^5.0.0"
   }
 }

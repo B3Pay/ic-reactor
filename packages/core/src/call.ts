@@ -18,8 +18,11 @@
  *    `invalid_args` with the codec's `$`-rooted issues; a call to `aaaaa-aa`
  *    also needs a row of the effective canister id table (`management.ts`).
  *    A mutation that re-sends a write `client.resendOf()` offered must be
- *    that write: the same method, canister id and bytes, or it rejects
- *    `cancelled` (`target_changed`) or `invalid_args` (`arg_changed`);
+ *    that write: the same method, canister id and bytes, or it is refused
+ *    (`target_changed`, `arg_changed`). A re-send refused at any step, or
+ *    turned away when sent, rejects `outcome_unknown` with the refusal's
+ *    code instead, since the write it re-sends may have run (see
+ *    {@link invoke});
  * 5. the send, as the caller's own agent: `agent.query` for a read,
  *    `agent.call` for an update, a oneway and a certified read. Every failure
  *    is classified (`classifyError`), and a call re-sends itself only when
@@ -66,6 +69,7 @@ import { isResultSchema } from "@candid-core/schema/validate"
 import {
   Certificate,
   CertifiedRejectErrorCode,
+  Expiry,
   QueryResponseStatus,
   RejectError,
   UncertifiedRejectErrorCode,
@@ -87,14 +91,20 @@ import { Principal } from "@icp-sdk/core/principal"
 import type { Caller, ClientInternals } from "./client.js"
 import {
   UPDATE_RESEND_DELAYS_MS,
+  asRecord,
   classifyError,
   createReactorError,
   fromCanister,
+  withExpiry,
   invalidReplyError,
   isReactorError,
   isRetryable,
+  readHttpStatus,
+  resendDidNotRun,
   retryUpdate,
+  timedOutError,
   type CallMode,
+  type ReactorError,
 } from "./errors.js"
 import { toHex } from "./keys.js"
 import {
@@ -160,6 +170,21 @@ export function valuesOf(
   return Array.isArray(vars) ? vars : [vars]
 }
 
+/** The `invalid_args` of arguments that do not encode, with the codec's issues. */
+export function notEncoded(
+  where: { readonly method: string; readonly canisterId: string },
+  encoded: Extract<EncodeResult, { ok: false }>
+): ReactorError {
+  const [first] = encoded.issues
+  return createReactorError("invalid_args", {
+    ...where,
+    reason: first
+      ? `the arguments could not be encoded: ${first.path}: ${first.message}`
+      : undefined,
+    issues: encoded.issues,
+  })
+}
+
 /** Where a call goes: a canister id, or the key segment of an unresolved name and why. */
 export type ResolvedTarget =
   | { readonly ok: true; readonly id: string }
@@ -198,10 +223,31 @@ export interface CallRequest {
    */
   readonly again?: CallRequest
   /**
+   * On a write no other re-sends ({@link firstOf}), set by `invoke`: the
+   * latest `expiresAt` of the errors it and its re-sends were kept in
+   * {@link UNKNOWN_WRITES} with. Until then a send of it may still start, so
+   * a re-send of it that did not run carries it on ({@link keptUnknown}).
+   */
+  expiresAt?: bigint
+  /**
    * The signal of a query function. Once it aborts, the call is not sent, or
-   * stops polling for its answer, and rejects `cancelled`.
+   * stops waiting for the HTTP answer to its request or polling for its
+   * answer, and rejects `cancelled`.
    */
   readonly signal?: AbortSignal
+  /**
+   * How long the caller waits, from the start of the call to its answer: a
+   * direct call's `timeoutMs` (on its canister target), or a mutation's.
+   * When it passes, the call stops waiting as if {@link signal} had aborted,
+   * and rejects with code `"timeout"`: `cancelled` with nothing executed,
+   * except while an attempt of an update (or a oneway) is out, which may
+   * have been delivered, and for a re-send of an offered write ({@link again})
+   * at any point, whose earlier attempt may have run: `outcome_unknown` with
+   * `mayHaveExecuted: true`, the same as the polling bound. Nothing is ever sent again for it: the
+   * re-sends of {@link resend} only follow a failure that proves the attempt
+   * was not delivered, and the wait before one is a wait of this call.
+   */
+  readonly timeoutMs?: number
   /**
    * Whether this call re-sends itself after a failure that allows it: `true`
    * for a direct call and a mutation, `false` for a query function, whose
@@ -255,23 +301,63 @@ export const differs = (
       ? "arg"
       : undefined
 
+/** The write `request` re-sends, at the end of a chain of re-sends, or `request` itself. */
+const firstOf = (request: CallRequest): CallRequest =>
+  request.again === undefined ? request : firstOf(request.again)
+
+/**
+ * The error of a re-send of `again` that did not run, `failure` proving only
+ * that: `outcome_unknown` ({@link resendDidNotRun}), since an earlier send of
+ * the write may have run, kept as `again` in {@link UNKNOWN_WRITES}, so that
+ * `client.resendOf()` offers that write again.
+ */
+export const keptUnknown = (
+  again: CallRequest,
+  failure: ReactorError | ReactorError<unknown>
+): ReactorError => {
+  const kept = resendDidNotRun(failure, firstOf(again).expiresAt)
+  UNKNOWN_WRITES.set(kept, again)
+  return kept
+}
+
 /**
  * Runs one call through the steps of this module. Resolves with the reply as
  * the generated `Actor` types it (unwrapped), and rejects with a
  * `ReactorError`, marked with the request's canister when it has one. A write
  * whose outcome is unknown is kept in {@link UNKNOWN_WRITES}.
+ *
+ * A re-send of an offered write ({@link CallRequest.again}) that did not run,
+ * and that the canister did not answer, rejects {@link keptUnknown}.
  */
 export const invoke = (
   internals: ClientInternals,
   request: CallRequest
 ): Promise<unknown> =>
   run(internals, request).catch((error: unknown) => {
+    const again = request.again
+    if (
+      again !== undefined &&
+      isReactorError(error) &&
+      !error.mayHaveExecuted &&
+      error.kind !== "canister_err"
+    ) {
+      throw fromCanister(keptUnknown(again, error), request.canister)
+    }
     if (
       isReactorError(error) &&
       error.mayHaveExecuted &&
       isWrite(request.method.mode)
     ) {
       UNKNOWN_WRITES.set(error, request)
+      // Each send of the write may start until its own expiry, so the write
+      // it re-sends keeps the latest.
+      const first = firstOf(request)
+      if (
+        first.expiresAt === undefined ||
+        (error.expiresAt ?? 0n) > first.expiresAt
+      ) {
+        first.expiresAt = error.expiresAt
+      }
     }
     throw fromCanister(error, request.canister)
   })
@@ -320,16 +406,7 @@ async function run(
     throw unroutable(where, effectiveCanisterId(name, request.values))
   }
   const encoded = (request.encoded ??= encodeArgs(method.args, request.values))
-  if (!encoded.ok) {
-    const [first] = encoded.issues
-    throw createReactorError("invalid_args", {
-      ...where,
-      reason: first
-        ? `the arguments could not be encoded: ${first.path}: ${first.message}`
-        : undefined,
-      issues: encoded.issues,
-    })
-  }
+  if (!encoded.ok) throw notEncoded(where, encoded)
   // A re-send of an offered write goes out only as that write: anything else
   // would be a new write, which the canister has seen no dedupe key for.
   const sent = request.again
@@ -366,47 +443,96 @@ async function run(
     canisterId: target.id,
     effective: request.effective ?? target.id,
     methodName: name,
-    arg: encoded.bytes,
+    // A copy per invocation: the bytes are what `watchSends` knows this
+    // invocation's sends by, and a `resendOf` offer or a cached encoding
+    // hands the same bytes to every invocation.
+    arg: encoded.bytes.slice(),
     mode,
     signal: request.signal,
+    again: sent !== undefined,
   }
 
+  // A timeout aborts a signal of its own, which the query function's signal
+  // (when there is one) aborts too, so every wait below ends at either.
+  const ms = request.timeoutMs
+  const outer = request.signal
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let timedOut = false
+  // Whether an attempt is out, and may be in the IC: from the moment it is
+  // handed to the agent until it fails. A failure that lets the call re-send
+  // proves the attempt was not delivered, so a timeout during the wait
+  // before a re-send finds nothing out.
+  let out = false
+  let end: (() => void) | undefined
+  if (ms !== undefined) {
+    const stop = new AbortController()
+    end = () => stop.abort(outer?.reason)
+    call.signal = stop.signal
+    outer?.addEventListener("abort", end, { once: true })
+    if (outer?.aborted) end()
+    timer = setTimeout(() => {
+      timedOut = !stop.signal.aborted
+      stop.abort()
+    }, ms)
+  }
+  const signal = call.signal
+
   let reply: Uint8Array | undefined
-  for (let resends = 0; ; resends += 1) {
-    try {
-      if (request.signal?.aborted) {
-        throw createReactorError("cancelled", {
-          ...where,
-          reason: "the read was cancelled before it was sent",
-        })
+  // The latest ingress expiry among this call's sends, for a write that ends
+  // with no answer (`expiresAt`).
+  const sends: Sent = {}
+  try {
+    for (let resends = 0; ; resends += 1) {
+      try {
+        if (resends > 0) {
+          await untilAborted(
+            sleep(UPDATE_RESEND_DELAYS_MS[resends - 1]),
+            signal
+          )
+        }
+        // Asked again before every attempt: a re-send for a caller who is no
+        // longer current is cancelled, not sent as them.
+        const agent = await untilAborted(
+          internals.agentFor(caller.principal, where),
+          signal
+        )
+        if (signal?.aborted) throw notSent(where, "the call was cancelled")
+        // agentFor checked for disposal before it returned the agent, but a
+        // dispose() can still run in the microtask between that check and
+        // this line (a reaction on the identity's promise, say): nothing is
+        // sent then.
+        if (internals.disposed()) {
+          throw notSent(where, "the client was disposed", "client_disposed")
+        }
+        out = true
+        reply = await dispatch(agent, send, call, sends)
+        break
+      } catch (error) {
+        // Never a re-send: what the attempt out did is unknown, and the
+        // caller has stopped waiting. A re-send of an offered write that
+        // times out before it goes out keeps the earlier attempt's unknown
+        // outcome all the same (`invoke`).
+        if (timedOut) {
+          throw withExpiry(timedOutError(where, write && out), sends.expiresAt)
+        }
+        out = false
+        if (signal?.aborted && !isReactorError(error)) {
+          throw notSent(where, "the call was cancelled")
+        }
+        const resend =
+          request.resend &&
+          (write
+            ? !management && retryUpdate(error, resends)
+            : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))
+        if (!resend) throw write ? withExpiry(error, sends.expiresAt) : error
       }
-      // Asked again before every attempt: a re-send for a caller who is no
-      // longer current is cancelled, not sent as them.
-      const agent = await internals.agentFor(caller.principal, where)
-      // agentFor checked for disposal before it returned the agent, but a
-      // dispose() can still run in the microtask between that check and this
-      // line (a reaction on the identity's promise, say): nothing is sent then.
-      if (internals.disposed()) {
-        throw createReactorError("cancelled", {
-          ...where,
-          code: "client_disposed",
-          reason: "the client was disposed before the call was sent",
-        })
-      }
-      reply = await dispatch(agent, send, call)
-      break
-    } catch (error) {
-      const resend =
-        request.resend &&
-        (write
-          ? !management && retryUpdate(error, resends)
-          : resends < UPDATE_RESEND_DELAYS_MS.length && isRetryable(error))
-      if (!resend) throw error
-      await sleep(UPDATE_RESEND_DELAYS_MS[resends])
     }
+  } finally {
+    clearTimeout(timer)
+    if (end) outer?.removeEventListener("abort", end)
   }
   if (send === "oneway") return undefined
-  return decodeReply(method, reply as Uint8Array, internals.maxDepth, {
+  return decodeReply(method, reply as Uint8Array, internals, {
     ...where,
     mode,
   })
@@ -423,6 +549,18 @@ const unroutable = (
     reason: routed.ok ? "the call cannot be routed" : routed.reason,
   })
 
+/** A refusal before the call's next attempt went out. */
+const notSent = (
+  where: { method: string; canisterId: string },
+  lead: string,
+  code?: string
+) =>
+  createReactorError("cancelled", {
+    ...where,
+    code,
+    reason: `${lead} before it was sent`,
+  })
+
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms))
 
@@ -437,17 +575,65 @@ interface Outgoing {
   readonly arg: Uint8Array
   /** How a failure is classified: `update` for a write, `query` for a read (certified or not). */
   readonly mode: CallMode
-  readonly signal?: AbortSignal
+  /** The call's signal: the query function's, or the timeout's when there is one. */
+  signal?: AbortSignal
+  /** Whether the call re-sends a write `resendOf()` offered, which may have run. */
+  readonly again: boolean
+}
+
+/** What the sends of one call record: the latest ingress expiry they were signed with. */
+interface Sent {
+  expiresAt?: bigint
+}
+
+/** Records the ingress expiry a send was signed with, keeping the latest. */
+function recordExpiry(sent: Sent, expiry: unknown): void {
+  if (!Expiry.isExpiry(expiry)) return
+  const value = expiry.toBigInt()
+  if (sent.expiresAt === undefined || value > sent.expiresAt) {
+    sent.expiresAt = value
+  }
+}
+
+/**
+ * The writes being sent, by the encoded argument the agent puts into their
+ * call requests, for {@link watchSends}.
+ */
+const signing = new WeakMap<
+  Uint8Array,
+  { readonly sent: Sent; readonly signal?: AbortSignal }
+>()
+const watched = new WeakSet<HttpAgent>()
+
+/**
+ * Has `agent` record the ingress expiry of every call request of a write in
+ * its `Sent` while it builds the request, before it is signed and sent: a
+ * signal that aborts while the answer is awaited cannot lose it. A request
+ * whose signal aborted before then is refused, so it is never sent: every
+ * send of a write that may have gone out is recorded.
+ */
+function watchSends(agent: HttpAgent): void {
+  if (watched.has(agent)) return
+  watched.add(agent)
+  agent.addTransform("update", async (request) => {
+    const body = request.body as { arg?: Uint8Array; ingress_expiry?: unknown }
+    const write = body.arg && signing.get(body.arg)
+    if (!write) return
+    if (write.signal?.aborted) throw abortReason(write.signal)
+    recordExpiry(write.sent, body.ingress_expiry)
+  })
 }
 
 /**
  * Sends one attempt and returns the reply bytes (`undefined` for a oneway).
- * Rejects with the classified failure.
+ * Rejects with the classified failure. The ingress expiry of a call request
+ * is recorded in `sent` as the agent builds it ({@link watchSends}).
  */
 async function dispatch(
   agent: HttpAgent,
   send: Send,
-  call: Outgoing
+  call: Outgoing,
+  sent: Sent
 ): Promise<Uint8Array | undefined> {
   const effectiveTarget = { canisterId: call.effective }
   // Whether the request may be in the IC: only once `agent.call` returned,
@@ -456,12 +642,19 @@ async function dispatch(
   // failure itself.
   let accepted = false
   try {
+    // Neither the agent nor the `fetch` it was given bounds the wait for an
+    // HTTP answer, and the agent passes `fetch` no signal: the wait is ended
+    // here when the signal aborts. The request itself is not torn down, but
+    // nobody waits for its answer.
     if (send === "query") {
-      const response = await agent.query(call.canisterId, {
-        methodName: call.methodName,
-        arg: call.arg,
-        effectiveTarget,
-      })
+      const response = await untilAborted(
+        agent.query(call.canisterId, {
+          methodName: call.methodName,
+          arg: call.arg,
+          effectiveTarget,
+        }),
+        call.signal
+      )
       if (response.status === QueryResponseStatus.Rejected) {
         throw RejectError.fromCode(
           new UncertifiedRejectErrorCode(
@@ -475,14 +668,19 @@ async function dispatch(
       }
       return response.reply.arg
     }
-    const submitted = await agent.call(call.canisterId, {
-      methodName: call.methodName,
-      arg: call.arg,
-      effectiveTarget,
-      // A oneway expects no reply, so it is sent asynchronously and settles
-      // once the IC has accepted it.
-      ...(send === "oneway" ? { callSync: false } : {}),
-    })
+    watchSends(agent)
+    signing.set(call.arg, { sent, signal: call.signal })
+    const submitted = await untilAborted(
+      agent.call(call.canisterId, {
+        methodName: call.methodName,
+        arg: call.arg,
+        effectiveTarget,
+        // A oneway expects no reply, so it is sent asynchronously and settles
+        // once the IC has accepted it.
+        ...(send === "oneway" ? { callSync: false } : {}),
+      }),
+      call.signal
+    )
     accepted = true
     const { body } = submitted.response
     if (isV2ResponseBody(body)) {
@@ -506,6 +704,7 @@ async function dispatch(
             canisterId: call.canisterId,
             mode: "update",
             accepted,
+            again: call.again,
             signal: call.signal,
           }
         : {
@@ -534,11 +733,9 @@ async function settle(
 ): Promise<Uint8Array> {
   const { body } = response
   if (isV4ResponseBody(body)) {
-    const reply = await readCertificate(
-      agent,
-      body.certificate,
-      call.effective,
-      requestId
+    const reply = await untilAborted(
+      readCertificate(agent, body.certificate, call.effective, requestId),
+      call.signal
     )
     if (reply !== undefined) return reply
   } else if (response.status !== 202) {
@@ -607,17 +804,10 @@ async function readCertificate(
 
 /** Whether a failed `read_state` is worth asking again: the request may simply not have arrived. */
 function isTransientPollFailure(error: unknown): boolean {
-  const record = (
-    typeof error === "object" && error !== null ? error : {}
-  ) as Record<string, unknown>
-  if (record.kind === "Transport") return true
-  const code = (
-    typeof record.code === "object" && record.code !== null ? record.code : {}
-  ) as Record<string, unknown>
-  const status = code.name === "HttpErrorCode" ? code.status : undefined
+  if (asRecord(error).kind === "Transport") return true
+  const status = readHttpStatus(error)
   return (
-    typeof status === "number" &&
-    (status === 408 || status === 429 || status >= 500)
+    status !== undefined && (status === 408 || status === 429 || status >= 500)
   )
 }
 
@@ -633,11 +823,11 @@ function untilAborted<T>(
   if (signal === undefined) return promise
   return new Promise<T>((resolve, reject) => {
     const abort = () => reject(abortReason(signal))
-    if (signal.aborted) {
-      abort()
-      return
-    }
+    // The promise is handled even when the signal has already aborted, so a
+    // request that fails after nobody waits for it is not an unhandled
+    // rejection.
     signal.addEventListener("abort", abort, { once: true })
+    if (signal.aborted) abort()
     promise.then(
       (value) => {
         signal.removeEventListener("abort", abort)
@@ -659,8 +849,8 @@ const abortReason = (signal: AbortSignal): unknown =>
  * Polls `read_state` for the request's reply, asking again after a transient
  * failure, at most {@link REPOLL_DELAYS_MS} times.
  *
- * It stops, and rejects, as soon as `signal` aborts: before each poll and
- * during every wait between two. A read whose observer went away (TanStack
+ * It stops, and rejects, as soon as `signal` aborts: before each poll,
+ * while a poll waits for its answer, and during every wait between two. A read whose observer went away (TanStack
  * aborts the signal it gave the query function) would otherwise keep asking
  * for up to the strategy's five minutes, for an answer nobody reads.
  */
@@ -677,11 +867,13 @@ async function poll(
   for (let failures = 0; ; failures += 1) {
     if (signal?.aborted === true) throw abortReason(signal)
     try {
-      const { reply } = await pollForResponse(
-        agent,
-        { canisterId: effective },
-        requestId,
-        { strategy }
+      // Each poll's own read_state request has no bound either: an abort
+      // ends the wait for its answer too.
+      const { reply } = await untilAborted(
+        pollForResponse(agent, { canisterId: effective }, requestId, {
+          strategy,
+        }),
+        signal
       )
       return reply
     } catch (error) {
@@ -722,10 +914,21 @@ function describeErr(errTag: string, payload: unknown): string {
 function decodeReply(
   method: PreparedMethod,
   reply: Uint8Array,
-  maxDepth: number,
+  limits: { readonly maxDepth: number; readonly maxElements: number },
   context: { method: string; canisterId: string; mode: CallMode }
 ): unknown {
-  const decoded = decodeArgs(method.results, reply, { maxDepth })
+  // candid-core charges a blob one element per byte, so a reply over its
+  // default budget of 1,000,000 (a wasm module, an asset chunk) would never
+  // decode. A reply may hold one value per byte plus the budget: that work is
+  // bounded by the IC's reply size, and the budget still bounds values that
+  // take no bytes on the wire, however large a blob beside them.
+  const decoded = decodeArgs(method.results, reply, {
+    maxDepth: limits.maxDepth,
+    maxElements: Math.min(
+      limits.maxElements + reply.length,
+      Number.MAX_SAFE_INTEGER
+    ),
+  })
   if (!decoded.ok) {
     const [first] = decoded.issues
     throw invalidReplyError(context, {

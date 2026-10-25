@@ -1,0 +1,367 @@
+{
+  "contract": {
+    "actor": {
+      "kind": "service",
+      "service": 0
+    },
+    "canonicalization_profile": "candid-core-canon-1",
+    "declarations": [
+      {
+        "name": "IdentityAttributesError",
+        "type": 13
+      },
+      {
+        "name": "Profile",
+        "type": 4
+      }
+    ],
+    "format": "candid-core",
+    "format_version": 1,
+    "identities": {
+      "contract": "candid-core:contract:v1:sha256:937e84f1a5c4bb4372af71d927b91d3f6fc10679311a6405e30affa283d7f4e7",
+      "interface": "candid-core:interface:v1:sha256:6d3c3818a3125a5d1273259c2c38641b94dbad34274561ad9553efefc09153f6"
+    },
+    "producer": {
+      "candid_parser_version": "0.4.0",
+      "candid_version": "0.10.30",
+      "name": "candid-core",
+      "version": "0.1.0-beta.3"
+    },
+    "semantics_profile": "candid-1",
+    "types": [
+      {
+        "kind": "service",
+        "methods": [
+          {
+            "function": 1,
+            "id": 1118490419,
+            "name": "getProfile"
+          },
+          {
+            "function": 7,
+            "id": 1314951240,
+            "name": "_internet_identity_sign_in_start"
+          },
+          {
+            "function": 10,
+            "id": 3332541869,
+            "name": "_internet_identity_sign_in_finish"
+          }
+        ]
+      },
+      {
+        "args": [
+          2
+        ],
+        "kind": "func",
+        "mode": "query",
+        "results": [
+          3
+        ]
+      },
+      {
+        "kind": "primitive",
+        "primitive": "principal"
+      },
+      {
+        "inner": 4,
+        "kind": "opt"
+      },
+      {
+        "fields": [
+          {
+            "id": 5744591,
+            "type": 5
+          },
+          {
+            "id": 1224700491,
+            "type": 5
+          },
+          {
+            "id": 1875824412,
+            "type": 5
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 6,
+        "kind": "opt"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "text"
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          8
+        ]
+      },
+      {
+        "inner": 9,
+        "kind": "vec"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat8"
+      },
+      {
+        "args": [],
+        "kind": "func",
+        "mode": "update",
+        "results": [
+          11
+        ]
+      },
+      {
+        "fields": [
+          {
+            "id": 24860,
+            "type": 12
+          },
+          {
+            "id": 5048165,
+            "type": 13
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "null"
+      },
+      {
+        "fields": [
+          {
+            "id": 48098998,
+            "type": 12
+          },
+          {
+            "id": 276427748,
+            "type": 14
+          },
+          {
+            "id": 389603065,
+            "type": 16
+          },
+          {
+            "id": 1095527594,
+            "type": 12
+          },
+          {
+            "id": 1667822096,
+            "type": 18
+          },
+          {
+            "id": 1994822808,
+            "type": 12
+          },
+          {
+            "id": 2257309989,
+            "type": 12
+          },
+          {
+            "id": 2358873996,
+            "type": 19
+          },
+          {
+            "id": 3693150100,
+            "type": 6
+          },
+          {
+            "id": 3700952806,
+            "type": 20
+          }
+        ],
+        "kind": "variant"
+      },
+      {
+        "fields": [
+          {
+            "id": 2111446244,
+            "type": 15
+          },
+          {
+            "id": 3297331555,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "inner": 6,
+        "kind": "vec"
+      },
+      {
+        "fields": [
+          {
+            "id": 507520740,
+            "type": 17
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "kind": "primitive",
+        "primitive": "nat"
+      },
+      {
+        "fields": [
+          {
+            "id": 9671866,
+            "type": 6
+          },
+          {
+            "id": 3108572984,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 763408708,
+            "type": 6
+          }
+        ],
+        "kind": "record"
+      },
+      {
+        "fields": [
+          {
+            "id": 5146956,
+            "type": 6
+          },
+          {
+            "id": 1076899448,
+            "type": 15
+          }
+        ],
+        "kind": "record"
+      }
+    ]
+  },
+  "extensions": {
+    "org.candid-core.field-names/v1": [
+      [
+        4,
+        5744591,
+        "sso"
+      ],
+      [
+        4,
+        1224700491,
+        "name"
+      ],
+      [
+        4,
+        1875824412,
+        "email"
+      ],
+      [
+        11,
+        24860,
+        "ok"
+      ],
+      [
+        11,
+        5048165,
+        "err"
+      ],
+      [
+        13,
+        48098998,
+        "FrontendOriginsNotConfigured"
+      ],
+      [
+        13,
+        276427748,
+        "MixedSsoSources"
+      ],
+      [
+        13,
+        389603065,
+        "Stale"
+      ],
+      [
+        13,
+        1095527594,
+        "MalformedCandid"
+      ],
+      [
+        13,
+        1667822096,
+        "AmbiguousAttribute"
+      ],
+      [
+        13,
+        1994822808,
+        "NoAttributes"
+      ],
+      [
+        13,
+        2257309989,
+        "UnknownNonce"
+      ],
+      [
+        13,
+        2358873996,
+        "UntrustedSsoSource"
+      ],
+      [
+        13,
+        3693150100,
+        "MissingField"
+      ],
+      [
+        13,
+        3700952806,
+        "FrontendOriginMismatch"
+      ],
+      [
+        14,
+        2111446244,
+        "otherKeys"
+      ],
+      [
+        14,
+        3297331555,
+        "ssoKeys"
+      ],
+      [
+        16,
+        507520740,
+        "ageNs"
+      ],
+      [
+        18,
+        9671866,
+        "field"
+      ],
+      [
+        18,
+        3108572984,
+        "sources"
+      ],
+      [
+        19,
+        763408708,
+        "domain"
+      ],
+      [
+        20,
+        5146956,
+        "got"
+      ],
+      [
+        20,
+        1076899448,
+        "expected"
+      ]
+    ]
+  }
+}

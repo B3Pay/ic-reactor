@@ -10,15 +10,17 @@
  *
  * This script packs each publishable package, installs the tarballs into a scratch
  * project *outside* the workspace, and then:
- *   1. imports every entry point in real Node ESM
- *   2. requires every CJS entry point where one is declared
- *   3. runs `publint` over each tarball
- *   4. runs `attw` (Are The Types Wrong) over each tarball
+ *   1. checks that each tarball ships the repository's LICENSE
+ *   2. imports every entry point in real Node ESM
+ *   3. requires every CJS entry point where one is declared
+ *   4. runs `publint` over each tarball
+ *   5. runs `attw` (Are The Types Wrong) over each tarball
  *
  * Usage: node scripts/verify-package-artifacts.mjs [--skip-attw] [--keep]
  */
 import { execFileSync } from "node:child_process"
 import {
+  existsSync,
   mkdtempSync,
   rmSync,
   writeFileSync,
@@ -27,6 +29,11 @@ import {
 } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
+import {
+  exportsMapOf,
+  publicSubpaths,
+  specifierOf,
+} from "./lib/package-exports.mjs"
 
 const ROOT = resolve(import.meta.dirname, "..")
 const KEEP = process.argv.includes("--keep")
@@ -116,7 +123,7 @@ try {
     const tgz = readdirSync(scratch).find(
       (f) => f.endsWith(".tgz") && !tarballs.some((t) => t.file === f)
     )
-    if (!tgz) throw new Error(`npm pack produced no tarball for ${rel}`)
+    if (!tgz) throw new Error(`pnpm pack produced no tarball for ${rel}`)
     tarballs.push({ name: manifest.name, file: tgz, manifest, dir })
     console.log(`packed ${manifest.name} -> ${tgz}`)
   }
@@ -163,18 +170,33 @@ try {
   for (const { name, manifest } of tarballs) {
     console.log(`${name}`)
 
+    // MIT asks for the notice to ship with every copy: each tarball carries the
+    // repository's LICENSE, word for word. pnpm pack falls back to the
+    // workspace root's LICENSE when a package has none, so this fails only
+    // when the root file is gone too; the per-package copies are for a plain
+    // `npm pack` and for readers of the package directory.
+    const license = join(scratch, "node_modules", name, "LICENSE")
+    if (!existsSync(license)) {
+      fail(name, "LICENSE missing", "the tarball contains no LICENSE file")
+    } else if (
+      readFileSync(license, "utf8") !==
+      readFileSync(join(ROOT, "LICENSE"), "utf8")
+    ) {
+      fail(name, "LICENSE differs", "it is not a copy of the root LICENSE")
+    } else {
+      ok("ships LICENSE")
+    }
+
     if (isBinOnly(manifest)) {
       ok(
         `skip import ${name} (bin-only package — the executable is the whole surface)`
       )
     }
 
-    // Derive the public subpaths from the exports map (skip ./package.json).
-    const subpaths = manifest.exports
-      ? Object.keys(manifest.exports).filter((k) => k !== "./package.json")
-      : isBinOnly(manifest)
-        ? []
-        : ["."]
+    // The public subpaths of the exports map; a bin-only package without
+    // one exposes no module.
+    const exportsMap = exportsMapOf(manifest)
+    const subpaths = isBinOnly(manifest) ? [] : publicSubpaths(manifest)
 
     // A bin package's entry *is* the executable, so importing it runs the program
     // rather than exposing a module surface. Only its declarations are checked.
@@ -189,13 +211,13 @@ try {
       binTargets.has(String(target || "").replace(/^\.\//, ""))
 
     for (const sub of subpaths) {
-      const spec = sub === "." ? name : `${name}/${sub.replace(/^\.\//, "")}`
+      const spec = specifierOf(name, sub)
 
       const entryTarget =
         sub === "."
-          ? (manifest.exports?.["."]?.import?.default ??
-            manifest.exports?.["."]?.import ??
-            manifest.exports?.["."]?.default ??
+          ? (exportsMap?.["."]?.import?.default ??
+            exportsMap?.["."]?.import ??
+            exportsMap?.["."]?.default ??
             manifest.main)
           : undefined
       if (isBinEntry(entryTarget)) {
@@ -234,7 +256,7 @@ try {
       // The `react-server` entry, resolved the way a React Server Component
       // bundle resolves it. It must load without reaching React at all (the
       // resolve hook throws on any React specifier) and export no hook.
-      const cond = manifest.exports?.[sub]
+      const cond = exportsMap?.[sub]
       if (cond && typeof cond === "object" && "react-server" in cond) {
         try {
           const out = run(

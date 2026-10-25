@@ -1,7 +1,10 @@
 # IC Reactor
 
 <div align="center">
-  <img src="docs/src/assets/icon.svg" alt="IC Reactor Logo" width="240" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/ic-reactor-mark-dark.svg" />
+    <img src="docs/src/assets/ic-reactor-mark-light.svg" alt="IC Reactor logo" width="160" />
+  </picture>
   <br><br>
   <strong>Type-safe Internet Computer integration for TypeScript and React</strong>
   <br><br>
@@ -46,7 +49,10 @@ of ic-reactor 4: `candid-core-cli gen` generates the canister module instead.
 `@ic-reactor/candid` stays at 3.x, published from the `v3` branch. None of the
 four is in this branch's tree.
 
-What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md).
+What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md). What a 4.x
+release may change, and the oldest Node, TypeScript, React, TanStack Query,
+Vite and `@icp-sdk/core` supported, is in
+[Versioning and support](./docs/src/content/docs/versioning.mdx).
 
 ## Install
 
@@ -92,6 +98,8 @@ The 3.x examples are on the `v3` branch.
   (source: [`./docs`](./docs)), and
   [ic-reactor.b3pay.net/v3](https://ic-reactor.b3pay.net/v3/) for 3.x.
 - Changelog: [`CHANGELOG.md`](./CHANGELOG.md)
+- Versioning and support:
+  [`docs/src/content/docs/versioning.mdx`](./docs/src/content/docs/versioning.mdx)
 - Package docs:
   - [`@ic-reactor/react`](./packages/react/README.md)
   - [`@ic-reactor/core`](./packages/core/README.md)
@@ -159,7 +167,7 @@ Please also review the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 ## License
 
-MIT © [Behrad Deylami](https://github.com/b3hr4d)
+MIT © [Behrad Deylami](https://github.com/b3hr4d). See [LICENSE](./LICENSE).
 
 ---
 

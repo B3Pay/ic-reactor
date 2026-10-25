@@ -186,47 +186,48 @@ describe("release.yml as it uses release-tag.mjs", () => {
     }
   })
 
-  it("publishes under preflight's dist-tag, after the approval", () => {
-    const release = job("release")
-    assert.ok(has(release, "needs: [preflight, approve]"))
+  it("publishes under preflight's dist-tag, after CI and the approval", () => {
+    const publish = job("publish")
+    assert.ok(has(publish, "needs: [preflight, ci-passed, approve]"))
+    assert.ok(has(job("approve"), "needs: [preflight, ci-passed]"))
     assert.ok(has(job("approve"), "environment: npm-publish"))
-    assert.ok(has(release, "TAG: ${{ needs.preflight.outputs.dist_tag }}"))
+    assert.ok(has(publish, "TAG: ${{ needs.preflight.outputs.dist_tag }}"))
     assert.ok(
       has(
-        release,
+        publish,
         'latest | beta) echo "Publishing under the $TAG dist-tag." ;;'
       )
     )
     assert.ok(
-      has(release, 'npm publish "$TARBALL" --access public --tag "$TAG"')
+      has(publish, 'npm publish "$TARBALL" --access public --tag "$TAG"')
     )
-    assert.equal(release.match(/^\s*npm publish /gm).length, 1)
+    assert.equal(publish.match(/^\s*npm publish /gm).length, 1)
   })
 
   it("publishes from the npm-release environment, which npm can require", () => {
-    assert.ok(has(job("release"), "environment: npm-release"))
+    assert.ok(has(job("publish"), "environment: npm-release"))
   })
 
   it("takes the GitHub Release's prerelease and Latest badge from preflight", () => {
-    const githubRelease = job("github-release")
+    const releaseNotes = job("release-notes")
     assert.ok(
       has(
-        githubRelease,
+        releaseNotes,
         "prerelease: ${{ needs.preflight.outputs.prerelease == 'true' }}"
       )
     )
     assert.ok(
       has(
-        githubRelease,
+        releaseNotes,
         "make_latest: ${{ needs.preflight.outputs.make_latest }}"
       )
     )
   })
 
   it("creates the GitHub Release only after every package has published", () => {
-    assert.ok(has(job("github-release"), "needs: [preflight, release]"))
-    assert.ok(!job("release").includes("action-gh-release"))
-    assert.ok(has(job("release"), "contents: read"))
+    assert.ok(has(job("release-notes"), "needs: [preflight, publish]"))
+    assert.ok(!job("publish").includes("action-gh-release"))
+    assert.ok(!job("publish").includes("contents: write"))
   })
 })
 

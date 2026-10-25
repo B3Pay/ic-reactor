@@ -19,7 +19,7 @@
  * @packageDocumentation
  */
 import type { AuthState, Client } from "@ic-reactor/core"
-import { QueryClientProvider } from "@tanstack/react-query"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import {
   createContext,
   useContext,
@@ -48,10 +48,11 @@ const disposedClients = new WeakSet<Client>()
  * count once it was made as its serial, and a getter that says whether it
  * was disposed. Each client also carries a method that, called with the
  * client as `this` and a principal's text, returns a frozen view of the
- * client whose keys, read options, `caller()` and `authState()` are that
- * principal's (the client itself for one built with `identity`): what
- * {@link useClient} returns while it renders with a caller that is not the
- * live one. Each such view carries the client it was made over, which
+ * client whose keys, read options, write options, `caller()` and
+ * `authState()` are that principal's (the client itself for one built with
+ * `identity`), the same one for the same principal while it is kept: what
+ * {@link useClient} returns for the caller each render shows. Each such view
+ * carries the client it was made over, which
  * {@link hold} keeps in its place. `Symbol.for` keys and a count on `globalThis`, so that this
  * module reads them from whichever copy of core made the client, and imports
  * nothing of core at run time.
@@ -113,8 +114,8 @@ declare const FinalizationRegistry:
  *
  * The client is the unregister token, so one `unregister` removes what every
  * dropped render registered for it. Two moments do: a factory call that hands
- * the client back as borrowed (see {@link hold}), and the commit of any
- * provider that renders it. A client that a factory returns again, or that a
+ * the client itself back as borrowed (see {@link hold}; a view of it does
+ * not), and the commit of any provider that renders it. A client that a factory returns again, or that a
  * tree runs on, is not one React threw away, and only an unmount, or its
  * owner, may end it.
  *
@@ -160,19 +161,28 @@ const unclaimed =
  * development (see {@link reportLazilyShared}). Only the call that created a
  * client registers it, and the first removal ends the registration, so the
  * report comes once per client.
+ *
+ * A view (`client={() => view}`, a nested provider handed the outer one's
+ * `useClient()`) is borrowed, and its client's registration is left alone:
+ * the outer provider renders in the same pass, and removing it would report
+ * correct code as lazily shared and, when React throws that render away,
+ * leave the outer provider's client to nobody (#965). Each provider's commit
+ * removes it.
  */
 function hold(build: () => Client): Held {
   const before = clientsCreated()
   const built = build()
   // A view that a component's useClient() returned keeps its caller for good:
   // hold the client it was made over, whose caller the tree then follows.
-  const client = (built as Stamped)[CLIENT_OF] ?? built
+  const of = (built as Stamped)[CLIENT_OF]
+  const client = of ?? built
   const serial = (client as Stamped)[CLIENT_SERIAL]
   const owned =
     typeof serial === "number" ? serial > before : clientsCreated() > before
   const held = { client, owned }
+  // A view leaves its client's registration to the commits (see above).
   if (owned) unclaimed?.register(held, client, client)
-  else if (unclaimed?.unregister(client)) reportLazilyShared()
+  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()
   return held
 }
 
@@ -225,7 +235,9 @@ function reportDisposed(client: Client): void {
  * Reports, in development, a factory that handed back a client which an
  * earlier factory call created and no provider has committed yet. A lazily
  * shared factory (`() => (client ??= createClient(...))`) does that, and so
- * does one that returns a client another provider's factory call created.
+ * does one that returns a client another provider's factory call created. A
+ * view of such a client (a nested provider handed `useClient()`) is not
+ * reported: the outer provider holds the client.
  *
  * The provider of the call that created such a client owns it, so it disposes
  * it on unmount under every other tree that uses it; and from the moment React
@@ -243,6 +255,25 @@ function reportLazilyShared(): void {
       "That call's provider disposes it on unmount, or at a garbage collection if React threw its render away. " +
       "A provider disposes only a client its own factory created: create a shared client eagerly and keep it " +
       "alive, or use client={() => createClient({ ... })}."
+  )
+}
+
+/**
+ * Throws, in development, when the client's `QueryClient` is not an instance
+ * of the `QueryClient` that `@tanstack/react-query` is built on: two copies of
+ * `@tanstack/query-core` are loaded, one for core and one for the hooks.
+ * npm installs two when the app's `@tanstack/query-core` is not the exact
+ * version its `@tanstack/react-query` depends on, and a bundler can load one
+ * copy twice. Each copy has its own `skipToken`, so the hooks' one is not
+ * core's: `client.queryOptions()` then throws a `TypeError` for it, and this
+ * check names the cause where the tree mounts.
+ */
+function checkOneQueryCore(client: Client): void {
+  if (client.queryClient instanceof QueryClient || !isDevelopment()) return
+  throw new Error(
+    "[ic-reactor] <ReactorProvider>: the client's QueryClient is not @tanstack/react-query's: two copies of @tanstack/query-core " +
+      "are installed (or a bundler loads it twice), and skipToken does not skip. Install it at the exact version @tanstack/react-query depends on; " +
+      "`npm ls @tanstack/query-core` must show one copy."
   )
 }
 
@@ -275,6 +306,12 @@ export interface ReactorProviderProps {
  * TanStack Query's `QueryClientProvider` around the children with the
  * client's `QueryClient`, and, if its factory created the client, disposes it
  * when it unmounts.
+ *
+ * An app that already uses TanStack Query runs its own queries on that same
+ * `QueryClient` (one per tree): an error that is not a `ReactorError` is
+ * retried there as TanStack Query retries it, and a write invalidates its
+ * reads on the `QueryClient` it ran on as well, so a `QueryClientProvider` of
+ * the app's nested inside still sees them refresh.
  *
  * Put it at the root of the part of the app that calls canisters, in a
  * client module (the examples below). On a server it renders inside the
@@ -383,6 +420,7 @@ export function ReactorProvider({
 }: ReactorProviderProps): ReactElement {
   const [held, setHeld] = useState(() => hold(build))
   const { client, owned } = held
+  checkOneQueryCore(client)
   const firstBuild = useRef(build)
   const replacement = useRef<
     { readonly of: Client; readonly held: Held } | undefined
@@ -454,38 +492,54 @@ const anonymous = (): string => ANONYMOUS
  * The client of the nearest {@link ReactorProvider}: the one object that
  * builds canister handles and query options, and that signs users in and out.
  *
+ * What it returns is a view of the client for the caller the render shows:
+ * one object per caller, a new one after a sign-in, a switch of account or a
+ * sign-out, and the same one on every render while the caller stays. Its
+ * `queryKey`, `queryOptions`, `caller()` and `authState()` are that caller's
+ * (`authState()` is the client's own while that caller is the live one, an
+ * expired session included), and its `mutationOptions` send only as that
+ * caller: a write pressed before a switch reached the render is refused
+ * (`kind` `"cancelled"`, `code` `"caller_changed"`, `mayHaveExecuted:
+ * false`) and sends nothing, so a handler needs no check of its own. Their
+ * `mutationKey` ends with that caller. A handler that awaits `signIn()` and
+ * then calls `mutate` presses with the last committed render's options, and
+ * is refused while the signed-in render has not committed (one that suspends
+ * on the user's data): let the next render press, or make a direct call. A
+ * canister's direct calls, `func` and `resendOf`'s `send` sign as the caller
+ * current when they run. Everything else (canisters, `signIn`, `signOut`,
+ * `subscribe`, `dispose`, the `QueryClient`) is the client's own. It is
+ * never the provider's client object: to tell two clients apart, compare
+ * their `queryClient`.
+ *
  * Call it in the body of each component that builds keys or options, on
  * every render, and build them from what it returns there, never from a
  * client held at module scope: they are built for the caller this render
- * shows. Do not keep what it returns past the render: while a page hydrates
- * it is a view for the anonymous caller, and a view never moves on. An effect
- * or a callback that uses it closes over its render's value and lists it in
- * its dependencies (`react-hooks/exhaustive-deps`), so that it runs again with
- * the client after hydrating. Kept from the hydrating render anywhere else
- * (`useState(client)`, `useRef(client)`, a `useMemo` or `useCallback` with
- * `[]`, a module variable), it stays that view: the component shows the
- * anonymous caller's data, a read it starts while the user is signed in is
- * cancelled, and a write through it still signs as the live caller. Nothing
+ * shows. List it in the dependencies of whatever is built from it
+ * (`useMemo(() => client.queryOptions(...), [client])`, an effect or a
+ * callback, as `react-hooks/exhaustive-deps` asks), and React Compiler does
+ * the same: since the object changes with the caller, what is memoized on it
+ * is built again for the new one. Do not keep what it returns past the
+ * render: a view never moves on. Kept anywhere else (`useState(client)`,
+ * `useRef(client)`, a `useMemo` or `useCallback` with `[]`, a module
+ * variable), it stays the view of the caller it was taken for: the component
+ * shows that caller's data, a read it starts while someone else is signed in
+ * is cancelled, and a write through its `mutationOptions` is refused. Nothing
  * warns about it. A nested {@link ReactorProvider} given it
  * (`client={() => client}`) holds the client the view was made over.
  * It follows the client's caller with `useSyncExternalStore`, so a
  * component that calls it renders again when the caller changes (a sign-in, a
  * switch of account, a sign-out) and never otherwise: a change of status that
  * leaves the caller as it is (a session that expired, or one signed in
- * elsewhere, both call as the anonymous principal) renders nothing. In the
- * steady state it returns the provider's client object itself.
+ * elsewhere, both call as the anonymous principal) renders nothing, and
+ * returns the same object.
  *
  * On a server, and while a page hydrates, the caller is the anonymous one, as
  * for {@link useAuth}. In a browser that holds a session, the hydrating render
- * gets a view of the client for the anonymous caller: its `queryKey`,
- * `queryOptions`, `caller()` and `authState()` are the anonymous caller's, so
- * the page finds what the server prefetched and dehydrated and matches its
- * HTML; everything else (canisters, `mutationOptions`, `signIn`, `signOut`,
- * the `QueryClient`) is the client's own, and a write signs as the caller
- * current when it runs. Right after hydrating, React renders the component
- * again with the client itself, for the user: a read with none of the user's
- * data yet shows its loading state, and a `useSuspenseQuery` read its
- * boundary's fallback, until that data arrives. A client built with
+ * gets the anonymous caller's view, so the page finds what the server
+ * prefetched and dehydrated and matches its HTML. Right after hydrating,
+ * React renders the component again with the user's view: a read with none
+ * of the user's data yet shows its loading state, and a `useSuspenseQuery`
+ * read its boundary's fallback, until that data arrives. A client built with
  * `identity` keeps its caller for good and is always returned as it is.
  *
  * Three consequences of that move on a signed-in reload:
@@ -527,18 +581,22 @@ const anonymous = (): string => ANONYMOUS
  */
 export function useClient(): Client {
   const client = useProvided()
+  const viewAs = (client as Stamped)[CLIENT_AS]
   // The view for the server's caller. A client with one caller for good is
   // its own view and its own server snapshot: it has nothing to move on to
   // after hydrating.
-  const view = (client as Stamped)[CLIENT_AS]?.call(client, ANONYMOUS) ?? client
+  const view = viewAs?.call(client, ANONYMOUS) ?? client
   const principal = useSyncExternalStore(
     client.subscribe,
     client.caller,
     view === client ? client.caller : anonymous
   )
-  // Only the server snapshot differs from the live caller, and only while a
-  // component hydrates.
-  return principal === client.caller() ? client : view
+  // The view for the caller this render shows, the live one included: one
+  // object per caller, so that what a component memoizes on it (`useMemo`,
+  // an effect's dependencies, React Compiler's cache) is built again when
+  // the caller changes, and kept while it does not (#894).
+  const shown = principal === ANONYMOUS ? view : viewAs?.call(client, principal)
+  return shown ?? view
 }
 
 /**
@@ -556,12 +614,19 @@ const SERVER_STATE: AuthState = Object.freeze({
 const serverState = (): AuthState => SERVER_STATE
 
 /**
- * Who calls, and how to change it: the client's {@link AuthState} (`status`
- * and `principal`) with `signIn` and `signOut` forwarded to the client.
+ * Who calls, and how to change it: the client's {@link AuthState} (`status`,
+ * `principal` and, while signed in, `expiresAt`) with `signIn` and `signOut`
+ * forwarded to the client.
  *
  * It follows the client with `useSyncExternalStore`, so a component renders
- * again once per change of status or principal and never otherwise (a renewed
- * delegation, or a parent that renders, does not). The object it returns is
+ * again once per change of status, principal or `expiresAt` and never
+ * otherwise (a renewed delegation, or a parent that renders, does not). A
+ * session that ends by the clock renders it again with `"expired"` when its
+ * `expiresAt` passes, with no user activity needed.
+ *
+ * `"signed-in"` may be a read-only session: Internet Identity can scope one to
+ * queries, and the network refuses its updates. Nothing tells the two apart
+ * yet. The object it returns is
  * the same until the state changes, so it is safe in a dependency array or
  * as a prop of a memoized child.
  *
@@ -604,6 +669,7 @@ export function useAuth(): AuthState & {
     () => ({
       status: state.status,
       principal: state.principal,
+      ...(state.expiresAt === undefined ? {} : { expiresAt: state.expiresAt }),
       signIn: (options?: unknown) => client.signIn(options),
       signOut: (options?: unknown) => client.signOut(options),
     }),

@@ -78,6 +78,10 @@
  *   file, such as `// src/reactor.ts` for `./reactor`. Only a module the guide
  *   never shows, such as the canister's declarations, comes from a fixture.
  *
+ * The docs site's build guides (`build/` under the docs content root) follow
+ * the same two rules: each one takes an app from nothing to working and shows
+ * every file of it, so a reader can paste each file as it stands.
+ *
  * ## Hooks
  *
  * The compiler cannot see the rule the guides teach first: a React hook runs
@@ -132,6 +136,7 @@ import { tmpdir } from "node:os"
 import { dirname, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { AI_CONTEXT_FILES } from "./ai-context-files.js"
+import { closesFence, fenceOpening } from "./lib/markdown-fences.mjs"
 
 const rootDir = join(dirname(fileURLToPath(import.meta.url)), "..")
 const fixturesDir = join(rootDir, "scripts", "check-snippets")
@@ -197,6 +202,14 @@ const DOCS_ROOT = "docs/src/content/docs/"
  * only what its pages assume beyond the default app; without one, the page
  * gets the default app.
  */
+/**
+ * A build guide of the docs site: a page under `build/` that shows every file
+ * of the app it builds. Its snippets are held to the consumer guides' rules.
+ */
+function isBuildGuide(file) {
+  return file.startsWith(`${DOCS_ROOT}build/`)
+}
+
 function docsContext(file) {
   if (!file.startsWith(DOCS_ROOT)) return undefined
   const dir = dirname(file.slice(DOCS_ROOT.length))
@@ -219,6 +232,8 @@ const CONTEXTS = {}
  * declares names to show them, not to use them), and `@types/node` joins the
  * template's `vite/client`, for the `vite.config.ts` and script snippets.
  * `vite/client` types `import.meta.env`, where a Vite app reads a canister id.
+ * `allowImportingTsExtensions` is on, as in the template, so a script that
+ * Node runs as TypeScript can import `./tools.ts` as Node needs it to.
  */
 const COMPILER_OPTIONS = {
   target: "ES2022",
@@ -228,6 +243,7 @@ const COMPILER_OPTIONS = {
   moduleDetection: "force",
   verbatimModuleSyntax: true,
   erasableSyntaxOnly: true,
+  allowImportingTsExtensions: true,
   jsx: "react-jsx",
   strict: true,
   noEmit: true,
@@ -247,7 +263,10 @@ const COMPILER_OPTIONS = {
  * the runtime packages, so that `react`, `@tanstack/react-query` and the rest
  * keep the versions the packages themselves compile against.
  * `examples/next-ssr` provides `next` for the SSR guide's App Router
- * snippets (`next/server`, `next/headers`).
+ * snippets (`next/server`, `next/headers`). A library only a build guide's app
+ * uses, and no example, is a devDependency of `docs`, listed last:
+ * `@modelcontextprotocol/server`, `@modelcontextprotocol/client` and `zod` for
+ * the agent tools guide.
  */
 const DEPENDENCY_SOURCES = [
   "packages/react",
@@ -255,6 +274,7 @@ const DEPENDENCY_SOURCES = [
   "packages/vite-plugin",
   ".",
   "examples/next-ssr",
+  "docs",
 ]
 
 // ── Source files ─────────────────────────────────────────────────────────────
@@ -318,11 +338,11 @@ function docsFiles() {
 // ── Fence extraction ─────────────────────────────────────────────────────────
 
 /**
- * The fenced code blocks of a Markdown (or MDX) file, following CommonMark: a
- * fence closes on a line of the same character, at least as long, with no
- * info string, so a ```ts inside a ````markdown block is content, not a fence.
- * The opening fence's indentation is removed from each line (fences nested in
- * lists and MDX components are indented).
+ * The fenced code blocks of a Markdown (or MDX) file, by the rule in
+ * `lib/markdown-fences.mjs`. A fence that is never closed runs to the end of
+ * the file, as CommonMark has it, so its code is checked rather than dropped
+ * (#980). The opening fence's indentation is removed from each line (fences
+ * nested in lists and MDX components are indented).
  *
  * @returns {{ lang: string, info: string[], line: number, code: string }[]}
  *   `line` is the 1-based line of the fence's first line of code.
@@ -334,25 +354,11 @@ function extractFences(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
     if (open === null) {
-      const match = /^(\s*)(`{3,}|~{3,})\s*([^\s`]*)(.*)$/.exec(line)
-      if (match) {
-        open = {
-          indent: match[1].length,
-          marker: match[2],
-          lang: match[3].toLowerCase(),
-          info: match[4].trim().split(/\s+/).filter(Boolean),
-          line: i + 2,
-          body: [],
-        }
-      }
+      const opening = fenceOpening(line)
+      if (opening) open = { ...opening, line: i + 2, body: [] }
       continue
     }
-    const close = /^\s*(`{3,}|~{3,})\s*$/.exec(line)
-    if (
-      close &&
-      close[1][0] === open.marker[0] &&
-      close[1].length >= open.marker.length
-    ) {
+    if (closesFence(line, open.marker)) {
       const { lang, info, line: start, body } = open
       fences.push({ lang, info, line: start, code: body.join("\n") })
       open = null
@@ -360,6 +366,10 @@ function extractFences(text) {
     }
     const indent = /^\s*/.exec(line)[0].length
     open.body.push(line.slice(Math.min(indent, open.indent)))
+  }
+  if (open !== null) {
+    const { lang, info, line: start, body } = open
+    fences.push({ lang, info, line: start, code: body.join("\n") })
   }
   return fences
 }
@@ -384,7 +394,7 @@ function collectSnippets(files, docs) {
         context: CONTEXTS[file] ?? docsContext(file) ?? DEFAULT_CONTEXT,
         group: moduleGroup(file),
         defines: defines ? defines[1].split("/") : undefined,
-        selfContained: isConsumerGuide(file),
+        selfContained: isConsumerGuide(file) || isBuildGuide(file),
         skipped,
         docs,
       })
@@ -491,10 +501,13 @@ const isAppAlias = (specifier) => specifier.startsWith("@/")
 
 /**
  * The path segments of an import that name the module: a relative import's
- * without its `.` and `..`, an `@/` import's without the alias.
+ * without its `.` and `..`, an `@/` import's without the alias, and either
+ * without a `.ts` or `.tsx` extension, which a script Node runs as
+ * TypeScript writes (`./generated/icrc1.ts`).
  */
 function moduleSegments(specifier) {
   return (isAppAlias(specifier) ? specifier.slice(1) : specifier)
+    .replace(/\.tsx?$/, "")
     .split("/")
     .filter((segment) => segment !== "" && segment !== "." && segment !== "..")
 }
@@ -527,9 +540,10 @@ function findFixture(project, context, specifier) {
 }
 
 /**
- * The snippet module a relative import of a consumer guide names when the
- * guide shows that module itself: a snippet of the same document, or of the
- * same skill, whose first line names a path ending in the import's
+ * The snippet module a relative import of a consumer guide or a build guide
+ * names when the guide shows that module itself: a snippet of the same
+ * document, or of the same skill, whose first line names a path ending in the
+ * import's
  * (`// src/reactor.ts` for `./reactor`). The nearest one above the importing
  * snippet wins, then the first below it, then the first in another file of
  * the skill. The import is then checked against the module the reader was

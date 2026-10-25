@@ -14,21 +14,27 @@
  * every configured canister has an ID on a detected network it stops, and page
  * loads run no `icp` command. A redeploy into a fresh network, with new IDs and
  * a new root key, still needs a restart.
+ *
+ * Nothing re-detects a network that went away: the restart is the signal
+ * (#881). What the plugin does is stop vouching for it. While a server serves
+ * the environment, it holds a connection to the detected network (see
+ * `watchNetwork`), so it learns that the network stopped when it stops, not
+ * when a request next reaches it. A network started again can give the same
+ * IDs to other canisters under the same root key, so from then on page loads
+ * get the cookie without them, and the plugin says to restart the dev server.
+ * A page load with no cookie to send clears one a browser kept from an earlier
+ * server as well.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http"
+import net from "node:net"
 import { describeError } from "./describe-value.js"
 import {
   buildIcEnvCookie,
   getIcEnvironmentInfo,
   type IcEnvironment,
 } from "./env.js"
-
-/**
- * Where `/api` goes while `icp` reports no network: icp-cli's local network
- * on its default gateway port, the client's `"local"`.
- */
-export const DEFAULT_LOCAL_REPLICA = "http://127.0.0.1:8000"
+import { DEFAULT_LOCAL_REPLICA, isLocalHostname } from "./local-host.js"
 
 /**
  * The Internet Identity provider the cookie names when no canister is
@@ -53,6 +59,18 @@ export interface LocalEnvironmentState {
    * detection does not run again.
    */
   complete: boolean
+  /**
+   * The last detection could not start `icp` at all, so the network was never
+   * asked about.
+   */
+  icpNotFound: boolean
+  /**
+   * A network was detected and then stopped (see `LocalEnvironment.watch`),
+   * so a network started again may have given its IDs to other canisters.
+   * The cookie carries neither the IDs nor the root key, and detection does
+   * not run again, until the dev server restarts.
+   */
+  lost: boolean
 }
 
 export interface LocalEnvironmentOptions {
@@ -82,9 +100,19 @@ export interface LocalEnvironment {
   readonly state: LocalEnvironmentState | undefined
   /**
    * Ask `icp` again and resolve with the new state. A call while a detection
-   * runs shares it. Never rejects.
+   * runs shares it. Never rejects. Once the network is lost, it resolves with
+   * the current state and runs nothing.
    */
   detect(): Promise<LocalEnvironmentState>
+  /**
+   * Watch the network that a detection found, now or later, until `close`.
+   * When it stops, the environment is lost (see `LocalEnvironmentState.lost`)
+   * and `onLost` is called with the lost state, once. A server that serves
+   * the environment calls this.
+   */
+  watch(onLost: (state: LocalEnvironmentState) => void): void
+  /** Stop watching, for good. */
+  close(): void
 }
 
 export function createLocalEnvironment(
@@ -100,17 +128,30 @@ export function createLocalEnvironment(
 
   // Two entries can share a name. internet_identity is looked up as well, but
   // it is routinely not deployed, so it is not needed for detection to be
-  // complete.
+  // complete. Another name with a configured `canisterId` is not looked up:
+  // that ID wins over what `icp` says (`toState`), and each lookup is an `icp`
+  // process, one more per page load while detection is incomplete (#980).
+  // internet_identity is looked up even then, because what `icp` says about
+  // it decides whether the built-in provider is named in the cookie.
   const requiredNames = [...new Set(canisterNames)]
-  const lookupNames = requiredNames.includes("internet_identity")
-    ? requiredNames
-    : [...requiredNames, "internet_identity"]
+  const lookupNames = (
+    requiredNames.includes("internet_identity")
+      ? requiredNames
+      : [...requiredNames, "internet_identity"]
+  ).filter(
+    (name) => name === "internet_identity" || !configuredCanisterIds.get(name)
+  )
 
   let state: LocalEnvironmentState | undefined
   let running: Promise<LocalEnvironmentState> | undefined
+  // Set by `watch`, until `close`.
+  let onLost: ((state: LocalEnvironmentState) => void) | undefined
+  let closed = false
+  let watched: { target: string; stop: () => void } | undefined
 
   const toState = (
-    environment: IcEnvironment | null
+    environment: IcEnvironment | null,
+    icpNotFound = false
   ): LocalEnvironmentState => {
     // By name in a `Map`, as everywhere a canister's name is a key: a canister
     // named `__proto__` keeps its ID, and one named `toString` or
@@ -147,19 +188,21 @@ export function createLocalEnvironment(
       proxyTarget: environment?.proxyTarget ?? DEFAULT_LOCAL_REPLICA,
       missingCanisterIds,
       complete: environment !== null && missingCanisterIds.length === 0,
+      icpNotFound: environment === null && icpNotFound,
+      lost: false,
     }
   }
 
   const run = async (): Promise<LocalEnvironmentState> => {
     const previous = state
+    let next: LocalEnvironmentState
     try {
-      const { environment, diagnostics } = await getIcEnvironmentInfo(
-        lookupNames,
-        projectRoot
-      )
+      const { environment, diagnostics, icpNotFound } =
+        await getIcEnvironmentInfo(lookupNames, projectRoot)
       diagnostics.forEach(onDiagnostic)
-      state = toState(
-        mergeDetections(previous?.environment ?? null, environment)
+      next = toState(
+        mergeDetections(previous?.environment ?? null, environment),
+        icpNotFound
       )
     } catch (error) {
       // getIcEnvironmentInfo reports failures in its result. This is for
@@ -167,8 +210,12 @@ export function createLocalEnvironment(
       onDiagnostic(
         `Detecting the local IC environment failed: ${describeError(error)}`
       )
-      state = previous ?? toState(null)
+      next = previous ?? toState(null)
     }
+    // The network was lost while `icp` ran: it stays lost, since what `icp`
+    // answered may describe a restarted network.
+    if (state?.lost) return state
+    state = next
 
     try {
       onUpdate?.(previous, state)
@@ -177,7 +224,38 @@ export function createLocalEnvironment(
         `Applying the detected IC environment failed: ${describeError(error)}`
       )
     }
+    follow()
     return state
+  }
+
+  /** Watch the detected network, if there is one to watch. */
+  const follow = () => {
+    if (!onLost || closed || !state || state.lost) return
+    if (state.environment === null) return
+    const target = state.proxyTarget
+    if (watched?.target === target) return
+    watched?.stop()
+    watched = { target, stop: watchNetwork(target, lose) }
+  }
+
+  const lose = () => {
+    if (!state || state.lost || closed) return
+    watched = undefined
+    // What a server that never found a network sends: in env-only mode, the
+    // built-in Internet Identity provider, and otherwise no cookie.
+    state = {
+      ...state,
+      cookie: toState(null).cookie,
+      complete: false,
+      lost: true,
+    }
+    try {
+      onLost?.(state)
+    } catch (error) {
+      onDiagnostic(
+        `Reporting the stopped IC network failed: ${describeError(error)}`
+      )
+    }
   }
 
   return {
@@ -185,12 +263,104 @@ export function createLocalEnvironment(
       return state
     },
     detect() {
+      if (state?.lost) return Promise.resolve(state)
       running ??= run().finally(() => {
         running = undefined
       })
       return running
     },
+    watch(listener) {
+      onLost = listener
+      follow()
+    },
+    close() {
+      closed = true
+      watched?.stop()
+      watched = undefined
+    },
   }
+}
+
+/** How long the watch waits before it connects again after a close. */
+const RECONNECT_MS = 250
+/** How long it waits between attempts while the network is still starting. */
+const RETRY_MS = 1_000
+
+/**
+ * Watch the network at `target`, and call `onStopped` once when it stops.
+ * Returns a function that ends the watch.
+ *
+ * The watch holds a TCP connection to the network and sends nothing on it.
+ * When the network closes it, because it stopped or because it drops idle
+ * connections, the watch connects again: a refusal means nothing listens there
+ * anymore, so the network stopped. Until a first connection succeeds the
+ * network may still be starting, and a refusal is tried again.
+ */
+function watchNetwork(target: string, onStopped: () => void): () => void {
+  let url: URL
+  try {
+    url = new URL(target)
+  } catch {
+    return () => {}
+  }
+  const host = url.hostname.replace(/^\[(.*)\]$/, "$1")
+  const port = Number(url.port) || (url.protocol === "https:" ? 443 : 80)
+
+  let reached = false
+  let ended = false
+  let socket: net.Socket | undefined
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  const connect = () => {
+    let connected = false
+    let refused = false
+    const attempt = net.connect({ host, port })
+    socket = attempt
+    // Neither the connection nor the timer keeps the process running. A host
+    // with several addresses connects on a new handle, unref'd again below.
+    attempt.unref()
+    // What the network sends, such as a 408 before it closes an idle
+    // connection, is read and dropped: bytes left unread hold back the end of
+    // the stream, and with it the close the watch waits for.
+    attempt.resume()
+    attempt.on("connect", () => {
+      attempt.unref()
+      connected = true
+      reached = true
+    })
+    attempt.on("error", (error) => {
+      refused = !connected && isConnectionRefused(error)
+    })
+    attempt.on("close", () => {
+      if (ended) return
+      if (reached && refused) {
+        ended = true
+        onStopped()
+        return
+      }
+      timer = setTimeout(connect, connected ? RECONNECT_MS : RETRY_MS)
+      timer.unref()
+    })
+  }
+  connect()
+
+  return () => {
+    ended = true
+    clearTimeout(timer)
+    socket?.destroy()
+  }
+}
+
+/**
+ * Whether a connection failed because nothing listens at its address. (Node's
+ * `AggregateError` for a host with several addresses carries the `code` too.)
+ */
+function isConnectionRefused(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "ECONNREFUSED"
+  )
 }
 
 /**
@@ -233,6 +403,20 @@ export function isDocumentRequest(req: IncomingMessage): boolean {
 
 /** Add the `ic_env` cookie to `res`, keeping any other cookie set on it. */
 function setIcEnvCookie(res: ServerResponse, value: string): void {
+  replaceIcEnvCookie(res, `ic_env=${value}; Path=/; SameSite=Lax;`)
+}
+
+/**
+ * Clear an `ic_env` cookie the browser holds, keeping any other cookie set on
+ * `res`. An empty value with `Max-Age=0` and the same `Path` removes the
+ * session cookie `setIcEnvCookie` sets.
+ */
+function clearIcEnvCookie(res: ServerResponse): void {
+  replaceIcEnvCookie(res, "ic_env=; Path=/; SameSite=Lax; Max-Age=0")
+}
+
+/** Put `cookie` in `res`'s `Set-Cookie` in place of any `ic_env` entry. */
+function replaceIcEnvCookie(res: ServerResponse, cookie: string): void {
   const existing = res.getHeader("Set-Cookie")
   const others = (
     existing === undefined
@@ -240,9 +424,39 @@ function setIcEnvCookie(res: ServerResponse, value: string): void {
       : Array.isArray(existing)
         ? existing
         : [String(existing)]
-  ).filter((cookie) => !cookie.startsWith("ic_env="))
-  const cookie = `ic_env=${value}; Path=/; SameSite=Lax;`
+  ).filter((entry) => !entry.startsWith("ic_env="))
   res.setHeader("Set-Cookie", others.length > 0 ? [...others, cookie] : cookie)
+}
+
+/**
+ * Whether a request's `Host` names this machine: `localhost`, `*.localhost`,
+ * 127.0.0.0/8 or `[::1]`, the hosts on which `@ic-reactor/core` believes the
+ * cookie. A request with no `Host`, or one that is not a host, counts as
+ * loopback, so it is not warned about.
+ */
+function isLoopbackHost(host: string | undefined): boolean {
+  if (!host) return true
+  let hostname: string
+  try {
+    hostname = new URL(`http://${host}`).hostname
+  } catch {
+    return true
+  }
+  return isLocalHostname(hostname)
+}
+
+/**
+ * The warning for a page loaded by a host that is not loopback, such as a LAN
+ * address after `vite --host`, a Docker host name or a tunnel.
+ */
+function nonLoopbackPageWarning(host: string): string {
+  return (
+    `[ic-reactor] a page was loaded from ${host}, which is not localhost. ` +
+    `network: "env" is for localhost pages: on this host @ic-reactor/core does not believe the ic_env cookie, ` +
+    `so { name } canisters do not resolve and certified calls fail verification. ` +
+    `A LAN address or a known tunnel or codespace domain sends its calls to this dev server; any other host falls back to mainnet (https://icp-api.io), where { id } canisters are mainnet's. ` +
+    `Open the app on localhost, or give the client a { host, rootKey } network and { id } canisters. (Logged once.)`
+  )
 }
 
 /**
@@ -252,15 +466,36 @@ function setIcEnvCookie(res: ServerResponse, value: string): void {
  * waits for the answer, so the page that loads after a deploy already carries
  * the new ID. Other requests, and every request once detection is complete,
  * get the cookie from the latest detection without running `icp`.
+ *
+ * A page load with no cookie to set, because no network was detected or the
+ * detected one was lost, clears the browser's `ic_env` cookie instead.
+ *
+ * The first page load by a `Host` that is not loopback is reported through
+ * `warn`, once per middleware.
  */
-export function icEnvMiddleware(environment: LocalEnvironment) {
+export function icEnvMiddleware(
+  environment: LocalEnvironment,
+  warn: (message: string) => void = (message) => console.warn(message)
+) {
+  let warned = false
   return (
     req: IncomingMessage,
     res: ServerResponse,
     next: (error?: unknown) => void
   ): void => {
+    if (
+      !warned &&
+      isDocumentRequest(req) &&
+      !isLoopbackHost(req.headers.host)
+    ) {
+      warned = true
+      warn(nonLoopbackPageWarning(String(req.headers.host)))
+    }
     const respond = (state: LocalEnvironmentState | undefined) => {
       if (state?.cookie !== undefined) setIcEnvCookie(res, state.cookie)
+      // With nothing to send, a page load clears what the browser kept: the
+      // cookie of a network this server lost, or an earlier server's.
+      else if (state && isDocumentRequest(req)) clearIcEnvCookie(res)
       next()
     }
 

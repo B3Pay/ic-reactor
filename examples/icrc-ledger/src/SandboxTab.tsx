@@ -1,7 +1,12 @@
 import { principal } from "@candid-core/schema"
-import { formatUnits, type Client, type ReactorError } from "@ic-reactor/core"
+import { formatUnits, type ReactorError } from "@ic-reactor/core"
 import { ReactorProvider, useAuth, useClient } from "@ic-reactor/react"
-import { skipToken, useMutation, useQuery } from "@tanstack/react-query"
+import {
+  skipToken,
+  useMutation,
+  useQuery,
+  type QueryClient,
+} from "@tanstack/react-query"
 import { Fragment, useEffect, useRef, useState, type FormEvent } from "react"
 import type { TransferArg, TransferError } from "./canisters/icrc1.ts"
 import { ErrorPanel } from "./ErrorPanel.tsx"
@@ -45,8 +50,13 @@ interface Made {
   readonly id: number
 }
 
-/** Which sandbox each client the tab's factory made belongs to. */
-type Sandboxes = WeakMap<Client, Made>
+/**
+ * Which sandbox each client the tab's factory made belongs to, by the
+ * client's `QueryClient`: `useClient()` returns a view of the client per
+ * caller, a new object at each sign-in, switch or sign-out, while the
+ * `QueryClient` is the client's own and stays the same.
+ */
+type Sandboxes = WeakMap<QueryClient, Made>
 
 /**
  * The Sandbox tab: a test client running in this page.
@@ -79,7 +89,8 @@ export default function SandboxTab(props: {
 }) {
   const { sandbox: given, latencyMs = 400 } = props
   // The view finds the rest of its sandbox (the auth, the faults, the request
-  // log) from the provider's client, through this map. Keyed by client
+  // log) from the provider's client, through this map. Keyed by the client
+  // (its `QueryClient`, see `Sandboxes`)
   // because `StrictMode` calls the factory twice and the provider keeps one
   // result: a sandbox the factory wrote anywhere else, such as a ref, can be
   // the one React threw away. And held in this component's state, not at
@@ -98,9 +109,12 @@ export default function SandboxTab(props: {
         const sandbox = given ?? createSandbox({ latencyMs })
         // A sandbox passed in comes back from every call: it keeps the number
         // it got first, so the view never mounts again for it.
-        if (!sandboxes.has(sandbox.client)) {
+        if (!sandboxes.has(sandbox.client.queryClient)) {
           count.current += 1
-          sandboxes.set(sandbox.client, { sandbox, id: count.current })
+          sandboxes.set(sandbox.client.queryClient, {
+            sandbox,
+            id: count.current,
+          })
         }
         return sandbox.client
       }}
@@ -112,7 +126,7 @@ export default function SandboxTab(props: {
 
 function SandboxView({ sandboxes }: { sandboxes: Sandboxes }) {
   const client = useClient()
-  const made = sandboxes.get(client)
+  const made = sandboxes.get(client.queryClient)
   if (made === undefined) {
     // The provider's client always comes from the factory above, which
     // records each one it makes in this same map.
@@ -274,10 +288,36 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
   const [failure, setFailure] = useState<ReactorError<TransferError> | null>(
     null
   )
+  // The outcome of the last transfer, kept in this component's state as
+  // well: the options `useClient()` builds are the caller's, and their key
+  // with them, so after an account switch `transfer` is a new, idle
+  // mutation, while the outcome of the one seed 1 sent must stay on screen.
+  // The callbacks of the options a run was pressed with are the ones it
+  // calls, so they still reach this state after the switch.
+  const [kept, setKept] = useState<{
+    isPending: boolean
+    data?: bigint
+    error: ReactorError<TransferError> | null
+  }>()
+  const options = client.mutationOptions(ledger, "icrc1_transfer")
   const transfer = useMutation({
-    ...client.mutationOptions(ledger, "icrc1_transfer"),
-    onError: (error) => setFailure(error),
+    ...options,
+    onSuccess: (data) => setKept({ isPending: true, data, error: null }),
+    onError: (error) => {
+      setFailure(error)
+      setKept({ isPending: true, error })
+    },
+    // The client's own onSettled re-reads the ledger; the run is pending
+    // until it ends.
+    onSettled: async (...args: Parameters<typeof options.onSettled>) => {
+      try {
+        await options.onSettled(...args)
+      } finally {
+        setKept((last) => last && { ...last, isPending: false })
+      }
+    },
   })
+  const shown = transfer.status !== "idle" ? transfer : (kept ?? transfer)
 
   const [form, setForm] = useState<TransferForm>({
     to: SEED_2,
@@ -289,12 +329,14 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
   const [attempt, setAttempt] = useState<Attempt>()
 
   const send = (arg: TransferArg, armed: Fault | "none") => {
-    // The client signs as whoever is signed in when the mutation runs (what
-    // `client.caller()` says then), not as this render's `caller`. After a
-    // switch this render has not caught up with, the two differ: nothing is
-    // sent then, and the render that follows shows the new caller. So `from`
-    // is the principal the transfer is signed by, and `before` its balance.
-    const from = client.caller()
+    // Who is signed in now, read from the sandbox's own client: the client
+    // `useClient()` returns is this render's, and says this render's caller.
+    // After a switch this render has not caught up with, the two differ:
+    // nothing is sent then (a write through this render's client would be
+    // refused anyway), and the render that follows shows the new caller. So
+    // `from` is the principal the transfer is signed by, and `before` its
+    // balance.
+    const from = sandbox.client.caller()
     if (from !== caller) return
     setFailure(null)
     setAttempt({
@@ -306,6 +348,7 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
     // A refusal before sending (nobody signed in) would leave the fault
     // armed for whatever comes next, so it is armed only for a real send.
     if (armed !== "none" && signedIn) sandbox.arm(armed)
+    setKept({ isPending: true, error: null })
     transfer.mutate(arg)
   }
 
@@ -386,11 +429,7 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
           ))}
         </select>
         <div className="row">
-          <button
-            type="submit"
-            className="primary"
-            disabled={transfer.isPending}
-          >
+          <button type="submit" className="primary" disabled={shown.isPending}>
             Send as {signedIn ? nameOf(caller) : "anonymous"}
           </button>
         </div>
@@ -404,13 +443,14 @@ function Transfer({ sandbox }: { sandbox: Sandbox }) {
         <Outcome
           sandbox={sandbox}
           attempt={attempt}
-          transfer={transfer}
+          transfer={shown}
           failure={failure}
           caller={caller}
           balance={mine.data}
           onResend={() => {
             // Deduplicated only when its sender sends it again (see `from`).
-            if (client.caller() === attempt.from) send(attempt.arg, "none")
+            if (sandbox.client.caller() === attempt.from)
+              send(attempt.arg, "none")
           }}
         />
       )}

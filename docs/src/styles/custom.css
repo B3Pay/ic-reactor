@@ -1,66 +1,105 @@
+/*
+ * The B3Pay look, from the B3Pay design system's tokens: warm graphite, one
+ * amber, Schibsted Grotesk for text and Martian Mono for code. Dark is the
+ * default, as in the design system. The fonts load from Google Fonts (see
+ * `head` in astro.config.mjs).
+ */
 :root {
-  --sl-color-accent-low: #1e1b4b;
-  --sl-color-accent: #e54646;
-  --sl-color-accent-high: #a5b4fc;
-  --sl-color-white: #0f172a;
-  --sl-color-gray-1: #334155;
-  --sl-color-gray-2: #475569;
-  --sl-color-gray-3: #64748b;
-  --sl-color-gray-4: #94a3b8;
-  --sl-color-gray-5: #cbd5e1;
-  --sl-color-gray-6: #f1f5f9;
-  --sl-color-black: #ffffff;
-  --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(15, 23, 42, 0.1);
+  --sl-font: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --sl-font-mono:
+    "Martian Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --sl-text-code: 0.8125rem;
+  --sl-text-code-sm: 0.75rem;
   --sl-content-width: 50rem;
+
+  /* Dark: ink #f1ede6, ink-muted #a39c91, line #2e2b27, surface #121110 */
+  --sl-color-white: #f1ede6;
+  --sl-color-gray-1: #e6e1d9;
+  --sl-color-gray-2: #d6d0c6;
+  --sl-color-gray-3: #a39c91;
+  --sl-color-gray-4: #6f685f;
+  --sl-color-gray-5: #3a3631;
+  --sl-color-gray-6: #1c1a18;
+  --sl-color-black: #121110;
+
+  /* brand-soft, brand, brand-hover */
+  --sl-color-accent-low: #3a2c17;
+  --sl-color-accent: #f0b35a;
+  --sl-color-accent-high: #f5c57b;
+  --sl-color-text-accent: #f0b35a;
+  --sl-color-text-invert: #1d1405;
+
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: var(--sl-color-gray-6);
+  /* surface-raised: cards and panels on the page background */
+  --b3-surface-raised: #1c1a18;
+  --sl-color-hairline-light: #3a3631;
+  --sl-color-hairline: #2e2b27;
+  --sl-color-hairline-shade: #2e2b27;
+
+  /* Cards sit on a hairline, not a shadow */
+  --sl-shadow-sm: none;
 }
 
-:root[data-theme="dark"] {
-  --sl-color-accent-low: #312e81;
-  --sl-color-accent: #6366f1;
-  --sl-color-accent-high: #c7d2fe;
-  --sl-color-white: #ffffff;
-  --sl-color-gray-1: #f1f5f9;
-  --sl-color-gray-2: #e2e8f0;
-  --sl-color-gray-3: #cbd5e1;
-  --sl-color-gray-4: #94a3b8;
-  --sl-color-gray-5: #64748b;
-  --sl-color-gray-6: #334155;
-  --sl-color-black: #020617;
-  --glass-bg: rgba(15, 23, 42, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.1);
+:root[data-theme="light"] {
+  /* Light: ink #1a1714, ink-muted #5f584e, line #ddd8cf, surface #f6f4f0 */
+  --sl-color-white: #1a1714;
+  --sl-color-gray-1: #2a2622;
+  --sl-color-gray-2: #3b3631;
+  --sl-color-gray-3: #5f584e;
+  --sl-color-gray-4: #8a8378;
+  --sl-color-gray-5: #c9c3b8;
+  --sl-color-gray-6: #ece8e1;
+  --sl-color-gray-7: #f6f4f0;
+  --sl-color-black: #f6f4f0;
+
+  --sl-color-accent-low: #f6e3c4;
+  --sl-color-accent: #a35f00;
+  --sl-color-accent-high: #8a5000;
+  --sl-color-text-accent: #a35f00;
+  --sl-color-text-invert: #ffffff;
+
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: #ffffff;
+  --b3-surface-raised: #ffffff;
+  --sl-color-hairline-light: #ddd8cf;
+  --sl-color-hairline: #ddd8cf;
+  --sl-color-hairline-shade: #ddd8cf;
+
+  --sl-shadow-sm: none;
 }
 
-/* Glassmorphism effect for sidebar */
-.sidebar-pane {
-  background-color: var(--glass-bg) !important;
-  backdrop-filter: blur(12px);
-  border-right: 1px solid var(--glass-border);
+::selection {
+  background-color: var(--sl-color-accent-low);
+  color: var(--sl-color-white);
 }
 
-/* Modern Header */
-header {
-  background-color: var(--glass-bg) !important;
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--glass-border) !important;
+/* Buttons take the design system's radius-md; pills are only for status */
+.sl-link-button {
+  border-radius: 10px;
 }
 
-/* Custom Gradients */
-.hero {
-  background:
-    radial-gradient(circle at top right, rgba(99, 102, 241, 0.15), transparent),
-    radial-gradient(circle at bottom left, rgba(79, 70, 229, 0.15), transparent);
+/* Code blocks set Martian Mono at its 87.5% width, so a line of about 80
+   characters fits the content column; inline code keeps the full width. */
+.expressive-code pre {
+  font-stretch: 87.5%;
 }
 
-/* Typography refinements */
-h1,
+/* Headings: display weight for the page title, heading weight below it */
+h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
 h2,
 h3,
 h4,
 h5,
 h6 {
-  letter-spacing: -0.025em;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 /* Fix code block horizontal scrollbars - the code element padding causes overflow */
@@ -97,20 +136,6 @@ h6 {
   background: var(--sl-color-gray-4);
 }
 
-/* Premium card effects if any exist */
-.card {
-  transition:
-    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 10px 15px -3px rgba(0, 0, 0, 0.1),
-    0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
 .site-title {
   font-size: 1.5rem;
   gap: 0.5rem;
@@ -136,8 +161,8 @@ h6 {
 }
 
 .sl-markdown-content code:not(:where(.not-content *)) {
-  background-color: var(--glass-border) !important;
-  border-radius: 4px !important;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 4px;
 }
 
 @media (max-width: 600px) {

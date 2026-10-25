@@ -16,7 +16,7 @@ import { spawn } from "node:child_process"
 import fs from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
-import { describeError } from "./describe-value.js"
+import { describeError, describePath } from "./describe-value.js"
 
 /**
  * The `@candid-core/cli` release this plugin is built against. The package
@@ -443,7 +443,7 @@ async function runGroup(
 }
 
 /** `"a"`, or `"a", "b"`: canister names as messages quote them. */
-function quoteNames(names: string[]): string {
+export function quoteNames(names: string[]): string {
   return names.map((name) => `"${name}"`).join(", ")
 }
 
@@ -558,10 +558,10 @@ function planGenerations(
 /** Why `unit` is not generated: it would write the module `owner` writes. */
 function collisionFailure(unit: Unit, owner: Unit, root: string): string {
   return (
-    `would write ${path.relative(root, moduleOf(unit))}, which ${quoteNames(owner.names)} already writes` +
+    `would write ${describePath(path.relative(root, moduleOf(unit)))}, which ${quoteNames(owner.names)} already writes` +
     (moduleOf(unit) === moduleOf(owner)
       ? ". "
-      : ` as ${path.relative(root, moduleOf(owner))}: the filesystem does not tell the two names apart. `) +
+      : ` as ${describePath(path.relative(root, moduleOf(owner)))}: the filesystem does not tell the two names apart. `) +
     `The generator names a module after its .did file: rename one file or give one canister its own outDir`
   )
 }

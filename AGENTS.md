@@ -13,9 +13,9 @@ published stable candid-core releases, `@candid-core/schema` and
 
 ### Packages
 
-- `@ic-reactor/core` (`packages/core`, `4.0.0-beta.5`) — the 4 API of milestone 1: `createClient`, `ReactorError` and `isReactorError`, `parseUnits` and `formatUnits`, and their types (13 names, `scripts/export-budget.mjs`). `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
-- `@ic-reactor/react` (`packages/react`, `4.0.0-beta.5`) — `'use client'` bindings over a core client: `ReactorProvider`, `useClient`, `useAuth` and the type `ReactorProviderProps`. It never re-exports core.
-- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-beta.5`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
+- `@ic-reactor/core` (`packages/core`, `4.0.0-beta.7`) — the 4 API of milestone 1: `createClient`, `ReactorError` and `isReactorError`, `parseUnits` and `formatUnits`, and their types (13 names, `scripts/export-budget.mjs`). `src/testing/` is the `@ic-reactor/core/testing` entry: `createTestClient` (a real client over the fake replica, with typed `TestHandlers` and a controllable sign-in) is its only export; the fake replica and the test auth behind it are internal.
+- `@ic-reactor/react` (`packages/react`, `4.0.0-beta.7`) — `'use client'` bindings over a core client: `ReactorProvider`, `useClient`, `useAuth` and the type `ReactorProviderProps`. It never re-exports core.
+- `@ic-reactor/vite-plugin` (`packages/vite-plugin`, `4.0.0-beta.7`) — generates the candid-core module by running `@candid-core/cli` (`candid-core-cli gen`) in a child process, and sets the `ic_env` cookie and `/api` proxy.
 
 `@ic-reactor/parser`, `@ic-reactor/codegen`, `@ic-reactor/cli` and
 `@ic-reactor/candid` are not in this tree (the last stays at 3.x on `v3`).
@@ -79,6 +79,13 @@ Its snippets import the generated modules in
 (`scripts/removed-v3-names.js`) outside a section headed "Removed in 4.0", and
 `check:snippets` compiles every `ts`/`tsx` fence of these files against the
 built packages.
+
+Every skill under `skill-packages/` is one an app installs, so a contributor
+skill does not go there. `check:ai-context` wants its `SKILL.md` to list
+`@ic-reactor/react`'s version, and any other package's it lists, at the
+current version (`` - `@ic-reactor/react`: `<version>` ``), and its `SKILL.md`
+and `references/` to name no path that exists only in this repository
+(`packages/`, `examples/`, `scripts/` and the like).
 
 The hand-written docs pages (`docs/src/content/docs/`, not `libs/`) are not
 AI-context files, but `check:ai-context` holds them to the removed-names rule

@@ -16,7 +16,8 @@
  * ## Adding a trap
  *
  * 1. Write the line that must not compile, with a tag on the line above the
- *    directive, the id first and the directive straight after it:
+ *    directive, the id first and the directive straight after it, on a line
+ *    of its own:
  *
  *        // trap: <id>
  *        // @ts-expect-error <what the line gets wrong, and what to do instead>
@@ -264,6 +265,16 @@ export const resendByAFieldItLacks = (error: unknown) =>
     // trap: resend-key-reads-the-methods-arg
     // @ts-expect-error dedupedBy reads the method's own argument, and a TransferArg has no nonce: name the field the canister deduplicates on
     dedupedBy: (arg) => arg.nonce,
+  })
+
+// A method named by data, given as `any` (#874): its variables are the value
+// of a one-argument method, as at run time, not a list.
+export const writeOfANamedMethod = (named: string) =>
+  new MutationObserver(client.queryClient, {
+    ...client.mutationOptions<icrc1.Actor, any>(ledger, named),
+    // trap: any-method-vars-not-a-list
+    // @ts-expect-error under <A, any> the variables are the value of a one-argument method, not a list: vars[0] is not its argument
+    onSuccess: (_data, vars) => vars[0],
   })
 
 // What `useSuspenseQuery` of `@tanstack/react-query` takes, written over

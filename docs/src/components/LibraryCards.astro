@@ -1,0 +1,171 @@
+---
+// The three libraries on the docs home, each with its layer icon, status,
+// packages and first links. Candid Core's pages are on its own site until its
+// repository moves into this one; Candid Profile isn't published yet.
+import LibraryIcon from './LibraryIcon.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const candidCore = 'https://b3hr4d.github.io/candid-core/';
+---
+
+<div class="library-cards not-content">
+  <article>
+    <header>
+      <span class="icon"><LibraryIcon library="ic-reactor" size={22} /></span>
+      <h3>IC Reactor</h3>
+      <span class="status">Beta</span>
+    </header>
+    <p>
+      Reads and writes on TanStack Query. Keys carry the caller, retries only
+      re-send what can be re-sent, and every error says whether the call may
+      have run.
+    </p>
+    <ul class="packages">
+      <li>@ic-reactor/core</li>
+      <li>@ic-reactor/react</li>
+      <li>@ic-reactor/vite-plugin</li>
+    </ul>
+    <nav aria-label="IC Reactor">
+      <a href={`${base}ic-reactor/`}>Overview →</a>
+      <a href={`${base}guides/getting-started/`}>Getting started →</a>
+      <a href={`${base}guides/reads/`}>Reads →</a>
+    </nav>
+  </article>
+
+  <article>
+    <header>
+      <span class="icon"><LibraryIcon library="candid-core" size={22} /></span>
+      <h3>Candid Core</h3>
+      <span class="status">Released</span>
+    </header>
+    <p>
+      Candid interfaces as data. One validated Contract graph per .did file, a
+      TypeScript codec, and identities that stay the same when only names or
+      field order change.
+    </p>
+    <ul class="packages">
+      <li>@candid-core/schema</li>
+      <li>@candid-core/cli</li>
+      <li>candid-core (Rust crate)</li>
+    </ul>
+    <nav aria-label="Candid Core, on its own site">
+      <a href={`${candidCore}quickstart-typescript.html`}>Quickstart: TypeScript ↗</a>
+      <a href={`${candidCore}contract-graph.html`}>The Contract graph ↗</a>
+      <a href={`${candidCore}identities.html`}>Content-addressed identities ↗</a>
+    </nav>
+  </article>
+
+  <article class="planned">
+    <header>
+      <span class="icon"><LibraryIcon library="candid-profile" size={22} /></span>
+      <h3>Candid Profile</h3>
+      <span class="status">Coming soon</span>
+    </header>
+    <p>
+      What an interface can't say: that an amount is in base units, that a
+      timestamp makes a retry safe, that an error means the payment already went
+      through. Written once, next to the interface.
+    </p>
+    <p class="note">Not published yet.</p>
+  </article>
+</div>
+
+<style>
+  .library-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1rem;
+    margin-top: 1.5rem;
+  }
+
+  article {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1.25rem;
+    background-color: var(--b3-surface-raised);
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 10px;
+  }
+
+  article.planned {
+    border-style: dashed;
+    border-color: var(--sl-color-gray-4);
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    flex-shrink: 0;
+    background-color: var(--sl-color-black);
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 10px;
+  }
+
+  h3 {
+    flex-grow: 1;
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--sl-color-white);
+  }
+
+  .status {
+    padding: 0.125rem 0.5rem;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 4px;
+    font-family: var(--__sl-font-mono);
+    font-size: 0.75rem;
+    color: var(--sl-color-gray-3);
+    white-space: nowrap;
+  }
+
+  p {
+    margin: 0;
+    color: var(--sl-color-gray-2);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  p.note {
+    color: var(--sl-color-gray-3);
+  }
+
+  .packages {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--__sl-font-mono);
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--sl-color-white);
+  }
+
+  nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.875rem;
+    border-top: 1px solid var(--sl-color-hairline);
+    font-weight: 600;
+  }
+
+  nav a {
+    color: var(--sl-color-text-accent);
+    text-decoration: none;
+  }
+
+  nav a:hover {
+    text-decoration: underline;
+  }
+</style>

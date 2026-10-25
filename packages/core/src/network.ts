@@ -15,13 +15,23 @@
  *   choosing.
  * - **The `ic_env` cookie is believed only where it is as trustworthy as the
  *   replica it describes.** Cookies are not origin-isolated: any sibling
- *   subdomain of the page's registrable domain can write one. It carries the
+ *   subdomain of the page's registrable domain can write one. (Not so on
+ *   `<id>.icp0.io` and `<id>.raw.icp0.io`: `icp0.io` and `*.raw.icp0.io` are
+ *   on the Public Suffix List, so a browser refuses a cookie a sibling
+ *   canister sets for them, and the cookie such a page receives is its own
+ *   asset canister's.) It carries the
  *   root key certificates are verified against and the canister ids calls are
  *   routed to, and certificate verification cannot notice a substituted id
  *   (the attacker names a real canister, whose replies verify against the real
  *   root key). So the cookie is read only in a browser, and only when both the
  *   agent host and the page are a local replica, or the caller wrote
- *   `allowEnvConfig: true`.
+ *   `allowEnvConfig: true`. On a canister's own `icp0.io` page with a mainnet
+ *   agent host, its canister ids are believed by default. Its root key is
+ *   never taken for a mainnet host, which has one key, the agent's own; its
+ *   Internet Identity URL is taken over `http:` only on a local page; and the
+ *   opt-in itself is refused on a page under a shared parent that is not a
+ *   public suffix (`ic0.app`, `github.dev`, `gitpod.io`, `loca.lt`,
+ *   `devtunnels.ms`), where any stranger's page can write the cookie.
  *
  * @module
  */
@@ -41,17 +51,29 @@ import { isServer } from "./runtime.js"
  *   4943) is an object: `{ host: "http://127.0.0.1:4943" }`.
  * - `"env"`: the network of the page this code runs in, as an asset canister
  *   or a dev server describes it. In a browser, a page on a local replica or
- *   on a mainnet boundary domain (and a Codespaces or Gitpod page, which
- *   forwards a local dev server) routes through its own origin. The root key
+ *   on a mainnet boundary domain routes through its own origin, and so does
+ *   a page that forwards a dev server: Codespaces, Gitpod, a LAN address
+ *   (RFC 1918, link-local, IPv6 ULA), a Tailscale address or name
+ *   (100.64/10, `*.ts.net`), a LAN name with no dot such as `devbox`, a
+ *   `*.local`, `*.test` or `*.internal` name such as `host.docker.internal`,
+ *   or a tunnel (ngrok, `trycloudflare.com`, `loca.lt`, VS Code's
+ *   `devtunnels.ms`). `"env"` is for localhost pages: those
+ *   others never reach mainnet, but none is local. The root key
  *   comes from the `ic_env` cookie, but only where that cookie is trusted:
  *   when both the page and the replica are local, or the client was built
- *   with `allowEnvConfig: true`. A local replica with no key from the cookie
- *   has its root key fetched. A Codespaces or Gitpod page is routed but is
- *   not local, so there the key is neither taken from the cookie nor fetched,
+ *   with `allowEnvConfig: true`. On a canister's own `<id>.icp0.io` page the
+ *   cookie's canister ids are believed by default, never its root key. A
+ *   local replica with no key from the cookie has its root key fetched. A
+ *   forwarding page is routed but is not local, so there the key is neither
+ *   taken from the cookie nor fetched,
  *   and the agent checks the forwarded replica's certificates against
- *   mainnet's key, so every certified call fails verification. Set
- *   `allowEnvConfig: true` to take the cookie's key, or name the replica with
- *   an object that has a `rootKey` or `fetchRootKey: true`. On a server there
+ *   mainnet's key, so every certified call fails verification. Name the
+ *   replica with an object that has a `rootKey` (or `fetchRootKey: true`)
+ *   and the canisters with `{ id }`: on a dev container or a localtunnel,
+ *   `allowEnvConfig: true` is refused, because every workspace or tunnel is
+ *   a sibling of every stranger's. On a
+ *   mainnet host the cookie's root key is never taken, even with
+ *   `allowEnvConfig: true`: the agent keeps mainnet's own. On a server there
  *   is no page and no cookie: the host is `ICP_HOST` or `IC_HOST` when
  *   `ICP_NETWORK` is `"local"` (`http://127.0.0.1:8000` if neither is set),
  *   and mainnet otherwise. With no `ICP_NETWORK`, dfx's `DFX_NETWORK=local`
@@ -69,7 +91,13 @@ export type Network =
   | "local"
   | "env"
   | {
-      /** The replica's URL. A host with no scheme is read against the page's protocol, as `HttpAgent` reads it. */
+      /**
+       * The replica's URL, over `http:` or `https:`. A host with no scheme is
+       * read against the page's protocol, as `HttpAgent` reads it, and is
+       * refused where there is no page. `createClient` throws a `TypeError`
+       * for any other host, such as `localhost:4943`, which reads as the
+       * scheme `localhost:`.
+       */
       readonly host: string
       /**
        * The root key certificates are verified against. Used as given and
@@ -90,11 +118,19 @@ export type Network =
 /** What the caller can decide about trusting the `ic_env` cookie. */
 export interface NetworkOptions {
   /**
-   * `true` trusts the whole cookie (root key and canister ids) wherever the
-   * code runs in a browser, `false` never reads it, and absent trusts it only
-   * when both the agent host and the page are a local replica. Set it to
-   * `true` only when every subdomain of the page's domain is trusted to write
-   * cookies.
+   * `true` trusts the cookie (root key and canister ids) wherever the code
+   * runs in a browser, `false` never reads it, and absent trusts it only when
+   * both the agent host and the page are a local replica, or (canister ids
+   * only) when the page is a canister's own `<id>.icp0.io` or
+   * `<id>.raw.icp0.io` page and the agent host is mainnet's. Set it to `true`
+   * only when every subdomain of the page's domain is trusted to write
+   * cookies. Even with `true`, the root key is never taken for a mainnet host
+   * and an `http:` Internet Identity URL only on a local page.
+   *
+   * @throws TypeError, when `true`, on a page under `ic0.app`, `github.dev`
+   * (Codespaces), `gitpod.io`, `loca.lt` (localtunnel) or `devtunnels.ms`
+   * (VS Code dev tunnels): none of them is a public suffix, so any other site
+   * under it can write the cookie this page reads.
    */
   readonly allowEnvConfig?: boolean
 }
@@ -111,6 +147,12 @@ export interface ResolvedNetwork {
   readonly fetchRootKey: boolean
   /** Whether the `ic_env` cookie is believed. Always `false` outside a browser page. */
   readonly trustsEnv: boolean
+  /**
+   * Present when the cookie is believed for canister ids only, as on a
+   * canister's own `icp0.io` page by default: its root key is never taken,
+   * and its Internet Identity URL only over `https:`.
+   */
+  readonly envIdsOnly?: true
 }
 
 /** The part of `HttpAgentOptions` a resolved network decides. */
@@ -145,6 +187,42 @@ const describe = (value: unknown): string => {
   }
 }
 
+/**
+ * Throws a `TypeError` for a key of `options` that `names` does not list, so a
+ * misspelt option fails instead of being ignored. Internal.
+ */
+export const checkKeys = (
+  options: object,
+  names: readonly string[],
+  what: string
+): void => {
+  const unknown = Object.keys(options).filter((key) => !names.includes(key))
+  if (unknown.length > 0) {
+    throw new TypeError(
+      `[ic-reactor] ${what} has no option ${unknown.join(", ")}. Its options: ${names.join(", ")}.`
+    )
+  }
+}
+
+/**
+ * Throws a `TypeError` unless `value` is `true`, `false` or absent: the text
+ * `"false"` an environment variable gives is truthy, and would trust what
+ * `false` refuses. Internal.
+ */
+export const checkBoolean = (value: unknown, name: string): void => {
+  if (value !== undefined && typeof value !== "boolean") {
+    throw new TypeError(
+      `[ic-reactor] ${name} is true or false, got ${describe(value)}.`
+    )
+  }
+}
+
+/** The keys a network object may have. */
+const NETWORK_KEYS = ["host", "rootKey", "name", "fetchRootKey"]
+
+/** The length of a DER-encoded BLS root key. */
+const ROOT_KEY_LENGTH = 133
+
 const badTarget = (target: unknown): TypeError =>
   new TypeError(
     `[ic-reactor] a canister target is { id: string } or { name: string }, got ${describe(target)}.`
@@ -172,13 +250,103 @@ const DFX_LOCAL_HOST = "http://127.0.0.1:4943"
 /** The domains whose pages route agent traffic through their own origin. */
 const MAINNET_DOMAINS = ["ic0.app", "icp0.io", "icp-api.io"]
 
+/** Whether `hostname` is `domain` or one of its subdomains. */
+const isUnder = (hostname: string, domain: string): boolean =>
+  hostname === domain || hostname.endsWith(`.${domain}`)
+
 /**
- * Dev containers that forward a local dev server and replica to the browser
- * over generated subdomains. Their pages route through their own origin, but
- * they are never local: every workspace on them is a sibling of every
- * stranger's.
+ * Whether `hostname` is mainnet's: a boundary domain or the API host `"ic"`
+ * and the fallback use. Mainnet has one root key, the one the agent ships
+ * with, so no cookie's key is ever taken for it.
  */
-const REMOTE_DEV_SUFFIXES = [".github.dev", ".gitpod.io"]
+const isMainnetHostname = (hostname: string | undefined): boolean =>
+  hostname !== undefined &&
+  MAINNET_DOMAINS.some((domain) => isUnder(hostname, domain))
+
+/**
+ * Parents whose subdomains are strangers' sites and which are not on the
+ * Public Suffix List, so a page on any one of them can set a cookie for the
+ * whole parent, and every other page under it reads that cookie. `ic0.app`
+ * serves every canister's frontend, `github.dev` every codespace
+ * (`*.app.github.dev`), `gitpod.io` every Gitpod workspace, `loca.lt` every
+ * localtunnel and `devtunnels.ms` every VS Code dev tunnel. `icp0.io` and
+ * `*.raw.icp0.io` are public suffixes, so they are not here: a browser
+ * refuses a cookie a sibling canister sets for them. So are the other tunnel
+ * parents {@link REMOTE_DEV_SUFFIXES} names.
+ */
+const SHARED_PARENTS = [
+  "ic0.app",
+  "github.dev",
+  "gitpod.io",
+  "loca.lt",
+  "devtunnels.ms",
+]
+
+/**
+ * A canister's own page on `icp0.io`: `<id>.icp0.io` or `<id>.raw.icp0.io`,
+ * `<id>` being principal text. Both parents are on the Public Suffix List
+ * (`icp0.io` and `*.raw.icp0.io`), so no other site can set a cookie this
+ * page receives. `ic0.app` is not on it, nor is a custom domain known to be.
+ */
+const ICP0_CANISTER_PAGE = /^([a-z0-9-]+)\.(?:raw\.)?icp0\.io$/
+
+/**
+ * Names that forward a dev server and its replica to the browser from
+ * elsewhere: dev containers (Codespaces, Gitpod), the special-use and
+ * internal names a LAN, mDNS or Docker gives a dev machine (`*.local`,
+ * `*.test`, `*.internal`, which covers `host.docker.internal`), the names
+ * Tailscale gives the machines of a tailnet (`*.ts.net`), and the tunnels
+ * people open to show a dev app on a phone. Their pages route through
+ * their own origin, but they are never local: on a dev container every
+ * workspace is a sibling of every stranger's, and the rest are not this
+ * machine. A production app on such a name falls back to nothing it did not
+ * ask for: it reaches its own origin, never mainnet.
+ */
+const REMOTE_DEV_SUFFIXES = [
+  ".github.dev",
+  ".gitpod.io",
+  ".local",
+  ".test",
+  ".internal",
+  ".ngrok-free.app",
+  ".ngrok-free.dev",
+  ".ngrok.app",
+  ".ngrok.io",
+  ".trycloudflare.com",
+  ".loca.lt",
+  ".devtunnels.ms",
+  ".ts.net",
+]
+
+/**
+ * Private and link-local addresses, which a LAN or a VM gives a dev machine
+ * (`vite --host` prints one): 10/8, 172.16/12, 192.168/16 and 169.254/16,
+ * the shared 100.64/10 that Tailscale gives each machine of a tailnet, and
+ * IPv6's unique local fc00::/7 (Tailscale's IPv6 addresses among them) and
+ * link-local fe80::/10, with the brackets a URL's `hostname` keeps around
+ * them.
+ */
+const PRIVATE_ADDRESS =
+  /^(?:10\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])|192\.168|169\.254|100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7]))\.\d{1,3}\.\d{1,3}$|^\[(?:f[cd][0-9a-f]{2}|fe[89ab][0-9a-f]):[0-9a-f:.]*\]$/i
+
+/** An `http:` or `https:` origin: a page a web server serves. */
+const WEB_ORIGIN = /^https?:\/\//i
+
+/**
+ * Whether the page at `origin`, whose hostname is `hostname`, forwards a dev
+ * server from elsewhere: a {@link REMOTE_DEV_SUFFIXES} name, a
+ * {@link PRIVATE_ADDRESS}, or a web page whose name has no dot, which only a
+ * LAN, a hosts file or a VPN's DNS resolves (`http://devbox:5173`). An IPv6
+ * address has no dot either, so one in brackets is not such a name. Neither
+ * is the id a browser extension's or a desktop app's own scheme puts there
+ * (`chrome-extension://<id>`, `app://name`): no dev server is behind it.
+ */
+const isRemoteDevPage = (origin: string, hostname: string): boolean =>
+  PRIVATE_ADDRESS.test(hostname) ||
+  REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix)) ||
+  (WEB_ORIGIN.test(origin) &&
+    !hostname.includes(".") &&
+    !hostname.startsWith("["))
 
 /** 127.0.0.0/8: the entire IPv4 loopback range, not just 127.0.0.1. */
 const IPV4_LOOPBACK = /^127\.(?:\d{1,3}\.){2}\d{1,3}$/
@@ -212,9 +380,10 @@ const isLocalHostname = (hostname: string | undefined): boolean => {
  * domain, is read against the page's protocol. The agent's scheme test is
  * copied as is, so `localhost:4943`, which it reads as the scheme `localhost:`,
  * has no hostname here either, and neither has a scheme-less host where there
- * is no page. A host the agent cannot read is not local.
+ * is no page. A host the agent cannot read is not local. Internal: also read
+ * by `createClient`'s host check, and not exported from the package entry.
  */
-const agentUrlOf = (host: string): URL | undefined => {
+export const agentUrlOf = (host: string): URL | undefined => {
   try {
     return !/^[a-z]+:/.test(host) && typeof window !== "undefined"
       ? new URL(`${window.location.protocol}//${host}`)
@@ -224,18 +393,41 @@ const agentUrlOf = (host: string): URL | undefined => {
   }
 }
 
-/** The hostname of {@link agentUrlOf}. */
-const agentHostnameOf = (host: string): string | undefined =>
-  agentUrlOf(host)?.hostname
+/**
+ * A hostname without the one trailing dot a fully qualified name may end
+ * with. The URL parser keeps it, so `victim.ic0.app.` would otherwise not be
+ * under `ic0.app`, and every rule here that names a domain would miss it
+ * (all but {@link pageIsIcp0Canister}'s, which keeps it on purpose).
+ */
+const withoutRootDot = (hostname: string): string =>
+  hostname.endsWith(".") ? hostname.slice(0, -1) : hostname
 
-/** The hostname of a page origin, or `undefined` when it is not a URL (an opaque origin reads as `"null"`). */
-const pageHostnameOf = (origin: string | undefined): string | undefined => {
+/** The hostname of {@link agentUrlOf}, without its trailing dot. */
+const agentHostnameOf = (host: string): string | undefined => {
+  const hostname = agentUrlOf(host)?.hostname
+  return hostname === undefined ? undefined : withoutRootDot(hostname)
+}
+
+/**
+ * The hostname of a page origin as the URL parser reads it, trailing dot
+ * included, or `undefined` when it is not a URL (an opaque origin reads as
+ * `"null"`).
+ */
+const parsedHostnameOf = (origin: string | undefined): string | undefined => {
   if (!origin) return undefined
   try {
     return new URL(origin).hostname || undefined
   } catch {
     return undefined
   }
+}
+
+/** The hostname of a page origin without its trailing dot (see {@link parsedHostnameOf}). */
+const pageHostnameOf = (origin: string | undefined): string | undefined => {
+  const hostname = parsedHostnameOf(origin)
+  return hostname === undefined
+    ? undefined
+    : withoutRootDot(hostname) || undefined
 }
 
 /**
@@ -264,13 +456,16 @@ const pageIsLocal = (): boolean =>
 /**
  * The page's own origin when agent traffic can route through it: a local page
  * (a dev server or a locally deployed asset canister proxies `/api`), a
- * mainnet boundary domain, or a Codespaces or Gitpod page, which forwards a
- * local dev server. An ordinary web host (Vercel, Cloudflare, a custom domain)
- * cannot, so it is left to the fallback; so is a page with no usable origin.
+ * mainnet boundary domain, or a page that forwards a dev server from
+ * elsewhere ({@link isRemoteDevPage}). An ordinary web host (Vercel,
+ * Cloudflare, a custom domain) cannot, so it is left to the fallback; so is a
+ * page with no usable origin.
  *
  * A Codespaces page used to fall back to mainnet, and a dev app in a codespace
  * sent its local canister ids to mainnet, where whatever canister had that id
- * answered.
+ * answered. So did a dev page opened from a phone by its LAN address, a
+ * Docker host name or a tunnel: a wallet whose ledger has the same id locally
+ * and on mainnet showed, and after a mainnet sign-in sent, real ICP.
  */
 const routableOrigin = (): string | undefined => {
   const origin = pageOrigin()
@@ -278,10 +473,8 @@ const routableOrigin = (): string | undefined => {
   if (origin === undefined || hostname === undefined) return undefined
   const routable =
     isLocalHostname(hostname) ||
-    MAINNET_DOMAINS.some(
-      (domain) => hostname === domain || hostname.endsWith(`.${domain}`)
-    ) ||
-    REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix))
+    isMainnetHostname(hostname) ||
+    isRemoteDevPage(origin, hostname)
   return routable ? origin : undefined
 }
 
@@ -333,6 +526,60 @@ const trustsEnvFor = (
   )
 }
 
+/**
+ * Whether the page is a canister's own {@link ICP0_CANISTER_PAGE}. A worker
+ * has no cookie, so it is never one. The name is matched as the URL parser
+ * reads it: `<id>.icp0.io.`, with the trailing dot, believes nothing by
+ * default, because the Public Suffix List's protection of a name written
+ * that way has not been checked.
+ */
+const pageIsIcp0Canister = (): boolean => {
+  if (typeof window === "undefined") return false
+  const match = ICP0_CANISTER_PAGE.exec(parsedHostnameOf(pageOrigin()) ?? "")
+  return match !== null && principalProblem(match[1]!) === undefined
+}
+
+/**
+ * How far the `ic_env` cookie is believed for an agent on `host`: the
+ * {@link ResolvedNetwork} fields `trustsEnv` and `envIdsOnly`. With no
+ * `allowEnvConfig`, a canister's own `icp0.io` page talking to mainnet has
+ * its cookie believed for canister ids: icp-cli's asset canister serves it,
+ * and no sibling can write it.
+ */
+const envTrustFor = (
+  host: string,
+  allowEnvConfig: boolean | undefined
+): Pick<ResolvedNetwork, "trustsEnv" | "envIdsOnly"> => {
+  if (trustsEnvFor(host, allowEnvConfig)) return { trustsEnv: true }
+  return allowEnvConfig === undefined &&
+    !isServer() &&
+    isMainnetHostname(agentHostnameOf(host)) &&
+    pageIsIcp0Canister()
+    ? { trustsEnv: true, envIdsOnly: true }
+    : { trustsEnv: false }
+}
+
+/**
+ * Refuses `allowEnvConfig` on a browser page under a {@link SHARED_PARENTS}
+ * domain, where it would believe a cookie any stranger's page can set.
+ */
+const refuseSharedParent = (allowEnvConfig: boolean | undefined): void => {
+  if (!allowEnvConfig || isServer()) return
+  const origin = pageOrigin()
+  const hostname = pageHostnameOf(origin)
+  const parent =
+    hostname === undefined
+      ? undefined
+      : SHARED_PARENTS.find((domain) => isUnder(hostname, domain))
+  if (parent === undefined) return
+  throw new TypeError(
+    `[ic-reactor] allowEnvConfig: true is refused on ${origin}: ${parent} is not a public suffix, ` +
+      `so any other site under it can set the ic_env cookie this page reads, with canister ids of its choosing. ` +
+      `Name the canisters with { id } (bake the ids in at build time), and a replica that is not mainnet ` +
+      `with { host, rootKey }.`
+  )
+}
+
 /** The cookie's entries. Only ever called for a trusted page. */
 const readCanisterEnv = (): Readonly<Record<string, unknown>> | undefined =>
   safeGetCanisterEnv()
@@ -360,21 +607,27 @@ const resolved = (
  * The legacy v3 option `allowEnvRootKey` is not carried over: `allowEnvConfig`
  * is the only opt-in, and it covers the whole cookie.
  *
- * @throws TypeError for a network that is not one of the allowed shapes: a
- * programmer error at build time.
+ * @throws TypeError for a network that is not one of the allowed shapes (a
+ * network object with a key it does not have, a `fetchRootKey` that is not a
+ * boolean, or a `rootKey` that is not 133 bytes in a `Uint8Array`), an
+ * `allowEnvConfig` that is not a boolean, or `allowEnvConfig: true` on a page
+ * under a shared parent that is not a public suffix: a programmer error at
+ * build time.
  */
 export const resolveNetwork = (
   network: Network,
   options: NetworkOptions = {}
 ): ResolvedNetwork => {
   const { allowEnvConfig } = options
+  checkBoolean(allowEnvConfig, "allowEnvConfig")
+  refuseSharedParent(allowEnvConfig)
 
   if (network === "ic") {
     return resolved({
       keySegment: "ic",
       host: IC_HOST,
       fetchRootKey: false,
-      trustsEnv: trustsEnvFor(IC_HOST, allowEnvConfig),
+      ...envTrustFor(IC_HOST, allowEnvConfig),
     })
   }
 
@@ -383,23 +636,28 @@ export const resolveNetwork = (
       keySegment: "local",
       host: LOCAL_HOST,
       fetchRootKey: true,
-      trustsEnv: trustsEnvFor(LOCAL_HOST, allowEnvConfig),
+      ...envTrustFor(LOCAL_HOST, allowEnvConfig),
     })
   }
 
   if (network === "env") {
     const host = routableOrigin() ?? fallbackHost()
-    const trustsEnv = trustsEnvFor(host, allowEnvConfig)
+    const trust = envTrustFor(host, allowEnvConfig)
     // The key is the replica's, so it is taken only from a cookie that is as
-    // trustworthy as the replica. Without one, a local replica is asked.
-    const rootKey = trustsEnv ? cookieRootKey() : undefined
+    // trustworthy as the replica, and never for mainnet, whose key the agent
+    // already holds (a cookie believed for ids only is always a mainnet
+    // host's). Without one, a local replica is asked.
+    const rootKey =
+      trust.trustsEnv && !isMainnetHostname(agentHostnameOf(host))
+        ? cookieRootKey()
+        : undefined
     return resolved({
       keySegment: host,
       host,
       rootKey,
       fetchRootKey:
         rootKey === undefined && isLocalHostname(agentHostnameOf(host)),
-      trustsEnv,
+      ...trust,
     })
   }
 
@@ -413,8 +671,21 @@ export const resolveNetwork = (
     )
   }
 
-  const { host, name, fetchRootKey } = network
-  const rootKey = network.rootKey ?? undefined
+  checkKeys(network, NETWORK_KEYS, "a network object")
+  const { host, name, rootKey, fetchRootKey } = network
+  checkBoolean(fetchRootKey, "fetchRootKey")
+  if (
+    rootKey !== undefined &&
+    !(rootKey instanceof Uint8Array && rootKey.length === ROOT_KEY_LENGTH)
+  ) {
+    throw new TypeError(
+      `[ic-reactor] rootKey is a Uint8Array of ${ROOT_KEY_LENGTH} bytes (decode hex first), got ${
+        rootKey instanceof Uint8Array
+          ? `${rootKey.length} bytes`
+          : describe(rootKey)
+      }.`
+    )
+  }
   return resolved({
     keySegment: name ?? host,
     host,
@@ -425,7 +696,7 @@ export const resolveNetwork = (
     fetchRootKey:
       rootKey === undefined &&
       (fetchRootKey ?? isLocalHostname(agentHostnameOf(host))),
-    trustsEnv: trustsEnvFor(host, allowEnvConfig),
+    ...envTrustFor(host, allowEnvConfig),
   })
 }
 
@@ -508,9 +779,10 @@ export const resolveCanisterId = (
         // anywhere the reader recognises, so name the page too.
         `${origin ? `, page ${origin}` : ""}), so it was not read. ` +
         `It is trusted only when both the agent host and the page are a local replica ` +
-        `(localhost, *.localhost or a loopback address), because any sibling subdomain can write it. ` +
+        `(localhost, *.localhost or a loopback address), or, for canister ids, on a canister's own ` +
+        `<id>.icp0.io page with a mainnet host, because elsewhere a sibling subdomain can write it. ` +
         `Use { id } (bake the id in at build time) or, only if you trust every subdomain of this domain, ` +
-        `set allowEnvConfig: true, which trusts the whole cookie, its root key included.`
+        `set allowEnvConfig: true, which trusts the cookie's canister ids, and its root key for a replica that is not mainnet.`
     )
   }
 
@@ -582,7 +854,12 @@ const verifiesAsMainnet = (net: ResolvedNetwork): boolean =>
   !net.fetchRootKey &&
   (net.rootKey === undefined || hexOf(net.rootKey) === IC_ROOT_KEY)
 
-/** The cookie's `INTERNET_IDENTITY_PROVIDER`, when it is an http(s) URL. */
+/**
+ * The cookie's `INTERNET_IDENTITY_PROVIDER`, when it is an `https:` URL, or an
+ * `http:` one on a local page (never one believed for ids only, a canister's
+ * `icp0.io` page). Over plain `http:` from a page that is not local, anyone on
+ * the path could stand in for the sign-in page.
+ */
 const cookieAuthorizeUrl = (
   env: Readonly<Record<string, unknown>> | undefined
 ): string | undefined => {
@@ -590,7 +867,9 @@ const cookieAuthorizeUrl = (
   if (typeof value !== "string" || value === "") return undefined
   try {
     const { protocol } = new URL(value)
-    return protocol === "http:" || protocol === "https:" ? value : undefined
+    return protocol === "https:" || (protocol === "http:" && pageIsLocal())
+      ? value
+      : undefined
   } catch {
     return undefined
   }
@@ -624,8 +903,9 @@ const builtInAuthorizeUrl = (host: string): string | undefined => {
  * What the client tells its `auth` factory: the agent options of its own
  * agents, and the identity provider to sign in with, by these rules in order.
  *
- * 1. A trusted `ic_env` cookie that names `INTERNET_IDENTITY_PROVIDER`: that
- *    URL, with the cookie's `PUBLIC_CANISTER_ID:internet_identity`, or
+ * 1. A trusted `ic_env` cookie that names `INTERNET_IDENTITY_PROVIDER` over
+ *    `https:` (or `http:` on a local page): that URL, with the cookie's
+ *    `PUBLIC_CANISTER_ID:internet_identity`, or
  *    Internet Identity's own id when it names none.
  * 2. A trusted cookie that names an `internet_identity` canister but no URL
  *    (the project deploys its own): none, and a gap unless the network is

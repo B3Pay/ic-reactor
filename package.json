@@ -1,6 +1,6 @@
 {
   "name": "ic-reactor",
-  "version": "4.0.0-beta.5",
+  "version": "4.0.0-beta.7",
   "type": "module",
   "private": true,
   "description": "The modern, type-safe library for building Internet Computer applications",
@@ -14,7 +14,6 @@
     "docs:check-examples": "cd docs && pnpm check:examples",
     "docs:preview": "cd docs && pnpm preview",
     "size": "pnpm -r --filter \"./packages/**\" --filter ./scripts/size-app run size",
-    "prepublish:check": "pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/vite-plugin build && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/vite-plugin test && pnpm -r --filter @ic-reactor/core --filter @ic-reactor/react --filter @ic-reactor/vite-plugin --filter size-app size",
     "sync:examples": "node scripts/sync-example-versions.js",
     "typecheck:examples": "node scripts/typecheck-examples.js",
     "build:examples": "node scripts/build-examples.js",
@@ -75,14 +74,14 @@
       "brace-expansion": "^5.0.11",
       "compression": "^1.8.2",
       "devalue": "^5.9.3",
-      "fast-uri": "^3.1.6",
+      "fast-uri": "^3.1.8",
       "h3": "^1.15.9",
       "picomatch": "^4.0.4",
       "postcss": "^8.5.26",
       "minimatch": "^10.2.5",
       "rollup": "^4.60.1",
       "sharp": "^0.35.5",
-      "smol-toml": "^1.6.1",
+      "smol-toml": "^1.9.0",
       "source-map-js": "^1.2.2",
       "svgo": "^4.0.2",
       "tar": "^7.5.22",
@@ -90,7 +89,9 @@
       "follow-redirects": "^1.16.0",
       "undici": "^7.29.1",
       "linkinator>undici": "^8.0.0",
-      "ws": "^8.21.0"
+      "ws": "^8.21.0",
+      "markdown-it": "^14.3.3",
+      "astro>vite": "^8.3.3"
     },
     "auditConfig": {
       "ignoreGhsas": [

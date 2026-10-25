@@ -13,6 +13,7 @@
  *
  * @module
  */
+import { MANAGEMENT_CANISTER } from "./management.js"
 import { isServer } from "./runtime.js"
 import type { Canister, ErrorOf } from "./types.js"
 
@@ -20,9 +21,7 @@ import type { Canister, ErrorOf } from "./types.js"
  * What kind of failure a {@link ReactorError} reports.
  *
  * - `invalid_args`: the arguments could not be encoded, or the target canister
- *   id could not be resolved, or a re-send `client.resendOf()` offered was
- *   given an argument changed since it was sent (`arg_changed`). Nothing was
- *   sent.
+ *   id could not be resolved. Nothing was sent.
  * - `unauthenticated`: an update was attempted while not signed in. Nothing was
  *   sent.
  * - `not_delivered`: nothing that matters ran. Either the request was refused
@@ -33,7 +32,12 @@ import type { Canister, ErrorOf } from "./types.js"
  *   `not_delivered`, because a refused update never ran and a query changes
  *   nothing.
  * - `outcome_unknown`: an update went out and no trustworthy answer came back,
- *   so the canister may or may not have run it.
+ *   so the canister may or may not have run it. So does a re-send of a write
+ *   `client.resendOf()` offered that did not run, refused before it went out
+ *   or turned away: the write it re-sends may have run all the same. Its
+ *   `code`, `httpStatus` and `rejectCode` say why the re-send did not run
+ *   (such as `caller_changed`, `target_changed` or `arg_changed`), and its
+ *   `cause` is the re-send's own error.
  * - `rejected`: the IC or the canister rejected the call; `rejectCode` says which.
  * - `invalid_reply`: a reply arrived but did not decode as the method's result.
  * - `canister_err`: the canister ran the call and replied with the `Err` arm of
@@ -41,9 +45,9 @@ import type { Canister, ErrorOf } from "./types.js"
  *   `mayHaveExecuted` is `false`: re-sending is a new decision, not a retry.
  * - `cancelled`: the caller abandoned the call (an aborted query, a key whose
  *   principal is no longer current, a call on a disposed client
- *   (`client_disposed`), a re-send that would go to another method or
- *   canister id than the write it re-sends (`target_changed`), or an update
- *   aborted in flight).
+ *   (`client_disposed`), a read or an unsent write whose `timeoutMs` passed
+ *   (`timeout`), or an update aborted in flight). A write whose `timeoutMs` passed after its request went out
+ *   is `outcome_unknown` (`timeout`) instead.
  *   `mayHaveExecuted` is `false` when nothing was sent, and `true` for an
  *   update aborted after its request may already have been delivered.
  */
@@ -91,6 +95,21 @@ type ReactorErrorBase = Error & {
   readonly issues?: readonly { code: string; path: string; message: string }[]
   /** The error that caused this one, when there is one. */
   readonly cause?: unknown
+  /**
+   * For a write that got no answer (`outcome_unknown`, or `cancelled` with
+   * `mayHaveExecuted: true`): the latest ingress expiry its sends were signed
+   * with, in nanoseconds since the epoch, on the IC's clock. Once the IC's
+   * time is past it, no send of this write can still start executing (the IC
+   * interface specification: the IC neither accepts a call nor moves it from
+   * `received` to `processing` past its `ingress_expiry`:
+   * https://docs.internetcomputer.org/references/ic-interface-spec/https-interface/).
+   * The expiry does not stop a send that started before it, so only for a
+   * method that commits without awaiting another canister is a certified
+   * read-back of later state that finds nothing final. The host's clock may
+   * differ from the IC's: compare with a margin. Absent on every other error.
+   * Not enumerable, so `JSON.stringify(error)` still works.
+   */
+  readonly expiresAt?: bigint
 }
 
 /**
@@ -274,6 +293,7 @@ class ReactorFailure extends Error {
   declare readonly issues?: Issues
   declare readonly err?: unknown
   declare readonly cause?: unknown
+  declare readonly expiresAt?: bigint
 
   constructor(init: BuildInit) {
     super(`[ic-reactor] ${init.method} on ${init.canisterId}: ${init.reason}`)
@@ -310,6 +330,30 @@ Object.defineProperty(ReactorFailure.prototype, "name", {
   writable: true,
   configurable: true,
 })
+
+/**
+ * `error` with `expiresAt`, when it is a write's failure that got no answer
+ * (`outcome_unknown`, or `cancelled` with `mayHaveExecuted: true`) and a send
+ * of it recorded an ingress expiry. Not enumerable, as `cause` is not: a
+ * `bigint` would make `JSON.stringify(error)` throw.
+ */
+export const withExpiry = (
+  error: unknown,
+  expiresAt: bigint | undefined
+): unknown => {
+  if (
+    expiresAt !== undefined &&
+    isReactorError(error) &&
+    error.mayHaveExecuted &&
+    (error.kind === "outcome_unknown" || error.kind === "cancelled")
+  ) {
+    Object.defineProperty(error, "expiresAt", {
+      value: expiresAt,
+      configurable: true,
+    })
+  }
+  return error
+}
 
 const build = <E = never>(init: BuildInit): ReactorError<E> =>
   new ReactorFailure(init) as unknown as ReactorError<E>
@@ -362,6 +406,60 @@ export function createReactorError(
     err,
   })
 }
+
+/**
+ * The error of a call whose `timeoutMs` passed (code `"timeout"`). `sent` is
+ * whether a write (an update or a oneway, or an update read with
+ * `{ update: "idempotent" }`) may have been delivered: an attempt of it was
+ * out. Then `outcome_unknown` with `mayHaveExecuted: true`, as when the
+ * polling bound passes. Otherwise `cancelled`, with nothing executed: nothing
+ * was out, or the call was a plain read. A re-send of a write
+ * `client.resendOf()` offered that times out before it goes out keeps the
+ * unknown outcome all the same ({@link resendDidNotRun}).
+ */
+export const timedOutError = (
+  where: { readonly method: string; readonly canisterId: string },
+  sent: boolean
+): ReactorError =>
+  build({
+    ...where,
+    kind: sent ? "outcome_unknown" : "cancelled",
+    mayHaveExecuted: sent,
+    code: "timeout",
+    reason: `timeoutMs passed${sent ? " with no answer; the write may have executed" : ""}`,
+  })
+
+/**
+ * The error of a re-send of a write `client.resendOf()` offered that did not
+ * run: refused before it went out (`caller_changed`, `target_changed`,
+ * `arg_changed`, `client_disposed`, a `timeout` before it went out, and any
+ * other refusal before sending), or turned away (an HTTP 4xx, reject code 1
+ * to 3). `failure`, what the re-send itself rejected with, proves only that
+ * the re-send did not run. The write it re-sends may have run all the same,
+ * so its outcome stays unknown: `outcome_unknown` with `mayHaveExecuted:
+ * true`, `failure`'s `method`, `canisterId`, `code`, `rejectCode`,
+ * `httpStatus` and `issues` (the call that was refused), `failure` itself as
+ * the `cause` (its message says why the re-send did not run), and
+ * `expiresAt`, the latest of the write's sends. A re-send that ran is
+ * answered by the canister (`canister_err`, such as a ledger's `Duplicate`),
+ * and one that may have run says so itself: neither comes here.
+ */
+export const resendDidNotRun = (
+  failure: ReactorError | ReactorError<unknown>,
+  expiresAt: bigint | undefined
+): ReactorError =>
+  withExpiry(
+    // The spread takes `failure`'s own enumerable fields (method, canisterId,
+    // code, rejectCode, httpStatus, issues); its kind and verdict are replaced.
+    build({
+      ...failure,
+      kind: "outcome_unknown",
+      mayHaveExecuted: true,
+      reason: "the re-send did not run; the write may have executed",
+      cause: failure,
+    }),
+    expiresAt
+  ) as ReactorError
 
 /**
  * Creates the `invalid_reply` error for a reply that did not decode as the
@@ -436,6 +534,12 @@ export type ErrorContext = ErrorContextBase &
          * untyped caller that leaves it out gets the safe answer.
          */
         readonly accepted: boolean
+        /**
+         * Whether the call re-sends a write that `resendOf()` offered, whose
+         * earlier attempt may have run. A signer that does not sign the
+         * re-send leaves that write's outcome unknown.
+         */
+        readonly again?: boolean
       }
   )
 
@@ -474,7 +578,6 @@ export type ErrorContext = ErrorContextBase &
 const SYS_FATAL = 1
 const SYS_TRANSIENT = 2
 const DESTINATION_INVALID = 3
-const MANAGEMENT_CANISTER = "aaaaa-aa"
 
 const REJECT_NAMES: Readonly<Record<number, string>> = {
   1: "SYS_FATAL",
@@ -501,6 +604,38 @@ const PRE_SEND_CODES: ReadonlySet<string> = new Set([
   "MissingCanisterIdErrorCode",
   "InvalidReadStateRequestErrorCode",
 ])
+
+/** The errors {@link notSigned} made, which {@link classifyError} unwraps. */
+const unsigned = new WeakSet<object>()
+
+/**
+ * What a failure of an identity's `transformRequest` is thrown to the agent
+ * as (see `agentFor`): a user who declines a passkey or hardware-wallet
+ * prompt, a signer that is gone. {@link classifyError} reads it as a request
+ * that was not signed, whatever the signer's error (its `cause`) says, and
+ * makes that error the result's `cause`.
+ */
+export const notSigned = (cause: unknown): Error => {
+  const error = Object.assign(new Error("the signer did not sign"), { cause })
+  unsigned.add(error)
+  return error
+}
+
+/**
+ * The signer's error, when `error` is a {@link notSigned} failure or wraps
+ * one: the agent throws a failure from inside its own error handling (a
+ * query's `read_state` for the subnet's keys) as
+ * `UnknownError(UnexpectedErrorCode(error))`.
+ */
+function signerError(
+  error: unknown,
+  depth = 0
+): { cause: unknown } | undefined {
+  if (depth > 3) return undefined
+  const record = asRecord(error)
+  if (unsigned.has(record)) return { cause: record.cause }
+  return signerError(asRecord(record.code).error, depth + 1)
+}
 
 /**
  * `ReactorError.code` when the IC answers that the canister a request was
@@ -550,7 +685,8 @@ interface Shape {
   readonly statusText: string
 }
 
-const asRecord = (value: unknown): Record<string, unknown> =>
+/** `value` when it is an object, so its fields can be read; `{}` otherwise. */
+export const asRecord = (value: unknown): Record<string, unknown> =>
   typeof value === "object" && value !== null
     ? (value as Record<string, unknown>)
     : {}
@@ -576,8 +712,8 @@ function readRejectCode(error: Record<string, unknown>): number | undefined {
  * error from another copy of `@icp-sdk/core` classifies the same way. A
  * `status` on any other code says nothing about an HTTP answer and is ignored.
  */
-function readHttpStatus(error: Record<string, unknown>): number | undefined {
-  const code = asRecord(error.code)
+export function readHttpStatus(error: unknown): number | undefined {
+  const code = asRecord(asRecord(error).code)
   return code.name === "HttpErrorCode" && typeof code.status === "number"
     ? code.status
     : undefined
@@ -670,6 +806,7 @@ const withDetail = (lead: string, detail: string): string =>
  * | HTTP 429 | `not_delivered`, retryable | false / false |
  * | any other HTTP 4xx, `IngressExpiryInvalid` | `not_delivered` | false / false |
  * | a request that could not be built or signed (CBOR or DER encoding, an invalid identity, no `fetch`, no canister id) | `not_delivered` | false / false |
+ * | the signer did not sign a request (a declined prompt: {@link notSigned}) | `not_delivered` | false / false |
  *
  * A canister that does not exist also sets `code: "canister_not_found"`, and
  * changes nothing else. The IC says it in one of two ways. For a canister id
@@ -687,8 +824,8 @@ const withDetail = (lead: string, detail: string): string =>
  *
  * For a query nothing that matters executes, so every doubt is `not_delivered`
  * and `mayHaveExecuted` is `false`. The HTTP rows, and `IngressExpiryInvalid`,
- * hold for an update only when `context.accepted` is `false`, and so does the
- * row of a request that could not be built. Once the request
+ * hold for an update only when `context.accepted` is `false`, and so do the
+ * rows of a request that could not be built or signed. Once the request
  * may be in the IC (see {@link ErrorContext}), they all read as
  * `outcome_unknown` with `mayHaveExecuted: true`, because a refusal that comes
  * later says nothing about the call.
@@ -701,7 +838,8 @@ const withDetail = (lead: string, detail: string): string =>
  * An error that is already a ReactorError comes back as the same object, so
  * it may carry an `err` that the return type does not promise.
  *
- * The thrown error becomes the result's `cause`, and the result's `message`
+ * The thrown error becomes the result's `cause` (for a signer that did not
+ * sign, the signer's own error), and the result's `message`
  * is one short line (`[ic-reactor] <method> on <canisterId>: <reason>`): a
  * missing canister arrives from the agent as an HTTP 400 whose own message
  * runs to thousands of characters.
@@ -717,6 +855,8 @@ export function classifyError(
   const mayBeAccepted = update && context.accepted !== false
   const shape = readShape(error)
   const { rejectCode, httpStatus } = shape
+  const signer = signerError(error)
+  const thrown = signer === undefined ? error : signer.cause
 
   const make = (
     kind: ReactorErrorKind,
@@ -735,11 +875,29 @@ export function classifyError(
       canisterId,
       rejectCode,
       httpStatus,
-      cause: error,
+      cause: thrown,
     })
 
-  if (context.signal?.aborted || isAbort(error)) {
+  if (context.signal?.aborted || isAbort(thrown)) {
     return make("cancelled", update, DEFAULT_REASON.cancelled)
+  }
+
+  // Before anything else the agent wrapped it in: what the signer threw says
+  // nothing about the call. Only a poll of an update the IC may already hold
+  // leaves the outcome open, and a re-send of an offered write, whose earlier
+  // attempt may have run (as a re-send that times out does). A read's
+  // signature is asked for again by any retry, so a read is not retried.
+  if (signer !== undefined) {
+    const unknown =
+      mayBeAccepted || (context.mode === "update" && context.again === true)
+    const reason = mayBeAccepted
+      ? "the call was sent, but the signer did not sign a request for its answer"
+      : `the signer did not sign the request${update ? ", so it was not sent" : ""}`
+    return make(
+      unknown ? "outcome_unknown" : "not_delivered",
+      unknown,
+      withDetail(reason, condense(messageOf(thrown)))
+    )
   }
 
   // An agent error has a `kind`. One without (a bug, or some other agent) is
@@ -848,8 +1006,12 @@ export function classifyError(
  * `not_delivered` that another attempt can change. {@link retryQuery} and
  * {@link retryUpdate} add their own limits; a direct read re-sends on this
  * alone, at most twice.
+ *
+ * It narrows `error` to a {@link ReactorError} when it returns `true`. Its
+ * `false` says nothing about the type, though TypeScript reads it as "not a
+ * `ReactorError`", so call it on an `unknown`, as both callers do.
  */
-export const isRetryable = (error: unknown): boolean =>
+export const isRetryable = (error: unknown): error is ReactorError =>
   isReactorError(error) &&
   error.kind === "not_delivered" &&
   (error as unknown as Record<symbol, unknown>)[RETRYABLE] === true
@@ -881,10 +1043,10 @@ export const UPDATE_RESEND_DELAYS_MS: readonly [300, 600] = [300, 600]
  */
 export function retryUpdate(error: unknown, resendsSoFar: number): boolean {
   if (resendsSoFar >= UPDATE_RESEND_DELAYS_MS.length) return false
+  // A retryable error is a `not_delivered`, whose `mayHaveExecuted` is always
+  // `false`, so that needs no check of its own here.
   return (
     isRetryable(error) &&
-    isReactorError(error) &&
-    !error.mayHaveExecuted &&
     (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)
   )
 }
@@ -902,4 +1064,16 @@ export function retryUpdate(error: unknown, resendsSoFar: number): boolean {
 export function retryQuery(failureCount: number, error: unknown): boolean {
   if (isServer()) return false
   return failureCount < 3 && isRetryable(error)
+}
+
+/**
+ * The default `retry` of a client's `QueryClient`. A client's own reads set
+ * `retry` themselves, so this default reaches only the other queries on that
+ * `QueryClient`, such as an app's REST queries. A `ReactorError` is retried as
+ * {@link retryQuery} says; any other error as TanStack Query retries it by
+ * default: up to 3 times in a browser, never on a server (#903).
+ */
+export function retryDefault(failureCount: number, error: unknown): boolean {
+  if (isReactorError(error)) return retryQuery(failureCount, error)
+  return !isServer() && failureCount < 3
 }

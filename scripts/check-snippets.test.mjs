@@ -206,6 +206,20 @@ describe("check:snippets compiles the AI-context files", () => {
     assert.match(pointer.output, /packages\/react\/llms\.txt:\d+:\d+ TS2345/)
   })
 
+  it("checks a fence that is never closed, which runs to the end of the file", () => {
+    // `BROKEN` without its closing line: CommonMark ends it with the file.
+    const unclosed = BROKEN.slice(0, BROKEN.lastIndexOf("\n```"))
+    const run = check(
+      repo({
+        "packages/core/llms.txt": guide(GOOD, unclosed),
+        "AGENTS.md": "# AGENTS.md\n",
+        "CLAUDE.md": "# CLAUDE.md\n",
+      })
+    )
+    assert.equal(run.status, 1, run.output)
+    assert.match(run.output, /packages\/core\/llms\.txt:\d+:\d+ TS2345/)
+  })
+
   it("skips a fence marked `nocheck`, and only that fence", () => {
     const skipped = check(
       repo({
@@ -259,6 +273,66 @@ describe(
         "--docs"
       )
       assert.equal(run.status, 0, run.output)
+    })
+
+    it("compiles a build guide against the files it shows, and gives it no globals", () => {
+      const page = (...fences) =>
+        `---\ntitle: Build\n---\n\n${fences.join("\n\n")}\n`
+      const shown = fence(
+        [
+          "// src/amount.ts",
+          'import { parseUnits } from "@ic-reactor/core"',
+          "",
+          "export const amount = (text: string) => parseUnits(text, 8)",
+        ].join("\n")
+      )
+      const using = (name) =>
+        fence(
+          [
+            "// src/use.ts",
+            `import { ${name} } from "./amount"`,
+            "",
+            `console.log(${name}("1.5"))`,
+          ].join("\n")
+        )
+      // A fixture of the same path, which a page outside build/ would get.
+      const fixture = {
+        "scripts/check-snippets/app/amount.ts":
+          "export const total = (text: string) => text\n",
+      }
+      const guide = (...fences) => ({
+        ...fixture,
+        "docs/src/content/docs/build/app.mdx": page(...fences),
+      })
+
+      const shownWins = check(repo(guide(shown, using("amount"))), "--docs")
+      assert.equal(shownWins.status, 0, shownWins.output)
+
+      const notShown = check(repo(guide(shown, using("total"))), "--docs")
+      assert.equal(notShown.status, 1, notShown.output)
+      assert.match(notShown.output, /build\/app\.mdx:\d+:\d+ TS2305/)
+
+      // A script Node runs as TypeScript imports with the extension: the file
+      // the page shows and the generated module's fixture are found the same.
+      const withExtension = fence(
+        [
+          "// src/use.ts",
+          'import { amount } from "./amount.ts"',
+          'import { actor } from "./generated/icrc1.ts"',
+          "",
+          'console.log(amount("1.5"), actor)',
+        ].join("\n")
+      )
+      const extension = check(repo(guide(shown, withExtension)), "--docs")
+      assert.equal(extension.status, 0, extension.output)
+
+      // `principal` is a global of the other docs pages.
+      const global = check(
+        repo(guide(fence("console.log(principal.toText())"))),
+        "--docs"
+      )
+      assert.equal(global.status, 1, global.output)
+      assert.match(global.output, /build\/app\.mdx:\d+:\d+ TS2304.*principal/)
     })
   }
 )

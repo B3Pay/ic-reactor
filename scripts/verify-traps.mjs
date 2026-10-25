@@ -54,7 +54,9 @@ import {
   createWorkspaceCopy,
 } from "./lib/fault-workspace.mjs"
 
-const TSC = createRequire(import.meta.url).resolve("typescript/lib/tsc.js")
+const require = createRequire(import.meta.url)
+const TSC = require.resolve("typescript/lib/tsc.js")
+const ts = require("typescript")
 
 /**
  * The trap files: a package, the traps file in it, and the tsconfig of the
@@ -74,14 +76,82 @@ const UNUSED_DIRECTIVE = 2578
 const TAG = /^\s*\/\/\s*trap:\s*([a-z0-9]+(?:-[a-z0-9]+)*)\s*$/
 
 /**
- * A comment line that TypeScript reads as a directive: the directive is the
- * first thing in the comment, after `//`, `///`, `/*` or a block comment's
- * leading `*`. A mention in the middle of a sentence, or in a comment line
- * that starts with something else, is prose.
+ * A comment line that starts with a directive: the directive is the first
+ * thing in the comment, after `//`, `///`, `/*` or a block comment's leading
+ * `*`. A mention in the middle of a sentence, or in a comment line that starts
+ * with something else, is prose. The line under a tag must be one of these.
+ * Kept from before the parser check below, so the gate flags at least what it
+ * did.
  */
 const DIRECTIVE_START = String.raw`^\s*(?:\/\/\/?|\/\*+|\*+)\s*@ts-`
 const EXPECT_ERROR = new RegExp(`${DIRECTIVE_START}expect-error\\b`)
 const OTHER_DIRECTIVE = new RegExp(`${DIRECTIVE_START}(?:ignore|nocheck)\\b`)
+
+/** `text` parsed by TypeScript, as a `.ts` file. */
+const parse = (text) =>
+  ts.createSourceFile(
+    "traps.test-d.ts",
+    text,
+    ts.ScriptTarget.Latest,
+    false,
+    ts.ScriptKind.TS
+  )
+
+let parserChecked = false
+
+/**
+ * Throws unless this TypeScript fills the two fields {@link directiveLines}
+ * reads, neither of which is in its declarations: one directive and one
+ * `@ts-nocheck`, parsed as a canary.
+ */
+function checkParser() {
+  if (parserChecked) return
+  const [ignore, ...more] = parse("a() // @ts-ignore\n").commentDirectives ?? []
+  const nocheck = parse("// @ts-nocheck\n").checkJsDirective
+  if (
+    ignore?.type !== ts.CommentDirectiveType?.Ignore ||
+    more.length > 0 ||
+    nocheck?.enabled !== false
+  ) {
+    throw new Error(
+      `TypeScript ${ts.version} no longer reports comment directives in SourceFile.commentDirectives and checkJsDirective, which verify-traps reads the directives of a traps file from`
+    )
+  }
+  parserChecked = true
+}
+
+/**
+ * The lines on which TypeScript itself reads a directive, 0-based, from its
+ * parser: `@ts-expect-error` and `@ts-ignore` as the program matches its
+ * diagnostics against them (`SourceFile.commentDirectives`), and a
+ * `@ts-nocheck` it obeys (`checkJsDirective`). So a directive after code
+ * (`ok() // @ts-ignore`), on a block comment's last line, or spelled
+ * `@ts-ignored` is found here, and one in a string or in the middle of a doc
+ * comment is not; the start-of-line pattern still flags one that starts its
+ * line. A TypeScript that no longer fills these fails the check rather than
+ * letting such a directive through.
+ *
+ * @param {string} text
+ * @returns {{ expectError: Set<number>, other: Set<number> }}
+ */
+function directiveLines(text) {
+  checkParser()
+  const file = parse(text)
+  // Lines as `parseTraps` counts them, split at "\n" only: TypeScript also
+  // breaks lines at U+2028, U+2029 and a lone "\r".
+  const lineOf = (pos) => text.slice(0, pos).split("\n").length - 1
+  const expectError = new Set()
+  const other = new Set()
+  for (const { range, type } of file.commentDirectives ?? []) {
+    ;(type === ts.CommentDirectiveType.ExpectError ? expectError : other).add(
+      lineOf(range.pos)
+    )
+  }
+  if (file.checkJsDirective?.enabled === false) {
+    other.add(lineOf(file.checkJsDirective.pos))
+  }
+  return { expectError, other }
+}
 
 // ── Reading the traps file ───────────────────────────────────────────────────
 
@@ -97,28 +167,34 @@ export function parseTraps(text) {
   const lines = text.split("\n")
   const traps = []
   const problems = []
-  const tagged = new Set()
+  // The line under each tag. A directive there that does not start its line
+  // is the tag's problem, said once.
+  const underTag = new Set()
   lines.forEach((line, index) => {
     const number = index + 1
     const tag = TAG.exec(line)
     if (tag) {
+      underTag.add(index + 1)
       if (EXPECT_ERROR.test(lines[index + 1] ?? "")) {
         traps.push({ id: tag[1], line: number + 1 })
-        tagged.add(index + 1)
       } else {
         problems.push(
-          `line ${number}: the tag "trap: ${tag[1]}" must be followed on the next line by its // @ts-expect-error`
+          `line ${number}: the tag "trap: ${tag[1]}" must be followed by a line that starts with its // @ts-expect-error`
         )
       }
     }
   })
+  const read = directiveLines(text)
   lines.forEach((line, index) => {
     const number = index + 1
-    if (OTHER_DIRECTIVE.test(line)) {
+    if (OTHER_DIRECTIVE.test(line) || read.other.has(index)) {
       problems.push(
         `line ${number}: @ts-ignore and @ts-nocheck hide errors without being proven; a trap file uses tagged @ts-expect-error only`
       )
-    } else if (EXPECT_ERROR.test(line) && !tagged.has(index)) {
+    } else if (
+      (EXPECT_ERROR.test(line) || read.expectError.has(index)) &&
+      !underTag.has(index)
+    ) {
       problems.push(
         `line ${number}: this @ts-expect-error has no "// trap: <id>" tag on the line above it, so nothing proves it still traps`
       )
