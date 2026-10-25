@@ -8,10 +8,11 @@
  * The canisters live on the fake replica of tests/fake-ic.ts, on a local
  * port, which signs its certificates with a root key of its own.
  */
+import { spawn } from "node:child_process"
 import fs from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Plugin } from "vite"
 import { icReactor, type IcReactorPluginOptions } from "../src/index.js"
 import { startFakeIc, type Canister } from "./fake-ic.js"
@@ -21,9 +22,17 @@ import {
   PING_DID,
   recordingLogger,
   runBuild,
+  spawnedExited,
   startDev,
   type App,
 } from "./support.js"
+
+// The real `spawn`, watched, so that each test waits for the CLI processes it
+// started to exit before its app is removed (#905).
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>()
+  return { ...actual, spawn: vi.fn(actual.spawn) }
+})
 
 const LEDGER = fs.readFileSync(LEDGER_DID, "utf-8")
 const LEDGER_ID = "ryjl3-tyaaa-aaaaa-aaaba-cai"
@@ -32,10 +41,18 @@ const OTHER_ID = "mqygn-kiaaa-aaaar-qaadq-cai"
 const closers: Array<() => Promise<unknown>> = []
 const apps: App[] = []
 
+beforeEach(() => {
+  vi.mocked(spawn).mockClear()
+})
+
 afterEach(async () => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
   for (const close of closers.splice(0).reverse()) await close()
+  // A test can end once a process wrote its file and before it exits. On
+  // Windows that process holds the app directory, its working directory, and
+  // removing the app fails with EBUSY.
+  await spawnedExited(vi.mocked(spawn))
   for (const app of apps.splice(0)) app.cleanup()
 })
 
