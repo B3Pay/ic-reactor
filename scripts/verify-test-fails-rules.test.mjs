@@ -36,7 +36,7 @@ describe("classify", () => {
   })
 
   it("counts a test with no result on the base as no evidence, not as passing either way", () => {
-    // The base's sources could not load the file (main, 3.x, under a v4
+    // The base's sources could not load the file (v3, 3.x, under a 4.x
     // test), so the base run reported nothing for it (#968).
     const groups = classify(statuses({ unloaded: "passed" }), new Map())
     assert.deepEqual(groups.noBaseResult, ["unloaded"])
@@ -120,7 +120,7 @@ describe("defaultBase", () => {
   })
 
   /**
-   * A repository whose `v4` has A then C, and a branch `fix` that left it at A
+   * A repository whose `main` has A then C, and a branch `fix` that left it at A
    * and added B, checked out. Each test gets its own.
    */
   function repository() {
@@ -146,63 +146,73 @@ describe("defaultBase", () => {
       git("commit", "-q", "--no-verify", "-m", message)
       return git("rev-parse", "HEAD")
     }
-    git("init", "-q", "-b", "v4")
+    git("init", "-q", "-b", "main")
     const left = commit("A")
     git("checkout", "-q", "-b", "fix")
     const fix = commit("B")
-    git("checkout", "-q", "v4")
+    git("checkout", "-q", "main")
     const moved = commit("C")
     git("checkout", "-q", "fix")
     return { git, commit, left, fix, moved }
   }
 
-  it("is where the branch left the local v4, not v4's tip", () => {
+  it("is where the branch left the local main, not main's tip", () => {
     const { git, left } = repository()
-    assert.deepEqual(defaultBase(git), { line: "v4", commit: left })
+    assert.deepEqual(defaultBase(git), { line: "main", commit: left })
   })
 
-  it("is where the branch left origin/v4 in a clone with no local v4, as a fresh clone of another branch has", () => {
+  it("is where the branch left origin/main in a clone with no local main, as a fresh clone of another branch has", () => {
     const { git, left, moved } = repository()
-    git("update-ref", "refs/remotes/origin/v4", moved)
-    git("branch", "-q", "-D", "v4")
-    assert.deepEqual(defaultBase(git), { line: "origin/v4", commit: left })
+    git("update-ref", "refs/remotes/origin/main", moved)
+    git("branch", "-q", "-D", "main")
+    assert.deepEqual(defaultBase(git), { line: "origin/main", commit: left })
   })
 
-  it("is the newer branch point when the local v4 is behind origin/v4", () => {
-    // The branch left origin/v4 at C, which the stale local v4 never got.
+  it("is the newer branch point when the local main is behind origin/main", () => {
+    // The branch left origin/main at C, which the stale local main never got.
     // Reverting to A would also undo C, and a test could fail there for C.
     const { git, commit, left, moved } = repository()
-    git("update-ref", "refs/remotes/origin/v4", moved)
+    git("update-ref", "refs/remotes/origin/main", moved)
     git("checkout", "-q", "-B", "fix", moved)
     commit("B'")
-    git("branch", "-q", "-f", "v4", left)
-    assert.deepEqual(defaultBase(git), { line: "origin/v4", commit: moved })
+    git("branch", "-q", "-f", "main", left)
+    assert.deepEqual(defaultBase(git), { line: "origin/main", commit: moved })
   })
 
-  it("is the newer branch point when origin/v4 is behind the local v4", () => {
+  it("is the newer branch point when origin/main is behind the local main", () => {
     const { git, left, moved } = repository()
-    git("update-ref", "refs/remotes/origin/v4", left)
-    git("checkout", "-q", "-B", "fix", "v4")
-    assert.deepEqual(defaultBase(git), { line: "v4", commit: moved })
+    git("update-ref", "refs/remotes/origin/main", left)
+    git("checkout", "-q", "-B", "fix", "main")
+    assert.deepEqual(defaultBase(git), { line: "main", commit: moved })
   })
 
-  it("is HEAD on v4 itself", () => {
+  it("is HEAD on main itself", () => {
     const { git, moved } = repository()
-    git("checkout", "-q", "v4")
+    git("checkout", "-q", "main")
+    assert.deepEqual(defaultBase(git), { line: "main", commit: moved })
+  })
+
+  it("reads the branch main, not a tag of that name", () => {
+    const { git, left, fix } = repository()
+    git("tag", "main", fix)
+    assert.deepEqual(defaultBase(git), { line: "main", commit: left })
+  })
+
+  it("is where a branch cut from v4 left it, while v4 is still listed", () => {
+    // Before the flip main is 3.x, behind v4: its merge base would be older.
+    const { git, commit, left, moved } = repository()
+    git("branch", "-q", "v4", moved)
+    git("branch", "-q", "-f", "main", left)
+    git("checkout", "-q", "-B", "fix", "v4")
+    commit("D")
     assert.deepEqual(defaultBase(git), { line: "v4", commit: moved })
   })
 
-  it("reads the branch v4, not a tag of that name", () => {
-    const { git, left, fix } = repository()
-    git("tag", "v4", fix)
-    assert.deepEqual(defaultBase(git), { line: "v4", commit: left })
-  })
-
-  it("is undefined with neither, so the script asks for --base instead of guessing main", () => {
+  it("is undefined with neither, so the script asks for --base instead of guessing v3", () => {
     const { git, left } = repository()
-    git("branch", "-q", "main", left)
-    git("checkout", "-q", "main")
-    git("branch", "-q", "-D", "v4")
+    git("branch", "-q", "v3", left)
+    git("checkout", "-q", "v3")
+    git("branch", "-q", "-D", "main")
     assert.equal(defaultBase(git), undefined)
   })
 
@@ -210,6 +220,6 @@ describe("defaultBase", () => {
     const { git } = repository()
     git("checkout", "-q", "--orphan", "unrelated")
     git("commit", "-q", "--no-verify", "-m", "unrelated")
-    assert.throws(() => defaultBase(git), /HEAD shares no history with v4/)
+    assert.throws(() => defaultBase(git), /HEAD shares no history with main/)
   })
 })

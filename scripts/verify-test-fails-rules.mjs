@@ -6,13 +6,16 @@
  */
 
 /**
- * The refs `--base` defaults from: `v4`, the branch 4.x is developed on, and
- * `origin/v4`, which is all a clone of another branch has of it. `main` is
- * the 3.x line, whose sources cannot load v4's tests. (When v4 becomes main
- * at GA, this list changes with it.) Each is read by its full name, so a tag
- * called `v4` is not taken for the branch.
+ * The refs `--base` defaults from: `main`, the branch 4.x is developed on, and
+ * `origin/main`, which is all a clone of another branch has of it. `v4`, the
+ * branch 4 was developed on until the 4.0 GA flip, stays listed until it is
+ * retired, as in ci.yml: a branch cut from it then still gets its own branch
+ * point. `v3` is the 3.x line, whose sources cannot load 4.x's tests. Each is
+ * read by its full name, so a tag called `main` is not taken for the branch.
  */
 export const BASE_LINES = [
+  { name: "main", ref: "refs/heads/main" },
+  { name: "origin/main", ref: "refs/remotes/origin/main" },
   { name: "v4", ref: "refs/heads/v4" },
   { name: "origin/v4", ref: "refs/remotes/origin/v4" },
 ]
@@ -21,10 +24,10 @@ export const BASE_LINES = [
  * The revision `--base` defaults to: where HEAD left the 4.x line, the newest
  * commit of {@link BASE_LINES} that HEAD contains (`git merge-base` over every
  * one that exists). So the base is the code the fix was written against,
- * neither whatever v4 gained since nor an older point that a stale local `v4`
- * or a fork's `origin/v4` would give. On v4 itself that is HEAD, and the run
- * compares the working tree's sources with it. `line` is the ref it was found
- * on. `undefined` when no such ref exists.
+ * neither whatever main gained since nor an older point that a stale local
+ * `main` or a fork's `origin/main` would give. On main itself that is HEAD,
+ * and the run compares the working tree's sources with it. `line` is the ref
+ * it was found on. `undefined` when no such ref exists.
  *
  * @param {(...args: string[]) => string} git runs git in the repository and
  *   returns its trimmed output, throwing when git fails

@@ -5,19 +5,19 @@
  * the script itself never pushes, tags or publishes (#969).
  */
 
-/**
- * A new pull request against `v4`. The link `git push` prints for a new
- * branch compares it with the default branch, `main`, the 3.x line.
- */
-const COMPARE_WITH_V4 = "https://github.com/B3Pay/ic-reactor/compare/v4..."
+import { releaseFor } from "../release-tag.mjs"
+
+/** A new pull request against `main`, the 4.x line and the default branch. */
+const COMPARE_WITH_MAIN = "https://github.com/B3Pay/ic-reactor/compare/main..."
 
 /**
  * The steps left after the release commit of `version`, as lines to print.
  *
- * @param {string} version  the version the release commit sets, such as `4.0.0-beta.7`
+ * @param {string} version  the version the release commit sets, such as `4.0.0`
  * @returns {string}
  */
 export function releasePrSteps(version) {
+  const { distTag } = releaseFor(version)
   const branch = `release/v${version}`
   const tag = `v${version}`
   // GitHub's merge commit names the branch it merged: "Merge pull request #N
@@ -28,17 +28,17 @@ export function releasePrSteps(version) {
     "",
     `  1. Move the entries under "## Unreleased" in CHANGELOG.md into a new`,
     `     "## core, react, vite-plugin ${version}" section below it, and commit that.`,
-    `  2. Push the commits as ${branch}, and open its pull request into v4:`,
+    `  2. Push the commits as ${branch}, and open its pull request into main:`,
     `       git push origin HEAD:refs/heads/${branch}`,
-    `       ${COMPARE_WITH_V4}${branch}?expand=1`,
+    `       ${COMPARE_WITH_MAIN}${branch}?expand=1`,
     `  3. Once it is merged, find its merge commit, then tag that commit and push`,
     `     that one tag (if the log prints nothing, take the commit from the pull`,
     `     request's page):`,
-    `       git fetch origin v4`,
-    `       git log origin/v4 --first-parent --merges -1 --format='%H %s' --grep='${mergedFrom}'`,
+    `       git fetch origin main`,
+    `       git log origin/main --first-parent --merges -1 --format='%H %s' --grep='${mergedFrom}'`,
     `       git tag -a ${tag} -m "ic-reactor ${version}" <merge-commit>`,
     `       git push origin ${tag}`,
     `     release.yml checks the tag, waits for approval on npm-publish, and`,
-    `     publishes core, react and vite-plugin under the beta dist-tag.`,
+    `     publishes core, react and vite-plugin under the ${distTag} dist-tag.`,
   ].join("\n")
 }
