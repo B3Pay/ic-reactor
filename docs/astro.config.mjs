@@ -40,7 +40,7 @@ export default defineConfig({
         },
       ],
       editLink: {
-        baseUrl: "https://github.com/b3pay/ic-reactor/edit/v4/docs/",
+        baseUrl: "https://github.com/b3pay/ic-reactor/edit/main/docs/",
       },
       head: [
         // The B3Pay design system's type: Schibsted Grotesk and Martian Mono.

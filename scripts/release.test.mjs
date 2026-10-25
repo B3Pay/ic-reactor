@@ -42,6 +42,7 @@ const SCRIPTS = [
   "sync-ai-context-versions.js",
   "sync-example-versions.js",
   "lib/release-pr-steps.mjs",
+  "release-tag.mjs",
 ]
 
 const PREVIOUS = "4.0.0-beta.6"
@@ -66,13 +67,13 @@ after(() => {
 const json = (value) => JSON.stringify(value, null, 2) + "\n"
 
 /**
- * `git init` on `v4` in `root`, with a committer, no signing and no hooks, and
+ * `git init` on `main` in `root`, with a committer, no signing and no hooks, and
  * a runner of git there.
  */
 function gitRepository(root) {
   const git = (...args) =>
     execFileSync("git", args, { cwd: root, env, encoding: "utf8" }).trim()
-  git("init", "-q", "-b", "v4")
+  git("init", "-q", "-b", "main")
   git("config", "user.name", "Release Test")
   git("config", "user.email", "release-test@example.invalid")
   git("config", "commit.gpgsign", "false")
@@ -81,7 +82,7 @@ function gitRepository(root) {
   return git
 }
 
-/** A committed repository on `v4` at {@link PREVIOUS}, and recording package managers. */
+/** A committed repository on `main` at {@link PREVIOUS}, and recording package managers. */
 function repository() {
   const root = temp("release-repo-")
   const write = (path, text) => {
@@ -168,51 +169,54 @@ esac
 }
 
 describe("release.js", () => {
-  it("commits the release, tags nothing, publishes nothing and prints the release-PR steps", () => {
-    const { root, git, release, calls } = repository()
-    const run = release(NEXT)
-    const output = run.stdout + run.stderr
+  // A stable 4.x version too: it publishes under `latest` from main.
+  for (const version of [NEXT, "4.0.0"]) {
+    it(`commits the release of ${version}, tags nothing, publishes nothing and prints the release-PR steps`, () => {
+      const { root, git, release, calls } = repository()
+      const run = release(version)
+      const output = run.stdout + run.stderr
 
-    assert.equal(run.status, 0, output)
-    // The llms.txt step it dropped failed on every run, as v4 has no root one.
-    assert.deepEqual(
-      output.split("\n").filter((line) => line.includes("❌")),
-      []
-    )
-    assert.equal(existsSync(join(root, "llms.txt")), false)
+      assert.equal(run.status, 0, output)
+      // The llms.txt step it dropped failed on every run, as main has no root one.
+      assert.deepEqual(
+        output.split("\n").filter((line) => line.includes("❌")),
+        []
+      )
+      assert.equal(existsSync(join(root, "llms.txt")), false)
 
-    assert.deepEqual(git("log", "--format=%s").split("\n"), [
-      `chore: release v${NEXT}`,
-      "base",
-    ])
-    assert.deepEqual(
-      git("diff", "--name-only", "HEAD~1", "HEAD").split("\n").sort(),
-      [
-        "AGENTS.md",
-        "CLAUDE.md",
-        "examples/app/package.json",
-        "package.json",
-        "packages/core/llms.txt",
-        "packages/core/package.json",
-        "packages/core/src/version.ts",
-        "packages/react/package.json",
-        "packages/vite-plugin/package.json",
-        "pnpm-lock.yaml",
-      ]
-    )
-    assert.equal(git("status", "--porcelain"), "?? examples/app/notes.txt")
-    assert.equal(git("tag", "--list"), "")
-    assert.deepEqual(calls("pnpm"), [
-      "--filter @ic-reactor/core version:sync",
-      "install --no-frozen-lockfile",
-    ])
-    assert.deepEqual(calls("npm"), [])
+      assert.deepEqual(git("log", "--format=%s").split("\n"), [
+        `chore: release v${version}`,
+        "base",
+      ])
+      assert.deepEqual(
+        git("diff", "--name-only", "HEAD~1", "HEAD").split("\n").sort(),
+        [
+          "AGENTS.md",
+          "CLAUDE.md",
+          "examples/app/package.json",
+          "package.json",
+          "packages/core/llms.txt",
+          "packages/core/package.json",
+          "packages/core/src/version.ts",
+          "packages/react/package.json",
+          "packages/vite-plugin/package.json",
+          "pnpm-lock.yaml",
+        ]
+      )
+      assert.equal(git("status", "--porcelain"), "?? examples/app/notes.txt")
+      assert.equal(git("tag", "--list"), "")
+      assert.deepEqual(calls("pnpm"), [
+        "--filter @ic-reactor/core version:sync",
+        "install --no-frozen-lockfile",
+      ])
+      assert.deepEqual(calls("npm"), [])
 
-    assert.ok(
-      run.stdout.endsWith(`${releasePrSteps(NEXT)}\n`),
-      `expected the release-PR steps at the end:\n${run.stdout}`
-    )
-  })
+      assert.ok(
+        run.stdout.endsWith(`${releasePrSteps(version)}\n`),
+        `expected the release-PR steps at the end:\n${run.stdout}`
+      )
+    })
+  }
 
   for (const flag of ["--dry-run", "--publish"]) {
     it(`refuses ${flag} before it changes anything`, () => {
@@ -242,11 +246,11 @@ describe("releasePrSteps", () => {
     return index
   }
 
-  const lookup = lines.find((line) => line.startsWith("git log origin/v4 "))
+  const lookup = lines.find((line) => line.startsWith("git log origin/main "))
 
   it("pushes the release branch, and tags the merge commit after the merge", () => {
     const push = at(`git push origin HEAD:refs/heads/release/v${NEXT}`)
-    const fetch = at("git fetch origin v4")
+    const fetch = at("git fetch origin main")
     const find = at(lookup)
     const tag = at(`git tag -a v${NEXT} -m "ic-reactor ${NEXT}" <merge-commit>`)
     const pushTag = at(`git push origin v${NEXT}`)
@@ -256,7 +260,7 @@ describe("releasePrSteps", () => {
     )
   })
 
-  it("finds the release pull request's merge commit, not v4's head", () => {
+  it("finds the release pull request's merge commit, not main's head", () => {
     const root = temp("release-merges-")
     const git = gitRepository(root)
     const commit = (file) => {
@@ -264,11 +268,11 @@ describe("releasePrSteps", () => {
       git("add", file)
       git("commit", "-q", "-m", file)
     }
-    // Merge `branch` into v4 with the message GitHub gives a pull request.
+    // Merge `branch` into main with the message GitHub gives a pull request.
     const merge = (number, branch) => {
       git("switch", "-q", "-c", branch)
       commit(branch.replaceAll("/", "-"))
-      git("switch", "-q", "v4")
+      git("switch", "-q", "main")
       git(
         "merge",
         "-q",
@@ -285,7 +289,7 @@ describe("releasePrSteps", () => {
     // branch whose name differs only where this one has a dot.
     merge(2, `release/v${NEXT}0`)
     merge(3, `release/v${NEXT.replace(/\.(?=[^.]*$)/, "x")}`)
-    git("update-ref", "refs/remotes/origin/v4", "v4")
+    git("update-ref", "refs/remotes/origin/main", "main")
 
     const found = execFileSync("sh", ["-c", lookup], {
       cwd: root,
@@ -298,7 +302,7 @@ describe("releasePrSteps", () => {
     )
   })
 
-  it("pushes one ref at a time, and never v4 itself or every tag", () => {
+  it("pushes one ref at a time, and never main itself or every tag", () => {
     const pushes = lines.filter((line) => line.startsWith("git push"))
     assert.deepEqual(pushes, [
       `git push origin HEAD:refs/heads/release/v${NEXT}`,
@@ -307,9 +311,17 @@ describe("releasePrSteps", () => {
     assert.doesNotMatch(steps, /--tags|--publish|--dry-run|npm publish/)
   })
 
-  it("opens the pull request against v4, not the default branch", () => {
+  it("opens the pull request against main", () => {
     at(
-      `https://github.com/B3Pay/ic-reactor/compare/v4...release/v${NEXT}?expand=1`
+      `https://github.com/B3Pay/ic-reactor/compare/main...release/v${NEXT}?expand=1`
+    )
+  })
+
+  it("names the dist-tag release.yml publishes the version under", () => {
+    assert.ok(steps.includes("under the beta dist-tag."), steps)
+    assert.ok(
+      releasePrSteps("4.0.0").includes("under the latest dist-tag."),
+      releasePrSteps("4.0.0")
     )
   })
 

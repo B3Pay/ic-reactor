@@ -14,8 +14,9 @@
  *
  *   --package <name>   workspace package to run in     (default: auto-detected)
  *   --base <ref>       revision to revert sources to   (default: where
- *                      HEAD left v4, `git merge-base HEAD v4 origin/v4`
- *                      over those that exist; with neither, it stops)
+ *                      HEAD left main, `git merge-base HEAD main origin/main`
+ *                      (and v4, origin/v4 until v4 is retired)
+ *                      over those that exist; with none, it stops)
  *   --keep             leave the reverted sources in place (debugging)
  *
  * Example
@@ -135,7 +136,7 @@ if (named === undefined) {
   }
   if (defaulted === undefined) {
     console.error(
-      `✖ No ${BASE_LINES.map(({ name }) => name).join(" or ")} to compare with: git fetch origin v4:refs/remotes/origin/v4 (deepen a shallow clone), or pass --base <ref>.`
+      `✖ No ${BASE_LINES.map(({ name }) => name).join(" or ")} to compare with: git fetch origin main:refs/remotes/origin/main (deepen a shallow clone), or pass --base <ref>.`
     )
     process.exit(1)
   }

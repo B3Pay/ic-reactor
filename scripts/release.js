@@ -12,22 +12,16 @@ import {
   syncPluginManifestVersions,
 } from "./sync-ai-context-versions.js"
 import { releasePrSteps } from "./lib/release-pr-steps.mjs"
+import { releaseFor } from "./release-tag.mjs"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, "..")
 
 // Get version from CLI arg
-const [version, ...extraArgs] = process.argv.slice(2)
+const [requested, ...extraArgs] = process.argv.slice(2)
 
-if (!version) {
-  console.error(
-    "Please provide a version: node scripts/release.js 4.0.0-alpha.1"
-  )
-  process.exit(1)
-}
-
-if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
-  console.error(`Invalid version: ${version}`)
+if (!requested) {
+  console.error("Please provide a version: node scripts/release.js 4.0.0")
   process.exit(1)
 }
 
@@ -41,16 +35,18 @@ if (extraArgs.length > 0) {
   process.exit(1)
 }
 
-// The v4 branch releases prereleases only. A version without a prerelease tag
-// would be published under `latest` and replace 3.x for every plain install;
-// 4.0 goes to `latest` from main after the GA flip (DECISIONS Q15), with that
-// line's own release script.
-if (!version.includes("-")) {
-  console.error(
-    `Refusing ${version}: the v4 branch publishes prereleases only (such as 4.0.0-beta.1), never under \`latest\`.`
-  )
+// A 4.x version only, checked by the same rules as release.yml's preflight
+// (scripts/release-tag.mjs): a stable version publishes under `latest`, a
+// prerelease under `beta`. 3.x releases are made on the v3 branch.
+let release
+try {
+  release = releaseFor(requested)
+} catch (error) {
+  console.error(`Refusing ${requested}: ${error.message}`)
   process.exit(1)
 }
+// Without a leading `v`: `v4.0.0` and `4.0.0` release the same version.
+const version = release.version
 
 function run(command, args, options = {}) {
   execFileSync(command, args, { stdio: "inherit", cwd: rootDir, ...options })

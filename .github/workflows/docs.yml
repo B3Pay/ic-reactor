@@ -1,23 +1,37 @@
 name: Deploy Docs
 
-# The v4 line's copy of this workflow. Until 4.0 GA the site carries two built
-# lines: /v3/ from main and /v4/ from v4 (plus the static /v2/). A Pages deploy
-# replaces the whole site, so each deploy has to carry both lines. This one
-# builds /v4/ from its own commit and rebuilds /v3/ from main, as main's own
-# deploy builds it, and leaves the site root (index.html, llms.txt,
-# llms-full.txt) to the 3.x line until GA.
+# The 4.x line's docs deploy, from main. A Pages deploy replaces the whole
+# site, so each deploy carries every line (scripts/assemble-docs-site.mjs):
 #
-# Known gap until GA: main's copy of this workflow publishes /v3/ only and
-# removes /v4/, so a docs deploy from main drops /v4/ until the next v4 deploy
-# (push to v4 or run this workflow by hand). Deploying from v4 also needs v4 in
-# the github-pages environment's deployment branch policy (repo settings).
+# - /v4/ built from this commit;
+# - /v3/ rebuilt from the v3 branch on every deploy, with v3's llms.txt and
+#   llms-full.txt beside it (option A of the 4.0 GA flip; the owner's to
+#   overturn). The v3 branch has no docs deploy of its own. A 3.x docs build
+#   that fails blocks the deploy: fix it on v3, or switch to option B;
+# - /v2/, the static 2.x site kept from gh-pages;
+# - the root: / and the 404 page go to /v4/, /llms.txt is the 4.x guide
+#   (packages/core/llms.txt), and /llms-full.txt stays the frozen 3.x file.
+#
+# Option B, a static /v3/ snapshot: commit one 3.x build to gh-pages:v3/
+# (with Pages' source set to GitHub Actions first, or that push starts a
+# legacy Pages build that replaces the site), delete the two v3 steps below,
+# drop --v3-line from the assembly step, and point --root-llms-full at
+# existing-pages/v3/llms-full.txt (or drop it to serve no /llms-full.txt). The
+# assembly then keeps gh-pages' /v3/ and refuses to publish without one.
+#
+# A push to v3 deploys nothing: after a 3.x docs fix, run this workflow by hand
+# on main (workflow_dispatch) to republish /v3/.
+#
+# Deploying from main needs main in the github-pages environment's deployment
+# branch policy (repo settings).
 on:
   push:
-    branches: [v4]
+    branches: [main]
     paths:
       - "docs/**"
       - "packages/**"
       - ".github/workflows/docs.yml"
+      - "scripts/assemble-docs-site.mjs"
   workflow_dispatch:
 
 permissions:
@@ -76,12 +90,12 @@ jobs:
 
       # docs/dist should be Astro static output
 
-      # The 3.x docs, built from main exactly as main's deploy builds them, so a
-      # v4 deploy republishes /v3/ unchanged instead of dropping it.
-      - name: Check out the 3.x line (main)
+      # The 3.x docs, rebuilt from the v3 branch on every deploy (option A), so
+      # a deploy republishes /v3/ instead of dropping it.
+      - name: Check out the 3.x line (v3)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: main
+          ref: v3
           path: v3-line
 
       - name: Build the 3.x documentation
@@ -105,177 +119,19 @@ jobs:
       - name: Merge existing + new docs
         run: |
           set -euo pipefail
-          mkdir -p final-docs
-
-          if [ -d "existing-pages" ]; then
-            cp -r existing-pages/* final-docs/
-            rm -rf final-docs/.git
-          elif git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+          if [ ! -d "existing-pages" ] && git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
             echo "::error::gh-pages exists remotely but could not be checked out." \
                  "Refusing to publish, which would drop every previously published version."
             exit 1
-          else
-            echo "gh-pages does not exist yet - treating this as the first deploy."
           fi
-
-          # Ensure v2 exists by moving the legacy TypeDoc root into /v2 once.
-          if [ ! -d "final-docs/v2" ]; then
-            mkdir -p final-docs/v2
-            shopt -s dotglob
-            for item in final-docs/*; do
-              case "$(basename "$item")" in
-                v2|v3|v4|llms.txt|llms-full.txt|CNAME|.nojekyll) continue;;
-              esac
-              mv "$item" final-docs/v2/
-            done
-            shopt -u dotglob
-          fi
-
-          # The 3.x line, built from main above.
-          rm -rf final-docs/v3
-          mkdir -p final-docs/v3
-          cp -r v3-line/docs/dist/* final-docs/v3/
-
-          # The 4.x line, built from this commit.
-          rm -rf final-docs/v4
-          mkdir -p final-docs/v4
-          cp -r docs/dist/* final-docs/v4/
-
-          # The site-root llms files stay the 3.x line's until GA.
-          cp v3-line/llms.txt final-docs/llms.txt
-          cp v3-line/llms-full.txt final-docs/llms-full.txt
-
-          # Normalize the version selector in preserved static versions.
-          node << 'NODE'
-          const fs = require("node:fs")
-          const path = require("node:path")
-
-          const selectorHtml = `<select id="version-select" onchange="handleVersionChange(event)" aria-label="Select version">
-                  <option value="v4">v4 (in development)</option>
-                  <option value="v3">v3</option>
-                  <option value="v2">v2</option>
-                </select>`
-
-          const patchScript = `<script id="ic-reactor-version-selector-patch">
-                (function () {
-                  var select = document.getElementById("version-select");
-                  if (!select) return;
-                  var match = window.location.pathname.match(/^\\/(v2|v3|v4)(\\/|$)/);
-                  var currentVersion = match ? match[1] : "v3";
-                  select.value = currentVersion;
-                  select.addEventListener("change", function (event) {
-                    var version = event.target.value;
-                    var path = window.location.pathname || "/";
-                    var nextPath = /^\\/v[234](\\/|$)/.test(path)
-                      ? path.replace(/^\\/v[234](?=\\/|$)/, "/" + version)
-                      : "/" + version + "/";
-                    window.location.href = nextPath + window.location.search + window.location.hash;
-                  });
-                })();
-              </script>`
-
-          const linkRewrites = [
-            ["https://ic-reactor.b3pay.net/ic-reactor/", "/v2/"],
-            ["ic-reactor.b3pay.net/ic-reactor", "ic-reactor.b3pay.net/v2"],
-            ["https://b3pay.github.io/ic-reactor/modules/core.html", "/v3/packages/core/"],
-            ["https://b3pay.github.io/ic-reactor/modules/parser.html", "/v3/packages/parser/"],
-            ["https://b3pay.github.io/ic-reactor/modules/react.html", "/v3/packages/react/"],
-            ["https://b3pay.github.io/ic-reactor/modules/visitor.html", "/v3/packages/candid/"],
-            ["https://b3pay.github.io/ic-reactor/", "/v3/"],
-          ]
-
-          function walk(dir) {
-            if (!fs.existsSync(dir)) return []
-            return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-              const fullPath = path.join(dir, entry.name)
-              if (entry.isDirectory()) return walk(fullPath)
-              return entry.isFile() && /\.(html|md|mdx)$/.test(entry.name)
-                ? [fullPath]
-                : []
-            })
-          }
-
-          for (const file of walk("final-docs")) {
-            let html = fs.readFileSync(file, "utf8")
-
-            for (const [from, to] of linkRewrites) {
-              html = html.split(from).join(to)
-            }
-
-            if (!html.includes('id="version-select"')) {
-              fs.writeFileSync(file, html)
-              continue
-            }
-
-            html = html.replace(
-              /<select id="version-select"[\s\S]*?<\/select>/,
-              selectorHtml
-            )
-
-            if (!html.includes("ic-reactor-version-selector-patch")) {
-              html = html.replace("</body>", `${patchScript}\n            </body>`)
-            }
-
-            fs.writeFileSync(file, html)
-          }
-          NODE
-
-          # Preserve CNAME for custom domain
-          if [ -f "CNAME" ]; then
-            cp CNAME final-docs/CNAME
-          fi
-
-          # Root redirect to the latest release's docs: v3 until 4.0 GA.
-          cat > final-docs/index.html << 'EOF'
-          <!doctype html>
-          <html>
-            <head>
-              <meta charset="utf-8" />
-              <meta http-equiv="refresh" content="0; url=/v3/" />
-              <title>IC Reactor Docs</title>
-              <script>
-                window.location.replace("/v3/");
-              </script>
-            </head>
-            <body>
-              <p>Redirecting to v3 documentation…</p>
-            </body>
-          </html>
-          EOF
-
-          # Smart 404: redirect unknown routes to latest docs preserving path.
-          # For versioned misses, fall back to a real root instead of leaving the
-          # placeholder page visible forever.
-          cat > final-docs/404.html << 'EOF'
-          <!doctype html>
-          <html>
-            <head>
-              <meta charset="utf-8" />
-              <title>Not Found</title>
-              <script>
-                (function () {
-                  var path = window.location.pathname || "/";
-                  if (path.startsWith("/v2")) {
-                    window.location.replace("/v2/");
-                    return;
-                  }
-                  if (path.startsWith("/v3")) {
-                    window.location.replace("/v3/");
-                    return;
-                  }
-                  if (path.startsWith("/v4")) {
-                    window.location.replace("/v4/");
-                    return;
-                  }
-                  window.location.replace("/v3" + path);
-                })();
-              </script>
-            </head>
-            <body>
-              <p>Redirecting...</p>
-            </body>
-          </html>
-          EOF
+          node scripts/assemble-docs-site.mjs \
+            --out final-docs \
+            --existing existing-pages \
+            --v4 docs/dist \
+            --v3-line v3-line \
+            --root-llms packages/core/llms.txt \
+            --root-llms-full v3-line/llms-full.txt \
+            --cname CNAME
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5

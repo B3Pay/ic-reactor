@@ -1,9 +1,10 @@
 name: CI
 
 on:
-  # main is the 3.x line (security fixes only until 4.0 GA) and v4 the 4.x
-  # development line. A run uses the workflow file of its own ref, so each
-  # line's CI is the one on its own branch.
+  # main is the 4.x line. v4, the branch 4 was developed on until the 4.0 GA
+  # flip, stays listed until it is retired, so a pull request still open
+  # against it keeps its checks. The 3.x line (v3) runs its own copy of this
+  # file: a run uses the workflow file of its own ref.
   push:
     branches: [main, v4]
   pull_request:
