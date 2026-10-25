@@ -22,11 +22,11 @@ overrides:
   tar: ^7.5.22
   yaml: ^2.8.3
   follow-redirects: ^1.16.0
-  happy-dom: ^21.0.4
   undici: ^7.30.1
   linkinator>undici: ^8.12.2
   ws: ^8.21.0
   markdown-it: ^14.3.3
+  happy-dom: ^21.0.4
   astro>vite: ^8.3.3
 
 importers:
@@ -213,7 +213,7 @@ importers:
         specifier: ^19.3.0
         version: 19.3.0(react@19.3.0)
       zod:
-        specifier: ^4.6.7
+        specifier: ^4.6.6
         version: 4.6.7
     devDependencies:
       '@ic-reactor/vite-plugin':

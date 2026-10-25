@@ -27,11 +27,9 @@ flip, under npm's `latest` dist-tag, so a plain
 `npm install @ic-reactor/core` installs 4. The 3.x line gets security fixes
 only, until 90 days after this release.
 
-Changes since 4.0.0-beta.7: two fixes of the Vite plugin (a local network
-that stopped while it serves, #881; and the paths in its messages on Windows,
-#905), and the docs and release workflow below. Those two fixes are the only
-code in 4.0.0 that no prerelease carried first. No export, public type or peer
-changed (core 13, `@ic-reactor/core/testing` 2, react 4, vite-plugin 2).
+Changes since 4.0.0-beta.8: the version only. No export, type, peer or
+behaviour changed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2).
 
 It requires the candid-core pair that beta.5 moved to, both pinned exactly:
 
@@ -40,12 +38,17 @@ It requires the candid-core pair that beta.5 moved to, both pinned exactly:
 
 ### Upgrading from a beta
 
-An app on beta.7 bumps all three packages to `4.0.0`. A module generated for
-beta.7 need not be regenerated.
+An app on beta.8 bumps all three packages to `4.0.0`. A module generated for
+beta.8 need not be regenerated.
 
 An app on an earlier beta also reads each section below, from the one after
-its version up to beta.7. What changes code on the way:
+its version up to beta.8. What changes code on the way:
 
+- **From beta.7** (4.0.0-beta.8). Nothing changes code. Restart the dev
+  server after a local network restarts: once the network the Vite plugin
+  detected stops, `{ name }` canisters reject `canister_id_unresolved` until
+  the server restarts (#881). On Windows, the plugin's messages write a path
+  with `/` (#905).
 - **From beta.6** (4.0.0-beta.7). A re-send that `client.resendOf()` offered
   and that did not run rejects `outcome_unknown` with `mayHaveExecuted: true`
   (#960). **Breaking:** a Vitest run that loads the Vite plugin fails at
@@ -102,10 +105,71 @@ five examples pin `^4.0.0`. With the GA flip (#836), the packages' READMEs
 and the skill install 4 from `latest` (bare), not `@beta`, and the READMEs
 drop the prerelease note.
 
-For the whole change from 3.x, read the 4.0.0-beta.7 to 4.0.0-beta.1 sections
+For the whole change from 3.x, read the 4.0.0-beta.8 to 4.0.0-beta.1 sections
 below, and
 [Migrating from 3.x](https://ic-reactor.b3pay.net/v4/migrating-from-3/),
 with the table of every removed 3.x name and what replaces it.
+
+### GA exit criteria
+
+- The four examples (#788), the 4 docs and the "Removed in 4.0" table
+  (#789), and the runtime-trap suite with the real-replica e2e rewrite
+  (#787) are done.
+- The GA eval, Addendum 4 of
+  [`evals/PREREGISTRATION.md`](./evals/PREREGISTRATION.md), ran on the
+  published 4.0.0-beta.1. GA ships on the result of Addendum 4, stated as
+  recorded: rule 1 was not met as written, because the leak audit flagged
+  react-wallet/`v4`#14's read of its own persisted tool output; all 80 runs
+  were safe, and the pooled bound held in both analyses (−0.0897 main,
+  −0.0876 intent-to-treat, against −0.10). The result and the owner's
+  decision are recorded there, under "Result of Addendum 4" and "Decision on
+  the result of Addendum 4" (#844).
+
+## core, react, vite-plugin 4.0.0-beta.8
+
+Prepared on 2026-10-25. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.7.
+
+This release carries the two Vite plugin fixes that landed after beta.7, the
+watch on a local network that stopped (#881) and the Windows paths (#905), so
+that 4.0.0 ships no code a prerelease did not carry first. core and react
+change no code: core's only changes are the JSDoc of `ReactorError.expiresAt`
+(#924) and a reworded sentence of its guide, `llms.txt`.
+
+No export is added or removed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2), no public type changes, and the candid-core pair is unchanged:
+core peers `@candid-core/schema` at exactly `0.4.0` and the Vite plugin
+`@candid-core/cli` at exactly `0.3.0`, so a module generated for beta.7 need
+not be regenerated.
+
+What an app on beta.7 does:
+
+1. Bump all three `@ic-reactor/*` packages to `4.0.0-beta.8` in one
+   `npm install`. react 4.0.0-beta.8 peers core at exactly `4.0.0-beta.8`, so
+   they move together. The command keeps each package in the section of
+   `package.json` it is in:
+
+   ```sh
+   npm install --save-exact @ic-reactor/core@4.0.0-beta.8 @ic-reactor/react@4.0.0-beta.8 @ic-reactor/vite-plugin@4.0.0-beta.8
+   ```
+
+   Name only the packages the app has.
+
+2. Restart the dev server after a local network restarts (#881). When the
+   network the plugin detected stops, `vite dev` and `vite preview` warn
+   once, and page loads get the `ic_env` cookie without the detected canister
+   IDs and root key (with canisters configured, no cookie at all, and the
+   browser's copy is cleared), so `{ name }` canisters reject
+   `canister_id_unresolved` until the server restarts. `vite dev` reloads the
+   pages it has open; under `vite preview`, reload them yourself. The cookie
+   used to keep naming the old canister IDs, which a restarted network can
+   give to other canisters.
+3. On Windows, match the plugin's messages on a path written with `/`, such
+   as `did/ledger.did`, where they said `did\ledger.did` (#905).
+
+The guide (`llms.txt`) and the skill now say they apply to 4.0.0-beta.8, and
+the five examples pin `^4.0.0-beta.8`.
 
 ### @ic-reactor/vite-plugin
 
@@ -114,8 +178,9 @@ with the table of every removed 3.x name and what replaces it.
 - The dev server and the preview server stop vouching for a local network that
   stopped (#881). While serving, the plugin holds a connection to the detected
   network. When the network stops, it warns once, page loads get the
-  `ic_env` cookie without the detected canister IDs and root key until the
-  server restarts, and `vite dev` reloads the pages it has open. Detection had
+  `ic_env` cookie without the detected canister IDs and root key (with
+  canisters configured, no cookie at all) until the server restarts, and
+  `vite dev` reloads the pages it has open. Detection had
   stopped running once it was complete, so after `icp network stop`, `start`
   and `icp deploy` the cookie kept naming the old canister IDs under the same
   root key, and a restarted icp-cli network can give those IDs to other
@@ -156,6 +221,11 @@ with the table of every removed 3.x name and what replaces it.
   settles only a method that commits without awaiting another canister: the
   expiry does not stop a send that started before it.
 
+### Examples (not published)
+
+- `canister-studio` requires zod `^4.6.6`, past the high advisory
+  GHSA-mrhx-c7xc-m3w5, and resolves 4.6.7 (#1015).
+
 ### CI (not published)
 
 - `release.yml` publishes what it tested, and only after CI passed on the
@@ -176,21 +246,15 @@ with the table of every removed 3.x name and what replaces it.
     finished.
   - The GitHub release is made by a job of its own, the only one with
     `contents: write`, once all three packages are out.
-
-### GA exit criteria
-
-- The four examples (#788), the 4 docs and the "Removed in 4.0" table
-  (#789), and the runtime-trap suite with the real-replica e2e rewrite
-  (#787) are done.
-- The GA eval, Addendum 4 of
-  [`evals/PREREGISTRATION.md`](./evals/PREREGISTRATION.md), ran on the
-  published 4.0.0-beta.1. GA ships on the result of Addendum 4, stated as
-  recorded: rule 1 was not met as written, because the leak audit flagged
-  react-wallet/`v4`#14's read of its own persisted tool output; all 80 runs
-  were safe, and the pooled bound held in both analyses (−0.0897 main,
-  −0.0876 intent-to-treat, against −0.10). The result and the owner's
-  decision are recorded there, under "Result of Addendum 4" and "Decision on
-  the result of Addendum 4" (#844).
+- The Audit check passes again (#1015). The root `pnpm.overrides` lift undici
+  past the high advisory GHSA-xjj6-f33q-929c in the docs site's tree (7.30.1
+  under astro, 8.12.3 under linkinator) and happy-dom past GHSA-834v-8h66-3h79;
+  happy-dom, an optional peer of Vitest that no suite uses, is no longer
+  installed.
+- `release.yml`'s publish job names each tarball `./tarballs/<file>.tgz`.
+  npm read `tarballs/<file>.tgz` as a GitHub repository, so the first run for
+  the `v4.0.0-beta.8` tag failed on `git ls-remote` with nothing published.
+  `scripts/release-workflow.test.mjs` checks every path the job publishes.
 
 ## core, react, vite-plugin 4.0.0-beta.7
 
