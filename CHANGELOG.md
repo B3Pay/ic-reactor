@@ -17,6 +17,52 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
+Nothing yet.
+
+## core, react, vite-plugin 4.0.0-beta.8
+
+Prepared on 2026-10-25. It goes out under npm's `beta` dist-tag, as
+`@ic-reactor/core@beta`; `latest` stays 3.x until 4.0 GA. Changes since
+4.0.0-beta.7.
+
+This release carries the two Vite plugin fixes that landed after beta.7, the
+watch on a local network that stopped (#881) and the Windows paths (#905), so
+that 4.0.0 ships no code a prerelease did not carry first. core and react
+change no code: core's only change is the JSDoc of `ReactorError.expiresAt`
+(#924).
+
+No export is added or removed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2), no public type changes, and the candid-core pair is unchanged:
+core peers `@candid-core/schema` at exactly `0.4.0` and the Vite plugin
+`@candid-core/cli` at exactly `0.3.0`, so a module generated for beta.7 need
+not be regenerated.
+
+What an app on beta.7 does:
+
+1. Bump all three `@ic-reactor/*` packages to `4.0.0-beta.8` in one
+   `npm install`. react 4.0.0-beta.8 peers core at exactly `4.0.0-beta.8`, so
+   they move together. The command keeps each package in the section of
+   `package.json` it is in:
+
+   ```sh
+   npm install --save-exact @ic-reactor/core@4.0.0-beta.8 @ic-reactor/react@4.0.0-beta.8 @ic-reactor/vite-plugin@4.0.0-beta.8
+   ```
+
+   Name only the packages the app has.
+
+2. Restart the dev server after a local network restarts (#881). When the
+   network the plugin detected stops, `vite dev` and `vite preview` warn
+   once, `vite dev` reloads the pages it has open, and page loads get the
+   `ic_env` cookie without the detected canister IDs and root key, so
+   `{ name }` canisters reject `canister_id_unresolved` until the server
+   restarts. They used to keep naming the old canister IDs, which a restarted
+   network can give to other canisters.
+3. On Windows, match the plugin's messages on a path written with `/`, such
+   as `did/ledger.did`, where they said `did\ledger.did` (#905).
+
+The guide (`llms.txt`) and the skill now say they apply to 4.0.0-beta.8, and
+the five examples pin `^4.0.0-beta.8`.
+
 ### @ic-reactor/vite-plugin
 
 #### Fixed
@@ -66,6 +112,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   settles only a method that commits without awaiting another canister: the
   expiry does not stop a send that started before it.
 
+### Examples (not published)
+
+- `canister-studio` requires zod `^4.6.6`, past the high advisory
+  GHSA-mrhx-c7xc-m3w5, and resolves 4.6.7 (#1015).
+
 ### CI (not published)
 
 - `release.yml` publishes what it tested, and only after CI passed on the
@@ -86,6 +137,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
     finished.
   - The GitHub release is made by a job of its own, the only one with
     `contents: write`, once all three packages are out.
+- The Audit check passes again (#1015). The root `pnpm.overrides` lift undici
+  past the high advisory GHSA-xjj6-f33q-929c in the docs site's tree (7.30.1
+  under astro, 8.12.3 under linkinator) and happy-dom past GHSA-834v-8h66-3h79;
+  happy-dom, an optional peer of Vitest that no suite uses, is no longer
+  installed.
 
 ## core, react, vite-plugin 4.0.0-beta.7
 
