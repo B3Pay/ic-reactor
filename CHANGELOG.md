@@ -17,7 +17,13 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### CI (not published)
+
+- `release.yml` publishes each tarball by a `./` path. npm read
+  `tarballs/ic-reactor-core-4.0.0-beta.8.tgz` as a GitHub repository
+  (`tarballs/ic-reactor-core-4.0.0-beta.8.tgz`) and tried to clone it, so the
+  first 4.0.0-beta.8 run stopped at its first `npm publish`, with nothing
+  published.
 
 ## core, react, vite-plugin 4.0.0-beta.8
 

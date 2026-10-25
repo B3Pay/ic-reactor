@@ -244,7 +244,9 @@ jobs:
             fi
           done
           for name in core react vite-plugin; do
-            TARBALL="tarballs/ic-reactor-$name-$VERSION.tgz"
+            # `./` makes it a file to npm: `tarballs/<name>.tgz` reads as the GitHub
+            # repository tarballs/<name>.tgz, which beta.8's first run tried to clone.
+            TARBALL="./tarballs/ic-reactor-$name-$VERSION.tgz"
             # npm's dist.integrity is the sha512 of the tarball it was given.
             INTEGRITY="sha512-$(openssl dgst -sha512 -binary "$TARBALL" | base64 -w0)"
             PUBLISHED="$(npm view "@ic-reactor/$name@$VERSION" dist.integrity 2>/dev/null || true)"
