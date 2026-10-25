@@ -32,7 +32,7 @@ const repoRoot = path.resolve(import.meta.dirname, "../..")
 const docsExamplesDir = path.join(repoRoot, "docs/src/content/docs/examples")
 const examplesDir = path.join(repoRoot, "examples")
 const providerPattern =
-  /https:\/\/(?:stackblitz\.com\/github|codesandbox\.io\/p\/github)\/b3pay\/ic-reactor\/(?:tree\/)?main(?:\/examples)?\/([^?"\s)]+)[^"\s)]*/g
+  /https:\/\/(?:stackblitz\.com\/github|codesandbox\.io\/p\/github)\/b3pay\/ic-reactor\/(?:tree\/)?v3(?:\/examples)?\/([^?"\s)]+)[^"\s)]*/g
 
 /**
  * `target` resolved under `root`, or `undefined` when it leaves `root` or names

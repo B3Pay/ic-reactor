@@ -12,7 +12,36 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### @ic-reactor/codegen
+
+#### Changed
+
+- The header of a generated canister entry tells users to install the agent
+  skill from the `v3` branch: `/plugin marketplace add B3Pay/ic-reactor#v3`
+  and `npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor`. The default
+  branch is ic-reactor 4, which lists no 3.x plugin, so the command without
+  `#v3` fails after the 4.0 release.
+
+### @ic-reactor/cli
+
+#### Changed
+
+- `init` writes the `$schema` URL of the `v3` branch,
+  `https://raw.githubusercontent.com/B3Pay/ic-reactor/v3/packages/cli/schema.json`.
+  The `main` URL that 0.15.1 wrote stops resolving after the 4.0 release; an
+  existing `ic-reactor.json` can point `$schema` at
+  `./node_modules/@ic-reactor/cli/schema.json` instead. The CLI never reads
+  the URL, so only an editor's completion is affected.
+
+### Docs
+
+- Every install line names the 3.x range: `@3` for core, react and candid,
+  `@0` for the Vite plugin, the CLI, codegen and the parser (#908). That
+  covers the README, the package READMEs and `llms.txt` guides, the docs
+  pages and `llms-full.txt`. Once `latest` on npm is ic-reactor 4, a line
+  without a range would install 4.x packages under a 3.x guide. The
+  installation page and `llms-full.txt` say so, and `llms-full.txt` names
+  the guide ic-reactor 4 ships.
 
 ## core, react, candid 3.13.0
 

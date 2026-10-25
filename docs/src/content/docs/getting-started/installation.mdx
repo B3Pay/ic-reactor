@@ -21,28 +21,34 @@ declarations, and those of `@icp-sdk/core`, use generic typed arrays such as
 
 ## Install Packages
 
+<Aside>
+  These pages are for ic-reactor 3.x. Every command names the 3.x range (`@3`,
+  and `@0` for the Vite plugin, the CLI, codegen and the parser), so it keeps
+  installing 3.x once `latest` on npm is ic-reactor 4.
+</Aside>
+
 Most users will want the React package, which includes everything you need:
 
 {/* prettier-ignore */}
 <Tabs syncKey="pm">
   <TabItem label="pnpm" icon="pnpm">
     ```bash
-    pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+    pnpm add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
     ```
   </TabItem>
   <TabItem label="npm" icon="npm">
     ```bash
-    npm install @ic-reactor/react @icp-sdk/core @tanstack/react-query
+    npm install @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
     ```
   </TabItem>
   <TabItem label="yarn" icon="seti:yarn">
     ```bash
-    yarn add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+    yarn add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
     ```
   </TabItem>
   <TabItem label="bun" icon="bun">
     ```bash
-    bun add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+    bun add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
     ```
   </TabItem>
 </Tabs>
@@ -66,22 +72,22 @@ If you're not using React, install the core package directly:
 <Tabs syncKey="pm">
   <TabItem label="pnpm" icon="pnpm">
     ```bash
-    pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+    pnpm add @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
     ```
   </TabItem>
   <TabItem label="npm" icon="npm">
     ```bash
-    npm install @ic-reactor/core @icp-sdk/core @tanstack/query-core
+    npm install @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
     ```
   </TabItem>
   <TabItem label="yarn" icon="seti:yarn">
     ```bash
-    yarn add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+    yarn add @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
     ```
   </TabItem>
   <TabItem label="bun" icon="bun">
     ```bash
-    bun add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+    bun add @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
     ```
   </TabItem>
 </Tabs>
@@ -103,7 +109,7 @@ Make your development easier with our tooling packages:
 If you use Vite, this plugin automates code generation and provides zero-config proxy setup.
 
 ```bash
-pnpm add -D @ic-reactor/vite-plugin
+pnpm add -D @ic-reactor/vite-plugin@0
 ```
 
 [Read more about Vite Plugin](/v3/packages/vite-plugin)
@@ -113,7 +119,7 @@ pnpm add -D @ic-reactor/vite-plugin
 For other frameworks or manual control, use the CLI to generate hooks and declarations.
 
 ```bash
-pnpm add -D @ic-reactor/cli
+pnpm add -D @ic-reactor/cli@0
 ```
 
 [Read more about CLI](/v3/packages/cli)

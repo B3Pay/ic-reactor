@@ -2,6 +2,8 @@
 
 This file provides context for Claude-based AI agents working in the IC Reactor repository.
 
+This is the `v3` branch, the 3.x line: security fixes only, until 90 days after the 4.0 release. ic-reactor 4 is on `main`. Open 3.x pull requests against `v3`; its workflows release from `v3` only and never move npm's `latest` of core, react or vite-plugin.
+
 ## Project Overview
 
 **IC Reactor v3** is a type-safe TypeScript monorepo for building Internet Computer (ICP) applications. It uses TanStack Query for caching/refetching, `@icp-sdk/*` packages for IC agent/auth/candid primitives, and generated or hand-written Candid service types for end-to-end TypeScript safety.
@@ -43,7 +45,7 @@ Skills are structured instruction sets stored in `skill-packages/`. When a task 
 
 - **`ic-reactor-hooks`**: Create, refactor, and document Reactor hook integrations, including `createActorHooks`, query/mutation factories, `useActorMethod`, and generated hooks. Use when implementing or explaining hook usage inside React components versus imperative usage outside React. (file: `skill-packages/ic-reactor-hooks/SKILL.md`)
 - **`ic-reactor-packages`**: Inspect, modify, review, or document package ownership, exports, tsconfig/project references, generated artifacts, dependency boundaries, and verification workflows across the IC Reactor monorepo. Use when deciding which package owns behavior or when work spans package metadata/build/test/release readiness. (file: `skill-packages/ic-reactor-packages/SKILL.md`)
-- **`ic-reactor`** (consumer skill, published for app developers): how an app sets up, calls, caches, signs in, renders on a server and tests with IC Reactor, using only public APIs. It is installed in app projects through the Claude Code plugin marketplace in `.claude-plugin/marketplace.json` (`/plugin marketplace add B3Pay/ic-reactor`) or `npx skills add B3Pay/ic-reactor --skill ic-reactor`. Update it together with the package `llms.txt` guides whenever public API or behaviour changes. (file: `skill-packages/ic-reactor/SKILL.md`)
+- **`ic-reactor`** (consumer skill, published for app developers): how an app sets up, calls, caches, signs in, renders on a server and tests with IC Reactor, using only public APIs. It is installed in app projects through the Claude Code plugin marketplace in `.claude-plugin/marketplace.json` (`/plugin marketplace add B3Pay/ic-reactor#v3`) or `npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor`. Update it together with the package `llms.txt` guides whenever public API or behaviour changes. (file: `skill-packages/ic-reactor/SKILL.md`)
 
 ### How to Use Skills
 
@@ -220,9 +222,9 @@ through workspace symlinks, so nothing else sees the published artifact.
 - `AGENTS.md` — Task routing to source files, verification by change type, and
   the rules for the AI context files
 - `llms.txt` — Consumer index (llmstxt.org shape), published at
-  `https://ic-reactor.b3pay.net/llms.txt`; no repo paths or contributor workflow
+  `https://ic-reactor.b3pay.net/v3/llms.txt`; no repo paths or contributor workflow
 - `llms-full.txt` — Complete consumer guide, published at
-  `https://ic-reactor.b3pay.net/llms-full.txt`; its snippets must compile
+  `https://ic-reactor.b3pay.net/v3/llms-full.txt`; its snippets must compile
 - `packages/*/llms.txt` — Per-package consumer guides shipped in the npm
   tarballs, each opening with an `Applies to` version line
 - `CHANGELOG.md` — Per-package changes; add user-visible ones under

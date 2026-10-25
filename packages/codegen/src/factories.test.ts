@@ -356,10 +356,10 @@ describe("Entry wrapper with factories", () => {
       generateReactorEntryFile(),
       generateReactorEntryFile({ factories: true }),
     ]) {
-      expect(content).toContain("/plugin marketplace add B3Pay/ic-reactor")
+      expect(content).toContain("/plugin marketplace add B3Pay/ic-reactor#v3")
       expect(content).toContain("/plugin install ic-reactor@ic-reactor")
       expect(content).toContain(
-        "npx skills add B3Pay/ic-reactor --skill ic-reactor"
+        "npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor"
       )
       // The separate skills repository holds the contributor hooks skill,
       // not the skill written for apps.

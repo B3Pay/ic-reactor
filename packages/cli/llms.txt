@@ -8,14 +8,14 @@ Applies to `@ic-reactor/cli` 0.15.1.
 
 Read this file from `node_modules/@ic-reactor/cli/llms.txt` when writing code
 against the installed version. The complete guide for every package is
-https://ic-reactor.b3pay.net/llms-full.txt, and behaviour changes are in
-https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
+https://ic-reactor.b3pay.net/v3/llms-full.txt, and behaviour changes are in
+https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md.
 
 ## Install
 
 ```bash
-pnpm add -D @ic-reactor/cli
-pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+pnpm add -D @ic-reactor/cli@0
+pnpm add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
 pnpm exec ic-reactor init       # writes ic-reactor.json (and src/clients.ts)
 pnpm exec ic-reactor generate   # run again after every .did change
 ```
@@ -151,5 +151,5 @@ belong to no configured canister, and is ignored with `--canister`.
 - CLI: https://ic-reactor.b3pay.net/v3/packages/cli.md
 - Codegen (factory naming rules): https://ic-reactor.b3pay.net/v3/packages/codegen.md
 - Codegen in action example: https://ic-reactor.b3pay.net/v3/examples/codegen-in-action.md
-- Index of all docs: https://ic-reactor.b3pay.net/llms.txt
-- Full guide: https://ic-reactor.b3pay.net/llms-full.txt
+- Index of all docs: https://ic-reactor.b3pay.net/v3/llms.txt
+- Full guide: https://ic-reactor.b3pay.net/v3/llms-full.txt

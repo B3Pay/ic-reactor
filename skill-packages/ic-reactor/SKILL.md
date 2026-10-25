@@ -38,8 +38,8 @@ This skill describes these versions:
    ``Applies to `@ic-reactor/react` <version>.``. When that version differs
    from the list above, the installed guide wins. A package without the file
    or that line predates these guides: read
-   https://ic-reactor.b3pay.net/llms-full.txt and the changelog,
-   https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md.
+   https://ic-reactor.b3pay.net/v3/llms-full.txt and the changelog,
+   https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md.
 2. **Find the canister's types.** Method names, argument tuples and results
    come from `_SERVICE` in the declarations generated from the `.did`
    (`idlFactory` is in the generated `.js`). The Vite plugin and the CLI write
@@ -318,6 +318,6 @@ Read only the file the task needs:
   sign-in and route guards, identity attributes, error narrowing, retries,
   and tests against the fake replica.
 
-Docs: https://ic-reactor.b3pay.net/llms.txt lists the docs pages as Markdown
+Docs: https://ic-reactor.b3pay.net/v3/llms.txt lists the docs pages as Markdown
 links (such as https://ic-reactor.b3pay.net/v3/framework/mutations.md), and
-https://ic-reactor.b3pay.net/llms-full.txt is the complete guide in one file.
+https://ic-reactor.b3pay.net/v3/llms-full.txt is the complete guide in one file.

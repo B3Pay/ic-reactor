@@ -32,7 +32,7 @@ export default defineConfig({
         },
       ],
       editLink: {
-        baseUrl: "https://github.com/b3pay/ic-reactor/edit/main/docs/",
+        baseUrl: "https://github.com/b3pay/ic-reactor/edit/v3/docs/",
       },
       head: [
         {

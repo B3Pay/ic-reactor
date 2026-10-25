@@ -1,10 +1,13 @@
 name: CI
 
 on:
+  # The 3.x line: security fixes only, until 90 days after the 4.0 release.
+  # main is the 4.x line and runs its own copy of this file (a run uses the
+  # workflow file of its own ref).
   push:
-    branches: [main]
+    branches: [v3]
   pull_request:
-    branches: [main]
+    branches: [v3]
 
 permissions:
   contents: read

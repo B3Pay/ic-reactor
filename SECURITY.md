@@ -24,13 +24,14 @@ The more of this you can provide, the faster a fix lands:
 
 ## Supported versions
 
-| Package                                 | Supported |
-| --------------------------------------- | --------- |
-| `@ic-reactor/{core,react,candid}`       | `3.x`     |
-| `@ic-reactor/{codegen,cli,vite-plugin}` | `0.13.x`  |
-| `@ic-reactor/parser`                    | `0.4.x`   |
+| Package                                 | Line     | Supported                                          | Branch |
+| --------------------------------------- | -------- | -------------------------------------------------- | ------ |
+| `@ic-reactor/{core,react,vite-plugin}`  | `4.x`    | Yes                                                | `main` |
+| `@ic-reactor/{core,react,candid}`       | `3.x`    | Security fixes until 90 days after the 4.0 release | `v3`   |
+| `@ic-reactor/{codegen,cli,vite-plugin}` | `0.15.x` | Security fixes until 90 days after the 4.0 release | `v3`   |
+| `@ic-reactor/parser`                    | `0.6.x`  | Security fixes until 90 days after the 4.0 release | `v3`   |
 
-Fixes land on the latest minor of each supported line. Older minors are not backported.
+Fixes land on the latest minor of each supported line. Older minors are not backported. This branch, `v3`, carries the 3.x line: a fix for it is released from here, with core and react under npm's `v3-latest` dist-tag, vite-plugin 0.x under `v0-latest`, and candid, parser, codegen and cli under `latest`. The 4.x line's policy is on `main`.
 
 ## Threat model
 

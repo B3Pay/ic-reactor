@@ -173,9 +173,8 @@ for (const relPath of aiContextFiles) {
       )
     }
 
-    // 4. Doc links must use the served base. /v4/ is the in-development line's
-    //    preview, published from the v4 branch; the 3.x context must not send
-    //    readers there.
+    // 4. Doc links must use the served base. /v4/ is the 4.x line's docs,
+    //    published from main; the 3.x context must not send readers there.
     for (const seg of line.match(VERSIONED_DOC_PATH) ?? []) {
       if (seg !== DOCS_BASE) {
         failures.push(
@@ -197,6 +196,13 @@ const DOCS_SITE = "https://ic-reactor.b3pay.net"
 const DOCS_CONTENT = join(rootDir, "docs", "src", "content", "docs")
 /** Published at the site root by .github/workflows/docs.yml. */
 const SITE_ROOT_FILES = new Set(["", "llms.txt", "llms-full.txt"])
+/**
+ * Published under DOCS_BASE beside the pages: since the 4.0 GA flip, main's
+ * docs deploy copies this branch's root `llms.txt` and `llms-full.txt` to
+ * `/v3/`, and the site root's `/llms.txt` is the 4.x guide. The 3.x context
+ * links these copies.
+ */
+const DOCS_BASE_FILES = new Set(["llms.txt", "llms-full.txt"])
 
 function* docsSources(dir, rel = "") {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -320,6 +326,7 @@ for (const relPath of docsLinkFiles) {
         }
         const docsPath = path === base ? "" : path.slice(base.length + 1)
         if (docsPath.startsWith("libs/")) continue // TypeDoc pages are generated
+        if (DOCS_BASE_FILES.has(docsPath)) continue
 
         const page = resolveDocsPath(docsPath)
         if (page === undefined) {
@@ -503,8 +510,9 @@ for (const entry of readdirSync(join(rootDir, SKILLS_DIR), {
 }
 
 // ── 7. The Claude Code plugin marketplace ────────────────────────────────────
-// `/plugin marketplace add B3Pay/ic-reactor` reads CLAUDE_MARKETPLACE from the
-// default branch; each relative `source` is a plugin directory holding
+// `/plugin marketplace add B3Pay/ic-reactor#v3` reads CLAUDE_MARKETPLACE from
+// this branch, not from the default branch (ic-reactor 4, which lists no 3.x
+// plugin); each relative `source` is a plugin directory holding
 // `.claude-plugin/plugin.json` and its skills. `claude plugin validate .`
 // checks the same shape, but it is not installed in CI.
 const currentReact = currentVersions.get("@ic-reactor/react")

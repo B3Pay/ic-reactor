@@ -5,19 +5,25 @@
 > render on a server, handle errors, generate code, test, and the mistakes to
 > avoid.
 
+This is the guide to ic-reactor 3.x. Its install lines name the 3.x range
+(`@3`, and `@0` for the Vite plugin, the CLI, codegen and the parser), so they
+keep installing 3.x once `latest` on npm is ic-reactor 4. For ic-reactor 4,
+read the guide `@ic-reactor/core` 4 ships at
+`node_modules/@ic-reactor/core/llms.txt`.
+
 This guide is for code that uses the published packages. The short index of
-the documentation is https://ic-reactor.b3pay.net/llms.txt. Both are published
-from the main branch, so they can describe changes that no release carries
+the documentation is https://ic-reactor.b3pay.net/v3/llms.txt. Both are published
+from the v3 branch, so they can describe changes that no release carries
 yet; the Unreleased section of
-https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md lists those, with
+https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md lists those, with
 migration hints for behaviour changes. Each installed package also carries a
 guide for its own API at `node_modules/@ic-reactor/<package>/llms.txt`,
 written for the version installed.
 
 The rules below also ship as the `ic-reactor` Agent Skill. In Claude Code:
-`/plugin marketplace add B3Pay/ic-reactor`, then
+`/plugin marketplace add B3Pay/ic-reactor#v3`, then
 `/plugin install ic-reactor@ic-reactor`. For other agents:
-`npx skills add B3Pay/ic-reactor --skill ic-reactor`.
+`npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor`.
 
 Package versions this guide describes:
 
@@ -53,7 +59,7 @@ of this from `.did` files.
 React apps:
 
 ```bash
-pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+pnpm add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
 ```
 
 `@ic-reactor/react` needs `@tanstack/react-query` 5.90.2 or later and React 18
@@ -67,7 +73,7 @@ import it.
 Non-React apps:
 
 ```bash
-pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+pnpm add @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
 ```
 
 Internet Identity sign-in (optional; the auth classes ship in
@@ -98,11 +104,11 @@ On v10 a custom `identityProvider` also needs `internetIdentityId`.
 Dynamic Candid:
 
 ```bash
-pnpm add @ic-reactor/candid @ic-reactor/core @icp-sdk/core @tanstack/query-core
+pnpm add @ic-reactor/candid@3 @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
 ```
 
-Code generation: `pnpm add -D @ic-reactor/vite-plugin` (Vite) or
-`pnpm add -D @ic-reactor/cli` (anything else; Node.js 22.12 or later).
+Code generation: `pnpm add -D @ic-reactor/vite-plugin@0` (Vite) or
+`pnpm add -D @ic-reactor/cli@0` (anything else; Node.js 22.12 or later).
 
 The snippets below import `canisterId`, `idlFactory` and the `_SERVICE` type
 from `./declarations/backend`, which stands for your canister's declarations.
@@ -1040,9 +1046,9 @@ it("turns an Err into a CanisterError", async () => {
 ## Links
 
 - Documentation: https://ic-reactor.b3pay.net/v3/
-- Index for agents: https://ic-reactor.b3pay.net/llms.txt
-- Changelog: https://github.com/B3Pay/ic-reactor/blob/main/CHANGELOG.md
-- Agent skill: https://github.com/B3Pay/ic-reactor/tree/main/skill-packages/ic-reactor
+- Index for agents: https://ic-reactor.b3pay.net/v3/llms.txt
+- Changelog: https://github.com/B3Pay/ic-reactor/blob/v3/CHANGELOG.md
+- Agent skill: https://github.com/B3Pay/ic-reactor/tree/v3/skill-packages/ic-reactor
 - React setup: https://ic-reactor.b3pay.net/v3/framework/react-setup.md
 - Queries: https://ic-reactor.b3pay.net/v3/framework/queries.md
 - Mutations: https://ic-reactor.b3pay.net/v3/framework/mutations.md

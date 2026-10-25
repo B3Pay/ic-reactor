@@ -12,7 +12,7 @@ files from your `.did` files, with optional React hook exports.
 ## Install
 
 ```bash
-pnpm add -D @ic-reactor/cli
+pnpm add -D @ic-reactor/cli@0
 ```
 
 After installation, the local executable is `ic-reactor`.

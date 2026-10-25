@@ -4,8 +4,10 @@ name: Dependency Review
 # ref and a head ref, so it has nothing to compare against on a push to main --
 # which is also why this cannot live in ci.yml, which runs on both.
 on:
+  # The 3.x line. Dependabot opens no pull requests against v3, so the audit
+  # job below is this line's advisory check.
   pull_request:
-    branches: [main]
+    branches: [v3]
 
 permissions:
   contents: read

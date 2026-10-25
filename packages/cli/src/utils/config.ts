@@ -21,7 +21,7 @@ export const CONFIG_FILE_NAME = "ic-reactor.json"
 export function createDefaultConfig(): CodegenConfig {
   return {
     $schema:
-      "https://raw.githubusercontent.com/B3Pay/ic-reactor/main/packages/cli/schema.json",
+      "https://raw.githubusercontent.com/B3Pay/ic-reactor/v3/packages/cli/schema.json",
     outDir: "src/declarations",
     canisters: {},
   }

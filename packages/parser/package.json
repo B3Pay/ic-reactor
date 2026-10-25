@@ -65,7 +65,7 @@
   "bugs": {
     "url": "https://github.com/B3Pay/ic-reactor/issues"
   },
-  "homepage": "https://github.com/B3Pay/ic-reactor/tree/main/packages/parser#readme",
+  "homepage": "https://github.com/B3Pay/ic-reactor/tree/v3/packages/parser#readme",
   "scripts": {
     "build": "npm run clean && npm run build:web && npm run build:node && npm run build:bundler && node scripts/append-types.js && node scripts/wrap-glue.js",
     "build:web": "wasm-pack build --release --target web --out-dir dist/web --out-name index",

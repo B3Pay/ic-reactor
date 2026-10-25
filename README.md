@@ -14,6 +14,11 @@
 
 ---
 
+> **This is the `v3` branch: the 3.x line takes security fixes only, until 90
+> days after the 4.0 release.** ic-reactor 4 is on
+> [`main`](https://github.com/B3Pay/ic-reactor/tree/main), with its own docs.
+> Open a 3.x security fix as a pull request against `v3`.
+
 IC Reactor is a monorepo of libraries for building Internet Computer (ICP) apps with:
 
 - end-to-end TypeScript types
@@ -45,20 +50,20 @@ IC Reactor gives you a higher-level API than raw `Actor` usage while keeping typ
 | [`@ic-reactor/vite-plugin`](./packages/vite-plugin) | Vite plugin for watch-mode hook generation                                     |
 
 What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md), including
-the changes on `main` that no release carries yet.
+the changes on `v3` that no release carries yet.
 
 ## Install
 
 ### React apps
 
 ```bash
-pnpm add @ic-reactor/react @icp-sdk/core @tanstack/react-query
+pnpm add @ic-reactor/react@3 @icp-sdk/core @tanstack/react-query
 ```
 
 ### Non-React apps
 
 ```bash
-pnpm add @ic-reactor/core @icp-sdk/core @tanstack/query-core
+pnpm add @ic-reactor/core@3 @icp-sdk/core @tanstack/query-core
 ```
 
 ### Optional packages
@@ -69,7 +74,7 @@ pnpm add @icp-sdk/auth@^10 # v10 recommended; v8 also supported
 
 # Dynamic Candid support (explorers/dev tools). The example below imports
 # ClientManager and QueryClient from these two, which a React install lacks.
-pnpm add @ic-reactor/candid @ic-reactor/core @tanstack/query-core
+pnpm add @ic-reactor/candid@3 @ic-reactor/core@3 @tanstack/query-core
 ```
 
 > **Install `@icp-sdk/auth@^10` if you use npm.** v10 is the first release whose
@@ -433,13 +438,13 @@ This repository is intentionally structured to work well with AI coding assistan
 
 For apps that use IC Reactor (published with the docs, shipped in the npm packages, or installed as a skill):
 
-| File                                                         | Purpose                                                                                         |
-| ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| [`llms.txt`](./llms.txt)                                     | Index of the docs in the llmstxt.org format, served at `https://ic-reactor.b3pay.net/llms.txt`  |
-| [`llms-full.txt`](./llms-full.txt)                           | Complete guide with setup choices, snippets and anti-patterns, served at `/llms-full.txt`       |
-| `packages/*/llms.txt`                                        | Each package's own guide, shipped in its tarball: `node_modules/@ic-reactor/<package>/llms.txt` |
-| [`CHANGELOG.md`](./CHANGELOG.md)                             | Per-package changes with migration hints                                                        |
-| [`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) | Agent skill and Claude Code plugin; install below                                               |
+| File                                                         | Purpose                                                                                           |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| [`llms.txt`](./llms.txt)                                     | Index of the docs in the llmstxt.org format, served at `https://ic-reactor.b3pay.net/v3/llms.txt` |
+| [`llms-full.txt`](./llms-full.txt)                           | Complete guide with setup choices, snippets and anti-patterns, served at `/v3/llms-full.txt`      |
+| `packages/*/llms.txt`                                        | Each package's own guide, shipped in its tarball: `node_modules/@ic-reactor/<package>/llms.txt`   |
+| [`CHANGELOG.md`](./CHANGELOG.md)                             | Per-package changes with migration hints                                                          |
+| [`skill-packages/ic-reactor/`](./skill-packages/ic-reactor/) | Agent skill and Claude Code plugin; install below                                                 |
 
 For agents working in this repository:
 
@@ -460,10 +465,11 @@ errors, token amounts, testing and the mistakes to avoid, with type-checked
 examples. It sends the agent to the installed packages' `llms.txt` first, so
 it follows the app's version.
 
-In Claude Code, this repository is a plugin marketplace:
+In Claude Code, this repository is a plugin marketplace. Name its `v3` branch
+(`#v3`), because the default branch is ic-reactor 4:
 
 ```text
-/plugin marketplace add B3Pay/ic-reactor
+/plugin marketplace add B3Pay/ic-reactor#v3
 /plugin install ic-reactor@ic-reactor
 ```
 
@@ -471,7 +477,7 @@ For Codex, Cursor, GitHub Copilot, Gemini CLI and other agents, install it
 with the [`skills`](https://github.com/vercel-labs/skills) CLI:
 
 ```bash
-npx skills add B3Pay/ic-reactor --skill ic-reactor
+npx skills add B3Pay/ic-reactor#v3 --skill ic-reactor
 ```
 
 Then ask for it by name, or let the agent pick it up:

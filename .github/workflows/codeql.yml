@@ -1,13 +1,12 @@
 name: CodeQL Security Analysis
 
 on:
+  # The 3.x line. No schedule: GitHub runs a scheduled workflow from the
+  # default branch (main) only, so it would never fire from here.
   push:
-    branches: [main]
+    branches: [v3]
   pull_request:
-    branches: [main]
-  schedule:
-    # Run weekly on Sunday at midnight
-    - cron: "0 0 * * 0"
+    branches: [v3]
 
 jobs:
   analyze:
