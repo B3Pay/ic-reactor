@@ -7,7 +7,8 @@ import { networkFrom } from "./network.ts"
 import { createCli } from "./test-kit.ts"
 
 const ROOT_KEY =
-  "308182301d060d2b0601040182dc7c0503010201060c2b0601040182dc7c05030201036100"
+  "308182301d060d2b0601040182dc7c0503010201060c2b0601040182dc7c05030201036100a5" +
+  "87ac27884f235a91ddd86927eec11e09872417231b41ab8fb95605c633af9702849c0ad6929613392b39c715fc232c0a0d8eb00a1ea91985b3e440bc9d0b78a5872f96dae753f395cd6602516ad58748d698958976c6c25b86c55aa30a3af9"
 
 describe("--network onto createClient's network", () => {
   it("is mainnet by default and for ic, and the local replica for local", () => {

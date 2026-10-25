@@ -2,20 +2,24 @@
  * `useAuth` follows the client's state with `useSyncExternalStore`: a
  * component renders once for each change of who calls, and for nothing else.
  */
-import { useQueryClient } from "@tanstack/react-query"
-import type { Client } from "@ic-reactor/core"
-import { act, fireEvent, render } from "@testing-library/react"
+import { c } from "@candid-core/schema"
+import { encodeArgs } from "@candid-core/schema/codec"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { createClient, type Client } from "@ic-reactor/core"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { memo, useState } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { ReactorProvider, useAuth, useClient } from "../src/index.js"
 import {
   anonymousClient,
   clientWithAuth,
+  fakeReplica,
   testAuth,
   type TestAuth,
 } from "./helpers.js"
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
 
@@ -109,6 +113,8 @@ describe("useAuth", () => {
   })
 
   it("does not render again for a renewal that changes neither status nor principal", async () => {
+    // One instant for every sign-in, so that each session ends when the first does.
+    vi.spyOn(Date, "now").mockReturnValue(Date.now())
     const auth = testAuth({ identity: 1 })
     const { renders } = setup(auth)
 
@@ -120,6 +126,33 @@ describe("useAuth", () => {
     })
 
     expect(renders.probe).toBe(1)
+  })
+
+  it("renders again with expired when the session ends, with no user activity", () => {
+    vi.useFakeTimers()
+    const auth = testAuth({ identity: 1 })
+    const status = auth.getStatus()
+    if (status.state !== "signed-in") throw new Error("not signed in")
+    let current!: Auth
+    function Probe() {
+      current = useAuth()
+      return <p data-testid="auth">{current.status}</p>
+    }
+    render(
+      <ReactorProvider client={() => clientWithAuth(() => auth)}>
+        <Probe />
+      </ReactorProvider>
+    )
+    expect(current.status).toBe("signed-in")
+    expect(current.expiresAt).toBe(status.expiresAtMs)
+
+    // Nothing notifies: the auth expires by the clock alone, as AuthClient's does.
+    act(() => {
+      vi.advanceTimersByTime(status.expiresAtMs - Date.now())
+    })
+    expect(screen.getByTestId("auth").textContent).toBe("expired")
+    expect(current.principal).toBe("2vxsx-fae")
+    expect(current.expiresAt).toBeUndefined()
   })
 
   it("returns the same object until the state changes", () => {
@@ -172,6 +205,61 @@ describe("useAuth", () => {
       returnTo: "https://app.example/bye",
     })
     expect(current.status).toBe("anonymous")
+  })
+
+  it("renders a public read when the auth factory throws, and rejects a sign-in with what it threw", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    const canisterId = "rdmx6-jaaaa-aaaaa-aaadq-cai"
+    const service = c.service({ hello: c.func([], [c.text], "query") })
+    const replica = await fakeReplica({
+      [canisterId]: {
+        query: () => {
+          const reply = encodeArgs([c.text], ["hello, anyone"])
+          if (!reply.ok) throw new Error("the reply does not encode")
+          return reply.bytes
+        },
+      },
+    })
+    const cause = new DOMException(
+      "The operation is insecure.",
+      "SecurityError"
+    )
+    const factory = vi.fn((): never => {
+      throw cause
+    })
+    let current!: Auth
+    function Page() {
+      current = useAuth()
+      const client = useClient()
+      const canister = client.canister<{ hello: () => Promise<string> }>(
+        service,
+        { id: canisterId }
+      )
+      const read = useQuery(client.queryOptions(canister, "hello"))
+      return (
+        <p data-testid="read">{`${current.status}:${read.data ?? "loading"}`}</p>
+      )
+    }
+    const client = createClient({
+      network: { host: replica.host, rootKey: replica.rootKey },
+      fetch: replica.fetch,
+      auth: factory,
+    })
+    render(
+      <ReactorProvider client={() => client}>
+        <Page />
+      </ReactorProvider>
+    )
+
+    await waitFor(
+      () =>
+        expect(screen.getByTestId("read").textContent).toBe(
+          "anonymous:hello, anyone"
+        ),
+      { timeout: 10_000 }
+    )
+    expect(factory).toHaveBeenCalledTimes(1)
+    await expect(current.signIn()).rejects.toBe(cause)
   })
 
   it("rejects a sign-in on a client that has no auth to sign in with", async () => {

@@ -7,6 +7,7 @@ import {
   CLAUDE_MARKETPLACE,
   RUNTIME_PLUGIN_MANIFESTS,
 } from "./ai-context-files.js"
+import { fencedLines } from "./lib/markdown-fences.mjs"
 import { REMOVED_V3_NAMES } from "./removed-v3-names.js"
 
 const rootDir = process.cwd()
@@ -270,17 +271,11 @@ function headingIds(page) {
   if (headingIdsCache.has(page)) return headingIdsCache.get(page)
   const ids = new Set(["_top"])
   const seen = new Map()
-  let fence = null
+  const fenced = fencedLines()
   for (const line of readFileSync(join(DOCS_CONTENT, page), "utf8").split(
     "\n"
   )) {
-    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/)
-    if (fenceMatch) {
-      if (fence === null) fence = fenceMatch[1]
-      else if (fenceMatch[1].startsWith(fence)) fence = null
-      continue
-    }
-    if (fence !== null) continue
+    if (fenced(line)) continue
     // A heading may open a list item, as the steps of a <Steps> block do.
     const heading = line.match(
       /^\s*(?:(?:\d+\.|[-*+])\s+)?#{1,6}\s+(.+?)\s*#*\s*$/
@@ -351,7 +346,7 @@ for (const relPath of docsLinkFiles) {
 // and no key outside the spec, which claude.ai uploads and the Skills API
 // reject.
 const SKILLS_DIR = "skill-packages"
-// Absent on the v4 line until DX3 adds its one consumer skill.
+// Absent only in a tree with no skill, such as this script's tests.
 const skillEntries = existsSync(join(rootDir, SKILLS_DIR))
   ? readdirSync(join(rootDir, SKILLS_DIR), { withFileTypes: true })
   : []
@@ -517,8 +512,12 @@ for (const entry of skillEntries) {
 // checks the same shape, but it is not installed in CI.
 const currentReact = currentVersions.get("@ic-reactor/react")
 /** Folders whose skills an app installs: every text an agent loads from them
- * must stand on the published packages alone. */
-const consumerSkillDirs = []
+ * must stand on the published packages alone. They are the folder of every
+ * skill under SKILLS_DIR, which `npx skills add` installs from this repository
+ * whether or not a marketplace lists it (#970), and of each skill of a
+ * marketplace plugin below. So a contributor skill does not go under
+ * SKILLS_DIR. */
+const consumerSkillDirs = [...checkedSkills].map((rel) => posix.dirname(rel))
 
 function readJson(relPath) {
   try {
@@ -533,7 +532,8 @@ const isDirectory = (relPath) =>
   existsSync(join(rootDir, relPath)) &&
   statSync(join(rootDir, relPath)).isDirectory()
 
-// Optional on the v4 line: it has no plugin until DX3 adds the skill.
+// Optional: v4 has no marketplace (DX3 added the skill without one), so the
+// consumer rules of section 8 do not depend on this file.
 if (existsSync(join(rootDir, CLAUDE_MARKETPLACE))) {
   const marketplace = readJson(CLAUDE_MARKETPLACE)
   if (marketplace !== undefined) {
@@ -630,7 +630,10 @@ if (existsSync(join(rootDir, CLAUDE_MARKETPLACE))) {
       }
       for (const rel of skillFiles) {
         if (!checkedSkills.has(rel)) checkSkill(rel)
-        consumerSkillDirs.push(posix.dirname(rel))
+        const skillDir = posix.dirname(rel)
+        if (!consumerSkillDirs.includes(skillDir)) {
+          consumerSkillDirs.push(skillDir)
+        }
       }
     }
   }
@@ -745,20 +748,10 @@ function staleNameMentions(text, { exempt = true } = {}) {
     m.index + m[0].length,
   ])
   const found = []
-  let fence = null
+  const fenced = fencedLines()
   let exemptLevel = null
   lines.forEach((line, i) => {
-    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/)
-    if (fenceMatch) {
-      if (fence === null) fence = fenceMatch[1]
-      else if (
-        fenceMatch[1][0] === fence[0] &&
-        fenceMatch[1].length >= fence.length &&
-        line.trim() === fenceMatch[1]
-      ) {
-        fence = null
-      }
-    } else if (fence === null) {
+    if (!fenced(line)) {
       const heading = line.match(/^ {0,3}(#{1,6})\s+(.*?)\s*#*\s*$/)
       if (heading) {
         const level = heading[1].length
@@ -932,7 +925,7 @@ if (failures.length > 0) {
 } else {
   console.log(
     `AI context check passed (${aiContextFiles.length} files, ${packageGuides.length} package guides, ` +
-      `${checkedSkills.size} skills, ${consumerSkillDirs.length} plugin skill(s), ` +
+      `${checkedSkills.size} skills, ${consumerSkillDirs.length} consumer skill(s), ` +
       `docs links in ${docsLinkFiles.length} files, ${sourcePages.size} docs pages, versions: ${[...validVersions].join(", ")}).`
   )
 }

@@ -19,6 +19,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { describeError, describeValue } from "./describe-value.js"
+import { DEFAULT_LOCAL_REPLICA, isLocalHostname } from "./local-host.js"
 
 /**
  * Where a canister to fetch is: `"ic"` (mainnet, checked against the mainnet
@@ -32,9 +33,6 @@ export type CanisterNetwork = "ic" | "local" | { readonly host: string }
 
 /** Mainnet's API boundary, as `@ic-reactor/core` reaches it for `"ic"`. */
 const IC_HOST = "https://icp-api.io"
-
-/** icp-cli's local network on its default port: core's `"local"`. */
-const LOCAL_HOST = "http://127.0.0.1:8000"
 
 /** How long one fetch may take, its retries included, before it gives up. */
 export const FETCH_TIMEOUT_MS = 30_000
@@ -56,21 +54,6 @@ interface ResolvedNetwork {
 }
 
 /**
- * Whether `hostname` is a local replica: `localhost` and its subdomains, all
- * of 127.0.0.0/8, and `::1`. The rule `@ic-reactor/core`'s `createClient`
- * follows to decide whether a replica's root key may be fetched from it.
- */
-function isLocalHostname(hostname: string): boolean {
-  return (
-    hostname === "localhost" ||
-    hostname.endsWith(".localhost") ||
-    /^127\.(?:\d{1,3}\.){2}\d{1,3}$/.test(hostname) ||
-    hostname === "::1" ||
-    hostname === "[::1]"
-  )
-}
-
-/**
  * `network` with its host and root key decided, or a message that says why it
  * is not a network. Never throws, whatever `network` is.
  */
@@ -81,7 +64,7 @@ export function resolveNetwork(
     return { label: "ic", host: IC_HOST, fetchRootKey: false }
   }
   if (network === "local") {
-    return { label: "local", host: LOCAL_HOST, fetchRootKey: true }
+    return { label: "local", host: DEFAULT_LOCAL_REPLICA, fetchRootKey: true }
   }
   let url: URL | undefined
   let host: unknown

@@ -80,6 +80,13 @@ Its snippets import the generated modules in
 `check:snippets` compiles every `ts`/`tsx` fence of these files against the
 built packages.
 
+Every skill under `skill-packages/` is one an app installs, so a contributor
+skill does not go there. `check:ai-context` wants its `SKILL.md` to list
+`@ic-reactor/react`'s version, and any other package's it lists, at the
+current version (`` - `@ic-reactor/react`: `<version>` ``), and its `SKILL.md`
+and `references/` to name no path that exists only in this repository
+(`packages/`, `examples/`, `scripts/` and the like).
+
 The hand-written docs pages (`docs/src/content/docs/`, not `libs/`) are not
 AI-context files, but `check:ai-context` holds them to the removed-names rule
 too, lets only `migrating-from-3.mdx` link `/v3/`, refuses an `@ic-reactor`

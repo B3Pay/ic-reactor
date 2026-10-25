@@ -1,6 +1,6 @@
 # @ic-reactor/core
 
-> **ic-reactor 4 is a prerelease.** `4.0.0-beta.5` is published under npm's
+> **ic-reactor 4 is a prerelease.** `4.0.0-beta.7` is published under npm's
 > `beta` dist-tag, and `latest` stays 3.x until 4.0 GA: install it as
 > `@ic-reactor/core@beta`. It replaces the 3.x runtime with a thin layer over a
 > candid-core generated module (milestone 1,
@@ -28,6 +28,13 @@ npm install --save-exact @candid-core/schema@0.4.0
 `@candid-core/schema` is a peer at exactly that version: the module
 `candid-core-cli gen` writes imports it, so the generator
 (`@candid-core/cli@0.3.0`) has to pair with it too.
+
+With React, install `@tanstack/query-core` at the exact version your
+`@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
+dependencies`), and check that `npm ls @tanstack/query-core` shows one copy.
+With two copies, core and the hooks each have their own `skipToken`:
+`client.queryOptions()` throws a `TypeError` for the hooks' one, and in
+development `ReactorProvider` throws when it is handed such a client.
 
 ## 3.x
 

@@ -229,6 +229,74 @@ export function feeOfAny<A extends { icrc1_fee: () => Promise<bigint> }>(
 ) {
   return client.queryOptions<A, any>(canister, "icrc1_fee", undefined as never)
 }
+// The variables under `<A, any>` (#874): a method named by data has the type
+// `any`, and its variables follow the run-time rule, not `unknown[]`: the
+// value for a one-argument method, the tuple for several, and `undefined` or
+// `[]` for none. The client checks them against the method's schemas.
+declare const named: string
+declare const ok: boolean
+expectTypeOf(
+  client.queryOptions<icrc1.Actor, any>(ledger, named, account)
+).toEqualTypeOf<CanisterQueryOptions<unknown, never, never>>()
+expectTypeOf(
+  client.queryOptions<icrc1.Actor, any>(ledger, named, undefined)
+).toEqualTypeOf<CanisterQueryOptions<unknown, never, never>>()
+expectTypeOf(
+  client.queryOptions<icrc1.Actor, any>(ledger, named, [])
+).toEqualTypeOf<CanisterQueryOptions<unknown, never, never>>()
+expectTypeOf(
+  client.queryOptions<shapes.Actor, any>(service, named, [1n, "x"])
+).toEqualTypeOf<CanisterQueryOptions<unknown, never, never>>()
+expectTypeOf(
+  client.queryOptions<icrc1.Actor, any>(ledger, named, ok ? account : skipToken)
+).toEqualTypeOf<CanisterQueryOptions<unknown, never, typeof skipToken>>()
+expectTypeOf(
+  client.queryOptions<icrc1.Actor, any>(ledger, named, skipToken)
+).toEqualTypeOf<CanisterQueryOptions<unknown, never, typeof skipToken>>()
+// A function generic over the Actor: a read takes the real value too.
+export function balanceOfAny<
+  A extends { icrc1_balance_of: (account: icrc1.Account) => Promise<bigint> },
+>(canister: Canister<A>, owned: icrc1.Account) {
+  return client.queryOptions<A, any>(canister, "icrc1_balance_of", owned)
+}
+expectTypeOf(balanceOfAny(ledger, account)).toEqualTypeOf<
+  CanisterQueryOptions<unknown, never, never>
+>()
+client.queryOptions<icrc1.Actor, any>(ledger, named, account, {
+  update: "idempotent",
+})
+expectTypeOf(
+  client.queryKey<icrc1.Actor, any>(ledger, named, account)
+).toEqualTypeOf<QueryKey>()
+client.queryKey<icrc1.Actor, any>(ledger, named, undefined)
+client.queryKey<icrc1.Actor, any>(ledger, named, [])
+const anyWrite = client.mutationOptions<icrc1.Actor, any>(ledger, named)
+declare const mutationContext: Parameters<
+  NonNullable<typeof anyWrite.mutationFn>
+>[1]
+void anyWrite.mutationFn?.(transferArg, mutationContext)
+void anyWrite.mutationFn?.([1n, "x"], mutationContext)
+void anyWrite.mutationFn?.(undefined, mutationContext)
+expectTypeOf(anyWrite.mutationFn)
+  .parameter(0)
+  .toEqualTypeOf<
+    string | number | bigint | boolean | object | null | undefined
+  >()
+declare const anyError: unknown
+const anyOffer = client.resendOf<icrc1.Actor, any>(anyError, ledger, named, {
+  dedupedBy: (arg) => {
+    expectTypeOf(arg).toEqualTypeOf<
+      string | number | bigint | boolean | object | null | undefined
+    >()
+    return (arg as icrc1.TransferArg).created_at_time
+  },
+})
+if (anyOffer !== undefined) {
+  expectTypeOf(anyOffer.arg).toEqualTypeOf<
+    string | number | bigint | boolean | object | null | undefined
+  >()
+}
+
 // An opt-in that may be undefined: an update without `{ update: "idempotent" }`
 // throws at run time, so a fourth argument the type does not know is the
 // opt-in does not compile for an update. For a query it compiles as before.

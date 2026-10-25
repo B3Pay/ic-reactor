@@ -36,18 +36,41 @@ result: for a result `variant { Ok : T; Err : E }`, the `Ok` value. An `Err`
 rejects as kind `canister_err`.
 
 `mutationOptions` throws a `TypeError` for a method the service does not have.
-Its `mutationKey` is `["ic-reactor", network, canisterId, method]`.
+Its `mutationKey` is `["ic-reactor", network, canisterId, method]`. Built from
+the client `useClient()` returns, it ends with the caller the render shows as
+well, `["ic-reactor", network, canisterId, method, caller]`, so a filter on
+the shorter key still finds it.
 
 ## Who signs
 
-The mutation function calls as the caller current **when it runs**, not when
-the options were built. A write needs a signed-in caller. If nobody is signed
-in, or the client was built with `identity: "anonymous"`, the client refuses
-it before sending anything: kind `unauthenticated`, code `anonymous_write`,
+A write calls as the caller current **when `mutate()` was called**, or not at
+all; not the one current when the options were built. TanStack Query can run a
+write later: paused while the browser is offline, queued behind another
+mutation of its `scope`, or retried by a `retry` of the app's. If someone else
+is current by the time it is sent, the client refuses it: kind `cancelled`,
+code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. A
+mutation restored from a persister is refused the same way whoever is signed
+in, since TanStack runs no `onMutate` for it and who started it is not known:
+call `mutate()` again. A write run on a `QueryClient` other than
+`client.queryClient` keeps the rule only through the client's `onMutate` (see
+`onMutate` below).
+
+A write needs a signed-in caller. If nobody is signed in, or the client was
+built with `identity: "anonymous"`, the client refuses it before sending
+anything: kind `unauthenticated`, code `anonymous_write`,
 `mayHaveExecuted: false`.
 
-Disable the button for a caller who is not signed in, and send as the caller
-the page shows:
+Built from the `useClient()` of a render, the options send only as the caller
+that render shows. A press handled before an account switch reached the
+render (the switch and the click in one batch) is refused: kind `cancelled`,
+code `caller_changed`, `mayHaveExecuted: false`, and nothing is sent. The
+refusal reaches the callbacks of the options the press used (an `onError`
+given to `useMutation`); the mutation that the render for the new caller shows
+starts over, idle, since the key holds the caller. That is true of any
+outcome, a write whose outcome is unknown included: an app that must keep
+showing it across a switch (to read the sender's balance back, say) keeps it
+in its own state, from the promise `mutateAsync` returns. The handler needs no check
+of its own; disable the button for a caller who is not signed in:
 
 ```tsx
 import { useAuth, useClient } from "@ic-reactor/react"
@@ -62,23 +85,28 @@ export function SendAsShown({ arg }: { arg: TransferArg }) {
   })
   const transfer = useMutation(client.mutationOptions(ledger, "icrc1_transfer"))
 
-  const send = () => {
-    // The write signs as whoever is signed in now. If an account switch has
-    // not reached this render yet, send nothing.
-    if (client.caller() !== shown) return
-    transfer.mutate(arg)
-  }
-
   return (
     <button
       disabled={status !== "signed-in" || transfer.isPending}
-      onClick={send}
+      onClick={() => transfer.mutate(arg)}
     >
-      Send
+      Send as {shown}
     </button>
   )
 }
 ```
+
+A handler that signs in and then writes (`await client.signIn()`, then
+`transfer.mutate(arg)`) presses with the options of the last render React
+committed. The render for the user normally commits before the handler goes
+on, and the write goes out as the user; while that render cannot commit, such
+as when it suspends on the user's data, the press has the previous caller's
+options and is refused. Let the render that shows the user press, or make a
+direct call.
+
+A direct call on a canister (`await ledger.icrc1_transfer(arg)`) is not held
+to a render: it signs as whoever is signed in when it runs. In a component,
+send writes through `mutationOptions`.
 
 See [Auth](/v4/guides/auth/) for sign-in and caller changes.
 
@@ -192,7 +220,15 @@ Sending the same argument again after `mayHaveExecuted: true` is safe only
 when the canister deduplicates it: it runs the same argument from the same
 sender at most once. The ICRC-1 ledger does, for a transfer with
 `created_at_time` set: the second one is answered `Duplicate`, which means the
-first went through. Most methods do not deduplicate. For them a second send
+first went through. Stamp `created_at_time` with `await client.time(ledger)`:
+the IC's time in nanoseconds, from a certificate verified against the
+network's root key, rather than the host's clock. Its request is signed with
+an ingress expiry taken from the host's clock, as every request is: a host
+clock so far off that the IC refuses its requests cannot read the time
+either, and no call works until that clock is fixed. That time moves about once a second, so
+two transfers stamped in the same second need their own `memo` each, or the
+second is answered `Duplicate` without running. Most methods do not
+deduplicate. For them a second send
 can run the write twice, so read the state back instead.
 
 `client.resendOf(error, canister, method, { dedupedBy })` offers that re-send.
@@ -217,29 +253,31 @@ all of these hold:
 - Whoever sent it is the caller now. After a sign-out, or a sign-in as
   another account, nothing is offered: the same argument from another sender
   is a new transfer, paid in full. Signing back in as the sender offers it
-  again. While a page hydrates, `useClient()` may return a view pinned to the
-  server's caller; the offer still follows the live caller, whom a write goes
-  out as.
+  again. `useClient()` returns a view pinned to the caller its render shows;
+  the offer still follows the live caller, whom the write goes out as.
 
 The offer's `arg` is the attempt's own argument, the object `mutate` was
 given, and `from` is its sender. Send it with `mutate(again.arg)` on the same
 mutation, which keeps its pending state and invalidation, or with
 `again.send()`. Either one goes out only as the same write, and otherwise
-rejects and sends nothing:
+sends nothing:
 
-- only as `from`: if someone else is the caller by then, it rejects
-  `cancelled` (code `caller_changed`);
+- only as `from`: if someone else is the caller by then, it is refused (code
+  `caller_changed`);
 - only to the method and canister the write went to: `again.send()` always
-  goes there, and a mutation whose canister now resolves elsewhere rejects
-  `cancelled` (code `target_changed`);
+  goes there, and a mutation whose canister now resolves elsewhere is refused
+  (code `target_changed`);
 - only with the bytes the write sent: `again.send()` sends those bytes, and
-  `mutate(again.arg)` rejects `invalid_args` (code `arg_changed`) if the
-  object was changed since.
+  `mutate(again.arg)` is refused (code `arg_changed`) if the object was
+  changed since.
 
-A refusal is not the end of the write. It replaces the mutation's
-`outcome_unknown` error, so `client.resendOf(transfer.error)` is `undefined`
-after it, and the write it re-sends still has an unknown outcome: read the
-state back, and do not ignore it as you might another `cancelled` (see
+A re-send that did not run is not the end of the write, whether it was
+refused or turned away when sent (an HTTP 429 or another 4xx, reject code 1
+to 3). The first attempt may have run all the same, so it rejects
+`outcome_unknown` with `mayHaveExecuted: true`, its `code`, `httpStatus` or
+`rejectCode` and its `cause` say why the re-send did not run, and
+`client.resendOf(transfer.error)` offers the write again while its sender is
+the caller. Read the state back before anything else (see
 [Errors](/v4/guides/errors/#what-to-do-for-each-kind)).
 
 Once offered, that object stays held to that write on every mutation of the
@@ -285,6 +323,50 @@ export function SendOnce({ arg }: { arg: TransferArg }) {
   )
 }
 ```
+
+`again.bytes` is the Candid bytes the attempt sent, the ones `send()` sends
+again: a copy on every read, for an audit log or a consent screen.
+
+A `canister_err` is a known outcome, so `resendOf` offers nothing after it.
+When the canister says the failure is temporary (an ICRC-1
+`TemporarilyUnavailable`), send the same argument object again with
+`transfer.mutate(arg)`. Encoding is deterministic, so a deduplicating method
+sees the same bytes and the same key, and answers `Duplicate` if an earlier
+attempt ran.
+
+`Resend` is not exported. To keep an offer in state, type it from the method:
+
+```ts
+import { createClient } from "@ic-reactor/core"
+import type { Actor } from "./generated/icrc1"
+
+const client = createClient({ network: "ic", identity: "anonymous" })
+type TransferResend = NonNullable<
+  ReturnType<typeof client.resendOf<Actor, "icrc1_transfer">>
+>
+```
+
+## The bytes a write sends
+
+`client.encode(canister, method, vars)` returns the Candid bytes a call of
+`method` with `vars` sends, as a `Uint8Array`. It uses the call path's own
+encoder and variables rule, so the bytes are the ones that go out, not a
+second encoding of the same value. Pass them where the exact argument is
+wanted, such as the `arg` of an ICRC-21 consent request:
+
+```ts
+import { client, ledger } from "./ledger"
+import type { TransferArg } from "./generated/icrc1"
+
+export function consentArg(transfer: TransferArg): Uint8Array {
+  return client.encode(ledger, "icrc1_transfer", transfer)
+}
+```
+
+It sends nothing and needs no canister id, so it works for a `{ name }` the
+`ic_env` cookie does not resolve yet. It checks only the variables, not the
+caller or the canister id. Variables that do not encode throw `invalid_args`
+with the `issues` a call of them rejects with.
 
 ## Typed errors
 
@@ -384,7 +466,14 @@ the result to `onSettled`, which is how the client finds the reads to
 invalidate. An `onMutate` that replaces the client's, as TanStack's own
 optimistic recipe is written, keeps the write and its invalidation together
 only from TanStack Query 5.89 on (`@ic-reactor/react` needs 5.90.2 or newer).
-The spread form works everywhere.
+The spread form works everywhere. Either form keeps the caller on the client's
+own `queryClient`: its `MutationCache` reads who started each run. On another
+`QueryClient`, only the client's `onMutate` reads it, so from 5.89 on a write
+whose `onMutate` replaced it there is refused (`caller_changed`). Before 5.89,
+which passes no run context, TanStack must call the client's `onMutate` itself
+there, as a method of the run's options: one of yours that calls it leaves
+the write refused, and one that replaces it, sent as the caller current when
+it is sent.
 
 This example shows a new name at once and puts the old one back on failure.
 The client's `onSettled` then re-reads the profile, so the page ends with what

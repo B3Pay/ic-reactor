@@ -10,6 +10,76 @@
     "replace": "const noCodeRan = true"
   },
   {
+    "id": "963-signer-failure-unknown",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered, sends nothing and offers no re-send when the signer declines",
+    "why": "what a signer throws reaches the classifier unmarked, so a write the user declined to sign rejects outcome_unknown with mayHaveExecuted: true and is offered to resendOf, though nothing was sent",
+    "file": "src/client.ts",
+    "search": "            throw notSigned(cause)\n",
+    "replace": "            throw cause\n"
+  },
+  {
+    "id": "963-signer-error-dropped",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered, sends nothing and offers no re-send when the signer declines",
+    "why": "the error the agent was handed, not the signer's own, becomes the cause, so an app cannot tell a declined prompt from another failure by its cause",
+    "file": "src/errors.ts",
+    "search": "      cause: thrown,\n",
+    "replace": "      cause: error,\n"
+  },
+  {
+    "id": "963-poll-signing-failure-not-delivered",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a write outcome_unknown when the signer declines a read_state poll after the IC took the call",
+    "why": "a request the signer did not sign reads as not_delivered even for a read_state poll of an update the IC already took, which may have executed",
+    "file": "src/errors.ts",
+    "search": "      mayBeAccepted || (context.mode === \"update\" && context.again === true)\n",
+    "replace": "      context.mode === \"update\" && context.again === true\n"
+  },
+  {
+    "id": "963-wrapped-signer-failure-retried",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a read not_delivered, and does not ask again, when the signer declines the read_state for the subnet's keys",
+    "why": "a signer failure the agent wrapped as UnexpectedErrorCode (a query's read_state for the subnet's keys) is not unwrapped, so the read is retryable and the signer is asked again on every re-send",
+    "file": "src/errors.ts",
+    "search": "  return signerError(asRecord(record.code).error, depth + 1)\n",
+    "replace": "  return undefined\n"
+  },
+  {
+    "id": "963-signer-detail-stringified",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write not_delivered when the signer throws something that is not an Error",
+    "why": "what the signer threw is turned into text with String(), which throws for an object with no prototype, so the classifier fails and the write is not reported not_delivered",
+    "file": "src/errors.ts",
+    "search": "withDetail(reason, condense(messageOf(thrown)))",
+    "replace": "withDetail(reason, condense(messageOf(thrown) ?? String(thrown)))"
+  },
+  {
+    "id": "963-signer-abort-not-cancelled",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a signer's AbortError cancelled, as any abort",
+    "why": "an AbortError the signer threw is looked for on the wrapper instead, so it reads as a signer failure (not_delivered) rather than cancelled, as every other abort does",
+    "file": "src/errors.ts",
+    "search": "  if (context.signal?.aborted || isAbort(thrown)) {",
+    "replace": "  if (context.signal?.aborted || isAbort(error)) {"
+  },
+  {
+    "id": "963-declined-resend-loses-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome, and the offer, when the signer declines the re-send",
+    "why": "a re-send of an offered write that the signer declines reads as not_delivered, so the write it re-sends, which may have run, is no longer offered and its error says it may not have executed",
+    "file": "src/errors.ts",
+    "search": "      mayBeAccepted || (context.mode === \"update\" && context.again === true)\n",
+    "replace": "      mayBeAccepted\n"
+  },
+  {
     "id": "ir1c-codespaces-host-is-local",
     "package": "core",
     "test": "tests/network.test.ts",
@@ -146,8 +216,8 @@
     "testName": "disposes, with its auth, each client of a first render that a Suspense boundary above the provider threw away",
     "why": "an owned client is never registered for disposal at collection, so the client of a render React threw away keeps its auth and listeners for good",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
-    "replace": "  if (!owned && unclaimed?.unregister(client)) reportLazilyShared()\n"
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  if (!owned && !of && unclaimed?.unregister(client)) reportLazilyShared()\n"
   },
   {
     "id": "ir6-committed-client-left-registered",
@@ -166,7 +236,7 @@
     "testName": "is never registered, even when renders are thrown away",
     "why": "a client the app created is registered too, so a collection after a thrown-away render disposes a client its owner still uses",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
     "replace": "  unclaimed?.register(held, client, client)\n"
   },
   {
@@ -178,7 +248,7 @@
     "edits": [
       {
         "file": "src/index.tsx",
-        "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+        "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
         "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
       },
       {
@@ -195,7 +265,7 @@
     "testName": "is let go by the registry as soon as a later render gets it back",
     "why": "a factory call that hands back a client a dropped render registered leaves the registration standing until a commit, so a collection while the fallback still shows disposes the lazily shared client the retry is about to mount",
     "file": "src/index.tsx",
-    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "search": "  if (owned) unclaimed?.register(held, client, client)\n  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
     "replace": "  if (owned) unclaimed?.register(held, client, client)\n"
   },
   {
@@ -205,8 +275,8 @@
     "testName": "warns once, before anything commits, when a render gets back the client of a render React threw away",
     "why": "a factory that hands back a client a render which never committed created, as a lazily shared one does, is taken off the registry without a word, so the pattern shows only later, as cancelled calls after its first provider unmounts or a collection disposes it",
     "file": "src/index.tsx",
-    "search": "  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
-    "replace": "  else unclaimed?.unregister(client)\n"
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else if (!of) unclaimed?.unregister(client)\n"
   },
   {
     "id": "ir6-every-borrowed-client-warned",
@@ -215,8 +285,28 @@
     "testName": "says nothing about a client the factory creates on each call",
     "why": "every borrowed client is reported as lazily shared, so the module-scope client the docs recommend warns on every render that gets it",
     "file": "src/index.tsx",
-    "search": "  else if (unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
     "replace": "  else {\n    unclaimed?.unregister(client)\n    reportLazilyShared()\n  }\n"
+  },
+  {
+    "id": "965-view-client-unregistered-leaks",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "disposes the clients of a thrown-away render whose nested provider was handed their view",
+    "why": "a nested provider handed the outer one's useClient() view removes the outer client's registration (quietly) while both render, so when React throws that render away the outer client and its auth listeners are never disposed",
+    "file": "src/index.tsx",
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else if (unclaimed?.unregister(client) && !of) reportLazilyShared()\n"
+  },
+  {
+    "id": "965-view-client-warned",
+    "package": "react",
+    "test": "tests/abandoned-render.test.tsx",
+    "testName": "says nothing about a nested provider handed the view of the outer one's client",
+    "why": "a nested provider handed the outer one's useClient() view is reported as a lazily shared factory, though it leaves the registration alone",
+    "file": "src/index.tsx",
+    "search": "  else if (!of && unclaimed?.unregister(client)) reportLazilyShared()\n",
+    "replace": "  else if (of !== undefined || unclaimed?.unregister(client)) reportLazilyShared()\n"
   },
   {
     "id": "ir6-server-client-registered",
@@ -417,8 +507,8 @@
     "testName": "cancels a write disposed of just after its agent was handed over, and sends nothing",
     "why": "a dispose() that runs after agentFor's last check but before the call resumes from it (a reaction on the identity's promise) would still send the write with the agent it was handed",
     "file": "src/call.ts",
-    "search": "      if (internals.disposed()) {\n        throw createReactorError(\"cancelled\", {\n          ...where,",
-    "replace": "      if (false && internals.disposed()) {\n        throw createReactorError(\"cancelled\", {\n          ...where,"
+    "search": "        if (internals.disposed()) {\n          throw notSent(",
+    "replace": "        if (false && internals.disposed()) {\n          throw notSent("
   },
   {
     "id": "ir2t-err-not-unwrapped",
@@ -451,6 +541,16 @@
     "replace": "  if (status === undefined) throw new Error(\"no status for the request\")"
   },
   {
+    "id": "964-accepted-update-unrecorded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "gives up as outcome_unknown when polls are answered HTTP 429",
+    "why": "an update answered 202 is not recorded as accepted, so polls answered 429 classify it not_delivered and the update is sent again, running it up to three times",
+    "file": "src/call.ts",
+    "search": "    accepted = true\n",
+    "replace": ""
+  },
+  {
     "id": "ir2t-cancelled-read-keeps-polling",
     "package": "core",
     "test": "tests/canister.test.ts",
@@ -475,10 +575,19 @@
     "package": "core",
     "test": "tests/canister.test.ts",
     "testName": "sends no poll for a read whose signal aborted while its call was on the way",
-    "why": "no check of the read's signal before polling, so a read whose observer went away while its call was being sent still polls read_state and resolves for nobody",
-    "file": "src/call.ts",
-    "search": "    if (signal?.aborted === true) throw abortReason(signal)",
-    "replace": ""
+    "why": "no check of the read's signal before polling, and the wait for the call not ended by it (#875), so a read whose observer went away while its call was being sent still polls read_state and resolves for nobody. Either alone stops the poll since the call's wait ends on abort, so both go back",
+    "edits": [
+      {
+        "file": "src/call.ts",
+        "search": "    if (signal?.aborted === true) throw abortReason(signal)",
+        "replace": ""
+      },
+      {
+        "file": "src/call.ts",
+        "search": "    const submitted = await untilAborted(",
+        "replace": "    const submitted = await ((sent: Promise<SubmitResponse>, _signal: unknown) => sent)("
+      }
+    ]
   },
   {
     "id": "ir2t-unresolved-name-sent",
@@ -586,8 +695,8 @@
     "testName": "sends a { name } write that waited offline to the canister resolved when it started",
     "why": "mutationFn resolves a { name } again when it starts instead of using the run onMutate resolved, so a write paused across a local redeploy goes to the new canister while onSettled invalidates the old one's reads",
     "file": "src/options.ts",
-    "search": "          target: run?.target ?? record.resolve(),",
-    "replace": "          target: record.resolve(),"
+    "search": "      const target = run?.target ?? record.resolve()\n",
+    "replace": "      const target = record.resolve()\n"
   },
   {
     "id": "ir2t-name-in-invalidates-resolved-at-settlement",
@@ -750,8 +859,8 @@
     "testName": "while a concurrent",
     "why": "refuseNext(status, { method }) that refuses whatever request comes next, as the count form does, so a concurrent read of another method is refused in the write's place",
     "file": "src/testing/fake-replica.ts",
-    "search": "        (refusal.method === undefined || refusal.method === method) &&",
-    "replace": "        true &&"
+    "search": "      (fault.method === undefined || fault.method === method) &&",
+    "replace": "      true &&"
   },
   {
     "id": "822-refusal-ignores-canister",
@@ -760,8 +869,8 @@
     "testName": "refuses only the canister it names, mocked or not, whatever the method",
     "why": "refuseNext(status, { canister }) that refuses a request for any canister, so the ledger read is refused in the shapes canister's place",
     "file": "src/testing/fake-replica.ts",
-    "search": "        (refusal.canister === undefined || refusal.canister === canisterId)",
-    "replace": "        true"
+    "search": "      (fault.canister === undefined || fault.canister === canisterId)",
+    "replace": "      true"
   },
   {
     "id": "822-refusal-head-of-queue-only",
@@ -770,8 +879,8 @@
     "testName": "is matched in the order refusals were armed, and the count form still refuses whatever comes next",
     "why": "only the refusal armed first is looked at, as the queue of 4.0.0-beta.1 was shifted: an aimed refusal waiting for its method holds back a count armed after it, and the count form stops refusing whatever comes next",
     "file": "src/testing/fake-replica.ts",
-    "search": "    const index = refusals.findIndex(",
-    "replace": "    const index = refusals.slice(0, 1).findIndex("
+    "search": "  const index = armed.findIndex(",
+    "replace": "  const index = armed.slice(0, 1).findIndex("
   },
   {
     "id": "822-refusal-option-names-unchecked",
@@ -780,8 +889,8 @@
     "testName": "a refusal that cannot be armed",
     "why": "an option refuseNext() does not have (a misspelled `method`) accepted and ignored, so the refusal is armed for every request instead of failing at once",
     "file": "src/testing/fake-replica.ts",
-    "search": "        (key) => !(REFUSAL_OPTIONS as readonly string[]).includes(key)",
-    "replace": "        () => false"
+    "search": "    (key) => !(REFUSAL_OPTIONS as readonly string[]).includes(key)",
+    "replace": "    () => false"
   },
   {
     "id": "822-refusal-matches-read-state",
@@ -810,15 +919,15 @@
     "testName": "a refusal that cannot be armed",
     "why": "a `method` that is not a string accepted, so refuseNext(status, { method: 5 }) is armed for a method no request can name instead of failing at once",
     "file": "src/testing/fake-replica.ts",
-    "search": "      if (method !== undefined && (typeof method !== \"string\" || !method)) {",
-    "replace": "      if (method !== undefined && !method) {"
+    "search": "  if (method !== undefined && (typeof method !== \"string\" || !method)) {",
+    "replace": "  if (method !== undefined && !method) {"
   },
   {
     "id": "ir4b-fetch-stubbed-globally",
     "package": "core",
     "test": "tests/testing-test-client.test.ts",
     "testName": "never replaces or uses globalThis.fetch",
-    "why": "the fake replica put in globalThis.fetch, as installFakeReplica does: code that builds its own agents reaches it and two test clients share one",
+    "why": "the fake replica put in globalThis.fetch: code that builds its own agents reaches it and two test clients share one",
     "file": "src/testing/test-client.ts",
     "search": "  const client = createClientWith(",
     "replace": "  globalThis.fetch = replica.fetch\n  const client = createClientWith("
@@ -956,8 +1065,8 @@
       },
       {
         "file": "src/errors.ts",
-        "search": "    !error.mayHaveExecuted &&\n    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
-        "replace": "    !error.mayHaveExecuted"
+        "search": "    isRetryable(error) &&\n    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
+        "replace": "    isRetryable(error)"
       }
     ]
   },
@@ -975,8 +1084,8 @@
       },
       {
         "file": "src/errors.ts",
-        "search": "    !error.mayHaveExecuted &&\n    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
-        "replace": "    !error.mayHaveExecuted"
+        "search": "    isRetryable(error) &&\n    (error.rejectCode === SYS_TRANSIENT || error.httpStatus === 429)",
+        "replace": "    isRetryable(error)"
       }
     ]
   },
@@ -1017,8 +1126,8 @@
     "testName": "is not sent again as somebody else",
     "why": "a re-send signed by whoever is signed in when it goes out, so a user who switched account during the wait pays for the first user's transfer",
     "file": "src/call.ts",
-    "search": "      const agent = await internals.agentFor(caller.principal, where)",
-    "replace": "      const agent = await internals.agentFor(internals.current().principal, where)"
+    "search": "          internals.agentFor(caller.principal, where),",
+    "replace": "          internals.agentFor(internals.current().principal, where),"
   },
   {
     "id": "ir9-management-reject-2-not-executed-2",
@@ -1296,30 +1405,6 @@
     "replace": "        authenticated: true,\n"
   },
   {
-    "id": "ir6b-view-writes-as-pinned-caller",
-    "package": "core",
-    "test": "tests/client-pinned.test.ts",
-    "testName": "writes as the caller current when the write runs",
-    "why": "a view's mutationOptions sign as the principal it is pinned to, so a write made from a hydrating render is refused or sent as the wrong principal",
-    "edits": [
-      {
-        "file": "src/options.ts",
-        "search": "          caller: again?.caller ?? internals.current(),\n          values: valuesOf(prepared, vars),\n",
-        "replace": "          caller: again?.caller ?? current(),\n          values: valuesOf(prepared, vars),\n"
-      },
-      {
-        "file": "src/client.ts",
-        "search": "      const { queryKey, queryOptions } = createBuilders(",
-        "replace": "      const { queryKey, queryOptions, mutationOptions } = createBuilders("
-      },
-      {
-        "file": "src/client.ts",
-        "search": "          queryOptions: { value: queryOptions },\n",
-        "replace": "          queryOptions: { value: queryOptions },\n          mutationOptions: { value: mutationOptions },\n"
-      }
-    ]
-  },
-  {
     "id": "ir6b-view-options-held",
     "package": "core",
     "test": "tests/client-pinned.test.ts",
@@ -1346,8 +1431,8 @@
     "testName": "keeps no view of a principal that is neither current nor anonymous",
     "why": "the views are kept for every principal ever asked for, so a tab that switches accounts keeps one view and its builders per account for good",
     "file": "src/client.ts",
-    "search": "      if (kept !== principal && kept !== live && kept !== ANONYMOUS) {\n",
-    "replace": "      if (kept === undefined) {\n"
+    "search": "        if (kept !== principal && kept !== live && kept !== ANONYMOUS) {\n",
+    "replace": "        if (kept === undefined) {\n"
   },
   {
     "id": "ir6b-fixed-caller-viewed",
@@ -1366,7 +1451,7 @@
     "testName": "renders the server's keys, sends nothing during hydration",
     "why": "useClient() returns the client whatever caller the render shows, so a page hydrating with a stored session builds the user's keys: React reports a mismatch and the prefetched read is sent again",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1376,7 +1461,7 @@
     "testName": "hydrates a late boundary below no component that renders with the caller",
     "why": "useClient() returns the client whatever caller the render shows, so a boundary that hydrates after the root moved on to the session misses the server's data",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1386,7 +1471,7 @@
     "testName": "hydrates a component that renders the fetch state of a stale read the server prefetched",
     "why": "useClient() returns the client whatever caller the render shows, so a component that renders a prefetched read's fetch state hydrates another markup than the server's",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1396,7 +1481,7 @@
     "testName": "is cancelled when an effect of the hydrating render runs it",
     "why": "useClient() returns the client whatever caller the render shows, so an effect of the hydrating render fetches the user's key instead of the server's",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1406,7 +1491,7 @@
     "testName": "is never shown as an error by a component that hydrated",
     "why": "useClient() returns the client whatever caller the render shows, so a suspense reader hydrating with a stored session renders the user's answer over the server's HTML",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1423,20 +1508,20 @@
     "id": "ir6b-useclient-always-a-view",
     "package": "react",
     "test": "tests/caller-keys.test.tsx",
-    "testName": "returns the provider's client object itself once the caller React renders is the live one",
-    "why": "useClient() returns a view in the steady state too, so the object a component gets is not the provider's client",
+    "testName": "returns one object per caller",
+    "why": "useClient() returns the anonymous caller's view whatever caller the render shows, so a signed-in tab builds the anonymous caller's keys and its reads are cancelled",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return view\n"
   },
   {
     "id": "ir6b-hydrated-tree-keeps-the-view",
     "package": "react",
     "test": "tests/caller-keys.test.tsx",
-    "testName": "returns the client itself after a hydration",
-    "why": "useClient() keeps returning the hydrating render's view after hydration, so the steady state never gets the provider's client back",
+    "testName": "returns a view per caller after a hydration too",
+    "why": "useClient() keeps returning the hydrating render's view after hydration, so the steady state never gets the user's view",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return view\n"
   },
   {
@@ -1676,7 +1761,7 @@
     "testName": "hands a nested ReactorProvider given it the client itself",
     "why": "a provider holds the anonymous view a hydrating useClient() handed its factory, so its tree reads as nobody for good and never follows a sign-in",
     "file": "src/index.tsx",
-    "search": "  const client = (built as Stamped)[CLIENT_OF] ?? built\n",
+    "search": "  const client = of ?? built\n",
     "replace": "  const client = built\n"
   },
   {
@@ -1724,10 +1809,19 @@
     "package": "core",
     "test": "tests/client-pinned.test.ts",
     "testName": "leaves a fetch that replaced a cancelled refused read of the key running",
-    "why": "a refused view read that TanStack had already cancelled still cancels the key, so the fetch that replaced it (a read as the caller now current) is cancelled and the key keeps the old data",
-    "file": "src/options.ts",
-    "search": "        !context.signal.aborted &&\n",
-    "replace": ""
+    "why": "a refused view read that TanStack had already cancelled still cancels the key, so the fetch that replaced it (a read as the caller now current) is cancelled and the key keeps the old data. Since #875 a read's abort also ends its wait for the caller's agent (a cancellation with no code), which alone keeps the key too, so that goes back as well",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "        !context.signal.aborted &&\n",
+        "replace": ""
+      },
+      {
+        "file": "src/call.ts",
+        "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+        "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+      }
+    ]
   },
   {
     "id": "ir6m-kept-value-is-the-client",
@@ -1736,7 +1830,7 @@
     "testName": "leaves a value kept from the hydrating render (state, ref, module variable) the anonymous view for good",
     "why": "the hydrating render gets the client itself rather than the anonymous view, which changes what a value kept from that render is (documented as the anonymous view) along with the hydrating markup",
     "file": "src/index.tsx",
-    "search": "  return principal === client.caller() ? client : view\n",
+    "search": "  return shown ?? view\n",
     "replace": "  return client\n"
   },
   {
@@ -1940,6 +2034,56 @@
     "replace": "false"
   },
   {
+    "id": "976-deno-element-taken-for-server",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "signs in, as any page does",
+    "why": "a page with an element whose id is Deno counts as a server, so the client never builds its auth and signIn() rejects",
+    "file": "src/runtime.ts",
+    "search": "      typeof (globalThis as { Deno?: { version?: { deno?: unknown } } }).Deno\n        ?.version?.deno === \"string\"\n",
+    "replace": "      \"Deno\" in globalThis\n"
+  },
+  {
+    "id": "976-deno-element-hides-names",
+    "package": "core",
+    "test": "tests/env-canister-id.test.ts",
+    "testName": "resolves from the cookie on a page with an element whose id is Deno",
+    "why": "a page with an element whose id is Deno counts as a server, so its { name } targets are refused as no_browser",
+    "file": "src/runtime.ts",
+    "search": "      typeof (globalThis as { Deno?: { version?: { deno?: unknown } } }).Deno\n        ?.version?.deno === \"string\"\n",
+    "replace": "      \"Deno\" in globalThis\n"
+  },
+  {
+    "id": "976-deno-not-a-server",
+    "package": "core",
+    "test": "tests/errors.test.ts",
+    "testName": "does not retry under Deno, which TanStack counts as a server even with a window",
+    "why": "Deno with a window, as Deno 1 has, counts as a browser, so the retry predicates retry where TanStack itself would not",
+    "file": "src/runtime.ts",
+    "search": "  if (typeof window === \"undefined\") return true\n  try {\n",
+    "replace": "  if (typeof window === \"undefined\") return true\n  return false\n  try {\n"
+  },
+  {
+    "id": "976-deno-1-not-a-server",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "counts Deno, which has a version, as a server even with a window",
+    "why": "Deno with a window, as Deno 1 has, counts as a browser, so the client builds its auth there",
+    "file": "src/runtime.ts",
+    "search": "  if (typeof window === \"undefined\") return true\n  try {\n",
+    "replace": "  if (typeof window === \"undefined\") return true\n  return false\n  try {\n"
+  },
+  {
+    "id": "976-deno-frame-read-throws",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "signs in when it is a cross-origin frame, whose properties throw when read",
+    "why": "a cross-origin frame named Deno makes isServer() throw a SecurityError, so createClient, caller() and the retry predicates throw on that page",
+    "file": "src/runtime.ts",
+    "search": "  } catch {\n    return false\n  }\n}\n",
+    "replace": "  } finally {\n  }\n}\n"
+  },
+  {
     "id": "835-nullish-vars-read-as-skipped",
     "package": "core",
     "test": "tests/options.test.ts",
@@ -1956,8 +2100,8 @@
     "testName": "names the built-in Internet Identity on a local host's own port, with the root key it was given",
     "why": "the auth factory handed only the agent options, so an AuthClient on a local replica signs in with mainnet's Internet Identity",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const built = checkAuth(\n      authFactory({ agentOptions: authNetwork().agentOptions })\n    )"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      made = authFactory({ agentOptions: authNetwork().agentOptions })"
   },
   {
     "id": "790-auth-factory-zero-argument-refused",
@@ -1966,8 +2110,8 @@
     "testName": "still builds the auth the client calls as",
     "why": "a factory that takes no argument (() => new AuthClient()) no longer builds an auth, as if only network-aware factories were supported",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const built = checkAuth(\n      authFactory.length > 0 ? authFactory(authNetwork()) : undefined\n    )"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      made = authFactory.length > 0 ? authFactory(authNetwork()) : undefined"
   },
   {
     "id": "790-auth-built-in-ii-port-fixed",
@@ -2136,8 +2280,8 @@
     "testName": "is not given by a test client",
     "why": "the warning given before the factory runs, wherever no provider was named, so a test client on \"ic\" warns about its fake replica's root key, though its test auth ignores the network",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-local-ignores-cookie-provider",
@@ -2166,7 +2310,7 @@
     "testName": "that is not an http(s) URL",
     "why": "any INTERNET_IDENTITY_PROVIDER taken from the cookie, so a javascript: URL becomes the page AuthClient opens to sign in",
     "file": "src/network.ts",
-    "search": "    return protocol === \"http:\" || protocol === \"https:\" ? value : undefined",
+    "search": "    return protocol === \"https:\" || (protocol === \"http:\" && pageIsLocal())\n      ? value\n      : undefined",
     "replace": "    return value"
   },
   {
@@ -2275,7 +2419,7 @@
     "test": "src/index.test.ts",
     "testName": "should fallback to default proxy when icp-cli fails",
     "why": "the plugin's fallback /api proxy left on dfx's 4943 while core's \"local\" and the cookie's Internet Identity are on icp-cli's 8000",
-    "file": "src/dev-environment.ts",
+    "file": "src/local-host.ts",
     "search": "export const DEFAULT_LOCAL_REPLICA = \"http://127.0.0.1:8000\"",
     "replace": "export const DEFAULT_LOCAL_REPLICA = \"http://127.0.0.1:4943\""
   },
@@ -2286,8 +2430,8 @@
     "testName": "is not given to a factory that names its own provider by spreading network",
     "why": "the warning given before the factory runs, so the override it teaches, { ...network, identityProvider }, still logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-warn-before-factory-real-override",
@@ -2296,8 +2440,8 @@
     "testName": "is not given to a real AuthClient built from the override",
     "why": "the warning given before the factory runs, so a real AuthClient built with its own identityProvider still logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-warn-before-factory-not-ii",
@@ -2306,8 +2450,8 @@
     "testName": "is not given to a factory that ignores network",
     "why": "the warning given before the factory runs, so an auth that is not Internet Identity, which never reads the network, logs that sign-in cannot work",
     "file": "src/client.ts",
-    "search": "    const built = checkAuth(authFactory(authNetwork()))",
-    "replace": "    const handed = authNetwork()\n    void handed.identityProvider\n    const built = checkAuth(authFactory(handed))"
+    "search": "      made = authFactory(authNetwork())",
+    "replace": "      const handed = authNetwork()\n      void handed.identityProvider\n      made = authFactory(handed)"
   },
   {
     "id": "790-auth-provider-read-silent",
@@ -2676,8 +2820,8 @@
     "testName": "is true for the errors of a read's query function and a mutation function built from the canister",
     "why": "a mutation function no longer marks its errors with the canister it was built from",
     "file": "src/options.ts",
-    "search": "          resend: true,\n          canister: canister as object,\n",
-    "replace": "          resend: true,\n"
+    "search": "        resend: true,\n        canister: canister as object,\n",
+    "replace": "        resend: true,\n"
   },
   {
     "id": "ir849-method-without-canister",
@@ -2766,8 +2910,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "a mutation given an offered argument sends it as whoever is the caller when it runs, so another account pays the same transfer again",
     "file": "src/options.ts",
-    "search": "caller: again?.caller ?? internals.current(),",
-    "replace": "caller: internals.current(),"
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "replace": "      const caller = callerOf(this, key, run)"
   },
   {
     "id": "ir850-send-as-whoever",
@@ -2776,8 +2920,8 @@
     "testName": "sends an offered argument only as its sender, by send() or by the mutation",
     "why": "the offer's send() goes out as the caller current when it is pressed, not as the attempt's sender",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, attempt),",
-    "replace": "send: () => invoke(internals, { ...attempt, caller: internals.current() }),"
+    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
+    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, caller: internals.current() }),"
   },
   {
     "id": "ir850-no-dedupe-key-offered",
@@ -3061,8 +3205,8 @@
     "testName": "sends the bytes the attempt sent, whatever became of its argument since, and offers nothing once it changed",
     "why": "send() encodes the attempt's argument objects again instead of sending the bytes the attempt sent, so an argument the app changed since goes out with a new dedupe key and the ledger runs the transfer a second time",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, attempt),",
-    "replace": "send: () => invoke(internals, { ...attempt, encoded: undefined }),"
+    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
+    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, encoded: undefined }),"
   },
   {
     "id": "ir850-c1-offered-after-change",
@@ -3081,8 +3225,8 @@
     "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
     "why": "a mutation given an offered argument does not carry the write it re-sends, so nothing compares the argument with what was sent and a changed one goes out as a new transfer",
     "file": "src/options.ts",
-    "search": "          canister: canister as object,\n          again,\n",
-    "replace": "          canister: canister as object,\n"
+    "search": "        canister: canister as object,\n        again,\n",
+    "replace": "        canister: canister as object,\n"
   },
   {
     "id": "ir850-c1-arg-not-compared",
@@ -3121,8 +3265,8 @@
     "testName": "keeps a { name } canister's re-send on the canister the write went to after the name moves",
     "why": "send() resolves the canister object again, so after the ic_env cookie maps the name elsewhere it sends the transfer to a ledger that has never seen it",
     "file": "src/options.ts",
-    "search": "send: () => invoke(internals, attempt),",
-    "replace": "send: () => invoke(internals, { ...attempt, target: record.resolve() }),"
+    "search": "send: () => invoke(internals, { ...attempt, again: attempt }),",
+    "replace": "send: () => invoke(internals, { ...attempt, again: attempt, target: record.resolve() }),"
   },
   {
     "id": "ir850-c1-effective-not-kept",
@@ -3133,6 +3277,105 @@
     "file": "src/call.ts",
     "search": "if (management && !request.effective) {",
     "replace": "if (management) {"
+  },
+  {
+    "id": "960-resend-turned-away-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by mutate() is throttled",
+    "why": "a re-send of an offered write turned away with HTTP 429 rejects not_delivered with mayHaveExecuted: false, so resendOf offers nothing and the app reads a write that may have run as not executed",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-send-turned-away-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by send() is throttled",
+    "why": "again.send() turned away with HTTP 429 rejects not_delivered with mayHaveExecuted: false, though the first attempt may have run",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-rejected-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome when the re-send is rejected before any canister code ran",
+    "why": "a re-send rejected with code 1 rejects rejected with mayHaveExecuted: false, though the first attempt may have run",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "960-resend-refusal-loses-expiry",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome after a lost reply when the re-send by send() is throttled",
+    "why": "a re-send that did not run rejects outcome_unknown without the write's expiresAt, so a read-back cannot tell when no send of it can still start",
+    "file": "src/call.ts",
+    "search": "resendDidNotRun(failure, firstOf(again).expiresAt)",
+    "replace": "resendDidNotRun(failure, undefined)"
+  },
+  {
+    "id": "960-resend-refusal-offers-changed-write",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "refuses a mutation of an offered argument changed since it was sent, and sends nothing",
+    "why": "a refused re-send is kept as the write it would have sent, so after arg_changed resendOf offers the changed argument, a new write no dedupe key has been seen for",
+    "file": "src/call.ts",
+    "search": "      throw fromCanister(keptUnknown(again, error), request.canister)\n",
+    "replace": "      throw fromCanister(keptUnknown(request, error), request.canister)\n"
+  },
+  {
+    "id": "960-resend-answer-made-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "leaves a first send that is throttled not delivered, and a re-send the ledger answers known",
+    "why": "a re-send the ledger answers with an Err is made outcome_unknown, though the canister's answer is the outcome",
+    "file": "src/call.ts",
+    "search": "      !error.mayHaveExecuted &&\n      error.kind !== \"canister_err\"\n",
+    "replace": "      !error.mayHaveExecuted\n"
+  },
+  {
+    "id": "960-first-send-refusal-made-unknown",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "leaves a first send that is throttled not delivered, and a re-send the ledger answers known",
+    "why": "a first send turned away with HTTP 429 is made outcome_unknown, though nothing ran: it would no longer read as safe to send again",
+    "edits": [
+      {
+        "file": "src/call.ts",
+        "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+        "replace": "      isReactorError(error) &&\n"
+      },
+      {
+        "file": "src/call.ts",
+        "search": "keptUnknown(again, error)",
+        "replace": "keptUnknown(again ?? request, error)"
+      }
+    ]
+  },
+  {
+    "id": "960-view-resend-refusal-not-kept",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "keeps the unknown outcome when a mutation of a view pinned to the sender refuses the re-send after a switch",
+    "why": "a pinned view's mutation refuses a re-send after a switch cancelled with mayHaveExecuted: false, so the write it re-sends, which may have run, is no longer offered and its reads are not refreshed",
+    "file": "src/client.ts",
+    "search": "again === undefined ? refusal : keptUnknown(again, refusal)",
+    "replace": "refusal"
+  },
+  {
+    "id": "960-resend-expiry-not-latest",
+    "package": "core",
+    "test": "tests/resend.test.ts",
+    "testName": "carries the latest expiry of the write's sends when a later re-send does not run",
+    "why": "a re-send that may have run keeps its expiry only on itself, so a later re-send of the write that did not run carries the first send's earlier expiry, after which a read-back that finds nothing would wrongly be final",
+    "file": "src/call.ts",
+    "search": "      const first = firstOf(request)\n",
+    "replace": "      const first = request\n"
   },
   {
     "id": "did-project-not-projected",
@@ -3520,8 +3763,18 @@
     "testName": "that passed in one build runs again in the next build of the same plugin object",
     "why": "a new lifetime, and with it new passes of the live check, made only when a dev server starts, so a second build of one plugin object reuses the first build's pass and generates against a canister that changed since",
     "file": "src/index.ts",
-    "search": "      current = lifetimeAfter(current, config.command)\n",
-    "replace": "      if (config.command === \"serve\") {\n        current = lifetimeAfter(current, config.command)\n      }\n"
+    "search": "      current = lifetimeAfter(\n        current,\n        config.command === \"build\" || config.mode === \"test\"\n      )\n",
+    "replace": "      if (config.command === \"serve\") {\n        current = lifetimeAfter(\n          current,\n          config.command === \"build\" || config.mode === \"test\"\n        )\n      }\n"
+  },
+  {
+    "id": "967-vitest-failure-only-logged",
+    "package": "vite-plugin",
+    "test": "tests/generation.test.ts",
+    "testName": "fails the run's startup when a .did does not generate",
+    "why": "under Vitest (a dev server in mode test) a failed generation with failOnError omitted is only logged, so the tests run against the module a failed run left on disk",
+    "file": "src/index.ts",
+    "search": "        config.command === \"build\" || config.mode === \"test\"\n",
+    "replace": "        config.command === \"build\"\n"
   },
   {
     "id": "did-verify-old-run-writes-new",
@@ -4387,5 +4640,1801 @@
     "file": "src/options.ts",
     "search": "  try {\n    return { keys: Object.keys(object) }\n  } catch (error) {\n    return { threw: describeError(error) }\n  }\n",
     "replace": "  return { keys: Object.keys(object) }\n"
+  },
+  {
+    "id": "899-reply-budget-not-raised",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "decodes a blob reply over a million bytes with the default options",
+    "why": "decodeReply keeps candid-core's 1,000,000-element budget, so a blob reply over a million bytes (an SNS wasm) rejects invalid_reply",
+    "file": "src/call.ts",
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      limits.maxElements,"
+  },
+  {
+    "id": "899-reply-budget-unbounded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "still refuses a reply whose values take no bytes past the element budget",
+    "why": "decodeReply lifts the element budget altogether, so a few-byte reply of a million skipped nulls decodes",
+    "file": "src/call.ts",
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      Number.MAX_SAFE_INTEGER,"
+  },
+  {
+    "id": "899-max-elements-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "passes maxElements on, 1,000,000 unless given, and refuses one candid-core would refuse",
+    "why": "createClient ignores the maxElements it was given",
+    "file": "src/client.ts",
+    "search": "const maxElements = options.maxElements ?? DEFAULT_MAX_ELEMENTS",
+    "replace": "const maxElements = DEFAULT_MAX_ELEMENTS"
+  },
+  {
+    "id": "899-mock-arg-budget",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "take and return a blob over a million bytes, as a wasm upload and download do",
+    "why": "a mock decodes its arguments with the default element budget, so a test of an upload over a million bytes traps",
+    "file": "src/testing/test-client.ts",
+    "search": "          maxElements + arg.length,",
+    "replace": "          maxElements,"
+  },
+  {
+    "id": "899-budget-taken-by-blob",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "gives values that take no bytes the whole budget, beside a large blob",
+    "why": "the reply budget is the larger of the byte length and maxElements rather than their sum, so a large blob uses up the budget the values beside it were promised",
+    "file": "src/call.ts",
+    "search": "      limits.maxElements + reply.length,",
+    "replace": "      Math.max(limits.maxElements, reply.length),"
+  },
+  {
+    "id": "899-mock-reply-budget",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "return as many values as the maxElements the test client was given",
+    "why": "a mock encodes its reply with candid-core's default element budget, so a test client given a larger maxElements still cannot return a reply past 1,000,000 values",
+    "file": "src/testing/test-client.ts",
+    "search": "        maxDepth,\n        maxElements: Number.MAX_SAFE_INTEGER,\n      })",
+    "replace": "        maxDepth,\n      })"
+  },
+  {
+    "id": "881-canister-id-trusts-any-cookie",
+    "package": "core",
+    "file": "src/client.ts",
+    "search": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        network\n      ),\n",
+    "replace": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        { ...network, trustsEnv: true }\n      ),\n",
+    "test": "tests/canister-id.test.ts",
+    "testName": "says untrusted_host, with the message a call on the same target rejects with",
+    "why": "client.canisterId resolving against a network that believes the cookie everywhere, so it answers with an id a call on the same target refuses to send to"
+  },
+  {
+    "id": "881-canister-id-target-unchecked",
+    "package": "core",
+    "file": "src/client.ts",
+    "search": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        network\n      ),\n",
+    "replace": "    canisterId: (target) =>\n      resolveCanisterId(\n        target,\n        network\n      ),\n",
+    "test": "tests/canister-id.test.ts",
+    "testName": "throws a TypeError for both id and name",
+    "why": "client.canisterId passing the target to the resolver unchecked, so a target client.canister() refuses gets an answer here"
+  },
+  {
+    "id": "881-canister-id-kept",
+    "package": "core",
+    "file": "src/client.ts",
+    "search": "    canisterId: (target) =>\n      resolveCanisterId(\n        readTarget(target, \"client.canisterId()\").target,\n        network\n      ),\n",
+    "replace": "    canisterId: (() => {\n      const kept = new Map<string, ReturnType<Client[\"canisterId\"]>>()\n      return (target: CanisterTarget) => {\n        const key = JSON.stringify(target)\n        let answer = kept.get(key)\n        if (answer === undefined) {\n          answer = resolveCanisterId(\n            readTarget(target, \"client.canisterId()\").target,\n            network\n          )\n          kept.set(key, answer)\n        }\n        return answer\n      }\n    })(),\n",
+    "test": "tests/canister-id.test.ts",
+    "testName": "reads the cookie again on each call, so a new id is seen at once",
+    "why": "client.canisterId keeping its first answer per target, so after the dev server sends new ids it keeps naming the old canister while calls go to the new one"
+  },
+  {
+    "id": "877-encode-own-arity",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "gives the bytes the replica receives",
+    "why": "client.encode() wraps the variables in a list of its own instead of the call's arity rule, so a call of no or several arguments sends other bytes",
+    "file": "src/options.ts",
+    "search": "    const prepared = methodOf(record, method, call)\n    const encoded = encodeArgs(prepared.args, valuesOf(prepared, vars))\n    if (!encoded.ok) {\n      // Marked",
+    "replace": "    const prepared = methodOf(record, method, call)\n    const encoded = encodeArgs(prepared.args, [vars])\n    if (!encoded.ok) {\n      // Marked"
+  },
+  {
+    "id": "877-encode-error-unmarked",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "throws the invalid_args a call rejects with",
+    "why": "the invalid_args of client.encode() is not marked with its canister, so isReactorError(error, canister, method) is false for it",
+    "file": "src/options.ts",
+    "search": "      throw fromCanister(\n        notEncoded(\n          { method: prepared.name, canisterId: slotOf(record.resolve()) },\n          encoded\n        ),\n        canister as object\n      )",
+    "replace": "      throw notEncoded(\n        { method: prepared.name, canisterId: slotOf(record.resolve()) },\n        encoded\n      )"
+  },
+  {
+    "id": "877-resend-bytes-shared",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "is what the lost attempt sent",
+    "why": "Resend.bytes hands out the attempt's own bytes, so changing them changes what send() sends",
+    "file": "src/options.ts",
+    "search": "        return sent.slice()",
+    "replace": "        return sent"
+  },
+  {
+    "id": "877-encode-error-names-no-canister",
+    "package": "core",
+    "test": "tests/encode.test.ts",
+    "testName": "throws the invalid_args a call rejects with",
+    "why": "the invalid_args of client.encode() names no canister, unlike a call's",
+    "file": "src/options.ts",
+    "search": "{ method: prepared.name, canisterId: slotOf(record.resolve()) },\n          encoded\n        ),",
+    "replace": "{ method: prepared.name, canisterId: \"\" },\n          encoded\n        ),"
+  },
+  {
+    "id": "878-expiry-lost-call-request",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "for a call request lost in transport",
+    "why": "the ingress expiry of a call request is not read as the agent builds it, so a write whose call request was lost carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    recordExpiry(write.sent, body.ingress_expiry)\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-accepted-call",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "when the call was accepted but its polls never answered",
+    "why": "a write's call requests are not watched, so a write whose polls never answered carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    signing.set(call.arg, { sent, signal: call.signal })\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-shared-arg",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "two sends of one resendOf offer are lost at once",
+    "why": "invocations that share one encoded argument share its watch entry, so concurrent sends of one resendOf offer record into the last one's expiry and the first error carries none",
+    "file": "src/call.ts",
+    "search": "    arg: encoded.bytes.slice(),\n",
+    "replace": "    arg: encoded.bytes,\n"
+  },
+  {
+    "id": "878-expiry-cancelled-wait",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "whose wait was cancelled before its answer",
+    "why": "the ingress expiry is read only once the agent answers, so a write cancelled while its answer was awaited carries no expiresAt",
+    "file": "src/call.ts",
+    "search": "    recordExpiry(write.sent, body.ingress_expiry)\n",
+    "replace": "    if (!write.signal) recordExpiry(write.sent, body.ingress_expiry)\n"
+  },
+  {
+    "id": "878-expiry-sent-after-cancel",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "when the signal aborts inside the agent, before it is signed",
+    "why": "a call request whose signal aborted before it was signed is still sent, after the error that names no expiry for it",
+    "file": "src/call.ts",
+    "search": "    if (write.signal?.aborted) throw abortReason(write.signal)\n",
+    "replace": ""
+  },
+  {
+    "id": "878-expiry-on-answered-write",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "is absent on an answered write",
+    "why": "expiresAt put on every write error, an answered canister_err included, where the read-back is already conclusive",
+    "file": "src/errors.ts",
+    "search": "    error.mayHaveExecuted &&\n    (error.kind === \"outcome_unknown\" || error.kind === \"cancelled\")",
+    "replace": "    true"
+  },
+  {
+    "id": "876-time-from-host-clock",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "resolves the time the replica certifies",
+    "why": "client.time() answers the host's clock instead of the certified time",
+    "file": "src/options.ts",
+    "search": "      return readLeb128(raw)",
+    "replace": "      return BigInt(Date.now()) * 1_000_000n"
+  },
+  {
+    "id": "876-time-failure-unclassified",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "rejects not_delivered for a certificate that does not verify",
+    "why": "a certificate that does not verify rejects with the agent's error instead of not_delivered",
+    "file": "src/options.ts",
+    "search": "      throw classifyError(error, { ...where, mode: \"query\" })",
+    "replace": "      throw error"
+  },
+  {
+    "id": "876-time-checked-against-host-clock",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "resolves the time the replica certifies",
+    "why": "the certificate's age checked against the host's clock, so a host clock off by years makes the agent re-sync before the time is read",
+    "file": "src/options.ts",
+    "search": "{ paths: [TIME_PATH], disableTimeVerification: true }",
+    "replace": "{ paths: [TIME_PATH] }"
+  },
+  {
+    "id": "876-time-management-canister-sent",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "refuses the management canister, which routes no read_state, sending nothing",
+    "why": "client.time() sends a read_state routed by aaaaa-aa, which the IC refuses, instead of refusing the target with nothing sent",
+    "file": "src/options.ts",
+    "search": "    if (target.id === MANAGEMENT_CANISTER) {",
+    "replace": "    if (false) {"
+  },
+  {
+    "id": "973-time-not-bounded",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "rejects cancelled, code timeout, once the canister object's timeoutMs passes",
+    "why": "client.time() waits forever for a read_state that never answers, past the canister object's timeoutMs",
+    "file": "src/options.ts",
+    "search": "    if (ms === undefined) return read\n",
+    "replace": "    if (ms === undefined || ms > 0) return read\n"
+  },
+  {
+    "id": "973-time-timer-left",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "resolves through a canister object with timeoutMs, and leaves no timer behind",
+    "why": "client.time() leaves its timeoutMs timer running after the time arrives",
+    "file": "src/options.ts",
+    "search": "      clearTimeout(timer)\n    }\n  }\n\n  /**\n   * The IC's time, read for",
+    "replace": "      void timer\n    }\n  }\n\n  /**\n   * The IC's time, read for"
+  },
+  {
+    "id": "973-time-bound-not-the-targets",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "is bounded by that canister object's timeoutMs, not by another bound",
+    "why": "client.time() waits a bound of its own instead of the canister object's timeoutMs",
+    "file": "src/options.ts",
+    "search": "    const ms = record.timeoutMs\n    let timedOut = false\n",
+    "replace": "    const ms = record.timeoutMs === undefined ? undefined : 1_000\n    let timedOut = false\n"
+  },
+  {
+    "id": "973-time-bound-after-identity",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "counts the wait for the caller's identity, and sends nothing once the bound passed",
+    "why": "client.time() starts its timeoutMs only once the caller's identity arrives, so a slow identity waits past the bound",
+    "file": "src/options.ts",
+    "search": "    const read = readTime(where, () => timedOut)\n",
+    "replace": "    await internals.agentFor(internals.current().principal, where)\n    const read = readTime(where, () => timedOut)\n"
+  },
+  {
+    "id": "973-time-sent-after-timeout",
+    "package": "core",
+    "test": "tests/time.test.ts",
+    "testName": "counts the wait for the caller's identity, and sends nothing once the bound passed",
+    "why": "client.time() still sends its read_state once its timeoutMs has passed while the caller's identity was awaited",
+    "file": "src/options.ts",
+    "search": "    if (timedOut()) throw timedOutError(where, false)\n",
+    "replace": ""
+  },
+  {
+    "id": "873-foreign-skiptoken-encoded",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses another copy's skipToken",
+    "why": "queryOptions no longer refuses a symbol that is not core's skipToken, so another copy's skipToken makes a read that runs and rejects invalid_args",
+    "file": "src/options.ts",
+    "search": "    refuseForeignSymbol(vars, prepared, call)\n    const values",
+    "replace": "    const values"
+  },
+  {
+    "id": "873-reserved-refuses-symbol",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses another copy's skipToken",
+    "why": "the reserved exemption dropped, so a method whose one argument is reserved refuses a symbol, which reserved takes",
+    "file": "src/options.ts",
+    "search": "    vars !== skipToken &&\n    !takesAnything(method)\n",
+    "replace": "    vars !== skipToken\n"
+  },
+  {
+    "id": "873-provider-two-query-cores-silent",
+    "package": "react",
+    "test": "tests/two-query-cores.test.tsx",
+    "testName": "makes the provider throw in development",
+    "why": "the provider no longer checks that the client's QueryClient is react-query's, so two copies of query-core go unnoticed",
+    "file": "src/index.tsx",
+    "search": "  checkOneQueryCore(client)\n",
+    "replace": ""
+  },
+  {
+    "id": "873-provider-checks-in-production",
+    "package": "react",
+    "test": "tests/two-query-cores.test.tsx",
+    "testName": "does not make it throw in production",
+    "why": "the two-copies check runs in production too",
+    "file": "src/index.tsx",
+    "search": "  if (client.queryClient instanceof QueryClient || !isDevelopment()) return\n",
+    "replace": "  if (client.queryClient instanceof QueryClient) return\n"
+  },
+  {
+    "id": "873-querykey-encodes-foreign-skiptoken",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses another copy's skipToken",
+    "why": "queryKey no longer refuses a symbol that is not core's skipToken, so it keys a read with another copy's skipToken as $invalid",
+    "file": "src/options.ts",
+    "search": "    refuseForeignSymbol(vars, prepared, call)\n    const encoded",
+    "replace": "    const encoded"
+  },
+  {
+    "id": "880-hook-not-awaited",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          await Promise.race([hook, closed])\n",
+    "replace": "          void Promise.race([hook, closed])\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is waited for by buildStart, which the next run waits for in turn",
+    "why": "onGenerated called without being awaited, so buildStart resolves while the hook still runs and the next run can overlap it"
+  },
+  {
+    "id": "880-hook-failure-recorded",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          // canisters again and calls the hook again.\n          for (const canister of members) {\n            generatedFrom.delete(canister.name)\n",
+    "replace": "          // canisters again and calls the hook again.\n          for (const canister of members) {\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is called again on the next run after it failed, and not after it succeeded",
+    "why": "a module whose hook failed still recorded as generated, so the next run skips its unchanged .did and the failure is cleared without the hook ever succeeding"
+  },
+  {
+    "id": "880-hook-failure-swallowed",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "            failures.push({\n              canister,\n              message: `onGenerated failed for ${relativeToRoot(module)}: ${describeError(error)}`,\n            })\n",
+    "replace": "",
+    "test": "tests/on-generated.test.ts",
+    "testName": "fails the build with a hook that rejects, naming the canister and the hook",
+    "why": "a hook's throw caught and dropped, so a build whose derived step failed exits 0"
+  },
+  {
+    "id": "880-hook-not-checked",
+    "package": "vite-plugin",
+    "file": "src/options.ts",
+    "search": "  if (onGenerated !== undefined && typeof onGenerated !== \"function\") {",
+    "replace": "  if (false) {",
+    "test": "src/index.test.ts",
+    "testName": "should refuse an onGenerated that is not a function",
+    "why": "an onGenerated that is not a function accepted when the config loads, so null is skipped without a word and a string throws at the first generation"
+  },
+  {
+    "id": "880-hook-not-abandoned",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          await Promise.race([hook, closed])\n",
+    "replace": "          await hook\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is abandoned when the build closes, so a hook that never settles holds nothing, and the next run calls it again",
+    "why": "the run waiting for the hook whatever happens, so a hook that ignores its signal holds the queue of runs past its server's close and the next server never generates"
+  },
+  {
+    "id": "880-abandoned-hook-recorded",
+    "package": "vite-plugin",
+    "file": "src/index.ts",
+    "search": "          for (const canister of members) generatedFrom.delete(canister.name)\n          return undefined\n",
+    "replace": "          return undefined\n",
+    "test": "tests/on-generated.test.ts",
+    "testName": "is abandoned when the build closes, so a hook that never settles holds nothing, and the next run calls it again",
+    "why": "a module whose hook was abandoned at a close still recorded as generated, so a restarted server skips its unchanged .did and the hook never finishes"
+  },
+  {
+    "id": "882-drop-ignores-method",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "dropNextReply({ method }) loses the write's reply",
+    "why": "an armed drop spent on the next call request whatever its method, as the bare form is, so a certified read before the write loses its reply in the write's place",
+    "file": "src/testing/fake-replica.ts",
+    "search": "useUp(drops, canisterId, method_name) !== undefined",
+    "replace": "drops.shift() !== undefined"
+  },
+  {
+    "id": "882-drop-ignores-options",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "dropNextReply({ canister }) matches the canister a call names",
+    "why": "dropNextReply's options ignored, so a drop aimed at one canister loses the reply of whatever call comes next",
+    "file": "src/testing/fake-replica.ts",
+    "search": "drops.push(readMatch(\"dropNextReply\", which === undefined ? {} : which))",
+    "replace": "drops.push(readMatch(\"dropNextReply\", {}))"
+  },
+  {
+    "id": "882-bare-drop-aimed-at-updates",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "dropNextReply() with no argument still loses whatever call request comes next",
+    "why": "the bare dropNextReply() skips a certified read and waits for an update, which changes what existing tests that make a certified read first exercise",
+    "file": "src/testing/fake-replica.ts",
+    "search": "const lose = resent || useUp(drops, canisterId, method_name) !== undefined",
+    "replace": "const lose =\n      resent ||\n      (method_name !== \"icrc1_fee\" &&\n        useUp(drops, canisterId, method_name) !== undefined)"
+  },
+  {
+    "id": "875-read-waits-for-http-answer",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "a read whose request gets no HTTP answer",
+    "why": "a replicated call's request awaited without its signal (a certified read, or an update read with { update: \"idempotent\" }), so one whose request gets no HTTP answer keeps waiting after TanStack cancels it",
+    "file": "src/call.ts",
+    "search": "        ...(send === \"oneway\" ? { callSync: false } : {}),\n      }),\n      call.signal\n    )",
+    "replace": "        ...(send === \"oneway\" ? { callSync: false } : {}),\n      }),\n      undefined\n    )"
+  },
+  {
+    "id": "875-query-waits-for-http-answer",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "a read whose request gets no HTTP answer",
+    "why": "a query awaited without its signal, so a query whose request gets no HTTP answer keeps waiting after TanStack cancels it",
+    "file": "src/call.ts",
+    "search": "          effectiveTarget,\n        }),\n        call.signal\n      )",
+    "replace": "          effectiveTarget,\n        }),\n        undefined\n      )"
+  },
+  {
+    "id": "875-poll-waits-for-read-state-answer",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "ends the wait for a certified read's poll once its signal aborts",
+    "why": "a poll's read_state awaited without the signal, so a read whose poll gets no HTTP answer keeps waiting after TanStack cancels it",
+    "file": "src/call.ts",
+    "search": "          strategy,\n        }),\n        signal\n      )",
+    "replace": "          strategy,\n        }),\n        undefined\n      )"
+  },
+  {
+    "id": "899-mock-reply-unbudgeted",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "return a reply the client decodes under a maxElements below its length",
+    "why": "a mock encodes its reply with the test client's maxElements as an absolute limit, so it refuses a reply the client's decoder (maxElements plus the reply's bytes) accepts",
+    "file": "src/testing/test-client.ts",
+    "search": "        maxElements: Number.MAX_SAFE_INTEGER,",
+    "replace": "        maxElements,"
+  },
+  {
+    "id": "875-timeout-never-fires",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "a call with timeoutMs",
+    "why": "timeoutMs read but its timer never fires, so a call whose request gets no answer waits as long as fetch does",
+    "file": "src/call.ts",
+    "search": "    }, ms)\n",
+    "replace": "    }, 2147483647)\n"
+  },
+  {
+    "id": "875-timeout-sent-write-not-executed",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write whose request went out outcome_unknown",
+    "why": "a timed-out write whose request went out classified cancelled with mayHaveExecuted: false, which reads as safe to send again: a resend could run it twice",
+    "file": "src/call.ts",
+    "search": "timedOutError(where, write && out)",
+    "replace": "timedOutError(where, false)"
+  },
+  {
+    "id": "875-timeout-resend-wait-counts-as-sent",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "times out while it waits to be re-sent",
+    "why": "an attempt proven not delivered (a 429) still counted as out, so a write that times out before its re-send reports outcome_unknown instead of cancelled with nothing executed",
+    "file": "src/call.ts",
+    "search": "        out = false\n",
+    "replace": ""
+  },
+  {
+    "id": "875-timeout-resend-wait-unbounded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "times out while it waits to be re-sent",
+    "why": "the wait before a re-send not ended by the timeout, so the call rejects only when that wait ends, after timeoutMs",
+    "file": "src/call.ts",
+    "search": "          await untilAborted(\n            sleep(UPDATE_RESEND_DELAYS_MS[resends - 1]),\n            signal\n          )\n",
+    "replace": "          await sleep(UPDATE_RESEND_DELAYS_MS[resends - 1])\n"
+  },
+  {
+    "id": "875-timeout-identity-wait-unbounded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "still waiting for its caller's identity",
+    "why": "the wait for the caller's agent not ended by the timeout, so a call whose identity never arrives waits forever",
+    "file": "src/call.ts",
+    "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+    "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+  },
+  {
+    "id": "875-timeout-direct-call-ignores-target",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "rejects a write whose request went out outcome_unknown",
+    "why": "a direct call not given its canister target's timeoutMs, so it waits unbounded",
+    "file": "src/canister.ts",
+    "search": "            values: args,\n            timeoutMs,\n",
+    "replace": "            values: args,\n"
+  },
+  {
+    "id": "875-timeout-memo-ignores-timeout",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "another timeoutMs is another canister object",
+    "why": "canister objects memoized without timeoutMs, so a target with another timeoutMs gets the first object and its bound",
+    "file": "src/canister.ts",
+    "search": "\\u0000${timeoutMs as number}`",
+    "replace": "`"
+  },
+  {
+    "id": "875-timeout-value-unbounded",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "throws a TypeError for timeoutMs",
+    "why": "a timeoutMs above 2147483647 accepted, which a timer fires at once, so every call would time out immediately",
+    "file": "src/canister.ts",
+    "search": "value <= 2147483647",
+    "replace": "value <= Infinity"
+  },
+  {
+    "id": "875-timeout-mutation-ignores-own",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "rejects a mutation whose request went out outcome_unknown",
+    "why": "a mutation's own timeoutMs not passed to its call, so mutationOptions' { timeoutMs } bounds nothing",
+    "file": "src/options.ts",
+    "search": "timeoutMs: timeoutMs ?? record.timeoutMs,",
+    "replace": "timeoutMs: record.timeoutMs,"
+  },
+  {
+    "id": "875-timeout-read-ignores-target",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "rejects a read of a canister with timeoutMs cancelled",
+    "why": "a read made with queryOptions not given its canister's timeoutMs, so it waits unbounded",
+    "file": "src/options.ts",
+    "search": "          timeoutMs: record.timeoutMs,\n          resend: false,",
+    "replace": "          resend: false,"
+  },
+  {
+    "id": "875-aborted-read-waits-for-identity",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "a read aborted while it waits for its caller's identity",
+    "why": "the wait for the caller's agent not ended by a read's abort signal, so an aborted read keeps waiting for an identity that may never come",
+    "file": "src/call.ts",
+    "search": "        const agent = await untilAborted(\n          internals.agentFor(caller.principal, where),\n          signal\n        )\n",
+    "replace": "        const agent = await internals.agentFor(caller.principal, where)\n"
+  },
+  {
+    "id": "875-timeout-resend-loses-unknown",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a re-send resendOf offered outcome_unknown",
+    "why": "an offered re-send that times out before it goes out rejects cancelled with mayHaveExecuted: false, so the earlier attempt's unknown outcome is dropped and resendOf offers nothing, though that write may have run",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "875-timeout-resend-mutation-loses-unknown",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "keeps a mutation re-sending an offered write outcome_unknown",
+    "why": "a mutation re-sending an offered write that times out before it goes out rejects cancelled with mayHaveExecuted: false, dropping the earlier attempt's unknown outcome",
+    "file": "src/call.ts",
+    "search": "      again !== undefined &&\n      isReactorError(error) &&\n",
+    "replace": "      false &&\n      isReactorError(error) &&\n"
+  },
+  {
+    "id": "875-timeout-send-not-marked-resend",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "keeps a re-send resendOf offered outcome_unknown",
+    "why": "resendOf().send() not marked as a re-send of the attempt, so a timeout before it goes out drops the attempt's unknown outcome",
+    "file": "src/options.ts",
+    "search": "invoke(internals, { ...attempt, again: attempt })",
+    "replace": "invoke(internals, attempt)"
+  },
+  {
+    "id": "875-timeout-outer-abort-not-linked",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "lets a read's own abort win over the timeout",
+    "why": "a read's TanStack signal not linked to the timeout's, so a cancelled read on a canister with timeoutMs keeps waiting until the timeout and rejects with code timeout",
+    "file": "src/call.ts",
+    "search": "    outer?.addEventListener(\"abort\", end, { once: true })\n",
+    "replace": ""
+  },
+  {
+    "id": "875-timeout-pre-aborted-not-linked",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "whose signal had already aborted cancelled with no code",
+    "why": "a read whose signal had aborted before the call not seen once the timeout's signal replaces it, so it is sent and waits for the timeout",
+    "file": "src/call.ts",
+    "search": "    if (outer?.aborted) end()\n",
+    "replace": ""
+  },
+  {
+    "id": "875-timeout-expiry-lost",
+    "package": "core",
+    "test": "tests/canister.test.ts",
+    "testName": "for a write that timed out after it went out",
+    "why": "a write whose timeoutMs passed after it went out rejects outcome_unknown with no expiresAt, so a read-back cannot tell when no send of it can still start",
+    "file": "src/call.ts",
+    "search": "throw withExpiry(timedOutError(where, write && out), sends.expiresAt)",
+    "replace": "throw withExpiry(timedOutError(where, write && out), undefined)"
+  },
+  {
+    "id": "905-windows-icp-cmd-run-from-path",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "runs the installed icp-cli's bin script with Node on Windows",
+    "why": "on Windows an npm-installed icp-cli (icp.cmd) is looked up on PATH, which spawn cannot start",
+    "file": "src/env.ts",
+    "search": "  if (platform === \"win32\") {",
+    "replace": "  if (platform === \"never\") {"
+  },
+  {
+    "id": "905-enoent-reported-as-network-down",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "says icp could not be run, not that the network may be down, when no icp starts",
+    "why": "an icp that cannot be started is reported as a local network that may be down",
+    "file": "src/env.ts",
+    "search": "if ((error as { code?: unknown } | undefined)?.code === \"ENOENT\") {",
+    "replace": "if (false) {"
+  },
+  {
+    "id": "905-windows-icp-bin-run-directly",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "starts the bin script it names, so the command runs as given",
+    "why": "icpCommand hands spawn the bin script itself, which Windows cannot start and no platform runs without Node",
+    "file": "src/env.ts",
+    "search": "return { file: process.execPath, args: [bin] }",
+    "replace": "return { file: bin, args: [] }"
+  },
+  {
+    "id": "905-windows-global-npm-ignored",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "runs a global npm install's bin script on Windows when the app has none",
+    "why": "a global npm install of icp-cli on Windows is reachable only as icp.cmd, which spawn cannot start",
+    "file": "src/env.ts",
+    "search": "? icpBinIn(path.join(appData, \"npm\", \"node_modules\"))",
+    "replace": "? undefined"
+  },
+  {
+    "id": "905-windows-global-before-local",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "prefers the app's own icp-cli to a global one",
+    "why": "the global icp-cli wins over the version the app pins",
+    "file": "src/env.ts",
+    "search": "installedIcpBin(projectRoot) ??",
+    "replace": "(appData ? icpBinIn(path.join(appData, \"npm\", \"node_modules\")) : undefined) ??"
+  },
+  {
+    "id": "905-advice-same-everywhere",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "testName": "says an install is enough on Windows, and PATH elsewhere",
+    "why": "the warning tells Linux and macOS users that a local install is enough, though the plugin runs icp from PATH there",
+    "file": "src/env.ts",
+    "search": "return platform === \"win32\"",
+    "replace": "return platform !== \"win32\""
+  },
+  {
+    "id": "905-windows-timeout-kills-only-the-script",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "file": "src/env.ts",
+    "testName": "runs the icp.exe the bin script would start, so a timeout kills icp itself",
+    "why": "on Windows the plugin always runs icp-cli's bin script, so a timeout kills only the script and the icp.exe it started keeps the output pipes open, holding the page request",
+    "search": "      if (native)\n",
+    "replace": "      if (native && false)\n"
+  },
+  {
+    "id": "905-windows-nested-icp-exe-missed",
+    "package": "vite-plugin",
+    "test": "tests/icp-command.test.ts",
+    "file": "src/env.ts",
+    "testName": "finds the icp.exe inside icp-cli's own node_modules as well",
+    "why": "the plugin looks for icp.exe only beside icp-cli, not in icp-cli's own node_modules, where the bin script also looks",
+    "search": "    path.join(dir, \"..\", \"node_modules\", platformPackage, \"bin\", \"icp.exe\"),\n",
+    "replace": ""
+  },
+  {
+    "id": "qc-rest-query-not-retried",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "tries an app's REST query again in a browser page, as TanStack does, up to 3 times",
+    "why": "the client's default retry refuses every error that is not a ReactorError, so an app's REST query on the client's QueryClient loses TanStack's retries",
+    "file": "src/errors.ts",
+    "search": "  return !isServer() && failureCount < 3\n",
+    "replace": "  return false\n"
+  },
+  {
+    "id": "qc-write-invalidates-own-query-client-only",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "invalidates the reads on the QueryClient the mutation ran on, and on the client's own",
+    "why": "a write invalidates only the client's own QueryClient, so the reads of an app's nested QueryClientProvider, where the mutation ran, are never refreshed",
+    "file": "src/options.ts",
+    "search": "ran !== undefined && ran !== own ? [own, ran] : [own]",
+    "replace": "[own]"
+  },
+  {
+    "id": "i895-allow-env-config-string-truthy",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
+    "why": "allowEnvConfig no longer checked, so the text \"false\" is truthy and the ic_env cookie is believed on any page",
+    "file": "src/network.ts",
+    "search": "  checkBoolean(allowEnvConfig, \"allowEnvConfig\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-fetch-root-key-string-truthy",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a boolean option that is not a boolean, such as an environment variable's text",
+    "why": "fetchRootKey no longer checked, so the text \"false\" fetches the root key from a remote host",
+    "file": "src/network.ts",
+    "search": "  checkBoolean(fetchRootKey, \"fetchRootKey\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-network-object-unknown-key-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses an option it does not have, in the options or a network object",
+    "why": "a misspelt key of a network object (rootkey, fetchRootkey) ignored instead of refused",
+    "file": "src/network.ts",
+    "search": "  checkKeys(network, NETWORK_KEYS, \"a network object\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-create-client-unknown-option-ignored",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses an option it does not have, in the options or a network object",
+    "why": "an option createClient does not have (host beside network, allowEnvconfig) ignored instead of refused",
+    "file": "src/client.ts",
+    "search": "  checkKeys(options, OPTION_NAMES, \"createClient()\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-root-key-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
+    "why": "a rootKey given as hex text, or of the wrong length, accepted, so every query fails and every update ends outcome_unknown",
+    "file": "src/network.ts",
+    "search": "    rootKey !== undefined &&\n    !(rootKey instanceof Uint8Array",
+    "replace": "    false &&\n    !(rootKey instanceof Uint8Array"
+  },
+  {
+    "id": "i895-fetch-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function",
+    "why": "a fetch that is not a function accepted when the client is built, failing only at the first call",
+    "file": "src/client.ts",
+    "search": "  if (fetch !== undefined && typeof fetch !== \"function\") {",
+    "replace": "  if (false) {"
+  },
+  {
+    "id": "974-non-http-host-accepted",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "which no call can use, when the client is built",
+    "why": "createClient accepts a host the agent reads with a scheme other than http: or https: (localhost:4943, ftp:, data:), and every call then fails",
+    "file": "src/client.ts",
+    "search": "  if (url?.protocol === \"http:\" || url?.protocol === \"https:\") return\n",
+    "replace": "  if (url !== undefined) return\n"
+  },
+  {
+    "id": "974-scheme-less-host-not-read-on-page",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "takes an http: or https: host, and a host with no scheme on a page",
+    "why": "createClient refuses a host with no scheme on a page, which HttpAgent reads against the page's protocol",
+    "file": "src/client.ts",
+    "search": "  const url = agentUrlOf(host)\n",
+    "replace": "  const url = URL.canParse(host) ? new URL(host) : undefined\n"
+  },
+  {
+    "id": "974-env-host-not-checked",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "says where network \"env\" took a host no call can use",
+    "why": "createClient checks only a host the caller wrote, so ICP_HOST=localhost:8000 or a capacitor: page under network \"env\" builds a client every call of which fails",
+    "file": "src/client.ts",
+    "search": "  checkHost(network.host, options.network === \"env\")\n",
+    "replace": "  if (typeof options.network === \"object\") checkHost(network.host, false)\n"
+  },
+  {
+    "id": "974-env-host-source-unsaid",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "says where network \"env\" took a host no call can use",
+    "why": "the host message under network \"env\" blames a host the caller never wrote, without saying it came from the page or ICP_HOST",
+    "file": "src/client.ts",
+    "search": "  checkHost(network.host, options.network === \"env\")\n",
+    "replace": "  checkHost(network.host, false)\n"
+  },
+  {
+    "id": "i895-units-unknown-option-ignored",
+    "package": "core",
+    "test": "tests/units.test.ts",
+    "testName": "refuses an option it does not have, such as Intl's spelling",
+    "why": "formatUnits ignores maximumFractionDigits (Intl's spelling) and shows every digit",
+    "file": "src/units.ts",
+    "search": "  if (options === undefined) return\n",
+    "replace": "  return\n"
+  },
+  {
+    "id": "i895-parse-units-signed-not-boolean",
+    "package": "core",
+    "test": "tests/units.test.ts",
+    "testName": "takes signed only as a boolean, and options with no other key",
+    "why": "parseUnits takes a signed that is not a boolean, such as the text \"false\", without a word",
+    "file": "src/units.ts",
+    "search": "  checkBoolean(signed, \"parseUnits: signed\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i895-test-client-signed-in-string",
+    "package": "core",
+    "test": "tests/testing-test-client.test.ts",
+    "testName": "a boolean option that is not a boolean, and a network createClient would refuse",
+    "why": "createTestClient({ signedIn: \"false\" }) starts signed in",
+    "file": "src/testing/test-client.ts",
+    "search": "  checkBoolean(signedIn, \"createTestClient(): signedIn\")\n",
+    "replace": ""
+  },
+  {
+    "id": "i894-view-writes-as-live-caller",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "writes only as its principal",
+    "why": "a view's mutationOptions are the client's own, so a write from a render that a switch has not reached yet is signed by the new caller",
+    "file": "src/client.ts",
+    "search": "          mutationOptions: { value: mutationOptions },\n",
+    "replace": ""
+  },
+  {
+    "id": "i894-useclient-client-for-live-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "rebuilds what a component memoizes on the client after a switch",
+    "why": "useClient() returns the provider's client object for every live caller, so a useMemo, an effect or React Compiler's cache keyed on it keeps the previous caller's options and shows that caller's data after a switch",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-useclient-same-object-every-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "returns one object per caller",
+    "why": "useClient() returns the provider's client object for every live caller, so its identity does not change on a sign-in, a switch or a sign-out",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-view-run-takes-later-options",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "keeps a write pressed as one caller refused after a switch",
+    "why": "the key of a view's write leaves out its principal, so TanStack hands a run pressed before a switch the later render's options, and it is signed by the new caller",
+    "file": "src/client.ts",
+    "search": "          mutationKey: [...built.mutationKey, principal] as const,\n",
+    "replace": ""
+  },
+  {
+    "id": "i894-view-state-not-live",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "says the client's own state while its principal is the live caller",
+    "why": "the live caller's view reports the state it was made with, so useClient().authState() says anonymous for an expired session and is another object than the client's",
+    "file": "src/client.ts",
+    "search": "              return live.principal === principal ? live : state\n",
+    "replace": "              return state\n"
+  },
+  {
+    "id": "i894-useclient-batch-press-signed-by-new-caller",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "refuses a write pressed in the batch of a switch",
+    "why": "useClient() returns the provider's client for the live caller, so a press handled before a switch reached the render is signed by the new caller",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "i894-useclient-signin-then-mutate-unpinned",
+    "package": "react",
+    "test": "tests/caller-keys.test.tsx",
+    "testName": "decides a write pressed right after awaiting a sign-in by whether the signed-in render suspends",
+    "why": "useClient() returns the provider's client for the live caller, so a write pressed with the options of a render from before the sign-in is signed by the user that render never showed",
+    "file": "src/index.tsx",
+    "search": "  return shown ?? view\n",
+    "replace": "  return principal === client.caller() ? client : view\n"
+  },
+  {
+    "id": "894-view-write-refusal-unmarked",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "writes only as its principal: a write through it while someone else is current is refused and sends nothing",
+    "why": "the view's caller_changed refusal of a write is thrown without its canister's mark, so the three-argument guard misses it",
+    "file": "src/client.ts",
+    "search": "            const again = internals.offered.get(vars as object)\n            throw fromCanister(",
+    "replace": "            const again = internals.offered.get(vars as object)\n            throw ((error: unknown, _canister: object) => error)("
+  },
+  {
+    "id": "893-write-caller-read-when-sent-offline",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write paused offline when the account is switched before it is sent, and sends nothing",
+    "why": "a write TanStack paused offline goes out as whoever is signed in when it resumes, not as the caller current when mutate() was called (#893)",
+    "file": "src/options.ts",
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "replace": "      const caller = again?.caller ?? internals.current()"
+  },
+  {
+    "id": "893-write-caller-read-when-sent-scope",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write queued behind its scope when the account is switched before its turn, and sends nothing",
+    "why": "a write queued behind its mutation scope goes out as whoever is signed in at its turn (#893)",
+    "file": "src/options.ts",
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "replace": "      const caller = again?.caller ?? internals.current()"
+  },
+  {
+    "id": "893-write-caller-no-context-fallback",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write whose mutationFn gets no run context",
+    "why": "without a run context (TanStack before 5.89), a run whose onMutate read no caller for its options is sent as whoever is current, not refused (#893)",
+    "file": "src/options.ts",
+    "search": "      return startedMethods.has(prepared) ? undefined : internals.current()",
+    "replace": "      return internals.current()"
+  },
+  {
+    "id": "893-write-caller-retry-read-when-sent",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses the retry of a write when the account is switched after the first attempt failed",
+    "why": "an app's TanStack retry of a write goes out as whoever is signed in when it retries (#893)",
+    "file": "src/options.ts",
+    "search": "      const caller = again?.caller ?? callerOf(this, key, run)",
+    "replace": "      const caller = again?.caller ?? internals.current()"
+  },
+  {
+    "id": "893-write-caller-replaced-onmutate-sent-as-current",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write paused offline across an account switch when an onMutate of the app's replaces the given one",
+    "why": "the caller of a run is read only by the given onMutate, so a write whose onMutate the app replaced (TanStack's optimistic-update recipe) goes out as whoever is signed in when it runs (#893)",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "          mutationCallers.set(context, caller)\n",
+        "replace": ""
+      },
+      {
+        "file": "src/options.ts",
+        "search": "        return internals.mutationCallers.get(key) ?? run?.caller\n",
+        "replace": "        return (\n          internals.mutationCallers.get(key) ?? run?.caller ?? internals.current()\n        )\n"
+      }
+    ]
+  },
+  {
+    "id": "893-write-caller-replaced-onmutate-not-captured",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "sends a write paused offline as its caller when an onMutate of the app's replaces the given one",
+    "why": "the client's MutationCache no longer reads the caller of each run, so a write whose onMutate the app replaced is refused though nobody switched (#893)",
+    "file": "src/client.ts",
+    "search": "          mutationCallers.set(context, caller)\n",
+    "replace": ""
+  },
+  {
+    "id": "893-write-caller-restored-sent-as-current",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write TanStack restored from a persister",
+    "why": "a mutation restored from a persister, for which TanStack runs no onMutate, goes out as whoever is signed in when it resumes (#893)",
+    "file": "src/options.ts",
+    "search": "        return internals.mutationCallers.get(key) ?? run?.caller\n",
+    "replace": "        return (\n          internals.mutationCallers.get(key) ?? run?.caller ?? internals.current()\n        )\n"
+  },
+  {
+    "id": "893-write-caller-leftover-taken",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "never sends a write with no run context as the caller of a run whose mutationFn never ran",
+    "why": "without a run context, the caller our onMutate read is kept by method instead of by the run's options object, so a run goes out as the caller of an abandoned one (#893)",
+    "edits": [
+      {
+        "file": "src/options.ts",
+        "search": "            const kept = callersByOptions.get(this)\n            callersByOptions.set(\n              this,\n",
+        "replace": "            const kept = callersByOptions.get(prepared)\n            if (kept === undefined) callersByOptions.set(prepared, { caller, runs: 1 })\n            else callersByOptions.set(\n              {},\n"
+      },
+      {
+        "file": "src/options.ts",
+        "search": "          ? callersByOptions.get(options)",
+        "replace": "          ? callersByOptions.get(prepared)"
+      }
+    ]
+  },
+  {
+    "id": "893-write-caller-other-client-takes-own-run",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "never sends a run on another QueryClient (no run context) as the caller of a run of the client's own cache",
+    "why": "without a run context, a run on another QueryClient is matched to a pending run of the client's own cache by anything but its options object, and goes out as that run's caller (#893)",
+    "file": "src/options.ts",
+    "search": "              mutation.options === options &&\n              mutation.state.status === \"pending\"\n",
+    "replace": "              mutation.state.status === \"pending\"\n"
+  },
+  {
+    "id": "893-mutation-cache-reads-every-caller",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "reads no caller, and builds no auth, for a mutation of the app's on the client's QueryClient",
+    "why": "the client's MutationCache reads the caller of every mutation, so a mutation of the app's builds the auth and fails when it cannot be built (#893)",
+    "file": "src/client.ts",
+    "search": "        if (typeof fn !== \"function\" || !ownMutationFns.has(fn)) return",
+    "replace": "        if (typeof fn !== \"function\") return"
+  },
+  {
+    "id": "893-shared-options-settled-run-counted",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "never sends a write with no run context as the caller of a settled run that shares its options (one observer, TanStack before 5.89)",
+    "why": "a run of the client's own cache that already settled still counts among those a mutationFn called on its observer's shared options may run for, so the pending run's own caller is refused",
+    "file": "src/options.ts",
+    "search": "              mutation.options === options &&\n              mutation.state.status === \"pending\"\n",
+    "replace": "              mutation.options === options\n"
+  },
+  {
+    "id": "893-shared-options-own-runs-not-told-apart",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses a write with no run context whose observer's pending runs started as different callers (TanStack before 5.89)",
+    "why": "pending runs of one observer that started as different callers share one options object, and mutationFn sends as the first one's caller",
+    "file": "src/options.ts",
+    "search": "          ? first\n          : undefined",
+    "replace": "          ? first\n          : first"
+  },
+  {
+    "id": "893-shared-options-other-runs-not-told-apart",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)",
+    "why": "on another QueryClient, a later run's onMutate replaces the caller kept for options an earlier pending run shares, so the earlier run is sent as the later caller",
+    "file": "src/options.ts",
+    "search": "                    caller: sameCaller(kept.caller, caller)\n                      ? caller\n                      : undefined,",
+    "replace": "                    caller,"
+  },
+  {
+    "id": "893-shared-options-never-counted-out",
+    "package": "core",
+    "test": "tests/options.test.ts",
+    "testName": "refuses writes with no run context whose options' pending runs started as different callers, until they settle (another QueryClient)",
+    "why": "onSettled no longer counts a settled run out of its options, so once two callers shared an observer every later write of it is refused",
+    "file": "src/options.ts",
+    "search": "        if (kept !== undefined && kept.runs > 0) {",
+    "replace": "        if (false) {"
+  },
+  {
+    "id": "894-view-write-caller-unread",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "sends a view's write as its caller when an onMutate of the app's replaces the given one",
+    "why": "a view's mutation function is not one of the client's own, so its MutationCache reads no caller for its runs and a write whose onMutate the app replaced is refused as not known",
+    "file": "src/client.ts",
+    "search": "        ownMutationFns.add(mutationFn)\n",
+    "replace": ""
+  },
+  {
+    "id": "977-view-hit-reads-caller",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "hands back a view it already made without reading who calls",
+    "why": "viewAs reads the live caller on every call, so a signed-in useClient() render converts its principal to text three times in React's production build, where once is enough",
+    "file": "src/client.ts",
+    "search": "    let view = byPrincipal.get(principal)\n",
+    "replace": "    current()\n    let view = byPrincipal.get(principal)\n"
+  },
+  {
+    "id": "977-view-hit-prunes",
+    "package": "core",
+    "test": "tests/client-pinned.test.ts",
+    "testName": "keeps the view of a user who signed out until it makes a view for someone else",
+    "why": "a view already made prunes the others again, from the last caller the client told its listeners about, so a render after a sign-out drops the user's view and their sign-in back makes a new one",
+    "file": "src/client.ts",
+    "search": "    let view = byPrincipal.get(principal)\n",
+    "replace": "    for (const kept of byPrincipal.keys()) {\n      if (kept !== principal && kept !== notified.principal && kept !== ANONYMOUS) byPrincipal.delete(kept)\n    }\n    let view = byPrincipal.get(principal)\n"
+  },
+  {
+    "id": "env-cookie-key-on-mainnet",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "does not take the cookie's key with allowEnvConfig: true either",
+    "why": "with allowEnvConfig: true, \"env\" takes the ic_env cookie's root key for a mainnet host, so a forged replica's answers verify",
+    "file": "src/network.ts",
+    "search": "      trust.trustsEnv && !isMainnetHostname(agentHostnameOf(host))",
+    "replace": "      trust.trustsEnv"
+  },
+  {
+    "id": "env-opt-in-under-shared-parent",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on",
+    "why": "allowEnvConfig: true accepted on a page under ic0.app, github.dev, gitpod.io, loca.lt or devtunnels.ms, which are not public suffixes, so a stranger's page can write the cookie it believes",
+    "file": "src/network.ts",
+    "search": "  if (parent === undefined) return\n",
+    "replace": "  return\n"
+  },
+  {
+    "id": "961-localtunnel-parent-not-shared",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a localtunnel",
+    "why": "loca.lt left out of the shared parents, so allowEnvConfig: true on a *.loca.lt page believes a cookie any other tunnel can set for it",
+    "file": "src/network.ts",
+    "search": "  \"loca.lt\",\n  \"devtunnels.ms\",\n]",
+    "replace": "  \"devtunnels.ms\",\n]"
+  },
+  {
+    "id": "961-dev-tunnel-parent-not-shared",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a VS Code dev tunnel",
+    "why": "devtunnels.ms left out of the shared parents, so allowEnvConfig: true on a *.devtunnels.ms page believes a cookie any other dev tunnel can set for it",
+    "file": "src/network.ts",
+    "search": "  \"loca.lt\",\n  \"devtunnels.ms\",\n]",
+    "replace": "  \"loca.lt\",\n]"
+  },
+  {
+    "id": "env-cookie-http-identity-provider",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "ignores a trusted cookie's http: provider on a page that is not local",
+    "why": "the ic_env cookie's http: Internet Identity URL taken on a page that is not local",
+    "file": "src/network.ts",
+    "search": "(protocol === \"http:\" && pageIsLocal())",
+    "replace": "protocol === \"http:\""
+  },
+  {
+    "id": "912-no-expiry-timer",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "tells the client's listeners when it ends, with no notification of the auth",
+    "why": "no timer for the session's expiresAtMs, so a session that ends by the clock tells nobody and useAuth() keeps saying signed-in",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "    unsubscribeAuth = built.subscribe(onAuthChange)\n    scheduleExpiry()\n",
+        "replace": "    unsubscribeAuth = built.subscribe(onAuthChange)\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "    scheduleExpiry()\n    if (state === notified) return\n",
+        "replace": "    if (state === notified) return\n"
+      }
+    ]
+  },
+  {
+    "id": "912-expiry-delay-uncapped",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "reaches a deadline past setTimeout's longest delay in steps",
+    "why": "the delay handed to setTimeout uncapped, so a session that ends more than 2^31-1 ms away fires at once",
+    "file": "src/client.ts",
+    "search": "      Math.min(delay, MAX_TIMER_MS)\n    )",
+    "replace": "      delay\n    )"
+  },
+  {
+    "id": "912-expiry-timer-for-a-past-end",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "sets no timer for an end that passed while the auth still says signed in",
+    "why": "a timer set for an end that already passed while the auth still says signed-in, which fires and sets itself again forever",
+    "file": "src/client.ts",
+    "search": "    if (delay <= 0) return\n",
+    "replace": ""
+  },
+  {
+    "id": "912-expiry-timer-kept-after-dispose",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "moves the timer to a new session's end, and drops it on a sign-out and on dispose()",
+    "why": "dispose() leaves the expiry timer set",
+    "file": "src/client.ts",
+    "search": "      agents.clear()\n      clearTimeout(expiryTimer)\n",
+    "replace": "      agents.clear()\n"
+  },
+  {
+    "id": "912-read-change-not-told",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "is told to the listeners once, in a microtask, from caller() and from authState()",
+    "why": "caller() computes another principal than the listeners were told about and tells nobody",
+    "file": "src/client.ts",
+    "search": "    if (caller.principal !== notified.principal) catchUp()\n",
+    "replace": ""
+  },
+  {
+    "id": "912-auth-factory-throw-escapes",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "still answers a public read, and refuses a write as unauthenticated",
+    "why": "what the auth factory threw escapes from caller() and the read paths, so a page whose storage is blocked cannot read public data",
+    "file": "src/client.ts",
+    "search": "      authFailure = { cause }\n",
+    "replace": "      authFailure = { cause }\n      throw cause\n"
+  },
+  {
+    "id": "912-auth-factory-retried",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "runs the client anonymous, calls the factory once, and says so once in development",
+    "why": "a factory that threw is called again on every read (every render)",
+    "file": "src/client.ts",
+    "search": "      auth !== undefined ||\n      authFailure !== undefined ||\n",
+    "replace": "      auth !== undefined ||\n"
+  },
+  {
+    "id": "912-sign-in-hides-factory-error",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "runs the client anonymous, calls the factory once, and says so once in development",
+    "why": "signIn() after a factory that threw rejects with the server-side error instead of what the factory threw",
+    "file": "src/client.ts",
+    "search": "    if (authFailure !== undefined) throw authFailure.cause\n",
+    "replace": ""
+  },
+  {
+    "id": "912-test-auth-never-expires-by-clock",
+    "package": "core",
+    "test": "tests/testing-test-auth.test.ts",
+    "testName": "expires by the clock at expiresAtMs",
+    "why": "the test auth's status stays signed-in past its expiresAtMs, unlike AuthClient's, so tests cannot see a session end by the clock",
+    "file": "src/testing/test-auth.ts",
+    "search": "      Date.now() >= status.expiresAtMs",
+    "replace": "      Date.now() < 0"
+  },
+  {
+    "id": "912-use-auth-drops-expires-at",
+    "package": "react",
+    "test": "tests/auth.test.tsx",
+    "testName": "renders again with expired when the session ends, with no user activity",
+    "why": "useAuth() leaves expiresAt out of what it returns",
+    "file": "src/index.tsx",
+    "search": "      ...(state.expiresAt === undefined ? {} : { expiresAt: state.expiresAt }),\n",
+    "replace": ""
+  },
+  {
+    "id": "972-non-auth-result-thrown-on-every-read",
+    "package": "core",
+    "test": "tests/client-session.test.ts",
+    "testName": "an auth factory that returns a Promise",
+    "why": "the factory's result checked after the try that records a failure, so a factory that returns a Promise is called again on every read and its TypeError escapes from each",
+    "edits": [
+      {
+        "file": "src/client.ts",
+        "search": "      built = checkAuth(made)\n",
+        "replace": "      built = made as AuthLike\n"
+      },
+      {
+        "file": "src/client.ts",
+        "search": "    auth = built\n    const initial = stateOf(built)\n",
+        "replace": "    built = checkAuth(built)\n    auth = built\n    const initial = stateOf(built)\n"
+      }
+    ]
+  },
+  {
+    "id": "icp0-cookie-ids-untrusted",
+    "package": "core",
+    "test": "tests/env-canister-id.test.ts",
+    "testName": "resolves from the cookie for \"env\" and \"ic\" on",
+    "why": "a canister's own <id>.icp0.io page, a public suffix, does not believe its own asset canister's cookie, so { name } fails on icp-cli's production path",
+    "file": "src/network.ts",
+    "search": "    pageIsIcp0Canister()\n    ? { trustsEnv: true, envIdsOnly: true }",
+    "replace": "    false\n    ? { trustsEnv: true, envIdsOnly: true }"
+  },
+  {
+    "id": "icp0-cookie-root-key-taken",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "believes the cookie's ids only",
+    "why": "the cookie believed by default on an icp0.io page hands over its root key too, where the agent must keep mainnet's",
+    "file": "src/network.ts",
+    "search": "      trust.trustsEnv && !isMainnetHostname(agentHostnameOf(host))",
+    "replace": "      trust.trustsEnv"
+  },
+  {
+    "id": "icp0-cookie-http-identity-provider",
+    "package": "core",
+    "test": "tests/client-auth-network.test.ts",
+    "testName": "takes an icp0.io canister's cookie provider over https: only",
+    "why": "an icp0.io page's cookie hands an http: Internet Identity URL to the auth factory",
+    "file": "src/network.ts",
+    "search": "(protocol === \"http:\" && pageIsLocal())",
+    "replace": "protocol === \"http:\""
+  },
+  {
+    "id": "icp0-label-not-a-canister",
+    "package": "core",
+    "test": "tests/env-canister-id.test.ts",
+    "testName": "is refused on a label that is not a canister id",
+    "why": "any name directly under icp0.io treated as a canister's own page, a label that is not a canister id included",
+    "file": "src/network.ts",
+    "search": "principalProblem(match[1]!) === undefined",
+    "replace": "true"
+  },
+  {
+    "id": "env-lan-page-falls-back-to-mainnet",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "routes through its own origin, never mainnet, on",
+    "why": "\"env\" on a LAN address, a *.local/*.test/*.internal name or a tunnel falls back to mainnet, so a dev app's local ids and sign-in reach mainnet",
+    "file": "src/network.ts",
+    "search": "    isRemoteDevPage(origin, hostname)\n",
+    "replace": "    REMOTE_DEV_SUFFIXES.slice(0, 2).some((suffix) => hostname.endsWith(suffix))\n"
+  },
+  {
+    "id": "962-tailscale-address-not-private",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a Tailscale address",
+    "why": "100.64/10 left out of the private addresses, so \"env\" on a Tailscale address falls back to mainnet with a dev app's local ids",
+    "file": "src/network.ts",
+    "search": "|169\\.254|100\\.(?:6[4-9]|[7-9]\\d|1[01]\\d|12[0-7]))",
+    "replace": "|169\\.254)"
+  },
+  {
+    "id": "962-tailscale-range-too-wide",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "still falls back on an address just past 100.64/10",
+    "why": "all of 100/8 read as Tailscale's 100.64/10, so a public address next to it routes to the page",
+    "file": "src/network.ts",
+    "search": "|169\\.254|100\\.(?:6[4-9]|[7-9]\\d|1[01]\\d|12[0-7]))",
+    "replace": "|169\\.254|100\\.\\d{1,3})"
+  },
+  {
+    "id": "962-ts-net-not-remote",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a Tailscale name",
+    "why": "*.ts.net left out of the remote dev names, so \"env\" on a tailnet name falls back to mainnet",
+    "file": "src/network.ts",
+    "search": "  \".ts.net\",\n",
+    "replace": ""
+  },
+  {
+    "id": "962-dev-tunnel-not-remote",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a VS Code dev tunnel",
+    "why": "*.devtunnels.ms left out of the remote dev names, so \"env\" on a VS Code dev tunnel falls back to mainnet",
+    "file": "src/network.ts",
+    "search": "  \".devtunnels.ms\",\n",
+    "replace": ""
+  },
+  {
+    "id": "962-dotless-name-not-remote",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "never mainnet, on a LAN name with no dot",
+    "why": "a LAN name with no dot (http://devbox:5173) not read as a dev page, so \"env\" there falls back to mainnet",
+    "file": "src/network.ts",
+    "search": "  REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix)) ||\n  (WEB_ORIGIN.test(origin) &&\n    !hostname.includes(\".\") &&\n    !hostname.startsWith(\"[\"))\n",
+    "replace": "  REMOTE_DEV_SUFFIXES.some((suffix) => hostname.endsWith(suffix))\n"
+  },
+  {
+    "id": "962-ipv6-read-as-dotless-name",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "still falls back on an IPv6 global address",
+    "why": "an IPv6 address, which has no dot, read as a LAN name, so any IPv6 page routes to itself",
+    "file": "src/network.ts",
+    "search": "    !hostname.includes(\".\") &&\n    !hostname.startsWith(\"[\"))\n",
+    "replace": "    !hostname.includes(\".\"))\n"
+  },
+  {
+    "id": "962-extension-page-read-as-lan-name",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "still falls back on a Chrome extension's page",
+    "why": "any page whose name has no dot read as a LAN name, scheme and all, so \"env\" in a browser extension or a desktop app routes its calls to its own origin instead of the fallback",
+    "file": "src/network.ts",
+    "search": "  (WEB_ORIGIN.test(origin) &&\n    !hostname.includes(\".\") &&\n",
+    "replace": "  (!hostname.includes(\".\") &&\n"
+  },
+  {
+    "id": "962-dev-tunnel-parent-not-shared",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a VS Code dev tunnel",
+    "why": "devtunnels.ms left out of the shared parents, so allowEnvConfig: true on a *.devtunnels.ms page, which \"env\" routes through the page, takes the root key of a cookie any other dev tunnel can set",
+    "file": "src/network.ts",
+    "search": "  \"loca.lt\",\n  \"devtunnels.ms\",\n]",
+    "replace": "  \"loca.lt\",\n]"
+  },
+  {
+    "id": "vite-non-loopback-page-unwarned",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "warns once when a page is loaded by a host that is not loopback",
+    "why": "the dev server serves a page to a host that is not loopback without saying that \"env\" is for localhost pages",
+    "file": "src/dev-environment.ts",
+    "search": "!isLoopbackHost(req.headers.host)",
+    "replace": "false"
+  },
+  {
+    "id": "975-page-dot-kept",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "refuses allowEnvConfig: true on a canister's ic0.app domain with a trailing dot",
+    "why": "the page's hostname keeps its trailing dot, so victim.ic0.app. is not under ic0.app and allowEnvConfig: true is not refused there",
+    "file": "src/network.ts",
+    "search": "    : withoutRootDot(hostname) || undefined\n",
+    "replace": "    : hostname\n"
+  },
+  {
+    "id": "975-agent-dot-kept",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "does not take the cookie's key with allowEnvConfig: true either, on a canister's icp0.io domain with a trailing dot",
+    "why": "the agent host keeps its trailing dot, so a page routed through <id>.icp0.io. is not a mainnet host and takes the cookie's root key",
+    "file": "src/network.ts",
+    "search": "  return hostname === undefined ? undefined : withoutRootDot(hostname)\n",
+    "replace": "  return hostname\n"
+  },
+  {
+    "id": "975-icp0-dotted-page-believed",
+    "package": "core",
+    "test": "tests/network.test.ts",
+    "testName": "believes nothing by default on <id>.icp0.io with a trailing dot",
+    "why": "<id>.icp0.io. matched with its dot dropped, so the page believes the cookie's ids by default on a name whose Public Suffix List protection is not checked",
+    "file": "src/network.ts",
+    "search": "ICP0_CANISTER_PAGE.exec(parsedHostnameOf(pageOrigin()) ?? \"\")",
+    "replace": "ICP0_CANISTER_PAGE.exec(pageHostnameOf(pageOrigin()) ?? \"\")"
+  },
+  {
+    "id": "949-time-path-other-realm",
+    "package": "core",
+    "test": "tests/time-realm.test.ts",
+    "testName": "resolves the replica's time with signedIn: true",
+    "why": "builds the time path from TextEncoder's bytes as they are: under jsdom they are not the global Uint8Array's, the CBOR encoder sends the label as a map, and a signed-in caller's client.time() is refused",
+    "file": "src/options.ts",
+    "search": "const TIME_PATH = [Uint8Array.from(new TextEncoder().encode(\"time\"))]",
+    "replace": "const TIME_PATH = [new TextEncoder().encode(\"time\")]"
+  },
+  {
+    "id": "980-deleted-module-not-regenerated",
+    "package": "vite-plugin",
+    "test": "tests/generation.test.ts",
+    "testName": "generates again a canister whose module or envelope was deleted",
+    "why": "a rebuild skips a canister whose .did is unchanged without looking for its module, so after the module is deleted every rebuild of vite build --watch fails until the .did changes",
+    "file": "src/index.ts",
+    "search": "          outputFiles(canister).some((file) => !fs.existsSync(file))\n",
+    "replace": "          false\n"
+  },
+  {
+    "id": "980-deleted-envelope-not-regenerated",
+    "package": "vite-plugin",
+    "test": "tests/generation.test.ts",
+    "testName": "generates again a canister whose module or envelope was deleted",
+    "why": "a rebuild looks for the module but not the envelope, so a deleted envelope is not written again while the .did is unchanged",
+    "file": "src/index.ts",
+    "search": "          outputFiles(canister).some((file) => !fs.existsSync(file))\n",
+    "replace": "          !fs.existsSync(outputFiles(canister)[0])\n"
+  },
+  {
+    "id": "980-icp-group-not-killed",
+    "package": "vite-plugin",
+    "test": "tests/icp-timeout.test.ts",
+    "testName": "is killed at the timeout with the process it started",
+    "why": "icp shares the dev server's process group, so the timeout kills only npm's icp script and the native icp it started keeps running",
+    "file": "src/env.ts",
+    "search": "      detached: group,\n",
+    "replace": "      detached: false,\n"
+  },
+  {
+    "id": "980-configured-canister-looked-up",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should not ask icp for a canister whose canisterId is configured, but for internet_identity",
+    "why": "icp is asked for the ID of a canister whose canisterId is configured, which wins anyway: one more icp process per page load while detection is incomplete",
+    "file": "src/dev-environment.ts",
+    "search": "    (name) => name === \"internet_identity\" || !configuredCanisterIds.get(name)\n",
+    "replace": "    () => true\n"
+  },
+  {
+    "id": "980-configured-ii-not-looked-up",
+    "package": "vite-plugin",
+    "test": "src/index.test.ts",
+    "testName": "should not ask icp for a canister whose canisterId is configured, but for internet_identity",
+    "why": "leaves a configured internet_identity out of the lookups too: icp is never asked for it, so the cookie names icp-cli's built-in Internet Identity beside the project's own",
+    "file": "src/dev-environment.ts",
+    "search": "    (name) => name === \"internet_identity\" || !configuredCanisterIds.get(name)\n",
+    "replace": "    (name) => !configuredCanisterIds.get(name)\n"
+  },
+  {
+    "id": "913-strict-mode-signs-in-twice",
+    "package": "core",
+    "test": "tests/redirect-sign-in.test.ts",
+    "testName": "is one ceremony when signIn() runs twice on each load",
+    "why": "React's StrictMode runs the sign-in route's effect twice, and each call signs in: the redirect carries two sign-ins, and on the load that comes back both fail, so the user stays signed out",
+    "file": "src/client.ts",
+    "search": "      if (started) return started.done\n",
+    "replace": ""
+  },
+  {
+    "id": "913-options-compared-by-identity",
+    "package": "core",
+    "test": "tests/redirect-sign-in.test.ts",
+    "testName": "is one ceremony when signIn() runs twice on each load",
+    "why": "each run of an effect builds its own options object, so comparing the objects themselves joins nothing and StrictMode's two calls sign in twice",
+    "file": "src/client.ts",
+    "search": "  if (typeof a !== \"object\" || typeof b !== \"object\" || !a || !b) return false\n",
+    "replace": "  if (typeof a !== \"object\" || typeof b !== \"object\" || !a || !b || a) return false\n"
+  },
+  {
+    "id": "913-joined-after-the-run",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "signs in again for a call in a later run, or with other options",
+    "why": "a sign-in in flight swallows the next click's, so a user who clicks again while the first ceremony is open gets nothing new from the auth",
+    "file": "src/client.ts",
+    "search": "        void Promise.resolve().then(() => (signInsThisRun = []))\n",
+    "replace": ""
+  },
+  {
+    "id": "913-other-options-joined",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "signs in again for a call in a later run, or with other options",
+    "why": "a second sign-in with other options in the same run is taken for the first, so the auth never sees what it asked for",
+    "file": "src/client.ts",
+    "search": "  if (Object.is(a, b)) return true\n",
+    "replace": "  if (a !== null) return true\n"
+  },
+  {
+    "id": "913-inherited-option-joined",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "signs in again for a call in a later run, or with other options",
+    "why": "options are compared by keys the second object only inherits, so a call whose own options differ is taken for the one before it",
+    "file": "src/client.ts",
+    "search": "        Object.prototype.hasOwnProperty.call(second, key) &&\n",
+    "replace": "        key in second &&\n"
+  },
+  {
+    "id": "913-only-the-last-joined",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "joins each sign-in of the run, not only the last",
+    "why": "StrictMode runs every effect of a subtree and then all of them again, so with two sign-in effects a comparison with the last sign-in alone joins neither, and each signs in twice",
+    "file": "src/client.ts",
+    "search": "      signInsThisRun.push({ options: signInOptions, done })\n",
+    "replace": "      signInsThisRun = [{ options: signInOptions, done }]\n"
+  },
+  {
+    "id": "913-run-ended-by-queueMicrotask",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "ends the run with a promise job",
+    "why": "fake timers that replace queueMicrotask, as Jest's do by default, never end the run, so every later sign-in with the same options gets the first one's settled promise and never reaches the auth",
+    "file": "src/client.ts",
+    "search": "        void Promise.resolve().then(() => (signInsThisRun = []))\n",
+    "replace": "        queueMicrotask(() => (signInsThisRun = []))\n"
+  },
+  {
+    "id": "913-joined-after-dispose",
+    "package": "core",
+    "test": "tests/client.test.ts",
+    "testName": "rejects a sign-in after dispose(), even with the options of one earlier in the run",
+    "why": "a sign-in after dispose() with the options of one earlier in the run is joined to it instead of rejecting, so the caller waits on a client that is gone",
+    "file": "src/client.ts",
+    "search": "      signInsThisRun = []\n      agents.clear()\n",
+    "replace": "      agents.clear()\n"
+  },
+  {
+    "id": "914-nonce-sent-through-the-client",
+    "package": "core",
+    "test": "tests/identity-attributes.test.ts",
+    "testName": "mints the nonce through a client built with an explicit AnonymousIdentity, which identity: anonymous refuses",
+    "why": "a client built with identity: \"anonymous\" sends an update, so the refusal the auth guide works around by minting the nonce through an AnonymousIdentity client no longer holds",
+    "file": "src/call.ts",
+    "search": "  if (write && !caller.authenticated) {",
+    "replace": "  if (false && write && !caller.authenticated) {"
+  },
+  {
+    "id": "914-sender-info-left-unsigned",
+    "package": "core",
+    "test": "tests/identity-attributes.test.ts",
+    "testName": "sends an AttributesIdentity's attributes as the call's sender_info, signed by the identity it wraps",
+    "why": "the fake replica checks a call's signature over its content without sender_info, so it refuses every call that carries identity attributes",
+    "file": "src/testing/fake-replica.ts",
+    "search": "      IC_REQUEST_DOMAIN_SEPARATOR,\n      requestIdOf(envelope.content)\n    )\n    const signed",
+    "replace": "      IC_REQUEST_DOMAIN_SEPARATOR,\n      requestIdOf({ ...envelope.content, sender_info: undefined })\n    )\n    const signed"
+  },
+  {
+    "id": "914-lower-case-result-not-unwrapped",
+    "package": "core",
+    "test": "tests/identity-attributes.test.ts",
+    "testName": "resolves accepted attributes, rejects refused ones as a canister_err that names the library's error, and a trap as rejected",
+    "why": "a result variant spelled ok/err, as a Motoko Result is, is read as Ok/Err, so an accepted bundle rejects as if the canister had refused it",
+    "file": "src/call.ts",
+    "search": "    result: \"Ok\" in arms ? { ok: \"Ok\", err: \"Err\" } : { ok: \"ok\", err: \"err\" },",
+    "replace": "    result: { ok: \"Ok\", err: \"Err\" },"
+  },
+  {
+    "id": "914-anonymous-identity-refused",
+    "package": "core",
+    "test": "tests/identity-attributes.test.ts",
+    "testName": "mints the nonce through a client built with an explicit AnonymousIdentity, which identity: anonymous refuses",
+    "why": "a client built with an explicit AnonymousIdentity is refused an update, so the auth guide's nonce, an update made as the anonymous principal, cannot go through the client",
+    "file": "src/client.ts",
+    "search": "            principal: fixedIdentity.getPrincipal().toText(),\n            authenticated: true,",
+    "replace": "            principal: fixedIdentity.getPrincipal().toText(),\n            authenticated: fixedIdentity.getPrincipal().toText() !== ANONYMOUS,"
+  },
+  {
+    "id": "914-sign-in-deferred",
+    "package": "core",
+    "test": "tests/identity-attributes.test.ts",
+    "testName": "builds its auth and asks it to sign in before signIn() returns, so the guide reads the AuthClient right after",
+    "why": "signIn() builds the auth and asks it to sign in only after a promise job, so the auth guide's read of the AuthClient right after the call finds none, and a window transport opens outside the click",
+    "file": "src/client.ts",
+    "search": "const source = authFor(\"signIn\")",
+    "replace": "await Promise.resolve()\n      const source = authFor(\"signIn\")"
+  },
+  {
+    "id": "881-lost-network-cookie-sent",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "clears the cookie, reloads open pages and says to restart once the network stops",
+    "why": "a network that stopped keeps its cookie, so page loads keep sending the canister IDs a network started again may have given to other canisters",
+    "file": "src/dev-environment.ts",
+    "search": "      cookie: toState(null).cookie,\n",
+    "replace": ""
+  },
+  {
+    "id": "881-lost-network-redetected",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "clears the cookie, reloads open pages and says to restart once the network stops",
+    "why": "a lost network is detected again on the next page load, so the plugin takes the restarted network's IDs and merges the old ones back in, where the owner's rule is that the dev server restart is the signal",
+    "file": "src/dev-environment.ts",
+    "search": "      if (state?.lost) return Promise.resolve(state)\n",
+    "replace": ""
+  },
+  {
+    "id": "881-no-network-cookie-kept",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "follows a network that was down when vite dev started, and notices it stop",
+    "why": "a page load with no cookie to send leaves the browser's ic_env cookie alone, so a cookie kept from an earlier dev server is still believed",
+    "file": "src/dev-environment.ts",
+    "search": "      else if (state && isDocumentRequest(req)) clearIcEnvCookie(res)\n",
+    "replace": ""
+  },
+  {
+    "id": "881-lost-overwritten-by-detection",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "keeps a network lost while a detection was running",
+    "why": "a detection that was running when the network stopped overwrites the lost state when icp answers, so the cookie comes back with IDs that may belong to a network started again",
+    "file": "src/dev-environment.ts",
+    "search": "    if (state?.lost) return state\n",
+    "replace": ""
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/dev-environment.ts",
+    "id": "881-starting-network-lost",
+    "testName": "does not lose a network that is still starting",
+    "why": "a refused connection before the network ever took one counts as a stop, so a network whose gateway is still starting is lost for good and the dev server must restart",
+    "search": "      if (reached && refused) {\n",
+    "replace": "      if (refused) {\n"
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/dev-environment.ts",
+    "id": "881-idle-close-loses-network",
+    "testName": "does not lose a network that closes idle connections",
+    "why": "the watch treats any close of its connection as a stop, without connecting again, so a network that drops idle connections is lost while it still runs",
+    "search": "      if (reached && refused) {\n",
+    "replace": "      if (reached) {\n"
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/dev-environment.ts",
+    "id": "881-later-network-unwatched",
+    "testName": "follows a network that was down when vite dev started, and notices it stop",
+    "why": "a network detected after the server started is never watched, so its stop is noticed by nothing and its IDs keep reaching page loads",
+    "search": "    follow()\n    return state\n",
+    "replace": "    return state\n"
+  },
+  {
+    "id": "881-detected-network-unwatched",
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "testName": "clears the cookie, reloads open pages and says to restart once the network stops",
+    "why": "a server that starts after its network was detected never watches it, so the stop is noticed by nothing and the old IDs keep reaching page loads",
+    "file": "src/dev-environment.ts",
+    "search": "      onLost = listener\n      follow()\n",
+    "replace": "      onLost = listener\n"
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/index.ts",
+    "id": "881-watch-not-closed",
+    "testName": "stops watching when the dev server closes",
+    "why": "a closed dev server keeps watching its network, so after a restart the old server's watch reports the network stopping again and keeps a connection open",
+    "search": "          () => environment.close(),\n",
+    "replace": "          () => {},\n"
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/index.ts",
+    "id": "881-open-pages-not-reloaded",
+    "testName": "clears the cookie, reloads open pages and says to restart once the network stops",
+    "why": "pages open when the network stopped are not reloaded, so they keep the old cookie and their calls reach the old IDs on a network started again",
+    "search": "          server.ws.send({ type: \"full-reload\" })\n",
+    "replace": ""
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/dev-environment.ts",
+    "id": "881-watch-unread-bytes",
+    "testName": "notices a stop after the network wrote to a connection it closed",
+    "why": "the watch never reads its connection, so bytes the network writes before it closes an idle connection, such as a Node server's 408, hold back the close: the watch does not connect again and a later stop is never noticed",
+    "search": "    attempt.resume()\n",
+    "replace": ""
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/index.ts",
+    "id": "881-preview-watch-not-closed",
+    "testName": "stops watching when the preview server closes",
+    "why": "a closed preview server keeps watching its network, so it keeps a connection open and reports a later stop of a network it no longer serves",
+    "search": "        server.httpServer.once(\"close\", () => environment.close())\n",
+    "replace": ""
+  },
+  {
+    "package": "vite-plugin",
+    "test": "src/dev-environment.test.ts",
+    "file": "src/index.ts",
+    "id": "881-reload-claimed-without-ws",
+    "testName": "clears the cookie, reloads open pages and says to restart once the network stops",
+    "why": "with server.ws: false the warning still says the open pages were reloaded, though the reload reached none and they keep the old cookie",
+    "search": "          (server.config.server as { ws?: unknown } | undefined)?.ws !== false\n",
+    "replace": "          true\n"
   }
 ]

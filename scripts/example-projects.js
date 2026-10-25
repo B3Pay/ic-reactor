@@ -15,10 +15,6 @@ import { fileURLToPath } from "node:url"
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 export const examplesDir = join(root, "examples")
 
-// icp-reactor-demo is a dfx fullstack app whose frontend pins an old vite-plugin,
-// so it builds standalone rather than against the local packages. Skip it here.
-export const SKIP = new Set(["icp-reactor-demo"])
-
 /**
  * Every example project directory, relative to `examples/`, sorted.
  *
@@ -28,8 +24,6 @@ export const SKIP = new Set(["icp-reactor-demo"])
  * @returns {string[]}
  */
 export function discoverExampleDirs() {
-  // The v4 line has no examples/ until the DX1 slice adds them.
-  if (!existsSync(examplesDir)) return []
   const entries = execFileSync("git", ["-C", examplesDir, "ls-files", "-z"], {
     encoding: "utf8",
   })
@@ -51,7 +45,6 @@ export function discoverExampleDirs() {
       ),
     ]
       .filter((name) => existsSync(join(examplesDir, name, "package.json")))
-      .filter((name) => !SKIP.has(name.split("/")[0]))
       // A directory that only contains a nested project is a container, not a project.
       .filter((name, _i, all) => {
         const isContainer =

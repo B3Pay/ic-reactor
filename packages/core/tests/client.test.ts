@@ -5,7 +5,11 @@
  * `client-hydration.test.ts`.
  */
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { AnonymousIdentity } from "@icp-sdk/core/agent"
+import {
+  AnonymousIdentity,
+  HttpErrorCode,
+  ProtocolError,
+} from "@icp-sdk/core/agent"
 import { Ed25519KeyIdentity } from "@icp-sdk/core/identity"
 import {
   createClient,
@@ -24,11 +28,13 @@ import { createTestAuth, type TestAuth } from "../src/testing/test-auth.js"
 import {
   ANONYMOUS,
   CALL,
+  deferred,
   networkOf,
   onPage,
   readAs,
   replicaWithWhoami,
 } from "./client-helpers.js"
+import { stubProcessEnv } from "./network-helpers.js"
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -70,10 +76,195 @@ describe("createClient options", () => {
     )
   })
 
+  it("refuses an option it does not have, in the options or a network object", () => {
+    const build = (options: object) => () =>
+      createClient(options as unknown as ClientOptions)
+
+    // The 3.x habit: a host beside the network talked to port 8000.
+    expect(
+      build({
+        network: "local",
+        identity: "anonymous",
+        host: "http://127.0.0.1:4943",
+      })
+    ).toThrow(
+      new TypeError(
+        "[ic-reactor] createClient() has no option host. Its options: network, identity, auth, allowEnvConfig, fetch, maxDepth, maxElements."
+      )
+    )
+    expect(
+      build({ network: "ic", identity: "anonymous", allowEnvconfig: true })
+    ).toThrow(/^\[ic-reactor\] createClient\(\) has no option allowEnvconfig\./)
+    expect(
+      build({
+        network: "ic",
+        identity: "anonymous",
+        verifyQuerySignatures: false,
+      })
+    ).toThrow(/has no option verifyQuerySignatures\./)
+    for (const key of ["rootkey", "fetchRootkey"]) {
+      expect(
+        build({
+          network: { host: "https://example.com", [key]: true },
+          identity: "anonymous",
+        })
+      ).toThrow(
+        new TypeError(
+          `[ic-reactor] a network object has no option ${key}. Its options: host, rootKey, name, fetchRootKey.`
+        )
+      )
+    }
+  })
+
+  it("refuses a boolean option that is not a boolean, such as an environment variable's text", () => {
+    // On a page, where "false" read as truthy believed the ic_env cookie.
+    onPage()
+    for (const value of ["false", "true", 0, 1, null]) {
+      expect(() =>
+        createClient({
+          network: "ic",
+          identity: "anonymous",
+          allowEnvConfig: value as never,
+        })
+      ).toThrow(
+        new TypeError(
+          `[ic-reactor] allowEnvConfig is true or false, got ${JSON.stringify(value)}.`
+        )
+      )
+      // "false" read as truthy fetched the root key from a remote host.
+      expect(() =>
+        createClient({
+          network: {
+            host: "https://example.com",
+            fetchRootKey: value as never,
+          },
+          identity: "anonymous",
+        })
+      ).toThrow(
+        new TypeError(
+          `[ic-reactor] fetchRootKey is true or false, got ${JSON.stringify(value)}.`
+        )
+      )
+    }
+    for (const allowEnvConfig of [true, false, undefined]) {
+      expect(
+        createClient({ network: "ic", identity: "anonymous", allowEnvConfig })
+          .network
+      ).toBe("ic")
+    }
+    expect(
+      internalsOf(
+        createClient({
+          network: { host: "https://example.com", fetchRootKey: false },
+          identity: "anonymous",
+        })
+      ).network.fetchRootKey
+    ).toBe(false)
+  })
+
+  it("refuses a rootKey that is not 133 bytes in a Uint8Array, and a fetch that is not a function", () => {
+    const network = (extra: object) =>
+      ({ host: "https://example.com", ...extra }) as never
+
+    // The agent's own IC_ROOT_KEY export is hex text: decode it first.
+    expect(() =>
+      createClient({
+        network: network({ rootKey: "ab" }),
+        identity: "anonymous",
+      })
+    ).toThrow(
+      new TypeError(
+        '[ic-reactor] rootKey is a Uint8Array of 133 bytes (decode hex first), got "ab".'
+      )
+    )
+    expect(() =>
+      createClient({
+        network: network({ rootKey: new Uint8Array(96) }),
+        identity: "anonymous",
+      })
+    ).toThrow(/rootKey is a Uint8Array of 133 bytes .*, got 96 bytes\.$/)
+    expect(() =>
+      createClient({
+        network: network({ rootKey: null }),
+        identity: "anonymous",
+      })
+    ).toThrow(/rootKey is a Uint8Array of 133 bytes .*, got null\.$/)
+    expect(() =>
+      createClient({
+        network: "ic",
+        identity: "anonymous",
+        fetch: "fetch" as never,
+      })
+    ).toThrow("[ic-reactor] fetch is a function, got string.")
+    expect(
+      internalsOf(
+        createClient({
+          network: network({ rootKey: new Uint8Array(133).fill(5) }),
+          identity: "anonymous",
+        })
+      ).network.rootKey
+    ).toHaveLength(133)
+  })
+
   it("refuses a network host the agent cannot read when the client is built", () => {
     expect(() =>
       createClient({ network: { host: "not a url" }, identity: "anonymous" })
-    ).toThrow(/"not a url" is not a URL the agent can read/)
+    ).toThrow(
+      /"not a url" is not a URL the agent can read \(it does not parse as one\)/
+    )
+  })
+
+  it.each([
+    // Read as the scheme `localhost:`, on a page too (#974).
+    ["localhost:4943", "localhost:"],
+    ["ftp://example.com", "ftp:"],
+    ["javascript:alert(1)", "javascript:"],
+    ["data:text/plain,hi", "data:"],
+  ])(
+    "refuses the host %s, which no call can use, when the client is built",
+    (host, scheme) => {
+      for (const page of [false, true]) {
+        if (page) onPage()
+        const build = () =>
+          createClient({ network: { host }, identity: "anonymous" })
+        expect(build).toThrow(TypeError)
+        expect(build).toThrow(
+          `the network host ${JSON.stringify(host)} is not a URL the agent can read (its scheme is ${scheme}, and the agent calls over http: and https: only). Give one with a scheme, such as "https://icp-api.io".`
+        )
+      }
+    }
+  )
+
+  it('says where network "env" took a host no call can use', () => {
+    const scheme = "is not a URL the agent can read (its scheme is"
+    const advice = `Give one with a scheme, such as "https://icp-api.io", in ICP_HOST or as network: { host }.`
+    const build = () => createClient({ network: "env", identity: "anonymous" })
+    // Off a page, from ICP_HOST.
+    stubProcessEnv({ ICP_NETWORK: "local", ICP_HOST: "localhost:8000" })
+    expect(build).toThrow(TypeError)
+    expect(build).toThrow(
+      `the network host "localhost:8000", which network "env" took from the page's origin or from ICP_HOST or IC_HOST, ${scheme} localhost:`
+    )
+    expect(build).toThrow(advice)
+    // On a page, from its origin: an app shell such as Capacitor on iOS.
+    stubProcessEnv()
+    onPage("capacitor://localhost")
+    expect(build).toThrow(
+      `the network host "capacitor://localhost", which network "env" took from the page's origin or from ICP_HOST or IC_HOST, ${scheme} capacitor:`
+    )
+    expect(build).toThrow(advice)
+  })
+
+  it("takes an http: or https: host, and a host with no scheme on a page", () => {
+    const host = (network: { host: string }) =>
+      internalsOf(createClient({ network, identity: "anonymous" })).network.host
+    expect(host({ host: "http://127.0.0.1:4943" })).toBe(
+      "http://127.0.0.1:4943"
+    )
+    expect(host({ host: "https://icp-api.io" })).toBe("https://icp-api.io")
+    // HttpAgent reads it against the page's protocol.
+    onPage("http://localhost:5173")
+    expect(host({ host: "127.0.0.1:4943" })).toBe("127.0.0.1:4943")
   })
 
   it("passes maxDepth on, 256 unless given, and refuses one candid-core would refuse", () => {
@@ -87,6 +278,20 @@ describe("createClient options", () => {
     expect(at(0)).toBe(0)
     for (const bad of [-1, 1.5, NaN, Infinity, "256"]) {
       expect(() => at(bad as number)).toThrow(/maxDepth is a non-negative/)
+    }
+  })
+
+  it("passes maxElements on, 1,000,000 unless given, and refuses one candid-core would refuse", () => {
+    const at = (maxElements?: number) =>
+      internalsOf(
+        createClient({ network: "ic", identity: "anonymous", maxElements })
+      ).maxElements
+
+    expect(at()).toBe(1_000_000)
+    expect(at(5_000_000)).toBe(5_000_000)
+    expect(at(0)).toBe(0)
+    for (const bad of [-1, 1.5, NaN, Infinity, "1000000"]) {
+      expect(() => at(bad as number)).toThrow(/maxElements is a non-negative/)
     }
   })
 
@@ -109,7 +314,9 @@ describe("createClient options", () => {
       "authState",
       "caller",
       "canister",
+      "canisterId",
       "dispose",
+      "encode",
       "func",
       "mutationOptions",
       "network",
@@ -120,6 +327,7 @@ describe("createClient options", () => {
       "signIn",
       "signOut",
       "subscribe",
+      "time",
     ])
     expect(Object.isFrozen(client)).toBe(true)
     expect(() => internalsOf({ ...client })).toThrow(
@@ -206,6 +414,53 @@ describe("a client on a server", () => {
 
     expect(factory).not.toHaveBeenCalled()
   })
+
+  it("counts Deno, which has a version, as a server even with a window", async () => {
+    // Deno 1 defines a window (#976).
+    onPage()
+    vi.stubGlobal("Deno", { version: { deno: "1.46.3" } })
+    const factory = vi.fn(() => createTestAuth({ seed: 1 }))
+    const client = createClient({ network: "ic", auth: factory })
+
+    await expect(client.signIn()).rejects.toThrow(/only in a browser/)
+    expect(factory).not.toHaveBeenCalled()
+    client.dispose()
+  })
+})
+
+// Named access makes an element whose id is Deno, or a frame named Deno, a
+// `Deno` global, and user content a sanitizer keeps can carry either (#976).
+// A plain object stands in for it: vitest's jsdom globals have no named
+// access, so a real element would leave `Deno` undefined.
+describe("a page with an element whose id is Deno", () => {
+  it("signs in, as any page does", async () => {
+    onPage()
+    vi.stubGlobal("Deno", { id: "Deno", tagName: "SPAN" })
+    const auth = createTestAuth({ seed: 1, signedIn: false })
+    const client = createClient({ network: "ic", auth: () => auth })
+
+    await client.signIn()
+    expect(client.caller()).toBe(auth.getPrincipal()!.toText())
+    client.dispose()
+  })
+
+  it("signs in when it is a cross-origin frame, whose properties throw when read", async () => {
+    onPage()
+    vi.stubGlobal("Deno", {
+      get version(): never {
+        throw new DOMException(
+          "Blocked a frame from accessing a cross-origin frame.",
+          "SecurityError"
+        )
+      },
+    })
+    const auth = createTestAuth({ seed: 1, signedIn: false })
+    const client = createClient({ network: "ic", auth: () => auth })
+
+    await client.signIn()
+    expect(client.caller()).toBe(auth.getPrincipal()!.toText())
+    client.dispose()
+  })
 })
 
 describe("a client following its auth in a browser", () => {
@@ -221,14 +476,18 @@ describe("a client following its auth in a browser", () => {
     expect(factory).toHaveBeenCalledTimes(1)
   })
 
-  it("refuses a factory that returns something other than an auth, naming what is missing", () => {
+  it("refuses a factory that returns something other than an auth, naming what is missing", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
     onPage()
     const client = createClient({
       network: "ic",
       auth: () => ({ getStatus: () => ({ state: "signed-out" }) }) as never,
     })
 
-    expect(() => client.caller()).toThrow(
+    // As for a factory that throws: the reads call anonymously, and signIn()
+    // says why (#972).
+    expect(client.caller()).toBe(ANONYMOUS)
+    await expect(client.signIn()).rejects.toThrow(
       /not an AuthLike: it has no getPrincipal\(\), getIdentity\(\), subscribe\(\), signIn\(\), signOut\(\)/
     )
   })
@@ -243,6 +502,7 @@ describe("a client following its auth in a browser", () => {
     expect(client.authState()).toEqual({
       status: "signed-in",
       principal: alice,
+      expiresAt: (auth.getStatus() as { expiresAtMs: number }).expiresAtMs,
     })
     expect(current()).toEqual({ principal: alice, authenticated: true })
 
@@ -274,7 +534,7 @@ describe("a client following its auth in a browser", () => {
     let state = "restoring"
     const auth = {
       ...createTestAuth({ identity: new AnonymousIdentity() }),
-      getStatus: () => ({ state }) as never,
+      getStatus: () => ({ state }),
     }
     const client = clientOf(auth)
 
@@ -307,7 +567,9 @@ describe("a client following its auth in a browser", () => {
     })
   })
 
-  it("passes a notification on only when the status or the principal changed", () => {
+  it("passes a notification on only when the status, the principal or the session's end changed", () => {
+    // One instant for both sign-ins, so that their sessions end together.
+    const now = vi.spyOn(Date, "now").mockReturnValue(Date.now())
     const auth = createTestAuth({ seed: 1 })
     const alice = auth.getStatus()
     const client = clientOf(auth)
@@ -316,11 +578,20 @@ describe("a client following its auth in a browser", () => {
     const signedIn = client.authState()
 
     // A new sign-in as the same account notifies the auth's listeners with a
-    // new status object, but the client calls as the same principal.
+    // new status object, but the client calls as the same principal, for a
+    // session that ends when the last one did.
     void auth.signIn()
     expect(auth.getStatus()).not.toBe(alice)
     expect(listener).not.toHaveBeenCalled()
     expect(client.authState()).toBe(signedIn)
+
+    // One that ends later is a change: `expiresAt` moves.
+    now.mockReturnValue(Date.now() + 1000)
+    void auth.signIn()
+    now.mockRestore()
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(client.authState().expiresAt).toBe(signedIn.expiresAt! + 1000)
+    listener.mockClear()
 
     auth.switchTo(2)
     expect(listener).toHaveBeenCalledTimes(1)
@@ -406,6 +677,99 @@ describe("a client following its auth in a browser", () => {
     expect(client.caller()).toBe(ANONYMOUS)
   })
 
+  /** A signed-out auth whose `signIn` is `signIn`. */
+  const authSigningInWith = (signIn: AuthLike["signIn"]): AuthLike => ({
+    getPrincipal: () => undefined,
+    getStatus: () => ({ state: "signed-out" }),
+    getIdentity: () => Promise.resolve(Ed25519KeyIdentity.generate()),
+    subscribe: () => () => {},
+    signIn,
+    signOut: () => Promise.resolve(),
+  })
+
+  it("makes one sign-in of two calls with the same options in one run, as StrictMode's double effect makes them", async () => {
+    const answer = deferred()
+    const signIn = vi.fn((_options?: unknown) => answer.promise)
+    const client = clientOf(authSigningInWith(signIn))
+
+    // Each run of the effect builds its own options object.
+    const first = client.signIn({ returnTo: "/account" })
+    const second = client.signIn({ returnTo: "/account" })
+
+    expect(second).toBe(first)
+    expect(signIn).toHaveBeenCalledTimes(1)
+    answer.resolve()
+    await first
+    client.dispose()
+  })
+
+  it("signs in again for a call in a later run, or with other options", async () => {
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+
+    void client.signIn({ maxTimeToLive: 1n })
+    void client.signIn({ maxTimeToLive: 2n })
+    // Its one key is another than the last call's, which it only inherits.
+    const inherited = Object.create(
+      { maxTimeToLive: 2n },
+      { maxTimeToIdle: { value: 1n, enumerable: true } }
+    ) as object
+    void client.signIn(inherited)
+    void client.signIn()
+    // A second click is another run: it signs in again, and the auth decides
+    // which sign-in wins.
+    await Promise.resolve()
+    void client.signIn()
+
+    expect(signIn.mock.calls).toEqual([
+      [{ maxTimeToLive: 1n }],
+      [{ maxTimeToLive: 2n }],
+      [inherited],
+      [undefined],
+      [undefined],
+    ])
+    client.dispose()
+  })
+
+  it("joins each sign-in of the run, not only the last, as StrictMode runs two sign-in effects", () => {
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+
+    // StrictMode runs the effects of a subtree, then runs them all again.
+    const toAccount = client.signIn({ returnTo: "/account" })
+    const toWallet = client.signIn({ returnTo: "/wallet" })
+
+    expect(client.signIn({ returnTo: "/account" })).toBe(toAccount)
+    expect(client.signIn({ returnTo: "/wallet" })).toBe(toWallet)
+    expect(signIn).toHaveBeenCalledTimes(2)
+    client.dispose()
+  })
+
+  it("ends the run with a promise job, which fake timers do not replace as Jest's replace queueMicrotask", async () => {
+    vi.stubGlobal("queueMicrotask", () => {})
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+
+    void client.signIn()
+    await Promise.resolve()
+    void client.signIn()
+
+    expect(signIn).toHaveBeenCalledTimes(2)
+    client.dispose()
+  })
+
+  it("rejects a sign-in after dispose(), even with the options of one earlier in the run", async () => {
+    const signIn = vi.fn((_options?: unknown) => new Promise<void>(() => {}))
+    const client = clientOf(authSigningInWith(signIn))
+    void client.signIn({ returnTo: "/account" })
+
+    client.dispose()
+
+    await expect(client.signIn({ returnTo: "/account" })).rejects.toThrow(
+      "signIn() on a disposed client"
+    )
+  })
+
   it("keeps telling the other listeners when one throws, and reports the error", () => {
     const queued: Array<() => void> = []
     vi.stubGlobal("queueMicrotask", (task: () => void) => queued.push(task))
@@ -470,9 +834,10 @@ describe("two clients", () => {
 })
 
 // A query built by hand on `client.queryClient` (a `useQuery` with its own
-// query function) sets no `retry`, so the client's default decides. The
-// default must never be TanStack's own: three retries in a browser, of any
-// failure, a canister's Err included.
+// query function) sets no `retry`, so the client's default decides. For a
+// ReactorError it must never be TanStack's own (three retries in a browser, of
+// any failure, a canister's Err included); any other error is retried as
+// TanStack retries it.
 describe("the QueryClient's default retry", () => {
   /** A client whose reads go to a fake replica, and a query function for it. */
   function anonymousReader() {
@@ -495,12 +860,69 @@ describe("the QueryClient's default retry", () => {
     return { replica, client, queryFn, queries }
   }
 
-  it("is the client's retry predicate", () => {
+  it("retries a ReactorError as the client's retry predicate does", () => {
     const { client } = anonymousReader()
-
-    expect(client.queryClient.getDefaultOptions().queries?.retry).toBe(
-      retryQuery
+    const retry = client.queryClient.getDefaultOptions().queries?.retry
+    if (typeof retry !== "function") throw new Error("retry is a predicate")
+    const refused = classifyError(
+      ProtocolError.fromCode(new HttpErrorCode(503, "busy", [])),
+      { ...CALL, mode: "query" }
     )
+    const err = createReactorError("canister_err", { ...CALL, err: null })
+
+    for (const page of [false, true]) {
+      if (page) onPage()
+      for (const error of [refused, err]) {
+        for (const failures of [0, 2, 3]) {
+          expect(retry(failures, error)).toBe(retryQuery(failures, error))
+        }
+      }
+    }
+  })
+
+  // An app's own query on the client's QueryClient, such as a REST call,
+  // throws errors that are not ReactorErrors: they are retried as a plain
+  // QueryClient retries them (#903).
+  it("tries an app's REST query again in a browser page, as TanStack does, up to 3 times", async () => {
+    onPage()
+    const { client } = anonymousReader()
+    const flaky = vi
+      .fn<() => Promise<string>>()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue("rest")
+
+    await expect(
+      client.queryClient.fetchQuery({
+        queryKey: ["rest", "flaky"],
+        queryFn: flaky,
+        retryDelay: 0,
+      })
+    ).resolves.toBe("rest")
+    expect(flaky).toHaveBeenCalledTimes(2)
+
+    const down = vi.fn(() => Promise.reject(new TypeError("Failed to fetch")))
+    await expect(
+      client.queryClient.fetchQuery({
+        queryKey: ["rest", "down"],
+        queryFn: down,
+        retryDelay: 0,
+      })
+    ).rejects.toThrow("Failed to fetch")
+    expect(down).toHaveBeenCalledTimes(4)
+  })
+
+  it("never tries an app's REST query again on a server, as TanStack does not", async () => {
+    const { client } = anonymousReader()
+    const down = vi.fn(() => Promise.reject(new TypeError("Failed to fetch")))
+
+    await expect(
+      client.queryClient.fetchQuery({
+        queryKey: ["rest", "down"],
+        queryFn: down,
+        retryDelay: 0,
+      })
+    ).rejects.toThrow("Failed to fetch")
+    expect(down).toHaveBeenCalledTimes(1)
   })
 
   it("tries a read again in a browser page when the replica refused it for now", async () => {

@@ -1,7 +1,10 @@
 # IC Reactor
 
 <div align="center">
-  <img src="docs/src/assets/icon.svg" alt="IC Reactor Logo" width="240" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/src/assets/ic-reactor-mark-dark.svg" />
+    <img src="docs/src/assets/ic-reactor-mark-light.svg" alt="IC Reactor logo" width="160" />
+  </picture>
   <br><br>
   <strong>Type-safe Internet Computer integration for TypeScript and React</strong>
   <br><br>
@@ -15,7 +18,7 @@
 ---
 
 > **This is the `v4` branch, where ic-reactor 4 is in development.** Its
-> packages are at `4.0.0-beta.5`, published under npm's `beta` dist-tag; `latest`
+> packages are at `4.0.0-beta.7`, published under npm's `beta` dist-tag; `latest`
 > stays 3.x until 4.0 GA. ic-reactor 4 is a
 > thin layer over a candid-core generated module, with a guide shipped in
 > `@ic-reactor/core` (`packages/core/llms.txt`). Milestone 1
@@ -48,7 +51,10 @@ of ic-reactor 4: `candid-core-cli gen` generates the canister module instead.
 `@ic-reactor/candid` stays at 3.x, published from `main`. None of the four is
 in this branch's tree.
 
-What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md).
+What changed, per package, is in [`CHANGELOG.md`](./CHANGELOG.md). What a 4.x
+release may change, and the oldest Node, TypeScript, React, TanStack Query,
+Vite and `@icp-sdk/core` supported, is in
+[Versioning and support](./docs/src/content/docs/versioning.mdx).
 
 ## Install
 
@@ -95,6 +101,8 @@ The 3.x examples are on `main`.
   3.x. This branch's site (source: [`./docs`](./docs)) is served under `/v4/`
   and holds a placeholder until DX2.
 - Changelog: [`CHANGELOG.md`](./CHANGELOG.md)
+- Versioning and support:
+  [`docs/src/content/docs/versioning.mdx`](./docs/src/content/docs/versioning.mdx)
 - Package docs:
   - [`@ic-reactor/react`](./packages/react/README.md)
   - [`@ic-reactor/core`](./packages/core/README.md)
@@ -162,7 +170,7 @@ Please also review the [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 ## License
 
-MIT © [Behrad Deylami](https://github.com/b3hr4d)
+MIT © [Behrad Deylami](https://github.com/b3hr4d). See [LICENSE](./LICENSE).
 
 ---
 

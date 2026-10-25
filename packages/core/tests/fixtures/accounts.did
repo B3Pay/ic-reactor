@@ -1,0 +1,21 @@
+type IdentityAttributesError = variant {
+  NoAttributes;
+  MalformedCandid;
+  MissingField : text;
+  FrontendOriginsNotConfigured;
+  FrontendOriginMismatch : record { expected : vec text; got : text };
+  Stale : record { ageNs : nat };
+  UnknownNonce;
+  AmbiguousAttribute : record { field : text; sources : vec text };
+  UntrustedSsoSource : record { domain : text };
+  MixedSsoSources : record { ssoKeys : vec text; otherKeys : vec text };
+};
+type Profile = record { name : opt text; email : opt text; sso : opt text };
+
+// An accounts canister: the two methods `mo:identity-attributes` adds for
+// identity attributes, and a profile per principal.
+service : {
+  _internet_identity_sign_in_start : () -> (blob);
+  _internet_identity_sign_in_finish : () -> (variant { ok; err : IdentityAttributesError });
+  getProfile : (principal) -> (opt Profile) query;
+}

@@ -24,17 +24,17 @@ import type {
   Logger,
   Plugin,
   ProxyOptions,
-  ResolvedConfig,
   UserConfig,
   ViteDevServer,
 } from "vite"
-import { describeError, describeValue } from "./describe-value.js"
+import { describeError, describePath, describeValue } from "./describe-value.js"
 import {
   createLocalEnvironment,
   icEnvMiddleware,
   type LocalEnvironment,
   type LocalEnvironmentState,
 } from "./dev-environment.js"
+import { installIcpAdvice } from "./env.js"
 import { fetchCandid, resolveNetwork, writeDid } from "./fetch.js"
 import { cachedFoldsCase, fileIdentity, realFile } from "./file-identity.js"
 import {
@@ -43,6 +43,7 @@ import {
   generate,
   moduleCollisions,
   outputsOf,
+  quoteNames,
   resolveCliBin,
   type GenerateCanister,
 } from "./generate.js"
@@ -239,15 +240,72 @@ export interface IcReactorPluginOptions {
   /**
    * Abort the Vite run when a canister fails to generate.
    *
-   * Default: `true` under `vite build`, `false` under `vite dev`. A build that
-   * silently ships the bindings left over from the last successful run is
-   * worse than no build at all, while a dev server has to survive the broken
-   * intermediate states of a `.did` file being edited: there the failure is
-   * logged and shown in the browser's error overlay, and the server keeps
-   * serving. Any value given other than `true` or `false` (`null`, `0`,
-   * `"false"`) throws when the config loads.
+   * Default: `true` under `vite build` and under Vitest (mode `test`), `false`
+   * under `vite dev`. A build that silently ships the bindings left over from
+   * the last successful run is worse than no build at all, and a test run
+   * that passes against them proves nothing, while a dev server has to
+   * survive the broken intermediate states of a `.did` file being edited:
+   * there the failure is logged and shown in the browser's error overlay, and
+   * the server keeps serving. Any value given other than `true` or `false`
+   * (`null`, `0`, `"false"`) throws when the config loads.
    */
   failOnError?: boolean
+  /**
+   * Called once for each module a run generated, after the generator wrote
+   * or checked it, in `vite build` and `vite dev` alike: the place for a
+   * step that reads the generated output (a module's envelope, say) and must
+   * run after every generation.
+   *
+   * ```ts
+   * icReactor({
+   *   canisters: { ledger: { didFile: "did/ledger.did" } },
+   *   onGenerated: async ({ names, envelope, signal }) => {
+   *     // read the envelope, write derived files, or throw to fail the run
+   *   },
+   * })
+   * ```
+   *
+   * - `names`: the canisters the module is for. Canisters that share a
+   *   `didFile` and an `outDir` share one module and one call.
+   * - `didFile`, `module`, `envelope`: absolute paths of the `.did` it was
+   *   generated from, the module and its envelope. The module and the
+   *   envelope are on disk when it is called.
+   * - `status`: `"written"` when the generator wrote the module,
+   *   `"unchanged"` when it found the module already as it would write it.
+   * - `signal`: aborted when the build or dev server the run belongs to
+   *   closes. The run then stops waiting for the hook and reports nothing,
+   *   whatever the hook does, and the next run generates the module again
+   *   and calls the hook again.
+   *
+   * It runs in the plugin's one queue of runs, so it never overlaps a
+   * generation, and a build's `buildStart` waits for it: under `vite build`
+   * a hook that never settles holds the build until it closes. It is not
+   * called for a canister that failed or was refused, for a run whose
+   * `.did` was written while the generator read it (the run takes nothing of
+   * it), nor for a run that does not generate the module again: the second
+   * `buildStart` of Vite 6 and later, and each rebuild of
+   * `vite build --watch` not caused by a `.did` or by a missing module or
+   * envelope. A save under `vite dev`
+   * always generates again, so a save of the same text calls it, with
+   * `"unchanged"`. A `.did` written while the hook runs is caught after it:
+   * a build then fails as changed during the build, and a dev server
+   * generates it again and calls the hook again.
+   *
+   * A throw or a rejection fails the module's canisters as a failed
+   * generation does: a build or a Vitest run fails, unless `failOnError` is
+   * `false`, and otherwise the failure is logged and, under `vite dev`, shown
+   * in the error overlay. The next run generates those canisters again, and calls
+   * the hook again. A value given that is not a function throws when the
+   * config loads.
+   */
+  onGenerated?: (generated: {
+    readonly names: readonly string[]
+    readonly didFile: string
+    readonly module: string
+    readonly envelope: string
+    readonly status: "written" | "unchanged"
+    readonly signal: AbortSignal
+  }) => void | Promise<void>
 }
 
 /** The environment variable that asks for a `didFile` to be fetched again. */
@@ -324,7 +382,12 @@ interface Requests {
  * stops only its own and leaves the new server's alone.
  */
 interface Lifetime {
-  command: ResolvedConfig["command"]
+  /**
+   * Whether a failed generation fails the run when `failOnError` is omitted:
+   * under `vite build`, and under Vitest (mode `test`), whose tests would
+   * otherwise run against the modules left over from the last good run.
+   */
+  failsByDefault: boolean
   /** The dev server, once `configureServer` hands it over. */
   server: ViteDevServer | null
   /**
@@ -454,9 +517,10 @@ const consoleLog: PluginLog = {
  *   in a child process (the running Node binary on the CLI's bin script, never
  *   through a shell, killed after 60 seconds). A trap, a crash or a hang on a
  *   bad `.did` then ends that process and not the dev server: under
- *   `vite build` it fails the build with the CLI's own message, and under
- *   `vite dev` it is logged and shown in the error overlay while the server
- *   keeps serving. See {@link IcReactorPluginOptions.failOnError}.
+ *   `vite build` it fails the build with the CLI's own message, under Vitest
+ *   the run's startup, and under `vite dev` it is logged and shown in the
+ *   error overlay while the server keeps serving. See
+ *   {@link IcReactorPluginOptions.failOnError}.
  * - **Injects the local IC environment.** Under `vite dev` and `vite preview`
  *   it sets the `ic_env` cookie, which carries the replica's root key and the
  *   canister IDs, and proxies `/api` to the local replica, so the app needs no
@@ -500,6 +564,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   const {
     injectEnvironment,
     failOnError,
+    onGenerated,
     names,
     uncarriedNames,
     configuredCanisterIds,
@@ -545,9 +610,9 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    */
   const lifetimeAfter = (
     previous: Lifetime | undefined,
-    command: ResolvedConfig["command"]
+    failsByDefault: boolean
   ): Lifetime => ({
-    command,
+    failsByDefault,
     server: null,
     stopper: new AbortController(),
     queued: new Set(),
@@ -562,7 +627,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
    * before any `configResolved` runs in one of its own, as a build, the safer
    * default: `vite build` and `vite dev` want opposite failure behaviour.
    */
-  let current = lifetimeAfter(undefined, "build")
+  let current = lifetimeAfter(undefined, true)
 
   /** The lifetime of each config `configResolved` was handed. */
   const byConfig = new WeakMap<object, Lifetime>()
@@ -597,7 +662,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   const didPath = (canister: { didFile: string }) =>
     path.resolve(projectRoot, canister.didFile)
   const relativeToRoot = (file: string) =>
-    path.relative(projectRoot, file) || "."
+    describePath(path.relative(projectRoot, file)) || "."
 
   /**
    * The file a path names, as a key: equal for every spelling of one file,
@@ -610,11 +675,11 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
 
   /**
    * The `.did` text each canister last generated from. A rebuild that finds
-   * the text unchanged skips the canister, which is every rebuild of
-   * `vite build --watch` that was not caused by a `.did`, and the second
-   * `buildStart` Vite 6 and later run for another environment. It is the
-   * plugin's, not a lifetime's: it says what is on disk, which a restart
-   * keeps.
+   * the text unchanged, and the module and envelope still there, skips the
+   * canister, which is every rebuild of `vite build --watch` that was not
+   * caused by a `.did`, and the second `buildStart` Vite 6 and later run for
+   * another environment. It is the plugin's, not a lifetime's: it says what
+   * is on disk, which a restart keeps.
    */
   const generatedFrom = new Map<string, string>()
 
@@ -786,7 +851,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         return (
           force ||
           source === undefined ||
-          generatedFrom.get(canister.name) !== source
+          generatedFrom.get(canister.name) !== source ||
+          // Deleted since it was generated: the text alone would skip it,
+          // and every rebuild would fail until the `.did` changed (#980).
+          outputFiles(canister).some((file) => !fs.existsSync(file))
         )
       })
       if (stale.length === 0) return []
@@ -795,7 +863,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       try {
         cli = resolveCliBin(projectRoot)
       } catch (error) {
-        return stale.map((canister) => ({ canister, message: describe(error) }))
+        return stale.map((canister) => ({
+          canister,
+          message: describeError(error),
+        }))
       }
 
       // Each module and envelope as it is before the generator writes it.
@@ -857,11 +928,60 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             `ic-reactor: ${names}: omitted ${kind} ${what} (${reason}${via ? ` via ${via}` : ""})`
           )
         }
+        if (onGenerated === undefined || members.length === 0) continue
+        // Inside the run, and so inside the queue of runs: the next run waits
+        // for it, and so does a build's `buildStart`.
+        const { module, envelope } = outputsOf(generationOf(members[0]))
+        // A close abandons a hook still running, as it kills a generator: the
+        // run waits for the hook or for the close, whichever comes first, so a
+        // hook that never settles cannot hold the queue past its server.
+        let stopWaiting = () => {}
+        const closed = new Promise<void>((resolve) => {
+          stopWaiting = () => signal.removeEventListener("abort", onAbort)
+          const onAbort = () => resolve()
+          signal.addEventListener("abort", onAbort, { once: true })
+        })
+        try {
+          const hook = Promise.resolve(
+            onGenerated({
+              names: members.map(({ name }) => name),
+              didFile: didPath(members[0]),
+              module,
+              envelope,
+              status: outcome.status,
+              signal,
+            })
+          )
+          // Settled after an abandoned run, it is reported nowhere.
+          hook.catch(() => undefined)
+          await Promise.race([hook, closed])
+        } catch (error) {
+          // Not recorded as generated, so the next run generates the
+          // canisters again and calls the hook again.
+          for (const canister of members) {
+            generatedFrom.delete(canister.name)
+            failures.push({
+              canister,
+              message: `onGenerated failed for ${relativeToRoot(module)}: ${describeError(error)}`,
+            })
+          }
+        } finally {
+          stopWaiting()
+        }
+        if (signal.aborted) {
+          // The hook may not have finished: the next run, a restarted
+          // server's included, generates the canisters again and calls it.
+          for (const canister of members) generatedFrom.delete(canister.name)
+          return undefined
+        }
       }
       return failures
     } catch (error) {
       if (signal.aborted) return undefined
-      return wanted.map((canister) => ({ canister, message: describe(error) }))
+      return wanted.map((canister) => ({
+        canister,
+        message: describeError(error),
+      }))
     }
   }
 
@@ -1112,7 +1232,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             failures.push({
               canister,
               message:
-                `fetched ${from}, but could not write it to ${relativeToRoot(file)}: ${describe(writeError)}. ` +
+                `fetched ${from}, but could not write it to ${relativeToRoot(file)}: ${describeError(writeError)}. ` +
                 `Make its directory writable and build again.`,
             })
           }
@@ -1137,7 +1257,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
             .filter(
               (canister) => !failed.has(canister) && !blocked.has(canister)
             )
-            .map((canister) => ({ canister, message: describe(error) })),
+            .map((canister) => ({ canister, message: describeError(error) })),
         ],
         fetched,
       }
@@ -1149,7 +1269,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     try {
       return { cli: resolveCliBin(projectRoot), root: projectRoot, signal }
     } catch (error) {
-      return describe(error)
+      return describeError(error)
     }
   }
 
@@ -1546,7 +1666,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       }
       return { ok: true, notes }
     } catch (error) {
-      return { ok: false, message: describe(error) }
+      return { ok: false, message: describeError(error) }
     }
   }
 
@@ -1602,7 +1722,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
 
   /**
    * Report the outcome of a run that does not end the Vite run (a save, or a
-   * build with `failOnError` off): log a failure and put every unfixed one in
+   * build or a Vitest start with `failOnError` off): log a failure and put every unfixed one in
    * the error overlay of the `lifetime`'s browsers. When a canister is fixed,
    * the overlay is replaced by one that lists only the canisters still
    * failing, or cleared once there are none.
@@ -1840,7 +1960,7 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
         )
       } catch (error) {
         // A listener must not throw into the watcher.
-        log.error(`ic-reactor: ${describe(error)}`)
+        log.error(`ic-reactor: ${describeError(error)}`)
       }
     })
   }
@@ -2045,7 +2165,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       log = config.logger
       // A new lifetime: a build, or a dev server, a restart's included. Its
       // live checks start again (see `Lifetime`).
-      current = lifetimeAfter(current, config.command)
+      current = lifetimeAfter(
+        current,
+        config.command === "build" || config.mode === "test"
+      )
       byConfig.set(config, current)
     },
 
@@ -2059,7 +2182,25 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       // Added here rather than returned as a post hook, so it runs before
       // Vite's own middlewares, which serve the page.
       if (localEnvironment) {
-        server.middlewares.use(icEnvMiddleware(localEnvironment))
+        const environment = localEnvironment
+        server.middlewares.use(
+          icEnvMiddleware(environment, (message) => log.warn(message))
+        )
+        // A page left open keeps the cookie it loaded with, and its calls
+        // would reach the old IDs on a network started again (#881). Reloaded,
+        // it loads without them. With `server.ws: false` the reload reaches no
+        // page, and the warning does not say it did.
+        const reloads =
+          (server.config.server as { ws?: unknown } | undefined)?.ws !== false
+        environment.watch((lost) => {
+          server.ws.send({ type: "full-reload" })
+          log.warn(lostNetworkWarning(lost.proxyTarget, reloads))
+        })
+        lifetime.stopper.signal.addEventListener(
+          "abort",
+          () => environment.close(),
+          { once: true }
+        )
       }
 
       if (configured.length === 0) return
@@ -2093,7 +2234,15 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
     // used to inherit the cookie from `server.headers`.
     configurePreviewServer(server) {
       if (localEnvironment) {
-        server.middlewares.use(icEnvMiddleware(localEnvironment))
+        const environment = localEnvironment
+        server.middlewares.use(
+          icEnvMiddleware(environment, (message) => log.warn(message))
+        )
+        // A preview server has no HMR connection to reload its pages with.
+        environment.watch((lost) =>
+          log.warn(lostNetworkWarning(lost.proxyTarget, false))
+        )
+        server.httpServer.once("close", () => environment.close())
       }
     },
 
@@ -2227,10 +2376,10 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
       // Only an omitted `failOnError` takes the default (options.ts).
       if (
         failures.length > 0 &&
-        (failOnError === undefined ? lifetime.command === "build" : failOnError)
+        (failOnError === undefined ? lifetime.failsByDefault : failOnError)
       ) {
-        // A build that exits 0 would ship whatever stale bindings are still on
-        // disk, which no longer match the canister.
+        // A build that exits 0 would ship, and a test run would test, whatever
+        // stale bindings are still on disk, which no longer match the canister.
         this.error(describeFailures(failures))
       }
       // Under a dev server, nothing is said of a written canister here, not
@@ -2254,11 +2403,6 @@ export function icReactor(options: IcReactorPluginOptions = {}): Plugin {
   }
 
   return plugin
-}
-
-/** One readable line for whatever was thrown. Never throws. */
-function describe(error: unknown): string {
-  return describeError(error)
 }
 
 /**
@@ -2296,11 +2440,6 @@ function apiProxy(
   }
 }
 
-/** `"a"`, or `"a", "b"`: canister names as the warnings quote them. */
-function quoteNames(names: string[]): string {
-  return names.map((name) => `"${name}"`).join(", ")
-}
-
 /**
  * Warn at startup when detection is incomplete, and say what the plugin does
  * about it: it asks `icp` again on each page load until detection completes.
@@ -2320,6 +2459,13 @@ function warnAboutIncompleteDetection(
     const proxyNote = ownsApiProxy
       ? ` and /api goes to ${state.proxyTarget} for now`
       : ""
+    if (state.icpNotFound) {
+      console.warn(
+        `[ic-reactor] Could not run \`icp\`, so the local IC environment is not detected and no ic_env cookie is set${proxyNote}. ` +
+          `No \`icp\` command was found. ${installIcpAdvice()} Then reload the page: the plugin tries again on each page load.`
+      )
+      return
+    }
     console.warn(
       `[ic-reactor] Could not detect the local IC environment, so no ic_env cookie is set${proxyNote}. ` +
         `Is the local network running? The plugin asks \`icp\` again on each page load until it answers` +
@@ -2379,9 +2525,25 @@ function reportDetectionProgress(
   if (next.complete && !previous.complete) {
     console.log(
       "[ic-reactor] Every configured canister has an ID, so page loads no longer run `icp`. " +
-        "Restart the dev server after redeploying into a fresh network."
+        "Restart the dev server after the network restarts."
     )
   }
+}
+
+/**
+ * The warning for a detected network that stopped, at `target`. `reloaded`:
+ * the dev server reloaded the pages it has open.
+ */
+function lostNetworkWarning(target: string, reloaded: boolean): string {
+  return (
+    `[ic-reactor] The local network at ${target} stopped. ` +
+    `A network started again can give the canister IDs this server detected to other canisters under the same root key, ` +
+    `so page loads now get the ic_env cookie without those IDs and that root key` +
+    (reloaded
+      ? ", and the pages open on this server were reloaded to drop the old cookie"
+      : "") +
+    `. A { name } canister does not resolve until you deploy again (\`icp network start\`, \`icp deploy\`) and restart this server. (Logged once.)`
+  )
 }
 
 /**

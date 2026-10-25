@@ -95,10 +95,10 @@ the common ones as before and after.
 | `ReactorArgs`                        | `Parameters<Actor["method"]>`, with the generated `Actor`                                                                                                                                                                                                           |
 | `identityAttributeKeys`              | `scopedKeys({ openIdProvider, keys })` from `@icp-sdk/auth/client`. For an issuer that is not Google, Apple or Microsoft, write the string `openid:<issuer>:<key>` yourself                                                                                         |
 | `IdentityAttributeOpenIdProvider`    | `OpenIdProvider` from `@icp-sdk/auth/client`, which is `"google" \| "apple" \| "microsoft"`. A custom issuer is not a value of it                                                                                                                                   |
-| `IdentityAttributesManager`          | `authClient.requestAttributes({ keys, nonce })`, then decode `data`: see [Auth](/v4/guides/auth/#identity-attributes)                                                                                                                                               |
+| `IdentityAttributesManager`          | `authClient.requestAttributes({ keys, nonce })` beside `signIn()`, then a call that carries the answer as its `sender_info`: see [Auth](/v4/guides/auth/#identity-attributes)                                                                                       |
 | `createIdentityAttributeHooks`       | As `IdentityAttributesManager`                                                                                                                                                                                                                                      |
 | `skipToken`                          | `skipToken` from `@tanstack/react-query`. `@ic-reactor/react` no longer exports it                                                                                                                                                                                  |
-| `reactorRetry`                       | Built in: `client.queryOptions` sets `retry`, and the client's `QueryClient` has the same default. Do not set your own                                                                                                                                              |
+| `reactorRetry`                       | Built in: `client.queryOptions` sets `retry`, and the client's `QueryClient` has the same default for a `ReactorError`. Do not set your own                                                                                                                         |
 | `ReactorArgsOf`                      | `Parameters<Actor[M]>`, where `M` is a method name of `Actor`                                                                                                                                                                                                       |
 | `defineDisplayReactor`               | `createClient`, then `client.canister<Actor>(actor, { id })`                                                                                                                                                                                                        |
 | `createSuspenseInfiniteQueryFactory` | `useSuspenseInfiniteQuery` with a key that extends `client.queryKey(...)`, as for `createInfiniteQuery`                                                                                                                                                             |
@@ -450,28 +450,18 @@ to do about each.
 ### Recipe: identity attributes
 
 3.x had `identityAttributeKeys`, a manager and hooks around signed identity
-attributes. In 4 you use `@icp-sdk/auth` 10 directly: build the scoped keys
-with `scopedKeys` and call `requestAttributes` on your `AuthClient`. The client
-does not expose its auth, so keep your own reference to the `AuthClient` and
-hand it over with `auth: () => authClient`.
+attributes. In 4 you use `@icp-sdk/auth` 10 and `@icp-sdk/core` directly:
 
-```ts
-import { createClient } from "@ic-reactor/core"
-import { AuthClient, scopedKeys } from "@icp-sdk/auth/client"
+- keep your own reference to the `AuthClient` the client's factory builds;
+- start `signIn()` and `requestAttributes({ keys, nonce })` together, with a
+  nonce your canister issued;
+- send what Internet Identity signed as the `sender_info` of one call to your
+  canister, through a second client built with an `AttributesIdentity`, and
+  let the canister check it (DFINITY's `identity-attributes` library does).
 
-export const authClient = new AuthClient({ openIdProvider: "google" })
-export const client = createClient({ network: "ic", auth: () => authClient })
-
-// `nonce` returns the 32-byte nonce your canister issued for this request.
-export async function requestEmail(nonce: () => Promise<Uint8Array>) {
-  const keys = scopedKeys({ openIdProvider: "google", keys: ["email"] })
-  return authClient.requestAttributes({ keys, nonce })
-}
-```
-
-The result is `{ data, signature }`. The [Auth](/v4/guides/auth/) page shows
-how to decode `data`, and why the canister that issued the nonce must verify
-both before it trusts the values.
+Ask for `verified_email`, not `email`, which Internet Identity does not check.
+[Identity attributes](/v4/guides/auth/#identity-attributes) on the Auth page
+shows the flow end to end.
 
 ### Recipe: query keys
 

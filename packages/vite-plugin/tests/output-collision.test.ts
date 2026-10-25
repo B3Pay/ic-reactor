@@ -19,16 +19,20 @@ import {
   outputsOf,
   resolveCliBin,
 } from "../src/generate.js"
-import { createApp, PING_DID, runBuild, type App } from "./support.js"
+import {
+  createApp,
+  PING_DID,
+  removeDirectory,
+  runBuild,
+  type App,
+} from "./support.js"
 
 const apps: App[] = []
 const directories: string[] = []
 
 afterEach(() => {
   for (const app of apps.splice(0)) app.cleanup()
-  for (const directory of directories.splice(0)) {
-    fs.rmSync(directory, { recursive: true, force: true })
-  }
+  for (const directory of directories.splice(0)) removeDirectory(directory)
 })
 
 /**

@@ -13,6 +13,9 @@ own hooks and the options the client builds, `client.queryOptions(...)` and
 The package never re-exports `@ic-reactor/core`, so every name has one import
 path.
 
+Like core, it ships as ES modules only (see
+[ES modules only](/v4/guides/getting-started/#es-modules-only)).
+
 ## Install
 
 ```sh
@@ -35,7 +38,19 @@ Peers of this package:
 | `@tanstack/react-query` | `^5.90.2`                                                     |
 | `react`                 | `>=18.0.0`                                                    |
 
-Node `>=18`.
+Node `>=22.12.0`, the first Node 22 that loads an ES module with `require()`
+(22.12 itself prints an experimental warning when it does).
+
+### One copy of `@tanstack/query-core`
+
+Install `@tanstack/query-core` at the exact version your
+`@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
+dependencies`), and check that `npm ls @tanstack/query-core` shows one copy.
+npm installs a second copy when the two differ: core then builds its
+`QueryClient` from one copy and the hooks read the other, each with its own
+`skipToken`. `client.queryOptions()` throws a `TypeError` for the hooks'
+`skipToken`, and in development `ReactorProvider` throws when it is handed
+such a client. Both errors name this fix.
 
 ## Exports
 
@@ -106,6 +121,17 @@ Server Component cannot pass the factory across the client boundary, so in
 Next.js the provider sits in a client module that the layout renders: see
 [SSR and hydration](/v4/guides/ssr/).
 
+An app that already uses TanStack Query keeps one `QueryClient` per tree,
+the client's. `ReactorProvider` provides `client.queryClient`, so the app's own
+queries, REST calls included, run on it: an error that is not a `ReactorError`
+is retried as TanStack Query retries it by default (up to 3 times in a
+browser, never on a server), and `client.dispose()` clears those queries
+along with the client's reads. Set other defaults on each query. A
+`QueryClientProvider` of the app's own nested inside the provider works too: a
+write invalidates its reads on the `QueryClient` it ran on as well as on the
+client's. That `QueryClient` lacks the client's dehydrate and hydrate defaults,
+so a server render dehydrates `client.queryClient`.
+
 ### useClient
 
 `useClient()` returns the client of the nearest provider. It throws outside a
@@ -128,15 +154,24 @@ export function Fee({ id }: { id: string }) {
 It follows the client's caller, so a component that calls it renders again on
 a sign-in, a switch of account and a sign-out, and builds the new caller's
 keys. A change of status that leaves the caller as it is renders nothing.
-While a page hydrates in a browser that holds a session, it returns a view for
-the anonymous caller, so do not keep its result past its render. See
-[SSR and hydration](/v4/guides/ssr/).
+
+It returns a view of the client for the caller the render shows (the anonymous
+one while a page hydrates): one object per caller, a new one when the caller
+changes, the same one on every render while it stays. List it in the
+dependencies of a `useMemo`, an effect or a callback built from it; React
+Compiler memoizes on it the same way, so what is memoized is built again for
+the new caller. Its `mutationOptions` send only as that caller: a write
+pressed before a switch reached the render is refused (`caller_changed`) and
+sends nothing. It is never the provider's client object, so compare two
+clients by their `queryClient`, and do not keep its result past its render.
+See [SSR and hydration](/v4/guides/ssr/).
 
 ### useAuth
 
-`useAuth()` returns `{ status, principal, signIn, signOut }`: the client's
-`AuthState` with sign-in and sign-out forwarded to the client. It renders a
-component once for each change of status or principal. It is `"anonymous"` on
+`useAuth()` returns `{ status, principal, expiresAt?, signIn, signOut }`: the
+client's `AuthState` with sign-in and sign-out forwarded to the client. It
+renders a component once for each change of status, principal or `expiresAt`,
+and when a session ends by the clock. It is `"anonymous"` on
 a server and during a hydrating render. See [Auth](/v4/guides/auth/).
 
 ## Life of the client

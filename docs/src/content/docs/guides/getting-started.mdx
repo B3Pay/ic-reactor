@@ -10,11 +10,38 @@ the ICRC-1 ledger interface (`icrc1.did`) and the ICP ledger on mainnet.
 
 `icrc1.did` is the file of the same name in the repository's
 [`examples/icrc-ledger`](https://github.com/B3Pay/ic-reactor/tree/v4/examples/icrc-ledger)
-directory. Copy it to your project's root. To work with another canister,
+directory. Copy it to your project's root once step 0 has made the project.
+To work with another canister,
 save its interface from the canister itself (see
 [Get a canister's .did](#get-a-canisters-did) below). The generator names a
 module after its file, so a saved `icp_ledger.did` gives
 `./generated/icp_ledger`, not the `./generated/icrc1` this page imports.
+
+## 0. Create the project
+
+Start in an empty directory. For a React app, make it with Vite's `react-ts`
+template, which steps 5 and 6 assume:
+
+```sh
+npm create vite@latest my-app -- --template react-ts --no-interactive
+cd my-app
+```
+
+For Node only (steps 1 to 4), make a package that is an ES module:
+
+```sh
+mkdir my-app && cd my-app
+npm init -y
+npm pkg set type=module
+```
+
+Both give a `package.json` with `"type": "module"`. That matters:
+`@ic-reactor/core` and `@ic-reactor/react` are ES modules only, and the
+scripts on this page use top-level `await`, which `npx tsx` refuses in a
+CommonJS package with "Top-level await is currently not supported with the
+'cjs' output format". `npm install` in an empty directory writes no `"type"`,
+and `npm init -y` writes none (npm 10) or `"commonjs"` (npm 11); both fail.
+See [ES modules only](#es-modules-only) below.
 
 ## 1. Install
 
@@ -36,6 +63,12 @@ Identity sign-in, add `@icp-sdk/auth`:
 npm install @ic-reactor/react@beta @tanstack/react-query
 npm install @icp-sdk/auth
 ```
+
+Install `@tanstack/query-core` at the exact version your
+`@tanstack/react-query` depends on (`npm view @tanstack/react-query@<version>
+dependencies`), and check that `npm ls @tanstack/query-core` shows one copy.
+With two copies, `client.queryOptions()` throws a `TypeError` for the hooks'
+`skipToken`, and `ReactorProvider` throws in development.
 
 The generator is a development tool:
 
@@ -232,6 +265,17 @@ console.log(formatUnits(fee, decimals)) // "0.0001"
 Run it with `npx tsx src/read.ts`. Plain `node src/read.ts` fails: Node
 resolves an import such as `./ledger` only with its file extension, which a
 bundler's imports leave out.
+
+The imports on this page are written for a bundler, or for TypeScript's
+`moduleResolution: "bundler"`. Under `moduleResolution: "nodenext"` (a Node
+project compiled by `tsc`), TypeScript wants the extension of the file it
+compiles to (error TS2835), so write `./generated/icrc1.js` and
+`./ledger.js`:
+
+```ts nocheck
+// src/ledger.ts, under "moduleResolution": "nodenext"
+import { actor, type Actor } from "./generated/icrc1.js"
+```
 
 Amounts are `bigint` in base units. `formatUnits` turns one into text, and
 `parseUnits` goes the other way. See [Values and units](/v4/guides/values/).
@@ -543,8 +587,28 @@ A page that hydrates server HTML is another case: `useAuth()` is `"anonymous"`
 during the hydrating render whatever the session. See
 [SSR and hydration](/v4/guides/ssr/).
 
+## ES modules only
+
+`@ic-reactor/core` and `@ic-reactor/react` are ES modules only, with no
+CommonJS build (the Vite plugin ships both). Use them from a package with
+`"type": "module"`, or through a bundler (Vite, Next.js, webpack, esbuild),
+which handles either.
+
+From CommonJS:
+
+- Plain Node can `require()` them from Node 20.19 (on Node 20) or 22.12 on.
+  An `import()` works in a CommonJS module Node runs as written; TypeScript
+  compiled with `module: "commonjs"` turns it into a `require()`.
+- A TypeScript runner or build that compiles your own files to CommonJS can
+  fail on a dependency instead: `npx tsx` in a package without
+  `"type": "module"` stops with `ERR_PACKAGE_PATH_NOT_EXPORTED` naming a
+  subpath of `@icp-sdk/core`. Set `"type": "module"` (or name the file
+  `.mts`).
+
 ## Next
 
+- [Build an ICRC-1 wallet](/v4/build/icrc1-wallet/): sign-in, a balance and
+  a transfer that is never paid twice, in one app with a test.
 - [The client](/v4/guides/client/): networks, `identity` and `auth`, disposal,
   one client per request on a server.
 - [Reads](/v4/guides/reads/) and [Writes](/v4/guides/writes/): the rules behind

@@ -27,6 +27,7 @@ import {
   PING_DID,
   recordingLogger,
   runBuild,
+  spawnedExited,
   startDev,
   type App,
   type Running,
@@ -59,6 +60,7 @@ afterEach(async () => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
   for (const close of closers.splice(0).reverse()) await close()
+  await spawnedExited(vi.mocked(spawn))
   for (const app of apps.splice(0)) app.cleanup()
 })
 
@@ -445,23 +447,29 @@ describe("one didFile under two paths", () => {
   it("through a symlinked directory starts one run for two saves reported under each name", async () => {
     const app = linkDid(newApp({}))
     fs.writeFileSync(path.join(app.root, "did/ledger.did"), LEDGER)
+    fs.writeFileSync(path.join(app.root, "did/ping.did"), PING_DID)
     const { server, lines } = await serve(app.root, {
       canisters: {
         a: { didFile: "did/ledger.did" },
         b: { didFile: "linked/ledger.did", outDir: "src/b" },
+        c: { didFile: "did/ping.did", outDir: "src/c" },
       },
     })
-    expect(generatorRuns()).toBe(2)
+    expect(generatorRuns()).toBe(3)
 
     // Both before the queued run starts: the second joins it.
     server.watcher.emit("change", path.join(app.root, "did/ledger.did"))
     server.watcher.emit("change", path.join(app.root, "linked/ledger.did"))
-    await vi.waitFor(() => expect(generatorRuns()).toBe(4))
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    expect(generatorRuns()).toBe(4)
-    expect(
-      lines.filter((line) => line.includes("changed, regenerating"))
-    ).toHaveLength(1)
+    // Runs go one after another, so once the run of a save queued after
+    // these has started, any second run for them would already have been.
+    server.watcher.emit("change", path.join(app.root, "did/ping.did"))
+    const regenerating = (file: string) =>
+      lines.filter((line) => line.includes(`${file} changed, regenerating`))
+    await vi.waitFor(() => expect(regenerating("ping.did")).toHaveLength(1), {
+      timeout: 10_000,
+    })
+    await vi.waitFor(() => expect(generatorRuns()).toBe(6))
+    expect(regenerating("ledger.did")).toHaveLength(1)
     expect(lines.filter((line) => line.startsWith("error:"))).toEqual([])
   })
 
@@ -970,35 +978,40 @@ describe("IC_REACTOR_FETCH", () => {
     expect(ic.requests).toHaveLength(2)
   })
 
-  it("is tried again at the next buildStart when the write failed", async () => {
-    const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
-    const app = newApp({ "did/ledger.did": OLD })
-    vi.stubEnv("IC_REACTOR_FETCH", "ledger")
-    const { buildStart, context, lines } = oneBuildPlugin(app, ic.host)
-    const dir = path.join(app.root, "did")
+  // A read-only mode on a directory does not stop a write on Windows, so the
+  // write this test needs to fail succeeds there.
+  it.skipIf(process.platform === "win32")(
+    "is tried again at the next buildStart when the write failed",
+    async () => {
+      const ic = await fakeIc({ [LEDGER_ID]: { candid: LEDGER } })
+      const app = newApp({ "did/ledger.did": OLD })
+      vi.stubEnv("IC_REACTOR_FETCH", "ledger")
+      const { buildStart, context, lines } = oneBuildPlugin(app, ic.host)
+      const dir = path.join(app.root, "did")
 
-    // did/ is read-only for the first buildStart only.
-    fs.chmodSync(dir, 0o555)
-    try {
+      // did/ is read-only for the first buildStart only.
+      fs.chmodSync(dir, 0o555)
+      try {
+        await buildStart()
+      } finally {
+        fs.chmodSync(dir, 0o755)
+      }
+      expect(context.error).toHaveBeenCalledTimes(1)
+      expect(String(context.error.mock.calls[0][0])).toContain(
+        `ledger (did/ledger.did): fetched the certified candid:service of ${LEDGER_ID} on ${ic.host}, but could not write it to did/ledger.did: `
+      )
+      expect(read(app, "did/ledger.did")).toBe(OLD)
+      expect(ic.requests).toHaveLength(2)
+
       await buildStart()
-    } finally {
-      fs.chmodSync(dir, 0o755)
+      expect(context.error).toHaveBeenCalledTimes(1)
+      expect(read(app, "did/ledger.did")).toBe(LEDGER)
+      expect(lines).toContainEqual(
+        expect.stringContaining(`rewrote did/ledger.did from the certified`)
+      )
+      expect(ic.requests).toHaveLength(4)
     }
-    expect(context.error).toHaveBeenCalledTimes(1)
-    expect(String(context.error.mock.calls[0][0])).toContain(
-      `ledger (did/ledger.did): fetched the certified candid:service of ${LEDGER_ID} on ${ic.host}, but could not write it to did/ledger.did: `
-    )
-    expect(read(app, "did/ledger.did")).toBe(OLD)
-    expect(ic.requests).toHaveLength(2)
-
-    await buildStart()
-    expect(context.error).toHaveBeenCalledTimes(1)
-    expect(read(app, "did/ledger.did")).toBe(LEDGER)
-    expect(lines).toContainEqual(
-      expect.stringContaining(`rewrote did/ledger.did from the certified`)
-    )
-    expect(ic.requests).toHaveLength(4)
-  })
+  )
 })
 
 describe("the root key", () => {

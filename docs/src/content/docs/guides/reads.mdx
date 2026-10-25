@@ -183,7 +183,8 @@ attempt can change (an HTTP 429, a reject with code 2, a network failure, a
 timeout). Every other kind fails at once: retrying `invalid_args`, `rejected`,
 `invalid_reply` or `canister_err` would only repeat the answer. A read through
 `queryOptions` is never retried on a server, and the client's own
-`QueryClient` has the same default. A direct call still re-sends a retryable
+`QueryClient` has the same default for a `ReactorError` (any other error, from
+an app's own query on it, is retried as TanStack Query retries it). A direct call still re-sends a retryable
 read up to twice (see [Outside React](#outside-react)).
 
 The [classification table](/v4/guides/errors/) lists which failures are
@@ -276,7 +277,14 @@ is itself generic (`Canister<A>` in a function generic over `A`). TypeScript
 cannot tell that such a method is a `ReadMethod<A>`. Give the type arguments yourself,
 `client.queryOptions<A, any>(canister, method, vars)`: the call compiles, the
 mode is checked at run time as for an `Actor` written by hand, and the data of
-the options is `unknown`, for your function to state. The same goes for an
+the options is `unknown`, for your function to state. The variables keep the
+rule of every other read, and are checked against the method's schemas at run
+time: the value itself for a method with one argument, a tuple for several,
+and `undefined` or `[]` for none. `[arg]` for a one-argument method compiles,
+since an array is a value too, and is refused `invalid_args`. `mutationOptions`,
+`queryKey` and `resendOf` take `<A, any>` the same way; inside a function
+generic over `A`, only `queryOptions` widens the variables, so cast them for the
+other three. The same goes for an
 `{ update: "idempotent" }` that may be `undefined`: for an update, pass a value
 whose type says it is the opt-in.
 
@@ -316,6 +324,12 @@ proves it never got in. A write to the same canister through
 runs once more, as a replicated call. That is safe for an idempotent method but
 it is a cost. To keep the read cached across writes, list the reads a write
 changes in `invalidates`, see [Writes](/v4/guides/writes/).
+
+It is still an update, so a signed-out or `"anonymous"` client refuses it as
+`unauthenticated` (code `anonymous_write`) and sends nothing, as it refuses a
+write. Read an ICRC-21 consent message (`icrc21_canister_call_consent_message`)
+as the caller who will send the write: the message can depend on the caller,
+and the DFINITY ICRC-1 ledger names the sender as `From`.
 
 Do not use `{ update: "idempotent" }` for a method that changes state. The
 option opts in an update only: a oneway method does not compile even with it,

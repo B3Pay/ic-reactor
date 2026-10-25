@@ -24,25 +24,35 @@ import {
   type QueryFunctionContext,
   type QueryKey,
 } from "@tanstack/query-core"
+import { lookupResultToBuffer } from "@icp-sdk/core/agent"
+import { Principal } from "@icp-sdk/core/principal"
 import {
   UNKNOWN_WRITES,
   differs,
   invoke,
   isWrite,
   prepareMethod,
+  notEncoded,
   valuesOf,
-  type CallRequest,
   type ResolvedTarget,
 } from "./call.js"
 import {
   canisterFactory,
   describe,
+  badTimeout,
   methodOf,
   recordOf,
   type CanisterRecord,
 } from "./canister.js"
 import type { Caller, Client, ClientInternals } from "./client.js"
-import { isReactorError, retryQuery } from "./errors.js"
+import {
+  classifyError,
+  createReactorError,
+  fromCanister,
+  isReactorError,
+  retryQuery,
+  timedOutError,
+} from "./errors.js"
 import {
   CERTIFIED,
   INVALID,
@@ -61,7 +71,9 @@ export type Builders = Pick<
   | "queryOptions"
   | "mutationOptions"
   | "resendOf"
+  | "encode"
   | "func"
+  | "time"
 >
 
 /** What an update read with `{ update: "idempotent" }` adds to its options (DECISIONS Q2). */
@@ -100,6 +112,80 @@ function readQueryOptionsArg(options: unknown): boolean {
   )
 }
 
+/**
+ * The `time` path of the state tree, copied into the global `Uint8Array`, the
+ * one the agent's CBOR encoder knows bytes by (`instanceof`). Under a test's
+ * jsdom that is jsdom's, while `TextEncoder` hands out Node's, and the encoder
+ * sent such a label as a map: the `read_state` the replica received was not
+ * the one the agent signed, so a signed-in caller's was refused (#949). The
+ * fake replica copies its labels for the same reason.
+ */
+const TIME_PATH = [Uint8Array.from(new TextEncoder().encode("time"))]
+
+/** An unsigned LEB128 number, as the state tree writes `time`. */
+function readLeb128(bytes: Uint8Array): bigint {
+  let value = 0n
+  let shift = 0n
+  for (const byte of bytes) {
+    value |= BigInt(byte & 0x7f) << shift
+    if ((byte & 0x80) === 0) return value
+    shift += 7n
+  }
+  throw new Error("the certificate's time is not a complete LEB128 number")
+}
+
+/**
+ * What a builder says when it is handed a symbol that is not the
+ * `skipToken` of the `@tanstack/query-core` this package imports. Correct
+ * variables are never a symbol (but see {@link takesAnything}), so such a
+ * symbol is almost always the `skipToken` of another copy of
+ * `@tanstack/query-core`: npm installs one beside the exact version
+ * `@tanstack/react-query` depends on when the two do not match, and each copy
+ * has its own `skipToken`. Encoded, it would make a read that is never
+ * skipped and rejects `invalid_args`.
+ */
+const twoQueryCores = (call: string): string =>
+  `[ic-reactor] ${call}: the variables are a symbol, not core's skipToken: two copies of @tanstack/query-core are installed (or a bundler loads it twice). ` +
+  "Install it at the exact version @tanstack/react-query depends on; `npm ls @tanstack/query-core` must show one copy."
+
+/**
+ * Whether a method's one argument is Candid `reserved`, which every value
+ * inhabits, a symbol included: the one method whose variables may be a
+ * symbol.
+ */
+const takesAnything = (method: {
+  readonly args: readonly unknown[]
+}): boolean => {
+  if (method.args.length !== 1) return false
+  try {
+    const node = resolveSchema(
+      method.args[0] as Parameters<typeof resolveSchema>[0]
+    )
+    return (
+      node.kind === "primitive" &&
+      (node as { primitive?: unknown }).primitive === "reserved"
+    )
+  } catch {
+    // A schema resolveSchema refuses takes no symbol either.
+    return false
+  }
+}
+
+/** Throws {@link twoQueryCores} for a symbol that is not our `skipToken`, unless the method takes anything. */
+const refuseForeignSymbol = (
+  vars: unknown,
+  method: { readonly args: readonly unknown[] },
+  call: string
+): void => {
+  if (
+    typeof vars === "symbol" &&
+    vars !== skipToken &&
+    !takesAnything(method)
+  ) {
+    throw new TypeError(twoQueryCores(call))
+  }
+}
+
 /** Whether a settled mutation may have changed what its canister's reads return. */
 const mayHaveChanged = (error: unknown): boolean =>
   error === null ||
@@ -112,19 +198,31 @@ const mayHaveChanged = (error: unknown): boolean =>
 
 /**
  * What one run of a mutation resolved, in one synchronous step when it
- * started: the canister it writes to, and the canisterId segments (and
- * method) of every read it invalidates. A `{ name }` is resolved from the
+ * started: the caller it goes out as, the canister it writes to, and the
+ * canisterId segments (and method) of every read it invalidates. TanStack
+ * Query can run `mutationFn` long after `mutate()` (paused offline, or queued
+ * behind another mutation of its `scope`); the write goes out as the caller
+ * current when it started, or not at all. A `{ name }` is resolved from the
  * `ic_env` cookie, which a local redeploy can rewrite while an update is in
  * flight; resolving once keeps the write and its invalidation on the same
  * canister.
  */
 interface MutationRun {
+  /** Read by our `onMutate`; none for a run it did not start. */
+  readonly caller?: Caller
   readonly target: ResolvedTarget
   readonly invalidates: readonly {
     readonly slots: readonly string[]
     readonly method?: string
   }[]
 }
+
+/** Whether two callers read for runs are the same one, `undefined` (not read) never matching. */
+const sameCaller = (a: Caller | undefined, b: Caller | undefined): boolean =>
+  a !== undefined &&
+  b !== undefined &&
+  a.principal === b.principal &&
+  a.authenticated === b.authenticated
 
 /**
  * The property a run is kept under in what `onMutate` returns. A symbol, so
@@ -155,8 +253,8 @@ const runKey = (context: unknown): object | undefined =>
  * live caller, or the principal a view of the client is pinned to (see
  * `CLIENT_AS` in `client.ts`). A read built for it still asks `agentFor` for
  * that principal's agent, so it is cancelled rather than sent while someone
- * else is current. Writes, direct calls and `func` read the live caller when
- * they run.
+ * else is current. A write reads the live caller when it starts (its
+ * `onMutate`, run by `mutate()`), and direct calls and `func` when they run.
  */
 export function createBuilders(
   internals: ClientInternals,
@@ -214,11 +312,46 @@ export function createBuilders(
   const runsByContext = new WeakMap<object, MutationRun>()
 
   /**
-   * The argument of each re-send `resendOf` offered, and the write it was
-   * first sent in: a mutation given that very argument sends it as that
-   * write's caller, to its canister id, with its bytes, or not at all.
+   * Before 5.89 TanStack passes `onMutate`, `mutationFn` and `onSettled` no
+   * context, but calls them as methods of the run's options object
+   * (`mutation.options.onMutate(variables)`). That object is not the run's
+   * own: every `mutate()` of one `MutationObserver` builds its run with the
+   * observer's options, so the runs of an observer share it. Kept for it, on
+   * a `QueryClient` other than the client's: the caller our `onMutate` read
+   * for the runs not yet settled, or `undefined` once two of them started as
+   * different callers, which refuses their writes, since `mutationFn`
+   * cannot tell which of them it runs for. Our `onSettled` counts them out.
+   * Weak, so an entry lives as long as those options. A later render that
+   * hands a pending run new options (`setOptions`) leaves its `mutationFn`
+   * nothing here, which refuses it.
    */
-  const offered = new WeakMap<object, CallRequest>()
+  const callersByOptions = new WeakMap<
+    object,
+    { readonly caller: Caller | undefined; readonly runs: number }
+  >()
+
+  /** The methods whose `onMutate` read a caller with no context. */
+  const startedMethods = new WeakSet<object>()
+
+  /**
+   * The runs of the client's own `queryClient` not yet settled whose options
+   * object is `options`: the runs a `mutationFn` called on it may run for.
+   * More than one when an observer's `mutate()` started another before the
+   * first settled, as for writes held back offline.
+   */
+  const ownRuns = (options: unknown): object[] =>
+    typeof options === "object" && options !== null
+      ? owner()
+          .queryClient.getMutationCache()
+          .getAll()
+          .filter(
+            (mutation) =>
+              mutation.options === options &&
+              mutation.state.status === "pending"
+          )
+      : []
+
+  const { offered } = internals
 
   /** The run kept for a run's function context, if TanStack passed one and a run was kept for it. */
   const keptRun = (context: unknown): MutationRun | undefined => {
@@ -261,6 +394,7 @@ export function createBuilders(
     if (vars === skipToken) {
       return readKey(record, caller, target, prepared.name, [SKIP])
     }
+    refuseForeignSymbol(vars, prepared, call)
     const encoded = encodeArgs(prepared.args, valuesOf(prepared, vars))
     return readKey(
       record,
@@ -333,6 +467,7 @@ export function createBuilders(
         ...base,
       }
     }
+    refuseForeignSymbol(vars, prepared, call)
     const values = valuesOf(prepared, vars)
     const encoded = encodeArgs(prepared.args, values)
     return {
@@ -352,6 +487,7 @@ export function createBuilders(
           values,
           encoded,
           signal: context.signal,
+          timeoutMs: record.timeoutMs,
           resend: false,
           canister: canister as object,
         })
@@ -372,9 +508,13 @@ export function createBuilders(
         typeof options === "object" && options !== null
           ? Object.keys(options)
           : undefined
-      if (keys === undefined || keys.some((key) => key !== "invalidates")) {
+      if (
+        keys === undefined ||
+        keys.some((key) => key !== "invalidates" && key !== "timeoutMs") ||
+        badTimeout((options as { timeoutMs?: unknown }).timeoutMs)
+      ) {
         throw new TypeError(
-          `[ic-reactor] ${call} takes { invalidates } as its third argument, or nothing; got ${describe(options)}. ` +
+          `[ic-reactor] ${call} takes { invalidates, timeoutMs } (timeoutMs: 1 to 2147483647 ms) as its third argument, or nothing; got ${describe(options)}. ` +
             "A mutation is never retried: an update re-sent after an unknown outcome can run twice."
         )
       }
@@ -411,16 +551,122 @@ export function createBuilders(
     const record = recordOf(canister, internals, call)
     const prepared = methodOf(record, method, call)
     const invalidates = readInvalidates(canister, options)
+    const timeoutMs = (options as { timeoutMs?: number } | undefined)?.timeoutMs
     // One synchronous step, so that every `{ name }` here (the canister
     // written to, and any listed in `invalidates`) is read from the same
     // cookie.
-    const resolveRun = (): MutationRun => ({
+    const resolveRun = (caller?: Caller): MutationRun => ({
+      caller,
       target: record.resolve(),
       invalidates: invalidates.map(({ record: listed, method: only }) => ({
         slots: listed.slots(),
         method: only,
       })),
     })
+
+    /**
+     * The caller a run of this write goes out as: the one current when
+     * `mutate()` started it, or `undefined` when that is not known, which
+     * refuses the write. Found, in order:
+     *
+     * - by the run's context (5.89 and later): what the client's
+     *   `MutationCache` read for it, which no option replaces, else what our
+     *   `onMutate` read (a run on another `QueryClient`). Neither, for a run
+     *   TanStack restored from a persister (it runs no `onMutate` for one),
+     *   or one on another `QueryClient` whose `onMutate` replaced ours.
+     * - without a context (before 5.89, or a call by hand), by `options`,
+     *   the object TanStack called `mutationFn` on, which the pending runs
+     *   of one observer share: the caller its `MutationCache` read for the
+     *   pending runs of the client's own cache with those options, if they
+     *   all started as one (none for a restored run), else what our
+     *   `onMutate` read for them (runs on another `QueryClient`, the same
+     *   rule). Only when no `onMutate` of ours ever ran without a context
+     *   for this method is this a call by hand, made as the caller current
+     *   now.
+     */
+    const callerOf = (
+      options: unknown,
+      key: object | undefined,
+      run: MutationRun | undefined
+    ): Caller | undefined => {
+      if (key !== undefined) {
+        return internals.mutationCallers.get(key) ?? run?.caller
+      }
+      const own = ownRuns(options)
+      if (own.length > 0) {
+        const callers = own.map((run) => internals.mutationCallers.get(run))
+        const [first] = callers
+        return callers.every((caller) => sameCaller(caller, first))
+          ? first
+          : undefined
+      }
+      const read =
+        typeof options === "object" && options !== null
+          ? callersByOptions.get(options)
+          : undefined
+      if (read !== undefined) return read.caller
+      return startedMethods.has(prepared) ? undefined : internals.current()
+    }
+
+    // The write goes out as the caller current when `mutate()` started it
+    // (`callerOf`), or not at all: `agentFor` refuses it (`caller_changed`,
+    // nothing sent) while someone else is current, as when TanStack held it
+    // back offline or behind its `scope` and the account was switched
+    // meanwhile, and a caller not known is refused here. A re-send
+    // `resendOf` offered goes out as its first sender, to the canister id it
+    // went to, with the bytes it had, or not at all (`run` checks the rest).
+    // The target is the one onMutate resolved for this run where TanStack
+    // passes the run's context (5.89 and later), and is resolved now
+    // otherwise.
+    const mutationFn = function (
+      this: unknown,
+      vars: unknown,
+      context?: unknown
+    ) {
+      // TanStack hands a pending mutation the options of a later render
+      // only when their mutationKey is the same (another key detaches the
+      // observer instead), so a run found here was made by options for the
+      // same canister and method.
+      let run = keptRun(context)
+      const key = runKey(context)
+      if (run === undefined && key !== undefined) {
+        // An onMutate of the app's replaced ours, so nothing is resolved
+        // for this run yet: resolve it now, and keep it for onSettled,
+        // which TanStack hands the same context.
+        run = resolveRun()
+        runsByContext.set(key, run)
+      }
+      const target = run?.target ?? record.resolve()
+      const again = offered.get(vars as object)
+      const caller = again?.caller ?? callerOf(this, key, run)
+      // A disposed client cancels every call itself (`client_disposed`).
+      if (caller === undefined && !internals.disposed()) {
+        return Promise.reject(
+          fromCanister(
+            createReactorError("cancelled", {
+              method: prepared.name,
+              canisterId: target.ok ? target.id : target.slot,
+              code: "caller_changed",
+              reason: "who started this write is not known; it was not sent",
+            }),
+            canister as object
+          )
+        )
+      }
+      return invoke(internals, {
+        method: prepared,
+        target,
+        certified: record.certified,
+        caller: caller ?? internals.current(),
+        values: valuesOf(prepared, vars),
+        timeoutMs: timeoutMs ?? record.timeoutMs,
+        resend: true,
+        canister: canister as object,
+        again,
+      })
+    }
+    internals.ownMutationFns.add(mutationFn)
+
     return {
       mutationKey: [
         KEY_ROOT,
@@ -429,53 +675,61 @@ export function createBuilders(
         prepared.name,
       ] as const,
       // TanStack runs this first, before mutationFn, and hands what it
-      // returns to onSettled.
-      onMutate: (_vars: unknown, context?: unknown): object => {
-        const run = resolveRun()
+      // returns to onSettled. The caller it reads matters only on a
+      // `QueryClient` other than the client's, whose own `MutationCache`
+      // reads it otherwise.
+      onMutate: function (
+        this: unknown,
+        _vars: unknown,
+        context?: unknown
+      ): object {
+        const caller = internals.current()
+        const run = resolveRun(caller)
         const key = runKey(context)
         if (key !== undefined) runsByContext.set(key, run)
+        else {
+          startedMethods.add(prepared)
+          if (typeof this === "object" && this !== null) {
+            const kept = callersByOptions.get(this)
+            callersByOptions.set(
+              this,
+              kept === undefined || kept.runs === 0
+                ? { caller, runs: 1 }
+                : {
+                    caller: sameCaller(kept.caller, caller)
+                      ? caller
+                      : undefined,
+                    runs: kept.runs + 1,
+                  }
+            )
+          }
+        }
         return { [RUN]: run }
       },
-      // The caller is read when the mutation runs, unless the argument is a
-      // re-send `resendOf` offered: that goes out as its first sender, to the
-      // canister id it went to, with the bytes it had, or not at all
-      // (`agentFor` refuses another caller, `run` the rest). The target is
-      // the one onMutate resolved for this run where TanStack passes the run's
-      // context (5.89 and later), and is resolved now otherwise.
-      mutationFn: (vars: unknown, context?: unknown) => {
-        // TanStack hands a pending mutation the options of a later render
-        // only when their mutationKey is the same (another key detaches the
-        // observer instead), so a run found here was made by options for the
-        // same canister and method.
-        let run = keptRun(context)
-        const key = runKey(context)
-        if (run === undefined && key !== undefined) {
-          // An onMutate of the app's replaced ours, so nothing is resolved
-          // for this run yet: resolve it now, and keep it for onSettled,
-          // which TanStack hands the same context.
-          run = resolveRun()
-          runsByContext.set(key, run)
-        }
-        const again = offered.get(vars as object)
-        return invoke(internals, {
-          method: prepared,
-          target: run?.target ?? record.resolve(),
-          certified: record.certified,
-          caller: again?.caller ?? internals.current(),
-          values: valuesOf(prepared, vars),
-          resend: true,
-          canister: canister as object,
-          again,
-        })
-      },
+      mutationFn,
       retry: false as const,
-      onSettled: async (
+      onSettled: async function (
+        this: unknown,
         _data: unknown,
         error: unknown,
         _vars: unknown,
         onMutateResult?: unknown,
         context?: unknown
-      ): Promise<void> => {
+      ): Promise<void> {
+        // A run of another QueryClient with no context settled: one fewer
+        // shares its options' caller.
+        const kept =
+          runKey(context) === undefined &&
+          typeof this === "object" &&
+          this !== null
+            ? callersByOptions.get(this)
+            : undefined
+        if (kept !== undefined && kept.runs > 0) {
+          callersByOptions.set(this as object, {
+            caller: kept.runs > 1 ? kept.caller : undefined,
+            runs: kept.runs - 1,
+          })
+        }
         if (!mayHaveChanged(error)) return
         // The reads of the run mutationFn wrote with, found by the run's
         // context (5.89 and later); else those onMutate returned (before
@@ -485,9 +739,17 @@ export function createBuilders(
         const targets = run.invalidates
         if (targets.length === 0) return
         // Every caller's reads, certified or not: a write changes what the
-        // canister answers to everyone.
-        await owner().queryClient.invalidateQueries({
-          predicate: ({ queryKey: key }) =>
+        // canister answers to everyone. On the QueryClient the mutation ran
+        // on, which TanStack (5.89 and later) hands onSettled, as well as the
+        // client's own: an app that nests its own QueryClientProvider keeps
+        // its reads there (#903).
+        const own = owner().queryClient
+        const ran = (runKey(context) as { client?: QueryClient } | undefined)
+          ?.client
+        const queryClients =
+          ran !== undefined && ran !== own ? [own, ran] : [own]
+        const filters = {
+          predicate: ({ queryKey: key }: { queryKey: QueryKey }) =>
             key[0] === KEY_ROOT &&
             key[1] === network &&
             targets.some(
@@ -495,7 +757,12 @@ export function createBuilders(
                 slots.includes(key[3] as string) &&
                 (only === undefined || key[4] === only)
             ),
-        })
+        }
+        await Promise.all(
+          queryClients.map((queryClient) =>
+            queryClient.invalidateQueries(filters)
+          )
+        )
       },
     }
   }
@@ -538,12 +805,44 @@ export function createBuilders(
       return undefined
     }
     offered.set(arg, attempt)
+    const sent = (attempt.encoded as { bytes: Uint8Array }).bytes
     return {
       arg,
       from: caller.principal,
+      // A copy on every read: `send()` sends the attempt's own bytes, which
+      // nothing outside the client can reach to change.
+      get bytes() {
+        return sent.slice()
+      },
       // The attempt itself: its canister id and the bytes it sent.
-      send: () => invoke(internals, attempt),
+      // Marked as a re-send of itself, which it is: a timeout before it
+      // goes out keeps its unknown outcome (see `run`).
+      send: () => invoke(internals, { ...attempt, again: attempt }),
     }
+  }
+
+  /**
+   * The bytes a call of `method` with `vars` sends: the same arity rule and
+   * the same encoder as the call path, so they are those bytes, not a second
+   * encoding of the value.
+   */
+  const encode = (canister: unknown, method: unknown, vars: unknown) => {
+    const call = "client.encode()"
+    const record = recordOf(canister, internals, call)
+    const prepared = methodOf(record, method, call)
+    const encoded = encodeArgs(prepared.args, valuesOf(prepared, vars))
+    if (!encoded.ok) {
+      // Marked with the canister, as a call's error is, so that
+      // `isReactorError(error, canister, method)` reads its issues.
+      throw fromCanister(
+        notEncoded(
+          { method: prepared.name, canisterId: slotOf(record.resolve()) },
+          encoded
+        ),
+        canister as object
+      )
+    }
+    return encoded.bytes
   }
 
   const func = (funcSchema: unknown, ref: unknown) => {
@@ -596,12 +895,106 @@ export function createBuilders(
       })
   }
 
+  /**
+   * The IC's time, from a certified `read_state` of the `time` path routed by
+   * the canister's subnet, sent by the caller's agent. The certificate's
+   * signature is verified against the network's root key; its freshness is
+   * not compared with the host clock, which may be the clock that is wrong
+   * (as `HttpAgent.syncTime()` reads it).
+   */
+  const time = async (canister: unknown): Promise<bigint> => {
+    const record = recordOf(canister, internals, "client.time()")
+    const target = record.resolve()
+    const method = "read_state"
+    if (!target.ok) {
+      throw createReactorError("invalid_args", {
+        method,
+        canisterId: target.slot,
+        code: "canister_id_unresolved",
+        reason: target.message,
+      })
+    }
+    // A read_state is routed by a canister in a subnet's range, and the
+    // management canister is in none: the IC would refuse it.
+    if (target.id === MANAGEMENT_CANISTER) {
+      throw createReactorError("invalid_args", {
+        method,
+        canisterId: target.id,
+        code: "management_canister",
+        reason: "the management canister routes no read_state",
+      })
+    }
+    const where = { method, canisterId: target.id }
+    const ms = record.timeoutMs
+    let timedOut = false
+    const read = readTime(where, () => timedOut)
+    if (ms === undefined) return read
+    // The canister object's timeoutMs bounds the wait from here, as it bounds
+    // a call through it: when it passes, the time rejects `cancelled` (code
+    // `timeout`), and a read_state not sent yet is never sent. One already
+    // out goes on, but nobody waits for it.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true
+        reject(timedOutError(where, false))
+      }, ms)
+    })
+    try {
+      return await Promise.race([read, timeout])
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+
+  /**
+   * The IC's time, read for `client.time()`. `timedOut` says whether its
+   * bound passed while the caller's agent was awaited: nothing is sent then.
+   */
+  const readTime = async (
+    where: { readonly method: string; readonly canisterId: string },
+    timedOut: () => boolean
+  ): Promise<bigint> => {
+    const agent = await internals.agentFor(internals.current().principal, where)
+    // As in the call path: a dispose() in the microtask after agentFor's own
+    // check still sends nothing.
+    if (internals.disposed()) {
+      throw createReactorError("cancelled", {
+        ...where,
+        code: "client_disposed",
+        reason: "the client was disposed before the time was read",
+      })
+    }
+    if (timedOut()) throw timedOutError(where, false)
+    try {
+      // The agent verifies the certificate against the network's root key
+      // and the canister's subnet delegation. Its age is not checked: that
+      // would compare it with the host's clock, the clock this replaces, and
+      // a host clock out by minutes would first make the agent re-sync.
+      const { verifiedCertificate } = await agent.readState(
+        { canisterId: Principal.fromText(where.canisterId) },
+        { paths: [TIME_PATH], disableTimeVerification: true }
+      )
+      const raw = lookupResultToBuffer(
+        verifiedCertificate.lookup_path(TIME_PATH)
+      )
+      if (raw === undefined) {
+        throw new Error("the certificate holds no time")
+      }
+      return readLeb128(raw)
+    } catch (error) {
+      throw classifyError(error, { ...where, mode: "query" })
+    }
+  }
+
   return {
     canister: canisterFactory(internals),
+    time,
     queryKey,
     queryOptions,
     mutationOptions,
     resendOf,
+    encode,
     func,
   } as unknown as Builders
 }

@@ -12,6 +12,8 @@
  * what was typed.
  */
 
+import { checkBoolean, checkKeys } from "./network.js"
+
 /** The most decimals, and fraction digits, accepted: `icrc1_decimals` is a `nat8`. */
 const MAX_DIGITS = 255
 
@@ -63,6 +65,25 @@ const toCount = (value: unknown, name: string, fn: string): number => {
 }
 
 /**
+ * Refuses an options argument that is not an object, or has a key `names` does
+ * not list: `{ maximumFractionDigits }`, Intl's spelling, would otherwise be
+ * ignored and every digit shown.
+ */
+const checkOptions = (
+  options: unknown,
+  names: readonly string[],
+  fn: string
+): void => {
+  if (options === undefined) return
+  if (typeof options !== "object" || options === null) {
+    throw new TypeError(
+      `[ic-reactor] ${fn}: options is an object, got ${show(options)}`
+    )
+  }
+  checkKeys(options, names, fn)
+}
+
+/**
  * `-`, then whole digits, then a `.` and fraction digits, either part may be
  * empty: `"5"`, `"5."`, `".5"`, `"-1.25"`. `\d` is the ASCII digits only.
  */
@@ -91,11 +112,13 @@ const DECIMAL_TEXT = /^(-)?(\d*)(?:\.(\d*))?$/
  * `icrc1_decimals` returns them.
  * @param options - `signed: true` accepts a leading `-`, for an `int` amount.
  * It defaults to `false`: a ledger's amounts are `nat`, so a negative amount
- * is refused here instead of failing later when the call is encoded.
+ * is refused here instead of failing later when the call is encoded. No other
+ * key is accepted.
  * @returns The amount in base units: `150000000n` for `"1.5"` at 8 decimals.
  * @throws TypeError when `text` is not text or not a decimal amount (blank,
- * letters, grouping, an exponent, a `+`, a lone `.`, inner whitespace), or
- * `decimals` is not a whole number.
+ * letters, grouping, an exponent, a `+`, a lone `.`, inner whitespace),
+ * `decimals` is not a whole number, or `options` is not an object, has a key
+ * other than `signed`, or a `signed` that is not a boolean.
  * @throws RangeError when `text` has more significant fraction digits than
  * `decimals`, is negative without `signed`, or `decimals` is outside 0-255.
  *
@@ -135,6 +158,9 @@ export function parseUnits(
     )
   }
   const scale = toCount(decimals, "decimals", "parseUnits")
+  checkOptions(options, ["signed"], "parseUnits")
+  const signed = options?.signed
+  checkBoolean(signed, "parseUnits: signed")
   const match = DECIMAL_TEXT.exec(text.trim())
   if (!match || (!match[2] && !match[3])) {
     throw new TypeError(
@@ -142,7 +168,7 @@ export function parseUnits(
     )
   }
   const [, minus, whole, fraction = ""] = match
-  if (minus && options?.signed !== true) {
+  if (minus && !signed) {
     throw new RangeError(
       `[ic-reactor] parseUnits: ${show(text)} is negative; pass { signed: true } to accept a negative amount`
     )
@@ -196,10 +222,12 @@ export function parseUnits(
  * @param options - `maxFractionDigits` (default `decimals`, or
  * `minFractionDigits` when that is more) and `minFractionDigits` (default
  * `0`), each a whole number from 0 to 255 with `minFractionDigits` not more
- * than `maxFractionDigits`. Other keys are not read.
+ * than `maxFractionDigits`. Any other key, such as Intl's
+ * `maximumFractionDigits`, is refused.
  * @returns The amount as decimal text, `"1.5"` for 150000000n at 8 decimals.
- * @throws TypeError when `value` is not a `bigint`, or `decimals` or a digit
- * option is not a whole number.
+ * @throws TypeError when `value` is not a `bigint`, `decimals` or a digit
+ * option is not a whole number, or `options` is not an object or has another
+ * key.
  * @throws RangeError when `decimals` or a digit option is outside 0-255, or
  * `minFractionDigits` is more than `maxFractionDigits`.
  *
@@ -234,6 +262,11 @@ export function formatUnits(
     )
   }
   const scale = toCount(decimals, "decimals", "formatUnits")
+  checkOptions(
+    options,
+    ["maxFractionDigits", "minFractionDigits"],
+    "formatUnits"
+  )
   const min =
     options?.minFractionDigits === undefined
       ? 0
