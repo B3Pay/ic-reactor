@@ -184,6 +184,8 @@ describe("release.yml as it uses release-tag.mjs", () => {
         output
       )
     }
+    // The v4 branch's "prereleases only" check would refuse every stable tag.
+    assert.doesNotMatch(preflight, /!= \*-\*/)
   })
 
   it("publishes under preflight's dist-tag, after CI and the approval", () => {
@@ -202,6 +204,7 @@ describe("release.yml as it uses release-tag.mjs", () => {
       has(publish, 'npm publish "$TARBALL" --access public --tag "$TAG"')
     )
     assert.equal(publish.match(/^\s*npm publish /gm).length, 1)
+    assert.doesNotMatch(publish, /!= \*-\*/)
   })
 
   it("publishes from the npm-release environment, which npm can require", () => {

@@ -198,6 +198,16 @@ describe("defaultBase", () => {
     assert.deepEqual(defaultBase(git), { line: "main", commit: left })
   })
 
+  it("is where a branch cut from v4 left it, while v4 is still listed", () => {
+    // Before the flip main is 3.x, behind v4: its merge base would be older.
+    const { git, commit, left, moved } = repository()
+    git("branch", "-q", "v4", moved)
+    git("branch", "-q", "-f", "main", left)
+    git("checkout", "-q", "-B", "fix", "v4")
+    commit("D")
+    assert.deepEqual(defaultBase(git), { line: "v4", commit: moved })
+  })
+
   it("is undefined with neither, so the script asks for --base instead of guessing v3", () => {
     const { git, left } = repository()
     git("branch", "-q", "v3", left)

@@ -7,13 +7,17 @@
 
 /**
  * The refs `--base` defaults from: `main`, the branch 4.x is developed on, and
- * `origin/main`, which is all a clone of another branch has of it. `v3` is
- * the 3.x line, whose sources cannot load 4.x's tests. Each is read by its
- * full name, so a tag called `main` is not taken for the branch.
+ * `origin/main`, which is all a clone of another branch has of it. `v4`, the
+ * branch 4 was developed on until the 4.0 GA flip, stays listed until it is
+ * retired, as in ci.yml: a branch cut from it then still gets its own branch
+ * point. `v3` is the 3.x line, whose sources cannot load 4.x's tests. Each is
+ * read by its full name, so a tag called `main` is not taken for the branch.
  */
 export const BASE_LINES = [
   { name: "main", ref: "refs/heads/main" },
   { name: "origin/main", ref: "refs/remotes/origin/main" },
+  { name: "v4", ref: "refs/heads/v4" },
+  { name: "origin/v4", ref: "refs/remotes/origin/v4" },
 ]
 
 /**
