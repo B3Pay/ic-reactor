@@ -87,8 +87,9 @@
       "tar": "^7.5.22",
       "yaml": "^2.8.3",
       "follow-redirects": "^1.16.0",
-      "undici": "^7.29.1",
-      "linkinator>undici": "^8.0.0",
+      "happy-dom": "^21.0.4",
+      "undici": "^7.30.1",
+      "linkinator>undici": "^8.12.2",
       "ws": "^8.21.0",
       "markdown-it": "^14.3.3",
       "astro>vite": "^8.3.3"
