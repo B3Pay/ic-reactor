@@ -19,6 +19,112 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 Nothing yet.
 
+## core, react, vite-plugin 4.0.0
+
+Prepared on 2026-10-25. 4.0.0 is the first stable release of the ic-reactor
+4 line (milestone 1, #790). It is published from `main` after the 4.0 GA
+flip, under npm's `latest` dist-tag, so a plain
+`npm install @ic-reactor/core` installs 4. The 3.x line gets security fixes
+only, until 90 days after this release.
+
+Changes since 4.0.0-beta.8: the version only. No export, type, peer or
+behaviour changed (core 13, `@ic-reactor/core/testing` 2, react 4,
+vite-plugin 2).
+
+It requires the candid-core pair that beta.5 moved to, both pinned exactly:
+
+- `@ic-reactor/core`: peer `@candid-core/schema` at exactly `0.4.0`;
+- `@ic-reactor/vite-plugin`: peer `@candid-core/cli` at exactly `0.3.0`.
+
+### Upgrading from a beta
+
+An app on beta.8 bumps all three packages to `4.0.0`. A module generated for
+beta.8 need not be regenerated.
+
+An app on an earlier beta also reads each section below, from the one after
+its version up to beta.8. What changes code on the way:
+
+- **From beta.7** (4.0.0-beta.8). Nothing changes code. Restart the dev
+  server after a local network restarts: once the network the Vite plugin
+  detected stops, `{ name }` canisters reject `canister_id_unresolved` until
+  the server restarts (#881). On Windows, the plugin's messages write a path
+  with `/` (#905).
+- **From beta.6** (4.0.0-beta.7). A re-send that `client.resendOf()` offered
+  and that did not run rejects `outcome_unknown` with `mayHaveExecuted: true`
+  (#960). **Breaking:** a Vitest run that loads the Vite plugin fails at
+  startup when a canister fails to generate and `failOnError` is omitted
+  (#967). Every network host needs its scheme, and `createClient` throws on
+  an app shell's page with `network: "env"` (#974). On localtunnel and VS
+  Code dev tunnel pages `allowEnvConfig: true` throws (#961, #962), and with
+  `network: "env"` a dev page opened over Tailscale, a dev tunnel or a LAN name
+  with no dot calls its own origin, never mainnet (#962). The beta.7 section
+  lists the smaller changes.
+- **From beta.5** (4.0.0-beta.6). **Breaking:** Node 22.12 or newer (#896);
+  `createClient` refuses a value its types forbid with a `TypeError` (#895);
+  `useClient()` returns a new object for each caller, so list it in the
+  dependencies of what is built from it (#894). A first send refused with
+  `caller_changed` ran nothing (#893). An object of the `Client` type written
+  by hand needs `time`, `encode` and `canisterId`. The beta.6 section lists the
+  smaller changes (#900 to #903, #911, #912).
+- **From beta.4 or earlier** (4.0.0-beta.5). The candid-core pair moves to
+  schema `0.4.0` and CLI `0.3.0`. npm does not resolve a partial upgrade of
+  the five packages cleanly, so move them in one command, naming only the
+  packages the app has, and keep one copy of the schema:
+
+  ```sh
+  npm install --save-exact @ic-reactor/core@4.0.0 @ic-reactor/react@4.0.0 @ic-reactor/vite-plugin@4.0.0 @candid-core/schema@0.4.0 @candid-core/cli@0.3.0
+  ```
+
+  Then regenerate every committed module with `candid-core-cli gen` (the Vite
+  plugin does it when it starts). `client.queryOptions` no longer compiles
+  for an update or a oneway method of a generated `Actor` (#851): a write
+  goes through `client.mutationOptions`, and an update that answers the same
+  however often it runs takes `{ update: "idempotent" }`. The Vite plugin
+  refuses a key that is no option and a value an option does not take, where
+  beta.4 read them without a word.
+
+- **From beta.3 or earlier** (4.0.0-beta.4). Nothing breaks, except an object
+  of the `Client` type written by hand, such as a fake: the type gains
+  `resendOf`. New: `isReactorError(error, canister, method)` types a direct
+  call's `err` as that method's `Err` arm (#849), and `client.resendOf` sends
+  a write again exactly as it was sent after a failure that left its outcome
+  unknown, for a method the app says deduplicates (#850). The Vite plugin
+  writes a missing `didFile` from the live canister's certified interface
+  when the entry names a `canisterId`.
+- **From beta.2 or earlier** (4.0.0-beta.3). **Breaking:** `network: "local"`
+  is icp-cli's `http://127.0.0.1:8000`; an app on a dfx replica names it as
+  `network: { host: "http://127.0.0.1:4943" }`. The `auth` factory is handed
+  the client's network: `auth: (network) => new AuthClient(network)`.
+- **From beta.1** (4.0.0-beta.2). The candid-core pair moved to its first
+  stable releases. TanStack Query's `useSuspenseQuery` and
+  `useSuspenseQueries` take `client.queryOptions()` without a cast (#828);
+  the beta.2 section lists the few type-level uses that stop compiling.
+
+The guide (`llms.txt`) and the skill now say they apply to 4.0.0, and the
+five examples pin `^4.0.0`. With the GA flip (#836), the packages' READMEs
+and the skill install 4 from `latest` (bare), not `@beta`, and the READMEs
+drop the prerelease note.
+
+For the whole change from 3.x, read the 4.0.0-beta.8 to 4.0.0-beta.1 sections
+below, and
+[Migrating from 3.x](https://ic-reactor.b3pay.net/v4/migrating-from-3/),
+with the table of every removed 3.x name and what replaces it.
+
+### GA exit criteria
+
+- The four examples (#788), the 4 docs and the "Removed in 4.0" table
+  (#789), and the runtime-trap suite with the real-replica e2e rewrite
+  (#787) are done.
+- The GA eval, Addendum 4 of
+  [`evals/PREREGISTRATION.md`](./evals/PREREGISTRATION.md), ran on the
+  published 4.0.0-beta.1. GA ships on the result of Addendum 4, stated as
+  recorded: rule 1 was not met as written, because the leak audit flagged
+  react-wallet/`v4`#14's read of its own persisted tool output; all 80 runs
+  were safe, and the pooled bound held in both analyses (−0.0897 main,
+  −0.0876 intent-to-treat, against −0.10). The result and the owner's
+  decision are recorded there, under "Result of Addendum 4" and "Decision on
+  the result of Addendum 4" (#844).
+
 ## core, react, vite-plugin 4.0.0-beta.8
 
 Prepared on 2026-10-25. It goes out under npm's `beta` dist-tag, as
