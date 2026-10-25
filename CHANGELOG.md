@@ -145,6 +145,10 @@ the five examples pin `^4.0.0-beta.8`.
   under astro, 8.12.3 under linkinator) and happy-dom past GHSA-834v-8h66-3h79;
   happy-dom, an optional peer of Vitest that no suite uses, is no longer
   installed.
+- `release.yml`'s publish job names each tarball `./tarballs/<file>.tgz`.
+  npm read `tarballs/<file>.tgz` as a GitHub repository, so the first run for
+  the `v4.0.0-beta.8` tag failed on `git ls-remote` with nothing published.
+  `scripts/release-workflow.test.mjs` checks every path the job publishes.
 
 ## core, react, vite-plugin 4.0.0-beta.7
 
