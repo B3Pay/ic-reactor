@@ -27,10 +27,11 @@ flip, under npm's `latest` dist-tag, so a plain
 `npm install @ic-reactor/core` installs 4. The 3.x line gets security fixes
 only, until 90 days after this release.
 
-Changes since 4.0.0-beta.7: two fixes of the Vite plugin's dev and preview
-servers (a local network that stopped, and paths on Windows), and the docs
-and release workflow below. No export, public type or peer changed (core 13,
-`@ic-reactor/core/testing` 2, react 4, vite-plugin 2).
+Changes since 4.0.0-beta.7: two fixes of the Vite plugin (a local network
+that stopped while it serves, #881; and the paths in its messages on Windows,
+#905), and the docs and release workflow below. Those two fixes are the only
+code in 4.0.0 that no prerelease carried first. No export, public type or peer
+changed (core 13, `@ic-reactor/core/testing` 2, react 4, vite-plugin 2).
 
 It requires the candid-core pair that beta.5 moved to, both pinned exactly:
 
@@ -51,14 +52,17 @@ its version up to beta.7. What changes code on the way:
   startup when a canister fails to generate and `failOnError` is omitted
   (#967). Every network host needs its scheme, and `createClient` throws on
   an app shell's page with `network: "env"` (#974). On localtunnel and VS
-  Code dev tunnel pages `allowEnvConfig: true` throws (#961, #962). The
-  beta.7 section lists the smaller changes.
+  Code dev tunnel pages `allowEnvConfig: true` throws (#961, #962), and with
+  `network: "env"` a dev page opened over Tailscale, a dev tunnel or a LAN name
+  with no dot calls its own origin, never mainnet (#962). The beta.7 section
+  lists the smaller changes.
 - **From beta.5** (4.0.0-beta.6). **Breaking:** Node 22.12 or newer (#896);
   `createClient` refuses a value its types forbid with a `TypeError` (#895);
   `useClient()` returns a new object for each caller, so list it in the
-  dependencies of what is built from it (#894). A write refused with
+  dependencies of what is built from it (#894). A first send refused with
   `caller_changed` ran nothing (#893). An object of the `Client` type written
-  by hand needs `time`, `encode` and `canisterId`.
+  by hand needs `time`, `encode` and `canisterId`. The beta.6 section lists the
+  smaller changes (#900 to #903, #911, #912).
 - **From beta.4 or earlier** (4.0.0-beta.5). The candid-core pair moves to
   schema `0.4.0` and CLI `0.3.0`. npm does not resolve a partial upgrade of
   the five packages cleanly, so move them in one command, naming only the
