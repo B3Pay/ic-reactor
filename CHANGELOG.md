@@ -28,8 +28,8 @@ Prepared on 2026-10-25. It goes out under npm's `beta` dist-tag, as
 This release carries the two Vite plugin fixes that landed after beta.7, the
 watch on a local network that stopped (#881) and the Windows paths (#905), so
 that 4.0.0 ships no code a prerelease did not carry first. core and react
-change no code: core's only change is the JSDoc of `ReactorError.expiresAt`
-(#924).
+change no code: core's only changes are the JSDoc of `ReactorError.expiresAt`
+(#924) and a reworded sentence of its guide, `llms.txt`.
 
 No export is added or removed (core 13, `@ic-reactor/core/testing` 2, react 4,
 vite-plugin 2), no public type changes, and the candid-core pair is unchanged:
@@ -52,11 +52,13 @@ What an app on beta.7 does:
 
 2. Restart the dev server after a local network restarts (#881). When the
    network the plugin detected stops, `vite dev` and `vite preview` warn
-   once, `vite dev` reloads the pages it has open, and page loads get the
-   `ic_env` cookie without the detected canister IDs and root key, so
-   `{ name }` canisters reject `canister_id_unresolved` until the server
-   restarts. They used to keep naming the old canister IDs, which a restarted
-   network can give to other canisters.
+   once, and page loads get the `ic_env` cookie without the detected canister
+   IDs and root key (with canisters configured, no cookie at all, and the
+   browser's copy is cleared), so `{ name }` canisters reject
+   `canister_id_unresolved` until the server restarts. `vite dev` reloads the
+   pages it has open; under `vite preview`, reload them yourself. The cookie
+   used to keep naming the old canister IDs, which a restarted network can
+   give to other canisters.
 3. On Windows, match the plugin's messages on a path written with `/`, such
    as `did/ledger.did`, where they said `did\ledger.did` (#905).
 
@@ -70,8 +72,9 @@ the five examples pin `^4.0.0-beta.8`.
 - The dev server and the preview server stop vouching for a local network that
   stopped (#881). While serving, the plugin holds a connection to the detected
   network. When the network stops, it warns once, page loads get the
-  `ic_env` cookie without the detected canister IDs and root key until the
-  server restarts, and `vite dev` reloads the pages it has open. Detection had
+  `ic_env` cookie without the detected canister IDs and root key (with
+  canisters configured, no cookie at all) until the server restarts, and
+  `vite dev` reloads the pages it has open. Detection had
   stopped running once it was complete, so after `icp network stop`, `start`
   and `icp deploy` the cookie kept naming the old canister IDs under the same
   root key, and a restarted icp-cli network can give those IDs to other
