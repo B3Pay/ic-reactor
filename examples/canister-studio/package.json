@@ -18,7 +18,7 @@
     "@candid-core/schema": "0.4.0",
     "@ic-reactor/core": "^4.0.0",
     "@ic-reactor/react": "^4.0.0",
-    "@icp-sdk/auth": "^10.0.1",
+    "@icp-sdk/auth": "^11.0.0",
     "@icp-sdk/core": "^6.1.0",
     "@noble/curves": "^2.2.0",
     "@tanstack/react-query": "^5.102.8",
