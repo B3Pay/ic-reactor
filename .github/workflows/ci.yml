@@ -59,6 +59,17 @@ jobs:
       - name: AI context check
         run: pnpm check:ai-context
 
+      # stack.json names the candid-core release this branch is tested
+      # against. Each candid-core pin in a tracked package.json, each
+      # `@candid-core/<name>@<version>` in a package.json value or a .md, .mdx
+      # or .txt file, each docs peer-table row and the two pins in code must
+      # be exactly that version, outside the changelogs and the frozen paths;
+      # each listed package must be pinned somewhere. A repin changes
+      # stack.json and runs `pnpm sync:stack` (CONTRIBUTING.md, "The
+      # candid-core pins").
+      - name: Stack pins
+        run: pnpm check:stack
+
       - name: Build packages
         run: pnpm build
 
@@ -213,10 +224,10 @@ jobs:
         run: pnpm test
 
       # The gates' own tests: the export budget, the trap verifier, the fault
-      # verifier, check:ai-context, check:snippets and the vite plugin's entry
-      # of verify:peer-floors each run against repositories built for the
-      # purpose and must fail where they should. They compile against the
-      # packages built above.
+      # verifier, check:ai-context, check:stack, check:snippets and the vite
+      # plugin's entry of verify:peer-floors each run against repositories
+      # built for the purpose and must fail where they should. They compile
+      # against the packages built above.
       - name: Test the gates
         run: pnpm test:scripts
 
