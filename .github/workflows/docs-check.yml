@@ -51,5 +51,20 @@ jobs:
       - name: Build docs
         run: pnpm docs:build
 
+      # The pages link Candid Core's site, which the deploy serves at
+      # /candid-core/ from that repository's main (docs.yml); the link check
+      # mounts the same build there.
+      - name: Check out Candid Core
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: b3hr4d/candid-core
+          ref: main
+          path: candid-core-repo
+          persist-credentials: false
+      - name: Build Candid Core's site
+        run: node candid-core-repo/website/build.mjs
+
       - name: Check links
+        env:
+          CANDID_CORE_SITE: ${{ github.workspace }}/candid-core-repo/website/dist
         run: pnpm docs:check-links

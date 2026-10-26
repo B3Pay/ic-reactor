@@ -4,8 +4,9 @@ import Default from '@astrojs/starlight/components/SiteTitle.astro';
 import LibraryIcon from './LibraryIcon.astro';
 
 // The library switcher: one docs site for B3Pay's open-source libraries. A
-// library whose pages aren't on this site yet links to its own site or says
-// it's coming, never to an empty page.
+// library whose pages aren't on this site yet says it's coming, never links
+// to an empty page. Candid Core's pages are served at /candid-core/, built
+// from its own repository (scripts/assemble-docs-site.mjs).
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 ---
 
@@ -25,9 +26,9 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
         </a>
       </li>
       <li>
-        <a href="https://b3hr4d.github.io/candid-core/">
+        <a href="/candid-core/">
           <LibraryIcon library="candid-core" size={20} />
-          <span><strong>Candid Core <span aria-hidden="true">↗</span><span class="sr-only">(its own site)</span></strong><small>Generate, validate and encode Candid</small></span>
+          <span><strong>Candid Core</strong><small>Generate, validate and encode Candid</small></span>
         </a>
       </li>
       <li>

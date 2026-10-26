@@ -12,9 +12,18 @@
  *
  * The base is read from astro.config.mjs rather than hardcoded, so the two
  * cannot drift.
+ *
+ * The pages also link Candid Core's site, which the deploy serves at
+ * `/candid-core/` from a build of its own repository
+ * (scripts/assemble-docs-site.mjs). `CANDID_CORE_SITE` names that build
+ * (`website/dist` of a b3hr4d/candid-core checkout, after
+ * `node website/build.mjs`), and it is mounted there too, so each such link
+ * and its `#fragment` are checked against the real pages. Without it those
+ * links are skipped and counted, and in CI (`CI` set) the check fails instead.
  */
 import { mkdtemp, readFile, readdir, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
+import { existsSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
 import { LinkChecker } from "linkinator"
 
@@ -28,9 +37,36 @@ if (!baseMatch) {
 }
 const base = baseMatch[1].replace(/^\/|\/$/g, "")
 
+// Where the deploy serves Candid Core's site (CANDID_CORE_DIR in
+// scripts/assemble-docs-site.mjs).
+const candidCoreDir = "candid-core"
+const candidCoreSite = process.env.CANDID_CORE_SITE
+  ? resolve(process.env.CANDID_CORE_SITE)
+  : undefined
+if (candidCoreSite && !existsSync(join(candidCoreSite, "index.html"))) {
+  console.error(
+    `CANDID_CORE_SITE=${candidCoreSite} holds no built Candid Core site (no index.html)`
+  )
+  process.exit(1)
+}
+if (!candidCoreSite && process.env.CI) {
+  console.error(
+    `CANDID_CORE_SITE is not set: in CI the links under /${candidCoreDir}/ are checked against a build of b3hr4d/candid-core's site`
+  )
+  process.exit(1)
+}
+// linkinator matches a skip pattern against the absolute URL, and reports a
+// link of its own server by its path from the server root.
+const candidCoreUrl = new RegExp(
+  `^(https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/|/)?${candidCoreDir}(/|$)`
+)
+
 const staging = await mkdtemp(join(tmpdir(), "ic-reactor-links-"))
 try {
   await symlink(join(docsRoot, "dist"), join(staging, base), "dir")
+  if (candidCoreSite) {
+    await symlink(candidCoreSite, join(staging, candidCoreDir), "dir")
+  }
 
   const checker = new LinkChecker()
   const result = await checker.check({
@@ -61,6 +97,8 @@ try {
       // binds 127.0.0.1 -- so this must exempt the local host explicitly or it
       // skips the entire site and the gate silently checks nothing.
       "^https?://(?!(localhost|127\\.0\\.0\\.1)[:/])",
+      // Without a build of Candid Core's site, its links cannot be checked.
+      ...(candidCoreSite ? [] : [candidCoreUrl.source]),
     ],
   })
 
@@ -113,6 +151,10 @@ try {
 
   const broken = result.links.filter((l) => l.state === "BROKEN")
   const checked = result.links.filter((l) => l.state !== "SKIPPED").length
+  // linkinator reports a checked URL once and a skipped one per page.
+  const candidCoreLinks = new Set(
+    result.links.filter((l) => candidCoreUrl.test(l.url)).map((l) => l.url)
+  )
 
   if (broken.length > 0) {
     console.error(`\n${broken.length} broken link(s):\n`)
@@ -125,6 +167,15 @@ try {
   console.log(
     `Checked ${checked} internal links under /${base}/ - no broken links.`
   )
+  if (candidCoreSite) {
+    console.log(
+      `${candidCoreLinks.size} of them reach Candid Core's site under /${candidCoreDir}/, built at ${candidCoreSite}.`
+    )
+  } else {
+    console.log(
+      `${candidCoreLinks.size} links under /${candidCoreDir}/ were not checked: set CANDID_CORE_SITE to a build of b3hr4d/candid-core's site (website/dist).`
+    )
+  }
 } finally {
   await rm(staging, { recursive: true, force: true })
 }

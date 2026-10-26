@@ -9,6 +9,11 @@ name: Deploy Docs
 #   overturn). The v3 branch has no docs deploy of its own. A 3.x docs build
 #   that fails blocks the deploy: fix it on v3, or switch to option B;
 # - /v2/, the static 2.x site kept from gh-pages;
+# - /candid-core/, Candid Core's site, built from b3hr4d/candid-core's main
+#   with its own generator (`node website/build.mjs`, Node built-ins only).
+#   The library switcher and the docs home link it there. A change to that
+#   repository's site reaches this one at the next deploy: the daily run
+#   below, or a dispatch;
 # - the root: / and the 404 page go to /v4/, /llms.txt is the 4.x guide
 #   (packages/core/llms.txt), and /llms-full.txt stays the frozen 3.x file.
 #
@@ -32,6 +37,9 @@ on:
       - "packages/**"
       - ".github/workflows/docs.yml"
       - "scripts/assemble-docs-site.mjs"
+  # Picks up Candid Core's site, which changes in another repository.
+  schedule:
+    - cron: "23 5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -81,11 +89,31 @@ jobs:
       - name: Build documentation (Astro)
         run: pnpm docs:build
 
+      - name: Check out Candid Core
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: b3hr4d/candid-core
+          ref: main
+          path: candid-core-repo
+          persist-credentials: false
+
+      # The site generator takes no dependency, so no install. The commit goes
+      # to the run's summary: main moves, and the deploy should say what it
+      # published.
+      - name: Build Candid Core's site
+        run: |
+          set -euo pipefail
+          node candid-core-repo/website/build.mjs
+          commit=$(git -C candid-core-repo rev-parse HEAD)
+          echo "Candid Core's site at /candid-core/ is built from b3hr4d/candid-core@${commit}." >> "$GITHUB_STEP_SUMMARY"
+
       # Advisory here, not blocking: `deploy` has `needs: build`, so failing
       # would stop the site updating at all rather than publishing one dead
       # link. The PR gate in docs-check.yml is the hard one.
       - name: Check links
         continue-on-error: true
+        env:
+          CANDID_CORE_SITE: ${{ github.workspace }}/candid-core-repo/website/dist
         run: pnpm docs:check-links
 
       # docs/dist should be Astro static output
@@ -129,6 +157,7 @@ jobs:
             --existing existing-pages \
             --v4 docs/dist \
             --v3-line v3-line \
+            --candid-core candid-core-repo/website/dist \
             --root-llms packages/core/llms.txt \
             --root-llms-full v3-line/llms-full.txt \
             --cname CNAME
