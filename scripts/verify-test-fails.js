@@ -15,7 +15,6 @@
  *   --package <name>   workspace package to run in     (default: auto-detected)
  *   --base <ref>       revision to revert sources to   (default: where
  *                      HEAD left main, `git merge-base HEAD main origin/main`
- *                      (and v4, origin/v4 until v4 is retired)
  *                      over those that exist; with none, it stops)
  *   --keep             leave the reverted sources in place (debugging)
  *

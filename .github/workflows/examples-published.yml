@@ -37,14 +37,12 @@ name: Examples on the published packages
 # still shows up within a push. Weekly, because those ranges resolve to new
 # releases with no commit of ours. GitHub runs `schedule` and offers
 # `workflow_dispatch` only for workflow files on the default branch, main.
-# v4, the branch 4 was developed on until the 4.0 GA flip, stays listed until
-# it is retired, as in ci.yml. The paths filter and the triggers are the
-# owner's call.
+# The paths filter and the triggers are the owner's call.
 on:
   push:
-    branches: [main, v4]
+    branches: [main]
   pull_request:
-    branches: [main, v4]
+    branches: [main]
     paths:
       - "examples/**"
       - "scripts/test-examples-published.mjs"

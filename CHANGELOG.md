@@ -17,7 +17,12 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### CI (not published)
+
+- The `v4` branch, where 4 was developed until the 4.0 GA flip, is retired.
+  CI, e2e, CodeQL, the dependency review and the two published-package checks
+  run on `main` only, and `verify-test-fails` takes its default base from
+  `main` alone.
 
 ## core, react, vite-plugin 4.0.0
 
