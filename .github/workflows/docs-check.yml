@@ -14,8 +14,42 @@ permissions:
   contents: read
 
 jobs:
+  # The pages link Candid Core's site, which the deploy serves at
+  # /candid-core/ from that repository's main, built in a job of its own
+  # (docs.yml, `candid-core-site`); the link check mounts the same build here.
+  candid-core-site:
+    name: Build Candid Core's site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: b3hr4d/candid-core
+          ref: main
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24.18.0"
+      - name: Build
+        run: |
+          set -euo pipefail
+          node website/build.mjs
+          echo "Candid Core's site is built from b3hr4d/candid-core@$(git rev-parse HEAD)." >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: candid-core-site
+          path: website/dist
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+  # Runs when Candid Core's site does not build, too, so the lint and the
+  # build still report; the link check then fails, for want of the site.
   validate-docs:
     name: MDX lint + docs build
+    needs: candid-core-site
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -51,5 +85,14 @@ jobs:
       - name: Build docs
         run: pnpm docs:build
 
+      - name: Download Candid Core's site
+        if: needs.candid-core-site.result == 'success'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: candid-core-site
+          path: candid-core-site
+
       - name: Check links
+        env:
+          CANDID_CORE_SITE: ${{ github.workspace }}/candid-core-site
         run: pnpm docs:check-links

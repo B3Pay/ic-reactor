@@ -7,7 +7,8 @@
  * After the 4.0 GA flip the site root belongs to 4.x: `/` and the 404 page go
  * to `/v4/`, `/llms.txt` is the 4.x guide, and the selector offers v4, v3 and
  * v2 with v4 first. `/v3/` is rebuilt from `v3` (option A) or kept from a
- * static snapshot (option B), and never dropped.
+ * static snapshot (option B), and never dropped. `/candid-core/` is Candid
+ * Core's site, built from its own repository on every deploy.
  *
  * Run by `pnpm test:scripts`.
  */
@@ -48,8 +49,19 @@ const SELECTOR = (selected) =>
 const page = (line, body = "") =>
   `<!doctype html><html><body>${SELECTOR(line)}<p>${line} page</p>${body}</body></html>`
 
+// A Candid Core page that holds what the assembly rewrites on the other
+// lines: a legacy 3.x link and a version selector.
+const CANDID_CORE_PAGE = page(
+  "candid-core",
+  '<a href="./">Home</a><a href="https://b3pay.github.io/ic-reactor/modules/core.html">3.x</a>'
+)
+
 /** A workspace as docs.yml leaves it before the assembly step. */
-function workspace({ ghPages = true, v3Snapshot = false } = {}) {
+function workspace({
+  ghPages = true,
+  v3Snapshot = false,
+  candidCoreSnapshot = false,
+} = {}) {
   const root = mkdtempSync(join(tmpdir(), "assemble-docs-"))
   temps.push(root)
   if (ghPages) {
@@ -65,6 +77,10 @@ function workspace({ ghPages = true, v3Snapshot = false } = {}) {
     if (v3Snapshot) {
       write(join(root, "existing-pages/v3/index.html"), page("v3", "snapshot"))
     }
+    if (candidCoreSnapshot) {
+      write(join(root, "existing-pages/candid-core/index.html"), "old site")
+      write(join(root, "existing-pages/candid-core/removed.html"), "old page")
+    }
   }
   write(join(root, "docs/dist/index.html"), page("v4"))
   write(join(root, "docs/dist/guides/client/index.html"), page("v4"))
@@ -76,6 +92,14 @@ function workspace({ ghPages = true, v3Snapshot = false } = {}) {
       '<a href="https://b3pay.github.io/ic-reactor/modules/core.html">old</a>'
     )
   )
+  // Candid Core's build as the candid-core-site job hands it on: flat pages
+  // and assets, linked relatively.
+  write(
+    join(root, "candid-core-site/index.html"),
+    '<link rel="stylesheet" href="assets/style.css"><p>Candid Core home</p>'
+  )
+  write(join(root, "candid-core-site/identities.html"), CANDID_CORE_PAGE)
+  write(join(root, "candid-core-site/assets/style.css"), "body{}")
   write(join(root, "v3-line/llms.txt"), "3.x llms")
   write(join(root, "v3-line/llms-full.txt"), "3.x llms-full")
   write(join(root, "packages/core/llms.txt"), "4.x guide")
@@ -90,6 +114,7 @@ function assembleDefault(root, overrides = {}) {
     existing: join(root, "existing-pages"),
     v4: join(root, "docs/dist"),
     v3Line: join(root, "v3-line"),
+    candidCore: join(root, "candid-core-site"),
     rootLlms: join(root, "packages/core/llms.txt"),
     rootLlmsFull: join(root, "v3-line/llms-full.txt"),
     cname: join(root, "CNAME"),
@@ -150,7 +175,7 @@ describe("assembleSite, option (A): /v3/ rebuilt from the v3 branch", () => {
     assert.doesNotMatch(index, /\/v3\//)
     const notFound = read(join(out, "404.html"))
     assert.match(notFound, /window\.location\.replace\("\/v4" \+ path\)/)
-    assert.match(notFound, /\(v2\|v3\|v4\)/)
+    assert.match(notFound, /\(v2\|v3\|v4\|candid-core\)/)
     assert.doesNotMatch(notFound, /"\/v3" \+ path/)
   })
 
@@ -164,6 +189,9 @@ describe("assembleSite, option (A): /v3/ rebuilt from the v3 branch", () => {
       ["/v4", "/v4/"],
       ["/v3/x", "/v3/"],
       ["/v2/modules/missing.html", "/v2/"],
+      ["/candid-core/missing.html", "/candid-core/"],
+      ["/candid-core", "/candid-core/"],
+      ["/candid-coreX/x", "/v4/candid-coreX/x"],
       ["/foo", "/v4/foo"],
       ["/guides/client/", "/v4/guides/client/"],
       ["/v5/x", "/v4/v5/x"],
@@ -171,6 +199,51 @@ describe("assembleSite, option (A): /v3/ rebuilt from the v3 branch", () => {
     ]) {
       assert.equal(redirectTarget(notFound, path), target, path)
     }
+  })
+
+  it("serves Candid Core's site at /candid-core/, as it was built", () => {
+    const out = assembleDefault(workspace())
+    assert.equal(
+      read(join(out, "candid-core/index.html")),
+      '<link rel="stylesheet" href="assets/style.css"><p>Candid Core home</p>'
+    )
+    // Byte for byte: neither the legacy-link rewrites nor the version
+    // selector touch it.
+    assert.equal(
+      read(join(out, "candid-core/identities.html")),
+      CANDID_CORE_PAGE
+    )
+    assert.equal(read(join(out, "candid-core/assets/style.css")), "body{}")
+  })
+
+  it("replaces the /candid-core/ of the existing site with the new build", () => {
+    const out = assembleDefault(workspace({ candidCoreSnapshot: true }))
+    assert.match(read(join(out, "candid-core/index.html")), /Candid Core home/)
+    assert.equal(existsSync(join(out, "candid-core/removed.html")), false)
+  })
+
+  it("keeps an existing /candid-core/ out of the move to /v2/", () => {
+    // A gh-pages without /v2/ has its legacy root moved there once; Candid
+    // Core's directory is not part of that root.
+    const root = workspace({ candidCoreSnapshot: true })
+    const out = assembleDefault(root)
+    assert.equal(existsSync(join(out, "v2/candid-core")), false)
+  })
+
+  it("refuses a Candid Core build that holds no site", () => {
+    const root = workspace()
+    rmSync(join(root, "candid-core-site"), { recursive: true })
+    assert.throws(
+      () => assembleDefault(root),
+      /holds no built Candid Core site/
+    )
+  })
+
+  it("refuses to assemble without Candid Core's site", () => {
+    assert.throws(
+      () => assembleDefault(workspace(), { candidCore: undefined }),
+      /needs out, v4, candidCore and rootLlms/
+    )
   })
 
   it("serves the 4.x guide at /llms.txt and the frozen 3.x file at /llms-full.txt", () => {
@@ -281,6 +354,8 @@ describe("assemble-docs-site.mjs as docs.yml runs it", () => {
         "docs/dist",
         "--v3-line",
         "v3-line",
+        "--candid-core",
+        "candid-core-site",
         "--root-llms",
         "packages/core/llms.txt",
         "--root-llms-full",
@@ -293,6 +368,10 @@ describe("assemble-docs-site.mjs as docs.yml runs it", () => {
     assert.equal(result.status, 0, result.stderr)
     assert.equal(read(join(root, "final-docs/llms.txt")), "4.x guide")
     assert.match(read(join(root, "final-docs/v3/index.html")), /rebuilt/)
+    assert.match(
+      read(join(root, "final-docs/candid-core/index.html")),
+      /Candid Core home/
+    )
   })
 
   it("exits 1 with the reason when a build is missing", () => {
@@ -307,6 +386,8 @@ describe("assemble-docs-site.mjs as docs.yml runs it", () => {
         "missing/dist",
         "--v3-line",
         "v3-line",
+        "--candid-core",
+        "candid-core-site",
         "--root-llms",
         "packages/core/llms.txt",
       ],

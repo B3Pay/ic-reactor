@@ -1,11 +1,12 @@
 ---
 // The three libraries on the docs home, each with its layer icon, status,
-// packages and first links. Candid Core's pages are on its own site until its
-// repository moves into this one; Candid Profile isn't published yet.
+// packages and first links. Candid Core's pages are served at /candid-core/,
+// built from its own repository (scripts/assemble-docs-site.mjs); Candid
+// Profile isn't published yet.
 import LibraryIcon from './LibraryIcon.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
-const candidCore = 'https://b3hr4d.github.io/candid-core/';
+const candidCore = '/candid-core/';
 ---
 
 <div class="library-cards not-content">
@@ -48,10 +49,10 @@ const candidCore = 'https://b3hr4d.github.io/candid-core/';
       <li>@candid-core/cli</li>
       <li>candid-core (Rust crate)</li>
     </ul>
-    <nav aria-label="Candid Core, on its own site">
-      <a href={`${candidCore}quickstart-typescript.html`}>Quickstart: TypeScript ↗</a>
-      <a href={`${candidCore}contract-graph.html`}>The Contract graph ↗</a>
-      <a href={`${candidCore}identities.html`}>Content-addressed identities ↗</a>
+    <nav aria-label="Candid Core">
+      <a href={`${candidCore}quickstart-typescript.html`}>Quickstart: TypeScript →</a>
+      <a href={`${candidCore}contract-graph.html`}>The Contract graph →</a>
+      <a href={`${candidCore}identities.html`}>Content-addressed identities →</a>
     </nav>
   </article>
 

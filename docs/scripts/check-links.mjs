@@ -12,9 +12,20 @@
  *
  * The base is read from astro.config.mjs rather than hardcoded, so the two
  * cannot drift.
+ *
+ * The pages also link Candid Core's site, which the deploy serves at
+ * `/candid-core/` from a build of its own repository
+ * (scripts/assemble-docs-site.mjs). `CANDID_CORE_SITE` names that build
+ * (`website/dist` of a b3hr4d/candid-core checkout, after
+ * `node website/build.mjs`; a relative path is read from docs/, where it runs),
+ * and it is mounted there too: each such link and its `#fragment` are checked
+ * against the real pages, and those pages are crawled as well, as they will be
+ * published. Without it those links are skipped and counted, and in CI (`CI`
+ * set) the check fails instead.
  */
 import { mkdtemp, readFile, readdir, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
+import { existsSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
 import { LinkChecker } from "linkinator"
 
@@ -28,12 +39,41 @@ if (!baseMatch) {
 }
 const base = baseMatch[1].replace(/^\/|\/$/g, "")
 
+// Where the deploy serves Candid Core's site (CANDID_CORE_DIR in
+// scripts/assemble-docs-site.mjs).
+const candidCoreDir = "candid-core"
+const candidCoreSite = process.env.CANDID_CORE_SITE
+  ? resolve(process.env.CANDID_CORE_SITE)
+  : undefined
+if (candidCoreSite && !existsSync(join(candidCoreSite, "index.html"))) {
+  console.error(
+    `CANDID_CORE_SITE=${candidCoreSite} holds no built Candid Core site (no index.html)`
+  )
+  process.exit(1)
+}
+if (!candidCoreSite && process.env.CI) {
+  console.error(
+    `CANDID_CORE_SITE is not set: in CI the links under /${candidCoreDir}/ are checked against a build of b3hr4d/candid-core's site`
+  )
+  process.exit(1)
+}
+// linkinator matches a skip pattern against the absolute URL, and reports a
+// link of its own server by its path from the server root.
+const candidCoreUrl = new RegExp(
+  `^(https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/|/)?${candidCoreDir}(/|$)`
+)
+const candidCoreRoot = new RegExp(
+  `^(https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/|/)?${candidCoreDir}/?$`
+)
+
 const staging = await mkdtemp(join(tmpdir(), "ic-reactor-links-"))
 try {
   await symlink(join(docsRoot, "dist"), join(staging, base), "dir")
+  if (candidCoreSite) {
+    await symlink(candidCoreSite, join(staging, candidCoreDir), "dir")
+  }
 
-  const checker = new LinkChecker()
-  const result = await checker.check({
+  const options = {
     // The crawl root must be the DIRECTORY, not index.html. linkinator sets
     // `rootPath` to the full starting URL and only recurses into links whose
     // href string-prefixes it (build/src/index.js:271 and :892). With
@@ -61,8 +101,16 @@ try {
       // binds 127.0.0.1 -- so this must exempt the local host explicitly or it
       // skips the entire site and the gate silently checks nothing.
       "^https?://(?!(localhost|127\\.0\\.0\\.1)[:/])",
+      // Without a build of Candid Core's site, its links cannot be checked.
+      ...(candidCoreSite ? [] : [candidCoreUrl.source]),
     ],
-  })
+  }
+  const result = await new LinkChecker().check(options)
+  // Candid Core's own pages, as they will be published: the crawl above only
+  // follows links under the base, so it stops at their entry links.
+  const candidCoreResult = candidCoreSite
+    ? await new LinkChecker().check({ ...options, path: `${candidCoreDir}/` })
+    : { links: [] }
 
   // Case-sensitivity pass. linkinator serves the built site from the local
   // filesystem, so on macOS every href resolves case-insensitively and a link
@@ -111,8 +159,23 @@ try {
     process.exit(1)
   }
 
-  const broken = result.links.filter((l) => l.state === "BROKEN")
-  const checked = result.links.filter((l) => l.state !== "SKIPPED").length
+  const broken = [...result.links, ...candidCoreResult.links].filter(
+    (l) => l.state === "BROKEN"
+  )
+  const checked = result.links.filter((l) => l.state !== "SKIPPED")
+  // What the crawl of Candid Core's pages reached past the home page it
+  // started from, which it reports twice (`candid-core`, then `candid-core/`).
+  const candidCoreReached = new Set(
+    candidCoreResult.links
+      .filter((l) => l.state !== "SKIPPED" && !candidCoreRoot.test(l.url))
+      .map((l) => l.url)
+  )
+  // linkinator reports a skipped URL once per page that links it.
+  const candidCoreSkipped = new Set(
+    result.links
+      .filter((l) => l.state === "SKIPPED" && candidCoreUrl.test(l.url))
+      .map((l) => l.url)
+  )
 
   if (broken.length > 0) {
     console.error(`\n${broken.length} broken link(s):\n`)
@@ -122,9 +185,28 @@ try {
     process.exit(1)
   }
 
+  // A mounted site whose crawl reached nothing past its home page was not
+  // checked.
+  if (candidCoreSite && candidCoreReached.size === 0) {
+    console.error(
+      `The crawl of /${candidCoreDir}/ reached nothing past its home page: is ${candidCoreSite} the site's website/dist?`
+    )
+    process.exit(1)
+  }
+
   console.log(
-    `Checked ${checked} internal links under /${base}/ - no broken links.`
+    `Checked ${checked.length} internal links under /${base}/ - no broken links.`
   )
+  if (candidCoreSite) {
+    const entries = checked.filter((l) => candidCoreUrl.test(l.url)).length
+    console.log(
+      `${entries} of them reach Candid Core's site under /${candidCoreDir}/, and the crawl of its pages reached ${candidCoreReached.size} more, none broken (built at ${candidCoreSite}).`
+    )
+  } else {
+    console.log(
+      `${candidCoreSkipped.size} links under /${candidCoreDir}/ were not checked: set CANDID_CORE_SITE to a build of b3hr4d/candid-core's site (website/dist).`
+    )
+  }
 } finally {
   await rm(staging, { recursive: true, force: true })
 }

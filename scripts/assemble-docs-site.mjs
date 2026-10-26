@@ -12,6 +12,11 @@
  *   kept as it is.
  * - `/v2/`: the static 2.x TypeDoc site, moved under `/v2/` once from the
  *   legacy root of `gh-pages`.
+ * - `/candid-core/`: Candid Core's site, built from its own repository
+ *   (b3hr4d/candid-core, `node website/build.mjs`) and published as it was
+ *   built. It has no versions of its own here: the deploy builds that
+ *   repository's `main`. Its pages link each other and their assets
+ *   relatively, so they work under any prefix.
  * - the root: `index.html` and `404.html` send readers to `/v4/`,
  *   `llms.txt` is the 4.x consumer guide (`packages/core/llms.txt`), and
  *   `llms-full.txt` is whatever `--root-llms-full` names (the frozen 3.x file
@@ -23,6 +28,7 @@
  * Usage (docs.yml):
  *   node scripts/assemble-docs-site.mjs --out final-docs \
  *     --existing existing-pages --v4 docs/dist --v3-line v3-line \
+ *     --candid-core candid-core-site \
  *     --root-llms packages/core/llms.txt --root-llms-full v3-line/llms-full.txt \
  *     --cname CNAME
  */
@@ -37,7 +43,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs"
-import { basename, join } from "node:path"
+import { basename, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
 
@@ -45,11 +51,15 @@ import { parseArgs } from "node:util"
 export const CURRENT_LINE = "v4"
 export const LINES = ["v4", "v3", "v2"]
 
+/** Where Candid Core's site is served: the 4.x pages link it here. */
+export const CANDID_CORE_DIR = "candid-core"
+
 /** Root entries that are not part of the legacy 2.x site. */
 const ROOT_KEEP = new Set([
   "v2",
   "v3",
   "v4",
+  CANDID_CORE_DIR,
   "llms.txt",
   "llms-full.txt",
   "CNAME",
@@ -118,7 +128,8 @@ const ROOT_INDEX = `<!doctype html>
 `
 
 // Unknown routes go to the current line, keeping the path; a miss under a
-// versioned base goes to that base's home rather than looping on 404.html.
+// versioned base, or under Candid Core's site, goes to that base's home rather
+// than looping on 404.html.
 const NOT_FOUND = `<!doctype html>
 <html>
   <head>
@@ -127,7 +138,7 @@ const NOT_FOUND = `<!doctype html>
     <script>
       (function () {
         var path = window.location.pathname || "/";
-        var match = path.match(/^\\/(v2|v3|v4)(\\/|$)/);
+        var match = path.match(/^\\/(v2|v3|v4|${CANDID_CORE_DIR})(\\/|$)/);
         if (match) {
           window.location.replace("/" + match[1] + "/");
           return;
@@ -162,6 +173,7 @@ function* pages(dir) {
  * @param {string} [options.existing] the checkout of `gh-pages`, when there is one
  * @param {string} options.v4 the 4.x docs build (`docs/dist`)
  * @param {string} [options.v3Line] the checkout of the `v3` branch, its docs built; omit to keep a static `/v3/` from `existing`
+ * @param {string} options.candidCore Candid Core's built site (`website/dist` of its repository)
  * @param {string} options.rootLlms the file served at `/llms.txt`
  * @param {string} [options.rootLlmsFull] the file served at `/llms-full.txt`; omit to serve none
  * @param {string} [options.cname] the CNAME file to keep
@@ -172,13 +184,14 @@ export function assembleSite({
   existing,
   v4,
   v3Line,
+  candidCore,
   rootLlms,
   rootLlmsFull,
   cname,
   log = console.log,
 }) {
-  if (!out || !v4 || !rootLlms) {
-    throw new Error("assembleSite needs out, v4 and rootLlms")
+  if (!out || !v4 || !candidCore || !rootLlms) {
+    throw new Error("assembleSite needs out, v4, candidCore and rootLlms")
   }
   if (existsSync(out) && readdirSync(out).length > 0) {
     throw new Error(`${out} is not empty`)
@@ -232,6 +245,16 @@ export function assembleSite({
   }
   copyDir(v4, join(out, "v4"))
 
+  // Candid Core's site. The 4.x pages link it, so a site without one is
+  // refused; the link check (docs/scripts/check-links.mjs) is what checks
+  // the pages they link.
+  if (!existsSync(join(candidCore, "index.html"))) {
+    throw new Error(
+      `${candidCore} holds no built Candid Core site (no index.html)`
+    )
+  }
+  copyDir(candidCore, join(out, CANDID_CORE_DIR))
+
   // The site root's guides.
   cpSync(rootLlms, join(out, "llms.txt"))
   if (rootLlmsFull) {
@@ -241,7 +264,9 @@ export function assembleSite({
   }
 
   // The version selector of every page, and the 2.x site's legacy links.
+  // Candid Core's pages are published as they were built.
   for (const file of pages(out)) {
+    if (relative(out, file).split(sep)[0] === CANDID_CORE_DIR) continue
     const original = readFileSync(file, "utf8")
     let html = original
     for (const [from, to] of LINK_REWRITES) html = html.split(from).join(to)
@@ -263,7 +288,7 @@ export function assembleSite({
   writeFileSync(join(out, "404.html"), NOT_FOUND)
 
   log(
-    `Assembled ${out}: /${LINES.join("/, /")}/, /llms.txt from ${basename(rootLlms)}` +
+    `Assembled ${out}: /${LINES.join("/, /")}/, /${CANDID_CORE_DIR}/, /llms.txt from ${basename(rootLlms)}` +
       (rootLlmsFull
         ? `, /llms-full.txt from ${rootLlmsFull}`
         : ", no /llms-full.txt")
@@ -288,6 +313,7 @@ if (isMain()) {
       existing: { type: "string" },
       v4: { type: "string" },
       "v3-line": { type: "string" },
+      "candid-core": { type: "string" },
       "root-llms": { type: "string" },
       "root-llms-full": { type: "string" },
       cname: { type: "string" },
@@ -299,6 +325,7 @@ if (isMain()) {
       existing: values.existing,
       v4: values.v4,
       v3Line: values["v3-line"],
+      candidCore: values["candid-core"],
       rootLlms: values["root-llms"],
       rootLlmsFull: values["root-llms-full"],
       cname: values.cname,
