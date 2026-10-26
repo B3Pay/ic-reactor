@@ -206,8 +206,8 @@ describe("package.json pins", () => {
         }),
       }),
       [
-        'examples/app/package.json:5 @candid-core/cli is "0.2.0"; stack.json pins 0.3.0',
         'examples/app/package.json:9 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
+        'examples/app/package.json:5 @candid-core/cli is "0.2.0"; stack.json pins 0.3.0',
       ]
     )
   })
@@ -545,7 +545,10 @@ describe("--write", () => {
       ...AGREEING,
       "packages/core/package.json": manifest({
         peerDependencies: { "@candid-core/schema": "catalog:" },
-        devDependencies: { "@candid-core/schema": "workspace:*" },
+        devDependencies: {
+          "@candid-core/schema": "workspace:*",
+          "schema-alias": "npm:@candid-core/schema@0.3.0 || 0.5.0",
+        },
       }),
       "docs/tarball.md": "npm install ./@candid-core/schema@0.3.0.tgz\n",
     }
@@ -555,6 +558,7 @@ describe("--write", () => {
       'docs/tarball.md:1 @candid-core/schema is "0.3.0.tgz"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
       'packages/core/package.json:5 @candid-core/schema is "catalog:"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
       'packages/core/package.json:8 @candid-core/schema is "workspace:*"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
+      'packages/core/package.json:9 @candid-core/schema is "0.3.0 || 0.5.0"; stack.json pins 0.4.0, and only a version, a range or a dist-tag is rewritten, so change this one by hand',
     ])
     assert.ok(result.problems.every(({ fixable }) => !fixable))
     assert.deepEqual(result.written, [])

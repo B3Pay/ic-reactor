@@ -14,7 +14,7 @@
  *    `^0.4.0` fails as `0.3.0` does.
  * 2. In a `package.json` value or a `.md`, `.mdx` or `.txt` file, every
  *    `@candid-core/<name>@<version>`: an install line, a script's `npx`, an
- *    `npm:` alias, a CDN URL. `@^0.3.0`, `@>=0.3.0` and `@latest` fail as
+ *    `npm:` alias (whose range runs to the end of its value), a CDN URL. `@^0.3.0`, `@>=0.3.0` and `@latest` fail as
  *    `@0.3.0` does.
  * 3. In a `.md`, `.mdx` or `.txt` file, a line that names the package in
  *    backticks and then says exactly `<version>`, as the docs' peer tables do.
@@ -121,9 +121,15 @@ const NAMED_VERSION = new RegExp(`(?<![\\w@.-])(${NAME})@(${TOKEN})`, "g")
  * an override's selector.
  */
 const NAMED_VERSION_IN_VALUE = new RegExp(
-  `${NAMED_VERSION.source}(?![^"\\n]*"\\s*:)`,
+  `(?<!"npm:)${NAMED_VERSION.source}(?![^"\\n]*"\\s*:)`,
   "g"
 )
+
+/**
+ * An npm alias, `"npm:@scope/name@<range>"`. Its range runs to the end of the
+ * value, so `0.4.0 || 0.3.0` is read whole rather than as its first version.
+ */
+const ALIAS = new RegExp(`("npm:(${NAME})@)([^"\\\\]*)(")`, "g")
 
 /** A peer-table row: `` `@scope/name` `` | exactly `1.2.3`, on one line. */
 const EXACTLY = new RegExp(
@@ -347,6 +353,17 @@ export function checkStack(
           ([open, , close], version) => `${open}${version}${close}`
         )
       }
+    }
+    if (isPackageJson) {
+      checked.mentions += count(after, ALIAS, ([, name]) => name)
+      after = hold(
+        file,
+        after,
+        ALIAS,
+        ([, name]) => name,
+        3,
+        ([open, , , close], version) => `${open}${version}${close}`
+      )
     }
     if (isPackageJson || isText) {
       const named = isPackageJson ? NAMED_VERSION_IN_VALUE : NAMED_VERSION
