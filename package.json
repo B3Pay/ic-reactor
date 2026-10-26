@@ -80,9 +80,25 @@
       "tar": "^7.5.22",
       "yaml": "^2.8.3",
       "follow-redirects": "^1.16.0",
-      "undici": "^7.29.1",
-      "linkinator>undici": "^8.0.0",
-      "ws": "^8.21.0"
+      "undici": "^7.30.1",
+      "linkinator>undici": "^8.12.2",
+      "ws": "^8.21.0",
+      "compression": "^1.8.2",
+      "sharp": "^0.35.5",
+      "source-map-js": "^1.2.2",
+      "markdown-it": "^14.3.3",
+      "happy-dom": "^21.0.4",
+      "launch-editor": "^2.14.2",
+      "shell-quote": "^1.11.0",
+      "seroval": "^1.6.3",
+      "handlebars": "^4.7.10",
+      "zod": "^4.6.6",
+      "vitest>vite": "^8.3.3"
+    },
+    "auditConfig": {
+      "ignoreGhsas": [
+        "GHSA-ch52-4w7c-c8xp"
+      ]
     },
     "ignoredBuiltDependencies": [
       "wasm-pack"
