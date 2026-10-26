@@ -34,6 +34,7 @@ published stable candid-core releases, `@candid-core/schema` and
 | Docs site (`/v4/`)            | `docs/`, `.github/workflows/docs.yml`, `scripts/assemble-docs-site.mjs`                     |
 | Consumer guide and skill      | `packages/core/llms.txt`, `skill-packages/ic-reactor/SKILL.md`                              |
 | Release lane                  | `scripts/release.js`, `scripts/release-tag.mjs`, `.github/workflows/release.yml`            |
+| candid-core pins              | `stack.json`, `scripts/check-stack.mjs`                                                     |
 | CI gates and their tests      | `scripts/` (`check-exports.mjs`, `verify-traps.mjs`, `verify-faults.mjs`)                   |
 
 ## Verification commands
@@ -43,6 +44,7 @@ published stable candid-core releases, `@candid-core/schema` and
 - Lint (CI gate): `pnpm lint`. Run `pnpm build` first: the type-aware rules read core's emitted `.d.ts`.
 - Format (CI gate): `pnpm format:check`
 - AI context (CI gate): `pnpm check:ai-context` — version stamps, and docs links limited to the published bases (`/v2/`, `/v3/`, `/v4/`), with `/v4/` links resolved against `docs/src/content/docs/`.
+- Stack pins (CI gate): `pnpm check:stack` — each candid-core pin in a tracked `package.json`, each `@candid-core/<name>@<version>` in a `package.json` value or a `.md`, `.mdx` or `.txt` file, each docs peer-table row that says exactly `<version>`, and the two pins in code (`CANDID_CORE_CLI_VERSION`, the export budget's schema pin) must be exactly the version `stack.json` gives, outside the changelogs and the manifest's `frozen` paths; each listed package must be pinned by some `package.json` outside them, and each frozen path must hold a tracked file. Other files (`.ts`, `.yml`) are not read. A repin changes `stack.json`, freezes `examples/` until the release, and runs `pnpm sync:stack` (CONTRIBUTING.md, "The candid-core pins"); prose that says what one release does is checked by hand.
 - Snippets (CI gate; build first): `pnpm check:snippets`, and `pnpm check:snippets:docs` for the docs pages.
 - Size (CI gate; build first): `pnpm size` — gzipped size-limit checks, each limit just above its measured size. `packages/core/.size-limit.js` and react's `size-limit` field measure each package's own code: size-limit leaves out every peer of the package it runs in. `scripts/size-app/` (a private workspace package that declares no peers, so nothing is left out) measures what an app pays with the peers included: `{ createClient }` from core, and `createClient` with `ReactorProvider` and `useClient` without React itself. A change that moves a number, a dependency bump included, states the delta in its pull request and raises that limit in the same change.
 - Published artifacts: `pnpm verify:packages`

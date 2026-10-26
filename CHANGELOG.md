@@ -23,6 +23,18 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
   CI, e2e, CodeQL, the dependency review and the two published-package checks
   run on `main` only, and `verify-test-fails` takes its default base from
   `main` alone.
+- `stack.json` names the candid-core release this branch is tested against,
+  `@candid-core/schema` 0.4.0 and `@candid-core/cli` 0.3.0, in one place.
+  `pnpm check:stack`, a new step of the Lint & Type Check job, fails when a
+  candid-core pin in a tracked `package.json`, an
+  `@candid-core/<name>@<version>` in a `package.json` value or the docs, a
+  docs peer-table row or one of the two pins in code names another version or
+  a range, outside the changelogs and the manifest's `frozen` paths (`evals/`).
+  A repin changes `stack.json`, keeps `examples/` frozen until the release,
+  and runs `pnpm sync:stack`, which rewrites them in place (CONTRIBUTING.md,
+  "The candid-core pins"). Dependabot no longer opens `@candid-core/*` bumps,
+  and the vite plugin's tests read the CLI version they expect from
+  `CANDID_CORE_CLI_VERSION`.
 
 ## core, react, vite-plugin 4.0.0
 

@@ -12,6 +12,7 @@ import path from "node:path"
 import { spawn } from "node:child_process"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Plugin } from "vite"
+import { CANDID_CORE_CLI_VERSION } from "../src/generate.js"
 import { icReactor, type IcReactorPluginOptions } from "../src/index.js"
 import {
   BROKEN_DID,
@@ -37,6 +38,9 @@ vi.mock("node:child_process", async (importOriginal) => {
 
 const GUIDE =
   "ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt"
+// The CLI the plugin's messages tell an app to install, as a pattern. The
+// package test holds CANDID_CORE_CLI_VERSION to the plugin's peer pin.
+const CLI_PIN = `@candid-core\\/cli@${CANDID_CORE_CLI_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![-.\\w])`
 const LEDGER = fs.readFileSync(LEDGER_DID, "utf-8")
 
 /** The `.did` files of each generator process the plugin has started. */
@@ -760,7 +764,9 @@ describe("generation under vite build", () => {
     })
 
     await expect(result).rejects.toThrow(
-      /its report has schemaVersion 2, and this plugin reads 1; install @candid-core\/cli@0\.3\.0(?![-.\w])/
+      new RegExp(
+        `its report has schemaVersion 2, and this plugin reads 1; install ${CLI_PIN}`
+      )
     )
   })
 
@@ -870,7 +876,10 @@ describe("generation under vite build", () => {
 
       // Both canisters fail for one reason, which is said once.
       await expect(result).rejects.toThrow(
-        /could not generate 2 of 2 canisters:\n {2}- a \(did\/a\.did\), b \(did\/b\.did\): cannot find @candid-core\/cli from .*npm install --save-dev --save-exact @candid-core\/cli@0\.3\.0(?![-.\w])/s
+        new RegExp(
+          `could not generate 2 of 2 canisters:\\n {2}- a \\(did\\/a\\.did\\), b \\(did\\/b\\.did\\): cannot find @candid-core\\/cli from .*npm install --save-dev --save-exact ${CLI_PIN}`,
+          "s"
+        )
       )
     })
     expect(generatorRuns()).toEqual([])
