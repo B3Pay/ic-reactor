@@ -62,6 +62,9 @@ if (!candidCoreSite && process.env.CI) {
 const candidCoreUrl = new RegExp(
   `^(https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/|/)?${candidCoreDir}(/|$)`
 )
+const candidCoreRoot = new RegExp(
+  `^(https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/|/)?${candidCoreDir}/?$`
+)
 
 const staging = await mkdtemp(join(tmpdir(), "ic-reactor-links-"))
 try {
@@ -160,9 +163,13 @@ try {
     (l) => l.state === "BROKEN"
   )
   const checked = result.links.filter((l) => l.state !== "SKIPPED")
-  const candidCoreChecked = candidCoreResult.links.filter(
-    (l) => l.state !== "SKIPPED"
-  ).length
+  // What the crawl of Candid Core's pages reached past the home page it
+  // started from, which it reports twice (`candid-core`, then `candid-core/`).
+  const candidCoreReached = new Set(
+    candidCoreResult.links
+      .filter((l) => l.state !== "SKIPPED" && !candidCoreRoot.test(l.url))
+      .map((l) => l.url)
+  )
   // linkinator reports a skipped URL once per page that links it.
   const candidCoreSkipped = new Set(
     result.links
@@ -178,10 +185,11 @@ try {
     process.exit(1)
   }
 
-  // A mounted site whose crawl reached nothing was not checked.
-  if (candidCoreSite && candidCoreChecked === 0) {
+  // A mounted site whose crawl reached nothing past its home page was not
+  // checked.
+  if (candidCoreSite && candidCoreReached.size === 0) {
     console.error(
-      `The crawl of /${candidCoreDir}/ checked no links: is ${candidCoreSite} the site's website/dist?`
+      `The crawl of /${candidCoreDir}/ reached nothing past its home page: is ${candidCoreSite} the site's website/dist?`
     )
     process.exit(1)
   }
@@ -192,7 +200,7 @@ try {
   if (candidCoreSite) {
     const entries = checked.filter((l) => candidCoreUrl.test(l.url)).length
     console.log(
-      `${entries} of them reach Candid Core's site under /${candidCoreDir}/, and its pages' ${candidCoreChecked} links are unbroken (built at ${candidCoreSite}).`
+      `${entries} of them reach Candid Core's site under /${candidCoreDir}/, and the crawl of its pages reached ${candidCoreReached.size} more, none broken (built at ${candidCoreSite}).`
     )
   } else {
     console.log(
