@@ -17,7 +17,11 @@ Issue numbers below refer to https://github.com/B3Pay/ic-reactor/issues.
 
 ## Unreleased
 
-Nothing yet.
+### CI (not published)
+
+- The `v4` branch, where 4.x was developed until the 4.0 GA flip, is retired:
+  the workflows run on `main` only, and `pnpm verify:test-fails` defaults its
+  `--base` from `main` and `origin/main` only.
 
 ## core, react, vite-plugin 4.0.0
 

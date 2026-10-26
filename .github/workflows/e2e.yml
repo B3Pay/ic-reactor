@@ -1,11 +1,11 @@
 name: E2E Tests
 
 on:
-  # main is the 4.x line; v4 stays listed until it is retired. See ci.yml.
+  # main is the 4.x line. See ci.yml.
   push:
-    branches: [main, v4]
+    branches: [main]
   pull_request:
-    branches: [main, v4]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
