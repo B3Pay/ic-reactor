@@ -8,11 +8,10 @@ name: Auth on the latest @icp-sdk/auth
 # core and react tests against it. Weekly, because @icp-sdk/auth releases with
 # no commit of ours. GitHub runs `schedule` and offers `workflow_dispatch` only
 # for workflow files on the default branch, main; a pull request that changes
-# this file runs it too. v4, the branch 4 was developed on until the 4.0 GA
-# flip, stays listed until it is retired, as in ci.yml.
+# this file runs it too.
 on:
   pull_request:
-    branches: [main, v4]
+    branches: [main]
     paths:
       - ".github/workflows/auth-latest.yml"
   workflow_dispatch:
