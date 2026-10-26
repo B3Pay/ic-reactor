@@ -40,7 +40,7 @@ const GUIDE =
   "ic-reactor: agent guide at node_modules/@ic-reactor/core/llms.txt"
 // The CLI the plugin's messages tell an app to install, as a pattern. The
 // package test holds CANDID_CORE_CLI_VERSION to the plugin's peer pin.
-const CLI_PIN = `@candid-core\\/cli@${CANDID_CORE_CLI_VERSION.replace(/\./g, "\\.")}(?![-.\\w])`
+const CLI_PIN = `@candid-core\\/cli@${CANDID_CORE_CLI_VERSION.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![-.\\w])`
 const LEDGER = fs.readFileSync(LEDGER_DID, "utf-8")
 
 /** The `.did` files of each generator process the plugin has started. */
