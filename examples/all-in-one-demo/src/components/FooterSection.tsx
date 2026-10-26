@@ -17,7 +17,7 @@ function GitHubIcon({ className }: { className?: string }) {
 
 export function FooterSection() {
   const [copied, setCopied] = useState(false)
-  const installCmd = "npm install @ic-reactor/react"
+  const installCmd = "npm install @ic-reactor/react@3"
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(installCmd)
