@@ -91,6 +91,16 @@ pnpm docs:build
 pnpm docs:check-links   # crawls docs/dist, so run it after docs:build
 ```
 
+The pages link Candid Core's site, which the deploy serves at `/candid-core/`
+from a build of b3hr4d/candid-core. To check those links as CI does, build that
+site and name it (an absolute path):
+
+```bash
+git clone https://github.com/b3hr4d/candid-core ../candid-core
+node ../candid-core/website/build.mjs
+CANDID_CORE_SITE="$PWD/../candid-core/website/dist" pnpm docs:check-links
+```
+
 If you changed a package's `exports`, `files`, build output, or module format,
 also run:
 

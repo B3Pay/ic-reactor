@@ -13,10 +13,10 @@
  * - `/v2/`: the static 2.x TypeDoc site, moved under `/v2/` once from the
  *   legacy root of `gh-pages`.
  * - `/candid-core/`: Candid Core's site, built from its own repository
- *   (b3hr4d/candid-core, `node website/build.mjs`). It has no versions of its
- *   own here: the deploy builds that repository's `main`, as its own Pages
- *   site did. Its pages link each other and their assets relatively, so they
- *   work under any prefix.
+ *   (b3hr4d/candid-core, `node website/build.mjs`) and published as it was
+ *   built. It has no versions of its own here: the deploy builds that
+ *   repository's `main`. Its pages link each other and their assets
+ *   relatively, so they work under any prefix.
  * - the root: `index.html` and `404.html` send readers to `/v4/`,
  *   `llms.txt` is the 4.x consumer guide (`packages/core/llms.txt`), and
  *   `llms-full.txt` is whatever `--root-llms-full` names (the frozen 3.x file
@@ -28,7 +28,7 @@
  * Usage (docs.yml):
  *   node scripts/assemble-docs-site.mjs --out final-docs \
  *     --existing existing-pages --v4 docs/dist --v3-line v3-line \
- *     --candid-core candid-core/website/dist \
+ *     --candid-core candid-core-site \
  *     --root-llms packages/core/llms.txt --root-llms-full v3-line/llms-full.txt \
  *     --cname CNAME
  */
@@ -43,7 +43,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs"
-import { basename, join } from "node:path"
+import { basename, join, relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { parseArgs } from "node:util"
 
@@ -245,8 +245,9 @@ export function assembleSite({
   }
   copyDir(v4, join(out, "v4"))
 
-  // Candid Core's site. The 4.x pages link it, so a site without it is
-  // refused rather than published with dead links.
+  // Candid Core's site. The 4.x pages link it, so a site without one is
+  // refused; the link check (docs/scripts/check-links.mjs) is what checks
+  // the pages they link.
   if (!existsSync(join(candidCore, "index.html"))) {
     throw new Error(
       `${candidCore} holds no built Candid Core site (no index.html)`
@@ -263,7 +264,9 @@ export function assembleSite({
   }
 
   // The version selector of every page, and the 2.x site's legacy links.
+  // Candid Core's pages are published as they were built.
   for (const file of pages(out)) {
+    if (relative(out, file).split(sep)[0] === CANDID_CORE_DIR) continue
     const original = readFileSync(file, "utf8")
     let html = original
     for (const [from, to] of LINK_REWRITES) html = html.split(from).join(to)

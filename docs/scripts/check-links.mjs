@@ -17,9 +17,11 @@
  * `/candid-core/` from a build of its own repository
  * (scripts/assemble-docs-site.mjs). `CANDID_CORE_SITE` names that build
  * (`website/dist` of a b3hr4d/candid-core checkout, after
- * `node website/build.mjs`), and it is mounted there too, so each such link
- * and its `#fragment` are checked against the real pages. Without it those
- * links are skipped and counted, and in CI (`CI` set) the check fails instead.
+ * `node website/build.mjs`; a relative path is read from docs/, where it runs),
+ * and it is mounted there too: each such link and its `#fragment` are checked
+ * against the real pages, and those pages are crawled as well, as they will be
+ * published. Without it those links are skipped and counted, and in CI (`CI`
+ * set) the check fails instead.
  */
 import { mkdtemp, readFile, readdir, rm, symlink } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -68,8 +70,7 @@ try {
     await symlink(candidCoreSite, join(staging, candidCoreDir), "dir")
   }
 
-  const checker = new LinkChecker()
-  const result = await checker.check({
+  const options = {
     // The crawl root must be the DIRECTORY, not index.html. linkinator sets
     // `rootPath` to the full starting URL and only recurses into links whose
     // href string-prefixes it (build/src/index.js:271 and :892). With
@@ -100,7 +101,13 @@ try {
       // Without a build of Candid Core's site, its links cannot be checked.
       ...(candidCoreSite ? [] : [candidCoreUrl.source]),
     ],
-  })
+  }
+  const result = await new LinkChecker().check(options)
+  // Candid Core's own pages, as they will be published: the crawl above only
+  // follows links under the base, so it stops at their entry links.
+  const candidCoreResult = candidCoreSite
+    ? await new LinkChecker().check({ ...options, path: `${candidCoreDir}/` })
+    : { links: [] }
 
   // Case-sensitivity pass. linkinator serves the built site from the local
   // filesystem, so on macOS every href resolves case-insensitively and a link
@@ -149,11 +156,18 @@ try {
     process.exit(1)
   }
 
-  const broken = result.links.filter((l) => l.state === "BROKEN")
-  const checked = result.links.filter((l) => l.state !== "SKIPPED").length
-  // linkinator reports a checked URL once and a skipped one per page.
-  const candidCoreLinks = new Set(
-    result.links.filter((l) => candidCoreUrl.test(l.url)).map((l) => l.url)
+  const broken = [...result.links, ...candidCoreResult.links].filter(
+    (l) => l.state === "BROKEN"
+  )
+  const checked = result.links.filter((l) => l.state !== "SKIPPED")
+  const candidCoreChecked = candidCoreResult.links.filter(
+    (l) => l.state !== "SKIPPED"
+  ).length
+  // linkinator reports a skipped URL once per page that links it.
+  const candidCoreSkipped = new Set(
+    result.links
+      .filter((l) => l.state === "SKIPPED" && candidCoreUrl.test(l.url))
+      .map((l) => l.url)
   )
 
   if (broken.length > 0) {
@@ -164,16 +178,25 @@ try {
     process.exit(1)
   }
 
+  // A mounted site whose crawl reached nothing was not checked.
+  if (candidCoreSite && candidCoreChecked === 0) {
+    console.error(
+      `The crawl of /${candidCoreDir}/ checked no links: is ${candidCoreSite} the site's website/dist?`
+    )
+    process.exit(1)
+  }
+
   console.log(
-    `Checked ${checked} internal links under /${base}/ - no broken links.`
+    `Checked ${checked.length} internal links under /${base}/ - no broken links.`
   )
   if (candidCoreSite) {
+    const entries = checked.filter((l) => candidCoreUrl.test(l.url)).length
     console.log(
-      `${candidCoreLinks.size} of them reach Candid Core's site under /${candidCoreDir}/, built at ${candidCoreSite}.`
+      `${entries} of them reach Candid Core's site under /${candidCoreDir}/, and its pages' ${candidCoreChecked} links are unbroken (built at ${candidCoreSite}).`
     )
   } else {
     console.log(
-      `${candidCoreLinks.size} links under /${candidCoreDir}/ were not checked: set CANDID_CORE_SITE to a build of b3hr4d/candid-core's site (website/dist).`
+      `${candidCoreSkipped.size} links under /${candidCoreDir}/ were not checked: set CANDID_CORE_SITE to a build of b3hr4d/candid-core's site (website/dist).`
     )
   }
 } finally {

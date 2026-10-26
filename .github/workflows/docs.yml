@@ -10,10 +10,12 @@ name: Deploy Docs
 #   that fails blocks the deploy: fix it on v3, or switch to option B;
 # - /v2/, the static 2.x site kept from gh-pages;
 # - /candid-core/, Candid Core's site, built from b3hr4d/candid-core's main
-#   with its own generator (`node website/build.mjs`, Node built-ins only).
-#   The library switcher and the docs home link it there. A change to that
-#   repository's site reaches this one at the next deploy: the daily run
-#   below, or a dispatch;
+#   with its own generator (`node website/build.mjs`, Node built-ins only),
+#   in a job of its own (`candid-core-site`). The library switcher and the
+#   docs home link it there. A change to that repository's site reaches this
+#   one at the next deploy: the daily run below, or a dispatch. A generator
+#   that fails on that main stops the deploy; a dispatch with
+#   `candid-core-ref` set to a commit that builds publishes in the meantime;
 # - the root: / and the 404 page go to /v4/, /llms.txt is the 4.x guide
 #   (packages/core/llms.txt), and /llms-full.txt stays the frozen 3.x file.
 #
@@ -41,6 +43,11 @@ on:
   schedule:
     - cron: "23 5 * * *"
   workflow_dispatch:
+    inputs:
+      candid-core-ref:
+        description: "The b3hr4d/candid-core ref whose site is published at /candid-core/"
+        type: string
+        default: main
 
 permissions:
   contents: read
@@ -50,8 +57,50 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Candid Core's site. The generator is another repository's code, so it runs
+  # here rather than in `build`: it never sees this repository's tree, its
+  # pnpm cache or the Pages artifact, and only its output (website/dist) is
+  # handed on. Node is the version Candid Core's own docs workflow builds with.
+  candid-core-site:
+    name: Build Candid Core's site
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out Candid Core
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: b3hr4d/candid-core
+          ref: ${{ inputs.candid-core-ref || 'main' }}
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24.18.0"
+
+      # The site generator takes no dependency, so no install. The commit goes
+      # to the run's summary: main moves, and the deploy should say what it
+      # published.
+      - name: Build
+        run: |
+          set -euo pipefail
+          node website/build.mjs
+          echo "Candid Core's site at /candid-core/ is built from b3hr4d/candid-core@$(git rev-parse HEAD)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Hand the site on
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: candid-core-site
+          path: website/dist
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
   build:
     name: Build Documentation
+    needs: candid-core-site
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -89,31 +138,22 @@ jobs:
       - name: Build documentation (Astro)
         run: pnpm docs:build
 
-      - name: Check out Candid Core
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Download Candid Core's site
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
-          repository: b3hr4d/candid-core
-          ref: main
-          path: candid-core-repo
-          persist-credentials: false
+          name: candid-core-site
+          path: candid-core-site
 
-      # The site generator takes no dependency, so no install. The commit goes
-      # to the run's summary: main moves, and the deploy should say what it
-      # published.
-      - name: Build Candid Core's site
-        run: |
-          set -euo pipefail
-          node candid-core-repo/website/build.mjs
-          commit=$(git -C candid-core-repo rev-parse HEAD)
-          echo "Candid Core's site at /candid-core/ is built from b3hr4d/candid-core@${commit}." >> "$GITHUB_STEP_SUMMARY"
-
-      # Advisory here, not blocking: `deploy` has `needs: build`, so failing
-      # would stop the site updating at all rather than publishing one dead
-      # link. The PR gate in docs-check.yml is the hard one.
+      # Advisory on a push or a dispatch, not blocking: `deploy` has
+      # `needs: build`, so failing would stop the site updating at all rather
+      # than publishing one dead link. The PR gate in docs-check.yml is the
+      # hard one. The daily run is the exception: it is unattended and brings
+      # only Candid Core's and the 3.x line's changes, so a dead link there
+      # fails the run and leaves the live site as it was.
       - name: Check links
-        continue-on-error: true
+        continue-on-error: ${{ github.event_name != 'schedule' }}
         env:
-          CANDID_CORE_SITE: ${{ github.workspace }}/candid-core-repo/website/dist
+          CANDID_CORE_SITE: ${{ github.workspace }}/candid-core-site
         run: pnpm docs:check-links
 
       # docs/dist should be Astro static output
@@ -157,7 +197,7 @@ jobs:
             --existing existing-pages \
             --v4 docs/dist \
             --v3-line v3-line \
-            --candid-core candid-core-repo/website/dist \
+            --candid-core candid-core-site \
             --root-llms packages/core/llms.txt \
             --root-llms-full v3-line/llms-full.txt \
             --cname CNAME

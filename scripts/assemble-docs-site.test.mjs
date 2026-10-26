@@ -49,6 +49,13 @@ const SELECTOR = (selected) =>
 const page = (line, body = "") =>
   `<!doctype html><html><body>${SELECTOR(line)}<p>${line} page</p>${body}</body></html>`
 
+// A Candid Core page that holds what the assembly rewrites on the other
+// lines: a legacy 3.x link and a version selector.
+const CANDID_CORE_PAGE = page(
+  "candid-core",
+  '<a href="./">Home</a><a href="https://b3pay.github.io/ic-reactor/modules/core.html">3.x</a>'
+)
+
 /** A workspace as docs.yml leaves it before the assembly step. */
 function workspace({
   ghPages = true,
@@ -85,16 +92,14 @@ function workspace({
       '<a href="https://b3pay.github.io/ic-reactor/modules/core.html">old</a>'
     )
   )
-  // Candid Core's build: flat pages and assets, linked relatively.
+  // Candid Core's build as the candid-core-site job hands it on: flat pages
+  // and assets, linked relatively.
   write(
-    join(root, "candid-core/website/dist/index.html"),
+    join(root, "candid-core-site/index.html"),
     '<link rel="stylesheet" href="assets/style.css"><p>Candid Core home</p>'
   )
-  write(
-    join(root, "candid-core/website/dist/identities.html"),
-    '<a href="./">Home</a><p>identities</p>'
-  )
-  write(join(root, "candid-core/website/dist/assets/style.css"), "body{}")
+  write(join(root, "candid-core-site/identities.html"), CANDID_CORE_PAGE)
+  write(join(root, "candid-core-site/assets/style.css"), "body{}")
   write(join(root, "v3-line/llms.txt"), "3.x llms")
   write(join(root, "v3-line/llms-full.txt"), "3.x llms-full")
   write(join(root, "packages/core/llms.txt"), "4.x guide")
@@ -109,7 +114,7 @@ function assembleDefault(root, overrides = {}) {
     existing: join(root, "existing-pages"),
     v4: join(root, "docs/dist"),
     v3Line: join(root, "v3-line"),
-    candidCore: join(root, "candid-core/website/dist"),
+    candidCore: join(root, "candid-core-site"),
     rootLlms: join(root, "packages/core/llms.txt"),
     rootLlmsFull: join(root, "v3-line/llms-full.txt"),
     cname: join(root, "CNAME"),
@@ -202,9 +207,11 @@ describe("assembleSite, option (A): /v3/ rebuilt from the v3 branch", () => {
       read(join(out, "candid-core/index.html")),
       '<link rel="stylesheet" href="assets/style.css"><p>Candid Core home</p>'
     )
+    // Byte for byte: neither the legacy-link rewrites nor the version
+    // selector touch it.
     assert.equal(
       read(join(out, "candid-core/identities.html")),
-      '<a href="./">Home</a><p>identities</p>'
+      CANDID_CORE_PAGE
     )
     assert.equal(read(join(out, "candid-core/assets/style.css")), "body{}")
   })
@@ -223,9 +230,9 @@ describe("assembleSite, option (A): /v3/ rebuilt from the v3 branch", () => {
     assert.equal(existsSync(join(out, "v2/candid-core")), false)
   })
 
-  it("refuses a Candid Core checkout whose site was not built", () => {
+  it("refuses a Candid Core build that holds no site", () => {
     const root = workspace()
-    rmSync(join(root, "candid-core/website/dist"), { recursive: true })
+    rmSync(join(root, "candid-core-site"), { recursive: true })
     assert.throws(
       () => assembleDefault(root),
       /holds no built Candid Core site/
@@ -348,7 +355,7 @@ describe("assemble-docs-site.mjs as docs.yml runs it", () => {
         "--v3-line",
         "v3-line",
         "--candid-core",
-        "candid-core/website/dist",
+        "candid-core-site",
         "--root-llms",
         "packages/core/llms.txt",
         "--root-llms-full",
@@ -380,7 +387,7 @@ describe("assemble-docs-site.mjs as docs.yml runs it", () => {
         "--v3-line",
         "v3-line",
         "--candid-core",
-        "candid-core/website/dist",
+        "candid-core-site",
         "--root-llms",
         "packages/core/llms.txt",
       ],
