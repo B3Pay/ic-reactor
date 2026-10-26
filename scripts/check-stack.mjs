@@ -263,11 +263,12 @@ export function checkStack(
   // The key itself, `parent>name` (pnpm and npm overrides) or `name@range`
   // (an override of the versions a range selects). A longer name that starts
   // with this one (`name-extra`) is another package, and so is the `dep` of
-  // `name@range>dep`.
+  // `name@range>dep`: a `>` before a name parts the two, while a `>` before
+  // anything else (`name@>=1.2.0`) is the range's own comparator.
   const keyed = [...pins].map(([name]) => ({
     name,
     pattern: new RegExp(
-      `("(?:[^"\\\\]*>)?${escapeRegExp(name)}(?:@[^"\\\\>]*)?"\\s*:\\s*")([^"\\\\]*)(")`,
+      `("(?:[^"\\\\]*>)?${escapeRegExp(name)}(?:@(?:[^"\\\\>]|>(?![@a-z]))*)?"\\s*:\\s*")([^"\\\\]*)(")`,
       "g"
     ),
   }))

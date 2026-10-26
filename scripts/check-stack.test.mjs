@@ -161,6 +161,7 @@ describe("package.json pins", () => {
               "@candid-core/schema": "0.3.0",
               "@candid-core/cli>@candid-core/schema": "0.3.0",
               "@candid-core/schema@<0.4.0": "0.3.0",
+              "@candid-core/schema@>=0.3.0 <0.4.0": "0.3.0",
             },
           },
         }),
@@ -169,6 +170,7 @@ describe("package.json pins", () => {
         'package.json:9 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
         'package.json:10 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
         'package.json:11 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
+        'package.json:12 @candid-core/schema is "0.3.0"; stack.json pins 0.4.0',
       ]
     )
   })
