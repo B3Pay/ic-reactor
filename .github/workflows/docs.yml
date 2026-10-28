@@ -9,7 +9,7 @@ name: Deploy Docs
 #   overturn). The v3 branch has no docs deploy of its own. A 3.x docs build
 #   that fails blocks the deploy: fix it on v3, or switch to option B;
 # - /v2/, the static 2.x site kept from gh-pages;
-# - /candid-core/, Candid Core's site, built from b3hr4d/candid-core's main
+# - /candid-core/, Candid Core's site, built from B3Pay/Meant's main
 #   with its own generator (`node website/build.mjs`, Node built-ins only),
 #   in a job of its own (`candid-core-site`). The library switcher and the
 #   docs home link it there. A change to that repository's site reaches this
@@ -45,7 +45,7 @@ on:
   workflow_dispatch:
     inputs:
       candid-core-ref:
-        description: "The b3hr4d/candid-core ref whose site is published at /candid-core/"
+        description: "The B3Pay/Meant ref whose site is published at /candid-core/"
         type: string
         default: main
 
@@ -71,7 +71,7 @@ jobs:
       - name: Check out Candid Core
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          repository: b3hr4d/candid-core
+          repository: B3Pay/Meant
           ref: ${{ inputs.candid-core-ref || 'main' }}
           persist-credentials: false
 
@@ -87,7 +87,7 @@ jobs:
         run: |
           set -euo pipefail
           node website/build.mjs
-          echo "Candid Core's site at /candid-core/ is built from b3hr4d/candid-core@$(git rev-parse HEAD)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Candid Core's site at /candid-core/ is built from B3Pay/Meant@$(git rev-parse HEAD)." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Hand the site on
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

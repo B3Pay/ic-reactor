@@ -24,7 +24,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          repository: b3hr4d/candid-core
+          repository: B3Pay/Meant
           ref: main
           persist-credentials: false
       - name: Setup Node.js
@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           node website/build.mjs
-          echo "Candid Core's site is built from b3hr4d/candid-core@$(git rev-parse HEAD)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Candid Core's site is built from B3Pay/Meant@$(git rev-parse HEAD)." >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: candid-core-site
