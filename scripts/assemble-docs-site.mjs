@@ -13,7 +13,7 @@
  * - `/v2/`: the static 2.x TypeDoc site, moved under `/v2/` once from the
  *   legacy root of `gh-pages`.
  * - `/candid-core/`: Candid Core's site, built from its own repository
- *   (b3hr4d/candid-core, `node website/build.mjs`) and published as it was
+ *   (B3Pay/Meant, `node website/build.mjs`) and published as it was
  *   built. It has no versions of its own here: the deploy builds that
  *   repository's `main`. Its pages link each other and their assets
  *   relatively, so they work under any prefix.

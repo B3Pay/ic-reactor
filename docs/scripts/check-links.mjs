@@ -16,7 +16,7 @@
  * The pages also link Candid Core's site, which the deploy serves at
  * `/candid-core/` from a build of its own repository
  * (scripts/assemble-docs-site.mjs). `CANDID_CORE_SITE` names that build
- * (`website/dist` of a b3hr4d/candid-core checkout, after
+ * (`website/dist` of a B3Pay/Meant checkout, after
  * `node website/build.mjs`; a relative path is read from docs/, where it runs),
  * and it is mounted there too: each such link and its `#fragment` are checked
  * against the real pages, and those pages are crawled as well, as they will be
@@ -53,7 +53,7 @@ if (candidCoreSite && !existsSync(join(candidCoreSite, "index.html"))) {
 }
 if (!candidCoreSite && process.env.CI) {
   console.error(
-    `CANDID_CORE_SITE is not set: in CI the links under /${candidCoreDir}/ are checked against a build of b3hr4d/candid-core's site`
+    `CANDID_CORE_SITE is not set: in CI the links under /${candidCoreDir}/ are checked against a build of B3Pay/Meant's site`
   )
   process.exit(1)
 }
@@ -204,7 +204,7 @@ try {
     )
   } else {
     console.log(
-      `${candidCoreSkipped.size} links under /${candidCoreDir}/ were not checked: set CANDID_CORE_SITE to a build of b3hr4d/candid-core's site (website/dist).`
+      `${candidCoreSkipped.size} links under /${candidCoreDir}/ were not checked: set CANDID_CORE_SITE to a build of B3Pay/Meant's site (website/dist).`
     )
   }
 } finally {

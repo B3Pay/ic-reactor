@@ -54,7 +54,7 @@ Out of scope:
 - A canister returning wrong data, unless the library presents it as verified
 - `@ic-reactor/core/testing`: its fake replica and test client are for tests, not for production
 
-Candid encoding and decoding are `@candid-core/schema`'s. Report a decoding bug, such as a hostile reply that decodes to the wrong value or crashes the decoder, to candid-core through <https://github.com/b3hr4d/candid-core/security/advisories/new>.
+Candid encoding and decoding are `@candid-core/schema`'s. Report a decoding bug, such as a hostile reply that decodes to the wrong value or crashes the decoder, to candid-core through <https://github.com/B3Pay/Meant/security/advisories/new>.
 
 ### Development and build (`vite-plugin`)
 
