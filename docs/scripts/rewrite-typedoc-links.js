@@ -14,10 +14,21 @@
  *       -> /v3/libs/classes/type-aliases/BaseActor.md   404
  *       -> /v3/libs/type-aliases/baseactor/             the real page
  *
+ * It then renames each page to its route's lowercase name. The route stays
+ * the same, and the file's path becomes its address, which b3pay.net requires
+ * of the pages it serves from this repository (b3pay-module.json).
+ *
  * Runs after `typedoc` and before `astro build`. The base is read from
  * astro.config.mjs rather than hardcoded, matching check-links.mjs.
  */
-import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs"
+import {
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  statSync,
+  renameSync,
+  mkdirSync,
+} from "node:fs"
 import { join, posix, dirname, relative, resolve } from "node:path"
 
 const docsRoot = resolve(import.meta.dirname, "..")
@@ -81,6 +92,19 @@ for (const file of markdownFiles(LIBS)) {
   }
 }
 
+let filesRenamed = 0
+for (const file of [...markdownFiles(LIBS)]) {
+  const path = relative(LIBS, file)
+  const lowercase = slug(path)
+  if (lowercase === path) continue
+  // Through a temporary name, so that a case-insensitive file system renames it too.
+  const temporary = `${file}.renaming`
+  renameSync(file, temporary)
+  mkdirSync(dirname(join(LIBS, lowercase)), { recursive: true })
+  renameSync(temporary, join(LIBS, lowercase))
+  filesRenamed++
+}
+
 console.log(
-  `rewrote ${linksRewritten} TypeDoc cross-links across ${filesChanged} files -> ${base}/libs/**`
+  `rewrote ${linksRewritten} TypeDoc cross-links across ${filesChanged} files -> ${base}/libs/**, and renamed ${filesRenamed} files to lowercase`
 )
